@@ -1,10 +1,16 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: Planning
-**Progress**: Epic and sprint plans drafted; concept springs catalogued. No code yet. ADR pending (author before Sprint 01).
-**ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) *(to author first — the two load-bearing decisions live here)*
-**Integration branch**: `epic/conversation-widgets` *(to branch from the completed Workshop line after Sprint 10 persistence and the widget ADR land)*
+**Status**: In progress — Sprint 01 implemented 2026-07-29 (awaiting review)
+**Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
+folded in). Sprint 01 implemented on `claude/gesture-playground-widget-201u8p`:
+design Spreads 00+01 synced, widget registry + host contracts, `widget`
+ModelScope, atomic commit route, Gesture Playground end to end (browser →
+pre-commit modal → one fast-tier call → commit → chip → clone-and-recommit),
+persona recommend/prefill, session-persisted `widgetConfigs`. Sprints 02–04
+not started.
+**ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**
+**Integration branch**: `epic/conversation-widgets` *(Sprint 01 currently on the session branch above; fold into the epic branch at review time)*
 
 ## Goal
 

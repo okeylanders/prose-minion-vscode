@@ -1,11 +1,38 @@
 # Sprint 01: Widget Host + Gesture Playground
 
-**Status**: Planned
+**Status**: Implemented 2026-07-29 — awaiting review/merge
 **Priority**: High
-**Branch**: `sprint/conversation-widgets-01-widget-host-gesture-playground` -> PR into `epic/conversation-widgets`
+**Branch**: `claude/gesture-playground-widget-201u8p` *(session-designated; plan named `sprint/conversation-widgets-01-widget-host-gesture-playground`)*
 **Estimated Effort**: 4-6 days
 **Depends on**: Workshop Sprint 10 persistence merged; ADR [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md) authored and accepted
-**ADR**: same
+**ADR**: same — authored and accepted 2026-07-29 with the architecture-lane
+review folded into its "Sprint 01 concretions" (atomic commit route instead of
+the shared pending list; host-minted `kind` attribute; sibling
+`WorkshopWidgetHandler` constructed inside `WorkshopHandler`; new `widget`
+ModelScope; rail-discriminated turn linkage with config revisions)
+
+## Completion notes (2026-07-29)
+
+- Design Spreads 00 + 01 pulled into `docs/design/` (epic kickoff sync).
+- **One deliberate delta from the locked decisions**: the commit rides the
+  `ta-N` mint and frame builder but **bypasses `pendingMessageAttachments`**
+  — the shipped Phase 6B doctrine reserves that list for explicit composer
+  sends, and its persistence would orphan a widget artifact on a failed
+  commit. See the ADR's Sprint 01 concretions.
+- **Two small deferrals, tracked honestly**:
+  - `targetPhrase` seeding from the live editor selection needs a new host
+    round-trip (the existing SELECTION_DATA flow is paste-verification);
+    fresh opens start blank for now. Persona prefill and chip clone both seed.
+  - No Settings-backed last-used draft values were added (nothing needs one
+    yet); sessions restore exact committed configs, and the
+    `proseMinion.widgetModel` setting covers the fast-tier scope.
+- Coverage: registry integrity + kind round-trip; frame-builder closed-set
+  validation + quoted-frame neutralization; fail-closed recommendation parser
+  with live-gating; menu-parse rejection table; `wc-N` minting / clone
+  lineage / shared counter / V1 round-trip and integrity rejections; handler
+  generate-race + atomic-commit + retry-token semantics; modal seed/clone
+  re-hydration and host-confirmed close. 1,586 tests green; architecture
+  witnesses green; lint 0 errors; build + bundle verify green.
 
 ## Goal
 
