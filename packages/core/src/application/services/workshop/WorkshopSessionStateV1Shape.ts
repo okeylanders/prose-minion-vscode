@@ -18,6 +18,7 @@ import {
   WORKSHOP_GUEST_CAPACITY
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
+import { isWorkshopWidgetId } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_TODO_BOUNDS
@@ -50,7 +51,9 @@ export function assertWorkshopSessionStateShape(
       'scope',
       'shelvedExcerpt',
       'selectedToolId',
-      'lastCommittedPersonaBehavior'
+      'lastCommittedPersonaBehavior',
+      // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
+      'widgetConfigs'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -77,6 +80,9 @@ export function assertWorkshopSessionStateShape(
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
   }
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
+  if (state.widgetConfigs !== undefined) {
+    arrayOf(state.widgetConfigs, 'Workshop session state.widgetConfigs', assertWidgetConfig);
+  }
   if (state.lastCommittedPersonaBehavior !== undefined) {
     assertLastCommittedBehavior(
       state.lastCommittedPersonaBehavior,
@@ -234,12 +240,59 @@ function assertCounters(value: unknown): void {
   const counters = exactObject(
     value,
     'Workshop session state.counters',
-    ['attachment', 'threadArtifact', 'turn', 'todo']
+    ['attachment', 'threadArtifact', 'turn', 'todo'],
+    // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
+    ['widgetConfig']
   );
   numberAt(counters.attachment, 'Workshop session state.counters.attachment');
   numberAt(counters.threadArtifact, 'Workshop session state.counters.threadArtifact');
   numberAt(counters.turn, 'Workshop session state.counters.turn');
   numberAt(counters.todo, 'Workshop session state.counters.todo');
+  optionalNumberAt(counters.widgetConfig, 'Workshop session state.counters.widgetConfig');
+}
+
+function assertWidgetConfig(value: unknown, path: string): void {
+  const config = exactObject(
+    value,
+    path,
+    ['id', 'widgetId', 'revision', 'draft', 'createdAt'],
+    ['clonedFromConfigId', 'committedTurnId', 'artifactId']
+  );
+  stringAt(config.id, `${path}.id`);
+  if (!isWorkshopWidgetId(config.widgetId)) {
+    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+  }
+  numberAt(config.revision, `${path}.revision`);
+  numberAt(config.createdAt, `${path}.createdAt`);
+  optionalStringAt(config.clonedFromConfigId, `${path}.clonedFromConfigId`);
+  optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
+  optionalStringAt(config.artifactId, `${path}.artifactId`);
+  assertGestureDraft(config.draft, `${path}.draft`);
+}
+
+function assertGestureDraft(value: unknown, path: string): void {
+  const draft = exactObject(
+    value,
+    path,
+    ['targetPhrase', 'contextText', 'characterNotes', 'selections', 'note'],
+    ['menu']
+  );
+  stringAt(draft.targetPhrase, `${path}.targetPhrase`);
+  stringAt(draft.contextText, `${path}.contextText`);
+  stringAt(draft.characterNotes, `${path}.characterNotes`);
+  arrayOf(draft.selections, `${path}.selections`, (selection, selectionPath) => {
+    stringAt(selection, selectionPath);
+  });
+  stringAt(draft.note, `${path}.note`);
+  if (draft.menu !== undefined) {
+    arrayOf(draft.menu, `${path}.menu`, (groupValue, groupPath) => {
+      const group = exactObject(groupValue, groupPath, ['heading', 'options']);
+      stringAt(group.heading, `${groupPath}.heading`);
+      arrayOf(group.options, `${groupPath}.options`, (option, optionPath) => {
+        stringAt(option, optionPath);
+      });
+    });
+  }
 }
 
 function assertWriterSources(value: unknown): void {
@@ -322,7 +375,10 @@ function assertTurn(value: unknown, path: string): void {
       'citations',
       'truncated',
       'behavior',
-      'behaviorTransition'
+      'behaviorTransition',
+      // Conversation Widgets (ADR 2026-07-22).
+      'widgetCommit',
+      'widgetRecommendation'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -397,6 +453,45 @@ function assertTurn(value: unknown, path: string): void {
   }
   if (turn.behaviorTransition !== undefined) {
     assertBehaviorTransition(turn.behaviorTransition, `${path}.behaviorTransition`);
+  }
+  if (turn.widgetCommit !== undefined) {
+    assertTurnWidgetCommit(turn.widgetCommit, `${path}.widgetCommit`);
+  }
+  if (turn.widgetRecommendation !== undefined) {
+    assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
+  }
+}
+
+function assertTurnWidgetCommit(value: unknown, path: string): void {
+  const commit = exactObject(
+    value,
+    path,
+    ['widgetId', 'widgetConfigId', 'rail', 'artifactId', 'selectionCount']
+  );
+  if (!isWorkshopWidgetId(commit.widgetId)) {
+    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+  }
+  stringAt(commit.widgetConfigId, `${path}.widgetConfigId`);
+  enumAt(commit.rail, `${path}.rail`, ['thread-artifact']);
+  stringAt(commit.artifactId, `${path}.artifactId`);
+  numberAt(commit.selectionCount, `${path}.selectionCount`);
+}
+
+function assertTurnWidgetRecommendation(value: unknown, path: string): void {
+  const recommendation = exactObject(value, path, ['widgetId'], ['seed']);
+  if (!isWorkshopWidgetId(recommendation.widgetId)) {
+    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+  }
+  if (recommendation.seed !== undefined) {
+    const seed = exactObject(
+      recommendation.seed,
+      `${path}.seed`,
+      [],
+      ['targetPhrase', 'characterNotes', 'note']
+    );
+    optionalStringAt(seed.targetPhrase, `${path}.seed.targetPhrase`);
+    optionalStringAt(seed.characterNotes, `${path}.seed.characterNotes`);
+    optionalStringAt(seed.note, `${path}.seed.note`);
   }
 }
 

@@ -52,8 +52,16 @@ export interface ModelConfiguration {
   dictionaryModel?: string;
   contextModel?: string;
   categoryModel?: string;
+  widgetModel?: string;
   fallbackModel?: string;
 }
+
+/**
+ * Fast-tier default for the `widget` scope (ADR 2026-07-22 decision 8):
+ * Conversation Widget pre-commit iteration is cheap and interactive, so the
+ * scope defaults to a fast model rather than the shared sonnet fallback.
+ */
+export const DEFAULT_WIDGET_MODEL = 'anthropic/claude-haiku-4.5';
 
 export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
@@ -215,18 +223,21 @@ export class AIResourceManager {
     const dictionaryModel = selections.dictionary;
     const contextModel = selections.context;
     const categoryModel = selections.category;
+    const widgetModel = selections.widget;
 
     // Create AI resources for each scope
     const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);
     const dictionaryResources = this.createResourceBundle(apiKey!, 'dictionary', dictionaryModel);
     const contextResources = this.createResourceBundle(apiKey!, 'context', contextModel);
     const categoryResources = this.createResourceBundle(apiKey!, 'category', categoryModel);
+    const widgetResources = this.createResourceBundle(apiKey!, 'widget', widgetModel);
 
     this.aiResources = {
       assistant: assistantResources,
       dictionary: dictionaryResources,
       context: contextResources,
-      category: categoryResources
+      category: categoryResources,
+      widget: widgetResources
     };
 
     // Note: Both statusCallback and tokenUsageCallback are passed in constructor
@@ -237,7 +248,8 @@ export class AIResourceManager {
       assistant: assistantModel,
       dictionary: dictionaryModel,
       context: contextModel,
-      category: categoryModel
+      category: categoryModel,
+      widget: widgetModel
     };
     this.initialized = true;
   }
@@ -256,7 +268,10 @@ export class AIResourceManager {
         ?? fallbackModel,
       category: modelConfig?.categoryModel
         ?? this.settings.get<string>('proseMinion', 'categoryModel')
-        ?? fallbackModel
+        ?? fallbackModel,
+      widget: modelConfig?.widgetModel
+        ?? this.settings.get<string>('proseMinion', 'widgetModel')
+        ?? DEFAULT_WIDGET_MODEL
     };
   }
 

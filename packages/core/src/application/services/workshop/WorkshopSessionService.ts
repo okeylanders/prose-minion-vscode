@@ -25,6 +25,7 @@ import {
   WorkshopExcerptTruncation,
   workshopExcerptSourcePath,
   workshopExcerptTitle,
+  WorkshopGestureDraft,
   WorkshopMessageAttachmentSnapshot,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
@@ -36,7 +37,10 @@ import {
   WorkshopTodoItem,
   WorkshopTurn,
   WorkshopTurnArtifact,
-  WorkshopTurnKind
+  WorkshopTurnKind,
+  WorkshopTurnWidgetCommit,
+  WorkshopWidgetConfigSnapshot,
+  WorkshopWidgetId
 } from '@messages';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
 import type { UrlCitation } from '@messages';
@@ -330,6 +334,15 @@ export class WorkshopSessionService {
   private pendingMessageAttachments: WorkshopMessageAttachment[] = [];
   /** Monotonic `ta-N` mint — never reused within a session (surgery address). */
   private threadArtifactCounter = 0;
+  /**
+   * Persisted widget authoring configs (ADR 2026-07-22): the chip's
+   * re-openable Draft, by stable `wc-N` id. Clone-and-recommit appends new
+   * entries and never retires old ones — the chip on a historical turn keeps
+   * addressing its exact config.
+   */
+  private widgetConfigs: WorkshopWidgetConfigSnapshot[] = [];
+  /** Monotonic `wc-N` mint — never reused within a session. */
+  private widgetConfigCounter = 0;
   /**
    * Writer-origin manifest rows per retained participant (Phase 7): pins
    * stamped at delivery (stale-marked on revision), tool/guest rows stamped
@@ -864,6 +877,95 @@ export class WorkshopSessionService {
     this.pendingMessageAttachments = this.pendingMessageAttachments.filter(
       (attachment) => !shipped.has(attachment.id)
     );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Conversation Widgets (ADR 2026-07-22). The commit is one atomic host
+  // route: it mints from the SAME `ta-N` counter as message attachments (ids
+  // stay globally unique for tombstone surgery) but never enters the pending
+  // list — the Phase 6B doctrine reserves that list for explicit composer
+  // sends, and a persisted pending entry would orphan on a failed commit.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Persist a widget authoring Draft under a fresh `wc-N` id. Created before
+   * the send so the visible turn can reference it; a config whose commit
+   * never landed is the durable retry token, not garbage.
+   */
+  createWidgetConfig(input: {
+    widgetId: WorkshopWidgetId;
+    draft: WorkshopGestureDraft;
+    clonedFromConfigId?: string;
+  }): WorkshopWidgetConfigSnapshot {
+    this.widgetConfigCounter += 1;
+    const config: WorkshopWidgetConfigSnapshot = {
+      id: `wc-${this.widgetConfigCounter}`,
+      widgetId: input.widgetId,
+      revision: 1,
+      draft: cloneGestureDraft(input.draft),
+      clonedFromConfigId: input.clonedFromConfigId,
+      createdAt: this.now()
+    };
+    this.widgetConfigs.push(config);
+    return cloneWidgetConfig(config);
+  }
+
+  getWidgetConfig(id: string): WorkshopWidgetConfigSnapshot | undefined {
+    const config = this.widgetConfigs.find((candidate) => candidate.id === id);
+    return config ? cloneWidgetConfig(config) : undefined;
+  }
+
+  /** Stamp the landed commit's turn/artifact identities onto its config. */
+  recordWidgetCommit(configId: string, linkage: { turnId: string; artifactId: string }): void {
+    const config = this.widgetConfigs.find((candidate) => candidate.id === configId);
+    if (!config) {
+      throw new Error(`Unknown widget config ${configId}`);
+    }
+    config.committedTurnId = linkage.turnId;
+    config.artifactId = linkage.artifactId;
+  }
+
+  /**
+   * Mint a thread-artifact id for a widget commit from the shared monotonic
+   * counter. Deliberately NOT staged: the widget commit route holds the id
+   * synchronously from mint to ship, so nothing can interleave.
+   */
+  mintWidgetArtifactId(): string {
+    this.threadArtifactCounter += 1;
+    return `ta-${this.threadArtifactCounter}`;
+  }
+
+  /**
+   * Stamp a shipped widget artifact into the receiving participant's
+   * writer-origin manifest — the same accounting commitMessageAttachments
+   * performs for composer attachments, minus the pending list.
+   */
+  recordWidgetArtifactDelivery(
+    label: string,
+    sizeChars: number,
+    target: WorkshopChatTarget = { kind: 'host' }
+  ): void {
+    const entry: ContextSourceEntry = {
+      kind: 'message-attachment',
+      origin: 'writer',
+      label,
+      sizeChars,
+      isEstimate: true,
+      deliveredAt: this.now()
+    };
+    if (target.kind === 'tool') {
+      this.toolWriterSources[target.toolId] = [
+        ...(this.toolWriterSources[target.toolId] ?? []),
+        entry
+      ];
+    } else if (target.kind === 'personaGuest') {
+      this.guestWriterSources.set(target.personaId, [
+        ...(this.guestWriterSources.get(target.personaId) ?? []),
+        entry
+      ]);
+    } else {
+      this.hostWriterSources.push(entry);
+    }
   }
 
   /** Bump the revision, queue host delivery, and mint the visible event turn mid-session. */
@@ -1415,10 +1517,19 @@ export class WorkshopSessionService {
   beginPersonaMessage(
     requestId: string,
     displayText: string,
-    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
+    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
+    widgetCommit?: WorkshopTurnWidgetCommit
   ): WorkshopTurn {
     this.requireParticipantSubject();
-    return this.beginMessage(requestId, displayText, 'host', undefined, undefined, messageAttachments);
+    return this.beginMessage(
+      requestId,
+      displayText,
+      'host',
+      undefined,
+      undefined,
+      messageAttachments,
+      widgetCommit
+    );
   }
 
   /** Begin a message to a live guest; guests never receive host capabilities. */
@@ -1426,13 +1537,22 @@ export class WorkshopSessionService {
     personaId: WorkshopPersonaId,
     requestId: string,
     displayText: string,
-    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
+    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
+    widgetCommit?: WorkshopTurnWidgetCommit
   ): WorkshopTurn {
     this.requireParticipantSubject();
     if (!this.isLivePersonaGuest(personaId)) {
       throw new Error(`Cannot message Workshop guest ${workshopPersonaLabel(personaId)} without a live sidecar`);
     }
-    return this.beginMessage(requestId, displayText, 'personaGuest', undefined, personaId, messageAttachments);
+    return this.beginMessage(
+      requestId,
+      displayText,
+      'personaGuest',
+      undefined,
+      personaId,
+      messageAttachments,
+      widgetCommit
+    );
   }
 
   /** Begin the first invitation turn before the provider conversation exists. */
@@ -1750,6 +1870,8 @@ export class WorkshopSessionService {
     this.turns = [];
     this.activeRun = undefined;
     this.pendingMessageAttachments = [];
+    this.widgetConfigs = [];
+    this.widgetConfigCounter = 0;
     this.pendingContextRevision = undefined;
     this.replacementCount = 0;
     this.selectedToolId = undefined;
@@ -1791,8 +1913,10 @@ export class WorkshopSessionService {
         attachment: this.attachmentCounter,
         threadArtifact: this.threadArtifactCounter,
         turn: this.turnCounter,
-        todo: this.todoCounter
+        todo: this.todoCounter,
+        widgetConfig: this.widgetConfigCounter
       },
+      widgetConfigs: this.widgetConfigs.map(cloneWidgetConfig),
       writerSources: {
         host: this.hostWriterSources.map(cloneSourceEntry),
         tools: cloneToolWriterSources(this.toolWriterSources),
@@ -1874,6 +1998,7 @@ export class WorkshopSessionService {
       normalized.pendingMessageAttachments.map(cloneMessageAttachment);
     const turns = normalized.turns.map(cloneTurn);
     const todos = normalized.todos.map(cloneStoredTodo);
+    const widgetConfigs = (normalized.widgetConfigs ?? []).map(cloneWidgetConfig);
     const behavior = { ...currentBehavior };
     const lastCommittedPersonaBehavior = normalized.lastCommittedPersonaBehavior
       ? { ...normalized.lastCommittedPersonaBehavior }
@@ -1989,6 +2114,8 @@ export class WorkshopSessionService {
     this.selectedToolId = normalized.selectedToolId;
     this.turnCounter = normalized.counters.turn;
     this.todoCounter = normalized.counters.todo;
+    this.widgetConfigs = widgetConfigs;
+    this.widgetConfigCounter = normalized.counters.widgetConfig ?? 0;
     this.todos = todos;
     this.behavior = behavior;
     this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;
@@ -2019,6 +2146,7 @@ export class WorkshopSessionService {
           }
         : undefined,
       todos: this.todos.map((todo) => cloneTodo(todo, this.excerptVersion)),
+      widgetConfigs: this.widgetConfigs.map(cloneWidgetConfig),
       turns: windowed.map(cloneTurn),
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
@@ -2037,7 +2165,8 @@ export class WorkshopSessionService {
     target: 'host' | 'tool' | 'personaGuest',
     toolId?: WorkshopToolId,
     guestPersonaId?: WorkshopPersonaId,
-    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[]
+    messageAttachments?: readonly WorkshopMessageAttachmentSnapshot[],
+    widgetCommit?: WorkshopTurnWidgetCommit
   ): WorkshopTurn {
     const sidecar = toolId ? this.participants.toolSidecars[toolId] : undefined;
     const guest = guestPersonaId ? this.participants.personaGuests.get(guestPersonaId) : undefined;
@@ -2060,6 +2189,7 @@ export class WorkshopSessionService {
       messageAttachments: messageAttachments && messageAttachments.length > 0
         ? messageAttachments.map(cloneMessageAttachmentSnapshot)
         : undefined,
+      widgetCommit: widgetCommit ? { ...widgetCommit } : undefined,
       content: displayText,
       timestamp: this.now(),
       excerptVersion: this.excerptVersion,
@@ -2299,7 +2429,32 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
       : undefined,
     messageAttachments: turn.messageAttachments
       ? turn.messageAttachments.map(cloneMessageAttachmentSnapshot)
+      : undefined,
+    widgetCommit: turn.widgetCommit ? { ...turn.widgetCommit } : undefined,
+    widgetRecommendation: turn.widgetRecommendation
+      ? {
+          widgetId: turn.widgetRecommendation.widgetId,
+          seed: turn.widgetRecommendation.seed ? { ...turn.widgetRecommendation.seed } : undefined
+        }
       : undefined
+  };
+}
+
+function cloneGestureDraft(draft: WorkshopGestureDraft): WorkshopGestureDraft {
+  return {
+    targetPhrase: draft.targetPhrase,
+    contextText: draft.contextText,
+    characterNotes: draft.characterNotes,
+    menu: draft.menu?.map((group) => ({ heading: group.heading, options: [...group.options] })),
+    selections: [...draft.selections],
+    note: draft.note
+  };
+}
+
+function cloneWidgetConfig(config: WorkshopWidgetConfigSnapshot): WorkshopWidgetConfigSnapshot {
+  return {
+    ...config,
+    draft: cloneGestureDraft(config.draft)
   };
 }
 

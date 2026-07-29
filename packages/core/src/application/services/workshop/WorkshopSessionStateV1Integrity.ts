@@ -162,6 +162,49 @@ export function validateWorkshopSessionStateV1(
       numericIdSuffix(attachment.id, /^ta-(\d+)$/, 'thread artifact')
     );
   }
+  // Conversation Widgets (ADR 2026-07-22): `wc-N` ids are monotonic like
+  // `ta-N`, widget artifact ids share the thread-artifact counter, and commit
+  // linkage must reference real turns and configs.
+  const widgetConfigIds = new Set<string>();
+  let greatestWidgetConfigNumber = 0;
+  for (const config of state.widgetConfigs ?? []) {
+    if (widgetConfigIds.has(config.id)) {
+      throw new Error(`Duplicate persisted Workshop widget config ${config.id}`);
+    }
+    widgetConfigIds.add(config.id);
+    greatestWidgetConfigNumber = Math.max(
+      greatestWidgetConfigNumber,
+      numericIdSuffix(config.id, /^wc-(\d+)$/, 'widget config')
+    );
+    if (config.committedTurnId !== undefined && !turnIds.has(config.committedTurnId)) {
+      throw new Error(`Persisted Workshop widget config ${config.id} references an unknown turn`);
+    }
+    if (config.clonedFromConfigId === config.id) {
+      throw new Error(`Persisted Workshop widget config ${config.id} clones itself`);
+    }
+    if (config.artifactId !== undefined) {
+      greatestThreadArtifactNumber = Math.max(
+        greatestThreadArtifactNumber,
+        numericIdSuffix(config.artifactId, /^ta-(\d+)$/, 'thread artifact')
+      );
+    }
+  }
+  if (greatestWidgetConfigNumber > (state.counters.widgetConfig ?? 0)) {
+    throw new Error('Persisted Workshop widget-config counter trails an existing id');
+  }
+  for (const turn of state.turns) {
+    if (!turn.widgetCommit) {
+      continue;
+    }
+    greatestThreadArtifactNumber = Math.max(
+      greatestThreadArtifactNumber,
+      numericIdSuffix(turn.widgetCommit.artifactId, /^ta-(\d+)$/, 'thread artifact')
+    );
+    if (!widgetConfigIds.has(turn.widgetCommit.widgetConfigId)) {
+      throw new Error(`Persisted Workshop turn ${turn.id} references an unknown widget config`);
+    }
+  }
+
   if (greatestThreadArtifactNumber > state.counters.threadArtifact) {
     throw new Error('Persisted Workshop thread-artifact counter trails an existing id');
   }

@@ -1,0 +1,284 @@
+/**
+ * The Conversation Widgets registry — the single deterministic source for
+ * widget ids ↔ labels ↔ rails ↔ availability (ADR 2026-07-22, decision 14).
+ * The webview browser renders from it, WorkshopWidgetHandler validates
+ * commits against it, and the thread-artifact frame's `kind` attribute is
+ * derived from it — so none of the three can drift, and the LLM never names
+ * buttons. Icons are presentation-only and stay in the webview layer
+ * (workshopWidgetIcons pattern, mirroring workshopTools.ts).
+ *
+ * Unshipped widgets stay listed and `live: false`: the browser is a roadmap,
+ * not a lie (design Spread 00). The persona-recommendation parser rejects
+ * ids that are not live, so comp-only widgets can never render dead chips.
+ */
+
+import { WorkshopWidgetId } from '../types/messages/workshop';
+
+export type WorkshopWidgetRail = 'oneshot' | 'standing' | 'resource';
+
+export type WorkshopWidgetGroupName =
+  | 'Playgrounds'
+  | 'Explorers'
+  | 'References'
+  | 'Influences'
+  | 'Learners'
+  | 'Resources';
+
+export interface WorkshopWidgetDescriptor {
+  readonly id: WorkshopWidgetId;
+  readonly label: string;
+  readonly rail: WorkshopWidgetRail;
+  /** Rail badge text shown on the card (rail plus any qualifier). */
+  readonly railLabel: string;
+  readonly group: WorkshopWidgetGroupName;
+  /** Sprint tag or `concept` — the roadmap chip on the card. */
+  readonly tag: string;
+  /** What opening/committing this widget can cost the room. */
+  readonly costNote: string;
+  readonly blurb: string;
+  /** Only live widgets may launch, commit, or be persona-recommended. */
+  readonly live: boolean;
+}
+
+export interface WorkshopWidgetGroupDescriptor {
+  readonly name: WorkshopWidgetGroupName;
+  readonly description: string;
+  readonly items: readonly WorkshopWidgetDescriptor[];
+}
+
+const ONE_SHOT_COST = 'plays free — commits exactly one turn';
+const STANDING_COST = 'pins to the room — rides every turn until unpinned';
+const RESOURCE_COST = 'durable — persists across sessions';
+
+export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] = [
+  {
+    name: 'Playgrounds',
+    description: 'Play a beat before anything commits — generate, keep what lands, commit once.',
+    items: [
+      {
+        id: 'gesture-playground',
+        label: 'Gesture Playground',
+        rail: 'oneshot',
+        railLabel: 'one-shot',
+        group: 'Playgrounds',
+        tag: 'Sprint 01',
+        costNote: ONE_SHOT_COST,
+        blurb:
+          'One model call returns a menu of gesture directions for a phrase — keep the ones you want, commit them to the room.',
+        live: true
+      },
+      {
+        id: 'show-vs-tell',
+        label: 'Show vs. Tell Playground',
+        rail: 'oneshot',
+        railLabel: 'one-shot',
+        group: 'Playgrounds',
+        tag: 'concept',
+        costNote: ONE_SHOT_COST,
+        blurb: 'Recast a told beat as shown alternatives; keep the ones that land.',
+        live: false
+      },
+      {
+        id: 'creative-variations',
+        label: 'Creative Variations Explorer',
+        rail: 'oneshot',
+        railLabel: 'one-shot',
+        group: 'Playgrounds',
+        tag: 'concept',
+        costNote: ONE_SHOT_COST,
+        blurb:
+          'Three to five genuinely different takes on a passage under invariants you declare — measured for distinctness, compared side by side.',
+        live: false
+      }
+    ]
+  },
+  {
+    name: 'Explorers',
+    description: 'Derive a relationship — typed, span-anchored, graded for resemblance, never quality.',
+    items: [
+      {
+        id: 'topic-relationship',
+        label: 'Topic Relationship Explorer',
+        rail: 'oneshot',
+        railLabel: 'one-shot',
+        group: 'Explorers',
+        tag: 'concept',
+        costNote: ONE_SHOT_COST,
+        blurb:
+          'Name a topic — a thinker, a framework, a tradition — and derive its relationship to the passage as a typed dossier: span-anchored points of contact, graded grounding, where the lens distorts, one question.',
+        live: false
+      },
+      {
+        id: 'genre-relationship',
+        label: 'Genre Relationship Explorer',
+        rail: 'oneshot',
+        railLabel: 'one-shot',
+        group: 'Explorers',
+        tag: 'concept',
+        costNote: ONE_SHOT_COST,
+        blurb:
+          'Survey a chapter for the genres it’s in conversation with, then take one apart tell by tell — expectation against span-anchored evidence: matches, departs, subverts.',
+        live: false
+      }
+    ]
+  },
+  {
+    name: 'References',
+    description: 'Look something up — one call, one document, nothing to curate.',
+    items: [
+      {
+        id: 'writers-dictionary',
+        label: 'Writer’s Dictionary',
+        rail: 'oneshot',
+        railLabel: 'one-shot · report',
+        group: 'References',
+        tag: 'concept',
+        costNote: 'plays free — Run posts the whole report and spends one turn',
+        blurb:
+          'One word or phrase, and the whole lexical field comes back as a document: senses, register, texture, collocations, voices, soundplay, watchpoints — plus a menu tuned to your scene if you supply context. The report is the artifact; nothing here stands.',
+        live: false
+      }
+    ]
+  },
+  {
+    name: 'Influences',
+    description: 'Standing surfaces — pinned to the room, weighing on every turn until unpinned.',
+    items: [
+      {
+        id: 'lexical-gravity',
+        label: 'Lexical Gravity',
+        rail: 'standing',
+        railLabel: 'standing',
+        group: 'Influences',
+        tag: 'Sprint 02',
+        costNote: STANDING_COST,
+        blurb:
+          'Pull the passage’s lexis toward an interpretive lens — Photography, Mathematics, Music — with weight and reach.',
+        live: false
+      },
+      {
+        id: 'prose-controller',
+        label: 'Prose Controller',
+        rail: 'standing',
+        railLabel: 'standing',
+        group: 'Influences',
+        tag: 'Sprint 03',
+        costNote: STANDING_COST,
+        blurb:
+          'How the passage is made: diction, sentence architecture, rhythm, density, figurative texture, punctuation.',
+        live: false
+      },
+      {
+        id: 'lens-blending',
+        label: 'Gravity: Lens Blending',
+        rail: 'standing',
+        railLabel: 'standing',
+        group: 'Influences',
+        tag: 'Sprint 04',
+        costNote: STANDING_COST,
+        blurb: 'Blend multiple lenses with explicit dominance weighting — never an unweighted average.',
+        live: false
+      }
+    ]
+  },
+  {
+    name: 'Learners',
+    description: 'Curriculum packs over your own pages — learn, inspect, practise, bring back a question.',
+    items: [
+      {
+        id: 'learner-english',
+        label: 'Learner: English & Writing',
+        rail: 'oneshot',
+        railLabel: 'one-shot',
+        group: 'Learners',
+        tag: 'concept',
+        costNote: ONE_SHOT_COST,
+        blurb:
+          'The Learner shell with a Working English pack — parse the passage, see what is a rule and what is a choice, bring back a question.',
+        live: false
+      },
+      {
+        id: 'learner-craft',
+        label: 'Learner: The Storytelling Craft',
+        rail: 'oneshot',
+        railLabel: 'one-shot',
+        group: 'Learners',
+        tag: 'concept',
+        costNote: ONE_SHOT_COST,
+        blurb:
+          'The Learner shell with a storytelling-craft curriculum pack — learn, inspect the passage, practise, and bring back only what was useful.',
+        live: false
+      }
+    ]
+  },
+  {
+    name: 'Resources',
+    description: 'Durable records — they outlive the session and every one-shot around them.',
+    items: [
+      {
+        id: 'decisions',
+        label: 'Decisions',
+        rail: 'resource',
+        railLabel: 'resource',
+        group: 'Resources',
+        tag: 'concept',
+        costNote: RESOURCE_COST,
+        blurb: 'Append-only decision record; a deterministic scan assembles the running list.',
+        live: false
+      },
+      {
+        id: 'scratch-pad',
+        label: 'Project Scratch Pad',
+        rail: 'resource',
+        railLabel: 'resource',
+        group: 'Resources',
+        tag: 'concept',
+        costNote: RESOURCE_COST,
+        blurb: 'Durable project notes; each append also leaves a visible thread event.',
+        live: false
+      }
+    ]
+  }
+];
+
+const WIDGETS_BY_ID: ReadonlyMap<WorkshopWidgetId, WorkshopWidgetDescriptor> = new Map(
+  WORKSHOP_WIDGET_CATALOG.flatMap((group) => group.items.map((widget) => [widget.id, widget]))
+);
+
+/** Descriptor lookup; undefined for ids this build does not know. */
+export function workshopWidgetDescriptor(id: WorkshopWidgetId): WorkshopWidgetDescriptor | undefined {
+  return WIDGETS_BY_ID.get(id);
+}
+
+/** Display label for a widget id; falls back to the raw id for forward compat. */
+export function workshopWidgetLabel(id: WorkshopWidgetId): string {
+  return WIDGETS_BY_ID.get(id)?.label ?? id;
+}
+
+/** True when the wire value names a widget this build knows about. */
+export function isWorkshopWidgetId(value: unknown): value is WorkshopWidgetId {
+  return typeof value === 'string' && WIDGETS_BY_ID.has(value as WorkshopWidgetId);
+}
+
+/** True when the widget may launch, commit, or be persona-recommended. */
+export function isLiveWorkshopWidgetId(value: unknown): value is WorkshopWidgetId {
+  return isWorkshopWidgetId(value) && WIDGETS_BY_ID.get(value)!.live === true;
+}
+
+/**
+ * The thread-artifact frame `kind` for a widget commit, derived mechanically
+ * so the registry check on the frame builder means something
+ * (ADR 2026-07-22, Sprint 01 concretions). Never interpolate a caller string.
+ */
+export function workshopWidgetArtifactKind(id: WorkshopWidgetId): string {
+  return `widget:${id}`;
+}
+
+/** Reverse of workshopWidgetArtifactKind; undefined for non-widget kinds. */
+export function workshopWidgetIdFromArtifactKind(kind: string): WorkshopWidgetId | undefined {
+  if (!kind.startsWith('widget:')) {
+    return undefined;
+  }
+  const id = kind.slice('widget:'.length);
+  return isWorkshopWidgetId(id) ? id : undefined;
+}

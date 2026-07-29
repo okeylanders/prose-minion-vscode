@@ -65,6 +65,23 @@ export interface PromptBudgets {
    * item cap — thread artifacts ride one turn and have NO standing budget.
    */
   readonly workshopThreadArtifacts: Readonly<{ itemsPerMessage: number; words: number }>;
+  /**
+   * Conversation Widgets (ADR 2026-07-22). Gesture Playground pre-commit
+   * surface: caps on writer inputs, on the model-generated menu accepted by
+   * the fail-closed parser (anything over cap rejects the whole menu), and
+   * on what a commit may carry. The exploration cloud is thrown away at
+   * commit — only selections and the note ride the rail.
+   */
+  readonly workshopWidgets: Readonly<{
+    gestureTargetPhraseCharacters: number;
+    gestureContextCharacters: number;
+    gestureCharacterNotesCharacters: number;
+    gestureNoteCharacters: number;
+    gestureMenuGroups: number;
+    gestureOptionsPerGroup: number;
+    gestureOptionCharacters: number;
+    gestureSelectionsPerCommit: number;
+  }>;
 }
 
 export const PROMPT_BUDGETS: PromptBudgets = {
@@ -112,5 +129,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
-  workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 }
+  workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 },
+  workshopWidgets: {
+    gestureTargetPhraseCharacters: 300,
+    gestureContextCharacters: 4_000,
+    gestureCharacterNotesCharacters: 1_500,
+    gestureNoteCharacters: 300,
+    gestureMenuGroups: 6,
+    gestureOptionsPerGroup: 5,
+    gestureOptionCharacters: 220,
+    gestureSelectionsPerCommit: 8
+  }
 };

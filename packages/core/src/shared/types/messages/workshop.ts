@@ -30,6 +30,29 @@ import { ContextPathGroup, isContextPathGroup } from '../context';
  */
 export type WorkshopToolId = 'dialogue' | 'prose' | WritingToolsFocus;
 
+/**
+ * Wire id for a Conversation Widget (ADR 2026-07-22). The canonical catalog —
+ * labels, rails, groups, and `live` availability — is
+ * shared/constants/workshopWidgets.ts; handlers validate against it and the
+ * thread-artifact `kind` is derived from it (`widget:<id>`), so the id IS the
+ * frame identity. Ids for unshipped widgets exist so the browser can show an
+ * honest roadmap; only `live` ids may launch, commit, or be recommended.
+ */
+export type WorkshopWidgetId =
+  | 'gesture-playground'
+  | 'show-vs-tell'
+  | 'creative-variations'
+  | 'topic-relationship'
+  | 'genre-relationship'
+  | 'writers-dictionary'
+  | 'lexical-gravity'
+  | 'prose-controller'
+  | 'lens-blending'
+  | 'learner-english'
+  | 'learner-craft'
+  | 'decisions'
+  | 'scratch-pad';
+
 /** Stable ids for the Writers' Room hosts packaged with Workshop. */
 export type WorkshopPersonaId =
   | 'jill'
@@ -662,6 +685,87 @@ export interface WorkshopMessageAttachmentSnapshot {
   truncation?: WorkshopMessageAttachmentTruncation;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Conversation Widgets (ADR 2026-07-22; Sprint 01 widget host + Gesture
+// Playground). A widget is played BEFORE it commits: the pre-commit Draft is
+// local to the modal, the commit is one atomic host route, and the full Draft
+// persists by stable `wc-N` id so the transcript chip re-hydrates the exact
+// authoring surface (config, not just output, is session-owned).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One group of generated gesture directions ("The eyes", "Hands & body", …). */
+export interface WorkshopGestureMenuGroup {
+  heading: string;
+  options: string[];
+}
+
+/**
+ * The Gesture Playground authoring state. `menu` is the generated exploration
+ * cloud — persisted ONLY so a chip re-opens the exact surface; at commit time
+ * the cloud is thrown away and only `selections` + `note` shape the directive.
+ */
+export interface WorkshopGestureDraft {
+  targetPhrase: string;
+  contextText: string;
+  characterNotes: string;
+  menu?: WorkshopGestureMenuGroup[];
+  /** The directions the writer kept — exact option strings, order preserved. */
+  selections: string[];
+  note: string;
+}
+
+/**
+ * A persisted widget authoring config. Ids are host-minted `wc-N` (monotonic,
+ * never reused — the third identity beside turn ids and `ta-N` artifact ids).
+ * One-shot configs stay at revision 1; standing widgets edit-in-place and
+ * increment (Sprint 02). Clone-and-recommit mints a NEW config linked by
+ * `clonedFromConfigId`.
+ */
+export interface WorkshopWidgetConfigSnapshot {
+  id: string;
+  widgetId: WorkshopWidgetId;
+  revision: number;
+  draft: WorkshopGestureDraft;
+  clonedFromConfigId?: string;
+  /** Set when the commit lands; a config without these is an uncommitted retry token. */
+  committedTurnId?: string;
+  artifactId?: string;
+  /** Epoch ms when the config was created (host-stamped). */
+  createdAt: number;
+}
+
+/**
+ * Display-safe widget-commit decoration on a normal user message turn —
+ * rail-discriminated from day one (the standing arm arrives with Sprint 02).
+ * `artifactId` intentionally duplicates the ref reachable through
+ * `messageAttachments`-style joins: direct address beats a join; do not
+ * "deduplicate" it (ADR 2026-07-22, Sprint 01 concretions).
+ */
+export interface WorkshopTurnWidgetCommit {
+  widgetId: WorkshopWidgetId;
+  widgetConfigId: string;
+  rail: 'thread-artifact';
+  artifactId: string;
+  selectionCount: number;
+}
+
+/** Persona-supplied prefill for a recommended widget. Every field is editable. */
+export interface WorkshopWidgetRecommendationSeed {
+  targetPhrase?: string;
+  characterNotes?: string;
+  note?: string;
+}
+
+/**
+ * Strictly parsed persona widget recommendation (actionable-findings mold:
+ * fail-closed host-side parse, typed field, presentation-only chip). Only
+ * `live` registry ids survive parsing — comp-only widgets never render chips.
+ */
+export interface WorkshopWidgetRecommendation {
+  widgetId: WorkshopWidgetId;
+  seed?: WorkshopWidgetRecommendationSeed;
+}
+
 /** The excerpt set in the left rail — the text every tool run works on. */
 export interface WorkshopExcerpt {
   text: string;
@@ -785,6 +889,17 @@ export interface WorkshopTurn {
    * change. Never a synthetic chat message.
    */
   behaviorTransition?: WorkshopConversationBehaviorTransition;
+  /**
+   * Widget commit that produced this writer turn (ADR 2026-07-22). Display
+   * decoration for the presentation-only chip; the model never sees it.
+   */
+  widgetCommit?: WorkshopTurnWidgetCommit;
+  /**
+   * Strictly parsed widget recommendation a persona attached to this turn.
+   * Presentation-only; malformed or non-live recommendations are rejected
+   * wholesale host-side and never reach this field.
+   */
+  widgetRecommendation?: WorkshopWidgetRecommendation;
 }
 
 /**
@@ -835,6 +950,13 @@ export interface WorkshopSessionSnapshot {
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
+  /**
+   * Persisted widget authoring configs (ADR 2026-07-22). Shipped wholesale in
+   * Sprint 01 (volumes are trivial); the stated bound — binding on the sprint
+   * that first exceeds it — is configs for windowed turns only, with
+   * on-demand fetch for chips on older turns.
+   */
+  widgetConfigs: WorkshopWidgetConfigSnapshot[];
   turns: WorkshopTurn[];
   /** Total turns held host-side (>= turns.length). */
   totalTurns: number;
@@ -1417,4 +1539,76 @@ export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
   error?: string;
 }> {
   type: MessageType.WORKSHOP_SESSION_SAVE_STATUS;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Conversation Widget messages (ADR 2026-07-22). Generate is the pre-commit
+// model call — it touches no session state and may run freely. Commit is one
+// atomic mutation-gated route: config + artifact + visible turn, or nothing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Pre-commit menu generation. `token` is webview-minted and echoed back so a
+ * regenerate race resolves to the latest request (stale results are dropped).
+ */
+export interface WorkshopWidgetGeneratePayload {
+  widgetId: WorkshopWidgetId;
+  token: string;
+  targetPhrase: string;
+  contextText: string;
+  characterNotes: string;
+}
+
+export interface WorkshopWidgetGenerateMessage extends MessageEnvelope<WorkshopWidgetGeneratePayload> {
+  type: MessageType.WORKSHOP_WIDGET_GENERATE;
+}
+
+/** Abandon the in-flight generate call (modal closed, or superseded). */
+export interface CancelWidgetGenerateRequestMessage extends MessageEnvelope<{ token?: string }> {
+  type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST;
+}
+
+export interface WorkshopWidgetMenuResultPayload {
+  widgetId: WorkshopWidgetId;
+  token: string;
+  ok: boolean;
+  menu?: WorkshopGestureMenuGroup[];
+  /** User-facing failure text; the whole menu rejects wholesale on bad output. */
+  error?: string;
+}
+
+export interface WorkshopWidgetMenuResultMessage extends MessageEnvelope<WorkshopWidgetMenuResultPayload> {
+  type: MessageType.WORKSHOP_WIDGET_MENU_RESULT;
+}
+
+/**
+ * The atomic widget commit. The full Draft crosses so the host can persist
+ * the exact authoring state (`wc-N`) before shipping the directive; the
+ * exploration cloud in `draft.menu` is persisted for chip re-hydration but
+ * never enters the prompt.
+ */
+export interface WorkshopCommitWidgetPayload {
+  widgetId: WorkshopWidgetId;
+  draft: WorkshopGestureDraft;
+  /** Present on clone-and-recommit: the config this Draft was re-opened from. */
+  clonedFromConfigId?: string;
+}
+
+export interface WorkshopCommitWidgetMessage extends MessageEnvelope<WorkshopCommitWidgetPayload> {
+  type: MessageType.WORKSHOP_COMMIT_WIDGET;
+}
+
+export interface WorkshopWidgetActionResultPayload {
+  action: 'commit';
+  widgetId: WorkshopWidgetId;
+  ok: boolean;
+  widgetConfigId?: string;
+  turnId?: string;
+  /** User-facing failure text when ok is false. */
+  message?: string;
+}
+
+export interface WorkshopWidgetActionResultMessage
+  extends MessageEnvelope<WorkshopWidgetActionResultPayload> {
+  type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT;
 }
