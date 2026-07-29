@@ -211,10 +211,104 @@ disabled** in the browser — the menu is a roadmap, not a lie.
 
 ## Sprint 01 concretions
 
-*The contested calls below were reviewed with the architecture lane
-(Forge Crew, Marcus) at kickoff; verdicts are recorded inline.*
+*The five contested calls below went through the architecture lane
+(Forge Crew, Marcus 🏛️) at kickoff — overall verdict
+**proceed-with-changes**; the changes are folded in.*
 
-<!-- MARCUS-VERDICTS -->
+### The widget commit is one atomic host-side route, never a pending pill
+
+The shipped Phase 6B doctrine (written on `executeMessage`) is that
+explicit composer sends ship the staged message attachments and
+deterministic actions never consume them. A widget commit is a
+host-authored turn, so it must not run through
+`pendingMessageAttachments`: the writer's staged file pills would silently
+ride the widget turn (and be manifest-stamped against the wrong speech
+act), and — because the pending list is persisted — a failed commit would
+leave an orphaned widget artifact that rides the writer's next plain send.
+
+Instead, `WORKSHOP_COMMIT_WIDGET` is one atomic route that **shares the
+mechanisms and bypasses the list**: it mints from the same
+`threadArtifactCounter` (`ta-N` stays globally unique for tombstone
+surgery), frames through `buildWorkshopThreadArtifactFrame`, ships via a
+new `executeOptions.widgetArtifact` on the existing send seam (with
+`includeMessageAttachments: false`), and on success stamps the
+writer-origin manifest exactly as `commitMessageAttachments` does. The
+durable retry token for a failed commit is the persisted `widgetConfig`
+Draft — a better one than a pending pill.
+
+### The frame gains a host-minted `kind` attribute
+
+`<thread-artifact id="ta-N" kind="widget:gesture-playground">`. The house
+rule was never "no attributes" — it was "no writer-controlled attributes"
+(the interaction frame already carries four closed-enum attributes under
+that exact justification). Conditions honored in the same change: the
+builder **throws** on any kind not derived from the closed widget
+registry (as it already throws on malformed ids), and the doc-comment
+house rule on the builder is amended to say "id plus host-minted kind
+from the closed widget registry". The neutralizer already swallows
+attributes on quoted `thread-artifact` frames, and Sprint 01 introduces
+**no new reserved frame name** — decision 7 is satisfied trivially.
+
+### `WorkshopWidgetHandler` is constructed inside `WorkshopHandler`
+
+The sibling-handler precedent is `WorkshopSessionMessageHandler`:
+`WorkshopHandler` constructs it directly and hands it closures over its
+own private seams at construction time. `WorkshopWidgetHandler` follows
+suit — constructor-injected `sendRoomMessage` closure over
+`executeMessage`, routes registered through the same
+`registerRoutes(router, registerMutation)` shape, commit gated as a
+mutation. No post-construction binding step, and no widget wiring in
+`MessageHandler` (the composition root stays ignorant of workshop
+internals per ADR 2026-06-18). Extracting the send seam into a
+collaborator service is **rejected for this sprint** — `executeMessage`
+is entangled with run lifecycle and room delivery, and extracting it
+under a feature deadline is how god-file surgery goes wrong; it stays
+with the 2026-07-25 debt ticket as a pure move.
+
+### Model tier: a fifth `ModelScope`, `'widget'`
+
+Added now, not deferred: `ModelScope` is a closed union with a uniform
+bundle path, and the widget host contract is a Sprint 01 deliverable that
+Sprint 02's live regeneration builds on — shipping the generate route on
+scope `'assistant'` would bake the wrong scope into the contract and force
+Sprint 02 to change route, contract, and a settings default in one move.
+`proseMinion.widgetModel` joins the settings surface with a fast/cheap
+default; live iteration runs there. Runtime cost matches what
+`dictionary`/`category` already pay.
+
+### Turn linkage, config shape, and the snapshot bound
+
+- The widget commit turn is a **normal user message turn** decorated with
+  a display-safe optional field — no new `WorkshopTurnArtifact` member.
+  The field is **rail-discriminated from day one**:
+  `widgetCommit: { widgetId, widgetConfigId, rail: 'thread-artifact',
+  artifactId, selectionCount }`, with the standing arm reserved for
+  Sprint 02. `artifactId` intentionally duplicates what a refs join could
+  derive — direct address beats a join; do not "deduplicate" it.
+- `widgetConfigs` entries carry `revision: 1` from day one (decision 6
+  names revisions; one integer now beats an optional-field migration in a
+  frozen-V1 grammar later).
+- **Snapshot bound**: `getSnapshot()` ships `widgetConfigs` wholesale in
+  Sprint 01 (volumes are trivial), but the stated bound — binding on the
+  sprint that first exceeds it — is: ship configs only for turns inside
+  the snapshot window, with on-demand fetch for chips on older turns.
+  Clone-and-recommit accumulates configs without retiring them, so the
+  collection is unbounded by design; the snapshot must not be.
+
+### The registry move inverts the type dependency
+
+`workshopWidgets.ts` today types its rows against the sheet-browser
+component's types — moving it as-is would point `shared/constants` at
+`presentation`. The move re-homes the canonical types in shared:
+`WorkshopWidgetId` (union), `WorkshopWidgetDescriptor`
+(id/label/rail/group/tag/`live`), and the catalog live in
+`shared/constants/workshopWidgets.ts` beside `workshopTools.ts`; the
+sheet browser **maps** descriptors into its own card types; icons stay
+presentation-side. The canonical id equals the design's frame identity —
+`gesture-playground` — and the frame kind is derived mechanically as
+`widget:<id>`, so the registry check on the frame builder means something.
+The persona-recommendation parser rejects `widgetId`s that are not `live`
+in the registry, so comp-only widgets can never render dead chips.
 
 ## Consequences
 
@@ -227,8 +321,9 @@ disabled** in the browser — the menu is a roadmap, not a lie.
   tolerate unknown optional keys — they do not (exact-key validator), which
   is acceptable under the alpha no-backward-compatibility policy.
 - The `thread-artifact` frame's contract gains a second host-minted
-  attribute (see verdicts); the neutralizer and frame tests pin the
-  discipline.
+  attribute; the frame builder throws on non-registry kinds and the frame
+  tests pin the discipline. No neutralizer change is needed in Sprint 01
+  (no new reserved name; the existing pattern swallows attributes).
 - More widgets are expected: a new one-shot widget brings a pre-commit
   surface, a payload validator, a registry row, and prompts — and touches
   neither the rails nor the host.
