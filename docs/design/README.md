@@ -19,7 +19,15 @@ styles, scripts, and assets — no build step.
   **notice modal re-pulled 2026-07-27** (new file
   `Prose Minion - Notice Modal.html`; `pm-wk-notify.js` + the notice block of
   `pm-wk-pins.css` rewritten for the wide screenshot format, and the
-  `uploads/` screenshots it renders now committed — see below).
+  `uploads/` screenshots it renders now committed — see below);
+  **Conversation Widgets Spreads 00 + 01 pulled 2026-07-29** (Conversation
+  Widgets epic kickoff / Sprint 01 source of truth: new files
+  `Prose Minion - Conversation Widgets.html`,
+  `Prose Minion - Gesture Playground.html`, `pm-gravity.css`;
+  `pm-widgets.js` re-pulled — since 07-26 it gains the live flow stage
+  (`mountWidgetFlow` / `mountGestureFrame` / `mountBrowserFrame`) plus a new
+  **References** registry group carrying the Writer's Dictionary as a
+  one-shot report widget; `pm-widgets.css` unchanged).
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
@@ -37,6 +45,8 @@ styles, scripts, and assets — no build step.
 | `Prose Minion - Context Bar v2.html` | Context Bar with the "In context" sources panel (per-participant manifest rows with stale dimming) and a Memory row (Compress / Compact strategy menus). Sprint 12 supplies the sources data; Compress/Compact is the post-launch compaction ADR's scope. Self-contained. | **Approved — Sprint 12 renders `sources`** |
 | `Prose Minion - Context Bar.html` | Context Bar v1 — the per-participant context gauge as shipped by Sprint 11B (expandable details grid, unmeasured state, amber/red thresholds). Kept for reference; superseded by v2. | Implemented (11B) / superseded |
 | `Prose Minion - Persona Schematic.html` | **Interactive prototype** of the Workshop persona browser → persona configuration schematic: a persona grid ("More info" opens a read-only schematic in the same modal shell) and a nine-panel schematic (Identity hub, Trait tensions, Turn-taking signature, Personal aperture, Verbal palette, Lexical gravity, Communication gradients, Trait pressure, Signature floor) with clickable hub navigation. Demoed with Margot (maximal spec) and Penny (near-empty spec, reads as tuned not broken); Jill/Quinn shown as spec-pending stub cards. Every field is laid out as a dashed, not-yet-wired `edit` affordance for a future persona config utility. Self-contained (no `pm-*` support files). | **Implemented (read-only) 2026-07-21** — see [ADR](../adr/2026-07-21-persona-schematic-read-model.md) & [feature](../../.todo/features/feature-workshop-persona-schematic/README.md) |
+| `Prose Minion - Conversation Widgets.html` | **Interactive prototype** — Conversation Widgets **Spread 00, the widget system**: the composer's third affordance (**Widgets** beside Tools), the full lifecycle live (menu → play → commit → chip → clone-and-recommit, using Gesture Playground as the stand-in), the categorized widget browser with per-widget **rail badges** (one-shot / standing / resource) and honest disabled state, and the rails card (lifetime selects the rail; re-launch semantics per rail). Also indexes every drawn widget spread. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `icons.js`. | **Approved — Conversation Widgets epic source of truth (system)** |
+| `Prose Minion - Gesture Playground.html` | **Interactive prototype** — Conversation Widgets **Spread 01, Gesture Playground** (Sprint 01): the lifecycle live end-to-end, the pre-commit surface (`{targetPhrase, context, characterNotes}` → one fast-tier model call → grouped directions menu → multi-select + note), the committed one-shot `<thread-artifact kind="widget:gesture-playground">` frame beside its presentation-only chip, and the Sprint 01 invariants. Persona **recommend + prefill** path demoed via Jill's coral chip. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.css` + `icons.js`. | **Approved — Sprint 01 source of truth** |
 | `Prose Minion - Notice Modal.html` | **Spec sheet + interactive prototype** for the first-run Workshop notice, redesigned wide and with pictures. Three parts: the published copy of all six notices beside annotated screenshots of the control each one points at; the full **How to configure your project** walkthrough referenced by notice 2 (three steps, a well-aligned example project beside the settings pane, and the field → glob mapping table); and a clickable prototype of the widened notice widget (media well left, copy right, docked footer). Loads `pm-mock.css` + `uploads/`. The shipped notice itself is `pm-wk-notify.js` + the notice block of `pm-wk-pins.css`. | **Implemented 2026-07-27** — `WorkshopNoticeModal` + `WorkshopConfigureGuide`; notice version `v3` |
 
 ## Support files
@@ -85,8 +95,13 @@ styles, scripts, and assets — no build step.
   classes): a shared 940×780 sheet with locked head/foot and a categorized
   selectable card grid, now backing both the Tools and Widgets browsers; the
   widget registry is regrouped into Playgrounds / Explorers / Influences /
-  Learners / Resources. Load-bearing for both the Workshop session modals and
-  the next-epic widget spreads (see "Not pulled yet").
+  Learners / Resources. The 2026-07-29 re-pull adds a **References** group
+  (Writer's Dictionary as a one-shot report widget) and the widget-spread
+  runtime: `buildGesturePanel()` (the pre-commit surface),
+  `mountWidgetFlow()` (the live thread + composer stage with commit /
+  chip / clone-and-recommit), and the `mountBrowserFrame()` /
+  `mountGestureFrame()` static mounts. Load-bearing for the Workshop session
+  modals and Spreads 00 + 01.
 - `pm-wk-notify.js` — **startup beta notices** (`window.PMNotify`): a six-page
   dismissible "Workshop · beta" modal opened 400ms after load (welcome, project
   folder setup, hosts & guests, conversation controller, tools, agents), with
@@ -171,19 +186,30 @@ a test, because "an inline comment is not a fence against a re-pull" (PR #94
 review, Bria). Adjust the remote comp when convenient; do not silently widen
 these back.
 
-## Present on remote, not pulled yet (next epic)
+## Present on remote, not pulled yet (this epic, later sprints)
 
-The design project also holds the **Conversation Widgets** epic spreads — the
-epic that follows Workshop Editor Tab. They share only `pm-widgets.*` (already
-pulled above) and are deliberately left out of this snapshot until that epic
-starts. Re-pull with `DesignSync get_file` when it does:
+The Conversation Widgets epic started 2026-07-29; Spreads 00 + 01 are pulled
+above. The remote project has since grown **one page per widget** (Spread 00
+indexes them all). Still deliberately left out of this snapshot until their
+sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
 
-- `Prose Minion - Conversation Widgets.html` — Spread 01: the widget lifecycle
-  (play → commit → chip → clone-and-recommit), Gesture Playground live.
-- `Prose Minion - Lexical Gravity.html` + `pm-gravity.css` / `pm-gravity.js` —
-  Spread 02: the standing prose-directive rail.
+- `Prose Minion - Lexical Gravity.html` + `pm-gravity.js` — Spread 02
+  (Sprint 02): the standing prose-directive rail. (`pm-gravity.css` IS pulled —
+  the Gesture Playground spread links it as a stylesheet dependency.)
 - `Prose Minion - Prose Controller.html` + `pm-controller.css` /
-  `pm-controller.js` — Spread 03: the seven-chapter craft control surface.
+  `pm-controller.js` — Spread 03 (Sprint 03): the seven-chapter craft control
+  surface.
+- `Prose Minion - Show vs Tell.html` + `pm-svt.*` — Spread 04 (concept spring).
+- `Prose Minion - Learner Storytelling Craft.html` /
+  `Prose Minion - Learner English.html` + `pm-learner.*` / `pm-english.*` —
+  Spreads 05 / 06 (concept springs, shared Learner shell).
+- `Prose Minion - Creative Variations Explorer.html` + `pm-cvx.*` — Spread 07
+  (concept spring).
+- `Prose Minion - Topic Relationship Explorer.html` + `pm-trx.*` /
+  `Prose Minion - Genre Relationship Explorer.html` + `pm-grx.*` — Explorer
+  concept springs.
+- `Prose Minion - Writers Dictionary.html` + `pm-dict.*` — Spread 10 (concept
+  spring): the first **report widget** — added to the remote 2026-07-28.
 - `Canvas.dc.html` + `support.js` — Claude Design's canvas-runtime scratch
   frame, not a standalone prototype.
 

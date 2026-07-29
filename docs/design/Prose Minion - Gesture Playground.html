@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Gesture Playground · Spread 01</title>
+<link rel="stylesheet" href="pm-mock.css">
+<link rel="stylesheet" href="pm-fulltab.css">
+<link rel="stylesheet" href="pm-widgets.css">
+<link rel="stylesheet" href="pm-gravity.css">
+<style>a{color:var(--accent-hi)}a:hover{color:var(--text)}</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="22" y="26" width="56" height="9" rx="4.5" fill="#2b2017"/><rect x="22" y="41" width="56" height="9" rx="4.5" fill="#e0673a"/><rect x="22" y="56" width="56" height="9" rx="4.5" fill="#36281b"/><circle cx="70" cy="76" r="7" fill="#e2b24a"/></svg>
+</template>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="canvas-head">
+    <div class="canvas-kicker">Prose Minion · Conversation Widgets — Spread 01 · <a href="Prose Minion - Conversation Widgets.html">← Spread 00 · The widget system</a> · <a href="Prose Minion - Lexical Gravity.html">Spread 02</a> · <a href="Prose Minion - Prose Controller.html">Spread 03</a> · <a href="Prose Minion - Show vs Tell.html">Spread 04</a></div>
+    <h1>Gesture Playground — the first widget, and the whole spine</h1>
+    <p>Sprint 01's widget, and the proof of the pattern every later one reuses: select a phrase, <b>one model call</b> returns a bounded menu of gesture directions, the writer keeps the useful ones, and the commit lands a visible turn plus a <b>one-shot thread-artifact</b> that rides exactly one turn. Nothing touches the conversation until commit; the chip on the committed turn re-opens the exact draft.</p>
+    <p class="note"><b>It's interactive:</b> in §1, click <b>Widgets</b> → pick Gesture Playground → generate → select → commit. The chip that lands in the thread re-opens the exact draft (clone-and-recommit). Jill's coral chip shows the persona <b>recommend + prefill</b> path.</p>
+  </div>
+
+  <div class="sec" data-screen-label="01 The flow, live">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The lifecycle, live</h2><p>composer menu → play → commit → chip → clone-and-recommit</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Workshop thread + composer</span><span class="frame-tag accent">Interactive</span><span class="d">Sprint 01 lifecycle end-to-end</span></div>
+        <div class="cw-stage" id="gpStage"></div>
+      </div>
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">What this frame decides</span></div>
+        <ul class="annot">
+          <li><b>Nothing lands until commit.</b> The modal edits a local Draft; Cancel/Esc costs nothing. Pre-commit tweaking is free — only the commit pays context.</li>
+          <li><b>Persona protocol, minimum viable</b> — Jill's message carries a <b>recommend</b> chip with an optional <b>prefill</b> seed. Launch falls out of recommend; auto-commit is out of scope in Sprint 01.</li>
+          <li><b>The commit is a normal turn</b> — a visible message plus a one-shot thread-artifact that rides exactly one turn, then becomes ordinary history.</li>
+          <li><b>Clone-and-recommit.</b> The chip on a committed turn re-opens the exact prior Draft; committing again creates a <i>new</i> turn at the head. The old chip stays as a historical marker — history is never rewritten.</li>
+          <li><b>This is the template.</b> Show vs. Tell (Spread 04) reuses this rail wholesale and spends its novelty on the control surface instead — which is the cheapest possible way to add a craft widget.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="02 Pre-commit surface">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The pre-commit surface</h2><p>input → one model call → grouped menu → multi-select</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Opened via Jill's recommend chip</span><span class="d">seeded + prefilled, pre-generate</span></div>
+        <div class="cw-framebox" id="gpInput"></div>
+      </div>
+      <div class="frame">
+        <div class="frame-label"><span class="t">After the model call</span><span class="d">grouped directions, 3 kept</span></div>
+        <div class="cw-framebox" id="gpMenu"></div>
+      </div>
+      <div class="frame" style="max-width:360px">
+        <div class="frame-label"><span class="t">Decisions</span></div>
+        <ul class="annot">
+          <li><b>Input is {targetPhrase, context, characterNotes}</b> — phrase seeds from the editor selection, context auto-pulls from the excerpt, notes are the writer's (or the persona's prefill).</li>
+          <li><b>Explicit seam</b> — grouping, selection, and counts are deterministic scaffold; the <i>only</i> model hit is the menu generation, on a fast tier. Regenerate re-rolls the cloud; commit never re-runs it.</li>
+          <li><b>Directions, not replacements</b> — the writer multi-selects <i>directions to keep</i>; the persona still writes the prose. Deliberately ~10× narrower than the Writer's Dictionary.</li>
+          <li><b>Grouped by where the gesture lives</b> — eyes, face, hands and body, and the reader's read. A taxonomy, not a ranking: no option is marked best.</li>
+          <li><b>The cloud is thrown away at commit.</b> What rides the rail is a compact, instruction-shaped directive — never the whole exploration.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="03 What commits">
+    <div class="sec-head"><span class="sec-num">03</span><h2>What actually commits</h2><p>the model sees a frame; the writer sees a chip</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">What the model sees</span><span class="d">one-shot thread-artifact frame</span></div>
+        <div class="cw-railcard">
+          <div class="cap">rides exactly one turn · never re-shipped</div>
+          <div class="cw-code"><span class="tag">&lt;thread-artifact id="ta-7" kind="widget:gesture-playground"&gt;</span>
+<span class="k">Gesture directions I want for "she smiled":</span>
+· the smile arrived late and left early
+· she turned her mug a quarter-turn, then back
+· it was the smile she used on waiters
+<span class="k">note:</span> keep it small — she would never perform for him
+<span class="tag">&lt;/thread-artifact&gt;</span></div>
+          <p class="under">Staged through the existing rail — <span style="font-family:var(--mono);font-size:10.5px">pendingMessageAttachments → buildWorkshopThreadArtifactFrame</span>. The widget host invents no new thread-influence plumbing.</p>
+        </div>
+      </div>
+      <div class="frame">
+        <div class="frame-label"><span class="t">What the writer sees</span><span class="d">presentation-only chip</span></div>
+        <div class="cw-railcard">
+          <div class="cap">layered over the transcript · zero model context</div>
+          <div class="cw-chipdemo"><button class="cw-chip" id="gpChip"><span id="gpChipIco"></span> Gesture Playground <span class="m">3 directions · re-open</span></button></div>
+          <p class="under">Clicking re-hydrates the full authoring UI from the persisted Draft — not a dead summary. Try it: this one is live.</p>
+        </div>
+      </div>
+      <div class="frame" style="max-width:360px">
+        <div class="frame-label"><span class="t">Invariants</span></div>
+        <ul class="annot">
+          <li><b>Chip ≠ frame.</b> The chip is webview presentation only; the model never sees it, and it costs zero context.</li>
+          <li><b>Config, not just output, persists</b> — the full Draft by stable id in <span style="font-family:var(--mono);font-size:11px">WorkshopSessionService</span>, host-side, so the chip re-opens the authoring state.</li>
+          <li><b>New reserved frames register with the neutralizer</b> in the same change — a persona quoting widget output can't spoof a frame.</li>
+          <li><b>Never a knob on the participant.</b> No widget touches persona identity, lens, or conversation behavior — only the work.</li>
+          <li><b>Core stays host-agnostic</b> — host, registry, and widget logic in <span style="font-family:var(--mono);font-size:11px">packages/core</span>; only the composer mount touches the extension.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-foot">
+    <p class="muted">The system that hosts this widget — the composer button, the browser, and the rail vocabulary — lives on <a href="Prose Minion - Conversation Widgets.html"><b>Spread 00 · The widget system</b></a>. The durable counterpart is <a href="Prose Minion - Lexical Gravity.html"><b>Lexical Gravity → Spread 02</b></a>; the other one-shot spread is <a href="Prose Minion - Show vs Tell.html"><b>Show vs. Tell → Spread 04</b></a>. Open for this widget: whether the menu should carry a "recently kept" row across turns, and whether a kept direction may ever seed a Prose Controller lever.</p>
+  </div>
+
+</div>
+
+<script src="icons.js"></script>
+<script src="pm-widgets.js"></script>
+<script>
+const gpFlow = mountWidgetFlow('gpStage');
+mountGestureFrame('gpInput', {state:'input', banner:'seed', prefillNotes:true});
+const gpKeep=['The smile arrived late and left early','She turned her mug a quarter-turn, then back','It was the smile she used on waiters'];
+mountGestureFrame('gpMenu', {state:'menu', prefillNotes:true, note:'keep it small — she would never perform for him', preselect:gpKeep});
+document.getElementById('gpChipIco').innerHTML = cwIc('hand',{size:13,sw:1.8});
+document.getElementById('gpChip').addEventListener('click',()=> gpFlow.openGesture({state:'menu', banner:'clone', preselect:gpKeep, note:'keep it small — she would never perform for him'}));
+</script>
+</body>
+</html>

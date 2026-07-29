@@ -4,6 +4,7 @@ const CWX = {
   sliders: o=>IC('<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="2" y1="14" x2="6" y2="14"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="18" y1="16" x2="22" y2="16"/>',o),
   cap: o=>IC('<path d="M22 10 12 5 2 10l10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',o),
   eye: o=>IC('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',o),
+  dict: o=>IC('<path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v15H5.5A2.5 2.5 0 0 0 3 20.5z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H13v6.5"/><circle cx="17" cy="15" r="3.4"/><path d="m19.6 17.6 2.4 2.4"/>',o),
 };
 const cwIc = (n,o)=> (ICONS[n]||CWX[n])(o||{size:15,sw:1.7});
 const cwEsc = s=> s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -16,6 +17,8 @@ const CW_WIDGETS = [
   {group:'Explorers', desc:'Derive a relationship — typed, span-anchored, graded for resemblance, never quality.', items:[
     {id:'trx',icon:'link',name:'Topic Relationship Explorer',rail:'oneshot',railT:'one-shot',blurb:'Name a topic — a thinker, a framework, a tradition — and derive its relationship to the passage as a typed dossier: span-anchored points of contact, graded grounding, where the lens distorts, one question.',tag:'concept'},
     {id:'grx',icon:'cards',name:'Genre Relationship Explorer',rail:'oneshot',railT:'one-shot',blurb:'Survey a chapter for the genres it’s in conversation with, then take one apart tell by tell — expectation against span-anchored evidence: matches, departs, subverts.',tag:'concept'}]},
+  {group:'References', desc:'Look something up — one call, one document, nothing to curate.', items:[
+    {id:'dict',icon:'dict',name:'Writer’s Dictionary',rail:'oneshot',railT:'one-shot · report',cost:'plays free — Run posts the whole report and spends one turn',blurb:'One word or phrase, and the whole lexical field comes back as a document: senses, register, texture, collocations, voices, soundplay, watchpoints — plus a menu tuned to your scene if you supply context. The report is the artifact; nothing here stands.',tag:'concept'}]},
   {group:'Influences', desc:'Standing surfaces — pinned to the room, weighing on every turn until unpinned.', items:[
     {id:'gravity',icon:'orbit',name:'Lexical Gravity',rail:'standing',railT:'standing',blurb:'Pull the passage’s lexis toward an interpretive lens — Photography, Mathematics, Music — with weight and reach.',tag:'Sprint 02'},
     {id:'ctrl',icon:'sliders',name:'Prose Controller',rail:'standing',railT:'standing',blurb:'How the passage is made: diction, sentence architecture, rhythm, density, figurative texture, punctuation.',tag:'Sprint 03'},
@@ -29,10 +32,10 @@ const CW_WIDGETS = [
 ];
 
 const CW_MENU = [
-  {h:'The eyes', opts:['Her gaze snagged on him a half-second too long','She blinked once, slow, like a shutter on the wrong exposure','Her eyes went somewhere he couldn’t follow']},
+  {h:'The eyes', opts:['Her gaze snagged on him a half-second too long','She blinked once, slow, like a shutter on the wrong exposure','Her eyes went somewhere he couldn\u2019t follow']},
   {h:'The mouth, the face', opts:['The smile arrived late and left early','A smile assembled rather than felt','Her jaw loosened — not a smile, permission for one']},
   {h:'Hands & body', opts:['She turned her mug a quarter-turn, then back','Her shoulders dropped a notch when the kettle clicked','Her thumbnail found the groove in the table and stayed']},
-  {h:'The reader’s read', opts:['He counted it as a win anyway','It was the smile she used on waiters','Whatever it was, it wasn’t for him']}
+  {h:'The reader\u2019s read', opts:['He counted it as a win anyway','It was the smile she used on waiters','Whatever it was, it wasn\u2019t for him']}
 ];
 const CW_NOTES = 'Mara — guarded, recently bereaved, hates being read. She would never perform warmth for an audience.';
 
@@ -131,7 +134,7 @@ function buildGesturePanel(o){
     <div class="cw-bslot"></div>
     <div class="cw-field"><div class="cw-flabel">Target phrase <span class="src">seeded from selection</span></div><input class="cw-in cw-phrase" value="she smiled"></div>
     <div class="cw-field"><div class="cw-flabel">Surrounding context <span class="src">from excerpt · kitchen scene</span></div>
-      <div class="cw-ctx">…He set the mug down where her hand could reach it without asking. “You kept the houseplants alive,” he said. <mark>She smiled.</mark> “Somebody had to.”…</div></div>
+      <div class="cw-ctx">…He set the mug down where her hand could reach it without asking. \u201CYou kept the houseplants alive,\u201D he said. <mark>She smiled.</mark> \u201CSomebody had to.\u201D…</div></div>
     <div class="cw-field"><div class="cw-flabel">Character notes ${o.prefillNotes?'<span class="src">prefilled by Jill</span>':''}</div>
       <textarea class="cw-in cw-notes" placeholder="Who is she in this beat?">${notesVal}</textarea></div>
     <button class="cw-gen">${cwIc('sparkle',{size:14,sw:1.8})} Generate directions</button>
@@ -199,7 +202,7 @@ function mountWidgetFlow(id){
         </div>
       </div>
     </div>
-    <div class="cw-hint">Click <b>Widgets</b> — or Jill’s chip below her message</div>`;
+    <div class="cw-hint">Click <b>Widgets</b> — or Jill\u2019s chip below her message</div>`;
   const thread=host.querySelector('.cw-thread');
   const add=(who,html)=>{
     const m=document.createElement('div'); m.className='cw-msg '+who;
@@ -211,7 +214,7 @@ function mountWidgetFlow(id){
 
   function commitDraft(d){
     cwClose();
-    const m=add('you',`For <span class="cw-q">“she smiled”</span> — here are the gesture directions I want${d.note?` — <i>${cwEsc(d.note)}</i>`:''}.`);
+    const m=add('you',`For <span class="cw-q">\u201Cshe smiled\u201D</span> — here are the gesture directions I want${d.note?` — <i>${cwEsc(d.note)}</i>`:''}.`);
     const wrap=document.createElement('div'); wrap.className='cw-chipwrap';
     const chip=document.createElement('button'); chip.className='cw-chip';
     chip.innerHTML=`${cwIc('hand',{size:13,sw:1.8})} Gesture Playground <span class="m">${d.phrases.length} direction${d.phrases.length>1?'s':''} · re-open</span>`;
@@ -224,18 +227,18 @@ function mountWidgetFlow(id){
     setTimeout(()=>{
       const a=d.phrases[0], b=d.phrases[1];
       let r='Took the beat again with your directions. ';
-      if(a) r+=`“<i>${cwEsc(a)}</i>” carries the turn now`;
-      if(b) r+=`, and it closes on “<i>${cwEsc(b)}</i>”`;
+      if(a) r+=`\u201C<i>${cwEsc(a)}</i>\u201D carries the turn now`;
+      if(b) r+=`, and it closes on \u201C<i>${cwEsc(b)}</i>\u201D`;
       r+='. The stated smile is gone — the reader does the reading. Want the same pass at the other two smiles on this page?';
       t.querySelector('.cw-typing').outerHTML=`<div class="cw-body">${r}</div>`;
       thread.scrollTop=thread.scrollHeight;
     },2100);
   }
 
-  add('you','Here’s the kitchen scene again. The reunion beat still reads flat — she comes off cheerful, and she shouldn’t.');
-  const j=add('jill','You’re telling the reunion instead of letting it happen — <span class="cw-q">“she smiled”</span> does three different jobs on this page, and the one by the mug is the beat that matters. Want to play with alternatives before I take another pass?');
+  add('you','Here\u2019s the kitchen scene again. The reunion beat still reads flat — she comes off cheerful, and she shouldn\u2019t.');
+  const j=add('jill','You\u2019re telling the reunion instead of letting it happen — <span class="cw-q">\u201Cshe smiled\u201D</span> does three different jobs on this page, and the one by the mug is the beat that matters. Want to play with alternatives before I take another pass?');
   const reco=document.createElement('button'); reco.className='cw-reco';
-  reco.innerHTML=`${cwIc('hand',{size:13,sw:1.8})} Gesture Playground <span class="m">prefilled · “she smiled”</span>`;
+  reco.innerHTML=`${cwIc('hand',{size:13,sw:1.8})} Gesture Playground <span class="m">prefilled · \u201Cshe smiled\u201D</span>`;
   reco.addEventListener('click',()=> openGesture({banner:'seed',prefillNotes:true}));
   j.querySelector('.cw-body').appendChild(reco);
   host.querySelector('.cw-wbtn').addEventListener('click',openBrowser);
