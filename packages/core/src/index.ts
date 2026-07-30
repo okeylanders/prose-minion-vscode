@@ -95,10 +95,8 @@ export { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
-export {
-  GesturePlaygroundService,
-  buildGestureDirective
-} from '@services/widgets/GesturePlaygroundService';
+export { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
+export { buildGestureDirective } from '@/application/services/workshop/WorkshopPromptBuilder';
 export {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
   inspectWorkshopWidgetRecommendation,

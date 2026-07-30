@@ -22,6 +22,7 @@ import type {
   WorkshopCapabilityArtifactDetails
 } from '../workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '../context';
+import type { CancelRequestPayload } from './streaming';
 
 /**
  * Wire id for a Workshop tool — the design catalog's 14 tools mapped 1:1 onto
@@ -754,6 +755,16 @@ export interface WorkshopWidgetConfigSnapshot {
 }
 
 /**
+ * Bounded config identity carried in ordinary session snapshots. The full
+ * authoring Draft (especially its generated dictionary/menu) is fetched only
+ * when the writer opens a committed widget chip.
+ */
+export type WorkshopWidgetConfigSummary = Omit<WorkshopWidgetConfigSnapshot, 'draft'> & {
+  targetPhrase: string;
+  selectionCount: number;
+};
+
+/**
  * Display-safe widget-commit decoration on a normal user message turn —
  * rail-discriminated from day one (the standing arm arrives with Sprint 02).
  * `artifactId` intentionally duplicates the ref reachable through
@@ -976,13 +987,8 @@ export interface WorkshopSessionSnapshot {
   };
   /** Host-owned, defensively copied writer task list in explicit order. */
   todos: WorkshopTodoItem[];
-  /**
-   * Persisted widget authoring configs (ADR 2026-07-22). Shipped wholesale in
-   * Sprint 01 (volumes are trivial); the stated bound — binding on the sprint
-   * that first exceeds it — is configs for windowed turns only, with
-   * on-demand fetch for chips on older turns.
-   */
-  widgetConfigs: WorkshopWidgetConfigSnapshot[];
+  /** Bounded widget identities for chips in the visible turn window. */
+  widgetConfigs: WorkshopWidgetConfigSummary[];
   turns: WorkshopTurn[];
   /** Total turns held host-side (>= turns.length). */
   totalTurns: number;
@@ -1578,7 +1584,7 @@ export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
  * so a regenerate race resolves to the latest request (stale results are
  * dropped).
  */
-export interface WorkshopWidgetGeneratePayload {
+interface WorkshopWidgetGenerateBasePayload {
   widgetId: WorkshopWidgetId;
   token: string;
   targetPhrase: string;
@@ -1588,12 +1594,20 @@ export interface WorkshopWidgetGeneratePayload {
   sourceReferences: WorkshopWidgetSourceReference[];
 }
 
+export type WorkshopWidgetGeneratePayload =
+  | (WorkshopWidgetGenerateBasePayload & { mode: 'full' })
+  | (WorkshopWidgetGenerateBasePayload & {
+      mode: 'more';
+      dictionaryMarkdown: string;
+      menu: WorkshopGestureMenuGroup[];
+    });
+
 export interface WorkshopWidgetGenerateMessage extends MessageEnvelope<WorkshopWidgetGeneratePayload> {
   type: MessageType.WORKSHOP_WIDGET_GENERATE;
 }
 
 /** Abandon the in-flight generate call (modal closed, or superseded). */
-export interface CancelWidgetGenerateRequestMessage extends MessageEnvelope<{ token?: string }> {
+export interface CancelWidgetGenerateRequestMessage extends MessageEnvelope<CancelRequestPayload> {
   type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST;
 }
 
@@ -1618,6 +1632,7 @@ export interface WorkshopWidgetGenerationProgressMessage
 export interface WorkshopWidgetMenuResultPayload {
   widgetId: WorkshopWidgetId;
   token: string;
+  mode: 'full' | 'more';
   ok: boolean;
   /** Present whenever the model produced a valid, bounded Gesture Dictionary. */
   dictionaryMarkdown?: string;
@@ -1632,6 +1647,18 @@ export interface WorkshopWidgetMenuResultPayload {
 
 export interface WorkshopWidgetMenuResultMessage extends MessageEnvelope<WorkshopWidgetMenuResultPayload> {
   type: MessageType.WORKSHOP_WIDGET_MENU_RESULT;
+}
+
+export interface WorkshopRequestWidgetConfigMessage extends MessageEnvelope<{ configId: string }> {
+  type: MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG;
+}
+
+export interface WorkshopWidgetConfigDataMessage extends MessageEnvelope<{
+  configId: string;
+  config?: WorkshopWidgetConfigSnapshot;
+  error?: string;
+}> {
+  type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA;
 }
 
 /**

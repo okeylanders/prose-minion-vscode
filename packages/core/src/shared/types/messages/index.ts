@@ -176,6 +176,8 @@ import {
   CancelWidgetGenerateRequestMessage,
   WorkshopWidgetGenerationProgressMessage,
   WorkshopWidgetMenuResultMessage,
+  WorkshopRequestWidgetConfigMessage,
+  WorkshopWidgetConfigDataMessage,
   WorkshopCommitWidgetMessage,
   WorkshopWidgetActionResultMessage
 } from './workshop';
@@ -264,6 +266,7 @@ export type WebviewToExtensionMessage =
   | WorkshopDeleteSessionMessage
   | WorkshopWidgetGenerateMessage
   | CancelWidgetGenerateRequestMessage
+  | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage;
 
 export type ExtensionToWebviewMessage =
@@ -307,4 +310,5 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextAttachmentContentMessage
   | WorkshopWidgetGenerationProgressMessage
   | WorkshopWidgetMenuResultMessage
+  | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetActionResultMessage;

@@ -60,13 +60,14 @@ const generateMessage = (
   payload: {
     widgetId: 'gesture-playground',
     token: 'tok-1',
+    mode: 'full',
     targetPhrase: 'she smiled',
     writerInstructions: 'Keep it private.',
     contextText: '',
     characterNotes: '',
     sourceReferences: [],
     ...overrides
-  }
+  } as WorkshopWidgetGenerateMessage['payload']
 });
 
 const commitMessage = (
@@ -86,6 +87,7 @@ const build = (options: {
   sendOutcome?: { committed: boolean; userTurnId?: string };
   sendError?: Error;
   generateMenu?: jest.Mock;
+  generateMore?: jest.Mock;
 } = {}) => {
   let clock = 0;
   const session = new WorkshopSessionService(() => ++clock);
@@ -106,11 +108,13 @@ const build = (options: {
       dictionaryMarkdown: '# Gesture Dictionary\n\nA private deflection.',
       menu
     });
+  const generateMore = options.generateMore ?? jest.fn();
+  const appendLine = jest.fn();
   const handler = new WorkshopWidgetHandler(
     session,
-    { generateMenu } as never,
+    { generateMenu, generateMore } as never,
     postMessage,
-    { appendLine: jest.fn() } as never,
+    { appendLine } as never,
     {
       sendRoomMessage: sendRoomMessage as never,
       postSessionState,
@@ -120,7 +124,18 @@ const build = (options: {
   );
   const posted = (type: MessageType) =>
     postMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type);
-  return { handler, session, postMessage, sendRoomMessage, markDirty, postSessionState, generateMenu, posted };
+  return {
+    handler,
+    session,
+    postMessage,
+    sendRoomMessage,
+    markDirty,
+    postSessionState,
+    generateMenu,
+    generateMore,
+    appendLine,
+    posted
+  };
 };
 
 describe('WorkshopWidgetHandler — generate', () => {
@@ -132,6 +147,7 @@ describe('WorkshopWidgetHandler — generate', () => {
     expect(results[0].payload).toEqual(expect.objectContaining({
       ok: true,
       token: 'tok-1',
+      mode: 'full',
       dictionaryMarkdown: expect.stringContaining('A private deflection'),
       menu
     }));
@@ -158,7 +174,7 @@ describe('WorkshopWidgetHandler — generate', () => {
         usage: { promptTokens: 800, completionTokens: 1_750, totalTokens: 2_550 }
       };
     });
-    const { handler, posted } = build({ generateMenu });
+    const { handler, posted, appendLine } = build({ generateMenu });
 
     await handler.handleGenerate(generateMessage());
 
@@ -278,6 +294,28 @@ describe('WorkshopWidgetHandler — generate', () => {
     );
   });
 
+  it('accepts exactly 500 serialized source-reference characters before resolution', async () => {
+    const keyPrefix = 'context-attachment:ctx-';
+    const attachmentId = `ctx-1${'0'.repeat(
+      PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters
+      - keyPrefix.length
+      - 1
+    )}`;
+    const sourceReferences = [{ kind: 'context-attachment' as const, attachmentId }];
+    expect(`context-attachment:${attachmentId}`).toHaveLength(
+      PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters
+    );
+    const { handler, posted, generateMenu } = build();
+
+    await handler.handleGenerate(generateMessage({ sourceReferences }));
+
+    expect(generateMenu).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.error)
+      .toMatch(/no longer available/i);
+    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.error)
+      .not.toMatch(/references exceed/i);
+  });
+
   it('returns a recovered dictionary without selectable menu state when menu parsing fails', async () => {
     const { handler, posted } = build({
       generateMenu: jest.fn().mockResolvedValue({
@@ -333,7 +371,7 @@ describe('WorkshopWidgetHandler — generate', () => {
         dictionaryMarkdown: '# Gesture Dictionary\n\nSecond run.',
         menu
       });
-    const { handler, posted } = build({ generateMenu });
+    const { handler, posted, appendLine } = build({ generateMenu });
     const first = handler.handleGenerate(generateMessage({ token: 'tok-old' }));
     const second = handler.handleGenerate(generateMessage({ token: 'tok-new' }));
     rejectFirst(new Error('late failure'));
@@ -341,6 +379,9 @@ describe('WorkshopWidgetHandler — generate', () => {
     const results = posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT);
     expect(results).toHaveLength(1);
     expect(results[0].payload.token).toBe('tok-new');
+    expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      'token tok-old, reason=superseded'
+    ));
     expect(posted(MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS)
       .map((message) => message.payload))
       .toEqual(expect.arrayContaining([
@@ -350,9 +391,108 @@ describe('WorkshopWidgetHandler — generate', () => {
         })
       ]));
   });
+
+  it('aborts only the active token through the real cancel route', async () => {
+    let activeSignal: AbortSignal | undefined;
+    const generateMenu = jest.fn().mockImplementation((request: { signal?: AbortSignal }) => {
+      activeSignal = request.signal;
+      return new Promise((resolve) => request.signal?.addEventListener('abort', () =>
+        resolve({ cancelled: true, truncated: false })
+      ));
+    });
+    const { handler, posted } = build({ generateMenu });
+    const pending = handler.handleGenerate(generateMessage());
+
+    await handler.handleCancelGenerate({
+      type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST,
+      source: 'webview.workshop.widget',
+      timestamp: 2,
+      payload: { domain: 'workshop-widget', requestId: 'not-the-token' }
+    });
+    expect(activeSignal?.aborted).toBe(false);
+
+    await handler.handleCancelGenerate({
+      type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST,
+      source: 'webview.workshop.widget',
+      timestamp: 3,
+      payload: { domain: 'workshop-widget', requestId: 'tok-1' }
+    });
+    await pending;
+
+    expect(activeSignal?.aborted).toBe(true);
+    expect(posted(MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          payload: expect.objectContaining({ token: 'tok-1', phase: 'cancelled' })
+        })
+      ]));
+    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)).toHaveLength(0);
+  });
+
+  it('merges fresh stateless additions without disturbing the existing options', async () => {
+    const additions = menu.map((group, index) => ({
+      heading: group.heading,
+      options: [
+        group.options[0],
+        `fresh gesture ${index + 1}.1`,
+        `fresh gesture ${index + 1}.2`
+      ]
+    }));
+    const generateMore = jest.fn().mockResolvedValue({
+      cancelled: false,
+      additions
+    });
+    const { handler, posted, generateMenu } = build({ generateMore });
+
+    await handler.handleGenerate(generateMessage({
+      mode: 'more',
+      dictionaryMarkdown: draft().dictionaryMarkdown,
+      menu
+    }));
+
+    expect(generateMenu).not.toHaveBeenCalled();
+    expect(generateMore).toHaveBeenCalledWith(expect.objectContaining({
+      dictionaryMarkdown: draft().dictionaryMarkdown,
+      menu
+    }));
+    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload)
+      .toEqual(expect.objectContaining({
+        ok: true,
+        mode: 'more',
+        menu: menu.map((group, index) => ({
+          heading: group.heading,
+          options: [
+            ...group.options,
+            `fresh gesture ${index + 1}.1`,
+            `fresh gesture ${index + 1}.2`
+          ]
+        }))
+      }));
+  });
 });
 
 describe('WorkshopWidgetHandler — atomic commit', () => {
+  it('fetches the full authoring config only through the on-demand route', async () => {
+    const { handler, session, posted } = build();
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+
+    await handler.handleRequestConfig({
+      type: MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG,
+      source: 'webview.workshop',
+      timestamp: 1,
+      payload: { configId: 'wc-1' }
+    });
+
+    expect(posted(MessageType.WORKSHOP_WIDGET_CONFIG_DATA)[0].payload)
+      .toEqual(expect.objectContaining({
+        configId: 'wc-1',
+        config: expect.objectContaining({
+          id: 'wc-1',
+          draft: expect.objectContaining({ dictionaryMarkdown: expect.any(String) })
+        })
+      }));
+  });
+
   it('persists config, ships outside the pending list, and stamps linkage on success', async () => {
     const { handler, session, sendRoomMessage, posted, markDirty } = build();
     // A staged composer pill must survive the widget commit untouched.

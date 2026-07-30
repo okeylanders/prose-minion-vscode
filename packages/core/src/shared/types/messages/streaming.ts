@@ -9,7 +9,14 @@ import { MessageType, MessageEnvelope } from './base';
 /**
  * Domain types that support streaming events or cancel requests.
  */
-export type StreamingDomain = 'analysis' | 'dictionary' | 'context' | 'search' | 'workshop' | 'workshop-context';
+export type StreamingDomain =
+  | 'analysis'
+  | 'dictionary'
+  | 'context'
+  | 'search'
+  | 'workshop'
+  | 'workshop-context'
+  | 'workshop-widget';
 
 /**
  * Payload for STREAM_CHUNK messages

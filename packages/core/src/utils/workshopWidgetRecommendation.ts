@@ -168,15 +168,12 @@ export function inspectWorkshopWidgetRecommendation(
   const onlyBlankBetween = (left: string, right: string): boolean => sectionLines
     .slice(markerIndexes.get(left)! + 1, markerIndexes.get(right)!)
     .every((line) => line.trim().length === 0);
-  if (
-    !onlyBlankBetween(FRAME_START, WIDGET_ID_START)
-    || !onlyBlankBetween(WIDGET_ID_END, TARGET_PHRASE_START)
-    || !onlyBlankBetween(TARGET_PHRASE_END, WRITER_INSTRUCTIONS_START)
-    || !onlyBlankBetween(WRITER_INSTRUCTIONS_END, SURROUNDING_CONTEXT_START)
-    || !onlyBlankBetween(SURROUNDING_CONTEXT_END, SOURCE_REFERENCES_START)
-    || !onlyBlankBetween(SOURCE_REFERENCES_END, CHARACTER_NOTES_START)
-    || !onlyBlankBetween(CHARACTER_NOTES_END, FRAME_END)
-  ) {
+  const boundaryGaps = ORDERED_MARKERS.flatMap((marker, index) =>
+    index % 2 === 0
+      ? [[marker, ORDERED_MARKERS[index + 1]] as const]
+      : []
+  );
+  if (boundaryGaps.some(([left, right]) => !onlyBlankBetween(left, right))) {
     return { outcome: 'rejected', rejection: 'invalid_frame' };
   }
 

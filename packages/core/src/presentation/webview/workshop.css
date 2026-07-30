@@ -5695,6 +5695,12 @@
   cursor: pointer;
   font-family: var(--pm-sans);
 }
+
+[data-pm-surface="workshop"] .pm-ws-gesture-generation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 [data-pm-surface="workshop"] .pm-ws-gesture-gen:hover:not(:disabled) {
   filter: brightness(1.06);
 }

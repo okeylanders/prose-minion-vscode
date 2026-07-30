@@ -10,7 +10,7 @@ import { WorkshopWidgetId } from '@messages';
 import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import { WorkshopModalShell } from './WorkshopModalShell';
 import { WorkshopSheetBrowser } from './WorkshopSheetBrowser';
-import { WORKSHOP_WIDGET_GROUPS } from './workshopWidgets';
+import { WORKSHOP_WIDGET_GROUPS } from './workshopWidgetIcons';
 
 interface WorkshopWidgetsModalProps {
   open: boolean;

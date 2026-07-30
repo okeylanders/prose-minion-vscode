@@ -4,8 +4,9 @@
  *
  * The Draft is LOCAL until commit: Cancel/Esc costs nothing, Generate makes
  * one deliberate model call for a writer-facing Gesture Dictionary and a
- * grouped multi-select menu (Regenerate re-rolls both; commit never re-runs
- * it), and Commit posts the whole Draft to the atomic host route. The modal
+ * grouped multi-select menu. More gestures extends that visible result through
+ * a compact stateless call; Regenerate all re-rolls both; commit never re-runs
+ * either. Commit posts the whole Draft to the atomic host route. The modal
  * freezes while the commit is in flight and closes only on the host's ok —
  * the PendingApply posture of
  * WorkshopConversationBehaviorModal, adapted to the widget action result.
@@ -53,7 +54,7 @@ interface WorkshopGesturePlaygroundModalProps {
   activeExcerpt: WorkshopExcerptSnapshot | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   onGenerate: (payload: WorkshopWidgetGeneratePayload) => void;
-  onCancelGenerate: () => void;
+  onCancelGenerate: (requestId: string) => void;
   onCommit: (draft: WorkshopGestureDraft, clonedFromConfigId?: string) => void;
   onConsumeActionResult: () => void;
   widgetModelOptions: ModelOption[];
@@ -175,8 +176,13 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       return;
     }
     setGenerateToken(null);
-    setDictionaryMarkdown(menuResult.dictionaryMarkdown ?? '');
+    if (menuResult.mode === 'full') {
+      setDictionaryMarkdown(menuResult.dictionaryMarkdown ?? '');
+    }
     if (menuResult.ok && menuResult.menu) {
+      if (menuResult.dictionaryMarkdown) {
+        setDictionaryMarkdown(menuResult.dictionaryMarkdown);
+      }
       setMenu(menuResult.menu);
       setSelections((current) =>
         current.filter((selection) =>
@@ -185,8 +191,10 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       );
       setGenerateError(null);
     } else {
-      setMenu(undefined);
-      setSelections([]);
+      if (menuResult.mode === 'full') {
+        setMenu(undefined);
+        setSelections([]);
+      }
       setGenerateError(
         menuResult.menuError
         ?? menuResult.error
@@ -265,25 +273,30 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     setCommitError(null);
   }, []);
 
-  const changeTargetPhrase = React.useCallback((value: string) => {
+  const changeDraftField = React.useCallback((
+    setter: React.Dispatch<React.SetStateAction<string>>,
+    value: string
+  ) => {
     invalidateGeneratedArtifacts();
-    setTargetPhrase(value);
+    setter(value);
   }, [invalidateGeneratedArtifacts]);
 
-  const changeWriterInstructions = React.useCallback((value: string) => {
-    invalidateGeneratedArtifacts();
-    setWriterInstructions(value);
-  }, [invalidateGeneratedArtifacts]);
-
-  const changeContextText = React.useCallback((value: string) => {
-    invalidateGeneratedArtifacts();
-    setContextText(value);
-  }, [invalidateGeneratedArtifacts]);
-
-  const changeCharacterNotes = React.useCallback((value: string) => {
-    invalidateGeneratedArtifacts();
-    setCharacterNotes(value);
-  }, [invalidateGeneratedArtifacts]);
+  const changeTargetPhrase = React.useCallback(
+    (value: string) => changeDraftField(setTargetPhrase, value),
+    [changeDraftField]
+  );
+  const changeWriterInstructions = React.useCallback(
+    (value: string) => changeDraftField(setWriterInstructions, value),
+    [changeDraftField]
+  );
+  const changeContextText = React.useCallback(
+    (value: string) => changeDraftField(setContextText, value),
+    [changeDraftField]
+  );
+  const changeCharacterNotes = React.useCallback(
+    (value: string) => changeDraftField(setCharacterNotes, value),
+    [changeDraftField]
+  );
 
   const toggleSourceReference = React.useCallback(
     (reference: WorkshopWidgetSourceReference) => {
@@ -304,7 +317,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     [invalidateGeneratedArtifacts]
   );
 
-  const generate = React.useCallback(() => {
+  const generateAll = React.useCallback(() => {
     if (
       generating
       || locked
@@ -314,11 +327,13 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       return;
     }
     const token = mintToken();
+    invalidateGeneratedArtifacts();
     setGenerateToken(token);
     setGenerateError(null);
     onGenerate({
       widgetId: 'gesture-playground',
       token,
+      mode: 'full',
       targetPhrase,
       writerInstructions,
       contextText,
@@ -334,13 +349,54 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     contextText,
     characterNotes,
     sourceReferences,
+    invalidateGeneratedArtifacts,
+    onGenerate
+  ]);
+
+  const generateMore = React.useCallback(() => {
+    if (
+      generating
+      || locked
+      || !menu
+      || dictionaryMarkdown.trim().length === 0
+      || menu.every((group) => group.options.length >= BUDGET.gestureOptionsPerGroup)
+    ) {
+      return;
+    }
+    const token = mintToken();
+    setGenerateToken(token);
+    setGenerateError(null);
+    onGenerate({
+      widgetId: 'gesture-playground',
+      token,
+      mode: 'more',
+      targetPhrase,
+      writerInstructions,
+      contextText,
+      characterNotes,
+      sourceReferences,
+      dictionaryMarkdown,
+      menu
+    });
+  }, [
+    generating,
+    locked,
+    menu,
+    dictionaryMarkdown,
+    targetPhrase,
+    writerInstructions,
+    contextText,
+    characterNotes,
+    sourceReferences,
     onGenerate
   ]);
 
   const cancelGenerate = React.useCallback(() => {
     setGenerateToken(null);
-    onCancelGenerate();
-  }, [onCancelGenerate]);
+    if (generateToken) {
+      onCancelGenerate(generateToken);
+    }
+  }, [generateToken, onCancelGenerate]);
 
   const toggleSelection = React.useCallback((option: string) => {
     setSelections((current) =>
@@ -620,19 +676,38 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
                 Cancel generation
               </button>
             </div>
+          ) : menu && dictionaryMarkdown ? (
+            <div className="pm-ws-gesture-generation-actions">
+              <button
+                type="button"
+                className="pm-ws-gesture-gen"
+                disabled={menu.every(
+                  (group) => group.options.length >= BUDGET.gestureOptionsPerGroup
+                )}
+                onClick={generateMore}
+              >
+                <Icon name="sparkle" size={13} /> More gestures
+              </button>
+              <button
+                type="button"
+                className="pm-ws-gesture-gen pm-ws-gesture-gen-ghost"
+                onClick={generateAll}
+              >
+                <Icon name="refresh" size={13} /> Regenerate all
+              </button>
+            </div>
           ) : (
             <button
               type="button"
-              className={`pm-ws-gesture-gen${menu || dictionaryMarkdown ? ' pm-ws-gesture-gen-ghost' : ''}`}
+              className="pm-ws-gesture-gen"
               disabled={
                 locked
                 || targetPhrase.trim().length === 0
                 || hasUnavailableSelectedSources
               }
-              onClick={generate}
+              onClick={generateAll}
             >
-              <Icon name={menu || dictionaryMarkdown ? 'refresh' : 'sparkle'} size={13} />{' '}
-              {menu || dictionaryMarkdown ? 'Regenerate' : 'Generate alternatives'}
+              <Icon name="sparkle" size={13} /> Generate alternatives
             </button>
           )}
           {!menu && !dictionaryMarkdown && !generating && (

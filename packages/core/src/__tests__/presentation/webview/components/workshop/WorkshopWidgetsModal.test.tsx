@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopWidgetsModal } from '@components/workshop/WorkshopWidgetsModal';
-import { WORKSHOP_WIDGET_GROUPS } from '@components/workshop/workshopWidgets';
+import { WORKSHOP_WIDGET_GROUPS } from '@components/workshop/workshopWidgetIcons';
 
 describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
   afterEach(cleanup);

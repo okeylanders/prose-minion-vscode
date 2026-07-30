@@ -3,7 +3,7 @@
  * (ADR 2026-07-22 decision 14): the canonical catalog — ids, labels, rails,
  * groups, blurbs, `live` availability — is shared/constants/workshopWidgets.ts,
  * which handlers validate against. This module owns only what the webview
- * adds: icons (the workshopToolIcons pattern) and the mapping into the sheet
+ * adds: icons and the mapping into the sheet
  * browser's card types. The dependency points presentation → shared, never
  * the other way.
  */

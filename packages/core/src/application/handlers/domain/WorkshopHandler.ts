@@ -750,7 +750,7 @@ export class WorkshopHandler {
         });
         if (assistantTurn) {
           this.session.recordRoomThreadArtifactDeliveries(
-            joinRoomTurns.map((turn) => turn.id),
+            join.transcript.deliveredTurnIds,
             { kind: 'personaGuest', personaId }
           );
           this.commitTimeNotice(timeNotice);
@@ -1148,6 +1148,17 @@ export class WorkshopHandler {
           }
         })
       : undefined;
+    if (target.kind !== 'tool' && widgetArtifact) {
+      // The visible writer turn and its artifact body are one room-ledger
+      // fact. Publish them together before inference so cancellation or
+      // transport failure cannot persist a hollow turn that promises content
+      // the room can never recover.
+      this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
+        `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
+      );
+    }
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
@@ -1201,17 +1212,6 @@ export class WorkshopHandler {
             this.sendError('workshop.send_message', errorMessage, details)
         }
       });
-      if (
-        assistantTurn
-        && target.kind !== 'tool'
-        && roomThreadArtifacts.length > 0
-      ) {
-        this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
-        this.outputChannel.appendLine(
-          `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
-          `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
-        );
-      }
       if (assistantTurn && roomDelivery) {
         try {
           this.roomDelivery.commit(roomDelivery);
@@ -1255,6 +1255,13 @@ export class WorkshopHandler {
         // A failed/cancelled turn falls through to the catch, which leaves
         // the staged artifacts pending — the pills survive and a retry
         // ships the same ids.
+        if (target.kind !== 'tool') {
+          this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
+          this.outputChannel.appendLine(
+            `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
+            `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
+          );
+        }
         this.session.commitMessageAttachments(messageAttachments.map((a) => a.id), target);
         this.outputChannel.appendLine(
           `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`

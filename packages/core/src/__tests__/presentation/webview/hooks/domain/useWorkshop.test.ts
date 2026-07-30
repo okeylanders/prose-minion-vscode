@@ -1141,6 +1141,7 @@ describe('useWorkshop', () => {
         payload: {
           widgetId: 'gesture-playground',
           token: 'gesture-1',
+          mode: 'full',
           ok: false,
           error: 'Stopped.'
         },
@@ -1173,6 +1174,7 @@ describe('useWorkshop', () => {
         payload: {
           widgetId: 'gesture-playground',
           token: 'gesture-old',
+          mode: 'full',
           ok: false,
           error: 'Stale.'
         },

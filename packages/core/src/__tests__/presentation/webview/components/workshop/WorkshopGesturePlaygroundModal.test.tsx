@@ -225,6 +225,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
         menuResult={{
           widgetId: 'gesture-playground',
           token,
+          mode: 'full',
           ok: true,
           menu,
           dictionaryMarkdown: '# Gesture Dictionary\n\nSource-grounded scan.'
@@ -321,6 +322,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
         menuResult={{
           widgetId: 'gesture-playground',
           token,
+          mode: 'full',
           ok: true,
           menu,
           dictionaryMarkdown: '# Gesture Dictionary\n\n<script>window.bad = true</script>\n\nUseful scan.'
@@ -344,6 +346,49 @@ describe('WorkshopGesturePlaygroundModal', () => {
     }) as HTMLInputElement).checked).toBe(false);
   });
 
+  it('requests more gestures from the on-screen result and keeps existing selections', () => {
+    const { props, view } = renderModal({ kind: 'clone', config });
+    fireEvent.click(screen.getByRole('button', {
+      name: /She turned her mug a quarter-turn, then back/
+    }));
+    fireEvent.click(screen.getByRole('button', {
+      name: /She turned her mug a quarter-turn, then back/
+    }));
+    expect(screen.getByRole('button', { name: 'More gestures' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Regenerate all' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More gestures' }));
+    const payload = (props.onGenerate as jest.Mock).mock.calls[0][0];
+    expect(payload).toEqual(expect.objectContaining({
+      mode: 'more',
+      dictionaryMarkdown: config.draft.dictionaryMarkdown,
+      menu
+    }));
+
+    const additions = menu.map((group, index) => ({
+      ...group,
+      options: [...group.options, `A new physical consequence ${index + 1}`]
+    }));
+    view.rerender(
+      <WorkshopGesturePlaygroundModal
+        {...props}
+        menuResult={{
+          widgetId: 'gesture-playground',
+          token: payload.token,
+          mode: 'more',
+          ok: true,
+          dictionaryMarkdown: config.draft.dictionaryMarkdown,
+          menu: additions
+        }}
+      />
+    );
+
+    expect((screen.getByRole('button', {
+      name: /She turned her mug a quarter-turn, then back/
+    }) as HTMLButtonElement).className).toContain('selected');
+    expect(screen.getByRole('button', { name: /A new physical consequence 1/ })).toBeTruthy();
+  });
+
   it('keeps a recovered dictionary inspectable but removes an unusable menu and blocks commit', () => {
     const { props, view } = renderModal({ kind: 'new' });
     fireEvent.change(screen.getByPlaceholderText('e.g. she smiled'), {
@@ -358,6 +403,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
         menuResult={{
           widgetId: 'gesture-playground',
           token,
+          mode: 'full',
           ok: false,
           dictionaryMarkdown: '# Gesture Dictionary\n\nThe useful scan survived.',
           menuError: 'The alternatives menu was malformed.'
@@ -390,6 +436,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
         menuResult={{
           widgetId: 'gesture-playground',
           token,
+          mode: 'full',
           ok: true,
           menu,
           dictionaryMarkdown: '# Gesture Dictionary\n\nGenerated for the original inputs.'

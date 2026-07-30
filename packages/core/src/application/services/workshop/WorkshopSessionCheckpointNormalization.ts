@@ -14,6 +14,7 @@ export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
   | 'discarded-legacy-delivery-cursors'
   | 'inferred-missing-scope'
+  | 'normalized-null-scope-with-excerpt'
   | 'normalized-open-session-with-excerpt'
   | 'restored-undelivered-withdrawal'
   | 'defaulted-capability-principal'
@@ -44,6 +45,9 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   }
   if (state.scope === undefined) {
     normalizations.push('inferred-missing-scope');
+  }
+  if (state.scope === null && state.excerpt !== undefined) {
+    normalizations.push('normalized-null-scope-with-excerpt');
   }
   if (
     state.revisions.pendingExcerptChange !== undefined

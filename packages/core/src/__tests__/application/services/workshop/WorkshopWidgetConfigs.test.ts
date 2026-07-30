@@ -111,7 +111,7 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(widgetArtifactId).toBe('ta-2');
   });
 
-  it('stamps commit linkage and exposes configs in the snapshot', () => {
+  it('stamps commit linkage and exposes only bounded config summaries in the snapshot', () => {
     session.setSessionScope('open');
     const config = session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
     const artifactId = session.mintWidgetArtifactId();
@@ -135,8 +135,14 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(snapshot.widgetConfigs[0]).toEqual(expect.objectContaining({
       id: 'wc-1',
       committedTurnId: turn.id,
-      artifactId: 'ta-1'
+      artifactId: 'ta-1',
+      targetPhrase: 'she smiled',
+      selectionCount: 1
     }));
+    expect(snapshot.widgetConfigs[0]).not.toHaveProperty('draft');
+    expect(session.getWidgetConfig('wc-1')?.draft.dictionaryMarkdown).toContain(
+      'Gesture Dictionary'
+    );
     expect(snapshot.turns.at(-2)?.widgetCommit?.widgetConfigId).toBe('wc-1');
   });
 

@@ -83,12 +83,16 @@ export interface PromptBudgets {
     gestureSourceReferenceCharacters: number;
     gestureReferencedSourceCharacters: number;
     gestureOutputTokens: number;
+    gestureMoreOutputTokens: number;
     gestureRecommendationFrameAllowanceCharacters: number;
     gestureDictionaryCharacters: number;
     gestureNoteCharacters: number;
     gestureMenuGroupsMinimum: number;
     gestureMenuGroups: number;
     gestureOptionsPerGroupMinimum: number;
+    /** Maximum options returned by one generation call. */
+    gestureGeneratedOptionsPerGroup: number;
+    /** Maximum accumulated options retained after "More gestures" merges. */
     gestureOptionsPerGroup: number;
     gestureOptionCharacters: number;
     gestureSelectionsPerCommit: number;
@@ -150,13 +154,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     gestureSourceReferenceCharacters: 500,
     gestureReferencedSourceCharacters: 420_000,
     gestureOutputTokens: 50_000,
+    gestureMoreOutputTokens: 8_000,
     gestureRecommendationFrameAllowanceCharacters: 2_000,
     gestureDictionaryCharacters: 32_000,
     gestureNoteCharacters: 300,
     gestureMenuGroupsMinimum: 4,
     gestureMenuGroups: 6,
     gestureOptionsPerGroupMinimum: 3,
-    gestureOptionsPerGroup: 5,
+    gestureGeneratedOptionsPerGroup: 5,
+    gestureOptionsPerGroup: 10,
     gestureOptionCharacters: 220,
     gestureSelectionsPerCommit: 8
   }

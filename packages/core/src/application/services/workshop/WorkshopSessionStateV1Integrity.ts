@@ -174,7 +174,8 @@ export function validateWorkshopSessionStateV1(
       greatestThreadArtifactNumber,
       numericIdSuffix(artifact.id, /^ta-(\d+)$/, 'thread artifact')
     );
-    const turn = state.turns.find((candidate) => candidate.id === artifact.turnId);
+    const turnIndex = turnIndexes.get(artifact.turnId);
+    const turn = turnIndex === undefined ? undefined : state.turns[turnIndex];
     if (!turn) {
       throw new Error(
         `Persisted Workshop thread artifact ${artifact.id} references an unknown turn`

@@ -159,6 +159,8 @@ export enum MessageType {
   WORKSHOP_WIDGET_GENERATE = 'workshop_widget_generate',
   WORKSHOP_WIDGET_GENERATION_PROGRESS = 'workshop_widget_generation_progress',
   WORKSHOP_WIDGET_MENU_RESULT = 'workshop_widget_menu_result',
+  WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
+  WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',
   WORKSHOP_COMMIT_WIDGET = 'workshop_commit_widget',
   WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',
   CANCEL_WIDGET_GENERATE_REQUEST = 'cancel_widget_generate_request'

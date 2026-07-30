@@ -1,4 +1,4 @@
-# ADR: Conversation Widgets
+# ADR 2026-07-22: Conversation Widgets
 
 - **Status**: Accepted — 2026-07-29; Gesture Dictionary generation and
   source-reference/streaming amendments accepted 2026-07-29
@@ -125,8 +125,9 @@ persists in a **typed `widgetConfigs` collection** on the session aggregate,
 serialized in `WorkshopSessionStateV1` as an **optional key** (absent
 hydrates empty, so pre-widget checkpoints stay readable under the exact-key
 shape validator), exported by `exportCommittedState`, hydrated by
-`hydrateCommittedState`, and included in `getSnapshot()` so the webview
-re-hydrates chips without extra round trips. Widget commit/edit paths use
+`hydrateCommittedState`, and projected into `getSnapshot()` as bounded,
+display-safe summaries for configs referenced by the visible turn window.
+Opening a chip fetches its full config by stable id. Widget commit/edit paths use
 Sprint 10's ordered autosave seam (`markDirty` after the run settles —
 `exportCommittedState` throws during an active run by design). There is no
 generic extension bag and no second webview-owned persistence store.
@@ -149,8 +150,12 @@ re-inject a frame.
 Grouping, selection state, counts, caps, response framing, and payload assembly
 are deterministic code. Only semantic generation hits the model. For Gesture
 Playground, one model call produces a writer-facing Gesture Dictionary
-Markdown scan followed by the JSON menu in one versioned composite response;
-Regenerate re-rolls both; **commit never re-runs the model**. Unselected menu
+Markdown scan followed by the JSON menu in one versioned composite response.
+After that succeeds, **More gestures** uses the visible dictionary, menu, and
+draft fields as stateless prior-turn context; a compact prompt returns only
+additional takes, which the host merges and exact-deduplicates while preserving
+the writer's selections. **Regenerate all** explicitly re-rolls both artifacts;
+**commit never re-runs the model**. Unselected menu
 options and other exploration cloud are excluded from the committed rail
 directive. The full Gesture Dictionary is excluded by default, but the writer
 may explicitly opt to include it as a reference section in the same atomic
@@ -396,12 +401,11 @@ would keep.
 - `widgetConfigs` entries carry `revision: 1` from day one (decision 6
   names revisions; one integer now beats an optional-field migration in a
   frozen-V1 grammar later).
-- **Snapshot bound**: `getSnapshot()` ships `widgetConfigs` wholesale in
-  Sprint 01 (volumes are trivial), but the stated bound — binding on the
-  sprint that first exceeds it — is: ship configs only for turns inside
-  the snapshot window, with on-demand fetch for chips on older turns.
-  Clone-and-recommit accumulates configs without retiring them, so the
-  collection is unbounded by design; the snapshot must not be.
+- **Snapshot bound**: `getSnapshot()` ships only lightweight config summaries
+  referenced by turns inside the snapshot window. The full Draft is fetched
+  on demand when a chip opens. Clone-and-recommit accumulates configs without
+  retiring them, so durable storage remains complete while routine webview
+  broadcasts stay bounded.
 
 ### The registry move inverts the type dependency
 

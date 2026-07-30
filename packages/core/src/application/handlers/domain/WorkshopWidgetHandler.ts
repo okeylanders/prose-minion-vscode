@@ -15,9 +15,9 @@ import { MessageTransport } from '@/application/handlers/MessageHandlerContracts
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   GesturePlaygroundService,
-  GestureSourceMaterial,
-  buildGestureDirective
+  GestureSourceMaterial
 } from '@services/widgets/GesturePlaygroundService';
+import { buildGestureDirective } from '@/application/services/workshop/WorkshopPromptBuilder';
 import { LogSink } from '@/platform';
 import {
   MessageType,
@@ -30,11 +30,13 @@ import {
   WorkshopWidgetGenerationProgressMessage,
   WorkshopWidgetSourceReference,
   CancelWidgetGenerateRequestMessage,
-  WorkshopWidgetMenuResultMessage
+  WorkshopWidgetMenuResultMessage,
+  WorkshopRequestWidgetConfigMessage,
+  WorkshopWidgetConfigDataMessage
 } from '@messages';
 import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WorkshopMutationRouteRegistrar } from './WorkshopSessionMessageHandler';
+import { WorkshopMutationRouteRegistrar } from '@handlers/domain/WorkshopSessionMessageHandler';
 
 export interface WorkshopWidgetHandlerOptions {
   /**
@@ -76,6 +78,7 @@ export class WorkshopWidgetHandler {
     lastReportedCharacters: number;
     markerBuffer: string;
     stage: GestureGenerationStage;
+    outputTokenLimit: number;
   };
 
   constructor(
@@ -96,6 +99,10 @@ export class WorkshopWidgetHandler {
       MessageType.CANCEL_WIDGET_GENERATE_REQUEST,
       this.handleCancelGenerate.bind(this)
     );
+    router.register(
+      MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG,
+      this.handleRequestConfig.bind(this)
+    );
     registerMutation(MessageType.WORKSHOP_COMMIT_WIDGET, this.handleCommit.bind(this));
   }
 
@@ -112,16 +119,26 @@ export class WorkshopWidgetHandler {
       writerInstructions,
       contextText,
       characterNotes,
-      sourceReferences
+      sourceReferences,
+      mode
     } = message.payload;
     if (widgetId !== 'gesture-playground' || !isLiveWorkshopWidgetId(widgetId)) {
-      this.postMenuResult({ widgetId, token, ok: false, error: 'That widget is not available yet.' });
+      this.postMenuResult({
+        widgetId,
+        token,
+        mode,
+        ok: false,
+        error: 'That widget is not available yet.'
+      });
       return;
     }
     // A regenerate supersedes the in-flight call; the stale token's result is
     // dropped by the webview even if the abort loses the race.
-    this.cancelActiveGeneration();
+    this.cancelActiveGeneration('superseded');
     const controller = new AbortController();
+    const outputTokenLimit = mode === 'more'
+      ? PROMPT_BUDGETS.workshopWidgets.gestureMoreOutputTokens
+      : PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens;
     const progress: {
       controller: AbortController;
       token: string;
@@ -129,17 +146,47 @@ export class WorkshopWidgetHandler {
       lastReportedCharacters: number;
       markerBuffer: string;
       stage: GestureGenerationStage;
+      outputTokenLimit: number;
     } = {
       controller,
       token,
       outputCharacters: 0,
       lastReportedCharacters: 0,
       markerBuffer: '',
-      stage: 'requesting'
+      stage: 'requesting',
+      outputTokenLimit
     };
     this.activeGeneration = progress;
+    const onToken = (chunk: string): void => {
+      if (this.activeGeneration !== progress || controller.signal.aborted) {
+        return;
+      }
+      progress.outputCharacters += chunk.length;
+      const markerCandidate = `${progress.markerBuffer}${chunk}`;
+      if (markerCandidate.includes('===GESTURE_MENU_V1===')) {
+        progress.stage = 'menu';
+      } else if (markerCandidate.includes('===GESTURE_DICTIONARY_V1===')) {
+        progress.stage = 'dictionary';
+      }
+      progress.markerBuffer = markerCandidate.slice(-128);
+      if (
+        progress.outputCharacters - progress.lastReportedCharacters
+          < GESTURE_PROGRESS_REPORT_INTERVAL_CHARACTERS
+      ) {
+        return;
+      }
+      progress.lastReportedCharacters = progress.outputCharacters;
+      this.postGenerationProgress({
+        widgetId,
+        token,
+        phase: 'streaming',
+        stage: progress.stage,
+        outputCharacters: progress.outputCharacters,
+        estimatedOutputTokens: this.estimateVisibleTokens(progress.outputCharacters),
+        outputTokenLimit
+      });
+    };
     try {
-      const sourceMaterials = this.resolveSourceMaterials(sourceReferences);
       this.postGenerationProgress({
         widgetId,
         token,
@@ -147,46 +194,58 @@ export class WorkshopWidgetHandler {
         stage: 'requesting',
         outputCharacters: 0,
         estimatedOutputTokens: 0,
-        outputTokenLimit: PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens
+        outputTokenLimit
       });
+      if (mode === 'more') {
+        const result = await this.gestureService.generateMore({
+          targetPhrase,
+          writerInstructions,
+          contextText,
+          characterNotes,
+          dictionaryMarkdown: message.payload.dictionaryMarkdown,
+          menu: message.payload.menu,
+          onToken,
+          signal: controller.signal
+        });
+        if (result.cancelled || controller.signal.aborted) {
+          return;
+        }
+        const menu = this.mergeGestureMenus(message.payload.menu, result.additions);
+        this.postGenerationProgress({
+          widgetId,
+          token,
+          phase: 'completed',
+          stage: 'validating',
+          outputCharacters: progress.outputCharacters,
+          estimatedOutputTokens: this.estimateVisibleTokens(progress.outputCharacters),
+          completionTokens: result.usage?.completionTokens,
+          outputTokenLimit
+        });
+        this.postMenuResult({
+          widgetId,
+          token,
+          mode,
+          ok: true,
+          dictionaryMarkdown: message.payload.dictionaryMarkdown,
+          menu
+        });
+        this.outputChannel.appendLine(
+          `[WorkshopWidgetHandler] Added gestures to ${menu.length} groups (token ${token})`
+        );
+        return;
+      }
+
+      const sourceMaterials = this.resolveSourceMaterials(sourceReferences);
       const result = await this.gestureService.generateMenu({
         targetPhrase,
         writerInstructions,
         contextText,
         characterNotes,
         sourceMaterials,
-        onToken: (chunk) => {
-          if (this.activeGeneration !== progress || controller.signal.aborted) {
-            return;
-          }
-          progress.outputCharacters += chunk.length;
-          const markerCandidate = `${progress.markerBuffer}${chunk}`;
-          if (markerCandidate.includes('===GESTURE_MENU_V1===')) {
-            progress.stage = 'menu';
-          } else if (markerCandidate.includes('===GESTURE_DICTIONARY_V1===')) {
-            progress.stage = 'dictionary';
-          }
-          progress.markerBuffer = markerCandidate.slice(-128);
-          if (
-            progress.outputCharacters - progress.lastReportedCharacters
-              < GESTURE_PROGRESS_REPORT_INTERVAL_CHARACTERS
-          ) {
-            return;
-          }
-          progress.lastReportedCharacters = progress.outputCharacters;
-          this.postGenerationProgress({
-            widgetId,
-            token,
-            phase: 'streaming',
-            stage: progress.stage,
-            outputCharacters: progress.outputCharacters,
-            estimatedOutputTokens: this.estimateVisibleTokens(progress.outputCharacters),
-            outputTokenLimit: PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens
-          });
-        },
+        onToken,
         signal: controller.signal
       });
-      if (controller.signal.aborted) {
+      if (result.cancelled || controller.signal.aborted) {
         return;
       }
       this.postGenerationProgress({
@@ -197,12 +256,13 @@ export class WorkshopWidgetHandler {
         outputCharacters: progress.outputCharacters,
         estimatedOutputTokens: this.estimateVisibleTokens(progress.outputCharacters),
         completionTokens: result.usage?.completionTokens,
-        outputTokenLimit: PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens
+        outputTokenLimit
       });
       if (result.menu) {
         this.postMenuResult({
           widgetId,
           token,
+          mode,
           ok: true,
           dictionaryMarkdown: result.dictionaryMarkdown,
           menu: result.menu,
@@ -217,6 +277,7 @@ export class WorkshopWidgetHandler {
         this.postMenuResult({
           widgetId,
           token,
+          mode,
           ok: false,
           dictionaryMarkdown: result.dictionaryMarkdown,
           menuError,
@@ -231,7 +292,7 @@ export class WorkshopWidgetHandler {
         return;
       }
       const details = error instanceof Error ? error.message : String(error);
-      this.postMenuResult({ widgetId, token, ok: false, error: details });
+      this.postMenuResult({ widgetId, token, mode, ok: false, error: details });
       this.outputChannel.appendLine(
         `[WorkshopWidgetHandler] Gesture Dictionary generation failed (token ${token}): ${details}`
       );
@@ -245,11 +306,26 @@ export class WorkshopWidgetHandler {
   async handleCancelGenerate(message: CancelWidgetGenerateRequestMessage): Promise<void> {
     if (
       this.activeGeneration
-      && (!message.payload.token || message.payload.token === this.activeGeneration.token)
+      && message.payload.requestId === this.activeGeneration.token
     ) {
-      this.outputChannel.appendLine('[WorkshopWidgetHandler] Gesture generation cancelled');
-      this.cancelActiveGeneration();
+      this.cancelActiveGeneration('writer');
     }
+  }
+
+  async handleRequestConfig(message: WorkshopRequestWidgetConfigMessage): Promise<void> {
+    const configId = message.payload.configId.trim();
+    const config = /^wc-[1-9]\d*$/.test(configId)
+      ? this.session.getWidgetConfig(configId)
+      : undefined;
+    const response: WorkshopWidgetConfigDataMessage = {
+      type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA,
+      source: 'extension.workshop.widget',
+      timestamp: Date.now(),
+      payload: config
+        ? { configId, config }
+        : { configId, error: 'That widget configuration is no longer available.' }
+    };
+    await this.postMessage(response);
   }
 
   /**
@@ -463,6 +539,28 @@ export class WorkshopWidgetHandler {
     return undefined;
   }
 
+  private mergeGestureMenus(
+    current: readonly WorkshopGestureMenuGroup[],
+    additions: readonly WorkshopGestureMenuGroup[]
+  ): WorkshopGestureMenuGroup[] {
+    const maximum = PROMPT_BUDGETS.workshopWidgets.gestureOptionsPerGroup;
+    return current.map((group, index) => {
+      const seen = new Set(group.options.map((option) => option.toLocaleLowerCase()));
+      const fresh = (additions[index]?.options ?? []).filter((option) => {
+        const key = option.toLocaleLowerCase();
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+      return {
+        heading: group.heading,
+        options: [...group.options, ...fresh].slice(0, maximum)
+      };
+    });
+  }
+
   private postMenuResult(payload: WorkshopWidgetMenuResultMessage['payload']): void {
     const result: WorkshopWidgetMenuResultMessage = {
       type: MessageType.WORKSHOP_WIDGET_MENU_RESULT,
@@ -485,12 +583,16 @@ export class WorkshopWidgetHandler {
     void this.postMessage(progress);
   }
 
-  private cancelActiveGeneration(): void {
+  private cancelActiveGeneration(reason: 'writer' | 'superseded'): void {
     const active = this.activeGeneration;
     if (!active) {
       return;
     }
     active.controller.abort();
+    this.outputChannel.appendLine(
+      `[WorkshopWidgetHandler] Gesture generation cancelled ` +
+      `(token ${active.token}, reason=${reason})`
+    );
     this.postGenerationProgress({
       widgetId: 'gesture-playground',
       token: active.token,
@@ -498,7 +600,7 @@ export class WorkshopWidgetHandler {
       stage: active.stage,
       outputCharacters: active.outputCharacters,
       estimatedOutputTokens: this.estimateVisibleTokens(active.outputCharacters),
-      outputTokenLimit: PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens
+      outputTokenLimit: active.outputTokenLimit
     });
     this.activeGeneration = undefined;
   }

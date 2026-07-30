@@ -40,6 +40,7 @@ import {
   WorkshopTurnKind,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
+  WorkshopWidgetConfigSummary,
   WorkshopWidgetId,
   WorkshopWidgetRecommendation
 } from '@messages';
@@ -2275,6 +2276,11 @@ export class WorkshopSessionService {
 
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turns.slice(-WORKSHOP_SNAPSHOT_TURN_WINDOW);
+    const visibleWidgetConfigIds = new Set(
+      windowed
+        .map((turn) => turn.widgetCommit?.widgetConfigId)
+        .filter((id): id is string => id !== undefined)
+    );
     return {
       excerpt: this.excerpt ? excerptSnapshot(this.excerpt) : undefined,
       scope: this.scope,
@@ -2292,7 +2298,9 @@ export class WorkshopSessionService {
           }
         : undefined,
       todos: this.todos.map((todo) => cloneTodo(todo, this.excerptVersion)),
-      widgetConfigs: this.widgetConfigs.map(cloneWidgetConfig),
+      widgetConfigs: this.widgetConfigs
+        .filter((config) => visibleWidgetConfigIds.has(config.id))
+        .map(widgetConfigSummary),
       turns: windowed.map(cloneTurn),
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
@@ -2612,6 +2620,15 @@ function cloneWidgetConfig(config: WorkshopWidgetConfigSnapshot): WorkshopWidget
   return {
     ...config,
     draft: cloneGestureDraft(config.draft)
+  };
+}
+
+function widgetConfigSummary(config: WorkshopWidgetConfigSnapshot): WorkshopWidgetConfigSummary {
+  const { draft, ...identity } = config;
+  return {
+    ...identity,
+    targetPhrase: draft.targetPhrase,
+    selectionCount: draft.selections.length
   };
 }
 

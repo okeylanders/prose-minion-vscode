@@ -8,8 +8,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  GesturePlaygroundService,
-  buildGestureDirective
+  GestureMenuResult,
+  GesturePlaygroundService
 } from '@services/widgets/GesturePlaygroundService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
@@ -54,6 +54,12 @@ const dictionaryOnly = (dictionary = dictionaryMarkdown): string => [
   DICTIONARY_END
 ].join('\n');
 
+const menuOnly = (menuJson = JSON.stringify(menuObject, null, 2)): string => [
+  MENU_START,
+  menuJson,
+  MENU_END
+].join('\n');
+
 const withGroups = (replacementGroups: unknown): string =>
   framed(dictionaryMarkdown, JSON.stringify({ version: 1, groups: replacementGroups }));
 
@@ -62,6 +68,7 @@ const build = (
   resultOverrides: {
     rawContent?: string;
     finishReason?: string;
+    cancelled?: boolean;
   } = {}
 ) => {
   const runInitial = jest.fn().mockResolvedValue({
@@ -85,6 +92,16 @@ const request = {
   writerInstructions: 'Keep it understated and do not use eye language.',
   contextText: 'He set the mug down. She smiled. "Somebody had to."',
   characterNotes: 'Mara — guarded.'
+};
+
+const completed = (
+  result: GestureMenuResult
+): Extract<GestureMenuResult, { cancelled: false }> => {
+  expect(result.cancelled).toBe(false);
+  if (result.cancelled) {
+    throw new Error('Expected a completed Gesture Playground result');
+  }
+  return result;
 };
 
 describe('Gesture Dictionary canonical prompt', () => {
@@ -137,16 +154,17 @@ describe('GesturePlaygroundService.generateMenu', () => {
         + '"Keep it understated and do not use eye language."'
       ),
       options: expect.objectContaining({
-        temperature: 0.7,
+        temperature: 0.5,
         maxTokens: PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens,
         onToken
       })
     }));
-    expect(result.dictionaryMarkdown).toContain('Sense Explorer');
-    expect(result.menu).toEqual(groups);
-    expect(result.menuError).toBeUndefined();
-    expect(result.usage?.totalTokens).toBe(30);
-    expect(result.truncated).toBe(false);
+    const value = completed(result);
+    expect(value.dictionaryMarkdown).toContain('Sense Explorer');
+    expect(value.menu).toEqual(groups);
+    expect(value.menuError).toBeUndefined();
+    expect(value.usage?.totalTokens).toBe(30);
+    expect(value.truncated).toBe(false);
   });
 
   it('parses raw provider output before any visible-content footer or normalization', async () => {
@@ -303,6 +321,31 @@ describe('GesturePlaygroundService.generateMenu', () => {
     expect(runInitial).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts exactly eight source references at the aggregate source-character bound', async () => {
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    const sourceMaterials = Array.from(
+      { length: budget.gestureSourceReferences },
+      (_, index) => ({
+        reference: {
+          kind: 'context-attachment' as const,
+          attachmentId: `ctx-${index + 1}`
+        },
+        label: `context ${index + 1}`,
+        content: index === 0
+          ? 'x'.repeat(
+              budget.gestureReferencedSourceCharacters
+              - (budget.gestureSourceReferences - 1)
+            )
+          : 'x'
+      })
+    );
+    const { service, runInitial } = build(framed());
+
+    await expect(service.generateMenu({ ...request, sourceMaterials }))
+      .resolves.toEqual(expect.objectContaining({ cancelled: false }));
+    expect(runInitial).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ['no frames', 'Here is a useful but unframed answer.'],
     ['empty dictionary', framed('   ')],
@@ -393,12 +436,13 @@ describe('GesturePlaygroundService.generateMenu', () => {
 
     const result = await service.generateMenu(request);
 
-    expect(result.dictionaryMarkdown).toContain('Sense Explorer');
-    expect(result.menu).toBeUndefined();
-    expect(result.menuError).toMatch(/alternatives menu was unusable/i);
+    const value = completed(result);
+    expect(value.dictionaryMarkdown).toContain('Sense Explorer');
+    expect(value.menu).toBeUndefined();
+    expect(value.menuError).toMatch(/alternatives menu was unusable/i);
   });
 
-  it('prints the complete raw response between diagnostic markers when JSON parsing fails', async () => {
+  it('logs only bounded previews when JSON parsing fails', async () => {
     const malformed = framed(dictionaryMarkdown, [
       '{',
       '  "version": 1,',
@@ -412,14 +456,14 @@ describe('GesturePlaygroundService.generateMenu', () => {
 
     const result = await service.generateMenu(request);
 
-    expect(result.menu).toBeUndefined();
-    expect(appendLine).toHaveBeenCalledWith(
-      '[GesturePlaygroundService] --- BEGIN REJECTED MODEL RESPONSE ---'
-    );
-    expect(appendLine).toHaveBeenCalledWith(malformed);
-    expect(appendLine).toHaveBeenCalledWith(
-      '[GesturePlaygroundService] --- END REJECTED MODEL RESPONSE ---'
-    );
+    expect(completed(result).menu).toBeUndefined();
+    expect(appendLine).not.toHaveBeenCalledWith(malformed);
+    expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      '[GesturePlaygroundService] Rejected response preview (first 200 characters):'
+    ));
+    expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      '[GesturePlaygroundService] Rejected response preview (last 200 characters):'
+    ));
   });
 
   it('returns a specific 50K ceiling diagnosis when a valid dictionary is length-truncated', async () => {
@@ -432,7 +476,26 @@ describe('GesturePlaygroundService.generateMenu', () => {
       truncated: true,
       menuError: expect.stringContaining('50,000-token output ceiling')
     }));
-    expect(result.menu).toBeUndefined();
+    expect(completed(result).menu).toBeUndefined();
+  });
+
+  it('does not parse or log provider output after cancellation', async () => {
+    const malformed = 'private partial response that must not be inspected';
+    const { service, appendLine } = build(malformed, { cancelled: true });
+
+    await expect(service.generateMenu(request)).resolves.toEqual(expect.objectContaining({
+      cancelled: true
+    }));
+    expect(appendLine).not.toHaveBeenCalled();
+  });
+
+  it('diagnoses truncation inside the dictionary frame as the output ceiling', async () => {
+    const partialDictionary = `${DICTIONARY_START}\n# Gesture Dictionary\n\nunfinished`;
+    const { service } = build(partialDictionary, { finishReason: 'length' });
+
+    await expect(service.generateMenu(request)).rejects.toThrow(
+      /output ceiling before the Gesture Dictionary closed/i
+    );
   });
 
   it('marks a complete framed response truncated without discarding its valid menu', async () => {
@@ -445,45 +508,38 @@ describe('GesturePlaygroundService.generateMenu', () => {
       })
     );
   });
-});
 
-describe('buildGestureDirective', () => {
-  it('carries selections and the note while leaving the dictionary out by default', () => {
-    expect(buildGestureDirective({
-      targetPhrase: ' she smiled ',
-      selections: ['the smile arrived late', 'it was the smile she used on waiters'],
-      note: 'keep it small',
-      dictionaryMarkdown: '# Gesture Dictionary\n\nPrivate scan.',
-      includeDictionaryInCommit: false
-    })).toBe([
-      'Gesture directions I want for "she smiled":',
-      '· the smile arrived late',
-      '· it was the smile she used on waiters',
-      'note: keep it small'
-    ].join('\n'));
-  });
+  it('uses the compact stateless continuation prompt for more gestures', async () => {
+    const additions = groups.map((group, groupIndex) => ({
+      heading: group.heading,
+      options: Array.from(
+        { length: 3 },
+        (_, optionIndex) => `Fresh ${groupIndex + 1}.${optionIndex + 1} physical consequence`
+      )
+    }));
+    const { service, runInitial, promptLoader } = build(menuOnly(
+      JSON.stringify({ version: 1, groups: additions })
+    ));
 
-  it('omits the note line when empty', () => {
-    expect(buildGestureDirective({
-      targetPhrase: 'p',
-      selections: ['a'],
-      note: '  ',
-      dictionaryMarkdown: '# Gesture Dictionary',
-      includeDictionaryInCommit: false
-    }))
-      .toBe('Gesture directions I want for "p":\n· a');
-  });
+    const result = await service.generateMore({
+      ...request,
+      dictionaryMarkdown,
+      menu: groups
+    });
 
-  it('appends the full dictionary as room reference when explicitly included', () => {
-    expect(buildGestureDirective({
-      targetPhrase: 'p',
-      selections: ['a'],
-      note: '',
-      dictionaryMarkdown: '  # Gesture Dictionary\n\nThe full scan.  ',
-      includeDictionaryInCommit: true
-    })).toContain(
-      'Full Gesture Dictionary shared by the writer as reference:\n' +
-      '# Gesture Dictionary\n\nThe full scan.'
-    );
+    expect((promptLoader as { loadPrompts: jest.Mock }).loadPrompts).toHaveBeenCalledWith([
+      'gesture-dictionary/02-more-gestures.md'
+    ]);
+    expect(runInitial).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'gesture-playground-more',
+      userMessage: expect.stringContaining('Current Gesture Dictionary'),
+      options: expect.objectContaining({
+        maxTokens: PROMPT_BUDGETS.workshopWidgets.gestureMoreOutputTokens
+      })
+    }));
+    expect(result).toEqual(expect.objectContaining({
+      cancelled: false,
+      additions
+    }));
   });
 });

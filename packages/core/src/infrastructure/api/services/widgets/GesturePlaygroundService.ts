@@ -36,14 +36,30 @@ export interface GestureSourceMaterial {
   content: string;
 }
 
-export interface GestureMenuResult {
+export interface GestureMoreRequest extends Omit<GestureMenuRequest, 'sourceMaterials'> {
   dictionaryMarkdown: string;
-  menu?: WorkshopGestureMenuGroup[];
-  /** Present only when the dictionary survived but the menu did not. */
-  menuError?: string;
-  usage?: TokenUsage;
-  truncated?: boolean;
+  menu: WorkshopGestureMenuGroup[];
 }
+
+export type GestureMoreResult =
+  | { cancelled: true; usage?: TokenUsage }
+  | { cancelled: false; additions: WorkshopGestureMenuGroup[]; usage?: TokenUsage };
+
+export type GestureMenuResult =
+  | {
+      cancelled: true;
+      usage?: TokenUsage;
+      truncated: false;
+    }
+  | {
+      cancelled: false;
+      dictionaryMarkdown: string;
+      menu?: WorkshopGestureMenuGroup[];
+      /** Present only when the dictionary survived but the menu did not. */
+      menuError?: string;
+      usage?: TokenUsage;
+      truncated?: boolean;
+    };
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 const DICTIONARY_START = '===GESTURE_DICTIONARY_V1===';
@@ -85,23 +101,96 @@ export class GesturePlaygroundService {
       userMessage,
       policy: AGENT_RUN_POLICIES.assistantWithoutResources,
       options: {
-        temperature: 0.7,
+        temperature: 0.5,
         maxTokens: BUDGET.gestureOutputTokens,
         onToken: request.onToken,
         signal: request.signal
       }
     });
 
+    if (result.cancelled) {
+      return {
+        cancelled: true,
+        usage: result.usage,
+        truncated: false
+      };
+    }
+
     const truncated = result.finishReason === 'length';
-    const parsed = this.parseCompositeResponse(result.rawContent ?? result.content);
+    const parsed = this.parseCompositeResponse(
+      result.rawContent ?? result.content,
+      truncated
+    );
     return {
       ...parsed,
+      cancelled: false,
       menuError: truncated && !parsed.menu
         ? `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token output ceiling before the alternatives menu closed. The Gesture Dictionary is still available; try Generate again for a new menu.`
         : parsed.menuError,
       usage: result.usage,
       truncated
     };
+  }
+
+  /**
+   * Stateless continuation: the current on-screen dictionary/menu are the
+   * conversation memory. The provider gets a smaller prompt and returns only
+   * fresh options; the host owns the deterministic merge.
+   */
+  async generateMore(request: GestureMoreRequest): Promise<GestureMoreResult> {
+    const targetPhrase = request.targetPhrase.trim();
+    this.validateRequest(request, targetPhrase);
+    if (
+      request.dictionaryMarkdown.trim().length === 0
+      || request.dictionaryMarkdown.length > BUDGET.gestureDictionaryCharacters
+    ) {
+      throw new Error('The current Gesture Dictionary is missing or exceeds its bound');
+    }
+    const currentMenu = this.validateMenu(
+      { version: 1, groups: request.menu },
+      BUDGET.gestureOptionsPerGroup
+    );
+
+    const engine = this.aiResourceManager.getEngine('widget');
+    if (!engine) {
+      throw new Error('OpenRouter API key not configured. Please set your API key in settings.');
+    }
+    const systemMessage = await this.promptLoader.loadPrompts([
+      'gesture-dictionary/02-more-gestures.md'
+    ]);
+    const result = await engine.runInitial({
+      toolName: 'gesture-playground-more',
+      systemMessage,
+      userMessage: this.buildMoreUserMessage(request, targetPhrase, currentMenu),
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources,
+      options: {
+        temperature: 0.7,
+        maxTokens: BUDGET.gestureMoreOutputTokens,
+        onToken: request.onToken,
+        signal: request.signal
+      }
+    });
+    if (result.cancelled) {
+      return { cancelled: true, usage: result.usage };
+    }
+
+    const additions = this.extractStandaloneMenu(result.rawContent ?? result.content);
+    const expectedHeadings = currentMenu.map((group) => group.heading);
+    if (
+      additions.length !== expectedHeadings.length
+      || additions.some((group, index) => group.heading !== expectedHeadings[index])
+    ) {
+      throw new Error('Additional gestures must preserve the current menu headings and order');
+    }
+    const existing = new Set(
+      currentMenu.flatMap((group) => group.options.map((option) => option.toLocaleLowerCase()))
+    );
+    if (!additions.some((group) =>
+      group.options.some((option) => !existing.has(option.toLocaleLowerCase()))
+    )) {
+      throw new Error('The model returned no new gesture options');
+    }
+    return { cancelled: false, additions, usage: result.usage };
   }
 
   private validateRequest(request: GestureMenuRequest, targetPhrase: string): void {
@@ -171,6 +260,24 @@ export class GesturePlaygroundService {
     ].join('\n\n');
   }
 
+  private buildMoreUserMessage(
+    request: GestureMoreRequest,
+    targetPhrase: string,
+    currentMenu: readonly WorkshopGestureMenuGroup[]
+  ): string {
+    const quoted = (label: string, value: string): string =>
+      `${label} (quoted task data):\n${JSON.stringify(value.trim())}`;
+    return [
+      'Use the current on-screen result below as the complete prior-turn context. Return only additional gesture options in the required menu frame.',
+      quoted('Target phrase', targetPhrase),
+      quoted('Writer instructions', request.writerInstructions),
+      quoted('Surrounding context', request.contextText),
+      quoted('Character notes', request.characterNotes),
+      quoted('Current Gesture Dictionary', request.dictionaryMarkdown),
+      `Current alternatives menu (quoted JSON task data):\n${JSON.stringify({ version: 1, groups: currentMenu })}`
+    ].join('\n\n');
+  }
+
   private buildSourceMaterialFrame(sources: readonly GestureSourceMaterial[]): string {
     if (sources.length === 0) {
       return 'Host-resolved source material: none.';
@@ -188,7 +295,10 @@ export class GesturePlaygroundService {
     ].join('\n\n');
   }
 
-  private parseCompositeResponse(content: string): ParsedGestureResponse {
+  private parseCompositeResponse(
+    content: string,
+    truncated = false
+  ): ParsedGestureResponse {
     const normalized = content.replace(/\r\n?/g, '\n').trim();
     let dictionaryMarkdown: string;
 
@@ -197,6 +307,12 @@ export class GesturePlaygroundService {
     } catch (error) {
       const message = this.errorMessage(error);
       this.logRejectedResponse('composite response', message, content);
+      if (truncated) {
+        throw new Error(
+          `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token `
+          + 'output ceiling before the Gesture Dictionary closed. Try Generate again.'
+        );
+      }
       throw new Error(
         `The model returned an unusable Gesture Dictionary (${message}). Try Generate again.`
       );
@@ -280,10 +396,38 @@ export class GesturePlaygroundService {
     } catch (error) {
       throw new Error(`menu JSON did not parse: ${this.errorMessage(error)}`);
     }
-    return this.validateMenu(parsed);
+    return this.validateMenu(parsed, BUDGET.gestureGeneratedOptionsPerGroup);
   }
 
-  private validateMenu(parsed: unknown): WorkshopGestureMenuGroup[] {
+  private extractStandaloneMenu(content: string): WorkshopGestureMenuGroup[] {
+    const normalized = content.replace(/\r\n?/g, '\n').trim();
+    this.requireUniqueMarker(normalized, MENU_START);
+    this.requireUniqueMarker(normalized, MENU_END);
+    const lines = normalized.split('\n');
+    const startIndex = lines.indexOf(MENU_START);
+    const endIndex = lines.indexOf(MENU_END);
+    if (startIndex !== 0 || endIndex <= startIndex) {
+      throw new Error('additional menu sentinels are missing or out of order');
+    }
+    if (lines.slice(endIndex + 1).some((line) => line.trim().length > 0)) {
+      throw new Error('unexpected text appeared after the additional menu');
+    }
+    try {
+      return this.validateMenu(
+        JSON.parse(lines.slice(startIndex + 1, endIndex).join('\n').trim()),
+        BUDGET.gestureGeneratedOptionsPerGroup
+      );
+    } catch (error) {
+      const message = this.errorMessage(error);
+      this.logRejectedResponse('additional alternatives menu', message, content);
+      throw new Error(`The model returned unusable additional gestures (${message}).`);
+    }
+  }
+
+  private validateMenu(
+    parsed: unknown,
+    maximumOptionsPerGroup: number
+  ): WorkshopGestureMenuGroup[] {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       throw new Error('menu is not an object');
     }
@@ -333,11 +477,11 @@ export class GesturePlaygroundService {
       }
       if (
         group.options.length < BUDGET.gestureOptionsPerGroupMinimum
-        || group.options.length > BUDGET.gestureOptionsPerGroup
+        || group.options.length > maximumOptionsPerGroup
       ) {
         throw new Error(
           `group ${groupIndex + 1} must carry `
-          + `${BUDGET.gestureOptionsPerGroupMinimum}–${BUDGET.gestureOptionsPerGroup} options`
+          + `${BUDGET.gestureOptionsPerGroupMinimum}–${maximumOptionsPerGroup} options`
         );
       }
 
@@ -379,43 +523,24 @@ export class GesturePlaygroundService {
     this.outputChannel?.appendLine(
       `[GesturePlaygroundService] Rejected response follows (${content.length} characters):`
     );
+    const previewCharacters = 200;
+    const first = content.slice(0, previewCharacters);
+    const last = content.length > previewCharacters
+      ? content.slice(-previewCharacters)
+      : '';
     this.outputChannel?.appendLine(
-      '[GesturePlaygroundService] --- BEGIN REJECTED MODEL RESPONSE ---'
+      `[GesturePlaygroundService] Rejected response preview ` +
+      `(first ${first.length} characters): ${first}`
     );
-    this.outputChannel?.appendLine(content);
-    this.outputChannel?.appendLine(
-      '[GesturePlaygroundService] --- END REJECTED MODEL RESPONSE ---'
-    );
+    if (last) {
+      this.outputChannel?.appendLine(
+        `[GesturePlaygroundService] Rejected response preview ` +
+        `(last ${last.length} characters): ${last}`
+      );
+    }
   }
 
   private errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
   }
-}
-
-/**
- * The compact, instruction-shaped directive a Gesture Playground commit
- * ships. Kept selections and the note always ride the rail. The dictionary
- * remains in the re-openable Draft unless the writer explicitly includes it
- * as room-wide reference material; the menu cloud never rides.
- */
-export function buildGestureDirective(input: {
-  targetPhrase: string;
-  selections: readonly string[];
-  note: string;
-  dictionaryMarkdown: string;
-  includeDictionaryInCommit: boolean;
-}): string {
-  return [
-    `Gesture directions I want for "${input.targetPhrase.trim()}":`,
-    ...input.selections.map((selection) => `· ${selection}`),
-    input.note.trim().length > 0 ? `note: ${input.note.trim()}` : undefined,
-    ...(input.includeDictionaryInCommit
-      ? [
-          '',
-          'Full Gesture Dictionary shared by the writer as reference:',
-          input.dictionaryMarkdown.trim()
-        ]
-      : [])
-  ].filter((line): line is string => line !== undefined).join('\n');
 }

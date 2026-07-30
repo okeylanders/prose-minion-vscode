@@ -15,32 +15,33 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| 1 | 🔴 Blocking | Guest join stamps artifact deliveries for turns the packer dropped; the dedupe makes the false rows permanent | Blake | 🎯 | **Open** — verified; fix is `join.transcript.deliveredTurnIds` |
-| 2 | 🟠 High | Cancellation is parsed as a model failure, and that failure dumps the writer's unbounded manuscript-derived response into the Output channel | Oliver, Patricia | 🎯🎯 Strong | **Open** — compound; both halves verified independently |
-| 3 | 🟠 High | A cancelled or failed widget commit leaves a permanent room turn promising directions whose body was never recorded | Blake, Bria | 🎯 | **Open** — traced independently by two reviewers |
-| 4 | 🟠 High | `scope: null` is silently repaired with **no** normalization tag — the `=== undefined` guard misses what `??` catches | Sam | — | **Open** — verified |
-| 5 | 🟠 High | `inferred-missing-scope` is logged but never regression-tested — violates the ADR this same PR introduces | Cal, Ada | 🎯 | **Open** — proven by mutation; full suite stays green |
-| 6 | 🟠 High | Temperature ships at `0.7`; the concept doc specifies `0.4–0.5` and names the gate for raising it | Bria | — | **Open** — verified against `DictionaryService` (0.4 ×4) |
-| 7 | 🟠 High | `buildGestureDirective` — pure domain prompt-assembly — lives in the infra adapter and is imported back up into the application layer | Marcus | — | **Open** — only bare function export in the whole infra services tree |
-| 8 | 🟠 High | Every session-state broadcast ships every widget config's full 32k dictionary; collection is uncapped and never retires | Blake | — | **Open** — 40 `postSessionState()` call sites |
-| 9 | 🟠 High | The 50K-ceiling diagnosis never fires when the dictionary itself is what got truncated | Sam | — | **Open** — reproduced |
-| 10 | 🟠 High | The actual Cancel route is never invoked in any test; the token guard at `:248` is unproven | Cal | — | **Open** |
-| 11 | 🟡 Standard | New cancel message skips the shared `CancelRequestPayload` contract and sends an empty payload with no `requestId` | Stan | — | **Open** — factory is imported in the same file and used correctly twice |
-| 12 | 🟡 Standard | New widget-config ledger inlined into an already-2,778-line service | Marcus | — | **Open** |
-| 13 | 🟡 Standard | Two files named `workshopWidgets.ts` across two layers — both doc-comments name the fix neither took | Parker | — | **Open** |
-| 14 | 🟡 Standard | Marker adjacency hand-enumerated a second time, disconnected from `ORDERED_MARKERS` | Parker | — | **Open** |
-| 15 | 🟡 Standard | Four copy-pasted "invalidate then set" callbacks encode one domain rule four times | Parker | — | **Open** |
-| 16 | 🟡 Standard | Thread-artifact integrity does O(turns × artifacts) where an id→index Map already exists in the same function | Tim | — | **Open** — fix is a rename |
-| 17 | 🟡 Standard | ~10K-token system prompt, uncached, resent whole on every Generate/Regenerate; ~168K tokens at the ceiling | Tim | — | **Open** |
-| 18 | 🟡 Standard | Source-reference limits tested one-past-the-boundary, never at it — against this file's own convention | Cal | — | **Open** |
-| 19 | 🟡 Standard | Regenerate-triggered cancellation logs nothing, while explicit Cancel does | Oliver | — | **Open** |
-| 20 | 🟡 Standard | `relativeDuration` rounds 59m30s–60m into "60 minutes" and 23h30m+ into "24 hours" | Sam | — | **Pre-existing** — not introduced here; flagged because this PR routes new content through it |
-| 21 | 🟢 Nit | Relative import where the sibling that constructs this class uses the alias | Stan, Marcus | 🎯 | **Open** — one line |
-| 22 | 🟢 Nit | ADR title drops the date both of its PR-mates use | Stan | — | **Open** |
-| 23 | 🟢 Nit | Always-mounted, unmemoized modal re-executes its render body on every Workshop keystroke | Tim | — | **Open** |
-| 24 | 🟢 Nit | Memory-bank completion record documents the pre-amendment Haiku default; code ships Sonnet 5 | Bria | — | **Open** — the code is right, the receipt is stale |
+| 1 | 🔴 Blocking | Guest join stamps artifact deliveries for turns the packer dropped; the dedupe makes the false rows permanent | Blake | 🎯 | **Addressed** — exact packed `deliveredTurnIds`, with truncation regression |
+| 2 | 🟠 High | Cancellation is parsed as a model failure, and that failure dumps the writer's unbounded manuscript-derived response into the Output channel | Oliver, Patricia | 🎯🎯 Strong | **Addressed** — cancellation exits before parsing; rejected output is bounded to previews |
+| 3 | 🟠 High | A cancelled or failed widget commit leaves a permanent room turn promising directions whose body was never recorded | Blake, Bria | 🎯 | **Addressed** — widget turn and artifact publish atomically before inference |
+| 4 | 🟠 High | `scope: null` is silently repaired with **no** normalization tag — the `=== undefined` guard misses what `??` catches | Sam | — | **Addressed** — explicit null-scope normalization tag |
+| 5 | 🟠 High | `inferred-missing-scope` is logged but never regression-tested — violates the ADR this same PR introduces | Cal, Ada | 🎯 | **Addressed** — missing/null scope cases are regression-tested |
+| 6 | 🟠 High | Temperature ships at `0.7`; the concept doc specifies `0.4–0.5` and names the gate for raising it | Bria | — | **Addressed** — full generation uses `0.5` |
+| 7 | 🟠 High | `buildGestureDirective` — pure domain prompt-assembly — lives in the infra adapter and is imported back up into the application layer | Marcus | — | **Addressed** — moved to `WorkshopPromptBuilder` |
+| 8 | 🟠 High | Every session-state broadcast ships every widget config's full 32k dictionary; collection is uncapped and never retires | Blake | — | **Addressed** — windowed summaries in snapshots; full configs fetched on demand |
+| 9 | 🟠 High | The 50K-ceiling diagnosis never fires when the dictionary itself is what got truncated | Sam | — | **Addressed** — dictionary-frame truncation has a ceiling-specific failure |
+| 10 | 🟠 High | The actual Cancel route is never invoked in any test; the token guard at `:248` is unproven | Cal | — | **Addressed** — matched/mismatched token route regression |
+| 11 | 🟡 Standard | New cancel message skips the shared `CancelRequestPayload` contract and sends an empty payload with no `requestId` | Stan | — | **Addressed** — shared cancel factory and `workshop-widget` domain |
+| 12 | 🟡 Standard | New widget-config ledger inlined into an already-2,778-line service | Marcus | — | **Deferred** — extract with the next independent widget lifecycle; tracked in tech debt |
+| 13 | 🟡 Standard | Two files named `workshopWidgets.ts` across two layers — both doc-comments name the fix neither took | Parker | — | **Addressed** — presentation file renamed `workshopWidgetIcons.ts` |
+| 14 | 🟡 Standard | Marker adjacency hand-enumerated a second time, disconnected from `ORDERED_MARKERS` | Parker | — | **Addressed** — adjacency derives from `ORDERED_MARKERS` |
+| 15 | 🟡 Standard | Four copy-pasted "invalidate then set" callbacks encode one domain rule four times | Parker | — | **Addressed** — shared draft-field transition |
+| 16 | 🟡 Standard | Thread-artifact integrity does O(turns × artifacts) where an id→index Map already exists in the same function | Tim | — | **Addressed** — existing turn index is reused |
+| 17 | 🟡 Standard | ~10K-token system prompt, uncached, resent whole on every Generate/Regenerate; ~168K tokens at the ceiling | Tim | — | **Partially addressed** — compact stateless More route avoids resend; provider-portable caching deferred |
+| 18 | 🟡 Standard | Source-reference limits tested one-past-the-boundary, never at it — against this file's own convention | Cal | — | **Addressed** — exact 8-reference, 500-character, context and aggregate-content bounds |
+| 19 | 🟡 Standard | Regenerate-triggered cancellation logs nothing, while explicit Cancel does | Oliver | — | **Addressed** — reason-tagged writer/superseded cancellation logging |
+| 20 | 🟡 Standard | `relativeDuration` rounds 59m30s–60m into "60 minutes" and 23h30m+ into "24 hours" | Sam | — | **Deferred** — pre-existing shared renderer; boundary fix tracked in tech debt |
+| 21 | 🟢 Nit | Relative import where the sibling that constructs this class uses the alias | Stan, Marcus | 🎯 | **Addressed** |
+| 22 | 🟢 Nit | ADR title drops the date both of its PR-mates use | Stan | — | **Addressed** |
+| 23 | 🟢 Nit | Always-mounted, unmemoized modal re-executes its render body on every Workshop keystroke | Tim | — | **Addressed** — modal mounts only while open |
+| 24 | 🟢 Nit | Memory-bank completion record documents the pre-amendment Haiku default; code ships Sonnet 5 | Bria | — | **Addressed** — completion record corrected |
 | 25 | 🟢 Praise | Widget-commit persistence spine survives a full export → JSON → parse → hydrate round trip | Ada | — | **Verified** |
 | 26 | 🟢 Praise | Full suite green and all three typecheck projects clean — a real green, not a scoped one | Ada | — | **Verified** |
+| 27 | 🟡 Enhancement | Follow-up generation should reuse the visible result instead of rebuilding the full Gesture Dictionary | Okey, Ada | 🎯 | **Addressed** — stateless More gestures + deterministic merge; Regenerate all remains explicit |
 
 ### Note on the one dropped finding
 
@@ -67,6 +68,17 @@ Independent of the panel, run against PR head `cd7abe4`:
   `exportCommittedState` → `JSON` → `parseWorkshopSessionStateV1` → `hydrateCommittedState`
   passes; both the widget config and the room thread artifacts survive.
 - Working tree returned to a clean PR head after both experiments.
+
+### Remediation verification
+
+Run after resolving the ledger:
+
+- **`npm run typecheck`** — core, webview, and extension all exit 0.
+- **`npm test -- --runInBand`** — 147 suites / 1,688 tests / 1 snapshot, all green.
+- **`npm run lint`** — 0 errors (869 pre-existing warnings).
+- **`npm run build`** — production extension/webview bundles and bundle verification pass;
+  only the existing webpack asset-size warnings remain.
+- **`git diff --check`** — clean.
 
 ---
 

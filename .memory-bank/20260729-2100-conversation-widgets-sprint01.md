@@ -25,14 +25,13 @@ Accepted, with the architecture-lane (Marcus) review verdicts folded into a
      builder throws on non-registry kinds; house rule comment amended in place.
      No new reserved frame name in Sprint 01.
    - Fifth `ModelScope` `'widget'` (`proseMinion.widgetModel`, default
-     `anthropic/claude-haiku-4.5`).
+     `anthropic/claude-sonnet-5`).
    - `WorkshopWidgetHandler` constructed **inside** `WorkshopHandler`
      (WorkshopSessionMessageHandler mold, closure-injected `sendRoomMessage`
      over `executeMessage`, which now returns `{committed, userTurnId}`).
    - `widgetCommit` turn field is rail-discriminated; configs carry
-     `revision: 1`; snapshot ships `widgetConfigs` wholesale with a stated
-     bound (windowed configs + on-demand fetch) binding on the sprint that
-     first exceeds it.
+     `revision: 1`; snapshots ship lightweight configs for visible turns and
+     fetch the full Draft on demand when a chip opens.
    - Standing directives (Sprint 02) get their OWN reserved frame, not the
      attachment budget; personas may propose standing state, never install it;
      LG/PC precedence is stated to the model, not silently resolved.
@@ -49,14 +48,15 @@ Accepted, with the architecture-lane (Marcus) review verdicts folded into a
    (counter-never-trails, committedTurnId referential, self-clone rejection).
 6. **Webview**: live Widgets browser (honest disabled comps),
    `WorkshopGesturePlaygroundModal` (PendingApply posture: freeze on commit,
-   close only on host ok), commit chip + recommend chip on turns
+   close only on host ok), stateless **More gestures** plus explicit
+   **Regenerate all**, commit chip + recommend chip on turns
    (QuickActionBar mount pattern), `pm-ws-gesture-*` / `pm-ws-widget-*` CSS.
 
 ## Verification
 
-`npx jest` 146 suites / 1,586 tests green (architecture witnesses included);
+`npx jest` 147 suites / 1,688 tests green (architecture witnesses included);
 `npm run typecheck` green ×3; `npm run lint` 0 errors; `npm run build` +
-bundle verify green. Route-count witness updated 38 → 41.
+bundle verify green. Route-count witness updated 38 → 42.
 
 ## Known follow-ups
 
