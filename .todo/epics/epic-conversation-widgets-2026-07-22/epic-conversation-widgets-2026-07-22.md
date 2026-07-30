@@ -1,9 +1,10 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: In progress — Sprint 01 implemented 2026-07-29 (awaiting review)
+**Status**: In progress — Sprint 01 merged 2026-07-30; Sprint 02 next
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
-folded in). Sprint 01 implemented on `claude/gesture-playground-widget-201u8p`:
+folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
+into `epic/conversation-widgets`:
 design Spreads 00+01 synced, widget registry + host contracts, `widget`
 ModelScope, atomic commit route, Gesture Playground end to end (browser →
 pre-commit modal → one composite generation call → commit → chip →
@@ -11,7 +12,7 @@ clone-and-recommit),
 persona recommend/prefill, session-persisted `widgetConfigs`. Sprints 02–04
 not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**
-**Integration branch**: `epic/conversation-widgets` *(Sprint 01 currently on the session branch above; fold into the epic branch at review time)*
+**Integration branch**: `epic/conversation-widgets`
 
 ## Goal
 

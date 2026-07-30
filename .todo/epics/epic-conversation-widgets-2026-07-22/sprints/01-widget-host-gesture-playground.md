@@ -1,6 +1,6 @@
 # Sprint 01: Widget Host + Gesture Playground
 
-**Status**: Implemented and hardened 2026-07-29 — awaiting review/merge
+**Status**: Complete — merged into `epic/conversation-widgets` via PR #96 on 2026-07-30
 **Priority**: High
 **Branch**: `claude/gesture-dictionary-prompt-qgeuyq`
 **Estimated Effort**: 4-6 days
