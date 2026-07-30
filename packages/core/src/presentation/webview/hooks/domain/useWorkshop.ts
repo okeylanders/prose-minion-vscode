@@ -66,6 +66,17 @@ import {
   WorkshopTurnMessage,
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
+  WorkshopWidgetConfigSummary,
+  WorkshopWidgetConfigDataMessage,
+  WorkshopWidgetConfigSnapshot,
+  WorkshopWidgetGeneratePayload,
+  WorkshopWidgetGenerationProgressMessage,
+  WorkshopWidgetGenerationProgressPayload,
+  WorkshopWidgetMenuResultMessage,
+  WorkshopWidgetMenuResultPayload,
+  WorkshopWidgetActionResultMessage,
+  WorkshopWidgetActionResultPayload,
+  WorkshopCommitWidgetPayload,
   coerceWorkshopConversationBehavior,
   coerceWorkshopWriterProfile,
   coerceWorkshopWebResearchSettings
@@ -122,6 +133,21 @@ export interface WorkshopState {
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   /** Staged one-shot attachments for the writer's next message (Phase 6B). */
   pendingMessageAttachments: WorkshopMessageAttachmentSnapshot[];
+  /**
+   * Persisted widget authoring configs by stable `wc-N` id (ADR 2026-07-22) —
+   * host truth mirrored from the session snapshot; chips re-hydrate from it.
+   */
+  widgetConfigs: WorkshopWidgetConfigSummary[];
+  /** Full config fetched only when a committed widget chip is opened. */
+  widgetConfigData: WorkshopWidgetConfigSnapshot | null;
+  widgetConfigResponseId: string | null;
+  widgetConfigError: string | null;
+  /** Latest generate result; the modal drops results whose token is stale. */
+  widgetMenuResult: WorkshopWidgetMenuResultPayload | null;
+  /** Token-keyed live progress for the private pre-commit model call. */
+  widgetGenerationProgress: WorkshopWidgetGenerationProgressPayload | null;
+  /** Latest commit outcome; consumed by the open widget modal. */
+  widgetActionResult: WorkshopWidgetActionResultPayload | null;
   contextPending: boolean;
   /** Configured resource catalog for the Context Selector; null until requested. */
   contextCatalog: WorkshopContextCatalogEntry[] | null;
@@ -248,6 +274,16 @@ export interface WorkshopActions {
   deleteSession: (sessionId: string) => void;
   consumeSessionActionResult: () => void;
   clearError: () => void;
+  generateWidgetMenu: (payload: WorkshopWidgetGeneratePayload) => void;
+  cancelWidgetGenerate: (requestId: string) => void;
+  requestWidgetConfig: (configId: string) => void;
+  clearWidgetConfigData: () => void;
+  commitWidget: (payload: WorkshopCommitWidgetPayload) => void;
+  consumeWidgetActionResult: () => void;
+  handleWidgetMenuResult: (message: WorkshopWidgetMenuResultMessage) => void;
+  handleWidgetConfigData: (message: WorkshopWidgetConfigDataMessage) => void;
+  handleWidgetGenerationProgress: (message: WorkshopWidgetGenerationProgressMessage) => void;
+  handleWidgetActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
   handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
   handleSessionActionResult: (message: WorkshopSessionActionResultMessage) => void;
@@ -294,6 +330,17 @@ export const useWorkshop = (): UseWorkshopReturn => {
     React.useState<WorkshopAttachmentContentState | null>(null);
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
   const [pendingMessageAttachments, setPendingMessageAttachments] = React.useState<WorkshopMessageAttachmentSnapshot[]>([]);
+  const [widgetConfigs, setWidgetConfigs] = React.useState<WorkshopWidgetConfigSummary[]>([]);
+  const [widgetConfigData, setWidgetConfigData] =
+    React.useState<WorkshopWidgetConfigSnapshot | null>(null);
+  const [widgetConfigResponseId, setWidgetConfigResponseId] = React.useState<string | null>(null);
+  const [widgetConfigError, setWidgetConfigError] = React.useState<string | null>(null);
+  const [widgetMenuResult, setWidgetMenuResult] =
+    React.useState<WorkshopWidgetMenuResultPayload | null>(null);
+  const [widgetGenerationProgress, setWidgetGenerationProgress] =
+    React.useState<WorkshopWidgetGenerationProgressPayload | null>(null);
+  const [widgetActionResult, setWidgetActionResult] =
+    React.useState<WorkshopWidgetActionResultPayload | null>(null);
   const [contextPending, setContextPending] = React.useState(false);
   const [contextCatalog, setContextCatalog] = React.useState<WorkshopContextCatalogEntry[] | null>(null);
   const [wizardRun, setWizardRun] = React.useState<string | null>(null);
@@ -472,6 +519,66 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const runContextWizard = React.useCallback(() => {
     post(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD, {});
   }, [post]);
+
+  // ── Conversation Widgets (ADR 2026-07-22) ──────────────────────────────────
+
+  const generateWidgetMenu = React.useCallback((payload: WorkshopWidgetGeneratePayload) => {
+    setWidgetMenuResult(null);
+    setWidgetGenerationProgress(null);
+    post(MessageType.WORKSHOP_WIDGET_GENERATE, payload);
+  }, [post]);
+
+  const cancelWidgetGenerate = React.useCallback((requestId: string) => {
+    vscode.postMessage(
+      createCancelRequestMessage('workshop-widget', requestId, 'webview.workshop.widget')
+    );
+  }, [vscode]);
+
+  const requestWidgetConfig = React.useCallback((configId: string) => {
+    setWidgetConfigData(null);
+    setWidgetConfigResponseId(null);
+    setWidgetConfigError(null);
+    post(MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG, { configId });
+  }, [post]);
+
+  const clearWidgetConfigData = React.useCallback(() => {
+    setWidgetConfigData(null);
+    setWidgetConfigResponseId(null);
+    setWidgetConfigError(null);
+  }, []);
+
+  const commitWidget = React.useCallback((payload: WorkshopCommitWidgetPayload) => {
+    setWidgetActionResult(null);
+    post(MessageType.WORKSHOP_COMMIT_WIDGET, payload);
+  }, [post]);
+
+  const consumeWidgetActionResult = React.useCallback(() => {
+    setWidgetActionResult(null);
+  }, []);
+
+  const handleWidgetMenuResult = React.useCallback(
+    (message: WorkshopWidgetMenuResultMessage) => {
+      setWidgetMenuResult(message.payload);
+      setWidgetGenerationProgress((current) =>
+        current?.token === message.payload.token ? null : current
+      );
+    },
+    []
+  );
+
+  const handleWidgetGenerationProgress = React.useCallback(
+    (message: WorkshopWidgetGenerationProgressMessage) => {
+      setWidgetGenerationProgress(message.payload);
+    },
+    []
+  );
+
+  const handleWidgetActionResult = React.useCallback(
+    (message: WorkshopWidgetActionResultMessage) => {
+      setWidgetActionResult(message.payload);
+    },
+    []
+  );
 
   const cancelContextWizard = React.useCallback(() => {
     if (wizardRun) {
@@ -699,6 +806,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setRoomHasMemory(session.roomHasMemory);
       setContextAttachments(session.contextAttachments ?? []);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
+      setWidgetConfigs(session.widgetConfigs ?? []);
       setContextPending(session.pendingHostUpdate?.context ?? false);
       setTotalTurns(session.totalTurns);
       setHasHostConversation(session.participants.host.hasConversation);
@@ -737,6 +845,15 @@ export const useWorkshop = (): UseWorkshopReturn => {
       }
     },
     [setLiveRun, streaming]
+  );
+
+  const handleWidgetConfigData = React.useCallback(
+    (message: WorkshopWidgetConfigDataMessage) => {
+      setWidgetConfigResponseId(message.payload.configId);
+      setWidgetConfigData(message.payload.config ?? null);
+      setWidgetConfigError(message.payload.error ?? null);
+    },
+    []
   );
 
   const handleSessionsData = React.useCallback((message: WorkshopSessionsDataMessage) => {
@@ -918,6 +1035,13 @@ export const useWorkshop = (): UseWorkshopReturn => {
     attachmentContent,
     contextAttachments,
     pendingMessageAttachments,
+    widgetConfigs,
+    widgetConfigData,
+    widgetConfigResponseId,
+    widgetConfigError,
+    widgetMenuResult,
+    widgetGenerationProgress,
+    widgetActionResult,
     contextPending,
     contextCatalog,
     contextSearch,
@@ -982,6 +1106,16 @@ export const useWorkshop = (): UseWorkshopReturn => {
     clearContextSearch,
     addContextResources,
     attachMessageResources,
+    generateWidgetMenu,
+    cancelWidgetGenerate,
+    requestWidgetConfig,
+    clearWidgetConfigData,
+    commitWidget,
+    consumeWidgetActionResult,
+    handleWidgetMenuResult,
+    handleWidgetConfigData,
+    handleWidgetGenerationProgress,
+    handleWidgetActionResult,
     attachMessageFile,
     removeMessageAttachment,
     setExcerptResource,

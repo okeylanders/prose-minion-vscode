@@ -65,6 +65,7 @@ elsewhere.
 | Low | [Build command gate semantics](2026-06-29-build-command-gate-semantics.md) | Deferred |
 | Low | [Workshop bounded turn packer](2026-07-14-workshop-bounded-turn-packer.md) | Deferred |
 | Medium | [Persona prompt/validator contract drift](2026-07-26-persona-prompt-validator-contract-drift.md) | Open |
+| Medium | [Workshop widget-local persisted codecs](2026-07-30-workshop-widget-local-codecs.md) | Deferred |
 
 ## Review Guidance
 

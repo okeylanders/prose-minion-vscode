@@ -18,6 +18,11 @@ import {
   WORKSHOP_GUEST_CAPACITY
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
+import {
+  isLiveWorkshopWidgetId,
+  isWorkshopWidgetId,
+  workshopWidgetIdFromArtifactKind
+} from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_TODO_BOUNDS
@@ -50,7 +55,11 @@ export function assertWorkshopSessionStateShape(
       'scope',
       'shelvedExcerpt',
       'selectedToolId',
-      'lastCommittedPersonaBehavior'
+      'lastCommittedPersonaBehavior',
+      // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
+      'widgetConfigs',
+      // Optional: pre-room-artifact-ledger checkpoints retain refs only.
+      'threadArtifacts'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -77,11 +86,53 @@ export function assertWorkshopSessionStateShape(
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
   }
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
+  if (state.widgetConfigs !== undefined) {
+    arrayOf(state.widgetConfigs, 'Workshop session state.widgetConfigs', assertWidgetConfig);
+  }
+  if (state.threadArtifacts !== undefined) {
+    arrayOf(
+      state.threadArtifacts,
+      'Workshop session state.threadArtifacts',
+      assertThreadArtifact
+    );
+  }
   if (state.lastCommittedPersonaBehavior !== undefined) {
     assertLastCommittedBehavior(
       state.lastCommittedPersonaBehavior,
       'Workshop session state.lastCommittedPersonaBehavior'
     );
+  }
+}
+
+function assertThreadArtifact(value: unknown, path: string): void {
+  const artifact = exactObject(
+    value,
+    path,
+    ['id', 'turnId', 'name', 'content'],
+    ['kind', 'sourcePath', 'truncation']
+  );
+  stringAt(artifact.id, `${path}.id`);
+  stringAt(artifact.turnId, `${path}.turnId`);
+  stringAt(artifact.name, `${path}.name`);
+  stringAt(artifact.content, `${path}.content`);
+  optionalStringAt(artifact.sourcePath, `${path}.sourcePath`);
+  if (
+    artifact.kind !== undefined
+    && (
+      typeof artifact.kind !== 'string'
+      || workshopWidgetIdFromArtifactKind(artifact.kind) === undefined
+    )
+  ) {
+    shapeError(`${path}.kind`, 'widget:<registry id>');
+  }
+  if (artifact.truncation !== undefined) {
+    const truncation = exactObject(
+      artifact.truncation,
+      `${path}.truncation`,
+      ['keptWords', 'totalWords']
+    );
+    numberAt(truncation.keptWords, `${path}.truncation.keptWords`);
+    numberAt(truncation.totalWords, `${path}.truncation.totalWords`);
   }
 }
 
@@ -234,12 +285,154 @@ function assertCounters(value: unknown): void {
   const counters = exactObject(
     value,
     'Workshop session state.counters',
-    ['attachment', 'threadArtifact', 'turn', 'todo']
+    ['attachment', 'threadArtifact', 'turn', 'todo'],
+    // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
+    ['widgetConfig']
   );
   numberAt(counters.attachment, 'Workshop session state.counters.attachment');
   numberAt(counters.threadArtifact, 'Workshop session state.counters.threadArtifact');
   numberAt(counters.turn, 'Workshop session state.counters.turn');
   numberAt(counters.todo, 'Workshop session state.counters.todo');
+  optionalNumberAt(counters.widgetConfig, 'Workshop session state.counters.widgetConfig');
+}
+
+function assertWidgetConfig(value: unknown, path: string): void {
+  const config = exactObject(
+    value,
+    path,
+    ['id', 'widgetId', 'revision', 'draft', 'createdAt'],
+    ['clonedFromConfigId', 'committedTurnId', 'artifactId']
+  );
+  stringAt(config.id, `${path}.id`);
+  if (!isWorkshopWidgetId(config.widgetId)) {
+    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+  }
+  numberAt(config.revision, `${path}.revision`);
+  numberAt(config.createdAt, `${path}.createdAt`);
+  optionalStringAt(config.clonedFromConfigId, `${path}.clonedFromConfigId`);
+  optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
+  optionalStringAt(config.artifactId, `${path}.artifactId`);
+  assertGestureDraft(config.draft, `${path}.draft`);
+}
+
+function assertGestureDraft(value: unknown, path: string): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  const draft = exactObject(
+    value,
+    path,
+    [
+      'targetPhrase',
+      'writerInstructions',
+      'contextText',
+      'characterNotes',
+      'dictionaryMarkdown',
+      'menu',
+      'selections',
+      'note'
+    ],
+    // `sourceReferences` was added after the first persisted Gesture
+    // Playground drafts. Hydration supplies its safe empty default before
+    // current invariants are enforced.
+    ['includeDictionaryInCommit', 'sourceReferences']
+  );
+  boundedStringAt(
+    draft.targetPhrase,
+    `${path}.targetPhrase`,
+    budget.gestureTargetPhraseCharacters,
+    false
+  );
+  boundedStringAt(
+    draft.writerInstructions,
+    `${path}.writerInstructions`,
+    budget.gestureWriterInstructionsCharacters
+  );
+  boundedStringAt(
+    draft.contextText,
+    `${path}.contextText`,
+    budget.gestureContextCharacters
+  );
+  boundedStringAt(
+    draft.characterNotes,
+    `${path}.characterNotes`,
+    budget.gestureCharacterNotesCharacters
+  );
+  if (draft.sourceReferences !== undefined) {
+    assertWidgetSourceReferences(draft.sourceReferences, `${path}.sourceReferences`);
+  }
+  boundedStringAt(
+    draft.dictionaryMarkdown,
+    `${path}.dictionaryMarkdown`,
+    budget.gestureDictionaryCharacters,
+    false
+  );
+  if (draft.includeDictionaryInCommit !== undefined) {
+    booleanAt(
+      draft.includeDictionaryInCommit,
+      `${path}.includeDictionaryInCommit`
+    );
+  }
+  if (
+    !Array.isArray(draft.selections)
+    || draft.selections.length === 0
+    || draft.selections.length > budget.gestureSelectionsPerCommit
+  ) {
+    shapeError(
+      `${path}.selections`,
+      `an array of 1–${budget.gestureSelectionsPerCommit} strings`
+    );
+  }
+  const selections = draft.selections as unknown[];
+  const seenSelections = new Set<string>();
+  arrayOf(selections, `${path}.selections`, (selection, selectionPath) => {
+    boundedStringAt(selection, selectionPath, budget.gestureOptionCharacters, false);
+    const text = selection as string;
+    if (seenSelections.has(text)) {
+      shapeError(`${path}.selections`, 'an array without duplicate directions');
+    }
+    seenSelections.add(text);
+  });
+  boundedStringAt(draft.note, `${path}.note`, budget.gestureNoteCharacters);
+  if (
+    !Array.isArray(draft.menu)
+    || draft.menu.length < budget.gestureMenuGroupsMinimum
+    || draft.menu.length > budget.gestureMenuGroups
+  ) {
+    shapeError(
+      `${path}.menu`,
+      `an array of ${budget.gestureMenuGroupsMinimum}–${budget.gestureMenuGroups} groups`
+    );
+  }
+  const menuOptions = new Set<string>();
+  arrayOf(draft.menu, `${path}.menu`, (groupValue, groupPath) => {
+    const group = exactObject(groupValue, groupPath, ['heading', 'options']);
+    boundedStringAt(
+      group.heading,
+      `${groupPath}.heading`,
+      budget.gestureOptionCharacters,
+      false
+    );
+    if (
+      !Array.isArray(group.options)
+      || group.options.length < budget.gestureOptionsPerGroupMinimum
+      || group.options.length > budget.gestureOptionsPerGroup
+    ) {
+      shapeError(
+        `${groupPath}.options`,
+        `an array of ${budget.gestureOptionsPerGroupMinimum}–${budget.gestureOptionsPerGroup} strings`
+      );
+    }
+    arrayOf(group.options, `${groupPath}.options`, (option, optionPath) => {
+      boundedStringAt(option, optionPath, budget.gestureOptionCharacters, false);
+      const text = option as string;
+      if (menuOptions.has(text)) {
+        shapeError(`${path}.menu`, 'groups without duplicate options');
+      }
+      menuOptions.add(text);
+    });
+  });
+  if ([...seenSelections].some((selection) => !menuOptions.has(selection))) {
+    shapeError(`${path}.selections`, 'directions drawn from the generated menu');
+  }
 }
 
 function assertWriterSources(value: unknown): void {
@@ -322,7 +515,10 @@ function assertTurn(value: unknown, path: string): void {
       'citations',
       'truncated',
       'behavior',
-      'behaviorTransition'
+      'behaviorTransition',
+      // Conversation Widgets (ADR 2026-07-22).
+      'widgetCommit',
+      'widgetRecommendation'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -398,6 +594,113 @@ function assertTurn(value: unknown, path: string): void {
   if (turn.behaviorTransition !== undefined) {
     assertBehaviorTransition(turn.behaviorTransition, `${path}.behaviorTransition`);
   }
+  if (turn.widgetCommit !== undefined) {
+    assertTurnWidgetCommit(turn.widgetCommit, `${path}.widgetCommit`);
+  }
+  if (turn.widgetRecommendation !== undefined) {
+    assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
+  }
+}
+
+function assertTurnWidgetCommit(value: unknown, path: string): void {
+  const commit = exactObject(
+    value,
+    path,
+    ['widgetId', 'widgetConfigId', 'rail', 'artifactId', 'selectionCount']
+  );
+  if (!isWorkshopWidgetId(commit.widgetId)) {
+    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+  }
+  stringAt(commit.widgetConfigId, `${path}.widgetConfigId`);
+  enumAt(commit.rail, `${path}.rail`, ['thread-artifact']);
+  stringAt(commit.artifactId, `${path}.artifactId`);
+  numberAt(commit.selectionCount, `${path}.selectionCount`);
+}
+
+function assertTurnWidgetRecommendation(value: unknown, path: string): void {
+  const recommendation = exactObject(value, path, ['widgetId'], ['seed']);
+  if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
+    shapeError(`${path}.widgetId`, 'live Conversation Widget id');
+  }
+  if (recommendation.seed !== undefined) {
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    const seed = exactObject(
+      recommendation.seed,
+      `${path}.seed`,
+      [],
+      [
+        'targetPhrase',
+        'writerInstructions',
+        'contextText',
+        'characterNotes',
+        'sourceReferences'
+      ]
+    );
+    optionalBoundedStringAt(
+      seed.targetPhrase,
+      `${path}.seed.targetPhrase`,
+      budget.gestureTargetPhraseCharacters,
+      false
+    );
+    optionalBoundedStringAt(
+      seed.writerInstructions,
+      `${path}.seed.writerInstructions`,
+      budget.gestureWriterInstructionsCharacters,
+      false
+    );
+    optionalBoundedStringAt(
+      seed.contextText,
+      `${path}.seed.contextText`,
+      budget.gestureContextCharacters,
+      false
+    );
+    optionalBoundedStringAt(
+      seed.characterNotes,
+      `${path}.seed.characterNotes`,
+      budget.gestureCharacterNotesCharacters,
+      false
+    );
+    if (seed.sourceReferences !== undefined) {
+      assertWidgetSourceReferences(seed.sourceReferences, `${path}.seed.sourceReferences`);
+    }
+  }
+}
+
+function assertWidgetSourceReferences(value: unknown, path: string): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  if (!Array.isArray(value) || value.length > budget.gestureSourceReferences) {
+    shapeError(path, `an array of at most ${budget.gestureSourceReferences} source references`);
+  }
+  const seen = new Set<string>();
+  let serializedCharacters = 0;
+  arrayOf(value, path, (referenceValue, referencePath) => {
+    const reference = objectAt(referenceValue, referencePath);
+    if (reference.kind === 'active-excerpt') {
+      exactKeys(reference, referencePath, ['kind']);
+    } else if (reference.kind === 'context-attachment') {
+      exactKeys(reference, referencePath, ['kind', 'attachmentId']);
+      stringAt(reference.attachmentId, `${referencePath}.attachmentId`);
+      if (!/^ctx-[1-9]\d*$/.test(reference.attachmentId as string)) {
+        shapeError(`${referencePath}.attachmentId`, 'a ctx-<n> attachment id');
+      }
+    } else {
+      shapeError(`${referencePath}.kind`, 'active-excerpt or context-attachment');
+    }
+    const key = reference.kind === 'active-excerpt'
+      ? 'active-excerpt'
+      : `context-attachment:${String(reference.attachmentId)}`;
+    serializedCharacters += key.length + (seen.size > 0 ? 1 : 0);
+    if (serializedCharacters > budget.gestureSourceReferenceCharacters) {
+      shapeError(
+        path,
+        `source references within ${budget.gestureSourceReferenceCharacters} characters`
+      );
+    }
+    if (seen.has(key)) {
+      shapeError(path, 'source references without duplicates');
+    }
+    seen.add(key);
+  });
 }
 
 function assertCitation(value: unknown, path: string): void {
@@ -782,9 +1085,36 @@ function stringAt(value: unknown, path: string): void {
   }
 }
 
+function boundedStringAt(
+  value: unknown,
+  path: string,
+  maximumCharacters: number,
+  allowBlank = true
+): void {
+  stringAt(value, path);
+  const text = value as string;
+  if (!allowBlank && text.trim().length === 0) {
+    shapeError(path, 'a non-empty string');
+  }
+  if (text.length > maximumCharacters) {
+    shapeError(path, `a string of at most ${maximumCharacters} characters`);
+  }
+}
+
 function optionalStringAt(value: unknown, path: string): void {
   if (value !== undefined) {
     stringAt(value, path);
+  }
+}
+
+function optionalBoundedStringAt(
+  value: unknown,
+  path: string,
+  maximumCharacters: number,
+  allowBlank = true
+): void {
+  if (value !== undefined) {
+    boundedStringAt(value, path, maximumCharacters, allowBlank);
   }
 }
 

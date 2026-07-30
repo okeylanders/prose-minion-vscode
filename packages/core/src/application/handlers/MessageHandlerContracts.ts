@@ -33,6 +33,7 @@ import type { StandardsService } from '@services/resources/StandardsService';
 import type { CategorySearchService } from '@services/search/CategorySearchService';
 import type { WordSearchService } from '@services/search/WordSearchService';
 import type { AccountBalanceService } from '@/infrastructure/account';
+import type { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import type { PlatformDisposable } from '@/platform';
 
@@ -113,4 +114,6 @@ export interface CoreServices {
   workshopSessionTimeService: WorkshopSessionTimeService;
   /** Ordered aggregate + conversation archive persistence boundary. */
   workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator;
+  /** Gesture Playground pre-commit dictionary + menu generation (ADR 2026-07-22). */
+  gesturePlaygroundService: GesturePlaygroundService;
 }

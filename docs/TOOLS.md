@@ -197,7 +197,10 @@ Loaded by `packages/core/src/tools/shared/guides.ts` when `proseMinion.includeCr
 
 ## Token Limits & Models
 
-- A unified `proseMinion.maxTokens` applies across all tools (default 10,000). Responses hitting the cap show a truncation notice.
+- `proseMinion.maxTokens` is the general tool default (10,000). Bounded
+  composite workflows may use their own documented allowance; Gesture
+  Dictionary generation uses 14,000 so the readable scan and menu can complete.
+  Responses hitting a provider cap show a truncation notice.
 - Models are scoped per feature: `assistantModel`, `dictionaryModel`, `contextModel`, `categoryModel`. See the in-app **Model Browser** for the full curated list.
 - Curated model IDs are defined in `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts` and verified against the live OpenRouter API.
 

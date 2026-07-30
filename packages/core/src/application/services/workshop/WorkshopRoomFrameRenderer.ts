@@ -14,6 +14,10 @@ import {
   packWorkshopTurnsNewestFirst
 } from '@/application/services/workshop/WorkshopTurnPacker';
 import { neutralizeReservedPersonaPromptDelimiters } from '@/utils/workshopPromptFrames';
+import {
+  buildWorkshopThreadArtifactFrame,
+  WorkshopThreadArtifact
+} from '@/application/services/workshop/WorkshopThreadArtifactFrame';
 
 export interface WorkshopRoomFrameRenderOptions {
   /** Prompt-effective preferred address; raw writer profile never enters session state. */
@@ -21,6 +25,10 @@ export interface WorkshopRoomFrameRenderOptions {
   /** Host-stamped frame-render time. */
   renderedAt?: number;
   gapThresholdMs?: number;
+  /** Host-private artifact lookup; omitted in presentation-only projections. */
+  threadArtifactsForTurn?: (
+    turn: WorkshopTurn
+  ) => readonly WorkshopThreadArtifact[];
 }
 
 export interface WorkshopTranscript {
@@ -64,7 +72,8 @@ function writerLabel(
 
 export function formatWorkshopRoomTurn(
   turn: WorkshopTurn,
-  writerName?: string
+  writerName?: string,
+  threadArtifacts: readonly WorkshopThreadArtifact[] = []
 ): string {
   let speaker: string;
   switch (turn.participant) {
@@ -92,7 +101,8 @@ export function formatWorkshopRoomTurn(
   }
   return [
     `${neutralizeReservedPersonaPromptDelimiters(speaker)}:`,
-    neutralizeReservedPersonaPromptDelimiters(turn.content)
+    neutralizeReservedPersonaPromptDelimiters(turn.content),
+    ...threadArtifacts.map(buildWorkshopThreadArtifactFrame)
   ].join('\n');
 }
 
@@ -116,7 +126,11 @@ function renderTemporalRoomBlocks(
       blocks.push(`[${relativeDuration(turn.timestamp - previous.timestamp)} later]`);
     }
     blocks.push(
-      formattedTurns?.[index] ?? formatWorkshopRoomTurn(turn, options.writerName)
+      formattedTurns?.[index] ?? formatWorkshopRoomTurn(
+        turn,
+        options.writerName,
+        options.threadArtifactsForTurn?.(turn) ?? []
+      )
     );
   });
 
@@ -140,7 +154,11 @@ export function buildWorkshopGuestTranscript(
 ): WorkshopTranscript {
   const packed = packWorkshopTurnsNewestFirst(
     turns,
-    (turn) => formatWorkshopRoomTurn(turn, options.writerName),
+    (turn) => formatWorkshopRoomTurn(
+      turn,
+      options.writerName,
+      options.threadArtifactsForTurn?.(turn) ?? []
+    ),
     {
       turnLimit: PROMPT_BUDGETS.guestJoinSnapshot.turns,
       characterLimit: PROMPT_BUDGETS.guestJoinSnapshot.characters,

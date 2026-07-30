@@ -15,7 +15,8 @@ import {
   WorkshopSessionScope,
   WorkshopToolId,
   WorkshopTurn,
-  WorkshopTodoItem
+  WorkshopTodoItem,
+  WorkshopWidgetConfigSnapshot
 } from '@messages';
 import type {
   WorkshopContextAttachment,
@@ -30,6 +31,9 @@ import {
 import {
   clonePersistedJson
 } from '@/application/services/workshop/persistedJson';
+import type {
+  WorkshopThreadArtifact
+} from '@/application/services/workshop/WorkshopThreadArtifactFrame';
 
 export type WorkshopStoredTodoItemV1 = Omit<WorkshopTodoItem, 'stale'>;
 
@@ -55,6 +59,12 @@ export interface WorkshopSessionStateV1 {
   shelvedExcerpt?: WorkshopExcerpt;
   contextAttachments: WorkshopContextAttachment[];
   pendingMessageAttachments: WorkshopMessageAttachment[];
+  /**
+   * Host-private bodies for committed room-wide one-shot artifacts. OPTIONAL
+   * because checkpoints written before the room-ledger repair retain only
+   * display-safe turn references and cannot reconstruct already-shipped bodies.
+   */
+  threadArtifacts?: WorkshopThreadArtifact[];
   revisions: {
     excerpt: number;
     replacementCount: number;
@@ -79,7 +89,19 @@ export interface WorkshopSessionStateV1 {
     threadArtifact: number;
     turn: number;
     todo: number;
+    /**
+     * OPTIONAL in the persisted grammar (ADR 2026-07-22): checkpoints written
+     * before Conversation Widgets have no widget counter, and hydration
+     * defaults it to zero rather than refusing to open a writer's saved room.
+     */
+    widgetConfig?: number;
   };
+  /**
+   * Persisted widget authoring configs (ADR 2026-07-22). OPTIONAL for the
+   * same pre-widget-checkpoint reason as `counters.widgetConfig`; absent
+   * hydrates empty.
+   */
+  widgetConfigs?: WorkshopWidgetConfigSnapshot[];
   writerSources: {
     host: ContextSourceEntry[];
     tools: Partial<Record<WorkshopToolId, ContextSourceEntry[]>>;

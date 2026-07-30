@@ -34,6 +34,7 @@ Scoped models per feature. Each scope can use a different model to balance cost 
 | `proseMinion.assistantModel` | Assistant | `anthropic/claude-sonnet-5` | Prose & dialogue analysis |
 | `proseMinion.dictionaryModel` | Dictionary | `anthropic/claude-haiku-4.5` | Dictionary/utility lookups |
 | `proseMinion.contextModel` | Context | `openai/gpt-5.4` | Context assistant |
+| `proseMinion.widgetModel` | Conversation Widgets | `anthropic/claude-sonnet-5` | Quality-first pre-commit generation, including Gesture Playground |
 | `proseMinion.categoryModel` | Category Search | `anthropic/claude-sonnet-5` | Semantic word discovery |
 
 Model IDs are curated and verified against the live OpenRouter API. See the Model Browser in the Settings Overlay for the full list.
@@ -45,7 +46,7 @@ Model IDs are curated and verified against the live OpenRouter API. See the Mode
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `proseMinion.temperature` | number (0–2) | `0.7` | AI creativity: 0 = focused, 2 = very creative |
-| `proseMinion.maxTokens` | number (100–100000) | `10000` | Max response length (applied uniformly across all tools). Responses hitting the cap show a truncation notice. |
+| `proseMinion.maxTokens` | number (100–100000) | `10000` | General AI-tool response limit. Bounded workflows may use their own documented output allowance; responses hitting a cap show a truncation notice. |
 | `proseMinion.includeCraftGuides` | boolean | `true` | Include craft guides in AI prompts (writing best practices, sensory details, scene examples) |
 | `proseMinion.applyContextWindowTrimming` | boolean | `true` | Auto-trim large inputs to prevent context window errors |
 

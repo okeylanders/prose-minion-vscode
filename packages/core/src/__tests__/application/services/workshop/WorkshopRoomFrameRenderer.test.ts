@@ -76,4 +76,26 @@ describe('WorkshopRoomFrameRenderer', () => {
     expect(transcript.deliveredTurnIds).toEqual([]);
     expect(transcript.message).not.toContain(oversized.slice(0, 100));
   });
+
+  it('reconstructs room artifact frames in a cold guest transcript', () => {
+    const writerTurn = turn('writer', {
+      role: 'user',
+      participant: 'writer',
+      content: 'Use this reference.',
+      messageAttachments: [{ id: 'ta-7', label: 'mara.md', words: 5 }]
+    });
+    const transcript = buildWorkshopGuestTranscript([writerTurn], {
+      threadArtifactsForTurn: (candidate) => candidate.id === writerTurn.id
+        ? [{
+            id: 'ta-7',
+            turnId: writerTurn.id,
+            name: 'mara.md',
+            content: 'Mara uses the mug to contain the beat.'
+          }]
+        : []
+    });
+
+    expect(transcript.message).toContain('<thread-artifact id="ta-7">');
+    expect(transcript.message).toContain('Mara uses the mug to contain the beat.');
+  });
 });

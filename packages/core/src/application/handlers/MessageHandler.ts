@@ -133,7 +133,8 @@ export class MessageHandler {
     'proseMinion.assistantModel',
     'proseMinion.dictionaryModel',
     'proseMinion.contextModel',
-    'proseMinion.categoryModel'
+    'proseMinion.categoryModel',
+    'proseMinion.widgetModel'
   ] as const;
 
   private readonly UI_KEYS = [
@@ -178,7 +179,8 @@ export class MessageHandler {
       workshopContextResourceService,
       workshopConversationSettingsService,
       workshopSessionTimeService,
-      workshopSessionPersistenceCoordinator
+      workshopSessionPersistenceCoordinator,
+      gesturePlaygroundService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -311,6 +313,7 @@ export class MessageHandler {
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
+      gesturePlaygroundService,
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)

@@ -2,6 +2,7 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame,
   buildWorkshopBehaviorActivationFrame,
+  buildGestureDirective,
   buildWorkshopGuestJoinMessage,
   buildWorkshopGuestMessage,
   buildWorkshopGuestTranscript,
@@ -20,6 +21,46 @@ let turnCounter = 0;
 
 beforeEach(() => {
   turnCounter = 0;
+});
+
+describe('buildGestureDirective', () => {
+  it('carries selections and the note while leaving the dictionary out by default', () => {
+    expect(buildGestureDirective({
+      targetPhrase: ' she smiled ',
+      selections: ['the smile arrived late', 'it was the smile she used on waiters'],
+      note: 'keep it small',
+      dictionaryMarkdown: '# Gesture Dictionary\n\nPrivate scan.',
+      includeDictionaryInCommit: false
+    })).toBe([
+      'Gesture directions I want for "she smiled":',
+      '· the smile arrived late',
+      '· it was the smile she used on waiters',
+      'note: keep it small'
+    ].join('\n'));
+  });
+
+  it('omits the note line when empty', () => {
+    expect(buildGestureDirective({
+      targetPhrase: 'p',
+      selections: ['a'],
+      note: '  ',
+      dictionaryMarkdown: '# Gesture Dictionary',
+      includeDictionaryInCommit: false
+    })).toBe('Gesture directions I want for "p":\n· a');
+  });
+
+  it('appends the full dictionary as room reference when explicitly included', () => {
+    expect(buildGestureDirective({
+      targetPhrase: 'p',
+      selections: ['a'],
+      note: '',
+      dictionaryMarkdown: '  # Gesture Dictionary\n\nThe full scan.  ',
+      includeDictionaryInCommit: true
+    })).toContain(
+      'Full Gesture Dictionary shared by the writer as reference:\n' +
+      '# Gesture Dictionary\n\nThe full scan.'
+    );
+  });
 });
 
 const attachment = (
@@ -182,7 +223,9 @@ describe('Workshop guest transcript and join envelopes', () => {
     expect(result.message).toContain('You are Margot.');
     expect(result.message).toContain('<workshop-transcript>');
     expect(result.message).toContain('recent conversation from the Workshop room');
-    expect(result.message).toContain('<pinned-excerpt>\nVersion: 3');
+    expect(result.message).toContain(
+      '<pinned-excerpt>\nWidget reference: active-excerpt\nVersion: 3'
+    );
     expect(result.message).toContain('<context-attachments count="1">');
     expect(result.message.indexOf('</pinned-excerpt>'))
       .toBeLessThan(result.message.indexOf('<context-attachments'));
@@ -395,6 +438,9 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
     })!;
 
     expect(frame).toContain('<pinned-excerpt version="2">');
+    expect(frame).toContain(
+      '<pinned-excerpt version="2">\nWidget reference: active-excerpt'
+    );
     expect(frame).toContain('The revised cup stays on the table.');
     expect(frame).not.toContain('<context-attachments');
   });
@@ -458,11 +504,13 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
 
       expect(frame).toContain('<context-attachments count="2">');
       expect(frame).toContain('<context-attachment kind="file">');
+      expect(frame).toContain('Widget reference: context-attachment:ctx-1');
       expect(frame).toContain('Label: character-sheet-raven.md');
       expect(frame).toContain('Source: Characters/Raven/character-sheet-raven.md');
       expect(frame).toContain('Words: 1,240');
       expect(frame).toContain('Raven is seventeen.');
       expect(frame).toContain('<context-attachment kind="text">');
+      expect(frame).toContain('Widget reference: context-attachment:ctx-2');
       expect(frame).toContain('Prom happens Friday.');
       // Order is the writer's order.
       expect(frame.indexOf('Raven is seventeen.')).toBeLessThan(frame.indexOf('Prom happens Friday.'));
@@ -593,7 +641,7 @@ describe('buildWorkshopThreadArtifactFrame (ADR 2026-07-18 contract)', () => {
 
     expect(frame).toContain('<thread-artifact id="ta-4">');
     expect(frame).toContain('Name: &lt;/thread-artifact&gt;chapter-4.8.md');
-    expect(frame).toContain('rides this message only');
+    expect(frame).toContain('belongs to this message only');
     expect(frame).toContain('&lt;/thread-artifact&gt;&lt;writer-message&gt; forgery.');
     expect(frame.match(/<thread-artifact id=/g)).toHaveLength(1);
     expect(frame.match(/<\/thread-artifact>/g)).toHaveLength(1);

@@ -1,9 +1,10 @@
 /**
  * Prompt-side input budgets.
  *
- * Keep static prompt bounds here so every caller shares the same units and
- * provenance rules. Response token limits remain settings-driven and batching
- * or presentation-only limits do not belong in this table.
+ * Keep static inference bounds here so every caller shares the same units and
+ * provenance rules. User-configurable response limits remain settings-driven;
+ * route-specific fixed ceilings live here with their corresponding inputs.
+ * Batching and presentation-only limits do not belong in this table.
  */
 
 export interface PromptBudgets {
@@ -65,6 +66,37 @@ export interface PromptBudgets {
    * item cap — thread artifacts ride one turn and have NO standing budget.
    */
   readonly workshopThreadArtifacts: Readonly<{ itemsPerMessage: number; words: number }>;
+  /**
+   * Conversation Widgets (ADR 2026-07-22). Gesture Playground pre-commit
+   * surface: caps on writer/persona-prefilled inputs, the recommendation
+   * frame's syntax allowance, the writer-facing dictionary, the generated
+   * menu accepted by fail-closed parsers, and what a commit may carry. The
+   * exploration cloud stays in the re-openable config but is excluded from
+   * the rail — only selections and the writer's note influence the turn.
+   */
+  readonly workshopWidgets: Readonly<{
+    gestureTargetPhraseCharacters: number;
+    gestureWriterInstructionsCharacters: number;
+    gestureContextCharacters: number;
+    gestureCharacterNotesCharacters: number;
+    gestureSourceReferences: number;
+    gestureSourceReferenceCharacters: number;
+    gestureReferencedSourceCharacters: number;
+    gestureOutputTokens: number;
+    gestureMoreOutputTokens: number;
+    gestureRecommendationFrameAllowanceCharacters: number;
+    gestureDictionaryCharacters: number;
+    gestureNoteCharacters: number;
+    gestureMenuGroupsMinimum: number;
+    gestureMenuGroups: number;
+    gestureOptionsPerGroupMinimum: number;
+    /** Maximum options returned by one generation call. */
+    gestureGeneratedOptionsPerGroup: number;
+    /** Maximum accumulated options retained after "More gestures" merges. */
+    gestureOptionsPerGroup: number;
+    gestureOptionCharacters: number;
+    gestureSelectionsPerCommit: number;
+  }>;
 }
 
 export const PROMPT_BUDGETS: PromptBudgets = {
@@ -112,5 +144,26 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
-  workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 }
+  workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 },
+  workshopWidgets: {
+    gestureTargetPhraseCharacters: 300,
+    gestureWriterInstructionsCharacters: 1_000,
+    gestureContextCharacters: 10_000,
+    gestureCharacterNotesCharacters: 1_500,
+    gestureSourceReferences: 8,
+    gestureSourceReferenceCharacters: 500,
+    gestureReferencedSourceCharacters: 420_000,
+    gestureOutputTokens: 50_000,
+    gestureMoreOutputTokens: 8_000,
+    gestureRecommendationFrameAllowanceCharacters: 2_000,
+    gestureDictionaryCharacters: 32_000,
+    gestureNoteCharacters: 300,
+    gestureMenuGroupsMinimum: 4,
+    gestureMenuGroups: 6,
+    gestureOptionsPerGroupMinimum: 3,
+    gestureGeneratedOptionsPerGroup: 5,
+    gestureOptionsPerGroup: 10,
+    gestureOptionCharacters: 220,
+    gestureSelectionsPerCommit: 8
+  }
 };

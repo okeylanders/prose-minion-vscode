@@ -171,7 +171,15 @@ import {
   WorkshopSessionStateMessage,
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
-  WorkshopSessionSaveStatusMessage
+  WorkshopSessionSaveStatusMessage,
+  WorkshopWidgetGenerateMessage,
+  CancelWidgetGenerateRequestMessage,
+  WorkshopWidgetGenerationProgressMessage,
+  WorkshopWidgetMenuResultMessage,
+  WorkshopRequestWidgetConfigMessage,
+  WorkshopWidgetConfigDataMessage,
+  WorkshopCommitWidgetMessage,
+  WorkshopWidgetActionResultMessage
 } from './workshop';
 
 export type WebviewToExtensionMessage =
@@ -255,7 +263,11 @@ export type WebviewToExtensionMessage =
   | WorkshopRenameSessionMessage
   | WorkshopDuplicateSessionMessage
   | WorkshopRevealSessionMessage
-  | WorkshopDeleteSessionMessage;
+  | WorkshopDeleteSessionMessage
+  | WorkshopWidgetGenerateMessage
+  | CancelWidgetGenerateRequestMessage
+  | WorkshopRequestWidgetConfigMessage
+  | WorkshopCommitWidgetMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -295,4 +307,8 @@ export type ExtensionToWebviewMessage =
   | WorkshopSessionSaveStatusMessage
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
-  | WorkshopContextAttachmentContentMessage;
+  | WorkshopContextAttachmentContentMessage
+  | WorkshopWidgetGenerationProgressMessage
+  | WorkshopWidgetMenuResultMessage
+  | WorkshopWidgetConfigDataMessage
+  | WorkshopWidgetActionResultMessage;

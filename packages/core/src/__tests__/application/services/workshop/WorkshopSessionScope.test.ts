@@ -553,7 +553,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(restored.getScope()).toBe('excerpt');
       expect(restored.getExcerpt()?.version).toBe(1);
       expect(restored.getShelvedExcerpt()).toBeUndefined();
-      expect(result.migrations).toEqual([
+      expect(result.normalizations).toEqual([
         'restored-undelivered-withdrawal',
         'discarded-legacy-scope-transition'
       ]);
@@ -575,7 +575,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
         service.getConversationBehavior()
       );
 
-      expect(result.migrations).toContain('normalized-open-session-with-excerpt');
+      expect(result.normalizations).toContain('normalized-open-session-with-excerpt');
       expect(restored.getScope()).toBe('excerpt');
       expect(restored.getExcerpt()?.version).toBe(1);
       expect(restored.hasRoomMemory()).toBe(true);
@@ -628,7 +628,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(buildWorkshopHostUpdateFrame(restored.collectPendingHostUpdates()))
         .toContain('revised the pinned excerpt');
       expect(restored.exportCommittedState().revisions.pendingExcerptChange).toBeUndefined();
-      expect(result.migrations).toContain('discarded-legacy-scope-transition');
+      expect(result.normalizations).toContain('discarded-legacy-scope-transition');
     });
 
     it('drops a legacy pending delivery when no host memory survives', () => {
@@ -650,27 +650,55 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(restored.exportCommittedState().revisions.pendingExcerptChange).toBeUndefined();
     });
 
-    it('migrates a pre-scope checkpoint once, at the hydration boundary', () => {
+    it('normalizes a pre-scope checkpoint once, at the hydration boundary', () => {
       pin();
       const exported = service.exportCommittedState();
       const legacy = { ...exported };
       delete legacy.scope;
 
       const restored = new WorkshopSessionService(() => ++clock);
-      restored.hydrateCommittedState(legacy, {}, service.getConversationBehavior());
+      const result = restored.hydrateCommittedState(
+        legacy,
+        {},
+        service.getConversationBehavior()
+      );
 
       expect(restored.getScope()).toBe('excerpt');
+      expect(result.normalizations).toContain('inferred-missing-scope');
     });
 
-    it('migrates an excerpt-free pre-scope checkpoint to an unchosen path', () => {
+    it('normalizes an excerpt-free pre-scope checkpoint to an unchosen path', () => {
       const exported = service.exportCommittedState();
       const legacy = { ...exported };
       delete legacy.scope;
 
       const restored = new WorkshopSessionService(() => ++clock);
-      restored.hydrateCommittedState(legacy, {}, service.getConversationBehavior());
+      const result = restored.hydrateCommittedState(
+        legacy,
+        {},
+        service.getConversationBehavior()
+      );
 
       expect(restored.getScope()).toBeNull();
+      expect(result.normalizations).toContain('inferred-missing-scope');
+    });
+
+    it('names the repair of a null scope that carries an excerpt', () => {
+      pin();
+      const legacy = {
+        ...service.exportCommittedState(),
+        scope: null
+      };
+
+      const restored = new WorkshopSessionService(() => ++clock);
+      const result = restored.hydrateCommittedState(
+        legacy,
+        {},
+        service.getConversationBehavior()
+      );
+
+      expect(restored.getScope()).toBe('excerpt');
+      expect(result.normalizations).toContain('normalized-null-scope-with-excerpt');
     });
 
     it('drops a queued revision when the host memory did not survive', () => {

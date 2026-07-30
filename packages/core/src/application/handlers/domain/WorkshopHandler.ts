@@ -65,6 +65,9 @@ import {
   completeWorkshopRun,
   workshopMessageCompletionCopy
 } from '@/application/services/workshop/WorkshopRunCompletion';
+import type {
+  WorkshopThreadArtifactFrameInput
+} from '@/application/services/workshop/WorkshopThreadArtifactFrame';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import {
   WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE
@@ -149,11 +152,16 @@ import {
   LabeledContextBudgetSnapshot,
   WorkshopTurn,
   WorkshopTurnMessage,
+  WorkshopTurnWidgetCommit,
+  WorkshopWidgetId,
 } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
+import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { WorkshopSessionMessageHandler } from '@handlers/domain/WorkshopSessionMessageHandler';
+import { WorkshopWidgetHandler } from '@handlers/domain/WorkshopWidgetHandler';
+import { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -245,6 +253,7 @@ export class WorkshopHandler {
   private readonly disposeStatusListener: () => void;
   private readonly disposeSessionSaveStatusListener: () => void;
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
+  private readonly widgetHandler: WorkshopWidgetHandler;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
   private wizardRun?: { requestId: string; excerptVersion: number; controller: AbortController };
@@ -264,6 +273,7 @@ export class WorkshopHandler {
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
+    private readonly gesturePlaygroundService: GesturePlaygroundService,
     private readonly outputChannel: LogSink
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -304,6 +314,19 @@ export class WorkshopHandler {
           : this.activeRun
             ? 'response'
             : undefined
+      }
+    );
+    this.widgetHandler = new WorkshopWidgetHandler(
+      this.session,
+      this.gesturePlaygroundService,
+      this.postMessage,
+      this.outputChannel,
+      {
+        sendRoomMessage: (text, displayText, executeOptions) =>
+          this.executeMessage(text, displayText, undefined, executeOptions),
+        postSessionState: () => this.postSessionState(),
+        markDirty: (reason) => this.sessionPersistence.markDirty(reason),
+        reportError: (message, details) => this.sendError('workshop', message, details)
       }
     );
   }
@@ -398,6 +421,7 @@ export class WorkshopHandler {
     );
     registerMutation(MessageType.WORKSHOP_REPIN_EXCERPT, this.handleRepinExcerpt.bind(this));
     this.sessionMessageHandler.registerRoutes(router, registerMutation);
+    this.widgetHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }
 
@@ -408,6 +432,7 @@ export class WorkshopHandler {
    * survives: it belongs to the session, not to this handler.
    */
   dispose(): void {
+    this.widgetHandler.dispose();
     this.disposeStatusListener();
     this.disposeSessionSaveStatusListener();
     this.sessionMessageHandler.dispose();
@@ -639,20 +664,23 @@ export class WorkshopHandler {
         requestId,
         openingMessage
       );
+      const joinRoomTurns = this.roomDelivery.prepareJoinSnapshot({
+        kind: 'personaGuest',
+        personaId
+      }, joinStart.turn.id);
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
         excerpt: joinStart.excerpt,
         contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
           joinStart.contextAttachments
         ),
-        roomTurns: this.roomDelivery.prepareJoinSnapshot({
-          kind: 'personaGuest',
-          personaId
-        }, joinStart.turn.id),
+        roomTurns: joinRoomTurns,
         openingMessage,
         roomFrameOptions: {
           writerName: workshopWriterPreferredAddress(writerProfile),
-          renderedAt: Date.now()
+          renderedAt: Date.now(),
+          threadArtifactsForTurn: (turn) =>
+            this.session.getRoomThreadArtifactsForTurn(turn.id)
         },
         timeFrame: timeNotice?.frame,
         ...behaviorFramesFor(joinStart.turn)
@@ -721,6 +749,10 @@ export class WorkshopHandler {
           }
         });
         if (assistantTurn) {
+          this.session.recordRoomThreadArtifactDeliveries(
+            join.transcript.deliveredTurnIds,
+            { kind: 'personaGuest', personaId }
+          );
           this.commitTimeNotice(timeNotice);
           this.session.setChatTarget({ kind: 'personaGuest', personaId });
           this.sendStatus(`${workshopPersonaLabel(personaId)} joined the room.`);
@@ -842,8 +874,23 @@ export class WorkshopHandler {
        * deterministic quick actions never consume them (Phase 6B).
        */
       includeMessageAttachments?: boolean;
+      /**
+       * Atomic widget commit (ADR 2026-07-22): a host-built one-shot artifact
+       * that rides THIS send without ever entering the pending list, plus the
+       * display-safe ref stamped on the visible writer turn. Only the widget
+       * commit route sets this, and it never sets includeMessageAttachments —
+       * the writer's staged pills belong to the message they were typing.
+       */
+      widgetArtifact?: {
+        id: string;
+        widgetId: WorkshopWidgetId;
+        widgetConfigId: string;
+        label: string;
+        content: string;
+        selectionCount: number;
+      };
     }
-  ): Promise<void> {
+  ): Promise<{ committed: boolean; userTurnId?: string }> {
     const target = targetOverride ?? this.session.getChatTarget();
     const personaId = this.session.getSelectedPersonaId();
     const hostConversationId = this.session.getHostConversationId();
@@ -881,7 +928,7 @@ export class WorkshopHandler {
 
     if (targetDetails.missingConversationMessage && !targetDetails.conversationId) {
       this.sendError('workshop.send_message', targetDetails.missingConversationMessage);
-      return;
+      return { committed: false };
     }
     // Sprint 13A §1: what a turn needs depends on the session's SCOPE, not on
     // whether an excerpt happens to be present. An open conversation is a real
@@ -898,7 +945,7 @@ export class WorkshopHandler {
         'workshop.send_message',
         'Choose how to start this session — workshop an excerpt, or start an open conversation.'
       );
-      return;
+      return { committed: false };
     }
     if (!hasExcerpt) {
       if (target.kind === 'tool') {
@@ -906,11 +953,11 @@ export class WorkshopHandler {
           'workshop.send_message',
           'Add an excerpt before continuing with a tool.'
         );
-        return;
+        return { committed: false };
       }
       if (!subjectStatus.ready) {
         this.sendError('workshop.send_message', 'Pin an excerpt before messaging the Workshop.');
-        return;
+        return { committed: false };
       }
     }
 
@@ -958,15 +1005,14 @@ export class WorkshopHandler {
     const messageAttachments = executeOptions?.includeMessageAttachments
       ? this.session.collectMessageAttachments()
       : [];
-    const threadArtifactFrames = messageAttachments.map((attachment) =>
-      buildWorkshopThreadArtifactFrame({
+    const roomThreadArtifacts: WorkshopThreadArtifactFrameInput[] =
+      messageAttachments.map((attachment) => ({
         id: attachment.id,
         name: attachment.label,
         sourcePath: attachment.relativePath,
         truncation: attachment.truncation,
         content: attachment.content
-      })
-    );
+      }));
     const attachmentRefs = messageAttachments.map(
       ({ content: _content, sourceUri: _sourceUri, ...ref }) => ref
     );
@@ -975,6 +1021,33 @@ export class WorkshopHandler {
         `[WorkshopHandler] Message attachments riding this send: ${messageAttachments.map((a) => a.id).join(', ')}`
       );
     }
+    // Widget commits share the frame builder and the ta-N mint but bypass the
+    // pending list (ADR 2026-07-22): the artifact is held synchronously from
+    // mint to ship inside the one commit route, so nothing can interleave.
+    const widgetArtifact = executeOptions?.widgetArtifact;
+    if (widgetArtifact) {
+      roomThreadArtifacts.push({
+        id: widgetArtifact.id,
+        kind: workshopWidgetArtifactKind(widgetArtifact.widgetId),
+        name: widgetArtifact.label,
+        content: widgetArtifact.content
+      });
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Widget artifact riding this send: ${widgetArtifact.id} (${widgetArtifact.widgetId}, config ${widgetArtifact.widgetConfigId})`
+      );
+    }
+    const threadArtifactFrames = roomThreadArtifacts.map(
+      buildWorkshopThreadArtifactFrame
+    );
+    const widgetCommitRef: WorkshopTurnWidgetCommit | undefined = widgetArtifact
+      ? {
+          widgetId: widgetArtifact.widgetId,
+          widgetConfigId: widgetArtifact.widgetConfigId,
+          rail: 'thread-artifact',
+          artifactId: widgetArtifact.id,
+          selectionCount: widgetArtifact.selectionCount
+        }
+      : undefined;
     let modelMessage: string;
     let userTurn: WorkshopTurn;
     let statusMessage: string;
@@ -991,7 +1064,12 @@ export class WorkshopHandler {
     } = {};
     switch (target.kind) {
       case 'host':
-        userTurn = this.session.beginPersonaMessage(requestId, displayText, attachmentRefs);
+        userTurn = this.session.beginPersonaMessage(
+          requestId,
+          displayText,
+          attachmentRefs,
+          widgetCommitRef
+        );
         personaBehaviorFrames = {
           ...behaviorFramesFor(userTurn),
           timeFrame: timeNotice?.frame
@@ -1024,7 +1102,8 @@ export class WorkshopHandler {
           target.personaId,
           requestId,
           displayText,
-          attachmentRefs
+          attachmentRefs,
+          widgetCommitRef
         );
         personaBehaviorFrames = {
           ...behaviorFramesFor(userTurn),
@@ -1069,6 +1148,17 @@ export class WorkshopHandler {
           }
         })
       : undefined;
+    if (target.kind !== 'tool' && widgetArtifact) {
+      // The visible writer turn and its artifact body are one room-ledger
+      // fact. Publish them together before inference so cancellation or
+      // transport failure cannot persist a hollow turn that promises content
+      // the room can never recover.
+      this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
+      this.outputChannel.appendLine(
+        `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
+        `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
+      );
+    }
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
@@ -1165,6 +1255,13 @@ export class WorkshopHandler {
         // A failed/cancelled turn falls through to the catch, which leaves
         // the staged artifacts pending — the pills survive and a retry
         // ships the same ids.
+        if (target.kind !== 'tool') {
+          this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
+          this.outputChannel.appendLine(
+            `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
+            `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
+          );
+        }
         this.session.commitMessageAttachments(messageAttachments.map((a) => a.id), target);
         this.outputChannel.appendLine(
           `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
@@ -1179,6 +1276,7 @@ export class WorkshopHandler {
         );
       }
       this.postSessionState();
+      return { committed: assistantTurn !== undefined, userTurnId: userTurn.id };
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.session.abandonRun(requestId);
@@ -1208,6 +1306,7 @@ export class WorkshopHandler {
         this.sendError('workshop.send_message', `Failed to message ${label}`, details);
       }
       this.postSessionState();
+      return { committed: false, userTurnId: userTurn.id };
     } finally {
       this.settleActiveRun(requestId);
     }

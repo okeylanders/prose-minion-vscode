@@ -153,7 +153,17 @@ export enum MessageType {
   WORKSHOP_SESSION_STATE = 'workshop_session_state',
   WORKSHOP_SESSIONS_DATA = 'workshop_sessions_data',
   WORKSHOP_SESSION_ACTION_RESULT = 'workshop_session_action_result',
-  WORKSHOP_SESSION_SAVE_STATUS = 'workshop_session_save_status'
+  WORKSHOP_SESSION_SAVE_STATUS = 'workshop_session_save_status',
+
+  // Conversation Widgets (ADR 2026-07-22; Sprint 01 widget host + Gesture Playground)
+  WORKSHOP_WIDGET_GENERATE = 'workshop_widget_generate',
+  WORKSHOP_WIDGET_GENERATION_PROGRESS = 'workshop_widget_generation_progress',
+  WORKSHOP_WIDGET_MENU_RESULT = 'workshop_widget_menu_result',
+  WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
+  WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',
+  WORKSHOP_COMMIT_WIDGET = 'workshop_commit_widget',
+  WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',
+  CANCEL_WIDGET_GENERATE_REQUEST = 'cancel_widget_generate_request'
 }
 
 export interface BaseMessage {

@@ -7,15 +7,16 @@ import { CATEGORY_MODELS } from '@providers/OpenRouterModels';
 
 /**
  * Models Settings
- * 8 settings for AI model configuration and agent behavior (4 models + 4 behavior)
+ * 9 settings for AI model configuration and agent behavior (5 models + 4 behavior)
  * Syncs with package.json proseMinion.* settings
  */
 export interface ModelsSettings {
-  // Model Selections (4 settings)
+  // Model Selections (5 settings)
   assistantModel: string;          // Model for prose/dialogue analysis
   dictionaryModel: string;         // Model for dictionary lookups
   contextModel: string;            // Model for context generation
   categoryModel: string;           // Model for category search
+  widgetModel: string;             // Model for Conversation Widget generation
 
   // Agent Behavior (4 settings)
   includeCraftGuides: boolean;     // Include craft guides in prompts (default: true)
@@ -113,6 +114,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
     dictionaryModel: 'anthropic/claude-haiku-4.5',
     contextModel: 'openai/gpt-5.4',
     categoryModel: 'anthropic/claude-sonnet-5',
+    widgetModel: 'anthropic/claude-sonnet-5',
 
     // Agent Behavior
     includeCraftGuides: true,
@@ -156,6 +158,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
         dictionaryModel: settingsData['dictionaryModel'] as string | undefined,
         contextModel: settingsData['contextModel'] as string | undefined,
         categoryModel: settingsData['categoryModel'] as string | undefined,
+        widgetModel: settingsData['widgetModel'] as string | undefined,
 
         // Agent Behavior
         includeCraftGuides: settingsData['includeCraftGuides'] as boolean | undefined,
@@ -165,7 +168,11 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
       };
 
       // Only update if we got valid data (check at least one setting is defined)
-      if (modelsSettings.assistantModel !== undefined || modelsSettings.temperature !== undefined) {
+      if (
+        modelsSettings.assistantModel !== undefined
+        || modelsSettings.widgetModel !== undefined
+        || modelsSettings.temperature !== undefined
+      ) {
         setSettings(prev => ({
           ...prev,
           // Model Selections
@@ -173,6 +180,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
           dictionaryModel: modelsSettings.dictionaryModel ?? prev.dictionaryModel,
           contextModel: modelsSettings.contextModel ?? prev.contextModel,
           categoryModel: modelsSettings.categoryModel ?? prev.categoryModel,
+          widgetModel: modelsSettings.widgetModel ?? prev.widgetModel,
           // Agent Behavior
           includeCraftGuides: modelsSettings.includeCraftGuides ?? prev.includeCraftGuides,
           temperature: modelsSettings.temperature ?? prev.temperature,

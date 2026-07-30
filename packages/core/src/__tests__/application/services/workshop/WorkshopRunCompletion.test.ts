@@ -26,6 +26,40 @@ describe('completeWorkshopRun', () => {
     ...extra
   } as AnalysisResult);
 
+  const widgetRecommendationFrame = (overrides: {
+    widgetId?: string;
+    targetPhrase?: string;
+    writerInstructions?: string;
+    surroundingContext?: string;
+    sourceReferences?: string;
+    characterNotes?: string;
+  } = {}): string => [
+    '### Try a widget',
+    '<workshop-widget-recommendation version="1">',
+    '<widget-id>',
+    overrides.widgetId ?? 'gesture-playground',
+    '</widget-id>',
+    '<target-phrase>',
+    overrides.targetPhrase ?? 'His eyes stretched wide.',
+    '</target-phrase>',
+    '<writer-instructions>',
+    overrides.writerInstructions
+      ?? 'Preserve recognition breaking through control.\nExplore stillness, breath, and a plausible misreading by Nate.',
+    '</writer-instructions>',
+    '<surrounding-context>',
+    overrides.surroundingContext
+      ?? 'Micah looked past Jasper.\nHis eyes stretched wide.\nNate turned but saw nothing.',
+    '</surrounding-context>',
+    '<source-references>',
+    overrides.sourceReferences ?? 'none',
+    '</source-references>',
+    '<character-notes>',
+    overrides.characterNotes
+      ?? 'Micah has concealed his fear to protect Nate.\nThis recognition breaks that defense before he can recover.',
+    '</character-notes>',
+    '</workshop-widget-recommendation>'
+  ].join('\n');
+
   const settle = (input: {
     requestId: string;
     result: AnalysisResult;
@@ -105,6 +139,179 @@ describe('completeWorkshopRun', () => {
         personaId: 'jill'
       }
     });
+  });
+
+  it('extracts a rich widget seed, strips its accepted control, and preserves preceding Next steps', () => {
+    session.beginPersonaMessage('req-1', 'Find a stronger embodied reaction.');
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Micah notes',
+      words: 4,
+      content: 'Micah recognizes the impossible.'
+    });
+    const visibleContent = [
+      'The reaction should register as recognition rather than generic surprise.',
+      '',
+      '### Next steps',
+      '- [high] Rework the final reaction around Micah’s broken self-control.'
+    ].join('\n');
+    const control = widgetRecommendationFrame({
+      targetPhrase: 'His eyes stretched wide.',
+      writerInstructions: [
+        'Keep this as recognition rather than generic shock.',
+        'Give the writer direct facial options, displaced body reactions, and one beat Nate could misread.'
+      ].join('\n'),
+      surroundingContext: [
+        'Micah was up, locked on Jasper, shoulders set back and taut.',
+        'Nate glanced at Jasper, then back to Micah.',
+        'But Micah’s gaze had gone past Jasper. Past the room. His eyes stretched wide.'
+      ].join('\n'),
+      sourceReferences: 'active-excerpt\ncontext-attachment:ctx-1',
+      characterNotes: [
+        'Micah is trying to protect Nate by containing what he knows.',
+        'Recognition ruptures that control, while Nate has enough history with him to notice but not necessarily interpret it correctly.'
+      ].join('\n')
+    });
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(`${visibleContent}\n\n${control}`, { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.content).toBe(visibleContent);
+    expect(turn.actionableFindings).toEqual([{
+      key: 'finding-1',
+      ordinal: 1,
+      priority: 'high',
+      text: 'Rework the final reaction around Micah’s broken self-control.'
+    }]);
+    expect(turn.widgetRecommendation).toEqual({
+      widgetId: 'gesture-playground',
+      seed: {
+        targetPhrase: 'His eyes stretched wide.',
+        writerInstructions: [
+          'Keep this as recognition rather than generic shock.',
+          'Give the writer direct facial options, displaced body reactions, and one beat Nate could misread.'
+        ].join('\n'),
+        contextText: [
+          'Micah was up, locked on Jasper, shoulders set back and taut.',
+          'Nate glanced at Jasper, then back to Micah.',
+          'But Micah’s gaze had gone past Jasper. Past the room. His eyes stretched wide.'
+        ].join('\n'),
+        characterNotes: [
+          'Micah is trying to protect Nate by containing what he knows.',
+          'Recognition ruptures that control, while Nate has enough history with him to notice but not necessarily interpret it correctly.'
+        ].join('\n'),
+        sourceReferences: [
+          { kind: 'active-excerpt' },
+          { kind: 'context-attachment', attachmentId: 'ctx-1' }
+        ]
+      }
+    });
+    expect(events.streamCompleted).toHaveBeenCalledWith(
+      'req-1',
+      visibleContent,
+      false,
+      expect.anything(),
+      false
+    );
+    expect(log).toHaveBeenCalledWith('Actionable findings accepted: 1 items (Jill)');
+    expect(log).toHaveBeenCalledWith('Widget recommendation accepted (Jill)');
+  });
+
+  it('gives an invited guest the same rich recommendation contract', () => {
+    session.adoptPersonaGuest('felix', 'felix-conv', []);
+    session.beginPersonaGuestMessage(
+      'felix',
+      'req-1',
+      'What is the physical rhythm of this recognition?'
+    );
+    const visibleContent = 'Let the reaction break the cadence Micah has been controlling.';
+    const control = widgetRecommendationFrame({
+      writerInstructions:
+        'Preserve recognition and the broken cadence. Explore breath, stillness, and one action Nate can hear before he understands it.'
+    });
+
+    const turn = completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Felix',
+      result: result(`${visibleContent}\n\n${control}`, { conversationId: 'felix-conv' }),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy('Felix'),
+      discardConversation,
+      log,
+      events
+    })!;
+
+    expect(turn).toMatchObject({
+      participant: 'guest',
+      personaId: 'felix',
+      content: visibleContent,
+      widgetRecommendation: {
+        widgetId: 'gesture-playground',
+        seed: {
+          writerInstructions: expect.stringContaining('broken cadence'),
+          contextText: expect.stringContaining('Nate turned'),
+          characterNotes: expect.stringContaining('protect Nate'),
+          sourceReferences: []
+        }
+      }
+    });
+  });
+
+  it('rejects a well-formed source id the current session did not mint', () => {
+    session.beginPersonaMessage('req-1', 'Find a stronger embodied reaction.');
+    const visibleContent = 'The reaction needs a more specific pressure.';
+    const control = widgetRecommendationFrame({
+      sourceReferences: 'context-attachment:ctx-999'
+    });
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(
+        `${visibleContent}\n\n${control}`,
+        { conversationId: 'host-conv' }
+      )
+    })!;
+
+    expect(turn.content).toBe(visibleContent);
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected (Jill; reason=unavailable_source_reference:context-attachment:ctx-999)'
+    );
+  });
+
+  it('strips a rejected widget control without attaching a recommendation', () => {
+    session.beginPersonaMessage('req-1', 'Find a stronger embodied reaction.');
+    const visibleContent = 'The reaction needs a more scene-specific pressure.';
+    const rejectedControl = widgetRecommendationFrame().replace(
+      '</character-notes>',
+      ''
+    );
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(
+        `${visibleContent}\n\n${rejectedControl}`,
+        { conversationId: 'host-conv' }
+      )
+    })!;
+
+    expect(turn.content).toBe(visibleContent);
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(events.streamCompleted).toHaveBeenCalledWith(
+      'req-1',
+      visibleContent,
+      false,
+      expect.anything(),
+      false
+    );
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected (Jill; reason=invalid_frame)'
+    );
   });
 
   it('attaches proposals to a guest turn and promotes them with guest provenance', () => {

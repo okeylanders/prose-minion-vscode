@@ -7,8 +7,10 @@ import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import {
   isWorkshopTurnAlreadyVisibleToPrincipal,
-  isWorkshopPublishableCapabilityEvidence
+  isWorkshopPublishableCapabilityEvidence,
+  workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
+import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -162,6 +164,98 @@ export function validateWorkshopSessionStateV1(
       numericIdSuffix(attachment.id, /^ta-(\d+)$/, 'thread artifact')
     );
   }
+  const committedArtifactIds = new Set<string>();
+  for (const artifact of state.threadArtifacts ?? []) {
+    if (committedArtifactIds.has(artifact.id)) {
+      throw new Error(`Duplicate persisted Workshop thread artifact ${artifact.id}`);
+    }
+    committedArtifactIds.add(artifact.id);
+    greatestThreadArtifactNumber = Math.max(
+      greatestThreadArtifactNumber,
+      numericIdSuffix(artifact.id, /^ta-(\d+)$/, 'thread artifact')
+    );
+    const turnIndex = turnIndexes.get(artifact.turnId);
+    const turn = turnIndex === undefined ? undefined : state.turns[turnIndex];
+    if (!turn) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} references an unknown turn`
+      );
+    }
+    if (workshopTurnAudience(turn).kind !== 'room') {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} references a private turn`
+      );
+    }
+    const attachmentReference = (turn.messageAttachments ?? []).some(
+      (attachment) => attachment.id === artifact.id
+    );
+    const widgetReference = turn.widgetCommit?.artifactId === artifact.id;
+    if (!attachmentReference && !widgetReference) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} is not referenced by its turn`
+      );
+    }
+    if (
+      artifact.kind !== undefined
+      && (
+        !widgetReference
+        || !turn.widgetCommit
+        || artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit.widgetId)
+      )
+    ) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} has the wrong widget kind`
+      );
+    }
+    if (widgetReference && artifact.kind === undefined) {
+      throw new Error(
+        `Persisted Workshop widget artifact ${artifact.id} has no widget kind`
+      );
+    }
+  }
+  // Conversation Widgets (ADR 2026-07-22): `wc-N` ids are monotonic like
+  // `ta-N`, widget artifact ids share the thread-artifact counter, and commit
+  // linkage must reference real turns and configs.
+  const widgetConfigIds = new Set<string>();
+  let greatestWidgetConfigNumber = 0;
+  for (const config of state.widgetConfigs ?? []) {
+    if (widgetConfigIds.has(config.id)) {
+      throw new Error(`Duplicate persisted Workshop widget config ${config.id}`);
+    }
+    widgetConfigIds.add(config.id);
+    greatestWidgetConfigNumber = Math.max(
+      greatestWidgetConfigNumber,
+      numericIdSuffix(config.id, /^wc-(\d+)$/, 'widget config')
+    );
+    if (config.committedTurnId !== undefined && !turnIds.has(config.committedTurnId)) {
+      throw new Error(`Persisted Workshop widget config ${config.id} references an unknown turn`);
+    }
+    if (config.clonedFromConfigId === config.id) {
+      throw new Error(`Persisted Workshop widget config ${config.id} clones itself`);
+    }
+    if (config.artifactId !== undefined) {
+      greatestThreadArtifactNumber = Math.max(
+        greatestThreadArtifactNumber,
+        numericIdSuffix(config.artifactId, /^ta-(\d+)$/, 'thread artifact')
+      );
+    }
+  }
+  if (greatestWidgetConfigNumber > (state.counters.widgetConfig ?? 0)) {
+    throw new Error('Persisted Workshop widget-config counter trails an existing id');
+  }
+  for (const turn of state.turns) {
+    if (!turn.widgetCommit) {
+      continue;
+    }
+    greatestThreadArtifactNumber = Math.max(
+      greatestThreadArtifactNumber,
+      numericIdSuffix(turn.widgetCommit.artifactId, /^ta-(\d+)$/, 'thread artifact')
+    );
+    if (!widgetConfigIds.has(turn.widgetCommit.widgetConfigId)) {
+      throw new Error(`Persisted Workshop turn ${turn.id} references an unknown widget config`);
+    }
+  }
+
   if (greatestThreadArtifactNumber > state.counters.threadArtifact) {
     throw new Error('Persisted Workshop thread-artifact counter trails an existing id');
   }

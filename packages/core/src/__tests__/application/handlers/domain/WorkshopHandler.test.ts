@@ -253,6 +253,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         timezone: 'America/Chicago'
       }),
       persistence,
+      { generateMenu: jest.fn() } as never,
       log
     );
   });
@@ -288,7 +289,60 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_ATTACH_MESSAGE_FILE)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REMOVE_MESSAGE_ATTACHMENT)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
-    expect(router.handlerCount).toBe(38);
+    // Conversation Widgets (ADR 2026-07-22): generate + cancel are free
+    // preview routes; commit is mutation-gated.
+    expect(router.hasHandler(MessageType.WORKSHOP_WIDGET_GENERATE)).toBe(true);
+    expect(router.hasHandler(MessageType.CANCEL_WIDGET_GENERATE_REQUEST)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_COMMIT_WIDGET)).toBe(true);
+    expect(router.handlerCount).toBe(42);
+  });
+
+  it('keeps a failed widget send as a complete retryable user turn plus artifact', async () => {
+    session.setSessionScope('open');
+    service.startWorkshopPersonaConversation.mockRejectedValueOnce(
+      new Error('provider unavailable')
+    );
+    const router = new MessageRouter();
+    handler.registerRoutes(router);
+    const widgetMenu = Array.from({ length: 4 }, (_, index) => ({
+      heading: `Route ${index + 1}`,
+      options: [`Option ${index + 1}.1`, `Option ${index + 1}.2`, `Option ${index + 1}.3`]
+    }));
+
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'gesture-playground',
+      draft: {
+        targetPhrase: 'she smiled',
+        writerInstructions: '',
+        contextText: '',
+        characterNotes: '',
+        sourceReferences: [],
+        dictionaryMarkdown: '# Gesture Dictionary\n\nA quiet refusal.',
+        menu: widgetMenu,
+        selections: ['Option 1.1'],
+        note: '',
+        includeDictionaryInCommit: false
+      }
+    }) as any);
+
+    const state = session.exportCommittedState();
+    const writerTurn = state.turns.find((turn) => turn.widgetCommit);
+    expect(writerTurn).toEqual(expect.objectContaining({
+      participant: 'writer',
+      widgetCommit: expect.objectContaining({
+        widgetConfigId: 'wc-1',
+        artifactId: 'ta-1'
+      })
+    }));
+    expect(state.threadArtifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'ta-1',
+        turnId: writerTurn?.id,
+        content: expect.stringContaining('Option 1.1')
+      })
+    ]));
+    expect(session.getWidgetConfig('wc-1')).toBeDefined();
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {
@@ -743,6 +797,27 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect.objectContaining({ participant: 'writer', personaId: 'margot' }),
       expect.objectContaining({ participant: 'guest', personaId: 'margot', content: 'Margot guest read' })
     ]));
+  });
+
+  it('records artifact delivery only for the turns that survived guest-join packing', async () => {
+    session.setSessionScope('open');
+    for (let index = 0; index < 4; index += 1) {
+      const requestId = `room-${index}`;
+      session.beginPersonaMessage(requestId, `writer-${index}-${'w'.repeat(25_000)}`);
+      session.completeRun(requestId, `host-${index}-${'h'.repeat(25_000)}`);
+    }
+    const deliverySpy = jest.spyOn(session, 'recordRoomThreadArtifactDeliveries');
+
+    await handler.handleInviteGuest(message(
+      MessageType.WORKSHOP_INVITE_GUEST,
+      { personaId: 'margot', openingMessage: 'Join this room.' }
+    ) as any);
+
+    const deliveredTurnIds = deliverySpy.mock.calls[0][0];
+    expect(deliveredTurnIds.length).toBeGreaterThan(0);
+    expect(deliveredTurnIds.length).toBeLessThan(8);
+    expect(service.startWorkshopGuestConversation.mock.calls[0][0].message)
+      .toContain(`Included whole turns: ${deliveredTurnIds.length}`);
   });
 
   it('projects independent Jill, guest, and tool context readings without exposing conversation ids', async () => {
@@ -2424,6 +2499,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         .find((turn) => turn.artifact === 'persona_message' && turn.role === 'user');
       expect(userTurn?.messageAttachments).toEqual([
         expect.objectContaining({ id: 'ta-1', label: 'raven.md' })
+      ]);
+      expect(session.getRoomThreadArtifactsForTurn(userTurn!.id)).toEqual([
+        expect.objectContaining({
+          id: 'ta-1',
+          name: 'raven.md',
+          content: 'Raven is seventeen and keeps the marked token.'
+        })
       ]);
       expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(0);
     });

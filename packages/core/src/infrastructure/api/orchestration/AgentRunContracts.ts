@@ -147,6 +147,12 @@ export interface ContinuationRunRequest {
 }
 
 export interface ExecutionResult {
+  /**
+   * Provider content before presentation cleanup or the human truncation
+   * footer. Structured-output consumers parse this; visible surfaces use
+   * `content`.
+   */
+  readonly rawContent?: string;
   readonly content: string;
   readonly usedGuides: string[];
   readonly requestedResources: string[];

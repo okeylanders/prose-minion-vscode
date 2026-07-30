@@ -434,13 +434,19 @@ describe('MessageHandler assembly', () => {
     );
   });
 
-  it('hot-swaps model settings without rebuilding services or retained conversations', async () => {
+  it.each([
+    'proseMinion.assistantModel',
+    'proseMinion.dictionaryModel',
+    'proseMinion.contextModel',
+    'proseMinion.categoryModel',
+    'proseMinion.widgetModel'
+  ])('hot-swaps %s without rebuilding services or retained conversations', async (modelKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
-    let contextModelChecks = 0;
+    let modelKeyChecks = 0;
 
     handler.handleConfigurationChange(section =>
-      section === 'proseMinion.contextModel' && ++contextModelChecks === 1
+      section === modelKey && ++modelKeyChecks === 1
     );
     await flushQueuedWork();
 

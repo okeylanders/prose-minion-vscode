@@ -11,7 +11,7 @@ import * as path from 'path';
 import { LogSink } from '@/platform';
 import {
   WorkshopSessionActiveRunPersistenceError,
-  WorkshopSessionHydrationMigration,
+  WorkshopSessionCheckpointNormalization,
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -656,7 +656,7 @@ export class WorkshopSessionPersistenceCoordinator {
         bindings as WorkshopRuntimeConversationBindings,
         this.session.getConversationBehavior()
       );
-      this.logHydrationMigrations(hydration.migrations);
+      this.logCheckpointNormalizations(hydration.normalizations);
     } catch (error) {
       importedIds.forEach((conversationId) =>
         this.assistantToolService.discardConversation(conversationId)
@@ -876,7 +876,7 @@ export class WorkshopSessionPersistenceCoordinator {
       rollback.bindings,
       this.session.getConversationBehavior()
     );
-    this.logHydrationMigrations(restored.migrations);
+    this.logCheckpointNormalizations(restored.normalizations);
     const protectedConversationIds = new Set(
       Object.values(rollback.bindings).filter(
         (conversationId): conversationId is string => typeof conversationId === 'string'
@@ -898,15 +898,15 @@ export class WorkshopSessionPersistenceCoordinator {
     this.session.recordSessionMarker('start', this.time.describeVisibleMarker('start'));
   }
 
-  private logHydrationMigrations(
-    migrations: readonly WorkshopSessionHydrationMigration[]
+  private logCheckpointNormalizations(
+    normalizations: readonly WorkshopSessionCheckpointNormalization[]
   ): void {
-    if (migrations.length === 0) {
+    if (normalizations.length === 0) {
       return;
     }
     this.outputChannel.appendLine(
-      `[WorkshopSessionPersistence] Legacy checkpoint normalized ` +
-      `(migrations=${migrations.join(', ')})`
+      `[WorkshopSessionPersistence] Development checkpoint normalized ` +
+      `(normalizations=${normalizations.join(', ')})`
     );
   }
 

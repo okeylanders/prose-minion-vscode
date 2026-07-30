@@ -203,6 +203,12 @@
           "description": "AI model for context bot features. See Settings Overlay for curated list, or enter any OpenRouter model ID.",
           "order": 4
         },
+        "proseMinion.widgetModel": {
+          "type": "string",
+          "default": "anthropic/claude-sonnet-5",
+          "description": "AI model for quality-first Conversation Widget generation (for example, Gesture Playground's semantic scan and alternatives). Enter any OpenRouter model ID.",
+          "order": 5
+        },
         "proseMinion.categoryModel": {
           "type": "string",
           "default": "anthropic/claude-sonnet-5",
