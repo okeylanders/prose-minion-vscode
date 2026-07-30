@@ -672,6 +672,73 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(restored.exportCommittedState().turns[0].content).toBe('Marker 0.');
   });
 
+  it('round-trips host-private room artifact bodies without exposing them in the snapshot', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setSessionScope('open');
+    const staged = session.addMessageAttachment({
+      label: 'mara.md',
+      words: 5,
+      content: 'Mara turns the mug once before answering.'
+    });
+    if (!staged.ok) {
+      throw new Error('Expected the room-artifact fixture to stage.');
+    }
+    const writerTurn = session.beginPersonaMessage(
+      'host-run',
+      'Use this reference.',
+      [{ id: staged.attachment.id, label: staged.attachment.label, words: 5 }]
+    );
+    session.completeRun('host-run', 'I will use it.', undefined, false, 'host-before-save');
+    session.recordRoomThreadArtifacts(writerTurn.id, [{
+      id: staged.attachment.id,
+      name: 'mara.md',
+      content: 'Mara turns the mug once before answering.'
+    }]);
+    session.commitMessageAttachments([staged.attachment.id]);
+
+    expect(JSON.stringify(session.getSnapshot()))
+      .not.toContain('Mara turns the mug once before answering.');
+    const state = parseWorkshopSessionStateV1(
+      JSON.parse(JSON.stringify(session.exportCommittedState()))
+    );
+    expect(state.threadArtifacts).toEqual([
+      expect.objectContaining({ id: 'ta-1', turnId: writerTurn.id })
+    ]);
+
+    const restored = new WorkshopSessionService(() => 2);
+    restored.hydrateCommittedState(
+      state,
+      { host: 'host-after-save' },
+      currentBehavior
+    );
+    expect(restored.getRoomThreadArtifactsForTurn(writerTurn.id)).toEqual([{
+      id: 'ta-1',
+      turnId: writerTurn.id,
+      name: 'mara.md',
+      content: 'Mara turns the mug once before answering.'
+    }]);
+  });
+
+  it('refuses to publish a room artifact against a private direct-tool turn', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setExcerpt({ text: 'Pinned.', source: { kind: 'manual' } });
+    session.beginToolRun('prose', 'report-run');
+    session.completeToolReport('report-run', 'Report.', 'prose-conv');
+    const privateTurn = session.beginDirectToolMessage(
+      'prose',
+      'private-run',
+      'Private follow-up.',
+      [{ id: 'ta-1', label: 'private.md', words: 1 }]
+    );
+    session.completeRun('private-run', 'Private answer.');
+
+    expect(() => session.recordRoomThreadArtifacts(privateTurn.id, [{
+      id: 'ta-1',
+      name: 'private.md',
+      content: 'Private body.'
+    }])).toThrow(/private turn/);
+  });
+
   it('rejects blank markers and persists deterministic start/resume dividers', () => {
     let now = 10;
     const session = new WorkshopSessionService(() => ++now);

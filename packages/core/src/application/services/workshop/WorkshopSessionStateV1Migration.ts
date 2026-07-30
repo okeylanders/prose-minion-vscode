@@ -16,6 +16,7 @@ export type WorkshopSessionHydrationMigration =
   | 'normalized-open-session-with-excerpt'
   | 'restored-undelivered-withdrawal'
   | 'defaulted-capability-principal'
+  | 'defaulted-widget-dictionary-sharing'
   | 'headed-missing-room-offsets';
 
 export interface WorkshopSessionStateV1MigrationResult {
@@ -65,6 +66,24 @@ export function migrateWorkshopSessionStateV1ForHydration(
   });
   if (defaultedPrincipal) {
     migrations.push('defaulted-capability-principal');
+  }
+
+  let defaultedWidgetDictionarySharing = false;
+  const widgetConfigs = state.widgetConfigs?.map((config) => {
+    if (typeof config.draft.includeDictionaryInCommit === 'boolean') {
+      return config;
+    }
+    defaultedWidgetDictionarySharing = true;
+    return {
+      ...config,
+      draft: {
+        ...config.draft,
+        includeDictionaryInCommit: false
+      }
+    };
+  });
+  if (defaultedWidgetDictionarySharing) {
+    migrations.push('defaulted-widget-dictionary-sharing');
   }
 
   const ledgerHead = turns.at(-1)?.id;
@@ -141,6 +160,7 @@ export function migrateWorkshopSessionStateV1ForHydration(
       excerpt,
       scope,
       shelvedExcerpt,
+      widgetConfigs,
       revisions,
       participants
     },

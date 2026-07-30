@@ -108,12 +108,16 @@ directions I want *here*."
   selectable writer state.
 - **Persisted Gesture Draft**:
   `{ targetPhrase, writerInstructions, contextText, characterNotes,
-  sourceReferences, dictionaryMarkdown, menu, selections, note }`. The
-  generated dictionary and menu are exploration cloud retained so a chip can
-  restore the exact authoring surface; neither rides the commit rail.
+  sourceReferences, dictionaryMarkdown, menu, selections, note,
+  includeDictionaryInCommit }`. The generated dictionary and menu are retained
+  so a chip can restore the exact authoring surface. The unselected menu never
+  rides the commit rail; the dictionary is excluded by default and joins the
+  artifact only when the writer explicitly opts in.
 - **Commit** stages a one-shot thread-artifact: a compact directive ("gesture
   directions I want for '<phrase>': …selected items…") plus a visible composer
-  message. It rides exactly one turn, then becomes ordinary history.
+  message. It belongs to exactly one room turn and is delivered once to every
+  host/guest through that participant's room offset. Direct tool chats remain
+  private.
 - **Every commit persists its full `Draft` under a `widgetConfigId` in
   `WorkshopSessionService`** so the chip re-hydrates the authoring UI. The
   typed config collection joins Sprint 10's complete product snapshot and

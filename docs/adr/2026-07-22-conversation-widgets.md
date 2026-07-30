@@ -55,13 +55,23 @@ uniformly by every persona and every mode. A widget is a knob on the
 
 | Lifetime | Rail | Mechanism |
 |---|---|---|
-| **one-shot** (this turn) | thread-artifact | The shipped Sprint 12 Phase 6B rail: staged host-side in `WorkshopSessionService.pendingMessageAttachments`, ids minted `ta-N` (monotonic, never reused), framed by `buildWorkshopThreadArtifactFrame`, rides exactly one turn, committed off the pending list only after the turn succeeds, never re-shipped. |
+| **one-shot** (this turn) | thread-artifact | The shipped Sprint 12 Phase 6B rail: staged host-side in `WorkshopSessionService.pendingMessageAttachments`, ids minted `ta-N` (monotonic, never reused), framed by `buildWorkshopThreadArtifactFrame`, and committed only after the turn succeeds. The artifact belongs to exactly one **room turn**: it is delivered once to every host/guest retained conversation through that participant's room offset, then never re-shipped to that participant. Direct tool conversations remain private. |
 | **durable** (passage-scoped prose directive) | standing context | A **new reserved frame** (Sprint 02), *not* the context-attachment budget — see decision 10. Edit-in-place between runs with a shift marker, in the `WorkshopConversationSettingsService` mold (serialized, between-runs-only, per-key persistence). |
 | **resource** (durable truth outside the thread) | project file | The commit leaves a visible thread event; the knowledge lives in the project. Concept-spring territory (Decisions, Scratch Pad); no code in this epic's committed sprints. |
 
 The widget host runs the pre-commit UI, produces a validated payload, and
 drops it on the rail its lifetime selects. It invents **no** new
 thread-influence plumbing.
+
+The one-shot rail is room-wide, not target-private. The original addressed
+persona receives the frame with the live send. Other hosts and guests receive
+the same frame when the owning room turn reaches them through catch-up or a join
+snapshot. Persisted turns keep display-safe references; a host-private
+`threadArtifacts` ledger keeps the bounded body keyed by `ta-N` so prompt
+rendering can reconstruct the trusted frame without exposing prompt-bearing
+content in the webview snapshot. Per-participant room offsets are the
+exactly-once boundary. Only direct tool turns and unpublished capability work
+remain principal-private.
 
 **Report widgets ride the one-shot rail.** The Writer's Dictionary
 (design Spread 10) resolves the epic's "dictionary participant" divergence
@@ -140,11 +150,13 @@ Grouping, selection state, counts, caps, response framing, and payload assembly
 are deterministic code. Only semantic generation hits the model. For Gesture
 Playground, one model call produces a writer-facing Gesture Dictionary
 Markdown scan followed by the JSON menu in one versioned composite response;
-Regenerate re-rolls both; **commit never re-runs the model**. The dictionary,
-unselected menu, and other exploration cloud are excluded from the committed
-rail directive, which contains only the writer's kept options and optional
-note. They remain in the session-owned widget config so its chip can reopen
-the exact authoring surface.
+Regenerate re-rolls both; **commit never re-runs the model**. Unselected menu
+options and other exploration cloud are excluded from the committed rail
+directive. The full Gesture Dictionary is excluded by default, but the writer
+may explicitly opt to include it as a reference section in the same atomic
+one-shot artifact. The choice persists in the Draft so clone-and-recommit
+restores it exactly. The UI discloses that including the dictionary spends
+context once for each host/guest when that room turn reaches them.
 Model-facing caps live in `shared/constants/promptBudgets.ts` (the
 `promptBudgets` architecture witness rejects module-local `MAX_*`
 constants). Structured model output is parsed with the house pattern —

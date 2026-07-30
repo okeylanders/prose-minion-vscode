@@ -218,8 +218,10 @@ objects, negative space, convention pressure, and menu synthesis.
   or use another body/object signal.
 - Regenerate replaces both dictionary and menu in one call.
 - Commit never re-runs the model.
-- The dictionary and unselected menu remain exploration cloud. Only selected
-  options plus the writer's optional note ride the thread-artifact rail.
+- The unselected menu remains exploration cloud. Selected options plus the
+  writer's optional note always ride the thread-artifact rail. The dictionary
+  stays out by default, with an explicit writer opt-in to include it as
+  room-wide reference material in the same artifact.
 
 ## Evaluation gate
 

@@ -12,6 +12,7 @@ import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities'
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   buildWorkshopRoomCatchUp,
+  formatWorkshopRoomTurn,
   WorkshopRoomFrameRenderOptions
 } from '@/application/services/workshop/WorkshopRoomFrameRenderer';
 import {
@@ -97,19 +98,20 @@ export function projectWorkshopJoinSnapshotTurns(
  */
 export function guardWorkshopRoomDelivery(
   pending: readonly WorkshopTurn[],
-  characterGuard = WORKSHOP_ROOM_DELIVERY_RUNAWAY_CHARACTERS
+  characterGuard = WORKSHOP_ROOM_DELIVERY_RUNAWAY_CHARACTERS,
+  measureTurn: (turn: WorkshopTurn) => number = (turn) => turn.content.length
 ): WorkshopTurn[] {
   const included: WorkshopTurn[] = [];
   let characters = 0;
   for (const turn of pending) {
     if (
       included.length > 0
-      && characters + turn.content.length > characterGuard
+      && characters + measureTurn(turn) > characterGuard
     ) {
       break;
     }
     included.push(turn);
-    characters += turn.content.length;
+    characters += measureTurn(turn);
   }
   return included;
 }
@@ -142,7 +144,20 @@ export class WorkshopRoomDeliveryService {
       reader,
       state.lastSeenRoomTurnId
     );
-    const turns = guardWorkshopRoomDelivery(pending, this.characterGuard);
+    const artifactAwareFrameOptions: WorkshopRoomFrameRenderOptions = {
+      ...frameOptions,
+      threadArtifactsForTurn: (turn) =>
+        this.session.getRoomThreadArtifactsForTurn(turn.id)
+    };
+    const turns = guardWorkshopRoomDelivery(
+      pending,
+      this.characterGuard,
+      (turn) => formatWorkshopRoomTurn(
+        turn,
+        artifactAwareFrameOptions.writerName,
+        artifactAwareFrameOptions.threadArtifactsForTurn?.(turn) ?? []
+      ).length
+    );
     return {
       reader: { ...reader },
       startingOffset: state.lastSeenRoomTurnId,
@@ -150,7 +165,7 @@ export class WorkshopRoomDeliveryService {
       frame: buildWorkshopRoomCatchUp(
         turns,
         pending.length - turns.length,
-        frameOptions
+        artifactAwareFrameOptions
       ),
       deliveredTurnIds: turns.map((turn) => turn.id),
       deferredTurns: pending.length - turns.length,
@@ -200,6 +215,10 @@ export class WorkshopRoomDeliveryService {
     if (deliveredThroughTurnId === undefined) {
       return;
     }
+    this.session.recordRoomThreadArtifactDeliveries(
+      delivery.deliveredTurnIds,
+      delivery.reader
+    );
     this.session.advanceRoomDeliveryOffset(
       delivery.reader,
       delivery.startingOffset,

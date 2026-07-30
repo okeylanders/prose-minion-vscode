@@ -293,7 +293,7 @@ export class WorkshopWidgetHandler {
     const selectionCount = draft.selections.length;
     const displayText = `For “${draft.targetPhrase.trim()}” — here are the gesture directions I want${
       draft.note.trim().length > 0 ? ` — ${draft.note.trim()}` : ''
-    }.`;
+    }${draft.includeDictionaryInCommit ? ', with the full Gesture Dictionary shared as reference' : ''}.`;
 
     this.outputChannel.appendLine(
       `[WorkshopWidgetHandler] Widget commit staged (${config.id} → ${artifactId}, ${selectionCount} selections${clonedFromConfigId ? `, cloned from ${clonedFromConfigId}` : ''})`
@@ -325,7 +325,12 @@ export class WorkshopWidgetHandler {
         return;
       }
       this.session.recordWidgetCommit(config.id, { turnId: outcome.userTurnId, artifactId });
-      this.session.recordWidgetArtifactDelivery(label, directive.length, target);
+      this.session.recordWidgetArtifactDelivery(
+        artifactId,
+        label,
+        directive.length,
+        target
+      );
       this.options.markDirty('widget commit landed');
       this.options.postSessionState();
       this.postActionResult({
@@ -356,6 +361,9 @@ export class WorkshopWidgetHandler {
   /** Deterministic pre-flight — the same bounds the generate service enforces. */
   private validateGestureDraft(draft: WorkshopGestureDraft): string | undefined {
     const budget = PROMPT_BUDGETS.workshopWidgets;
+    if (typeof draft.includeDictionaryInCommit !== 'boolean') {
+      return 'Choose whether the full Gesture Dictionary should be shared with the room.';
+    }
     if (draft.targetPhrase.trim().length === 0) {
       return 'Gesture Playground needs a target phrase.';
     }

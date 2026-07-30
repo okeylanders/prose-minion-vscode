@@ -657,9 +657,10 @@ export function coerceWorkshopExcerptSource(raw: unknown): WorkshopExcerptSource
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Message attachments — one-shot writer thread-artifacts (Sprint 12 Phase 6B;
-// ADR 2026-07-18). They ride exactly ONE user turn inside a
-// `<thread-artifact id="ta-N">` frame, then become ordinary history: never
-// re-shipped, no standing budget, addressable by their stable host-minted id.
+// ADR 2026-07-18). They belong to exactly ONE room turn inside a
+// `<thread-artifact id="ta-N">` frame and are delivered once per host/guest
+// through room offsets. They have no standing budget and remain addressable by
+// their stable host-minted id. Direct tool turns stay private.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** A message attachment carries a head slice past its cap, and the UI says so. */
@@ -711,8 +712,9 @@ export type WorkshopWidgetSourceReference =
 
 /**
  * The Gesture Playground authoring state. `menu` is the generated exploration
- * cloud — persisted ONLY so a chip re-opens the exact surface; at commit time
- * the cloud is thrown away and only `selections` + `note` shape the directive.
+ * cloud — persisted so a chip re-opens the exact surface. Kept directions and
+ * the note always shape the one-shot artifact; the writer may also explicitly
+ * include the full dictionary as room-wide reference material.
  */
 export interface WorkshopGestureDraft {
   targetPhrase: string;
@@ -727,6 +729,8 @@ export interface WorkshopGestureDraft {
   /** The directions the writer kept — exact option strings, order preserved. */
   selections: string[];
   note: string;
+  /** Opt-in: deliver the full dictionary once to every host/guest for this room turn. */
+  includeDictionaryInCommit: boolean;
 }
 
 /**
@@ -885,8 +889,9 @@ export interface WorkshopTurn {
   /** Strictly parsed actionable findings proposed by a tool report or host turn. */
   actionableFindings?: WorkshopActionableFinding[];
   /**
-   * One-shot thread-artifacts that rode THIS writer turn (Sprint 12 Phase 6B).
-   * Display-safe refs only; ids are the `ta-N` manifest/surgery addresses.
+   * One-shot thread-artifacts belonging to THIS writer room turn.
+   * Display-safe refs only; host-private bodies are reconstructed for each
+   * host/guest through room delivery. Ids are the `ta-N` addresses.
    */
   messageAttachments?: WorkshopMessageAttachmentSnapshot[];
   content: string;

@@ -107,6 +107,8 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   const [menu, setMenu] = React.useState<WorkshopGestureMenuGroup[] | undefined>(undefined);
   const [dictionaryMarkdown, setDictionaryMarkdown] = React.useState('');
   const [selections, setSelections] = React.useState<string[]>([]);
+  const [includeDictionaryInCommit, setIncludeDictionaryInCommit] =
+    React.useState(false);
   const [generateToken, setGenerateToken] = React.useState<string | null>(null);
   const [generateError, setGenerateError] = React.useState<string | null>(null);
   const [commitPending, setCommitPending] = React.useState(false);
@@ -131,6 +133,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       setMenu(draft.menu.map((group) => ({ ...group, options: [...group.options] })));
       setDictionaryMarkdown(draft.dictionaryMarkdown);
       setSelections([...draft.selections]);
+      setIncludeDictionaryInCommit(draft.includeDictionaryInCommit);
     } else if (opening.kind === 'seed') {
       setTargetPhrase(opening.seed.targetPhrase ?? '');
       setWriterInstructions(opening.seed.writerInstructions ?? '');
@@ -144,6 +147,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       setMenu(undefined);
       setDictionaryMarkdown('');
       setSelections([]);
+      setIncludeDictionaryInCommit(false);
     } else {
       setTargetPhrase(opening.seedTargetPhrase ?? '');
       setWriterInstructions('');
@@ -154,6 +158,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       setMenu(undefined);
       setDictionaryMarkdown('');
       setSelections([]);
+      setIncludeDictionaryInCommit(false);
     }
     setGenerateToken(null);
     setGenerateError(null);
@@ -370,7 +375,8 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
         dictionaryMarkdown,
         menu,
         selections,
-        note
+        note,
+        includeDictionaryInCommit
       },
       opening.kind === 'clone' ? opening.config.id : undefined
     );
@@ -387,6 +393,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     sourceReferences,
     dictionaryMarkdown,
     note,
+    includeDictionaryInCommit,
     onCommit,
     opening
   ]);
@@ -676,6 +683,23 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
                 <MarkdownRenderer content={dictionaryMarkdown} />
               </div>
             </details>
+          )}
+
+          {dictionaryMarkdown && (
+            <label className="pm-ws-gesture-dictionary-share">
+              <input
+                type="checkbox"
+                checked={includeDictionaryInCommit}
+                disabled={locked || generating}
+                onChange={(event) => setIncludeDictionaryInCommit(event.target.checked)}
+              />
+              <span>
+                <b>Include the full Gesture Dictionary for the room</b>
+                <small>
+                  Delivers it once to every host or guest when this room turn reaches them.
+                </small>
+              </span>
+            </label>
           )}
 
           {menu && (

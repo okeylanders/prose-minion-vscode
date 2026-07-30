@@ -47,6 +47,7 @@ const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDr
   menu,
   selections: ['the smile arrived late'],
   note: '',
+  includeDictionaryInCommit: false,
   ...overrides
 });
 
@@ -386,6 +387,27 @@ describe('WorkshopWidgetHandler — atomic commit', () => {
     }));
   });
 
+  it('includes the full Gesture Dictionary only when the writer opts in', async () => {
+    const { handler, sendRoomMessage } = build();
+
+    await handler.handleCommit(commitMessage({
+      draft: draft({ includeDictionaryInCommit: true })
+    }));
+
+    expect(sendRoomMessage).toHaveBeenCalledWith(
+      expect.stringContaining('full Gesture Dictionary shared as reference'),
+      expect.any(String),
+      expect.objectContaining({
+        widgetArtifact: expect.objectContaining({
+          content: expect.stringContaining(
+            'Full Gesture Dictionary shared by the writer as reference:\n' +
+            '# Gesture Dictionary\n\nA private deflection.'
+          )
+        })
+      })
+    );
+  });
+
   it('keeps the config as the retry token when the room does not accept', async () => {
     const { handler, session, posted } = build({ sendOutcome: { committed: false } });
     await handler.handleCommit(commitMessage());
@@ -410,6 +432,10 @@ describe('WorkshopWidgetHandler — atomic commit', () => {
     ['missing dictionary', { draft: draft({ dictionaryMarkdown: '' }) }],
     ['missing menu', { draft: draft({ menu: undefined as never }) }],
     ['missing source references', { draft: draft({ sourceReferences: undefined as never }) }],
+    [
+      'missing dictionary-sharing choice',
+      { draft: draft({ includeDictionaryInCommit: undefined as never }) }
+    ],
     [
       'duplicate source references',
       {

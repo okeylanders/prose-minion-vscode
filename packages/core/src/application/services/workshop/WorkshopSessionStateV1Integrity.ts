@@ -7,8 +7,10 @@ import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import {
   isWorkshopTurnAlreadyVisibleToPrincipal,
-  isWorkshopPublishableCapabilityEvidence
+  isWorkshopPublishableCapabilityEvidence,
+  workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
+import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -161,6 +163,54 @@ export function validateWorkshopSessionStateV1(
       greatestThreadArtifactNumber,
       numericIdSuffix(attachment.id, /^ta-(\d+)$/, 'thread artifact')
     );
+  }
+  const committedArtifactIds = new Set<string>();
+  for (const artifact of state.threadArtifacts ?? []) {
+    if (committedArtifactIds.has(artifact.id)) {
+      throw new Error(`Duplicate persisted Workshop thread artifact ${artifact.id}`);
+    }
+    committedArtifactIds.add(artifact.id);
+    greatestThreadArtifactNumber = Math.max(
+      greatestThreadArtifactNumber,
+      numericIdSuffix(artifact.id, /^ta-(\d+)$/, 'thread artifact')
+    );
+    const turn = state.turns.find((candidate) => candidate.id === artifact.turnId);
+    if (!turn) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} references an unknown turn`
+      );
+    }
+    if (workshopTurnAudience(turn).kind !== 'room') {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} references a private turn`
+      );
+    }
+    const attachmentReference = (turn.messageAttachments ?? []).some(
+      (attachment) => attachment.id === artifact.id
+    );
+    const widgetReference = turn.widgetCommit?.artifactId === artifact.id;
+    if (!attachmentReference && !widgetReference) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} is not referenced by its turn`
+      );
+    }
+    if (
+      artifact.kind !== undefined
+      && (
+        !widgetReference
+        || !turn.widgetCommit
+        || artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit.widgetId)
+      )
+    ) {
+      throw new Error(
+        `Persisted Workshop thread artifact ${artifact.id} has the wrong widget kind`
+      );
+    }
+    if (widgetReference && artifact.kind === undefined) {
+      throw new Error(
+        `Persisted Workshop widget artifact ${artifact.id} has no widget kind`
+      );
+    }
   }
   // Conversation Widgets (ADR 2026-07-22): `wc-N` ids are monotonic like
   // `ta-N`, widget artifact ids share the thread-artifact counter, and commit

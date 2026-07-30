@@ -20,7 +20,8 @@ import {
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
 import {
   isLiveWorkshopWidgetId,
-  isWorkshopWidgetId
+  isWorkshopWidgetId,
+  workshopWidgetIdFromArtifactKind
 } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -56,7 +57,9 @@ export function assertWorkshopSessionStateShape(
       'selectedToolId',
       'lastCommittedPersonaBehavior',
       // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
-      'widgetConfigs'
+      'widgetConfigs',
+      // Optional: pre-room-artifact-ledger checkpoints retain refs only.
+      'threadArtifacts'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -86,11 +89,50 @@ export function assertWorkshopSessionStateShape(
   if (state.widgetConfigs !== undefined) {
     arrayOf(state.widgetConfigs, 'Workshop session state.widgetConfigs', assertWidgetConfig);
   }
+  if (state.threadArtifacts !== undefined) {
+    arrayOf(
+      state.threadArtifacts,
+      'Workshop session state.threadArtifacts',
+      assertThreadArtifact
+    );
+  }
   if (state.lastCommittedPersonaBehavior !== undefined) {
     assertLastCommittedBehavior(
       state.lastCommittedPersonaBehavior,
       'Workshop session state.lastCommittedPersonaBehavior'
     );
+  }
+}
+
+function assertThreadArtifact(value: unknown, path: string): void {
+  const artifact = exactObject(
+    value,
+    path,
+    ['id', 'turnId', 'name', 'content'],
+    ['kind', 'sourcePath', 'truncation']
+  );
+  stringAt(artifact.id, `${path}.id`);
+  stringAt(artifact.turnId, `${path}.turnId`);
+  stringAt(artifact.name, `${path}.name`);
+  stringAt(artifact.content, `${path}.content`);
+  optionalStringAt(artifact.sourcePath, `${path}.sourcePath`);
+  if (
+    artifact.kind !== undefined
+    && (
+      typeof artifact.kind !== 'string'
+      || workshopWidgetIdFromArtifactKind(artifact.kind) === undefined
+    )
+  ) {
+    shapeError(`${path}.kind`, 'widget:<registry id>');
+  }
+  if (artifact.truncation !== undefined) {
+    const truncation = exactObject(
+      artifact.truncation,
+      `${path}.truncation`,
+      ['keptWords', 'totalWords']
+    );
+    numberAt(truncation.keptWords, `${path}.truncation.keptWords`);
+    numberAt(truncation.totalWords, `${path}.truncation.totalWords`);
   }
 }
 
@@ -288,7 +330,8 @@ function assertGestureDraft(value: unknown, path: string): void {
       'menu',
       'selections',
       'note'
-    ]
+    ],
+    ['includeDictionaryInCommit']
   );
   boundedStringAt(
     draft.targetPhrase,
@@ -318,6 +361,12 @@ function assertGestureDraft(value: unknown, path: string): void {
     budget.gestureDictionaryCharacters,
     false
   );
+  if (draft.includeDictionaryInCommit !== undefined) {
+    booleanAt(
+      draft.includeDictionaryInCommit,
+      `${path}.includeDictionaryInCommit`
+    );
+  }
   if (
     !Array.isArray(draft.selections)
     || draft.selections.length === 0

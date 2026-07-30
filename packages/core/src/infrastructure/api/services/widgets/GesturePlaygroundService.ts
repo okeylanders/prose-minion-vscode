@@ -395,17 +395,27 @@ export class GesturePlaygroundService {
 
 /**
  * The compact, instruction-shaped directive a Gesture Playground commit
- * ships. Only kept selections and the note ride the rail; the dictionary,
- * menu cloud, and writer instructions remain in the re-openable Draft.
+ * ships. Kept selections and the note always ride the rail. The dictionary
+ * remains in the re-openable Draft unless the writer explicitly includes it
+ * as room-wide reference material; the menu cloud never rides.
  */
 export function buildGestureDirective(input: {
   targetPhrase: string;
   selections: readonly string[];
   note: string;
+  dictionaryMarkdown: string;
+  includeDictionaryInCommit: boolean;
 }): string {
   return [
     `Gesture directions I want for "${input.targetPhrase.trim()}":`,
     ...input.selections.map((selection) => `· ${selection}`),
-    input.note.trim().length > 0 ? `note: ${input.note.trim()}` : undefined
+    input.note.trim().length > 0 ? `note: ${input.note.trim()}` : undefined,
+    ...(input.includeDictionaryInCommit
+      ? [
+          '',
+          'Full Gesture Dictionary shared by the writer as reference:',
+          input.dictionaryMarkdown.trim()
+        ]
+      : [])
   ].filter((line): line is string => line !== undefined).join('\n');
 }

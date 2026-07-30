@@ -31,6 +31,9 @@ import {
 import {
   clonePersistedJson
 } from '@/application/services/workshop/persistedJson';
+import type {
+  WorkshopThreadArtifact
+} from '@/application/services/workshop/WorkshopThreadArtifactFrame';
 
 export type WorkshopStoredTodoItemV1 = Omit<WorkshopTodoItem, 'stale'>;
 
@@ -56,6 +59,12 @@ export interface WorkshopSessionStateV1 {
   shelvedExcerpt?: WorkshopExcerpt;
   contextAttachments: WorkshopContextAttachment[];
   pendingMessageAttachments: WorkshopMessageAttachment[];
+  /**
+   * Host-private bodies for committed room-wide one-shot artifacts. OPTIONAL
+   * because checkpoints written before the room-ledger repair retain only
+   * display-safe turn references and cannot reconstruct already-shipped bodies.
+   */
+  threadArtifacts?: WorkshopThreadArtifact[];
   revisions: {
     excerpt: number;
     replacementCount: number;

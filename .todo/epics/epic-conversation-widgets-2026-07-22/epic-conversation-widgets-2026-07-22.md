@@ -59,7 +59,7 @@ These are the walls. Everything else is decoration that can move.
 
    | Lifetime | Rail | Existing precedent |
    |---|---|---|
-   | **one-shot** (this turn) | **thread-artifact** — `<thread-artifact id="ta-N">`, rides exactly one turn, becomes ordinary history, never re-shipped | `pendingMessageAttachments` (`workshop.ts:419–447`), `buildWorkshopThreadArtifactFrame` |
+   | **one-shot** (this turn) | **thread-artifact** — `<thread-artifact id="ta-N">`, belongs to exactly one room turn, and is delivered once to each host/guest through that participant's room offset | `pendingMessageAttachments`, the host-private committed `threadArtifacts` ledger, and `buildWorkshopThreadArtifactFrame` |
    | **durable** (passage-scoped prose directive) | **standing context** — a passage-scoped frame consulted only at prose-generation time; **not** attunement, **not** behavior | "Add to standing context" composer slot; `<workshop-session-attunement>` is the *shape* precedent, not the home |
 
    The widget host's job is to run the pre-commit UI, produce a validated
@@ -107,10 +107,11 @@ These are the walls. Everything else is decoration that can move.
    POS tables, gradient buckets, sliders, punctuation counts — deterministic.
    Only semantic word-selection and phrase rewrites hit the model. Each widget
    scope uses a model appropriate to its quality and contract requirements; the
-   Gesture Dictionary recommends Sonnet 5. The exploration UI is scaffolding
-   excluded from the rail directive at commit (while remaining in the
-   re-openable session config); what rides the rail is a compact,
-   instruction-shaped directive — never the whole cloud.
+   Gesture Dictionary recommends Sonnet 5. The unselected menu cloud is
+   scaffolding excluded from the rail directive at commit (while remaining in
+   the re-openable session config). What rides by default is a compact,
+   instruction-shaped directive; the writer may explicitly include the full
+   Gesture Dictionary as reference material in that same room-wide artifact.
 
 9. **Core stays host-agnostic.** The widget host, the registry, and every
    widget's logic live in `packages/core`. Only the composer's *mounting* touches

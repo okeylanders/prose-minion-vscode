@@ -5861,6 +5861,36 @@
 [data-pm-surface="workshop"] .pm-ws-gesture-dictionary-content .markdown-content h2 {
   font-size: 14px;
 }
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-share {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 9px;
+  padding: 9px 11px;
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 8px;
+  background: var(--pm-surface);
+  color: var(--pm-text-2);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-share input {
+  flex: none;
+  margin-top: 2px;
+  accent-color: var(--pm-accent);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-share span {
+  display: grid;
+  gap: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-share b {
+  font-size: 11.5px;
+  font-weight: 650;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-share small {
+  color: var(--pm-faint);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
 [data-pm-surface="workshop"] .pm-ws-gesture-mgh {
   display: flex;
   align-items: center;

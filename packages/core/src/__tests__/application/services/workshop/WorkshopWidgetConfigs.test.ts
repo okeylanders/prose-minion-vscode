@@ -47,6 +47,7 @@ const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDr
   ],
   selections: ['She turned her mug a quarter-turn, then back'],
   note: 'keep it small',
+  includeDictionaryInCommit: false,
   ...overrides
 });
 
@@ -383,6 +384,28 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(restored.getSnapshot().widgetConfigs).toEqual([]);
     expect(restored.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() }).id)
       .toBe('wc-1');
+  });
+
+  it('defaults dictionary sharing off for widget drafts saved before the option existed', () => {
+    session.setSessionScope('open');
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const state = session.exportCommittedState();
+    delete (
+      state.widgetConfigs![0].draft as unknown as {
+        includeDictionaryInCommit?: boolean;
+      }
+    ).includeDictionaryInCommit;
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    const result = restored.hydrateCommittedState(
+      parseWorkshopSessionStateV1(state),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    expect(result.migrations).toContain('defaulted-widget-dictionary-sharing');
+    expect(restored.getWidgetConfig('wc-1')!.draft.includeDictionaryInCommit)
+      .toBe(false);
   });
 
   it('rejects a persisted counter that trails an existing wc id', () => {

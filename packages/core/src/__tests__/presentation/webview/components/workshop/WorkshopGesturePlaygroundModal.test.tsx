@@ -64,7 +64,8 @@ const config: WorkshopWidgetConfigSnapshot = {
     dictionaryMarkdown: '# Gesture Dictionary\n\n## The Beat\n\nA private deflection.',
     menu,
     selections: ['She turned her mug a quarter-turn, then back'],
-    note: 'keep it small'
+    note: 'keep it small',
+    includeDictionaryInCommit: true
   }
 };
 
@@ -338,6 +339,9 @@ describe('WorkshopGesturePlaygroundModal', () => {
     expect((dictionaryElement as HTMLDetailsElement).open).toBe(false);
     expect(dictionaryElement?.textContent).toContain('Useful scan.');
     expect(dictionaryElement?.querySelector('script')).toBeNull();
+    expect((screen.getByRole('checkbox', {
+      name: /Include the full Gesture Dictionary for the room/
+    }) as HTMLInputElement).checked).toBe(false);
   });
 
   it('keeps a recovered dictionary inspectable but removes an unusable menu and blocks commit', () => {
@@ -465,6 +469,10 @@ describe('WorkshopGesturePlaygroundModal', () => {
     });
     expect(kept.getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByText('· 1 selected')).toBeTruthy();
+    const dictionarySharing = screen.getByRole('checkbox', {
+      name: /Include the full Gesture Dictionary for the room/
+    }) as HTMLInputElement;
+    expect(dictionarySharing.checked).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
     expect(props.onCommit).toHaveBeenCalledWith(
@@ -473,7 +481,8 @@ describe('WorkshopGesturePlaygroundModal', () => {
         writerInstructions: 'Keep the reaction private and avoid eye language.',
         dictionaryMarkdown: expect.stringContaining('A private deflection.'),
         selections: ['She turned her mug a quarter-turn, then back'],
-        note: 'keep it small'
+        note: 'keep it small',
+        includeDictionaryInCommit: true
       }),
       'wc-1'
     );

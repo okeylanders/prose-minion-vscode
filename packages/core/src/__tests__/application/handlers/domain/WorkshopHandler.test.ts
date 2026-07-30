@@ -2431,6 +2431,13 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(userTurn?.messageAttachments).toEqual([
         expect.objectContaining({ id: 'ta-1', label: 'raven.md' })
       ]);
+      expect(session.getRoomThreadArtifactsForTurn(userTurn!.id)).toEqual([
+        expect.objectContaining({
+          id: 'ta-1',
+          name: 'raven.md',
+          content: 'Raven is seventeen and keeps the marked token.'
+        })
+      ]);
       expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(0);
     });
 

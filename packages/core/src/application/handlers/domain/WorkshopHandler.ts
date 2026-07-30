@@ -65,6 +65,9 @@ import {
   completeWorkshopRun,
   workshopMessageCompletionCopy
 } from '@/application/services/workshop/WorkshopRunCompletion';
+import type {
+  WorkshopThreadArtifactFrameInput
+} from '@/application/services/workshop/WorkshopThreadArtifactFrame';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import {
   WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE
@@ -661,20 +664,23 @@ export class WorkshopHandler {
         requestId,
         openingMessage
       );
+      const joinRoomTurns = this.roomDelivery.prepareJoinSnapshot({
+        kind: 'personaGuest',
+        personaId
+      }, joinStart.turn.id);
       const join = buildWorkshopGuestJoinMessage({
         guestPersonaId: personaId,
         excerpt: joinStart.excerpt,
         contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
           joinStart.contextAttachments
         ),
-        roomTurns: this.roomDelivery.prepareJoinSnapshot({
-          kind: 'personaGuest',
-          personaId
-        }, joinStart.turn.id),
+        roomTurns: joinRoomTurns,
         openingMessage,
         roomFrameOptions: {
           writerName: workshopWriterPreferredAddress(writerProfile),
-          renderedAt: Date.now()
+          renderedAt: Date.now(),
+          threadArtifactsForTurn: (turn) =>
+            this.session.getRoomThreadArtifactsForTurn(turn.id)
         },
         timeFrame: timeNotice?.frame,
         ...behaviorFramesFor(joinStart.turn)
@@ -743,6 +749,10 @@ export class WorkshopHandler {
           }
         });
         if (assistantTurn) {
+          this.session.recordRoomThreadArtifactDeliveries(
+            joinRoomTurns.map((turn) => turn.id),
+            { kind: 'personaGuest', personaId }
+          );
           this.commitTimeNotice(timeNotice);
           this.session.setChatTarget({ kind: 'personaGuest', personaId });
           this.sendStatus(`${workshopPersonaLabel(personaId)} joined the room.`);
@@ -995,15 +1005,14 @@ export class WorkshopHandler {
     const messageAttachments = executeOptions?.includeMessageAttachments
       ? this.session.collectMessageAttachments()
       : [];
-    const threadArtifactFrames = messageAttachments.map((attachment) =>
-      buildWorkshopThreadArtifactFrame({
+    const roomThreadArtifacts: WorkshopThreadArtifactFrameInput[] =
+      messageAttachments.map((attachment) => ({
         id: attachment.id,
         name: attachment.label,
         sourcePath: attachment.relativePath,
         truncation: attachment.truncation,
         content: attachment.content
-      })
-    );
+      }));
     const attachmentRefs = messageAttachments.map(
       ({ content: _content, sourceUri: _sourceUri, ...ref }) => ref
     );
@@ -1017,18 +1026,19 @@ export class WorkshopHandler {
     // mint to ship inside the one commit route, so nothing can interleave.
     const widgetArtifact = executeOptions?.widgetArtifact;
     if (widgetArtifact) {
-      threadArtifactFrames.push(
-        buildWorkshopThreadArtifactFrame({
-          id: widgetArtifact.id,
-          kind: workshopWidgetArtifactKind(widgetArtifact.widgetId),
-          name: widgetArtifact.label,
-          content: widgetArtifact.content
-        })
-      );
+      roomThreadArtifacts.push({
+        id: widgetArtifact.id,
+        kind: workshopWidgetArtifactKind(widgetArtifact.widgetId),
+        name: widgetArtifact.label,
+        content: widgetArtifact.content
+      });
       this.outputChannel.appendLine(
         `[WorkshopHandler] Widget artifact riding this send: ${widgetArtifact.id} (${widgetArtifact.widgetId}, config ${widgetArtifact.widgetConfigId})`
       );
     }
+    const threadArtifactFrames = roomThreadArtifacts.map(
+      buildWorkshopThreadArtifactFrame
+    );
     const widgetCommitRef: WorkshopTurnWidgetCommit | undefined = widgetArtifact
       ? {
           widgetId: widgetArtifact.widgetId,
@@ -1191,6 +1201,17 @@ export class WorkshopHandler {
             this.sendError('workshop.send_message', errorMessage, details)
         }
       });
+      if (
+        assistantTurn
+        && target.kind !== 'tool'
+        && roomThreadArtifacts.length > 0
+      ) {
+        this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
+          `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
+        );
+      }
       if (assistantTurn && roomDelivery) {
         try {
           this.roomDelivery.commit(roomDelivery);
