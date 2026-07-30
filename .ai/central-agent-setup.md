@@ -747,6 +747,30 @@ Potential areas for expansion:
 
 6. **Alpha Freedom**: No backward compatibility until v1.0. Remove dead code aggressively. Breaking changes are free.
 
+### Workshop Session Codec Evolution
+
+Workshop session JSON is a Marketplace-published writer-data contract even
+while Workshop features are under active development. Follow [ADR
+2026-07-30](docs/adr/2026-07-30-workshop-session-codec-evolution.md):
+
+- During an unfinished epic, put narrowly named, deterministic repairs for
+  local development checkpoints in `WorkshopSessionCheckpointNormalization`.
+  Log and regression-test every normalization; do not call it a version
+  migration.
+- When a Marketplace release changes persisted session semantics or makes a
+  formerly valid shape newly required, increment `schemaVersion` and add an
+  explicit adjacent released-codec migration. Test with an authentic fixture
+  from the preceding Marketplace version and write only the current version.
+- Do not create placeholder migrations or copy intermediate development
+  normalizations into a release migration unless the prior released format
+  genuinely requires that transformation.
+- Keep the top-level session codec as the public version boundary. When a
+  second widget makes the widget-config codec genuinely plural, extract each
+  widget's persisted draft/config validation, cloning, and checkpoint
+  normalization into a widget-local codec. Widget pills remain session-owned;
+  they do not need independent schema versions unless they become separately
+  stored or decoded outside a Workshop session.
+
 ### Operational Tips
 
 **Parallel Subagents**: For independent tasks (e.g., updating multiple components), launch multiple Task tool calls in a single message. 3-5x faster than sequential.

@@ -386,7 +386,7 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(result).toEqual({
       discardedConversationIds: [],
       degradedConversationKeys: [],
-      migrations: []
+      normalizations: []
     });
     expect(restored.getHostConversationId()).toBe('host-runtime-after-open');
     expect(restored.getToolSidecarConversationId('prose')).toBe('tool-runtime-after-open');
@@ -441,7 +441,7 @@ describe('WorkshopSessionService committed persistence', () => {
     const restored = new WorkshopSessionService(() => 50_000);
     const result = restored.hydrateCommittedState(state, {}, currentBehavior);
 
-    expect(result.migrations).toContain('defaulted-capability-principal');
+    expect(result.normalizations).toContain('defaulted-capability-principal');
     const hydrated = restored.exportCommittedState().turns
       .find((turn) => turn.capability)!;
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'host' });
@@ -466,7 +466,7 @@ describe('WorkshopSessionService committed persistence', () => {
 
     // A regression to always-stamp would relabel guest evidence as host —
     // silently defeating the privacy guarantee on the next save/load.
-    expect(result.migrations).not.toContain('defaulted-capability-principal');
+    expect(result.normalizations).not.toContain('defaulted-capability-principal');
     const hydrated = restored.exportCommittedState().turns
       .find((turn) => turn.capability)!;
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'personaGuest', personaId: 'margot' });
@@ -491,7 +491,7 @@ describe('WorkshopSessionService committed persistence', () => {
     }, currentBehavior);
     const normalized = restored.exportCommittedState();
 
-    expect(result.migrations).toEqual(expect.arrayContaining([
+    expect(result.normalizations).toEqual(expect.arrayContaining([
       'discarded-legacy-delivery-cursors',
       'headed-missing-room-offsets'
     ]));

@@ -263,15 +263,6 @@ describe('WorkshopSessionService — widget configs', () => {
 
   it.each([
     {
-      label: 'missing sourceReferences on a committed draft',
-      mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
-        delete (
-          state.widgetConfigs![0].draft as unknown as { sourceReferences?: unknown }
-        ).sourceReferences;
-      },
-      message: /missing required field sourceReferences/
-    },
-    {
       label: 'an invented path-bearing source reference',
       mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
         (
@@ -403,9 +394,28 @@ describe('WorkshopSessionService — widget configs', () => {
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
     );
 
-    expect(result.migrations).toContain('defaulted-widget-dictionary-sharing');
+    expect(result.normalizations).toContain('defaulted-widget-dictionary-sharing');
     expect(restored.getWidgetConfig('wc-1')!.draft.includeDictionaryInCommit)
       .toBe(false);
+  });
+
+  it('defaults source references to none for drafts saved before source selection existed', () => {
+    session.setSessionScope('open');
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const state = session.exportCommittedState();
+    delete (
+      state.widgetConfigs![0].draft as unknown as { sourceReferences?: unknown }
+    ).sourceReferences;
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    const result = restored.hydrateCommittedState(
+      parseWorkshopSessionStateV1(state),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    expect(result.normalizations).toContain('defaulted-widget-source-references');
+    expect(restored.getWidgetConfig('wc-1')!.draft.sourceReferences).toEqual([]);
   });
 
   it('rejects a persisted counter that trails an existing wc id', () => {

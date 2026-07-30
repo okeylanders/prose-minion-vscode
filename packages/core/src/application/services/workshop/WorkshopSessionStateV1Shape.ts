@@ -325,13 +325,15 @@ function assertGestureDraft(value: unknown, path: string): void {
       'writerInstructions',
       'contextText',
       'characterNotes',
-      'sourceReferences',
       'dictionaryMarkdown',
       'menu',
       'selections',
       'note'
     ],
-    ['includeDictionaryInCommit']
+    // `sourceReferences` was added after the first persisted Gesture
+    // Playground drafts. Hydration supplies its safe empty default before
+    // current invariants are enforced.
+    ['includeDictionaryInCommit', 'sourceReferences']
   );
   boundedStringAt(
     draft.targetPhrase,
@@ -354,7 +356,9 @@ function assertGestureDraft(value: unknown, path: string): void {
     `${path}.characterNotes`,
     budget.gestureCharacterNotesCharacters
   );
-  assertWidgetSourceReferences(draft.sourceReferences, `${path}.sourceReferences`);
+  if (draft.sourceReferences !== undefined) {
+    assertWidgetSourceReferences(draft.sourceReferences, `${path}.sourceReferences`);
+  }
   boundedStringAt(
     draft.dictionaryMarkdown,
     `${path}.dictionaryMarkdown`,

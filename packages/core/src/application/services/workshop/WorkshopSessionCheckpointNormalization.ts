@@ -1,15 +1,16 @@
 /**
- * One-way compatibility normalization for checkpoints written before Workshop
- * scope became immutable, and before capability artifacts persisted their
- * invoking principal (Sprint 13C). Current code cannot write these states;
- * saved writer sessions may still contain them.
+ * Development-checkpoint normalization for the evolving, unreleased Workshop
+ * codec. It accepts narrowly named pre-release shape drift and returns the
+ * current in-memory V1 shape. This is deliberately not a version migration:
+ * formal released-codec migrations are introduced only when a Marketplace
+ * release changes the persisted contract.
  */
 
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 
-export type WorkshopSessionHydrationMigration =
+export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
   | 'discarded-legacy-delivery-cursors'
   | 'inferred-missing-scope'
@@ -17,17 +18,18 @@ export type WorkshopSessionHydrationMigration =
   | 'restored-undelivered-withdrawal'
   | 'defaulted-capability-principal'
   | 'defaulted-widget-dictionary-sharing'
+  | 'defaulted-widget-source-references'
   | 'headed-missing-room-offsets';
 
-export interface WorkshopSessionStateV1MigrationResult {
+export interface WorkshopSessionCheckpointNormalizationResult {
   state: WorkshopSessionStateV1;
-  migrations: WorkshopSessionHydrationMigration[];
+  normalizations: WorkshopSessionCheckpointNormalization[];
 }
 
-export function migrateWorkshopSessionStateV1ForHydration(
+export function normalizeWorkshopSessionCheckpointForHydration(
   state: WorkshopSessionStateV1
-): WorkshopSessionStateV1MigrationResult {
-  const migrations: WorkshopSessionHydrationMigration[] = [];
+): WorkshopSessionCheckpointNormalizationResult {
+  const normalizations: WorkshopSessionCheckpointNormalization[] = [];
   const withdrawalNeverShipped =
     state.revisions.pendingExcerptWithdrawal === true
     && state.shelvedExcerpt !== undefined;
@@ -36,18 +38,18 @@ export function migrateWorkshopSessionStateV1ForHydration(
     && state.excerpt !== undefined;
 
   if (withdrawalNeverShipped) {
-    migrations.push('restored-undelivered-withdrawal');
+    normalizations.push('restored-undelivered-withdrawal');
   } else if (openSessionWithExcerpt) {
-    migrations.push('normalized-open-session-with-excerpt');
+    normalizations.push('normalized-open-session-with-excerpt');
   }
   if (state.scope === undefined) {
-    migrations.push('inferred-missing-scope');
+    normalizations.push('inferred-missing-scope');
   }
   if (
     state.revisions.pendingExcerptChange !== undefined
     || state.revisions.pendingExcerptWithdrawal !== undefined
   ) {
-    migrations.push('discarded-legacy-scope-transition');
+    normalizations.push('discarded-legacy-scope-transition');
   }
 
   // Pre-13C capability artifacts carry no invoking principal. The host was
@@ -65,25 +67,33 @@ export function migrateWorkshopSessionStateV1ForHydration(
     };
   });
   if (defaultedPrincipal) {
-    migrations.push('defaulted-capability-principal');
+    normalizations.push('defaulted-capability-principal');
   }
 
   let defaultedWidgetDictionarySharing = false;
+  let defaultedWidgetSourceReferences = false;
   const widgetConfigs = state.widgetConfigs?.map((config) => {
-    if (typeof config.draft.includeDictionaryInCommit === 'boolean') {
+    const needsDictionarySharing = typeof config.draft.includeDictionaryInCommit !== 'boolean';
+    const needsSourceReferences = !Array.isArray(config.draft.sourceReferences);
+    if (!needsDictionarySharing && !needsSourceReferences) {
       return config;
     }
-    defaultedWidgetDictionarySharing = true;
+    defaultedWidgetDictionarySharing ||= needsDictionarySharing;
+    defaultedWidgetSourceReferences ||= needsSourceReferences;
     return {
       ...config,
       draft: {
         ...config.draft,
-        includeDictionaryInCommit: false
+        ...(needsDictionarySharing ? { includeDictionaryInCommit: false } : {}),
+        ...(needsSourceReferences ? { sourceReferences: [] } : {})
       }
     };
   });
   if (defaultedWidgetDictionarySharing) {
-    migrations.push('defaulted-widget-dictionary-sharing');
+    normalizations.push('defaulted-widget-dictionary-sharing');
+  }
+  if (defaultedWidgetSourceReferences) {
+    normalizations.push('defaulted-widget-source-references');
   }
 
   const ledgerHead = turns.at(-1)?.id;
@@ -105,10 +115,10 @@ export function migrateWorkshopSessionStateV1ForHydration(
       )
     );
   if (discardedLegacyDeliveryCursors) {
-    migrations.push('discarded-legacy-delivery-cursors');
+    normalizations.push('discarded-legacy-delivery-cursors');
   }
   if (headedMissingRoomOffsets) {
-    migrations.push('headed-missing-room-offsets');
+    normalizations.push('headed-missing-room-offsets');
   }
 
   const toolSidecars = state.participants.toolSidecars.map((sidecar) => {
@@ -164,6 +174,6 @@ export function migrateWorkshopSessionStateV1ForHydration(
       revisions,
       participants
     },
-    migrations
+    normalizations
   };
 }

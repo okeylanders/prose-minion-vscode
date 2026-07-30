@@ -78,16 +78,16 @@ import {
   validateWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
 import {
-  migrateWorkshopSessionStateV1ForHydration,
-  WorkshopSessionHydrationMigration
-} from '@/application/services/workshop/WorkshopSessionStateV1Migration';
+  normalizeWorkshopSessionCheckpointForHydration,
+  WorkshopSessionCheckpointNormalization
+} from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
 import type {
   WorkshopThreadArtifact,
   WorkshopThreadArtifactFrameInput
 } from '@/application/services/workshop/WorkshopThreadArtifactFrame';
 export type {
-  WorkshopSessionHydrationMigration
-} from '@/application/services/workshop/WorkshopSessionStateV1Migration';
+  WorkshopSessionCheckpointNormalization
+} from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
 
 export { WORKSHOP_TODO_BOUNDS } from '@/application/services/workshop/WorkshopSessionLimits';
 
@@ -290,7 +290,7 @@ export interface WorkshopExcerptReplacement {
 export interface WorkshopSessionHydrationResult {
   discardedConversationIds: string[];
   degradedConversationKeys: WorkshopConversationLogicalKey[];
-  migrations: WorkshopSessionHydrationMigration[];
+  normalizations: WorkshopSessionCheckpointNormalization[];
 }
 
 export class WorkshopSessionActiveRunPersistenceError extends Error {
@@ -2126,8 +2126,8 @@ export class WorkshopSessionService {
     validateWorkshopSessionStateV1(state, {
       allowLegacyOpenSessionWithExcerpt: true
     });
-    const migration = migrateWorkshopSessionStateV1ForHydration(state);
-    const normalized = migration.state;
+    const normalization = normalizeWorkshopSessionCheckpointForHydration(state);
+    const normalized = normalization.state;
     // The compatibility exception terminates at the migration boundary. From
     // this point on, the current invariant is absolute.
     validateWorkshopSessionStateV1(normalized);
@@ -2269,7 +2269,7 @@ export class WorkshopSessionService {
     return {
       discardedConversationIds,
       degradedConversationKeys,
-      migrations: migration.migrations
+      normalizations: normalization.normalizations
     };
   }
 

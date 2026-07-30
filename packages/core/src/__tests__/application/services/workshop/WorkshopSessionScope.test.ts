@@ -553,7 +553,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(restored.getScope()).toBe('excerpt');
       expect(restored.getExcerpt()?.version).toBe(1);
       expect(restored.getShelvedExcerpt()).toBeUndefined();
-      expect(result.migrations).toEqual([
+      expect(result.normalizations).toEqual([
         'restored-undelivered-withdrawal',
         'discarded-legacy-scope-transition'
       ]);
@@ -575,7 +575,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
         service.getConversationBehavior()
       );
 
-      expect(result.migrations).toContain('normalized-open-session-with-excerpt');
+      expect(result.normalizations).toContain('normalized-open-session-with-excerpt');
       expect(restored.getScope()).toBe('excerpt');
       expect(restored.getExcerpt()?.version).toBe(1);
       expect(restored.hasRoomMemory()).toBe(true);
@@ -628,7 +628,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
       expect(buildWorkshopHostUpdateFrame(restored.collectPendingHostUpdates()))
         .toContain('revised the pinned excerpt');
       expect(restored.exportCommittedState().revisions.pendingExcerptChange).toBeUndefined();
-      expect(result.migrations).toContain('discarded-legacy-scope-transition');
+      expect(result.normalizations).toContain('discarded-legacy-scope-transition');
     });
 
     it('drops a legacy pending delivery when no host memory survives', () => {
