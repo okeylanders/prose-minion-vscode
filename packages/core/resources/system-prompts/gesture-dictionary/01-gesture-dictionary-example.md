@@ -1,290 +1,506 @@
 # Gesture Dictionary — Reference Example
 
-Use this exemplar as a benchmark for depth, scene-conditioning, honesty
-labeling, and protocol fidelity. Treat it as a standard for *range and
-rigor* — do not copy its kitchen, swimmer, grief, syntax, or images into
-unrelated scenes.
+Use this exemplar as a benchmark for structural fidelity, lexical depth,
+scene-conditioning, heuristic honesty, and the handoff from semantic scan to
+menu. Do not copy its museum, ceramics, secrecy, syntax, names, or images into
+unrelated work.
 
----
+## Example inputs
 
-## The inputs
+Target phrase:
 
-```
-Target phrase: his eyes stretched wide
+`she folded her arms`
 
 Writer instructions:
-Mara's POV, close third. The moment must stay private — the guests in the
-next room can't clock it. Danny never cries on the page. Avoid "eyes
-widened" and anything that smells like it.
+
+Elise's close-third POV. Keep the confrontation quiet because the registrar is
+working on the other side of the glass. Anika is protecting a discovery, not
+defending herself. Do not use folded arms, crossed arms, shields, walls, armor,
+or barriers. Let professional habit matter.
 
 Surrounding context:
-The reception hum came through the kitchen wall — someone laughing too
-softly, spoons against saucers. Danny had been drying the same blue plate
-since she'd come in. "I found letters," Mara said. "In her sewing bench.
-To us. She never sent them." His eyes stretched wide. The plate kept
-turning under the towel, around and around, like a wheel that couldn't
-feel the road.
+
+The conservation lamp made a small white country of the worktable. Between
+them, the blue bowl waited in its foam cradle, salt blooming through the glaze
+in a line no wider than thread.
+
+"The manifest says it came out of storage yesterday," Elise said.
+
+Anika set down the sable brush. "The manifest says what it was told."
+
+Beyond the glass, Mr. Vale turned a page. Anika looked once toward him, then
+back to the bowl. She folded her arms.
 
 Character notes:
-Danny, 17, Mara's younger brother. Competitive swimmer — breath control is
-his tell and his shield. Hates being watched; grief looks like chores.
-Their mother taught him to dry dishes "to the squeak."
-```
 
-## The response
+Dr. Anika Sen, ceramic conservator, meticulous and dryly funny. She protects
+objects by reducing contact and protects people by withholding conclusions
+until she can prove them. A tendon injury makes prolonged gripping painful.
+Elise knows Anika taps her thumbnail against the first knuckle of her index
+finger when she has evidence she is not ready to disclose.
+
+## Example response
 
 ===GESTURE_DICTIONARY_V1===
-# Gesture Dictionary — "his eyes stretched wide"
+# Gesture Dictionary — "she folded her arms"
 
-## 🎬 The Beat
+## 📕 Working Definition & Dramatic Job
 
-The target is a **shock beat that must stay subterranean**. Danny learns that
-his dead mother left words behind — addressed to him — and the scene requires
-the impact to register fully for Mara and the reader while remaining invisible
-to the room next door. Its dramatic function is a **turn**: it converts
-chore-numbness into contact with grief. Whatever rewording replaces it must
-keep three things alive: the information *lands*, Mara *witnesses* it, and the
-reception guests *don't*. The widening itself is disposable; the landing is
+Literally, the phrase describes bringing both forearms across the torso and
+settling them there. In fiction it is rarely neutral blocking. It commonly
+announces refusal, guardedness, impatience, authority, self-comfort, or cold,
+often without specifying which. That efficiency is why the beat is common and
+why it can feel pre-decided: the pose arrives carrying its interpretation.
+
+Here the dramatic job is not **Anika closes herself off**. She has just glanced
+toward the registrar behind glass, then returned her attention to the altered
+bowl. The action must show a professional deciding that evidence is not yet
+safe to release. It is a containment beat with an audience problem. Whatever
+replaces the phrase must preserve Anika's control, the proximity of a secret,
+Elise's ability to recognize her tell, and the need to remain visually ordinary
+to Mr. Vale.
+
+The crossed-arm anatomy is disposable. The controlled reduction of access is
 not.
 
-## 🫀 Physical Mechanics
+## 🧩 Wording & Grammatical Family
 
-A true widening is autonomic: the upper lids clear the iris and white shows
-above it, brows lift or don't, and the whole event takes a fraction of a
-second — faster than thought, which is why genuine startle widening happens
-*before* the head turns or the breath catches. A voluntary or performed
-version is slower, often asymmetric, and held too long. The onset is nearly
-invisible from the side; at dish-drying distance across a kitchen, Mara would
-catch it, but mostly by contrast with his stillness. What matters most for
-prose is the **decay**: real shock resolves within a second or two into
-whatever the character does with it — masking, motion, speech, or nothing —
-and the decay is where character lives. Timing options against the trigger:
-pre-emptive (he saw it coming at "sewing bench"), on-beat (at "letters"), or
-lagged (the words take a beat to translate — often the most devastating in a
-grief scene, because comprehension arrives in installments).
+The target is a simple subject–verb–object construction: pronoun subject
+(`she`), transitive action (`folded`), possessive body-part object (`her
+arms`). The grammar gives Anika agency, but the familiar verb-body collocation
+does most of the interpretive work before the scene can.
 
-## 🔍 Reading Explorer
+Useful grammatical families include:
 
-1. **Impact / shock** — new information landing. Markers: full-body arrest,
-   caught inhale, gaze fixed on nothing. *The dish towel stopped mid-turn, as
-   if the news had reached his hands first.* Misread risk: blankness can read
-   as indifference.
-2. **Fear / threat** — widening plus retreat: weight shifts back, chin
-   tucks. *His eyes went wide and he stepped back into the counter's edge.*
-   Misread risk: fear markers on a grief beat import the wrong genre.
-3. **Awe / summons** — widening plus approach or upward focus; the face
-   opens rather than braces. *His face lifted, wide open, as though the
-   ceiling had said his name.* Misread risk: reads mystical; wrong here.
-4. **Performed innocence** — deliberate, aimed at an audience, held past its
-   natural decay. *His eyes went wide and stayed wide, a boy's idea of
-   blameless.* Misread risk: comedy.
-5. **Recognition** — widening plus inward or past-focused gaze; the eyes
-   stop being for seeing. *His eyes opened wide and aimed at nothing, the way
-   they do when what you're looking at is behind you by years.* Misread risk:
-   dissociation if held too long.
+- **Direct action**: *She set the brush down; she tucked her hands away; she
+  stepped back from the table.* Agency stays with Anika.
+- **Body-part subject**: *Her hands went still; her thumb found her knuckle.*
+  The body appears to leak information ahead of conscious speech.
+- **Object displacement**: *The sable brush returned to its paper sleeve.*
+  Professional procedure carries the refusal.
+- **Observer construction**: *Elise knew that tap.* The gesture becomes
+  relationship knowledge rather than stage direction.
+- **Negative construction**: *She did not pick the brush back up.* Omission
+  carries the turn.
+- **Spatial syntax**: *She put the worktable between them.* This would be too
+  loud and too close to the forbidden barrier metaphor, but it demonstrates
+  how grammar can relocate agency into space.
 
-This scene asks for **5 shading into 1**: recognition first — *she wrote to
-us* — with impact arriving through it. Fear, awe, and performance are off the
-table; the writer's privacy constraint also rules out any reading loud enough
-to summon a guest.
+Neighboring verbs—*crossed, clasped, tucked, gathered, braced, hugged,
+wrapped, locked*—mostly retain the same closed-body silhouette. They change
+surface wording without escaping the convention. More productive derivations
+change the sentence's subject or channel: *the brush stopped*, *the cradle
+turned*, *her thumbnail tapped*, *the answer stayed where it was*.
 
-## 🗣️ Register & Social Weather
+Filtered versions such as *Elise saw her fold her arms* waste close third on
+perception scaffolding. Adverb repairs—*folded her arms carefully,
+protectively, deliberately*—name the desired nuance instead of embodying it.
 
-The phrasing "eyes stretched wide" already sits a register above "eyes
-widened": *stretched* is tactile and effortful, implying force applied to the
-body from inside — good instincts, worn delivery vehicle. As an act, ocular
-widening is socially quiet (silent, brief, deniable) but **typographically
-loud**: a sentence spent on a character's eyes tells the reader to stare at
-them, which fights the scene's whole point that no one is allowed to stare.
-When the room must not notice, consider letting the *prose* whisper too —
-route the beat through something the room would dismiss as chores.
+## 🔍 Sense Explorer
 
-## 👁️ POV & Relationship Lens
+1. **Defensive closure**
 
-Mara cannot feel his eyes stretch; she can only see, hear, and interpret — and
-close third gives her **misread rights**. A sister who grew up beside this boy
-reads decay-time, not onset: she knows his tells (breath, chores) better than
-his face. Available moves: she names it wrong and corrects (*she thought he
-hadn't heard — then saw it was the opposite*); she reads the plate instead of
-the face; she notices **what stops** rather than what moves. And because Danny
-hates being watched, her *looking away* — granting him privacy the guests
-can't — may be the most characterful rendering available: the relationship
-performing the beat.
+   **Definition:** The body narrows access after challenge or threat. Weight
+   may shift away, elbows tighten toward the ribs, and the pose often arrives
+   quickly after a pointed line.
 
-## 🧰 Embodiment Pathways
+   *She drew her elbows in, taking the answer somewhere Elise could not
+   follow.*
 
-- **Facial** — the saturated channel; usable only if transformed (see 🌱).
-- **Respiratory** — unusually available: Danny's breath is *trained*. A
-  caught breath in a boy who never loses his breath is seismic, and Mara knows
-  his breathing the way coaches do.
-- **Postural** — stillness, weight into the counter, shoulders finding the
-  set he uses on the blocks.
-- **Vocal** — what happens to a word he'd started; a swallowed "when."
-- **Object-based** — the richest channel here: blue plate, towel, and the
-  squeak, which is *their mother's own protocol*. The object can widen for
-  him: the plate stops turning, the towel stalls, the squeak cuts off mid-
-  note.
-- **Whole-body / spatial** — a quarter-turn to the sink; tap on; distance
-  managed instead of expression.
-- **Stillness / negative space** — the drying stops. The kitchen loses one
-  sound, and Mara hears the absence before she can name it.
+   **Wording alternatives / near-synonyms:** closed off, drew inward, tucked
+   her hands away, hugged her ribs, braced, recoiled, turned aside, made
+   herself smaller, withdrew, covered her middle.
 
-## 🎭 Character Refraction
+   **Contrasts / antonyms:** opened her hands, leaned in, exposed her palms,
+   stepped closer, relaxed her shoulders, invited the question.
 
-Danny's physical vocabulary, mined from the notes: a swimmer's eyes are
-trained to open against water — wide-open eyes are *working* eyes to him, not
-helpless ones, which makes the literal gesture reclaimable through sport. His
-breath is a ledger; grief will show up there as bookkeeping errors. Chores are
-armor his mother issued — so the plate isn't a prop, it's a conversation with
-her, and "to the squeak" is a standard he can suddenly over-serve or fail.
-Over-control is his loudest tell: drying the plate *perfectly*, past clean,
-is this boy's version of eyes stretched wide.
+   **Nuance and usage:** This is the default reading of folded arms and
+   therefore the most immediately legible. It is wrong for the requested beat:
+   Anika is not protecting herself from Elise. Using defensive markers would
+   flatten professional discretion into personal discomfort.
+
+2. **Judgment or refusal**
+
+   **Definition:** A socially dominant pause that withholds assent. The body
+   grows still while another person is left to continue, retract, or explain.
+
+   *Anika gave the silence back to her, untouched.*
+
+   **Wording alternatives / near-synonyms:** held her ground, declined to
+   answer, let the question hang, waited her out, went still, reserved
+   judgment, closed the subject, offered nothing, kept counsel, withheld
+   assent.
+
+   **Contrasts / antonyms:** nodded permission, answered at once, softened,
+   conceded, prompted her onward, broke the silence.
+
+   **Nuance and usage:** Stillness can read as authority without importing
+   anger. In dialogue, the refusal often belongs in timing rather than anatomy.
+   The misread risk is arrogance. Elise's familiarity with Anika must keep the
+   beat from becoming a generic expert freezing out a subordinate.
+
+3. **Self-containment**
+
+   **Definition:** A person physically manages an emotion, impulse, or amount
+   of information that threatens to become visible.
+
+   *Her right hand covered the left, not gripping, only making certain it
+   stayed where she put it.*
+
+   **Wording alternatives / near-synonyms:** contained herself, gathered her
+   hands, held herself quiet, checked the impulse, steadied, restrained,
+   compressed the reaction, kept the tell small, anchored, made the body
+   behave.
+
+   **Contrasts / antonyms:** flinched openly, reached out, blurted, paced,
+   abandoned the task, let the reaction show.
+
+   **Nuance and usage:** This sense is closer. It preserves pressure without
+   implying fear. However, gripping or clenching would contradict the tendon
+   note and waste a character-specific opportunity. Anika's control should
+   look practiced and low-contact.
+
+4. **Custodial withholding**
+
+   **Definition:** Knowledge is treated like a vulnerable object: held back
+   until conditions are safe, provenance is clear, and disclosure will not
+   damage what it touches.
+
+   *She slid the brush into its sleeve with the care of putting evidence out
+   of reach of the air.*
+
+   **Wording alternatives / near-synonyms:** reserved the finding, protected
+   the conclusion, reduced contact, isolated the evidence, covered the trace,
+   delayed attribution, kept the result uncontaminated, secured the detail,
+   withheld the provenance, returned to protocol.
+
+   **Contrasts / antonyms:** announced the finding, exposed the evidence,
+   handed over the file, invited inspection, named the source, committed to a
+   conclusion.
+
+   **Nuance and usage:** This is the scene's governing sense. It translates
+   Anika's profession into behavior without making her speak like a manual.
+   The risk is excessive metaphor: if every object-handling action is glossed
+   as secrecy, the prose will explain what the object already shows.
+
+The scene requests **custodial withholding shaded by judgment**. Anika knows
+more, believes Elise may be right, and refuses disclosure because Mr. Vale is
+within sight. Defensive closure and self-soothing are tempting because the
+original phrase conventionally points there, but both misstate the
+relationship and pressure.
+
+## 🗣️ Register & Connotation
+
+`She folded her arms` is neutral, compact, and highly conventional. It gives
+the reader quick blocking but carries a blunt interpretive volume: even if the
+movement is silent, the prose announces **resistance** in capital letters.
+That is louder than the room permits.
+
+Anika's act should be publicly mundane and privately exact. To Mr. Vale, it
+should resemble a conservator pausing work. To Elise, it should carry the
+weight of a sealed conclusion. Direct emotion language would raise the prose
+volume; professional procedure, a tiny habitual tell, or a failed resumption
+keeps it low.
+
+## 🪶 Narrative Texture & Symbolic Associations
+
+The scene's texture is controlled contact: foam cradle, sable brush, glaze,
+salt bloom, thread-width damage, glass. These materials invite fragility,
+isolation, contamination, custody, and surfaces that reveal hidden change.
+Anika can mirror the bowl without the prose declaring her cracked or fragile.
+
+The glass partition already supplies observation and separation. Calling any
+body posture a wall, shield, armor, or barrier would repeat the architecture
+and violate the writer's exclusions. The live symbolic opportunity is
+**conservation**: deciding what may be touched, exposed, cleaned, named, or
+left undisturbed.
+
+## 📚 Collocations, Idioms & Stock Renderings
+
+Common clusters include *folded her arms across her chest*, *crossed her arms
+defensively*, *arms folded tight*, *stared with arms crossed*, *hugged herself*,
+*closed herself off*, and *put up a wall*. Dialogue often adds *raised an
+eyebrow*, *set her jaw*, or *waited expectantly*, producing an inventory of
+prepackaged resistance.
+
+The idiomatic meaning of *folded arms* is refusal to act: standing by while
+something happens. That shade could falsely suggest negligence in a scene
+where Anika's restraint is itself professional action. Live collocations in
+this passage belong to the work: *set down the brush, returned it to the
+sleeve, turned the cradle, checked the glaze, reduced contact*.
+
+## 🎭 Character Voice Variations
+
+- **Anika-shaped professional diction:** *She reduced the question to
+  something that could wait.* Precision and controlled exposure.
+- **Elise's close-third shorthand:** *There it was: thumb to knuckle. Not no.
+  Not here.* Relationship knowledge compresses explanation.
+- **Clinical observation:** *Fine motor activity ceased; gaze checked the
+  adjoining room.* Accurate but emotionally distant.
+- **Hardboiled:** *She holstered the brush and kept the answer.* Makes custody
+  aggressive; probably too genre-loud here.
+- **Lyrical:** *The answer surfaced between them like salt through glaze.*
+  Uses the scene's image but risks explaining the parallel.
+- **Colloquial:** *She wasn't giving him a thing with Vale behind the glass.*
+  Clear motive, little embodied texture.
+- **Comic:** *Her face filed the question under absolutely not.* Useful only
+  if the scene permits dry wit.
+- **Procedural suspense:** *She capped the evidence before anyone knew it had
+  been opened.* Heightens danger and can tilt the chapter toward conspiracy.
+
+The best palette combines Anika's procedural precision with Elise's intimate
+recognition: exact enough to belong in the lab, compressed enough to remain a
+sibling-like private signal between colleagues.
+
+## 🌐 Cultural & Contextual Watchpoints
+
+Arm-folding varies with comfort, temperature, habit, pain, authority, and
+culture; it cannot reliably diagnose defensiveness. Disability and injury
+matter here: prolonged gripping would be a poor default because the notes
+specify tendon pain. Anika may minimize contact for physical reasons as well as
+professional ones.
+
+The meaning of direct eye contact, silence before a superior, and public
+disagreement can also vary by culture and institution. The passage does not
+provide enough evidence to make Anika's heritage explanatory. Keep the reading
+rooted in her documented habits and this museum's power arrangement. Any
+broader cultural interpretation would require verification and more context.
 
 ## 🧭 Semantic Gradients
 
-- **Subtle → overt**: the squeak falters → the plate stops turning → *his
-  eyes stretched wide* → the plate goes down hard → "When."
-- **Controlled → involuntary**: the long flat inhale off the blocks → a
-  schooled blankness → a leak at the eyes → full startle, plate abandoned.
-- **Private → public**: a flare only close third can see → sister-legible
-  (the stopped towel) → room-legible (a chair scrapes; a guest looks in).
-  This scene must stay left of room-legible.
-- **Static → kinetic**: freeze → tremor in the towel → quarter-turn to the
-  sink → leaving the kitchen entirely.
+- **Subtle → overt:** brush remains down → thumbnail taps once → answer is
+  delayed → body turns from Elise → explicit refusal.
+- **Controlled → involuntary:** procedural pause → familiar hand tell →
+  breath breaks cadence → sable hairs bend under pressure → conclusion slips
+  aloud.
+- **Private → public:** Elise notices the knuckle tap → Vale sees work stop →
+  voices lower → blind is drawn → registrar is confronted.
+- **Static → kinetic:** hand stills → brush is sleeved → cradle turns away →
+  file is removed → Anika leaves the lab.
+- **Unproven → declared:** suspicion → pattern → finding → attribution →
+  accusation. Anika is holding the scene between pattern and finding.
 
 ## 🎵 Sound & Rhythm on the Page
 
-"Stretched" earns its keep acoustically: the *str-* cluster is friction, and
-the long open vowel of "wide" is release — the line performs tension-then-
-release. Any rewording should decide which half it keeps. Percussive
-monosyllables (*the squeak stopped*) read sudden and final — right for the
-arrest. A long suspended sentence holds a moment underwater — right for the
-decay. The *st-* family (stopped, stalled, stilled, stared) knits new verbs to
-the original's texture and to "sewing" and "saucers" already in the passage.
-Watchpoint: the surrounding paragraph already ends on a long simile ("a wheel
-that couldn't feel the road"), so a second long lyric line will blur it —
-a clipped beat directly after the dialogue will contrast better.
+`Folded her arms` is soft and even: two trochees with no verbal fracture. That
+smoothness undersells the turn. The passage already carries delicate
+consonants—*small white country, salt, glaze, line, thread*—and professional
+verbs with clean stops—*set, says, looked*. A replacement can borrow those
+stops without becoming violent: *The brush stayed down.* Four monosyllables
+make a quiet decision.
+
+Sibilants can connect brush, salt, says, glass, and silence, but too many will
+make the line self-consciously hushed. The surrounding prose has one long
+visual sentence before clipped dialogue. The target moment benefits from a
+short observation followed by Elise's interpretation, allowing the private
+meaning to arrive half a beat after the public action.
+
+## 🫀 Physical Mechanics
+
+Arm folding can begin at shoulders, elbows, or hands and can settle loosely or
+tightly. It may conserve warmth, rest the arms, reduce vulnerable reach, manage
+pain, or occupy the hands. None of those visible mechanics proves motive.
+Angle matters: Mr. Vale behind glass may register only that Anika has paused;
+Elise across the worktable can see a thumbnail find its knuckle.
+
+For this character, gripping and sustained tension are poor choices because of
+the tendon injury. A low-force tell is more credible: one tap, a hand laid
+flat, fingers withdrawn from the brush, or an object returned precisely to its
+rest. Timing can fall on `yesterday`, on Anika's glance toward Vale, or after
+she looks back at the bowl. The last creates a useful chain: threat checked,
+evidence checked, disclosure withheld.
+
+## 👁️ POV & Relationship Lens
+
+Elise can observe the set-down brush, the glance, the still hand, and the tap.
+She cannot know Anika's conclusion without inference. Close third allows the
+prose to use history: Elise recognizes that the knuckle tap means **evidence,
+not yet**. That recognition differentiates her from Mr. Vale and turns the
+gesture into relationship knowledge.
+
+Available routes include letting Elise initially read refusal and then revise
+it; noticing that Anika does not resume work; following the glance to Vale;
+or recognizing the tell without translating it fully for the reader. The most
+interesting possibility is that Elise understands the timing but not the
+finding: Anika confirms there is something to protect without revealing what.
+
+## 🧰 Embodiment Pathways
+
+- **Face and gaze:** a single check toward the glass, then attention returned
+  to the salt bloom.
+- **Breath:** an inhale held only until Vale turns another page; useful but
+  less character-specific than the hand tell.
+- **Voice and silence:** answer narrowed to *not here*, or the expected dry
+  joke fails to arrive.
+- **Hands:** thumbnail to knuckle, palms flattened away from the bowl, injured
+  hand released rather than clenched.
+- **Object:** sleeve the brush, rotate the bowl's damage from view, settle the
+  tissue over the cradle, close the manifest.
+- **Space:** shift so her body blocks Vale's sightline; likely too visible.
+- **Timing and consequence:** wait for a page turn, ventilation hum, or Vale's
+  departure before answering.
+- **Negative space:** do not pick the brush back up. The halted work becomes
+  the disclosure.
+
+The strongest channels are the documented tell, reduced contact, and failure
+to resume the task. The scene blocks large posture, loud speech, and theatrical
+object concealment.
+
+## 🎭 Character Refraction
+
+Anika protects by withholding premature conclusions. Her habits make restraint
+active rather than evasive: she reduces contact, isolates variables, and
+refuses attribution before proof. Her humor is another gauge; if the dry reply
+does not come, Elise knows the question has crossed from ordinary disagreement
+into evidence.
+
+Her tendon injury means control should appear as release, placement, or small
+repetition—not pressure. The thumbnail tap is ideal because it is supplied,
+low-force, private, and legible only to Elise. The bowl offers a professional
+analogue, but one well-chosen conservation action is stronger than a parade of
+lab metaphors.
 
 ## 🗺️ Genre Refractions
 
-- **Contemporary YA**: reaction beats carry chapters; the convention is
-  ocular inflation plus an emotion label ("his eyes widened in shock").
-  Refresh by displacement — objects, sound, breath — which YA readers parse
-  fluently.
-- **Quiet literary realism**: the gesture migrates to negative space and
-  delayed reaction; the room's ambient sound does the emotional work. This
-  scene is already built for it.
-- **Faith-inflected fiction**: wide eyes carry an *opened eyes* lineage —
-  seeing what was always there. Available as undertone if the book has earned
-  it; a single beat should not preach it.
+- **Literary mystery:** withhold the exact interpretation; let object handling
+  and Elise's recognition imply institutional danger.
+- **Procedural suspense:** emphasize chain of custody, manifest discrepancy,
+  sightlines, and the risk of contaminating evidence.
+- **Quiet character drama:** make the beat about trust—Anika tells Elise
+  privately through a habit while refusing the spoken answer.
+
+The passage can borrow procedural precision without turning the bowl into a
+crime-scene prop. Its quietest and strongest genre pressure is mystery:
+confirmation without disclosure.
+
+## ⚠️ Usage & Continuity Watchpoints
+
+- **POV access:** Elise may recognize Anika's established tap, but she cannot
+  know the exact finding until Anika discloses it.
+- **Blocking:** Anika has just set down the brush; any replacement must not put
+  it back in her hand and sleeve it simultaneously.
+- **Sightline:** Vale is behind glass, close enough to notice a large concealment
+  or confrontation but not a thumbnail movement under the lamp.
+- **Injury continuity:** gripping, fist-clenching, or prolonged pressure
+  contradicts the tendon note.
+- **Scale:** a rotated cradle or covered bowl may read as concealment to Vale;
+  the action must remain plausibly procedural.
+- **Repetition:** the passage already uses looking twice—toward Vale, then the
+  bowl. Another gaze beat needs consequence or it becomes eye choreography.
+- **Ambiguity:** still hands can read as uncertainty or fatigue unless Elise's
+  relationship knowledge supplies the intended meaning.
+- **Generic repair traps:** adding a tight jaw, narrow eyes, or a careful
+  adverb would create anatomy inventory rather than specificity.
+
+## 🧠 Confidence & Advisory Notes
+
+The tendon constraint and thumbnail tell are supplied facts; their use is
+scene-grounded. Claims about what Vale can see depend on the unstated size,
+lighting, and reflectivity of the glass and should remain modest. Arm-folding
+does not reliably diagnose defensiveness; that is a narrative convention, not
+an anatomical rule. Cross-cultural meanings of silence, eye contact, and
+deference would require more context and verification. Familiarity judgments
+below are creative heuristics rather than corpus measurements.
 
 ## ⚠️ Cliché & Convention Pressure
 
-All wear labels below are **model-estimated heuristics from reading
-patterns — not corpus-derived facts**; no frequency claims are implied.
+All familiarity labels here are **model-estimated heuristics, not
+corpus-derived facts**.
 
-- *"His eyes widened (in shock/disbelief)"* — heavily worn. Reports an
-  emotion category, not an event belonging to this person.
-- *"Eyes wide as saucers"* — worn to parody; and this scene literally
-  contains saucers, so it is both tempting and radioactive.
-- *"His jaw dropped"* / *"his breath caught in his throat"* — heavily worn
-  neighbors; the breath route must be Danny-specific to survive.
-- *"The color drained from his face"* — worn, and unverifiable from Mara's
-  angle in kitchen light.
-- **Inventory trap**: widened eyes + tightened jaw + clenched fists —
-  anatomical stocktaking that dissipates the beat across three limp clauses.
-- **Adverb trap**: "his eyes widened slightly" — hedging the gesture instead
-  of choosing a sharper one.
+- *She folded/crossed her arms* — heavily familiar shorthand for resistance;
+  underspecified and too interpretively loud.
+- *She put up a wall/barrier/shield* — heavily worn and explicitly excluded.
+- *Her jaw tightened* — heavily familiar neighboring beat; moves the cliché
+  without adding character.
+- *She raised one eyebrow* — familiar skepticism marker, wrong dramatic job.
+- *Her hands clenched into fists* — melodramatic, painful for this character,
+  and publicly visible.
+- *She looked away guiltily* — labels and misreads the scene.
+- **Inventory trap:** glance + folded arms + tight jaw + narrowed eyes.
+- **Adverb trap:** *carefully crossed her arms* asks an adverb to create
+  specificity the action lacks.
+- **Profession-metaphor trap:** describing every secret as sealed, conserved,
+  catalogued, glazed, or restored until the character becomes her résumé.
 
 ## 🌱 Freshness Strategies & Neighboring Families
 
-- **Displace onto the object**: the plate and towel are his mother's own
-  protocol — letting *her* object register the shock makes the gesture do
-  double grief-work. Strongest single strategy available here.
-- **Render the decay, not the onset**: skip the widening; show what his face
-  does *after* — the resetting, the over-control.
-- **Spend the trained breath**: one bookkeeping error in a swimmer's
-  breathing outperforms any facial acreage.
-- **Misread-then-revise**: let Mara get it wrong for one clause; the
-  correction enacts how shock actually reads between siblings.
-- **Negative space**: subtract the squeak. The room gets quieter by exactly
-  one sound.
-- **Neighboring families worth raiding**: breath-catch (avoid its own worn
-  member, *"a breath he didn't know he was holding"* — heavily worn); grip
-  and pressure (towel, plate-edge); gaze-direction (toward the wall the
-  sewing bench sits behind); swallow/throat; stillness. Each family has its
-  own clichés — raid for mechanics, not for phrases.
+- **Use the known tell:** thumbnail to knuckle confirms evidence without
+  naming it.
+- **Render procedural consequence:** the brush stays down because disclosure
+  has interrupted ordinary work.
+- **Displace onto custody:** sleeve one tool or cover one vulnerable surface,
+  then stop.
+- **Misread and revise:** Elise first hears refusal, then recognizes
+  protection.
+- **Use absent voice:** Anika's expected joke does not arrive.
+- **Exploit sightline:** her glance to Vale explains the silence without
+  explanatory dialogue.
+- **Neighboring families:** hand stillness (avoid clenched fists), gaze check
+  (avoid darting eyes), object placement (avoid symbolic overloading), lowered
+  voice (avoid conspiratorial whispering), delayed answer (avoid theatrical
+  ellipses).
 
 ## 🎯 Special Focus: Scene Synthesis Brief
 
-- **Invariants**: privacy — the guests must not clock the moment; Danny never
-  cries on the page; Mara's close third holds; the beat stays a turn from
-  numbness into contact; no "eyes widened" or near-kin.
-- **Anchors**: the blue plate; the towel and the squeak (mother's standard,
-  "to the squeak"); the reception hum, soft laugh, spoons on saucers through
-  the wall; the sewing bench one room away; swimmer's breath off the blocks;
-  the wheel simile already closing the paragraph.
-- **Avoid**: ocular inventory and any eye-adjacent stock phrase; emotion
-  labels; tears or wet eyes; "breath he didn't know he was holding"; saucer
-  comparisons (the props make it worse); anything loud enough — on the page
-  or in the room — to break the privacy seal.
-- **Opportunities**: let the plate stop and hold the stop; let the missing
-  squeak be the scream; let Mara misread blankness, then re-read it; let him
-  finish drying *perfectly* — over-control as the widest possible eyes; keep
-  the literal widening but route it through pool-trained eyes so it belongs
-  to Danny alone; let the room's sounds continue, indifferent, while the
-  kitchen's one sound dies.
+- **Invariants:** Elise close third; the exchange remains visually ordinary
+  to Vale; Anika protects a discovery rather than herself; professional habit
+  matters; no folded/crossed arms or barrier family; tendon pain rules out
+  gripping.
+- **Anchors:** sable brush and sleeve; blue bowl and foam cradle; thread-width
+  salt bloom; manifest; glass partition; Vale's page turn; thumbnail-to-knuckle
+  tell; Anika's missing dry humor.
+- **Avoid:** defensive-body shorthand, anger, guilt, melodramatic concealment,
+  profession-metaphor saturation, medical claims, and any action Vale would
+  recognize as a confrontation.
+- **Opportunities:** let the known tell privately confirm evidence; let the
+  brush remain down; pair a mundane conservation action with Elise's revised
+  reading; use Vale's page turn as timing cover; make absent humor the leak;
+  let Anika reveal that there is a finding while withholding its content.
 ===END_GESTURE_DICTIONARY_V1===
 ===GESTURE_MENU_V1===
 {
   "version": 1,
   "groups": [
     {
-      "heading": "Let the chore break stride",
+      "heading": "Let Elise catch the known tell",
       "options": [
-        "The plate stopped turning. The towel stayed where it was, pressed flat, as if the next motion had gone missing.",
-        "He dried on past the squeak, past clean, the towel going around like something he couldn't put down.",
-        "The plate came down on the rack too gently, the way you set down a thing you suddenly don't trust yourself to hold."
+        "Anika's thumbnail touched her first knuckle once. Evidence, then. Just not evidence she would name with Vale watching.",
+        "Thumb to knuckle. Elise had seen that small equation before: Anika knew, and knowing was not yet the same as saying.",
+        "Her hand rested beside the cradle, one quiet tap hidden in the lamp's white spill."
       ]
     },
     {
-      "heading": "Spend his swimmer's breath",
+      "heading": "Interrupt the work instead",
       "options": [
-        "His breath caught — Danny, who could cross a pool on one lungful, snagging on a single word.",
-        "He took the long flat inhale he used on the blocks. It didn't level him this time.",
-        "The rhythm of his breathing changed, and that was all, and it was enormous."
+        "She did not pick the sable brush back up.",
+        "The brush went into its paper sleeve, each hair coaxed straight before Anika closed it away.",
+        "Anika laid both hands flat on the table, clear of the bowl, and left them there."
       ]
     },
     {
-      "heading": "Let Mara read it and get it wrong",
+      "heading": "Let Elise revise the refusal",
       "options": [
-        "For a second she thought he hadn't heard. Then she saw it was the opposite: he'd heard all the way down.",
-        "He looked almost bored. She knew that look — it was the one he wore in the ready room before a race that scared him.",
-        "She waited for him to ask which drawer, how many, when. The not-asking told her more than the letters had."
+        "Elise heard no. Then Anika glanced through the glass, and the word changed shape.",
+        "It looked like dismissal until Elise followed her gaze to Vale. Not no, then. Not here.",
+        "Anika gave her nothing except the care with which she gave her nothing."
       ]
     },
     {
-      "heading": "Give the beat to the room's sound",
+      "heading": "Use the lab's ordinary cover",
       "options": [
-        "The kitchen went one sound quieter. It took her a moment to find which sound was missing: the squeak of the towel.",
-        "Through the wall, someone's soft laugh, spoons on saucers. On this side of it, nothing — even the towel had stopped talking.",
-        "The reception murmured on without them. Neither of them made the kitchen's next sound."
+        "Vale turned a page. Only then did Anika rotate the cradle until the salt line faced away from the glass.",
+        "She drew a square of tissue over the bowl, a routine protection performed one beat too precisely.",
+        "The manifest closed beneath her fingertips. To anyone watching, she had merely finished reading."
       ]
     },
     {
-      "heading": "Keep the eyes, break the convention",
+      "heading": "Make the missing joke speak",
       "options": [
-        "His eyes went wide the way they did underwater — open against the pressure, refusing to shut.",
-        "He looked at her with his off-the-turn face: eyes wide, mouth closed, saving air.",
-        "His eyes opened wide and slow, like eyes adjusting to a dark room, finding the shape of what she'd said."
+        "The dry answer Elise expected never came. Anika looked at the bowl as if it had asked the better question.",
+        "Usually Anika would have made the manifest's incompetence funny. This time she only checked the glass.",
+        "Her mouth found the beginning of a smile and abandoned it before Vale could look up."
       ]
     }
   ]
 }
 ===END_GESTURE_MENU_V1===
-
----
-
-Reference this sample for structural fidelity, scene-conditioning, heuristic
-honesty, and the way the menu's groups trace visibly back to the Scene
-Synthesis Brief — while inventing nothing this specific scene didn't supply.

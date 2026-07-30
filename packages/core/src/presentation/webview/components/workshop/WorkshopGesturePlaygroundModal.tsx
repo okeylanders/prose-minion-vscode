@@ -2,11 +2,12 @@
  * WorkshopGesturePlaygroundModal — the first Conversation Widget's pre-commit
  * surface (ADR 2026-07-22, Sprint 01; design Spread 01).
  *
- * The Draft is LOCAL until commit: Cancel/Esc costs nothing, Generate rolls
- * one fast-tier model call into a grouped multi-select menu (Regenerate
- * re-rolls it; commit never re-runs it), and Commit posts the whole Draft to
- * the atomic host route. The modal freezes while the commit is in flight and
- * closes only on the host's ok — the PendingApply posture of
+ * The Draft is LOCAL until commit: Cancel/Esc costs nothing, Generate makes
+ * one deliberate model call for a writer-facing Gesture Dictionary and a
+ * grouped multi-select menu (Regenerate re-rolls both; commit never re-runs
+ * it), and Commit posts the whole Draft to the atomic host route. The modal
+ * freezes while the commit is in flight and closes only on the host's ok —
+ * the PendingApply posture of
  * WorkshopConversationBehaviorModal, adapted to the widget action result.
  *
  * Three openings: fresh (from the Widgets browser), persona seed (recommend +
@@ -27,6 +28,7 @@ import {
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { Icon } from '@components/shared/Icon';
+import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { WorkshopModalShell } from './WorkshopModalShell';
 
 /** How the modal was opened; decides seeding and the commit button's label. */
@@ -64,10 +66,12 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   onClose
 }) => {
   const [targetPhrase, setTargetPhrase] = React.useState('');
+  const [writerInstructions, setWriterInstructions] = React.useState('');
   const [contextText, setContextText] = React.useState('');
   const [characterNotes, setCharacterNotes] = React.useState('');
   const [note, setNote] = React.useState('');
   const [menu, setMenu] = React.useState<WorkshopGestureMenuGroup[] | undefined>(undefined);
+  const [dictionaryMarkdown, setDictionaryMarkdown] = React.useState('');
   const [selections, setSelections] = React.useState<string[]>([]);
   const [generateToken, setGenerateToken] = React.useState<string | null>(null);
   const [generateError, setGenerateError] = React.useState<string | null>(null);
@@ -84,24 +88,31 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     if (opening.kind === 'clone') {
       const { draft } = opening.config;
       setTargetPhrase(draft.targetPhrase);
+      setWriterInstructions(draft.writerInstructions);
       setContextText(draft.contextText);
       setCharacterNotes(draft.characterNotes);
       setNote(draft.note);
-      setMenu(draft.menu ? draft.menu.map((group) => ({ ...group, options: [...group.options] })) : undefined);
+      setMenu(draft.menu.map((group) => ({ ...group, options: [...group.options] })));
+      setDictionaryMarkdown(draft.dictionaryMarkdown);
       setSelections([...draft.selections]);
     } else if (opening.kind === 'seed') {
       setTargetPhrase(opening.seed.targetPhrase ?? '');
-      setContextText('');
+      setWriterInstructions(opening.seed.writerInstructions ?? '');
+      setContextText(opening.seed.contextText ?? '');
       setCharacterNotes(opening.seed.characterNotes ?? '');
-      setNote(opening.seed.note ?? '');
+      // The post-selection note belongs to the writer, never the recommending persona.
+      setNote('');
       setMenu(undefined);
+      setDictionaryMarkdown('');
       setSelections([]);
     } else {
       setTargetPhrase(opening.seedTargetPhrase ?? '');
+      setWriterInstructions('');
       setContextText('');
       setCharacterNotes('');
       setNote('');
       setMenu(undefined);
+      setDictionaryMarkdown('');
       setSelections([]);
     }
     setGenerateToken(null);
@@ -118,6 +129,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       return;
     }
     setGenerateToken(null);
+    setDictionaryMarkdown(menuResult.dictionaryMarkdown ?? '');
     if (menuResult.ok && menuResult.menu) {
       setMenu(menuResult.menu);
       setSelections((current) =>
@@ -127,7 +139,13 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       );
       setGenerateError(null);
     } else {
-      setGenerateError(menuResult.error ?? 'The menu could not be generated. Try again.');
+      setMenu(undefined);
+      setSelections([]);
+      setGenerateError(
+        menuResult.menuError
+        ?? menuResult.error
+        ?? 'The menu could not be generated. Try again.'
+      );
     }
   }, [open, menuResult, generateToken]);
 
@@ -149,6 +167,34 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   const generating = generateToken !== null;
   const locked = commitPending;
 
+  const invalidateGeneratedArtifacts = React.useCallback(() => {
+    setMenu(undefined);
+    setDictionaryMarkdown('');
+    setSelections([]);
+    setGenerateError(null);
+    setCommitError(null);
+  }, []);
+
+  const changeTargetPhrase = React.useCallback((value: string) => {
+    invalidateGeneratedArtifacts();
+    setTargetPhrase(value);
+  }, [invalidateGeneratedArtifacts]);
+
+  const changeWriterInstructions = React.useCallback((value: string) => {
+    invalidateGeneratedArtifacts();
+    setWriterInstructions(value);
+  }, [invalidateGeneratedArtifacts]);
+
+  const changeContextText = React.useCallback((value: string) => {
+    invalidateGeneratedArtifacts();
+    setContextText(value);
+  }, [invalidateGeneratedArtifacts]);
+
+  const changeCharacterNotes = React.useCallback((value: string) => {
+    invalidateGeneratedArtifacts();
+    setCharacterNotes(value);
+  }, [invalidateGeneratedArtifacts]);
+
   const generate = React.useCallback(() => {
     if (generating || locked || targetPhrase.trim().length === 0) {
       return;
@@ -160,10 +206,19 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       widgetId: 'gesture-playground',
       token,
       targetPhrase,
+      writerInstructions,
       contextText,
       characterNotes
     });
-  }, [generating, locked, targetPhrase, contextText, characterNotes, onGenerate]);
+  }, [
+    generating,
+    locked,
+    targetPhrase,
+    writerInstructions,
+    contextText,
+    characterNotes,
+    onGenerate
+  ]);
 
   const cancelGenerate = React.useCallback(() => {
     setGenerateToken(null);
@@ -181,16 +236,44 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   }, []);
 
   const commit = React.useCallback(() => {
-    if (locked || selections.length === 0) {
+    if (
+      locked
+      || generating
+      || !menu
+      || dictionaryMarkdown.trim().length === 0
+      || selections.length === 0
+    ) {
       return;
     }
     setCommitPending(true);
     setCommitError(null);
     onCommit(
-      { targetPhrase, contextText, characterNotes, menu, selections, note },
+      {
+        targetPhrase,
+        writerInstructions,
+        contextText,
+        characterNotes,
+        dictionaryMarkdown,
+        menu,
+        selections,
+        note
+      },
       opening.kind === 'clone' ? opening.config.id : undefined
     );
-  }, [locked, selections, targetPhrase, contextText, characterNotes, menu, note, onCommit, opening]);
+  }, [
+    locked,
+    generating,
+    menu,
+    selections,
+    targetPhrase,
+    writerInstructions,
+    contextText,
+    characterNotes,
+    dictionaryMarkdown,
+    note,
+    onCommit,
+    opening
+  ]);
 
   const close = React.useCallback(() => {
     if (generating) {
@@ -217,7 +300,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             <Icon name="hand" size={17} /> Gesture Playground
           </h2>
           <p className="pm-ws-gesture-sub">
-            A menu of creative alternatives for one beat. Play freely —{' '}
+            A craft scan and creative menu for one beat. Play freely —{' '}
             <b>nothing touches the conversation until you commit</b>.
           </p>
 
@@ -249,20 +332,45 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
               type="text"
               value={targetPhrase}
               maxLength={BUDGET.gestureTargetPhraseCharacters}
-              disabled={locked}
+              disabled={locked || generating}
               placeholder="e.g. she smiled"
-              onChange={(event) => setTargetPhrase(event.target.value)}
+              onChange={(event) => changeTargetPhrase(event.target.value)}
             />
           </label>
           <label className="pm-ws-gesture-field">
-            <span className="pm-ws-gesture-flabel">Surrounding context <i>optional</i></span>
+            <span className="pm-ws-gesture-flabel">
+              Writer instructions{' '}
+              <i>
+                {opening.kind === 'seed' && opening.seed.writerInstructions
+                  ? `prefilled by ${opening.personaLabel}`
+                  : 'optional'}
+              </i>
+            </span>
+            <textarea
+              value={writerInstructions}
+              maxLength={BUDGET.gestureWriterInstructionsCharacters}
+              disabled={locked || generating}
+              rows={3}
+              placeholder="What should the alternatives preserve, avoid, or emphasize?"
+              onChange={(event) => changeWriterInstructions(event.target.value)}
+            />
+          </label>
+          <label className="pm-ws-gesture-field">
+            <span className="pm-ws-gesture-flabel">
+              Surrounding context{' '}
+              <i>
+                {opening.kind === 'seed' && opening.seed.contextText
+                  ? `prefilled by ${opening.personaLabel}`
+                  : 'optional'}
+              </i>
+            </span>
             <textarea
               value={contextText}
               maxLength={BUDGET.gestureContextCharacters}
-              disabled={locked}
+              disabled={locked || generating}
               rows={3}
               placeholder="The sentences around the phrase."
-              onChange={(event) => setContextText(event.target.value)}
+              onChange={(event) => changeContextText(event.target.value)}
             />
           </label>
           <label className="pm-ws-gesture-field">
@@ -273,39 +381,39 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             <textarea
               value={characterNotes}
               maxLength={BUDGET.gestureCharacterNotesCharacters}
-              disabled={locked}
+              disabled={locked || generating}
               rows={2}
               placeholder="Who is this person in this beat?"
-              onChange={(event) => setCharacterNotes(event.target.value)}
+              onChange={(event) => changeCharacterNotes(event.target.value)}
             />
           </label>
 
           {generating ? (
             <button type="button" className="pm-ws-gesture-gen pm-ws-gesture-gen-busy" onClick={cancelGenerate}>
-              One fast model call… (click to cancel)
+              Building the craft scan and alternatives… (click to cancel)
             </button>
           ) : (
             <button
               type="button"
-              className={`pm-ws-gesture-gen${menu ? ' pm-ws-gesture-gen-ghost' : ''}`}
+              className={`pm-ws-gesture-gen${menu || dictionaryMarkdown ? ' pm-ws-gesture-gen-ghost' : ''}`}
               disabled={locked || targetPhrase.trim().length === 0}
               onClick={generate}
             >
-              <Icon name={menu ? 'refresh' : 'sparkle'} size={13} />{' '}
-              {menu ? 'Regenerate' : 'Generate alternatives'}
+              <Icon name={menu || dictionaryMarkdown ? 'refresh' : 'sparkle'} size={13} />{' '}
+              {menu || dictionaryMarkdown ? 'Regenerate' : 'Generate alternatives'}
             </button>
           )}
-          {!menu && !generating && (
+          {!menu && !dictionaryMarkdown && !generating && (
             <div className="pm-ws-gesture-seam">
-              deterministic scaffold · one model call, fast tier · commit never re-runs it
+              one deliberate model call · craft scan + alternatives · commit never re-runs it
             </div>
           )}
           {generateError && <div className="pm-ws-gesture-error" role="alert">{generateError}</div>}
 
           {menu && (
             <div className="pm-ws-gesture-menu">
-              {menu.map((group) => (
-                <React.Fragment key={group.heading}>
+              {menu.map((group, groupIndex) => (
+                <React.Fragment key={`${groupIndex}-${group.heading}`}>
                   <div className="pm-ws-gesture-mgh">
                     <span>{group.heading}</span>
                     <hr />
@@ -318,7 +426,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
                         type="button"
                         className={`pm-ws-gesture-opt${selected ? ' pm-ws-gesture-opt-selected' : ''}`}
                         aria-pressed={selected}
-                        disabled={locked}
+                        disabled={locked || generating}
                         onClick={() => toggleSelection(option)}
                       >
                         <span className="pm-ws-gesture-opt-bx" aria-hidden="true">
@@ -330,18 +438,33 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
                   })}
                 </React.Fragment>
               ))}
-              <label className="pm-ws-gesture-field">
-                <span className="pm-ws-gesture-flabel">Optional note to the room</span>
-                <input
-                  type="text"
-                  value={note}
-                  maxLength={BUDGET.gestureNoteCharacters}
-                  disabled={locked}
-                  placeholder="e.g. keep it small"
-                  onChange={(event) => setNote(event.target.value)}
-                />
-              </label>
             </div>
+          )}
+
+          {dictionaryMarkdown && (
+            <details className="pm-ws-gesture-dictionary">
+              <summary>
+                <span>Gesture Dictionary</span>
+                <small>The craft scan for this beat</small>
+              </summary>
+              <div className="pm-ws-gesture-dictionary-content">
+                <MarkdownRenderer content={dictionaryMarkdown} />
+              </div>
+            </details>
+          )}
+
+          {menu && (
+            <label className="pm-ws-gesture-field">
+              <span className="pm-ws-gesture-flabel">Optional note to the room</span>
+              <input
+                type="text"
+                value={note}
+                maxLength={BUDGET.gestureNoteCharacters}
+                disabled={locked}
+                placeholder="e.g. keep it small"
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </label>
           )}
 
           {commitError && <div className="pm-ws-gesture-error" role="alert">{commitError}</div>}
@@ -358,7 +481,13 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
           <button
             type="button"
             className="pm-ws-gesture-commit"
-            disabled={locked || selections.length === 0}
+            disabled={
+              locked
+              || generating
+              || !menu
+              || dictionaryMarkdown.trim().length === 0
+              || selections.length === 0
+            }
             onClick={commit}
           >
             {commitPending

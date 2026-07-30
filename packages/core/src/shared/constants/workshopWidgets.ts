@@ -64,7 +64,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         tag: 'Sprint 01',
         costNote: ONE_SHOT_COST,
         blurb:
-          'One model call returns creative alternatives for a gesture or expression beat — keep the ones you want, commit them to the room.',
+          'One model call explores the gesture’s lexical and embodied field, then returns creative alternatives — read the dictionary, keep what lands, and commit your choices to the room.',
         live: true
       },
       {

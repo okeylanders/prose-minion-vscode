@@ -114,6 +114,6 @@ export interface CoreServices {
   workshopSessionTimeService: WorkshopSessionTimeService;
   /** Ordered aggregate + conversation archive persistence boundary. */
   workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator;
-  /** Gesture Playground pre-commit menu generation (ADR 2026-07-22). */
+  /** Gesture Playground pre-commit dictionary + menu generation (ADR 2026-07-22). */
   gesturePlaygroundService: GesturePlaygroundService;
 }

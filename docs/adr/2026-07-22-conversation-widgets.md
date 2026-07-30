@@ -1,6 +1,7 @@
 # ADR: Conversation Widgets
 
-- **Status**: Accepted — 2026-07-29
+- **Status**: Accepted — 2026-07-29; Gesture Dictionary generation amendment
+  accepted 2026-07-29
 - **Decision owner**: Okey
 - **Planning source**: epic and sprint plans drafted 2026-07-22
   ([epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md));
@@ -107,7 +108,8 @@ increments a `revision`.
 
 ### 6. Config, not just output, is session-owned and persisted by stable id
 
-The full Draft — inputs, the generated menu, the selections, the note —
+The full Draft — inputs, writer instructions, the generated Gesture Dictionary
+Markdown, the generated menu, the selections, and the note —
 persists in a **typed `widgetConfigs` collection** on the session aggregate,
 serialized in `WorkshopSessionStateV1` as an **optional key** (absent
 hydrates empty, so pre-widget checkpoints stay readable under the exact-key
@@ -133,18 +135,35 @@ re-inject a frame.
 
 ### 8. Deterministic scaffold vs. model call is an explicit seam
 
-Grouping, selection state, counts, caps, and payload assembly are
-deterministic code. Only semantic generation hits the model. For Gesture
-Playground: one model call produces the menu; Regenerate re-rolls it;
-**commit never re-runs the model**. The exploration cloud is thrown away at
-commit — what rides the rail is a compact, instruction-shaped directive.
+Grouping, selection state, counts, caps, response framing, and payload assembly
+are deterministic code. Only semantic generation hits the model. For Gesture
+Playground, one model call produces a writer-facing Gesture Dictionary
+Markdown scan followed by the JSON menu in one versioned composite response;
+Regenerate re-rolls both; **commit never re-runs the model**. The dictionary,
+unselected menu, and other exploration cloud are excluded from the committed
+rail directive, which contains only the writer's kept options and optional
+note. They remain in the session-owned widget config so its chip can reopen
+the exact authoring surface.
 Model-facing caps live in `shared/constants/promptBudgets.ts` (the
 `promptBudgets` architecture witness rejects module-local `MAX_*`
 constants). Structured model output is parsed with the house pattern —
-fence-stripping, strict `JSON.parse`, shape validation, **wholesale
-rejection** of malformed output (the `CategorySearchService` /
-`WorkshopActionableFindings` discipline: partial model output must not
-quietly become writer state).
+exact unique sentinels, bounded non-empty Markdown, strict `JSON.parse`, exact
+versioned shape validation, and a narrow partial-display boundary. A missing,
+empty, over-budget, or malformed dictionary frame is fatal to the whole
+response. When the dictionary is valid and bounded but the menu frame or JSON
+is missing or invalid, the host may salvage the dictionary **for display
+only**, returns no menu, and disables commit. No malformed or partial menu may
+quietly become selectable writer state (the `CategorySearchService` /
+`WorkshopActionableFindings` discipline).
+
+The canonical prompt bundle is
+`resources/system-prompts/gesture-dictionary/00-gesture-dictionary.md` plus its
+non-circular reference exemplar. It restores the Writer's Dictionary's full
+Sense Explorer and useful lexical lanes in gesture-native form, then performs
+the embodied scan. Its final three sections are deliberately ordered:
+**Cliché & Convention Pressure → Freshness Strategies → Scene Synthesis
+Brief**. The visible scan is a writer-facing analysis artifact, never described
+or requested as private internal reasoning.
 
 ### 9. Core stays host-agnostic; handlers stay out of the god files
 
@@ -190,14 +209,61 @@ scope until a concrete widget makes the case in its own sprint doc.
 
 ### 13. The persona protocol is parsed, typed, and fail-closed
 
-Recommend/prefill follows the actionable-findings mold end to end: a
-bounded instruction tells the persona the exact emission syntax; a strict
-host-side parser rejects malformed output **wholesale**; the validated
-result rides as a typed optional field on `WorkshopTurn`
-(`widgetRecommendation: { widgetId, seed? }`); the webview renders a
-presentation-only chip. The model never names buttons, and no recommendation
-text survives into writer state unvalidated. Seeds prefill an *editable*
-Draft — the persona sets the table, the writer decides what commits.
+Recommend/prefill follows the actionable-findings mold end to end. One shared
+contract is appended to both host and guest persona prompts; individual persona
+files do not carry divergent copies. When a persona recommends Gesture
+Playground, its response must end with one exact, bounded multiline tail:
+
+```text
+### Try a widget
+<workshop-widget-recommendation version="1">
+<widget-id>
+gesture-playground
+</widget-id>
+<target-phrase>
+[exact phrase copied from the supplied passage]
+</target-phrase>
+<writer-instructions>
+[substantial, scene-specific creative direction]
+</writer-instructions>
+<surrounding-context>
+[generous consecutive source prose around the phrase]
+</surrounding-context>
+<character-notes>
+[substantial, evidence-grounded character notes for this beat]
+</character-notes>
+</workshop-widget-recommendation>
+```
+
+All four prefill inputs are required and remain editable in the widget:
+
+- **Target phrase** copies the exact passage phrase rather than paraphrasing it.
+- **Writer instructions** supply several substantive sentences about the
+  dramatic job, invariants, exclusions, and promising creative territory.
+- **Surrounding context** supplies a generous consecutive stretch of source
+  prose around the phrase, preserving its wording rather than summarizing it.
+- **Character notes** supply detailed, evidence-grounded information about the
+  immediate pressure, intention or defense, relationship dynamics,
+  self-control, habits or constraints, and relevant voice/history. Reasonable
+  inference must remain distinguishable from supplied fact.
+
+The instruction is deliberately **quality-first and non-thrifty**: personas
+should use the available field budgets to provide enough grounded material for
+the dictionary model to understand the beat without reconstructing it from
+scraps. Generous does not mean padded or invented; context remains source prose,
+and character notes remain grounded in supplied evidence.
+
+The host-side parser requires the version, heading, tags, field order, unique
+markers, non-empty values, final-tail placement, a live registry id, and
+centralized per-field bounds. Missing, duplicated, reordered, trailing, empty,
+over-budget, or otherwise malformed controls reject **wholesale**; no partial
+seed is admitted. The validated result rides as a typed optional field on
+`WorkshopTurn` (`widgetRecommendation: { widgetId, seed? }`). The reserved
+control tail is stripped from transcript content whether parsing accepts or
+rejects it, so neither successful machine framing nor malformed debris appears
+as persona prose. The webview renders a presentation-only chip, and its seed
+prefills an *editable* Draft — the persona sets the table, the writer decides
+what commits.
 
 ### 14. One deterministic registry
 
@@ -272,9 +338,11 @@ bundle path, and the widget host contract is a Sprint 01 deliverable that
 Sprint 02's live regeneration builds on — shipping the generate route on
 scope `'assistant'` would bake the wrong scope into the contract and force
 Sprint 02 to change route, contract, and a settings default in one move.
-`proseMinion.widgetModel` joins the settings surface with a fast/cheap
-default; live iteration runs there. Runtime cost matches what
-`dictionary`/`category` already pay.
+`proseMinion.widgetModel` joins the settings surface as an independent
+quality-tunable scope. Gesture Dictionary generation is a long-form semantic
+synthesis and framed-output task; the recommended default moves from Haiku to
+**Sonnet 5**. Cost efficiency is secondary to producing options the writer
+would keep.
 
 ### Turn linkage, config shape, and the snapshot bound
 

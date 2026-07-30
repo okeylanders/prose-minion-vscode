@@ -57,11 +57,11 @@ export interface ModelConfiguration {
 }
 
 /**
- * Fast-tier default for the `widget` scope (ADR 2026-07-22 decision 8):
- * Conversation Widget pre-commit iteration is cheap and interactive, so the
- * scope defaults to a fast model rather than the shared sonnet fallback.
+ * Quality-first default for the `widget` scope. Conversation Widgets are
+ * occasional, bounded creative workflows, so output usefulness matters more
+ * than minimizing the small per-run cost.
  */
-export const DEFAULT_WIDGET_MODEL = 'anthropic/claude-haiku-4.5';
+export const DEFAULT_WIDGET_MODEL = 'anthropic/claude-sonnet-5';
 
 export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};

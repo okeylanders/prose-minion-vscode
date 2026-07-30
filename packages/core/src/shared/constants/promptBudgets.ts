@@ -67,17 +67,23 @@ export interface PromptBudgets {
   readonly workshopThreadArtifacts: Readonly<{ itemsPerMessage: number; words: number }>;
   /**
    * Conversation Widgets (ADR 2026-07-22). Gesture Playground pre-commit
-   * surface: caps on writer inputs, on the model-generated menu accepted by
-   * the fail-closed parser (anything over cap rejects the whole menu), and
-   * on what a commit may carry. The exploration cloud is thrown away at
-   * commit — only selections and the note ride the rail.
+   * surface: caps on writer/persona-prefilled inputs, the recommendation
+   * frame's syntax allowance, the writer-facing dictionary, the generated
+   * menu accepted by fail-closed parsers, and what a commit may carry. The
+   * exploration cloud stays in the re-openable config but is excluded from
+   * the rail — only selections and the writer's note influence the turn.
    */
   readonly workshopWidgets: Readonly<{
     gestureTargetPhraseCharacters: number;
+    gestureWriterInstructionsCharacters: number;
     gestureContextCharacters: number;
     gestureCharacterNotesCharacters: number;
+    gestureRecommendationFrameAllowanceCharacters: number;
+    gestureDictionaryCharacters: number;
     gestureNoteCharacters: number;
+    gestureMenuGroupsMinimum: number;
     gestureMenuGroups: number;
+    gestureOptionsPerGroupMinimum: number;
     gestureOptionsPerGroup: number;
     gestureOptionCharacters: number;
     gestureSelectionsPerCommit: number;
@@ -132,10 +138,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 },
   workshopWidgets: {
     gestureTargetPhraseCharacters: 300,
+    gestureWriterInstructionsCharacters: 1_000,
     gestureContextCharacters: 10_000,
     gestureCharacterNotesCharacters: 1_500,
+    gestureRecommendationFrameAllowanceCharacters: 2_000,
+    gestureDictionaryCharacters: 32_000,
     gestureNoteCharacters: 300,
+    gestureMenuGroupsMinimum: 4,
     gestureMenuGroups: 6,
+    gestureOptionsPerGroupMinimum: 3,
     gestureOptionsPerGroup: 5,
     gestureOptionCharacters: 220,
     gestureSelectionsPerCommit: 8

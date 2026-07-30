@@ -9,21 +9,55 @@ import {
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
+  parseWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
-  WorkshopGestureDraft
+  WorkshopGestureDraft,
+  WorkshopWidgetRecommendation
 } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDraft => ({
   targetPhrase: 'she smiled',
+  writerInstructions: 'Keep the reaction private.',
   contextText: 'He set the mug down. She smiled.',
   characterNotes: 'Mara — guarded.',
+  dictionaryMarkdown: '# Gesture Dictionary\n\nA private deflection.',
   menu: [
-    { heading: 'The eyes', options: ['Her gaze snagged a half-second too long'] },
-    { heading: 'Hands & body', options: ['She turned her mug a quarter-turn, then back'] }
+    {
+      heading: 'Delay the answer',
+      options: ['Her gaze snagged', 'The smile arrived late', 'The answer waited']
+    },
+    {
+      heading: 'Move it into the hands',
+      options: ['She turned her mug a quarter-turn, then back', 'Her thumb found the seam', 'The spoon went still']
+    },
+    {
+      heading: 'Let the observer read it',
+      options: ['He knew that quiet', 'He mistook it for ease', 'The delay told him enough']
+    },
+    {
+      heading: 'Use the room',
+      options: ['The kettle clicked', 'Silence took the chair', 'The doorway stayed open']
+    }
   ],
   selections: ['She turned her mug a quarter-turn, then back'],
   note: 'keep it small',
   ...overrides
+});
+
+const richRecommendation = (): WorkshopWidgetRecommendation => ({
+  widgetId: 'gesture-playground',
+  seed: {
+    targetPhrase: 'she smiled',
+    writerInstructions:
+      'Preserve the defensive deflection. Avoid stock smile language and explore the mug as displaced action.',
+    contextText:
+      'Mara turned the cooling mug between her palms. “That is one version of it.” She smiled without looking up.',
+    characterNotes:
+      'Mara is cornered but refuses to offer a clean reaction. Her restraint is deliberate, and the mug gives the pressure somewhere physical to go.'
+  }
 });
 
 describe('WorkshopSessionService — widget configs', () => {
@@ -127,6 +161,93 @@ describe('WorkshopSessionService — widget configs', () => {
       .toBe('ta-1');
   });
 
+  it('round-trips the complete persona recommendation seed through V1 state', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Help me reconsider this reaction.');
+    const turn = session.completeRun(
+      'req-1',
+      'The smile is doing defensive work.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      richRecommendation()
+    )!;
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(
+      session.exportCommittedState(),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    expect(
+      restored.getSnapshot().turns.find((candidate) => candidate.id === turn.id)
+        ?.widgetRecommendation
+    ).toEqual(richRecommendation());
+  });
+
+  it.each([
+    ['targetPhrase', 'gestureTargetPhraseCharacters'],
+    ['writerInstructions', 'gestureWriterInstructionsCharacters'],
+    ['contextText', 'gestureContextCharacters'],
+    ['characterNotes', 'gestureCharacterNotesCharacters']
+  ] as const)(
+    'rejects an over-budget persisted recommendation %s',
+    (field, budgetKey) => {
+      session.setSessionScope('open');
+      session.beginPersonaMessage('req-1', 'Help me reconsider this reaction.');
+      session.completeRun(
+        'req-1',
+        'The smile is doing defensive work.',
+        undefined,
+        false,
+        'host-conv',
+        [],
+        undefined,
+        richRecommendation()
+      );
+      const state = session.exportCommittedState();
+      const assistantTurn = state.turns.find((turn) => turn.widgetRecommendation);
+      assistantTurn!.widgetRecommendation!.seed![field] = 'x'.repeat(
+        PROMPT_BUDGETS.workshopWidgets[budgetKey] + 1
+      );
+
+      expect(() => parseWorkshopSessionStateV1(state))
+        .toThrow(new RegExp(`seed\\.${field}.*at most`));
+    }
+  );
+
+  it('rejects blank or non-live recommendation state at persistence ingress', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Help me reconsider this reaction.');
+    session.completeRun(
+      'req-1',
+      'The smile is doing defensive work.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      richRecommendation()
+    );
+    const blankState = session.exportCommittedState();
+    const blankRecommendation = blankState.turns.find((turn) => turn.widgetRecommendation)!
+      .widgetRecommendation!;
+    blankRecommendation.seed!.writerInstructions = '   ';
+    expect(() => parseWorkshopSessionStateV1(blankState))
+      .toThrow(/seed\.writerInstructions.*non-empty/);
+
+    const unavailableState = session.exportCommittedState();
+    const unavailableRecommendation = unavailableState.turns.find(
+      (turn) => turn.widgetRecommendation
+    )!.widgetRecommendation!;
+    (unavailableRecommendation as { widgetId: string }).widgetId = 'lexical-gravity';
+    expect(() => parseWorkshopSessionStateV1(unavailableState))
+      .toThrow(/live Conversation Widget id/);
+  });
+
   it('hydrates pre-widget checkpoints (absent collection) to empty', () => {
     session.setSessionScope('open');
     const state = session.exportCommittedState();
@@ -162,6 +283,18 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(() =>
       restored.hydrateCommittedState(state, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR)
     ).toThrow(/references an unknown turn/);
+  });
+
+  it('rejects a persisted Gesture Dictionary over the deterministic bound', () => {
+    session.setSessionScope('open');
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const state = session.exportCommittedState();
+    state.widgetConfigs![0].draft.dictionaryMarkdown = 'x'.repeat(
+      PROMPT_BUDGETS.workshopWidgets.gestureDictionaryCharacters + 1
+    );
+
+    expect(() => parseWorkshopSessionStateV1(state))
+      .toThrow(/at most 32000 characters/);
   });
 
   it('clears configs and the counter at the new-session boundary', () => {

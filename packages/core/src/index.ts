@@ -101,7 +101,8 @@ export {
 } from '@services/widgets/GesturePlaygroundService';
 export {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
-  inspectWorkshopWidgetRecommendation
+  inspectWorkshopWidgetRecommendation,
+  stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendation';
 export {
   WORKSHOP_WIDGET_CATALOG,

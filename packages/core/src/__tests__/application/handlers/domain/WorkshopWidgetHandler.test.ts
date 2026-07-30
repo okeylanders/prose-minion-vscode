@@ -15,11 +15,33 @@ import {
   WorkshopWidgetGenerateMessage
 } from '@messages';
 
+const menu = [
+  {
+    heading: 'Delay the answer',
+    options: ['the smile arrived late', 'her mouth considered it', 'the answer waited']
+  },
+  {
+    heading: 'Move it into the hands',
+    options: ['she turned the mug once', 'her thumb found the seam', 'the spoon went still']
+  },
+  {
+    heading: 'Let the observer read it',
+    options: ['he knew that careful quiet', 'he mistook it for ease', 'the delay told him enough']
+  },
+  {
+    heading: 'Use the room',
+    options: ['the kettle clicked between them', 'silence took the chair', 'the doorway stayed open']
+  }
+];
+
 const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDraft => ({
   targetPhrase: 'she smiled',
+  writerInstructions: 'Keep it private.',
   contextText: '',
   characterNotes: '',
-  selections: ['the smile arrived late and left early'],
+  dictionaryMarkdown: '# Gesture Dictionary\n\nA private deflection.',
+  menu,
+  selections: ['the smile arrived late'],
   note: '',
   ...overrides
 });
@@ -34,6 +56,7 @@ const generateMessage = (
     widgetId: 'gesture-playground',
     token: 'tok-1',
     targetPhrase: 'she smiled',
+    writerInstructions: 'Keep it private.',
     contextText: '',
     characterNotes: '',
     ...overrides
@@ -73,7 +96,10 @@ const build = (options: {
   const markDirty = jest.fn();
   const postSessionState = jest.fn();
   const generateMenu = options.generateMenu
-    ?? jest.fn().mockResolvedValue({ menu: [{ heading: 'The eyes', options: ['a look'] }] });
+    ?? jest.fn().mockResolvedValue({
+      dictionaryMarkdown: '# Gesture Dictionary\n\nA private deflection.',
+      menu
+    });
   const handler = new WorkshopWidgetHandler(
     session,
     { generateMenu } as never,
@@ -93,15 +119,39 @@ const build = (options: {
 
 describe('WorkshopWidgetHandler — generate', () => {
   it('returns the menu under the request token', async () => {
-    const { handler, posted } = build();
+    const { handler, posted, generateMenu } = build();
     await handler.handleGenerate(generateMessage());
     const results = posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT);
     expect(results).toHaveLength(1);
     expect(results[0].payload).toEqual(expect.objectContaining({
       ok: true,
       token: 'tok-1',
-      menu: [{ heading: 'The eyes', options: ['a look'] }]
+      dictionaryMarkdown: expect.stringContaining('A private deflection'),
+      menu
     }));
+    expect(generateMenu).toHaveBeenCalledWith(expect.objectContaining({
+      writerInstructions: 'Keep it private.'
+    }));
+  });
+
+  it('returns a recovered dictionary without selectable menu state when menu parsing fails', async () => {
+    const { handler, posted } = build({
+      generateMenu: jest.fn().mockResolvedValue({
+        dictionaryMarkdown: '# Gesture Dictionary\n\nThe scan survived.',
+        menuError: 'The alternatives menu was malformed.'
+      })
+    });
+
+    await handler.handleGenerate(generateMessage());
+
+    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload).toEqual(
+      expect.objectContaining({
+        ok: false,
+        dictionaryMarkdown: expect.stringContaining('The scan survived'),
+        menuError: expect.stringContaining('malformed')
+      })
+    );
+    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.menu).toBeUndefined();
   });
 
   it('reports generation failures as a typed result, not a crash', async () => {
@@ -133,7 +183,10 @@ describe('WorkshopWidgetHandler — generate', () => {
             reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
           );
         }))
-      .mockResolvedValueOnce({ menu: [{ heading: 'Second', options: ['fresh'] }] });
+      .mockResolvedValueOnce({
+        dictionaryMarkdown: '# Gesture Dictionary\n\nSecond run.',
+        menu
+      });
     const { handler, posted } = build({ generateMenu });
     const first = handler.handleGenerate(generateMessage({ token: 'tok-old' }));
     const second = handler.handleGenerate(generateMessage({ token: 'tok-new' }));
@@ -201,6 +254,9 @@ describe('WorkshopWidgetHandler — atomic commit', () => {
     ['no selections', { draft: draft({ selections: [] }) }],
     ['blank phrase', { draft: draft({ targetPhrase: '   ' }) }],
     ['duplicate selections', { draft: draft({ selections: ['same', 'same'] }) }],
+    ['missing dictionary', { draft: draft({ dictionaryMarkdown: '' }) }],
+    ['missing menu', { draft: draft({ menu: undefined as never }) }],
+    ['selection outside menu', { draft: draft({ selections: ['invented client option'] }) }],
     ['non-live widget', { widgetId: 'prose-controller' as never }]
   ])('rejects before any state change: %s', async (_label, overrides) => {
     const { handler, session, sendRoomMessage, posted } = build();

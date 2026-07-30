@@ -55,6 +55,9 @@ import {
   WorkshopGesturePlaygroundModal,
   WorkshopGestureOpening
 } from './components/workshop/WorkshopGesturePlaygroundModal';
+import {
+  stripWorkshopWidgetRecommendationControl
+} from '@/utils/workshopWidgetRecommendation';
 import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
 import { useStartupNotice } from './hooks/domain/useStartupNotice';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
@@ -370,10 +373,14 @@ export const WorkshopApp: React.FC = () => {
   // array would yank the writer back to the bottom after every bubble action.
   const threadRef = React.useRef<HTMLDivElement>(null);
   const latestTurnId = workshop.turns.at(-1)?.id;
+  const visibleStreamingContent = React.useMemo(
+    () => stripWorkshopWidgetRecommendationControl(workshop.streamingContent),
+    [workshop.streamingContent]
+  );
   useWorkshopThreadAutoscroll({
     threadRef,
     latestTurnId,
-    streamingContent: workshop.streamingContent,
+    streamingContent: visibleStreamingContent,
     isRunning: workshop.isRunning,
     errorMessage: workshop.errorMessage
   });
@@ -1281,7 +1288,7 @@ export const WorkshopApp: React.FC = () => {
                 ) : (
                   <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live">
                     <StreamingContent
-                      content={workshop.streamingContent}
+                      content={visibleStreamingContent}
                       isStreaming={workshop.isStreaming}
                       isBuffering={workshop.isBuffering}
                       chunkCount={workshop.streamingChunkCount}

@@ -417,6 +417,47 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
   });
 
+  it('forwards the complete rich persona seed when its widget chip is opened', () => {
+    const onOpenWidgetRecommendation = jest.fn();
+    const recommendation = {
+      widgetId: 'gesture-playground' as const,
+      seed: {
+        targetPhrase: 'His eyes stretched wide.',
+        writerInstructions:
+          'Preserve recognition rather than generic shock. Explore stillness and misreading.',
+        contextText:
+          'Micah looked past Jasper. His eyes stretched wide. Nate turned but saw nothing.',
+        characterNotes:
+          'Micah is containing fear for Nate. Recognition breaks that control in this beat.'
+      }
+    };
+
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('The reaction needs a more specific pressure.'),
+          kind: 'message',
+          participant: 'host',
+          artifact: 'persona_message',
+          toolId: undefined,
+          toolLabel: undefined,
+          personaId: 'jill',
+          personaLabel: 'Jill',
+          widgetRecommendation: recommendation
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+        onOpenWidgetRecommendation={onOpenWidgetRecommendation}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Gesture Playground/ }));
+    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Jill');
+  });
+
   it('labels logical-turn traffic as processed across provider calls', () => {
     render(
       <WorkshopTurnBubble

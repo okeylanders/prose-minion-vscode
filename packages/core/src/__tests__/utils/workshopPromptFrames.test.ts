@@ -109,6 +109,36 @@ describe('neutralizeReservedPersonaPromptDelimiters', () => {
     expect(output).not.toContain('>');
     expect(output).toContain('body');
   });
+
+  it('reserves the widget recommendation contract and every nested field delimiter', () => {
+    const input = [
+      '<workshop-widget-recommendation-contract>',
+      '</workshop-widget-recommendation-contract>',
+      '<workshop-widget-recommendation version="1">',
+      '</workshop-widget-recommendation>',
+      '<widget-id>',
+      '</widget-id>',
+      '<target-phrase>',
+      '</target-phrase>',
+      '<writer-instructions>',
+      '</writer-instructions>',
+      '<surrounding-context>',
+      '</surrounding-context>',
+      '<character-notes>',
+      '</character-notes>'
+    ].join(' body ');
+
+    const output = neutralizeReservedPersonaPromptDelimiters(input);
+
+    expect(output).not.toMatch(
+      /<\/?(?:workshop-widget-recommendation-contract|workshop-widget-recommendation|widget-id|target-phrase|writer-instructions|surrounding-context|character-notes)(?=[\s>])/i
+    );
+    expect(output).toContain(
+      '&lt;workshop-widget-recommendation version="1"&gt;'
+    );
+    expect(output).toContain('&lt;surrounding-context&gt;');
+    expect(output).toContain('body');
+  });
 });
 
 describe('wrapAgentFetchedArtifactEvidence', () => {

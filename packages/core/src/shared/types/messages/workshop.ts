@@ -706,9 +706,13 @@ export interface WorkshopGestureMenuGroup {
  */
 export interface WorkshopGestureDraft {
   targetPhrase: string;
+  writerInstructions: string;
   contextText: string;
   characterNotes: string;
-  menu?: WorkshopGestureMenuGroup[];
+  /** Writer-facing semantic scan generated before the menu in the same call. */
+  dictionaryMarkdown: string;
+  /** Validated menu generated from the same composite response as the dictionary. */
+  menu: WorkshopGestureMenuGroup[];
   /** The directions the writer kept — exact option strings, order preserved. */
   selections: string[];
   note: string;
@@ -749,11 +753,16 @@ export interface WorkshopTurnWidgetCommit {
   selectionCount: number;
 }
 
-/** Persona-supplied prefill for a recommended widget. Every field is editable. */
+/**
+ * Persona-supplied prefill for a recommended widget. Every field is editable.
+ * Gesture Playground's accepted persona frame supplies the first four fields
+ * together; optionality keeps the shared seed usable by future widget kinds.
+ */
 export interface WorkshopWidgetRecommendationSeed {
   targetPhrase?: string;
+  writerInstructions?: string;
+  contextText?: string;
   characterNotes?: string;
-  note?: string;
 }
 
 /**
@@ -1548,13 +1557,15 @@ export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Pre-commit menu generation. `token` is webview-minted and echoed back so a
- * regenerate race resolves to the latest request (stale results are dropped).
+ * Pre-commit composite generation. `token` is webview-minted and echoed back
+ * so a regenerate race resolves to the latest request (stale results are
+ * dropped).
  */
 export interface WorkshopWidgetGeneratePayload {
   widgetId: WorkshopWidgetId;
   token: string;
   targetPhrase: string;
+  writerInstructions: string;
   contextText: string;
   characterNotes: string;
 }
@@ -1572,8 +1583,12 @@ export interface WorkshopWidgetMenuResultPayload {
   widgetId: WorkshopWidgetId;
   token: string;
   ok: boolean;
+  /** Present whenever the model produced a valid, bounded Gesture Dictionary. */
+  dictionaryMarkdown?: string;
   menu?: WorkshopGestureMenuGroup[];
-  /** User-facing failure text; the whole menu rejects wholesale on bad output. */
+  /** A valid dictionary survived, but the menu protocol or JSON was unusable. */
+  menuError?: string;
+  /** User-facing fatal failure text when no valid dictionary can be recovered. */
   error?: string;
 }
 

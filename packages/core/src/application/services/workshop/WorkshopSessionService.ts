@@ -2452,9 +2452,11 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
 function cloneGestureDraft(draft: WorkshopGestureDraft): WorkshopGestureDraft {
   return {
     targetPhrase: draft.targetPhrase,
+    writerInstructions: draft.writerInstructions,
     contextText: draft.contextText,
     characterNotes: draft.characterNotes,
-    menu: draft.menu?.map((group) => ({ heading: group.heading, options: [...group.options] })),
+    dictionaryMarkdown: draft.dictionaryMarkdown,
+    menu: draft.menu.map((group) => ({ heading: group.heading, options: [...group.options] })),
     selections: [...draft.selections],
     note: draft.note
   };

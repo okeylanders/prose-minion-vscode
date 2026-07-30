@@ -22,6 +22,7 @@ import {
   MessageType,
   WorkshopCommitWidgetMessage,
   WorkshopGestureDraft,
+  WorkshopGestureMenuGroup,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload,
   WorkshopWidgetGenerateMessage,
@@ -89,7 +90,14 @@ export class WorkshopWidgetHandler {
   }
 
   async handleGenerate(message: WorkshopWidgetGenerateMessage): Promise<void> {
-    const { widgetId, token, targetPhrase, contextText, characterNotes } = message.payload;
+    const {
+      widgetId,
+      token,
+      targetPhrase,
+      writerInstructions,
+      contextText,
+      characterNotes
+    } = message.payload;
     if (widgetId !== 'gesture-playground' || !isLiveWorkshopWidgetId(widgetId)) {
       this.postMenuResult({ widgetId, token, ok: false, error: 'That widget is not available yet.' });
       return;
@@ -102,6 +110,7 @@ export class WorkshopWidgetHandler {
     try {
       const result = await this.gestureService.generateMenu({
         targetPhrase,
+        writerInstructions,
         contextText,
         characterNotes,
         signal: controller.signal
@@ -109,10 +118,31 @@ export class WorkshopWidgetHandler {
       if (controller.signal.aborted) {
         return;
       }
-      this.postMenuResult({ widgetId, token, ok: true, menu: result.menu });
-      this.outputChannel.appendLine(
-        `[WorkshopWidgetHandler] Gesture menu generated (${result.menu.length} groups, token ${token})`
-      );
+      if (result.menu) {
+        this.postMenuResult({
+          widgetId,
+          token,
+          ok: true,
+          dictionaryMarkdown: result.dictionaryMarkdown,
+          menu: result.menu
+        });
+        this.outputChannel.appendLine(
+          `[WorkshopWidgetHandler] Gesture dictionary and menu generated (${result.menu.length} groups, token ${token})`
+        );
+      } else {
+        const menuError = result.menuError
+          ?? 'The Gesture Dictionary was generated, but its alternatives menu was unusable. Try Generate again.';
+        this.postMenuResult({
+          widgetId,
+          token,
+          ok: false,
+          dictionaryMarkdown: result.dictionaryMarkdown,
+          menuError
+        });
+        this.outputChannel.appendLine(
+          `[WorkshopWidgetHandler] Gesture dictionary recovered without a usable menu (token ${token}): ${menuError}`
+        );
+      }
     } catch (error) {
       if (controller.signal.aborted) {
         return;
@@ -120,7 +150,7 @@ export class WorkshopWidgetHandler {
       const details = error instanceof Error ? error.message : String(error);
       this.postMenuResult({ widgetId, token, ok: false, error: details });
       this.outputChannel.appendLine(
-        `[WorkshopWidgetHandler] Gesture menu generation failed (token ${token}): ${details}`
+        `[WorkshopWidgetHandler] Gesture Dictionary generation failed (token ${token}): ${details}`
       );
     } finally {
       if (this.generateController === controller) {
@@ -131,7 +161,7 @@ export class WorkshopWidgetHandler {
 
   async handleCancelGenerate(_message: CancelWidgetGenerateRequestMessage): Promise<void> {
     if (this.generateController) {
-      this.outputChannel.appendLine('[WorkshopWidgetHandler] Gesture menu generation cancelled');
+      this.outputChannel.appendLine('[WorkshopWidgetHandler] Gesture generation cancelled');
       this.generateController.abort();
       this.generateController = undefined;
     }
@@ -247,6 +277,28 @@ export class WorkshopWidgetHandler {
     if (draft.targetPhrase.length > budget.gestureTargetPhraseCharacters) {
       return `The target phrase exceeds ${budget.gestureTargetPhraseCharacters} characters.`;
     }
+    if (draft.writerInstructions.length > budget.gestureWriterInstructionsCharacters) {
+      return `The writer instructions exceed ${budget.gestureWriterInstructionsCharacters} characters.`;
+    }
+    if (draft.contextText.length > budget.gestureContextCharacters) {
+      return `The context exceeds ${budget.gestureContextCharacters} characters.`;
+    }
+    if (draft.characterNotes.length > budget.gestureCharacterNotesCharacters) {
+      return `The character notes exceed ${budget.gestureCharacterNotesCharacters} characters.`;
+    }
+    if (draft.dictionaryMarkdown.trim().length === 0) {
+      return 'Generate a Gesture Dictionary and alternatives before committing.';
+    }
+    if (draft.dictionaryMarkdown.length > budget.gestureDictionaryCharacters) {
+      return `The Gesture Dictionary exceeds ${budget.gestureDictionaryCharacters} characters.`;
+    }
+    if (!draft.menu) {
+      return 'Generate a valid alternatives menu before committing.';
+    }
+    const invalidMenu = this.validateGestureMenu(draft.menu);
+    if (invalidMenu) {
+      return invalidMenu;
+    }
     if (draft.selections.length === 0) {
       return 'Keep at least one direction before committing.';
     }
@@ -261,14 +313,55 @@ export class WorkshopWidgetHandler {
     if (new Set(draft.selections.map((selection) => selection.trim())).size !== draft.selections.length) {
       return 'The kept directions contain a duplicate.';
     }
+    const menuOptions = new Set(draft.menu.flatMap((group) => group.options));
+    if (draft.selections.some((selection) => !menuOptions.has(selection))) {
+      return 'One of the kept directions is not part of the generated menu.';
+    }
     if (draft.note.length > budget.gestureNoteCharacters) {
       return `The note exceeds ${budget.gestureNoteCharacters} characters.`;
     }
-    if (draft.contextText.length > budget.gestureContextCharacters) {
-      return `The context exceeds ${budget.gestureContextCharacters} characters.`;
+    return undefined;
+  }
+
+  private validateGestureMenu(
+    menu: readonly WorkshopGestureMenuGroup[]
+  ): string | undefined {
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    if (
+      menu.length < budget.gestureMenuGroupsMinimum
+      || menu.length > budget.gestureMenuGroups
+    ) {
+      return `The alternatives menu must carry ${budget.gestureMenuGroupsMinimum}–${budget.gestureMenuGroups} groups.`;
     }
-    if (draft.characterNotes.length > budget.gestureCharacterNotesCharacters) {
-      return `The character notes exceed ${budget.gestureCharacterNotesCharacters} characters.`;
+
+    const seenOptions = new Set<string>();
+    for (const [groupIndex, group] of menu.entries()) {
+      if (
+        group.heading.trim().length === 0
+        || group.heading !== group.heading.trim()
+        || group.heading.length > budget.gestureOptionCharacters
+      ) {
+        return `Alternatives group ${groupIndex + 1} has an invalid heading.`;
+      }
+      if (
+        group.options.length < budget.gestureOptionsPerGroupMinimum
+        || group.options.length > budget.gestureOptionsPerGroup
+      ) {
+        return `Alternatives group ${groupIndex + 1} must carry ${budget.gestureOptionsPerGroupMinimum}–${budget.gestureOptionsPerGroup} options.`;
+      }
+      for (const option of group.options) {
+        if (
+          option.trim().length === 0
+          || option !== option.trim()
+          || option.length > budget.gestureOptionCharacters
+        ) {
+          return `Alternatives group ${groupIndex + 1} contains an invalid option.`;
+        }
+        if (seenOptions.has(option)) {
+          return 'The alternatives menu contains a duplicate option.';
+        }
+        seenOptions.add(option);
+      }
     }
     return undefined;
   }

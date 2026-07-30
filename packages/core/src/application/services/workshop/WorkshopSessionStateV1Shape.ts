@@ -18,7 +18,10 @@ import {
   WORKSHOP_GUEST_CAPACITY
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
-import { isWorkshopWidgetId } from '@shared/constants/workshopWidgets';
+import {
+  isLiveWorkshopWidgetId,
+  isWorkshopWidgetId
+} from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_TODO_BOUNDS
@@ -271,27 +274,109 @@ function assertWidgetConfig(value: unknown, path: string): void {
 }
 
 function assertGestureDraft(value: unknown, path: string): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
   const draft = exactObject(
     value,
     path,
-    ['targetPhrase', 'contextText', 'characterNotes', 'selections', 'note'],
-    ['menu']
+    [
+      'targetPhrase',
+      'writerInstructions',
+      'contextText',
+      'characterNotes',
+      'dictionaryMarkdown',
+      'menu',
+      'selections',
+      'note'
+    ]
   );
-  stringAt(draft.targetPhrase, `${path}.targetPhrase`);
-  stringAt(draft.contextText, `${path}.contextText`);
-  stringAt(draft.characterNotes, `${path}.characterNotes`);
-  arrayOf(draft.selections, `${path}.selections`, (selection, selectionPath) => {
-    stringAt(selection, selectionPath);
+  boundedStringAt(
+    draft.targetPhrase,
+    `${path}.targetPhrase`,
+    budget.gestureTargetPhraseCharacters,
+    false
+  );
+  boundedStringAt(
+    draft.writerInstructions,
+    `${path}.writerInstructions`,
+    budget.gestureWriterInstructionsCharacters
+  );
+  boundedStringAt(
+    draft.contextText,
+    `${path}.contextText`,
+    budget.gestureContextCharacters
+  );
+  boundedStringAt(
+    draft.characterNotes,
+    `${path}.characterNotes`,
+    budget.gestureCharacterNotesCharacters
+  );
+  boundedStringAt(
+    draft.dictionaryMarkdown,
+    `${path}.dictionaryMarkdown`,
+    budget.gestureDictionaryCharacters,
+    false
+  );
+  if (
+    !Array.isArray(draft.selections)
+    || draft.selections.length === 0
+    || draft.selections.length > budget.gestureSelectionsPerCommit
+  ) {
+    shapeError(
+      `${path}.selections`,
+      `an array of 1–${budget.gestureSelectionsPerCommit} strings`
+    );
+  }
+  const selections = draft.selections as unknown[];
+  const seenSelections = new Set<string>();
+  arrayOf(selections, `${path}.selections`, (selection, selectionPath) => {
+    boundedStringAt(selection, selectionPath, budget.gestureOptionCharacters, false);
+    const text = selection as string;
+    if (seenSelections.has(text)) {
+      shapeError(`${path}.selections`, 'an array without duplicate directions');
+    }
+    seenSelections.add(text);
   });
-  stringAt(draft.note, `${path}.note`);
-  if (draft.menu !== undefined) {
-    arrayOf(draft.menu, `${path}.menu`, (groupValue, groupPath) => {
-      const group = exactObject(groupValue, groupPath, ['heading', 'options']);
-      stringAt(group.heading, `${groupPath}.heading`);
-      arrayOf(group.options, `${groupPath}.options`, (option, optionPath) => {
-        stringAt(option, optionPath);
-      });
+  boundedStringAt(draft.note, `${path}.note`, budget.gestureNoteCharacters);
+  if (
+    !Array.isArray(draft.menu)
+    || draft.menu.length < budget.gestureMenuGroupsMinimum
+    || draft.menu.length > budget.gestureMenuGroups
+  ) {
+    shapeError(
+      `${path}.menu`,
+      `an array of ${budget.gestureMenuGroupsMinimum}–${budget.gestureMenuGroups} groups`
+    );
+  }
+  const menuOptions = new Set<string>();
+  arrayOf(draft.menu, `${path}.menu`, (groupValue, groupPath) => {
+    const group = exactObject(groupValue, groupPath, ['heading', 'options']);
+    boundedStringAt(
+      group.heading,
+      `${groupPath}.heading`,
+      budget.gestureOptionCharacters,
+      false
+    );
+    if (
+      !Array.isArray(group.options)
+      || group.options.length < budget.gestureOptionsPerGroupMinimum
+      || group.options.length > budget.gestureOptionsPerGroup
+    ) {
+      shapeError(
+        `${groupPath}.options`,
+        `an array of ${budget.gestureOptionsPerGroupMinimum}–${budget.gestureOptionsPerGroup} strings`
+      );
+    }
+    arrayOf(group.options, `${groupPath}.options`, (option, optionPath) => {
+      boundedStringAt(option, optionPath, budget.gestureOptionCharacters, false);
+      const text = option as string;
+      if (menuOptions.has(text)) {
+        shapeError(`${path}.menu`, 'groups without duplicate options');
+      }
+      menuOptions.add(text);
     });
+  });
+  if ([...seenSelections].some((selection) => !menuOptions.has(selection))) {
+    shapeError(`${path}.selections`, 'directions drawn from the generated menu');
   }
 }
 
@@ -479,19 +564,41 @@ function assertTurnWidgetCommit(value: unknown, path: string): void {
 
 function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   const recommendation = exactObject(value, path, ['widgetId'], ['seed']);
-  if (!isWorkshopWidgetId(recommendation.widgetId)) {
-    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+  if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
+    shapeError(`${path}.widgetId`, 'live Conversation Widget id');
   }
   if (recommendation.seed !== undefined) {
+    const budget = PROMPT_BUDGETS.workshopWidgets;
     const seed = exactObject(
       recommendation.seed,
       `${path}.seed`,
       [],
-      ['targetPhrase', 'characterNotes', 'note']
+      ['targetPhrase', 'writerInstructions', 'contextText', 'characterNotes']
     );
-    optionalStringAt(seed.targetPhrase, `${path}.seed.targetPhrase`);
-    optionalStringAt(seed.characterNotes, `${path}.seed.characterNotes`);
-    optionalStringAt(seed.note, `${path}.seed.note`);
+    optionalBoundedStringAt(
+      seed.targetPhrase,
+      `${path}.seed.targetPhrase`,
+      budget.gestureTargetPhraseCharacters,
+      false
+    );
+    optionalBoundedStringAt(
+      seed.writerInstructions,
+      `${path}.seed.writerInstructions`,
+      budget.gestureWriterInstructionsCharacters,
+      false
+    );
+    optionalBoundedStringAt(
+      seed.contextText,
+      `${path}.seed.contextText`,
+      budget.gestureContextCharacters,
+      false
+    );
+    optionalBoundedStringAt(
+      seed.characterNotes,
+      `${path}.seed.characterNotes`,
+      budget.gestureCharacterNotesCharacters,
+      false
+    );
   }
 }
 
@@ -877,9 +984,36 @@ function stringAt(value: unknown, path: string): void {
   }
 }
 
+function boundedStringAt(
+  value: unknown,
+  path: string,
+  maximumCharacters: number,
+  allowBlank = true
+): void {
+  stringAt(value, path);
+  const text = value as string;
+  if (!allowBlank && text.trim().length === 0) {
+    shapeError(path, 'a non-empty string');
+  }
+  if (text.length > maximumCharacters) {
+    shapeError(path, `a string of at most ${maximumCharacters} characters`);
+  }
+}
+
 function optionalStringAt(value: unknown, path: string): void {
   if (value !== undefined) {
     stringAt(value, path);
+  }
+}
+
+function optionalBoundedStringAt(
+  value: unknown,
+  path: string,
+  maximumCharacters: number,
+  allowBlank = true
+): void {
+  if (value !== undefined) {
+    boundedStringAt(value, path, maximumCharacters, allowBlank);
   }
 }
 

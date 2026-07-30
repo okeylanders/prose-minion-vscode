@@ -15,7 +15,10 @@ import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { isApiKeyNotConfiguredWarning, TokenUsage, WorkshopTurn } from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
-import { inspectWorkshopWidgetRecommendation } from '@/utils/workshopWidgetRecommendation';
+import {
+  inspectWorkshopWidgetRecommendation,
+  stripWorkshopWidgetRecommendationControl
+} from '@/utils/workshopWidgetRecommendation';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -129,9 +132,12 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       `Widget recommendation ${widgetRecommendation.outcome} (${label}${widgetRecommendation.outcome === 'rejected' ? `; reason=${widgetRecommendation.rejection}` : ''})`
     );
   }
+  const displayContent = widgetRecommendation.outcome !== 'absent'
+    ? stripWorkshopWidgetRecommendationControl(result.content)
+    : result.content;
   const turn = session.completeRun(
     requestId,
-    result.content,
+    displayContent,
     result.usage,
     truncated,
     result.conversationId,
@@ -150,7 +156,7 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     return undefined;
   }
 
-  events.streamCompleted(requestId, result.content, false, result.usage, truncated);
+  events.streamCompleted(requestId, displayContent, false, result.usage, truncated);
   events.turnCompleted(turn);
   return turn;
 }

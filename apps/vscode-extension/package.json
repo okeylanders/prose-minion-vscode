@@ -205,8 +205,8 @@
         },
         "proseMinion.widgetModel": {
           "type": "string",
-          "default": "anthropic/claude-haiku-4.5",
-          "description": "AI model for Conversation Widget pre-commit play (e.g. Gesture Playground menus). Fast/cheap models are ideal — widget iteration is interactive and bounded. Enter any OpenRouter model ID.",
+          "default": "anthropic/claude-sonnet-5",
+          "description": "AI model for quality-first Conversation Widget generation (for example, Gesture Playground's semantic scan and alternatives). Enter any OpenRouter model ID.",
           "order": 5
         },
         "proseMinion.categoryModel": {

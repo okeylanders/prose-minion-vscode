@@ -6,7 +6,8 @@
 folded in). Sprint 01 implemented on `claude/gesture-playground-widget-201u8p`:
 design Spreads 00+01 synced, widget registry + host contracts, `widget`
 ModelScope, atomic commit route, Gesture Playground end to end (browser →
-pre-commit modal → one fast-tier call → commit → chip → clone-and-recommit),
+pre-commit modal → one composite generation call → commit → chip →
+clone-and-recommit),
 persona recommend/prefill, session-persisted `widgetConfigs`. Sprints 02–04
 not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**
@@ -104,10 +105,12 @@ These are the walls. Everything else is decoration that can move.
 
 8. **Deterministic scaffold vs. model call is an explicit seam inside each widget.**
    POS tables, gradient buckets, sliders, punctuation counts — deterministic.
-   Only semantic word-selection and phrase rewrites hit the model. Live iteration
-   uses a fast/cheap model; the committed "full workup" may use a better one. The
-   exploration UI is scaffolding thrown away at commit; what rides the rail is a
-   compact, instruction-shaped directive — never the whole cloud.
+   Only semantic word-selection and phrase rewrites hit the model. Each widget
+   scope uses a model appropriate to its quality and contract requirements; the
+   Gesture Dictionary recommends Sonnet 5. The exploration UI is scaffolding
+   excluded from the rail directive at commit (while remaining in the
+   re-openable session config); what rides the rail is a compact,
+   instruction-shaped directive — never the whole cloud.
 
 9. **Core stays host-agnostic.** The widget host, the registry, and every
    widget's logic live in `packages/core`. Only the composer's *mounting* touches
@@ -122,14 +125,14 @@ These are the walls. Everything else is decoration that can move.
 
 ## Sequencing
 
-Build the framework on the *cheapest* rail first (one concrete widget, slightly
+Build the framework on the simplest rail first (one concrete widget, slightly
 bespoke), then lift the host. Build the standing rail *with* its first real
 widget, not as naked infrastructure. Then prove the standing rail generalizes
 with a second widget before adding v2 richness.
 
 | # | Sprint | Rail | Proves |
 |---|--------|------|--------|
-| 1 | [Widget host + Gesture Playground](sprints/01-widget-host-gesture-playground.md) | thread-artifact | The whole spine on the cheap rail: composer menu → pre-commit UI → validated payload → one-shot thread-artifact → re-openable chip → clone-and-recommit. |
+| 1 | [Widget host + Gesture Playground](sprints/01-widget-host-gesture-playground.md) | thread-artifact | The whole spine on the one-shot rail: composer menu → pre-commit UI → validated payload → one-shot thread-artifact → re-openable chip → clone-and-recommit. |
 | 2 | [Lexical Gravity + standing prose-directive rail](sprints/02-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: passage-scoped prose directive, coordinator in the `WorkshopConversationBehaviorService` mold, edit-in-place + shift marker, active-directive indicator + one-click kill. Single lens. |
 | 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |

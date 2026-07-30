@@ -138,6 +138,10 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       capability: workshopCapability,
       userMessage: expect.stringContaining('<pinned-excerpt>')
     }));
+    const systemMessage = engine.runInitial.mock.calls[0][0].systemMessage;
+    expect(systemMessage).toContain('<workshop-widget-recommendation-contract>');
+    expect(systemMessage).toContain('Do not be thrifty');
+    expect(systemMessage).toContain('<surrounding-context>');
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
     expect(userMessage).toContain('<context-attachments count="1">');
     expect(userMessage.indexOf('</context-attachments>'))
@@ -178,7 +182,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       toolName: 'workshop_guest_margot',
       // The widget-recommendation contract rides every persona system message
       // (ADR 2026-07-22 decision 13).
-      systemMessage: expect.stringContaining('guest system prompt'),
+      systemMessage: expect.stringMatching(
+        /guest system prompt[\s\S]*Do not be thrifty[\s\S]*<character-notes>/
+      ),
       userMessage: expect.stringContaining('<workshop-transcript>'),
       policy: expect.objectContaining({ id: 'workshop-tool-no-resources', capabilityCatalog: 'none', retention: 'retain' }),
     }));
@@ -415,7 +421,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const imports = engine.importConversationsBetweenRuns.mock.calls[0][0];
     expect(imports[0].systemMessage).toContain('workshop-personas/base.md');
     expect(imports[0].systemMessage).toContain('<standing-directive id="sd-1">');
+    expect(imports[0].systemMessage).toContain('<workshop-widget-recommendation-contract>');
     expect(imports[1].systemMessage).toContain('workshop-personas/guest-base.md');
+    expect(imports[1].systemMessage).toContain('<workshop-widget-recommendation-contract>');
     expect(imports[2].systemMessage).toContain('writing-tools-assistant/focus/continuity.md');
     expect(imports[2].systemMessage).toContain('shared prompts');
   });

@@ -248,8 +248,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Otherwise a fast webview message can race hydration and lose committed work.
   await workshopSessionPersistenceCoordinator.initialize();
 
-  // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one fast-tier
-  // model call, routed through the manager-owned `widget` scope engine.
+  // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one
+  // quality-first model call, routed through the manager-owned `widget` scope.
   const gesturePlaygroundService = new GesturePlaygroundService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
