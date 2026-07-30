@@ -13,7 +13,12 @@
 
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
-import { isApiKeyNotConfiguredWarning, TokenUsage, WorkshopTurn } from '@messages';
+import {
+  isApiKeyNotConfiguredWarning,
+  TokenUsage,
+  WorkshopTurn,
+  WorkshopWidgetRecommendation
+} from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
 import {
   inspectWorkshopWidgetRecommendation,
@@ -127,9 +132,19 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     );
   }
   const widgetRecommendation = inspectWorkshopWidgetRecommendation(result.content);
+  const unavailableWidgetSource = widgetRecommendation.outcome === 'accepted'
+    ? unavailableWidgetSourceReference(session, widgetRecommendation.recommendation)
+    : undefined;
   if (widgetRecommendation.outcome !== 'absent') {
     input.log(
-      `Widget recommendation ${widgetRecommendation.outcome} (${label}${widgetRecommendation.outcome === 'rejected' ? `; reason=${widgetRecommendation.rejection}` : ''})`
+      `Widget recommendation ${unavailableWidgetSource ? 'rejected' : widgetRecommendation.outcome} `
+      + `(${label}${
+        unavailableWidgetSource
+          ? `; reason=unavailable_source_reference:${unavailableWidgetSource}`
+          : widgetRecommendation.outcome === 'rejected'
+            ? `; reason=${widgetRecommendation.rejection}`
+            : ''
+      })`
     );
   }
   const displayContent = widgetRecommendation.outcome !== 'absent'
@@ -143,7 +158,9 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     result.conversationId,
     actionableFindings.findings,
     result.citations,
-    widgetRecommendation.outcome === 'accepted' ? widgetRecommendation.recommendation : undefined
+    widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource
+      ? widgetRecommendation.recommendation
+      : undefined
   );
   if (!turn) {
     if (input.createsRetainedConversation && result.conversationId) {
@@ -159,4 +176,29 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
   events.streamCompleted(requestId, displayContent, false, result.usage, truncated);
   events.turnCompleted(turn);
   return turn;
+}
+
+/**
+ * Persona output may name only source addresses the current session minted.
+ * Syntax is validated in the pure frame parser; availability belongs here,
+ * where the session aggregate is in scope. A later removal still fails
+ * visibly at Generate, because source bodies are deliberately resolved live.
+ */
+function unavailableWidgetSourceReference(
+  session: WorkshopSessionService,
+  recommendation: WorkshopWidgetRecommendation
+): string | undefined {
+  const references = recommendation.seed?.sourceReferences ?? [];
+  for (const reference of references) {
+    if (reference.kind === 'active-excerpt') {
+      if (!session.getExcerpt()) {
+        return 'active-excerpt';
+      }
+      continue;
+    }
+    if (!session.getContextAttachment(reference.attachmentId)) {
+      return `context-attachment:${reference.attachmentId}`;
+    }
+  }
+  return undefined;
 }

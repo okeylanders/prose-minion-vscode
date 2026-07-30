@@ -362,6 +362,7 @@ function buildGuestExcerptFrame(excerpt: WorkshopExcerpt): string {
   return [
     ...(sourceFrame ? [sourceFrame] : []),
     '<pinned-excerpt>',
+    'Widget reference: active-excerpt',
     `Version: ${excerpt.version}`,
     ...provenance,
     neutralizeReservedPersonaPromptDelimiters(trimmed.trimmed),
@@ -481,6 +482,7 @@ export function buildWorkshopContextAttachmentsFrame(
       ? ` (head slice: ${attachment.truncation.keptWords.toLocaleString('en-US')} of ${attachment.truncation.totalWords.toLocaleString('en-US')} words)`
       : '';
     const header = [
+      `Widget reference: context-attachment:${attachment.id}`,
       `Label: ${neutralizeReservedPersonaPromptDelimiters(attachment.label)}`,
       attachment.relativePath
         ? `Source: ${neutralizeReservedPersonaPromptDelimiters(attachment.relativePath)}`
@@ -546,6 +548,7 @@ export function buildWorkshopHostUpdateFrame(
       ...provenance,
       ...(sourceFrame ? [sourceFrame] : []),
       `<pinned-excerpt version="${updates.excerpt.version}">`,
+      'Widget reference: active-excerpt',
       neutralizeReservedPersonaPromptDelimiters(excerptTrim.trimmed),
       '</pinned-excerpt>'
     );

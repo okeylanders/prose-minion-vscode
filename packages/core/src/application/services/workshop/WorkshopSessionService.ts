@@ -1650,7 +1650,14 @@ export class WorkshopSessionService {
       widgetRecommendation: (isHost || isGuest) && widgetRecommendation
         ? {
             widgetId: widgetRecommendation.widgetId,
-            seed: widgetRecommendation.seed ? { ...widgetRecommendation.seed } : undefined
+            seed: widgetRecommendation.seed
+              ? {
+                  ...widgetRecommendation.seed,
+                  sourceReferences: widgetRecommendation.seed.sourceReferences?.map(
+                    (reference) => ({ ...reference })
+                  )
+                }
+              : undefined
           }
         : undefined
     };
@@ -2443,7 +2450,14 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
     widgetRecommendation: turn.widgetRecommendation
       ? {
           widgetId: turn.widgetRecommendation.widgetId,
-          seed: turn.widgetRecommendation.seed ? { ...turn.widgetRecommendation.seed } : undefined
+          seed: turn.widgetRecommendation.seed
+            ? {
+                ...turn.widgetRecommendation.seed,
+                sourceReferences: turn.widgetRecommendation.seed.sourceReferences?.map(
+                  (reference) => ({ ...reference })
+                )
+              }
+            : undefined
         }
       : undefined
   };
@@ -2455,6 +2469,7 @@ function cloneGestureDraft(draft: WorkshopGestureDraft): WorkshopGestureDraft {
     writerInstructions: draft.writerInstructions,
     contextText: draft.contextText,
     characterNotes: draft.characterNotes,
+    sourceReferences: draft.sourceReferences.map((reference) => ({ ...reference })),
     dictionaryMarkdown: draft.dictionaryMarkdown,
     menu: draft.menu.map((group) => ({ heading: group.heading, options: [...group.options] })),
     selections: [...draft.selections],

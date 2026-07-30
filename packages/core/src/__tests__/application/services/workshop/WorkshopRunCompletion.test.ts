@@ -31,6 +31,7 @@ describe('completeWorkshopRun', () => {
     targetPhrase?: string;
     writerInstructions?: string;
     surroundingContext?: string;
+    sourceReferences?: string;
     characterNotes?: string;
   } = {}): string => [
     '### Try a widget',
@@ -49,6 +50,9 @@ describe('completeWorkshopRun', () => {
     overrides.surroundingContext
       ?? 'Micah looked past Jasper.\nHis eyes stretched wide.\nNate turned but saw nothing.',
     '</surrounding-context>',
+    '<source-references>',
+    overrides.sourceReferences ?? 'none',
+    '</source-references>',
     '<character-notes>',
     overrides.characterNotes
       ?? 'Micah has concealed his fear to protect Nate.\nThis recognition breaks that defense before he can recover.',
@@ -139,6 +143,13 @@ describe('completeWorkshopRun', () => {
 
   it('extracts a rich widget seed, strips its accepted control, and preserves preceding Next steps', () => {
     session.beginPersonaMessage('req-1', 'Find a stronger embodied reaction.');
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Micah notes',
+      words: 4,
+      content: 'Micah recognizes the impossible.'
+    });
     const visibleContent = [
       'The reaction should register as recognition rather than generic surprise.',
       '',
@@ -156,6 +167,7 @@ describe('completeWorkshopRun', () => {
         'Nate glanced at Jasper, then back to Micah.',
         'But Micah’s gaze had gone past Jasper. Past the room. His eyes stretched wide.'
       ].join('\n'),
+      sourceReferences: 'active-excerpt\ncontext-attachment:ctx-1',
       characterNotes: [
         'Micah is trying to protect Nate by containing what he knows.',
         'Recognition ruptures that control, while Nate has enough history with him to notice but not necessarily interpret it correctly.'
@@ -190,7 +202,11 @@ describe('completeWorkshopRun', () => {
         characterNotes: [
           'Micah is trying to protect Nate by containing what he knows.',
           'Recognition ruptures that control, while Nate has enough history with him to notice but not necessarily interpret it correctly.'
-        ].join('\n')
+        ].join('\n'),
+        sourceReferences: [
+          { kind: 'active-excerpt' },
+          { kind: 'context-attachment', attachmentId: 'ctx-1' }
+        ]
       }
     });
     expect(events.streamCompleted).toHaveBeenCalledWith(
@@ -239,10 +255,33 @@ describe('completeWorkshopRun', () => {
         seed: {
           writerInstructions: expect.stringContaining('broken cadence'),
           contextText: expect.stringContaining('Nate turned'),
-          characterNotes: expect.stringContaining('protect Nate')
+          characterNotes: expect.stringContaining('protect Nate'),
+          sourceReferences: []
         }
       }
     });
+  });
+
+  it('rejects a well-formed source id the current session did not mint', () => {
+    session.beginPersonaMessage('req-1', 'Find a stronger embodied reaction.');
+    const visibleContent = 'The reaction needs a more specific pressure.';
+    const control = widgetRecommendationFrame({
+      sourceReferences: 'context-attachment:ctx-999'
+    });
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(
+        `${visibleContent}\n\n${control}`,
+        { conversationId: 'host-conv' }
+      )
+    })!;
+
+    expect(turn.content).toBe(visibleContent);
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected (Jill; reason=unavailable_source_reference:context-attachment:ctx-999)'
+    );
   });
 
   it('strips a rejected widget control without attaching a recommendation', () => {

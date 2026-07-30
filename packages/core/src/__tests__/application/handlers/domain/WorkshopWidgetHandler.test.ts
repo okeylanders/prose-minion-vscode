@@ -8,12 +8,15 @@
 
 import { WorkshopWidgetHandler } from '@handlers/domain/WorkshopWidgetHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   MessageType,
   WorkshopCommitWidgetMessage,
   WorkshopGestureDraft,
   WorkshopWidgetGenerateMessage
 } from '@messages';
+
+const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
 
 const menu = [
   {
@@ -39,6 +42,7 @@ const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDr
   writerInstructions: 'Keep it private.',
   contextText: '',
   characterNotes: '',
+  sourceReferences: [],
   dictionaryMarkdown: '# Gesture Dictionary\n\nA private deflection.',
   menu,
   selections: ['the smile arrived late'],
@@ -59,6 +63,7 @@ const generateMessage = (
     writerInstructions: 'Keep it private.',
     contextText: '',
     characterNotes: '',
+    sourceReferences: [],
     ...overrides
   }
 });
@@ -130,15 +135,154 @@ describe('WorkshopWidgetHandler — generate', () => {
       menu
     }));
     expect(generateMenu).toHaveBeenCalledWith(expect.objectContaining({
-      writerInstructions: 'Keep it private.'
+      writerInstructions: 'Keep it private.',
+      sourceMaterials: [],
+      onToken: expect.any(Function),
+      signal: expect.any(AbortSignal)
     }));
+  });
+
+  it('reports honest streaming stages and terminal provider usage', async () => {
+    const generateMenu = jest.fn().mockImplementation(async (request: {
+      onToken?: (chunk: string) => void;
+    }) => {
+      // The sentinel deliberately begins a chunk much larger than the
+      // 128-character carry buffer. Detection must happen before that buffer
+      // is truncated or both stage transitions disappear.
+      request.onToken?.(`===GESTURE_DICTIONARY_V1===${'x'.repeat(1_000)}`);
+      request.onToken?.(`===GESTURE_MENU_V1===${'y'.repeat(1_000)}`);
+      return {
+        dictionaryMarkdown: '# Gesture Dictionary\n\nThe scan.',
+        menu,
+        usage: { promptTokens: 800, completionTokens: 1_750, totalTokens: 2_550 }
+      };
+    });
+    const { handler, posted } = build({ generateMenu });
+
+    await handler.handleGenerate(generateMessage());
+
+    const progress = posted(MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS)
+      .map((message) => message.payload);
+    expect(progress[0]).toEqual(expect.objectContaining({
+      token: 'tok-1',
+      phase: 'started',
+      stage: 'requesting',
+      outputCharacters: 0,
+      estimatedOutputTokens: 0,
+      outputTokenLimit: PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens
+    }));
+    expect(progress).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        phase: 'streaming',
+        stage: 'dictionary',
+        outputCharacters: expect.any(Number),
+        estimatedOutputTokens: expect.any(Number)
+      }),
+      expect.objectContaining({
+        phase: 'streaming',
+        stage: 'menu'
+      })
+    ]));
+    expect(progress.at(-1)).toEqual(expect.objectContaining({
+      phase: 'completed',
+      stage: 'validating',
+      completionTokens: 1_750,
+      outputTokenLimit: PROMPT_BUDGETS.workshopWidgets.gestureOutputTokens
+    }));
+  });
+
+  it('resolves selected excerpt and context ids to current host-owned source bodies', async () => {
+    const { handler, session, generateMenu } = build();
+    session.setExcerpt({
+      text: 'The entire active chapter, supplied without persona transcription.',
+      source: { kind: 'manual' }
+    });
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Micah notes',
+      words: 5,
+      content: 'Micah contains fear through physical control.'
+    });
+
+    await handler.handleGenerate(generateMessage({
+      sourceReferences: [
+        { kind: 'active-excerpt' },
+        { kind: 'context-attachment', attachmentId: 'ctx-1' }
+      ]
+    }));
+
+    expect(generateMenu).toHaveBeenCalledWith(expect.objectContaining({
+      sourceMaterials: [
+        {
+          reference: { kind: 'active-excerpt' },
+          label: 'Active excerpt v1',
+          content: 'The entire active chapter, supplied without persona transcription.'
+        },
+        {
+          reference: { kind: 'context-attachment', attachmentId: 'ctx-1' },
+          label: 'Micah notes',
+          content: 'Micah contains fear through physical control.'
+        }
+      ]
+    }));
+  });
+
+  it.each([
+    [
+      'missing excerpt',
+      [{ kind: 'active-excerpt' }],
+      /active excerpt.*no longer available/i
+    ],
+    [
+      'unknown context id',
+      [{ kind: 'context-attachment', attachmentId: 'ctx-9' }],
+      /ctx-9.*no longer available/i
+    ],
+    [
+      'path-bearing extension field',
+      [{ kind: 'context-attachment', attachmentId: 'ctx-1', path: '/workspace/secret.md' }],
+      /context source references? is invalid/i
+    ],
+    [
+      'duplicate reference',
+      [{ kind: 'active-excerpt' }, { kind: 'active-excerpt' }],
+      /contain a duplicate/i
+    ],
+    [
+      'serialized reference text over budget',
+      [{
+        kind: 'context-attachment',
+        attachmentId: oversizedContextAttachmentId
+      }],
+      /references exceed 500 characters/i
+    ]
+  ])('rejects closed source resolution before model spend: %s', async (
+    _label,
+    sourceReferences,
+    expected
+  ) => {
+    const { handler, posted, generateMenu } = build();
+
+    await handler.handleGenerate(generateMessage({
+      sourceReferences: sourceReferences as never
+    }));
+
+    expect(generateMenu).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload).toEqual(
+      expect.objectContaining({
+        ok: false,
+        error: expect.stringMatching(expected)
+      })
+    );
   });
 
   it('returns a recovered dictionary without selectable menu state when menu parsing fails', async () => {
     const { handler, posted } = build({
       generateMenu: jest.fn().mockResolvedValue({
         dictionaryMarkdown: '# Gesture Dictionary\n\nThe scan survived.',
-        menuError: 'The alternatives menu was malformed.'
+        menuError: 'The alternatives menu was malformed.',
+        truncated: true
       })
     });
 
@@ -148,7 +292,8 @@ describe('WorkshopWidgetHandler — generate', () => {
       expect.objectContaining({
         ok: false,
         dictionaryMarkdown: expect.stringContaining('The scan survived'),
-        menuError: expect.stringContaining('malformed')
+        menuError: expect.stringContaining('malformed'),
+        truncated: true
       })
     );
     expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.menu).toBeUndefined();
@@ -195,6 +340,14 @@ describe('WorkshopWidgetHandler — generate', () => {
     const results = posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT);
     expect(results).toHaveLength(1);
     expect(results[0].payload.token).toBe('tok-new');
+    expect(posted(MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS)
+      .map((message) => message.payload))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          token: 'tok-old',
+          phase: 'cancelled'
+        })
+      ]));
   });
 });
 
@@ -256,6 +409,40 @@ describe('WorkshopWidgetHandler — atomic commit', () => {
     ['duplicate selections', { draft: draft({ selections: ['same', 'same'] }) }],
     ['missing dictionary', { draft: draft({ dictionaryMarkdown: '' }) }],
     ['missing menu', { draft: draft({ menu: undefined as never }) }],
+    ['missing source references', { draft: draft({ sourceReferences: undefined as never }) }],
+    [
+      'duplicate source references',
+      {
+        draft: draft({
+          sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'active-excerpt' }]
+        })
+      }
+    ],
+    [
+      'path-bearing source reference',
+      {
+        draft: draft({
+          sourceReferences: [
+            {
+              kind: 'context-attachment',
+              attachmentId: 'ctx-1',
+              path: '/workspace/secret.md'
+            } as never
+          ]
+        })
+      }
+    ],
+    [
+      'serialized source references over budget',
+      {
+        draft: draft({
+          sourceReferences: [{
+            kind: 'context-attachment',
+            attachmentId: oversizedContextAttachmentId
+          }]
+        })
+      }
+    ],
     ['selection outside menu', { draft: draft({ selections: ['invented client option'] }) }],
     ['non-live widget', { widgetId: 'prose-controller' as never }]
   ])('rejects before any state change: %s', async (_label, overrides) => {

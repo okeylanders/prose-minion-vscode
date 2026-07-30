@@ -445,6 +445,7 @@ describe('AgentRunEngine', () => {
 
     expect(result.content).toContain('Partial analysis');
     expect(result.content).toContain('⚠️ Response truncated. Increase Max Tokens in settings.');
+    expect(result.rawContent).toBe('Partial analysis');
   });
 
   it('accepts a Markdown-fenced XML request instead of burning the correction turn', async () => {

@@ -18,11 +18,14 @@ import {
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
+const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
+
 const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDraft => ({
   targetPhrase: 'she smiled',
   writerInstructions: 'Keep the reaction private.',
   contextText: 'He set the mug down. She smiled.',
   characterNotes: 'Mara — guarded.',
+  sourceReferences: [],
   dictionaryMarkdown: '# Gesture Dictionary\n\nA private deflection.',
   menu: [
     {
@@ -56,7 +59,11 @@ const richRecommendation = (): WorkshopWidgetRecommendation => ({
     contextText:
       'Mara turned the cooling mug between her palms. “That is one version of it.” She smiled without looking up.',
     characterNotes:
-      'Mara is cornered but refuses to offer a clean reaction. Her restraint is deliberate, and the mug gives the pressure somewhere physical to go.'
+      'Mara is cornered but refuses to offer a clean reaction. Her restraint is deliberate, and the mug gives the pressure somewhere physical to go.',
+    sourceReferences: [
+      { kind: 'active-excerpt' },
+      { kind: 'context-attachment', attachmentId: 'ctx-2' }
+    ]
   }
 });
 
@@ -77,7 +84,12 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(first.revision).toBe(1);
     // Mutating the returned clone must not touch the stored config.
     first.draft.selections.push('sneaky');
+    first.draft.sourceReferences.push({
+      kind: 'context-attachment',
+      attachmentId: 'ctx-99'
+    });
     expect(session.getWidgetConfig('wc-1')!.draft.selections).toHaveLength(1);
+    expect(session.getWidgetConfig('wc-1')!.draft.sourceReferences).toEqual([]);
   });
 
   it('records clone lineage without retiring the source config', () => {
@@ -246,6 +258,118 @@ describe('WorkshopSessionService — widget configs', () => {
     (unavailableRecommendation as { widgetId: string }).widgetId = 'lexical-gravity';
     expect(() => parseWorkshopSessionStateV1(unavailableState))
       .toThrow(/live Conversation Widget id/);
+  });
+
+  it.each([
+    {
+      label: 'missing sourceReferences on a committed draft',
+      mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
+        delete (
+          state.widgetConfigs![0].draft as unknown as { sourceReferences?: unknown }
+        ).sourceReferences;
+      },
+      message: /missing required field sourceReferences/
+    },
+    {
+      label: 'an invented path-bearing source reference',
+      mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
+        (
+          state.widgetConfigs![0].draft.sourceReferences as unknown as Array<
+            Record<string, unknown>
+          >
+        ).push({
+          kind: 'context-attachment',
+          attachmentId: 'ctx-1',
+          path: '/workspace/private.md'
+        });
+      },
+      message: /contains unknown field path/
+    },
+    {
+      label: 'a malformed context id',
+      mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
+        state.widgetConfigs![0].draft.sourceReferences = [{
+          kind: 'context-attachment',
+          attachmentId: 'ctx-0'
+        }];
+      },
+      message: /a ctx-<n> attachment id/
+    },
+    {
+      label: 'duplicate source references',
+      mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
+        state.widgetConfigs![0].draft.sourceReferences = [
+          { kind: 'active-excerpt' },
+          { kind: 'active-excerpt' }
+        ];
+      },
+      message: /source references without duplicates/
+    },
+    {
+      label: 'serialized source references over budget',
+      mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
+        state.widgetConfigs![0].draft.sourceReferences = [{
+          kind: 'context-attachment',
+          attachmentId: oversizedContextAttachmentId
+        }];
+      },
+      message: /source references within 500 characters/
+    }
+  ])('rejects $label at persistence ingress', ({ mutate, message }) => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const state = session.exportCommittedState();
+    mutate(state);
+    expect(() => parseWorkshopSessionStateV1(state)).toThrow(message);
+  });
+
+  it('rejects malformed recommendation source references at persistence ingress', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Help me reconsider this reaction.');
+    session.completeRun(
+      'req-1',
+      'The smile is doing defensive work.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      richRecommendation()
+    );
+    const state = session.exportCommittedState();
+    const recommendation = state.turns.find((turn) => turn.widgetRecommendation)!
+      .widgetRecommendation!;
+    recommendation.seed!.sourceReferences = [
+      { kind: 'context-attachment', attachmentId: 'ctx-2' },
+      { kind: 'context-attachment', attachmentId: 'ctx-2' }
+    ];
+
+    expect(() => parseWorkshopSessionStateV1(state))
+      .toThrow(/seed\.sourceReferences.*without duplicates/);
+  });
+
+  it('rejects an over-budget serialized recommendation source at persistence ingress', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Help me reconsider this reaction.');
+    session.completeRun(
+      'req-1',
+      'The smile is doing defensive work.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      richRecommendation()
+    );
+    const state = session.exportCommittedState();
+    const recommendation = state.turns.find((turn) => turn.widgetRecommendation)!
+      .widgetRecommendation!;
+    recommendation.seed!.sourceReferences = [{
+      kind: 'context-attachment',
+      attachmentId: oversizedContextAttachmentId
+    }];
+
+    expect(() => parseWorkshopSessionStateV1(state))
+      .toThrow(/seed\.sourceReferences.*within 500 characters/);
   });
 
   it('hydrates pre-widget checkpoints (absent collection) to empty', () => {

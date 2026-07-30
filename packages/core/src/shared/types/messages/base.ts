@@ -157,6 +157,7 @@ export enum MessageType {
 
   // Conversation Widgets (ADR 2026-07-22; Sprint 01 widget host + Gesture Playground)
   WORKSHOP_WIDGET_GENERATE = 'workshop_widget_generate',
+  WORKSHOP_WIDGET_GENERATION_PROGRESS = 'workshop_widget_generation_progress',
   WORKSHOP_WIDGET_MENU_RESULT = 'workshop_widget_menu_result',
   WORKSHOP_COMMIT_WIDGET = 'workshop_commit_widget',
   WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',

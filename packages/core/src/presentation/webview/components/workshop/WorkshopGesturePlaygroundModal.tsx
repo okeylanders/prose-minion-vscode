@@ -18,17 +18,24 @@
 
 import * as React from 'react';
 import {
+  WorkshopContextAttachmentSnapshot,
+  WorkshopExcerptSnapshot,
   WorkshopGestureDraft,
   WorkshopGestureMenuGroup,
   WorkshopWidgetActionResultPayload,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetGeneratePayload,
+  WorkshopWidgetGenerationProgressPayload,
   WorkshopWidgetMenuResultPayload,
-  WorkshopWidgetRecommendationSeed
+  WorkshopWidgetRecommendationSeed,
+  WorkshopWidgetSourceReference,
+  workshopExcerptTitle
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { ModelOption, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
+import { ModelSelector } from '@components/shared/ModelSelector';
 import { WorkshopModalShell } from './WorkshopModalShell';
 
 /** How the modal was opened; decides seeding and the commit button's label. */
@@ -41,11 +48,18 @@ interface WorkshopGesturePlaygroundModalProps {
   open: boolean;
   opening: WorkshopGestureOpening;
   menuResult: WorkshopWidgetMenuResultPayload | null;
+  generationProgress: WorkshopWidgetGenerationProgressPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;
+  activeExcerpt: WorkshopExcerptSnapshot | null;
+  contextAttachments: WorkshopContextAttachmentSnapshot[];
   onGenerate: (payload: WorkshopWidgetGeneratePayload) => void;
   onCancelGenerate: () => void;
   onCommit: (draft: WorkshopGestureDraft, clonedFromConfigId?: string) => void;
   onConsumeActionResult: () => void;
+  widgetModelOptions: ModelOption[];
+  selectedWidgetModel: string;
+  onWidgetModelChange: (modelId: string) => void;
+  onOpenWidgetModelBrowser: () => void;
   onClose: () => void;
 }
 
@@ -54,21 +68,41 @@ const mintToken = (): string => `gesture-${Date.now()}-${++gestureTokenCounter}`
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
+const sourceReferenceKey = (reference: WorkshopWidgetSourceReference): string =>
+  reference.kind === 'active-excerpt'
+    ? reference.kind
+    : `${reference.kind}:${reference.attachmentId}`;
+
+const stageLabels: Record<WorkshopWidgetGenerationProgressPayload['stage'], string> = {
+  requesting: 'Preparing the request',
+  dictionary: 'Building the gesture dictionary',
+  menu: 'Building creative alternatives',
+  validating: 'Validating the craft scan'
+};
+
 export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundModalProps> = ({
   open,
   opening,
   menuResult,
+  generationProgress,
   actionResult,
+  activeExcerpt,
+  contextAttachments,
   onGenerate,
   onCancelGenerate,
   onCommit,
   onConsumeActionResult,
+  widgetModelOptions,
+  selectedWidgetModel,
+  onWidgetModelChange,
+  onOpenWidgetModelBrowser,
   onClose
 }) => {
   const [targetPhrase, setTargetPhrase] = React.useState('');
   const [writerInstructions, setWriterInstructions] = React.useState('');
   const [contextText, setContextText] = React.useState('');
   const [characterNotes, setCharacterNotes] = React.useState('');
+  const [sourceReferences, setSourceReferences] = React.useState<WorkshopWidgetSourceReference[]>([]);
   const [note, setNote] = React.useState('');
   const [menu, setMenu] = React.useState<WorkshopGestureMenuGroup[] | undefined>(undefined);
   const [dictionaryMarkdown, setDictionaryMarkdown] = React.useState('');
@@ -77,6 +111,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   const [generateError, setGenerateError] = React.useState<string | null>(null);
   const [commitPending, setCommitPending] = React.useState(false);
   const [commitError, setCommitError] = React.useState<string | null>(null);
+  const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
 
   /* Re-seed the whole Draft on every open, from the opening's source of
      truth. Clone restores the exact persisted Draft — menu and selections
@@ -91,6 +126,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       setWriterInstructions(draft.writerInstructions);
       setContextText(draft.contextText);
       setCharacterNotes(draft.characterNotes);
+      setSourceReferences(draft.sourceReferences.map((reference) => ({ ...reference })));
       setNote(draft.note);
       setMenu(draft.menu.map((group) => ({ ...group, options: [...group.options] })));
       setDictionaryMarkdown(draft.dictionaryMarkdown);
@@ -100,6 +136,9 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       setWriterInstructions(opening.seed.writerInstructions ?? '');
       setContextText(opening.seed.contextText ?? '');
       setCharacterNotes(opening.seed.characterNotes ?? '');
+      setSourceReferences(
+        (opening.seed.sourceReferences ?? []).map((reference) => ({ ...reference }))
+      );
       // The post-selection note belongs to the writer, never the recommending persona.
       setNote('');
       setMenu(undefined);
@@ -110,6 +149,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       setWriterInstructions('');
       setContextText('');
       setCharacterNotes('');
+      setSourceReferences([]);
       setNote('');
       setMenu(undefined);
       setDictionaryMarkdown('');
@@ -119,6 +159,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     setGenerateError(null);
     setCommitPending(false);
     setCommitError(null);
+    setModelBrowserOpen(false);
     /* Reseed on open only — `opening` is intentionally not a dependency, so a
        background snapshot refresh cannot clobber in-progress editing. */
   }, [open]);
@@ -166,6 +207,50 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
 
   const generating = generateToken !== null;
   const locked = commitPending;
+  const visibleProgress =
+    generationProgress?.token === generateToken ? generationProgress : null;
+  const progressStage = stageLabels[visibleProgress?.stage ?? 'requesting'];
+  const estimatedVisibleTokens = visibleProgress?.estimatedOutputTokens ?? 0;
+
+  const availableSources = React.useMemo(() => {
+    const sources: Array<{
+      reference: WorkshopWidgetSourceReference;
+      label: string;
+      detail: string;
+    }> = [];
+    if (activeExcerpt) {
+      const words = activeExcerpt.text.trim().length === 0
+        ? 0
+        : activeExcerpt.text.trim().split(/\s+/).length;
+      sources.push({
+        reference: { kind: 'active-excerpt' },
+        label: `Active excerpt — ${workshopExcerptTitle(activeExcerpt.source)}`,
+        detail: `${words.toLocaleString()} words`
+      });
+    }
+    contextAttachments.forEach((attachment) => {
+      sources.push({
+        reference: { kind: 'context-attachment', attachmentId: attachment.id },
+        label: `Context — ${attachment.label}`,
+        detail: [
+          `${attachment.words.toLocaleString()} words`,
+          attachment.relativePath
+        ].filter(Boolean).join(' · ')
+      });
+    });
+    return sources;
+  }, [activeExcerpt, contextAttachments]);
+
+  const availableSourceKeys = React.useMemo(
+    () => new Set(availableSources.map(({ reference }) => sourceReferenceKey(reference))),
+    [availableSources]
+  );
+  const unavailableSelectedSources = sourceReferences.filter(
+    (reference) => !availableSourceKeys.has(sourceReferenceKey(reference))
+  );
+  const hasUnavailableSelectedSources = unavailableSelectedSources.length > 0;
+  const sourceSelectionAtLimit =
+    sourceReferences.length >= BUDGET.gestureSourceReferences;
 
   const invalidateGeneratedArtifacts = React.useCallback(() => {
     setMenu(undefined);
@@ -195,8 +280,32 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     setCharacterNotes(value);
   }, [invalidateGeneratedArtifacts]);
 
+  const toggleSourceReference = React.useCallback(
+    (reference: WorkshopWidgetSourceReference) => {
+      invalidateGeneratedArtifacts();
+      const key = sourceReferenceKey(reference);
+      setSourceReferences((current) => {
+        const selected = current.some(
+          (candidate) => sourceReferenceKey(candidate) === key
+        );
+        if (selected) {
+          return current.filter((candidate) => sourceReferenceKey(candidate) !== key);
+        }
+        return current.length < BUDGET.gestureSourceReferences
+          ? [...current, reference]
+          : current;
+      });
+    },
+    [invalidateGeneratedArtifacts]
+  );
+
   const generate = React.useCallback(() => {
-    if (generating || locked || targetPhrase.trim().length === 0) {
+    if (
+      generating
+      || locked
+      || targetPhrase.trim().length === 0
+      || hasUnavailableSelectedSources
+    ) {
       return;
     }
     const token = mintToken();
@@ -208,15 +317,18 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       targetPhrase,
       writerInstructions,
       contextText,
-      characterNotes
+      characterNotes,
+      sourceReferences
     });
   }, [
     generating,
     locked,
+    hasUnavailableSelectedSources,
     targetPhrase,
     writerInstructions,
     contextText,
     characterNotes,
+    sourceReferences,
     onGenerate
   ]);
 
@@ -242,6 +354,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       || !menu
       || dictionaryMarkdown.trim().length === 0
       || selections.length === 0
+      || hasUnavailableSelectedSources
     ) {
       return;
     }
@@ -253,6 +366,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
         writerInstructions,
         contextText,
         characterNotes,
+        sourceReferences,
         dictionaryMarkdown,
         menu,
         selections,
@@ -265,10 +379,12 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     generating,
     menu,
     selections,
+    hasUnavailableSelectedSources,
     targetPhrase,
     writerInstructions,
     contextText,
     characterNotes,
+    sourceReferences,
     dictionaryMarkdown,
     note,
     onCommit,
@@ -276,11 +392,27 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   ]);
 
   const close = React.useCallback(() => {
+    // The model browser is layered over this sheet and owns the first Escape.
+    // Keep the underlying draft open while that child overlay dismisses.
+    if (modelBrowserOpen) {
+      return;
+    }
     if (generating) {
       cancelGenerate();
     }
     onClose();
-  }, [generating, cancelGenerate, onClose]);
+  }, [modelBrowserOpen, generating, cancelGenerate, onClose]);
+
+  const changeWidgetModel = React.useCallback(
+    (_scope: ModelScope, modelId: string) => {
+      if (modelId === selectedWidgetModel) {
+        return;
+      }
+      invalidateGeneratedArtifacts();
+      onWidgetModelChange(modelId);
+    },
+    [selectedWidgetModel, invalidateGeneratedArtifacts, onWidgetModelChange]
+  );
 
   return (
     <WorkshopModalShell
@@ -388,15 +520,108 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             />
           </label>
 
+          <fieldset className="pm-ws-gesture-sources">
+            <legend className="pm-ws-gesture-flabel">
+              Source material{' '}
+              <i>
+                {opening.kind === 'seed' && (opening.seed.sourceReferences?.length ?? 0) > 0
+                  ? `prefilled by ${opening.personaLabel}`
+                  : 'optional'}
+              </i>
+            </legend>
+            <p>
+              Writer instructions and surrounding context still ride with the request. Selected
+              sources add their full host-owned text without asking anyone to copy it here.
+            </p>
+            <span className="pm-ws-gesture-source-limit">
+              {sourceReferences.length}/{BUDGET.gestureSourceReferences} sources selected
+              {sourceSelectionAtLimit ? ' · maximum reached' : ''}
+            </span>
+            <div className="pm-ws-gesture-source-list">
+              {availableSources.map(({ reference, label, detail }) => {
+                const key = sourceReferenceKey(reference);
+                const selected = sourceReferences.some(
+                  (candidate) => sourceReferenceKey(candidate) === key
+                );
+                return (
+                  <label className="pm-ws-gesture-source" key={key}>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      disabled={
+                        locked
+                        || generating
+                        || (!selected && sourceSelectionAtLimit)
+                      }
+                      onChange={() => toggleSourceReference(reference)}
+                    />
+                    <span>
+                      <b>{label}</b>
+                      <small>{detail}</small>
+                    </span>
+                  </label>
+                );
+              })}
+              {unavailableSelectedSources.map((reference) => {
+                const key = sourceReferenceKey(reference);
+                const label = reference.kind === 'active-excerpt'
+                  ? 'Active excerpt — unavailable'
+                  : `Context attachment ${reference.attachmentId} — unavailable`;
+                return (
+                  <label
+                    className="pm-ws-gesture-source pm-ws-gesture-source-unavailable"
+                    key={key}
+                  >
+                    <input
+                      type="checkbox"
+                      checked
+                      disabled={locked || generating}
+                      onChange={() => toggleSourceReference(reference)}
+                    />
+                    <span>
+                      <b>{label}</b>
+                      <small>Remove this reference before generating again.</small>
+                    </span>
+                  </label>
+                );
+              })}
+              {availableSources.length === 0 && unavailableSelectedSources.length === 0 && (
+                <span className="pm-ws-gesture-source-empty">
+                  No active excerpt or standing context is available in this room.
+                </span>
+              )}
+            </div>
+          </fieldset>
+
           {generating ? (
-            <button type="button" className="pm-ws-gesture-gen pm-ws-gesture-gen-busy" onClick={cancelGenerate}>
-              Building the craft scan and alternatives… (click to cancel)
-            </button>
+            <div className="pm-ws-gesture-progress">
+              <div className="pm-ws-gesture-progress-copy" role="status" aria-live="polite">
+                <span>{progressStage}…</span>
+                <strong>
+                  ~{estimatedVisibleTokens.toLocaleString()} estimated visible tokens
+                </strong>
+              </div>
+              <div
+                className="pm-ws-gesture-progress-track"
+                role="progressbar"
+                aria-label="Gesture generation in progress"
+                aria-valuetext={`${progressStage}; approximately ${estimatedVisibleTokens.toLocaleString()} estimated visible tokens`}
+              >
+                <span />
+              </div>
+              <button type="button" onClick={cancelGenerate}>
+                Cancel generation
+              </button>
+            </div>
           ) : (
             <button
               type="button"
               className={`pm-ws-gesture-gen${menu || dictionaryMarkdown ? ' pm-ws-gesture-gen-ghost' : ''}`}
-              disabled={locked || targetPhrase.trim().length === 0}
+              disabled={
+                locked
+                || targetPhrase.trim().length === 0
+                || hasUnavailableSelectedSources
+              }
               onClick={generate}
             >
               <Icon name={menu || dictionaryMarkdown ? 'refresh' : 'sparkle'} size={13} />{' '}
@@ -471,10 +696,21 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
         </div>
 
         <footer className="pm-ws-gesture-foot">
-          <span className="pm-ws-gesture-fnote">
-            {menu && <span className="pm-ws-gesture-count">{selections.length} selected · </span>}
-            Pre-commit play is free — only the commit pays context.
-          </span>
+          <div className="pm-ws-gesture-model">
+            <ModelSelector
+              scope="widget"
+              options={widgetModelOptions}
+              value={selectedWidgetModel}
+              onChange={changeWidgetModel}
+              onOpenBrowser={onOpenWidgetModelBrowser}
+              onBrowserOpenChange={setModelBrowserOpen}
+              label="Widget Model"
+              disabled={locked || generating}
+            />
+            {menu && (
+              <span className="pm-ws-gesture-count">· {selections.length} selected</span>
+            )}
+          </div>
           <button type="button" className="pm-ws-gesture-cancel" disabled={locked} onClick={close}>
             Cancel
           </button>
@@ -487,6 +723,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
               || !menu
               || dictionaryMarkdown.trim().length === 0
               || selections.length === 0
+              || hasUnavailableSelectedSources
             }
             onClick={commit}
           >

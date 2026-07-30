@@ -1,8 +1,8 @@
 # Sprint 01: Widget Host + Gesture Playground
 
-**Status**: Implemented 2026-07-29 — awaiting review/merge
+**Status**: Implemented and hardened 2026-07-29 — awaiting review/merge
 **Priority**: High
-**Branch**: `claude/gesture-playground-widget-201u8p` *(session-designated; plan named `sprint/conversation-widgets-01-widget-host-gesture-playground`)*
+**Branch**: `claude/gesture-dictionary-prompt-qgeuyq`
 **Estimated Effort**: 4-6 days
 **Depends on**: Workshop Sprint 10 persistence merged; ADR [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md) authored and accepted
 **ADR**: same — authored and accepted 2026-07-29 with the architecture-lane
@@ -28,12 +28,18 @@ ModelScope; rail-discriminated turn linkage with config revisions)
     `proseMinion.widgetModel` setting covers the independent widget scope.
 - Coverage: registry integrity + kind round-trip; frame-builder closed-set
   validation + quoted-frame neutralization; fail-closed recommendation parser
-  with live-gating and the rich four-field host/guest prefill; menu-parse
+  with live-gating and the rich host/guest prefill plus closed source refs; menu-parse
   rejection table; `wc-N` minting / clone lineage / shared counter / V1
   round-trip and integrity rejections; handler generate-race + atomic-commit +
   retry-token semantics; modal seed/clone re-hydration and host-confirmed
   close. Architecture witnesses, lint, build, and bundle verification are
   green.
+- Follow-on hardening adds the selected widget model to the fixed footer,
+  shared-browser launch, private SSE progress telemetry, a centralized
+  50,000-token output ceiling, untouched-provider-content parsing, and typed
+  host source references. Persona prose remains rich and required; references
+  add the current active excerpt or selected `ctx-N` session copies without
+  requiring duplicate transcription.
 
 ## Goal
 
@@ -85,8 +91,12 @@ directions I want *here*."
     influenceLifetime }`. For Sprint 01, `influenceLifetime` is always
     `this-turn` and `influence` rides the thread-artifact rail.
 - **Gesture Playground input**:
-  `{ targetPhrase, writerInstructions, contextText, characterNotes }`.
+  `{ targetPhrase, writerInstructions, contextText, characterNotes,
+  sourceReferences }`.
   Seed `targetPhrase` from the current editor/excerpt selection when present.
+  `sourceReferences` is a bounded closed union of `active-excerpt` and
+  host-minted `context-attachment:ctx-N` addresses; it augments rather than
+  replaces the four rich prose fields.
 - **Gesture Playground interaction**: one model call returns a bounded,
   expandable Gesture Dictionary followed by a strictly framed JSON menu of
   gesture/expression alternatives; the writer multi-selects the directions to
@@ -98,9 +108,9 @@ directions I want *here*."
   selectable writer state.
 - **Persisted Gesture Draft**:
   `{ targetPhrase, writerInstructions, contextText, characterNotes,
-  dictionaryMarkdown, menu, selections, note }`. The generated dictionary
-  and menu are exploration cloud retained so a chip can restore the exact
-  authoring surface; neither rides the commit rail.
+  sourceReferences, dictionaryMarkdown, menu, selections, note }`. The
+  generated dictionary and menu are exploration cloud retained so a chip can
+  restore the exact authoring surface; neither rides the commit rail.
 - **Commit** stages a one-shot thread-artifact: a compact directive ("gesture
   directions I want for '<phrase>': …selected items…") plus a visible composer
   message. It rides exactly one turn, then becomes ordinary history.
@@ -125,9 +135,11 @@ directions I want *here*."
   persona message that opens the widget) and *prefill* (persona-supplied
   `seed`). One shared instruction applies to hosts and guests. A Gesture
   Playground recommendation must be the response's strict, bounded multiline
-  tail and must include all four editable inputs: the exact target phrase,
+  tail and must include all four editable prose inputs plus the source-reference
+  field: the exact target phrase,
   generous writer instructions, generous consecutive surrounding source text,
-  and detailed evidence-grounded character notes. The instruction explicitly
+  selected session-local source addresses (or `none`), and detailed
+  evidence-grounded character notes. The instruction explicitly
   says not to be thrifty: provide enough scene-specific material to make the
   downstream dictionary useful, without padding or inventing facts. The
   parser validates the versioned frame, exact tag order and uniqueness,
@@ -145,8 +157,9 @@ directions I want *here*."
    widgets), mounted in `WorkshopComposer.tsx`.
 2. **Widget host**: a registry + pre-commit modal lifecycle + the `WidgetCommit`
    contract, extracted from Gesture Playground.
-3. **Gesture Playground** widget: four-part input form, one composite model
-   call, expandable Gesture Dictionary, grouped menu, multi-select, commit.
+3. **Gesture Playground** widget: four-part prose input form plus optional
+   host-source selections, one streaming composite model call, expandable
+   Gesture Dictionary, grouped menu, multi-select, commit.
 4. **Thread-artifact commit path** reusing the existing staged-artifact rail
    (`pendingMessageAttachments` / `buildWorkshopThreadArtifactFrame`).
 5. **Persisted widget config** by stable id in `WorkshopSessionService` +
@@ -156,7 +169,8 @@ directions I want *here*."
    re-launch.
 7. **Persona recommend/prefill**: hosts and guests share one bounded,
    fail-closed recommendation contract. A Gesture Playground recommendation
-   carries a complete four-field seed in a strict multiline tail; its control
+   carries a complete rich seed plus closed source references in a strict
+   multiline tail; its control
    framing is stripped before transcript display.
 8. Frame neutralization coverage for any new reserved delimiter introduced.
 9. Tests: host registry + commit contract; composite frame parsing, including
@@ -182,9 +196,10 @@ directions I want *here*."
   prior selections; committing again creates a *new* turn without rewriting
   history.
 - A host or guest can recommend Gesture Playground from inside a message with
-  all four substantive inputs prefilled; malformed or partial controls produce
-  no recommendation, control framing never leaks into the transcript, and the
-  writer can edit every accepted value before generating.
+  all four substantive prose inputs and the source-reference field prefilled;
+  malformed or partial controls produce no recommendation, control framing
+  never leaks into the transcript, and the writer can edit every accepted
+  value before generating.
 - No `vscode` import in core; architecture witness green; typechecks, lint,
   build, and the new tests pass.
 - The host contract is documented well enough that Sprint 02 can add a

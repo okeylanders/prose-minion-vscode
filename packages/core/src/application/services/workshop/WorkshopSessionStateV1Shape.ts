@@ -283,6 +283,7 @@ function assertGestureDraft(value: unknown, path: string): void {
       'writerInstructions',
       'contextText',
       'characterNotes',
+      'sourceReferences',
       'dictionaryMarkdown',
       'menu',
       'selections',
@@ -310,6 +311,7 @@ function assertGestureDraft(value: unknown, path: string): void {
     `${path}.characterNotes`,
     budget.gestureCharacterNotesCharacters
   );
+  assertWidgetSourceReferences(draft.sourceReferences, `${path}.sourceReferences`);
   boundedStringAt(
     draft.dictionaryMarkdown,
     `${path}.dictionaryMarkdown`,
@@ -573,7 +575,13 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
       recommendation.seed,
       `${path}.seed`,
       [],
-      ['targetPhrase', 'writerInstructions', 'contextText', 'characterNotes']
+      [
+        'targetPhrase',
+        'writerInstructions',
+        'contextText',
+        'characterNotes',
+        'sourceReferences'
+      ]
     );
     optionalBoundedStringAt(
       seed.targetPhrase,
@@ -599,7 +607,47 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
       budget.gestureCharacterNotesCharacters,
       false
     );
+    if (seed.sourceReferences !== undefined) {
+      assertWidgetSourceReferences(seed.sourceReferences, `${path}.seed.sourceReferences`);
+    }
   }
+}
+
+function assertWidgetSourceReferences(value: unknown, path: string): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  if (!Array.isArray(value) || value.length > budget.gestureSourceReferences) {
+    shapeError(path, `an array of at most ${budget.gestureSourceReferences} source references`);
+  }
+  const seen = new Set<string>();
+  let serializedCharacters = 0;
+  arrayOf(value, path, (referenceValue, referencePath) => {
+    const reference = objectAt(referenceValue, referencePath);
+    if (reference.kind === 'active-excerpt') {
+      exactKeys(reference, referencePath, ['kind']);
+    } else if (reference.kind === 'context-attachment') {
+      exactKeys(reference, referencePath, ['kind', 'attachmentId']);
+      stringAt(reference.attachmentId, `${referencePath}.attachmentId`);
+      if (!/^ctx-[1-9]\d*$/.test(reference.attachmentId as string)) {
+        shapeError(`${referencePath}.attachmentId`, 'a ctx-<n> attachment id');
+      }
+    } else {
+      shapeError(`${referencePath}.kind`, 'active-excerpt or context-attachment');
+    }
+    const key = reference.kind === 'active-excerpt'
+      ? 'active-excerpt'
+      : `context-attachment:${String(reference.attachmentId)}`;
+    serializedCharacters += key.length + (seen.size > 0 ? 1 : 0);
+    if (serializedCharacters > budget.gestureSourceReferenceCharacters) {
+      shapeError(
+        path,
+        `source references within ${budget.gestureSourceReferenceCharacters} characters`
+      );
+    }
+    if (seen.has(key)) {
+      shapeError(path, 'source references without duplicates');
+    }
+    seen.add(key);
+  });
 }
 
 function assertCitation(value: unknown, path: string): void {

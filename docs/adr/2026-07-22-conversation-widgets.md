@@ -1,7 +1,7 @@
 # ADR: Conversation Widgets
 
-- **Status**: Accepted — 2026-07-29; Gesture Dictionary generation amendment
-  accepted 2026-07-29
+- **Status**: Accepted — 2026-07-29; Gesture Dictionary generation and
+  source-reference/streaming amendments accepted 2026-07-29
 - **Decision owner**: Okey
 - **Planning source**: epic and sprint plans drafted 2026-07-22
   ([epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md));
@@ -108,8 +108,9 @@ increments a `revision`.
 
 ### 6. Config, not just output, is session-owned and persisted by stable id
 
-The full Draft — inputs, writer instructions, the generated Gesture Dictionary
-Markdown, the generated menu, the selections, and the note —
+The full Draft — inputs, writer instructions, selected host source references,
+the generated Gesture Dictionary Markdown, the generated menu, the selections,
+and the note —
 persists in a **typed `widgetConfigs` collection** on the session aggregate,
 serialized in `WorkshopSessionStateV1` as an **optional key** (absent
 hydrates empty, so pre-widget checkpoints stay readable under the exact-key
@@ -164,6 +165,17 @@ the embodied scan. Its final three sections are deliberately ordered:
 **Cliché & Convention Pressure → Freshness Strategies → Scene Synthesis
 Brief**. The visible scan is a writer-facing analysis artifact, never described
 or requested as private internal reasoning.
+
+Gesture Dictionary generation has a route-specific **50,000 output-token
+ceiling** in `promptBudgets`. The engine preserves untouched provider content
+for structured parsing; presentation cleanup and the human truncation footer
+never enter the sentinel/JSON parser. Supplying the widget's private token
+callback activates the existing OpenRouter SSE path. The webview receives only
+throttled, token-keyed telemetry — stage, output characters, and a clearly
+labeled estimate of *visible* output tokens — plus an indeterminate progress
+bar. Raw partial dictionary/menu text stays host-private until validation.
+Exact provider completion usage remains terminal because reasoning-token usage
+cannot be inferred from visible stream characters.
 
 ### 9. Core stays host-agnostic; handlers stay out of the god files
 
@@ -229,19 +241,27 @@ gesture-playground
 <surrounding-context>
 [generous consecutive source prose around the phrase]
 </surrounding-context>
+<source-references>
+[none, or one exact active-excerpt/context-attachment:ctx-N identifier per line]
+</source-references>
 <character-notes>
 [substantial, evidence-grounded character notes for this beat]
 </character-notes>
 </workshop-widget-recommendation>
 ```
 
-All four prefill inputs are required and remain editable in the widget:
+All four prose inputs plus the source-reference field are required and remain
+editable in the widget:
 
 - **Target phrase** copies the exact passage phrase rather than paraphrasing it.
 - **Writer instructions** supply several substantive sentences about the
   dramatic job, invariants, exclusions, and promising creative territory.
 - **Surrounding context** supplies a generous consecutive stretch of source
   prose around the phrase, preserving its wording rather than summarizing it.
+- **Source references** contain `none` or host-minted `active-excerpt` /
+  `context-attachment:ctx-N` addresses. They let the widget read the current
+  full session copy directly without making the persona transcribe a chapter
+  or context file into its response.
 - **Character notes** supply detailed, evidence-grounded information about the
   immediate pressure, intention or defense, relationship dynamics,
   self-control, habits or constraints, and relevant voice/history. Reasonable
@@ -250,15 +270,23 @@ All four prefill inputs are required and remain editable in the widget:
 The instruction is deliberately **quality-first and non-thrifty**: personas
 should use the available field budgets to provide enough grounded material for
 the dictionary model to understand the beat without reconstructing it from
-scraps. Generous does not mean padded or invented; context remains source prose,
-and character notes remain grounded in supplied evidence.
+scraps. References are additive: they reduce duplicate transcription but never
+excuse thin writer instructions, local surrounding prose, or character notes.
+Generous does not mean padded or invented; context remains source prose, and
+character notes remain grounded in supplied evidence.
 
 The host-side parser requires the version, heading, tags, field order, unique
 markers, non-empty values, final-tail placement, a live registry id, and
 centralized per-field bounds. Missing, duplicated, reordered, trailing, empty,
 over-budget, or otherwise malformed controls reject **wholesale**; no partial
-seed is admitted. The validated result rides as a typed optional field on
-`WorkshopTurn` (`widgetRecommendation: { widgetId, seed? }`). The reserved
+seed is admitted. Syntactically valid references are also checked against the
+current session when the persona turn lands; invented addresses are rejected.
+At Generate time the host resolves selected addresses to the current excerpt
+and attachment bodies under a separate aggregate evidence bound. Paths never
+cross the widget contract, and a source removed after recommendation fails
+visibly rather than silently drifting. The validated result rides as a typed
+optional field on `WorkshopTurn`
+(`widgetRecommendation: { widgetId, seed? }`). The reserved
 control tail is stripped from transcript content whether parsing accepts or
 rejects it, so neither successful machine framing nor malformed debris appears
 as persona prose. The webview renders a presentation-only chip, and its seed

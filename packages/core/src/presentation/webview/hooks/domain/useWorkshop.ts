@@ -68,6 +68,8 @@ import {
   WorkshopWebResearchSettings,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetGeneratePayload,
+  WorkshopWidgetGenerationProgressMessage,
+  WorkshopWidgetGenerationProgressPayload,
   WorkshopWidgetMenuResultMessage,
   WorkshopWidgetMenuResultPayload,
   WorkshopWidgetActionResultMessage,
@@ -136,6 +138,8 @@ export interface WorkshopState {
   widgetConfigs: WorkshopWidgetConfigSnapshot[];
   /** Latest generate result; the modal drops results whose token is stale. */
   widgetMenuResult: WorkshopWidgetMenuResultPayload | null;
+  /** Token-keyed live progress for the private pre-commit model call. */
+  widgetGenerationProgress: WorkshopWidgetGenerationProgressPayload | null;
   /** Latest commit outcome; consumed by the open widget modal. */
   widgetActionResult: WorkshopWidgetActionResultPayload | null;
   contextPending: boolean;
@@ -269,6 +273,7 @@ export interface WorkshopActions {
   commitWidget: (payload: WorkshopCommitWidgetPayload) => void;
   consumeWidgetActionResult: () => void;
   handleWidgetMenuResult: (message: WorkshopWidgetMenuResultMessage) => void;
+  handleWidgetGenerationProgress: (message: WorkshopWidgetGenerationProgressMessage) => void;
   handleWidgetActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
   handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
@@ -319,6 +324,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [widgetConfigs, setWidgetConfigs] = React.useState<WorkshopWidgetConfigSnapshot[]>([]);
   const [widgetMenuResult, setWidgetMenuResult] =
     React.useState<WorkshopWidgetMenuResultPayload | null>(null);
+  const [widgetGenerationProgress, setWidgetGenerationProgress] =
+    React.useState<WorkshopWidgetGenerationProgressPayload | null>(null);
   const [widgetActionResult, setWidgetActionResult] =
     React.useState<WorkshopWidgetActionResultPayload | null>(null);
   const [contextPending, setContextPending] = React.useState(false);
@@ -504,6 +511,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
 
   const generateWidgetMenu = React.useCallback((payload: WorkshopWidgetGeneratePayload) => {
     setWidgetMenuResult(null);
+    setWidgetGenerationProgress(null);
     post(MessageType.WORKSHOP_WIDGET_GENERATE, payload);
   }, [post]);
 
@@ -523,6 +531,16 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const handleWidgetMenuResult = React.useCallback(
     (message: WorkshopWidgetMenuResultMessage) => {
       setWidgetMenuResult(message.payload);
+      setWidgetGenerationProgress((current) =>
+        current?.token === message.payload.token ? null : current
+      );
+    },
+    []
+  );
+
+  const handleWidgetGenerationProgress = React.useCallback(
+    (message: WorkshopWidgetGenerationProgressMessage) => {
+      setWidgetGenerationProgress(message.payload);
     },
     []
   );
@@ -982,6 +1000,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     pendingMessageAttachments,
     widgetConfigs,
     widgetMenuResult,
+    widgetGenerationProgress,
     widgetActionResult,
     contextPending,
     contextCatalog,
@@ -1052,6 +1071,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     commitWidget,
     consumeWidgetActionResult,
     handleWidgetMenuResult,
+    handleWidgetGenerationProgress,
     handleWidgetActionResult,
     attachMessageFile,
     removeMessageAttachment,

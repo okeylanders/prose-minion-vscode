@@ -1,9 +1,10 @@
 /**
  * Prompt-side input budgets.
  *
- * Keep static prompt bounds here so every caller shares the same units and
- * provenance rules. Response token limits remain settings-driven and batching
- * or presentation-only limits do not belong in this table.
+ * Keep static inference bounds here so every caller shares the same units and
+ * provenance rules. User-configurable response limits remain settings-driven;
+ * route-specific fixed ceilings live here with their corresponding inputs.
+ * Batching and presentation-only limits do not belong in this table.
  */
 
 export interface PromptBudgets {
@@ -78,6 +79,10 @@ export interface PromptBudgets {
     gestureWriterInstructionsCharacters: number;
     gestureContextCharacters: number;
     gestureCharacterNotesCharacters: number;
+    gestureSourceReferences: number;
+    gestureSourceReferenceCharacters: number;
+    gestureReferencedSourceCharacters: number;
+    gestureOutputTokens: number;
     gestureRecommendationFrameAllowanceCharacters: number;
     gestureDictionaryCharacters: number;
     gestureNoteCharacters: number;
@@ -141,6 +146,10 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     gestureWriterInstructionsCharacters: 1_000,
     gestureContextCharacters: 10_000,
     gestureCharacterNotesCharacters: 1_500,
+    gestureSourceReferences: 8,
+    gestureSourceReferenceCharacters: 500,
+    gestureReferencedSourceCharacters: 420_000,
+    gestureOutputTokens: 50_000,
     gestureRecommendationFrameAllowanceCharacters: 2_000,
     gestureDictionaryCharacters: 32_000,
     gestureNoteCharacters: 300,

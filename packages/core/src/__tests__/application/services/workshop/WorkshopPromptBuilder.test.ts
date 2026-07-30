@@ -182,7 +182,9 @@ describe('Workshop guest transcript and join envelopes', () => {
     expect(result.message).toContain('You are Margot.');
     expect(result.message).toContain('<workshop-transcript>');
     expect(result.message).toContain('recent conversation from the Workshop room');
-    expect(result.message).toContain('<pinned-excerpt>\nVersion: 3');
+    expect(result.message).toContain(
+      '<pinned-excerpt>\nWidget reference: active-excerpt\nVersion: 3'
+    );
     expect(result.message).toContain('<context-attachments count="1">');
     expect(result.message.indexOf('</pinned-excerpt>'))
       .toBeLessThan(result.message.indexOf('<context-attachments'));
@@ -395,6 +397,9 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
     })!;
 
     expect(frame).toContain('<pinned-excerpt version="2">');
+    expect(frame).toContain(
+      '<pinned-excerpt version="2">\nWidget reference: active-excerpt'
+    );
     expect(frame).toContain('The revised cup stays on the table.');
     expect(frame).not.toContain('<context-attachments');
   });
@@ -458,11 +463,13 @@ describe('buildWorkshopHostMessage with a direct handoff', () => {
 
       expect(frame).toContain('<context-attachments count="2">');
       expect(frame).toContain('<context-attachment kind="file">');
+      expect(frame).toContain('Widget reference: context-attachment:ctx-1');
       expect(frame).toContain('Label: character-sheet-raven.md');
       expect(frame).toContain('Source: Characters/Raven/character-sheet-raven.md');
       expect(frame).toContain('Words: 1,240');
       expect(frame).toContain('Raven is seventeen.');
       expect(frame).toContain('<context-attachment kind="text">');
+      expect(frame).toContain('Widget reference: context-attachment:ctx-2');
       expect(frame).toContain('Prom happens Friday.');
       // Order is the writer's order.
       expect(frame.indexOf('Raven is seventeen.')).toBeLessThan(frame.indexOf('Prom happens Friday.'));

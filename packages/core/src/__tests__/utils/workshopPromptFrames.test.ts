@@ -124,6 +124,8 @@ describe('neutralizeReservedPersonaPromptDelimiters', () => {
       '</writer-instructions>',
       '<surrounding-context>',
       '</surrounding-context>',
+      '<source-references>',
+      '</source-references>',
       '<character-notes>',
       '</character-notes>'
     ].join(' body ');
@@ -131,12 +133,13 @@ describe('neutralizeReservedPersonaPromptDelimiters', () => {
     const output = neutralizeReservedPersonaPromptDelimiters(input);
 
     expect(output).not.toMatch(
-      /<\/?(?:workshop-widget-recommendation-contract|workshop-widget-recommendation|widget-id|target-phrase|writer-instructions|surrounding-context|character-notes)(?=[\s>])/i
+      /<\/?(?:workshop-widget-recommendation-contract|workshop-widget-recommendation|widget-id|target-phrase|writer-instructions|surrounding-context|source-references|character-notes)(?=[\s>])/i
     );
     expect(output).toContain(
       '&lt;workshop-widget-recommendation version="1"&gt;'
     );
     expect(output).toContain('&lt;surrounding-context&gt;');
+    expect(output).toContain('&lt;source-references&gt;');
     expect(output).toContain('body');
   });
 });

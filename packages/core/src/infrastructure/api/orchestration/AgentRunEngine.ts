@@ -456,6 +456,7 @@ export class AgentRunEngine {
       }
 
       return {
+        rawContent: last.content,
         content: visibleContent,
         usedGuides: [...new Set(usedGuides)],
         requestedResources: [...new Set(requestedResources)],

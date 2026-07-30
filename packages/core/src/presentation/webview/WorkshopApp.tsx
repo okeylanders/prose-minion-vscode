@@ -253,6 +253,8 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshop.handleContextAttachmentContent,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
     [MessageType.WORKSHOP_WIDGET_MENU_RESULT]: workshop.handleWidgetMenuResult,
+    [MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS]:
+      workshop.handleWidgetGenerationProgress,
     [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: workshop.handleWidgetActionResult,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
@@ -1447,12 +1449,22 @@ export const WorkshopApp: React.FC = () => {
         open={gestureOpening !== null}
         opening={gestureOpening ?? { kind: 'new' }}
         menuResult={workshop.widgetMenuResult}
+        generationProgress={workshop.widgetGenerationProgress}
         actionResult={workshop.widgetActionResult}
+        activeExcerpt={workshop.excerpt}
+        contextAttachments={workshop.contextAttachments}
         onGenerate={workshop.generateWidgetMenu}
         onCancelGenerate={workshop.cancelWidgetGenerate}
         onCommit={(draft, clonedFromConfigId) =>
           workshop.commitWidget({ widgetId: 'gesture-playground', draft, clonedFromConfigId })}
         onConsumeActionResult={workshop.consumeWidgetActionResult}
+        widgetModelOptions={modelsSettings.modelOptions}
+        selectedWidgetModel={
+          modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel
+        }
+        onWidgetModelChange={(modelId) =>
+          modelsSettings.setModelSelection('widget', modelId)}
+        onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
         onClose={closeGesture}
       />
       <WorkshopNoticeModal

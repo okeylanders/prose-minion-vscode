@@ -700,6 +700,16 @@ export interface WorkshopGestureMenuGroup {
 }
 
 /**
+ * Host-resolved source material a widget can read without asking a persona to
+ * copy it into the recommendation. References remain display-safe across IPC;
+ * the excerpt and attachment bodies never leave host-owned session state until
+ * the writer deliberately generates.
+ */
+export type WorkshopWidgetSourceReference =
+  | { kind: 'active-excerpt' }
+  | { kind: 'context-attachment'; attachmentId: string };
+
+/**
  * The Gesture Playground authoring state. `menu` is the generated exploration
  * cloud — persisted ONLY so a chip re-opens the exact surface; at commit time
  * the cloud is thrown away and only `selections` + `note` shape the directive.
@@ -709,6 +719,7 @@ export interface WorkshopGestureDraft {
   writerInstructions: string;
   contextText: string;
   characterNotes: string;
+  sourceReferences: WorkshopWidgetSourceReference[];
   /** Writer-facing semantic scan generated before the menu in the same call. */
   dictionaryMarkdown: string;
   /** Validated menu generated from the same composite response as the dictionary. */
@@ -763,6 +774,7 @@ export interface WorkshopWidgetRecommendationSeed {
   writerInstructions?: string;
   contextText?: string;
   characterNotes?: string;
+  sourceReferences?: WorkshopWidgetSourceReference[];
 }
 
 /**
@@ -1568,6 +1580,7 @@ export interface WorkshopWidgetGeneratePayload {
   writerInstructions: string;
   contextText: string;
   characterNotes: string;
+  sourceReferences: WorkshopWidgetSourceReference[];
 }
 
 export interface WorkshopWidgetGenerateMessage extends MessageEnvelope<WorkshopWidgetGeneratePayload> {
@@ -1577,6 +1590,24 @@ export interface WorkshopWidgetGenerateMessage extends MessageEnvelope<WorkshopW
 /** Abandon the in-flight generate call (modal closed, or superseded). */
 export interface CancelWidgetGenerateRequestMessage extends MessageEnvelope<{ token?: string }> {
   type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST;
+}
+
+export interface WorkshopWidgetGenerationProgressPayload {
+  widgetId: WorkshopWidgetId;
+  token: string;
+  phase: 'started' | 'streaming' | 'completed' | 'cancelled';
+  stage: 'requesting' | 'dictionary' | 'menu' | 'validating';
+  outputCharacters: number;
+  /** Character-derived estimate of the visible text received so far. */
+  estimatedOutputTokens: number;
+  /** Terminal provider usage for diagnostics; absent while the stream is live. */
+  completionTokens?: number;
+  outputTokenLimit: number;
+}
+
+export interface WorkshopWidgetGenerationProgressMessage
+  extends MessageEnvelope<WorkshopWidgetGenerationProgressPayload> {
+  type: MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS;
 }
 
 export interface WorkshopWidgetMenuResultPayload {
@@ -1590,6 +1621,8 @@ export interface WorkshopWidgetMenuResultPayload {
   menuError?: string;
   /** User-facing fatal failure text when no valid dictionary can be recovered. */
   error?: string;
+  /** True when the provider stopped at the configured output-token ceiling. */
+  truncated?: boolean;
 }
 
 export interface WorkshopWidgetMenuResultMessage extends MessageEnvelope<WorkshopWidgetMenuResultPayload> {

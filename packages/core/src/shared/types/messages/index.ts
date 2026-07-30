@@ -174,6 +174,7 @@ import {
   WorkshopSessionSaveStatusMessage,
   WorkshopWidgetGenerateMessage,
   CancelWidgetGenerateRequestMessage,
+  WorkshopWidgetGenerationProgressMessage,
   WorkshopWidgetMenuResultMessage,
   WorkshopCommitWidgetMessage,
   WorkshopWidgetActionResultMessage
@@ -304,5 +305,6 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
+  | WorkshopWidgetGenerationProgressMessage
   | WorkshopWidgetMenuResultMessage
   | WorkshopWidgetActionResultMessage;

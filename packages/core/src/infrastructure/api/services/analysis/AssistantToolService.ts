@@ -978,6 +978,7 @@ export class AssistantToolService {
       input.excerptSourceFrame,
       '',
       '<pinned-excerpt>',
+      'Widget reference: active-excerpt',
       excerpt,
       '</pinned-excerpt>',
       input.contextAttachmentsFrame,

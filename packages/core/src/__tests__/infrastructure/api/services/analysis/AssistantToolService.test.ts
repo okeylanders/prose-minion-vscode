@@ -142,7 +142,11 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(systemMessage).toContain('<workshop-widget-recommendation-contract>');
     expect(systemMessage).toContain('Do not be thrifty');
     expect(systemMessage).toContain('<surrounding-context>');
+    expect(systemMessage).toContain('<source-references>');
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
+    expect(userMessage).toContain(
+      '<pinned-excerpt>\nWidget reference: active-excerpt'
+    );
     expect(userMessage).toContain('<context-attachments count="1">');
     expect(userMessage.indexOf('</context-attachments>'))
       .toBeLessThan(userMessage.indexOf('<workshop-behavior-activation'));
