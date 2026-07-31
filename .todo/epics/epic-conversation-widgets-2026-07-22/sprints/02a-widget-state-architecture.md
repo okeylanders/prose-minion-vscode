@@ -60,13 +60,18 @@ Playground's persisted draft rules into focused collaborators.
 - Added `GesturePlaygroundConfigCodec`; the top-level V1 shape and development
   normalizer delegate Gesture draft, source-reference, recommendation-seed,
   clone, summary, and defaulting rules.
-- Added `WorkshopSessionShapeGrammar` as codec-scoped structural primitives,
-  reducing `WorkshopSessionStateV1Shape` to aggregate grammar and delegation.
+- Expanded the existing `persistedValidation` module with codec-scoped
+  structural primitives, reducing `WorkshopSessionStateV1Shape` to aggregate
+  grammar and delegation without creating a duplicate validation vocabulary.
+- Injected Gesture draft clone/summary operations into the ledger and split
+  hydration into throwing preparation plus non-throwing installation.
+- Added codec-local witnesses for menu/selection invariants and explicit tests
+  for both defensive-clone directions and hydration atomicity.
 - Preserved the serialized V1 contract and all existing `WorkshopSessionService`
   callers. No standing-directive or Lexical Gravity behavior was introduced.
 - Recorded the pre-existing optional widget-counter integrity gap separately so
   this refactor remains behavior-preserving.
-- Verification: all three TypeScript projects clean; 148 Jest suites / 1,692
+- Verification: all three TypeScript projects clean; 149 Jest suites / 1,702
   tests / 1 snapshot green; lint 0 errors (869 existing warnings); production
   build and bundle sentinel green with only the existing size warnings;
   `git diff --check` clean.

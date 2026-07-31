@@ -88,6 +88,10 @@ import type {
 import {
   WorkshopWidgetConfigLedger
 } from '@/application/services/workshop/widgets/WorkshopWidgetConfigLedger';
+import {
+  cloneGesturePlaygroundDraft,
+  summarizeGesturePlaygroundDraft
+} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
 export type {
   WorkshopSessionCheckpointNormalization
 } from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
@@ -386,7 +390,20 @@ export class WorkshopSessionService {
     initialBehavior: WorkshopConversationBehavior = DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
   ) {
     this.behavior = { ...initialBehavior };
-    this.widgetConfigLedger = new WorkshopWidgetConfigLedger(this.now);
+    this.widgetConfigLedger = new WorkshopWidgetConfigLedger(this.now, {
+      cloneDraft: (widgetId, draft) => {
+        if (widgetId !== 'gesture-playground') {
+          throw new Error(`No draft clone operation registered for widget ${widgetId}`);
+        }
+        return cloneGesturePlaygroundDraft(draft);
+      },
+      summarizeDraft: (widgetId, draft) => {
+        if (widgetId !== 'gesture-playground') {
+          throw new Error(`No draft summary operation registered for widget ${widgetId}`);
+        }
+        return summarizeGesturePlaygroundDraft(draft);
+      }
+    });
   }
 
   getConversationBehavior(): WorkshopConversationBehavior {
@@ -2124,6 +2141,10 @@ export class WorkshopSessionService {
     const threadArtifacts = (normalized.threadArtifacts ?? []).map(cloneThreadArtifact);
     const turns = normalized.turns.map(cloneTurn);
     const todos = normalized.todos.map(cloneStoredTodo);
+    const widgetConfigState = this.widgetConfigLedger.prepareState({
+      configs: normalized.widgetConfigs ?? [],
+      counter: normalized.counters.widgetConfig ?? 0
+    });
     const behavior = { ...currentBehavior };
     const lastCommittedPersonaBehavior = normalized.lastCommittedPersonaBehavior
       ? { ...normalized.lastCommittedPersonaBehavior }
@@ -2240,10 +2261,7 @@ export class WorkshopSessionService {
     this.selectedToolId = normalized.selectedToolId;
     this.turnCounter = normalized.counters.turn;
     this.todoCounter = normalized.counters.todo;
-    this.widgetConfigLedger.replaceState({
-      configs: normalized.widgetConfigs ?? [],
-      counter: normalized.counters.widgetConfig ?? 0
-    });
+    this.widgetConfigLedger.installPreparedState(widgetConfigState);
     this.todos = todos;
     this.behavior = behavior;
     this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;

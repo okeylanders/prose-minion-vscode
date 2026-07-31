@@ -12,21 +12,29 @@ import {
   WorkshopWidgetConfigSummary,
   WorkshopWidgetId
 } from '@messages';
-import {
-  cloneGesturePlaygroundDraft,
-  summarizeGesturePlaygroundDraft
-} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
 
 export interface WorkshopWidgetConfigLedgerState {
   counter: number;
   configs: WorkshopWidgetConfigSnapshot[];
 }
 
+/** Widget-specific draft behavior injected by the session composition boundary. */
+export interface WorkshopWidgetDraftOperations {
+  cloneDraft(widgetId: WorkshopWidgetId, draft: WorkshopGestureDraft): WorkshopGestureDraft;
+  summarizeDraft(
+    widgetId: WorkshopWidgetId,
+    draft: WorkshopGestureDraft
+  ): Pick<WorkshopWidgetConfigSummary, 'targetPhrase' | 'selectionCount'>;
+}
+
 export class WorkshopWidgetConfigLedger {
   private configs: WorkshopWidgetConfigSnapshot[] = [];
   private counter = 0;
 
-  constructor(private readonly now: () => number) {}
+  constructor(
+    private readonly now: () => number,
+    private readonly draftOperations: WorkshopWidgetDraftOperations
+  ) {}
 
   create(input: {
     widgetId: WorkshopWidgetId;
@@ -38,17 +46,17 @@ export class WorkshopWidgetConfigLedger {
       id: `wc-${this.counter}`,
       widgetId: input.widgetId,
       revision: 1,
-      draft: cloneGesturePlaygroundDraft(input.draft),
+      draft: this.draftOperations.cloneDraft(input.widgetId, input.draft),
       clonedFromConfigId: input.clonedFromConfigId,
       createdAt: this.now()
     };
     this.configs.push(config);
-    return cloneWidgetConfig(config);
+    return this.cloneWidgetConfig(config);
   }
 
   get(id: string): WorkshopWidgetConfigSnapshot | undefined {
     const config = this.configs.find((candidate) => candidate.id === id);
-    return config ? cloneWidgetConfig(config) : undefined;
+    return config ? this.cloneWidgetConfig(config) : undefined;
   }
 
   recordCommit(configId: string, linkage: { turnId: string; artifactId: string }): void {
@@ -63,19 +71,30 @@ export class WorkshopWidgetConfigLedger {
   summariesFor(configIds: ReadonlySet<string>): WorkshopWidgetConfigSummary[] {
     return this.configs
       .filter((config) => configIds.has(config.id))
-      .map(widgetConfigSummary);
+      .map((config) => this.widgetConfigSummary(config));
   }
 
   exportState(): WorkshopWidgetConfigLedgerState {
     return {
       counter: this.counter,
-      configs: this.configs.map(cloneWidgetConfig)
+      configs: this.configs.map((config) => this.cloneWidgetConfig(config))
     };
   }
 
-  replaceState(state: WorkshopWidgetConfigLedgerState): void {
-    const configs = state.configs.map(cloneWidgetConfig);
-    this.configs = configs;
+  /**
+   * Perform every potentially throwing clone before aggregate hydration starts
+   * mutating live session fields.
+   */
+  prepareState(state: WorkshopWidgetConfigLedgerState): WorkshopWidgetConfigLedgerState {
+    return {
+      counter: state.counter,
+      configs: state.configs.map((config) => this.cloneWidgetConfig(config))
+    };
+  }
+
+  /** Install only a state returned by `prepareState`; this phase must not throw. */
+  installPreparedState(state: WorkshopWidgetConfigLedgerState): void {
+    this.configs = state.configs;
     this.counter = state.counter;
   }
 
@@ -83,19 +102,23 @@ export class WorkshopWidgetConfigLedger {
     this.configs = [];
     this.counter = 0;
   }
-}
 
-function cloneWidgetConfig(config: WorkshopWidgetConfigSnapshot): WorkshopWidgetConfigSnapshot {
-  return {
-    ...config,
-    draft: cloneGesturePlaygroundDraft(config.draft)
-  };
-}
+  private cloneWidgetConfig(
+    config: WorkshopWidgetConfigSnapshot
+  ): WorkshopWidgetConfigSnapshot {
+    return {
+      ...config,
+      draft: this.draftOperations.cloneDraft(config.widgetId, config.draft)
+    };
+  }
 
-function widgetConfigSummary(config: WorkshopWidgetConfigSnapshot): WorkshopWidgetConfigSummary {
-  const { draft, ...identity } = config;
-  return {
-    ...identity,
-    ...summarizeGesturePlaygroundDraft(draft)
-  };
+  private widgetConfigSummary(
+    config: WorkshopWidgetConfigSnapshot
+  ): WorkshopWidgetConfigSummary {
+    const { draft, ...identity } = config;
+    return {
+      ...identity,
+      ...this.draftOperations.summarizeDraft(config.widgetId, draft)
+    };
+  }
 }

@@ -18,14 +18,14 @@ import {
   optionalBoundedStringAt,
   shapeError,
   stringAt
-} from '@/application/services/workshop/WorkshopSessionShapeGrammar';
+} from '@/application/services/workshop/persistedValidation';
 
 export interface GesturePlaygroundDraftSummary {
   targetPhrase: string;
   selectionCount: number;
 }
 
-export interface GesturePlaygroundCheckpointNormalizationResult {
+export interface GesturePlaygroundDraftHydrationDefaults {
   draft: WorkshopGestureDraft;
   defaultedDictionarySharing: boolean;
   defaultedSourceReferences: boolean;
@@ -268,7 +268,7 @@ export function summarizeGesturePlaygroundDraft(
 
 export function normalizeGesturePlaygroundDraftForHydration(
   draft: WorkshopGestureDraft
-): GesturePlaygroundCheckpointNormalizationResult {
+): GesturePlaygroundDraftHydrationDefaults {
   const defaultedDictionarySharing = typeof draft.includeDictionaryInCommit !== 'boolean';
   const defaultedSourceReferences = !Array.isArray(draft.sourceReferences);
   if (!defaultedDictionarySharing && !defaultedSourceReferences) {

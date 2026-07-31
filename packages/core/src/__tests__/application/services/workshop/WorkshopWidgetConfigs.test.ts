@@ -180,6 +180,34 @@ describe('WorkshopSessionService — widget configs', () => {
       .toBe('ta-1');
   });
 
+  it('does not partially hydrate when widget-state preparation fails', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const before = session.getSnapshot();
+
+    const incoming = new WorkshopSessionService(() => 10_000);
+    incoming.setSessionScope('open');
+    incoming.createWidgetConfig({
+      widgetId: 'gesture-playground',
+      draft: draft({ targetPhrase: 'incoming state' })
+    });
+    const state = incoming.exportCommittedState();
+    const ledger = (
+      session as unknown as {
+        widgetConfigLedger: { prepareState: (...args: unknown[]) => unknown };
+      }
+    ).widgetConfigLedger;
+    jest.spyOn(ledger, 'prepareState').mockImplementation(() => {
+      throw new Error('clone failed');
+    });
+
+    expect(() => session.hydrateCommittedState(
+      state,
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    )).toThrow('clone failed');
+    expect(session.getSnapshot()).toEqual(before);
+  });
+
   it('round-trips the complete persona recommendation seed through V1 state', () => {
     session.setSessionScope('open');
     session.beginPersonaMessage('req-1', 'Help me reconsider this reaction.');

@@ -43,7 +43,14 @@ constructed by `WorkshopSessionService`. The ledger owns:
 - defensive creation, lookup, and export clones;
 - landed commit linkage (`turnId` and `artifactId`);
 - bounded summary projection for configs visible in the transcript window;
-- atomic reset and validated hydration replacement.
+- atomic reset and non-throwing installation of pre-validated, prepared
+  hydration state.
+
+Widget-specific draft clone and summary operations are constructor-injected at
+the session boundary. The ledger owns lifecycle mechanics without importing a
+concrete widget codec; the current operations support Gesture Playground, and
+the second widget extends that dispatch at the boundary rather than changing
+ledger methods.
 
 `WorkshopSessionService` remains the public aggregate boundary and delegates its
 existing widget methods. It still owns room turns, shared `ta-N` artifact ids,
@@ -68,12 +75,13 @@ becomes a discriminated union and dispatches by `widgetId` to the two local
 codecs. It must not use `Record<string, unknown>` as a durable draft escape
 hatch.
 
-### Shape grammar primitives are codec infrastructure, not domain policy
+### Shared persistence grammar is codec infrastructure, not domain policy
 
-Move the top-level session codec's exact-object, bounded-string, and JSON-shape
-primitives into a narrowly named `WorkshopSessionShapeGrammar` module. Both the
-aggregate codec and widget-local codecs may depend on it. It contains no widget
-rules and is not a general-purpose `utils` module.
+Consolidate the top-level session codec's exact-object, bounded-string, and
+JSON-shape primitives into the existing `persistedValidation` module beside
+its timestamp, timezone, and exact-key rules. Both the aggregate codec and
+widget-local codecs may depend on it. It contains no widget rules and is not a
+general-purpose `utils` module.
 
 ### Standing-directive architecture arrives with Lexical Gravity
 
@@ -89,11 +97,13 @@ collaborators; they must not be added directly to `WorkshopHandler` or
   config lifecycle without enlarging the two Workshop god files.
 - Existing handlers and callers retain the `WorkshopSessionService` API; the
   extraction is behavior-preserving and independently reversible.
+- Hydration remains two-phase: widget state is cloned during preparation and
+  installed by assignment only after all potentially throwing work succeeds.
 - Widget configuration state cannot drift away from session persistence,
   autosave ordering, reset semantics, or integrity validation.
 - The V1 codec becomes smaller and stops accumulating widget-specific field
-  rules, at the cost of two focused application modules and one codec-grammar
-  module.
+  rules, at the cost of two focused application modules and a focused expansion
+  of the existing persistence-validation module.
 - The generic config type remains Gesture-shaped during the extraction. The
   discriminated multi-widget union is introduced only when the second concrete
   shape exists.
@@ -122,9 +132,10 @@ This ADR extracts owned state and codec responsibilities only.
 
 - Existing `WorkshopWidgetConfigs`, Workshop persistence, handler, and webview
   suites remain behavior-level witnesses.
-- Add focused ledger tests for defensive clones, monotonic identity, summary
-  projection, reset, and hydration replacement.
-- Add focused Gesture codec tests only where behavior is not already exercised
-  through the V1 session decoder.
+- Add focused ledger tests for both defensive-clone directions, monotonic
+  identity, summary projection, reset, and two-phase hydration replacement.
+- Add focused Gesture codec tests for menu bounds, option bounds, uniqueness,
+  selection membership, and selection cardinality in addition to the V1
+  decoder witnesses.
 - Core/webview/extension typechecks, lint, build, full Jest, architecture
   witnesses, and `git diff --check` remain green.

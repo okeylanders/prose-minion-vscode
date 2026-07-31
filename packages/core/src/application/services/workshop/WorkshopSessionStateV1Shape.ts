@@ -29,7 +29,6 @@ import {
 import {
   arrayOf,
   booleanAt,
-  boundedStringAt,
   enumAt,
   exactKeys,
   exactObject,
@@ -41,7 +40,7 @@ import {
   optionalStringAt,
   shapeError,
   stringAt
-} from '@/application/services/workshop/WorkshopSessionShapeGrammar';
+} from '@/application/services/workshop/persistedValidation';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';

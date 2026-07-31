@@ -1,7 +1,17 @@
 import { WorkshopGestureDraft } from '@messages';
 import {
-  WorkshopWidgetConfigLedger
+  WorkshopWidgetConfigLedger,
+  WorkshopWidgetDraftOperations
 } from '@/application/services/workshop/widgets/WorkshopWidgetConfigLedger';
+import {
+  cloneGesturePlaygroundDraft,
+  summarizeGesturePlaygroundDraft
+} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
+
+const draftOperations: WorkshopWidgetDraftOperations = {
+  cloneDraft: (_widgetId, value) => cloneGesturePlaygroundDraft(value),
+  summarizeDraft: (_widgetId, value) => summarizeGesturePlaygroundDraft(value)
+};
 
 const draft = (targetPhrase = 'she smiled'): WorkshopGestureDraft => ({
   targetPhrase,
@@ -24,7 +34,7 @@ const draft = (targetPhrase = 'she smiled'): WorkshopGestureDraft => ({
 describe('WorkshopWidgetConfigLedger', () => {
   it('mints monotonic identities and owns defensive copies', () => {
     let now = 100;
-    const ledger = new WorkshopWidgetConfigLedger(() => ++now);
+    const ledger = new WorkshopWidgetConfigLedger(() => ++now, draftOperations);
     const input = draft();
 
     const first = ledger.create({ widgetId: 'gesture-playground', draft: input });
@@ -53,7 +63,7 @@ describe('WorkshopWidgetConfigLedger', () => {
   });
 
   it('records landed commit linkage and refuses unknown configs', () => {
-    const ledger = new WorkshopWidgetConfigLedger(() => 1);
+    const ledger = new WorkshopWidgetConfigLedger(() => 1, draftOperations);
     const config = ledger.create({ widgetId: 'gesture-playground', draft: draft() });
 
     ledger.recordCommit(config.id, { turnId: 'turn-1-user-1', artifactId: 'ta-1' });
@@ -69,7 +79,7 @@ describe('WorkshopWidgetConfigLedger', () => {
   });
 
   it('projects only requested display-safe summaries', () => {
-    const ledger = new WorkshopWidgetConfigLedger(() => 1);
+    const ledger = new WorkshopWidgetConfigLedger(() => 1, draftOperations);
     ledger.create({ widgetId: 'gesture-playground', draft: draft() });
     ledger.create({ widgetId: 'gesture-playground', draft: draft('he looked away') });
 
@@ -83,14 +93,18 @@ describe('WorkshopWidgetConfigLedger', () => {
     expect(summaries[0]).not.toHaveProperty('draft');
   });
 
-  it('replaces and resets state without leaking mutable references', () => {
-    const source = new WorkshopWidgetConfigLedger(() => 1);
+  it('prepares, installs, exports, and resets state without leaking mutable references', () => {
+    const source = new WorkshopWidgetConfigLedger(() => 1, draftOperations);
     source.create({ widgetId: 'gesture-playground', draft: draft() });
     const exported = source.exportState();
-    const restored = new WorkshopWidgetConfigLedger(() => 2);
+    exported.configs[0].draft.selections.push('Export mutation.');
+    expect(source.get('wc-1')?.draft.selections).toHaveLength(1);
 
-    restored.replaceState(exported);
-    exported.configs[0].draft.selections.push('External mutation.');
+    const hydrationInput = source.exportState();
+    const restored = new WorkshopWidgetConfigLedger(() => 2, draftOperations);
+    const prepared = restored.prepareState(hydrationInput);
+    hydrationInput.configs[0].draft.selections.push('Hydration-input mutation.');
+    restored.installPreparedState(prepared);
 
     expect(restored.get('wc-1')?.draft.selections).toHaveLength(1);
     expect(restored.create({ widgetId: 'gesture-playground', draft: draft() }).id).toBe('wc-2');
@@ -100,6 +114,34 @@ describe('WorkshopWidgetConfigLedger', () => {
     expect(restored.get('wc-1')).toBeUndefined();
     expect(restored.exportState()).toEqual({ counter: 0, configs: [] });
     expect(restored.create({ widgetId: 'gesture-playground', draft: draft() }).id).toBe('wc-1');
+  });
+
+  it('leaves installed state untouched when preparation fails', () => {
+    const operations: WorkshopWidgetDraftOperations = {
+      ...draftOperations,
+      cloneDraft: (widgetId, value) => {
+        if (value.targetPhrase === 'clone failure') {
+          throw new Error('clone failed');
+        }
+        return draftOperations.cloneDraft(widgetId, value);
+      }
+    };
+    const ledger = new WorkshopWidgetConfigLedger(() => 1, operations);
+    ledger.create({ widgetId: 'gesture-playground', draft: draft() });
+    const before = ledger.exportState();
+
+    expect(() => ledger.prepareState({
+      counter: 2,
+      configs: [{
+        id: 'wc-2',
+        widgetId: 'gesture-playground',
+        revision: 1,
+        draft: draft('clone failure'),
+        createdAt: 2
+      }]
+    })).toThrow('clone failed');
+
+    expect(ledger.exportState()).toEqual(before);
   });
 
 });

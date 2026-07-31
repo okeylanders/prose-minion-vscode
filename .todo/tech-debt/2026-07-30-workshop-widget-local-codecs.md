@@ -53,7 +53,7 @@ Gravity supplies the second local codec and the envelope becomes a
 - `packages/core/src/application/services/workshop/WorkshopSessionStateV1Shape.ts`
 - `packages/core/src/application/services/workshop/WorkshopSessionCheckpointNormalization.ts`
 - `packages/core/src/application/services/workshop/widgets/GesturePlaygroundConfigCodec.ts`
-- `packages/core/src/application/services/workshop/WorkshopSessionShapeGrammar.ts`
+- `packages/core/src/application/services/workshop/persistedValidation.ts`
 - `packages/core/src/shared/types/messages/workshop.ts`
 - `docs/adr/2026-07-30-workshop-session-codec-evolution.md`
 - `docs/adr/2026-07-31-workshop-widget-state-ownership.md`
