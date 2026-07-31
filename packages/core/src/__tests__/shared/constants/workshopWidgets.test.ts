@@ -36,11 +36,11 @@ describe('workshopWidgets registry', () => {
     }
   });
 
-  it('marks exactly Gesture Playground live in Sprint 01', () => {
+  it('marks the Sprint 01 and Sprint 02B widgets live', () => {
     expect(allWidgets.filter((widget) => widget.live).map((widget) => widget.id))
-      .toEqual(['gesture-playground']);
+      .toEqual(['gesture-playground', 'lexical-gravity']);
     expect(isLiveWorkshopWidgetId('gesture-playground')).toBe(true);
-    expect(isLiveWorkshopWidgetId('lexical-gravity')).toBe(false);
+    expect(isLiveWorkshopWidgetId('lexical-gravity')).toBe(true);
     expect(isLiveWorkshopWidgetId('not-a-widget')).toBe(false);
     expect(isLiveWorkshopWidgetId(undefined)).toBe(false);
   });

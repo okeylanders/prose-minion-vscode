@@ -49,6 +49,21 @@ function recommendationFrame(fields: RecommendationFrameFields = {}): string {
   ].join('\n');
 }
 
+function lexicalRecommendationFrame(
+  overrides: Partial<Record<'lensSlug' | 'weight' | 'reach' | 'metaphorPull', string>> = {}
+): string {
+  return [
+    '### Try a widget',
+    '<workshop-widget-recommendation version="1">',
+    '<widget-id>', 'lexical-gravity', '</widget-id>',
+    '<lens-slug>', overrides.lensSlug ?? 'photography', '</lens-slug>',
+    '<weight>', overrides.weight ?? '60', '</weight>',
+    '<reach>', overrides.reach ?? '2', '</reach>',
+    '<metaphor-pull>', overrides.metaphorPull ?? 'false', '</metaphor-pull>',
+    '</workshop-widget-recommendation>'
+  ].join('\n');
+}
+
 describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
   it('requires a generous quality-first handoff with every rich prefill field', () => {
     expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
@@ -128,6 +143,24 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     });
   });
 
+  it('accepts the closed Lexical Gravity prefill while leaving installation to the writer', () => {
+    expect(inspectWorkshopWidgetRecommendation(lexicalRecommendationFrame({
+      lensSlug: 'music',
+      weight: '40',
+      reach: '3',
+      metaphorPull: 'true'
+    }))).toEqual({
+      outcome: 'accepted',
+      recommendation: {
+        widgetId: 'lexical-gravity',
+        seed: { lensSlug: 'music', weight: 40, reach: 3, metaphorPull: true }
+      }
+    });
+    expect(inspectWorkshopWidgetRecommendation(
+      lexicalRecommendationFrame({ lensSlug: 'falconry' })
+    )).toEqual({ outcome: 'rejected', rejection: 'invalid_field' });
+  });
+
   it('accepts only host-addressable source references and preserves their order', () => {
     expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
       sourceReferences: [
@@ -157,7 +190,11 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     );
 
     expect(result.outcome).toBe('accepted');
-    expect(result.recommendation?.seed?.writerInstructions).toBe(
+    expect(
+      result.recommendation?.widgetId === 'gesture-playground'
+        ? result.recommendation.seed?.writerInstructions
+        : undefined
+    ).toBe(
       'First sentence.\nSecond sentence.'
     );
   });
@@ -237,7 +274,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
 
   it('rejects widgets that are not live — comp-only cards never grow chips', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'lexical-gravity' }))
+      inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'show-vs-tell' }))
     ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
     expect(
       inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'made-up-widget' }))

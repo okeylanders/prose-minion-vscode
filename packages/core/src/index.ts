@@ -94,6 +94,9 @@ export { WorkshopAnalysisSidePass } from '@/application/services/workshop/Worksh
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
+export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
+export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 export { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 export { buildGestureDirective } from '@/application/services/workshop/WorkshopPromptBuilder';

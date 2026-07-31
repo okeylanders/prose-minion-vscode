@@ -1,16 +1,23 @@
-import { WorkshopGestureDraft } from '@messages';
+import {
+  WorkshopGestureDraft,
+  WorkshopGestureWidgetConfigSnapshot,
+  WorkshopWidgetConfigSnapshot
+} from '@messages';
 import {
   WorkshopWidgetConfigLedger,
-  WorkshopWidgetDraftOperations
+  WorkshopWidgetConfigOperations
 } from '@/application/services/workshop/widgets/WorkshopWidgetConfigLedger';
-import {
-  cloneGesturePlaygroundDraft,
-  summarizeGesturePlaygroundDraft
-} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
+import { WORKSHOP_WIDGET_CONFIG_OPERATIONS } from '@/application/services/workshop/widgets/WorkshopWidgetConfigOperations';
 
-const draftOperations: WorkshopWidgetDraftOperations = {
-  cloneDraft: (_widgetId, value) => cloneGesturePlaygroundDraft(value),
-  summarizeDraft: (_widgetId, value) => summarizeGesturePlaygroundDraft(value)
+const draftOperations = WORKSHOP_WIDGET_CONFIG_OPERATIONS;
+
+const gestureConfig = (
+  config: WorkshopWidgetConfigSnapshot | undefined
+): WorkshopGestureWidgetConfigSnapshot => {
+  if (config?.widgetId !== 'gesture-playground') {
+    throw new Error('Expected Gesture Playground config');
+  }
+  return config;
 };
 
 const draft = (targetPhrase = 'she smiled'): WorkshopGestureDraft => ({
@@ -45,7 +52,7 @@ describe('WorkshopWidgetConfigLedger', () => {
     });
 
     input.selections.push('A mutation that must not enter the ledger.');
-    first.draft.menu[0].options[0] = 'A returned-copy mutation.';
+    gestureConfig(first).draft.menu[0].options[0] = 'A returned-copy mutation.';
 
     expect(first.id).toBe('wc-1');
     expect(first.createdAt).toBe(101);
@@ -54,10 +61,10 @@ describe('WorkshopWidgetConfigLedger', () => {
       clonedFromConfigId: 'wc-1',
       createdAt: 102
     }));
-    expect(ledger.get('wc-1')?.draft.selections).toEqual([
+    expect(gestureConfig(ledger.get('wc-1')).draft.selections).toEqual([
       'Her gaze slid to the folded letter.'
     ]);
-    expect(ledger.get('wc-1')?.draft.menu[0].options[0]).toBe(
+    expect(gestureConfig(ledger.get('wc-1')).draft.menu[0].options[0]).toBe(
       'Her gaze slid to the folded letter.'
     );
   });
@@ -97,16 +104,16 @@ describe('WorkshopWidgetConfigLedger', () => {
     const source = new WorkshopWidgetConfigLedger(() => 1, draftOperations);
     source.create({ widgetId: 'gesture-playground', draft: draft() });
     const exported = source.exportState();
-    exported.configs[0].draft.selections.push('Export mutation.');
-    expect(source.get('wc-1')?.draft.selections).toHaveLength(1);
+    gestureConfig(exported.configs[0]).draft.selections.push('Export mutation.');
+    expect(gestureConfig(source.get('wc-1')).draft.selections).toHaveLength(1);
 
     const hydrationInput = source.exportState();
     const restored = new WorkshopWidgetConfigLedger(() => 2, draftOperations);
     const prepared = restored.prepareState(hydrationInput);
-    hydrationInput.configs[0].draft.selections.push('Hydration-input mutation.');
+    gestureConfig(hydrationInput.configs[0]).draft.selections.push('Hydration-input mutation.');
     restored.installPreparedState(prepared);
 
-    expect(restored.get('wc-1')?.draft.selections).toHaveLength(1);
+    expect(gestureConfig(restored.get('wc-1')).draft.selections).toHaveLength(1);
     expect(restored.create({ widgetId: 'gesture-playground', draft: draft() }).id).toBe('wc-2');
 
     restored.reset();
@@ -117,13 +124,16 @@ describe('WorkshopWidgetConfigLedger', () => {
   });
 
   it('leaves installed state untouched when preparation fails', () => {
-    const operations: WorkshopWidgetDraftOperations = {
+    const operations: WorkshopWidgetConfigOperations = {
       ...draftOperations,
-      cloneDraft: (widgetId, value) => {
-        if (value.targetPhrase === 'clone failure') {
+      cloneSnapshot: (config) => {
+        if (
+          config.widgetId === 'gesture-playground'
+          && config.draft.targetPhrase === 'clone failure'
+        ) {
           throw new Error('clone failed');
         }
-        return draftOperations.cloneDraft(widgetId, value);
+        return draftOperations.cloneSnapshot(config);
       }
     };
     const ledger = new WorkshopWidgetConfigLedger(() => 1, operations);

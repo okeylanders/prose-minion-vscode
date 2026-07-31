@@ -54,6 +54,80 @@ export type WorkshopWidgetId =
   | 'decisions'
   | 'scratch-pad';
 
+/** Closed family key carried by the standing prose-directive frame. */
+export type WorkshopStandingDirectiveFamily =
+  | 'lexical-gravity'
+  | 'prose-controller';
+
+export type WorkshopLexicalGravityReach = 1 | 2 | 3;
+
+export interface WorkshopLexicalGravityWordBucket {
+  nouns: string[];
+  verbs: string[];
+  modifiers: string[];
+}
+
+export interface WorkshopLexicalGravityCliche {
+  worn: string;
+  fresh: string;
+}
+
+export interface WorkshopLexicalGravitySubstitutions {
+  plan: string;
+  conflict: string;
+  agreement: string;
+  turning: string;
+  ending: string;
+}
+
+/**
+ * One complete, deterministic lexical field. Built-ins and project-authored
+ * fields share this contract so choosing a generated take makes every panel
+ * tab immediately available without another model call.
+ */
+export interface WorkshopLexicalGravityLens {
+  version: 1;
+  slug: string;
+  name: string;
+  source: 'built-in' | 'project';
+  /** Human-readable angle distinguishing multiple generated takes. */
+  variant?: string;
+  description?: string;
+  degrees: {
+    1: WorkshopLexicalGravityWordBucket;
+    2: WorkshopLexicalGravityWordBucket;
+    3: WorkshopLexicalGravityWordBucket;
+  };
+  gradient: string[];
+  cliches: WorkshopLexicalGravityCliche[];
+  substitutions: WorkshopLexicalGravitySubstitutions;
+  metaphor: string;
+  sample: string;
+}
+
+export interface WorkshopLexicalGravityPreview {
+  /** Stable key of the four writer-facing values this preview demonstrates. */
+  configKey: string;
+  text: string;
+}
+
+/** Four authored controls plus the resolved lens and optional cached preview. */
+export interface WorkshopLexicalGravityDraft {
+  lensSlug: string;
+  weight: number;
+  reach: WorkshopLexicalGravityReach;
+  metaphorPull: boolean;
+  resolvedLens: WorkshopLexicalGravityLens;
+  preview?: WorkshopLexicalGravityPreview;
+}
+
+export interface WorkshopLexicalGravityRecommendationSeed {
+  lensSlug?: string;
+  weight?: number;
+  reach?: WorkshopLexicalGravityReach;
+  metaphorPull?: boolean;
+}
+
 /** Stable ids for the Writers' Room hosts packaged with Workshop. */
 export type WorkshopPersonaId =
   | 'jill'
@@ -484,6 +558,7 @@ export type WorkshopTurnArtifact =
   | 'resource_read'
   | 'excerpt_revision'
   | 'context_change'
+  | 'standing_directive_change'
   | 'session_start'
   | 'session_resume'
   /**
@@ -741,28 +816,81 @@ export interface WorkshopGestureDraft {
  * increment (Sprint 02). Clone-and-recommit mints a NEW config linked by
  * `clonedFromConfigId`.
  */
-export interface WorkshopWidgetConfigSnapshot {
+interface WorkshopWidgetConfigSnapshotBase {
   id: string;
   widgetId: WorkshopWidgetId;
   revision: number;
-  draft: WorkshopGestureDraft;
   clonedFromConfigId?: string;
   /** Set when the commit lands; a config without these is an uncommitted retry token. */
   committedTurnId?: string;
   artifactId?: string;
+  directiveId?: string;
   /** Epoch ms when the config was created (host-stamped). */
   createdAt: number;
 }
+
+export interface WorkshopGestureWidgetConfigSnapshot
+  extends WorkshopWidgetConfigSnapshotBase {
+  widgetId: 'gesture-playground';
+  draft: WorkshopGestureDraft;
+}
+
+export interface WorkshopLexicalGravityWidgetConfigSnapshot
+  extends WorkshopWidgetConfigSnapshotBase {
+  widgetId: 'lexical-gravity';
+  draft: WorkshopLexicalGravityDraft;
+}
+
+/** Earned persisted union: each widget owns its exact authoring-state codec. */
+export type WorkshopWidgetConfigSnapshot =
+  | WorkshopGestureWidgetConfigSnapshot
+  | WorkshopLexicalGravityWidgetConfigSnapshot;
 
 /**
  * Bounded config identity carried in ordinary session snapshots. The full
  * authoring Draft (especially its generated dictionary/menu) is fetched only
  * when the writer opens a committed widget chip.
  */
-export type WorkshopWidgetConfigSummary = Omit<WorkshopWidgetConfigSnapshot, 'draft'> & {
+export type WorkshopGestureWidgetConfigSummary =
+  Omit<WorkshopGestureWidgetConfigSnapshot, 'draft'> & {
   targetPhrase: string;
   selectionCount: number;
 };
+
+export type WorkshopLexicalGravityWidgetConfigSummary =
+  Omit<WorkshopLexicalGravityWidgetConfigSnapshot, 'draft'> & {
+    lensName: string;
+    weight: number;
+    reach: WorkshopLexicalGravityReach;
+    metaphorPull: boolean;
+  };
+
+export type WorkshopWidgetConfigSummary =
+  | WorkshopGestureWidgetConfigSummary
+  | WorkshopLexicalGravityWidgetConfigSummary;
+
+/** Session-owned identity for one currently active directive family. */
+export interface WorkshopStandingDirectiveSnapshot {
+  id: string;
+  family: WorkshopStandingDirectiveFamily;
+  widgetId: 'lexical-gravity' | 'prose-controller';
+  widgetConfigId: string;
+  revision: number;
+  updatedAt: number;
+}
+
+export interface WorkshopLexicalGravityStandingDirectiveSummary
+  extends WorkshopStandingDirectiveSnapshot {
+  family: 'lexical-gravity';
+  widgetId: 'lexical-gravity';
+  lensName: string;
+  weight: number;
+  reach: WorkshopLexicalGravityReach;
+  metaphorPull: boolean;
+}
+
+export type WorkshopStandingDirectiveSummary =
+  WorkshopLexicalGravityStandingDirectiveSummary;
 
 /**
  * Display-safe widget-commit decoration on a normal user message turn —
@@ -771,7 +899,7 @@ export type WorkshopWidgetConfigSummary = Omit<WorkshopWidgetConfigSnapshot, 'dr
  * `messageAttachments`-style joins: direct address beats a join; do not
  * "deduplicate" it (ADR 2026-07-22, Sprint 01 concretions).
  */
-export interface WorkshopTurnWidgetCommit {
+export interface WorkshopThreadArtifactWidgetCommit {
   widgetId: WorkshopWidgetId;
   widgetConfigId: string;
   rail: 'thread-artifact';
@@ -779,12 +907,33 @@ export interface WorkshopTurnWidgetCommit {
   selectionCount: number;
 }
 
+export interface WorkshopStandingWidgetCommit {
+  widgetId: 'lexical-gravity' | 'prose-controller';
+  widgetConfigId: string;
+  rail: 'standing';
+  directiveId: string;
+  revision: number;
+}
+
+export type WorkshopTurnWidgetCommit =
+  | WorkshopThreadArtifactWidgetCommit
+  | WorkshopStandingWidgetCommit;
+
+export interface WorkshopStandingDirectiveChange {
+  action: 'installed' | 'shifted' | 'removed';
+  family: WorkshopStandingDirectiveFamily;
+  widgetId: 'lexical-gravity' | 'prose-controller';
+  directiveId: string;
+  widgetConfigId: string;
+  revision: number;
+}
+
 /**
  * Persona-supplied prefill for a recommended widget. Every field is editable.
  * Gesture Playground's accepted persona frame supplies the first four fields
  * together; optionality keeps the shared seed usable by future widget kinds.
  */
-export interface WorkshopWidgetRecommendationSeed {
+export interface WorkshopGestureRecommendationSeed {
   targetPhrase?: string;
   writerInstructions?: string;
   contextText?: string;
@@ -792,15 +941,23 @@ export interface WorkshopWidgetRecommendationSeed {
   sourceReferences?: WorkshopWidgetSourceReference[];
 }
 
+/** Backward-friendly name retained for the shipped Gesture modal contract. */
+export type WorkshopWidgetRecommendationSeed = WorkshopGestureRecommendationSeed;
+
 /**
  * Strictly parsed persona widget recommendation (actionable-findings mold:
  * fail-closed host-side parse, typed field, presentation-only chip). Only
  * `live` registry ids survive parsing — comp-only widgets never render chips.
  */
-export interface WorkshopWidgetRecommendation {
-  widgetId: WorkshopWidgetId;
-  seed?: WorkshopWidgetRecommendationSeed;
-}
+export type WorkshopWidgetRecommendation =
+  | {
+      widgetId: 'gesture-playground';
+      seed?: WorkshopGestureRecommendationSeed;
+    }
+  | {
+      widgetId: 'lexical-gravity';
+      seed?: WorkshopLexicalGravityRecommendationSeed;
+    };
 
 /** The excerpt set in the left rail — the text every tool run works on. */
 export interface WorkshopExcerpt {
@@ -931,6 +1088,8 @@ export interface WorkshopTurn {
    * decoration for the presentation-only chip; the model never sees it.
    */
   widgetCommit?: WorkshopTurnWidgetCommit;
+  /** Host-authored install/shift/remove marker for a standing directive. */
+  standingDirectiveChange?: WorkshopStandingDirectiveChange;
   /**
    * Strictly parsed widget recommendation a persona attached to this turn.
    * Presentation-only; malformed or non-live recommendations are rejected
@@ -989,6 +1148,8 @@ export interface WorkshopSessionSnapshot {
   todos: WorkshopTodoItem[];
   /** Bounded widget identities for chips in the visible turn window. */
   widgetConfigs: WorkshopWidgetConfigSummary[];
+  /** Active passage-scoped prose directives; one entry per closed family. */
+  standingDirectives: WorkshopStandingDirectiveSummary[];
   turns: WorkshopTurn[];
   /** Total turns held host-side (>= turns.length). */
   totalTurns: number;
@@ -1649,6 +1810,86 @@ export interface WorkshopWidgetMenuResultMessage extends MessageEnvelope<Worksho
   type: MessageType.WORKSHOP_WIDGET_MENU_RESULT;
 }
 
+export interface WorkshopRequestLexicalGravityLensesMessage
+  extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES;
+}
+
+export interface WorkshopLexicalGravityLensesDataPayload {
+  lenses: WorkshopLexicalGravityLens[];
+  storagePath?: string;
+  error?: string;
+}
+
+export interface WorkshopLexicalGravityLensesDataMessage
+  extends MessageEnvelope<WorkshopLexicalGravityLensesDataPayload> {
+  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA;
+}
+
+export interface WorkshopPreviewLexicalGravityMessage
+  extends MessageEnvelope<{ token: string; draft: WorkshopLexicalGravityDraft }> {
+  type: MessageType.WORKSHOP_PREVIEW_LEXICAL_GRAVITY;
+}
+
+export interface WorkshopLexicalGravityPreviewResultPayload {
+  token: string;
+  ok: boolean;
+  preview?: WorkshopLexicalGravityPreview;
+  error?: string;
+}
+
+export interface WorkshopLexicalGravityPreviewResultMessage
+  extends MessageEnvelope<WorkshopLexicalGravityPreviewResultPayload> {
+  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT;
+}
+
+export interface WorkshopBuildLexicalGravityLensMessage
+  extends MessageEnvelope<{ token: string; query: string }> {
+  type: MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS;
+}
+
+export interface WorkshopLexicalGravityLensCandidate {
+  candidateId: string;
+  lens: WorkshopLexicalGravityLens;
+}
+
+export interface WorkshopLexicalGravityLensCandidatesPayload {
+  token: string;
+  query: string;
+  ok: boolean;
+  /** Existing project lens returned without a model call for repeat lookups. */
+  existingLens?: WorkshopLexicalGravityLens;
+  candidates?: WorkshopLexicalGravityLensCandidate[];
+  error?: string;
+}
+
+export interface WorkshopLexicalGravityLensCandidatesMessage
+  extends MessageEnvelope<WorkshopLexicalGravityLensCandidatesPayload> {
+  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES;
+}
+
+export interface WorkshopSaveLexicalGravityLensMessage
+  extends MessageEnvelope<{
+    token: string;
+    query: string;
+    candidate: WorkshopLexicalGravityLensCandidate;
+  }> {
+  type: MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENS;
+}
+
+export interface WorkshopLexicalGravityLensSavedPayload {
+  token: string;
+  ok: boolean;
+  lens?: WorkshopLexicalGravityLens;
+  storagePath?: string;
+  error?: string;
+}
+
+export interface WorkshopLexicalGravityLensSavedMessage
+  extends MessageEnvelope<WorkshopLexicalGravityLensSavedPayload> {
+  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_SAVED;
+}
+
 export interface WorkshopRequestWidgetConfigMessage extends MessageEnvelope<{ configId: string }> {
   type: MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG;
 }
@@ -1678,11 +1919,27 @@ export interface WorkshopCommitWidgetMessage extends MessageEnvelope<WorkshopCom
   type: MessageType.WORKSHOP_COMMIT_WIDGET;
 }
 
+export interface WorkshopApplyStandingWidgetMessage
+  extends MessageEnvelope<{
+    widgetId: 'lexical-gravity';
+    draft: WorkshopLexicalGravityDraft;
+    /** Present for edit-in-place; omitted for a first install. */
+    widgetConfigId?: string;
+  }> {
+  type: MessageType.WORKSHOP_APPLY_STANDING_WIDGET;
+}
+
+export interface WorkshopRemoveStandingWidgetMessage
+  extends MessageEnvelope<{ family: WorkshopStandingDirectiveFamily }> {
+  type: MessageType.WORKSHOP_REMOVE_STANDING_WIDGET;
+}
+
 export interface WorkshopWidgetActionResultPayload {
-  action: 'commit';
+  action: 'commit' | 'apply-standing' | 'remove-standing';
   widgetId: WorkshopWidgetId;
   ok: boolean;
   widgetConfigId?: string;
+  directiveId?: string;
   turnId?: string;
   /** User-facing failure text when ok is false. */
   message?: string;

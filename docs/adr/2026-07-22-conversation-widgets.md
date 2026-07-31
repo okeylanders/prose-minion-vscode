@@ -140,7 +140,7 @@ mutating those defaults.
 
 Lexical Gravity's custom lens library is project-owned reusable source:
 `Build lens` writes only a writer-chosen, validated lens to
-`resources/lenses/<slug>.json`. A widget commit snapshots the resolved lens
+`prose-minion/lenses/<slug>.json`. A widget commit snapshots the resolved lens
 inside the session config alongside its four writer-facing values, so later
 project-file edits affect future selections without rewriting saved history or
 changing the standing frame reconstructed on restore.

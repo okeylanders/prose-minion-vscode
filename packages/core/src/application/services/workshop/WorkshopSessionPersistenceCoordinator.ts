@@ -34,6 +34,9 @@ import {
   WorkshopConversationSettingsService
 } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import {
+  renderWorkshopStandingDirectiveFramesFromState
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
+import {
   WorkshopConversationExportTarget,
   WorkshopConversationImportTarget,
   AssistantToolService
@@ -636,7 +639,8 @@ export class WorkshopSessionPersistenceCoordinator {
     const outcomes = targets.length > 0
       ? await this.assistantToolService.importWorkshopConversationArchive(targets, {
           behavior: this.session.getConversationBehavior(),
-          writerProfile: this.conversationSettingsService.getWriterProfile()
+          writerProfile: this.conversationSettingsService.getWriterProfile(),
+          standingDirectiveFrames: renderWorkshopStandingDirectiveFramesFromState(workshop)
         })
       : [];
 

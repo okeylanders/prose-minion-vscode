@@ -34,6 +34,9 @@ import type { CategorySearchService } from '@services/search/CategorySearchServi
 import type { WordSearchService } from '@services/search/WordSearchService';
 import type { AccountBalanceService } from '@/infrastructure/account';
 import type { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
+import type { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
+import type { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
+import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import type { PlatformDisposable } from '@/platform';
 
@@ -116,4 +119,10 @@ export interface CoreServices {
   workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator;
   /** Gesture Playground pre-commit dictionary + menu generation (ADR 2026-07-22). */
   gesturePlaygroundService: GesturePlaygroundService;
+  /** Lexical Gravity's two explicit model seams: preview and lens building. */
+  lexicalGravityModelService: LexicalGravityModelService;
+  /** Project-owned reusable lexical fields under prose-minion/lenses. */
+  lexicalGravityLensRepository: LexicalGravityLensRepository;
+  /** Serialized standing-frame replacement and session commit coordinator. */
+  workshopStandingDirectiveService: WorkshopStandingDirectiveService;
 }

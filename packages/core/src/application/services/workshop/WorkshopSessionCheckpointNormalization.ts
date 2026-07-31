@@ -80,6 +80,9 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   let defaultedWidgetDictionarySharing = false;
   let defaultedWidgetSourceReferences = false;
   const widgetConfigs = state.widgetConfigs?.map((config) => {
+    if (config.widgetId !== 'gesture-playground') {
+      return config;
+    }
     const normalizedDraft = normalizeGesturePlaygroundDraftForHydration(config.draft);
     if (
       !normalizedDraft.defaultedDictionarySharing

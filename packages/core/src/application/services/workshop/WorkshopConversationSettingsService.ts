@@ -18,6 +18,9 @@ import {
   isValidWorkshopWebResearchSettings,
   workshopWebResearchSettingsEqual
 } from '@messages';
+import {
+  renderWorkshopStandingDirectiveFrames
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 
 export interface WorkshopConversationSettingsPersistenceErrors {
   behavior?: string;
@@ -245,7 +248,8 @@ export class WorkshopConversationSettingsService {
       await this.assistantToolService.replaceWorkshopConversationSettings(
         this.replacementTargets(),
         nextBehavior,
-        nextProfile
+        nextProfile,
+        renderWorkshopStandingDirectiveFrames(this.session)
       );
     }
 
@@ -256,6 +260,22 @@ export class WorkshopConversationSettingsService {
 
   getWriterProfile(): WorkshopWriterProfile {
     return this.writerProfileService.getProfile();
+  }
+
+  /**
+   * Serialize a standing-directive prompt replacement with behavior/profile
+   * edits so two system-message batches cannot interleave.
+   */
+  replaceStandingDirectiveFrames(frames: readonly string[]): Promise<void> {
+    return this.serialize(async () => {
+      this.assertBetweenRuns();
+      await this.assistantToolService.replaceWorkshopConversationSettings(
+        this.replacementTargets(),
+        this.session.getConversationBehavior(),
+        this.writerProfileService.getProfile(),
+        frames
+      );
+    });
   }
 
   getWebResearch(): WorkshopWebResearchSettings {

@@ -150,11 +150,11 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         rail: 'standing',
         railLabel: 'standing',
         group: 'Influences',
-        tag: 'Sprint 02',
+        tag: 'Sprint 02B',
         costNote: STANDING_COST,
         blurb:
           'Pull the passage’s lexis toward an interpretive lens — Photography, Mathematics, Music — with weight and reach.',
-        live: false
+        live: true
       },
       {
         id: 'prose-controller',

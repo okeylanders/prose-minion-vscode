@@ -40,6 +40,8 @@ export function validateWorkshopSessionStateV1(
   requireCounter(state.counters.threadArtifact, 'thread-artifact counter');
   requireCounter(state.counters.turn, 'turn counter');
   requireCounter(state.counters.todo, 'todo counter');
+  requireCounter(state.counters.widgetConfig ?? 0, 'widget-config counter');
+  requireCounter(state.counters.standingDirective ?? 0, 'standing-directive counter');
 
   // Sprint 13A: the revision counter belongs to the passage, and a SHELVED
   // passage still owns it — shelving is not a deletion, so the version stands
@@ -189,7 +191,8 @@ export function validateWorkshopSessionStateV1(
     const attachmentReference = (turn.messageAttachments ?? []).some(
       (attachment) => attachment.id === artifact.id
     );
-    const widgetReference = turn.widgetCommit?.artifactId === artifact.id;
+    const widgetReference = turn.widgetCommit?.rail === 'thread-artifact'
+      && turn.widgetCommit.artifactId === artifact.id;
     if (!attachmentReference && !widgetReference) {
       throw new Error(
         `Persisted Workshop thread artifact ${artifact.id} is not referenced by its turn`
@@ -200,6 +203,7 @@ export function validateWorkshopSessionStateV1(
       && (
         !widgetReference
         || !turn.widgetCommit
+        || turn.widgetCommit.rail !== 'thread-artifact'
         || artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit.widgetId)
       )
     ) {
@@ -239,6 +243,12 @@ export function validateWorkshopSessionStateV1(
         numericIdSuffix(config.artifactId, /^ta-(\d+)$/, 'thread artifact')
       );
     }
+    if (config.directiveId !== undefined) {
+      numericIdSuffix(config.directiveId, /^pd-(\d+)$/, 'standing directive');
+    }
+    if (config.artifactId !== undefined && config.directiveId !== undefined) {
+      throw new Error(`Persisted Workshop widget config ${config.id} spans both rails`);
+    }
   }
   if (greatestWidgetConfigNumber > (state.counters.widgetConfig ?? 0)) {
     throw new Error('Persisted Workshop widget-config counter trails an existing id');
@@ -247,12 +257,77 @@ export function validateWorkshopSessionStateV1(
     if (!turn.widgetCommit) {
       continue;
     }
-    greatestThreadArtifactNumber = Math.max(
-      greatestThreadArtifactNumber,
-      numericIdSuffix(turn.widgetCommit.artifactId, /^ta-(\d+)$/, 'thread artifact')
-    );
+    if (turn.widgetCommit.rail === 'thread-artifact') {
+      greatestThreadArtifactNumber = Math.max(
+        greatestThreadArtifactNumber,
+        numericIdSuffix(turn.widgetCommit.artifactId, /^ta-(\d+)$/, 'thread artifact')
+      );
+    } else {
+      numericIdSuffix(
+        turn.widgetCommit.directiveId,
+        /^pd-(\d+)$/,
+        'standing directive'
+      );
+    }
     if (!widgetConfigIds.has(turn.widgetCommit.widgetConfigId)) {
       throw new Error(`Persisted Workshop turn ${turn.id} references an unknown widget config`);
+    }
+    const standingChange = turn.standingDirectiveChange;
+    if (turn.widgetCommit.rail === 'standing') {
+      if (
+        turn.artifact !== 'standing_directive_change'
+        || !standingChange
+        || standingChange.directiveId !== turn.widgetCommit.directiveId
+        || standingChange.widgetConfigId !== turn.widgetCommit.widgetConfigId
+        || standingChange.widgetId !== turn.widgetCommit.widgetId
+        || standingChange.revision !== turn.widgetCommit.revision
+      ) {
+        throw new Error(`Persisted Workshop standing marker ${turn.id} is incoherent`);
+      }
+    } else if (standingChange !== undefined) {
+      throw new Error(`Persisted Workshop thread widget ${turn.id} carries a standing change`);
+    }
+  }
+
+  const standingDirectiveIds = new Set<string>();
+  const standingDirectiveFamilies = new Set<string>();
+  let greatestStandingDirectiveNumber = 0;
+  for (const directive of state.standingDirectives ?? []) {
+    if (standingDirectiveIds.has(directive.id)) {
+      throw new Error(`Duplicate persisted Workshop standing directive ${directive.id}`);
+    }
+    if (standingDirectiveFamilies.has(directive.family)) {
+      throw new Error(`Duplicate persisted Workshop standing family ${directive.family}`);
+    }
+    standingDirectiveIds.add(directive.id);
+    standingDirectiveFamilies.add(directive.family);
+    greatestStandingDirectiveNumber = Math.max(
+      greatestStandingDirectiveNumber,
+      numericIdSuffix(directive.id, /^pd-(\d+)$/, 'standing directive')
+    );
+    const config = (state.widgetConfigs ?? []).find(
+      (candidate) => candidate.id === directive.widgetConfigId
+    );
+    if (
+      !config
+      || config.widgetId !== directive.widgetId
+      || config.revision !== directive.revision
+      || config.directiveId !== directive.id
+      || directive.family !== directive.widgetId
+    ) {
+      throw new Error(`Persisted Workshop standing directive ${directive.id} has invalid config linkage`);
+    }
+  }
+  if (greatestStandingDirectiveNumber > (state.counters.standingDirective ?? 0)) {
+    throw new Error('Persisted Workshop standing-directive counter trails an existing id');
+  }
+
+  for (const turn of state.turns) {
+    if (
+      turn.artifact === 'standing_directive_change'
+      && (turn.widgetCommit?.rail !== 'standing' || !turn.standingDirectiveChange)
+    ) {
+      throw new Error(`Persisted Workshop standing change ${turn.id} lacks standing metadata`);
     }
   }
 

@@ -48,6 +48,10 @@ import {
   assertGesturePlaygroundDraftShape,
   assertGesturePlaygroundRecommendationSeedShape
 } from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
+import {
+  assertLexicalGravityDraftShape,
+  assertLexicalGravityRecommendationSeedShape
+} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
 
 export function assertWorkshopSessionStateShape(
   value: unknown
@@ -73,6 +77,8 @@ export function assertWorkshopSessionStateShape(
       'lastCommittedPersonaBehavior',
       // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
       'widgetConfigs',
+      // Optional since Sprint 02B: pre-directive checkpoints have none.
+      'standingDirectives',
       // Optional: pre-room-artifact-ledger checkpoints retain refs only.
       'threadArtifacts'
     ]
@@ -103,6 +109,13 @@ export function assertWorkshopSessionStateShape(
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
   if (state.widgetConfigs !== undefined) {
     arrayOf(state.widgetConfigs, 'Workshop session state.widgetConfigs', assertWidgetConfig);
+  }
+  if (state.standingDirectives !== undefined) {
+    arrayOf(
+      state.standingDirectives,
+      'Workshop session state.standingDirectives',
+      assertStandingDirective
+    );
   }
   if (state.threadArtifacts !== undefined) {
     arrayOf(
@@ -302,13 +315,17 @@ function assertCounters(value: unknown): void {
     'Workshop session state.counters',
     ['attachment', 'threadArtifact', 'turn', 'todo'],
     // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
-    ['widgetConfig']
+    ['widgetConfig', 'standingDirective']
   );
   numberAt(counters.attachment, 'Workshop session state.counters.attachment');
   numberAt(counters.threadArtifact, 'Workshop session state.counters.threadArtifact');
   numberAt(counters.turn, 'Workshop session state.counters.turn');
   numberAt(counters.todo, 'Workshop session state.counters.todo');
   optionalNumberAt(counters.widgetConfig, 'Workshop session state.counters.widgetConfig');
+  optionalNumberAt(
+    counters.standingDirective,
+    'Workshop session state.counters.standingDirective'
+  );
 }
 
 function assertWidgetConfig(value: unknown, path: string): void {
@@ -316,7 +333,7 @@ function assertWidgetConfig(value: unknown, path: string): void {
     value,
     path,
     ['id', 'widgetId', 'revision', 'draft', 'createdAt'],
-    ['clonedFromConfigId', 'committedTurnId', 'artifactId']
+    ['clonedFromConfigId', 'committedTurnId', 'artifactId', 'directiveId']
   );
   stringAt(config.id, `${path}.id`);
   if (!isWorkshopWidgetId(config.widgetId)) {
@@ -327,7 +344,30 @@ function assertWidgetConfig(value: unknown, path: string): void {
   optionalStringAt(config.clonedFromConfigId, `${path}.clonedFromConfigId`);
   optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
   optionalStringAt(config.artifactId, `${path}.artifactId`);
-  assertGesturePlaygroundDraftShape(config.draft, `${path}.draft`);
+  optionalStringAt(config.directiveId, `${path}.directiveId`);
+  if (config.widgetId === 'gesture-playground') {
+    assertGesturePlaygroundDraftShape(config.draft, `${path}.draft`);
+    return;
+  }
+  if (config.widgetId === 'lexical-gravity') {
+    assertLexicalGravityDraftShape(config.draft, `${path}.draft`);
+    return;
+  }
+  shapeError(`${path}.widgetId`, 'a widget with a persisted config codec');
+}
+
+function assertStandingDirective(value: unknown, path: string): void {
+  const directive = exactObject(
+    value,
+    path,
+    ['id', 'family', 'widgetId', 'widgetConfigId', 'revision', 'updatedAt']
+  );
+  stringAt(directive.id, `${path}.id`);
+  enumAt(directive.family, `${path}.family`, ['lexical-gravity', 'prose-controller']);
+  enumAt(directive.widgetId, `${path}.widgetId`, ['lexical-gravity', 'prose-controller']);
+  stringAt(directive.widgetConfigId, `${path}.widgetConfigId`);
+  numberAt(directive.revision, `${path}.revision`);
+  numberAt(directive.updatedAt, `${path}.updatedAt`);
 }
 
 function assertWriterSources(value: unknown): void {
@@ -413,7 +453,8 @@ function assertTurn(value: unknown, path: string): void {
       'behaviorTransition',
       // Conversation Widgets (ADR 2026-07-22).
       'widgetCommit',
-      'widgetRecommendation'
+      'widgetRecommendation',
+      'standingDirectiveChange'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -437,6 +478,7 @@ function assertTurn(value: unknown, path: string): void {
       'resource_read',
       'excerpt_revision',
       'context_change',
+      'standing_directive_change',
       'session_start',
       'session_resume',
       'scope_change'
@@ -495,21 +537,54 @@ function assertTurn(value: unknown, path: string): void {
   if (turn.widgetRecommendation !== undefined) {
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
   }
+  if (turn.standingDirectiveChange !== undefined) {
+    assertStandingDirectiveChange(
+      turn.standingDirectiveChange,
+      `${path}.standingDirectiveChange`
+    );
+  }
 }
 
 function assertTurnWidgetCommit(value: unknown, path: string): void {
+  const raw = objectAt(value, path);
+  if (raw.rail === 'thread-artifact') {
+    const commit = exactObject(
+      raw,
+      path,
+      ['widgetId', 'widgetConfigId', 'rail', 'artifactId', 'selectionCount']
+    );
+    if (!isWorkshopWidgetId(commit.widgetId)) {
+      shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+    }
+    stringAt(commit.widgetConfigId, `${path}.widgetConfigId`);
+    stringAt(commit.artifactId, `${path}.artifactId`);
+    numberAt(commit.selectionCount, `${path}.selectionCount`);
+    return;
+  }
   const commit = exactObject(
+    raw,
+    path,
+    ['widgetId', 'widgetConfigId', 'rail', 'directiveId', 'revision']
+  );
+  enumAt(commit.rail, `${path}.rail`, ['standing']);
+  enumAt(commit.widgetId, `${path}.widgetId`, ['lexical-gravity', 'prose-controller']);
+  stringAt(commit.widgetConfigId, `${path}.widgetConfigId`);
+  stringAt(commit.directiveId, `${path}.directiveId`);
+  numberAt(commit.revision, `${path}.revision`);
+}
+
+function assertStandingDirectiveChange(value: unknown, path: string): void {
+  const change = exactObject(
     value,
     path,
-    ['widgetId', 'widgetConfigId', 'rail', 'artifactId', 'selectionCount']
+    ['action', 'family', 'widgetId', 'directiveId', 'widgetConfigId', 'revision']
   );
-  if (!isWorkshopWidgetId(commit.widgetId)) {
-    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
-  }
-  stringAt(commit.widgetConfigId, `${path}.widgetConfigId`);
-  enumAt(commit.rail, `${path}.rail`, ['thread-artifact']);
-  stringAt(commit.artifactId, `${path}.artifactId`);
-  numberAt(commit.selectionCount, `${path}.selectionCount`);
+  enumAt(change.action, `${path}.action`, ['installed', 'shifted', 'removed']);
+  enumAt(change.family, `${path}.family`, ['lexical-gravity', 'prose-controller']);
+  enumAt(change.widgetId, `${path}.widgetId`, ['lexical-gravity', 'prose-controller']);
+  stringAt(change.directiveId, `${path}.directiveId`);
+  stringAt(change.widgetConfigId, `${path}.widgetConfigId`);
+  numberAt(change.revision, `${path}.revision`);
 }
 
 function assertTurnWidgetRecommendation(value: unknown, path: string): void {
@@ -517,12 +592,16 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
     shapeError(`${path}.widgetId`, 'live Conversation Widget id');
   }
-  if (recommendation.seed !== undefined) {
-    assertGesturePlaygroundRecommendationSeedShape(
-      recommendation.seed,
-      `${path}.seed`
-    );
+  if (recommendation.seed === undefined) return;
+  if (recommendation.widgetId === 'gesture-playground') {
+    assertGesturePlaygroundRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
   }
+  if (recommendation.widgetId === 'lexical-gravity') {
+    assertLexicalGravityRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
+  }
+  shapeError(`${path}.widgetId`, 'a widget with a recommendation codec');
 }
 
 function assertCitation(value: unknown, path: string): void {

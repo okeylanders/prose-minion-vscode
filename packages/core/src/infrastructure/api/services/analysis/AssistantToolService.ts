@@ -117,6 +117,8 @@ export interface WorkshopPersonaConversationInput {
   behavior: WorkshopConversationBehavior;
   /** Current global profile; never retained in Workshop session state. */
   writerProfile: WorkshopWriterProfile;
+  /** Current session-owned prose directives for the fresh retained host. */
+  standingDirectiveFrames?: readonly string[];
   /** True only for application-built envelopes whose dynamic fields are pre-encoded. */
   messageIsTrustedEnvelope?: boolean;
   /**
@@ -178,6 +180,8 @@ export interface WorkshopGuestConversationInput {
   /** The room's complete selected behavior — guests share the room contract. */
   behavior: WorkshopConversationBehavior;
   writerProfile: WorkshopWriterProfile;
+  /** Current session-owned prose directives for the fresh retained guest. */
+  standingDirectiveFrames?: readonly string[];
 }
 
 /**
@@ -548,7 +552,8 @@ export class AssistantToolService {
       'host',
       persona.id,
       input.behavior,
-      input.writerProfile
+      input.writerProfile,
+      input.standingDirectiveFrames
     );
     const userMessage = this.buildWorkshopPersonaUserMessage(input);
 
@@ -612,7 +617,8 @@ export class AssistantToolService {
       'guest',
       persona.id,
       input.behavior,
-      input.writerProfile
+      input.writerProfile,
+      input.standingDirectiveFrames
     );
 
     this.outputChannel?.appendLine(
@@ -729,7 +735,8 @@ export class AssistantToolService {
   async replaceWorkshopConversationSettings(
     targets: readonly WorkshopBehaviorReplacementTarget[],
     behavior: WorkshopConversationBehavior,
-    writerProfile: WorkshopWriterProfile
+    writerProfile: WorkshopWriterProfile,
+    standingDirectiveFrames: readonly string[] = []
   ): Promise<void> {
     if (targets.length === 0) {
       return;
@@ -746,7 +753,8 @@ export class AssistantToolService {
         target.role,
         target.personaId,
         behavior,
-        writerProfile
+        writerProfile,
+        standingDirectiveFrames
       );
       replacements.push({ conversationId: target.conversationId, systemMessage });
     }

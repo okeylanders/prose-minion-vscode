@@ -67,6 +67,7 @@ import {
   WorkshopWriterProfile,
   WorkshopWebResearchSettings,
   WorkshopWidgetConfigSummary,
+  WorkshopStandingDirectiveSummary,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetGeneratePayload,
@@ -138,6 +139,8 @@ export interface WorkshopState {
    * host truth mirrored from the session snapshot; chips re-hydrate from it.
    */
   widgetConfigs: WorkshopWidgetConfigSummary[];
+  /** Active host-owned prose directives for the standing rail. */
+  standingDirectives: WorkshopStandingDirectiveSummary[];
   /** Full config fetched only when a committed widget chip is opened. */
   widgetConfigData: WorkshopWidgetConfigSnapshot | null;
   widgetConfigResponseId: string | null;
@@ -331,6 +334,8 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
   const [pendingMessageAttachments, setPendingMessageAttachments] = React.useState<WorkshopMessageAttachmentSnapshot[]>([]);
   const [widgetConfigs, setWidgetConfigs] = React.useState<WorkshopWidgetConfigSummary[]>([]);
+  const [standingDirectives, setStandingDirectives] =
+    React.useState<WorkshopStandingDirectiveSummary[]>([]);
   const [widgetConfigData, setWidgetConfigData] =
     React.useState<WorkshopWidgetConfigSnapshot | null>(null);
   const [widgetConfigResponseId, setWidgetConfigResponseId] = React.useState<string | null>(null);
@@ -807,6 +812,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
       setContextAttachments(session.contextAttachments ?? []);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
       setWidgetConfigs(session.widgetConfigs ?? []);
+      setStandingDirectives(session.standingDirectives ?? []);
       setContextPending(session.pendingHostUpdate?.context ?? false);
       setTotalTurns(session.totalTurns);
       setHasHostConversation(session.participants.host.hasConversation);
@@ -1036,6 +1042,7 @@ export const useWorkshop = (): UseWorkshopReturn => {
     contextAttachments,
     pendingMessageAttachments,
     widgetConfigs,
+    standingDirectives,
     widgetConfigData,
     widgetConfigResponseId,
     widgetConfigError,

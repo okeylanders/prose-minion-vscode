@@ -47,6 +47,9 @@ import {
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
   GesturePlaygroundService,
+  LexicalGravityModelService,
+  LexicalGravityLensRepository,
+  WorkshopStandingDirectiveService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   coerceWorkshopConversationBehavior,
@@ -215,6 +218,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel,
     workshopWriterProfileService
   );
+  const workshopStandingDirectiveService = new WorkshopStandingDirectiveService(
+    workshopSessionService,
+    workshopConversationSettingsService
+  );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
     workshopAnalysisSidePass,
@@ -255,6 +262,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     resourceLoader.getPromptLoader(),
     outputChannel
   );
+  const lexicalGravityModelService = new LexicalGravityModelService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    outputChannel
+  );
+  const lexicalGravityLensRepository = new LexicalGravityLensRepository(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -279,7 +296,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopWriterProfileService,
     workshopSessionTimeService,
     workshopSessionPersistenceCoordinator,
-    gesturePlaygroundService
+    gesturePlaygroundService,
+    lexicalGravityModelService,
+    lexicalGravityLensRepository,
+    workshopStandingDirectiveService
   };
 
   // Migrate API key from settings to SecretStorage if needed

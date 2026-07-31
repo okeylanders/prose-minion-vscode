@@ -1,6 +1,6 @@
 # Sprint 02B: Lexical Gravity + Standing Prose-Directive Rail
 
-**Status**: Planned
+**Status**: In progress
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-02b-lexical-gravity-standing-rail` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 6-9 days
@@ -131,7 +131,7 @@ maps to Sprint 02B after the sequencing split.
 - **The lens library has project-owned truth.** `Build lens` makes one explicit
   model request that returns several bounded, fully drafted lens variants; the
   writer chooses one. Only the chosen validated lens is written to
-  `resources/lenses/<slug>.json`, making it reusable across sessions. Drafting
+  `prose-minion/lenses/<slug>.json`, making it reusable across sessions. Drafting
   and choosing remain pre-commit play. At install time the session snapshots the
   resolved lens into its config, so later project-file edits seed future work
   without silently rewriting saved session history.
@@ -163,7 +163,7 @@ maps to Sprint 02B after the sequencing split.
    slider; 1°–3° reach; metaphor-pull toggle; explicit preview action.
 4. **Two explicit model seams**: cached fast-tier `Preview the pull`, plus
    bounded multi-variant `Build lens` with writer selection and validated
-   project-resource persistence under `resources/lenses/`.
+   project-resource persistence under `prose-minion/lenses/`.
 5. **Commit path** onto the standing rail via the coordinator; a Lexical
    Gravity local codec; the `widgetId`-discriminated persisted config union;
    normalized session-owned config by stable id/revision, distinct from any
