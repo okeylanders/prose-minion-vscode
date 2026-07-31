@@ -4,9 +4,8 @@ import * as React from 'react';
 import {
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
-  WorkshopLexicalGravityLensCandidate,
   WorkshopLexicalGravityLensCandidatesPayload,
-  WorkshopLexicalGravityLensSavedPayload,
+  WorkshopLexicalGravityLensesSavedPayload,
   WorkshopLexicalGravityPreviewResultPayload,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
@@ -30,12 +29,12 @@ interface WorkshopLexicalGravityModalProps {
   catalogError?: string;
   previewResult: WorkshopLexicalGravityPreviewResultPayload | null;
   lensCandidates: WorkshopLexicalGravityLensCandidatesPayload | null;
-  lensSaved: WorkshopLexicalGravityLensSavedPayload | null;
+  lensesSaved: WorkshopLexicalGravityLensesSavedPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;
   onRequestLenses: () => void;
   onPreview: (token: string, draft: WorkshopLexicalGravityDraft) => void;
   onBuildLens: (token: string, query: string) => void;
-  onSaveLens: (token: string, query: string, candidate: WorkshopLexicalGravityLensCandidate) => void;
+  onSaveLenses: (token: string, query: string, candidateIds: string[]) => void;
   onApply: (draft: WorkshopLexicalGravityDraft, widgetConfigId?: string) => void;
   onClearTransientResults: () => void;
   onConsumeActionResult: () => void;
@@ -74,12 +73,12 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   catalogError,
   previewResult,
   lensCandidates,
-  lensSaved,
+  lensesSaved,
   actionResult,
   onRequestLenses,
   onPreview,
   onBuildLens,
-  onSaveLens,
+  onSaveLenses,
   onApply,
   onClearTransientResults,
   onConsumeActionResult,
@@ -107,7 +106,8 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [extraLens, setExtraLens] = React.useState<WorkshopLexicalGravityLens>();
   const [previewToken, setPreviewToken] = React.useState<string>();
   const [buildToken, setBuildToken] = React.useState<string>();
-  const [savingCandidateId, setSavingCandidateId] = React.useState<string>();
+  const [selectedCandidateIds, setSelectedCandidateIds] = React.useState<string[]>([]);
+  const [savingCandidates, setSavingCandidates] = React.useState(false);
   const [applying, setApplying] = React.useState(false);
   const [error, setError] = React.useState<string>();
   const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
@@ -132,7 +132,8 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setExtraLens(draft?.resolvedLens);
     setPreviewToken(undefined);
     setBuildToken(undefined);
-    setSavingCandidateId(undefined);
+    setSelectedCandidateIds([]);
+    setSavingCandidates(false);
     setApplying(false);
     setError(undefined);
     onClearTransientResults();
@@ -181,24 +182,27 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       setLensSlug(lensCandidates.existingLens.slug);
       setPreview(undefined);
       setBuildToken(undefined);
+      setSelectedCandidateIds([]);
       setError(undefined);
     }
   }, [buildToken, lensCandidates]);
 
   React.useEffect(() => {
-    if (!buildToken || lensSaved?.token !== buildToken || !savingCandidateId) {return;}
-    setSavingCandidateId(undefined);
-    setBuildToken(undefined);
-    if (lensSaved.ok && lensSaved.lens) {
-      setExtraLens(lensSaved.lens);
-      setLensSlug(lensSaved.lens.slug);
+    if (!buildToken || lensesSaved?.token !== buildToken || !savingCandidates) {return;}
+    setSavingCandidates(false);
+    if (lensesSaved.ok && lensesSaved.lenses?.length) {
+      const firstSavedLens = lensesSaved.lenses[0];
+      setExtraLens(firstSavedLens);
+      setLensSlug(firstSavedLens.slug);
       setPreview(undefined);
+      setBuildToken(undefined);
+      setSelectedCandidateIds([]);
       setError(undefined);
       onRequestLenses();
     } else {
-      setError(lensSaved.error ?? 'The project lens could not be saved.');
+      setError(lensesSaved.error ?? 'The project lenses could not be saved.');
     }
-  }, [buildToken, lensSaved, onRequestLenses, savingCandidateId]);
+  }, [buildToken, lensesSaved, onRequestLenses, savingCandidates]);
 
   React.useEffect(() => {
     if (!applying || !actionResult || actionResult.action !== 'apply-standing') {return;}
@@ -225,15 +229,17 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     if (!lookup.trim() || buildToken) {return;}
     const token = mintToken('build');
     setBuildToken(token);
-    setSavingCandidateId(undefined);
+    setSelectedCandidateIds([]);
+    setSavingCandidates(false);
     setError(undefined);
     onBuildLens(token, lookup.trim());
   }, [buildToken, lookup, onBuildLens]);
-  const chooseCandidate = React.useCallback((candidate: WorkshopLexicalGravityLensCandidate) => {
-    if (!buildToken || savingCandidateId) {return;}
-    setSavingCandidateId(candidate.candidateId);
-    onSaveLens(buildToken, lookup.trim(), candidate);
-  }, [buildToken, lookup, onSaveLens, savingCandidateId]);
+  const toggleCandidate = React.useCallback((candidateId: string) => {
+    if (savingCandidates) {return;}
+    setSelectedCandidateIds((current) => current.includes(candidateId)
+      ? current.filter((selectedId) => selectedId !== candidateId)
+      : [...current, candidateId]);
+  }, [savingCandidates]);
   const requestPreview = React.useCallback(() => {
     if (!draft || previewToken) {return;}
     const token = mintToken('preview');
@@ -259,7 +265,19 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const candidates = buildToken && lensCandidates?.token === buildToken
     ? lensCandidates.candidates
     : undefined;
-  const locked = applying;
+  const saveSelectedCandidates = React.useCallback(() => {
+    if (!buildToken || !candidates || selectedCandidateIds.length < 1 || savingCandidates) {
+      return;
+    }
+    const selectedIds = candidates
+      .filter(({ candidateId }) => selectedCandidateIds.includes(candidateId))
+      .map(({ candidateId }) => candidateId);
+    if (selectedIds.length < 1) {return;}
+    setSavingCandidates(true);
+    setError(undefined);
+    onSaveLenses(buildToken, lookup.trim(), selectedIds);
+  }, [buildToken, candidates, lookup, onSaveLenses, savingCandidates, selectedCandidateIds]);
+  const locked = applying || savingCandidates;
 
   return (
     <WorkshopModalShell
@@ -307,7 +325,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                   onClick={() => selectLens(candidate)}
                 >
                   <span className="pm-ws-lg-lens-name">
-                    {candidate.name}
+                    {candidate.name}{candidate.variant ? ` — ${candidate.variant}` : ''}
                     {candidate.source === 'project' && <em>project</em>}
                   </span>
                   <span className="pm-ws-lg-lens-words">{candidate.degrees[1].nouns.slice(0, 3).join(' · ')}</span>
@@ -329,22 +347,50 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             {catalogError && <div className="pm-ws-lg-note">Built-ins remain available. {catalogError}</div>}
             {candidates && (
               <div className="pm-ws-lg-options">
-                <div className="pm-ws-lg-cap">model drafted {candidates.length} takes — pick one to add</div>
+                <div className="pm-ws-lg-cap">
+                  model drafted {candidates.length} takes — select one or more to add
+                </div>
                 {candidates.map((candidate) => (
                   <button
                     type="button"
+                    aria-pressed={selectedCandidateIds.includes(candidate.candidateId)}
+                    className={selectedCandidateIds.includes(candidate.candidateId)
+                      ? 'is-selected'
+                      : undefined}
                     key={candidate.candidateId}
-                    disabled={!!savingCandidateId}
-                    onClick={() => chooseCandidate(candidate)}
+                    disabled={savingCandidates}
+                    onClick={() => toggleCandidate(candidate.candidateId)}
                   >
+                    <i className="pm-ws-lg-option-check" aria-hidden="true">
+                      {selectedCandidateIds.includes(candidate.candidateId)
+                        && <Icon name="check" size={11} />}
+                    </i>
                     <b>{candidate.lens.name}{candidate.lens.variant ? ` — ${candidate.lens.variant}` : ''}</b>
                     <span>{candidate.lens.description ?? candidate.lens.gradient.join(' → ')}</span>
                   </button>
                 ))}
+                <div className="pm-ws-lg-option-actions">
+                  <span>{selectedCandidateIds.length} selected</span>
+                  <button
+                    type="button"
+                    disabled={selectedCandidateIds.length < 1 || savingCandidates}
+                    onClick={saveSelectedCandidates}
+                  >
+                    <Icon name="plus" size={12} />
+                    {savingCandidates
+                      ? 'Adding…'
+                      : selectedCandidateIds.length < 1
+                        ? 'Add selected lenses'
+                        : `Add ${selectedCandidateIds.length} selected ${selectedCandidateIds.length === 1 ? 'lens' : 'lenses'}`}
+                  </button>
+                </div>
               </div>
             )}
-            {lensSaved?.ok && lensSaved.lens?.slug === lens?.slug && (
-              <div className="pm-ws-lg-saved"><Icon name="check" size={12} /> Saved to project — <code>{storagePath}/{lens.slug}.json</code> · available in every session, every thread</div>
+            {lensesSaved?.ok && lensesSaved.lenses?.some(({ slug }) => slug === lens?.slug) && (
+              <div className="pm-ws-lg-saved">
+                <Icon name="check" size={12} />
+                Saved {lensesSaved.lenses.length} {lensesSaved.lenses.length === 1 ? 'lens' : 'lenses'} to project — <code>{storagePath}</code> · available in every session, every thread
+              </div>
             )}
           </div>
 

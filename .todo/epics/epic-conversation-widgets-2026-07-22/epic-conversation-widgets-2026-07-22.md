@@ -126,8 +126,9 @@ These are the walls. Everything else is decoration that can move.
    fields, POS/reach buckets, gradients, substitutions, and cliché contrasts
    are deterministic. Slider/toggle changes make no call. `Preview the pull`
    and `Build lens` are the only explicit model seams; the latter returns
-   several bounded variants and writes only the writer's chosen validated lens
-   to `prose-minion/lenses/<slug>.json`.
+   several bounded variants and lets the writer save one or more validated
+   selections to individual `prose-minion/lenses/<slug>.json` resources in one
+   action.
 
 9. **Core stays host-agnostic.** The widget host, the registry, and every
    widget's logic live in `packages/core`. Only the composer's *mounting* touches

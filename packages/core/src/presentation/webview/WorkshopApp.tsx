@@ -278,7 +278,7 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA]: lexicalGravity.handleLensesData,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT]: lexicalGravity.handlePreviewResult,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_SAVED]: lexicalGravity.handleLensSaved,
+    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
@@ -1571,12 +1571,12 @@ export const WorkshopApp: React.FC = () => {
           catalogError={lexicalGravity.catalogError}
           previewResult={lexicalGravity.previewResult}
           lensCandidates={lexicalGravity.lensCandidates}
-          lensSaved={lexicalGravity.lensSaved}
+          lensesSaved={lexicalGravity.lensesSaved}
           actionResult={lexicalGravity.actionResult}
           onRequestLenses={lexicalGravity.requestLenses}
           onPreview={lexicalGravity.preview}
           onBuildLens={lexicalGravity.buildLens}
-          onSaveLens={lexicalGravity.saveLens}
+          onSaveLenses={lexicalGravity.saveLenses}
           onApply={lexicalGravity.apply}
           onClearTransientResults={lexicalGravity.clearTransientResults}
           onConsumeActionResult={lexicalGravity.consumeActionResult}

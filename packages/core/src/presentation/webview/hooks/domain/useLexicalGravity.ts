@@ -6,14 +6,13 @@ import {
   MessageType,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
-  WorkshopLexicalGravityLensCandidate,
   WorkshopLexicalGravityLensCandidatesMessage,
   WorkshopLexicalGravityLensCandidatesPayload,
   WorkshopLexicalGravityLensesDataMessage,
   WorkshopLexicalGravityPreviewResultMessage,
   WorkshopLexicalGravityPreviewResultPayload,
-  WorkshopLexicalGravityLensSavedMessage,
-  WorkshopLexicalGravityLensSavedPayload,
+  WorkshopLexicalGravityLensesSavedMessage,
+  WorkshopLexicalGravityLensesSavedPayload,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload
 } from '@messages';
@@ -24,7 +23,7 @@ export interface LexicalGravityState {
   catalogError?: string;
   previewResult: WorkshopLexicalGravityPreviewResultPayload | null;
   lensCandidates: WorkshopLexicalGravityLensCandidatesPayload | null;
-  lensSaved: WorkshopLexicalGravityLensSavedPayload | null;
+  lensesSaved: WorkshopLexicalGravityLensesSavedPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;
 }
 
@@ -32,17 +31,17 @@ export interface LexicalGravityActions {
   requestLenses: () => void;
   preview: (token: string, draft: WorkshopLexicalGravityDraft) => void;
   buildLens: (token: string, query: string) => void;
-  saveLens: (
+  saveLenses: (
     token: string,
     query: string,
-    candidate: WorkshopLexicalGravityLensCandidate
+    candidateIds: string[]
   ) => void;
   apply: (draft: WorkshopLexicalGravityDraft, widgetConfigId?: string) => void;
   remove: () => void;
   handleLensesData: (message: WorkshopLexicalGravityLensesDataMessage) => void;
   handlePreviewResult: (message: WorkshopLexicalGravityPreviewResultMessage) => void;
   handleCandidates: (message: WorkshopLexicalGravityLensCandidatesMessage) => void;
-  handleLensSaved: (message: WorkshopLexicalGravityLensSavedMessage) => void;
+  handleLensesSaved: (message: WorkshopLexicalGravityLensesSavedMessage) => void;
   handleActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   clearTransientResults: () => void;
   consumeActionResult: () => void;
@@ -65,8 +64,8 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     React.useState<WorkshopLexicalGravityPreviewResultPayload | null>(null);
   const [lensCandidates, setLensCandidates] =
     React.useState<WorkshopLexicalGravityLensCandidatesPayload | null>(null);
-  const [lensSaved, setLensSaved] =
-    React.useState<WorkshopLexicalGravityLensSavedPayload | null>(null);
+  const [lensesSaved, setLensesSaved] =
+    React.useState<WorkshopLexicalGravityLensesSavedPayload | null>(null);
   const [actionResult, setActionResult] =
     React.useState<WorkshopWidgetActionResultPayload | null>(null);
 
@@ -83,12 +82,12 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
   const buildLens = React.useCallback((token: string, query: string) => {
     post(MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS, { token, query });
   }, [post]);
-  const saveLens = React.useCallback((
+  const saveLenses = React.useCallback((
     token: string,
     query: string,
-    candidate: WorkshopLexicalGravityLensCandidate
+    candidateIds: string[]
   ) => {
-    post(MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENS, { token, query, candidate });
+    post(MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES, { token, query, candidateIds });
   }, [post]);
   const apply = React.useCallback((
     draft: WorkshopLexicalGravityDraft,
@@ -115,8 +114,8 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
   const handleCandidates = React.useCallback((message: WorkshopLexicalGravityLensCandidatesMessage) => {
     setLensCandidates(message.payload);
   }, []);
-  const handleLensSaved = React.useCallback((message: WorkshopLexicalGravityLensSavedMessage) => {
-    setLensSaved(message.payload);
+  const handleLensesSaved = React.useCallback((message: WorkshopLexicalGravityLensesSavedMessage) => {
+    setLensesSaved(message.payload);
   }, []);
   const handleActionResult = React.useCallback((message: WorkshopWidgetActionResultMessage) => {
     if (message.payload.action !== 'commit') {setActionResult(message.payload);}
@@ -124,7 +123,7 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
   const clearTransientResults = React.useCallback(() => {
     setPreviewResult(null);
     setLensCandidates(null);
-    setLensSaved(null);
+    setLensesSaved(null);
     setActionResult(null);
   }, []);
   const consumeActionResult = React.useCallback(() => setActionResult(null), []);
@@ -135,18 +134,18 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     catalogError,
     previewResult,
     lensCandidates,
-    lensSaved,
+    lensesSaved,
     actionResult,
     requestLenses,
     preview,
     buildLens,
-    saveLens,
+    saveLenses,
     apply,
     remove,
     handleLensesData,
     handlePreviewResult,
     handleCandidates,
-    handleLensSaved,
+    handleLensesSaved,
     handleActionResult,
     clearTransientResults,
     consumeActionResult,

@@ -11,6 +11,7 @@ import { FileStat, FileSystem, FileType, Workspace } from '@/platform';
 class MemoryFileSystem implements FileSystem {
   readonly files = new Map<string, Uint8Array>();
   readonly renames: Array<{ from: string; to: string; overwrite?: boolean }> = [];
+  failRenameTo?: string;
 
   async readFile(filePath: string): Promise<Uint8Array> {
     const data = this.files.get(filePath);
@@ -23,6 +24,7 @@ class MemoryFileSystem implements FileSystem {
   }
 
   async rename(from: string, to: string, options?: { overwrite?: boolean }): Promise<void> {
+    if (to === this.failRenameTo) {throw new Error(`EIO: ${to}`);}
     const data = this.files.get(from);
     if (!data) {throw new Error(`ENOENT: ${from}`);}
     this.files.set(to, data);
@@ -88,24 +90,60 @@ describe('LexicalGravityLensRepository', () => {
     );
   });
 
-  it('atomically saves the chosen project lens and finds it without regeneration', async () => {
+  it('atomically stages selected project lenses with distinct reusable slugs', async () => {
     const store = repository();
-    const saved = await store.saveForQuery(
+    const source = builtInLexicalGravityLens('photography')!;
+    const saved = await store.saveManyForQuery(
       '  Radio Astronomy  ',
-      { ...builtInLexicalGravityLens('photography')!, name: 'Radio Astronomy' }
+      [
+        { ...source, name: 'Radio Astronomy', variant: 'Signal' },
+        { ...source, name: 'Radio Astronomy', variant: 'Deep Field' },
+        { ...source, name: 'Radio Astronomy', variant: 'Interference' }
+      ]
     );
-    const destination = path.join(directory, 'radio-astronomy.json');
+    const destinations = [
+      path.join(directory, 'radio-astronomy.json'),
+      path.join(directory, 'radio-astronomy-deep-field.json'),
+      path.join(directory, 'radio-astronomy-interference.json')
+    ];
 
-    expect(saved).toEqual(expect.objectContaining({
-      slug: 'radio-astronomy',
-      name: 'Radio Astronomy',
-      source: 'project'
-    }));
-    expect(fileSystem.renames).toEqual([
-      expect.objectContaining({ to: destination, overwrite: true })
+    expect(saved.map(({ slug }) => slug)).toEqual([
+      'radio-astronomy',
+      'radio-astronomy-deep-field',
+      'radio-astronomy-interference'
     ]);
-    await expect(store.findForQuery('radio astronomy')).resolves.toEqual(saved);
-    await expect(store.list()).resolves.toEqual([saved]);
+    expect(saved).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Radio Astronomy', source: 'project' })
+    ]));
+    expect(fileSystem.renames.map(({ to, overwrite }) => ({ to, overwrite }))).toEqual(
+      destinations.map((to) => ({ to, overwrite: false }))
+    );
+    await expect(store.findForQuery('radio astronomy')).resolves.toEqual(saved[0]);
+    await expect(store.list()).resolves.toEqual(expect.arrayContaining(saved));
+  });
+
+  it('requires at least one generated lens in a save batch', async () => {
+    await expect(repository().saveManyForQuery('falconry', [])).rejects.toThrow(
+      'Choose 1–3 generated lenses to save'
+    );
+  });
+
+  it('rolls back the batch when publishing any selected lens fails', async () => {
+    const store = repository();
+    const source = builtInLexicalGravityLens('photography')!;
+    const destinations = [
+      path.join(directory, 'falconry.json'),
+      path.join(directory, 'falconry-the-mews.json')
+    ];
+    fileSystem.failRenameTo = destinations[1];
+
+    await expect(store.saveManyForQuery('falconry', [
+      { ...source, variant: 'The hunt' },
+      { ...source, variant: 'The mews' }
+    ])).rejects.toThrow('EIO');
+
+    expect(destinations.every((destination) => !fileSystem.files.has(destination))).toBe(true);
+    expect([...fileSystem.files.keys()].filter((filePath) => filePath.endsWith('.tmp'))).toEqual([]);
   });
 
   it('tolerates unrelated corrupt files in the catalog but refuses to regenerate over an exact corrupt lens', async () => {

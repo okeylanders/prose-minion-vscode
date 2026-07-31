@@ -23,12 +23,12 @@ import {
   WorkshopLexicalGravityLensCandidate,
   WorkshopLexicalGravityLensCandidatesMessage,
   WorkshopLexicalGravityLensesDataMessage,
-  WorkshopLexicalGravityLensSavedMessage,
+  WorkshopLexicalGravityLensesSavedMessage,
   WorkshopLexicalGravityPreviewResultMessage,
   WorkshopPreviewLexicalGravityMessage,
   WorkshopRemoveStandingWidgetMessage,
   WorkshopRequestLexicalGravityLensesMessage,
-  WorkshopSaveLexicalGravityLensMessage,
+  WorkshopSaveLexicalGravityLensesMessage,
   WorkshopWidgetActionResultMessage
 } from '@messages';
 
@@ -74,7 +74,7 @@ export class WorkshopLexicalGravityHandler {
       this.handleBuild.bind(this)
     );
     registerMutation(
-      MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENS,
+      MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES,
       this.handleSave.bind(this)
     );
     registerMutation(
@@ -175,36 +175,53 @@ export class WorkshopLexicalGravityHandler {
     }
   }
 
-  async handleSave(message: WorkshopSaveLexicalGravityLensMessage): Promise<void> {
-    const { token, query, candidate } = message.payload;
+  async handleSave(message: WorkshopSaveLexicalGravityLensesMessage): Promise<void> {
+    const { token, query, candidateIds } = message.payload;
     const generated = this.latestBuild;
-    const trustedCandidate = generated?.token === token && generated.query === query.trim()
-      ? generated.candidates.find((item) => item.candidateId === candidate.candidateId)
-      : undefined;
     try {
-      if (!trustedCandidate) {
+      if (
+        !generated
+        || generated.token !== token
+        || generated.query !== query.trim()
+        || !Array.isArray(candidateIds)
+        || candidateIds.length < 1
+        || candidateIds.some((candidateId) => typeof candidateId !== 'string')
+      ) {
         throw new Error('Those generated lens choices have expired. Build the lens again.');
       }
-      const lens = await this.repository.saveForQuery(query, trustedCandidate.lens);
+      const selectedIds = new Set(candidateIds);
+      if (selectedIds.size !== candidateIds.length) {
+        throw new Error('Each generated lens may be selected only once.');
+      }
+      const trustedCandidates = generated.candidates.filter(
+        ({ candidateId }) => selectedIds.has(candidateId)
+      );
+      if (trustedCandidates.length !== selectedIds.size) {
+        throw new Error('Those generated lens choices have expired. Build the lens again.');
+      }
+      const lenses = await this.repository.saveManyForQuery(
+        query,
+        trustedCandidates.map(({ lens }) => lens)
+      );
       this.latestBuild = undefined;
       await this.postMessage({
-        type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_SAVED,
+        type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED,
         source: 'extension.workshop.lexical-gravity',
         timestamp: Date.now(),
         payload: {
           token,
           ok: true,
-          lens,
+          lenses,
           storagePath: this.repository.availability().displayPath
         }
-      } satisfies WorkshopLexicalGravityLensSavedMessage);
+      } satisfies WorkshopLexicalGravityLensesSavedMessage);
     } catch (error) {
       await this.postMessage({
-        type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_SAVED,
+        type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED,
         source: 'extension.workshop.lexical-gravity',
         timestamp: Date.now(),
         payload: { token, ok: false, error: this.errorMessage(error) }
-      } satisfies WorkshopLexicalGravityLensSavedMessage);
+      } satisfies WorkshopLexicalGravityLensesSavedMessage);
     }
   }
 

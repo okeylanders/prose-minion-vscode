@@ -30,12 +30,12 @@ const renderModal = (
     storagePath: 'prose-minion/lenses',
     previewResult: null,
     lensCandidates: null,
-    lensSaved: null,
+    lensesSaved: null,
     actionResult: null,
     onRequestLenses: jest.fn(),
     onPreview: jest.fn(),
     onBuildLens: jest.fn(),
-    onSaveLens: jest.fn(),
+    onSaveLenses: jest.fn(),
     onApply: jest.fn(),
     onClearTransientResults: jest.fn(),
     onConsumeActionResult: jest.fn(),
@@ -109,7 +109,7 @@ describe('WorkshopLexicalGravityModal', () => {
     );
   });
 
-  it('sends a generated choice directly through the project-save boundary', () => {
+  it('sends one or more selected generated lenses through one project-save boundary', () => {
     const { props, view } = renderModal();
     const input = screen.getByPlaceholderText('Look up or invent a lens…');
     fireEvent.change(input, { target: { value: 'falconry' } });
@@ -125,13 +125,39 @@ describe('WorkshopLexicalGravityModal', () => {
         variant: 'The hunt'
       }
     };
+    const secondCandidate = {
+      candidateId: 'falconry-2',
+      lens: {
+        ...candidate.lens,
+        variant: 'The mews'
+      }
+    };
+    const thirdCandidate = {
+      candidateId: 'falconry-3',
+      lens: {
+        ...candidate.lens,
+        variant: 'The stoop'
+      }
+    };
 
     view.rerender(<WorkshopLexicalGravityModal
       {...props}
-      lensCandidates={{ token, query: 'falconry', ok: true, candidates: [candidate] }}
+      lensCandidates={{
+        token,
+        query: 'falconry',
+        ok: true,
+        candidates: [candidate, secondCandidate, thirdCandidate]
+      }}
     />);
     fireEvent.click(screen.getByRole('button', { name: /Falconry — The hunt/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Falconry — The stoop/ }));
+    expect(screen.getByText('2 selected')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add 2 selected lenses' }));
 
-    expect(props.onSaveLens).toHaveBeenCalledWith(token, 'falconry', candidate);
+    expect(props.onSaveLenses).toHaveBeenCalledWith(
+      token,
+      'falconry',
+      ['falconry-1', 'falconry-3']
+    );
   });
 });

@@ -130,9 +130,10 @@ maps to Sprint 02B after the sequencing split.
   config. The committed directive never reruns the preview.
 - **The lens library has project-owned truth.** `Build lens` makes one explicit
   model request that returns several bounded, fully drafted lens variants; the
-  writer chooses one. Only the chosen validated lens is written to
-  `prose-minion/lenses/<slug>.json`, making it reusable across sessions. Drafting
-  and choosing remain pre-commit play. At install time the session snapshots the
+  writer selects one or more and saves the selected set in one action. Each
+  validated selection is written to its own `prose-minion/lenses/<slug>.json`,
+  making it reusable across sessions. Drafting and choosing remain pre-commit
+  play. At install time the session snapshots the
   resolved lens into its config, so later project-file edits seed future work
   without silently rewriting saved session history.
 - **The committed artifact ≠ the exploration UI.** What rides the rail is a
@@ -162,7 +163,7 @@ maps to Sprint 02B after the sequencing split.
    deterministic Word field / Gradient / Substitutions / Clichés tabs; weight
    slider; 1°–3° reach; metaphor-pull toggle; explicit preview action.
 4. **Two explicit model seams**: cached fast-tier `Preview the pull`, plus
-   bounded multi-variant `Build lens` with writer selection and validated
+   bounded multi-variant `Build lens` with writer multi-selection and validated
    project-resource persistence under `prose-minion/lenses/`.
 5. **Commit path** onto the standing rail via the coordinator; a Lexical
    Gravity local codec; the `widgetId`-discriminated persisted config union;

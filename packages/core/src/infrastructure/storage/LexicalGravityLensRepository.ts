@@ -16,7 +16,8 @@ const decoder = new TextDecoder();
 
 export const LEXICAL_GRAVITY_LIBRARY_LIMITS = Object.freeze({
   maximumFiles: 200,
-  maximumFileBytes: 256 * 1024
+  maximumFileBytes: 256 * 1024,
+  maximumBatchSize: 3
 });
 
 export class LexicalGravityLibraryUnavailableError extends Error {
@@ -88,39 +89,94 @@ export class LexicalGravityLensRepository {
     );
   }
 
-  async saveForQuery(
+  async saveManyForQuery(
     query: string,
-    candidate: WorkshopLexicalGravityLens
-  ): Promise<WorkshopLexicalGravityLens> {
+    candidates: WorkshopLexicalGravityLens[]
+  ): Promise<WorkshopLexicalGravityLens[]> {
     const available = this.availability();
-    const slug = lexicalGravityLensSlug(query);
-    if (!slug) {throw new Error('Lens subject must include at least one letter or number');}
-    const lens = validateLexicalGravityLens({
-      ...cloneLexicalGravityLens(candidate),
-      slug,
-      source: 'project'
+    const baseSlug = lexicalGravityLensSlug(query);
+    if (!baseSlug) {throw new Error('Lens subject must include at least one letter or number');}
+    if (
+      candidates.length < 1
+      || candidates.length > LEXICAL_GRAVITY_LIBRARY_LIMITS.maximumBatchSize
+    ) {
+      throw new Error(
+        `Choose 1–${LEXICAL_GRAVITY_LIBRARY_LIMITS.maximumBatchSize} generated lenses to save`
+      );
+    }
+    const usedSlugs = new Set<string>();
+    const lenses = candidates.map((candidate, index) => {
+      const variantSlug = lexicalGravityLensSlug(candidate.variant ?? '');
+      const proposedSlug = index === 0
+        ? baseSlug
+        : `${baseSlug}-${variantSlug || `take-${index + 1}`}`;
+      const slug = this.uniqueSlug(proposedSlug, usedSlugs);
+      return validateLexicalGravityLens({
+        ...cloneLexicalGravityLens(candidate),
+        slug,
+        source: 'project'
+      });
     });
+
     await this.fileSystem.createDirectory(available.lensesDirectory);
-    const destination = path.join(available.lensesDirectory, `${slug}.json`);
-    const temporary = path.join(
-      available.lensesDirectory,
-      `.${slug}.${++this.temporaryCounter}.tmp`
-    );
-    await this.fileSystem.writeFile(
-      temporary,
-      encoder.encode(`${JSON.stringify(lens, null, 2)}\n`)
-    );
+    const writes = lenses.map((lens) => ({
+      lens,
+      destination: path.join(available.lensesDirectory, `${lens.slug}.json`),
+      temporary: path.join(
+        available.lensesDirectory,
+        `.${lens.slug}.${++this.temporaryCounter}.tmp`
+      )
+    }));
+    await Promise.all(writes.map(({ destination }) => this.assertDestinationMissing(destination)));
+
+    const published: string[] = [];
     try {
-      await this.fileSystem.rename(temporary, destination, { overwrite: true });
-    } catch (error) {
-      try {
-        await this.fileSystem.delete(temporary);
-      } catch {
-        // The original write failure is the useful one; a stale temp is benign.
+      await Promise.all(writes.map(({ lens, temporary }) => this.fileSystem.writeFile(
+        temporary,
+        encoder.encode(`${JSON.stringify(lens, null, 2)}\n`)
+      )));
+      for (const { temporary, destination } of writes) {
+        await this.fileSystem.rename(temporary, destination, { overwrite: false });
+        published.push(destination);
       }
+    } catch (error) {
+      await Promise.all(writes.map(({ temporary }) => this.deleteAfterFailure(temporary)));
+      await Promise.all(published.map((destination) => this.deleteAfterFailure(destination)));
       throw error;
     }
-    return cloneLexicalGravityLens(lens);
+    return lenses.map(cloneLexicalGravityLens);
+  }
+
+  private uniqueSlug(proposed: string, used: Set<string>): string {
+    let slug = proposed;
+    let suffix = 2;
+    while (used.has(slug)) {
+      slug = `${proposed}-${suffix++}`;
+    }
+    used.add(slug);
+    return slug;
+  }
+
+  private async assertDestinationMissing(filePath: string): Promise<void> {
+    try {
+      await this.fileSystem.stat(filePath);
+      throw new Error(`Lexical Gravity lens ${path.basename(filePath)} already exists`);
+    } catch (error) {
+      if (isMissingPath(error)) {return;}
+      throw error;
+    }
+  }
+
+  private async deleteAfterFailure(filePath: string): Promise<void> {
+    try {
+      await this.fileSystem.delete(filePath);
+    } catch (error) {
+      if (!isMissingPath(error)) {
+        this.log.appendLine(
+          `[LexicalGravityLensRepository] Could not clean up ${path.basename(filePath)}`
+        );
+      }
+    }
   }
 
   private async readLens(

@@ -1868,26 +1868,27 @@ export interface WorkshopLexicalGravityLensCandidatesMessage
   type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES;
 }
 
-export interface WorkshopSaveLexicalGravityLensMessage
+export interface WorkshopSaveLexicalGravityLensesMessage
   extends MessageEnvelope<{
     token: string;
     query: string;
-    candidate: WorkshopLexicalGravityLensCandidate;
+    /** Candidate ids selected by the writer; candidate bodies remain host-owned. */
+    candidateIds: string[];
   }> {
-  type: MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENS;
+  type: MessageType.WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES;
 }
 
-export interface WorkshopLexicalGravityLensSavedPayload {
+export interface WorkshopLexicalGravityLensesSavedPayload {
   token: string;
   ok: boolean;
-  lens?: WorkshopLexicalGravityLens;
+  lenses?: WorkshopLexicalGravityLens[];
   storagePath?: string;
   error?: string;
 }
 
-export interface WorkshopLexicalGravityLensSavedMessage
-  extends MessageEnvelope<WorkshopLexicalGravityLensSavedPayload> {
-  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_SAVED;
+export interface WorkshopLexicalGravityLensesSavedMessage
+  extends MessageEnvelope<WorkshopLexicalGravityLensesSavedPayload> {
+  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED;
 }
 
 export interface WorkshopRequestWidgetConfigMessage extends MessageEnvelope<{ configId: string }> {
