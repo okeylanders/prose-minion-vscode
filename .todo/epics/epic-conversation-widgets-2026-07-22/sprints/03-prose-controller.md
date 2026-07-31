@@ -27,12 +27,13 @@ Lexical Gravity and Prose Controller coexist as **distinct active directives** o
 the same passage — a writer can run both — each with its own chip and kill
 switch, both consulted at prose-generation time.
 
-## Current Reality
+## Expected Foundation
 
-- Sprint 02 shipped the reserved standing frame, the between-runs coordinator
-  (in the `WorkshopConversationBehaviorService` mold), edit-in-place + shift
-  markers, the presentation-only chip, and the active-directive indicator + kill
-  switch. Prose Controller is a second *producer* onto that infrastructure.
+- Sprint 02 will establish the reserved standing frame, the between-runs
+  coordinator (in the `WorkshopConversationBehaviorService` mold),
+  edit-in-place + shift markers, the presentation-only chip, and the active-
+  directive indicator + kill switch. Prose Controller is a second *producer*
+  onto that infrastructure.
 - The measure tools already compute deterministic prose metrics (POS via wink,
   sentence stats, punctuation counts, style flags). These are the natural
   deterministic scaffold for Prose Controller's live preview — reuse them; do not

@@ -15,12 +15,12 @@ interpretive lenses / world-views (e.g. Photography + Music + Mathematics) — w
 model output gets muddy; the whole design of this sprint is about keeping a blend
 *layered* rather than *confused*.
 
-## Current Reality
+## Expected Foundation
 
-- Sprint 02 shipped single-lens Lexical Gravity on the standing rail: the
-  `<workshop-prose-gravity>` frame, the coordinator, edit-in-place + shift
+- Sprint 02 will establish single-lens Lexical Gravity on the standing rail:
+  the `<workshop-prose-gravity>` frame, the coordinator, edit-in-place + shift
   marker, the chip, the active-directive indicator + kill switch, and the
-  debounced/ cached live-generation path.
+  debounced/cached live-generation path.
 - The committed directive payload already carries lens, weight,
   degrees-of-separation, and metaphor pull. Blending extends the payload to a
   *weighted set* of lenses.
