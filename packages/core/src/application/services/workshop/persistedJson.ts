@@ -1,11 +1,12 @@
-import { isRecord } from '@/application/services/workshop/persistedValidation';
+import {
+  isRecord,
+  MAXIMUM_PERSISTED_JSON_DEPTH
+} from '@/application/services/workshop/persistedValidation';
 
 /**
  * Durable Workshop JSON is user-controlled workspace input. Keep recursive
  * validators/cloners comfortably below the JavaScript call-stack ceiling.
  */
-export const MAXIMUM_PERSISTED_JSON_DEPTH = 100;
-
 export function assertPersistedJsonNestingDepth(
   text: string,
   path = 'Workshop session JSON'

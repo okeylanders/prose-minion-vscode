@@ -14,8 +14,8 @@ Two files absorb every new Workshop feature instead of shedding any:
 
 | File | Lines (post-13A) | Nearest sibling |
 | --- | --- | --- |
-| `packages/core/src/application/services/workshop/WorkshopSessionService.ts` | ~2,500 | `RunWorkshopToolSidePass.ts` (305) |
-| `packages/core/src/application/handlers/domain/WorkshopHandler.ts` | ~2,700 | `WorkshopSessionMessageHandler.ts` (303) |
+| `packages/core/src/application/services/workshop/WorkshopSessionService.ts` | ~2,743 (2026-07-31) | `RunWorkshopToolSidePass.ts` (305) |
+| `packages/core/src/application/handlers/domain/WorkshopHandler.ts` | ~2,922 (2026-07-31) | `WorkshopSessionMessageHandler.ts` (303) |
 
 `CLAUDE.md`'s anti-pattern checklist flags any file over 500 lines. Every other
 file in both directories is comfortably under 1,000. Both files were already
@@ -40,6 +40,15 @@ the same pressure. That local seam was addressed immediately:
 `WorkshopAnalysisInputs` now owns analysis-input resolution and shared
 provenance descriptions, reducing the capability adapter from ~850 to ~740
 lines. The two larger files below remain the tracked debt.
+
+## Progress
+
+- **2026-07-31 — widget-config ledger extracted.**
+  `WorkshopWidgetConfigLedger` now owns `wc-N` identity, config state, commit
+  linkage, display summaries, reset, export, and hydration replacement.
+  `WorkshopSessionService` keeps the aggregate-facing methods but no longer
+  stores that collection/counter or its Gesture clone/summary rules inline.
+  This closes PR #96 finding 12 while leaving the broader god-file target open.
 
 ## Candidate seams
 
@@ -75,3 +84,4 @@ Named by the reviewers, in rough order of cohesion:
 - [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md)
 - [PR #88 review](../../docs/pr-reviews/pr-88-persona-analysis-inputs-review.md)
 - ADR 2026-06-18: MessageHandler Composition-Root Consolidation
+- ADR 2026-07-31: Workshop Widget State Ownership

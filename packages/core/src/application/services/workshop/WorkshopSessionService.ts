@@ -40,7 +40,6 @@ import {
   WorkshopTurnKind,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
-  WorkshopWidgetConfigSummary,
   WorkshopWidgetId,
   WorkshopWidgetRecommendation
 } from '@messages';
@@ -86,6 +85,13 @@ import type {
   WorkshopThreadArtifact,
   WorkshopThreadArtifactFrameInput
 } from '@/application/services/workshop/WorkshopThreadArtifactFrame';
+import {
+  WorkshopWidgetConfigLedger
+} from '@/application/services/workshop/widgets/WorkshopWidgetConfigLedger';
+import {
+  cloneGesturePlaygroundDraft,
+  summarizeGesturePlaygroundDraft
+} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
 export type {
   WorkshopSessionCheckpointNormalization
 } from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
@@ -348,15 +354,8 @@ export class WorkshopSessionService {
    * here and delivers each body once through that participant's room offset.
    */
   private threadArtifacts: WorkshopThreadArtifact[] = [];
-  /**
-   * Persisted widget authoring configs (ADR 2026-07-22): the chip's
-   * re-openable Draft, by stable `wc-N` id. Clone-and-recommit appends new
-   * entries and never retires old ones — the chip on a historical turn keeps
-   * addressing its exact config.
-   */
-  private widgetConfigs: WorkshopWidgetConfigSnapshot[] = [];
-  /** Monotonic `wc-N` mint — never reused within a session. */
-  private widgetConfigCounter = 0;
+  /** Session-owned widget config lifecycle; the aggregate remains its only caller. */
+  private readonly widgetConfigLedger: WorkshopWidgetConfigLedger;
   /**
    * Writer-origin manifest rows per retained participant (Phase 7): pins
    * stamped at delivery (stale-marked on revision), tool/guest rows stamped
@@ -391,6 +390,20 @@ export class WorkshopSessionService {
     initialBehavior: WorkshopConversationBehavior = DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
   ) {
     this.behavior = { ...initialBehavior };
+    this.widgetConfigLedger = new WorkshopWidgetConfigLedger(this.now, {
+      cloneDraft: (widgetId, draft) => {
+        if (widgetId !== 'gesture-playground') {
+          throw new Error(`No draft clone operation registered for widget ${widgetId}`);
+        }
+        return cloneGesturePlaygroundDraft(draft);
+      },
+      summarizeDraft: (widgetId, draft) => {
+        if (widgetId !== 'gesture-playground') {
+          throw new Error(`No draft summary operation registered for widget ${widgetId}`);
+        }
+        return summarizeGesturePlaygroundDraft(draft);
+      }
+    });
   }
 
   getConversationBehavior(): WorkshopConversationBehavior {
@@ -1023,32 +1036,16 @@ export class WorkshopSessionService {
     draft: WorkshopGestureDraft;
     clonedFromConfigId?: string;
   }): WorkshopWidgetConfigSnapshot {
-    this.widgetConfigCounter += 1;
-    const config: WorkshopWidgetConfigSnapshot = {
-      id: `wc-${this.widgetConfigCounter}`,
-      widgetId: input.widgetId,
-      revision: 1,
-      draft: cloneGestureDraft(input.draft),
-      clonedFromConfigId: input.clonedFromConfigId,
-      createdAt: this.now()
-    };
-    this.widgetConfigs.push(config);
-    return cloneWidgetConfig(config);
+    return this.widgetConfigLedger.create(input);
   }
 
   getWidgetConfig(id: string): WorkshopWidgetConfigSnapshot | undefined {
-    const config = this.widgetConfigs.find((candidate) => candidate.id === id);
-    return config ? cloneWidgetConfig(config) : undefined;
+    return this.widgetConfigLedger.get(id);
   }
 
   /** Stamp the landed commit's turn/artifact identities onto its config. */
   recordWidgetCommit(configId: string, linkage: { turnId: string; artifactId: string }): void {
-    const config = this.widgetConfigs.find((candidate) => candidate.id === configId);
-    if (!config) {
-      throw new Error(`Unknown widget config ${configId}`);
-    }
-    config.committedTurnId = linkage.turnId;
-    config.artifactId = linkage.artifactId;
+    this.widgetConfigLedger.recordCommit(configId, linkage);
   }
 
   /**
@@ -2014,8 +2011,7 @@ export class WorkshopSessionService {
     this.activeRun = undefined;
     this.pendingMessageAttachments = [];
     this.threadArtifacts = [];
-    this.widgetConfigs = [];
-    this.widgetConfigCounter = 0;
+    this.widgetConfigLedger.reset();
     this.pendingContextRevision = undefined;
     this.replacementCount = 0;
     this.selectedToolId = undefined;
@@ -2039,6 +2035,7 @@ export class WorkshopSessionService {
     if (this.activeRun) {
       throw new WorkshopSessionActiveRunPersistenceError();
     }
+    const widgetConfigState = this.widgetConfigLedger.exportState();
 
     return {
       excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
@@ -2059,9 +2056,9 @@ export class WorkshopSessionService {
         threadArtifact: this.threadArtifactCounter,
         turn: this.turnCounter,
         todo: this.todoCounter,
-        widgetConfig: this.widgetConfigCounter
+        widgetConfig: widgetConfigState.counter
       },
-      widgetConfigs: this.widgetConfigs.map(cloneWidgetConfig),
+      widgetConfigs: widgetConfigState.configs,
       writerSources: {
         host: this.hostWriterSources.map(cloneSourceEntry),
         tools: cloneToolWriterSources(this.toolWriterSources),
@@ -2144,7 +2141,10 @@ export class WorkshopSessionService {
     const threadArtifacts = (normalized.threadArtifacts ?? []).map(cloneThreadArtifact);
     const turns = normalized.turns.map(cloneTurn);
     const todos = normalized.todos.map(cloneStoredTodo);
-    const widgetConfigs = (normalized.widgetConfigs ?? []).map(cloneWidgetConfig);
+    const widgetConfigState = this.widgetConfigLedger.prepareState({
+      configs: normalized.widgetConfigs ?? [],
+      counter: normalized.counters.widgetConfig ?? 0
+    });
     const behavior = { ...currentBehavior };
     const lastCommittedPersonaBehavior = normalized.lastCommittedPersonaBehavior
       ? { ...normalized.lastCommittedPersonaBehavior }
@@ -2261,8 +2261,7 @@ export class WorkshopSessionService {
     this.selectedToolId = normalized.selectedToolId;
     this.turnCounter = normalized.counters.turn;
     this.todoCounter = normalized.counters.todo;
-    this.widgetConfigs = widgetConfigs;
-    this.widgetConfigCounter = normalized.counters.widgetConfig ?? 0;
+    this.widgetConfigLedger.installPreparedState(widgetConfigState);
     this.todos = todos;
     this.behavior = behavior;
     this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;
@@ -2298,9 +2297,7 @@ export class WorkshopSessionService {
           }
         : undefined,
       todos: this.todos.map((todo) => cloneTodo(todo, this.excerptVersion)),
-      widgetConfigs: this.widgetConfigs
-        .filter((config) => visibleWidgetConfigIds.has(config.id))
-        .map(widgetConfigSummary),
+      widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
       turns: windowed.map(cloneTurn),
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
@@ -2598,37 +2595,6 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
             : undefined
         }
       : undefined
-  };
-}
-
-function cloneGestureDraft(draft: WorkshopGestureDraft): WorkshopGestureDraft {
-  return {
-    targetPhrase: draft.targetPhrase,
-    writerInstructions: draft.writerInstructions,
-    contextText: draft.contextText,
-    characterNotes: draft.characterNotes,
-    sourceReferences: draft.sourceReferences.map((reference) => ({ ...reference })),
-    dictionaryMarkdown: draft.dictionaryMarkdown,
-    menu: draft.menu.map((group) => ({ heading: group.heading, options: [...group.options] })),
-    selections: [...draft.selections],
-    note: draft.note,
-    includeDictionaryInCommit: draft.includeDictionaryInCommit === true
-  };
-}
-
-function cloneWidgetConfig(config: WorkshopWidgetConfigSnapshot): WorkshopWidgetConfigSnapshot {
-  return {
-    ...config,
-    draft: cloneGestureDraft(config.draft)
-  };
-}
-
-function widgetConfigSummary(config: WorkshopWidgetConfigSnapshot): WorkshopWidgetConfigSummary {
-  const { draft, ...identity } = config;
-  return {
-    ...identity,
-    targetPhrase: draft.targetPhrase,
-    selectionCount: draft.selections.length
   };
 }
 

@@ -9,6 +9,9 @@
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  normalizeGesturePlaygroundDraftForHydration
+} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
 
 export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
@@ -77,20 +80,18 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   let defaultedWidgetDictionarySharing = false;
   let defaultedWidgetSourceReferences = false;
   const widgetConfigs = state.widgetConfigs?.map((config) => {
-    const needsDictionarySharing = typeof config.draft.includeDictionaryInCommit !== 'boolean';
-    const needsSourceReferences = !Array.isArray(config.draft.sourceReferences);
-    if (!needsDictionarySharing && !needsSourceReferences) {
+    const normalizedDraft = normalizeGesturePlaygroundDraftForHydration(config.draft);
+    if (
+      !normalizedDraft.defaultedDictionarySharing
+      && !normalizedDraft.defaultedSourceReferences
+    ) {
       return config;
     }
-    defaultedWidgetDictionarySharing ||= needsDictionarySharing;
-    defaultedWidgetSourceReferences ||= needsSourceReferences;
+    defaultedWidgetDictionarySharing ||= normalizedDraft.defaultedDictionarySharing;
+    defaultedWidgetSourceReferences ||= normalizedDraft.defaultedSourceReferences;
     return {
       ...config,
-      draft: {
-        ...config.draft,
-        ...(needsDictionarySharing ? { includeDictionaryInCommit: false } : {}),
-        ...(needsSourceReferences ? { sourceReferences: [] } : {})
-      }
+      draft: normalizedDraft.draft
     };
   });
   if (defaultedWidgetDictionarySharing) {
