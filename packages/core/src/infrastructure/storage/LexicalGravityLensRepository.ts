@@ -4,12 +4,17 @@ import * as path from 'path';
 import { WorkshopLexicalGravityLens } from '@messages';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import {
+  cloneLexicalGravityLens,
   validateLexicalGravityLens
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
 import {
-  cloneLexicalGravityLens,
+  composeLexicalGravityLensSlug,
   lexicalGravityLensSlug
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  isMissingFileSystemPathError
+} from '@/infrastructure/storage/fileSystemErrors';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -63,19 +68,19 @@ export class LexicalGravityLensRepository {
     try {
       entries = await this.fileSystem.readDirectory(available.lensesDirectory);
     } catch (error) {
-      if (isMissingPath(error)) {return [];}
+      if (isMissingFileSystemPathError(error)) {return [];}
       throw error;
     }
     const files = entries
       .filter(([name, type]) => type === FileType.File && name.endsWith('.json'))
       .sort(([left], [right]) => left.localeCompare(right, 'en-US'))
       .slice(0, LEXICAL_GRAVITY_LIBRARY_LIMITS.maximumFiles);
-    const lenses: WorkshopLexicalGravityLens[] = [];
-    for (const [name] of files) {
-      const lens = await this.readLens(path.join(available.lensesDirectory, name), name, true);
-      if (lens) {lenses.push(lens);}
-    }
-    return lenses;
+    const lenses = await Promise.all(files.map(([name]) => this.readLens(
+      path.join(available.lensesDirectory, name),
+      name,
+      true
+    )));
+    return lenses.filter((lens): lens is WorkshopLexicalGravityLens => lens !== undefined);
   }
 
   async findForQuery(query: string): Promise<WorkshopLexicalGravityLens | undefined> {
@@ -91,7 +96,8 @@ export class LexicalGravityLensRepository {
 
   async saveManyForQuery(
     query: string,
-    candidates: WorkshopLexicalGravityLens[]
+    candidates: WorkshopLexicalGravityLens[],
+    options: { useCanonicalSlug?: boolean } = {}
   ): Promise<WorkshopLexicalGravityLens[]> {
     const available = this.availability();
     const baseSlug = lexicalGravityLensSlug(query);
@@ -105,11 +111,12 @@ export class LexicalGravityLensRepository {
       );
     }
     const usedSlugs = new Set<string>();
+    const useCanonicalSlug = options.useCanonicalSlug ?? true;
     const lenses = candidates.map((candidate, index) => {
       const variantSlug = lexicalGravityLensSlug(candidate.variant ?? '');
-      const proposedSlug = index === 0
+      const proposedSlug = useCanonicalSlug && index === 0
         ? baseSlug
-        : `${baseSlug}-${variantSlug || `take-${index + 1}`}`;
+        : composeLexicalGravityLensSlug(baseSlug, variantSlug || `take-${index + 1}`);
       const slug = this.uniqueSlug(proposedSlug, usedSlugs);
       return validateLexicalGravityLens({
         ...cloneLexicalGravityLens(candidate),
@@ -148,10 +155,15 @@ export class LexicalGravityLensRepository {
   }
 
   private uniqueSlug(proposed: string, used: Set<string>): string {
+    let ordinal = 1;
     let slug = proposed;
-    let suffix = 2;
     while (used.has(slug)) {
-      slug = `${proposed}-${suffix++}`;
+      const suffix = `-${++ordinal}`;
+      const root = lexicalGravityLensSlug(
+        proposed,
+        PROMPT_BUDGETS.workshopWidgets.lexicalLensSlugCharacters - suffix.length
+      );
+      slug = `${root}${suffix}`;
     }
     used.add(slug);
     return slug;
@@ -162,7 +174,7 @@ export class LexicalGravityLensRepository {
       await this.fileSystem.stat(filePath);
       throw new Error(`Lexical Gravity lens ${path.basename(filePath)} already exists`);
     } catch (error) {
-      if (isMissingPath(error)) {return;}
+      if (isMissingFileSystemPathError(error)) {return;}
       throw error;
     }
   }
@@ -171,7 +183,7 @@ export class LexicalGravityLensRepository {
     try {
       await this.fileSystem.delete(filePath);
     } catch (error) {
-      if (!isMissingPath(error)) {
+      if (!isMissingFileSystemPathError(error)) {
         this.log.appendLine(
           `[LexicalGravityLensRepository] Could not clean up ${path.basename(filePath)}`
         );
@@ -193,9 +205,15 @@ export class LexicalGravityLensRepository {
         throw new Error('invalid size/type');
       }
       const raw = decoder.decode(await this.fileSystem.readFile(filePath));
-      return validateLexicalGravityLens(JSON.parse(raw));
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const lens = validateLexicalGravityLens({ ...parsed, source: 'project' });
+      const fileSlug = path.basename(displayName, '.json');
+      if (lens.slug !== fileSlug) {
+        throw new Error(`declared slug ${lens.slug} does not match filename ${fileSlug}`);
+      }
+      return lens;
     } catch (error) {
-      if (isMissingPath(error)) {return undefined;}
+      if (isMissingFileSystemPathError(error)) {return undefined;}
       const message = error instanceof Error ? error.message : String(error);
       if (tolerateInvalid) {
         this.log.appendLine(`[LexicalGravityLensRepository] Skipped ${displayName}: ${message}`);
@@ -204,9 +222,4 @@ export class LexicalGravityLensRepository {
       throw new Error(`Saved Lexical Gravity lens ${displayName} is invalid: ${message}`);
     }
   }
-}
-
-function isMissingPath(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /(?:ENOENT|FileNotFound|not found|does not exist)/i.test(message);
 }

@@ -2,8 +2,10 @@ import {
   LexicalGravityModelService
 } from '@services/widgets/LexicalGravityModelService';
 import {
-  builtInLexicalGravityLens,
   lexicalGravityConfigKey
+} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+import {
+  builtInLexicalGravityLens,
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 

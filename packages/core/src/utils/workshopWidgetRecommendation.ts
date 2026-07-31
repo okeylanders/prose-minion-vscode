@@ -16,14 +16,20 @@ import {
   WorkshopWidgetRecommendation,
   WorkshopWidgetSourceReference
 } from '@messages';
-import { isLiveWorkshopWidgetId } from '@shared/constants/workshopWidgets';
+import {
+  isLexicalGravityReach,
+  isLexicalGravityWeight,
+  isLiveWorkshopWidgetId,
+  LEXICAL_GRAVITY_REACH,
+  LEXICAL_GRAVITY_WEIGHT
+} from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
   '<workshop-widget-recommendation-contract>',
   'The writer has two interactive widgets you may recommend: Gesture Playground explores one exact embodied beat; Lexical Gravity installs a writer-approved lexical field that influences story prose only when prose is composed or revised.',
   'Recommend at most one widget, and only when it would genuinely help. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
-  'For Lexical Gravity, propose but never install. Choose one starter lens slug from photography, music, mathematics, weather, botany, architecture; weight must be 10–100 in steps of 5; reach is 1, 2, or 3; metaphor-pull is true or false. The writer can change every value before explicitly installing it.',
+  `For Lexical Gravity, propose but never install. Choose one starter lens slug from photography, music, mathematics, weather, botany, architecture; weight must be ${LEXICAL_GRAVITY_WEIGHT.minimum}–${LEXICAL_GRAVITY_WEIGHT.maximum} in steps of ${LEXICAL_GRAVITY_WEIGHT.step}; reach is ${LEXICAL_GRAVITY_REACH.values.join(', ')}; metaphor-pull is true or false. The writer can change every value before explicitly installing it.`,
   'Lexical Gravity frame:',
   '### Try a widget',
   '<workshop-widget-recommendation version="1">',
@@ -321,16 +327,15 @@ function inspectLexicalGravityRecommendation(
   const weight = Number(field(WEIGHT_START, WEIGHT_END));
   const reach = Number(field(REACH_START, REACH_END));
   const metaphorText = field(METAPHOR_PULL_START, METAPHOR_PULL_END);
+  // Trust-boundary allowlist: personas may seed host-owned starters only, never
+  // name an arbitrary project lens whose body would enter a system prompt.
   const builtIns = new Set([
     'photography', 'music', 'mathematics', 'weather', 'botany', 'architecture'
   ]);
   if (
     !builtIns.has(lensSlug)
-    || !Number.isSafeInteger(weight)
-    || weight < 10
-    || weight > 100
-    || weight % 5 !== 0
-    || (reach !== 1 && reach !== 2 && reach !== 3)
+    || !isLexicalGravityWeight(weight)
+    || !isLexicalGravityReach(reach)
     || (metaphorText !== 'true' && metaphorText !== 'false')
   ) {
     return { outcome: 'rejected', rejection: 'invalid_field' };

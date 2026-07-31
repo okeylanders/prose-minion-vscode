@@ -15,6 +15,9 @@ import {
 import {
   validateLexicalGravityDraft
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+import {
+  buildLexicalGravityDirectiveFrame
+} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
 import { LogSink } from '@/platform';
 import {
   MessageType,
@@ -45,6 +48,7 @@ export class WorkshopLexicalGravityHandler {
     token: string;
     query: string;
     candidates: WorkshopLexicalGravityLensCandidate[];
+    savedCandidateIds: Set<string>;
   };
 
   constructor(
@@ -99,7 +103,9 @@ export class WorkshopLexicalGravityHandler {
     try {
       const projects = await this.repository.list();
       const bySlug = new Map(builtIns.map((lens) => [lens.slug, lens]));
-      projects.forEach((lens) => bySlug.set(lens.slug, lens));
+      projects.forEach((lens) => {
+        if (!bySlug.has(lens.slug)) {bySlug.set(lens.slug, lens);}
+      });
       const message: WorkshopLexicalGravityLensesDataMessage = {
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA,
         source: 'extension.workshop.lexical-gravity',
@@ -165,7 +171,7 @@ export class WorkshopLexicalGravityHandler {
       }
       const candidates = await this.model.buildLenses(query, { signal: controller.signal });
       if (controller.signal.aborted) {return;}
-      this.latestBuild = { token, query, candidates };
+      this.latestBuild = { token, query, candidates, savedCandidateIds: new Set() };
       await this.postCandidates({ token, query, ok: true, candidates });
     } catch (error) {
       if (controller.signal.aborted) {return;}
@@ -193,6 +199,9 @@ export class WorkshopLexicalGravityHandler {
       if (selectedIds.size !== candidateIds.length) {
         throw new Error('Each generated lens may be selected only once.');
       }
+      if ([...selectedIds].some((candidateId) => generated.savedCandidateIds.has(candidateId))) {
+        throw new Error('One of those generated lenses is already in the project.');
+      }
       const trustedCandidates = generated.candidates.filter(
         ({ candidateId }) => selectedIds.has(candidateId)
       );
@@ -201,9 +210,14 @@ export class WorkshopLexicalGravityHandler {
       }
       const lenses = await this.repository.saveManyForQuery(
         query,
-        trustedCandidates.map(({ lens }) => lens)
+        trustedCandidates.map(({ lens }) => lens),
+        { useCanonicalSlug: generated.savedCandidateIds.size === 0 }
       );
-      this.latestBuild = undefined;
+      trustedCandidates.forEach(({ candidateId }) => generated.savedCandidateIds.add(candidateId));
+      const remainingCandidateIds = generated.candidates
+        .map(({ candidateId }) => candidateId)
+        .filter((candidateId) => !generated.savedCandidateIds.has(candidateId));
+      if (remainingCandidateIds.length === 0) {this.latestBuild = undefined;}
       await this.postMessage({
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED,
         source: 'extension.workshop.lexical-gravity',
@@ -212,6 +226,8 @@ export class WorkshopLexicalGravityHandler {
           token,
           ok: true,
           lenses,
+          candidateIds: trustedCandidates.map(({ candidateId }) => candidateId),
+          remainingCandidateIds,
           storagePath: this.repository.availability().displayPath
         }
       } satisfies WorkshopLexicalGravityLensesSavedMessage);
@@ -220,7 +236,7 @@ export class WorkshopLexicalGravityHandler {
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED,
         source: 'extension.workshop.lexical-gravity',
         timestamp: Date.now(),
-        payload: { token, ok: false, error: this.errorMessage(error) }
+        payload: { token, ok: false, candidateIds, error: this.errorMessage(error) }
       } satisfies WorkshopLexicalGravityLensesSavedMessage);
     }
   }
@@ -231,13 +247,24 @@ export class WorkshopLexicalGravityHandler {
         throw new Error('That standing widget is not available yet.');
       }
       const draft = validateLexicalGravityDraft(message.payload.draft);
-      const result = await this.directives.applyLexicalGravity(
+      const result = await this.directives.apply({
+        family: 'lexical-gravity',
         draft,
-        message.payload.widgetConfigId
-      );
+        widgetConfigId: message.payload.widgetConfigId
+      });
+      if (result.config.widgetId !== 'lexical-gravity') {
+        throw new Error('Lexical Gravity produced the wrong widget configuration');
+      }
       this.options.postTurn(result.turn);
       this.options.postSessionState();
       this.options.markDirty(`Lexical Gravity ${result.action}`);
+      const frameLength = buildLexicalGravityDirectiveFrame(
+        { id: result.directiveId, revision: result.config.revision },
+        result.config.draft
+      ).length;
+      this.outputChannel.appendLine(
+        `[WorkshopStandingDirective] lexical-gravity ${result.action}: ${result.directiveId} -> ${result.config.id} (revision ${result.config.revision}, lens ${result.config.draft.lensSlug}, ${frameLength} chars)`
+      );
       await this.postAction({
         action: 'apply-standing',
         widgetId: 'lexical-gravity',
@@ -265,10 +292,14 @@ export class WorkshopLexicalGravityHandler {
         this.options.postSessionState();
         this.options.markDirty(`${message.payload.family} removed`);
       }
+      this.outputChannel.appendLine(
+        `[WorkshopStandingDirective] ${message.payload.family} ${result.removed ? 'removed' : 'remove no-op'}${result.directiveId ? `: ${result.directiveId}` : ''}`
+      );
       await this.postAction({
         action: 'remove-standing',
         widgetId: active?.widgetId ?? 'lexical-gravity',
         ok: true,
+        removed: result.removed,
         directiveId: result.directiveId,
         turnId: result.turn?.id
       });

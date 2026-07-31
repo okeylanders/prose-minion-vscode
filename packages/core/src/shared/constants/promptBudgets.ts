@@ -109,7 +109,6 @@ export interface PromptBudgets {
     lexicalBuildQueryCharacters: number;
     lexicalBuildCandidates: number;
     lexicalBuildOutputTokens: number;
-    lexicalPreviewSourceCharacters: number;
     lexicalPreviewCharacters: number;
     lexicalPreviewOutputTokens: number;
     lexicalDirectiveCharacters: number;
@@ -195,7 +194,6 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalBuildQueryCharacters: 100,
     lexicalBuildCandidates: 3,
     lexicalBuildOutputTokens: 8_000,
-    lexicalPreviewSourceCharacters: 16_000,
     lexicalPreviewCharacters: 1_200,
     lexicalPreviewOutputTokens: 1_200,
     lexicalDirectiveCharacters: 3_000

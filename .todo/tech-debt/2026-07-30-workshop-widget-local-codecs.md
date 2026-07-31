@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-30
 **Reviewed**: 2026-07-31
-**Status**: In Progress
+**Status**: Resolved in PR #98 — archive after merge
 **Priority**: Medium
 **Estimated Effort**: Medium
 
@@ -44,9 +44,16 @@ only the generic widget-config envelope and delegates the draft body.
 
 This began immediately before the known second widget rather than inside its
 behavior PR, so Lexical Gravity does not have to mix architectural extraction
-with its standing-directive lifecycle. The debt remains active until Lexical
-Gravity supplies the second local codec and the envelope becomes a
-`widgetId`-discriminated union.
+with its standing-directive lifecycle. The debt remained active until Lexical
+Gravity supplied the second local codec and the envelope became a
+`widgetId`-discriminated union in Sprint 02B.
+
+Sprint 02B supplied that second codec. `LexicalGravityConfigCodec` now owns
+shape validation, admission-time prompt-budget validation, cloning, summary
+projection, and config-key derivation. `WorkshopSessionStateV1Shape` dispatches
+the closed config union by `widgetId`, while `WorkshopWidgetConfigOperations`
+owns lifecycle cloning/summary dispatch. The session aggregate contains no
+widget-specific draft field rules.
 
 ## Related Files
 
@@ -60,11 +67,11 @@ Gravity supplies the second local codec and the envelope becomes a
 
 ## Completion Criteria
 
-- [ ] A second persisted widget exists; do not extract solely in anticipation.
+- [x] A second persisted widget exists; do not extract solely in anticipation.
 - [x] Gesture Playground owns a semantic local codec.
-- [ ] The new widget owns a sibling semantic local codec.
-- [ ] The session codec dispatches widget validation without importing
+- [x] The new widget owns a sibling semantic local codec.
+- [x] The session codec dispatches widget validation without importing
       widget-specific field rules beyond the registry/wiring seam.
-- [ ] Session-level release migrations delegate changed widget payloads to
+- [x] Session-level release migrations delegate changed widget payloads to
       their local helper and leave unaffected widgets untouched.
-- [ ] Existing session round-trip, normalization, and widget tests pass.
+- [x] Existing session round-trip, normalization, and widget tests pass.

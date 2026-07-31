@@ -9,8 +9,14 @@ import {
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import {
-  renderWorkshopStandingDirectiveFrames
+  renderWorkshopStandingDirectiveFramesForSnapshots
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
+
+export type WorkshopStandingDirectiveApplyRequest = {
+  family: 'lexical-gravity';
+  draft: WorkshopLexicalGravityDraft;
+  widgetConfigId?: string;
+};
 
 export interface WorkshopStandingDirectiveApplyResult {
   action: 'installed' | 'shifted';
@@ -33,12 +39,15 @@ export class WorkshopStandingDirectiveService {
     private readonly conversationSettings: WorkshopConversationSettingsService
   ) {}
 
-  async applyLexicalGravity(
-    draft: WorkshopLexicalGravityDraft,
-    widgetConfigId?: string
+  async apply(
+    request: WorkshopStandingDirectiveApplyRequest
   ): Promise<WorkshopStandingDirectiveApplyResult> {
     return this.serialize(async () => {
       this.assertBetweenRuns();
+      const { draft, family, widgetConfigId } = request;
+      if (family !== 'lexical-gravity') {
+        throw new Error(`Standing directive family ${String(family)} is not implemented`);
+      }
       const active = this.session.getStandingDirective('lexical-gravity');
       if (widgetConfigId && active?.widgetConfigId !== widgetConfigId) {
         throw new Error('Lexical Gravity can edit only its currently active configuration.');
@@ -63,10 +72,12 @@ export class WorkshopStandingDirectiveService {
         widgetConfigId: config.id,
         revision: config.revision
       });
-      const frames = renderWorkshopStandingDirectiveFrames(this.session, {
-        directive: preparedDirective.directive,
-        config
-      });
+      const frames = renderWorkshopStandingDirectiveFramesForSnapshots(
+        preparedDirective.state.directives,
+        (configId) => configId === config.id
+          ? config
+          : this.session.getWidgetConfig(configId)
+      );
       await this.conversationSettings.replaceStandingDirectiveFrames(frames);
       const turn = this.session.commitStandingDirectiveMutation(
         preparedDirective,
@@ -88,7 +99,10 @@ export class WorkshopStandingDirectiveService {
       this.assertBetweenRuns();
       const prepared = this.session.prepareStandingDirectiveRemoval(family);
       if (!prepared) {return { removed: false };}
-      const frames = renderWorkshopStandingDirectiveFrames(this.session, undefined, family);
+      const frames = renderWorkshopStandingDirectiveFramesForSnapshots(
+        prepared.state.directives,
+        (configId) => this.session.getWidgetConfig(configId)
+      );
       await this.conversationSettings.replaceStandingDirectiveFrames(frames);
       const turn = this.session.commitStandingDirectiveMutation(prepared);
       return { removed: true, directiveId: prepared.directive.id, turn };

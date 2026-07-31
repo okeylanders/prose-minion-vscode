@@ -57,6 +57,10 @@ describe('WorkshopLexicalGravityModal', () => {
     const { props } = renderModal();
 
     expect(screen.getByText(/passage-scoped directive/)).toBeTruthy();
+    expect((screen.getByPlaceholderText('Look up or invent a lens…') as HTMLInputElement).value)
+      .toBe('');
+    expect((screen.getByRole('button', { name: /Build lens/ }) as HTMLButtonElement).disabled)
+      .toBe(true);
     expect(screen.getByRole('button', { name: /Photography/ }).getAttribute('class'))
       .toContain('is-selected');
     expect(screen.getByText('2°')).toBeTruthy();
@@ -73,6 +77,8 @@ describe('WorkshopLexicalGravityModal', () => {
     expect(props.onPreview).not.toHaveBeenCalled();
     expect(props.onBuildLens).not.toHaveBeenCalled();
     expect(screen.getByText('music to my ears')).toBeTruthy();
+    expect(screen.getByText('What the room is told')).toBeTruthy();
+    expect(screen.getByText(/<prose-directive id="pd-preview"/)).toBeTruthy();
   });
 
   it('spends only on explicit preview and applies the exact edited four-value draft', () => {
@@ -99,6 +105,12 @@ describe('WorkshopLexicalGravityModal', () => {
         preview: { configKey: 'music|40|3|1', text: 'A resonant preview.' }
       }}
     />);
+
+    expect(view.container.querySelector('.pm-ws-lg-preview')?.textContent).toContain(
+      builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample
+    );
+    expect(view.container.querySelector('.pm-ws-lg-preview')?.textContent)
+      .toContain('A resonant preview.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Install on passage' }));
     expect(props.onApply).toHaveBeenCalledWith(
@@ -159,5 +171,73 @@ describe('WorkshopLexicalGravityModal', () => {
       'falconry',
       ['falconry-1', 'falconry-3']
     );
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      lensCandidates={{
+        token,
+        query: 'falconry',
+        ok: true,
+        candidates: [candidate, secondCandidate, thirdCandidate]
+      }}
+      lensesSaved={{
+        token,
+        ok: true,
+        lenses: [{ ...candidate.lens, slug: 'falconry' }],
+        candidateIds: ['falconry-1', 'falconry-3'],
+        remainingCandidateIds: ['falconry-2']
+      }}
+    />);
+
+    expect(view.container.querySelector('.pm-ws-lg-options')?.textContent)
+      .not.toContain('Falconry — The hunt');
+    expect(view.container.querySelector('.pm-ws-lg-options')?.textContent)
+      .not.toContain('Falconry — The stoop');
+    fireEvent.click(screen.getByRole('button', { name: /Falconry — The mews/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected lens' }));
+    expect(props.onSaveLenses).toHaveBeenLastCalledWith(
+      token,
+      'falconry',
+      ['falconry-2']
+    );
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      lensCandidates={{
+        token,
+        query: 'falconry',
+        ok: true,
+        candidates: [candidate, secondCandidate, thirdCandidate]
+      }}
+      lensesSaved={{
+        token,
+        ok: true,
+        lenses: [{ ...secondCandidate.lens, slug: 'falconry-the-mews' }],
+        candidateIds: ['falconry-2'],
+        remainingCandidateIds: []
+      }}
+    />);
+
+    expect(view.container.querySelector('.pm-ws-lg-options')).toBeNull();
+  });
+
+  it('explains when a generated subject already exists without spending another call', () => {
+    const { props, view } = renderModal();
+    const input = screen.getByPlaceholderText('Look up or invent a lens…');
+    fireEvent.change(input, { target: { value: 'photography' } });
+    fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
+    const token = (props.onBuildLens as jest.Mock).mock.calls[0][0] as string;
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      lensCandidates={{
+        token,
+        query: 'photography',
+        ok: true,
+        existingLens: builtInLexicalGravityLenses()[0]
+      }}
+    />);
+
+    expect(screen.getByText(/already a built-in lens/)).toBeTruthy();
   });
 });

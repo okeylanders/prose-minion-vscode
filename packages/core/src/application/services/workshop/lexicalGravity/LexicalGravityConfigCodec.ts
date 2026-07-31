@@ -3,6 +3,7 @@
 import {
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
+  WorkshopLexicalGravityReach,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSummary
 } from '@messages';
@@ -20,10 +21,14 @@ import {
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import {
-  cloneLexicalGravityDraft,
-  cloneLexicalGravityLens,
-  lexicalGravityConfigKey
-} from './LexicalGravityLenses';
+  isLexicalGravityReach,
+  isLexicalGravityWeight,
+  LEXICAL_GRAVITY_REACH,
+  LEXICAL_GRAVITY_WEIGHT
+} from '@shared/constants/workshopWidgets';
+import {
+  assertLexicalGravityLensRenderable
+} from './LexicalGravityDirective';
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -104,6 +109,14 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
   }
   boundedStringAt(item.metaphor, `${path}.metaphor`, BUDGET.lexicalPhraseCharacters, false);
   boundedStringAt(item.sample, `${path}.sample`, BUDGET.lexicalSampleCharacters, false);
+  try {
+    assertLexicalGravityLensRenderable(value as WorkshopLexicalGravityLens);
+  } catch {
+    shapeError(
+      path,
+      `a lens whose reach-3 directive fits within ${BUDGET.lexicalDirectiveCharacters} characters`
+    );
+  }
 }
 
 export function assertLexicalGravityDraftShape(value: unknown, path: string): void {
@@ -120,17 +133,15 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
     false
   );
   numberAt(draft.weight, `${path}.weight`);
-  if (
-    !Number.isSafeInteger(draft.weight)
-    || (draft.weight as number) < 10
-    || (draft.weight as number) > 100
-    || (draft.weight as number) % 5 !== 0
-  ) {
-    shapeError(`${path}.weight`, 'an integer from 10–100 in five-point steps');
+  if (!isLexicalGravityWeight(draft.weight)) {
+    shapeError(
+      `${path}.weight`,
+      `an integer from ${LEXICAL_GRAVITY_WEIGHT.minimum}–${LEXICAL_GRAVITY_WEIGHT.maximum} in ${LEXICAL_GRAVITY_WEIGHT.step}-point steps`
+    );
   }
   numberAt(draft.reach, `${path}.reach`);
-  if (draft.reach !== 1 && draft.reach !== 2 && draft.reach !== 3) {
-    shapeError(`${path}.reach`, '1, 2, or 3');
+  if (!isLexicalGravityReach(draft.reach)) {
+    shapeError(`${path}.reach`, LEXICAL_GRAVITY_REACH.values.join(', '));
   }
   booleanAt(draft.metaphorPull, `${path}.metaphorPull`);
   assertLexicalGravityLensShape(draft.resolvedLens, `${path}.resolvedLens`);
@@ -175,17 +186,15 @@ export function assertLexicalGravityRecommendationSeedShape(
     false
   );
   optionalNumberAt(seed.weight, `${path}.weight`);
-  if (seed.weight !== undefined && (
-    !Number.isSafeInteger(seed.weight)
-    || (seed.weight as number) < 10
-    || (seed.weight as number) > 100
-    || (seed.weight as number) % 5 !== 0
-  )) {
-    shapeError(`${path}.weight`, 'an integer from 10–100 in five-point steps');
+  if (seed.weight !== undefined && !isLexicalGravityWeight(seed.weight)) {
+    shapeError(
+      `${path}.weight`,
+      `an integer from ${LEXICAL_GRAVITY_WEIGHT.minimum}–${LEXICAL_GRAVITY_WEIGHT.maximum} in ${LEXICAL_GRAVITY_WEIGHT.step}-point steps`
+    );
   }
   optionalNumberAt(seed.reach, `${path}.reach`);
-  if (seed.reach !== undefined && seed.reach !== 1 && seed.reach !== 2 && seed.reach !== 3) {
-    shapeError(`${path}.reach`, '1, 2, or 3');
+  if (seed.reach !== undefined && !isLexicalGravityReach(seed.reach)) {
+    shapeError(`${path}.reach`, LEXICAL_GRAVITY_REACH.values.join(', '));
   }
   optionalBooleanAt(seed.metaphorPull, `${path}.metaphorPull`);
 }
@@ -208,14 +217,58 @@ export function summarizeLexicalGravityDraft(
   draft: WorkshopLexicalGravityDraft
 ): Pick<
   WorkshopLexicalGravityWidgetConfigSummary,
-  'lensName' | 'weight' | 'reach' | 'metaphorPull'
+  'lensName' | 'lensVariant' | 'weight' | 'reach' | 'metaphorPull'
 > {
   return {
     lensName: draft.resolvedLens.name,
+    lensVariant: draft.resolvedLens.variant,
     weight: draft.weight,
     reach: draft.reach,
     metaphorPull: draft.metaphorPull
   };
+}
+
+export function cloneLexicalGravityLens(
+  source: WorkshopLexicalGravityLens
+): WorkshopLexicalGravityLens {
+  const cloneBucket = (bucket: WorkshopLexicalGravityLens['degrees'][1]) => ({
+    nouns: [...bucket.nouns],
+    verbs: [...bucket.verbs],
+    modifiers: [...bucket.modifiers]
+  });
+  return {
+    ...source,
+    degrees: {
+      1: cloneBucket(source.degrees[1]),
+      2: cloneBucket(source.degrees[2]),
+      3: cloneBucket(source.degrees[3])
+    },
+    gradient: [...source.gradient],
+    cliches: source.cliches.map((entry) => ({ ...entry })),
+    substitutions: { ...source.substitutions }
+  };
+}
+
+export function cloneLexicalGravityDraft(
+  draft: WorkshopLexicalGravityDraft
+): WorkshopLexicalGravityDraft {
+  return {
+    lensSlug: draft.lensSlug,
+    weight: draft.weight,
+    reach: draft.reach,
+    metaphorPull: draft.metaphorPull,
+    resolvedLens: cloneLexicalGravityLens(draft.resolvedLens),
+    preview: draft.preview ? { ...draft.preview } : undefined
+  };
+}
+
+export function lexicalGravityConfigKey(input: {
+  lensSlug: string;
+  weight: number;
+  reach: WorkshopLexicalGravityReach;
+  metaphorPull: boolean;
+}): string {
+  return `${input.lensSlug}|${input.weight}|${input.reach}|${input.metaphorPull ? 1 : 0}`;
 }
 
 function assertUniqueBoundedStrings(

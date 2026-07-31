@@ -256,8 +256,22 @@ export const WorkshopApp: React.FC = () => {
     (message: Parameters<typeof workshop.handleWidgetActionResult>[0]) => {
       workshop.handleWidgetActionResult(message);
       lexicalGravity.handleActionResult(message);
+      if (message.payload.action === 'remove-standing') {
+        showToast(message.payload.ok
+          ? {
+              message: message.payload.removed
+                ? 'Lexical Gravity removed.'
+                : 'Lexical Gravity was already removed.',
+              icon: message.payload.removed ? 'check' : 'info'
+            }
+          : {
+              message: message.payload.message ?? 'Lexical Gravity could not be removed.',
+              icon: 'x',
+              tone: 'error'
+            });
+      }
     },
-    [lexicalGravity.handleActionResult, workshop.handleWidgetActionResult]
+    [lexicalGravity.handleActionResult, showToast, workshop.handleWidgetActionResult]
   );
 
   useMessageRouter({
@@ -1463,7 +1477,7 @@ export const WorkshopApp: React.FC = () => {
               directives={workshop.standingDirectives}
               disabled={showLiveTurn || roomMutationLocked}
               onEdit={openWidgetConfig}
-              onRemove={() => lexicalGravity.remove()}
+              onRemove={lexicalGravity.remove}
             />
             <WorkshopComposer
               canMessage={workshop.canMessage && !roomMutationLocked}

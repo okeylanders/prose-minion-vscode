@@ -15,6 +15,14 @@ import { ModelOption, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
 import { ModelSelector } from '@components/shared/ModelSelector';
 import { WorkshopModalShell } from './WorkshopModalShell';
+import {
+  LEXICAL_GRAVITY_REACH,
+  LEXICAL_GRAVITY_WEIGHT
+} from '@shared/constants/workshopWidgets';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  buildLexicalGravityDirectiveFrame
+} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
 
 export type WorkshopLexicalGravityOpening =
   | { kind: 'new'; seed?: WorkshopLexicalGravityDraft }
@@ -102,14 +110,17 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [tab, setTab] = React.useState<LensTab>('field');
   const [wordPart, setWordPart] = React.useState<WordPart>('nouns');
   const [contrastIndex, setContrastIndex] = React.useState(0);
-  const [lookup, setLookup] = React.useState('falconry');
+  const [lookup, setLookup] = React.useState('');
   const [extraLens, setExtraLens] = React.useState<WorkshopLexicalGravityLens>();
   const [previewToken, setPreviewToken] = React.useState<string>();
   const [buildToken, setBuildToken] = React.useState<string>();
   const [selectedCandidateIds, setSelectedCandidateIds] = React.useState<string[]>([]);
+  const [savedCandidateIds, setSavedCandidateIds] = React.useState<string[]>([]);
+  const [pendingCandidateIds, setPendingCandidateIds] = React.useState<string[]>([]);
   const [savingCandidates, setSavingCandidates] = React.useState(false);
   const [applying, setApplying] = React.useState(false);
   const [error, setError] = React.useState<string>();
+  const [buildNotice, setBuildNotice] = React.useState<string>();
   const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -128,14 +139,17 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setTab('field');
     setWordPart('nouns');
     setContrastIndex(0);
-    setLookup('falconry');
+    setLookup('');
     setExtraLens(draft?.resolvedLens);
     setPreviewToken(undefined);
     setBuildToken(undefined);
     setSelectedCandidateIds([]);
+    setSavedCandidateIds([]);
+    setPendingCandidateIds([]);
     setSavingCandidates(false);
     setApplying(false);
     setError(undefined);
+    setBuildNotice(undefined);
     onClearTransientResults();
     onRequestLenses();
   }, [open, opening, onClearTransientResults, onRequestLenses]);
@@ -158,6 +172,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     resolvedLens: lens,
     preview
   } : undefined;
+  const directivePreview = draft
+    ? buildLexicalGravityDirectiveFrame({ id: 'pd-preview', revision: 1 }, draft)
+    : undefined;
 
   React.useEffect(() => {
     if (!previewToken || previewResult?.token !== previewToken) {return;}
@@ -184,25 +201,41 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       setBuildToken(undefined);
       setSelectedCandidateIds([]);
       setError(undefined);
+      setBuildNotice(
+        `${lensCandidates.existingLens.name} is already ${lensCandidates.existingLens.source === 'project' ? 'in the project library' : 'a built-in lens'}, so no model call was needed.`
+      );
     }
   }, [buildToken, lensCandidates]);
 
   React.useEffect(() => {
-    if (!buildToken || lensesSaved?.token !== buildToken || !savingCandidates) {return;}
+    if (
+      !buildToken
+      || lensesSaved?.token !== buildToken
+      || !savingCandidates
+      || lensesSaved.candidateIds.length !== pendingCandidateIds.length
+      || !lensesSaved.candidateIds.every((candidateId) => pendingCandidateIds.includes(candidateId))
+    ) {return;}
     setSavingCandidates(false);
+    setPendingCandidateIds([]);
     if (lensesSaved.ok && lensesSaved.lenses?.length) {
       const firstSavedLens = lensesSaved.lenses[0];
       setExtraLens(firstSavedLens);
       setLensSlug(firstSavedLens.slug);
       setPreview(undefined);
-      setBuildToken(undefined);
+      setSavedCandidateIds((current) => [
+        ...new Set([...current, ...lensesSaved.candidateIds])
+      ]);
+      if ((lensesSaved.remainingCandidateIds?.length ?? 0) === 0) {
+        setBuildToken(undefined);
+      }
       setSelectedCandidateIds([]);
       setError(undefined);
+      setBuildNotice(undefined);
       onRequestLenses();
     } else {
       setError(lensesSaved.error ?? 'The project lenses could not be saved.');
     }
-  }, [buildToken, lensesSaved, onRequestLenses, savingCandidates]);
+  }, [buildToken, lensesSaved, onRequestLenses, pendingCandidateIds, savingCandidates]);
 
   React.useEffect(() => {
     if (!applying || !actionResult || actionResult.action !== 'apply-standing') {return;}
@@ -230,8 +263,11 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     const token = mintToken('build');
     setBuildToken(token);
     setSelectedCandidateIds([]);
+    setSavedCandidateIds([]);
+    setPendingCandidateIds([]);
     setSavingCandidates(false);
     setError(undefined);
+    setBuildNotice(undefined);
     onBuildLens(token, lookup.trim());
   }, [buildToken, lookup, onBuildLens]);
   const toggleCandidate = React.useCallback((candidateId: string) => {
@@ -263,7 +299,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     }
   }, [invalidatePreview, onWidgetModelChange, selectedWidgetModel]);
   const candidates = buildToken && lensCandidates?.token === buildToken
-    ? lensCandidates.candidates
+    ? lensCandidates.candidates?.filter(
+        ({ candidateId }) => !savedCandidateIds.includes(candidateId)
+      )
     : undefined;
   const saveSelectedCandidates = React.useCallback(() => {
     if (!buildToken || !candidates || selectedCandidateIds.length < 1 || savingCandidates) {
@@ -274,6 +312,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       .map(({ candidateId }) => candidateId);
     if (selectedIds.length < 1) {return;}
     setSavingCandidates(true);
+    setPendingCandidateIds(selectedIds);
     setError(undefined);
     onSaveLenses(buildToken, lookup.trim(), selectedIds);
   }, [buildToken, candidates, lookup, onSaveLenses, savingCandidates, selectedCandidateIds]);
@@ -336,6 +375,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
               <input
                 value={lookup}
                 disabled={locked || !!buildToken}
+                maxLength={PROMPT_BUDGETS.workshopWidgets.lexicalBuildQueryCharacters}
                 placeholder="Look up or invent a lens…"
                 onChange={(event) => setLookup(event.target.value)}
                 onKeyDown={(event) => { if (event.key === 'Enter') {build();} }}
@@ -345,6 +385,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
               </button>
             </div>
             {catalogError && <div className="pm-ws-lg-note">Built-ins remain available. {catalogError}</div>}
+            {buildNotice && <div className="pm-ws-lg-note">{buildNotice}</div>}
             {candidates && (
               <div className="pm-ws-lg-options">
                 <div className="pm-ws-lg-cap">
@@ -370,7 +411,10 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                   </button>
                 ))}
                 <div className="pm-ws-lg-option-actions">
-                  <span>{selectedCandidateIds.length} selected</span>
+                  <span>
+                    {selectedCandidateIds.length} selected
+                    {savedCandidateIds.length > 0 && ` · ${savedCandidateIds.length} already added`}
+                  </span>
                   <button
                     type="button"
                     disabled={selectedCandidateIds.length < 1 || savingCandidates}
@@ -384,6 +428,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                         : `Add ${selectedCandidateIds.length} selected ${selectedCandidateIds.length === 1 ? 'lens' : 'lenses'}`}
                   </button>
                 </div>
+                <div className="pm-ws-lg-cap">
+                  Unsaved takes stay available until you close this sheet.
+                </div>
               </div>
             )}
             {lensesSaved?.ok && lensesSaved.lenses?.some(({ slug }) => slug === lens?.slug) && (
@@ -396,11 +443,11 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
 
           <label className="pm-ws-lg-slider">
             <span>Weight <b>{weight}% · {weightLabel(weight)}</b></span>
-            <input type="range" min={10} max={100} step={5} value={weight} disabled={locked} onChange={(event) => { setWeight(Number(event.target.value)); invalidatePreview(); }} />
+            <input type="range" min={LEXICAL_GRAVITY_WEIGHT.minimum} max={LEXICAL_GRAVITY_WEIGHT.maximum} step={LEXICAL_GRAVITY_WEIGHT.step} value={weight} disabled={locked} onChange={(event) => { setWeight(Number(event.target.value)); invalidatePreview(); }} />
           </label>
           <label className="pm-ws-lg-slider">
             <span>Reach <b>{reach}° · {reachLabel(reach)}</b></span>
-            <input type="range" min={1} max={3} step={1} value={reach} disabled={locked} onChange={(event) => { setReach(Number(event.target.value) as 1 | 2 | 3); invalidatePreview(); }} />
+            <input type="range" min={LEXICAL_GRAVITY_REACH.minimum} max={LEXICAL_GRAVITY_REACH.maximum} step={1} value={reach} disabled={locked} onChange={(event) => { setReach(Number(event.target.value) as 1 | 2 | 3); invalidatePreview(); }} />
           </label>
           <div className="pm-ws-lg-toggle-row">
             <div><b>Metaphor pull</b><span>Let images cross domains — not just word choice but figuration drawn through the lens.</span></div>
@@ -453,10 +500,23 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             </div>
           )}
 
+          {directivePreview && (
+            <details className="pm-ws-lg-directive-disclosure">
+              <summary>What the room is told</summary>
+              <pre>{directivePreview}</pre>
+            </details>
+          )}
+
           <button type="button" className="pm-ws-lg-preview-button" disabled={!draft || !!previewToken || locked} onClick={requestPreview}>
             <Icon name={preview ? 'refresh' : 'sparkle'} size={12} /> {previewToken ? 'One fast model call…' : preview ? 'Preview again' : 'Preview the pull'}
           </button>
-          {preview && <div className="pm-ws-lg-preview"><div>one fast-tier call · sample pull at {weight}%</div>“{preview.text}”</div>}
+          {preview && lens && (
+            <div className="pm-ws-lg-preview">
+              <div>one fast-tier call · sample pull at {weight}%</div>
+              <span><b>Before</b> “{lens.sample}”</span>
+              <span><b>After</b> “{preview.text}”</span>
+            </div>
+          )}
           {error && <div className="pm-ws-gesture-error" role="alert">{error}</div>}
         </div>
 

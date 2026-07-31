@@ -16,6 +16,29 @@ import { WorkshopWidgetId } from '../types/messages/workshop';
 
 export type WorkshopWidgetRail = 'oneshot' | 'standing' | 'resource';
 
+export const LEXICAL_GRAVITY_WEIGHT = Object.freeze({
+  minimum: 10,
+  maximum: 100,
+  step: 5
+});
+
+export const LEXICAL_GRAVITY_REACH = Object.freeze({
+  minimum: 1,
+  maximum: 3,
+  values: [1, 2, 3] as const
+});
+
+export function isLexicalGravityWeight(value: unknown): value is number {
+  return Number.isSafeInteger(value)
+    && (value as number) >= LEXICAL_GRAVITY_WEIGHT.minimum
+    && (value as number) <= LEXICAL_GRAVITY_WEIGHT.maximum
+    && (value as number) % LEXICAL_GRAVITY_WEIGHT.step === 0;
+}
+
+export function isLexicalGravityReach(value: unknown): value is 1 | 2 | 3 {
+  return LEXICAL_GRAVITY_REACH.values.some((candidate) => candidate === value);
+}
+
 export type WorkshopWidgetGroupName =
   | 'Playgrounds'
   | 'Explorers'

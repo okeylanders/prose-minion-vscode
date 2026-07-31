@@ -6,6 +6,10 @@ import {
   WorkshopStandingDirectiveSummary
 } from '@messages';
 import { Icon } from '@components/shared/Icon';
+import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
+import {
+  formatLexicalGravitySummary
+} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
 
 interface WorkshopStandingDirectiveRailProps {
   directives: WorkshopStandingDirectiveSummary[];
@@ -17,16 +21,9 @@ interface WorkshopStandingDirectiveRailProps {
 const directiveConfig = (directive: WorkshopStandingDirectiveSummary): string => {
   switch (directive.family) {
     case 'lexical-gravity':
-      return `${directive.lensName} · ${directive.weight}% · ${directive.reach}°${directive.metaphorPull ? ' · metaphor' : ''}`;
+      return formatLexicalGravitySummary(directive);
     default:
       return '';
-  }
-};
-
-const directiveLabel = (directive: WorkshopStandingDirectiveSummary): string => {
-  switch (directive.family) {
-    case 'lexical-gravity': return 'Lexical Gravity';
-    default: return directive.family;
   }
 };
 
@@ -42,7 +39,7 @@ export const WorkshopStandingDirectiveRail: React.FC<WorkshopStandingDirectiveRa
       {directives.map((directive) => (
         <div className="pm-ws-standing-active" key={directive.id}>
           <span className="pm-ws-standing-pulse" aria-hidden="true" />
-          <b>{directiveLabel(directive)}</b>
+          <b>{workshopWidgetLabel(directive.widgetId)}</b>
           <span className="pm-ws-standing-config">{directiveConfig(directive)}</span>
           <span className="pm-ws-standing-spacer" />
           <button type="button" disabled={disabled} onClick={() => onEdit(directive.widgetConfigId)}>Edit</button>
@@ -50,8 +47,8 @@ export const WorkshopStandingDirectiveRail: React.FC<WorkshopStandingDirectiveRa
             type="button"
             className="pm-ws-standing-kill"
             disabled={disabled}
-            title={`Remove ${directiveLabel(directive)}`}
-            aria-label={`Remove ${directiveLabel(directive)}`}
+            title={`Remove ${workshopWidgetLabel(directive.widgetId)}`}
+            aria-label={`Remove ${workshopWidgetLabel(directive.widgetId)}`}
             onClick={() => onRemove(directive.family)}
           >
             <Icon name="x" size={11} />

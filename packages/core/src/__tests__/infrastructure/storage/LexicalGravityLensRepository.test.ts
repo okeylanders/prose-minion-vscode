@@ -128,6 +128,46 @@ describe('LexicalGravityLensRepository', () => {
     );
   });
 
+  it('bounds composed subject and variant slugs without leaving a trailing separator', async () => {
+    const source = builtInLexicalGravityLens('photography')!;
+    const saved = await repository().saveManyForQuery(
+      `${'very-long-subject-'.repeat(8)}tail-`,
+      [
+        { ...source, variant: `${'long-variant-'.repeat(8)}first-` },
+        { ...source, variant: `${'long-variant-'.repeat(8)}second-` }
+      ]
+    );
+
+    expect(saved).toHaveLength(2);
+    for (const lens of saved) {
+      expect(lens.slug.length).toBeLessThanOrEqual(64);
+      expect(lens.slug).not.toMatch(/-$/);
+    }
+    expect(new Set(saved.map(({ slug }) => slug)).size).toBe(2);
+  });
+
+  it('stamps project provenance on read and rejects a filename/slug mismatch', async () => {
+    const source = builtInLexicalGravityLens('photography')!;
+    fileSystem.files.set(
+      path.join(directory, 'photography.json'),
+      new TextEncoder().encode(JSON.stringify({ ...source, source: 'built-in' }))
+    );
+    fileSystem.files.set(
+      path.join(directory, 'wrong-name.json'),
+      new TextEncoder().encode(JSON.stringify({ ...source, source: 'project' }))
+    );
+
+    await expect(repository().findForQuery('photography')).resolves.toEqual(
+      expect.objectContaining({ slug: 'photography', source: 'project' })
+    );
+    await expect(repository().list()).resolves.toEqual([
+      expect.objectContaining({ slug: 'photography', source: 'project' })
+    ]);
+    expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
+      'declared slug photography does not match filename wrong-name'
+    ));
+  });
+
   it('rolls back the batch when publishing any selected lens fails', async () => {
     const store = repository();
     const source = builtInLexicalGravityLens('photography')!;

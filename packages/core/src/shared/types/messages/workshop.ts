@@ -859,8 +859,9 @@ export type WorkshopGestureWidgetConfigSummary =
 
 export type WorkshopLexicalGravityWidgetConfigSummary =
   Omit<WorkshopLexicalGravityWidgetConfigSnapshot, 'draft'> & {
-    lensName: string;
-    weight: number;
+  lensName: string;
+  lensVariant?: string;
+  weight: number;
     reach: WorkshopLexicalGravityReach;
     metaphorPull: boolean;
   };
@@ -884,6 +885,7 @@ export interface WorkshopLexicalGravityStandingDirectiveSummary
   family: 'lexical-gravity';
   widgetId: 'lexical-gravity';
   lensName: string;
+  lensVariant?: string;
   weight: number;
   reach: WorkshopLexicalGravityReach;
   metaphorPull: boolean;
@@ -1882,6 +1884,10 @@ export interface WorkshopLexicalGravityLensesSavedPayload {
   token: string;
   ok: boolean;
   lenses?: WorkshopLexicalGravityLens[];
+  /** Candidate ids admitted by this save operation. */
+  candidateIds: string[];
+  /** Generated candidates still available to save without another model call. */
+  remainingCandidateIds?: string[];
   storagePath?: string;
   error?: string;
 }
@@ -1942,6 +1948,8 @@ export interface WorkshopWidgetActionResultPayload {
   widgetConfigId?: string;
   directiveId?: string;
   turnId?: string;
+  /** Distinguishes a real removal from an idempotent no-op. */
+  removed?: boolean;
   /** User-facing failure text when ok is false. */
   message?: string;
 }

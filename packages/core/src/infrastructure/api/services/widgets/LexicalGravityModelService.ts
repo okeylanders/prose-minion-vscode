@@ -12,11 +12,11 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
 import {
+  cloneLexicalGravityDraft,
+  lexicalGravityConfigKey,
   validateLexicalGravityLens
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
 import {
-  cloneLexicalGravityDraft,
-  lexicalGravityConfigKey,
   lexicalGravityLensSlug
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
 

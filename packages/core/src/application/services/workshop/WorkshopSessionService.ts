@@ -97,6 +97,10 @@ import {
   WorkshopStandingDirectiveLedger,
   WorkshopStandingDirectiveUpsertInput
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveLedger';
+import {
+  summarizeWorkshopStandingDirective,
+  workshopStandingDirectiveMarkerContent
+} from '@/application/services/workshop/directives/WorkshopStandingDirectivePresentation';
 export type {
   WorkshopSessionCheckpointNormalization
 } from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
@@ -1087,8 +1091,8 @@ export class WorkshopSessionService {
   }
 
   /**
-   * Commit a prompt-replaced standing mutation as one room marker. Callers
-   * prepare every possibly throwing value first; this install path is sync.
+   * Commit a prompt-replaced standing mutation as one room marker. The marker
+   * and linked configs are resolved before either prepared ledger is installed.
    */
   commitStandingDirectiveMutation(
     prepared: PreparedWorkshopStandingDirectiveMutation,
@@ -1098,14 +1102,20 @@ export class WorkshopSessionService {
     const previousConfig = previousDirective
       ? this.widgetConfigLedger.get(previousDirective.widgetConfigId)
       : undefined;
+    const directive = prepared.directive;
+    const currentConfig = prepared.action === 'removed'
+      ? previousConfig
+      : preparedConfig?.config ?? this.widgetConfigLedger.get(directive.widgetConfigId);
+    const markerContent = workshopStandingDirectiveMarkerContent(
+      prepared.action,
+      directive,
+      previousConfig,
+      currentConfig
+    );
     if (preparedConfig) {
       this.widgetConfigLedger.installPreparedMutation(preparedConfig);
     }
     this.standingDirectiveLedger.installPreparedState(prepared.state);
-    const directive = prepared.directive;
-    const currentConfig = prepared.action === 'removed'
-      ? previousConfig
-      : this.widgetConfigLedger.get(directive.widgetConfigId);
     const turn: WorkshopTurn = {
       id: this.nextTurnId('system'),
       role: 'system',
@@ -1113,12 +1123,7 @@ export class WorkshopSessionService {
       participant: 'session',
       artifact: 'standing_directive_change',
       excerptVersion: this.excerptVersion,
-      content: standingDirectiveMarkerContent(
-        prepared.action,
-        directive.family,
-        previousConfig,
-        currentConfig
-      ),
+      content: markerContent,
       timestamp: this.now(),
       widgetCommit: {
         widgetId: directive.widgetId,
@@ -2410,31 +2415,12 @@ export class WorkshopSessionService {
   private standingDirectiveSummaries(): WorkshopStandingDirectiveSummary[] {
     return this.standingDirectiveLedger.list().map((directive) => {
       const config = this.widgetConfigLedger.get(directive.widgetConfigId);
-      if (!config || config.widgetId !== directive.widgetId) {
+      if (!config) {
         throw new Error(
           `Standing directive ${directive.id} has no matching widget config`
         );
       }
-      switch (directive.family) {
-        case 'lexical-gravity': {
-          if (config.widgetId !== 'lexical-gravity') {
-            throw new Error(`Lexical Gravity directive ${directive.id} has the wrong config`);
-          }
-          return {
-            ...directive,
-            family: 'lexical-gravity',
-            widgetId: 'lexical-gravity',
-            lensName: config.draft.resolvedLens.name,
-            weight: config.draft.weight,
-            reach: config.draft.reach,
-            metaphorPull: config.draft.metaphorPull
-          };
-        }
-        case 'prose-controller':
-          throw new Error('Prose Controller standing directives are not implemented');
-        default:
-          return assertNever(directive.family);
-      }
+      return summarizeWorkshopStandingDirective(directive, config);
     });
   }
 
@@ -2743,48 +2729,6 @@ function cloneWidgetRecommendation(
     default:
       return assertNever(recommendation);
   }
-}
-
-function standingDirectiveLabel(family: WorkshopStandingDirectiveFamily): string {
-  switch (family) {
-    case 'lexical-gravity':
-      return 'Lexical Gravity';
-    case 'prose-controller':
-      return 'Prose Controller';
-    default:
-      return assertNever(family);
-  }
-}
-
-function standingDirectiveMarkerContent(
-  action: PreparedWorkshopStandingDirectiveMutation['action'],
-  family: WorkshopStandingDirectiveFamily,
-  previousConfig?: WorkshopWidgetConfigSnapshot,
-  currentConfig?: WorkshopWidgetConfigSnapshot
-): string {
-  if (family === 'lexical-gravity') {
-    if (action === 'removed') {
-      return 'Lexical Gravity removed — the passage stops gravitating';
-    }
-    if (currentConfig?.widgetId !== 'lexical-gravity') {
-      throw new Error('Lexical Gravity directive has no lexical configuration');
-    }
-    if (action === 'installed') {
-      return `Lexical Gravity installed — ${lexicalGravityConfigDisplay(currentConfig)}`;
-    }
-    if (previousConfig?.widgetId !== 'lexical-gravity') {
-      throw new Error('Lexical Gravity shift has no prior lexical configuration');
-    }
-    return `shifted — ${lexicalGravityConfigDisplay(previousConfig)} → ${lexicalGravityConfigDisplay(currentConfig)}`;
-  }
-  const verb = action === 'installed' ? 'Installed' : action === 'shifted' ? 'Shifted' : 'Removed';
-  return `${verb} ${standingDirectiveLabel(family)}.`;
-}
-
-function lexicalGravityConfigDisplay(
-  config: Extract<WorkshopWidgetConfigSnapshot, { widgetId: 'lexical-gravity' }>
-): string {
-  return `${config.draft.resolvedLens.name} · ${config.draft.weight}% · ${config.draft.reach}°${config.draft.metaphorPull ? ' · metaphor' : ''}`;
 }
 
 function cloneSourceEntry(entry: ContextSourceEntry): ContextSourceEntry {

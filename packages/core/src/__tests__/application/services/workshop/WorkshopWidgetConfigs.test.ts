@@ -497,6 +497,20 @@ describe('WorkshopSessionService — widget configs', () => {
     ).toThrow(/widget-config counter trails/);
   });
 
+  it('rejects an invalid widget counter before replacing live aggregate state', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const before = session.getSnapshot();
+    const incoming = new WorkshopSessionService(() => 10_000).exportCommittedState();
+    incoming.counters.widgetConfig = -1;
+
+    expect(() => session.hydrateCommittedState(
+      incoming,
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    )).toThrow(/widget-config counter must be a non-negative safe integer/);
+    expect(session.getSnapshot()).toEqual(before);
+  });
+
   it('rejects a persisted config referencing an unknown turn', () => {
     session.setSessionScope('open');
     session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });

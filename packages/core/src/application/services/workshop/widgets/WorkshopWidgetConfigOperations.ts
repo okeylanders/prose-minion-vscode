@@ -20,9 +20,7 @@ import {
   summarizeGesturePlaygroundDraft
 } from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
 import {
-  cloneLexicalGravityDraft
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
-import {
+  cloneLexicalGravityDraft,
   summarizeLexicalGravityDraft
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
 

@@ -1,8 +1,8 @@
 import {
-  WorkshopLexicalGravityDraft,
-  WorkshopLexicalGravityLens,
-  WorkshopLexicalGravityReach
+  WorkshopLexicalGravityLens
 } from '@messages';
+import { cloneLexicalGravityLens } from './LexicalGravityConfigCodec';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const lens = (
   value: Omit<WorkshopLexicalGravityLens, 'version' | 'source'>
@@ -120,27 +120,6 @@ const BUILT_IN_LENSES: readonly WorkshopLexicalGravityLens[] = [
   })
 ];
 
-export function cloneLexicalGravityLens(
-  source: WorkshopLexicalGravityLens
-): WorkshopLexicalGravityLens {
-  const cloneBucket = (bucket: WorkshopLexicalGravityLens['degrees'][1]) => ({
-    nouns: [...bucket.nouns],
-    verbs: [...bucket.verbs],
-    modifiers: [...bucket.modifiers]
-  });
-  return {
-    ...source,
-    degrees: {
-      1: cloneBucket(source.degrees[1]),
-      2: cloneBucket(source.degrees[2]),
-      3: cloneBucket(source.degrees[3])
-    },
-    gradient: [...source.gradient],
-    cliches: source.cliches.map((entry) => ({ ...entry })),
-    substitutions: { ...source.substitutions }
-  };
-}
-
 export function builtInLexicalGravityLenses(): WorkshopLexicalGravityLens[] {
   return BUILT_IN_LENSES.map(cloneLexicalGravityLens);
 }
@@ -152,35 +131,27 @@ export function builtInLexicalGravityLens(
   return found ? cloneLexicalGravityLens(found) : undefined;
 }
 
-export function lexicalGravityConfigKey(input: {
-  lensSlug: string;
-  weight: number;
-  reach: WorkshopLexicalGravityReach;
-  metaphorPull: boolean;
-}): string {
-  return `${input.lensSlug}|${input.weight}|${input.reach}|${input.metaphorPull ? 1 : 0}`;
-}
-
-export function cloneLexicalGravityDraft(
-  draft: WorkshopLexicalGravityDraft
-): WorkshopLexicalGravityDraft {
-  return {
-    lensSlug: draft.lensSlug,
-    weight: draft.weight,
-    reach: draft.reach,
-    metaphorPull: draft.metaphorPull,
-    resolvedLens: cloneLexicalGravityLens(draft.resolvedLens),
-    preview: draft.preview ? { ...draft.preview } : undefined
-  };
-}
-
 /** Stable project filename component; empty means the lookup has no usable name. */
-export function lexicalGravityLensSlug(value: string): string {
+export function lexicalGravityLensSlug(
+  value: string,
+  maximumCharacters = PROMPT_BUDGETS.workshopWidgets.lexicalLensSlugCharacters
+): string {
   return value
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLocaleLowerCase('en-US')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 64);
+    .slice(0, maximumCharacters)
+    .replace(/-+$/g, '');
+}
+
+/** Compose a subject + variant filename while preserving both within the shared bound. */
+export function composeLexicalGravityLensSlug(subject: string, variant: string): string {
+  const maximum = PROMPT_BUDGETS.workshopWidgets.lexicalLensSlugCharacters;
+  const variantMaximum = Math.floor((maximum - 1) / 2);
+  const variantSlug = lexicalGravityLensSlug(variant, variantMaximum);
+  if (!variantSlug) {return lexicalGravityLensSlug(subject);}
+  const subjectSlug = lexicalGravityLensSlug(subject, maximum - variantSlug.length - 1);
+  return `${subjectSlug}-${variantSlug}`;
 }

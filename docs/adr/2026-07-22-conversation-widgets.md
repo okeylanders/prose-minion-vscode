@@ -2,7 +2,8 @@
 
 - **Status**: Accepted — 2026-07-29; Gesture Dictionary generation and
   source-reference/streaming amendments accepted 2026-07-29; Lexical Gravity
-  Spread 02 frame/lens-library amendments accepted 2026-07-31
+  Spread 02 frame/lens-library amendments accepted 2026-07-31; multi-select
+  generated-lens save amendment accepted 2026-07-31
 - **Decision owner**: Okey
 - **Planning source**: epic and sprint plans drafted 2026-07-22
   ([epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md));
