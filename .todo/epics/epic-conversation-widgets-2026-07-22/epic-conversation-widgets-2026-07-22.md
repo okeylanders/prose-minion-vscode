@@ -174,6 +174,27 @@ here does **not** commit it to this epic's delivery sequence.
 | [Learner: Art of the Craft](concepts/learner-art-of-the-craft.md) | Learning surface using the widget host | Same Learner shell with a storytelling-craft curriculum pack. |
 | [Show vs. Tell Playground](concepts/show-v-tell-playground.md) | Conversation Widget | One-shot thread artifact; clone-and-recommit. |
 | [Creative Variations Playground](concepts/creative-variations-playground.md) | Conversation Widget | One-shot thread artifact; structured alternatives, writer selection, and clone-and-recommit. |
+| [Topic Relationship Explorer](concepts/topic-relationship-explorer.md) | Conversation Widget (Learner-leaning) | One-shot thread artifact; ordered `topic-dossier` with span-verified contacts and grounding tags. |
+| [Genre Relationship Explorer](concepts/genre-relationship-explorer.md) | Conversation Widget (chapter-scale) | One-shot thread artifact, **plus** an optional standing-influence pin nested inside the same commit. |
+| [Writer's Dictionary](concepts/writers-dictionary.md) | Conversation Widget — **report widget** | The run *is* the commit; fifteen typed blocks ride one turn, uncapped. Never stands. |
+| [Gesture Dictionary](concepts/gesture-dictionary-widget.md) | Conversation Widget — **report widget** | Same rail; surfaces the generation currently buried inside Gesture Playground. |
+| [Genre Dictionary](concepts/genre-dictionary.md) | ⚠️ Speculative — no design spread | Proposed report widget; may turn out to be a craft guide instead. |
+
+**The report widget is a real category.** The three dictionaries share a shape no
+other widget has: a bounded subject, one call, an ordered document, **no
+curation step**, and never standing. Their pre-commit surface is nothing but
+their inputs, which is why the run *is* the commit. A dictionary describes a
+territory; it never takes a position on the writer's prose — so none of the three
+may ever pin. Standing behavior stays on Lexical Gravity's rail, where a lens is
+*authored*: chosen, weighted, killable.
+
+**Implemented, not a spring.**
+[Gesture Dictionary — Semantic Runway](concepts/gesture-dictionary-semantic-runway.md)
+lives in `concepts/` but is **implemented** (2026-07-29): it is a Sprint 01
+generation-quality upgrade — one composite call producing a writer-facing
+Gesture Dictionary followed by a strictly validated JSON menu — not a
+widget-shaped idea awaiting promotion. It is listed here so the folder has no
+orphans.
 
 **Prose Controller is not a concept spring.** It remains committed Sprint 03
 work, but its plan now specifies an "Art of the Craft"-style control surface
@@ -181,14 +202,24 @@ with deeper, teachable style levers rather than a thin bank of sliders.
 
 ## Related / deferred (not committed widget sprints)
 
-- **Dictionary participant** — a "chat with the dictionary" surface in the
-  participant rail. **Flagged as an architectural divergence:** this reads as a
-  *participant* (a retained conversational sidecar, like a persona guest or tool
-  sidecar) with a popup, **not** as a thread-artifact widget. Forcing it into the
-  widget commit model would break the "play → commit → rail" architecture. Track
-  it separately (candidate: a bounded conversational participant reusing the
-  existing sidecar machinery + a popup surface). Captured here so it is not lost;
-  **do not** build it as a widget. Decision to be made in its own ADR/feature.
+- **Dictionary participant — RESOLVED 2026-07-30: it is a widget after all.**
+  This entry previously read *"do not build it as a widget"*, on the grounds that
+  a "chat with the dictionary" surface is a *participant* (a retained
+  conversational sidecar) with a popup, and that forcing it into the widget
+  commit model would break the "play → commit → rail" architecture.
+
+  **Design Spread 10 is the ADR that answers it, and the answer is that it was
+  never a participant.** The Dictionary is the first **report widget**: a
+  one-shot whose pre-commit surface is nothing but its inputs. The run *is* the
+  commit, so there is no play-then-commit gap to model and no chat to retain —
+  the architectural objection dissolves rather than being overridden. The
+  original objection was to a *conversational sidecar*, which is not what the
+  design proposes.
+
+  Now tracked as a concept spring: [Writer's Dictionary](concepts/writers-dictionary.md).
+  The "report widget" category it establishes is reused by
+  [Gesture Dictionary](concepts/gesture-dictionary-widget.md) and the speculative
+  [Genre Dictionary](concepts/genre-dictionary.md).
 - **More widgets are expected.** The host contract (Sprint 01) and the standing
   rail (Sprint 02) are the two reusable substrates; later widgets pick a rail and
   supply a pre-commit UI + payload validator. Resource-backed and learning
