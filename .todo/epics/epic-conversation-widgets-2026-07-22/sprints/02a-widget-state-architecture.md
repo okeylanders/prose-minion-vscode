@@ -1,6 +1,6 @@
 # Sprint 02A: Widget State Architecture
 
-**Status**: Implementation complete — awaiting review/PR
+**Status**: Merged 2026-07-31 — [PR #97](https://github.com/okeylanders/prose-minion-vscode/pull/97)
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-02a-widget-state-architecture` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 1-2 days
@@ -17,11 +17,12 @@ Playground's persisted draft rules into focused collaborators.
 ## Scope
 
 1. Extract `WorkshopWidgetConfigLedger` for config identity, defensive state,
-   commit linkage, snapshot summaries, reset, export, and hydration replacement.
+   commit linkage, snapshot summaries, reset, export, and two-phase hydration
+   preparation/installation.
 2. Extract Gesture Playground's persisted draft shape, clone, summary, and
    development-checkpoint defaults into a widget-local codec.
-3. Extract the exact-shape primitives shared by the V1 aggregate codec and its
-   local widget codec into a narrowly scoped grammar module.
+3. Consolidate the exact-shape primitives shared by the V1 aggregate codec and
+   its local widget codec into the existing `persistedValidation` module.
 4. Preserve `WorkshopSessionService`'s public API and the exact V1 serialized
    contract.
 5. Add focused collaborator coverage while retaining the existing behavior-
@@ -35,7 +36,7 @@ Playground's persisted draft rules into focused collaborators.
 - A standing-directive coordinator without a concrete producer.
 - A generic widget plugin/runtime framework.
 - Independent widget schema versions or storage.
-- The unrelated Workshop scope/context IPC extraction.
+- The unrelated Workshop scope/context IPC extraction (optional Sprint 02C).
 - Any change to widget commit, retry-token, artifact-delivery, or session codec
   compatibility behavior.
 
@@ -53,6 +54,9 @@ Playground's persisted draft rules into focused collaborators.
 - Focused tests and the full project verification suite pass.
 
 ## Completion Notes (2026-07-31)
+
+- Merged into `epic/conversation-widgets` through PR #97 at merge commit
+  `1b4f9e2` after the GitHub verification check passed.
 
 - Added `WorkshopWidgetConfigLedger`; `WorkshopSessionService` delegates its
   existing config API and no longer owns the collection, counter, defensive

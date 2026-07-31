@@ -4,7 +4,7 @@
 **Priority**: Low (v2 richness; ship 01–03 first)
 **Branch**: `sprint/conversation-widgets-04-lexical-gravity-lens-blending` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 3-5 days
-**Depends on**: Sprint 02 (Lexical Gravity single-lens) merged into `epic/conversation-widgets`
+**Depends on**: Sprint 02B (Lexical Gravity single-lens) merged into `epic/conversation-widgets`
 **ADR**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md)
 
 ## Goal
@@ -17,10 +17,10 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
 
 ## Expected Foundation
 
-- Sprint 02 will establish single-lens Lexical Gravity on the standing rail:
-  the `<workshop-prose-gravity>` frame, the coordinator, edit-in-place + shift
-  marker, the chip, the active-directive indicator + kill switch, and the
-  debounced/cached live-generation path.
+- Sprint 02B will establish single-lens Lexical Gravity on the standing rail:
+  the `<prose-directive family="lexical-gravity" id="pd-N">` frame, the
+  coordinator, edit-in-place + shift marker, the chip, the active-directive
+  indicator + kill switch, and the explicit config-cached Preview action.
 - The committed directive payload already carries lens, weight,
   degrees-of-separation, and metaphor pull. Blending extends the payload to a
   *weighted set* of lenses.
@@ -39,7 +39,7 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
 - **The committed directive states the blend as layered guidance**, naming the
   dominant lens and the subordinate tint(s) with their weights — not a flat
   union of vocabularies.
-- **Everything else is inherited from Sprint 02**: same rail, coordinator,
+- **Everything else is inherited from Sprint 02B**: same rail, coordinator,
   between-runs discipline, edit-in-place, chip, indicator, kill switch. This
   sprint changes the *payload richness and the widget UI*, not the rail.
 
@@ -49,8 +49,9 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
    visualize per-lens leaning in the cloud/gradient.
 2. **Extended directive payload**: weighted lens set; validation (weights sum,
    count cap).
-3. **Blended generation path**: the live model call reflects dominance; debounced
-   / cached as in Sprint 02.
+3. **Blended preview path**: the explicit Preview call reflects dominance and is
+   cached by the blend config; changing controls invalidates it without calling
+   the model, as in Sprint 02B.
 4. **Layered committed directive** naming dominant + subordinate tints.
 5. Tests: payload validation (sum, cap); the directive renders as layered
    guidance, not a flat union; single-lens remains a degenerate 1-element blend
@@ -61,7 +62,7 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
 - Prose Controller (Sprint 03).
 - Any standing-rail coordinator change.
 - Cross-widget blending (Lexical Gravity × Prose Controller precedence stays as
-  the ADR rule from Sprint 03).
+  the accepted ADR rule).
 
 ## Completion Criteria
 

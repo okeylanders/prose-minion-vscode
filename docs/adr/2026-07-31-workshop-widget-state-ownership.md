@@ -85,7 +85,7 @@ general-purpose `utils` module.
 
 ### Standing-directive architecture arrives with Lexical Gravity
 
-Sprint 02A does not create an empty standing-directive framework. Sprint 02
+Sprint 02A does not create an empty standing-directive framework. Sprint 02B
 will add its coordinator and handler with Lexical Gravity as the first concrete
 producer. New routes and directive state must enter through focused
 collaborators; they must not be added directly to `WorkshopHandler` or
@@ -110,7 +110,7 @@ collaborators; they must not be added directly to `WorkshopHandler` or
 
 ## Alternatives considered
 
-### Keep widget mechanics in `WorkshopSessionService` until Sprint 02
+### Keep widget mechanics in `WorkshopSessionService` until Sprint 02B
 
 Rejected. Lexical Gravity would force behavior work and extraction through the
 same already-large aggregate, increasing review risk and making the eventual

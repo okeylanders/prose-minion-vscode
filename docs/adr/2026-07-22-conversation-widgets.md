@@ -1,7 +1,8 @@
 # ADR 2026-07-22: Conversation Widgets
 
 - **Status**: Accepted — 2026-07-29; Gesture Dictionary generation and
-  source-reference/streaming amendments accepted 2026-07-29
+  source-reference/streaming amendments accepted 2026-07-29; Lexical Gravity
+  Spread 02 frame/lens-library amendments accepted 2026-07-31
 - **Decision owner**: Okey
 - **Planning source**: epic and sprint plans drafted 2026-07-22
   ([epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md));
@@ -9,8 +10,9 @@
   design spreads (Spread 00 · the widget system, Spread 01 · Gesture
   Playground) and an architecture pass over the shipped Workshop code.
 - **Delivery**: [Conversation Widgets epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md),
-  Sprints 01–04. Sprint 01 (widget host + Gesture Playground) proves the
-  one-shot rail; Sprint 02 builds the standing rail with Lexical Gravity.
+  Sprints 01, 02A–02B, optional 02C, and 03–04. Sprint 01 (widget host +
+  Gesture Playground) proves the one-shot rail; Sprint 02A formalizes widget
+  state ownership; Sprint 02B builds the standing rail with Lexical Gravity.
 - **Context**: The Workshop has two kinds of thing: **tools** (deterministic
   one-shot analyzers, stateless, identical in every mode) and **plain
   messages** (freeform persona turns). This ADR adds the third: the
@@ -56,7 +58,7 @@ uniformly by every persona and every mode. A widget is a knob on the
 | Lifetime | Rail | Mechanism |
 |---|---|---|
 | **one-shot** (this turn) | thread-artifact | The shipped Sprint 12 Phase 6B rail: staged host-side in `WorkshopSessionService.pendingMessageAttachments`, ids minted `ta-N` (monotonic, never reused), framed by `buildWorkshopThreadArtifactFrame`, and committed only after the turn succeeds. The artifact belongs to exactly one **room turn**: it is delivered once to every host/guest retained conversation through that participant's room offset, then never re-shipped to that participant. Direct tool conversations remain private. |
-| **durable** (passage-scoped prose directive) | standing context | A **new reserved frame** (Sprint 02), *not* the context-attachment budget — see decision 10. Edit-in-place between runs with a shift marker, in the `WorkshopConversationSettingsService` mold (serialized, between-runs-only, per-key persistence). |
+| **durable** (passage-scoped prose directive) | standing context | A **new reserved frame** (Sprint 02B), *not* the context-attachment budget — see decision 10. Edit-in-place between runs with a shift marker, in the `WorkshopConversationSettingsService` mold (serialized, between-runs-only, per-key persistence). |
 | **resource** (durable truth outside the thread) | project file | The commit leaves a visible thread event; the knowledge lives in the project. Concept-spring territory (Decisions, Scratch Pad); no code in this epic's committed sprints. |
 
 The widget host runs the pre-commit UI, produces a validated payload, and
@@ -94,7 +96,7 @@ full authoring UI from the persisted Draft — not a dead summary.
   historical marker; clicking it copies the exact Draft into a *new*
   `widgetConfigId` (lineage recorded in `clonedFromConfigId`) and a fresh
   commit mints a new artifact and turn at the head.
-- **Standing → edit-in-place the live directive** (Sprint 02). One active
+- **Standing → edit-in-place the live directive** (Sprint 02B). One active
   directive per shaping family on the passage; editing swaps the standing
   frame **between runs** and emits a "shifted from X to Y" marker — the same
   event class and discipline as behavior transitions
@@ -106,7 +108,7 @@ full authoring UI from the persisted Draft — not a dead summary.
 - `turnId` — the visible transcript event (existing
   `turn-<n>-<role>-<ts>` mint).
 - `artifactId` — what entered retained history (existing `ta-N` mint for
-  one-shot; the standing directive id arrives with Sprint 02).
+  one-shot; the standing directive id arrives with Sprint 02B).
 - `widgetConfigId` — re-openable authoring state, minted `wc-N` from a new
   monotonic counter in the session aggregate, persisted under
   `counters` with a referential-integrity rule like `ta-N`'s
@@ -135,6 +137,13 @@ generic extension bag and no second webview-owned persistence store.
 VS Code Settings may remember last-used values only to seed a **new**
 instance; an opened session restores its exact committed configs without
 mutating those defaults.
+
+Lexical Gravity's custom lens library is project-owned reusable source:
+`Build lens` writes only a writer-chosen, validated lens to
+`resources/lenses/<slug>.json`. A widget commit snapshots the resolved lens
+inside the session config alongside its four writer-facing values, so later
+project-file edits affect future selections without rewriting saved history or
+changing the standing frame reconstructed on restore.
 
 ### 7. New reserved frames register with the neutralizer, in the same change
 
@@ -194,6 +203,14 @@ bar. Raw partial dictionary/menu text stays host-private until validation.
 Exact provider completion usage remains terminal because reasoning-token usage
 cannot be inferred from visible stream characters.
 
+For Lexical Gravity, the six built-in lens fields, POS/reach buckets, semantic
+gradient, substitutions, and cliché contrasts are deterministic and instant.
+Changing lens, weight, reach, or metaphor pull makes no model call. `Preview
+the pull` is one explicit fast-tier request cached by that four-value config;
+`Build lens` is a separate bounded multi-variant request followed by explicit
+writer selection. Neither action touches standing state; only Install/Apply
+commits the directive.
+
 ### 9. Core stays host-agnostic; handlers stay out of the god files
 
 The widget registry, host contract, session state, prompt frames, and every
@@ -208,13 +225,17 @@ are constructed in `extension.ts` and travel in `CoreServices`; nothing is
 
 ### 10. Standing directives get their own reserved frame, not the attachment budget
 
-*(Resolves epic open question 1, binding on Sprint 02.)* A standing prose
+*(Resolves epic open question 1, binding on Sprint 02B.)* A standing prose
 directive is **not** a context attachment: it must be consulted only at
 prose-generation time, killable in one click, and re-shipped each run while
 active. It therefore ships as its own reserved frame with its own budget
 line in `promptBudgets`, not as an entry in the context-attachment list or
 its aggregate word cap. `<workshop-session-attunement>` is the *shape*
-precedent, not the home.
+precedent, not the home. Spread 02 resolves the concrete Lexical Gravity
+envelope as `<prose-directive family="lexical-gravity" id="pd-N">`; future
+standing families reuse that envelope with a host-minted closed `family`
+(`prose-controller` for Sprint 03) and host-minted `id`. The delimiter is
+registered with the reserved-frame neutralizer in the same change.
 
 ### 11. Directive families coexist; precedence is stated, not silently resolved
 
@@ -380,9 +401,9 @@ with the 2026-07-25 debt ticket as a pure move.
 
 Added now, not deferred: `ModelScope` is a closed union with a uniform
 bundle path, and the widget host contract is a Sprint 01 deliverable that
-Sprint 02's live regeneration builds on — shipping the generate route on
+Sprint 02B's live regeneration builds on — shipping the generate route on
 scope `'assistant'` would bake the wrong scope into the contract and force
-Sprint 02 to change route, contract, and a settings default in one move.
+Sprint 02B to change route, contract, and a settings default in one move.
 `proseMinion.widgetModel` joins the settings surface as an independent
 quality-tunable scope. Gesture Dictionary generation is a long-form semantic
 synthesis and framed-output task; the recommended default moves from Haiku to
@@ -396,7 +417,7 @@ would keep.
   The field is **rail-discriminated from day one**:
   `widgetCommit: { widgetId, widgetConfigId, rail: 'thread-artifact',
   artifactId, selectionCount }`, with the standing arm reserved for
-  Sprint 02. `artifactId` intentionally duplicates what a refs join could
+  Sprint 02B. `artifactId` intentionally duplicates what a refs join could
   derive — direct address beats a join; do not "deduplicate" it.
 - `widgetConfigs` entries carry `revision: 1` from day one (decision 6
   names revisions; one integer now beats an optional-field migration in a
@@ -424,7 +445,7 @@ in the registry, so comp-only widgets can never render dead chips.
 
 ## Consequences
 
-- Sprint 02 inherits a proven host: registry, pre-commit modal lifecycle,
+- Sprint 02B inherits a proven host: registry, pre-commit modal lifecycle,
   Draft persistence, chip rendering, and the neutralizer discipline — and
   adds only the standing frame, its coordinator, and the
   active-directive/kill UI.

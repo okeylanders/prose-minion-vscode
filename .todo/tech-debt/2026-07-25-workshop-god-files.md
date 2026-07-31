@@ -49,6 +49,11 @@ lines. The two larger files below remain the tracked debt.
   `WorkshopSessionService` keeps the aggregate-facing methods but no longer
   stores that collection/counter or its Gesture clone/summary rules inline.
   This closes PR #96 finding 12 while leaving the broader god-file target open.
+- **2026-07-31 — scope/context IPC extraction sequenced as optional Sprint
+  02C.** After Lexical Gravity (02B), reassess whether the eight-route cluster
+  remains a pure-move seam. If so, extract it before Prose Controller; if the
+  move requires behavior or run/send-pipeline changes, skip it and leave this
+  debt open. See the [Sprint 02C plan](../epics/epic-conversation-widgets-2026-07-22/sprints/02c-workshop-scope-context-ipc-extraction.md).
 
 ## Candidate seams
 
@@ -63,7 +68,8 @@ Named by the reviewers, in rough order of cohesion:
    `WORKSHOP_REPIN_EXCERPT`, and the context-attachment trio. The PR's own doc
    comments already group these under a *"Session scope (Sprint 13A §2/§4)"*
    banner, which is the seam asking to be cut. Follows
-   `WorkshopSessionMessageHandler` exactly.
+   `WorkshopSessionMessageHandler` exactly. Sequenced as optional Sprint 02C;
+   it remains non-blocking for Prose Controller.
 3. **Webview scope-transition callbacks** (`WorkshopApp.tsx`) —
    `startOpenConversation`, `continueWithExcerpt`, `hasWorkingSet`, and the
    session-confirm branches would fit a `useWorkshopSessionBoundary` hook,

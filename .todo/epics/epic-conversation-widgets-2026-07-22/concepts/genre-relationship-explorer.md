@@ -6,7 +6,7 @@
 **Likely rail**: One-shot thread artifact **+ optional standing influence** (the
 pin nests inside the commit — see [Bring + Pin](#bring--pin-the-position-as-a-standing-influence))
 **Depends on**: Widget host + Gesture Playground (Sprint 01); the standing rail
-from Lexical Gravity (Sprint 02) for the pin
+from Lexical Gravity (Sprint 02B) for the pin
 **Design source**: `Prose Minion - Genre Relationship Explorer.html` — Spread 09
 (remote only; not pulled into `docs/design/`)
 
@@ -171,12 +171,12 @@ tray, don't regrow one), multi-chapter surveys, and any "write toward this genre
 affordance — the last one permanently.
 
 **Scope note:** the pin (§07 on the spread) is drawn but is a second slice. It
-depends on Sprint 02's standing rail and should not be bundled into the first
+depends on Sprint 02B's standing rail and should not be bundled into the first
 promotion.
 
 ## Promotion gates
 
-1. Sprint 01 host proven; Sprint 02 standing rail landed **if** the pin is in
+1. Sprint 01 host proven; Sprint 02B standing rail landed **if** the pin is in
    scope.
 2. Both call results cross closed ordered schemas with per-block validation.
 3. The ¶-address check is deterministic and re-runs on hydrate.

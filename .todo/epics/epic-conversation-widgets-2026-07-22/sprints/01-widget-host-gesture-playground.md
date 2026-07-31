@@ -186,8 +186,8 @@ directions I want *here*."
 
 ## Out of Scope
 
-- Standing directives / durable rail (Sprint 02).
-- Sliders, live regeneration, generative previews (Sprint 02+).
+- Standing directives / durable rail (Sprint 02B).
+- Sliders, live regeneration, generative previews (Sprint 02B+).
 - Persona auto-commit.
 - Editing a committed artifact in place.
 
@@ -206,5 +206,5 @@ directions I want *here*."
   value before generating.
 - No `vscode` import in core; architecture witness green; typechecks, lint,
   build, and the new tests pass.
-- The host contract is documented well enough that Sprint 02 can add a
+- The host contract is documented well enough that Sprint 02B can add a
   standing-rail widget without touching Gesture Playground.

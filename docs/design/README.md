@@ -27,7 +27,12 @@ styles, scripts, and assets — no build step.
   `pm-widgets.js` re-pulled — since 07-26 it gains the live flow stage
   (`mountWidgetFlow` / `mountGestureFrame` / `mountBrowserFrame`) plus a new
   **References** registry group carrying the Writer's Dictionary as a
-  one-shot report widget; `pm-widgets.css` unchanged).
+  one-shot report widget; `pm-widgets.css` unchanged);
+  **Conversation Widgets Spread 02 pulled 2026-07-31** (Sprint 02B source of
+  truth: new files `Prose Minion - Lexical Gravity.html` + `pm-gravity.js`.
+  `pm-gravity.css` was already pulled on 07-29 as a Gesture Playground
+  stylesheet dependency and was verified unchanged against the remote at this
+  pull — its 96 selectors already cover the whole Spread 02 panel).
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
@@ -47,6 +52,7 @@ styles, scripts, and assets — no build step.
 | `Prose Minion - Persona Schematic.html` | **Interactive prototype** of the Workshop persona browser → persona configuration schematic: a persona grid ("More info" opens a read-only schematic in the same modal shell) and a nine-panel schematic (Identity hub, Trait tensions, Turn-taking signature, Personal aperture, Verbal palette, Lexical gravity, Communication gradients, Trait pressure, Signature floor) with clickable hub navigation. Demoed with Margot (maximal spec) and Penny (near-empty spec, reads as tuned not broken); Jill/Quinn shown as spec-pending stub cards. Every field is laid out as a dashed, not-yet-wired `edit` affordance for a future persona config utility. Self-contained (no `pm-*` support files). | **Implemented (read-only) 2026-07-21** — see [ADR](../adr/2026-07-21-persona-schematic-read-model.md) & [feature](../../.todo/features/feature-workshop-persona-schematic/README.md) |
 | `Prose Minion - Conversation Widgets.html` | **Interactive prototype** — Conversation Widgets **Spread 00, the widget system**: the composer's third affordance (**Widgets** beside Tools), the full lifecycle live (menu → play → commit → chip → clone-and-recommit, using Gesture Playground as the stand-in), the categorized widget browser with per-widget **rail badges** (one-shot / standing / resource) and honest disabled state, and the rails card (lifetime selects the rail; re-launch semantics per rail). Also indexes every drawn widget spread. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `icons.js`. | **Approved — Conversation Widgets epic source of truth (system)** |
 | `Prose Minion - Gesture Playground.html` | **Historical interactive prototype** — Conversation Widgets **Spread 01, Gesture Playground** (Sprint 01): lifecycle and visual posture for the pre-commit surface, committed one-shot `<thread-artifact kind="widget:gesture-playground">` frame, presentation-only chip, and persona **recommend + prefill** path. The shipped generation contract has since been amended to `{targetPhrase, writerInstructions, contextText, characterNotes}` → one quality-first composite Gesture Dictionary + menu call; see the Conversation Widgets ADR. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.css` + `icons.js`. | **Approved visual reference — runtime contract superseded by ADR** |
+| `Prose Minion - Lexical Gravity.html` | **Interactive prototype** — Conversation Widgets **Spread 02, Lexical Gravity** (Sprint 02B): the first **standing** widget, where commit installs a passage-scoped `<prose-directive family="lexical-gravity">` that every persona and mode honors uniformly, consulted only when prose is written. Four sections: the live standing lifecycle (install → amber active strip → **edit-in-place** → `shifted X → Y` marker → one-click kill); the four-value pre-commit panel (lens · weight · reach · metaphor pull) with deterministic word-field / gradient / substitution / cliché tabs and an explicit `Preview the pull` model seam; the lens library (`Build lens` drafts several takes, the writer picks, chosen lenses persist as `resources/lenses/<name>.json` project resources); and the reserved-frame + invariants card. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.*` + `icons.js`. | **Approved — Sprint 02B source of truth** |
 | `Prose Minion - Notice Modal.html` | **Spec sheet + interactive prototype** for the first-run Workshop notice, redesigned wide and with pictures. Three parts: the published copy of all six notices beside annotated screenshots of the control each one points at; the full **How to configure your project** walkthrough referenced by notice 2 (three steps, a well-aligned example project beside the settings pane, and the field → glob mapping table); and a clickable prototype of the widened notice widget (media well left, copy right, docked footer). Loads `pm-mock.css` + `uploads/`. The shipped notice itself is `pm-wk-notify.js` + the notice block of `pm-wk-pins.css`. | **Implemented 2026-07-27** — `WorkshopNoticeModal` + `WorkshopConfigureGuide`; notice version `v3` |
 
 ## Support files
@@ -101,7 +107,19 @@ styles, scripts, and assets — no build step.
   `mountWidgetFlow()` (the live thread + composer stage with commit /
   chip / clone-and-recommit), and the `mountBrowserFrame()` /
   `mountGestureFrame()` static mounts. Load-bearing for the Workshop session
-  modals and Spreads 00 + 01.
+  modals and Spreads 00 + 01 + 02.
+- `pm-gravity.css` / `pm-gravity.js` — **Lexical Gravity** (`lg-` prefix), the
+  first standing widget. The CSS came with the 07-29 Gesture Playground pull
+  because that spread links it; the JS arrived 2026-07-31 with Spread 02 and
+  carries the widget's substance: the six built-in lenses as full lexical
+  fields (`LG_LENSES` — POS buckets by degree of separation, semantic gradient,
+  cliché→fresh pairs, substitution map, metaphor line, sample sentence), the
+  drafted-lens fixture (`LG_LOOKUP`, falconry), `buildGravityPanel()` (the
+  pre-commit surface, live or static), `mountGravityFlow()` (the standing
+  lifecycle stage — install / shift / kill markers and the amber active strip),
+  and `mountGravityFrame()` for the static mounts. Depends on `pm-widgets.js`
+  for `cwIc` / `cwOpen` / `cwClose` / `cwXBtn` and `buildWidgetBrowser()`, and
+  on the `orbit` glyph in that file's `CWX` (it is **not** in `icons.js`).
 - `pm-wk-notify.js` — **startup beta notices** (`window.PMNotify`): a six-page
   dismissible "Workshop · beta" modal opened 400ms after load (welcome, project
   folder setup, hosts & guests, conversation controller, tools, agents), with
@@ -188,14 +206,11 @@ these back.
 
 ## Present on remote, not pulled yet (this epic, later sprints)
 
-The Conversation Widgets epic started 2026-07-29; Spreads 00 + 01 are pulled
-above. The remote project has since grown **one page per widget** (Spread 00
-indexes them all). Still deliberately left out of this snapshot until their
-sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
+The Conversation Widgets epic started 2026-07-29; Spreads 00 + 01 + 02 are
+pulled above. The remote project has since grown **one page per widget**
+(Spread 00 indexes them all). Still deliberately left out of this snapshot until
+their sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
 
-- `Prose Minion - Lexical Gravity.html` + `pm-gravity.js` — Spread 02
-  (Sprint 02): the standing prose-directive rail. (`pm-gravity.css` IS pulled —
-  the Gesture Playground spread links it as a stylesheet dependency.)
 - `Prose Minion - Prose Controller.html` + `pm-controller.css` /
   `pm-controller.js` — Spread 03 (Sprint 03): the seven-chapter craft control
   surface.
@@ -212,6 +227,13 @@ sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
   spring): the first **report widget** — added to the remote 2026-07-28.
 - `Canvas.dc.html` + `support.js` — Claude Design's canvas-runtime scratch
   frame, not a standalone prototype.
+
+**Expected consequence:** each spread's header and footer link to its
+neighbours, so the pulled spreads carry dead links to the pages above — 6 from
+Spread 00 (it indexes every widget), 2 each from Spreads 01 and 02. That is the
+staged-pull policy working, not a bad pull; the links resolve as each spread
+lands. Everything a pulled spread actually *renders* (stylesheets, scripts,
+images) is present.
 
 ## Not pulled
 

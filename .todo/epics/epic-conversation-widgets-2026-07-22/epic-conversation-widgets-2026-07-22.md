@@ -1,7 +1,8 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: In progress — Sprint 01 merged 2026-07-30; Sprint 02A in progress
+**Status**: In progress — Sprint 01 merged 2026-07-30; Sprint 02A merged
+2026-07-31; Sprint 02B planned; Sprint 02C optional
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -9,10 +10,16 @@ design Spreads 00+01 synced, widget registry + host contracts, `widget`
 ModelScope, atomic commit route, Gesture Playground end to end (browser →
 pre-commit modal → one composite generation call → commit → chip →
 clone-and-recommit),
-persona recommend/prefill, session-persisted `widgetConfigs`. Sprint 02A is the
-behavior-preserving widget-state/codec extraction before Lexical Gravity;
-Sprints 02–04 have not started.
-**ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**
+persona recommend/prefill, session-persisted `widgetConfigs`. Sprint 02A merged
+through [PR #97](https://github.com/okeylanders/prose-minion-vscode/pull/97):
+widget config lifecycle moved behind a session-owned ledger, Gesture gained a
+local persisted codec, hydration regained a structural prepare/install boundary,
+and shared shape grammar consolidated into `persistedValidation`. Sprint 02B is
+the first behavior slice after that foundation: single-lens Lexical Gravity on
+the standing rail. Sprint 02C is an optional pure-move handler extraction before
+Prose Controller. Sprints 02B, 03, and 04 have not started.
+**ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
+[2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**
 **Integration branch**: `epic/conversation-widgets`
 
 ## Goal
@@ -62,7 +69,7 @@ These are the walls. Everything else is decoration that can move.
    | Lifetime | Rail | Existing precedent |
    |---|---|---|
    | **one-shot** (this turn) | **thread-artifact** — `<thread-artifact id="ta-N">`, belongs to exactly one room turn, and is delivered once to each host/guest through that participant's room offset | `pendingMessageAttachments`, the host-private committed `threadArtifacts` ledger, and `buildWorkshopThreadArtifactFrame` |
-   | **durable** (passage-scoped prose directive) | **standing context** — a passage-scoped frame consulted only at prose-generation time; **not** attunement, **not** behavior | "Add to standing context" composer slot; `<workshop-session-attunement>` is the *shape* precedent, not the home |
+   | **durable** (passage-scoped prose directive) | **standing context** — a passage-scoped `<prose-directive family="…" id="pd-N">` consulted only at prose-generation time; **not** attunement, **not** behavior | "Add to standing context" composer slot; `<workshop-session-attunement>` is the *shape* precedent, not the home |
 
    The widget host's job is to run the pre-commit UI, produce a validated
    payload, and drop it on the rail its lifetime selects. It is **not** inventing
@@ -115,16 +122,28 @@ These are the walls. Everything else is decoration that can move.
    instruction-shaped directive; the writer may explicitly include the full
    Gesture Dictionary as reference material in that same room-wide artifact.
 
+   Spread 02 makes the Lexical Gravity boundary concrete: its built-in word
+   fields, POS/reach buckets, gradients, substitutions, and cliché contrasts
+   are deterministic. Slider/toggle changes make no call. `Preview the pull`
+   and `Build lens` are the only explicit model seams; the latter returns
+   several bounded variants and writes only the writer's chosen validated lens
+   to `resources/lenses/<slug>.json`.
+
 9. **Core stays host-agnostic.** The widget host, the registry, and every
    widget's logic live in `packages/core`. Only the composer's *mounting* touches
    `apps/vscode-extension`. No `vscode` import crosses into core.
 
-9. **Widget state extends the accepted session-persistence spine.** Re-openable
+10. **Widget state extends the accepted session-persistence spine.** Re-openable
    authoring configs and standing directives are explicit typed collections in
    the complete Workshop serializer, with absent collections hydrating empty.
    Stable turn/artifact/config ids survive round-trip. Widget commit, edit, and
    kill paths use Sprint 10's shared ordered autosave-dirty seam. There is no
    generic extension bag and no second webview-owned persistence store.
+
+   Project lens files are reusable source material, not historical session
+   truth. A committed Lexical Gravity config snapshots the resolved lens needed
+   to reconstruct its exact frame; editing a project lens affects future
+   selections without silently rewriting saved sessions.
 
 ## Sequencing
 
@@ -137,18 +156,21 @@ with a second widget before adding v2 richness.
 |---|--------|------|--------|
 | 1 | [Widget host + Gesture Playground](sprints/01-widget-host-gesture-playground.md) | thread-artifact | The whole spine on the one-shot rail: composer menu → pre-commit UI → validated payload → one-shot thread-artifact → re-openable chip → clone-and-recommit. |
 | 2A | [Widget state architecture](sprints/02a-widget-state-architecture.md) | none (refactor) | Session ownership stays singular while widget config lifecycle and persisted field rules gain focused seams before the second widget. |
-| 2 | [Lexical Gravity + standing prose-directive rail](sprints/02-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: passage-scoped prose directive, coordinator in the `WorkshopConversationBehaviorService` mold, edit-in-place + shift marker, active-directive indicator + one-click kill. Single lens. |
+| 2B | [Lexical Gravity + standing prose-directive rail](sprints/02b-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: four-value single-lens config, deterministic lexical-field scaffold, explicit preview/build model seams, project lens library, edit-in-place + shift marker, amber active strip + one-click kill. |
+| 2C | [Workshop scope/context IPC extraction](sprints/02c-workshop-scope-context-ipc-extraction.md) | none (optional refactor) | If the seam remains a pure move after 02B, eight cohesive scope/context routes leave `WorkshopHandler` before Prose Controller adds pressure. It blocks nothing. |
 | 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |
 
-Each sprint lands as its own PR into `epic/conversation-widgets`. Final step
-after Sprint 04 (or the agreed cut line): one PR `epic/conversation-widgets →`
-the workshop integration line.
+Each implemented sprint lands as its own PR into `epic/conversation-widgets`.
+Sprint 02C is explicitly optional and non-blocking; Sprint 03 depends on 02B,
+not 02C. Final step after Sprint 04 (or the agreed cut line): one PR
+`epic/conversation-widgets →` the workshop integration line.
 
 ## The prose-shaping family
 
-Sprints 2–4 form a complementary pair of passage-scoped prose directives that
-share the standing rail but answer different questions:
+Lexical Gravity (Sprints 02B and 04) and Prose Controller (Sprint 03) form a
+complementary pair of passage-scoped prose directives that share the standing
+rail but answer different questions:
 
 - **Lexical Gravity** — *what words*: bias lexis toward an interpretive
   lens / world-view (Photography, Mathematics, Music…), with weight and
@@ -223,7 +245,7 @@ with deeper, teachable style levers rather than a thin bank of sliders.
   [Gesture Dictionary](concepts/gesture-dictionary-widget.md) and the speculative
   [Genre Dictionary](concepts/genre-dictionary.md).
 - **More widgets are expected.** The host contract (Sprint 01) and the standing
-  rail (Sprint 02) are the two reusable substrates; later widgets pick a rail and
+  rail (Sprint 02B) are the two reusable substrates; later widgets pick a rail and
   supply a pre-commit UI + payload validator. Resource-backed and learning
   surfaces must state honestly where their durable truth lives and what, if
   anything, they commit to the conversation.
@@ -247,15 +269,17 @@ with deeper, teachable style levers rather than a thin bank of sliders.
   active-run guard and serialization discipline already coordinated by
   `WorkshopConversationBehaviorService`.
 
-## Open questions (resolve in the ADR)
+## Resolved questions
 
-- Does a standing directive belong in the same standing-context frame budget as
-  excerpt/context attachments, or its own reserved frame? (Leaning: own reserved
-  frame, so it can be consulted only at prose-generation time and killed
-  independently.)
-- Precedence when both Lexical Gravity and Prose Controller are active and imply
-  conflicting choices (e.g. a punctuation-heavy controller vs. a terse lexical
-  field). Who wins, and is it stated to the model or resolved deterministically?
-- Persona auto-commit: is it ever allowed to install a *standing* directive
-  without an explicit user modal, or only propose it? (Leaning: propose only;
-  standing state is durable and must be writer-authored.)
+ADR 2026-07-22 decisions 10–12 close the former open questions:
+
+- **Reserved budget/frame:** standing prose directives use the bounded
+  `<prose-directive family="…" id="pd-N">` frame, not the excerpt/context-
+  attachment budget. They are consulted only at prose-generation time and
+  killed independently.
+- **Cross-family precedence:** Prose Controller governs sentence mechanics and
+  punctuation; Lexical Gravity governs word choice and metaphor pull. The
+  frames state that division rather than silently arbitrating it.
+- **Standing-state authorship:** personas may recommend and prefill, but never
+  auto-commit standing state. An explicit writer commit installs or changes a
+  durable directive.
