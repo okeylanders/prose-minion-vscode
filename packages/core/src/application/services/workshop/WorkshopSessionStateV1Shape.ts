@@ -23,16 +23,32 @@ import {
   isWorkshopWidgetId,
   workshopWidgetIdFromArtifactKind
 } from '@shared/constants/workshopWidgets';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_TODO_BOUNDS
 } from '@/application/services/workshop/WorkshopSessionLimits';
 import {
-  MAXIMUM_PERSISTED_JSON_DEPTH
-} from '@/application/services/workshop/persistedJson';
+  arrayOf,
+  booleanAt,
+  boundedStringAt,
+  enumAt,
+  exactKeys,
+  exactObject,
+  jsonObjectAt,
+  numberAt,
+  objectAt,
+  optionalBooleanAt,
+  optionalNumberAt,
+  optionalStringAt,
+  shapeError,
+  stringAt
+} from '@/application/services/workshop/WorkshopSessionShapeGrammar';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  assertGesturePlaygroundDraftShape,
+  assertGesturePlaygroundRecommendationSeedShape
+} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
 
 export function assertWorkshopSessionStateShape(
   value: unknown
@@ -312,127 +328,7 @@ function assertWidgetConfig(value: unknown, path: string): void {
   optionalStringAt(config.clonedFromConfigId, `${path}.clonedFromConfigId`);
   optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
   optionalStringAt(config.artifactId, `${path}.artifactId`);
-  assertGestureDraft(config.draft, `${path}.draft`);
-}
-
-function assertGestureDraft(value: unknown, path: string): void {
-  const budget = PROMPT_BUDGETS.workshopWidgets;
-  const draft = exactObject(
-    value,
-    path,
-    [
-      'targetPhrase',
-      'writerInstructions',
-      'contextText',
-      'characterNotes',
-      'dictionaryMarkdown',
-      'menu',
-      'selections',
-      'note'
-    ],
-    // `sourceReferences` was added after the first persisted Gesture
-    // Playground drafts. Hydration supplies its safe empty default before
-    // current invariants are enforced.
-    ['includeDictionaryInCommit', 'sourceReferences']
-  );
-  boundedStringAt(
-    draft.targetPhrase,
-    `${path}.targetPhrase`,
-    budget.gestureTargetPhraseCharacters,
-    false
-  );
-  boundedStringAt(
-    draft.writerInstructions,
-    `${path}.writerInstructions`,
-    budget.gestureWriterInstructionsCharacters
-  );
-  boundedStringAt(
-    draft.contextText,
-    `${path}.contextText`,
-    budget.gestureContextCharacters
-  );
-  boundedStringAt(
-    draft.characterNotes,
-    `${path}.characterNotes`,
-    budget.gestureCharacterNotesCharacters
-  );
-  if (draft.sourceReferences !== undefined) {
-    assertWidgetSourceReferences(draft.sourceReferences, `${path}.sourceReferences`);
-  }
-  boundedStringAt(
-    draft.dictionaryMarkdown,
-    `${path}.dictionaryMarkdown`,
-    budget.gestureDictionaryCharacters,
-    false
-  );
-  if (draft.includeDictionaryInCommit !== undefined) {
-    booleanAt(
-      draft.includeDictionaryInCommit,
-      `${path}.includeDictionaryInCommit`
-    );
-  }
-  if (
-    !Array.isArray(draft.selections)
-    || draft.selections.length === 0
-    || draft.selections.length > budget.gestureSelectionsPerCommit
-  ) {
-    shapeError(
-      `${path}.selections`,
-      `an array of 1–${budget.gestureSelectionsPerCommit} strings`
-    );
-  }
-  const selections = draft.selections as unknown[];
-  const seenSelections = new Set<string>();
-  arrayOf(selections, `${path}.selections`, (selection, selectionPath) => {
-    boundedStringAt(selection, selectionPath, budget.gestureOptionCharacters, false);
-    const text = selection as string;
-    if (seenSelections.has(text)) {
-      shapeError(`${path}.selections`, 'an array without duplicate directions');
-    }
-    seenSelections.add(text);
-  });
-  boundedStringAt(draft.note, `${path}.note`, budget.gestureNoteCharacters);
-  if (
-    !Array.isArray(draft.menu)
-    || draft.menu.length < budget.gestureMenuGroupsMinimum
-    || draft.menu.length > budget.gestureMenuGroups
-  ) {
-    shapeError(
-      `${path}.menu`,
-      `an array of ${budget.gestureMenuGroupsMinimum}–${budget.gestureMenuGroups} groups`
-    );
-  }
-  const menuOptions = new Set<string>();
-  arrayOf(draft.menu, `${path}.menu`, (groupValue, groupPath) => {
-    const group = exactObject(groupValue, groupPath, ['heading', 'options']);
-    boundedStringAt(
-      group.heading,
-      `${groupPath}.heading`,
-      budget.gestureOptionCharacters,
-      false
-    );
-    if (
-      !Array.isArray(group.options)
-      || group.options.length < budget.gestureOptionsPerGroupMinimum
-      || group.options.length > budget.gestureOptionsPerGroup
-    ) {
-      shapeError(
-        `${groupPath}.options`,
-        `an array of ${budget.gestureOptionsPerGroupMinimum}–${budget.gestureOptionsPerGroup} strings`
-      );
-    }
-    arrayOf(group.options, `${groupPath}.options`, (option, optionPath) => {
-      boundedStringAt(option, optionPath, budget.gestureOptionCharacters, false);
-      const text = option as string;
-      if (menuOptions.has(text)) {
-        shapeError(`${path}.menu`, 'groups without duplicate options');
-      }
-      menuOptions.add(text);
-    });
-  });
-  if ([...seenSelections].some((selection) => !menuOptions.has(selection))) {
-    shapeError(`${path}.selections`, 'directions drawn from the generated menu');
-  }
+  assertGesturePlaygroundDraftShape(config.draft, `${path}.draft`);
 }
 
 function assertWriterSources(value: unknown): void {
@@ -623,84 +519,11 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
     shapeError(`${path}.widgetId`, 'live Conversation Widget id');
   }
   if (recommendation.seed !== undefined) {
-    const budget = PROMPT_BUDGETS.workshopWidgets;
-    const seed = exactObject(
+    assertGesturePlaygroundRecommendationSeedShape(
       recommendation.seed,
-      `${path}.seed`,
-      [],
-      [
-        'targetPhrase',
-        'writerInstructions',
-        'contextText',
-        'characterNotes',
-        'sourceReferences'
-      ]
+      `${path}.seed`
     );
-    optionalBoundedStringAt(
-      seed.targetPhrase,
-      `${path}.seed.targetPhrase`,
-      budget.gestureTargetPhraseCharacters,
-      false
-    );
-    optionalBoundedStringAt(
-      seed.writerInstructions,
-      `${path}.seed.writerInstructions`,
-      budget.gestureWriterInstructionsCharacters,
-      false
-    );
-    optionalBoundedStringAt(
-      seed.contextText,
-      `${path}.seed.contextText`,
-      budget.gestureContextCharacters,
-      false
-    );
-    optionalBoundedStringAt(
-      seed.characterNotes,
-      `${path}.seed.characterNotes`,
-      budget.gestureCharacterNotesCharacters,
-      false
-    );
-    if (seed.sourceReferences !== undefined) {
-      assertWidgetSourceReferences(seed.sourceReferences, `${path}.seed.sourceReferences`);
-    }
   }
-}
-
-function assertWidgetSourceReferences(value: unknown, path: string): void {
-  const budget = PROMPT_BUDGETS.workshopWidgets;
-  if (!Array.isArray(value) || value.length > budget.gestureSourceReferences) {
-    shapeError(path, `an array of at most ${budget.gestureSourceReferences} source references`);
-  }
-  const seen = new Set<string>();
-  let serializedCharacters = 0;
-  arrayOf(value, path, (referenceValue, referencePath) => {
-    const reference = objectAt(referenceValue, referencePath);
-    if (reference.kind === 'active-excerpt') {
-      exactKeys(reference, referencePath, ['kind']);
-    } else if (reference.kind === 'context-attachment') {
-      exactKeys(reference, referencePath, ['kind', 'attachmentId']);
-      stringAt(reference.attachmentId, `${referencePath}.attachmentId`);
-      if (!/^ctx-[1-9]\d*$/.test(reference.attachmentId as string)) {
-        shapeError(`${referencePath}.attachmentId`, 'a ctx-<n> attachment id');
-      }
-    } else {
-      shapeError(`${referencePath}.kind`, 'active-excerpt or context-attachment');
-    }
-    const key = reference.kind === 'active-excerpt'
-      ? 'active-excerpt'
-      : `context-attachment:${String(reference.attachmentId)}`;
-    serializedCharacters += key.length + (seen.size > 0 ? 1 : 0);
-    if (serializedCharacters > budget.gestureSourceReferenceCharacters) {
-      shapeError(
-        path,
-        `source references within ${budget.gestureSourceReferenceCharacters} characters`
-      );
-    }
-    if (seen.has(key)) {
-      shapeError(path, 'source references without duplicates');
-    }
-    seen.add(key);
-  });
 }
 
 function assertCitation(value: unknown, path: string): void {
@@ -1024,188 +847,4 @@ function assertTodoSource(value: unknown, path: string): void {
   stringAt(source.findingKey, `${path}.findingKey`);
   stringAt(source.findingText, `${path}.findingText`);
   numberAt(source.excerptVersion, `${path}.excerptVersion`);
-}
-
-function exactObject(
-  value: unknown,
-  path: string,
-  required: readonly string[],
-  optional: readonly string[] = []
-): Record<string, unknown> {
-  const object = objectAt(value, path);
-  exactKeys(object, path, required, optional);
-  return object;
-}
-
-function objectAt(value: unknown, path: string): Record<string, unknown> {
-  if (
-    typeof value !== 'object'
-    || value === null
-    || Array.isArray(value)
-    || Object.getPrototypeOf(value) !== Object.prototype
-  ) {
-    shapeError(path, 'plain object');
-  }
-  return value as Record<string, unknown>;
-}
-
-function exactKeys(
-  object: Record<string, unknown>,
-  path: string,
-  required: readonly string[],
-  optional: readonly string[] = []
-): void {
-  const allowed = new Set([...required, ...optional]);
-  const unknown = Object.keys(object).find((key) => !allowed.has(key));
-  if (unknown) {
-    throw new Error(`${path} contains unknown field ${unknown}`);
-  }
-  const missing = required.find(
-    (key) => !Object.prototype.hasOwnProperty.call(object, key) || object[key] === undefined
-  );
-  if (missing) {
-    throw new Error(`${path} is missing required field ${missing}`);
-  }
-}
-
-function arrayOf(
-  value: unknown,
-  path: string,
-  assertItem: (item: unknown, itemPath: string) => void
-): void {
-  if (!Array.isArray(value)) {
-    shapeError(path, 'array');
-  }
-  value.forEach((item, index) => assertItem(item, `${path}[${index}]`));
-}
-
-function stringAt(value: unknown, path: string): void {
-  if (typeof value !== 'string') {
-    shapeError(path, 'string');
-  }
-}
-
-function boundedStringAt(
-  value: unknown,
-  path: string,
-  maximumCharacters: number,
-  allowBlank = true
-): void {
-  stringAt(value, path);
-  const text = value as string;
-  if (!allowBlank && text.trim().length === 0) {
-    shapeError(path, 'a non-empty string');
-  }
-  if (text.length > maximumCharacters) {
-    shapeError(path, `a string of at most ${maximumCharacters} characters`);
-  }
-}
-
-function optionalStringAt(value: unknown, path: string): void {
-  if (value !== undefined) {
-    stringAt(value, path);
-  }
-}
-
-function optionalBoundedStringAt(
-  value: unknown,
-  path: string,
-  maximumCharacters: number,
-  allowBlank = true
-): void {
-  if (value !== undefined) {
-    boundedStringAt(value, path, maximumCharacters, allowBlank);
-  }
-}
-
-function numberAt(value: unknown, path: string): void {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    shapeError(path, 'finite number');
-  }
-}
-
-function optionalNumberAt(value: unknown, path: string): void {
-  if (value !== undefined) {
-    numberAt(value, path);
-  }
-}
-
-function booleanAt(value: unknown, path: string): void {
-  if (typeof value !== 'boolean') {
-    shapeError(path, 'boolean');
-  }
-}
-
-function optionalBooleanAt(value: unknown, path: string): void {
-  if (value !== undefined) {
-    booleanAt(value, path);
-  }
-}
-
-function enumAt(value: unknown, path: string, allowed: readonly string[]): void {
-  if (typeof value !== 'string' || !allowed.includes(value)) {
-    shapeError(path, allowed.join(' | '));
-  }
-}
-
-function jsonObjectAt(value: unknown, path: string): void {
-  objectAt(value, path);
-  assertJsonValue(value, path);
-}
-
-/**
- * Free-form JSON validation for capability metadata.
- *
- * This runs on BOTH sides of the durable boundary: on read against a
- * `JSON.parse` result (where `undefined` cannot occur) and on write against the
- * live in-memory object (where it routinely does — any optional metadata field
- * the persona omitted is an `undefined` member).
- *
- * So it must honor the same policy `clonePersistedJson` documents: an
- * `undefined` OBJECT MEMBER is an absent member, exactly as `JSON.stringify`
- * omits it. Rejecting one used to fail every save of a session containing a
- * `resource.read` without an explicit `endLine` — the validator refusing a value
- * that would never have reached disk.
- *
- * An `undefined` ARRAY ITEM is a different matter and stays refused: JSON has no
- * hole, so `JSON.stringify` writes `null` there, silently changing the data.
- */
-function assertJsonValue(value: unknown, path: string, depth = 0): void {
-  if (depth > MAXIMUM_PERSISTED_JSON_DEPTH) {
-    throw new Error(
-      `${path} exceeds the maximum JSON nesting depth of ${MAXIMUM_PERSISTED_JSON_DEPTH}.`
-    );
-  }
-  if (
-    value === null
-    || typeof value === 'string'
-    || typeof value === 'boolean'
-  ) {
-    return;
-  }
-  if (typeof value === 'number') {
-    numberAt(value, path);
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((item, index) =>
-      assertJsonValue(item, `${path}[${index}]`, depth + 1)
-    );
-    return;
-  }
-  if (value === undefined) {
-    // Only reachable as an array item: object members are skipped below.
-    shapeError(path, 'a JSON value (an undefined array item would be written as null)');
-  }
-  const object = objectAt(value, path);
-  for (const [key, nested] of Object.entries(object)) {
-    if (nested === undefined) {
-      continue;
-    }
-    assertJsonValue(nested, `${path}.${key}`, depth + 1);
-  }
-}
-
-function shapeError(path: string, expected: string): never {
-  throw new Error(`${path} must be ${expected}`);
 }

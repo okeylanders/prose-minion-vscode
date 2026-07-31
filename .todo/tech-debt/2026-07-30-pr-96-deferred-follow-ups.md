@@ -14,10 +14,13 @@
 
 ### Widget-config ledger extraction (#12)
 
-Extract the widget-config ledger as a named collaborator when the next widget
-adds another independently changing lifecycle. Do not split the aggregate
-solely by line count. This is also tracked by
-[Workshop god files](2026-07-25-workshop-god-files.md).
+**Addressed 2026-07-31.** `WorkshopWidgetConfigLedger` now owns the config
+collection/counter, defensive clones, commit linkage, bounded summaries, reset,
+export, and hydration replacement. `WorkshopSessionService` remains the
+aggregate boundary and delegates its existing API. The extraction landed as
+Sprint 02A before the known second lifecycle; it was not a line-count-only
+split. See [Workshop god files](2026-07-25-workshop-god-files.md) for the broader
+remaining responsibility work.
 
 ### Full-generation prompt caching (#17)
 
@@ -37,5 +40,5 @@ render as `60 minutes` or `24 hours`. Add tests at 59m29s/59m30s/60m and
 
 - [ ] Each item lands in a focused change with behavior-level tests.
 - [ ] Prompt caching remains provider-portable or explicitly adapter-owned.
-- [ ] Widget-ledger extraction preserves checkpoint and snapshot behavior.
+- [x] Widget-ledger extraction preserves checkpoint and snapshot behavior.
 - [ ] Relative-duration labels remain monotonic at unit boundaries.

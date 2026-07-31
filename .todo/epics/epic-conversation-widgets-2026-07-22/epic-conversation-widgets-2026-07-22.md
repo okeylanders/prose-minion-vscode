@@ -1,7 +1,7 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: In progress — Sprint 01 merged 2026-07-30; Sprint 02 next
+**Status**: In progress — Sprint 01 merged 2026-07-30; Sprint 02A in progress
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -9,8 +9,9 @@ design Spreads 00+01 synced, widget registry + host contracts, `widget`
 ModelScope, atomic commit route, Gesture Playground end to end (browser →
 pre-commit modal → one composite generation call → commit → chip →
 clone-and-recommit),
-persona recommend/prefill, session-persisted `widgetConfigs`. Sprints 02–04
-not started.
+persona recommend/prefill, session-persisted `widgetConfigs`. Sprint 02A is the
+behavior-preserving widget-state/codec extraction before Lexical Gravity;
+Sprints 02–04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**
 **Integration branch**: `epic/conversation-widgets`
 
@@ -135,6 +136,7 @@ with a second widget before adding v2 richness.
 | # | Sprint | Rail | Proves |
 |---|--------|------|--------|
 | 1 | [Widget host + Gesture Playground](sprints/01-widget-host-gesture-playground.md) | thread-artifact | The whole spine on the one-shot rail: composer menu → pre-commit UI → validated payload → one-shot thread-artifact → re-openable chip → clone-and-recommit. |
+| 2A | [Widget state architecture](sprints/02a-widget-state-architecture.md) | none (refactor) | Session ownership stays singular while widget config lifecycle and persisted field rules gain focused seams before the second widget. |
 | 2 | [Lexical Gravity + standing prose-directive rail](sprints/02-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: passage-scoped prose directive, coordinator in the `WorkshopConversationBehaviorService` mold, edit-in-place + shift marker, active-directive indicator + one-click kill. Single lens. |
 | 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |
