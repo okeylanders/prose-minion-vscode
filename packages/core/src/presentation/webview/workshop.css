@@ -6039,6 +6039,7 @@
 [data-pm-surface="workshop"] .pm-ws-lg-lookup button:hover,
 [data-pm-surface="workshop"] .pm-ws-lg-preview-button:hover { border-color:var(--pm-border-2);color:var(--pm-text); }
 [data-pm-surface="workshop"] .pm-ws-lg button:disabled { cursor:not-allowed;opacity:.52; }
+[data-pm-surface="workshop"] .pm-ws-lg-build-error { margin-top:7px; }
 [data-pm-surface="workshop"] .pm-ws-lg-note { margin-top:7px;font-size:10.5px;line-height:1.5;color:var(--pm-amber); }
 [data-pm-surface="workshop"] .pm-ws-lg-options { margin-top:8px; }
 [data-pm-surface="workshop"] .pm-ws-lg-cap { font:9.5px var(--pm-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pm-faint);margin-bottom:6px; }

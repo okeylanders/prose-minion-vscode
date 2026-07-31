@@ -104,8 +104,18 @@ describe('LexicalGravityModelService', () => {
   });
 
   it('fails closed on wrapper prose, duplicate variants, and output truncation', async () => {
-    await expect(createService(`Here you go!\n${buildResponse}`).service.buildLenses('Light'))
+    const wrapperProse = `Here you go!\n${buildResponse}`;
+    const rejected = createService(wrapperProse);
+    await expect(rejected.service.buildLenses('Light'))
       .rejects.toThrow('unusable lexical fields');
+    expect(rejected.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('response sentinels must be the first and last lines')
+    );
+    expect(rejected.appendLine).toHaveBeenCalledWith([
+      '[LexicalGravityModelService] Rejected lens response body BEGIN',
+      wrapperProse,
+      '[LexicalGravityModelService] Rejected lens response body END'
+    ].join('\n'));
 
     const duplicateVariants = [
       '===LEXICAL_GRAVITY_LENSES_V1===',

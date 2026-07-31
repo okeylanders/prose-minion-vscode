@@ -111,6 +111,10 @@ describe('WorkshopLexicalGravityModal', () => {
     );
     expect(view.container.querySelector('.pm-ws-lg-preview')?.textContent)
       .toContain('A resonant preview.');
+    const preview = view.container.querySelector('.pm-ws-lg-preview')!;
+    const previewAgain = screen.getByRole('button', { name: 'Preview again' });
+    expect(preview.compareDocumentPosition(previewAgain) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Install on passage' }));
     expect(props.onApply).toHaveBeenCalledWith(
@@ -239,5 +243,31 @@ describe('WorkshopLexicalGravityModal', () => {
     />);
 
     expect(screen.getByText(/already a built-in lens/)).toBeTruthy();
+  });
+
+  it('shows lens-build failures immediately beside the Build lens action', () => {
+    const { props, view } = renderModal();
+    fireEvent.change(screen.getByPlaceholderText('Look up or invent a lens…'), {
+      target: { value: 'falconry' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
+    const token = (props.onBuildLens as jest.Mock).mock.calls[0][0] as string;
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      lensCandidates={{
+        token,
+        query: 'falconry',
+        ok: false,
+        error: 'The model returned unusable lexical fields. Try building the lens again.'
+      }}
+    />);
+
+    const lookup = view.container.querySelector('.pm-ws-lg-lookup');
+    const alert = screen.getByRole('alert');
+    expect(lookup?.nextElementSibling).toBe(alert);
+    expect(alert.textContent).toContain('unusable lexical fields');
+    expect((screen.getByRole('button', { name: /Build lens/ }) as HTMLButtonElement).disabled)
+      .toBe(false);
   });
 });

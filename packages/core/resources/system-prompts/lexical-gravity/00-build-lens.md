@@ -33,7 +33,7 @@ Return exactly three genuinely distinct takes on the subject. Each take must be 
 }
 ```
 
-Degree 1 is broadly usable, degree 2 is field-specific, and degree 3 is vivid specialist language. Supply 5–8 varied terms in every nouns, verbs, and modifiers array. Supply 6–10 ordered gradient terms and 4–6 cliché/fresh contrasts. Prefer concrete, surprising, usable language over thesaurus noise. The three `variant` values must be distinct.
+Degree 1 is broadly usable, degree 2 is field-specific, and degree 3 is vivid specialist language. Supply 5–8 varied terms in every nouns, verbs, and modifiers array. Supply 6–10 ordered gradient terms and 4–6 cliché/fresh contrasts. In `substitutions`, prefer one vivid, idiomatic word for each value so the comparison table behaves like a true word-choice map. Use a compact phrase only when no single word can carry the intended distinction naturally; never pad a substitution with an article or explanatory wording. Prefer concrete, surprising, usable language over thesaurus noise. The three `variant` values must be distinct.
 
 The outer response protocol is exact and contains no Markdown fence or commentary:
 

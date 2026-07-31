@@ -120,6 +120,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [savingCandidates, setSavingCandidates] = React.useState(false);
   const [applying, setApplying] = React.useState(false);
   const [error, setError] = React.useState<string>();
+  const [buildError, setBuildError] = React.useState<string>();
   const [buildNotice, setBuildNotice] = React.useState<string>();
   const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
 
@@ -149,6 +150,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setSavingCandidates(false);
     setApplying(false);
     setError(undefined);
+    setBuildError(undefined);
     setBuildNotice(undefined);
     onClearTransientResults();
     onRequestLenses();
@@ -191,16 +193,16 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     if (!buildToken || lensCandidates?.token !== buildToken) {return;}
     if (!lensCandidates.ok) {
       setBuildToken(undefined);
-      setError(lensCandidates.error ?? 'The lens could not be built.');
+      setBuildError(lensCandidates.error ?? 'The lens could not be built.');
       return;
     }
+    setBuildError(undefined);
     if (lensCandidates.existingLens) {
       setExtraLens(lensCandidates.existingLens);
       setLensSlug(lensCandidates.existingLens.slug);
       setPreview(undefined);
       setBuildToken(undefined);
       setSelectedCandidateIds([]);
-      setError(undefined);
       setBuildNotice(
         `${lensCandidates.existingLens.name} is already ${lensCandidates.existingLens.source === 'project' ? 'in the project library' : 'a built-in lens'}, so no model call was needed.`
       );
@@ -229,11 +231,11 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
         setBuildToken(undefined);
       }
       setSelectedCandidateIds([]);
-      setError(undefined);
+      setBuildError(undefined);
       setBuildNotice(undefined);
       onRequestLenses();
     } else {
-      setError(lensesSaved.error ?? 'The project lenses could not be saved.');
+      setBuildError(lensesSaved.error ?? 'The project lenses could not be saved.');
     }
   }, [buildToken, lensesSaved, onRequestLenses, pendingCandidateIds, savingCandidates]);
 
@@ -267,6 +269,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setPendingCandidateIds([]);
     setSavingCandidates(false);
     setError(undefined);
+    setBuildError(undefined);
     setBuildNotice(undefined);
     onBuildLens(token, lookup.trim());
   }, [buildToken, lookup, onBuildLens]);
@@ -313,7 +316,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     if (selectedIds.length < 1) {return;}
     setSavingCandidates(true);
     setPendingCandidateIds(selectedIds);
-    setError(undefined);
+    setBuildError(undefined);
     onSaveLenses(buildToken, lookup.trim(), selectedIds);
   }, [buildToken, candidates, lookup, onSaveLenses, savingCandidates, selectedCandidateIds]);
   const locked = applying || savingCandidates;
@@ -384,6 +387,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                 <Icon name="sparkle" size={12} /> {buildToken ? 'Drafting…' : 'Build lens'}
               </button>
             </div>
+            {buildError && <div className="pm-ws-gesture-error pm-ws-lg-build-error" role="alert">{buildError}</div>}
             {catalogError && <div className="pm-ws-lg-note">Built-ins remain available. {catalogError}</div>}
             {buildNotice && <div className="pm-ws-lg-note">{buildNotice}</div>}
             {candidates && (
@@ -507,9 +511,6 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             </details>
           )}
 
-          <button type="button" className="pm-ws-lg-preview-button" disabled={!draft || !!previewToken || locked} onClick={requestPreview}>
-            <Icon name={preview ? 'refresh' : 'sparkle'} size={12} /> {previewToken ? 'One fast model call…' : preview ? 'Preview again' : 'Preview the pull'}
-          </button>
           {preview && lens && (
             <div className="pm-ws-lg-preview">
               <div>one fast-tier call · sample pull at {weight}%</div>
@@ -517,6 +518,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
               <span><b>After</b> “{preview.text}”</span>
             </div>
           )}
+          <button type="button" className="pm-ws-lg-preview-button" disabled={!draft || !!previewToken || locked} onClick={requestPreview}>
+            <Icon name={preview ? 'refresh' : 'sparkle'} size={12} /> {previewToken ? 'One fast model call…' : preview ? 'Preview again' : 'Preview the pull'}
+          </button>
           {error && <div className="pm-ws-gesture-error" role="alert">{error}</div>}
         </div>
 

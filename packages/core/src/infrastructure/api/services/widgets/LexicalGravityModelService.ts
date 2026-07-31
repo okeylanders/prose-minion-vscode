@@ -148,8 +148,16 @@ export class LexicalGravityModelService {
         return { candidateId: `${slug}-${index + 1}`, lens };
       });
     } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(
-        `[LexicalGravityModelService] Rejected lens response: ${error instanceof Error ? error.message : String(error)}`
+        `[LexicalGravityModelService] Rejected lens response: ${reason}`
+      );
+      this.outputChannel?.appendLine(
+        [
+          '[LexicalGravityModelService] Rejected lens response body BEGIN',
+          content,
+          '[LexicalGravityModelService] Rejected lens response body END'
+        ].join('\n')
       );
       throw new Error('The model returned unusable lexical fields. Try building the lens again.');
     }
