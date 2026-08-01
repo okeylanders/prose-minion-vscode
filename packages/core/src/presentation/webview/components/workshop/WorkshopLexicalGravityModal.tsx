@@ -336,6 +336,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
         ({ candidateId }) => !savedCandidateIds.includes(candidateId)
       )
     : undefined;
+  const buildingLensCandidates = Boolean(
+    buildToken && lensCandidates?.token !== buildToken
+  );
   const saveSelectedCandidates = React.useCallback(() => {
     if (!buildToken || !candidates || selectedCandidateIds.length < 1 || savingCandidates) {
       return;
@@ -404,6 +407,25 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             {buildError && <div className="pm-ws-gesture-error pm-ws-lg-build-error" role="alert">{buildError}</div>}
             {catalogError && <div className="pm-ws-lg-note">Built-ins remain available. {catalogError}</div>}
             {buildNotice && <div className="pm-ws-lg-note">{buildNotice}</div>}
+            {buildingLensCandidates && (
+              <div
+                className="pm-ws-lg-options pm-ws-lg-options-loading"
+                role="status"
+                aria-label="Drafting three lens options"
+              >
+                <div className="pm-ws-lg-cap">model drafting 3 takes…</div>
+                {[0, 1, 2].map((slot) => (
+                  <div
+                    className="pm-ws-lg-option-skeleton"
+                    aria-hidden="true"
+                    key={slot}
+                  >
+                    <i />
+                    <div><b /><span /></div>
+                  </div>
+                ))}
+              </div>
+            )}
             {candidates && (
               <div className="pm-ws-lg-options">
                 <div className="pm-ws-lg-cap">

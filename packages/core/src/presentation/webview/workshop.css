@@ -6116,6 +6116,14 @@
 [data-pm-surface="workshop"] .pm-ws-lg-options > button.is-selected .pm-ws-lg-option-check { border-color:var(--pm-accent);background:rgba(224,103,58,.14); }
 [data-pm-surface="workshop"] .pm-ws-lg-options b { display:block;font-size:12.5px;color:var(--pm-text);font-weight:600; }
 [data-pm-surface="workshop"] .pm-ws-lg-options span { display:block;font-size:11px;color:var(--pm-dim);line-height:1.5;margin-top:2px; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton { display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;box-sizing:border-box;min-height:55px;padding:10px 11px;border:1px dashed rgba(224,103,58,.28);border-radius:9px;background:var(--pm-surface); }
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton + .pm-ws-lg-option-skeleton { margin-top:6px; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton > i { display:block;width:16px;height:16px;border:1px solid var(--pm-border);border-radius:4px; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton > div { display:flex;flex-direction:column;gap:8px;padding-top:2px; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton b,
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton span { display:block;height:9px;margin:0;border-radius:999px;background:linear-gradient(90deg,var(--pm-surface-2) 25%,var(--pm-surface-3) 50%,var(--pm-surface-2) 75%);background-size:200% 100%;animation:pm-ws-lg-shimmer 1.25s ease-in-out infinite; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton b { width:46%; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-skeleton span { width:78%; }
 [data-pm-surface="workshop"] .pm-ws-lg-option-actions { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px; }
 [data-pm-surface="workshop"] .pm-ws-lg-option-actions > span { margin:0;font:10px var(--pm-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--pm-faint); }
 [data-pm-surface="workshop"] .pm-ws-lg-option-actions > button { min-height:32px;padding:6px 11px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--pm-accent-lo);border-radius:8px;background:var(--pm-accent-soft);color:var(--pm-accent-hi);font:600 11px var(--pm-sans);cursor:pointer; }
@@ -6183,12 +6191,14 @@
 [data-pm-surface="workshop"] .pm-ws-lg-preview-source textarea:disabled { opacity:1;cursor:wait; }
 [data-pm-surface="workshop"] .pm-ws-lg-preview-loading { display:grid;grid-template-columns:51px minmax(0,1fr);align-items:start; }
 [data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton { display:flex;flex-direction:column;gap:8px;padding:4px; }
-[data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i { display:block;height:9px;border-radius:999px;background:linear-gradient(90deg,var(--pm-surface-2) 25%,var(--pm-surface-3) 50%,var(--pm-surface-2) 75%);background-size:200% 100%;animation:pm-ws-lg-preview-shimmer 1.25s ease-in-out infinite; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i { display:block;height:9px;border-radius:999px;background:linear-gradient(90deg,var(--pm-surface-2) 25%,var(--pm-surface-3) 50%,var(--pm-surface-2) 75%);background-size:200% 100%;animation:pm-ws-lg-shimmer 1.25s ease-in-out infinite; }
 [data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i:nth-child(2) { width:92%; }
 [data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i:nth-child(3) { width:68%; }
-@keyframes pm-ws-lg-preview-shimmer { from{background-position:200% 0}to{background-position:-200% 0} }
+@keyframes pm-ws-lg-shimmer { from{background-position:200% 0}to{background-position:-200% 0} }
 @media (prefers-reduced-motion: reduce) {
-  [data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i { animation:none;background:var(--pm-surface-3); }
+  [data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i,
+  [data-pm-surface="workshop"] .pm-ws-lg-option-skeleton b,
+  [data-pm-surface="workshop"] .pm-ws-lg-option-skeleton span { animation:none;background:var(--pm-surface-3); }
 }
 
 /* Standing rail + auditable thread markers — generic shell, amber lifetime. */

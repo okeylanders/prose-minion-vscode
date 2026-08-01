@@ -247,6 +247,8 @@ describe('WorkshopLexicalGravityModal', () => {
     const input = screen.getByPlaceholderText('Look up or invent a lens…');
     fireEvent.change(input, { target: { value: 'falconry' } });
     fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
+    expect(screen.getByRole('status', { name: 'Drafting three lens options' })).toBeTruthy();
+    expect(view.container.querySelectorAll('.pm-ws-lg-option-skeleton')).toHaveLength(3);
     const token = (props.onBuildLens as jest.Mock).mock.calls[0][0] as string;
     const candidate = {
       candidateId: 'falconry-1',
@@ -282,6 +284,8 @@ describe('WorkshopLexicalGravityModal', () => {
         candidates: [candidate, secondCandidate, thirdCandidate]
       }}
     />);
+    expect(screen.queryByRole('status', { name: 'Drafting three lens options' })).toBeNull();
+    expect(view.container.querySelectorAll('.pm-ws-lg-option-skeleton')).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: /Falconry — The hunt/ }));
     fireEvent.click(screen.getByRole('button', { name: /Falconry — The stoop/ }));
     expect(screen.getByText('2 selected')).toBeTruthy();
@@ -372,6 +376,8 @@ describe('WorkshopLexicalGravityModal', () => {
     const input = screen.getByPlaceholderText('Look up or invent a lens…');
     fireEvent.change(input, { target: { value: 'photography' } });
     fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
+    expect(screen.getByRole('status', { name: 'Drafting three lens options' })).toBeTruthy();
+    expect(view.container.querySelectorAll('.pm-ws-lg-option-skeleton')).toHaveLength(3);
     const token = (props.onBuildLens as jest.Mock).mock.calls[0][0] as string;
 
     view.rerender(<WorkshopLexicalGravityModal
@@ -407,6 +413,8 @@ describe('WorkshopLexicalGravityModal', () => {
 
     const lookup = view.container.querySelector('.pm-ws-lg-lookup');
     const alert = screen.getByRole('alert');
+    expect(screen.queryByRole('status', { name: 'Drafting three lens options' })).toBeNull();
+    expect(view.container.querySelectorAll('.pm-ws-lg-option-skeleton')).toHaveLength(0);
     expect(lookup?.nextElementSibling).toBe(alert);
     expect(alert.textContent).toContain('unusable lexical fields');
     expect((screen.getByRole('button', { name: /Build lens/ }) as HTMLButtonElement).disabled)

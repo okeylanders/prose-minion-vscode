@@ -61,6 +61,7 @@ The writer still owns every send, widget open, and commit.
    - the Weight control immediately between the preview and its action;
    - a generated-by-default Before passage that becomes quietly editable in
      place and remains the preview source while the writer tunes controls;
+   - three stable lens-card skeletons while Build Lens drafts its candidates;
    - an After skeleton that holds the comparison row while a preview is
      generating and yields to prose or disappears on failure;
    - edit action label `Apply`; and
