@@ -188,6 +188,9 @@ function unavailableWidgetSourceReference(
   session: WorkshopSessionService,
   recommendation: WorkshopWidgetRecommendation
 ): string | undefined {
+  if (recommendation.widgetId !== 'gesture-playground') {
+    return undefined;
+  }
   const references = recommendation.seed?.sourceReferences ?? [];
   for (const reference of references) {
     if (reference.kind === 'active-excerpt') {

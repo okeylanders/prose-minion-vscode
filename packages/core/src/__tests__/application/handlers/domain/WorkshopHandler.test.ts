@@ -1,6 +1,7 @@
 import {
   isWorkshopHostReturnShortcut,
-  WorkshopHandler
+  WorkshopHandler,
+  WorkshopWidgetRuntime
 } from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
@@ -47,6 +48,15 @@ const message = (type: MessageType, payload: unknown) => ({
   payload,
   timestamp: 1
 });
+
+const widgetRuntime = (gesturePlayground: unknown): WorkshopWidgetRuntime => ({
+  gesturePlayground,
+  lexicalGravity: {
+    model: {},
+    repository: {},
+    directives: {}
+  }
+} as unknown as WorkshopWidgetRuntime);
 
 describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   let session: WorkshopSessionService;
@@ -253,7 +263,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
         timezone: 'America/Chicago'
       }),
       persistence,
-      { generateMenu: jest.fn() } as never,
+      widgetRuntime({ generateMenu: jest.fn() }),
       log
     );
   });
@@ -295,7 +305,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.CANCEL_WIDGET_GENERATE_REQUEST)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_COMMIT_WIDGET)).toBe(true);
-    expect(router.handlerCount).toBe(42);
+    expect(router.handlerCount).toBe(48);
   });
 
   it('keeps a failed widget send as a complete retryable user turn plus artifact', async () => {
@@ -462,7 +472,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(service.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [],
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
-      writerProfile
+      writerProfile,
+      []
     );
     expect(writerProfileService.getProfile()).toEqual(writerProfile);
     expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.writerProfile)
@@ -500,7 +511,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expressionLevel: 'amplified',
       relationalDepth: 'attuned',
       carryCuesThroughSession: true
-    }, DEFAULT_WORKSHOP_WRITER_PROFILE);
+    }, DEFAULT_WORKSHOP_WRITER_PROFILE, []);
     expect(service.replaceWorkshopConversationSettings.mock.invocationCallOrder[0])
       .toBeLessThan((settings.update as jest.Mock).mock.invocationCallOrder[0]);
     expect(session.getConversationBehavior().interactionMode).toBe('conversational');
@@ -528,7 +539,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(service.replaceWorkshopConversationSettings).toHaveBeenCalledWith([
       { conversationId: 'host-conv', personaId: 'jill', role: 'host' }
-    ], expect.objectContaining({ interactionMode: 'balanced', expressionLevel: 'subtle' }), DEFAULT_WORKSHOP_WRITER_PROFILE);
+    ], expect.objectContaining({ interactionMode: 'balanced', expressionLevel: 'subtle' }), DEFAULT_WORKSHOP_WRITER_PROFILE, []);
   });
 
   it('keeps the previous behavior when retained prompt replacement fails', async () => {

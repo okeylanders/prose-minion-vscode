@@ -13,6 +13,7 @@ import {
   WorkshopExcerpt,
   WorkshopPersonaId,
   WorkshopSessionScope,
+  WorkshopStandingDirectiveSnapshot,
   WorkshopToolId,
   WorkshopTurn,
   WorkshopTodoItem,
@@ -95,6 +96,8 @@ export interface WorkshopSessionStateV1 {
      * defaults it to zero rather than refusing to open a writer's saved room.
      */
     widgetConfig?: number;
+    /** Optional for checkpoints written before standing prose directives. */
+    standingDirective?: number;
   };
   /**
    * Persisted widget authoring configs (ADR 2026-07-22). OPTIONAL for the
@@ -102,6 +105,8 @@ export interface WorkshopSessionStateV1 {
    * hydrates empty.
    */
   widgetConfigs?: WorkshopWidgetConfigSnapshot[];
+  /** Active directives, one per closed family. Optional for older checkpoints. */
+  standingDirectives?: WorkshopStandingDirectiveSnapshot[];
   writerSources: {
     host: ContextSourceEntry[];
     tools: Partial<Record<WorkshopToolId, ContextSourceEntry[]>>;

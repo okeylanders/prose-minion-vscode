@@ -180,7 +180,10 @@ export class MessageHandler {
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
-      gesturePlaygroundService
+      gesturePlaygroundService,
+      lexicalGravityModelService,
+      lexicalGravityLensRepository,
+      workshopStandingDirectiveService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -313,7 +316,14 @@ export class MessageHandler {
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
-      gesturePlaygroundService,
+      {
+        gesturePlayground: gesturePlaygroundService,
+        lexicalGravity: {
+          model: lexicalGravityModelService,
+          repository: lexicalGravityLensRepository,
+          directives: workshopStandingDirectiveService
+        }
+      },
       outputChannel
     );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)

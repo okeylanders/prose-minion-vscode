@@ -14,11 +14,42 @@ import {
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   WorkshopGestureDraft,
+  WorkshopGestureRecommendationSeed,
+  WorkshopGestureWidgetConfigSnapshot,
+  WorkshopThreadArtifactWidgetCommit,
+  WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
+
+const gestureConfig = (
+  config: WorkshopWidgetConfigSnapshot | undefined
+): WorkshopGestureWidgetConfigSnapshot => {
+  if (config?.widgetId !== 'gesture-playground') {
+    throw new Error('Expected Gesture Playground config');
+  }
+  return config;
+};
+
+const gestureSeed = (
+  recommendation: WorkshopWidgetRecommendation | undefined
+): WorkshopGestureRecommendationSeed => {
+  if (recommendation?.widgetId !== 'gesture-playground' || !recommendation.seed) {
+    throw new Error('Expected Gesture Playground recommendation seed');
+  }
+  return recommendation.seed;
+};
+
+const threadArtifactCommit = (
+  commit: import('@messages').WorkshopTurnWidgetCommit | undefined
+): WorkshopThreadArtifactWidgetCommit => {
+  if (commit?.rail !== 'thread-artifact') {
+    throw new Error('Expected thread-artifact widget commit');
+  }
+  return commit;
+};
 
 const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDraft => ({
   targetPhrase: 'she smiled',
@@ -84,13 +115,13 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(second.id).toBe('wc-2');
     expect(first.revision).toBe(1);
     // Mutating the returned clone must not touch the stored config.
-    first.draft.selections.push('sneaky');
-    first.draft.sourceReferences.push({
+    gestureConfig(first).draft.selections.push('sneaky');
+    gestureConfig(first).draft.sourceReferences.push({
       kind: 'context-attachment',
       attachmentId: 'ctx-99'
     });
-    expect(session.getWidgetConfig('wc-1')!.draft.selections).toHaveLength(1);
-    expect(session.getWidgetConfig('wc-1')!.draft.sourceReferences).toEqual([]);
+    expect(gestureConfig(session.getWidgetConfig('wc-1')).draft.selections).toHaveLength(1);
+    expect(gestureConfig(session.getWidgetConfig('wc-1')).draft.sourceReferences).toEqual([]);
   });
 
   it('records clone lineage without retiring the source config', () => {
@@ -102,7 +133,7 @@ describe('WorkshopSessionService — widget configs', () => {
     });
     expect(clone.clonedFromConfigId).toBe('wc-1');
     expect(session.getWidgetConfig('wc-1')).toBeDefined();
-    expect(session.getWidgetConfig('wc-2')!.draft.note).toBe('louder this time');
+    expect(gestureConfig(session.getWidgetConfig('wc-2')).draft.note).toBe('louder this time');
   });
 
   it('shares the ta-N counter with message attachments — ids never collide', () => {
@@ -140,7 +171,7 @@ describe('WorkshopSessionService — widget configs', () => {
       selectionCount: 1
     }));
     expect(snapshot.widgetConfigs[0]).not.toHaveProperty('draft');
-    expect(session.getWidgetConfig('wc-1')?.draft.dictionaryMarkdown).toContain(
+    expect(gestureConfig(session.getWidgetConfig('wc-1')).draft.dictionaryMarkdown).toContain(
       'Gesture Dictionary'
     );
     expect(snapshot.turns.at(-2)?.widgetCommit?.widgetConfigId).toBe('wc-1');
@@ -176,7 +207,9 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(restored.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() }).id)
       .toBe('wc-2');
     const restoredTurns = restored.getSnapshot().turns;
-    expect(restoredTurns.find((candidate) => candidate.id === turn.id)?.widgetCommit?.artifactId)
+    expect(threadArtifactCommit(
+      restoredTurns.find((candidate) => candidate.id === turn.id)?.widgetCommit
+    ).artifactId)
       .toBe('ta-1');
   });
 
@@ -257,7 +290,7 @@ describe('WorkshopSessionService — widget configs', () => {
       );
       const state = session.exportCommittedState();
       const assistantTurn = state.turns.find((turn) => turn.widgetRecommendation);
-      assistantTurn!.widgetRecommendation!.seed![field] = 'x'.repeat(
+      gestureSeed(assistantTurn!.widgetRecommendation)[field] = 'x'.repeat(
         PROMPT_BUDGETS.workshopWidgets[budgetKey] + 1
       );
 
@@ -282,7 +315,7 @@ describe('WorkshopSessionService — widget configs', () => {
     const blankState = session.exportCommittedState();
     const blankRecommendation = blankState.turns.find((turn) => turn.widgetRecommendation)!
       .widgetRecommendation!;
-    blankRecommendation.seed!.writerInstructions = '   ';
+    gestureSeed(blankRecommendation).writerInstructions = '   ';
     expect(() => parseWorkshopSessionStateV1(blankState))
       .toThrow(/seed\.writerInstructions.*non-empty/);
 
@@ -290,7 +323,7 @@ describe('WorkshopSessionService — widget configs', () => {
     const unavailableRecommendation = unavailableState.turns.find(
       (turn) => turn.widgetRecommendation
     )!.widgetRecommendation!;
-    (unavailableRecommendation as { widgetId: string }).widgetId = 'lexical-gravity';
+    (unavailableRecommendation as { widgetId: string }).widgetId = 'show-vs-tell';
     expect(() => parseWorkshopSessionStateV1(unavailableState))
       .toThrow(/live Conversation Widget id/);
   });
@@ -300,7 +333,7 @@ describe('WorkshopSessionService — widget configs', () => {
       label: 'an invented path-bearing source reference',
       mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
         (
-          state.widgetConfigs![0].draft.sourceReferences as unknown as Array<
+          gestureConfig(state.widgetConfigs![0]).draft.sourceReferences as unknown as Array<
             Record<string, unknown>
           >
         ).push({
@@ -314,7 +347,7 @@ describe('WorkshopSessionService — widget configs', () => {
     {
       label: 'a malformed context id',
       mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
-        state.widgetConfigs![0].draft.sourceReferences = [{
+        gestureConfig(state.widgetConfigs![0]).draft.sourceReferences = [{
           kind: 'context-attachment',
           attachmentId: 'ctx-0'
         }];
@@ -324,7 +357,7 @@ describe('WorkshopSessionService — widget configs', () => {
     {
       label: 'duplicate source references',
       mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
-        state.widgetConfigs![0].draft.sourceReferences = [
+        gestureConfig(state.widgetConfigs![0]).draft.sourceReferences = [
           { kind: 'active-excerpt' },
           { kind: 'active-excerpt' }
         ];
@@ -334,7 +367,7 @@ describe('WorkshopSessionService — widget configs', () => {
     {
       label: 'serialized source references over budget',
       mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
-        state.widgetConfigs![0].draft.sourceReferences = [{
+        gestureConfig(state.widgetConfigs![0]).draft.sourceReferences = [{
           kind: 'context-attachment',
           attachmentId: oversizedContextAttachmentId
         }];
@@ -364,7 +397,7 @@ describe('WorkshopSessionService — widget configs', () => {
     const state = session.exportCommittedState();
     const recommendation = state.turns.find((turn) => turn.widgetRecommendation)!
       .widgetRecommendation!;
-    recommendation.seed!.sourceReferences = [
+    gestureSeed(recommendation).sourceReferences = [
       { kind: 'context-attachment', attachmentId: 'ctx-2' },
       { kind: 'context-attachment', attachmentId: 'ctx-2' }
     ];
@@ -389,7 +422,7 @@ describe('WorkshopSessionService — widget configs', () => {
     const state = session.exportCommittedState();
     const recommendation = state.turns.find((turn) => turn.widgetRecommendation)!
       .widgetRecommendation!;
-    recommendation.seed!.sourceReferences = [{
+    gestureSeed(recommendation).sourceReferences = [{
       kind: 'context-attachment',
       attachmentId: oversizedContextAttachmentId
     }];
@@ -429,7 +462,7 @@ describe('WorkshopSessionService — widget configs', () => {
     );
 
     expect(result.normalizations).toContain('defaulted-widget-dictionary-sharing');
-    expect(restored.getWidgetConfig('wc-1')!.draft.includeDictionaryInCommit)
+    expect(gestureConfig(restored.getWidgetConfig('wc-1')).draft.includeDictionaryInCommit)
       .toBe(false);
   });
 
@@ -449,7 +482,7 @@ describe('WorkshopSessionService — widget configs', () => {
     );
 
     expect(result.normalizations).toContain('defaulted-widget-source-references');
-    expect(restored.getWidgetConfig('wc-1')!.draft.sourceReferences).toEqual([]);
+    expect(gestureConfig(restored.getWidgetConfig('wc-1')).draft.sourceReferences).toEqual([]);
   });
 
   it('rejects a persisted counter that trails an existing wc id', () => {
@@ -462,6 +495,20 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(() =>
       restored.hydrateCommittedState(state, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR)
     ).toThrow(/widget-config counter trails/);
+  });
+
+  it('rejects an invalid widget counter before replacing live aggregate state', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const before = session.getSnapshot();
+    const incoming = new WorkshopSessionService(() => 10_000).exportCommittedState();
+    incoming.counters.widgetConfig = -1;
+
+    expect(() => session.hydrateCommittedState(
+      incoming,
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    )).toThrow(/widget-config counter must be a non-negative safe integer/);
+    expect(session.getSnapshot()).toEqual(before);
   });
 
   it('rejects a persisted config referencing an unknown turn', () => {
@@ -480,7 +527,7 @@ describe('WorkshopSessionService — widget configs', () => {
     session.setSessionScope('open');
     session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
     const state = session.exportCommittedState();
-    state.widgetConfigs![0].draft.dictionaryMarkdown = 'x'.repeat(
+    gestureConfig(state.widgetConfigs![0]).draft.dictionaryMarkdown = 'x'.repeat(
       PROMPT_BUDGETS.workshopWidgets.gestureDictionaryCharacters + 1
     );
 

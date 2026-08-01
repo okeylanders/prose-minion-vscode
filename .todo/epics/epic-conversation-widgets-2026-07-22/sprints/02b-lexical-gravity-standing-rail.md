@@ -1,6 +1,6 @@
 # Sprint 02B: Lexical Gravity + Standing Prose-Directive Rail
 
-**Status**: Planned
+**Status**: In progress
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-02b-lexical-gravity-standing-rail` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 6-9 days
@@ -59,11 +59,11 @@ maps to Sprint 02B after the sequencing split.
 
 ## Current Reality
 
-- `WorkshopConversationBehaviorService` (new this workshop line) is the template
+- `WorkshopConversationSettingsService` is the template
   for the coordinator: it serializes durable-setting changes, refuses changes
   during an active run, applies only *between runs*, and swaps a system-prompt
   segment on live conversations via
-  `assistantToolService.replaceWorkshopConversationBehavior(targets, next)`
+  `assistantToolService.replaceWorkshopConversationSettings(targets, next)`
   without restarting the conversation.
 - Behavior/transition frames are built in `WorkshopPromptBuilder`
   (`buildWorkshopInteractionFrame`, `buildWorkshopBehaviorActivationFrame`,
@@ -130,11 +130,16 @@ maps to Sprint 02B after the sequencing split.
   config. The committed directive never reruns the preview.
 - **The lens library has project-owned truth.** `Build lens` makes one explicit
   model request that returns several bounded, fully drafted lens variants; the
-  writer chooses one. Only the chosen validated lens is written to
-  `resources/lenses/<slug>.json`, making it reusable across sessions. Drafting
-  and choosing remain pre-commit play. At install time the session snapshots the
+  writer selects one or more and saves the selected set in one action. Each
+  validated selection is written to its own `prose-minion/lenses/<slug>.json`,
+  making it reusable across sessions. Drafting and choosing remain pre-commit
+  play. At install time the session snapshots the
   resolved lens into its config, so later project-file edits seed future work
   without silently rewriting saved session history.
+  A generated candidate set remains addressable through partial saves while
+  the sheet stays open, so the writer can add more takes without repeating the
+  paid build. Looking up an existing subject returns the saved project lens and
+  explains that no model call was needed.
 - **The committed artifact ≠ the exploration UI.** What rides the rail is a
   compact, instruction-shaped directive (lens, weight, degrees-of-separation,
   metaphor on/off, a short anchor set of preferred substitutions), NOT the whole
@@ -152,9 +157,12 @@ maps to Sprint 02B after the sequencing split.
 ## Scope / Deliverables
 
 1. **Reserved standing frame** `<prose-directive
-   family="lexical-gravity" id="pd-N">` + builder in `WorkshopPromptBuilder`,
-   consulted at prose-generation time, plus closed-family validation and
-   neutralization coverage.
+   family="lexical-gravity" id="pd-N">` + widget-local builder in
+   `lexicalGravity/LexicalGravityDirective.ts`, dispatched by
+   `WorkshopStandingDirectiveFrames`, consulted at prose-generation time, plus
+   closed-family validation and neutralization coverage. The local module keeps
+   widget vocabulary beside its codec while the generic renderer owns only
+   family dispatch and ordering.
 2. **Standing-directive coordinator** (Lexical-Gravity-specific first, shaped for
    Sprint 03 reuse): validate, serialize, between-runs apply, live-conversation
    frame swap, shift-marker emission.
@@ -162,8 +170,8 @@ maps to Sprint 02B after the sequencing split.
    deterministic Word field / Gradient / Substitutions / Clichés tabs; weight
    slider; 1°–3° reach; metaphor-pull toggle; explicit preview action.
 4. **Two explicit model seams**: cached fast-tier `Preview the pull`, plus
-   bounded multi-variant `Build lens` with writer selection and validated
-   project-resource persistence under `resources/lenses/`.
+   bounded multi-variant `Build lens` with writer multi-selection and validated
+   project-resource persistence under `prose-minion/lenses/`.
 5. **Commit path** onto the standing rail via the coordinator; a Lexical
    Gravity local codec; the `widgetId`-discriminated persisted config union;
    normalized session-owned config by stable id/revision, distinct from any
@@ -177,7 +185,7 @@ maps to Sprint 02B after the sequencing split.
    refusal / between-runs apply (mirroring the behavior-service tests);
    edit-in-place identity/revision + shift marker; T3 persistence and standing
    frame reconstruction round-trip; project-lens validation and historical
-   snapshot isolation; Settings-default isolation; kill path; explicit model
+   snapshot isolation; kill path; explicit model
    call boundaries; deterministic scaffold functions in isolation.
 
 ## Out of Scope
@@ -189,7 +197,8 @@ maps to Sprint 02B after the sequencing split.
 ## Completion Criteria
 
 - A writer opens Lexical Gravity, dials a single lens with weight /
-  degrees-of-separation / metaphor pull, previews before/after, commits, and
+  degrees-of-separation / metaphor pull, previews the pull as the lens's canned
+  sample before and the model result after, commits, and
   subsequent prose *for the passage* visibly gravitates — while the personas'
   voices and behavior are unchanged.
 - The active gravity is visible, editable via the chip (with a shift marker on

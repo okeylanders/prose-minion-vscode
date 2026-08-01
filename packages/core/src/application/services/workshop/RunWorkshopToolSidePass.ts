@@ -7,6 +7,7 @@ import {
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+import { renderWorkshopStandingDirectiveFrames } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame,
@@ -238,6 +239,7 @@ export class RunWorkshopToolSidePass {
             message: hostMessage,
             behavior: behaviorMetadata.behavior!,
             writerProfile,
+            standingDirectiveFrames: renderWorkshopStandingDirectiveFrames(this.session),
             messageIsTrustedEnvelope: true,
             ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(

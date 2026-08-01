@@ -1,4 +1,7 @@
-import { WorkshopHandler } from '@/application/handlers/domain/WorkshopHandler';
+import {
+  WorkshopHandler,
+  WorkshopWidgetRuntime
+} from '@/application/handlers/domain/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopRoomDeliveryService
@@ -133,7 +136,10 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
         }),
         resetSession: jest.fn().mockResolvedValue(undefined)
       } as unknown as WorkshopSessionPersistenceCoordinator,
-      { generateMenu: jest.fn() } as never,
+      {
+        gesturePlayground: { generateMenu: jest.fn() },
+        lexicalGravity: { model: {}, repository: {}, directives: {} }
+      } as unknown as WorkshopWidgetRuntime,
       output
     );
     await handler.handleSetExcerpt({

@@ -14,8 +14,8 @@ Two files absorb every new Workshop feature instead of shedding any:
 
 | File | Lines (post-13A) | Nearest sibling |
 | --- | --- | --- |
-| `packages/core/src/application/services/workshop/WorkshopSessionService.ts` | ~2,743 (2026-07-31) | `RunWorkshopToolSidePass.ts` (305) |
-| `packages/core/src/application/handlers/domain/WorkshopHandler.ts` | ~2,922 (2026-07-31) | `WorkshopSessionMessageHandler.ts` (303) |
+| `packages/core/src/application/services/workshop/WorkshopSessionService.ts` | 2,894 (PR #98 review remediation, 2026-07-31) | `RunWorkshopToolSidePass.ts` (305) |
+| `packages/core/src/application/handlers/domain/WorkshopHandler.ts` | 2,959 (PR #98, 2026-07-31) | `WorkshopSessionMessageHandler.ts` (303) |
 
 `CLAUDE.md`'s anti-pattern checklist flags any file over 500 lines. Every other
 file in both directories is comfortably under 1,000. Both files were already
@@ -54,6 +54,11 @@ lines. The two larger files below remain the tracked debt.
   remains a pure-move seam. If so, extract it before Prose Controller; if the
   move requires behavior or run/send-pipeline changes, skip it and leave this
   debt open. See the [Sprint 02C plan](../epics/epic-conversation-widgets-2026-07-22/sprints/02c-workshop-scope-context-ipc-extraction.md).
+- **2026-07-31 — standing-directive presentation extracted during PR #98
+  review.** Widget-local frame building, summaries, marker copy, and display
+  formatting moved out of `WorkshopSessionService`; the aggregate now delegates
+  through the standing presentation registry. This reduced the session file
+  from the reviewed ~2,950 lines to 2,894 while leaving the broader target open.
 
 ## Candidate seams
 

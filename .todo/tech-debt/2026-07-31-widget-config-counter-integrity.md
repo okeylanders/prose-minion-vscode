@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-31
 **Reviewed**: 2026-07-31
-**Status**: Identified
+**Status**: Resolved in PR #98 — archive after merge
 **Priority**: Low
 **Estimated Effort**: Small
 
@@ -18,12 +18,19 @@ next minted config id invalid or reusable.
 Sprint 02A deliberately preserves existing codec behavior, so the ledger
 extraction does not tighten this persisted-input contract invisibly.
 
-## Recommendation
+## Resolution (2026-07-31)
 
-When making the next behavior-bearing Workshop codec correction, apply
-`requireCounter` to `counters.widgetConfig` when present. Add boundaries for
-negative, fractional, unsafe, zero, and missing pre-widget counters, plus a
-hydration test proving rejection occurs before aggregate state replacement.
+Sprint 02B applies the shared `requireCounter` guard to both `widgetConfig` and
+the new `standingDirective` counter. Boundary tests cover negative,
+fractional, unsafe, zero, and absent values; an aggregate test proves invalid
+input is rejected before live session state is replaced.
+
+## Implemented recommendation
+
+Sprint 02B applies `requireCounter` to `counters.widgetConfig` when present.
+Boundary coverage includes negative, fractional, unsafe, zero, and missing
+pre-widget counters, plus a hydration test proving rejection occurs before
+aggregate state replacement.
 
 ## Related Files
 

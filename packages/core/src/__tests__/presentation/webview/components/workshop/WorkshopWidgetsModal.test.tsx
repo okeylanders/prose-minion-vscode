@@ -36,13 +36,13 @@ describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
     expect(onLaunchWidget).toHaveBeenCalledWith('gesture-playground');
   });
 
-  it('keeps unshipped widgets visible but not launchable — a roadmap, not a lie', () => {
+  it('launches Lexical Gravity from the standing section', () => {
     const { onLaunchWidget } = renderModal();
     fireEvent.click(screen.getByRole('button', { name: /Lexical Gravity/ }));
-    const launch = screen.getByRole('button', { name: 'Not yet available' }) as HTMLButtonElement;
-    expect(launch.disabled).toBe(true);
+    const launch = screen.getByRole('button', { name: 'Open Lexical Gravity' }) as HTMLButtonElement;
+    expect(launch.disabled).toBe(false);
     fireEvent.click(launch);
-    expect(onLaunchWidget).not.toHaveBeenCalled();
+    expect(onLaunchWidget).toHaveBeenCalledWith('lexical-gravity');
   });
 
   it('closes via Cancel without launching anything', () => {

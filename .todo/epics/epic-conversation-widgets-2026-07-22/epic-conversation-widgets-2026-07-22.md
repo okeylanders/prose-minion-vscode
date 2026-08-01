@@ -2,7 +2,7 @@
 
 **Created**: 2026-07-22
 **Status**: In progress — Sprint 01 merged 2026-07-30; Sprint 02A merged
-2026-07-31; Sprint 02B planned; Sprint 02C optional
+2026-07-31; Sprint 02B in progress; Sprint 02C optional
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -15,9 +15,9 @@ through [PR #97](https://github.com/okeylanders/prose-minion-vscode/pull/97):
 widget config lifecycle moved behind a session-owned ledger, Gesture gained a
 local persisted codec, hydration regained a structural prepare/install boundary,
 and shared shape grammar consolidated into `persistedValidation`. Sprint 02B is
-the first behavior slice after that foundation: single-lens Lexical Gravity on
+the active behavior slice after that foundation: single-lens Lexical Gravity on
 the standing rail. Sprint 02C is an optional pure-move handler extraction before
-Prose Controller. Sprints 02B, 03, and 04 have not started.
+Prose Controller. Sprints 03 and 04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**
 **Integration branch**: `epic/conversation-widgets`
@@ -126,8 +126,9 @@ These are the walls. Everything else is decoration that can move.
    fields, POS/reach buckets, gradients, substitutions, and cliché contrasts
    are deterministic. Slider/toggle changes make no call. `Preview the pull`
    and `Build lens` are the only explicit model seams; the latter returns
-   several bounded variants and writes only the writer's chosen validated lens
-   to `resources/lenses/<slug>.json`.
+   several bounded variants and lets the writer save one or more validated
+   selections to individual `prose-minion/lenses/<slug>.json` resources in one
+   action.
 
 9. **Core stays host-agnostic.** The widget host, the registry, and every
    widget's logic live in `packages/core`. Only the composer's *mounting* touches

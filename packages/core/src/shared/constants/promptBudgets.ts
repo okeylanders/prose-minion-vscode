@@ -96,6 +96,22 @@ export interface PromptBudgets {
     gestureOptionsPerGroup: number;
     gestureOptionCharacters: number;
     gestureSelectionsPerCommit: number;
+    lexicalLensNameCharacters: number;
+    lexicalLensSlugCharacters: number;
+    lexicalLensVariantCharacters: number;
+    lexicalLensDescriptionCharacters: number;
+    lexicalTermCharacters: number;
+    lexicalTermsPerBucket: number;
+    lexicalGradientTerms: number;
+    lexicalCliches: number;
+    lexicalPhraseCharacters: number;
+    lexicalSampleCharacters: number;
+    lexicalBuildQueryCharacters: number;
+    lexicalBuildCandidates: number;
+    lexicalBuildOutputTokens: number;
+    lexicalPreviewCharacters: number;
+    lexicalPreviewOutputTokens: number;
+    lexicalDirectiveCharacters: number;
   }>;
 }
 
@@ -164,6 +180,22 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     gestureGeneratedOptionsPerGroup: 5,
     gestureOptionsPerGroup: 10,
     gestureOptionCharacters: 220,
-    gestureSelectionsPerCommit: 8
+    gestureSelectionsPerCommit: 8,
+    lexicalLensNameCharacters: 80,
+    lexicalLensSlugCharacters: 64,
+    lexicalLensVariantCharacters: 120,
+    lexicalLensDescriptionCharacters: 320,
+    lexicalTermCharacters: 80,
+    lexicalTermsPerBucket: 12,
+    lexicalGradientTerms: 12,
+    lexicalCliches: 8,
+    lexicalPhraseCharacters: 240,
+    lexicalSampleCharacters: 800,
+    lexicalBuildQueryCharacters: 100,
+    lexicalBuildCandidates: 3,
+    lexicalBuildOutputTokens: 8_000,
+    lexicalPreviewCharacters: 1_200,
+    lexicalPreviewOutputTokens: 1_200,
+    lexicalDirectiveCharacters: 3_000
   }
 };

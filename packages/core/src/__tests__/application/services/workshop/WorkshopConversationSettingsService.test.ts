@@ -83,7 +83,8 @@ describe('WorkshopConversationSettingsService', () => {
         { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
       ],
       analysis,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
     expect(session.getConversationBehavior()).toEqual(analysis);
     expect(settings.update).not.toHaveBeenCalled();
@@ -113,13 +114,15 @@ describe('WorkshopConversationSettingsService', () => {
       1,
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       analysis,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenNthCalledWith(
       2,
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       conversational,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
 
     await service.syncFromSettings();
@@ -295,7 +298,8 @@ describe('WorkshopConversationSettingsService', () => {
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       reflective,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
   });
 
@@ -350,7 +354,8 @@ describe('WorkshopConversationSettingsService', () => {
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       balanced,
-      profile
+      profile,
+      []
     );
     expect(settings.update).toHaveBeenCalledTimes(1);
     expect(settings.update).toHaveBeenCalledWith(
@@ -382,7 +387,8 @@ describe('WorkshopConversationSettingsService', () => {
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [],
       balanced,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
     expect(service.getWriterProfile()).toEqual(DEFAULT_WORKSHOP_WRITER_PROFILE);
   });

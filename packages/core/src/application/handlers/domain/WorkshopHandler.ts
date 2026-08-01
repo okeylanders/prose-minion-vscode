@@ -40,6 +40,11 @@ import {
   WorkshopContextResourceService
 } from '@/application/services/workshop/WorkshopContextResourceService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+import { renderWorkshopStandingDirectiveFrames } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
+import { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
+import { WorkshopLexicalGravityHandler } from '@handlers/domain/WorkshopLexicalGravityHandler';
+import { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
+import { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import {
   WorkshopPreparedTimeNotice,
   WorkshopSessionTimeService,
@@ -239,6 +244,20 @@ export const isWorkshopHostReturnShortcut = (text: string, personaLabel: string)
     'i'
   ).test(text.trim());
 
+/**
+ * Widget-specific collaborators cross the Workshop boundary as one focused
+ * feature bundle. Adding another widget extends this seam; it does not add
+ * another positional argument to the already broad controller constructor.
+ */
+export interface WorkshopWidgetRuntime {
+  gesturePlayground: GesturePlaygroundService;
+  lexicalGravity: {
+    model: LexicalGravityModelService;
+    repository: LexicalGravityLensRepository;
+    directives: WorkshopStandingDirectiveService;
+  };
+}
+
 export class WorkshopHandler {
   /** The single in-flight run — at most one; a new run preempts it. */
   private activeRun?: {
@@ -254,6 +273,7 @@ export class WorkshopHandler {
   private readonly disposeSessionSaveStatusListener: () => void;
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
   private readonly widgetHandler: WorkshopWidgetHandler;
+  private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
   private wizardRun?: { requestId: string; excerptVersion: number; controller: AbortController };
@@ -273,7 +293,7 @@ export class WorkshopHandler {
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
-    private readonly gesturePlaygroundService: GesturePlaygroundService,
+    widgetRuntime: WorkshopWidgetRuntime,
     private readonly outputChannel: LogSink
   ) {
     // Guide-loading status is forwarded only while a Workshop run is in
@@ -318,7 +338,7 @@ export class WorkshopHandler {
     );
     this.widgetHandler = new WorkshopWidgetHandler(
       this.session,
-      this.gesturePlaygroundService,
+      widgetRuntime.gesturePlayground,
       this.postMessage,
       this.outputChannel,
       {
@@ -327,6 +347,19 @@ export class WorkshopHandler {
         postSessionState: () => this.postSessionState(),
         markDirty: (reason) => this.sessionPersistence.markDirty(reason),
         reportError: (message, details) => this.sendError('workshop', message, details)
+      }
+    );
+    this.lexicalGravityHandler = new WorkshopLexicalGravityHandler(
+      this.session,
+      widgetRuntime.lexicalGravity.model,
+      widgetRuntime.lexicalGravity.repository,
+      widgetRuntime.lexicalGravity.directives,
+      this.postMessage,
+      this.outputChannel,
+      {
+        postSessionState: () => this.postSessionState(),
+        postTurn: (turn) => this.postTurn(turn),
+        markDirty: (reason) => this.sessionPersistence.markDirty(reason)
       }
     );
   }
@@ -422,6 +455,7 @@ export class WorkshopHandler {
     registerMutation(MessageType.WORKSHOP_REPIN_EXCERPT, this.handleRepinExcerpt.bind(this));
     this.sessionMessageHandler.registerRoutes(router, registerMutation);
     this.widgetHandler.registerRoutes(router, registerMutation);
+    this.lexicalGravityHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }
 
@@ -433,6 +467,7 @@ export class WorkshopHandler {
    */
   dispose(): void {
     this.widgetHandler.dispose();
+    this.lexicalGravityHandler.dispose();
     this.disposeStatusListener();
     this.disposeSessionSaveStatusListener();
     this.sessionMessageHandler.dispose();
@@ -722,7 +757,8 @@ export class WorkshopHandler {
           personaId,
           message: join.message,
           behavior: joinStart.turn.behavior!,
-          writerProfile
+          writerProfile,
+          standingDirectiveFrames: renderWorkshopStandingDirectiveFrames(this.session)
         }, {
           signal: controller.signal,
           onToken: (token: string) => this.sendStreamChunk(requestId, token),
@@ -1178,6 +1214,7 @@ export class WorkshopHandler {
             message: modelMessage,
             behavior: userTurn.behavior!,
             writerProfile,
+            standingDirectiveFrames: renderWorkshopStandingDirectiveFrames(this.session),
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(

@@ -2,7 +2,8 @@
 
 - **Status**: Accepted — 2026-07-29; Gesture Dictionary generation and
   source-reference/streaming amendments accepted 2026-07-29; Lexical Gravity
-  Spread 02 frame/lens-library amendments accepted 2026-07-31
+  Spread 02 frame/lens-library amendments accepted 2026-07-31; multi-select
+  generated-lens save amendment accepted 2026-07-31
 - **Decision owner**: Okey
 - **Planning source**: epic and sprint plans drafted 2026-07-22
   ([epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md));
@@ -139,8 +140,9 @@ instance; an opened session restores its exact committed configs without
 mutating those defaults.
 
 Lexical Gravity's custom lens library is project-owned reusable source:
-`Build lens` writes only a writer-chosen, validated lens to
-`resources/lenses/<slug>.json`. A widget commit snapshots the resolved lens
+`Build lens` lets the writer select one or more generated takes and writes each
+validated selection to its own `prose-minion/lenses/<slug>.json` resource in one
+save action. A widget commit still snapshots one resolved lens
 inside the session config alongside its four writer-facing values, so later
 project-file edits affect future selections without rewriting saved history or
 changing the standing frame reconstructed on restore.

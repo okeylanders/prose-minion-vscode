@@ -16,13 +16,40 @@ import {
   WorkshopWidgetRecommendation,
   WorkshopWidgetSourceReference
 } from '@messages';
-import { isLiveWorkshopWidgetId } from '@shared/constants/workshopWidgets';
+import {
+  isLexicalGravityReach,
+  isLexicalGravityWeight,
+  isLiveWorkshopWidgetId,
+  LEXICAL_GRAVITY_REACH,
+  LEXICAL_GRAVITY_WEIGHT
+} from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
   '<workshop-widget-recommendation-contract>',
-  'The writer has an interactive Gesture Playground widget. It creates a writer-facing Gesture Dictionary and a menu of gesture/expression directions for one exact phrase; the writer edits the setup and chooses what to keep.',
-  'When reworking a specific gesture, expression, or embodied reaction would genuinely help, recommend the widget at most once by ending your response with the exact multiline control frame below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
+  'The writer has two interactive widgets you may recommend: Gesture Playground explores one exact embodied beat; Lexical Gravity installs a writer-approved lexical field that influences story prose only when prose is composed or revised.',
+  'Recommend at most one widget, and only when it would genuinely help. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
+  `For Lexical Gravity, propose but never install. Choose one starter lens slug from photography, music, mathematics, weather, botany, architecture; weight must be ${LEXICAL_GRAVITY_WEIGHT.minimum}–${LEXICAL_GRAVITY_WEIGHT.maximum} in steps of ${LEXICAL_GRAVITY_WEIGHT.step}; reach is ${LEXICAL_GRAVITY_REACH.values.join(', ')}; metaphor-pull is true or false. The writer can change every value before explicitly installing it.`,
+  'Lexical Gravity frame:',
+  '### Try a widget',
+  '<workshop-widget-recommendation version="1">',
+  '<widget-id>',
+  'lexical-gravity',
+  '</widget-id>',
+  '<lens-slug>',
+  'photography',
+  '</lens-slug>',
+  '<weight>',
+  '60',
+  '</weight>',
+  '<reach>',
+  '2',
+  '</reach>',
+  '<metaphor-pull>',
+  'false',
+  '</metaphor-pull>',
+  '</workshop-widget-recommendation>',
+  'Gesture Playground frame:',
   'This is a quality-first handoff, not a token-saving exercise. Do not be thrifty, terse, or generically minimal in the prefill fields. Supply enough grounded material that the dictionary model can understand the dramatic problem without reconstructing it from scraps. Source references save duplicate transcription; they are not permission to thin out the creative direction or character thinking:',
   '- `target-phrase`: copy the exact phrase from the supplied passage, without quotation marks or paraphrase.',
   '- `writer-instructions`: give several substantive, specific sentences explaining the beat\'s dramatic job, what an alternative must preserve, what to avoid, and which creative territory is worth exploring.',
@@ -70,6 +97,14 @@ const SOURCE_REFERENCES_START = '<source-references>';
 const SOURCE_REFERENCES_END = '</source-references>';
 const CHARACTER_NOTES_START = '<character-notes>';
 const CHARACTER_NOTES_END = '</character-notes>';
+const LENS_SLUG_START = '<lens-slug>';
+const LENS_SLUG_END = '</lens-slug>';
+const WEIGHT_START = '<weight>';
+const WEIGHT_END = '</weight>';
+const REACH_START = '<reach>';
+const REACH_END = '</reach>';
+const METAPHOR_PULL_START = '<metaphor-pull>';
+const METAPHOR_PULL_END = '</metaphor-pull>';
 const ORDERED_MARKERS = [
   FRAME_START,
   WIDGET_ID_START,
@@ -137,6 +172,14 @@ export function inspectWorkshopWidgetRecommendation(
     return { outcome: 'rejected', rejection: 'frame_too_long' };
   }
 
+  const widgetId = extractWidgetId(sectionLines);
+  if (!widgetId || !isLiveWorkshopWidgetId(widgetId)) {
+    return { outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' };
+  }
+  if (widgetId === 'lexical-gravity') {
+    return inspectLexicalGravityRecommendation(sectionLines);
+  }
+
   const markerIndexes = new Map<string, number>();
   for (const marker of ORDERED_MARKERS) {
     const indexes = sectionLines.flatMap((line, index) =>
@@ -177,8 +220,7 @@ export function inspectWorkshopWidgetRecommendation(
     return { outcome: 'rejected', rejection: 'invalid_frame' };
   }
 
-  const widgetId = field(WIDGET_ID_START, WIDGET_ID_END);
-  if (!isLiveWorkshopWidgetId(widgetId)) {
+  if (widgetId !== 'gesture-playground') {
     return { outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' };
   }
 
@@ -223,6 +265,90 @@ export function inspectWorkshopWidgetRecommendation(
         contextText,
         characterNotes,
         sourceReferences
+      }
+    }
+  };
+}
+
+const LEXICAL_MARKERS = [
+  FRAME_START,
+  WIDGET_ID_START,
+  WIDGET_ID_END,
+  LENS_SLUG_START,
+  LENS_SLUG_END,
+  WEIGHT_START,
+  WEIGHT_END,
+  REACH_START,
+  REACH_END,
+  METAPHOR_PULL_START,
+  METAPHOR_PULL_END,
+  FRAME_END
+] as const;
+
+function extractWidgetId(sectionLines: readonly string[]): string | undefined {
+  const start = sectionLines.flatMap((line, index) => line === WIDGET_ID_START ? [index] : []);
+  const end = sectionLines.flatMap((line, index) => line === WIDGET_ID_END ? [index] : []);
+  if (start.length !== 1 || end.length !== 1 || end[0] <= start[0]) {return undefined;}
+  return sectionLines.slice(start[0] + 1, end[0]).join('\n').trim();
+}
+
+function inspectLexicalGravityRecommendation(
+  sectionLines: readonly string[]
+): WorkshopWidgetRecommendationInspection {
+  const indexes = new Map<string, number>();
+  for (const marker of LEXICAL_MARKERS) {
+    const found = sectionLines.flatMap((line, index) => line === marker ? [index] : []);
+    if (found.length !== 1) {return { outcome: 'rejected', rejection: 'invalid_frame' };}
+    indexes.set(marker, found[0]);
+  }
+  const ordered = LEXICAL_MARKERS.map((marker) => indexes.get(marker)!);
+  if (ordered.some((index, ordinal) => ordinal > 0 && index <= ordered[ordinal - 1])) {
+    return { outcome: 'rejected', rejection: 'invalid_frame' };
+  }
+  if (
+    sectionLines.slice(0, indexes.get(FRAME_START)!).some((line) => line.trim())
+    || sectionLines.slice(indexes.get(FRAME_END)! + 1).some((line) => line.trim())
+  ) {
+    return { outcome: 'rejected', rejection: 'invalid_frame' };
+  }
+  const field = (start: string, end: string): string => sectionLines
+    .slice(indexes.get(start)! + 1, indexes.get(end)!)
+    .join('\n')
+    .trim();
+  const boundaryGaps = LEXICAL_MARKERS.flatMap((marker, index) =>
+    index % 2 === 0 ? [[marker, LEXICAL_MARKERS[index + 1]] as const] : []
+  );
+  if (boundaryGaps.some(([left, right]) => sectionLines
+    .slice(indexes.get(left)! + 1, indexes.get(right)!)
+    .some((line) => line.trim()))) {
+    return { outcome: 'rejected', rejection: 'invalid_frame' };
+  }
+  const lensSlug = field(LENS_SLUG_START, LENS_SLUG_END);
+  const weight = Number(field(WEIGHT_START, WEIGHT_END));
+  const reach = Number(field(REACH_START, REACH_END));
+  const metaphorText = field(METAPHOR_PULL_START, METAPHOR_PULL_END);
+  // Trust-boundary allowlist: personas may seed host-owned starters only, never
+  // name an arbitrary project lens whose body would enter a system prompt.
+  const builtIns = new Set([
+    'photography', 'music', 'mathematics', 'weather', 'botany', 'architecture'
+  ]);
+  if (
+    !builtIns.has(lensSlug)
+    || !isLexicalGravityWeight(weight)
+    || !isLexicalGravityReach(reach)
+    || (metaphorText !== 'true' && metaphorText !== 'false')
+  ) {
+    return { outcome: 'rejected', rejection: 'invalid_field' };
+  }
+  return {
+    outcome: 'accepted',
+    recommendation: {
+      widgetId: 'lexical-gravity',
+      seed: {
+        lensSlug,
+        weight,
+        reach,
+        metaphorPull: metaphorText === 'true'
       }
     }
   };

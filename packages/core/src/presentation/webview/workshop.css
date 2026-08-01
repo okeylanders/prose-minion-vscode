@@ -6014,6 +6014,130 @@
   color: var(--pm-accent-hi);
   white-space: nowrap;
 }
+
+/* ==========================================================================
+   Lexical Gravity — approved Conversation Widgets Spread 02. The sheet keeps
+   the shared locked header/footer; lg-* prototype internals are translated
+   one-for-one onto the runtime pm token vocabulary.
+   ========================================================================= */
+[data-pm-surface="workshop"] .pm-ws-lg-body { padding-top: 0; }
+[data-pm-surface="workshop"] .pm-ws-lg-field { margin-top: 13px; }
+[data-pm-surface="workshop"] .pm-ws-lg-lenses { display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:6px; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens { background:var(--pm-surface);border:1px solid var(--pm-border);border-radius:9px;padding:9px 10px;cursor:pointer;text-align:left;font-family:var(--pm-sans);min-width:0; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens:hover { border-color:var(--pm-border-2); }
+[data-pm-surface="workshop"] .pm-ws-lg-lens.is-selected { background:var(--pm-accent-soft);border-color:rgba(224,103,58,.5); }
+[data-pm-surface="workshop"] .pm-ws-lg-lens-name { font-size:12.5px;font-weight:600;color:var(--pm-text-2);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens.is-selected .pm-ws-lg-lens-name { color:var(--pm-text); }
+[data-pm-surface="workshop"] .pm-ws-lg-lens-name em { font-family:var(--pm-mono);font-size:8.5px;font-style:normal;letter-spacing:.08em;color:var(--pm-blue);border:1px solid rgba(90,162,240,.4);border-radius:999px;padding:1px 6px;margin-left:6px;text-transform:uppercase; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens-words { font-family:var(--pm-mono);font-size:9.5px;color:var(--pm-faint);margin-top:3px;line-height:1.5;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens.is-selected .pm-ws-lg-lens-words { color:var(--pm-muted); }
+[data-pm-surface="workshop"] .pm-ws-lg-lookup { display:flex;gap:7px;margin-top:8px; }
+[data-pm-surface="workshop"] .pm-ws-lg-lookup input { flex:1;min-width:0;box-sizing:border-box;background:var(--pm-surface-2);border:1px solid var(--pm-border);border-radius:8px;color:var(--pm-text);font:12.5px var(--pm-sans);padding:8px 10px;outline:none; }
+[data-pm-surface="workshop"] .pm-ws-lg-lookup input:focus { border-color:var(--pm-accent); }
+[data-pm-surface="workshop"] .pm-ws-lg-lookup button,
+[data-pm-surface="workshop"] .pm-ws-lg-preview-button { white-space:nowrap;font:600 11.5px var(--pm-sans);height:34px;padding:0 12px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px;border:1px solid var(--pm-border);background:var(--pm-surface-2);color:var(--pm-text-2);cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-lg-lookup button:hover,
+[data-pm-surface="workshop"] .pm-ws-lg-preview-button:hover { border-color:var(--pm-border-2);color:var(--pm-text); }
+[data-pm-surface="workshop"] .pm-ws-lg button:disabled { cursor:not-allowed;opacity:.52; }
+[data-pm-surface="workshop"] .pm-ws-lg-build-error { margin-top:7px; }
+[data-pm-surface="workshop"] .pm-ws-lg-note { margin-top:7px;font-size:10.5px;line-height:1.5;color:var(--pm-amber); }
+[data-pm-surface="workshop"] .pm-ws-lg-options { margin-top:8px; }
+[data-pm-surface="workshop"] .pm-ws-lg-cap { font:9.5px var(--pm-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pm-faint);margin-bottom:6px; }
+[data-pm-surface="workshop"] .pm-ws-lg-options > button { position:relative;display:block;width:100%;box-sizing:border-box;text-align:left;background:var(--pm-surface);border:1px dashed rgba(224,103,58,.45);border-radius:9px;padding:9px 11px 9px 38px;cursor:pointer;font-family:var(--pm-sans); }
+[data-pm-surface="workshop"] .pm-ws-lg-options > button + button { margin-top:6px; }
+[data-pm-surface="workshop"] .pm-ws-lg-options > button:hover { border-style:solid;background:var(--pm-accent-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-options > button.is-selected { border-style:solid;border-color:var(--pm-accent);background:var(--pm-accent-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-option-check { position:absolute;left:11px;top:11px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border:1px solid var(--pm-border-2);border-radius:4px;color:var(--pm-accent-hi);font-style:normal; }
+[data-pm-surface="workshop"] .pm-ws-lg-options > button.is-selected .pm-ws-lg-option-check { border-color:var(--pm-accent);background:rgba(224,103,58,.14); }
+[data-pm-surface="workshop"] .pm-ws-lg-options b { display:block;font-size:12.5px;color:var(--pm-text);font-weight:600; }
+[data-pm-surface="workshop"] .pm-ws-lg-options span { display:block;font-size:11px;color:var(--pm-dim);line-height:1.5;margin-top:2px; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-actions { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px; }
+[data-pm-surface="workshop"] .pm-ws-lg-option-actions > span { margin:0;font:10px var(--pm-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--pm-faint); }
+[data-pm-surface="workshop"] .pm-ws-lg-option-actions > button { min-height:32px;padding:6px 11px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--pm-accent-lo);border-radius:8px;background:var(--pm-accent-soft);color:var(--pm-accent-hi);font:600 11px var(--pm-sans);cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-lg-saved { display:flex;gap:7px;align-items:center;margin-top:8px;font-size:11px;color:var(--pm-green);line-height:1.5; }
+[data-pm-surface="workshop"] .pm-ws-lg-saved code { font:10px var(--pm-mono);color:var(--pm-muted); }
+[data-pm-surface="workshop"] .pm-ws-lg-slider { display:block;margin-top:14px; }
+[data-pm-surface="workshop"] .pm-ws-lg-slider > span { display:flex;align-items:baseline;gap:8px;font:10px var(--pm-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--pm-dim);margin-bottom:7px; }
+[data-pm-surface="workshop"] .pm-ws-lg-slider > span b { margin-left:auto;color:var(--pm-accent-hi);letter-spacing:.03em;text-transform:none;font-size:10.5px;font-weight:400; }
+[data-pm-surface="workshop"] .pm-ws-lg-slider input { width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:999px;background:var(--pm-surface-2);outline:none;cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-lg-slider input::-webkit-slider-thumb { -webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--pm-accent-hi);border:2px solid var(--pm-bg);box-shadow:0 0 0 1px var(--pm-accent-lo); }
+[data-pm-surface="workshop"] .pm-ws-lg-slider input::-moz-range-thumb { width:13px;height:13px;border-radius:50%;background:var(--pm-accent-hi);border:2px solid var(--pm-bg);box-shadow:0 0 0 1px var(--pm-accent-lo); }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row { display:flex;align-items:flex-start;gap:12px;padding:10px 12px;background:var(--pm-surface);border:1px solid var(--pm-border);border-radius:10px;margin-top:14px; }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row > div { flex:1; }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row > div b { display:block;font-size:12.5px;font-weight:600;color:var(--pm-text); }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row > div span { display:block;font-size:11px;color:var(--pm-dim);line-height:1.5;margin-top:2px; }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row > button { flex:none;width:36px;height:21px;border-radius:999px;background:var(--pm-surface-3);border:1px solid var(--pm-border-2);position:relative;cursor:pointer;transition:background .15s;margin-top:2px;padding:0; }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row > button i { position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--pm-muted);transition:left .15s,background .15s; }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row > button.is-on { background:var(--pm-accent);border-color:var(--pm-accent-lo); }
+[data-pm-surface="workshop"] .pm-ws-lg-toggle-row > button.is-on i { left:17px;background:#fff; }
+[data-pm-surface="workshop"] .pm-ws-lg-fieldbox { margin-top:14px;background:var(--pm-inset);border:1px solid var(--pm-border-soft);border-radius:9px;padding:11px 12px; }
+[data-pm-surface="workshop"] .pm-ws-lg-tabs { display:flex;gap:4px;align-items:center;margin-bottom:6px; }
+[data-pm-surface="workshop"] .pm-ws-lg-tabs button { font:9.5px var(--pm-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--pm-dim);background:none;border:1px solid transparent;border-radius:6px;padding:3px 8px;cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-lg-tabs button.is-on { color:var(--pm-accent-hi);border-color:rgba(224,103,58,.4);background:var(--pm-accent-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-tabs > span { margin-left:auto;font:9.5px var(--pm-mono);color:var(--pm-faint); }
+[data-pm-surface="workshop"] .pm-ws-lg-pos { display:flex;gap:4px;margin:2px 0 3px; }
+[data-pm-surface="workshop"] .pm-ws-lg-pos button { font:9px var(--pm-mono);color:var(--pm-faint);background:var(--pm-surface-2);border:1px solid var(--pm-border-soft);border-radius:999px;padding:2px 8px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em; }
+[data-pm-surface="workshop"] .pm-ws-lg-pos button.is-on { color:var(--pm-text-2);border-color:var(--pm-border-2);background:var(--pm-surface-3); }
+[data-pm-surface="workshop"] .pm-ws-lg-degree { display:flex;gap:8px;align-items:flex-start;margin-top:7px; }
+[data-pm-surface="workshop"] .pm-ws-lg-degree > span { flex:none;font:9.5px var(--pm-mono);color:var(--pm-dim);width:18px;padding-top:4px; }
+[data-pm-surface="workshop"] .pm-ws-lg-degree > div { display:flex;flex-wrap:wrap;gap:5px; }
+[data-pm-surface="workshop"] .pm-ws-lg-degree em { font:normal 10.5px var(--pm-mono);color:var(--pm-text-2);background:var(--pm-surface-2);border:1px solid var(--pm-border);border-radius:999px;padding:2px 8px; }
+[data-pm-surface="workshop"] .pm-ws-lg-metaphor { margin-top:9px;padding-top:8px;border-top:1px dashed var(--pm-border-soft);font-size:11.5px;font-style:italic;color:var(--pm-muted);line-height:1.55; }
+[data-pm-surface="workshop"] .pm-ws-lg-metaphor b { font:9px var(--pm-mono);font-style:normal;color:var(--pm-faint);letter-spacing:.1em;text-transform:uppercase;margin-right:7px; }
+[data-pm-surface="workshop"] .pm-ws-lg-gradient { display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px; }
+[data-pm-surface="workshop"] .pm-ws-lg-gradient em { font:normal 10.5px var(--pm-mono);color:var(--pm-text-2);background:var(--pm-surface-2);border:1px solid var(--pm-border);border-radius:999px;padding:2px 8px; }
+[data-pm-surface="workshop"] .pm-ws-lg-gradient em:first-child { color:var(--pm-dim); }
+[data-pm-surface="workshop"] .pm-ws-lg-gradient em:last-of-type { color:var(--pm-accent-hi);border-color:rgba(224,103,58,.4);background:var(--pm-accent-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-gradient span { color:var(--pm-faint);font-size:10px; }
+[data-pm-surface="workshop"] .pm-ws-lg-gradcap { font:10px var(--pm-mono);color:var(--pm-dim);margin-top:9px; }
+[data-pm-surface="workshop"] .pm-ws-lg-cliche { display:flex;gap:8px;align-items:baseline;font-size:11.5px;line-height:1.5;padding:5px 0;border-bottom:1px solid var(--pm-border-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-cliche:last-child { border-bottom:0; }
+[data-pm-surface="workshop"] .pm-ws-lg-cliche s { color:var(--pm-dim);text-decoration-color:rgba(224,90,78,.55);white-space:nowrap; }
+[data-pm-surface="workshop"] .pm-ws-lg-cliche span { color:var(--pm-faint);font-size:10px;flex:none; }
+[data-pm-surface="workshop"] .pm-ws-lg-cliche em { color:var(--pm-text-2); }
+[data-pm-surface="workshop"] .pm-ws-lg-substitutions { width:100%;border-collapse:collapse;margin-top:2px;font-size:11.5px; }
+[data-pm-surface="workshop"] .pm-ws-lg-substitutions th { font:600 9px var(--pm-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pm-faint);text-align:left;padding:4px 8px;border-bottom:1px solid var(--pm-border-soft);white-space:nowrap; }
+[data-pm-surface="workshop"] .pm-ws-lg-substitutions td { padding:5px 8px;border-bottom:1px solid var(--pm-border-soft);color:var(--pm-muted); }
+[data-pm-surface="workshop"] .pm-ws-lg-substitutions td:first-child { color:var(--pm-dim); }
+[data-pm-surface="workshop"] .pm-ws-lg-substitutions td:nth-child(2) { color:var(--pm-text);font-style:italic; }
+[data-pm-surface="workshop"] .pm-ws-lg-substitutions tr:last-child td { border-bottom:0; }
+[data-pm-surface="workshop"] .pm-ws-lg-substitutions th button { margin-left:5px;border:1px solid var(--pm-border-soft);background:none;color:var(--pm-dim);border-radius:5px;width:18px;height:18px;cursor:pointer;font-size:10px;padding:0; }
+[data-pm-surface="workshop"] .pm-ws-lg-fcap { font:9px var(--pm-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--pm-faint);margin-top:9px;padding-top:7px;border-top:1px solid var(--pm-border-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-directive-disclosure { margin-top:12px;border:1px solid var(--pm-border-soft);border-radius:8px;background:var(--pm-surface); }
+[data-pm-surface="workshop"] .pm-ws-lg-directive-disclosure summary { padding:8px 10px;cursor:pointer;font:10px var(--pm-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--pm-dim); }
+[data-pm-surface="workshop"] .pm-ws-lg-directive-disclosure pre { margin:0;padding:10px;border-top:1px solid var(--pm-border-soft);white-space:pre-wrap;overflow-wrap:anywhere;font:10px/1.55 var(--pm-mono);color:var(--pm-muted); }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-button { width:100%;margin-top:14px; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview { margin-top:10px;background:var(--pm-surface);border:1px solid var(--pm-border);border-left:2px solid var(--pm-accent);border-radius:0 8px 8px 0;padding:10px 12px;font-size:12.5px;line-height:1.65;color:var(--pm-text-2);font-style:italic; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview > div { font:9.5px var(--pm-mono);color:var(--pm-faint);font-style:normal;margin-bottom:5px;letter-spacing:.1em;text-transform:uppercase; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview > span { display:block; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview > span + span { margin-top:7px;padding-top:7px;border-top:1px solid var(--pm-border-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-preview > span b { display:inline-block;min-width:46px;margin-right:5px;font:9.5px var(--pm-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--pm-accent-hi);font-style:normal; }
+
+/* Standing rail + auditable thread markers — generic shell, amber lifetime. */
+[data-pm-surface="workshop"] .pm-ws-standing-rail { margin:2px 16px 0; }
+[data-pm-surface="workshop"] .pm-ws-standing-active { display:flex;align-items:center;gap:9px;padding:7px 11px;border:1px solid rgba(226,178,74,.4);background:rgba(226,178,74,.07);border-radius:10px;margin:2px 0 10px;font-size:12px;color:var(--pm-text-2); }
+[data-pm-surface="workshop"] .pm-ws-standing-pulse { flex:none;width:7px;height:7px;border-radius:50%;background:var(--pm-amber);animation:pm-ws-standing-pulse 2s infinite; }
+@keyframes pm-ws-standing-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(226,178,74,.35)}50%{box-shadow:0 0 0 4px rgba(226,178,74,0)} }
+[data-pm-surface="workshop"] .pm-ws-standing-active b { color:var(--pm-text);font-weight:600; }
+[data-pm-surface="workshop"] .pm-ws-standing-config { font:10.5px var(--pm-mono);color:var(--pm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+[data-pm-surface="workshop"] .pm-ws-standing-spacer { flex:1; }
+[data-pm-surface="workshop"] .pm-ws-standing-active button { flex:none;height:24px;padding:0 10px;border-radius:7px;border:1px solid var(--pm-border);background:var(--pm-surface-2);color:var(--pm-muted);font:500 11px var(--pm-sans);cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-standing-active button:hover { color:var(--pm-text);border-color:var(--pm-border-2); }
+[data-pm-surface="workshop"] .pm-ws-standing-active .pm-ws-standing-kill { width:24px;padding:0;display:grid;place-items:center; }
+[data-pm-surface="workshop"] .pm-ws-standing-active .pm-ws-standing-kill:hover { color:var(--pm-red);border-color:rgba(224,90,78,.5); }
+[data-pm-surface="workshop"] .pm-ws-standing-marker { align-self:center;display:flex;align-items:center;gap:7px;font:10px var(--pm-mono);color:var(--pm-dim);border:1px dashed var(--pm-border);border-radius:999px;padding:3px 12px;max-width:92%;background:transparent;cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-standing-marker > span { width:6px;height:6px;border-radius:50%;background:var(--pm-amber);flex:none; }
+[data-pm-surface="workshop"] .pm-ws-standing-marker-shifted > span { background:var(--pm-accent-hi); }
+[data-pm-surface="workshop"] .pm-ws-standing-marker-removed > span { background:var(--pm-red); }
+[data-pm-surface="workshop"] .pm-ws-standing-marker:disabled { cursor:default; }
+
+@media (max-width: 680px) {
+  [data-pm-surface="workshop"] .pm-ws-lg-lenses { grid-template-columns:repeat(2,1fr); }
+  [data-pm-surface="workshop"] .pm-ws-lg-tabs { flex-wrap:wrap; }
+  [data-pm-surface="workshop"] .pm-ws-lg-tabs > span { width:100%;margin-left:0; }
+  [data-pm-surface="workshop"] .pm-ws-standing-active { flex-wrap:wrap; }
+  [data-pm-surface="workshop"] .pm-ws-standing-config { order:3;width:100%; }
+}
 [data-pm-surface="workshop"] .pm-ws-gesture-cancel {
   background: transparent;
   border: 1px solid transparent;

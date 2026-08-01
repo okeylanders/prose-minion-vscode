@@ -25,7 +25,6 @@ import {
   WorkshopExcerptTruncation,
   workshopExcerptSourcePath,
   workshopExcerptTitle,
-  WorkshopGestureDraft,
   WorkshopMessageAttachmentSnapshot,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
@@ -33,6 +32,8 @@ import {
   WorkshopSelectableSessionScope,
   WorkshopSessionScope,
   WorkshopSessionSnapshot,
+  WorkshopStandingDirectiveFamily,
+  WorkshopStandingDirectiveSummary,
   WorkshopToolId,
   WorkshopTodoItem,
   WorkshopTurn,
@@ -40,7 +41,6 @@ import {
   WorkshopTurnKind,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSnapshot,
-  WorkshopWidgetId,
   WorkshopWidgetRecommendation
 } from '@messages';
 import { isContextPathGroup, TokenUsage } from '@shared/types';
@@ -86,12 +86,21 @@ import type {
   WorkshopThreadArtifactFrameInput
 } from '@/application/services/workshop/WorkshopThreadArtifactFrame';
 import {
+  PreparedWorkshopWidgetConfigMutation,
   WorkshopWidgetConfigLedger
 } from '@/application/services/workshop/widgets/WorkshopWidgetConfigLedger';
+import { WorkshopWidgetConfigInput } from '@/application/services/workshop/widgets/WorkshopWidgetConfigLedger';
+import { WORKSHOP_WIDGET_CONFIG_OPERATIONS } from '@/application/services/workshop/widgets/WorkshopWidgetConfigOperations';
 import {
-  cloneGesturePlaygroundDraft,
-  summarizeGesturePlaygroundDraft
-} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
+  PreparedWorkshopStandingDirectiveMutation,
+  PreparedWorkshopStandingDirectiveUpsert,
+  WorkshopStandingDirectiveLedger,
+  WorkshopStandingDirectiveUpsertInput
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveLedger';
+import {
+  summarizeWorkshopStandingDirective,
+  workshopStandingDirectiveMarkerContent
+} from '@/application/services/workshop/directives/WorkshopStandingDirectivePresentation';
 export type {
   WorkshopSessionCheckpointNormalization
 } from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
@@ -356,6 +365,8 @@ export class WorkshopSessionService {
   private threadArtifacts: WorkshopThreadArtifact[] = [];
   /** Session-owned widget config lifecycle; the aggregate remains its only caller. */
   private readonly widgetConfigLedger: WorkshopWidgetConfigLedger;
+  /** Passage-scoped prose directives, closed to one active entry per family. */
+  private readonly standingDirectiveLedger: WorkshopStandingDirectiveLedger;
   /**
    * Writer-origin manifest rows per retained participant (Phase 7): pins
    * stamped at delivery (stale-marked on revision), tool/guest rows stamped
@@ -390,20 +401,11 @@ export class WorkshopSessionService {
     initialBehavior: WorkshopConversationBehavior = DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
   ) {
     this.behavior = { ...initialBehavior };
-    this.widgetConfigLedger = new WorkshopWidgetConfigLedger(this.now, {
-      cloneDraft: (widgetId, draft) => {
-        if (widgetId !== 'gesture-playground') {
-          throw new Error(`No draft clone operation registered for widget ${widgetId}`);
-        }
-        return cloneGesturePlaygroundDraft(draft);
-      },
-      summarizeDraft: (widgetId, draft) => {
-        if (widgetId !== 'gesture-playground') {
-          throw new Error(`No draft summary operation registered for widget ${widgetId}`);
-        }
-        return summarizeGesturePlaygroundDraft(draft);
-      }
-    });
+    this.widgetConfigLedger = new WorkshopWidgetConfigLedger(
+      this.now,
+      WORKSHOP_WIDGET_CONFIG_OPERATIONS
+    );
+    this.standingDirectiveLedger = new WorkshopStandingDirectiveLedger(this.now);
   }
 
   getConversationBehavior(): WorkshopConversationBehavior {
@@ -881,9 +883,12 @@ export class WorkshopSessionService {
     if (workshopTurnAudience(turn).kind !== 'room') {
       throw new Error(`Cannot publish room thread artifacts for private turn ${turnId}`);
     }
+    const threadWidgetCommit = turn.widgetCommit?.rail === 'thread-artifact'
+      ? turn.widgetCommit
+      : undefined;
     const referencedIds = new Set([
       ...(turn.messageAttachments ?? []).map((attachment) => attachment.id),
-      ...(turn.widgetCommit ? [turn.widgetCommit.artifactId] : [])
+      ...(threadWidgetCommit ? [threadWidgetCommit.artifactId] : [])
     ]);
     const suppliedIds = new Set<string>();
     for (const artifact of artifacts) {
@@ -899,10 +904,10 @@ export class WorkshopSessionService {
         throw new Error(`Duplicate committed Workshop thread artifact ${artifact.id}`);
       }
       suppliedIds.add(artifact.id);
-      const widgetReference = turn.widgetCommit?.artifactId === artifact.id;
+      const widgetReference = threadWidgetCommit?.artifactId === artifact.id;
       if (
         widgetReference
-        && artifact.kind !== workshopWidgetArtifactKind(turn.widgetCommit!.widgetId)
+        && artifact.kind !== workshopWidgetArtifactKind(threadWidgetCommit.widgetId)
       ) {
         throw new Error(
           `Thread artifact ${artifact.id} does not match its widget reference on ${turnId}`
@@ -1031,12 +1036,29 @@ export class WorkshopSessionService {
    * the send so the visible turn can reference it; a config whose commit
    * never landed is the durable retry token, not garbage.
    */
-  createWidgetConfig(input: {
-    widgetId: WorkshopWidgetId;
-    draft: WorkshopGestureDraft;
-    clonedFromConfigId?: string;
-  }): WorkshopWidgetConfigSnapshot {
+  createWidgetConfig(
+    input: WorkshopWidgetConfigInput & { clonedFromConfigId?: string }
+  ): WorkshopWidgetConfigSnapshot {
     return this.widgetConfigLedger.create(input);
+  }
+
+  prepareWidgetConfigCreation(
+    input: WorkshopWidgetConfigInput & { clonedFromConfigId?: string }
+  ) {
+    return this.widgetConfigLedger.prepareCreation(input);
+  }
+
+  prepareWidgetConfigRevision(
+    configId: string,
+    input: WorkshopWidgetConfigInput
+  ) {
+    return this.widgetConfigLedger.prepareRevision(configId, input);
+  }
+
+  installPreparedWidgetConfigRevision(
+    prepared: ReturnType<WorkshopWidgetConfigLedger['prepareRevision']>
+  ): WorkshopWidgetConfigSnapshot {
+    return this.widgetConfigLedger.installPreparedRevision(prepared);
   }
 
   getWidgetConfig(id: string): WorkshopWidgetConfigSnapshot | undefined {
@@ -1046,6 +1068,85 @@ export class WorkshopSessionService {
   /** Stamp the landed commit's turn/artifact identities onto its config. */
   recordWidgetCommit(configId: string, linkage: { turnId: string; artifactId: string }): void {
     this.widgetConfigLedger.recordCommit(configId, linkage);
+  }
+
+  getStandingDirective(family: WorkshopStandingDirectiveFamily) {
+    return this.standingDirectiveLedger.get(family);
+  }
+
+  getStandingDirectives() {
+    return this.standingDirectiveLedger.list();
+  }
+
+  prepareStandingDirectiveUpsert(
+    input: WorkshopStandingDirectiveUpsertInput
+  ): PreparedWorkshopStandingDirectiveUpsert {
+    return this.standingDirectiveLedger.prepareUpsert(input);
+  }
+
+  prepareStandingDirectiveRemoval(
+    family: WorkshopStandingDirectiveFamily
+  ): PreparedWorkshopStandingDirectiveMutation | undefined {
+    return this.standingDirectiveLedger.prepareRemoval(family);
+  }
+
+  /**
+   * Commit a prompt-replaced standing mutation as one room marker. The marker
+   * and linked configs are resolved before either prepared ledger is installed.
+   */
+  commitStandingDirectiveMutation(
+    prepared: PreparedWorkshopStandingDirectiveMutation,
+    preparedConfig?: PreparedWorkshopWidgetConfigMutation
+  ): WorkshopTurn {
+    const previousDirective = this.standingDirectiveLedger.get(prepared.directive.family);
+    const previousConfig = previousDirective
+      ? this.widgetConfigLedger.get(previousDirective.widgetConfigId)
+      : undefined;
+    const directive = prepared.directive;
+    const currentConfig = prepared.action === 'removed'
+      ? previousConfig
+      : preparedConfig?.config ?? this.widgetConfigLedger.get(directive.widgetConfigId);
+    const markerContent = workshopStandingDirectiveMarkerContent(
+      prepared.action,
+      directive,
+      previousConfig,
+      currentConfig
+    );
+    if (preparedConfig) {
+      this.widgetConfigLedger.installPreparedMutation(preparedConfig);
+    }
+    this.standingDirectiveLedger.installPreparedState(prepared.state);
+    const turn: WorkshopTurn = {
+      id: this.nextTurnId('system'),
+      role: 'system',
+      kind: 'divider',
+      participant: 'session',
+      artifact: 'standing_directive_change',
+      excerptVersion: this.excerptVersion,
+      content: markerContent,
+      timestamp: this.now(),
+      widgetCommit: {
+        widgetId: directive.widgetId,
+        widgetConfigId: directive.widgetConfigId,
+        rail: 'standing',
+        directiveId: directive.id,
+        revision: directive.revision
+      },
+      standingDirectiveChange: {
+        action: prepared.action,
+        family: directive.family,
+        widgetId: directive.widgetId,
+        directiveId: directive.id,
+        widgetConfigId: directive.widgetConfigId,
+        revision: directive.revision
+      }
+    };
+    this.turns.push(turn);
+    this.widgetConfigLedger.recordCommit(directive.widgetConfigId, {
+      turnId: turn.id,
+      directiveId: directive.id
+    });
+    return cloneTurn(turn);
   }
 
   /**
@@ -1772,17 +1873,7 @@ export class WorkshopSessionService {
         : undefined,
       // Persona-only decoration: tool reports never carry recommendation chips.
       widgetRecommendation: (isHost || isGuest) && widgetRecommendation
-        ? {
-            widgetId: widgetRecommendation.widgetId,
-            seed: widgetRecommendation.seed
-              ? {
-                  ...widgetRecommendation.seed,
-                  sourceReferences: widgetRecommendation.seed.sourceReferences?.map(
-                    (reference) => ({ ...reference })
-                  )
-                }
-              : undefined
-          }
+        ? cloneWidgetRecommendation(widgetRecommendation)
         : undefined
     };
 
@@ -2012,6 +2103,7 @@ export class WorkshopSessionService {
     this.pendingMessageAttachments = [];
     this.threadArtifacts = [];
     this.widgetConfigLedger.reset();
+    this.standingDirectiveLedger.reset();
     this.pendingContextRevision = undefined;
     this.replacementCount = 0;
     this.selectedToolId = undefined;
@@ -2036,6 +2128,7 @@ export class WorkshopSessionService {
       throw new WorkshopSessionActiveRunPersistenceError();
     }
     const widgetConfigState = this.widgetConfigLedger.exportState();
+    const standingDirectiveState = this.standingDirectiveLedger.exportState();
 
     return {
       excerpt: this.excerpt ? cloneExcerpt(this.excerpt) : undefined,
@@ -2056,9 +2149,11 @@ export class WorkshopSessionService {
         threadArtifact: this.threadArtifactCounter,
         turn: this.turnCounter,
         todo: this.todoCounter,
-        widgetConfig: widgetConfigState.counter
+        widgetConfig: widgetConfigState.counter,
+        standingDirective: standingDirectiveState.counter
       },
       widgetConfigs: widgetConfigState.configs,
+      standingDirectives: standingDirectiveState.directives,
       writerSources: {
         host: this.hostWriterSources.map(cloneSourceEntry),
         tools: cloneToolWriterSources(this.toolWriterSources),
@@ -2144,6 +2239,10 @@ export class WorkshopSessionService {
     const widgetConfigState = this.widgetConfigLedger.prepareState({
       configs: normalized.widgetConfigs ?? [],
       counter: normalized.counters.widgetConfig ?? 0
+    });
+    const standingDirectiveState = this.standingDirectiveLedger.prepareState({
+      directives: normalized.standingDirectives ?? [],
+      counter: normalized.counters.standingDirective ?? 0
     });
     const behavior = { ...currentBehavior };
     const lastCommittedPersonaBehavior = normalized.lastCommittedPersonaBehavior
@@ -2262,6 +2361,7 @@ export class WorkshopSessionService {
     this.turnCounter = normalized.counters.turn;
     this.todoCounter = normalized.counters.todo;
     this.widgetConfigLedger.installPreparedState(widgetConfigState);
+    this.standingDirectiveLedger.installPreparedState(standingDirectiveState);
     this.todos = todos;
     this.behavior = behavior;
     this.lastCommittedPersonaBehavior = lastCommittedPersonaBehavior;
@@ -2276,9 +2376,10 @@ export class WorkshopSessionService {
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turns.slice(-WORKSHOP_SNAPSHOT_TURN_WINDOW);
     const visibleWidgetConfigIds = new Set(
-      windowed
-        .map((turn) => turn.widgetCommit?.widgetConfigId)
-        .filter((id): id is string => id !== undefined)
+      [
+        ...windowed.map((turn) => turn.widgetCommit?.widgetConfigId),
+        ...this.standingDirectiveLedger.list().map((directive) => directive.widgetConfigId)
+      ].filter((id): id is string => id !== undefined)
     );
     return {
       excerpt: this.excerpt ? excerptSnapshot(this.excerpt) : undefined,
@@ -2298,6 +2399,7 @@ export class WorkshopSessionService {
         : undefined,
       todos: this.todos.map((todo) => cloneTodo(todo, this.excerptVersion)),
       widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
+      standingDirectives: this.standingDirectiveSummaries(),
       turns: windowed.map(cloneTurn),
       totalTurns: this.turns.length,
       truncatedTurns: this.turns.length - windowed.length,
@@ -2308,6 +2410,18 @@ export class WorkshopSessionService {
       activeToolId: this.activeRun?.target === 'tool' ? this.activeRun.toolId : undefined,
       activeRequestId: this.activeRun?.requestId
     };
+  }
+
+  private standingDirectiveSummaries(): WorkshopStandingDirectiveSummary[] {
+    return this.standingDirectiveLedger.list().map((directive) => {
+      const config = this.widgetConfigLedger.get(directive.widgetConfigId);
+      if (!config) {
+        throw new Error(
+          `Standing directive ${directive.id} has no matching widget config`
+        );
+      }
+      return summarizeWorkshopStandingDirective(directive, config);
+    });
   }
 
   private beginMessage(
@@ -2582,20 +2696,39 @@ function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
       ? turn.messageAttachments.map(cloneMessageAttachmentSnapshot)
       : undefined,
     widgetCommit: turn.widgetCommit ? { ...turn.widgetCommit } : undefined,
+    standingDirectiveChange: turn.standingDirectiveChange
+      ? { ...turn.standingDirectiveChange }
+      : undefined,
     widgetRecommendation: turn.widgetRecommendation
-      ? {
-          widgetId: turn.widgetRecommendation.widgetId,
-          seed: turn.widgetRecommendation.seed
-            ? {
-                ...turn.widgetRecommendation.seed,
-                sourceReferences: turn.widgetRecommendation.seed.sourceReferences?.map(
-                  (reference) => ({ ...reference })
-                )
-              }
-            : undefined
-        }
+      ? cloneWidgetRecommendation(turn.widgetRecommendation)
       : undefined
   };
+}
+
+function cloneWidgetRecommendation(
+  recommendation: WorkshopWidgetRecommendation
+): WorkshopWidgetRecommendation {
+  switch (recommendation.widgetId) {
+    case 'gesture-playground':
+      return {
+        widgetId: recommendation.widgetId,
+        seed: recommendation.seed
+          ? {
+              ...recommendation.seed,
+              sourceReferences: recommendation.seed.sourceReferences?.map(
+                (reference) => ({ ...reference })
+              )
+            }
+          : undefined
+      };
+    case 'lexical-gravity':
+      return {
+        widgetId: recommendation.widgetId,
+        seed: recommendation.seed ? { ...recommendation.seed } : undefined
+      };
+    default:
+      return assertNever(recommendation);
+  }
 }
 
 function cloneSourceEntry(entry: ContextSourceEntry): ContextSourceEntry {

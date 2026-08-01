@@ -176,9 +176,19 @@ import {
   CancelWidgetGenerateRequestMessage,
   WorkshopWidgetGenerationProgressMessage,
   WorkshopWidgetMenuResultMessage,
+  WorkshopRequestLexicalGravityLensesMessage,
+  WorkshopLexicalGravityLensesDataMessage,
+  WorkshopPreviewLexicalGravityMessage,
+  WorkshopLexicalGravityPreviewResultMessage,
+  WorkshopBuildLexicalGravityLensMessage,
+  WorkshopLexicalGravityLensCandidatesMessage,
+  WorkshopSaveLexicalGravityLensesMessage,
+  WorkshopLexicalGravityLensesSavedMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopCommitWidgetMessage,
+  WorkshopApplyStandingWidgetMessage,
+  WorkshopRemoveStandingWidgetMessage,
   WorkshopWidgetActionResultMessage
 } from './workshop';
 
@@ -266,8 +276,14 @@ export type WebviewToExtensionMessage =
   | WorkshopDeleteSessionMessage
   | WorkshopWidgetGenerateMessage
   | CancelWidgetGenerateRequestMessage
+  | WorkshopRequestLexicalGravityLensesMessage
+  | WorkshopPreviewLexicalGravityMessage
+  | WorkshopBuildLexicalGravityLensMessage
+  | WorkshopSaveLexicalGravityLensesMessage
   | WorkshopRequestWidgetConfigMessage
-  | WorkshopCommitWidgetMessage;
+  | WorkshopCommitWidgetMessage
+  | WorkshopApplyStandingWidgetMessage
+  | WorkshopRemoveStandingWidgetMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -310,5 +326,9 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextAttachmentContentMessage
   | WorkshopWidgetGenerationProgressMessage
   | WorkshopWidgetMenuResultMessage
+  | WorkshopLexicalGravityLensesDataMessage
+  | WorkshopLexicalGravityPreviewResultMessage
+  | WorkshopLexicalGravityLensCandidatesMessage
+  | WorkshopLexicalGravityLensesSavedMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetActionResultMessage;

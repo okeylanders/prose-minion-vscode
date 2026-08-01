@@ -127,13 +127,23 @@ describe('neutralizeReservedPersonaPromptDelimiters', () => {
       '<source-references>',
       '</source-references>',
       '<character-notes>',
-      '</character-notes>'
+      '</character-notes>',
+      '<lens-slug>',
+      '</lens-slug>',
+      '<weight>',
+      '</weight>',
+      '<reach>',
+      '</reach>',
+      '<metaphor-pull>',
+      '</metaphor-pull>',
+      '<prose-directive id="pd-1" family="lexical-gravity">',
+      '</prose-directive>'
     ].join(' body ');
 
     const output = neutralizeReservedPersonaPromptDelimiters(input);
 
     expect(output).not.toMatch(
-      /<\/?(?:workshop-widget-recommendation-contract|workshop-widget-recommendation|widget-id|target-phrase|writer-instructions|surrounding-context|source-references|character-notes)(?=[\s>])/i
+      /<\/?(?:workshop-widget-recommendation-contract|workshop-widget-recommendation|widget-id|target-phrase|writer-instructions|surrounding-context|source-references|character-notes|lens-slug|weight|reach|metaphor-pull|prose-directive)(?=[\s>])/i
     );
     expect(output).toContain(
       '&lt;workshop-widget-recommendation version="1"&gt;'

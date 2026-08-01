@@ -84,6 +84,34 @@ describe('parseWorkshopPersistedSession', () => {
       .toThrow('Invalid Workshop session timezone');
   });
 
+  it.each([
+    ['widgetConfig', -1],
+    ['widgetConfig', 0.5],
+    ['widgetConfig', Number.MAX_SAFE_INTEGER + 1],
+    ['standingDirective', -1],
+    ['standingDirective', 0.5],
+    ['standingDirective', Number.MAX_SAFE_INTEGER + 1]
+  ] as const)('rejects an invalid %s counter value of %s', (counter, value) => {
+    const source = persistedSession();
+    source.workshop.counters[counter] = value;
+
+    expect(() => parseWorkshopPersistedSession(source)).toThrow(
+      new RegExp(`${counter === 'widgetConfig' ? 'widget-config' : 'standing-directive'} counter must be a non-negative safe integer`)
+    );
+  });
+
+  it('accepts zero and missing pre-widget counters', () => {
+    const zero = persistedSession();
+    zero.workshop.counters.widgetConfig = 0;
+    zero.workshop.counters.standingDirective = 0;
+    expect(() => parseWorkshopPersistedSession(zero)).not.toThrow();
+
+    const missing = persistedSession();
+    delete missing.workshop.counters.widgetConfig;
+    delete missing.workshop.counters.standingDirective;
+    expect(() => parseWorkshopPersistedSession(missing)).not.toThrow();
+  });
+
   it('preserves malformed conversation entries for participant-local degradation', () => {
     const source = persistedSession() as unknown as {
       conversations: unknown[];

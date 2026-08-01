@@ -35,6 +35,12 @@ switch, both consulted at prose-generation time.
   edit-in-place + shift markers, the presentation-only chip, and the active-
   directive indicator + kill switch. Prose Controller is a second *producer*
   onto that infrastructure.
+- Sprint 02B leaves the family-neutral apply/remove IPC routes registered by
+  `WorkshopLexicalGravityHandler`, because `MessageRouter` permits one owner per
+  message type. Sprint 03 begins by moving those two routes into a shared
+  standing-directive handler/dispatcher, then adds Prose Controller as a family
+  member. This is a scheduled ownership move, not a second route registration
+  or a fork of the Lexical handler.
 - The measure tools already compute deterministic prose metrics (POS via wink,
   sentence stats, punctuation counts, style flags). These are the natural
   deterministic scaffold for Prose Controller's live preview — reuse them; do not
@@ -128,7 +134,9 @@ switch, both consulted at prose-generation time.
 2. **Current → target → preview comparison**: deterministic passage readouts
    where supported plus generated example rewrites behind an explicit Preview
    action and config-keyed cache.
-3. **Validated directive compiler + frame**: omit neutral values, collapse
+3. **Shared standing-route ownership + validated directive compiler/frame**:
+   move family-neutral apply/remove IPC registration out of the Lexical-specific
+   handler, then omit neutral values, collapse
    related choices, detect contradictions, and emit compact guidance on the
    standing rail through the shared coordinator.
 4. **Commit / edit-in-place / kill** via the Sprint 02B infrastructure; persisted

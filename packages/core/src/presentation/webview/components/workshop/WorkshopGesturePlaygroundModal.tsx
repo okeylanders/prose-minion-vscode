@@ -24,7 +24,7 @@ import {
   WorkshopGestureDraft,
   WorkshopGestureMenuGroup,
   WorkshopWidgetActionResultPayload,
-  WorkshopWidgetConfigSnapshot,
+  WorkshopGestureWidgetConfigSnapshot,
   WorkshopWidgetGeneratePayload,
   WorkshopWidgetGenerationProgressPayload,
   WorkshopWidgetMenuResultPayload,
@@ -43,7 +43,7 @@ import { WorkshopModalShell } from './WorkshopModalShell';
 export type WorkshopGestureOpening =
   | { kind: 'new'; seedTargetPhrase?: string }
   | { kind: 'seed'; seed: WorkshopWidgetRecommendationSeed; personaLabel: string }
-  | { kind: 'clone'; config: WorkshopWidgetConfigSnapshot };
+  | { kind: 'clone'; config: WorkshopGestureWidgetConfigSnapshot };
 
 interface WorkshopGesturePlaygroundModalProps {
   open: boolean;

@@ -56,6 +56,11 @@ import {
   WorkshopGestureOpening
 } from './components/workshop/WorkshopGesturePlaygroundModal';
 import {
+  WorkshopLexicalGravityModal,
+  WorkshopLexicalGravityOpening
+} from './components/workshop/WorkshopLexicalGravityModal';
+import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopStandingDirectiveRail';
+import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendation';
 import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
@@ -106,6 +111,7 @@ import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
 import { useWorkshop } from './hooks/domain/useWorkshop';
+import { useLexicalGravity } from './hooks/domain/useLexicalGravity';
 import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
@@ -172,6 +178,7 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler.
   const workshop = useWorkshop();
+  const lexicalGravity = useLexicalGravity();
   const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
@@ -181,6 +188,8 @@ export const WorkshopApp: React.FC = () => {
   const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
   /** Non-null while the Gesture Playground pre-commit surface is open. */
   const [gestureOpening, setGestureOpening] = React.useState<WorkshopGestureOpening | null>(null);
+  const [lexicalGravityOpening, setLexicalGravityOpening] =
+    React.useState<WorkshopLexicalGravityOpening | null>(null);
   const [pendingWidgetConfigId, setPendingWidgetConfigId] = React.useState<string | null>(null);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
@@ -243,6 +252,28 @@ export const WorkshopApp: React.FC = () => {
     [showToast]
   );
 
+  const handleWidgetActionResult = React.useCallback(
+    (message: Parameters<typeof workshop.handleWidgetActionResult>[0]) => {
+      workshop.handleWidgetActionResult(message);
+      lexicalGravity.handleActionResult(message);
+      if (message.payload.action === 'remove-standing') {
+        showToast(message.payload.ok
+          ? {
+              message: message.payload.removed
+                ? 'Lexical Gravity removed.'
+                : 'Lexical Gravity was already removed.',
+              icon: message.payload.removed ? 'check' : 'info'
+            }
+          : {
+              message: message.payload.message ?? 'Lexical Gravity could not be removed.',
+              icon: 'x',
+              tone: 'error'
+            });
+      }
+    },
+    [lexicalGravity.handleActionResult, showToast, workshop.handleWidgetActionResult]
+  );
+
   useMessageRouter({
     [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
@@ -257,7 +288,11 @@ export const WorkshopApp: React.FC = () => {
     [MessageType.WORKSHOP_WIDGET_CONFIG_DATA]: workshop.handleWidgetConfigData,
     [MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS]:
       workshop.handleWidgetGenerationProgress,
-    [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: workshop.handleWidgetActionResult,
+    [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: handleWidgetActionResult,
+    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA]: lexicalGravity.handleLensesData,
+    [MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT]: lexicalGravity.handlePreviewResult,
+    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
+    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
     [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
@@ -275,6 +310,7 @@ export const WorkshopApp: React.FC = () => {
 
   usePersistence({
     ...workshop.persistedState,
+    ...lexicalGravity.persistedState,
     ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
     ...tokenTracking.persistedState,
@@ -328,7 +364,17 @@ export const WorkshopApp: React.FC = () => {
       workshop.widgetConfigResponseId === pendingWidgetConfigId
       && workshop.widgetConfigData?.id === pendingWidgetConfigId
     ) {
-      setGestureOpening({ kind: 'clone', config: workshop.widgetConfigData });
+      const config = workshop.widgetConfigData;
+      if (config.widgetId === 'gesture-playground') {
+        setGestureOpening({ kind: 'clone', config });
+      } else if (config.widgetId === 'lexical-gravity') {
+        const active = workshop.standingDirectives.some(
+          (directive) => directive.widgetConfigId === config.id
+        );
+        setLexicalGravityOpening(
+          active ? { kind: 'edit', config } : { kind: 'new', seed: config.draft }
+        );
+      }
       setPendingWidgetConfigId(null);
       workshop.clearWidgetConfigData();
       return;
@@ -347,7 +393,8 @@ export const WorkshopApp: React.FC = () => {
     workshop.clearWidgetConfigData,
     workshop.widgetConfigData,
     workshop.widgetConfigError,
-    workshop.widgetConfigResponseId
+    workshop.widgetConfigResponseId,
+    workshop.standingDirectives
   ]);
 
   React.useEffect(() => {
@@ -472,30 +519,46 @@ export const WorkshopApp: React.FC = () => {
   const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
   const openWidgetsModal = React.useCallback(() => setWidgetsModalOpen(true), []);
   const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
-  // Conversation Widgets (ADR 2026-07-22): three doors into the same
-  // pre-commit surface — the browser (fresh), a persona recommend chip
-  // (seeded), and a committed turn's chip (clone-and-recommit).
-  const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
-    if (widgetId !== 'gesture-playground') {
-      return;
-    }
-    setWidgetsModalOpen(false);
-    setGestureOpening({ kind: 'new' });
-  }, []);
   const openWidgetConfig = React.useCallback((widgetConfigId: string) => {
     setPendingWidgetConfigId(widgetConfigId);
     workshop.requestWidgetConfig(widgetConfigId);
   }, [workshop.requestWidgetConfig]);
+  // Conversation Widgets (ADR 2026-07-22): three doors into the same
+  // pre-commit surface — the browser (fresh), a persona recommend chip
+  // (seeded), and a committed turn's chip (clone-and-recommit).
+  const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
+    setWidgetsModalOpen(false);
+    if (widgetId === 'gesture-playground') {
+      setGestureOpening({ kind: 'new' });
+    } else if (widgetId === 'lexical-gravity') {
+      const active = workshop.standingDirectives.find(
+        (directive) => directive.family === 'lexical-gravity'
+      );
+      if (active) {
+        openWidgetConfig(active.widgetConfigId);
+      } else {
+        setLexicalGravityOpening({ kind: 'new' });
+      }
+    }
+  }, [openWidgetConfig, workshop.standingDirectives]);
   const openWidgetRecommendation = React.useCallback(
     (
       recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
       personaLabel?: string
     ) => {
-      setGestureOpening({
-        kind: 'seed',
-        seed: recommendation.seed ?? {},
-        personaLabel: personaLabel ?? 'the persona'
-      });
+      if (recommendation.widgetId === 'gesture-playground') {
+        setGestureOpening({
+          kind: 'seed',
+          seed: recommendation.seed ?? {},
+          personaLabel: personaLabel ?? 'the persona'
+        });
+      } else if (recommendation.widgetId === 'lexical-gravity') {
+        setLexicalGravityOpening({
+          kind: 'seed',
+          seed: recommendation.seed ?? {},
+          personaLabel: personaLabel ?? 'the persona'
+        });
+      }
     },
     []
   );
@@ -505,6 +568,12 @@ export const WorkshopApp: React.FC = () => {
     workshop.clearWidgetConfigData();
     workshop.consumeWidgetActionResult();
   }, [workshop.clearWidgetConfigData, workshop.consumeWidgetActionResult]);
+  const closeLexicalGravity = React.useCallback(() => {
+    setLexicalGravityOpening(null);
+    setPendingWidgetConfigId(null);
+    workshop.clearWidgetConfigData();
+    lexicalGravity.clearTransientResults();
+  }, [lexicalGravity.clearTransientResults, workshop.clearWidgetConfigData]);
   const closeStartupNotice = React.useCallback(
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]
@@ -1404,6 +1473,12 @@ export const WorkshopApp: React.FC = () => {
               sources={workshop.contextBudget?.sources}
               requesterLabel={activePersona.label}
             />
+            <WorkshopStandingDirectiveRail
+              directives={workshop.standingDirectives}
+              disabled={showLiveTurn || roomMutationLocked}
+              onEdit={openWidgetConfig}
+              onRemove={lexicalGravity.remove}
+            />
             <WorkshopComposer
               canMessage={workshop.canMessage && !roomMutationLocked}
               scope={workshop.scope}
@@ -1499,6 +1574,34 @@ export const WorkshopApp: React.FC = () => {
             modelsSettings.setModelSelection('widget', modelId)}
           onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
           onClose={closeGesture}
+        />
+      )}
+      {lexicalGravityOpening && (
+        <WorkshopLexicalGravityModal
+          open
+          opening={lexicalGravityOpening}
+          lenses={lexicalGravity.lenses}
+          storagePath={lexicalGravity.storagePath}
+          catalogError={lexicalGravity.catalogError}
+          previewResult={lexicalGravity.previewResult}
+          lensCandidates={lexicalGravity.lensCandidates}
+          lensesSaved={lexicalGravity.lensesSaved}
+          actionResult={lexicalGravity.actionResult}
+          onRequestLenses={lexicalGravity.requestLenses}
+          onPreview={lexicalGravity.preview}
+          onBuildLens={lexicalGravity.buildLens}
+          onSaveLenses={lexicalGravity.saveLenses}
+          onApply={lexicalGravity.apply}
+          onClearTransientResults={lexicalGravity.clearTransientResults}
+          onConsumeActionResult={lexicalGravity.consumeActionResult}
+          widgetModelOptions={modelsSettings.modelOptions}
+          selectedWidgetModel={
+            modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel
+          }
+          onWidgetModelChange={(modelId) =>
+            modelsSettings.setModelSelection('widget', modelId)}
+          onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
+          onClose={closeLexicalGravity}
         />
       )}
       <WorkshopNoticeModal

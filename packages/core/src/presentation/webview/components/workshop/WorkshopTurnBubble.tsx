@@ -238,6 +238,22 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     );
   }
 
+  if (turn.artifact === 'standing_directive_change' && turn.standingDirectiveChange) {
+    const action = turn.standingDirectiveChange.action;
+    return (
+      <button
+        type="button"
+        className={`pm-ws-standing-marker pm-ws-standing-marker-${action}`}
+        title="Re-open this standing directive configuration"
+        disabled={!onOpenWidgetConfig}
+        onClick={() => onOpenWidgetConfig?.(turn.standingDirectiveChange!.widgetConfigId)}
+      >
+        <span aria-hidden="true" />
+        {turn.content}
+      </button>
+    );
+  }
+
   if (
     turn.participant === 'session' ||
     turn.artifact === 'session_start' ||
@@ -283,7 +299,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </span>
           )}
           <div className="pm-ws-turn-message">{turn.content}</div>
-          {turn.widgetCommit && onOpenWidgetConfig && (
+          {turn.widgetCommit?.rail === 'thread-artifact' && onOpenWidgetConfig && (
             <div className="pm-ws-widget-chipwrap">
               <button
                 type="button"
@@ -492,14 +508,19 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           <button
             type="button"
             className="pm-ws-widget-reco"
-            title="Opens Gesture Playground prefilled — everything stays editable, nothing runs until you say so"
+            title={`Opens ${turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'Gesture Playground' : 'Lexical Gravity'} prefilled — everything stays editable, nothing runs until you say so`}
             onClick={() => onOpenWidgetRecommendation(turn.widgetRecommendation!, turn.personaLabel)}
           >
-            <Icon name="hand" size={13} /> Gesture Playground{' '}
+            <Icon name={turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'hand' : 'orbit'} size={13} />{' '}
+            {turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'Gesture Playground' : 'Lexical Gravity'}{' '}
             <span className="pm-ws-widget-chip-meta">
-              {turn.widgetRecommendation.seed?.targetPhrase
-                ? `prefilled · “${turn.widgetRecommendation.seed.targetPhrase}”`
-                : 'recommended'}
+              {turn.widgetRecommendation.widgetId === 'gesture-playground'
+                ? turn.widgetRecommendation.seed?.targetPhrase
+                  ? `prefilled · “${turn.widgetRecommendation.seed.targetPhrase}”`
+                  : 'recommended'
+                : turn.widgetRecommendation.seed?.lensSlug
+                  ? `prefilled · ${turn.widgetRecommendation.seed.lensSlug}`
+                  : 'recommended'}
             </span>
           </button>
         )}
