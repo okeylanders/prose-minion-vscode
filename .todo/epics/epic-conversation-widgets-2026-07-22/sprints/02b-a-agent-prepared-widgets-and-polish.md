@@ -58,9 +58,16 @@ The writer still owns every send, widget open, and commit.
    - an `OR` divider and accent “Select From Existing” heading;
    - full-name hover titles on truncated lens cards;
    - generated preview above `Preview the Effect`, with the disclosure below;
+   - the Weight control immediately between the preview and its action;
+   - a generated-by-default Before passage that becomes quietly editable in
+     place and remains the preview source while the writer tunes controls;
    - edit action label `Apply`; and
    - neutral edit/lifecycle language.
-5. Keep the synced design artifacts, active epic copy, and runtime labels in
+5. Make plain-prose previews tolerate model-added wrappers or repeated
+   sentinels by selecting the final complete frame. Keep generated-lens JSON on
+   its strict exactly-once parser, log rejected preview bodies for diagnosis,
+   and return a human error instead of exposing protocol jargon.
+6. Keep the synced design artifacts, active epic copy, and runtime labels in
    agreement.
 
 ## Technical-Debt Boundary
@@ -85,6 +92,10 @@ conditional string splice.
   defaults on, and changes persona guidance only when enabled.
 - Lens cards expose their complete display name; the revised ordering and copy
   match the synced design.
+- Preview prose is generated without writer input, but the Before passage can
+  be edited in place and survives weight/lens tuning until the next preview.
+- Terra-style exact responses and wrapped/repeated-frame responses from other
+  widget models resolve through the same bounded preview contract.
 - No user-facing widget lifecycle copy implies a provider charge where none is
   being described.
 - Focused component, prompt, persistence, and architecture tests pass, followed

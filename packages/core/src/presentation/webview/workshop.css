@@ -6177,6 +6177,10 @@
 [data-pm-surface="workshop"] .pm-ws-lg-preview > span { display:block; }
 [data-pm-surface="workshop"] .pm-ws-lg-preview > span + span { margin-top:7px;padding-top:7px;border-top:1px solid var(--pm-border-soft); }
 [data-pm-surface="workshop"] .pm-ws-lg-preview > span b { display:inline-block;min-width:46px;margin-right:5px;font:9.5px var(--pm-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--pm-accent-hi);font-style:normal; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-source { display:grid;grid-template-columns:51px minmax(0,1fr);align-items:start; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-source textarea { width:100%;box-sizing:border-box;min-height:74px;padding:0 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--pm-text-2);font:italic 12.5px/1.65 var(--pm-sans);resize:vertical;cursor:text; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-source textarea:focus { outline:none;border-color:var(--pm-accent-lo);background:var(--pm-surface-2); }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-source textarea:disabled { opacity:1;cursor:wait; }
 
 /* Standing rail + auditable thread markers — generic shell, amber lifetime. */
 [data-pm-surface="workshop"] .pm-ws-standing-rail { margin:2px 16px 0; }

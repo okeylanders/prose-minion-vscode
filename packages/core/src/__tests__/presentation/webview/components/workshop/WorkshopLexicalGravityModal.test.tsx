@@ -17,6 +17,10 @@ const models: ModelOption[] = [{
   id: 'anthropic/claude-sonnet-5',
   label: 'Claude Sonnet 5',
   provider: 'Anthropic'
+}, {
+  id: 'google/gemini-3.6-flash',
+  label: 'Gemini 3.6 Flash',
+  provider: 'Google'
 }];
 
 const renderModal = (
@@ -73,8 +77,8 @@ describe('WorkshopLexicalGravityModal', () => {
     expect(screen.queryByText('3°')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Music/ }));
-    fireEvent.change(screen.getAllByRole('slider')[0], { target: { value: '40' } });
-    fireEvent.change(screen.getAllByRole('slider')[1], { target: { value: '3' } });
+    fireEvent.change(screen.getByRole('slider', { name: /Weight/ }), { target: { value: '40' } });
+    fireEvent.change(screen.getByRole('slider', { name: /Reach/ }), { target: { value: '3' } });
     fireEvent.click(screen.getByRole('switch'));
     fireEvent.click(screen.getByRole('button', { name: 'Gradient' }));
     fireEvent.click(screen.getByRole('button', { name: 'Substitutions' }));
@@ -90,8 +94,8 @@ describe('WorkshopLexicalGravityModal', () => {
   it('spends only on explicit preview and applies the exact edited four-value draft', () => {
     const { props, view } = renderModal();
     fireEvent.click(screen.getByRole('button', { name: /Music/ }));
-    fireEvent.change(screen.getAllByRole('slider')[0], { target: { value: '40' } });
-    fireEvent.change(screen.getAllByRole('slider')[1], { target: { value: '3' } });
+    fireEvent.change(screen.getByRole('slider', { name: /Weight/ }), { target: { value: '40' } });
+    fireEvent.change(screen.getByRole('slider', { name: /Reach/ }), { target: { value: '3' } });
     fireEvent.click(screen.getByRole('switch'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
@@ -99,7 +103,8 @@ describe('WorkshopLexicalGravityModal', () => {
       expect.any(String),
       expect.objectContaining({
         lensSlug: 'music', weight: 40, reach: 3, metaphorPull: true
-      })
+      }),
+      builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample
     );
 
     const token = (props.onPreview as jest.Mock).mock.calls[0][0] as string;
@@ -108,7 +113,11 @@ describe('WorkshopLexicalGravityModal', () => {
       previewResult={{
         token,
         ok: true,
-        preview: { configKey: 'music|40|3|1', text: 'A resonant preview.' }
+        preview: {
+          configKey: 'music|40|3|1',
+          sourceText: builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample,
+          text: 'A resonant preview.'
+        }
       }}
     />);
 
@@ -118,8 +127,13 @@ describe('WorkshopLexicalGravityModal', () => {
     expect(view.container.querySelector('.pm-ws-lg-preview')?.textContent)
       .toContain('A resonant preview.');
     const preview = view.container.querySelector('.pm-ws-lg-preview')!;
+    const weight = screen.getByRole('slider', { name: /Weight/ }).closest('label')!;
     const previewAgain = screen.getByRole('button', { name: 'Preview again' });
     const disclosure = view.container.querySelector('.pm-ws-lg-directive-disclosure')!;
+    expect(preview.compareDocumentPosition(weight) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(weight.compareDocumentPosition(previewAgain) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
     expect(preview.compareDocumentPosition(previewAgain) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
     expect(previewAgain.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING)
@@ -131,6 +145,97 @@ describe('WorkshopLexicalGravityModal', () => {
         lensSlug: 'music', weight: 40, reach: 3, metaphorPull: true
       }),
       undefined
+    );
+  });
+
+  it('quietly lets the generated Before become persistent local preview prose', () => {
+    const { props, view } = renderModal();
+    const generatedSource = builtInLexicalGravityLenses()[0].sample;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    expect(props.onPreview).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ lensSlug: 'photography' }),
+      generatedSource
+    );
+    const firstToken = (props.onPreview as jest.Mock).mock.calls[0][0] as string;
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      previewResult={{
+        token: firstToken,
+        ok: true,
+        preview: {
+          configKey: 'photography|60|2|0',
+          sourceText: generatedSource,
+          text: 'The generated after prose.'
+        }
+      }}
+    />);
+
+    const customSource = 'Elias watched rain gather in the empty birdbath.';
+    const before = screen.getByRole('textbox', { name: 'Before preview prose' });
+    expect((before as HTMLTextAreaElement).value).toBe(generatedSource);
+    fireEvent.change(before, { target: { value: customSource } });
+    expect((before as HTMLTextAreaElement).value).toBe(customSource);
+    expect(screen.queryByText(/generated after prose/)).toBeNull();
+
+    fireEvent.change(screen.getByRole('slider', { name: /Weight/ }), {
+      target: { value: '80' }
+    });
+    expect((screen.getByRole('textbox', {
+      name: 'Before preview prose'
+    }) as HTMLTextAreaElement).value).toBe(customSource);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    expect(props.onPreview).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ weight: 80, preview: undefined }),
+      customSource
+    );
+  });
+
+  it('keeps the Before source and clears only the stale After when the model changes', () => {
+    const lens = builtInLexicalGravityLenses()[0];
+    const sourceText = 'Elias watched rain gather in the empty birdbath.';
+    const { props } = renderModal({
+      kind: 'edit',
+      config: {
+        id: 'wc-1',
+        widgetId: 'lexical-gravity',
+        revision: 1,
+        directiveId: 'pd-1',
+        createdAt: 1,
+        draft: {
+          lensSlug: lens.slug,
+          weight: 60,
+          reach: 2,
+          metaphorPull: false,
+          resolvedLens: lens,
+          preview: {
+            configKey: 'photography|60|2|0',
+            sourceText,
+            text: 'The old model framed the rain.'
+          }
+        }
+      }
+    });
+
+    fireEvent.click(screen.getByRole('button', {
+      name: /Browse widget model options/
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /Gemini 3\.6 Flash/ }));
+
+    expect(props.onWidgetModelChange).toHaveBeenCalledWith('google/gemini-3.6-flash');
+    expect(screen.queryByText(/old model framed/)).toBeNull();
+    expect((screen.getByRole('textbox', {
+      name: 'Before preview prose'
+    }) as HTMLTextAreaElement).value).toBe(sourceText);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    expect(props.onPreview).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ preview: undefined }),
+      sourceText
     );
   });
 

@@ -79,6 +79,7 @@ function buildGravityPanel(o){
   o = Object.assign({lens:'photography', weight:60, reach:2, metaphor:false, mode:'install', banner:null, preview:false, live:true, tab:'field', pos:'n', contrast:null, lookup:'idle', onCommit:null}, o);
   const cfg = {lens:o.lens, weight:o.weight, reach:o.reach, metaphor:o.metaphor};
   let tab=o.tab, pos=o.pos, contrast=o.contrast;
+  let previewSource=LG_LENSES[cfg.lens].sample, previewEdited=false, previewShown=Boolean(o.preview);
   const root = document.createElement('div'); root.className='cw-panel';
   if(o.live) root.appendChild(cwXBtn());
   root.insertAdjacentHTML('beforeend',`
@@ -93,7 +94,6 @@ function buildGravityPanel(o){
       <div class="lg-existing-title">Select From Existing</div>
       <div class="cw-flabel lg-library-label">Lens <span class="src">built-ins + project lenses · blending is Sprint 04</span></div>
       <div class="lg-lenses"></div></div>
-    <div class="lg-slider"><div class="lab">Weight <span class="val lg-wval"></span></div><input type="range" class="lg-range lg-wr" min="10" max="100" step="5" value="${cfg.weight}"></div>
     <div class="lg-slider"><div class="lab">Reach <span class="val lg-rval"></span></div><input type="range" class="lg-range lg-rr" min="1" max="3" step="1" value="${cfg.reach}"></div>
     <div class="lg-trow"><div class="tt"><div class="tn">Metaphor pull</div><div class="td">Let images cross domains — not just word choice but figuration drawn through the lens.</div></div><span class="lg-tog${cfg.metaphor?' on':''}"><i></i></span></div>
     <div class="lg-fieldbox">
@@ -101,6 +101,7 @@ function buildGravityPanel(o){
       <div class="lg-fbody"></div>
       <div class="lg-fcap">deterministic scaffold — no model call, redrawn instantly</div></div>
     <div class="lg-prevslot"></div>
+    <div class="lg-slider"><div class="lab">Weight <span class="val lg-wval"></span></div><input type="range" class="lg-range lg-wr" min="10" max="100" step="5" value="${cfg.weight}"></div>
     <button class="cw-gen ghost lg-pv">${cwIc('sparkle',{size:12,sw:1.8})} Preview the Effect</button>
     <div class="cw-foot">
       <span class="cw-fnote">${o.mode==='edit'?'Applies <b>between runs</b> and leaves a \u201Cshifted\u201D marker in the thread.':'Installs <b>between runs</b> — an in-flight reply is never interrupted.'}</span>
@@ -149,23 +150,35 @@ function buildGravityPanel(o){
       });
     }
   };
-  const clearPreview=()=>{ prevslot.innerHTML=''; };
-  const showPreview=()=>{
+  const renderPreview=includeAfter=>{
     const L=LG_LENSES[cfg.lens];
-    prevslot.innerHTML=`<div class="lg-preview"><div class="cap">one fast-tier call · sample pull at ${cfg.weight}%</div>\u201C${L.sample}${cfg.metaphor?' — '+L.meta:''}\u201D</div>`;
+    if(!previewShown){ prevslot.innerHTML=''; return; }
+    const transformed=`${previewSource}${cfg.metaphor?' — '+L.meta:''}`;
+    prevslot.innerHTML=`<div class="lg-preview"><div class="cap">one fast-tier call · sample pull at ${cfg.weight}%</div>
+      <div class="lg-preview-row before"><b>Before</b><textarea rows="3" maxlength="800">${cwEsc(previewSource)}</textarea></div>
+      ${includeAfter?`<div class="lg-preview-row after"><b>After</b><span>\u201C${cwEsc(transformed)}\u201D</span></div>`:''}</div>`;
+    prevslot.querySelector('textarea').addEventListener('input',e=>{
+      previewSource=e.target.value; previewEdited=true; renderPreview(false);
+      pv.innerHTML=`${cwIc('sparkle',{size:12,sw:1.8})} Preview the Effect`;
+    });
   };
+  const clearPreview=()=>renderPreview(false);
+  const showPreview=()=>{ previewShown=true; renderPreview(true); };
   const renderLookupOptions=()=>{
     lkslot.innerHTML=`<div class="lg-lkopts"><div class="cap">model drafted 2 takes — pick one to add</div>
       ${LG_LOOKUP.options.map(op=>`<button class="lg-lensopt" data-v="${op.v}"><b>${op.t}</b><span>${op.d}</span></button>`).join('')}</div>`;
     lkslot.querySelectorAll('.lg-lensopt').forEach(b=>b.addEventListener('click',()=>{
       if(!LG_LENSES.falconry) LG_LENSES.falconry={...LG_LOOKUP.lens, variant:b.dataset.v};
-      cfg.lens='falconry'; contrast=null; clearPreview(); renderGrid(); renderField();
+      cfg.lens='falconry'; contrast=null;
+      if(!previewEdited) previewSource=LG_LENSES[cfg.lens].sample;
+      clearPreview(); renderGrid(); renderField();
       lkslot.innerHTML=`<div class="lg-saved">${cwIc('check',{size:12,sw:2.4})}<span>Saved to project — <span class="path">resources/lenses/falconry.json</span> · available in every session, every thread</span></div>`;
     }));
   };
   grid.addEventListener('click',e=>{
     const b=e.target.closest('.lg-lens'); if(!b) return;
     cfg.lens=b.dataset.lens; contrast=null;
+    if(!previewEdited) previewSource=LG_LENSES[cfg.lens].sample;
     renderGrid(); clearPreview(); renderField();
   });
   root.querySelector('.lg-lkbtn').addEventListener('click',e=>{

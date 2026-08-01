@@ -72,7 +72,7 @@ describe('LexicalGravityModelService', () => {
     expect(result.every((item) => item.lens.source === 'project')).toBe(true);
   });
 
-  it('previews one exact config and returns a cache key for those four values', async () => {
+  it('previews one exact config and returns the source beside its transformed prose', async () => {
     const previewText = 'The room held its breath in a minor cadence.';
     const { service, promptLoader, runInitial } = createService([
       '===LEXICAL_GRAVITY_PREVIEW_V1===',
@@ -87,8 +87,10 @@ describe('LexicalGravityModelService', () => {
       resolvedLens: builtInLexicalGravityLens('music')!
     };
 
-    await expect(service.preview(draft)).resolves.toEqual({
+    const sourceText = 'The room waited beneath the quiet rafters.';
+    await expect(service.preview(draft, sourceText)).resolves.toEqual({
       configKey: lexicalGravityConfigKey(draft),
+      sourceText,
       text: previewText
     });
     expect(promptLoader.loadPrompts).toHaveBeenCalledWith([
@@ -96,11 +98,58 @@ describe('LexicalGravityModelService', () => {
     ]);
     expect(runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'lexical-gravity-preview',
+      userMessage: expect.stringContaining(JSON.stringify(sourceText)),
       options: expect.objectContaining({
         temperature: 0.55,
         maxTokens: PROMPT_BUDGETS.workshopWidgets.lexicalPreviewOutputTokens
       })
     }));
+  });
+
+  it('uses the final complete preview frame when a model wraps or repeats the protocol', async () => {
+    const sourceText = 'A bell moved through the empty house.';
+    const wrapped = createService([
+      'I will follow the requested format.',
+      '===LEXICAL_GRAVITY_PREVIEW_V1===',
+      'An abandoned example.',
+      '===END_LEXICAL_GRAVITY_PREVIEW_V1===',
+      'Final answer:',
+      '```text',
+      '===LEXICAL_GRAVITY_PREVIEW_V1===',
+      'The bell tolled through the house in a minor interval.',
+      '===END_LEXICAL_GRAVITY_PREVIEW_V1===',
+      '```'
+    ].join('\n'));
+    const draft = {
+      lensSlug: 'music',
+      weight: 40,
+      reach: 2 as const,
+      metaphorPull: false,
+      resolvedLens: builtInLexicalGravityLens('music')!
+    };
+
+    await expect(wrapped.service.preview(draft, sourceText)).resolves.toEqual({
+      configKey: lexicalGravityConfigKey(draft),
+      sourceText,
+      text: 'The bell tolled through the house in a minor interval.'
+    });
+  });
+
+  it('logs and translates an unusable preview response', async () => {
+    const malformed = createService('Here is a rewrite without the requested frame.');
+    const draft = {
+      lensSlug: 'music',
+      weight: 40,
+      reach: 2 as const,
+      metaphorPull: false,
+      resolvedLens: builtInLexicalGravityLens('music')!
+    };
+
+    await expect(malformed.service.preview(draft, 'A bell rang.'))
+      .rejects.toThrow('selected widget model did not return a usable preview');
+    expect(malformed.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Rejected preview response')
+    );
   });
 
   it('fails closed on wrapper prose, duplicate variants, and output truncation', async () => {

@@ -85,6 +85,11 @@
 .lg-pv{margin-top:14px}
 .lg-preview{margin-top:10px;background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:0 8px 8px 0;padding:10px 12px;font-size:12.5px;line-height:1.65;color:var(--text-2);font-style:italic}
 .lg-preview .cap{font-family:var(--mono);font-size:9.5px;color:var(--faint);font-style:normal;margin-bottom:5px;letter-spacing:.1em;text-transform:uppercase}
+.lg-preview-row{display:grid;grid-template-columns:51px minmax(0,1fr);align-items:start}
+.lg-preview-row + .lg-preview-row{margin-top:7px;padding-top:7px;border-top:1px solid var(--border-soft)}
+.lg-preview-row b{font:9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-hi);font-style:normal}
+.lg-preview-row textarea{width:100%;box-sizing:border-box;min-height:74px;padding:0 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text-2);font:italic 12.5px/1.65 var(--sans);resize:vertical;cursor:text}
+.lg-preview-row textarea:focus{outline:none;border-color:var(--accent-lo);background:var(--surface-2)}
 /* active-directive indicator */
 .lg-active{display:flex;align-items:center;gap:9px;padding:7px 11px;border:1px solid rgba(226,178,74,.4);background:rgba(226,178,74,.07);border-radius:10px;margin:2px 0 10px;font-size:12px;color:var(--text-2)}
 .lg-active .pulse{flex:none;width:7px;height:7px;border-radius:50%;background:var(--amber);animation:lgp 2s infinite}

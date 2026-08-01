@@ -101,6 +101,7 @@ describe('LexicalGravityConfigCodec', () => {
         configKey: lexicalGravityConfigKey({
           lensSlug: 'music', weight: 40, reach: 2, metaphorPull: false
         }),
+        sourceText: 'The room waited beneath the quiet rafters.',
         text: 'The room held a muted cadence.'
       }
     };

@@ -40,7 +40,11 @@ interface WorkshopLexicalGravityModalProps {
   lensesSaved: WorkshopLexicalGravityLensesSavedPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;
   onRequestLenses: () => void;
-  onPreview: (token: string, draft: WorkshopLexicalGravityDraft) => void;
+  onPreview: (
+    token: string,
+    draft: WorkshopLexicalGravityDraft,
+    sourceText: string
+  ) => void;
   onBuildLens: (token: string, query: string) => void;
   onSaveLenses: (token: string, query: string, candidateIds: string[]) => void;
   onApply: (draft: WorkshopLexicalGravityDraft, widgetConfigId?: string) => void;
@@ -107,6 +111,13 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [reach, setReach] = React.useState<1 | 2 | 3>(initialSeed?.reach ?? 2);
   const [metaphorPull, setMetaphorPull] = React.useState(initialSeed?.metaphorPull ?? false);
   const [preview, setPreview] = React.useState(initialDraft?.preview);
+  const [previewSourceOverride, setPreviewSourceOverride] = React.useState<string | undefined>(
+    initialDraft?.preview?.sourceText !== undefined
+      && initialDraft.preview.sourceText !== initialDraft.resolvedLens.sample
+      ? initialDraft.preview.sourceText
+      : undefined
+  );
+  const [previewVisible, setPreviewVisible] = React.useState(Boolean(initialDraft?.preview));
   const [tab, setTab] = React.useState<LensTab>('field');
   const [wordPart, setWordPart] = React.useState<WordPart>('nouns');
   const [contrastIndex, setContrastIndex] = React.useState(0);
@@ -137,6 +148,13 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setReach(seed?.reach ?? 2);
     setMetaphorPull(seed?.metaphorPull ?? false);
     setPreview(draft?.preview);
+    setPreviewSourceOverride(
+      draft?.preview?.sourceText !== undefined
+        && draft.preview.sourceText !== draft.resolvedLens.sample
+        ? draft.preview.sourceText
+        : undefined
+    );
+    setPreviewVisible(Boolean(draft?.preview));
     setTab('field');
     setWordPart('nouns');
     setContrastIndex(0);
@@ -166,6 +184,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     ?? availableLenses[0];
   const contrasts = availableLenses.filter((candidate) => candidate.slug !== lens?.slug);
   const contrast = contrasts[contrastIndex % Math.max(contrasts.length, 1)];
+  const previewSource = previewSourceOverride ?? lens?.sample ?? '';
   const draft: WorkshopLexicalGravityDraft | undefined = lens ? {
     lensSlug: lens.slug,
     weight,
@@ -183,11 +202,19 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setPreviewToken(undefined);
     if (previewResult.ok && previewResult.preview) {
       setPreview(previewResult.preview);
+      setPreviewVisible(true);
+      if (previewResult.preview.sourceText !== undefined) {
+        setPreviewSourceOverride(
+          previewResult.preview.sourceText === lens?.sample
+            ? undefined
+            : previewResult.preview.sourceText
+        );
+      }
       setError(undefined);
     } else {
       setError(previewResult.error ?? 'The preview could not be generated.');
     }
-  }, [previewResult, previewToken]);
+  }, [lens?.sample, previewResult, previewToken]);
 
   React.useEffect(() => {
     if (!buildToken || lensCandidates?.token !== buildToken) {return;}
@@ -280,12 +307,15 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       : [...current, candidateId]);
   }, [savingCandidates]);
   const requestPreview = React.useCallback(() => {
-    if (!draft || previewToken) {return;}
+    const sourceText = previewSource.trim();
+    if (!draft || !sourceText || previewToken) {return;}
     const token = mintToken('preview');
     setPreviewToken(token);
+    setPreviewVisible(true);
+    setPreview(undefined);
     setError(undefined);
-    onPreview(token, draft);
-  }, [draft, onPreview, previewToken]);
+    onPreview(token, { ...draft, preview: undefined }, sourceText);
+  }, [draft, onPreview, previewSource, previewToken]);
   const apply = React.useCallback(() => {
     if (!draft || applying) {return;}
     setApplying(true);
@@ -320,6 +350,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     onSaveLenses(buildToken, lookup.trim(), selectedIds);
   }, [buildToken, candidates, lookup, onSaveLenses, savingCandidates, selectedCandidateIds]);
   const locked = applying || savingCandidates;
+  const previewControlsLocked = locked || !!previewToken;
 
   return (
     <WorkshopModalShell
@@ -440,7 +471,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                     className={`pm-ws-lg-lens${candidate.slug === lens?.slug ? ' is-selected' : ''}`}
                     key={candidate.slug}
                     title={displayName}
-                    disabled={locked}
+                    disabled={previewControlsLocked}
                     onClick={() => selectLens(candidate)}
                   >
                     <span className="pm-ws-lg-lens-name">
@@ -455,16 +486,12 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
           </div>
 
           <label className="pm-ws-lg-slider">
-            <span>Weight <b>{weight}% · {weightLabel(weight)}</b></span>
-            <input type="range" min={LEXICAL_GRAVITY_WEIGHT.minimum} max={LEXICAL_GRAVITY_WEIGHT.maximum} step={LEXICAL_GRAVITY_WEIGHT.step} value={weight} disabled={locked} onChange={(event) => { setWeight(Number(event.target.value)); invalidatePreview(); }} />
-          </label>
-          <label className="pm-ws-lg-slider">
             <span>Reach <b>{reach}° · {reachLabel(reach)}</b></span>
-            <input type="range" min={LEXICAL_GRAVITY_REACH.minimum} max={LEXICAL_GRAVITY_REACH.maximum} step={1} value={reach} disabled={locked} onChange={(event) => { setReach(Number(event.target.value) as 1 | 2 | 3); invalidatePreview(); }} />
+            <input type="range" min={LEXICAL_GRAVITY_REACH.minimum} max={LEXICAL_GRAVITY_REACH.maximum} step={1} value={reach} disabled={previewControlsLocked} onChange={(event) => { setReach(Number(event.target.value) as 1 | 2 | 3); invalidatePreview(); }} />
           </label>
           <div className="pm-ws-lg-toggle-row">
             <div><b>Metaphor pull</b><span>Let images cross domains — not just word choice but figuration drawn through the lens.</span></div>
-            <button type="button" role="switch" aria-checked={metaphorPull} className={metaphorPull ? 'is-on' : ''} disabled={locked} onClick={() => { setMetaphorPull((value) => !value); invalidatePreview(); }}><i /></button>
+            <button type="button" role="switch" aria-checked={metaphorPull} className={metaphorPull ? 'is-on' : ''} disabled={previewControlsLocked} onClick={() => { setMetaphorPull((value) => !value); invalidatePreview(); }}><i /></button>
           </div>
 
           {lens && (
@@ -513,14 +540,32 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             </div>
           )}
 
-          {preview && lens && (
+          {previewVisible && lens && (
             <div className="pm-ws-lg-preview">
               <div>one fast-tier call · sample pull at {weight}%</div>
-              <span><b>Before</b> “{lens.sample}”</span>
-              <span><b>After</b> “{preview.text}”</span>
+              <span className="pm-ws-lg-preview-source">
+                <b>Before</b>
+                <textarea
+                  aria-label="Before preview prose"
+                  value={previewSource}
+                  rows={3}
+                  maxLength={PROMPT_BUDGETS.workshopWidgets.lexicalSampleCharacters}
+                  disabled={previewControlsLocked}
+                  onChange={(event) => {
+                    setPreviewSourceOverride(event.target.value);
+                    setPreview(undefined);
+                    setError(undefined);
+                  }}
+                />
+              </span>
+              {preview && <span><b>After</b> “{preview.text}”</span>}
             </div>
           )}
-          <button type="button" className="pm-ws-lg-preview-button" disabled={!draft || !!previewToken || locked} onClick={requestPreview}>
+          <label className="pm-ws-lg-slider pm-ws-lg-preview-weight">
+            <span>Weight <b>{weight}% · {weightLabel(weight)}</b></span>
+            <input type="range" min={LEXICAL_GRAVITY_WEIGHT.minimum} max={LEXICAL_GRAVITY_WEIGHT.maximum} step={LEXICAL_GRAVITY_WEIGHT.step} value={weight} disabled={previewControlsLocked} onChange={(event) => { setWeight(Number(event.target.value)); invalidatePreview(); }} />
+          </label>
+          <button type="button" className="pm-ws-lg-preview-button" disabled={!draft || !previewSource.trim() || !!previewToken || locked} onClick={requestPreview}>
             <Icon name={preview ? 'refresh' : 'sparkle'} size={12} /> {previewToken ? 'One fast model call…' : preview ? 'Preview again' : 'Preview the Effect'}
           </button>
           {error && <div className="pm-ws-gesture-error" role="alert">{error}</div>}

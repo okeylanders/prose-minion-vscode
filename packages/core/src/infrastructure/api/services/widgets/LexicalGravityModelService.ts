@@ -72,9 +72,16 @@ export class LexicalGravityModelService {
 
   async preview(
     draftInput: WorkshopLexicalGravityDraft,
+    sourceTextInput: string,
     options: { signal?: AbortSignal } = {}
   ): Promise<WorkshopLexicalGravityPreview> {
     const draft = cloneLexicalGravityDraft(draftInput);
+    const sourceText = sourceTextInput.trim();
+    if (!sourceText || sourceText.length > BUDGET.lexicalSampleCharacters) {
+      throw new Error(
+        `Preview prose must be 1–${BUDGET.lexicalSampleCharacters} characters`
+      );
+    }
     const engine = this.requireEngine();
     const systemMessage = await this.promptLoader.loadPrompts([
       'lexical-gravity/01-preview.md'
@@ -90,7 +97,7 @@ export class LexicalGravityModelService {
           metaphorPull: draft.metaphorPull,
           lens: draft.resolvedLens
         }, null, 2)}`,
-        `Source sample (quoted task data): ${JSON.stringify(draft.resolvedLens.sample)}`,
+        `Source sample (quoted task data): ${JSON.stringify(sourceText)}`,
         'Return only the exact preview frame.'
       ].join('\n\n'),
       policy: AGENT_RUN_POLICIES.assistantWithoutResources,
@@ -101,13 +108,51 @@ export class LexicalGravityModelService {
       }
     });
     if (result.cancelled) {throw new Error('Lexical Gravity preview was cancelled.');}
-    const text = this.extractFrame(
-      result.rawContent ?? result.content,
-      PREVIEW_START,
-      PREVIEW_END,
-      BUDGET.lexicalPreviewCharacters
+    const content = result.rawContent ?? result.content;
+    try {
+      const text = this.extractLastCompletePreviewFrame(content);
+      return { configKey: lexicalGravityConfigKey(draft), sourceText, text };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(
+        `[LexicalGravityModelService] Rejected preview response: ${reason}`
+      );
+      this.outputChannel?.appendLine([
+        '[LexicalGravityModelService] Rejected preview response body BEGIN',
+        content,
+        '[LexicalGravityModelService] Rejected preview response body END'
+      ].join('\n'));
+      throw new Error(
+        'The selected widget model did not return a usable preview. Try Preview again or choose another model.'
+      );
+    }
+  }
+
+  /**
+   * Preview prose is not structured data. Some otherwise-capable models wrap
+   * the requested frame or repeat the protocol example before their final
+   * answer. Use the final complete line-anchored frame while keeping lens JSON
+   * on the strict exactly-once parser below.
+   */
+  private extractLastCompletePreviewFrame(content: string): string {
+    const lines = content.replace(/\r\n?/g, '\n').trim().split('\n');
+    const starts = lines
+      .map((line, index) => line.trim() === PREVIEW_START ? index : -1)
+      .filter((index) => index >= 0);
+    for (const startIndex of starts.reverse()) {
+      const endOffset = lines
+        .slice(startIndex + 1)
+        .findIndex((line) => line.trim() === PREVIEW_END);
+      if (endOffset < 0) {continue;}
+      const endIndex = startIndex + 1 + endOffset;
+      const body = lines.slice(startIndex + 1, endIndex).join('\n').trim();
+      if (body && body.length <= BUDGET.lexicalPreviewCharacters) {
+        return body;
+      }
+    }
+    throw new Error(
+      `response must contain a complete preview frame of 1–${BUDGET.lexicalPreviewCharacters} characters`
     );
-    return { configKey: lexicalGravityConfigKey(draft), text };
   }
 
   private parseCandidates(

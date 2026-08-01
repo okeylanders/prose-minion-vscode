@@ -149,8 +149,19 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
     shapeError(`${path}.resolvedLens.slug`, 'the selected lensSlug');
   }
   if (draft.preview !== undefined) {
-    const preview = exactObject(draft.preview, `${path}.preview`, ['configKey', 'text']);
+    const preview = exactObject(
+      draft.preview,
+      `${path}.preview`,
+      ['configKey', 'text'],
+      ['sourceText']
+    );
     boundedStringAt(preview.configKey, `${path}.preview.configKey`, 256, false);
+    optionalBoundedStringAt(
+      preview.sourceText,
+      `${path}.preview.sourceText`,
+      BUDGET.lexicalSampleCharacters,
+      false
+    );
     boundedStringAt(
       preview.text,
       `${path}.preview.text`,

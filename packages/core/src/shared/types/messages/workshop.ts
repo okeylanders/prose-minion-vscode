@@ -108,6 +108,8 @@ export interface WorkshopLexicalGravityLens {
 export interface WorkshopLexicalGravityPreview {
   /** Stable key of the four writer-facing values this preview demonstrates. */
   configKey: string;
+  /** The prose transformed by this preview; optional only for older checkpoints. */
+  sourceText?: string;
   text: string;
 }
 
@@ -1843,7 +1845,11 @@ export interface WorkshopLexicalGravityLensesDataMessage
 }
 
 export interface WorkshopPreviewLexicalGravityMessage
-  extends MessageEnvelope<{ token: string; draft: WorkshopLexicalGravityDraft }> {
+  extends MessageEnvelope<{
+    token: string;
+    draft: WorkshopLexicalGravityDraft;
+    sourceText: string;
+  }> {
   type: MessageType.WORKSHOP_PREVIEW_LEXICAL_GRAVITY;
 }
 
