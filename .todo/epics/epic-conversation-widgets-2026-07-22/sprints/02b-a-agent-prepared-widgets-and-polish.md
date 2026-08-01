@@ -41,6 +41,10 @@ The writer still owns every send, widget open, and commit.
 - **Lifecycle language replaces payment language.** Widget copy describes when
   state enters the room and how long it remains; “cost,” “free,” and “pays” are
   reserved for actual model/provider cost disclosures.
+- **Gesture commit is an asynchronous handoff.** Once the validated draft is
+  dispatched, the modal closes immediately. The host still persists its durable
+  config before sending the room turn; a later send failure is surfaced by the
+  Workshop toast instead of trapping the writer in a waiting sheet.
 - **02C stays pure.** Scope/context IPC extraction is not mixed into this UX and
   prompt-behavior PR.
 
@@ -78,6 +82,12 @@ The writer still owns every send, widget open, and commit.
    diagnosis, and return a human error instead of exposing protocol jargon.
 6. Keep the synced design artifacts, active epic copy, and runtime labels in
    agreement.
+7. Polish Gesture Playground's result workflow:
+   - place More Gestures and Regenerate All after the generated alternatives;
+   - expose Copy and Save actions on the generated Gesture Dictionary, using
+     the closed assistant-result naming contract; and
+   - close the modal as soon as a valid commit is dispatched, while routing a
+     later host failure to a Workshop-level error toast.
 
 ## Technical-Debt Boundary
 
@@ -108,5 +118,8 @@ conditional string splice.
   a bounded human-facing error.
 - No user-facing widget lifecycle copy implies a provider charge where none is
   being described.
+- Gesture continuation controls follow the alternatives, the Gesture Dictionary
+  can be copied or saved as a named assistant artifact, and a valid commit
+  closes the sheet without waiting for the persona response.
 - Focused component, prompt, persistence, and architecture tests pass, followed
   by the full project verification suite.

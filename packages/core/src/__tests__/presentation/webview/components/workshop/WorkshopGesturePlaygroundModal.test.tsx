@@ -78,13 +78,13 @@ const renderModal = (
     opening,
     menuResult: null,
     generationProgress: null,
-    actionResult: null,
     activeExcerpt: null,
     contextAttachments: [],
     onGenerate: jest.fn(),
     onCancelGenerate: jest.fn(),
     onCommit: jest.fn(),
-    onConsumeActionResult: jest.fn(),
+    onCopyDictionary: jest.fn(),
+    onSaveDictionary: jest.fn(),
     widgetModelOptions: widgetModels,
     selectedWidgetModel: 'anthropic/claude-sonnet-5',
     onWidgetModelChange: jest.fn(),
@@ -341,6 +341,14 @@ describe('WorkshopGesturePlaygroundModal', () => {
     expect((dictionaryElement as HTMLDetailsElement).open).toBe(false);
     expect(dictionaryElement?.textContent).toContain('Useful scan.');
     expect(dictionaryElement?.querySelector('script')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Gesture Dictionary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Gesture Dictionary' }));
+    expect(props.onCopyDictionary).toHaveBeenCalledWith(
+      expect.stringContaining('Useful scan.')
+    );
+    expect(props.onSaveDictionary).toHaveBeenCalledWith(
+      expect.stringContaining('Useful scan.')
+    );
     expect((screen.getByRole('checkbox', {
       name: /Include the full Gesture Dictionary for the room/
     }) as HTMLInputElement).checked).toBe(false);
@@ -356,6 +364,14 @@ describe('WorkshopGesturePlaygroundModal', () => {
     }));
     expect(screen.getByRole('button', { name: 'More gestures' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Regenerate all' })).toBeTruthy();
+    const menuElement = view.container.querySelector('.pm-ws-gesture-menu')!;
+    const generationActions = view.container.querySelector(
+      '.pm-ws-gesture-generation-actions'
+    )!;
+    expect(
+      menuElement.compareDocumentPosition(generationActions)
+      & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'More gestures' }));
     const payload = (props.onGenerate as jest.Mock).mock.calls[0][0];
@@ -533,45 +549,13 @@ describe('WorkshopGesturePlaygroundModal', () => {
       }),
       'wc-1'
     );
+    expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('surfaces a failed commit and keeps the draft editable', () => {
-    const { props, view } = renderModal({ kind: 'clone', config });
+  it('closes immediately after dispatching a valid commit', () => {
+    const { props } = renderModal({ kind: 'clone', config });
     fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
-    view.rerender(
-      <WorkshopGesturePlaygroundModal
-        {...props}
-        actionResult={{
-          action: 'commit',
-          widgetId: 'gesture-playground',
-          ok: false,
-          message: 'The room did not accept the commit.'
-        }}
-      />
-    );
-    expect(props.onConsumeActionResult).toHaveBeenCalled();
-    expect(props.onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert').textContent).toContain('did not accept');
-    expect((screen.getByRole('button', { name: 'Commit as new turn' }) as HTMLButtonElement).disabled)
-      .toBe(false);
-  });
-
-  it('closes only when the host confirms the commit landed', () => {
-    const { props, view } = renderModal({ kind: 'clone', config });
-    fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
-    expect(props.onClose).not.toHaveBeenCalled();
-    view.rerender(
-      <WorkshopGesturePlaygroundModal
-        {...props}
-        actionResult={{
-          action: 'commit',
-          widgetId: 'gesture-playground',
-          ok: true,
-          widgetConfigId: 'wc-2',
-          turnId: 'turn-9-user-1'
-        }}
-      />
-    );
+    expect(props.onCommit).toHaveBeenCalledTimes(1);
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 });

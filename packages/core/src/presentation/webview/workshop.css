@@ -5759,6 +5759,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 4px;
 }
 [data-pm-surface="workshop"] .pm-ws-gesture-gen:hover:not(:disabled) {
   filter: brightness(1.06);
@@ -5864,8 +5865,12 @@
   border-radius: 8px;
   padding: 7px 10px;
 }
-[data-pm-surface="workshop"] .pm-ws-gesture-dictionary {
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-shell {
+  position: relative;
   margin-top: 16px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary {
+  margin-top: 0;
   border: 1px solid var(--pm-border);
   border-radius: 9px;
   background: var(--pm-surface-2);
@@ -5875,7 +5880,9 @@
   display: flex;
   align-items: baseline;
   gap: 9px;
-  padding: 10px 12px;
+  min-height: 41px;
+  box-sizing: border-box;
+  padding: 10px 126px 10px 12px;
   color: var(--pm-text-2);
   cursor: pointer;
   list-style: none;
@@ -5910,6 +5917,33 @@
 [data-pm-surface="workshop"] .pm-ws-gesture-dictionary summary small {
   color: var(--pm-faint);
   font-size: 10.5px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-actions {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  gap: 5px;
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 51px;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--pm-border);
+  border-radius: 6px;
+  background: var(--pm-surface);
+  color: var(--pm-muted);
+  cursor: pointer;
+  font: 550 10.5px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-dictionary-actions button:hover {
+  border-color: var(--pm-border-2);
+  color: var(--pm-text);
 }
 [data-pm-surface="workshop"] .pm-ws-gesture-dictionary-content {
   padding: 2px 14px 14px;

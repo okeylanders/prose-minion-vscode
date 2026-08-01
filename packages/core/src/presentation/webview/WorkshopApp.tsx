@@ -36,6 +36,7 @@ import {
   WorkshopPersonaId,
   WorkshopContextAttachmentSnapshot,
   WorkshopTurn,
+  WorkshopWidgetActionResultMessage,
   WorkshopWidgetId,
   isWorkshopWriterProfileActive,
   workshopExcerptSourcePath,
@@ -103,6 +104,7 @@ import {
   getWorkshopPersona
 } from '@shared/constants/workshopPersonas';
 import {
+  GESTURE_DICTIONARY_RESULT_TOOL_NAME,
   resultToolNameForWorkshopTool,
   WORKSHOP_PERSONA_RESULT_TOOL_NAME
 } from '@shared/constants/resultToolNames';
@@ -254,10 +256,20 @@ export const WorkshopApp: React.FC = () => {
   );
 
   const handleWidgetActionResult = React.useCallback(
-    (message: Parameters<typeof workshop.handleWidgetActionResult>[0]) => {
-      workshop.handleWidgetActionResult(message);
+    (message: WorkshopWidgetActionResultMessage) => {
       lexicalGravity.handleActionResult(message);
-      if (message.payload.action === 'remove-standing') {
+      if (
+        message.payload.action === 'commit'
+        && message.payload.widgetId === 'gesture-playground'
+      ) {
+        if (!message.payload.ok) {
+          showToast({
+            message: message.payload.message ?? 'Gesture Playground did not reach the room.',
+            icon: 'x',
+            tone: 'error'
+          });
+        }
+      } else if (message.payload.action === 'remove-standing') {
         showToast(message.payload.ok
           ? {
               message: message.payload.removed
@@ -272,7 +284,10 @@ export const WorkshopApp: React.FC = () => {
             });
       }
     },
-    [lexicalGravity.handleActionResult, showToast, workshop.handleWidgetActionResult]
+    [
+      lexicalGravity.handleActionResult,
+      showToast
+    ]
   );
 
   useMessageRouter({
@@ -567,8 +582,7 @@ export const WorkshopApp: React.FC = () => {
     setGestureOpening(null);
     setPendingWidgetConfigId(null);
     workshop.clearWidgetConfigData();
-    workshop.consumeWidgetActionResult();
-  }, [workshop.clearWidgetConfigData, workshop.consumeWidgetActionResult]);
+  }, [workshop.clearWidgetConfigData]);
   const closeLexicalGravity = React.useCallback(() => {
     setLexicalGravityOpening(null);
     setPendingWidgetConfigId(null);
@@ -954,6 +968,36 @@ export const WorkshopApp: React.FC = () => {
     },
     [vscode, workshop.excerpt]
   );
+
+  const copyGestureDictionary = React.useCallback((content: string) => {
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      source: 'webview.workshop.gesture-playground',
+      payload: { toolName: GESTURE_DICTIONARY_RESULT_TOOL_NAME, content },
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
+  const saveGestureDictionary = React.useCallback((content: string) => {
+    vscode.postMessage({
+      type: MessageType.SAVE_RESULT,
+      source: 'webview.workshop.gesture-playground',
+      payload: {
+        toolName: GESTURE_DICTIONARY_RESULT_TOOL_NAME,
+        content,
+        metadata: {
+          excerpt: workshop.excerpt?.text,
+          context: 'Gesture Playground · Gesture Dictionary',
+          relativePath: workshop.excerpt
+            ? workshopExcerptSourcePath(workshop.excerpt.source)
+            : undefined,
+          sourceFileUri: undefined,
+          timestamp: Date.now()
+        }
+      },
+      timestamp: Date.now()
+    });
+  }, [vscode, workshop.excerpt]);
 
   const showTodoSource = React.useCallback((sourceTurnId: string) => {
     const sourceTurn = document.querySelector<HTMLElement>(
@@ -1558,21 +1602,22 @@ export const WorkshopApp: React.FC = () => {
         onAskAgentToConfigure={askHostToConfigureWidget}
       />
       {/* Gesture Playground (ADR 2026-07-22): the Draft lives in the modal
-          until commit; the host round-trip closes it — no optimistic state. */}
+          until commit; dispatch closes it immediately and Workshop-level
+          reconciliation surfaces any later host failure. */}
       {gestureOpening && (
         <WorkshopGesturePlaygroundModal
           open
           opening={gestureOpening}
           menuResult={workshop.widgetMenuResult}
           generationProgress={workshop.widgetGenerationProgress}
-          actionResult={workshop.widgetActionResult}
           activeExcerpt={workshop.excerpt}
           contextAttachments={workshop.contextAttachments}
           onGenerate={workshop.generateWidgetMenu}
           onCancelGenerate={workshop.cancelWidgetGenerate}
           onCommit={(draft, clonedFromConfigId) =>
             workshop.commitWidget({ widgetId: 'gesture-playground', draft, clonedFromConfigId })}
-          onConsumeActionResult={workshop.consumeWidgetActionResult}
+          onCopyDictionary={copyGestureDictionary}
+          onSaveDictionary={saveGestureDictionary}
           widgetModelOptions={modelsSettings.modelOptions}
           selectedWidgetModel={
             modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel
