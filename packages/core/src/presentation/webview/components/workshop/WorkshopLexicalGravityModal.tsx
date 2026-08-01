@@ -342,7 +342,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
           {opening.kind === 'edit' && (
             <div className="pm-ws-gesture-banner pm-ws-gesture-banner-clone">
               <Icon name="refresh" size={13} />
-              <span><b>Editing the live directive.</b> There is one active directive per family — Apply swaps the standing frame between runs. Pre-commit tweaking is free; only the commit pays.</span>
+              <span><b>Editing the live directive.</b> There is one active directive per family. Apply updates the standing frame between runs; changes stay local until then.</span>
             </div>
           )}
           {opening.kind === 'seed' && (
@@ -356,24 +356,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
 
         <div className="pm-ws-gesture-body pm-ws-lg-body">
           <div className="pm-ws-lg-field">
-            <div className="pm-ws-gesture-flabel">Lens <i>built-ins + project lenses · blending is Sprint 04</i></div>
-            <div className="pm-ws-lg-lenses">
-              {availableLenses.map((candidate) => (
-                <button
-                  type="button"
-                  className={`pm-ws-lg-lens${candidate.slug === lens?.slug ? ' is-selected' : ''}`}
-                  key={candidate.slug}
-                  disabled={locked}
-                  onClick={() => selectLens(candidate)}
-                >
-                  <span className="pm-ws-lg-lens-name">
-                    {candidate.name}{candidate.variant ? ` — ${candidate.variant}` : ''}
-                    {candidate.source === 'project' && <em>project</em>}
-                  </span>
-                  <span className="pm-ws-lg-lens-words">{candidate.degrees[1].nouns.slice(0, 3).join(' · ')}</span>
-                </button>
-              ))}
-            </div>
+            <div className="pm-ws-lg-section-title">Build New Lens</div>
             <div className="pm-ws-lg-lookup">
               <input
                 value={lookup}
@@ -443,6 +426,32 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                 Saved {lensesSaved.lenses.length} {lensesSaved.lenses.length === 1 ? 'lens' : 'lenses'} to project — <code>{storagePath}</code> · available in every session, every thread
               </div>
             )}
+            <div className="pm-ws-lg-or"><span>OR</span></div>
+            <div className="pm-ws-lg-existing-title">Select From Existing</div>
+            <div className="pm-ws-gesture-flabel pm-ws-lg-library-label">
+              Lens <i>built-ins + project lenses · blending is Sprint 04</i>
+            </div>
+            <div className="pm-ws-lg-lenses">
+              {availableLenses.map((candidate) => {
+                const displayName = `${candidate.name}${candidate.variant ? ` — ${candidate.variant}` : ''}`;
+                return (
+                  <button
+                    type="button"
+                    className={`pm-ws-lg-lens${candidate.slug === lens?.slug ? ' is-selected' : ''}`}
+                    key={candidate.slug}
+                    title={displayName}
+                    disabled={locked}
+                    onClick={() => selectLens(candidate)}
+                  >
+                    <span className="pm-ws-lg-lens-name">
+                      {displayName}
+                      {candidate.source === 'project' && <em>project</em>}
+                    </span>
+                    <span className="pm-ws-lg-lens-words">{candidate.degrees[1].nouns.slice(0, 3).join(' · ')}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <label className="pm-ws-lg-slider">
@@ -504,13 +513,6 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             </div>
           )}
 
-          {directivePreview && (
-            <details className="pm-ws-lg-directive-disclosure">
-              <summary>What the room is told</summary>
-              <pre>{directivePreview}</pre>
-            </details>
-          )}
-
           {preview && lens && (
             <div className="pm-ws-lg-preview">
               <div>one fast-tier call · sample pull at {weight}%</div>
@@ -519,9 +521,15 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             </div>
           )}
           <button type="button" className="pm-ws-lg-preview-button" disabled={!draft || !!previewToken || locked} onClick={requestPreview}>
-            <Icon name={preview ? 'refresh' : 'sparkle'} size={12} /> {previewToken ? 'One fast model call…' : preview ? 'Preview again' : 'Preview the pull'}
+            <Icon name={preview ? 'refresh' : 'sparkle'} size={12} /> {previewToken ? 'One fast model call…' : preview ? 'Preview again' : 'Preview the Effect'}
           </button>
           {error && <div className="pm-ws-gesture-error" role="alert">{error}</div>}
+          {directivePreview && (
+            <details className="pm-ws-lg-directive-disclosure">
+              <summary>What the room is told</summary>
+              <pre>{directivePreview}</pre>
+            </details>
+          )}
         </div>
 
         <footer className="pm-ws-gesture-foot">
@@ -530,7 +538,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
           </div>
           <button type="button" className="pm-ws-gesture-cancel" disabled={locked} onClick={close}>Cancel</button>
           <button type="button" className="pm-ws-gesture-commit" disabled={!draft || locked || !!previewToken || !!buildToken} onClick={apply}>
-            {applying ? 'Applying…' : opening.kind === 'edit' ? 'Apply between runs' : 'Install on passage'}
+            {applying ? 'Applying…' : opening.kind === 'edit' ? 'Apply' : 'Install on passage'}
           </button>
         </footer>
       </div>

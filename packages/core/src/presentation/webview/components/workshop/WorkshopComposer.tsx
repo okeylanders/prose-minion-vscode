@@ -313,8 +313,8 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
             className="pm-ws-comp-pill pm-ws-mode-chip"
             type="button"
             disabled={!sessionReady}
-            title={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}, profile ${writerProfileShared ? 'shared' : 'not shared'}`}
-            aria-label={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}, profile ${writerProfileShared ? 'shared' : 'not shared'}`}
+            title={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}, proactive assistance ${conversationBehavior.proactiveAssistance ? 'on' : 'off'}, profile ${writerProfileShared ? 'shared' : 'not shared'}`}
+            aria-label={`Conversation settings: ${WORKSHOP_INTERACTION_MODE_LABELS[conversationBehavior.interactionMode]}, ${conversationBehavior.expressionLevel}, ${WORKSHOP_RELATIONAL_DEPTH_LABELS[conversationBehavior.relationalDepth]}, proactive assistance ${conversationBehavior.proactiveAssistance ? 'on' : 'off'}, profile ${writerProfileShared ? 'shared' : 'not shared'}`}
             onClick={onOpenConversationSettings}
           >
             <ModeChipDiamond />
@@ -327,7 +327,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
             </span>
           </button>
           {/* Sprint 14: the Conversation Widgets preview — browsable registry,
-              nothing opens yet. Not excerpt-gated; it costs nothing to look. */}
+              nothing opens yet. Not excerpt-gated; browsing never mutates the room. */}
           <button
             className="pm-ws-comp-pill"
             type="button"

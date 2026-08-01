@@ -433,7 +433,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'balanced',
           expressionLevel: 'full',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -448,7 +449,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       interactionMode: 'balanced',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     });
     expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.conversationBehavior)
       .toEqual(session.getConversationBehavior());
@@ -498,7 +500,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'conversational',
           expressionLevel: 'amplified',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: true
+          carryCuesThroughSession: true,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -510,7 +513,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       interactionMode: 'conversational',
       expressionLevel: 'amplified',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     }, DEFAULT_WORKSHOP_WRITER_PROFILE, []);
     expect(service.replaceWorkshopConversationSettings.mock.invocationCallOrder[0])
       .toBeLessThan((settings.update as jest.Mock).mock.invocationCallOrder[0]);
@@ -532,7 +536,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'balanced',
           expressionLevel: 'subtle',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: true
+          carryCuesThroughSession: true,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -557,7 +562,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'analysis',
           expressionLevel: 'subtle',
           relationalDepth: 'reserved',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -577,7 +583,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'balanced',
           expressionLevel: 'subtle',
           relationalDepth: 'reserved',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -605,7 +612,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'analysis',
           expressionLevel: 'full',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: true
+          carryCuesThroughSession: true,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -631,7 +639,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'conversational',
           expressionLevel: 'amplified',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -649,7 +658,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(prompt).toContain('from-expression="full"');
     expect(prompt).toContain('to-expression="amplified"');
     expect(prompt).toContain('expression="amplified"');
-    expect(prompt).toContain('<workshop-behavior-activation mode="conversational" expression="amplified" relational-depth="attuned">');
+    expect(prompt).toContain('<workshop-behavior-activation mode="conversational" expression="amplified" relational-depth="attuned" proactive-assistance="true">');
     expect(session.getSnapshot().turns.at(-2)).toMatchObject({
       behavior: { interactionMode: 'conversational', expressionLevel: 'amplified' },
       behaviorTransition: {

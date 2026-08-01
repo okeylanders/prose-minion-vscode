@@ -432,7 +432,8 @@ describe('useWorkshop', () => {
       interactionMode: 'analysis' as const,
       expressionLevel: 'subtle' as const,
       relationalDepth: 'reserved' as const,
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     };
 
     act(() => result.current.setConversationSettings(

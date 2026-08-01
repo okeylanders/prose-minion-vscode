@@ -56,8 +56,8 @@ export interface WorkshopWidgetDescriptor {
   readonly group: WorkshopWidgetGroupName;
   /** Sprint tag or `concept` — the roadmap chip on the card. */
   readonly tag: string;
-  /** What opening/committing this widget can cost the room. */
-  readonly costNote: string;
+  /** How the widget joins the room and how long its committed state remains. */
+  readonly lifecycleNote: string;
   readonly blurb: string;
   /** Only live widgets may launch, commit, or be persona-recommended. */
   readonly live: boolean;
@@ -69,9 +69,9 @@ export interface WorkshopWidgetGroupDescriptor {
   readonly items: readonly WorkshopWidgetDescriptor[];
 }
 
-const ONE_SHOT_COST = 'plays free — commits exactly one turn';
-const STANDING_COST = 'pins to the room — rides every turn until unpinned';
-const RESOURCE_COST = 'durable — persists across sessions';
+const ONE_SHOT_LIFECYCLE = 'play first · commit adds one turn';
+const STANDING_LIFECYCLE = 'stays with the room until unpinned';
+const RESOURCE_LIFECYCLE = 'durable · persists across sessions';
 
 export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] = [
   {
@@ -85,7 +85,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Playgrounds',
         tag: 'Sprint 01',
-        costNote: ONE_SHOT_COST,
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'One model call explores the gesture’s lexical and embodied field, then returns creative alternatives — read the dictionary, keep what lands, and commit your choices to the room.',
         live: true
@@ -97,7 +97,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Playgrounds',
         tag: 'concept',
-        costNote: ONE_SHOT_COST,
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb: 'Recast a told beat as shown alternatives; keep the ones that land.',
         live: false
       },
@@ -108,7 +108,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Playgrounds',
         tag: 'concept',
-        costNote: ONE_SHOT_COST,
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'Three to five genuinely different takes on a passage under invariants you declare — measured for distinctness, compared side by side.',
         live: false
@@ -126,7 +126,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Explorers',
         tag: 'concept',
-        costNote: ONE_SHOT_COST,
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'Name a topic — a thinker, a framework, a tradition — and derive its relationship to the passage as a typed dossier: span-anchored points of contact, graded grounding, where the lens distorts, one question.',
         live: false
@@ -138,7 +138,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Explorers',
         tag: 'concept',
-        costNote: ONE_SHOT_COST,
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'Survey a chapter for the genres it’s in conversation with, then take one apart tell by tell — expectation against span-anchored evidence: matches, departs, subverts.',
         live: false
@@ -156,7 +156,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot · report',
         group: 'References',
         tag: 'concept',
-        costNote: 'plays free — Run posts the whole report and spends one turn',
+        lifecycleNote: 'Run posts the complete report as one turn',
         blurb:
           'One word or phrase, and the whole lexical field comes back as a document: senses, register, texture, collocations, voices, soundplay, watchpoints — plus a menu tuned to your scene if you supply context. The report is the artifact; nothing here stands.',
         live: false
@@ -174,7 +174,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'standing',
         group: 'Influences',
         tag: 'Sprint 02B',
-        costNote: STANDING_COST,
+        lifecycleNote: STANDING_LIFECYCLE,
         blurb:
           'Pull the passage’s lexis toward an interpretive lens — Photography, Mathematics, Music — with weight and reach.',
         live: true
@@ -186,7 +186,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'standing',
         group: 'Influences',
         tag: 'Sprint 03',
-        costNote: STANDING_COST,
+        lifecycleNote: STANDING_LIFECYCLE,
         blurb:
           'How the passage is made: diction, sentence architecture, rhythm, density, figurative texture, punctuation.',
         live: false
@@ -198,7 +198,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'standing',
         group: 'Influences',
         tag: 'Sprint 04',
-        costNote: STANDING_COST,
+        lifecycleNote: STANDING_LIFECYCLE,
         blurb: 'Blend multiple lenses with explicit dominance weighting — never an unweighted average.',
         live: false
       }
@@ -215,7 +215,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Learners',
         tag: 'concept',
-        costNote: ONE_SHOT_COST,
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'The Learner shell with a Working English pack — parse the passage, see what is a rule and what is a choice, bring back a question.',
         live: false
@@ -227,7 +227,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Learners',
         tag: 'concept',
-        costNote: ONE_SHOT_COST,
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'The Learner shell with a storytelling-craft curriculum pack — learn, inspect the passage, practise, and bring back only what was useful.',
         live: false
@@ -245,7 +245,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'resource',
         group: 'Resources',
         tag: 'concept',
-        costNote: RESOURCE_COST,
+        lifecycleNote: RESOURCE_LIFECYCLE,
         blurb: 'Append-only decision record; a deterministic scan assembles the running list.',
         live: false
       },
@@ -256,7 +256,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'resource',
         group: 'Resources',
         tag: 'concept',
-        costNote: RESOURCE_COST,
+        lifecycleNote: RESOURCE_LIFECYCLE,
         blurb: 'Durable project notes; each append also leaves a visible thread event.',
         live: false
       }

@@ -6,8 +6,8 @@
  * and one primary action.
  *
  * Selection is CONTROLLED by the consumer — the Tools browser seeds it from
- * the active tool and launches a run; the Widgets browser lets you browse but
- * keeps the primary action honest ("Coming soon"). The component renders
+ * the active tool and launches a run; the Widgets browser exposes only actions
+ * supported by each selected card. The component renders
  * inside the shared `WorkshopModalShell` sheet variant; `pm-ws-browser-modal`
  * narrows that shared geometry to the design's 940×780 dimensions.
  */
@@ -29,8 +29,13 @@ export interface WorkshopSheetItem {
   name: string;
   blurb: string;
   tag?: WorkshopSheetTag;
-  /** Footer note shown while this item is selected (e.g. what a run costs). */
-  costNote?: string;
+  /** Sprint/concept roadmap tag shown beside the rail tag. */
+  metaTag?: string;
+  /** Selectable roadmap card whose launch actions remain unavailable. */
+  unavailable?: boolean;
+  unavailableLabel?: string;
+  /** Footer note shown while this item is selected (e.g. its room lifetime). */
+  lifecycleNote?: string;
 }
 
 export interface WorkshopSheetGroup {
@@ -56,6 +61,10 @@ interface WorkshopSheetBrowserProps {
   launchDisabled: boolean;
   launchHint?: string;
   onLaunch: () => void;
+  secondaryLabel?: string;
+  secondaryDisabled?: boolean;
+  secondaryHint?: string;
+  onSecondary?: () => void;
   onCancel: () => void;
   /** Slot for the shell's CloseButton so it sits inside the sheet chrome. */
   closeButton?: React.ReactNode;
@@ -85,6 +94,10 @@ export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
   launchDisabled,
   launchHint,
   onLaunch,
+  secondaryLabel,
+  secondaryDisabled = false,
+  secondaryHint,
+  onSecondary,
   onCancel,
   closeButton
 }) => {
@@ -113,14 +126,18 @@ export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
                   <button
                     key={item.id}
                     type="button"
-                    className={`pm-ws-sb-card${isSelected ? ' pm-ws-sb-card-selected' : ''}`}
+                    className={`pm-ws-sb-card${isSelected ? ' pm-ws-sb-card-selected' : ''}${item.unavailable ? ' pm-ws-sb-card-unavailable' : ''}`}
                     aria-pressed={isSelected}
                     disabled={cardsDisabled}
                     onClick={() => onSelect(isSelected ? null : item.id)}
                   >
-                    <span className="pm-ws-sb-chk" aria-hidden="true">
-                      <Icon name="check" size={12} />
-                    </span>
+                    {item.unavailable ? (
+                      <span className="pm-ws-sb-soon">{item.unavailableLabel ?? 'Coming soon'}</span>
+                    ) : (
+                      <span className="pm-ws-sb-chk" aria-hidden="true">
+                        <Icon name="check" size={12} />
+                      </span>
+                    )}
                     <span className="pm-ws-sb-ic">
                       <Icon name={item.icon} size={16} />
                     </span>
@@ -128,6 +145,7 @@ export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
                     {item.tag && (
                       <span className="pm-ws-sb-tags">
                         <TagPill tag={item.tag} />
+                        {item.metaTag && <span className="pm-ws-sb-meta-tag">{item.metaTag}</span>}
                       </span>
                     )}
                     <span className="pm-ws-sb-bl">{item.blurb}</span>
@@ -147,7 +165,9 @@ export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
               </span>
               <b>{selected.name}</b>
               {selected.tag && <TagPill tag={selected.tag} />}
-              {selected.costNote && <span className="pm-ws-sb-sum-note">{selected.costNote}</span>}
+              {selected.lifecycleNote && (
+                <span className="pm-ws-sb-sum-note">{selected.lifecycleNote}</span>
+              )}
             </>
           ) : (
             <span className="pm-ws-sb-sum-none">{emptyNote}</span>
@@ -165,6 +185,17 @@ export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
         >
           {launchLabel}
         </button>
+        {secondaryLabel && onSecondary && (
+          <button
+            type="button"
+            className="pm-ws-sb-secondary"
+            disabled={secondaryDisabled}
+            title={secondaryHint}
+            onClick={onSecondary}
+          >
+            {secondaryLabel}
+          </button>
+        )}
       </footer>
     </div>
   );

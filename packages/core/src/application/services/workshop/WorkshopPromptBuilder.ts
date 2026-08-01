@@ -222,6 +222,7 @@ export function buildWorkshopInteractionFrame(
     `  expression="${behavior.expressionLevel}"`,
     `  relational-depth="${behavior.relationalDepth}"`,
     `  carry-cues-through-session="${behavior.carryCuesThroughSession}"`,
+    `  proactive-assistance="${behavior.proactiveAssistance}"`,
     '/>'
   ].join('\n');
 }
@@ -258,11 +259,15 @@ export function buildWorkshopBehaviorActivationFrame(
   const expressionActivation = behavior.expressionLevel === 'amplified'
     ? 'For Amplified expression, make at least one authored signature move visible in every substantive reply; longer replies normally carry two different signature families, not two seed phrases. No seed is mandatory, but zero signature is under-expression. Protect meaning and the writer\'s need.'
     : undefined;
+  const proactiveAssistanceActivation = behavior.proactiveAssistance
+    ? 'Proactive assistance is enabled. Actively consider at most one materially useful assist for this turn: suggest one bounded Workshop tool when its evidence would substantially improve the answer, or prepare one live widget recommendation when editable exploration would help. Do not force an assist, stack a tool and widget by default, open UI, run a tool invisibly, or commit/install widget state for the writer.'
+    : undefined;
   return [
-    `<workshop-behavior-activation mode="${behavior.interactionMode}" expression="${behavior.expressionLevel}" relational-depth="${behavior.relationalDepth}">`,
+    `<workshop-behavior-activation mode="${behavior.interactionMode}" expression="${behavior.expressionLevel}" relational-depth="${behavior.relationalDepth}" proactive-assistance="${behavior.proactiveAssistance}">`,
     WORKSHOP_MODE_ACTIVATION[behavior.interactionMode],
     WORKSHOP_RELATIONAL_ACTIVATION[behavior.relationalDepth],
     expressionActivation,
+    proactiveAssistanceActivation,
     '</workshop-behavior-activation>'
   ].filter((line): line is string => line !== undefined).join('\n');
 }

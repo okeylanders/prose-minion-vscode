@@ -113,7 +113,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       interactionMode: 'balanced',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     });
     pin();
 
@@ -133,7 +134,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       interactionMode: 'conversational' as const,
       expressionLevel: 'subtle' as const,
       relationalDepth: 'reserved' as const,
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     };
     service.setConversationBehavior(selected);
     selected.interactionMode = 'analysis' as never;
@@ -179,7 +181,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       interactionMode: 'analysis',
       expressionLevel: 'subtle',
       relationalDepth: 'reserved',
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     });
 
     expect(remembered.getConversationBehavior()).toMatchObject({

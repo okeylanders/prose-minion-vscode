@@ -107,6 +107,7 @@ import {
   WORKSHOP_PERSONA_RESULT_TOOL_NAME
 } from '@shared/constants/resultToolNames';
 import { buildWorkshopToolAskPrefill } from '@utils/workshopToolAskPrefill';
+import { buildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
@@ -830,6 +831,11 @@ export const WorkshopApp: React.FC = () => {
   const seedComposerDraft = React.useCallback((text: string) => {
     setDraftSeed({ text, token: Date.now() });
   }, []);
+  const askHostToConfigureWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
+    setWidgetsModalOpen(false);
+    workshop.setChatTarget({ kind: 'host' });
+    seedComposerDraft(buildWorkshopWidgetAskPrefill(widgetId, activePersona.label));
+  }, [activePersona.label, seedComposerDraft, workshop.setChatTarget]);
 
   // The fetched body, matched to the sheet that asked for it: a late reply for
   // a pill the writer already closed must never paint into the open sheet.
@@ -1549,6 +1555,7 @@ export const WorkshopApp: React.FC = () => {
         open={widgetsModalOpen}
         onClose={closeWidgetsModal}
         onLaunchWidget={launchWidget}
+        onAskAgentToConfigure={askHostToConfigureWidget}
       />
       {/* Gesture Playground (ADR 2026-07-22): the Draft lives in the modal
           until commit; the host round-trip closes it — no optimistic state. */}

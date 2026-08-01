@@ -728,7 +728,14 @@ function assertBehavior(value: unknown, path: string): void {
   const behavior = exactObject(
     value,
     path,
-    ['interactionMode', 'expressionLevel', 'relationalDepth', 'carryCuesThroughSession']
+    [
+      'interactionMode',
+      'expressionLevel',
+      'relationalDepth',
+      'carryCuesThroughSession'
+    ],
+    // Development-checkpoint compatibility: 02B-A added this behavior stamp.
+    ['proactiveAssistance']
   );
   if (!isWorkshopInteractionMode(behavior.interactionMode)) {
     shapeError(`${path}.interactionMode`, 'valid Workshop interaction mode');
@@ -740,6 +747,7 @@ function assertBehavior(value: unknown, path: string): void {
     shapeError(`${path}.relationalDepth`, 'valid Workshop relational depth');
   }
   booleanAt(behavior.carryCuesThroughSession, `${path}.carryCuesThroughSession`);
+  optionalBooleanAt(behavior.proactiveAssistance, `${path}.proactiveAssistance`);
 }
 
 function assertLastCommittedBehavior(value: unknown, path: string): void {

@@ -17,12 +17,15 @@ interface WorkshopWidgetsModalProps {
   onClose: () => void;
   /** Open the selected live widget's pre-commit surface. */
   onLaunchWidget: (widgetId: WorkshopWidgetId) => void;
+  /** Seed an editable request for the current Host to prepare the widget. */
+  onAskAgentToConfigure: (widgetId: WorkshopWidgetId) => void;
 }
 
 export const WorkshopWidgetsModal: React.FC<WorkshopWidgetsModalProps> = ({
   open,
   onClose,
-  onLaunchWidget
+  onLaunchWidget,
+  onAskAgentToConfigure
 }) => {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
 
@@ -54,17 +57,11 @@ export const WorkshopWidgetsModal: React.FC<WorkshopWidgetsModalProps> = ({
             Explorers ride one turn; Influences stand until unpinned; Resources outlive the session.
           </>
         }
-        emptyNote="Select a widget — the tag on each card states what opening it can cost."
+        emptyNote="Select a widget — each card shows how it joins and stays with the room."
         groups={WORKSHOP_WIDGET_GROUPS}
         selectedId={selectedId}
         onSelect={setSelectedId}
-        launchLabel={
-          selectedId === null
-            ? 'Open a widget'
-            : selectedIsLive
-              ? `Open ${workshopWidgetLabel(selectedId as WorkshopWidgetId)}`
-              : 'Not yet available'
-        }
+        launchLabel={selectedId !== null && !selectedIsLive ? 'Not yet available' : 'Open widget'}
         launchDisabled={!selectedIsLive}
         launchHint={
           selectedId !== null && !selectedIsLive
@@ -74,6 +71,18 @@ export const WorkshopWidgetsModal: React.FC<WorkshopWidgetsModalProps> = ({
         onLaunch={() => {
           if (selectedIsLive && selectedId !== null) {
             onLaunchWidget(selectedId as WorkshopWidgetId);
+          }
+        }}
+        secondaryLabel="Ask agent to configure, then open"
+        secondaryDisabled={!selectedIsLive}
+        secondaryHint={
+          selectedId !== null && !selectedIsLive
+            ? `${workshopWidgetLabel(selectedId as WorkshopWidgetId)} is not available yet.`
+            : undefined
+        }
+        onSecondary={() => {
+          if (selectedIsLive && selectedId !== null) {
+            onAskAgentToConfigure(selectedId as WorkshopWidgetId);
           }
         }}
         onCancel={onClose}

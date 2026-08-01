@@ -1,6 +1,11 @@
 /* Lexical Gravity — Spread 02 */
 :root{--red:#e05a4e}
 .lg-lenses{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:6px}
+.lg-section-title{font-size:13px;font-weight:650;color:var(--text)}
+.lg-or{display:flex;align-items:center;gap:10px;margin:15px 0 7px;font:9px var(--mono);letter-spacing:.14em;color:var(--accent-hi)}
+.lg-or:before,.lg-or:after{content:"";height:1px;flex:1;background:rgba(224,103,58,.28)}
+.lg-existing-title{text-align:center;font-size:11.5px;font-weight:650;color:var(--accent-hi)}
+.lg-library-label{margin-top:10px}
 .lg-lens{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 10px;cursor:pointer;text-align:left;font-family:var(--sans)}
 .lg-lens .n{font-size:12.5px;font-weight:600;color:var(--text-2);display:block}
 .lg-lens .w{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:3px;line-height:1.5;display:block}

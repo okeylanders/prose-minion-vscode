@@ -86,10 +86,13 @@ function buildGravityPanel(o){
     <h2>${cwIc('orbit',{size:17,sw:1.8})} Lexical Gravity</h2>
     <p class="cw-sub">Pull the passage\u2019s lexis toward an interpretive lens. Installs a <b>passage-scoped directive</b> consulted only when prose is written — a knob on the <b>work</b>, never on the participant.</p>
     <div class="cw-bslot"></div>
-    <div class="cw-field"><div class="cw-flabel">Lens <span class="src">built-ins + project lenses · blending is Sprint 04</span></div>
-      <div class="lg-lenses"></div>
+    <div class="cw-field"><div class="lg-section-title">Build New Lens</div>
       <div class="lg-lookup"><input class="cw-in lg-lkin" value="falconry" placeholder="Look up or invent a lens\u2026"><button class="cw-btn lg-lkbtn">${cwIc('sparkle',{size:12,sw:1.8})} Build lens</button></div>
-      <div class="lg-lkslot"></div></div>
+      <div class="lg-lkslot"></div>
+      <div class="lg-or"><span>OR</span></div>
+      <div class="lg-existing-title">Select From Existing</div>
+      <div class="cw-flabel lg-library-label">Lens <span class="src">built-ins + project lenses · blending is Sprint 04</span></div>
+      <div class="lg-lenses"></div></div>
     <div class="lg-slider"><div class="lab">Weight <span class="val lg-wval"></span></div><input type="range" class="lg-range lg-wr" min="10" max="100" step="5" value="${cfg.weight}"></div>
     <div class="lg-slider"><div class="lab">Reach <span class="val lg-rval"></span></div><input type="range" class="lg-range lg-rr" min="1" max="3" step="1" value="${cfg.reach}"></div>
     <div class="lg-trow"><div class="tt"><div class="tn">Metaphor pull</div><div class="td">Let images cross domains — not just word choice but figuration drawn through the lens.</div></div><span class="lg-tog${cfg.metaphor?' on':''}"><i></i></span></div>
@@ -97,22 +100,22 @@ function buildGravityPanel(o){
       <div class="lg-tabs"><button data-tab="field">Word field</button><button data-tab="grad">Gradient</button><button data-tab="subs">Substitutions</button><button data-tab="cliche">Clichés</button><span class="lg-fw"></span></div>
       <div class="lg-fbody"></div>
       <div class="lg-fcap">deterministic scaffold — no model call, redrawn instantly</div></div>
-    <button class="cw-gen ghost lg-pv">${cwIc('sparkle',{size:12,sw:1.8})} Preview the pull</button>
     <div class="lg-prevslot"></div>
+    <button class="cw-gen ghost lg-pv">${cwIc('sparkle',{size:12,sw:1.8})} Preview the Effect</button>
     <div class="cw-foot">
       <span class="cw-fnote">${o.mode==='edit'?'Applies <b>between runs</b> and leaves a \u201Cshifted\u201D marker in the thread.':'Installs <b>between runs</b> — an in-flight reply is never interrupted.'}</span>
       ${o.live?'<button class="cw-btn ghost lg-cancel">Cancel</button>':''}
-      <button class="cw-btn primary lg-commit"${o.live?'':' disabled'}>${o.mode==='edit'?'Apply between runs':'Install on passage'}</button>
+      <button class="cw-btn primary lg-commit"${o.live?'':' disabled'}>${o.mode==='edit'?'Apply':'Install on passage'}</button>
     </div>`);
   const bslot=root.querySelector('.cw-bslot');
   if(o.banner==='seed') bslot.innerHTML=`<div class="cw-banner seed">${cwIc('sparkle',{size:13,sw:1.8})}<span><b>Recommended and prefilled by Jill.</b> Proposing is as far as a persona goes — standing state is always writer-committed.</span></div>`;
-  if(o.banner==='edit') bslot.innerHTML=`<div class="cw-banner clone">${cwIc('refresh',{size:13,sw:1.8})}<span><b>Editing the live directive.</b> There is one active directive per family — Apply swaps the standing frame between runs. Pre-commit tweaking is free; only the commit pays.</span></div>`;
+  if(o.banner==='edit') bslot.innerHTML=`<div class="cw-banner clone">${cwIc('refresh',{size:13,sw:1.8})}<span><b>Editing the live directive.</b> There is one active directive per family. Apply updates the standing frame between runs; changes stay local until then.</span></div>`;
   const grid=root.querySelector('.lg-lenses'), fbody=root.querySelector('.lg-fbody'), prevslot=root.querySelector('.lg-prevslot'), pv=root.querySelector('.lg-pv'), lkslot=root.querySelector('.lg-lkslot');
   const pickContrast=()=>{ const ks=Object.keys(LG_LENSES).filter(k=>k!==cfg.lens); if(!contrast||contrast===cfg.lens||!LG_LENSES[contrast]) contrast=ks[0]; return contrast; };
   const renderGrid=()=>{
     grid.innerHTML=Object.keys(LG_LENSES).map(k=>{
       const L=LG_LENSES[k];
-      return `<button class="lg-lens${k===cfg.lens?' sel':''}" data-lens="${k}"><span class="n">${L.name}${L.src==='project'?'<span class="newb">project</span>':''}</span><span class="w">${L.d[1].n.slice(0,3).join(' · ')}</span></button>`;
+      return `<button class="lg-lens${k===cfg.lens?' sel':''}" data-lens="${k}" title="${cwEsc(L.name)}"><span class="n">${L.name}${L.src==='project'?'<span class="newb">project</span>':''}</span><span class="w">${L.d[1].n.slice(0,3).join(' · ')}</span></button>`;
     }).join('');
   };
   const renderField=()=>{

@@ -696,12 +696,13 @@ describe('Workshop conversation behavior frames', () => {
     interactionMode: 'balanced' as const,
     expressionLevel: 'full' as const,
     relationalDepth: 'attuned' as const,
-    carryCuesThroughSession: true
+    carryCuesThroughSession: true,
+    proactiveAssistance: false
   };
 
   it('emits mode activation at every expression level and adds the Amplified floor only when selected', () => {
     const fullFrame = buildWorkshopBehaviorActivationFrame(fullBehavior);
-    expect(fullFrame).toContain('<workshop-behavior-activation mode="balanced" expression="full" relational-depth="attuned">');
+    expect(fullFrame).toContain('<workshop-behavior-activation mode="balanced" expression="full" relational-depth="attuned" proactive-assistance="false">');
     expect(fullFrame).toContain('workshop exchange, not a comprehensive report');
     expect(fullFrame).toContain('Use high emotional intelligence');
     expect(fullFrame).not.toContain('zero signature is under-expression');
@@ -710,11 +711,31 @@ describe('Workshop conversation behavior frames', () => {
       ...fullBehavior,
       expressionLevel: 'amplified'
     });
-    expect(frame).toContain('<workshop-behavior-activation mode="balanced" expression="amplified" relational-depth="attuned">');
+    expect(frame).toContain('<workshop-behavior-activation mode="balanced" expression="amplified" relational-depth="attuned" proactive-assistance="false">');
     expect(frame).toContain('at least one authored signature move');
     expect(frame).toContain('two different signature families, not two seed phrases');
     expect(frame).toContain('No seed is mandatory, but zero signature is under-expression');
     expect(frame).toContain('Protect meaning');
+  });
+
+  it('encourages at most one useful assist only when the writer enables it', () => {
+    const enabled = buildWorkshopBehaviorActivationFrame({
+      ...fullBehavior,
+      proactiveAssistance: true
+    });
+    const disabled = buildWorkshopBehaviorActivationFrame(fullBehavior);
+
+    expect(enabled).toContain('Proactive assistance is enabled');
+    expect(enabled).toContain('at most one materially useful assist');
+    expect(enabled).toContain('suggest one bounded Workshop tool');
+    expect(enabled).toContain('one live widget recommendation');
+    expect(enabled).toContain('Do not force an assist');
+    expect(enabled).toContain('run a tool invisibly');
+    expect(disabled).not.toContain('Proactive assistance is enabled');
+    expect(buildWorkshopInteractionFrame({
+      ...fullBehavior,
+      proactiveAssistance: true
+    })).toContain('proactive-assistance="true"');
   });
 
   it('makes Converse a continuing dialogue instead of a self-generated report', () => {

@@ -61,8 +61,14 @@ describe('WorkshopLexicalGravityModal', () => {
       .toBe('');
     expect((screen.getByRole('button', { name: /Build lens/ }) as HTMLButtonElement).disabled)
       .toBe(true);
+    const buildHeading = screen.getByText('Build New Lens');
+    const existingHeading = screen.getByText('Select From Existing');
+    expect(buildHeading.compareDocumentPosition(existingHeading) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
     expect(screen.getByRole('button', { name: /Photography/ }).getAttribute('class'))
       .toContain('is-selected');
+    expect(screen.getByRole('button', { name: /Photography/ }).getAttribute('title'))
+      .toBe('Photography');
     expect(screen.getByText('2°')).toBeTruthy();
     expect(screen.queryByText('3°')).toBeNull();
 
@@ -88,7 +94,7 @@ describe('WorkshopLexicalGravityModal', () => {
     fireEvent.change(screen.getAllByRole('slider')[1], { target: { value: '3' } });
     fireEvent.click(screen.getByRole('switch'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview the pull' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
     expect(props.onPreview).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
@@ -113,7 +119,10 @@ describe('WorkshopLexicalGravityModal', () => {
       .toContain('A resonant preview.');
     const preview = view.container.querySelector('.pm-ws-lg-preview')!;
     const previewAgain = screen.getByRole('button', { name: 'Preview again' });
+    const disclosure = view.container.querySelector('.pm-ws-lg-directive-disclosure')!;
     expect(preview.compareDocumentPosition(previewAgain) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(previewAgain.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Install on passage' }));
@@ -197,6 +206,7 @@ describe('WorkshopLexicalGravityModal', () => {
       .not.toContain('Falconry — The hunt');
     expect(view.container.querySelector('.pm-ws-lg-options')?.textContent)
       .not.toContain('Falconry — The stoop');
+    expect(screen.getByTitle('Falconry — The hunt')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Falconry — The mews/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected lens' }));
     expect(props.onSaveLenses).toHaveBeenLastCalledWith(
@@ -223,6 +233,30 @@ describe('WorkshopLexicalGravityModal', () => {
     />);
 
     expect(view.container.querySelector('.pm-ws-lg-options')).toBeNull();
+  });
+
+  it('uses the concise Apply action while editing the live directive', () => {
+    const lens = builtInLexicalGravityLenses()[0];
+    renderModal({
+      kind: 'edit',
+      config: {
+        id: 'wc-1',
+        widgetId: 'lexical-gravity',
+        revision: 1,
+        directiveId: 'pd-1',
+        createdAt: 1,
+        draft: {
+          lensSlug: lens.slug,
+          weight: 60,
+          reach: 2,
+          metaphorPull: false,
+          resolvedLens: lens
+        }
+      }
+    });
+
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeTruthy();
+    expect(screen.queryByText(/only the commit pays/i)).toBeNull();
   });
 
   it('explains when a generated subject already exists without spending another call', () => {

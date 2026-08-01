@@ -2,7 +2,7 @@
  * WorkshopGesturePlaygroundModal — the first Conversation Widget's pre-commit
  * surface (ADR 2026-07-22, Sprint 01; design Spread 01).
  *
- * The Draft is LOCAL until commit: Cancel/Esc costs nothing, Generate makes
+ * The Draft is LOCAL until commit: Cancel/Esc discards it, Generate makes
  * one deliberate model call for a writer-facing Gesture Dictionary and a
  * grouped multi-select menu. More gestures extends that visible result through
  * a compact stateless call; Regenerate all re-rolls both; commit never re-runs

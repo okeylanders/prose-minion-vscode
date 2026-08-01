@@ -350,7 +350,8 @@
             "interactionMode": "balanced",
             "expressionLevel": "full",
             "relationalDepth": "attuned",
-            "carryCuesThroughSession": true
+            "carryCuesThroughSession": true,
+            "proactiveAssistance": true
           },
           "properties": {
             "interactionMode": {
@@ -371,13 +372,18 @@
             "carryCuesThroughSession": {
               "type": "boolean",
               "description": "Allow demonstrated interaction preferences to shape later turns in the current Workshop session."
+            },
+            "proactiveAssistance": {
+              "type": "boolean",
+              "description": "Encourage Workshop personas to offer one relevant tool or prepare one live widget when it would materially help."
             }
           },
           "required": [
             "interactionMode",
             "expressionLevel",
             "relationalDepth",
-            "carryCuesThroughSession"
+            "carryCuesThroughSession",
+            "proactiveAssistance"
           ],
           "additionalProperties": false,
           "description": "Durable defaults for Workshop conversation behavior. These explicit choices survive restart; inferred conversation-cue memory remains session-scoped.",

@@ -16,7 +16,8 @@ const currentBehavior: WorkshopConversationBehavior = {
   interactionMode: 'conversational',
   expressionLevel: 'subtle',
   relationalDepth: 'reserved',
-  carryCuesThroughSession: false
+  carryCuesThroughSession: false,
+  proactiveAssistance: true
 };
 
 const buildCompleteState = (): WorkshopSessionStateV1 => {
@@ -445,6 +446,23 @@ describe('WorkshopSessionService committed persistence', () => {
     const hydrated = restored.exportCommittedState().turns
       .find((turn) => turn.capability)!;
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'host' });
+  });
+
+  it('defaults proactive assistance on for pre-02B-A behavior stamps', () => {
+    const state = buildCompleteState();
+    const stampedTurn = state.turns.find((turn) => turn.behavior !== undefined);
+    if (!stampedTurn?.behavior) {
+      throw new Error('Fixture no longer contains a behavior-stamped turn.');
+    }
+    delete (stampedTurn.behavior as Partial<typeof stampedTurn.behavior>).proactiveAssistance;
+
+    expect(() => parseWorkshopSessionStateV1(state)).not.toThrow();
+    const restored = new WorkshopSessionService(() => 50_000);
+    const result = restored.hydrateCommittedState(state, {}, currentBehavior);
+
+    expect(result.normalizations).toContain('defaulted-proactive-assistance');
+    expect(restored.exportCommittedState().turns.find((turn) => turn.id === stampedTurn.id)?.behavior)
+      .toMatchObject({ proactiveAssistance: true });
   });
 
   it('never relabels an already-stamped guest principal during hydration (review #10)', () => {

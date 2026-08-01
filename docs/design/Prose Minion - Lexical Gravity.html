@@ -20,7 +20,7 @@
     <div class="canvas-kicker">Prose Minion · Conversation Widgets — Spread 02 · <a href="Prose Minion - Gesture Playground.html">← Spread 01 · Gesture Playground</a> · <a href="Prose Minion - Conversation Widgets.html">Spread 00 · The system</a> · <a href="Prose Minion - Prose Controller.html">03</a> · <a href="Prose Minion - Show vs Tell.html">04</a></div>
     <h1>Lexical Gravity — the standing rail's first widget</h1>
     <p>Sprint 01 proved the spine on the cheap rail (<a href="Prose Minion - Gesture Playground.html">Spread 01</a>). This widget builds the <b>durable</b> one: commit installs a <b>passage-scoped prose directive</b> that every persona and every mode honors uniformly, consulted only when prose is written. Not attunement, not behavior, not a lens on anyone — <b>a direction the passage's prose should gravitate</b>. And the re-launch semantics flip: standing widgets <b>edit in place</b> instead of clone-and-recommit.</p>
-    <p class="note"><b>It's interactive:</b> in §1, install a lens via Jill's chip or <b>Widgets</b>. The amber strip that appears above the composer is the live directive — <b>Edit</b> it (shift marker lands in the thread) or kill it with one click. In the panel: the word field, gradient, and substitution tabs are deterministic and instant; <b>Preview the pull</b> and <b>Build lens</b> are the model calls. Try building the <i>falconry</i> lens — it saves to the project.</p>
+    <p class="note"><b>It's interactive:</b> in §1, install a lens via Jill's chip or <b>Widgets</b>. The amber strip that appears above the composer is the live directive — <b>Edit</b> it (shift marker lands in the thread) or kill it with one click. In the panel: the word field, gradient, and substitution tabs are deterministic and instant; <b>Preview the Effect</b> and <b>Build lens</b> are the model calls. Try building the <i>falconry</i> lens — it saves to the project.</p>
   </div>
 
   <div class="sec" data-screen-label="01 Standing rail, live">
@@ -61,7 +61,7 @@
           <li><b>The lens is a lexical field, not a word list</b> — separate fields per part of speech (nouns / verbs / modifiers), bucketed by degree of separation. Reach decides how deep the pull reads.</li>
           <li><b>Semantic gradient</b> — each lens carries a general → lens gradient (<i>plan → arrangement → composition → score</i>) so weight has a legible meaning: where on the gradient the prose should sit.</li>
           <li><b>Substitution view</b> — this lens vs. general vs. a contrast lens (<i>score</i> vs. <i>plan</i> vs. <i>blueprint</i>), so the writer sees the pull as choices, not vibes. Shuffle the contrast column.</li>
-          <li><b>Everything in the box is deterministic scaffold</b> — instant, free. <b>Preview the pull</b> is the explicit model seam, fast tier, re-rolled on demand; the committed directive never re-runs it.</li>
+          <li><b>Everything in the box is deterministic scaffold</b> — instant and model-free. <b>Preview the Effect</b> is the explicit model seam, fast tier, re-rolled on demand; the committed directive never re-runs it.</li>
         </ul>
       </div>
     </div>
@@ -111,7 +111,7 @@ the lens. This shapes the work, not the speaker.
             <div class="lg-marker"><span class="d"></span>Lexical Gravity installed — Photography · 60% · 2°</div>
             <p class="why"><b>Install</b> — commit lands between runs; the directive starts riding with the next prose generation.</p>
             <div class="lg-marker shift"><span class="d"></span>shifted — Photography · 60% → Music · 40%</div>
-            <p class="why"><b>Shift</b> — edit-in-place swaps the live frame via the <span style="font-family:var(--mono);font-size:10px">replaceWorkshopConversationBehavior</span> pattern. Pre-commit tweaking is free; only the commit pays.</p>
+            <p class="why"><b>Shift</b> — edit-in-place swaps the live frame via the <span style="font-family:var(--mono);font-size:10px">replaceWorkshopConversationBehavior</span> pattern. Changes remain local until Apply updates the live frame.</p>
             <div class="lg-marker kill"><span class="d"></span>Lexical Gravity removed — the passage stops gravitating</div>
             <p class="why"><b>Kill</b> — one click on the strip. The markers stay: an auditable record of what was pulling when.</p>
           </div>

@@ -105,7 +105,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'balanced',
         expressionLevel: 'amplified',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE,
       activationFrame: '<workshop-behavior-activation mode="balanced" expression="amplified">mode and signature floor</workshop-behavior-activation>',
@@ -167,7 +168,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'conversational',
         expressionLevel: 'subtle',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     });
@@ -208,7 +210,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'conversational',
         expressionLevel: 'subtle',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     }, { capability });
@@ -244,7 +247,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'analysis',
         expressionLevel: 'full',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     }, { capability: workshopCapability });
@@ -295,7 +299,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       interactionMode: 'analysis' as const,
       expressionLevel: 'amplified' as const,
       relationalDepth: 'attuned' as const,
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     };
     await service.replaceWorkshopConversationSettings([
       { conversationId: 'host-conv', personaId: 'penny', role: 'host' },
@@ -333,7 +338,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       interactionMode: 'conversational',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     }, DEFAULT_WORKSHOP_WRITER_PROFILE)).rejects.toThrow('guest prompt missing');
 
     expect(engine.replaceSystemMessagesBetweenRuns).not.toHaveBeenCalled();
@@ -392,7 +398,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       interactionMode: 'balanced' as const,
       expressionLevel: 'amplified' as const,
       relationalDepth: 'attuned' as const,
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     };
 
     const outcomes = await service.importWorkshopConversationArchive([
@@ -462,7 +469,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'balanced',
         expressionLevel: 'full',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     });
