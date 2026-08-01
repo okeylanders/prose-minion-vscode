@@ -102,6 +102,23 @@ describe('AgentRunEngine', () => {
 
   afterEach(() => engine.dispose());
 
+  it('passes a bounded reasoning effort through a capability-less run', async () => {
+    client.createChatCompletion.mockResolvedValue({ content: 'Rewritten passage.' });
+
+    await engine.runInitial({
+      toolName: 'lexical-gravity-preview',
+      systemMessage: 'Rewrite the passage.',
+      userMessage: 'Source passage.',
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources,
+      options: { reasoning: { effort: 'low' } }
+    });
+
+    expect(client.createChatCompletion).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ reasoning: { effort: 'low' } })
+    );
+  });
+
   it('commits current retained context separately from multi-call processed traffic', async () => {
     const guides = capability();
     guides.fulfill.mockResolvedValueOnce({

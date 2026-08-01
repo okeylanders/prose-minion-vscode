@@ -24,7 +24,7 @@ const buildResponse = [
   '===END_LEXICAL_GRAVITY_LENSES_V1==='
 ].join('\n');
 
-const createService = (content: string) => {
+const createService = (content: unknown) => {
   const runInitial = jest.fn().mockResolvedValue({
     content,
     rawContent: content,
@@ -74,11 +74,7 @@ describe('LexicalGravityModelService', () => {
 
   it('previews one exact config and returns the source beside its transformed prose', async () => {
     const previewText = 'The room held its breath in a minor cadence.';
-    const { service, promptLoader, runInitial } = createService([
-      '===LEXICAL_GRAVITY_PREVIEW_V1===',
-      previewText,
-      '===END_LEXICAL_GRAVITY_PREVIEW_V1==='
-    ].join('\n'));
+    const { service, promptLoader, runInitial } = createService(previewText);
     const draft = {
       lensSlug: 'music',
       weight: 40,
@@ -98,28 +94,22 @@ describe('LexicalGravityModelService', () => {
     ]);
     expect(runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'lexical-gravity-preview',
-      userMessage: expect.stringContaining(JSON.stringify(sourceText)),
+      userMessage: expect.stringMatching(
+        new RegExp(`${JSON.stringify(sourceText).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*Return only the rewritten passage\\.`)
+      ),
       options: expect.objectContaining({
         temperature: 0.55,
-        maxTokens: PROMPT_BUDGETS.workshopWidgets.lexicalPreviewOutputTokens
+        maxTokens: PROMPT_BUDGETS.workshopWidgets.lexicalPreviewOutputTokens,
+        reasoning: { effort: 'low' }
       })
     }));
   });
 
-  it('uses the final complete preview frame when a model wraps or repeats the protocol', async () => {
+  it('normalizes returned prose without requiring a model-authored protocol', async () => {
     const sourceText = 'A bell moved through the empty house.';
-    const wrapped = createService([
-      'I will follow the requested format.',
-      '===LEXICAL_GRAVITY_PREVIEW_V1===',
-      'An abandoned example.',
-      '===END_LEXICAL_GRAVITY_PREVIEW_V1===',
-      'Final answer:',
-      '```text',
-      '===LEXICAL_GRAVITY_PREVIEW_V1===',
-      'The bell tolled through the house in a minor interval.',
-      '===END_LEXICAL_GRAVITY_PREVIEW_V1===',
-      '```'
-    ].join('\n'));
+    const plain = createService(
+      '\r\nThe bell tolled through the house in a minor interval.\r\n'
+    );
     const draft = {
       lensSlug: 'music',
       weight: 40,
@@ -128,15 +118,15 @@ describe('LexicalGravityModelService', () => {
       resolvedLens: builtInLexicalGravityLens('music')!
     };
 
-    await expect(wrapped.service.preview(draft, sourceText)).resolves.toEqual({
+    await expect(plain.service.preview(draft, sourceText)).resolves.toEqual({
       configKey: lexicalGravityConfigKey(draft),
       sourceText,
       text: 'The bell tolled through the house in a minor interval.'
     });
   });
 
-  it('logs and translates an unusable preview response', async () => {
-    const malformed = createService('Here is a rewrite without the requested frame.');
+  it('logs and translates a provider response without final text', async () => {
+    const malformed = createService(null);
     const draft = {
       lensSlug: 'music',
       weight: 40,
@@ -148,7 +138,29 @@ describe('LexicalGravityModelService', () => {
     await expect(malformed.service.preview(draft, 'A bell rang.'))
       .rejects.toThrow('selected widget model did not return a usable preview');
     expect(malformed.appendLine).toHaveBeenCalledWith(
-      expect.stringContaining('Rejected preview response')
+      expect.stringContaining('response did not contain text')
+    );
+  });
+
+  it('rejects truncated preview prose instead of caching an incomplete passage', async () => {
+    const truncated = createService('The bell tolled through');
+    truncated.runInitial.mockResolvedValueOnce({
+      content: 'The bell tolled through',
+      rawContent: 'The bell tolled through',
+      finishReason: 'length'
+    });
+    const draft = {
+      lensSlug: 'music',
+      weight: 40,
+      reach: 2 as const,
+      metaphorPull: false,
+      resolvedLens: builtInLexicalGravityLens('music')!
+    };
+
+    await expect(truncated.service.preview(draft, 'A bell rang.'))
+      .rejects.toThrow('selected widget model did not return a usable preview');
+    expect(truncated.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('response reached its output limit')
     );
   });
 

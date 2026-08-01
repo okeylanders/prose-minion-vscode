@@ -23,8 +23,6 @@ import {
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 const LENSES_START = '===LEXICAL_GRAVITY_LENSES_V1===';
 const LENSES_END = '===END_LEXICAL_GRAVITY_LENSES_V1===';
-const PREVIEW_START = '===LEXICAL_GRAVITY_PREVIEW_V1===';
-const PREVIEW_END = '===END_LEXICAL_GRAVITY_PREVIEW_V1===';
 
 export class LexicalGravityModelService {
   constructor(
@@ -90,7 +88,7 @@ export class LexicalGravityModelService {
       toolName: 'lexical-gravity-preview',
       systemMessage,
       userMessage: [
-        'Demonstrate the configured lexical pressure on the lens sample below.',
+        'Rewrite the source sample using the configured lexical pressure.',
         `Configuration (quoted JSON task data):\n${JSON.stringify({
           weight: draft.weight,
           reach: draft.reach,
@@ -98,28 +96,33 @@ export class LexicalGravityModelService {
           lens: draft.resolvedLens
         }, null, 2)}`,
         `Source sample (quoted task data): ${JSON.stringify(sourceText)}`,
-        'Return only the exact preview frame.'
+        'Return only the rewritten passage.'
       ].join('\n\n'),
       policy: AGENT_RUN_POLICIES.assistantWithoutResources,
       options: {
         temperature: 0.55,
         maxTokens: BUDGET.lexicalPreviewOutputTokens,
+        reasoning: { effort: 'low' },
         signal: options.signal
       }
     });
     if (result.cancelled) {throw new Error('Lexical Gravity preview was cancelled.');}
     const content = result.rawContent ?? result.content;
     try {
-      const text = this.extractLastCompletePreviewFrame(content);
+      if (result.finishReason === 'length') {
+        throw new Error('response reached its output limit');
+      }
+      const text = this.validatePreviewText(content);
       return { configKey: lexicalGravityConfigKey(draft), sourceText, text };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(
-        `[LexicalGravityModelService] Rejected preview response: ${reason}`
+        `[LexicalGravityModelService] Rejected preview response: ${reason}; ` +
+        `finishReason=${result.finishReason ?? 'unknown'}`
       );
       this.outputChannel?.appendLine([
         '[LexicalGravityModelService] Rejected preview response body BEGIN',
-        content,
+        typeof content === 'string' ? content : String(content ?? ''),
         '[LexicalGravityModelService] Rejected preview response body END'
       ].join('\n'));
       throw new Error(
@@ -129,29 +132,17 @@ export class LexicalGravityModelService {
   }
 
   /**
-   * Preview prose is not structured data. Some otherwise-capable models wrap
-   * the requested frame or repeat the protocol example before their final
-   * answer. Use the final complete line-anchored frame while keeping lens JSON
-   * on the strict exactly-once parser below.
+   * A preview is prose, not a protocol. The model supplies only the rewritten
+   * passage; local code associates it with the source and active config.
    */
-  private extractLastCompletePreviewFrame(content: string): string {
-    const lines = content.replace(/\r\n?/g, '\n').trim().split('\n');
-    const starts = lines
-      .map((line, index) => line.trim() === PREVIEW_START ? index : -1)
-      .filter((index) => index >= 0);
-    for (const startIndex of starts.reverse()) {
-      const endOffset = lines
-        .slice(startIndex + 1)
-        .findIndex((line) => line.trim() === PREVIEW_END);
-      if (endOffset < 0) {continue;}
-      const endIndex = startIndex + 1 + endOffset;
-      const body = lines.slice(startIndex + 1, endIndex).join('\n').trim();
-      if (body && body.length <= BUDGET.lexicalPreviewCharacters) {
-        return body;
-      }
+  private validatePreviewText(content: unknown): string {
+    if (typeof content !== 'string') {
+      throw new Error('response did not contain text');
     }
+    const body = content.replace(/\r\n?/g, '\n').trim();
+    if (body && body.length <= BUDGET.lexicalPreviewCharacters) return body;
     throw new Error(
-      `response must contain a complete preview frame of 1–${BUDGET.lexicalPreviewCharacters} characters`
+      `response body must be 1–${BUDGET.lexicalPreviewCharacters} characters`
     );
   }
 

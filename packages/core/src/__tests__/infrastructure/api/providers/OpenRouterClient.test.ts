@@ -98,6 +98,29 @@ describe('OpenRouterClient model hot-swap', () => {
     }
   });
 
+  it('normalizes provider-null assistant content at the API boundary', async () => {
+    const originalFetch = global.fetch;
+    const output = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1',
+        choices: [{ message: { role: 'assistant', content: null }, finish_reason: 'stop' }]
+      })
+    }) as unknown as typeof fetch;
+
+    try {
+      const result = await new OpenRouterClient('key', 'model/requested', output)
+        .createChatCompletion([{ role: 'user', content: 'Hello' }]);
+      expect(result.content).toBe('');
+      expect(output.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining('Provider returned null assistant content')
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('sends an explicitly enabled web-search server tool unchanged', async () => {
     const originalFetch = global.fetch;
     const fetchMock = jest.fn().mockResolvedValue({
@@ -115,6 +138,28 @@ describe('OpenRouterClient model hot-swap', () => {
       expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).tools).toEqual([
         { type: 'openrouter:web_search', parameters: { engine: 'auto', max_uses: 2, max_total_results: 10 } }
       ]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('sends an explicitly bounded reasoning effort unchanged', async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        id: 'response-1', choices: [{ message: { role: 'assistant', content: 'Hi' }, finish_reason: 'stop' }]
+      })
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      await new OpenRouterClient('key', 'model/requested').createChatCompletion(
+        [{ role: 'user', content: 'Hello' }],
+        { reasoning: { effort: 'low' } }
+      );
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).reasoning).toEqual({
+        effort: 'low'
+      });
     } finally {
       global.fetch = originalFetch;
     }

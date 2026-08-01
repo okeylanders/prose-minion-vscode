@@ -609,7 +609,8 @@ export class AgentRunEngine {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
           signal: options.signal,
-          tools: options.tools
+          tools: options.tools,
+          reasoning: options.reasoning
         });
         this.emitUsage(response.usage);
         const inspection = capability?.inspectRequest(response.content);
@@ -646,7 +647,8 @@ export class AgentRunEngine {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: options.signal,
-        tools: options.tools
+        tools: options.tools,
+        reasoning: options.reasoning
       })) {
         if (chunk.done) {
           usage = chunk.usage ?? usage;

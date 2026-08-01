@@ -65,10 +65,13 @@ The writer still owns every send, widget open, and commit.
      generating and yields to prose or disappears on failure;
    - edit action label `Apply`; and
    - neutral edit/lifecycle language.
-5. Make plain-prose previews tolerate model-added wrappers or repeated
-   sentinels by selecting the final complete frame. Keep generated-lens JSON on
-   its strict exactly-once parser, log rejected preview bodies for diagnosis,
-   and return a human error instead of exposing protocol jargon.
+5. Keep plain-prose previews genuinely unstructured: ask for only the rewritten
+   passage, bind the returned text to the active config locally, and validate
+   only that it is non-empty, complete, and bounded. Give reasoning models a
+   low-effort budget so the small output allowance still leaves room for final
+   prose. Keep generated-lens JSON on its strict exactly-once parser, normalize
+   provider-null content at the API boundary, log rejected preview bodies for
+   diagnosis, and return a human error instead of exposing protocol jargon.
 6. Keep the synced design artifacts, active epic copy, and runtime labels in
    agreement.
 
@@ -96,8 +99,9 @@ conditional string splice.
   match the synced design.
 - Preview prose is generated without writer input, but the Before passage can
   be edited in place and survives weight/lens tuning until the next preview.
-- Terra-style exact responses and wrapped/repeated-frame responses from other
-  widget models resolve through the same bounded preview contract.
+- Widget models return only rewritten prose for previews; local code owns the
+  config association, while empty, truncated, or oversized responses fail with
+  a bounded human-facing error.
 - No user-facing widget lifecycle copy implies a provider charge where none is
   being described.
 - Focused component, prompt, persistence, and architecture tests pass, followed

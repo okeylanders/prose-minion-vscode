@@ -1,5 +1,8 @@
 import { ContextPathGroup, TokenUsage } from '@shared/types';
-import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
+import type {
+  OpenRouterReasoningOptions,
+  OpenRouterWebSearchTool
+} from '@providers/OpenRouterClient';
 import type { UrlCitation } from '@messages';
 
 /** The caller-selected capability surface available to one agent turn. */
@@ -125,6 +128,8 @@ export interface AgentRunOptions {
   readonly onToken?: StreamingTokenCallback;
   /** Provider server tools explicitly granted to this one inference request. */
   readonly tools?: OpenRouterWebSearchTool[];
+  /** Optional provider-normalized reasoning budget for a bounded operation. */
+  readonly reasoning?: OpenRouterReasoningOptions;
 }
 
 export interface InitialRunRequest {
