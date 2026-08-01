@@ -1,6 +1,20 @@
 import { WorkshopWidgetId } from '@messages';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 
+type WorkshopWidgetAskPrefillBuilder = (hostLabel: string, widgetLabel: string) => string;
+
+const ASK_PREFILL_BUILDERS: Partial<Record<WorkshopWidgetId, WorkshopWidgetAskPrefillBuilder>> = {
+  'gesture-playground': (hostLabel, widgetLabel) =>
+    `Hey ${hostLabel}! Please prepare ${widgetLabel} for the beat we’re discussing. Seed it with the exact target phrase, useful surrounding context, and grounded character notes, then offer it for me to review and open.`,
+  'lexical-gravity': (hostLabel, widgetLabel) =>
+    `Hey ${hostLabel}! Please prepare ${widgetLabel} for the passage we’re discussing. Choose a useful starting lens, weight, reach, and metaphor setting, then offer it for me to review and open.`
+};
+
+export function canBuildWorkshopWidgetAskPrefill(widgetId: unknown): widgetId is WorkshopWidgetId {
+  return typeof widgetId === 'string'
+    && ASK_PREFILL_BUILDERS[widgetId as WorkshopWidgetId] !== undefined;
+}
+
 /**
  * Editable Host request for the widget browser's agent-preparation door.
  * The model prepares a recommendation seed; the writer still sends the ask,
@@ -11,11 +25,9 @@ export function buildWorkshopWidgetAskPrefill(
   hostLabel: string
 ): string {
   const widgetLabel = workshopWidgetLabel(widgetId);
-  if (widgetId === 'gesture-playground') {
-    return `Hey ${hostLabel}! Please prepare ${widgetLabel} for the beat we’re discussing. Seed it with the exact target phrase, useful surrounding context, and grounded character notes, then offer it for me to review and open.`;
+  const builder = ASK_PREFILL_BUILDERS[widgetId];
+  if (!builder) {
+    throw new Error(`Widget ${widgetId} has no Host-preparation prompt.`);
   }
-  if (widgetId === 'lexical-gravity') {
-    return `Hey ${hostLabel}! Please prepare ${widgetLabel} for the passage we’re discussing. Choose a useful starting lens, weight, reach, and metaphor setting, then offer it for me to review and open.`;
-  }
-  return `Hey ${hostLabel}! Please prepare ${widgetLabel} for what we’re discussing, then offer it for me to review and open.`;
+  return builder(hostLabel, widgetLabel);
 }

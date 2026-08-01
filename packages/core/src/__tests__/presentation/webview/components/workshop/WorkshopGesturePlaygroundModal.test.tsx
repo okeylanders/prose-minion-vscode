@@ -78,17 +78,20 @@ const renderModal = (
     opening,
     menuResult: null,
     generationProgress: null,
+    actionResult: null,
     activeExcerpt: null,
     contextAttachments: [],
     onGenerate: jest.fn(),
     onCancelGenerate: jest.fn(),
     onCommit: jest.fn(),
+    onConsumeActionResult: jest.fn(),
     onCopyDictionary: jest.fn(),
     onSaveDictionary: jest.fn(),
     widgetModelOptions: widgetModels,
     selectedWidgetModel: 'anthropic/claude-sonnet-5',
     onWidgetModelChange: jest.fn(),
     onOpenWidgetModelBrowser: jest.fn(),
+    roomRunActive: false,
     onClose: jest.fn(),
     ...overrides
   };
@@ -274,6 +277,32 @@ describe('WorkshopGesturePlaygroundModal', () => {
     expect(screen.getByText('8/8 sources selected · maximum reached')).toBeTruthy();
   });
 
+  it('blocks a cloned commit and invalidates its artifacts when a vanished source is removed', () => {
+    const staleConfig: WorkshopWidgetConfigSnapshot = {
+      ...config,
+      draft: {
+        ...config.draft,
+        sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-missing' }]
+      }
+    };
+    const { props } = renderModal({ kind: 'clone', config: staleConfig });
+    const unavailable = screen.getByRole('checkbox', {
+      name: /Context attachment ctx-missing — unavailable/
+    });
+    const commit = screen.getByRole('button', { name: 'Commit as new turn' }) as HTMLButtonElement;
+
+    expect(commit.disabled).toBe(true);
+    fireEvent.click(unavailable);
+    expect(screen.queryByText(/ctx-missing — unavailable/)).toBeNull();
+    expect(commit.disabled).toBe(true);
+    const regenerate = screen.getByRole('button', { name: /Generate alternatives/ });
+    expect((regenerate as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(regenerate);
+    expect(props.onGenerate).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'full', sourceReferences: [] })
+    );
+  });
+
   it('shows indeterminate stage and streamed token progress for the active request', () => {
     const { props, view } = renderModal({ kind: 'new' });
     fireEvent.change(screen.getByPlaceholderText('e.g. she smiled'), {
@@ -434,6 +463,34 @@ describe('WorkshopGesturePlaygroundModal', () => {
       .toBe(true);
   });
 
+  it('keeps Regenerate available when a successful result has a menu but no dictionary', () => {
+    const { props, view } = renderModal({ kind: 'new' });
+    fireEvent.change(screen.getByPlaceholderText('e.g. she smiled'), {
+      target: { value: 'she smiled' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Generate alternatives/ }));
+    const token = (props.onGenerate as jest.Mock).mock.calls[0][0].token as string;
+
+    view.rerender(<WorkshopGesturePlaygroundModal
+      {...props}
+      menuResult={{
+        widgetId: 'gesture-playground',
+        token,
+        mode: 'full',
+        ok: true,
+        menu,
+        dictionaryMarkdown: ''
+      }}
+    />);
+
+    expect((screen.getByRole('button', { name: 'More gestures' }) as HTMLButtonElement).disabled)
+      .toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate all' }));
+    expect(props.onGenerate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ mode: 'full', targetPhrase: 'she smiled' })
+    );
+  });
+
   it('locks generation inputs in flight and invalidates artifacts when an input later changes', () => {
     const { props, view } = renderModal({ kind: 'new' });
     const targetInput = screen.getByPlaceholderText('e.g. she smiled') as HTMLInputElement;
@@ -549,13 +606,62 @@ describe('WorkshopGesturePlaygroundModal', () => {
       }),
       'wc-1'
     );
+    expect(props.onClose).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', { name: 'Committing…' }) as HTMLButtonElement).disabled)
+      .toBe(true);
+  });
+
+  it('closes on host acceptance without waiting for the participant response', () => {
+    const { props, view } = renderModal({ kind: 'clone', config });
+    fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
+    expect(props.onCommit).toHaveBeenCalledTimes(1);
+    expect(props.onClose).not.toHaveBeenCalled();
+
+    view.rerender(<WorkshopGesturePlaygroundModal
+      {...props}
+      actionResult={{
+        action: 'commit',
+        widgetId: 'gesture-playground',
+        ok: true,
+        widgetConfigId: 'wc-2',
+        turnId: 'turn-2'
+      }}
+    />);
+
+    expect(props.onConsumeActionResult).toHaveBeenCalled();
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('closes immediately after dispatching a valid commit', () => {
-    const { props } = renderModal({ kind: 'clone', config });
+  it('keeps the complete draft mounted when host acceptance fails', () => {
+    const { props, view } = renderModal({ kind: 'clone', config });
     fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
-    expect(props.onCommit).toHaveBeenCalledTimes(1);
-    expect(props.onClose).toHaveBeenCalledTimes(1);
+
+    view.rerender(<WorkshopGesturePlaygroundModal
+      {...props}
+      actionResult={{
+        action: 'commit',
+        widgetId: 'gesture-playground',
+        ok: false,
+        message: 'Wait for the current session save to finish.'
+      }}
+    />);
+
+    expect(props.onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toContain('session save');
+    expect(screen.getByText('A private deflection.')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Commit as new turn' }) as HTMLButtonElement).disabled)
+      .toBe(false);
+  });
+
+  it('disables recommit while another room response owns the run slot', () => {
+    const { props } = renderModal(
+      { kind: 'clone', config },
+      { roomRunActive: true }
+    );
+
+    const commit = screen.getByRole('button', { name: 'Commit as new turn' });
+    expect((commit as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(commit);
+    expect(props.onCommit).not.toHaveBeenCalled();
   });
 });

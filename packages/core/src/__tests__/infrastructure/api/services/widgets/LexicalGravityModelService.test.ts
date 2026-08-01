@@ -128,7 +128,7 @@ describe('LexicalGravityModelService', () => {
   it.each([
     ['straight', '"The bell *tolled* through the empty house."'],
     ['curly', '“The bell *tolled* through the empty house.”']
-  ])('strips one enclosing %s quote pair from preview prose', async (_label, response) => {
+  ])('preserves an ambiguous enclosing %s quote pair rather than corrupting prose', async (_label, response) => {
     const quoted = createService(response);
     const draft = {
       lensSlug: 'music',
@@ -141,8 +141,23 @@ describe('LexicalGravityModelService', () => {
     await expect(quoted.service.preview(draft, 'A bell rang.')).resolves.toEqual({
       configKey: lexicalGravityConfigKey(draft),
       sourceText: 'A bell rang.',
-      text: 'The bell *tolled* through the empty house.'
+      text: response
     });
+  });
+
+  it('preserves separate dialogue quotes at the beginning and end of a passage', async () => {
+    const response = '"Hold the light steady," she said. "I cannot see the grain."';
+    const quoted = createService(response);
+    const draft = {
+      lensSlug: 'music',
+      weight: 40,
+      reach: 2 as const,
+      metaphorPull: false,
+      resolvedLens: builtInLexicalGravityLens('music')!
+    };
+
+    await expect(quoted.service.preview(draft, 'She asked him to hold the light.'))
+      .resolves.toMatchObject({ text: response });
   });
 
   it('logs and translates a provider response without final text', async () => {

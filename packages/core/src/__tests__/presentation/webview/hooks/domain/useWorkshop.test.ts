@@ -37,7 +37,8 @@ import type {
   WorkshopSessionsDataMessage,
   WorkshopSessionStateMessage,
   WorkshopTurn,
-  WorkshopTurnMessage
+  WorkshopTurnMessage,
+  WorkshopWidgetActionResultMessage
 } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
@@ -424,6 +425,27 @@ describe('useWorkshop', () => {
 
     act(() => result.current.consumeSessionActionResult());
     expect(result.current.sessionActionResult).toBeUndefined();
+  });
+
+  it('owns Gesture commit acknowledgements until the modal consumes them', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const response: WorkshopWidgetActionResultMessage = {
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      payload: {
+        action: 'commit',
+        widgetId: 'gesture-playground',
+        ok: false,
+        message: 'The session is still saving.'
+      },
+      timestamp: 0
+    };
+
+    act(() => result.current.handleWidgetActionResult(response));
+    expect(result.current.widgetActionResult).toEqual(response.payload);
+
+    act(() => result.current.consumeWidgetActionResult());
+    expect(result.current.widgetActionResult).toBeNull();
   });
 
   it('submits one complete conversation behavior object without optimistic state', () => {

@@ -315,7 +315,7 @@ describe('completeWorkshopRun', () => {
       'Widget recommendation rejected (Jill; reason=invalid_frame)'
     );
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining('Rejected widget recommendation response (Jill):')
+      expect.stringContaining('Rejected widget recommendation response (Jill;')
     );
     expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
       "Jill's widget recommendation could not be prepared.",
@@ -336,7 +336,7 @@ describe('completeWorkshopRun', () => {
     })!;
 
     expect(turn.content).toBe(
-      'I could not prepare a usable widget setup on that pass. Please ask me to try again.'
+      "Jill's widget setup could not be displayed on that pass. Ask Jill to try again."
     );
     expect(turn.widgetRecommendation).toBeUndefined();
     expect(log).toHaveBeenCalledWith(
@@ -348,6 +348,32 @@ describe('completeWorkshopRun', () => {
       `Writer instructions used ${(maximum + 1).toLocaleString('en-US')} characters; `
       + `the limit is ${maximum.toLocaleString('en-US')}. Ask Jill to try again.`
     );
+  });
+
+  it('bounds rejected control diagnostics while preserving the response edges', () => {
+    session.beginPersonaMessage('req-1', 'Prepare Gesture Playground again.');
+    const oversized = [
+      '### Try a widget',
+      'START-EDGE',
+      'a'.repeat(8_000),
+      'MIDDLE-PRIVATE-PROSE',
+      'b'.repeat(8_000),
+      'END-EDGE'
+    ].join('\n');
+
+    settle({
+      requestId: 'req-1',
+      result: result(oversized, { conversationId: 'host-conv' })
+    });
+
+    const diagnostic = log.mock.calls
+      .map(([line]) => line as string)
+      .find((line) => line.startsWith('Rejected widget recommendation response'))!;
+    expect(diagnostic).toContain('START-EDGE');
+    expect(diagnostic).toContain('END-EDGE');
+    expect(diagnostic).toContain('characters omitted');
+    expect(diagnostic).not.toContain('MIDDLE-PRIVATE-PROSE');
+    expect(diagnostic.length).toBeLessThan(9_000);
   });
 
   it('attaches proposals to a guest turn and promotes them with guest provenance', () => {

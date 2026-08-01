@@ -56,7 +56,7 @@ const buildGroups = (requestViaPersona: boolean): readonly WorkshopSheetGroup[] 
       icon: WORKSHOP_TOOL_ICONS[tool.id],
       name: tool.label,
       blurb: tool.description,
-      lifecycleNote: requestViaPersona
+      selectionNote: requestViaPersona
         ? 'prefills an editable ask · nothing sends until you do'
         : 'one run on the excerpt · lands in the thread'
     }))

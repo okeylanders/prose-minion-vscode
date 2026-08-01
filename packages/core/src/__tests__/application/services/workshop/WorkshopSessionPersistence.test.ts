@@ -448,7 +448,7 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'host' });
   });
 
-  it('defaults proactive assistance on for pre-02B-A behavior stamps', () => {
+  it('records proactive assistance as off on historical behavior stamps', () => {
     const state = buildCompleteState();
     const stampedTurn = state.turns.find((turn) => turn.behavior !== undefined);
     if (!stampedTurn?.behavior) {
@@ -462,7 +462,7 @@ describe('WorkshopSessionService committed persistence', () => {
 
     expect(result.normalizations).toContain('defaulted-proactive-assistance');
     expect(restored.exportCommittedState().turns.find((turn) => turn.id === stampedTurn.id)?.behavior)
-      .toMatchObject({ proactiveAssistance: true });
+      .toMatchObject({ proactiveAssistance: false });
   });
 
   it('never relabels an already-stamped guest principal during hydration (review #10)', () => {

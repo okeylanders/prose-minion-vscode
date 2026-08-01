@@ -6,9 +6,9 @@
  * one deliberate model call for a writer-facing Gesture Dictionary and a
  * grouped multi-select menu. More gestures extends that visible result through
  * a compact stateless call; Regenerate all re-rolls both; commit never re-runs
- * either. Commit posts the whole Draft to the atomic host route and closes the
- * sheet immediately; WorkshopApp surfaces any later host failure while the
- * thread receives the turn asynchronously.
+ * either. Commit posts the whole Draft to the atomic host route; the sheet
+ * closes as soon as the host acknowledges that its writer turn and artifact
+ * are room truth, without waiting for the participant's model response.
  *
  * Three openings: fresh (from the Widgets browser), persona seed (recommend +
  * prefill — everything editable), and clone (re-opened from a committed
@@ -27,6 +27,7 @@ import {
   WorkshopWidgetGenerationProgressPayload,
   WorkshopWidgetMenuResultPayload,
   WorkshopWidgetRecommendationSeed,
+  WorkshopWidgetActionResultPayload,
   WorkshopWidgetSourceReference,
   workshopExcerptTitle
 } from '@messages';
@@ -48,17 +49,20 @@ interface WorkshopGesturePlaygroundModalProps {
   opening: WorkshopGestureOpening;
   menuResult: WorkshopWidgetMenuResultPayload | null;
   generationProgress: WorkshopWidgetGenerationProgressPayload | null;
+  actionResult: WorkshopWidgetActionResultPayload | null;
   activeExcerpt: WorkshopExcerptSnapshot | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   onGenerate: (payload: WorkshopWidgetGeneratePayload) => void;
   onCancelGenerate: (requestId: string) => void;
   onCommit: (draft: WorkshopGestureDraft, clonedFromConfigId?: string) => void;
+  onConsumeActionResult: () => void;
   onCopyDictionary: (content: string) => void;
   onSaveDictionary: (content: string) => void;
   widgetModelOptions: ModelOption[];
   selectedWidgetModel: string;
   onWidgetModelChange: (modelId: string) => void;
   onOpenWidgetModelBrowser: () => void;
+  roomRunActive: boolean;
   onClose: () => void;
 }
 
@@ -84,17 +88,20 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   opening,
   menuResult,
   generationProgress,
+  actionResult,
   activeExcerpt,
   contextAttachments,
   onGenerate,
   onCancelGenerate,
   onCommit,
+  onConsumeActionResult,
   onCopyDictionary,
   onSaveDictionary,
   widgetModelOptions,
   selectedWidgetModel,
   onWidgetModelChange,
   onOpenWidgetModelBrowser,
+  roomRunActive,
   onClose
 }) => {
   const [targetPhrase, setTargetPhrase] = React.useState('');
@@ -110,6 +117,8 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     React.useState(false);
   const [generateToken, setGenerateToken] = React.useState<string | null>(null);
   const [generateError, setGenerateError] = React.useState<string | null>(null);
+  const [commitPending, setCommitPending] = React.useState(false);
+  const [commitError, setCommitError] = React.useState<string | null>(null);
   const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
 
   /* Re-seed the whole Draft on every open, from the opening's source of
@@ -159,10 +168,32 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     }
     setGenerateToken(null);
     setGenerateError(null);
+    setCommitPending(false);
+    setCommitError(null);
     setModelBrowserOpen(false);
     /* Reseed on open only — `opening` is intentionally not a dependency, so a
        background snapshot refresh cannot clobber in-progress editing. */
   }, [open]);
+
+  React.useEffect(() => {
+    if (
+      !commitPending
+      || !actionResult
+      || actionResult.action !== 'commit'
+      || actionResult.widgetId !== 'gesture-playground'
+    ) {
+      return;
+    }
+    setCommitPending(false);
+    onConsumeActionResult();
+    if (actionResult.ok) {
+      onClose();
+    } else {
+      setCommitError(
+        actionResult.message ?? 'Gesture Playground did not reach the room. Your draft is still open.'
+      );
+    }
+  }, [actionResult, commitPending, onClose, onConsumeActionResult]);
 
   /* Absorb the generate result for OUR in-flight token; stale tokens drop. */
   React.useEffect(() => {
@@ -198,6 +229,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   }, [open, menuResult, generateToken]);
 
   const generating = generateToken !== null;
+  const interactionLocked = generating || commitPending;
   const visibleProgress =
     generationProgress?.token === generateToken ? generationProgress : null;
   const progressStage = stageLabels[visibleProgress?.stage ?? 'requesting'];
@@ -296,7 +328,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
 
   const generateAll = React.useCallback(() => {
     if (
-      generating
+      interactionLocked
       || targetPhrase.trim().length === 0
       || hasUnavailableSelectedSources
     ) {
@@ -317,7 +349,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       sourceReferences
     });
   }, [
-    generating,
+    interactionLocked,
     hasUnavailableSelectedSources,
     targetPhrase,
     writerInstructions,
@@ -330,7 +362,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
 
   const generateMore = React.useCallback(() => {
     if (
-      generating
+      interactionLocked
       || !menu
       || dictionaryMarkdown.trim().length === 0
       || menu.every((group) => group.options.length >= BUDGET.gestureOptionsPerGroup)
@@ -353,7 +385,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       menu
     });
   }, [
-    generating,
+    interactionLocked,
     menu,
     dictionaryMarkdown,
     targetPhrase,
@@ -384,6 +416,8 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   const commit = React.useCallback(() => {
     if (
       generating
+      || commitPending
+      || roomRunActive
       || !menu
       || dictionaryMarkdown.trim().length === 0
       || selections.length === 0
@@ -391,6 +425,9 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     ) {
       return;
     }
+    setCommitError(null);
+    setCommitPending(true);
+    onConsumeActionResult();
     onCommit(
       {
         targetPhrase,
@@ -406,9 +443,10 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
       },
       opening.kind === 'clone' ? opening.config.id : undefined
     );
-    onClose();
   }, [
     generating,
+    commitPending,
+    roomRunActive,
     menu,
     selections,
     hasUnavailableSelectedSources,
@@ -421,21 +459,21 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
     note,
     includeDictionaryInCommit,
     onCommit,
-    onClose,
+    onConsumeActionResult,
     opening
   ]);
 
   const close = React.useCallback(() => {
     // The model browser is layered over this sheet and owns the first Escape.
     // Keep the underlying draft open while that child overlay dismisses.
-    if (modelBrowserOpen) {
+    if (modelBrowserOpen || commitPending) {
       return;
     }
     if (generating) {
       cancelGenerate();
     }
     onClose();
-  }, [modelBrowserOpen, generating, cancelGenerate, onClose]);
+  }, [modelBrowserOpen, commitPending, generating, cancelGenerate, onClose]);
 
   const changeWidgetModel = React.useCallback(
     (_scope: ModelScope, modelId: string) => {
@@ -520,7 +558,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
               type="text"
               value={targetPhrase}
               maxLength={BUDGET.gestureTargetPhraseCharacters}
-              disabled={generating}
+              disabled={interactionLocked}
               placeholder="e.g. she smiled"
               onChange={(event) => changeTargetPhrase(event.target.value)}
             />
@@ -537,7 +575,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             <textarea
               value={writerInstructions}
               maxLength={BUDGET.gestureWriterInstructionsCharacters}
-              disabled={generating}
+              disabled={interactionLocked}
               rows={3}
               placeholder="What should the alternatives preserve, avoid, or emphasize?"
               onChange={(event) => changeWriterInstructions(event.target.value)}
@@ -555,7 +593,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             <textarea
               value={contextText}
               maxLength={BUDGET.gestureContextCharacters}
-              disabled={generating}
+              disabled={interactionLocked}
               rows={3}
               placeholder="The sentences around the phrase."
               onChange={(event) => changeContextText(event.target.value)}
@@ -569,7 +607,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             <textarea
               value={characterNotes}
               maxLength={BUDGET.gestureCharacterNotesCharacters}
-              disabled={generating}
+              disabled={interactionLocked}
               rows={2}
               placeholder="Who is this person in this beat?"
               onChange={(event) => changeCharacterNotes(event.target.value)}
@@ -605,7 +643,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
                       type="checkbox"
                       checked={selected}
                       disabled={
-                        generating
+                        interactionLocked
                         || (!selected && sourceSelectionAtLimit)
                       }
                       onChange={() => toggleSourceReference(reference)}
@@ -630,7 +668,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
                     <input
                       type="checkbox"
                       checked
-                      disabled={generating}
+                      disabled={interactionLocked}
                       onChange={() => toggleSourceReference(reference)}
                     />
                     <span>
@@ -682,7 +720,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
                         type="button"
                         className={`pm-ws-gesture-opt${selected ? ' pm-ws-gesture-opt-selected' : ''}`}
                         aria-pressed={selected}
-                        disabled={generating}
+                        disabled={interactionLocked}
                         onClick={() => toggleSelection(option)}
                       >
                         <span className="pm-ws-gesture-opt-bx" aria-hidden="true">
@@ -697,12 +735,12 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             </div>
           )}
 
-          {menu && dictionaryMarkdown && (generating ? generationProgressPanel : (
+          {menu && (generating ? generationProgressPanel : (
             <div className="pm-ws-gesture-generation-actions">
               <button
                 type="button"
                 className="pm-ws-gesture-gen"
-                disabled={menu.every(
+                disabled={dictionaryMarkdown.trim().length === 0 || menu.every(
                   (group) => group.options.length >= BUDGET.gestureOptionsPerGroup
                 )}
                 onClick={generateMore}
@@ -720,6 +758,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
           ))}
 
           {generateError && <div className="pm-ws-gesture-error" role="alert">{generateError}</div>}
+          {commitError && <div className="pm-ws-gesture-error" role="alert">{commitError}</div>}
 
           {dictionaryMarkdown && (
             <div className="pm-ws-gesture-dictionary-shell">
@@ -758,7 +797,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
               <input
                 type="checkbox"
                 checked={includeDictionaryInCommit}
-                disabled={generating}
+                disabled={interactionLocked}
                 onChange={(event) => setIncludeDictionaryInCommit(event.target.checked)}
               />
               <span>
@@ -795,13 +834,18 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
               onOpenBrowser={onOpenWidgetModelBrowser}
               onBrowserOpenChange={setModelBrowserOpen}
               label="Widget Model"
-              disabled={generating}
+              disabled={interactionLocked}
             />
             {menu && (
               <span className="pm-ws-gesture-count">· {selections.length} selected</span>
             )}
           </div>
-          <button type="button" className="pm-ws-gesture-cancel" onClick={close}>
+          <button
+            type="button"
+            className="pm-ws-gesture-cancel"
+            disabled={commitPending}
+            onClick={close}
+          >
             Cancel
           </button>
           <button
@@ -809,6 +853,8 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             className="pm-ws-gesture-commit"
             disabled={
               generating
+              || commitPending
+              || roomRunActive
               || !menu
               || dictionaryMarkdown.trim().length === 0
               || selections.length === 0
@@ -816,7 +862,9 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
             }
             onClick={commit}
           >
-            {opening.kind === 'clone' ? 'Commit as new turn' : 'Commit to thread'}
+            {commitPending
+              ? 'Committing…'
+              : opening.kind === 'clone' ? 'Commit as new turn' : 'Commit to thread'}
           </button>
         </footer>
       </div>

@@ -407,6 +407,42 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       .toMatch(/session save or replacement/i);
   });
 
+  it('returns a widget-owned rejection when commit meets the session-operation gate', async () => {
+    const router = new MessageRouter();
+    handler.registerRoutes(router);
+    persistence.isSessionOperationPending.mockReturnValue(true);
+
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'gesture-playground',
+      draft: {
+        targetPhrase: 'she smiled',
+        writerInstructions: '',
+        contextText: '',
+        characterNotes: '',
+        sourceReferences: [],
+        dictionaryMarkdown: '# Gesture Dictionary\n\nA quiet refusal.',
+        menu: Array.from({ length: 4 }, (_, index) => ({
+          heading: `Route ${index + 1}`,
+          options: [`Option ${index + 1}.1`, `Option ${index + 1}.2`, `Option ${index + 1}.3`]
+        })),
+        selections: ['Option 1.1'],
+        note: '',
+        includeDictionaryInCommit: false
+      }
+    }) as any);
+
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      source: 'extension.workshop.widget',
+      payload: {
+        action: 'commit',
+        widgetId: 'gesture-playground',
+        ok: false,
+        message: expect.stringMatching(/session save or replacement/i)
+      }
+    });
+  });
+
   it('settles a routed session action rejected behind an earlier operation', async () => {
     const router = new MessageRouter();
     handler.registerRoutes(router);

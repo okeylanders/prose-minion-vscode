@@ -38,7 +38,7 @@ const sheetItem = (widget: WorkshopWidgetDescriptor): WorkshopSheetItem => ({
   name: widget.label,
   tag: { label: widget.railLabel, kind: widget.rail },
   metaTag: widget.tag,
-  lifecycleNote: widget.lifecycleNote,
+  selectionNote: widget.lifecycleNote,
   blurb: widget.blurb,
   unavailable: !widget.live,
   unavailableLabel: 'Coming soon'

@@ -11,6 +11,7 @@ import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/w
 import { WorkshopModalShell } from './WorkshopModalShell';
 import { WorkshopSheetBrowser } from './WorkshopSheetBrowser';
 import { WORKSHOP_WIDGET_GROUPS } from './workshopWidgetIcons';
+import { canBuildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 
 interface WorkshopWidgetsModalProps {
   open: boolean;
@@ -37,6 +38,8 @@ export const WorkshopWidgetsModal: React.FC<WorkshopWidgetsModalProps> = ({
   }, [open]);
 
   const selectedIsLive = isLiveWorkshopWidgetId(selectedId ?? undefined);
+  const selectedSupportsAgentPreparation = selectedIsLive
+    && canBuildWorkshopWidgetAskPrefill(selectedId);
 
   return (
     <WorkshopModalShell
@@ -74,14 +77,16 @@ export const WorkshopWidgetsModal: React.FC<WorkshopWidgetsModalProps> = ({
           }
         }}
         secondaryLabel="Ask agent to configure, then open"
-        secondaryDisabled={!selectedIsLive}
+        secondaryDisabled={!selectedSupportsAgentPreparation}
         secondaryHint={
           selectedId !== null && !selectedIsLive
             ? `${workshopWidgetLabel(selectedId as WorkshopWidgetId)} is not available yet.`
+            : selectedIsLive && !selectedSupportsAgentPreparation
+              ? 'This widget does not yet support Host preparation.'
             : undefined
         }
         onSecondary={() => {
-          if (selectedIsLive && selectedId !== null) {
+          if (selectedSupportsAgentPreparation && selectedId !== null) {
             onAskAgentToConfigure(selectedId as WorkshopWidgetId);
           }
         }}

@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS } from '@/utils/workshopWidgetRecommendation';
 
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
 const BUDGET_MODULE = path.join(SRC_ROOT, 'shared', 'constants', 'promptBudgets.ts');
@@ -85,6 +86,47 @@ describe('prompt budgets', () => {
       readSourceBytes: 2 * 1024 * 1024,
       readBytes: 64 * 1024
     });
+  });
+
+  it('pins the model-facing Conversation Widget budgets and aggregate frame ceiling', () => {
+    expect(PROMPT_BUDGETS.workshopWidgets).toEqual({
+      gestureTargetPhraseCharacters: 300,
+      gestureWriterInstructionsCharacters: 1_000,
+      gestureContextCharacters: 10_000,
+      gestureCharacterNotesCharacters: 1_500,
+      gestureSourceReferences: 8,
+      gestureSourceReferenceCharacters: 500,
+      gestureReferencedSourceCharacters: 420_000,
+      gestureOutputTokens: 50_000,
+      gestureMoreOutputTokens: 8_000,
+      gestureRecommendationFrameAllowanceCharacters: 2_000,
+      gestureDictionaryCharacters: 32_000,
+      gestureNoteCharacters: 300,
+      gestureMenuGroupsMinimum: 4,
+      gestureMenuGroups: 6,
+      gestureOptionsPerGroupMinimum: 3,
+      gestureGeneratedOptionsPerGroup: 5,
+      gestureOptionsPerGroup: 10,
+      gestureOptionCharacters: 220,
+      gestureSelectionsPerCommit: 8,
+      lexicalLensNameCharacters: 80,
+      lexicalLensSlugCharacters: 64,
+      lexicalLensVariantCharacters: 120,
+      lexicalLensDescriptionCharacters: 320,
+      lexicalTermCharacters: 80,
+      lexicalTermsPerBucket: 12,
+      lexicalGradientTerms: 12,
+      lexicalCliches: 8,
+      lexicalPhraseCharacters: 240,
+      lexicalSampleCharacters: 800,
+      lexicalBuildQueryCharacters: 100,
+      lexicalBuildCandidates: 3,
+      lexicalBuildOutputTokens: 8_000,
+      lexicalPreviewCharacters: 1_200,
+      lexicalPreviewOutputTokens: 1_200,
+      lexicalDirectiveCharacters: 3_000
+    });
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(15_300);
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

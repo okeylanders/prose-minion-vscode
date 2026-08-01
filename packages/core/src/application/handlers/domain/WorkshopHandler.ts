@@ -346,7 +346,8 @@ export class WorkshopHandler {
           this.executeMessage(text, displayText, undefined, executeOptions),
         postSessionState: () => this.postSessionState(),
         markDirty: (reason) => this.sessionPersistence.markDirty(reason),
-        reportError: (message, details) => this.sendError('workshop', message, details)
+        reportError: (message, details) => this.sendError('workshop', message, details),
+        isRoomRunActive: () => this.activeRun !== undefined
       }
     );
     this.lexicalGravityHandler = new WorkshopLexicalGravityHandler(
@@ -371,10 +372,11 @@ export class WorkshopHandler {
     const registerMutation = (
       messageType: MessageType,
       handler: (message: never) => Promise<void>,
-      sessionAction?: WorkshopSessionAction
+      sessionAction?: WorkshopSessionAction,
+      onBlocked?: (message: string) => void
     ): void => {
       router.register(messageType, async (message) => {
-        if (this.rejectRoomMutationDuringSessionOperation(sessionAction)) {
+        if (this.rejectRoomMutationDuringSessionOperation(sessionAction, onBlocked)) {
           return;
         }
         await handler(message as never);
@@ -929,6 +931,11 @@ export class WorkshopHandler {
         content: string;
         selectionCount: number;
       };
+      /**
+       * Widget commits close their authoring sheet once the room owns the
+       * writer turn and artifact, not after the participant finishes replying.
+       */
+      onRoomAccepted?: (userTurnId: string) => void;
     }
   ): Promise<{ committed: boolean; userTurnId?: string }> {
     const target = targetOverride ?? this.session.getChatTarget();
@@ -1199,6 +1206,7 @@ export class WorkshopHandler {
         `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
       );
     }
+    executeOptions?.onRoomAccepted?.(userTurn.id);
     this.postTurn(userTurn);
     this.postSessionState();
     this.sendStreamStarted(requestId);
@@ -2572,14 +2580,17 @@ export class WorkshopHandler {
   }
 
   private rejectRoomMutationDuringSessionOperation(
-    sessionAction?: WorkshopSessionAction
+    sessionAction?: WorkshopSessionAction,
+    onBlocked?: (message: string) => void
   ): boolean {
     if (!this.sessionPersistence.isSessionOperationPending()) {
       return false;
     }
     const message =
       'Wait for the current session save or replacement to finish before changing the room.';
-    if (sessionAction) {
+    if (onBlocked) {
+      onBlocked(message);
+    } else if (sessionAction) {
       this.sessionMessageHandler.postActionResult(sessionAction, false, message);
     } else {
       this.sendError('workshop', message);

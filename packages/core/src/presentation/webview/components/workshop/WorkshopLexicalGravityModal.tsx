@@ -58,6 +58,13 @@ interface WorkshopLexicalGravityModalProps {
   onClose: () => void;
 }
 
+const previewSourceOverrideFor = (
+  preview: WorkshopLexicalGravityDraft['preview'] | undefined,
+  lensSample: string | undefined
+): string | undefined => preview?.sourceText !== undefined && preview.sourceText !== lensSample
+  ? preview.sourceText
+  : undefined;
+
 type LensTab = 'field' | 'gradient' | 'substitutions' | 'cliches';
 type WordPart = 'nouns' | 'verbs' | 'modifiers';
 
@@ -115,10 +122,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [metaphorPull, setMetaphorPull] = React.useState(initialSeed?.metaphorPull ?? false);
   const [preview, setPreview] = React.useState(initialDraft?.preview);
   const [previewSourceOverride, setPreviewSourceOverride] = React.useState<string | undefined>(
-    initialDraft?.preview?.sourceText !== undefined
-      && initialDraft.preview.sourceText !== initialDraft.resolvedLens.sample
-      ? initialDraft.preview.sourceText
-      : undefined
+    previewSourceOverrideFor(initialDraft?.preview, initialDraft?.resolvedLens.sample)
   );
   const [previewVisible, setPreviewVisible] = React.useState(Boolean(initialDraft?.preview));
   const [tab, setTab] = React.useState<LensTab>('field');
@@ -152,12 +156,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setReach(seed?.reach ?? 2);
     setMetaphorPull(seed?.metaphorPull ?? false);
     setPreview(draft?.preview);
-    setPreviewSourceOverride(
-      draft?.preview?.sourceText !== undefined
-        && draft.preview.sourceText !== draft.resolvedLens.sample
-        ? draft.preview.sourceText
-        : undefined
-    );
+    setPreviewSourceOverride(previewSourceOverrideFor(draft?.preview, draft?.resolvedLens.sample));
     setPreviewVisible(Boolean(draft?.preview));
     setTab('field');
     setWordPart('nouns');
@@ -223,13 +222,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     if (previewResult.ok && previewResult.preview) {
       setPreview(previewResult.preview);
       setPreviewVisible(true);
-      if (previewResult.preview.sourceText !== undefined) {
-        setPreviewSourceOverride(
-          previewResult.preview.sourceText === lens?.sample
-            ? undefined
-            : previewResult.preview.sourceText
-        );
-      }
+      setPreviewSourceOverride(previewSourceOverrideFor(previewResult.preview, lens?.sample));
       setError(undefined);
     } else {
       setError(previewResult.error ?? 'The preview could not be generated.');

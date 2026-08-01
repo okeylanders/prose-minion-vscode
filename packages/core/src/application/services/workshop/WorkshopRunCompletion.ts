@@ -25,6 +25,7 @@ import {
   stripWorkshopWidgetRecommendationControl,
   WorkshopWidgetRecommendationInspection
 } from '@/utils/workshopWidgetRecommendation';
+import { boundedLogText } from '@/utils/boundedLogText';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -92,7 +93,21 @@ const WIDGET_FIELD_LABELS = Object.freeze({
   writerInstructions: 'Writer instructions',
   contextText: 'Surrounding context',
   sourceReferences: 'Source references',
-  characterNotes: 'Character notes'
+  characterNotes: 'Character notes',
+  lensSlug: 'Lens',
+  weight: 'Weight',
+  reach: 'Reach',
+  metaphorPull: 'Metaphor pull'
+});
+
+const INVALID_WIDGET_FIELD_COPY = Object.freeze({
+  empty: 'was empty',
+  target_missing_from_context: 'did not contain the exact target phrase',
+  invalid_source_references: 'contained unavailable or malformed source references',
+  unsupported_lens: 'named a lens that personas are not allowed to seed',
+  invalid_weight: 'was outside the allowed weight steps',
+  invalid_reach: 'was outside the allowed reach values',
+  invalid_metaphor_pull: 'was not true or false'
 });
 
 function widgetRecommendationRejectionReason(
@@ -104,6 +119,9 @@ function widgetRecommendationRejectionReason(
   }
   if (inspection.rejection === 'frame_too_long') {
     return `${inspection.rejection}:${inspection.actualCharacters}/${inspection.maximumCharacters}`;
+  }
+  if (inspection.rejection === 'invalid_field') {
+    return `${inspection.rejection}:${inspection.field}:${inspection.reason}`;
   }
   return inspection.rejection;
 }
@@ -127,6 +145,13 @@ function widgetRecommendationRejectionNotice(
       details: `The generated setup used ${inspection.actualCharacters.toLocaleString('en-US')} `
         + `characters; the complete-frame limit is `
         + `${inspection.maximumCharacters.toLocaleString('en-US')}. Ask ${label} to try again.`
+    };
+  }
+  if (inspection.rejection === 'invalid_field') {
+    return {
+      message,
+      details: `${WIDGET_FIELD_LABELS[inspection.field]} `
+        + `${INVALID_WIDGET_FIELD_COPY[inspection.reason]}. Ask ${label} to try again.`
     };
   }
   return {
@@ -200,14 +225,17 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       })`
     );
     if (recommendationRejected) {
-      input.log(`Rejected widget recommendation response (${label}):\n${result.content}`);
+      input.log(
+        `Rejected widget recommendation response (${label}; ${result.content.length} characters):\n`
+        + boundedLogText(result.content)
+      );
     }
   }
   const strippedDisplayContent = widgetRecommendation.outcome !== 'absent'
     ? stripWorkshopWidgetRecommendationControl(result.content)
     : result.content;
   const displayContent = recommendationRejected && strippedDisplayContent.trim().length === 0
-    ? 'I could not prepare a usable widget setup on that pass. Please ask me to try again.'
+    ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
     : strippedDisplayContent;
   const turn = session.completeRun(
     requestId,

@@ -137,8 +137,16 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       toolName: 'workshop_persona_quinn',
       policy: expect.objectContaining({ id: 'workshop-host', capabilityCatalog: 'workshopPersona', retention: 'retain' }),
       capability: workshopCapability,
-      userMessage: expect.stringContaining('<pinned-excerpt>')
+      userMessage: expect.stringContaining('<pinned-excerpt>'),
+      options: expect.objectContaining({
+        retainedAssistantContentSanitizer: expect.any(Function)
+      })
     }));
+    const retainedSanitizer = engine.runInitial.mock.calls[0][0]
+      .options?.retainedAssistantContentSanitizer!;
+    expect(retainedSanitizer(
+      'Useful prose.\n\n### Try a widget\n<workshop-widget-recommendation version="1">'
+    )).toBe('Useful prose.');
     const systemMessage = engine.runInitial.mock.calls[0][0].systemMessage;
     expect(systemMessage).toContain('<workshop-widget-recommendation-contract>');
     expect(systemMessage).toContain('Do not be thrifty');

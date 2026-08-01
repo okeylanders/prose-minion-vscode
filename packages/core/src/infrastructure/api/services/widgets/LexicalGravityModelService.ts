@@ -7,6 +7,7 @@ import {
   WorkshopLexicalGravityPreview
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { boundedLogText } from '@/utils/boundedLogText';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
@@ -80,6 +81,10 @@ export class LexicalGravityModelService {
         `Preview prose must be 1–${BUDGET.lexicalSampleCharacters} characters`
       );
     }
+    // Local configuration failures are not provider failures. Resolve this
+    // before the model call and outside the response-validation boundary so
+    // diagnostics attribute the fault to the correct side of the seam.
+    const configKey = lexicalGravityConfigKey(draft);
     const engine = this.requireEngine();
     const systemMessage = await this.promptLoader.loadPrompts([
       'lexical-gravity/01-preview.md'
@@ -113,7 +118,7 @@ export class LexicalGravityModelService {
         throw new Error('response reached its output limit');
       }
       const text = this.validatePreviewText(content);
-      return { configKey: lexicalGravityConfigKey(draft), sourceText, text };
+      return { configKey, sourceText, text };
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       this.outputChannel?.appendLine(
@@ -122,7 +127,7 @@ export class LexicalGravityModelService {
       );
       this.outputChannel?.appendLine([
         '[LexicalGravityModelService] Rejected preview response body BEGIN',
-        typeof content === 'string' ? content : String(content ?? ''),
+        boundedLogText(typeof content === 'string' ? content : String(content ?? '')),
         '[LexicalGravityModelService] Rejected preview response body END'
       ].join('\n'));
       throw new Error(
@@ -139,23 +144,11 @@ export class LexicalGravityModelService {
     if (typeof content !== 'string') {
       throw new Error('response did not contain text');
     }
-    const normalized = content.replace(/\r\n?/g, '\n').trim();
-    const body = this.stripEnclosingDoubleQuotes(normalized);
+    const body = content.replace(/\r\n?/g, '\n').trim();
     if (body && body.length <= BUDGET.lexicalPreviewCharacters) return body;
     throw new Error(
       `response body must be 1–${BUDGET.lexicalPreviewCharacters} characters`
     );
-  }
-
-  /** Remove only a single whole-response wrapper, preserving prose-internal dialogue. */
-  private stripEnclosingDoubleQuotes(content: string): string {
-    const quotePairs = [['"', '"'], ['“', '”']] as const;
-    const pair = quotePairs.find(([opening, closing]) =>
-      content.startsWith(opening) && content.endsWith(closing)
-    );
-    return pair && content.length >= 2
-      ? content.slice(pair[0].length, -pair[1].length).trim()
-      : content;
   }
 
   private parseCandidates(
@@ -203,7 +196,7 @@ export class LexicalGravityModelService {
       this.outputChannel?.appendLine(
         [
           '[LexicalGravityModelService] Rejected lens response body BEGIN',
-          content,
+          boundedLogText(content),
           '[LexicalGravityModelService] Rejected lens response body END'
         ].join('\n')
       );

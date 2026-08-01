@@ -122,6 +122,17 @@ const ORDERED_MARKERS = [
   FRAME_END
 ] as const;
 
+const WIDGET_BUDGET = PROMPT_BUDGETS.workshopWidgets;
+
+/** Exact ceiling for the complete recommendation tail, including protocol syntax. */
+export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
+  WIDGET_BUDGET.gestureTargetPhraseCharacters
+  + WIDGET_BUDGET.gestureWriterInstructionsCharacters
+  + WIDGET_BUDGET.gestureContextCharacters
+  + WIDGET_BUDGET.gestureCharacterNotesCharacters
+  + WIDGET_BUDGET.gestureSourceReferenceCharacters
+  + WIDGET_BUDGET.gestureRecommendationFrameAllowanceCharacters;
+
 export type WorkshopWidgetRecommendationRejection =
   | 'duplicate_heading'
   | 'frame_too_long'
@@ -135,7 +146,20 @@ export type WorkshopWidgetRecommendationField =
   | 'writerInstructions'
   | 'contextText'
   | 'sourceReferences'
-  | 'characterNotes';
+  | 'characterNotes'
+  | 'lensSlug'
+  | 'weight'
+  | 'reach'
+  | 'metaphorPull';
+
+export type WorkshopWidgetRecommendationInvalidFieldReason =
+  | 'empty'
+  | 'target_missing_from_context'
+  | 'invalid_source_references'
+  | 'unsupported_lens'
+  | 'invalid_weight'
+  | 'invalid_reach'
+  | 'invalid_metaphor_pull';
 
 interface WorkshopWidgetRecommendationRejectedBase {
   outcome: 'rejected';
@@ -147,9 +171,14 @@ export type WorkshopWidgetRecommendationInspection =
   | { outcome: 'accepted'; recommendation: WorkshopWidgetRecommendation }
   | (WorkshopWidgetRecommendationRejectedBase & {
       rejection: Exclude<
-        WorkshopWidgetRecommendationRejection,
-        'field_too_long' | 'frame_too_long'
+      WorkshopWidgetRecommendationRejection,
+        'field_too_long' | 'frame_too_long' | 'invalid_field'
       >;
+    })
+  | (WorkshopWidgetRecommendationRejectedBase & {
+      rejection: 'invalid_field';
+      field: WorkshopWidgetRecommendationField;
+      reason: WorkshopWidgetRecommendationInvalidFieldReason;
     })
   | (WorkshopWidgetRecommendationRejectedBase & {
       rejection: 'field_too_long';
@@ -185,13 +214,7 @@ export function inspectWorkshopWidgetRecommendation(
 
   const sectionLines = lines.slice(headingIndexes[0] + 1);
   const sectionCharacters = sectionLines.join('\n').length;
-  const maximumSectionCharacters =
-    PROMPT_BUDGETS.workshopWidgets.gestureTargetPhraseCharacters
-    + PROMPT_BUDGETS.workshopWidgets.gestureWriterInstructionsCharacters
-    + PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters
-    + PROMPT_BUDGETS.workshopWidgets.gestureCharacterNotesCharacters
-    + PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters
-    + PROMPT_BUDGETS.workshopWidgets.gestureRecommendationFrameAllowanceCharacters;
+  const maximumSectionCharacters = WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS;
   if (sectionCharacters > maximumSectionCharacters) {
     return {
       outcome: 'rejected',
@@ -289,8 +312,14 @@ export function inspectWorkshopWidgetRecommendation(
       maximum: budget.gestureCharacterNotesCharacters
     }
   ];
-  if (fields.some(({ value }) => value.length === 0)) {
-    return { outcome: 'rejected', rejection: 'invalid_field' };
+  const emptyField = fields.find(({ value }) => value.length === 0);
+  if (emptyField) {
+    return {
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: emptyField.field,
+      reason: 'empty'
+    };
   }
   const overlongField = fields.find(({ value, maximum }) => value.length > maximum);
   if (overlongField) {
@@ -305,11 +334,21 @@ export function inspectWorkshopWidgetRecommendation(
   if (
     normalizeEvidenceText(contextText).includes(normalizeEvidenceText(targetPhrase)) === false
   ) {
-    return { outcome: 'rejected', rejection: 'invalid_field' };
+    return {
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: 'contextText',
+      reason: 'target_missing_from_context'
+    };
   }
   const sourceReferences = parseSourceReferences(sourceReferenceText);
   if (!sourceReferences) {
-    return { outcome: 'rejected', rejection: 'invalid_field' };
+    return {
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: 'sourceReferences',
+      reason: 'invalid_source_references'
+    };
   }
 
   return {
@@ -389,13 +428,28 @@ function inspectLexicalGravityRecommendation(
   const builtIns = new Set([
     'photography', 'music', 'mathematics', 'weather', 'botany', 'architecture'
   ]);
-  if (
-    !builtIns.has(lensSlug)
-    || !isLexicalGravityWeight(weight)
-    || !isLexicalGravityReach(reach)
-    || (metaphorText !== 'true' && metaphorText !== 'false')
-  ) {
-    return { outcome: 'rejected', rejection: 'invalid_field' };
+  if (!builtIns.has(lensSlug)) {
+    return {
+      outcome: 'rejected', rejection: 'invalid_field', field: 'lensSlug', reason: 'unsupported_lens'
+    };
+  }
+  if (!isLexicalGravityWeight(weight)) {
+    return {
+      outcome: 'rejected', rejection: 'invalid_field', field: 'weight', reason: 'invalid_weight'
+    };
+  }
+  if (!isLexicalGravityReach(reach)) {
+    return {
+      outcome: 'rejected', rejection: 'invalid_field', field: 'reach', reason: 'invalid_reach'
+    };
+  }
+  if (metaphorText !== 'true' && metaphorText !== 'false') {
+    return {
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: 'metaphorPull',
+      reason: 'invalid_metaphor_pull'
+    };
   }
   return {
     outcome: 'accepted',
@@ -465,4 +519,14 @@ export function stripWorkshopWidgetRecommendationControl(content: string): strin
   return headingIndex >= 0
     ? lines.slice(0, headingIndex).join('\n').trimEnd()
     : content;
+}
+
+/**
+ * Retained provider history must not replay the private widget protocol. A
+ * frame-only response keeps one neutral assistant row so the transcript stays
+ * well formed without teaching later turns to imitate the control syntax.
+ */
+export function sanitizeWorkshopWidgetRecommendationForRetention(content: string): string {
+  const stripped = stripWorkshopWidgetRecommendationControl(content).trim();
+  return stripped || '[Widget setup delivered through the Workshop interface.]';
 }

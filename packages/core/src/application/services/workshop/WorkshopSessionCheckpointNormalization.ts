@@ -72,7 +72,10 @@ export function normalizeWorkshopSessionCheckpointForHydration(
       defaultedProactiveAssistance = true;
       normalizedTurn = {
         ...normalizedTurn,
-        behavior: { ...behavior, proactiveAssistance: true }
+        // Historical turns predate this permission and therefore could not
+        // have exercised it. Preserve audit truth even though the live room
+        // default for new/current behavior is intentionally on.
+        behavior: { ...behavior, proactiveAssistance: false }
       };
     }
     if (!turn.capability || turn.capability.invokedBy !== undefined) {

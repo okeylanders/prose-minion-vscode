@@ -130,6 +130,12 @@ export interface AgentRunOptions {
   readonly tools?: OpenRouterWebSearchTool[];
   /** Optional provider-normalized reasoning budget for a bounded operation. */
   readonly reasoning?: OpenRouterReasoningOptions;
+  /**
+   * Deterministic final-response cleanup applied only to the assistant message
+   * committed into retained provider history. The returned `rawContent` and
+   * visible result remain untouched so the owning domain can parse controls.
+   */
+  readonly retainedAssistantContentSanitizer?: (content: string) => string;
 }
 
 export interface InitialRunRequest {

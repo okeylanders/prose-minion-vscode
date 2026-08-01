@@ -35,7 +35,8 @@ export interface WorkshopSheetItem {
   unavailable?: boolean;
   unavailableLabel?: string;
   /** Footer note shown while this item is selected (e.g. its room lifetime). */
-  lifecycleNote?: string;
+  /** Contextual footer copy for the selected item. */
+  selectionNote?: string;
 }
 
 export interface WorkshopSheetGroup {
@@ -165,8 +166,8 @@ export const WorkshopSheetBrowser: React.FC<WorkshopSheetBrowserProps> = ({
               </span>
               <b>{selected.name}</b>
               {selected.tag && <TagPill tag={selected.tag} />}
-              {selected.lifecycleNote && (
-                <span className="pm-ws-sb-sum-note">{selected.lifecycleNote}</span>
+              {selected.selectionNote && (
+                <span className="pm-ws-sb-sum-note">{selected.selectionNote}</span>
               )}
             </>
           ) : (

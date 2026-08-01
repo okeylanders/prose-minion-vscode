@@ -427,7 +427,10 @@ export class AgentRunEngine {
         this.outputChannel?.appendLine(`[AgentRunEngine] ${policy.id} completed with no visible final prose.`);
       }
       if (!cancelled) {
-        pendingMessages.push({ role: 'assistant', content: visibleContent });
+        const retainedAssistantContent = runOptions.retainedAssistantContentSanitizer
+          ? runOptions.retainedAssistantContentSanitizer(visibleContent)
+          : visibleContent;
+        pendingMessages.push({ role: 'assistant', content: retainedAssistantContent });
         this.conversationManager.addMessages(conversationId, pendingMessages);
         if (collectedSources.length > 0) {
           // Manifest rows commit ONLY beside a committed turn (Phase 7):
