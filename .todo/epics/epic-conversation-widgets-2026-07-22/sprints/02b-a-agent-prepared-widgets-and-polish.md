@@ -88,6 +88,11 @@ The writer still owns every send, widget open, and commit.
      the closed assistant-result naming contract; and
    - close the modal as soon as a valid commit is dispatched, while routing a
      later host failure to a Workshop-level error toast.
+8. Harden repeat persona recommendations: make the one-widget limit explicitly
+   per response, interpolate every Gesture Playground field ceiling from the
+   shared prompt budgets into the persona contract, and report rejected frames
+   with the offending field's actual/maximum length, a Workshop toast, and the
+   bounded raw response in the local output log.
 
 ## Technical-Debt Boundary
 
@@ -121,5 +126,9 @@ conditional string splice.
 - Gesture continuation controls follow the alternatives, the Gesture Dictionary
   can be copied or saved as a named assistant artifact, and a valid commit
   closes the sheet without waiting for the persona response.
+- Earlier widget chips never suppress a fresh recommendation; persona-prefilled
+  fields are instructed by the same limits the parser enforces, and a rejected
+  recommendation leaves a field-specific toast and diagnostic trail instead of
+  an unexplained empty assistant bubble.
 - Focused component, prompt, persistence, and architecture tests pass, followed
   by the full project verification suite.

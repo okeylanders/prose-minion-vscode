@@ -524,6 +524,8 @@ export class WorkshopHandler {
       status: (status, tickerMessage) => this.sendStatus(status, undefined, tickerMessage),
       error: (errorMessage, details) =>
         this.sendError('workshop.run_tool', errorMessage, details),
+      widgetRecommendationRejected: (errorMessage, details) =>
+        this.sendError('workshop.widget_recommendation', errorMessage, details),
       settled: (requestId) => this.settleActiveRun(requestId)
     });
   }
@@ -781,7 +783,9 @@ export class WorkshopHandler {
             turnCompleted: (turn) => this.postTurn(turn),
             status: (status) => this.sendStatus(status),
             error: (errorMessage, details) =>
-              this.sendError('workshop.invite_guest', errorMessage, details)
+              this.sendError('workshop.invite_guest', errorMessage, details),
+            widgetRecommendationRejected: (errorMessage, details) =>
+              this.sendError('workshop.widget_recommendation', errorMessage, details)
           }
         });
         if (assistantTurn) {
@@ -1246,7 +1250,9 @@ export class WorkshopHandler {
           turnCompleted: (turn) => this.postTurn(turn),
           status: (status) => this.sendStatus(status),
           error: (errorMessage, details) =>
-            this.sendError('workshop.send_message', errorMessage, details)
+            this.sendError('workshop.send_message', errorMessage, details),
+          widgetRecommendationRejected: (errorMessage, details) =>
+            this.sendError('workshop.widget_recommendation', errorMessage, details)
         }
       });
       if (assistantTurn && roomDelivery) {

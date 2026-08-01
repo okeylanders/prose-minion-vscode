@@ -232,8 +232,18 @@ export const WorkshopApp: React.FC = () => {
 
   const handleErrorMessage = React.useCallback(
     (message: ErrorMessage) => {
-      workshop.handleErrorMessage(message);
       const source = message.payload?.source;
+      if (source === 'workshop.widget_recommendation') {
+        showToast({
+          message: message.payload.details
+            ? `${message.payload.message} ${message.payload.details}`
+            : message.payload.message,
+          icon: 'x',
+          tone: 'error'
+        });
+        return;
+      }
+      workshop.handleErrorMessage(message);
       if (typeof source === 'string' && source.startsWith('file_ops')) {
         showToast({ message: message.payload.message, icon: 'x', tone: 'error' });
       }

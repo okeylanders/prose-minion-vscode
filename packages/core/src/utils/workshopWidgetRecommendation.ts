@@ -28,7 +28,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
   '<workshop-widget-recommendation-contract>',
   'The writer has two interactive widgets you may recommend: Gesture Playground explores one exact embodied beat; Lexical Gravity installs a writer-approved lexical field that influences story prose only when prose is composed or revised.',
-  'Recommend at most one widget, and only when it would genuinely help. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
+  'Each response is independent: recommend at most one widget in this response, and only when it would genuinely help. A recommendation or uncommitted chip from an earlier turn never counts against this response and never suppresses a fresh recommendation. When the writer explicitly asks you to prepare or configure a live widget, emit a fresh, complete frame if the supplied material supports its required fields; do not merely acknowledge the request. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
   `For Lexical Gravity, propose but never install. Choose one starter lens slug from photography, music, mathematics, weather, botany, architecture; weight must be ${LEXICAL_GRAVITY_WEIGHT.minimum}–${LEXICAL_GRAVITY_WEIGHT.maximum} in steps of ${LEXICAL_GRAVITY_WEIGHT.step}; reach is ${LEXICAL_GRAVITY_REACH.values.join(', ')}; metaphor-pull is true or false. The writer can change every value before explicitly installing it.`,
   'Lexical Gravity frame:',
   '### Try a widget',
@@ -51,12 +51,12 @@ export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
   '</workshop-widget-recommendation>',
   'Gesture Playground frame:',
   'This is a quality-first handoff, not a token-saving exercise. Do not be thrifty, terse, or generically minimal in the prefill fields. Supply enough grounded material that the dictionary model can understand the dramatic problem without reconstructing it from scraps. Source references save duplicate transcription; they are not permission to thin out the creative direction or character thinking:',
-  '- `target-phrase`: copy the exact phrase from the supplied passage, without quotation marks or paraphrase.',
-  '- `writer-instructions`: give several substantive, specific sentences explaining the beat\'s dramatic job, what an alternative must preserve, what to avoid, and which creative territory is worth exploring.',
-  '- `surrounding-context`: copy a generous, consecutive stretch of the supplied prose around the phrase—normally the full relevant beat and useful paragraphs before and after, up to the field limit. When a source reference below carries the full excerpt or attachment, include enough exact consecutive local prose to locate the beat without pointlessly copying the whole referenced source. Preserve source wording; never summarize, pad, or invent passage text.',
-  '- `source-references`: use `active-excerpt` and/or exact `context-attachment:ctx-N` reference identifiers shown in the supplied Workshop material when the dictionary model would benefit from reading those sources in full. Use `none` when no source should ride. Never invent an identifier.',
-  '- `character-notes`: give several grounded sentences about who this person is in this beat: immediate pressure, intention or defense, relationship dynamics, self-control, physical habits or constraints, and relevant voice/history. Distinguish supplied facts from reasonable scene inference; never invent project facts.',
-  'The four prose fields and the source-references field are required when you recommend the widget. If the supplied material cannot support them honestly, omit the recommendation. Everything remains editable and nothing runs until the writer chooses it. Do not explain widget mechanics in prose—the chip and prefilled form do that.',
+  `- \`target-phrase\`: copy the exact phrase from the supplied passage, without quotation marks or paraphrase. Maximum ${PROMPT_BUDGETS.workshopWidgets.gestureTargetPhraseCharacters.toLocaleString('en-US')} characters.`,
+  `- \`writer-instructions\`: give substantive, specific direction explaining the beat's dramatic job, what an alternative must preserve, what to avoid, and which creative territory is worth exploring. Be complete but stay within ${PROMPT_BUDGETS.workshopWidgets.gestureWriterInstructionsCharacters.toLocaleString('en-US')} characters.`,
+  `- \`surrounding-context\`: copy a generous, consecutive stretch of the supplied prose around the phrase—normally the full relevant beat and useful paragraphs before and after—within ${PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters.toLocaleString('en-US')} characters. When a source reference below carries the full excerpt or attachment, include enough exact consecutive local prose to locate the beat without pointlessly copying the whole referenced source. Preserve source wording; never summarize, pad, or invent passage text.`,
+  `- \`source-references\`: use \`active-excerpt\` and/or exact \`context-attachment:ctx-N\` reference identifiers shown in the supplied Workshop material when the dictionary model would benefit from reading those sources in full. Use \`none\` when no source should ride. Never invent an identifier. The complete field may contain at most ${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferences} references and ${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters.toLocaleString('en-US')} characters.`,
+  `- \`character-notes\`: give grounded sentences about who this person is in this beat: immediate pressure, intention or defense, relationship dynamics, self-control, physical habits or constraints, and relevant voice/history. Distinguish supplied facts from reasonable scene inference; never invent project facts. Be complete but stay within ${PROMPT_BUDGETS.workshopWidgets.gestureCharacterNotesCharacters.toLocaleString('en-US')} characters.`,
+  'The four prose fields and the source-references field are required when you recommend the widget. If the supplied material cannot support them honestly, omit a discretionary recommendation; for an explicit writer request, say what material is missing instead of fabricating a frame or merely acknowledging the request. Everything remains editable and nothing runs until the writer chooses it. Do not explain widget mechanics in prose—the chip and prefilled form do that.',
   'Use this reserved heading and these tags exactly once, alone on their lines. Do not repeat the heading or use any of the reserved tags inside a field:',
   '### Try a widget',
   '<workshop-widget-recommendation version="1">',
@@ -130,14 +130,38 @@ export type WorkshopWidgetRecommendationRejection =
   | 'invalid_field'
   | 'field_too_long';
 
+export type WorkshopWidgetRecommendationField =
+  | 'targetPhrase'
+  | 'writerInstructions'
+  | 'contextText'
+  | 'sourceReferences'
+  | 'characterNotes';
+
+interface WorkshopWidgetRecommendationRejectedBase {
+  outcome: 'rejected';
+  recommendation?: undefined;
+}
+
 export type WorkshopWidgetRecommendationInspection =
   | { outcome: 'absent'; recommendation?: undefined }
   | { outcome: 'accepted'; recommendation: WorkshopWidgetRecommendation }
-  | {
-      outcome: 'rejected';
-      recommendation?: undefined;
-      rejection: WorkshopWidgetRecommendationRejection;
-    };
+  | (WorkshopWidgetRecommendationRejectedBase & {
+      rejection: Exclude<
+        WorkshopWidgetRecommendationRejection,
+        'field_too_long' | 'frame_too_long'
+      >;
+    })
+  | (WorkshopWidgetRecommendationRejectedBase & {
+      rejection: 'field_too_long';
+      field: WorkshopWidgetRecommendationField;
+      actualCharacters: number;
+      maximumCharacters: number;
+    })
+  | (WorkshopWidgetRecommendationRejectedBase & {
+      rejection: 'frame_too_long';
+      actualCharacters: number;
+      maximumCharacters: number;
+    });
 
 /**
  * Parse one exact `### Try a widget` section carrying a versioned multiline
@@ -169,7 +193,12 @@ export function inspectWorkshopWidgetRecommendation(
     + PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters
     + PROMPT_BUDGETS.workshopWidgets.gestureRecommendationFrameAllowanceCharacters;
   if (sectionCharacters > maximumSectionCharacters) {
-    return { outcome: 'rejected', rejection: 'frame_too_long' };
+    return {
+      outcome: 'rejected',
+      rejection: 'frame_too_long',
+      actualCharacters: sectionCharacters,
+      maximumCharacters: maximumSectionCharacters
+    };
   }
 
   const widgetId = extractWidgetId(sectionLines);
@@ -233,17 +262,45 @@ export function inspectWorkshopWidgetRecommendation(
   const contextText = field(SURROUNDING_CONTEXT_START, SURROUNDING_CONTEXT_END);
   const sourceReferenceText = field(SOURCE_REFERENCES_START, SOURCE_REFERENCES_END);
   const characterNotes = field(CHARACTER_NOTES_START, CHARACTER_NOTES_END);
-  const fields: Array<{ value: string; maximum: number }> = [
-    { value: targetPhrase, maximum: budget.gestureTargetPhraseCharacters },
-    { value: writerInstructions, maximum: budget.gestureWriterInstructionsCharacters },
-    { value: contextText, maximum: budget.gestureContextCharacters },
-    { value: characterNotes, maximum: budget.gestureCharacterNotesCharacters }
+  const fields: Array<{
+    field: WorkshopWidgetRecommendationField;
+    value: string;
+    maximum: number;
+  }> = [
+    {
+      field: 'targetPhrase',
+      value: targetPhrase,
+      maximum: budget.gestureTargetPhraseCharacters
+    },
+    {
+      field: 'writerInstructions',
+      value: writerInstructions,
+      maximum: budget.gestureWriterInstructionsCharacters
+    },
+    { field: 'contextText', value: contextText, maximum: budget.gestureContextCharacters },
+    {
+      field: 'sourceReferences',
+      value: sourceReferenceText,
+      maximum: budget.gestureSourceReferenceCharacters
+    },
+    {
+      field: 'characterNotes',
+      value: characterNotes,
+      maximum: budget.gestureCharacterNotesCharacters
+    }
   ];
   if (fields.some(({ value }) => value.length === 0)) {
     return { outcome: 'rejected', rejection: 'invalid_field' };
   }
-  if (fields.some(({ value, maximum }) => value.length > maximum)) {
-    return { outcome: 'rejected', rejection: 'field_too_long' };
+  const overlongField = fields.find(({ value, maximum }) => value.length > maximum);
+  if (overlongField) {
+    return {
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: overlongField.field,
+      actualCharacters: overlongField.value.length,
+      maximumCharacters: overlongField.maximum
+    };
   }
   if (
     normalizeEvidenceText(contextText).includes(normalizeEvidenceText(targetPhrase)) === false

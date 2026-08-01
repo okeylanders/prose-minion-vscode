@@ -78,6 +78,25 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
     expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
       'The four prose fields and the source-references field are required'
     );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      'A recommendation or uncommitted chip from an earlier turn never counts against this response'
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureTargetPhraseCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureWriterInstructionsCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureCharacterNotesCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferences} references and `
+      + `${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters.toLocaleString('en-US')} characters`
+    );
     for (const tag of [
       'target-phrase',
       'writer-instructions',
@@ -232,10 +251,6 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     ['path-shaped value', '/workspace/chapter.md'],
     ['invented id shape', 'context-attachment:ctx-0'],
     [
-      'serialized reference text over budget',
-      `context-attachment:ctx-${'9'.repeat(500)}`
-    ],
-    [
       'too many references',
       Array.from({ length: PROMPT_BUDGETS.workshopWidgets.gestureSourceReferences + 1 },
         (_, index) => `context-attachment:ctx-${index + 1}`).join('\n')
@@ -244,6 +259,20 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     expect(
       inspectWorkshopWidgetRecommendation(recommendationFrame({ sourceReferences }))
     ).toEqual({ outcome: 'rejected', rejection: 'invalid_field' });
+  });
+
+  it('identifies source-reference text that exceeds its interpolated limit', () => {
+    const maximum = PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters;
+    const sourceReferences = `context-attachment:ctx-${'9'.repeat(maximum)}`;
+    expect(
+      inspectWorkshopWidgetRecommendation(recommendationFrame({ sourceReferences }))
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: 'sourceReferences',
+      actualCharacters: sourceReferences.length,
+      maximumCharacters: maximum
+    });
   });
 
   it('rejects context that does not contain the exact target evidence', () => {
@@ -339,7 +368,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       inspectWorkshopWidgetRecommendation(
         recommendationFrame({ [field]: 'x'.repeat(maximum + 1) })
       )
-    ).toEqual({ outcome: 'rejected', rejection: 'field_too_long' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field,
+      actualCharacters: maximum + 1,
+      maximumCharacters: maximum
+    });
   });
 
   it('enforces the target-phrase bound while keeping it grounded in context', () => {
@@ -354,7 +389,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
       targetPhrase: overBound,
       surroundingContext: overBound
-    }))).toEqual({ outcome: 'rejected', rejection: 'field_too_long' });
+    }))).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: 'targetPhrase',
+      actualCharacters: maximum + 1,
+      maximumCharacters: maximum
+    });
   });
 
   it('enforces the surrounding-context bound while retaining target evidence', () => {
@@ -369,7 +410,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
       targetPhrase,
       surroundingContext: `${atBound}x`
-    }))).toEqual({ outcome: 'rejected', rejection: 'field_too_long' });
+    }))).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: 'contextText',
+      actualCharacters: maximum + 1,
+      maximumCharacters: maximum
+    });
   });
 
   it('rejects an oversized whole frame before inspecting its fields', () => {
@@ -377,7 +424,12 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       inspectWorkshopWidgetRecommendation(
         recommendationFrame({ surroundingContext: 'x'.repeat(15_000) })
       )
-    ).toEqual({ outcome: 'rejected', rejection: 'frame_too_long' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'frame_too_long',
+      actualCharacters: expect.any(Number),
+      maximumCharacters: expect.any(Number)
+    });
   });
 });
 
