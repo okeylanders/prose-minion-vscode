@@ -649,7 +649,7 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
   }
   function openWidgets(){
     if (typeof buildWidgetBrowser !== 'function'){ toast('Widgets browser'); return; }
-    cwOpen(buildWidgetBrowser(w=>{ cwClose(); toast('Opening '+w.name+'…','sparkle'); }, true), true);
+    cwOpen(buildWidgetBrowser((w,how)=>{ cwClose(); toast(how==='ask'?('Asking '+hostName(state.host)+' to configure '+w.name+'…'):('Opening '+w.name+'…'),'sparkle'); }, true), true);
   }
 
   /* =======================================================================

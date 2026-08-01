@@ -72,7 +72,7 @@ function cwSheetBrowser(cfg){
     body+=`<div class="cwx-gh"><span class="t">${g.name}</span><span class="d">${g.desc||''}</span><hr></div><div class="cwx-grid">`;
     g.items.forEach(w=>{
       body+=`<button class="cwx-card${w.live?'':' dis'}" data-wid="${w.id}" aria-pressed="false"${w.live?'':' title="Not playable in this spread — visible so the registry ships with honest state"'}>
-        <span class="chk">${cwIc('check',{size:12,sw:2.6})}</span>
+        ${w.live?`<span class="chk">${cwIc('check',{size:12,sw:2.6})}</span>`:'<span class="soon">Coming soon</span>'}
         <span class="ic">${cwIc(w.icon,{size:16,sw:1.7})}</span>
         <span class="nm">${w.name}</span>
         <span class="tags">${w.railT?`<span class="cw-rail ${w.rail}">${w.railT}</span>`:''}${w.tag?`<span class="cw-stag">${w.tag}</span>`:''}</span>
@@ -86,38 +86,45 @@ function cwSheetBrowser(cfg){
     <footer class="cwx-foot">
       <div class="sum"><span class="none">${cfg.emptyNote}</span></div>
       ${cfg.inModal?'<button class="cwx-cancel">Cancel</button>':''}
-      <button class="cwx-launch" disabled><span class="n">${cfg.verb} a ${cfg.noun}</span></button>
+      <button class="cwx-launch" disabled><span class="n">${cfg.ask?cfg.openLabel:cfg.verb+' a '+cfg.noun}</span></button>
+      ${cfg.ask?`<button class="cwx-ask" disabled><span class="n">${cfg.ask}</span></button>`:''}
     </footer>`);
-  const sum=el.querySelector('.sum'), launch=el.querySelector('.cwx-launch');
+  const sum=el.querySelector('.sum'), launch=el.querySelector('.cwx-launch'), ask=el.querySelector('.cwx-ask');
   const find=id=>{for(const g of cfg.groups){const w=g.items.find(x=>x.id===id);if(w)return w;}};
   let sel=null;
   const setSel=id=>{
     sel=id;
     el.querySelectorAll('.cwx-card').forEach(c=>{const on=c.dataset.wid===id;c.classList.toggle('sel',on);c.setAttribute('aria-pressed',String(on));});
     const w=id&&find(id);
-    if(!w){ sum.innerHTML=`<span class="none">${cfg.emptyNote}</span>`; launch.disabled=true; launch.innerHTML=`<span class="n">${cfg.verb} a ${cfg.noun}</span>`; launch.title=''; return; }
+    if(!w){ sum.innerHTML=`<span class="none">${cfg.emptyNote}</span>`; launch.disabled=true; launch.innerHTML=`<span class="n">${cfg.ask?cfg.openLabel:cfg.verb+' a '+cfg.noun}</span>`; launch.title=''; if(ask) ask.disabled=true; return; }
     sum.innerHTML=`<span class="ic">${cwIc(w.icon,{size:15,sw:1.8})}</span><b>${w.name}</b>${w.railT?`<span class="cw-rail ${w.rail}">${w.railT}</span>`:''}<span class="note">${w.cost||CW_RAILCOST[w.rail]||''}</span>`;
     launch.disabled=!w.live;
-    launch.innerHTML=`<span class="n">${w.live?cfg.verb+' '+w.name:'Not in this spread'}</span>`;
+    launch.innerHTML=`<span class="n">${w.live?(cfg.ask?cfg.openLabel:cfg.verb+' '+w.name):'Not in this spread'}</span>`;
     launch.title=w.live?'':'Playable in its own spread — listed here so the registry is honest';
+    if(ask){ ask.disabled=!w.live; ask.title=launch.title; }
   };
   el.querySelector('.cwx-body').addEventListener('click',e=>{
     const c=e.target.closest('.cwx-card'); if(!c) return;
     setSel(sel===c.dataset.wid?null:c.dataset.wid);
   });
   launch.addEventListener('click',()=>{ const w=sel&&find(sel); if(w&&w.live) cfg.onLaunch(w); });
+  if(ask) ask.addEventListener('click',()=>{ const w=sel&&find(sel); if(w&&w.live&&cfg.onAsk) cfg.onAsk(w); });
   const cx=el.querySelector('.cwx-cancel'); if(cx) cx.addEventListener('click',cwClose);
   return el;
 }
 
 /* ---------- widget browser ---------- */
-function buildWidgetBrowser(onPick, inModal, liveIds){
+function buildWidgetBrowser(onPick, inModal, liveIds, onAsk){
+  const all=[]; CW_WIDGETS.forEach(g=>all.push(...g.items));
+  const readyIds=['gesture','gravity'];
+  const groups=[{group:'Ready now',desc:'Built and playable today — each also lives in its home section below.',items:readyIds.map(id=>all.find(w=>w.id===id))},...CW_WIDGETS];
   return cwSheetBrowser({
     kicker:'Workshop · Composer', title:'Widgets', noun:'widget', verb:'Open',
+    openLabel:'Open widget', ask:'Ask agent to configure, then open',
     sub:'Interactive surfaces you <b>play with before anything commits</b>. Playgrounds and Explorers ride one turn; Influences stand until unpinned; Resources outlive the session.',
     emptyNote:'Select a widget — the rail on each card states what opening it can cost.',
-    groups:CW_WIDGETS.map(g=>({name:g.group,desc:g.desc,items:g.items.map(w=>({...w,live:liveIds?liveIds.includes(w.id):w.live}))})),
-    inModal, onLaunch:onPick
+    groups:groups.map(g=>({name:g.group,desc:g.desc,items:g.items.map(w=>({...w,live:liveIds?liveIds.includes(w.id):(w.live||readyIds.includes(w.id))}))})),
+    inModal, onLaunch:onPick, onAsk:onAsk||((w)=>onPick(w,'ask'))
   });
 }
 
@@ -210,7 +217,7 @@ function mountWidgetFlow(id){
     thread.appendChild(m); thread.scrollTop=thread.scrollHeight; return m;
   };
   const openGesture=(opts)=> cwOpen(buildGesturePanel(Object.assign({live:true,onCommit:commitDraft},opts)));
-  const openBrowser=()=> cwOpen(buildWidgetBrowser(w=>{ if(w.id==='gesture') openGesture({}); }, true), true);
+  const openBrowser=()=> cwOpen(buildWidgetBrowser(w=>{ if(w.id==='gesture') openGesture({}); }, true, ['gesture']), true);
 
   function commitDraft(d){
     cwClose();
@@ -247,7 +254,7 @@ function mountWidgetFlow(id){
 
 /* ---------- static frame mounts ---------- */
 function mountBrowserFrame(id, openGesture){
-  document.getElementById(id).appendChild(buildWidgetBrowser(w=>{ if(w.id==='gesture') openGesture({}); }, false));
+  document.getElementById(id).appendChild(buildWidgetBrowser(w=>{ if(w.id==='gesture') openGesture({}); }, false, ['gesture']));
 }
 function mountGestureFrame(id, opts){
   document.getElementById(id).appendChild(buildGesturePanel(Object.assign({live:false},opts)));

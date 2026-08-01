@@ -32,7 +32,16 @@ styles, scripts, and assets — no build step.
   truth: new files `Prose Minion - Lexical Gravity.html` + `pm-gravity.js`.
   `pm-gravity.css` was already pulled on 07-29 as a Gesture Playground
   stylesheet dependency and was verified unchanged against the remote at this
-  pull — its 96 selectors already cover the whole Spread 02 panel).
+  pull — its 96 selectors already cover the whole Spread 02 panel);
+  **widget browser modal re-pulled 2026-07-31** (the Widgets modal reached from
+  the Workshop composer — `pm-widgets.js` + `pm-widgets.css` + the `openWidgets`
+  call in `pm-workshop.js`. Three changes: unavailable widgets now carry an
+  explicit **Coming soon** pill instead of an empty checkbox; the footer gains a
+  second, secondary action — **Ask agent to configure, then open** beside
+  **Open widget** — dispatched through a new `onAsk` seam; and a **Ready now**
+  group pins the built-and-playable widgets (Gesture Playground, Lexical
+  Gravity) to the top of the grid while they keep their home-section entries.
+  `Prose Minion - Assistant Tab.html` itself was verified byte-identical.)
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
