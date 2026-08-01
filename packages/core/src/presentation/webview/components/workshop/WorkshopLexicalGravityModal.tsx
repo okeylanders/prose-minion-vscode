@@ -13,6 +13,7 @@ import {
 } from '@messages';
 import { ModelOption, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
+import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { ModelSelector } from '@components/shared/ModelSelector';
 import { WorkshopModalShell } from './WorkshopModalShell';
 import {
@@ -63,6 +64,8 @@ type WordPart = 'nouns' | 'verbs' | 'modifiers';
 let lexicalTokenCounter = 0;
 const mintToken = (kind: string): string =>
   `lexical-${kind}-${Date.now()}-${++lexicalTokenCounter}`;
+const PREVIEW_SOURCE_MIN_HEIGHT = 74;
+const PREVIEW_SOURCE_HEIGHT_CAP = 240;
 
 const weightLabel = (weight: number): string =>
   weight < 25 ? 'a trace' : weight < 55 ? 'present, not loud' : weight < 85 ? 'forward' : 'saturated';
@@ -134,6 +137,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [buildError, setBuildError] = React.useState<string>();
   const [buildNotice, setBuildNotice] = React.useState<string>();
   const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
+  const previewSourceRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     if (!open) {return;}
@@ -196,6 +200,22 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const directivePreview = draft
     ? buildLexicalGravityDirectiveFrame({ id: 'pd-preview', revision: 1 }, draft)
     : undefined;
+
+  const resizePreviewSource = React.useCallback((textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) {return;}
+    textarea.style.height = 'auto';
+    const contentHeight = textarea.scrollHeight;
+    const nextHeight = Math.min(
+      Math.max(contentHeight, PREVIEW_SOURCE_MIN_HEIGHT),
+      PREVIEW_SOURCE_HEIGHT_CAP
+    );
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = contentHeight > PREVIEW_SOURCE_HEIGHT_CAP ? 'auto' : 'hidden';
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (previewVisible) {resizePreviewSource(previewSourceRef.current);}
+  }, [previewSource, previewVisible, resizePreviewSource]);
 
   React.useEffect(() => {
     if (!previewToken || previewResult?.token !== previewToken) {return;}
@@ -568,11 +588,13 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
               <span className="pm-ws-lg-preview-source">
                 <b>Before</b>
                 <textarea
+                  ref={previewSourceRef}
                   aria-label="Before preview prose"
                   value={previewSource}
                   rows={3}
                   maxLength={PROMPT_BUDGETS.workshopWidgets.lexicalSampleCharacters}
                   disabled={previewControlsLocked}
+                  onInput={(event) => resizePreviewSource(event.currentTarget)}
                   onChange={(event) => {
                     setPreviewSourceOverride(event.target.value);
                     setPreview(undefined);
@@ -594,7 +616,15 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                   </span>
                 </span>
               )}
-              {preview && <span><b>After</b> “{preview.text}”</span>}
+              {preview && (
+                <div className="pm-ws-lg-preview-result">
+                  <b>After</b>
+                  <MarkdownRenderer
+                    content={preview.text}
+                    className="pm-ws-lg-preview-markdown"
+                  />
+                </div>
+              )}
             </div>
           )}
           <label className="pm-ws-lg-slider pm-ws-lg-preview-weight">

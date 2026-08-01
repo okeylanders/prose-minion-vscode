@@ -139,11 +139,23 @@ export class LexicalGravityModelService {
     if (typeof content !== 'string') {
       throw new Error('response did not contain text');
     }
-    const body = content.replace(/\r\n?/g, '\n').trim();
+    const normalized = content.replace(/\r\n?/g, '\n').trim();
+    const body = this.stripEnclosingDoubleQuotes(normalized);
     if (body && body.length <= BUDGET.lexicalPreviewCharacters) return body;
     throw new Error(
       `response body must be 1–${BUDGET.lexicalPreviewCharacters} characters`
     );
+  }
+
+  /** Remove only a single whole-response wrapper, preserving prose-internal dialogue. */
+  private stripEnclosingDoubleQuotes(content: string): string {
+    const quotePairs = [['"', '"'], ['“', '”']] as const;
+    const pair = quotePairs.find(([opening, closing]) =>
+      content.startsWith(opening) && content.endsWith(closing)
+    );
+    return pair && content.length >= 2
+      ? content.slice(pair[0].length, -pair[1].length).trim()
+      : content;
   }
 
   private parseCandidates(

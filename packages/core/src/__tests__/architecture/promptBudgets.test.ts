@@ -11,7 +11,7 @@ const TEST_ROOT = path.join(SRC_ROOT, '__tests__');
 const LOOKS_LIKE_LIMIT = /(?:^MAX(?:_|$)|_(?:MAX|LIMIT|CAP|CEILING|THRESHOLD)(?:_|$))/;
 
 // Existing bounds that are explicitly not prompt truncation: provider
-// concurrency and the webview-safe error display cap.
+// concurrency, protocol tolerance, and bounded webview layout.
 const NON_PROMPT_LIMITS = new Set([
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
@@ -19,6 +19,7 @@ const NON_PROMPT_LIMITS = new Set([
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_BIGRAMS_PER_BATCH',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_TRIGRAMS_PER_BATCH',
   'presentation/webview/components/tabs/AnalysisTab.tsx:MAX_EXCERPT_LENGTH',
+  'presentation/webview/components/workshop/WorkshopLexicalGravityModal.tsx:PREVIEW_SOURCE_HEIGHT_CAP',
   'shared/types/messages/ui.ts:WEBVIEW_ERROR_TEXT_MAX'
 ]);
 

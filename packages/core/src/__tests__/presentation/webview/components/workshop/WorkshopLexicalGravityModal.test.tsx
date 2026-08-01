@@ -118,7 +118,7 @@ describe('WorkshopLexicalGravityModal', () => {
         preview: {
           configKey: 'music|40|3|1',
           sourceText: builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample,
-          text: 'A resonant preview.'
+          text: 'A *resonant* preview.'
         }
       }}
     />);
@@ -129,6 +129,11 @@ describe('WorkshopLexicalGravityModal', () => {
     );
     expect(view.container.querySelector('.pm-ws-lg-preview')?.textContent)
       .toContain('A resonant preview.');
+    const after = view.container.querySelector('.pm-ws-lg-preview-result')!;
+    expect(after.firstElementChild?.textContent).toBe('After');
+    expect(after.children[1]?.classList).toContain('markdown-content');
+    expect(after.querySelector('em')?.textContent).toBe('resonant');
+    expect(after.textContent).not.toContain('“');
     const preview = view.container.querySelector('.pm-ws-lg-preview')!;
     const weight = screen.getByRole('slider', { name: /Weight/ }).closest('label')!;
     const previewAgain = screen.getByRole('button', { name: 'Preview again' });
@@ -178,9 +183,17 @@ describe('WorkshopLexicalGravityModal', () => {
     const customSource = 'Elias watched rain gather in the empty birdbath.';
     const before = screen.getByRole('textbox', { name: 'Before preview prose' });
     expect((before as HTMLTextAreaElement).value).toBe(generatedSource);
+    Object.defineProperty(before, 'scrollHeight', { configurable: true, value: 180 });
     fireEvent.change(before, { target: { value: customSource } });
     expect((before as HTMLTextAreaElement).value).toBe(customSource);
+    expect((before as HTMLTextAreaElement).style.height).toBe('180px');
+    expect((before as HTMLTextAreaElement).style.overflowY).toBe('hidden');
     expect(screen.queryByText(/generated after prose/)).toBeNull();
+
+    Object.defineProperty(before, 'scrollHeight', { configurable: true, value: 400 });
+    fireEvent.input(before);
+    expect((before as HTMLTextAreaElement).style.height).toBe('240px');
+    expect((before as HTMLTextAreaElement).style.overflowY).toBe('auto');
 
     fireEvent.change(screen.getByRole('slider', { name: /Weight/ }), {
       target: { value: '80' }

@@ -60,10 +60,13 @@ The writer still owns every send, widget open, and commit.
    - generated preview above `Preview the Effect`, with the disclosure below;
    - the Weight control immediately between the preview and its action;
    - a generated-by-default Before passage that becomes quietly editable in
-     place and remains the preview source while the writer tunes controls;
+     place, auto-grows to a bounded height, and remains the preview source while
+     the writer tunes controls;
    - three stable lens-card skeletons while Build Lens drafts its candidates;
    - an After skeleton that holds the comparison row while a preview is
      generating and yields to prose or disappears on failure;
+   - normalized whole-response quotes and a block-level, sanitized Markdown
+     After passage;
    - edit action label `Apply`; and
    - neutral edit/lifecycle language.
 5. Keep plain-prose previews genuinely unstructured: ask for only the rewritten
