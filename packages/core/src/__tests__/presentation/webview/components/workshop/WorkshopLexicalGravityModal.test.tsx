@@ -99,6 +99,8 @@ describe('WorkshopLexicalGravityModal', () => {
     fireEvent.click(screen.getByRole('switch'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    expect(screen.getByRole('status', { name: 'Generating After preview' })).toBeTruthy();
+    expect(view.container.querySelectorAll('.pm-ws-lg-preview-skeleton i')).toHaveLength(3);
     expect(props.onPreview).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
@@ -121,6 +123,7 @@ describe('WorkshopLexicalGravityModal', () => {
       }}
     />);
 
+    expect(screen.queryByRole('status', { name: 'Generating After preview' })).toBeNull();
     expect(view.container.querySelector('.pm-ws-lg-preview')?.textContent).toContain(
       builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample
     );

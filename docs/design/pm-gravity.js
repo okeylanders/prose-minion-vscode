@@ -150,13 +150,13 @@ function buildGravityPanel(o){
       });
     }
   };
-  const renderPreview=includeAfter=>{
+  const renderPreview=(includeAfter,loading=false)=>{
     const L=LG_LENSES[cfg.lens];
     if(!previewShown){ prevslot.innerHTML=''; return; }
     const transformed=`${previewSource}${cfg.metaphor?' — '+L.meta:''}`;
     prevslot.innerHTML=`<div class="lg-preview"><div class="cap">one fast-tier call · sample pull at ${cfg.weight}%</div>
-      <div class="lg-preview-row before"><b>Before</b><textarea rows="3" maxlength="800">${cwEsc(previewSource)}</textarea></div>
-      ${includeAfter?`<div class="lg-preview-row after"><b>After</b><span>\u201C${cwEsc(transformed)}\u201D</span></div>`:''}</div>`;
+      <div class="lg-preview-row before"><b>Before</b><textarea rows="3" maxlength="800"${loading?' disabled':''}>${cwEsc(previewSource)}</textarea></div>
+      ${loading?'<div class="lg-preview-row after lg-preview-loading"><b>After</b><span class="lg-preview-skeleton"><i></i><i></i><i></i></span></div>':includeAfter?`<div class="lg-preview-row after"><b>After</b><span>\u201C${cwEsc(transformed)}\u201D</span></div>`:''}</div>`;
     prevslot.querySelector('textarea').addEventListener('input',e=>{
       previewSource=e.target.value; previewEdited=true; renderPreview(false);
       pv.innerHTML=`${cwIc('sparkle',{size:12,sw:1.8})} Preview the Effect`;
@@ -194,6 +194,7 @@ function buildGravityPanel(o){
   pv.addEventListener('click',()=>{
     if(pv.classList.contains('busy')) return;
     pv.classList.add('busy'); pv.innerHTML='One fast model call…';
+    previewShown=true; renderPreview(false,true);
     setTimeout(()=>{ pv.classList.remove('busy'); pv.innerHTML=`${cwIc('refresh',{size:12,sw:1.8})} Preview again`; showPreview(); },900);
   });
   if(o.preview){ showPreview(); pv.innerHTML=`${cwIc('refresh',{size:12,sw:1.8})} Preview again`; }

@@ -6181,6 +6181,15 @@
 [data-pm-surface="workshop"] .pm-ws-lg-preview-source textarea { width:100%;box-sizing:border-box;min-height:74px;padding:0 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--pm-text-2);font:italic 12.5px/1.65 var(--pm-sans);resize:vertical;cursor:text; }
 [data-pm-surface="workshop"] .pm-ws-lg-preview-source textarea:focus { outline:none;border-color:var(--pm-accent-lo);background:var(--pm-surface-2); }
 [data-pm-surface="workshop"] .pm-ws-lg-preview-source textarea:disabled { opacity:1;cursor:wait; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-loading { display:grid;grid-template-columns:51px minmax(0,1fr);align-items:start; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton { display:flex;flex-direction:column;gap:8px;padding:4px; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i { display:block;height:9px;border-radius:999px;background:linear-gradient(90deg,var(--pm-surface-2) 25%,var(--pm-surface-3) 50%,var(--pm-surface-2) 75%);background-size:200% 100%;animation:pm-ws-lg-preview-shimmer 1.25s ease-in-out infinite; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i:nth-child(2) { width:92%; }
+[data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i:nth-child(3) { width:68%; }
+@keyframes pm-ws-lg-preview-shimmer { from{background-position:200% 0}to{background-position:-200% 0} }
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-surface="workshop"] .pm-ws-lg-preview-skeleton i { animation:none;background:var(--pm-surface-3); }
+}
 
 /* Standing rail + auditable thread markers — generic shell, amber lifetime. */
 [data-pm-surface="workshop"] .pm-ws-standing-rail { margin:2px 16px 0; }

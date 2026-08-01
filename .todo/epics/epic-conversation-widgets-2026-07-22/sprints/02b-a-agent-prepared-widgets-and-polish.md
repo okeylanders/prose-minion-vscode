@@ -61,6 +61,8 @@ The writer still owns every send, widget open, and commit.
    - the Weight control immediately between the preview and its action;
    - a generated-by-default Before passage that becomes quietly editable in
      place and remains the preview source while the writer tunes controls;
+   - an After skeleton that holds the comparison row while a preview is
+     generating and yields to prose or disappears on failure;
    - edit action label `Apply`; and
    - neutral edit/lifecycle language.
 5. Make plain-prose previews tolerate model-added wrappers or repeated

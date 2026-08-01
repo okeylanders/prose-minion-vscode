@@ -90,6 +90,12 @@
 .lg-preview-row b{font:9.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-hi);font-style:normal}
 .lg-preview-row textarea{width:100%;box-sizing:border-box;min-height:74px;padding:0 4px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--text-2);font:italic 12.5px/1.65 var(--sans);resize:vertical;cursor:text}
 .lg-preview-row textarea:focus{outline:none;border-color:var(--accent-lo);background:var(--surface-2)}
+.lg-preview-skeleton{display:flex;flex-direction:column;gap:8px;padding:4px}
+.lg-preview-skeleton i{display:block;height:9px;border-radius:999px;background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:lg-preview-shimmer 1.25s ease-in-out infinite}
+.lg-preview-skeleton i:nth-child(2){width:92%}
+.lg-preview-skeleton i:nth-child(3){width:68%}
+@keyframes lg-preview-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.lg-preview-skeleton i{animation:none;background:var(--surface-3)}}
 /* active-directive indicator */
 .lg-active{display:flex;align-items:center;gap:9px;padding:7px 11px;border:1px solid rgba(226,178,74,.4);background:rgba(226,178,74,.07);border-radius:10px;margin:2px 0 10px;font-size:12px;color:var(--text-2)}
 .lg-active .pulse{flex:none;width:7px;height:7px;border-radius:50%;background:var(--amber);animation:lgp 2s infinite}

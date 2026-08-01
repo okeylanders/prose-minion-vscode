@@ -558,6 +558,20 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                   }}
                 />
               </span>
+              {previewToken && (
+                <span
+                  className="pm-ws-lg-preview-loading"
+                  role="status"
+                  aria-label="Generating After preview"
+                >
+                  <b>After</b>
+                  <span className="pm-ws-lg-preview-skeleton" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                </span>
+              )}
               {preview && <span><b>After</b> “{preview.text}”</span>}
             </div>
           )}
