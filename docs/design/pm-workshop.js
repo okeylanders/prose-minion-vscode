@@ -641,7 +641,7 @@ Kayla's diction is short, concrete, and Anglo-Saxon under pressure. She reaches 
       kicker:'Prose Excerpt Assistant', title:'Writing tools', noun:'tool', verb:'Run',
       sub:'Each runs <b>once</b> on your excerpt with the context briefs attached — the result lands in the thread as a visible event, in '+esc(hostName(state.host))+'’s voice.',
       emptyNote:'Select a tool — one run on the excerpt, one visible result.',
-      groups:['Primary','Craft & Voice','Technical'].map(g=>({name:g, desc:TOOL_GDESC[g], items:TOOLS.filter(t=>t.g===g).map(t=>({id:t.n, icon:t.i, name:t.n, blurb:t.d, live:true, cost:'one run on the excerpt · lands in the thread'}))})),
+      groups:['Primary','Craft & Voice','Technical'].map(g=>({name:g, desc:TOOL_GDESC[g], items:TOOLS.filter(t=>t.g===g).map(t=>({id:t.n, icon:t.i, name:t.n, blurb:t.d, live:true, lifecycle:'one run on the excerpt · lands in the thread'}))})),
       inModal:true,
       onLaunch:t=>{ cwClose(); toast(t.name+' — running on excerpt','sparkle'); }
     });

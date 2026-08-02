@@ -6,6 +6,7 @@
 import { FileOperationsHandler } from '@/application/handlers/domain/FileOperationsHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType } from '@/shared/types/messages';
+import { GESTURE_DICTIONARY_RESULT_TOOL_NAME } from '@shared/constants/resultToolNames';
 import {
   createFakeFileSystem,
   createFakeShellService,
@@ -97,6 +98,32 @@ describe('FileOperationsHandler', () => {
         payload: expect.objectContaining({
           toolName: 'workshop_persona',
           filePath: expect.stringContaining('workshop-persona-1.md')
+        })
+      }));
+    });
+
+    it('saves a Gesture Dictionary through its named assistant result contract', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.workshop.gesture-playground',
+        payload: {
+          toolName: GESTURE_DICTIONARY_RESULT_TOOL_NAME,
+          content: '# Gesture Dictionary\n\nA useful craft scan.',
+          metadata: {
+            excerpt: 'Pinned prose',
+            context: 'Gesture Playground · Gesture Dictionary'
+          }
+        },
+        timestamp: 0
+      } as any);
+
+      expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SAVE_RESULT_SUCCESS,
+        payload: expect.objectContaining({
+          toolName: GESTURE_DICTIONARY_RESULT_TOOL_NAME,
+          filePath: expect.stringContaining('gesture-dictionary-1.md')
         })
       }));
     });

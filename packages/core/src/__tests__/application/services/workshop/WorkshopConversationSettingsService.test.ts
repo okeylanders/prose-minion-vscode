@@ -15,7 +15,8 @@ const balanced: WorkshopConversationBehavior = {
   interactionMode: 'balanced',
   expressionLevel: 'full',
   relationalDepth: 'attuned',
-  carryCuesThroughSession: true
+  carryCuesThroughSession: true,
+  proactiveAssistance: true
 };
 
 const analysis: WorkshopConversationBehavior = {
@@ -306,7 +307,8 @@ describe('WorkshopConversationSettingsService', () => {
   it('does not rebuild persona prompts when only carry-cues continuity changes', async () => {
     const withoutCarry: WorkshopConversationBehavior = {
       ...balanced,
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     };
 
     await expect(service.applyFromWebview(withoutCarry, DEFAULT_WORKSHOP_WRITER_PROFILE)).resolves.toEqual({
@@ -316,6 +318,23 @@ describe('WorkshopConversationSettingsService', () => {
 
     expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
     expect(session.getConversationBehavior()).toEqual(withoutCarry);
+  });
+
+  it('does not rebuild persona prompts when only proactive assistance changes', async () => {
+    const withoutProactiveAssistance: WorkshopConversationBehavior = {
+      ...balanced,
+      proactiveAssistance: false
+    };
+
+    await expect(
+      service.applyFromWebview(withoutProactiveAssistance, DEFAULT_WORKSHOP_WRITER_PROFILE)
+    ).resolves.toEqual({
+      changed: true,
+      deferred: false
+    });
+
+    expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
+    expect(session.getConversationBehavior()).toEqual(withoutProactiveAssistance);
   });
 
   it('does not rebuild persona prompts when an empty profile is enabled', async () => {

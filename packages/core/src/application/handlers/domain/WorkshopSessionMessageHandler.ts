@@ -33,7 +33,8 @@ const generateSessionRequestId = (): string =>
 export type WorkshopMutationRouteRegistrar = (
   messageType: MessageType,
   handler: (message: never) => Promise<void>,
-  sessionAction?: WorkshopSessionAction
+  sessionAction?: WorkshopSessionAction,
+  onBlocked?: (message: string) => void
 ) => void;
 
 export interface WorkshopSessionMessageHandlerOptions {

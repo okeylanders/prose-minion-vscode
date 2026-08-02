@@ -90,6 +90,8 @@ export interface WorkshopLexicalGravityLens {
   slug: string;
   name: string;
   source: 'built-in' | 'project';
+  /** Writer-entered subject that produced a project lens. */
+  originQuery?: string;
   /** Human-readable angle distinguishing multiple generated takes. */
   variant?: string;
   description?: string;
@@ -108,6 +110,8 @@ export interface WorkshopLexicalGravityLens {
 export interface WorkshopLexicalGravityPreview {
   /** Stable key of the four writer-facing values this preview demonstrates. */
   configKey: string;
+  /** The prose transformed by this preview; optional only for older checkpoints. */
+  sourceText?: string;
   text: string;
 }
 
@@ -202,6 +206,8 @@ export interface WorkshopConversationBehavior {
   expressionLevel: WorkshopPersonaExpressionLevel;
   relationalDepth: WorkshopRelationalDepth;
   carryCuesThroughSession: boolean;
+  /** Encourage one relevant tool or live-widget assist when it materially helps. */
+  proactiveAssistance: boolean;
 }
 
 /**
@@ -214,7 +220,8 @@ export const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR: Readonly<WorkshopConversati
     interactionMode: 'balanced',
     expressionLevel: 'full',
     relationalDepth: 'attuned',
-    carryCuesThroughSession: true
+    carryCuesThroughSession: true,
+    proactiveAssistance: true
   });
 
 /** Durable host preference; inferred cue/attunement memory is intentionally separate. */
@@ -230,7 +237,8 @@ export function workshopConversationBehaviorsEqual(
   return left.interactionMode === right.interactionMode
     && left.expressionLevel === right.expressionLevel
     && left.relationalDepth === right.relationalDepth
-    && left.carryCuesThroughSession === right.carryCuesThroughSession;
+    && left.carryCuesThroughSession === right.carryCuesThroughSession
+    && left.proactiveAssistance === right.proactiveAssistance;
 }
 
 /** Writer-authored global context shared only with Workshop personas. */
@@ -397,7 +405,8 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
     'interactionMode',
     'expressionLevel',
     'relationalDepth',
-    'carryCuesThroughSession'
+    'carryCuesThroughSession',
+    'proactiveAssistance'
   ]);
   if (Object.keys(raw).some((key) => !allowedKeys.has(key))) {
     return { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR };
@@ -407,12 +416,20 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
     expressionLevel?: unknown;
     relationalDepth?: unknown;
     carryCuesThroughSession?: unknown;
+    proactiveAssistance?: unknown;
   };
+  // Normalize behavior objects written before 02B-A without discarding the
+  // writer's other explicit choices. The contributed schema requires the
+  // field for every newly written value.
+  const proactiveAssistance = candidate.proactiveAssistance === undefined
+    ? DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR.proactiveAssistance
+    : candidate.proactiveAssistance;
   if (
     !isWorkshopInteractionMode(candidate.interactionMode) ||
     !isWorkshopPersonaExpressionLevel(candidate.expressionLevel) ||
     !isWorkshopRelationalDepth(candidate.relationalDepth) ||
-    typeof candidate.carryCuesThroughSession !== 'boolean'
+    typeof candidate.carryCuesThroughSession !== 'boolean' ||
+    typeof proactiveAssistance !== 'boolean'
   ) {
     return { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR };
   }
@@ -420,7 +437,8 @@ export function coerceWorkshopConversationBehavior(raw: unknown): WorkshopConver
     interactionMode: candidate.interactionMode,
     expressionLevel: candidate.expressionLevel,
     relationalDepth: candidate.relationalDepth,
-    carryCuesThroughSession: candidate.carryCuesThroughSession
+    carryCuesThroughSession: candidate.carryCuesThroughSession,
+    proactiveAssistance
   };
 }
 
@@ -1829,7 +1847,11 @@ export interface WorkshopLexicalGravityLensesDataMessage
 }
 
 export interface WorkshopPreviewLexicalGravityMessage
-  extends MessageEnvelope<{ token: string; draft: WorkshopLexicalGravityDraft }> {
+  extends MessageEnvelope<{
+    token: string;
+    draft: WorkshopLexicalGravityDraft;
+    sourceText: string;
+  }> {
   type: MessageType.WORKSHOP_PREVIEW_LEXICAL_GRAVITY;
 }
 

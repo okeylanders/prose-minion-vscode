@@ -40,10 +40,12 @@ import { WorkshopMutationRouteRegistrar } from '@handlers/domain/WorkshopSession
 
 export interface WorkshopWidgetHandlerOptions {
   /**
-   * The one room-send seam (WorkshopHandler.executeMessage): mints the
-   * visible turn, ships the frame, and reports whether the assistant reply
-   * actually landed. `includeMessageAttachments` stays false on this path —
-   * the writer's staged pills belong to the message they were typing.
+   * The one room-send seam (WorkshopHandler.executeMessage). Acceptance is a
+   * separate milestone from the participant reply: `onRoomAccepted` fires
+   * once the writer turn and artifact are room truth, so the authoring sheet
+   * never waits on model latency or loses its Draft on a preflight rejection.
+   * `includeMessageAttachments` stays false on this path — the writer's
+   * staged pills belong to the message they were typing.
    */
   sendRoomMessage: (
     text: string,
@@ -58,11 +60,14 @@ export interface WorkshopWidgetHandlerOptions {
         content: string;
         selectionCount: number;
       };
+      onRoomAccepted: (userTurnId: string) => void;
     }
   ) => Promise<{ committed: boolean; userTurnId?: string }>;
   postSessionState: () => void;
   markDirty: (reason: string) => void;
   reportError: (message: string, details?: string) => void;
+  /** Backend race guard; the webview also disables commit while a room run owns the slot. */
+  isRoomRunActive: () => boolean;
 }
 
 type GestureGenerationStage =
@@ -103,7 +108,17 @@ export class WorkshopWidgetHandler {
       MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG,
       this.handleRequestConfig.bind(this)
     );
-    registerMutation(MessageType.WORKSHOP_COMMIT_WIDGET, this.handleCommit.bind(this));
+    registerMutation(
+      MessageType.WORKSHOP_COMMIT_WIDGET,
+      this.handleCommit.bind(this),
+      undefined,
+      (message) => this.postActionResult({
+        action: 'commit',
+        widgetId: 'gesture-playground',
+        ok: false,
+        message
+      })
+    );
   }
 
   dispose(): void {
@@ -329,11 +344,10 @@ export class WorkshopWidgetHandler {
   }
 
   /**
-   * The atomic commit: validate → persist the Draft under a fresh `wc-N`
-   * (created BEFORE the send so the visible turn can reference it, and so a
-   * failed send leaves a durable retry token instead of an orphaned pill) →
-   * mint the `ta-N` artifact → ship → stamp linkage and the writer-origin
-   * manifest only when the reply actually lands.
+   * The two-phase commit: validate → stage config/artifact → let the room
+   * atomically publish the writer turn and artifact → acknowledge the sheet.
+   * The participant reply is deliberately later and independent: its failure
+   * belongs to the Workshop run surface and cannot revoke an accepted widget.
    */
   async handleCommit(message: WorkshopCommitWidgetMessage): Promise<void> {
     const { widgetId, draft, clonedFromConfigId } = message.payload;
@@ -361,24 +375,34 @@ export class WorkshopWidgetHandler {
       });
       return;
     }
+    if (this.options.isRoomRunActive()) {
+      this.postActionResult({
+        action: 'commit',
+        widgetId,
+        ok: false,
+        message: 'Wait for the current Workshop response to finish before committing another widget.'
+      });
+      return;
+    }
 
-    const config = this.session.createWidgetConfig({ widgetId, draft, clonedFromConfigId });
-    const artifactId = this.session.mintWidgetArtifactId();
-    const label = workshopWidgetLabel(widgetId);
-    const directive = buildGestureDirective(draft);
-    const selectionCount = draft.selections.length;
-    const displayText = `For “${draft.targetPhrase.trim()}” — here are the gesture directions I want${
-      draft.note.trim().length > 0 ? ` — ${draft.note.trim()}` : ''
-    }${draft.includeDictionaryInCommit ? ', with the full Gesture Dictionary shared as reference' : ''}.`;
-
-    this.outputChannel.appendLine(
-      `[WorkshopWidgetHandler] Widget commit staged (${config.id} → ${artifactId}, ${selectionCount} selections${clonedFromConfigId ? `, cloned from ${clonedFromConfigId}` : ''})`
-    );
-    // The config is session truth from this moment; persist it even if the
-    // send below fails, so the Draft survives a reload as the retry token.
-    this.options.markDirty('widget config created');
-
+    let accepted = false;
+    let configId: string | undefined;
     try {
+      const config = this.session.createWidgetConfig({ widgetId, draft, clonedFromConfigId });
+      configId = config.id;
+      const artifactId = this.session.mintWidgetArtifactId();
+      const label = workshopWidgetLabel(widgetId);
+      const directive = buildGestureDirective(draft);
+      const selectionCount = draft.selections.length;
+      const displayText = `For “${draft.targetPhrase.trim()}” — here are the gesture directions I want${
+        draft.note.trim().length > 0 ? ` — ${draft.note.trim()}` : ''
+      }${draft.includeDictionaryInCommit ? ', with the full Gesture Dictionary shared as reference' : ''}.`;
+
+      this.outputChannel.appendLine(
+        `[WorkshopWidgetHandler] Widget commit staged (${config.id} → ${artifactId}, ${selectionCount} selections${clonedFromConfigId ? `, cloned from ${clonedFromConfigId}` : ''})`
+      );
+      this.options.markDirty('widget config created');
+
       const outcome = await this.options.sendRoomMessage(displayText, displayText, {
         includeMessageAttachments: false,
         widgetArtifact: {
@@ -388,48 +412,58 @@ export class WorkshopWidgetHandler {
           label,
           content: directive,
           selectionCount
+        },
+        onRoomAccepted: (userTurnId) => {
+          this.session.recordWidgetCommit(config.id, { turnId: userTurnId, artifactId });
+          this.session.recordWidgetArtifactDelivery(
+            artifactId,
+            label,
+            directive.length,
+            target
+          );
+          accepted = true;
+          this.options.markDirty('widget commit accepted');
+          this.options.postSessionState();
+          this.postActionResult({
+            action: 'commit',
+            widgetId,
+            ok: true,
+            widgetConfigId: config.id,
+            turnId: userTurnId
+          });
+          this.outputChannel.appendLine(
+            `[WorkshopWidgetHandler] Widget commit accepted (${config.id} on turn ${userTurnId})`
+          );
         }
       });
-      if (!outcome.committed || !outcome.userTurnId) {
+      if (!accepted) {
         this.postActionResult({
           action: 'commit',
           widgetId,
           ok: false,
           widgetConfigId: config.id,
-          message: 'The room did not accept the commit. Your selections are kept — try again.'
+          message: 'The room did not accept the commit. Your draft is still open — try again.'
         });
         return;
       }
-      this.session.recordWidgetCommit(config.id, { turnId: outcome.userTurnId, artifactId });
-      this.session.recordWidgetArtifactDelivery(
-        artifactId,
-        label,
-        directive.length,
-        target
-      );
-      this.options.markDirty('widget commit landed');
-      this.options.postSessionState();
-      this.postActionResult({
-        action: 'commit',
-        widgetId,
-        ok: true,
-        widgetConfigId: config.id,
-        turnId: outcome.userTurnId
-      });
-      this.outputChannel.appendLine(
-        `[WorkshopWidgetHandler] Widget commit landed (${config.id} on turn ${outcome.userTurnId})`
-      );
+      if (!outcome.committed) {
+        this.outputChannel.appendLine(
+          `[WorkshopWidgetHandler] Widget ${config.id} remained committed after the participant response failed`
+        );
+      }
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
-      this.postActionResult({
-        action: 'commit',
-        widgetId,
-        ok: false,
-        widgetConfigId: config.id,
-        message: 'The commit failed before the room replied. Your selections are kept — try again.'
-      });
+      if (!accepted) {
+        this.postActionResult({
+          action: 'commit',
+          widgetId,
+          ok: false,
+          widgetConfigId: configId,
+          message: 'The commit failed before the room accepted it. Your draft is still open — try again.'
+        });
+      }
       this.outputChannel.appendLine(
-        `[WorkshopWidgetHandler] Widget commit failed (${config.id}): ${details}`
+        `[WorkshopWidgetHandler] Widget commit failed (${configId ?? 'before-config'}): ${details}`
       );
     }
   }
@@ -696,7 +730,7 @@ export class WorkshopWidgetHandler {
   private postActionResult(payload: WorkshopWidgetActionResultPayload): void {
     const result: WorkshopWidgetActionResultMessage = {
       type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
-      source: 'extension.workshop',
+      source: 'extension.workshop.widget',
       payload,
       timestamp: Date.now()
     };

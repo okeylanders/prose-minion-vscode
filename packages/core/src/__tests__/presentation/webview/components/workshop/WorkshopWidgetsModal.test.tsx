@@ -11,7 +11,12 @@ describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
   afterEach(cleanup);
 
   const renderModal = () => {
-    const props = { open: true, onClose: jest.fn(), onLaunchWidget: jest.fn() };
+    const props = {
+      open: true,
+      onClose: jest.fn(),
+      onLaunchWidget: jest.fn(),
+      onAskAgentToConfigure: jest.fn()
+    };
     render(<WorkshopWidgetsModal {...props} />);
     return props;
   };
@@ -23,14 +28,16 @@ describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
     }
     const cardCount = WORKSHOP_WIDGET_GROUPS.reduce((n, group) => n + group.items.length, 0);
     expect(document.querySelectorAll('.pm-ws-sb-card')).toHaveLength(cardCount);
+    expect(screen.getAllByText('Coming soon').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Sprint 02B').length).toBeGreaterThan(0);
     expect(document.querySelector('.pm-ws-browser-modal')?.className)
       .toContain('pm-ws-modal-sheet');
   });
 
   it('launches the live widget when selected', () => {
     const { onLaunchWidget } = renderModal();
-    fireEvent.click(screen.getByRole('button', { name: /Gesture Playground/ }));
-    const launch = screen.getByRole('button', { name: 'Open Gesture Playground' }) as HTMLButtonElement;
+    fireEvent.click(screen.getAllByRole('button', { name: /Gesture Playground/ })[0]);
+    const launch = screen.getByRole('button', { name: 'Open widget' }) as HTMLButtonElement;
     expect(launch.disabled).toBe(false);
     fireEvent.click(launch);
     expect(onLaunchWidget).toHaveBeenCalledWith('gesture-playground');
@@ -38,17 +45,29 @@ describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
 
   it('launches Lexical Gravity from the standing section', () => {
     const { onLaunchWidget } = renderModal();
-    fireEvent.click(screen.getByRole('button', { name: /Lexical Gravity/ }));
-    const launch = screen.getByRole('button', { name: 'Open Lexical Gravity' }) as HTMLButtonElement;
+    fireEvent.click(screen.getAllByRole('button', { name: /Lexical Gravity/ })[0]);
+    const launch = screen.getByRole('button', { name: 'Open widget' }) as HTMLButtonElement;
     expect(launch.disabled).toBe(false);
     fireEvent.click(launch);
     expect(onLaunchWidget).toHaveBeenCalledWith('lexical-gravity');
   });
 
+  it('hands the selected live widget to the agent-configure boundary', () => {
+    const { onAskAgentToConfigure } = renderModal();
+    fireEvent.click(screen.getAllByRole('button', { name: /Lexical Gravity/ })[0]);
+    const ask = screen.getByRole('button', {
+      name: 'Ask agent to configure, then open'
+    }) as HTMLButtonElement;
+    expect(ask.disabled).toBe(false);
+    fireEvent.click(ask);
+    expect(onAskAgentToConfigure).toHaveBeenCalledWith('lexical-gravity');
+  });
+
   it('closes via Cancel without launching anything', () => {
-    const { onClose, onLaunchWidget } = renderModal();
+    const { onClose, onLaunchWidget, onAskAgentToConfigure } = renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onLaunchWidget).not.toHaveBeenCalled();
+    expect(onAskAgentToConfigure).not.toHaveBeenCalled();
   });
 });

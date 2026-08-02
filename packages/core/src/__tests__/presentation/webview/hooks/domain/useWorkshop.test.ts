@@ -37,7 +37,8 @@ import type {
   WorkshopSessionsDataMessage,
   WorkshopSessionStateMessage,
   WorkshopTurn,
-  WorkshopTurnMessage
+  WorkshopTurnMessage,
+  WorkshopWidgetActionResultMessage
 } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
@@ -426,13 +427,35 @@ describe('useWorkshop', () => {
     expect(result.current.sessionActionResult).toBeUndefined();
   });
 
+  it('owns Gesture commit acknowledgements until the modal consumes them', () => {
+    const { result } = renderHook(() => useWorkshop());
+    const response: WorkshopWidgetActionResultMessage = {
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      payload: {
+        action: 'commit',
+        widgetId: 'gesture-playground',
+        ok: false,
+        message: 'The session is still saving.'
+      },
+      timestamp: 0
+    };
+
+    act(() => result.current.handleWidgetActionResult(response));
+    expect(result.current.widgetActionResult).toEqual(response.payload);
+
+    act(() => result.current.consumeWidgetActionResult());
+    expect(result.current.widgetActionResult).toBeNull();
+  });
+
   it('submits one complete conversation behavior object without optimistic state', () => {
     const { result } = renderHook(() => useWorkshop());
     const selected = {
       interactionMode: 'analysis' as const,
       expressionLevel: 'subtle' as const,
       relationalDepth: 'reserved' as const,
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     };
 
     act(() => result.current.setConversationSettings(

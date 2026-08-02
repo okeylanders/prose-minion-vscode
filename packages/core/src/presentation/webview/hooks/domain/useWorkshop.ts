@@ -75,9 +75,9 @@ import {
   WorkshopWidgetGenerationProgressPayload,
   WorkshopWidgetMenuResultMessage,
   WorkshopWidgetMenuResultPayload,
+  WorkshopCommitWidgetPayload,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload,
-  WorkshopCommitWidgetPayload,
   coerceWorkshopConversationBehavior,
   coerceWorkshopWriterProfile,
   coerceWorkshopWebResearchSettings
@@ -149,7 +149,7 @@ export interface WorkshopState {
   widgetMenuResult: WorkshopWidgetMenuResultPayload | null;
   /** Token-keyed live progress for the private pre-commit model call. */
   widgetGenerationProgress: WorkshopWidgetGenerationProgressPayload | null;
-  /** Latest commit outcome; consumed by the open widget modal. */
+  /** Host acknowledgement for Gesture Playground's commit handoff. */
   widgetActionResult: WorkshopWidgetActionResultPayload | null;
   contextPending: boolean;
   /** Configured resource catalog for the Context Selector; null until requested. */
@@ -282,11 +282,11 @@ export interface WorkshopActions {
   requestWidgetConfig: (configId: string) => void;
   clearWidgetConfigData: () => void;
   commitWidget: (payload: WorkshopCommitWidgetPayload) => void;
-  consumeWidgetActionResult: () => void;
   handleWidgetMenuResult: (message: WorkshopWidgetMenuResultMessage) => void;
   handleWidgetConfigData: (message: WorkshopWidgetConfigDataMessage) => void;
   handleWidgetGenerationProgress: (message: WorkshopWidgetGenerationProgressMessage) => void;
   handleWidgetActionResult: (message: WorkshopWidgetActionResultMessage) => void;
+  consumeWidgetActionResult: () => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
   handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
   handleSessionActionResult: (message: WorkshopSessionActionResultMessage) => void;
@@ -557,10 +557,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
     post(MessageType.WORKSHOP_COMMIT_WIDGET, payload);
   }, [post]);
 
-  const consumeWidgetActionResult = React.useCallback(() => {
-    setWidgetActionResult(null);
-  }, []);
-
   const handleWidgetMenuResult = React.useCallback(
     (message: WorkshopWidgetMenuResultMessage) => {
       setWidgetMenuResult(message.payload);
@@ -580,8 +576,18 @@ export const useWorkshop = (): UseWorkshopReturn => {
 
   const handleWidgetActionResult = React.useCallback(
     (message: WorkshopWidgetActionResultMessage) => {
-      setWidgetActionResult(message.payload);
+      if (
+        message.payload.action === 'commit'
+        && message.payload.widgetId === 'gesture-playground'
+      ) {
+        setWidgetActionResult(message.payload);
+      }
     },
+    []
+  );
+
+  const consumeWidgetActionResult = React.useCallback(
+    () => setWidgetActionResult(null),
     []
   );
 
@@ -1118,11 +1124,11 @@ export const useWorkshop = (): UseWorkshopReturn => {
     requestWidgetConfig,
     clearWidgetConfigData,
     commitWidget,
-    consumeWidgetActionResult,
     handleWidgetMenuResult,
     handleWidgetConfigData,
     handleWidgetGenerationProgress,
     handleWidgetActionResult,
+    consumeWidgetActionResult,
     attachMessageFile,
     removeMessageAttachment,
     setExcerptResource,

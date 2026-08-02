@@ -121,7 +121,11 @@ export class LexicalGravityLensRepository {
       return validateLexicalGravityLens({
         ...cloneLexicalGravityLens(candidate),
         slug,
-        source: 'project'
+        source: 'project',
+        originQuery: query.trim().slice(
+          0,
+          PROMPT_BUDGETS.workshopWidgets.lexicalBuildQueryCharacters
+        )
       });
     });
 

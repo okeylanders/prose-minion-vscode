@@ -407,6 +407,42 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       .toMatch(/session save or replacement/i);
   });
 
+  it('returns a widget-owned rejection when commit meets the session-operation gate', async () => {
+    const router = new MessageRouter();
+    handler.registerRoutes(router);
+    persistence.isSessionOperationPending.mockReturnValue(true);
+
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'gesture-playground',
+      draft: {
+        targetPhrase: 'she smiled',
+        writerInstructions: '',
+        contextText: '',
+        characterNotes: '',
+        sourceReferences: [],
+        dictionaryMarkdown: '# Gesture Dictionary\n\nA quiet refusal.',
+        menu: Array.from({ length: 4 }, (_, index) => ({
+          heading: `Route ${index + 1}`,
+          options: [`Option ${index + 1}.1`, `Option ${index + 1}.2`, `Option ${index + 1}.3`]
+        })),
+        selections: ['Option 1.1'],
+        note: '',
+        includeDictionaryInCommit: false
+      }
+    }) as any);
+
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      source: 'extension.workshop.widget',
+      payload: {
+        action: 'commit',
+        widgetId: 'gesture-playground',
+        ok: false,
+        message: expect.stringMatching(/session save or replacement/i)
+      }
+    });
+  });
+
   it('settles a routed session action rejected behind an earlier operation', async () => {
     const router = new MessageRouter();
     handler.registerRoutes(router);
@@ -433,7 +469,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'balanced',
           expressionLevel: 'full',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -448,7 +485,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       interactionMode: 'balanced',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     });
     expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.conversationBehavior)
       .toEqual(session.getConversationBehavior());
@@ -498,7 +536,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'conversational',
           expressionLevel: 'amplified',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: true
+          carryCuesThroughSession: true,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -510,7 +549,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       interactionMode: 'conversational',
       expressionLevel: 'amplified',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     }, DEFAULT_WORKSHOP_WRITER_PROFILE, []);
     expect(service.replaceWorkshopConversationSettings.mock.invocationCallOrder[0])
       .toBeLessThan((settings.update as jest.Mock).mock.invocationCallOrder[0]);
@@ -532,7 +572,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'balanced',
           expressionLevel: 'subtle',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: true
+          carryCuesThroughSession: true,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -557,7 +598,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'analysis',
           expressionLevel: 'subtle',
           relationalDepth: 'reserved',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -577,7 +619,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'balanced',
           expressionLevel: 'subtle',
           relationalDepth: 'reserved',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -605,7 +648,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'analysis',
           expressionLevel: 'full',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: true
+          carryCuesThroughSession: true,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -631,7 +675,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
           interactionMode: 'conversational',
           expressionLevel: 'amplified',
           relationalDepth: 'attuned',
-          carryCuesThroughSession: false
+          carryCuesThroughSession: false,
+          proactiveAssistance: true
         }
       }
     ) as any);
@@ -649,7 +694,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(prompt).toContain('from-expression="full"');
     expect(prompt).toContain('to-expression="amplified"');
     expect(prompt).toContain('expression="amplified"');
-    expect(prompt).toContain('<workshop-behavior-activation mode="conversational" expression="amplified" relational-depth="attuned">');
+    expect(prompt).toContain('<workshop-behavior-activation mode="conversational" expression="amplified" relational-depth="attuned" proactive-assistance="true">');
     expect(session.getSnapshot().turns.at(-2)).toMatchObject({
       behavior: { interactionMode: 'conversational', expressionLevel: 'amplified' },
       behaviorTransition: {
@@ -1752,7 +1797,11 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   });
 
   it('pins a picked file with durable head-slice provenance', async () => {
-    const content = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
+    const excerptWordCap = PROMPT_BUDGETS.fileExcerpt.words;
+    const content = Array.from(
+      { length: excerptWordCap + 1 },
+      (_, index) => `word${index}`
+    ).join(' ');
     shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/chapter.md', uri: 'file:///chapter.md' });
     fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: content.length });
     fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
@@ -1761,7 +1810,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(session.getExcerpt()).toMatchObject({
       source: { kind: 'file', relativePath: 'External file: chapter.md' },
-      truncation: { pinnedWords: 10_000, totalWords: 10_001 }
+      truncation: { pinnedWords: excerptWordCap, totalWords: excerptWordCap + 1 }
     });
   });
 
@@ -1812,8 +1861,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     });
 
     it('revises a head-sliced excerpt when only content beyond the visible head changed', async () => {
-      const original = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
-      const revised = `${Array.from({ length: 10_000 }, (_, index) => `word${index}`).join(' ')} changed-ending`;
+      const excerptWordCap = PROMPT_BUDGETS.fileExcerpt.words;
+      const original = Array.from(
+        { length: excerptWordCap + 1 },
+        (_, index) => `word${index}`
+      ).join(' ');
+      const revised = `${Array.from(
+        { length: excerptWordCap },
+        (_, index) => `word${index}`
+      ).join(' ')} changed-ending`;
       await seedFileExcerpt(original);
       const pinnedText = session.getExcerpt()!.text;
       fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(revised));
@@ -1823,7 +1879,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(session.getExcerpt()).toMatchObject({
         version: 2,
         text: pinnedText,
-        truncation: { pinnedWords: 10_000, totalWords: 10_001 }
+        truncation: { pinnedWords: excerptWordCap, totalWords: excerptWordCap + 1 }
       });
     });
   });

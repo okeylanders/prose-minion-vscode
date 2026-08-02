@@ -59,6 +59,7 @@ export interface WorkshopToolSidePassEvents {
   sessionChanged: () => void;
   status: (message: string, tickerMessage?: string) => void;
   error: (message: string, details?: string) => void;
+  widgetRecommendationRejected: (message: string, details?: string) => void;
   settled: (requestId: string) => void;
 }
 
@@ -266,7 +267,8 @@ export class RunWorkshopToolSidePass {
           streamCompleted: events.streamCompleted,
           turnCompleted: events.turnCompleted,
           status: events.status,
-          error: events.error
+          error: events.error,
+          widgetRecommendationRejected: events.widgetRecommendationRejected
         }
       });
       if (synthesisTurn) {

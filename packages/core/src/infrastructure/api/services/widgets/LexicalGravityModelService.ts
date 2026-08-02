@@ -7,6 +7,7 @@ import {
   WorkshopLexicalGravityPreview
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { boundedLogText } from '@/utils/boundedLogText';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
@@ -23,8 +24,6 @@ import {
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 const LENSES_START = '===LEXICAL_GRAVITY_LENSES_V1===';
 const LENSES_END = '===END_LEXICAL_GRAVITY_LENSES_V1===';
-const PREVIEW_START = '===LEXICAL_GRAVITY_PREVIEW_V1===';
-const PREVIEW_END = '===END_LEXICAL_GRAVITY_PREVIEW_V1===';
 
 export class LexicalGravityModelService {
   constructor(
@@ -72,9 +71,20 @@ export class LexicalGravityModelService {
 
   async preview(
     draftInput: WorkshopLexicalGravityDraft,
+    sourceTextInput: string,
     options: { signal?: AbortSignal } = {}
   ): Promise<WorkshopLexicalGravityPreview> {
     const draft = cloneLexicalGravityDraft(draftInput);
+    const sourceText = sourceTextInput.trim();
+    if (!sourceText || sourceText.length > BUDGET.lexicalSampleCharacters) {
+      throw new Error(
+        `Preview prose must be 1–${BUDGET.lexicalSampleCharacters} characters`
+      );
+    }
+    // Local configuration failures are not provider failures. Resolve this
+    // before the model call and outside the response-validation boundary so
+    // diagnostics attribute the fault to the correct side of the seam.
+    const configKey = lexicalGravityConfigKey(draft);
     const engine = this.requireEngine();
     const systemMessage = await this.promptLoader.loadPrompts([
       'lexical-gravity/01-preview.md'
@@ -83,31 +93,62 @@ export class LexicalGravityModelService {
       toolName: 'lexical-gravity-preview',
       systemMessage,
       userMessage: [
-        'Demonstrate the configured lexical pressure on the lens sample below.',
+        'Rewrite the source sample using the configured lexical pressure.',
         `Configuration (quoted JSON task data):\n${JSON.stringify({
           weight: draft.weight,
           reach: draft.reach,
           metaphorPull: draft.metaphorPull,
           lens: draft.resolvedLens
         }, null, 2)}`,
-        `Source sample (quoted task data): ${JSON.stringify(draft.resolvedLens.sample)}`,
-        'Return only the exact preview frame.'
+        `Source sample (quoted task data): ${JSON.stringify(sourceText)}`,
+        'Return only the rewritten passage.'
       ].join('\n\n'),
       policy: AGENT_RUN_POLICIES.assistantWithoutResources,
       options: {
         temperature: 0.55,
         maxTokens: BUDGET.lexicalPreviewOutputTokens,
+        reasoning: { effort: 'low' },
         signal: options.signal
       }
     });
     if (result.cancelled) {throw new Error('Lexical Gravity preview was cancelled.');}
-    const text = this.extractFrame(
-      result.rawContent ?? result.content,
-      PREVIEW_START,
-      PREVIEW_END,
-      BUDGET.lexicalPreviewCharacters
+    const content = result.rawContent ?? result.content;
+    try {
+      if (result.finishReason === 'length') {
+        throw new Error('response reached its output limit');
+      }
+      const text = this.validatePreviewText(content);
+      return { configKey, sourceText, text };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.outputChannel?.appendLine(
+        `[LexicalGravityModelService] Rejected preview response: ${reason}; ` +
+        `finishReason=${result.finishReason ?? 'unknown'}`
+      );
+      this.outputChannel?.appendLine([
+        '[LexicalGravityModelService] Rejected preview response body BEGIN',
+        boundedLogText(typeof content === 'string' ? content : String(content ?? '')),
+        '[LexicalGravityModelService] Rejected preview response body END'
+      ].join('\n'));
+      throw new Error(
+        'The selected widget model did not return a usable preview. Try Preview again or choose another model.'
+      );
+    }
+  }
+
+  /**
+   * A preview is prose, not a protocol. The model supplies only the rewritten
+   * passage; local code associates it with the source and active config.
+   */
+  private validatePreviewText(content: unknown): string {
+    if (typeof content !== 'string') {
+      throw new Error('response did not contain text');
+    }
+    const body = content.replace(/\r\n?/g, '\n').trim();
+    if (body && body.length <= BUDGET.lexicalPreviewCharacters) return body;
+    throw new Error(
+      `response body must be 1–${BUDGET.lexicalPreviewCharacters} characters`
     );
-    return { configKey: lexicalGravityConfigKey(draft), text };
   }
 
   private parseCandidates(
@@ -155,7 +196,7 @@ export class LexicalGravityModelService {
       this.outputChannel?.appendLine(
         [
           '[LexicalGravityModelService] Rejected lens response body BEGIN',
-          content,
+          boundedLogText(content),
           '[LexicalGravityModelService] Rejected lens response body END'
         ].join('\n')
       );

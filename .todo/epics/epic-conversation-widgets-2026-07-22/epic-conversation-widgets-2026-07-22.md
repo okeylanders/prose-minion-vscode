@@ -1,8 +1,8 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: In progress — Sprint 01 merged 2026-07-30; Sprint 02A merged
-2026-07-31; Sprint 02B in progress; Sprint 02C optional
+**Status**: In progress — Sprint 01 merged 2026-07-30; Sprints 02A and 02B
+merged 2026-07-31; Sprint 02B-A in progress; Sprint 02C optional
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -14,10 +14,13 @@ persona recommend/prefill, session-persisted `widgetConfigs`. Sprint 02A merged
 through [PR #97](https://github.com/okeylanders/prose-minion-vscode/pull/97):
 widget config lifecycle moved behind a session-owned ledger, Gesture gained a
 local persisted codec, hydration regained a structural prepare/install boundary,
-and shared shape grammar consolidated into `persistedValidation`. Sprint 02B is
-the active behavior slice after that foundation: single-lens Lexical Gravity on
-the standing rail. Sprint 02C is an optional pure-move handler extraction before
-Prose Controller. Sprints 03 and 04 have not started.
+and shared shape grammar consolidated into `persistedValidation`. Sprint 02B
+merged through [PR #98](https://github.com/okeylanders/prose-minion-vscode/pull/98):
+single-lens Lexical Gravity, the standing prose-directive rail, project lens
+resources, and writer-owned edit/kill lifecycle. Sprint 02B-A is the active
+follow-up: agent-prepared widget handoff, default-on proactive assistance, and
+Lexical Gravity/browser UX polish. Sprint 02C remains an optional pure-move
+handler extraction before Prose Controller. Sprints 03 and 04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**
 **Integration branch**: `epic/conversation-widgets`
@@ -90,8 +93,8 @@ These are the walls. Everything else is decoration that can move.
      directive per shaping family on the passage; editing it swaps the standing
      frame **between runs** and emits a "shifted from X to Y" marker — the same
      event class and cache cost as a mode/expression change via
-     `replaceWorkshopConversationBehavior`. Pre-commit tweaking is free; only the
-     commit pays.
+   `replaceWorkshopConversationBehavior`. Pre-commit changes remain local;
+   Apply swaps the live frame between runs.
 
 5. **Config, not just output, is session-owned and persisted by stable id.**
    The chip re-hydrates the exact authoring UI, not a dead summary. VS Code
@@ -124,7 +127,7 @@ These are the walls. Everything else is decoration that can move.
 
    Spread 02 makes the Lexical Gravity boundary concrete: its built-in word
    fields, POS/reach buckets, gradients, substitutions, and cliché contrasts
-   are deterministic. Slider/toggle changes make no call. `Preview the pull`
+   are deterministic. Slider/toggle changes make no call. `Preview the Effect`
    and `Build lens` are the only explicit model seams; the latter returns
    several bounded variants and lets the writer save one or more validated
    selections to individual `prose-minion/lenses/<slug>.json` resources in one
@@ -158,6 +161,7 @@ with a second widget before adding v2 richness.
 | 1 | [Widget host + Gesture Playground](sprints/01-widget-host-gesture-playground.md) | thread-artifact | The whole spine on the one-shot rail: composer menu → pre-commit UI → validated payload → one-shot thread-artifact → re-openable chip → clone-and-recommit. |
 | 2A | [Widget state architecture](sprints/02a-widget-state-architecture.md) | none (refactor) | Session ownership stays singular while widget config lifecycle and persisted field rules gain focused seams before the second widget. |
 | 2B | [Lexical Gravity + standing prose-directive rail](sprints/02b-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: four-value single-lens config, deterministic lexical-field scaffold, explicit preview/build model seams, project lens library, edit-in-place + shift marker, amber active strip + one-click kill. |
+| 2B-A | [Agent-prepared widgets + UX polish](sprints/02b-a-agent-prepared-widgets-and-polish.md) | host handoff + standing UI | A selected live widget can become an editable request to the current Host; personas gain a writer-controlled, default-on proactive-assistance permission; the browser and Lexical Gravity surface match the refined design and use lifecycle language instead of payment metaphors. |
 | 2C | [Workshop scope/context IPC extraction](sprints/02c-workshop-scope-context-ipc-extraction.md) | none (optional refactor) | If the seam remains a pure move after 02B, eight cohesive scope/context routes leave `WorkshopHandler` before Prose Controller adds pressure. It blocks nothing. |
 | 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |

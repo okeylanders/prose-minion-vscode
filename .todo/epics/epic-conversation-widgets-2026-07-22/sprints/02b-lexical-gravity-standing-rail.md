@@ -1,6 +1,6 @@
 # Sprint 02B: Lexical Gravity + Standing Prose-Directive Rail
 
-**Status**: In progress
+**Status**: Complete — merged through PR #98 on 2026-07-31
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-02b-lexical-gravity-standing-rail` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 6-9 days
@@ -79,7 +79,7 @@ maps to Sprint 02B after the sequencing split.
 - Approved design Spread 02 fixes the visible contract: an amber active strip
   docked above the composer; install/shift/kill markers; four writer-facing
   controls (lens, weight, reach, metaphor pull); deterministic Word field /
-  Gradient / Substitutions / Clichés tabs; and explicit `Preview the pull` and
+  Gradient / Substitutions / Clichés tabs; and explicit `Preview the Effect` and
   `Build lens` model seams.
 - Interpretive lenses are authored persona identity prose in
   `resources/system-prompts/workshop-personas/<id>.md`. Lexical Gravity does
@@ -126,7 +126,7 @@ maps to Sprint 02B after the sequencing split.
   fields, POS buckets by reach, semantic gradient, substitutions, and cliché
   contrasts redraw instantly and never call a model. Changing lens/weight/reach
   or metaphor pull invalidates the old preview; it does not regenerate one.
-  `Preview the pull` is one explicit fast-tier call, cached by the four-value
+  `Preview the Effect` is one explicit fast-tier call, cached by the four-value
   config. The committed directive never reruns the preview.
 - **The lens library has project-owned truth.** `Build lens` makes one explicit
   model request that returns several bounded, fully drafted lens variants; the
@@ -169,7 +169,7 @@ maps to Sprint 02B after the sequencing split.
 3. **Lexical Gravity widget UI** matching Spread 02: six built-in lenses;
    deterministic Word field / Gradient / Substitutions / Clichés tabs; weight
    slider; 1°–3° reach; metaphor-pull toggle; explicit preview action.
-4. **Two explicit model seams**: cached fast-tier `Preview the pull`, plus
+4. **Two explicit model seams**: cached fast-tier `Preview the Effect`, plus
    bounded multi-variant `Build lens` with writer multi-selection and validated
    project-resource persistence under `prose-minion/lenses/`.
 5. **Commit path** onto the standing rail via the coordinator; a Lexical

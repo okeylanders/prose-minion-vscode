@@ -82,12 +82,13 @@ describe('WorkshopComposer', () => {
         interactionMode: 'conversational',
         expressionLevel: 'subtle',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: false
+        carryCuesThroughSession: false,
+        proactiveAssistance: true
       }
     });
 
     const behavior = screen.getByRole('button', {
-      name: 'Conversation settings: Converse, subtle, Attuned, profile not shared'
+      name: 'Conversation settings: Converse, subtle, Attuned, proactive assistance on, profile not shared'
     });
     expect(behavior.textContent).toContain('Converse');
     expect(behavior.textContent).toContain('SUBTLE');

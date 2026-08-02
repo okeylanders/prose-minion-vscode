@@ -21,6 +21,7 @@ export type WorkshopSessionCheckpointNormalization =
   | 'normalized-open-session-with-excerpt'
   | 'restored-undelivered-withdrawal'
   | 'defaulted-capability-principal'
+  | 'defaulted-proactive-assistance'
   | 'defaulted-widget-dictionary-sharing'
   | 'defaulted-widget-source-references'
   | 'headed-missing-room-offsets';
@@ -63,18 +64,34 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   // the sole possible invoker then, so stamping `host` records the truth —
   // and keeps ownership recoverable now that guests invoke too (ADR §2).
   let defaultedPrincipal = false;
+  let defaultedProactiveAssistance = false;
   const turns = state.turns.map((turn) => {
+    let normalizedTurn = turn;
+    const behavior = turn.behavior;
+    if (behavior && behavior.proactiveAssistance === undefined) {
+      defaultedProactiveAssistance = true;
+      normalizedTurn = {
+        ...normalizedTurn,
+        // Historical turns predate this permission and therefore could not
+        // have exercised it. Preserve audit truth even though the live room
+        // default for new/current behavior is intentionally on.
+        behavior: { ...behavior, proactiveAssistance: false }
+      };
+    }
     if (!turn.capability || turn.capability.invokedBy !== undefined) {
-      return turn;
+      return normalizedTurn;
     }
     defaultedPrincipal = true;
     return {
-      ...turn,
+      ...normalizedTurn,
       capability: { ...turn.capability, invokedBy: { kind: 'host' as const } }
     };
   });
   if (defaultedPrincipal) {
     normalizations.push('defaulted-capability-principal');
+  }
+  if (defaultedProactiveAssistance) {
+    normalizations.push('defaulted-proactive-assistance');
   }
 
   let defaultedWidgetDictionarySharing = false;

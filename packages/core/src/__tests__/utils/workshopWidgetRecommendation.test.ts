@@ -6,6 +6,7 @@
 
 import {
   inspectWorkshopWidgetRecommendation,
+  sanitizeWorkshopWidgetRecommendationForRetention,
   stripWorkshopWidgetRecommendationControl,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
 } from '@/utils/workshopWidgetRecommendation';
@@ -77,6 +78,25 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
     );
     expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
       'The four prose fields and the source-references field are required'
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      'A recommendation or uncommitted chip from an earlier turn never counts against this response'
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureTargetPhraseCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureWriterInstructionsCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureCharacterNotesCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferences} references and `
+      + `${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters.toLocaleString('en-US')} characters`
     );
     for (const tag of [
       'target-phrase',
@@ -158,7 +178,12 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     });
     expect(inspectWorkshopWidgetRecommendation(
       lexicalRecommendationFrame({ lensSlug: 'falconry' })
-    )).toEqual({ outcome: 'rejected', rejection: 'invalid_field' });
+    )).toEqual({
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: 'lensSlug',
+      reason: 'unsupported_lens'
+    });
   });
 
   it('accepts only host-addressable source references and preserves their order', () => {
@@ -204,7 +229,12 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       inspectWorkshopWidgetRecommendation(
         recommendationFrame({ writerInstructions: '   ' })
       )
-    ).toEqual({ outcome: 'rejected', rejection: 'invalid_field' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: 'writerInstructions',
+      reason: 'empty'
+    });
 
     const missingContextFrame = recommendationFrame().replace(
       '<surrounding-context>\nMicah looked past Jasper and into the dark hall.\nHis eyes stretched wide.\nNate followed his gaze but saw nothing.\n</surrounding-context>\n',
@@ -232,25 +262,45 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     ['path-shaped value', '/workspace/chapter.md'],
     ['invented id shape', 'context-attachment:ctx-0'],
     [
-      'serialized reference text over budget',
-      `context-attachment:ctx-${'9'.repeat(500)}`
-    ],
-    [
       'too many references',
       Array.from({ length: PROMPT_BUDGETS.workshopWidgets.gestureSourceReferences + 1 },
         (_, index) => `context-attachment:ctx-${index + 1}`).join('\n')
     ]
-  ])('rejects invalid source references: %s', (_label, sourceReferences) => {
+  ])('rejects invalid source references: %s', (label, sourceReferences) => {
     expect(
       inspectWorkshopWidgetRecommendation(recommendationFrame({ sourceReferences }))
-    ).toEqual({ outcome: 'rejected', rejection: 'invalid_field' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: 'sourceReferences',
+      reason: label === 'blank' ? 'empty' : 'invalid_source_references'
+    });
+  });
+
+  it('identifies source-reference text that exceeds its interpolated limit', () => {
+    const maximum = PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters;
+    const sourceReferences = `context-attachment:ctx-${'9'.repeat(maximum)}`;
+    expect(
+      inspectWorkshopWidgetRecommendation(recommendationFrame({ sourceReferences }))
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: 'sourceReferences',
+      actualCharacters: sourceReferences.length,
+      maximumCharacters: maximum
+    });
   });
 
   it('rejects context that does not contain the exact target evidence', () => {
     expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
       targetPhrase: 'His eyes stretched wide.',
       surroundingContext: 'Micah looked past Jasper. Nate followed his gaze.'
-    }))).toEqual({ outcome: 'rejected', rejection: 'invalid_field' });
+    }))).toEqual({
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: 'contextText',
+      reason: 'target_missing_from_context'
+    });
   });
 
   it('requires the exact frame to be the final response content', () => {
@@ -339,7 +389,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       inspectWorkshopWidgetRecommendation(
         recommendationFrame({ [field]: 'x'.repeat(maximum + 1) })
       )
-    ).toEqual({ outcome: 'rejected', rejection: 'field_too_long' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field,
+      actualCharacters: maximum + 1,
+      maximumCharacters: maximum
+    });
   });
 
   it('enforces the target-phrase bound while keeping it grounded in context', () => {
@@ -354,7 +410,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
       targetPhrase: overBound,
       surroundingContext: overBound
-    }))).toEqual({ outcome: 'rejected', rejection: 'field_too_long' });
+    }))).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: 'targetPhrase',
+      actualCharacters: maximum + 1,
+      maximumCharacters: maximum
+    });
   });
 
   it('enforces the surrounding-context bound while retaining target evidence', () => {
@@ -369,7 +431,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
       targetPhrase,
       surroundingContext: `${atBound}x`
-    }))).toEqual({ outcome: 'rejected', rejection: 'field_too_long' });
+    }))).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: 'contextText',
+      actualCharacters: maximum + 1,
+      maximumCharacters: maximum
+    });
   });
 
   it('rejects an oversized whole frame before inspecting its fields', () => {
@@ -377,7 +445,12 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       inspectWorkshopWidgetRecommendation(
         recommendationFrame({ surroundingContext: 'x'.repeat(15_000) })
       )
-    ).toEqual({ outcome: 'rejected', rejection: 'frame_too_long' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'frame_too_long',
+      actualCharacters: expect.any(Number),
+      maximumCharacters: expect.any(Number)
+    });
   });
 });
 
@@ -402,5 +475,11 @@ describe('stripWorkshopWidgetRecommendationControl', () => {
   it('leaves ordinary prose and inexact headings untouched', () => {
     const content = 'Try a widget if useful.\n\n### Try a widget later\nThis is ordinary prose.';
     expect(stripWorkshopWidgetRecommendationControl(content)).toBe(content);
+  });
+
+  it('replaces a frame-only retained response with a neutral non-protocol row', () => {
+    const sanitized = sanitizeWorkshopWidgetRecommendationForRetention(recommendationFrame());
+    expect(sanitized).toBe('[Widget setup delivered through the Workshop interface.]');
+    expect(sanitized).not.toContain('workshop-widget-recommendation');
   });
 });

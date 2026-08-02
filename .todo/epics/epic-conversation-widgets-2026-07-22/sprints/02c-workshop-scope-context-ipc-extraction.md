@@ -1,16 +1,16 @@
 # Sprint 02C: Workshop Scope/Context IPC Extraction
 
-**Status**: Optional — decide after Sprint 02B review
+**Status**: Optional — decide after Sprint 02B-A review
 **Priority**: Medium
 **Branch**: `sprint/conversation-widgets-02c-workshop-scope-context-ipc-extraction` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 1-2 days
-**Depends on**: Sprint 02B merged into `epic/conversation-widgets`
+**Depends on**: Sprint 02B-A merged into `epic/conversation-widgets`
 **Blocks**: Nothing; if taken, land before Sprint 03 (Prose Controller)
 **Tech debt**: [Workshop god files](../../../tech-debt/2026-07-25-workshop-god-files.md)
 
 ## Decision Gate
 
-Take this sprint only if Sprint 02B leaves the scope/context route cluster as a
+Take this sprint only if Sprint 02B-A leaves the scope/context route cluster as a
 clean pure-move seam and `WorkshopHandler` would otherwise absorb more wiring
 for Prose Controller. Skip it if extraction would require behavior changes,
 new abstractions, or surgery on the run/send pipeline. Optional means optional:

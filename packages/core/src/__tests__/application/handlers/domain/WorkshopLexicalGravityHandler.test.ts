@@ -52,6 +52,52 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     return { generated, handler, postMessage, repository };
   };
 
+  it('forwards the writer-edited source through the bounded preview boundary', async () => {
+    const resolvedLens = builtInLexicalGravityLens('photography')!;
+    const draft = {
+      lensSlug: 'photography',
+      weight: 60,
+      reach: 2 as const,
+      metaphorPull: false,
+      resolvedLens
+    };
+    const sourceText = 'Elias watched rain gather in the empty birdbath.';
+    const model = {
+      preview: jest.fn().mockResolvedValue({
+        configKey: 'photography|60|2|0',
+        sourceText,
+        text: 'Elias framed the rain inside the birdbath.'
+      })
+    };
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = new WorkshopLexicalGravityHandler(
+      {} as never,
+      model as never,
+      {} as never,
+      {} as never,
+      postMessage,
+      { appendLine: jest.fn() } as never,
+      { postSessionState: jest.fn(), postTurn: jest.fn(), markDirty: jest.fn() }
+    );
+
+    await handler.handlePreview({
+      type: MessageType.WORKSHOP_PREVIEW_LEXICAL_GRAVITY,
+      source: 'webview.test',
+      timestamp: 1,
+      payload: { token: 'preview-1', draft, sourceText }
+    });
+
+    expect(model.preview).toHaveBeenCalledWith(
+      expect.objectContaining({ lensSlug: 'photography' }),
+      sourceText,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT,
+      payload: expect.objectContaining({ token: 'preview-1', ok: true })
+    }));
+  });
+
   it('resolves selected ids against host-owned candidates and saves one ordered batch', async () => {
     const { generated, handler, postMessage, repository } = createHandler();
     await handler.handleBuild(buildMessage);

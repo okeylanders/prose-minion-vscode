@@ -9,7 +9,8 @@ describe('Workshop conversation behavior validation', () => {
       interactionMode: 'analysis',
       expressionLevel: 'subtle',
       relationalDepth: 'reserved',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: false
     };
 
     expect(coerceWorkshopConversationBehavior(behavior)).toEqual(behavior);
@@ -20,10 +21,26 @@ describe('Workshop conversation behavior validation', () => {
       interactionMode: 'conversational',
       expressionLevel: 'amplified',
       relationalDepth: 'reflective',
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     } as const;
 
     expect(coerceWorkshopConversationBehavior(behavior)).toEqual(behavior);
+  });
+
+  it('defaults proactive assistance on without discarding older explicit choices', () => {
+    expect(coerceWorkshopConversationBehavior({
+      interactionMode: 'conversational',
+      expressionLevel: 'subtle',
+      relationalDepth: 'reserved',
+      carryCuesThroughSession: false
+    })).toEqual({
+      interactionMode: 'conversational',
+      expressionLevel: 'subtle',
+      relationalDepth: 'reserved',
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
+    });
   });
 
   it.each([
@@ -34,19 +51,29 @@ describe('Workshop conversation behavior validation', () => {
       interactionMode: 'invented',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     },
     {
       interactionMode: 'balanced',
       expressionLevel: 'full',
       relationalDepth: 'intrusive',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     },
     {
       interactionMode: 'balanced',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
       carryCuesThroughSession: true,
+      proactiveAssistance: 'yes'
+    },
+    {
+      interactionMode: 'balanced',
+      expressionLevel: 'full',
+      relationalDepth: 'attuned',
+      carryCuesThroughSession: true,
+      proactiveAssistance: true,
       inferredMood: 'do-not-persist'
     }
   ])('fails an invalid boundary value closed to the complete approved default', (raw) => {

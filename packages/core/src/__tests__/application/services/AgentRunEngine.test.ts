@@ -102,6 +102,47 @@ describe('AgentRunEngine', () => {
 
   afterEach(() => engine.dispose());
 
+  it('passes a bounded reasoning effort through a capability-less run', async () => {
+    client.createChatCompletion.mockResolvedValue({ content: 'Rewritten passage.' });
+
+    await engine.runInitial({
+      toolName: 'lexical-gravity-preview',
+      systemMessage: 'Rewrite the passage.',
+      userMessage: 'Source passage.',
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources,
+      options: { reasoning: { effort: 'low' } }
+    });
+
+    expect(client.createChatCompletion).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ reasoning: { effort: 'low' } })
+    );
+  });
+
+  it('sanitizes only the assistant row committed to retained history', async () => {
+    const raw = 'Visible advice.\n\n<private-widget-control>seed</private-widget-control>';
+    client.createChatCompletion.mockResolvedValue({ content: raw });
+
+    const result = await engine.runInitial({
+      toolName: 'workshop-persona',
+      systemMessage: 'Workshop system',
+      userMessage: 'Prepare a widget.',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: personaCapability(),
+      options: {
+        retainedAssistantContentSanitizer: (content) =>
+          content.replace(/\n\n<private-widget-control>[\s\S]*$/, '')
+      }
+    });
+
+    expect(result.rawContent).toBe(raw);
+    expect(result.content).toBe(raw);
+    expect(conversations.getMessages(result.conversationId!).at(-1)).toEqual({
+      role: 'assistant',
+      content: 'Visible advice.'
+    });
+  });
+
   it('commits current retained context separately from multi-call processed traffic', async () => {
     const guides = capability();
     guides.fulfill.mockResolvedValueOnce({

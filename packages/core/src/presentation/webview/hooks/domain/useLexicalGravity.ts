@@ -30,7 +30,7 @@ export interface LexicalGravityState {
 
 export interface LexicalGravityActions {
   requestLenses: () => void;
-  preview: (token: string, draft: WorkshopLexicalGravityDraft) => void;
+  preview: (token: string, draft: WorkshopLexicalGravityDraft, sourceText: string) => void;
   buildLens: (token: string, query: string) => void;
   saveLenses: (
     token: string,
@@ -77,8 +77,12 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
   const requestLenses = React.useCallback(() => {
     post(MessageType.WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES, {});
   }, [post]);
-  const preview = React.useCallback((token: string, draft: WorkshopLexicalGravityDraft) => {
-    post(MessageType.WORKSHOP_PREVIEW_LEXICAL_GRAVITY, { token, draft });
+  const preview = React.useCallback((
+    token: string,
+    draft: WorkshopLexicalGravityDraft,
+    sourceText: string
+  ) => {
+    post(MessageType.WORKSHOP_PREVIEW_LEXICAL_GRAVITY, { token, draft, sourceText });
   }, [post]);
   const buildLens = React.useCallback((token: string, query: string) => {
     post(MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS, { token, query });

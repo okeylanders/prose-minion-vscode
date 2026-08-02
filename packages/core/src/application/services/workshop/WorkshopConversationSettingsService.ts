@@ -378,6 +378,7 @@ export class WorkshopConversationSettingsService {
       `[WorkshopConversationSettingsService] Conversation settings applied ` +
       `(mode=${behavior.interactionMode}, expression=${behavior.expressionLevel}, ` +
       `relationalDepth=${behavior.relationalDepth}, carry=${behavior.carryCuesThroughSession}, ` +
+      `proactiveAssistance=${behavior.proactiveAssistance}, ` +
       `profileEnabled=${profile.enabled}, profileHasContent=${profile.preferredAddress.length > 0 || profile.bio.length > 0}, ` +
       `webResearchEnabled=${webResearch.enabled})`
     );

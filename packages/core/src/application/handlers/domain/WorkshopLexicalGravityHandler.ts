@@ -133,7 +133,11 @@ export class WorkshopLexicalGravityHandler {
     this.previewRun = controller;
     try {
       const draft = validateLexicalGravityDraft(message.payload.draft);
-      const preview = await this.model.preview(draft, { signal: controller.signal });
+      const preview = await this.model.preview(
+        draft,
+        message.payload.sourceText,
+        { signal: controller.signal }
+      );
       if (controller.signal.aborted) {return;}
       await this.postMessage({
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT,

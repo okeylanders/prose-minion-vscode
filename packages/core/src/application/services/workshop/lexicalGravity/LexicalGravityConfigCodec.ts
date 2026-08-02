@@ -41,7 +41,7 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
       'version', 'slug', 'name', 'source', 'degrees', 'gradient', 'cliches',
       'substitutions', 'metaphor', 'sample'
     ],
-    ['variant', 'description']
+    ['originQuery', 'variant', 'description']
   );
   if (item.version !== 1) {shapeError(`${path}.version`, '1');}
   boundedStringAt(item.slug, `${path}.slug`, BUDGET.lexicalLensSlugCharacters, false);
@@ -50,6 +50,12 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
   }
   boundedStringAt(item.name, `${path}.name`, BUDGET.lexicalLensNameCharacters, false);
   enumAt(item.source, `${path}.source`, ['built-in', 'project']);
+  optionalBoundedStringAt(
+    item.originQuery,
+    `${path}.originQuery`,
+    BUDGET.lexicalBuildQueryCharacters,
+    false
+  );
   optionalBoundedStringAt(
     item.variant,
     `${path}.variant`,
@@ -149,8 +155,19 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
     shapeError(`${path}.resolvedLens.slug`, 'the selected lensSlug');
   }
   if (draft.preview !== undefined) {
-    const preview = exactObject(draft.preview, `${path}.preview`, ['configKey', 'text']);
+    const preview = exactObject(
+      draft.preview,
+      `${path}.preview`,
+      ['configKey', 'text'],
+      ['sourceText']
+    );
     boundedStringAt(preview.configKey, `${path}.preview.configKey`, 256, false);
+    optionalBoundedStringAt(
+      preview.sourceText,
+      `${path}.preview.sourceText`,
+      BUDGET.lexicalSampleCharacters,
+      false
+    );
     boundedStringAt(
       preview.text,
       `${path}.preview.text`,

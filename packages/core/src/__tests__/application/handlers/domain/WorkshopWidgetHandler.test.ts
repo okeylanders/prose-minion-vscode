@@ -88,6 +88,8 @@ const build = (options: {
   sendError?: Error;
   generateMenu?: jest.Mock;
   generateMore?: jest.Mock;
+  roomRunActive?: boolean;
+  acceptBeforeOutcome?: boolean;
 } = {}) => {
   let clock = 0;
   const session = new WorkshopSessionService(() => ++clock);
@@ -95,11 +97,19 @@ const build = (options: {
   const postMessage = jest.fn().mockResolvedValue(undefined);
   const sendRoomMessage = options.sendError
     ? jest.fn().mockRejectedValue(options.sendError)
-    : jest.fn().mockImplementation(async () => {
+    : jest.fn().mockImplementation(async (
+        _text: string,
+        _displayText: string,
+        executeOptions: { onRoomAccepted: (userTurnId: string) => void }
+      ) => {
         // The real seam mints the visible turn before replying.
         const turn = session.beginPersonaMessage('req-live', 'visible');
+        const outcome = options.sendOutcome ?? { committed: true, userTurnId: turn.id };
+        if (outcome.committed || options.acceptBeforeOutcome) {
+          executeOptions.onRoomAccepted(turn.id);
+        }
         session.completeRun('req-live', 'reply');
-        return options.sendOutcome ?? { committed: true, userTurnId: turn.id };
+        return outcome;
       });
   const markDirty = jest.fn();
   const postSessionState = jest.fn();
@@ -119,7 +129,8 @@ const build = (options: {
       sendRoomMessage: sendRoomMessage as never,
       postSessionState,
       markDirty,
-      reportError: jest.fn()
+      reportError: jest.fn(),
+      isRoomRunActive: () => options.roomRunActive ?? false
     }
   );
   const posted = (type: MessageType) =>
@@ -519,7 +530,7 @@ describe('WorkshopWidgetHandler — atomic commit', () => {
     // The composer pill is still pending — it belonged to the writer's draft.
     expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(1);
     expect(markDirty).toHaveBeenCalledWith('widget config created');
-    expect(markDirty).toHaveBeenCalledWith('widget commit landed');
+    expect(markDirty).toHaveBeenCalledWith('widget commit accepted');
     const results = posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT);
     expect(results[0].payload).toEqual(expect.objectContaining({
       ok: true,
@@ -563,6 +574,33 @@ describe('WorkshopWidgetHandler — atomic commit', () => {
     await handler.handleCommit(commitMessage());
     expect(session.getWidgetConfig('wc-1')).toBeDefined();
     expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload.ok).toBe(false);
+  });
+
+  it('keeps an accepted commit when the participant response later fails', async () => {
+    const { handler, session, posted } = build({
+      sendOutcome: { committed: false, userTurnId: 'turn-user' },
+      acceptBeforeOutcome: true
+    });
+
+    await handler.handleCommit(commitMessage());
+
+    expect(session.getWidgetConfig('wc-1')).toMatchObject({
+      committedTurnId: expect.any(String),
+      artifactId: 'ta-1'
+    });
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload.ok).toBe(true);
+  });
+
+  it('rejects a re-entrant commit before creating another config', async () => {
+    const { handler, session, sendRoomMessage, posted } = build({ roomRunActive: true });
+
+    await handler.handleCommit(commitMessage());
+
+    expect(sendRoomMessage).not.toHaveBeenCalled();
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload)
+      .toMatchObject({ ok: false, message: expect.stringMatching(/current Workshop response/i) });
   });
 
   it.each([

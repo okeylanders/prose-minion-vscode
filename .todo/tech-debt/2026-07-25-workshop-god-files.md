@@ -50,7 +50,7 @@ lines. The two larger files below remain the tracked debt.
   stores that collection/counter or its Gesture clone/summary rules inline.
   This closes PR #96 finding 12 while leaving the broader god-file target open.
 - **2026-07-31 — scope/context IPC extraction sequenced as optional Sprint
-  02C.** After Lexical Gravity (02B), reassess whether the eight-route cluster
+  02C.** After the Lexical Gravity follow-up (02B-A), reassess whether the eight-route cluster
   remains a pure-move seam. If so, extract it before Prose Controller; if the
   move requires behavior or run/send-pipeline changes, skip it and leave this
   debt open. See the [Sprint 02C plan](../epics/epic-conversation-widgets-2026-07-22/sprints/02c-workshop-scope-context-ipc-extraction.md).

@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-30
 **Reviewed**: 2026-07-31
-**Status**: Resolved in PR #98 — archive after merge
+**Status**: Resolved in PR #98 — archived 2026-07-31
 **Priority**: Medium
 **Estimated Effort**: Medium
 

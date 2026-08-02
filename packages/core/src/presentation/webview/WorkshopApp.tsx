@@ -36,6 +36,7 @@ import {
   WorkshopPersonaId,
   WorkshopContextAttachmentSnapshot,
   WorkshopTurn,
+  WorkshopWidgetActionResultMessage,
   WorkshopWidgetId,
   isWorkshopWriterProfileActive,
   workshopExcerptSourcePath,
@@ -103,10 +104,12 @@ import {
   getWorkshopPersona
 } from '@shared/constants/workshopPersonas';
 import {
+  GESTURE_DICTIONARY_RESULT_TOOL_NAME,
   resultToolNameForWorkshopTool,
   WORKSHOP_PERSONA_RESULT_TOOL_NAME
 } from '@shared/constants/resultToolNames';
 import { buildWorkshopToolAskPrefill } from '@utils/workshopToolAskPrefill';
+import { buildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useMessageRouter } from './hooks/useMessageRouter';
@@ -229,8 +232,18 @@ export const WorkshopApp: React.FC = () => {
 
   const handleErrorMessage = React.useCallback(
     (message: ErrorMessage) => {
-      workshop.handleErrorMessage(message);
       const source = message.payload?.source;
+      if (source === 'workshop.widget_recommendation') {
+        showToast({
+          message: message.payload.details
+            ? `${message.payload.message} ${message.payload.details}`
+            : message.payload.message,
+          icon: 'x',
+          tone: 'error'
+        });
+        return;
+      }
+      workshop.handleErrorMessage(message);
       if (typeof source === 'string' && source.startsWith('file_ops')) {
         showToast({ message: message.payload.message, icon: 'x', tone: 'error' });
       }
@@ -253,7 +266,7 @@ export const WorkshopApp: React.FC = () => {
   );
 
   const handleWidgetActionResult = React.useCallback(
-    (message: Parameters<typeof workshop.handleWidgetActionResult>[0]) => {
+    (message: WorkshopWidgetActionResultMessage) => {
       workshop.handleWidgetActionResult(message);
       lexicalGravity.handleActionResult(message);
       if (message.payload.action === 'remove-standing') {
@@ -271,7 +284,11 @@ export const WorkshopApp: React.FC = () => {
             });
       }
     },
-    [lexicalGravity.handleActionResult, showToast, workshop.handleWidgetActionResult]
+    [
+      lexicalGravity.handleActionResult,
+      workshop.handleWidgetActionResult,
+      showToast
+    ]
   );
 
   useMessageRouter({
@@ -830,6 +847,11 @@ export const WorkshopApp: React.FC = () => {
   const seedComposerDraft = React.useCallback((text: string) => {
     setDraftSeed({ text, token: Date.now() });
   }, []);
+  const askHostToConfigureWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
+    setWidgetsModalOpen(false);
+    workshop.setChatTarget({ kind: 'host' });
+    seedComposerDraft(buildWorkshopWidgetAskPrefill(widgetId, activePersona.label));
+  }, [activePersona.label, seedComposerDraft, workshop.setChatTarget]);
 
   // The fetched body, matched to the sheet that asked for it: a late reply for
   // a pill the writer already closed must never paint into the open sheet.
@@ -948,6 +970,36 @@ export const WorkshopApp: React.FC = () => {
     },
     [vscode, workshop.excerpt]
   );
+
+  const copyGestureDictionary = React.useCallback((content: string) => {
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      source: 'webview.workshop.gesture-playground',
+      payload: { toolName: GESTURE_DICTIONARY_RESULT_TOOL_NAME, content },
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
+  const saveGestureDictionary = React.useCallback((content: string) => {
+    vscode.postMessage({
+      type: MessageType.SAVE_RESULT,
+      source: 'webview.workshop.gesture-playground',
+      payload: {
+        toolName: GESTURE_DICTIONARY_RESULT_TOOL_NAME,
+        content,
+        metadata: {
+          excerpt: workshop.excerpt?.text,
+          context: 'Gesture Playground · Gesture Dictionary',
+          relativePath: workshop.excerpt
+            ? workshopExcerptSourcePath(workshop.excerpt.source)
+            : undefined,
+          sourceFileUri: undefined,
+          timestamp: Date.now()
+        }
+      },
+      timestamp: Date.now()
+    });
+  }, [vscode, workshop.excerpt]);
 
   const showTodoSource = React.useCallback((sourceTurnId: string) => {
     const sourceTurn = document.querySelector<HTMLElement>(
@@ -1549,9 +1601,11 @@ export const WorkshopApp: React.FC = () => {
         open={widgetsModalOpen}
         onClose={closeWidgetsModal}
         onLaunchWidget={launchWidget}
+        onAskAgentToConfigure={askHostToConfigureWidget}
       />
-      {/* Gesture Playground (ADR 2026-07-22): the Draft lives in the modal
-          until commit; the host round-trip closes it — no optimistic state. */}
+      {/* Gesture Playground (ADR 2026-07-22): the Draft remains mounted until
+          the host acknowledges that its writer turn and artifact are room
+          truth. The participant response continues after the sheet closes. */}
       {gestureOpening && (
         <WorkshopGesturePlaygroundModal
           open
@@ -1566,6 +1620,8 @@ export const WorkshopApp: React.FC = () => {
           onCommit={(draft, clonedFromConfigId) =>
             workshop.commitWidget({ widgetId: 'gesture-playground', draft, clonedFromConfigId })}
           onConsumeActionResult={workshop.consumeWidgetActionResult}
+          onCopyDictionary={copyGestureDictionary}
+          onSaveDictionary={saveGestureDictionary}
           widgetModelOptions={modelsSettings.modelOptions}
           selectedWidgetModel={
             modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel
@@ -1573,6 +1629,7 @@ export const WorkshopApp: React.FC = () => {
           onWidgetModelChange={(modelId) =>
             modelsSettings.setModelSelection('widget', modelId)}
           onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
+          roomRunActive={workshop.isRunning}
           onClose={closeGesture}
         />
       )}

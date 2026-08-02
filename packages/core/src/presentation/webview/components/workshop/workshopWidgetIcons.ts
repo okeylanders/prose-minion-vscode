@@ -37,14 +37,27 @@ const sheetItem = (widget: WorkshopWidgetDescriptor): WorkshopSheetItem => ({
   icon: WORKSHOP_WIDGET_ICONS[widget.id],
   name: widget.label,
   tag: { label: widget.railLabel, kind: widget.rail },
-  costNote: widget.costNote,
-  blurb: widget.blurb
+  metaTag: widget.tag,
+  selectionNote: widget.lifecycleNote,
+  blurb: widget.blurb,
+  unavailable: !widget.live,
+  unavailableLabel: 'Coming soon'
 });
 
-/** The browser's card deck, derived from the canonical catalog. */
-export const WORKSHOP_WIDGET_GROUPS: readonly WorkshopSheetGroup[] =
-  WORKSHOP_WIDGET_CATALOG.map((group) => ({
+const HOME_GROUPS: readonly WorkshopSheetGroup[] = WORKSHOP_WIDGET_CATALOG.map((group) => ({
     name: group.name,
     desc: group.description,
     items: group.items.map(sheetItem)
   }));
+
+/** The browser's card deck, including the design's duplicated live shortcut row. */
+export const WORKSHOP_WIDGET_GROUPS: readonly WorkshopSheetGroup[] = [
+  {
+    name: 'Ready now',
+    desc: 'Built and playable today — each also lives in its home section below.',
+    items: WORKSHOP_WIDGET_CATALOG.flatMap((group) => group.items)
+      .filter((widget) => widget.live)
+      .map(sheetItem)
+  },
+  ...HOME_GROUPS
+];

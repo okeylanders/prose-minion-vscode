@@ -210,7 +210,7 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
         <div>
           <div className="pm-ws-eyebrow">Workshop · Room settings</div>
           <h2 id="pm-ws-settings-title">Conversation settings</h2>
-          <p>Choose how Workshop personas respond, what you explicitly share, and whether they may research the live web. Tools are unchanged.</p>
+          <p>Choose how Workshop personas respond, what they may proactively offer, what you explicitly share, and whether they may research the live web.</p>
         </div>
         <WorkshopModalShell.CloseButton />
       </div>
@@ -320,6 +320,26 @@ export const WorkshopConversationBehaviorModal: React.FC<WorkshopConversationBeh
             ))}
           </div>
           <p className="pm-ws-behavior-note">This is a permission ceiling, not a requirement. Each persona decides when depth helps.</p>
+
+          <SettingsRule label="Initiative" />
+          <div className="pm-ws-behavior-row">
+            <div className="pm-ws-behavior-row-text">
+              <div className="pm-ws-behavior-row-name">Use tools &amp; widgets</div>
+              <div className="pm-ws-behavior-row-desc">
+                Encourage personas to offer one relevant tool or prepare one editable widget when
+                it would materially help. Personas never open or install widgets for you.
+              </div>
+            </div>
+            <Switch
+              checked={behaviorDraft.proactiveAssistance}
+              disabled={editingLocked}
+              label="Use tools and widgets"
+              onClick={() => setBehaviorDraft((current) => ({
+                ...current,
+                proactiveAssistance: !current.proactiveAssistance
+              }))}
+            />
+          </div>
 
           <SettingsRule label="Session continuity" />
           <div className="pm-ws-behavior-row">

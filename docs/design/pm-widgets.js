@@ -18,7 +18,7 @@ const CW_WIDGETS = [
     {id:'trx',icon:'link',name:'Topic Relationship Explorer',rail:'oneshot',railT:'one-shot',blurb:'Name a topic — a thinker, a framework, a tradition — and derive its relationship to the passage as a typed dossier: span-anchored points of contact, graded grounding, where the lens distorts, one question.',tag:'concept'},
     {id:'grx',icon:'cards',name:'Genre Relationship Explorer',rail:'oneshot',railT:'one-shot',blurb:'Survey a chapter for the genres it’s in conversation with, then take one apart tell by tell — expectation against span-anchored evidence: matches, departs, subverts.',tag:'concept'}]},
   {group:'References', desc:'Look something up — one call, one document, nothing to curate.', items:[
-    {id:'dict',icon:'dict',name:'Writer’s Dictionary',rail:'oneshot',railT:'one-shot · report',cost:'plays free — Run posts the whole report and spends one turn',blurb:'One word or phrase, and the whole lexical field comes back as a document: senses, register, texture, collocations, voices, soundplay, watchpoints — plus a menu tuned to your scene if you supply context. The report is the artifact; nothing here stands.',tag:'concept'}]},
+    {id:'dict',icon:'dict',name:'Writer’s Dictionary',rail:'oneshot',railT:'one-shot · report',lifecycle:'Run posts the complete report as one turn',blurb:'One word or phrase, and the whole lexical field comes back as a document: senses, register, texture, collocations, voices, soundplay, watchpoints — plus a menu tuned to your scene if you supply context. The report is the artifact; nothing here stands.',tag:'concept'}]},
   {group:'Influences', desc:'Standing surfaces — pinned to the room, weighing on every turn until unpinned.', items:[
     {id:'gravity',icon:'orbit',name:'Lexical Gravity',rail:'standing',railT:'standing',blurb:'Pull the passage’s lexis toward an interpretive lens — Photography, Mathematics, Music — with weight and reach.',tag:'Sprint 02'},
     {id:'ctrl',icon:'sliders',name:'Prose Controller',rail:'standing',railT:'standing',blurb:'How the passage is made: diction, sentence architecture, rhythm, density, figurative texture, punctuation.',tag:'Sprint 03'},
@@ -63,7 +63,7 @@ function cwXBtn(){
 }
 
 /* ---------- sheet browser (Invite Guest pattern: locked head + foot, categorized card grid) ---------- */
-const CW_RAILCOST={oneshot:'plays free — commits exactly one turn',standing:'pins to the room — rides every turn until unpinned',resource:'durable — persists across sessions'};
+const CW_RAIL_LIFECYCLE={oneshot:'play first · commit adds one turn',standing:'stays with the room until unpinned',resource:'durable · persists across sessions'};
 function cwSheetBrowser(cfg){
   const el=document.createElement('div'); el.className='cwx-sheet'+(cfg.inModal?'':' solo');
   if(cfg.inModal) el.appendChild(cwXBtn());
@@ -97,7 +97,7 @@ function cwSheetBrowser(cfg){
     el.querySelectorAll('.cwx-card').forEach(c=>{const on=c.dataset.wid===id;c.classList.toggle('sel',on);c.setAttribute('aria-pressed',String(on));});
     const w=id&&find(id);
     if(!w){ sum.innerHTML=`<span class="none">${cfg.emptyNote}</span>`; launch.disabled=true; launch.innerHTML=`<span class="n">${cfg.ask?cfg.openLabel:cfg.verb+' a '+cfg.noun}</span>`; launch.title=''; if(ask) ask.disabled=true; return; }
-    sum.innerHTML=`<span class="ic">${cwIc(w.icon,{size:15,sw:1.8})}</span><b>${w.name}</b>${w.railT?`<span class="cw-rail ${w.rail}">${w.railT}</span>`:''}<span class="note">${w.cost||CW_RAILCOST[w.rail]||''}</span>`;
+    sum.innerHTML=`<span class="ic">${cwIc(w.icon,{size:15,sw:1.8})}</span><b>${w.name}</b>${w.railT?`<span class="cw-rail ${w.rail}">${w.railT}</span>`:''}<span class="note">${w.lifecycle||CW_RAIL_LIFECYCLE[w.rail]||''}</span>`;
     launch.disabled=!w.live;
     launch.innerHTML=`<span class="n">${w.live?(cfg.ask?cfg.openLabel:cfg.verb+' '+w.name):'Not in this spread'}</span>`;
     launch.title=w.live?'':'Playable in its own spread — listed here so the registry is honest';
@@ -122,7 +122,7 @@ function buildWidgetBrowser(onPick, inModal, liveIds, onAsk){
     kicker:'Workshop · Composer', title:'Widgets', noun:'widget', verb:'Open',
     openLabel:'Open widget', ask:'Ask agent to configure, then open',
     sub:'Interactive surfaces you <b>play with before anything commits</b>. Playgrounds and Explorers ride one turn; Influences stand until unpinned; Resources outlive the session.',
-    emptyNote:'Select a widget — the rail on each card states what opening it can cost.',
+    emptyNote:'Select a widget — each card shows how it joins and stays with the room.',
     groups:groups.map(g=>({name:g.group,desc:g.desc,items:g.items.map(w=>({...w,live:liveIds?liveIds.includes(w.id):(w.live||readyIds.includes(w.id))}))})),
     inModal, onLaunch:onPick, onAsk:onAsk||((w)=>onPick(w,'ask'))
   });
@@ -148,7 +148,7 @@ function buildGesturePanel(o){
     <div class="cw-seam">deterministic scaffold · one model call, fast tier · commit never re-runs it</div>
     <div class="cw-menu" hidden></div>
     <div class="cw-foot">
-      <span class="cw-fnote"><span class="cw-count"></span>Pre-commit play is free — only the commit pays context.</span>
+      <span class="cw-fnote"><span class="cw-count"></span>Changes stay local until you commit them to the room.</span>
       ${o.live?'<button class="cw-btn ghost cw-cancel">Cancel</button>':''}
       <button class="cw-btn primary cw-commit" disabled>${o.banner==='clone'?'Commit as new turn':'Commit to thread'}</button>
     </div>`);

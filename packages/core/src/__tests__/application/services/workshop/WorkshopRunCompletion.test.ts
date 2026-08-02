@@ -7,6 +7,7 @@ import {
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 /**
  * The one shared four-branch completion machine (PR #72 review #7). These
@@ -85,7 +86,8 @@ describe('completeWorkshopRun', () => {
       streamCompleted: jest.fn(),
       turnCompleted: jest.fn(),
       status: jest.fn(),
-      error: jest.fn()
+      error: jest.fn(),
+      widgetRecommendationRejected: jest.fn()
     };
     discardConversation = jest.fn();
     log = jest.fn();
@@ -312,6 +314,66 @@ describe('completeWorkshopRun', () => {
     expect(log).toHaveBeenCalledWith(
       'Widget recommendation rejected (Jill; reason=invalid_frame)'
     );
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('Rejected widget recommendation response (Jill;')
+    );
+    expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
+      "Jill's widget recommendation could not be prepared.",
+      'The generated setup was incomplete or invalid. Ask Jill to try again.'
+    );
+  });
+
+  it('reports the overflowing recommendation field and replaces a blank bubble', () => {
+    session.beginPersonaMessage('req-1', 'Prepare Gesture Playground again.');
+    const maximum = PROMPT_BUDGETS.workshopWidgets.gestureWriterInstructionsCharacters;
+    const control = widgetRecommendationFrame({
+      writerInstructions: 'x'.repeat(maximum + 1)
+    });
+
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(control, { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.content).toBe(
+      "Jill's widget setup could not be displayed on that pass. Ask Jill to try again."
+    );
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected '
+      + `(Jill; reason=field_too_long:writerInstructions:${maximum + 1}/${maximum})`
+    );
+    expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
+      "Jill's widget recommendation could not be prepared.",
+      `Writer instructions used ${(maximum + 1).toLocaleString('en-US')} characters; `
+      + `the limit is ${maximum.toLocaleString('en-US')}. Ask Jill to try again.`
+    );
+  });
+
+  it('bounds rejected control diagnostics while preserving the response edges', () => {
+    session.beginPersonaMessage('req-1', 'Prepare Gesture Playground again.');
+    const oversized = [
+      '### Try a widget',
+      'START-EDGE',
+      'a'.repeat(8_000),
+      'MIDDLE-PRIVATE-PROSE',
+      'b'.repeat(8_000),
+      'END-EDGE'
+    ].join('\n');
+
+    settle({
+      requestId: 'req-1',
+      result: result(oversized, { conversationId: 'host-conv' })
+    });
+
+    const diagnostic = log.mock.calls
+      .map(([line]) => line as string)
+      .find((line) => line.startsWith('Rejected widget recommendation response'))!;
+    expect(diagnostic).toContain('START-EDGE');
+    expect(diagnostic).toContain('END-EDGE');
+    expect(diagnostic).toContain('characters omitted');
+    expect(diagnostic).not.toContain('MIDDLE-PRIVATE-PROSE');
+    expect(diagnostic.length).toBeLessThan(9_000);
   });
 
   it('attaches proposals to a guest turn and promotes them with guest provenance', () => {

@@ -79,6 +79,7 @@ function buildGravityPanel(o){
   o = Object.assign({lens:'photography', weight:60, reach:2, metaphor:false, mode:'install', banner:null, preview:false, live:true, tab:'field', pos:'n', contrast:null, lookup:'idle', onCommit:null}, o);
   const cfg = {lens:o.lens, weight:o.weight, reach:o.reach, metaphor:o.metaphor};
   let tab=o.tab, pos=o.pos, contrast=o.contrast;
+  let previewSource=LG_LENSES[cfg.lens].sample, previewEdited=false, previewShown=Boolean(o.preview);
   const root = document.createElement('div'); root.className='cw-panel';
   if(o.live) root.appendChild(cwXBtn());
   root.insertAdjacentHTML('beforeend',`
@@ -86,33 +87,36 @@ function buildGravityPanel(o){
     <h2>${cwIc('orbit',{size:17,sw:1.8})} Lexical Gravity</h2>
     <p class="cw-sub">Pull the passage\u2019s lexis toward an interpretive lens. Installs a <b>passage-scoped directive</b> consulted only when prose is written — a knob on the <b>work</b>, never on the participant.</p>
     <div class="cw-bslot"></div>
-    <div class="cw-field"><div class="cw-flabel">Lens <span class="src">built-ins + project lenses · blending is Sprint 04</span></div>
-      <div class="lg-lenses"></div>
+    <div class="cw-field"><div class="lg-section-title">Build New Lens</div>
       <div class="lg-lookup"><input class="cw-in lg-lkin" value="falconry" placeholder="Look up or invent a lens\u2026"><button class="cw-btn lg-lkbtn">${cwIc('sparkle',{size:12,sw:1.8})} Build lens</button></div>
-      <div class="lg-lkslot"></div></div>
-    <div class="lg-slider"><div class="lab">Weight <span class="val lg-wval"></span></div><input type="range" class="lg-range lg-wr" min="10" max="100" step="5" value="${cfg.weight}"></div>
+      <div class="lg-lkslot"></div>
+      <div class="lg-or"><span>OR</span></div>
+      <div class="lg-existing-title">Select From Existing</div>
+      <div class="cw-flabel lg-library-label">Lens <span class="src">built-ins + project lenses · blending is Sprint 04</span></div>
+      <div class="lg-lenses"></div></div>
     <div class="lg-slider"><div class="lab">Reach <span class="val lg-rval"></span></div><input type="range" class="lg-range lg-rr" min="1" max="3" step="1" value="${cfg.reach}"></div>
     <div class="lg-trow"><div class="tt"><div class="tn">Metaphor pull</div><div class="td">Let images cross domains — not just word choice but figuration drawn through the lens.</div></div><span class="lg-tog${cfg.metaphor?' on':''}"><i></i></span></div>
     <div class="lg-fieldbox">
       <div class="lg-tabs"><button data-tab="field">Word field</button><button data-tab="grad">Gradient</button><button data-tab="subs">Substitutions</button><button data-tab="cliche">Clichés</button><span class="lg-fw"></span></div>
       <div class="lg-fbody"></div>
       <div class="lg-fcap">deterministic scaffold — no model call, redrawn instantly</div></div>
-    <button class="cw-gen ghost lg-pv">${cwIc('sparkle',{size:12,sw:1.8})} Preview the pull</button>
     <div class="lg-prevslot"></div>
+    <div class="lg-slider"><div class="lab">Weight <span class="val lg-wval"></span></div><input type="range" class="lg-range lg-wr" min="10" max="100" step="5" value="${cfg.weight}"></div>
+    <button class="cw-gen ghost lg-pv">${cwIc('sparkle',{size:12,sw:1.8})} Preview the Effect</button>
     <div class="cw-foot">
       <span class="cw-fnote">${o.mode==='edit'?'Applies <b>between runs</b> and leaves a \u201Cshifted\u201D marker in the thread.':'Installs <b>between runs</b> — an in-flight reply is never interrupted.'}</span>
       ${o.live?'<button class="cw-btn ghost lg-cancel">Cancel</button>':''}
-      <button class="cw-btn primary lg-commit"${o.live?'':' disabled'}>${o.mode==='edit'?'Apply between runs':'Install on passage'}</button>
+      <button class="cw-btn primary lg-commit"${o.live?'':' disabled'}>${o.mode==='edit'?'Apply':'Install on passage'}</button>
     </div>`);
   const bslot=root.querySelector('.cw-bslot');
   if(o.banner==='seed') bslot.innerHTML=`<div class="cw-banner seed">${cwIc('sparkle',{size:13,sw:1.8})}<span><b>Recommended and prefilled by Jill.</b> Proposing is as far as a persona goes — standing state is always writer-committed.</span></div>`;
-  if(o.banner==='edit') bslot.innerHTML=`<div class="cw-banner clone">${cwIc('refresh',{size:13,sw:1.8})}<span><b>Editing the live directive.</b> There is one active directive per family — Apply swaps the standing frame between runs. Pre-commit tweaking is free; only the commit pays.</span></div>`;
+  if(o.banner==='edit') bslot.innerHTML=`<div class="cw-banner clone">${cwIc('refresh',{size:13,sw:1.8})}<span><b>Editing the live directive.</b> There is one active directive per family. Apply updates the standing frame between runs; changes stay local until then.</span></div>`;
   const grid=root.querySelector('.lg-lenses'), fbody=root.querySelector('.lg-fbody'), prevslot=root.querySelector('.lg-prevslot'), pv=root.querySelector('.lg-pv'), lkslot=root.querySelector('.lg-lkslot');
   const pickContrast=()=>{ const ks=Object.keys(LG_LENSES).filter(k=>k!==cfg.lens); if(!contrast||contrast===cfg.lens||!LG_LENSES[contrast]) contrast=ks[0]; return contrast; };
   const renderGrid=()=>{
     grid.innerHTML=Object.keys(LG_LENSES).map(k=>{
       const L=LG_LENSES[k];
-      return `<button class="lg-lens${k===cfg.lens?' sel':''}" data-lens="${k}"><span class="n">${L.name}${L.src==='project'?'<span class="newb">project</span>':''}</span><span class="w">${L.d[1].n.slice(0,3).join(' · ')}</span></button>`;
+      return `<button class="lg-lens${k===cfg.lens?' sel':''}" data-lens="${k}" title="${cwEsc(L.name)}"><span class="n">${L.name}${L.src==='project'?'<span class="newb">project</span>':''}</span><span class="w">${L.d[1].n.slice(0,3).join(' · ')}</span></button>`;
     }).join('');
   };
   const renderField=()=>{
@@ -146,23 +150,35 @@ function buildGravityPanel(o){
       });
     }
   };
-  const clearPreview=()=>{ prevslot.innerHTML=''; };
-  const showPreview=()=>{
+  const renderPreview=(includeAfter,loading=false)=>{
     const L=LG_LENSES[cfg.lens];
-    prevslot.innerHTML=`<div class="lg-preview"><div class="cap">one fast-tier call · sample pull at ${cfg.weight}%</div>\u201C${L.sample}${cfg.metaphor?' — '+L.meta:''}\u201D</div>`;
+    if(!previewShown){ prevslot.innerHTML=''; return; }
+    const transformed=`${previewSource}${cfg.metaphor?' — '+L.meta:''}`;
+    prevslot.innerHTML=`<div class="lg-preview"><div class="cap">one fast-tier call · sample pull at ${cfg.weight}%</div>
+      <div class="lg-preview-row before"><b>Before</b><textarea rows="3" maxlength="800"${loading?' disabled':''}>${cwEsc(previewSource)}</textarea></div>
+      ${loading?'<div class="lg-preview-row after lg-preview-loading"><b>After</b><span class="lg-preview-skeleton"><i></i><i></i><i></i></span></div>':includeAfter?`<div class="lg-preview-row after"><b>After</b><span>\u201C${cwEsc(transformed)}\u201D</span></div>`:''}</div>`;
+    prevslot.querySelector('textarea').addEventListener('input',e=>{
+      previewSource=e.target.value; previewEdited=true; renderPreview(false);
+      pv.innerHTML=`${cwIc('sparkle',{size:12,sw:1.8})} Preview the Effect`;
+    });
   };
+  const clearPreview=()=>renderPreview(false);
+  const showPreview=()=>{ previewShown=true; renderPreview(true); };
   const renderLookupOptions=()=>{
     lkslot.innerHTML=`<div class="lg-lkopts"><div class="cap">model drafted 2 takes — pick one to add</div>
       ${LG_LOOKUP.options.map(op=>`<button class="lg-lensopt" data-v="${op.v}"><b>${op.t}</b><span>${op.d}</span></button>`).join('')}</div>`;
     lkslot.querySelectorAll('.lg-lensopt').forEach(b=>b.addEventListener('click',()=>{
       if(!LG_LENSES.falconry) LG_LENSES.falconry={...LG_LOOKUP.lens, variant:b.dataset.v};
-      cfg.lens='falconry'; contrast=null; clearPreview(); renderGrid(); renderField();
+      cfg.lens='falconry'; contrast=null;
+      if(!previewEdited) previewSource=LG_LENSES[cfg.lens].sample;
+      clearPreview(); renderGrid(); renderField();
       lkslot.innerHTML=`<div class="lg-saved">${cwIc('check',{size:12,sw:2.4})}<span>Saved to project — <span class="path">resources/lenses/falconry.json</span> · available in every session, every thread</span></div>`;
     }));
   };
   grid.addEventListener('click',e=>{
     const b=e.target.closest('.lg-lens'); if(!b) return;
     cfg.lens=b.dataset.lens; contrast=null;
+    if(!previewEdited) previewSource=LG_LENSES[cfg.lens].sample;
     renderGrid(); clearPreview(); renderField();
   });
   root.querySelector('.lg-lkbtn').addEventListener('click',e=>{
@@ -178,6 +194,7 @@ function buildGravityPanel(o){
   pv.addEventListener('click',()=>{
     if(pv.classList.contains('busy')) return;
     pv.classList.add('busy'); pv.innerHTML='One fast model call…';
+    previewShown=true; renderPreview(false,true);
     setTimeout(()=>{ pv.classList.remove('busy'); pv.innerHTML=`${cwIc('refresh',{size:12,sw:1.8})} Preview again`; showPreview(); },900);
   });
   if(o.preview){ showPreview(); pv.innerHTML=`${cwIc('refresh',{size:12,sw:1.8})} Preview again`; }
