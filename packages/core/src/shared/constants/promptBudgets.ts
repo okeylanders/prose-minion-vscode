@@ -116,8 +116,8 @@ export interface PromptBudgets {
 }
 
 export const PROMPT_BUDGETS: PromptBudgets = {
-  fileExcerpt: { words: 10_000, bytes: 5 * 1024 * 1024 },
-  personaExcerpt: { words: 10_000, characters: 120_000 },
+  fileExcerpt: { words: 25_000, bytes: 5 * 1024 * 1024 },
+  personaExcerpt: { words: 25_000, characters: 300_000 },
   // Raised to 50k for long-form Workshop rooms (Okey 2026-07-26). Making this a user
   // setting is tracked in .todo/tech-debt/2026-07-17-context-attachment-budget-setting.md.
   contextAttachments: {

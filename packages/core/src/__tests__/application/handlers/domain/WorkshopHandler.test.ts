@@ -1797,7 +1797,11 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
   });
 
   it('pins a picked file with durable head-slice provenance', async () => {
-    const content = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
+    const excerptWordCap = PROMPT_BUDGETS.fileExcerpt.words;
+    const content = Array.from(
+      { length: excerptWordCap + 1 },
+      (_, index) => `word${index}`
+    ).join(' ');
     shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/chapter.md', uri: 'file:///chapter.md' });
     fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: content.length });
     fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
@@ -1806,7 +1810,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
 
     expect(session.getExcerpt()).toMatchObject({
       source: { kind: 'file', relativePath: 'External file: chapter.md' },
-      truncation: { pinnedWords: 10_000, totalWords: 10_001 }
+      truncation: { pinnedWords: excerptWordCap, totalWords: excerptWordCap + 1 }
     });
   });
 
@@ -1857,8 +1861,15 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     });
 
     it('revises a head-sliced excerpt when only content beyond the visible head changed', async () => {
-      const original = Array.from({ length: 10_001 }, (_, index) => `word${index}`).join(' ');
-      const revised = `${Array.from({ length: 10_000 }, (_, index) => `word${index}`).join(' ')} changed-ending`;
+      const excerptWordCap = PROMPT_BUDGETS.fileExcerpt.words;
+      const original = Array.from(
+        { length: excerptWordCap + 1 },
+        (_, index) => `word${index}`
+      ).join(' ');
+      const revised = `${Array.from(
+        { length: excerptWordCap },
+        (_, index) => `word${index}`
+      ).join(' ')} changed-ending`;
       await seedFileExcerpt(original);
       const pinnedText = session.getExcerpt()!.text;
       fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(revised));
@@ -1868,7 +1879,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       expect(session.getExcerpt()).toMatchObject({
         version: 2,
         text: pinnedText,
-        truncation: { pinnedWords: 10_000, totalWords: 10_001 }
+        truncation: { pinnedWords: excerptWordCap, totalWords: excerptWordCap + 1 }
       });
     });
   });
