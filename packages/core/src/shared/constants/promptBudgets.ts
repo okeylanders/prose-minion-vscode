@@ -195,7 +195,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalBuildCandidates: 3,
     lexicalBuildOutputTokens: 8_000,
     lexicalPreviewCharacters: 1_200,
-    lexicalPreviewOutputTokens: 1_200,
+    lexicalPreviewOutputTokens: 3_600,
     lexicalDirectiveCharacters: 3_000
   }
 };
