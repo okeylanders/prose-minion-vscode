@@ -6115,17 +6115,23 @@
    ========================================================================= */
 [data-pm-surface="workshop"] .pm-ws-lg-body { padding-top: 0; }
 [data-pm-surface="workshop"] .pm-ws-lg-field { margin-top: 13px; }
-[data-pm-surface="workshop"] .pm-ws-lg-section-title { font:650 13px var(--pm-sans);color:var(--pm-text); }
-[data-pm-surface="workshop"] .pm-ws-lg-or { display:flex;align-items:center;gap:10px;margin:15px 0 7px;font:9px var(--pm-mono);letter-spacing:.14em;color:var(--pm-accent-hi); }
-[data-pm-surface="workshop"] .pm-ws-lg-or::before,
-[data-pm-surface="workshop"] .pm-ws-lg-or::after { content:"";height:1px;flex:1;background:rgba(224,103,58,.28); }
-[data-pm-surface="workshop"] .pm-ws-lg-existing-title { text-align:center;font:650 11.5px var(--pm-sans);color:var(--pm-accent-hi); }
-[data-pm-surface="workshop"] .pm-ws-lg-library-label { margin-top:10px; }
-[data-pm-surface="workshop"] .pm-ws-lg-lenses { display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:6px; }
-[data-pm-surface="workshop"] .pm-ws-lg-lens { background:var(--pm-surface);border:1px solid var(--pm-border);border-radius:9px;padding:9px 10px;cursor:pointer;text-align:left;font-family:var(--pm-sans);min-width:0; }
+[data-pm-surface="workshop"] .pm-ws-lg-picker-tabs { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-bottom:1px solid var(--pm-border); }
+[data-pm-surface="workshop"] .pm-ws-lg-picker-tabs > button { display:flex;align-items:center;justify-content:center;gap:7px;min-height:39px;padding:8px 12px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--pm-dim);font:600 12px var(--pm-sans);cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-lg-picker-tabs > button:hover { color:var(--pm-text-2);background:var(--pm-surface); }
+[data-pm-surface="workshop"] .pm-ws-lg-picker-tabs > button.is-on { color:var(--pm-accent-hi);border-bottom-color:var(--pm-accent);background:var(--pm-accent-soft); }
+[data-pm-surface="workshop"] .pm-ws-lg-picker-tabs > button span { min-width:17px;padding:1px 5px;border:1px solid var(--pm-border-2);border-radius:999px;color:var(--pm-muted);font:9px var(--pm-mono); }
+[data-pm-surface="workshop"] .pm-ws-lg-picker-tabs > button.is-on span { border-color:var(--pm-accent-lo);color:var(--pm-accent-hi); }
+[data-pm-surface="workshop"] .pm-ws-lg-picker-panel { padding-top:13px; }
+[data-pm-surface="workshop"] .pm-ws-lg-section-title { font:500 11.5px/1.5 var(--pm-sans);color:var(--pm-muted); }
+[data-pm-surface="workshop"] .pm-ws-lg-library-label { margin-top:0; }
+[data-pm-surface="workshop"] .pm-ws-lg-lenses { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:8px; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens { position:relative;min-width:0;min-height:78px;padding:15px 38px 12px 13px;background:var(--pm-surface);border:1px solid var(--pm-border);border-radius:10px;cursor:pointer;text-align:left;font-family:var(--pm-sans); }
+[data-pm-surface="workshop"] .pm-ws-lg-lens.has-search-term { padding-top:29px; }
 [data-pm-surface="workshop"] .pm-ws-lg-lens:hover { border-color:var(--pm-border-2); }
 [data-pm-surface="workshop"] .pm-ws-lg-lens.is-selected { background:var(--pm-accent-soft);border-color:rgba(224,103,58,.5); }
-[data-pm-surface="workshop"] .pm-ws-lg-lens-name { font-size:12.5px;font-weight:600;color:var(--pm-text-2);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens > svg { position:absolute;top:12px;right:13px;color:var(--pm-accent-hi);opacity:.72; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens-search-term { position:absolute;top:11px;left:13px;right:38px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--pm-accent-hi);font:9px var(--pm-mono);letter-spacing:.04em; }
+[data-pm-surface="workshop"] .pm-ws-lg-lens-name { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--pm-text-2);font-size:13px;font-weight:600; }
 [data-pm-surface="workshop"] .pm-ws-lg-lens.is-selected .pm-ws-lg-lens-name { color:var(--pm-text); }
 [data-pm-surface="workshop"] .pm-ws-lg-lens-name em { font-family:var(--pm-mono);font-size:8.5px;font-style:normal;letter-spacing:.08em;color:var(--pm-blue);border:1px solid rgba(90,162,240,.4);border-radius:999px;padding:1px 6px;margin-left:6px;text-transform:uppercase; }
 [data-pm-surface="workshop"] .pm-ws-lg-lens-words { font-family:var(--pm-mono);font-size:9.5px;color:var(--pm-faint);margin-top:3px;line-height:1.5;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
@@ -6261,11 +6267,13 @@
 [data-pm-surface="workshop"] .pm-ws-standing-marker:disabled { cursor:default; }
 
 @media (max-width: 680px) {
-  [data-pm-surface="workshop"] .pm-ws-lg-lenses { grid-template-columns:repeat(2,1fr); }
   [data-pm-surface="workshop"] .pm-ws-lg-tabs { flex-wrap:wrap; }
   [data-pm-surface="workshop"] .pm-ws-lg-tabs > span { width:100%;margin-left:0; }
   [data-pm-surface="workshop"] .pm-ws-standing-active { flex-wrap:wrap; }
   [data-pm-surface="workshop"] .pm-ws-standing-config { order:3;width:100%; }
+}
+@media (max-width: 520px) {
+  [data-pm-surface="workshop"] .pm-ws-lg-lenses { grid-template-columns:1fr; }
 }
 [data-pm-surface="workshop"] .pm-ws-gesture-cancel {
   background: transparent;

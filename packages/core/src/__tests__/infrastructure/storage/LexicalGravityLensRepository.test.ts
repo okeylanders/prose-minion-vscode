@@ -113,7 +113,11 @@ describe('LexicalGravityLensRepository', () => {
       'radio-astronomy-interference'
     ]);
     expect(saved).toEqual(expect.arrayContaining([
-      expect.objectContaining({ name: 'Radio Astronomy', source: 'project' })
+      expect.objectContaining({
+        name: 'Radio Astronomy',
+        source: 'project',
+        originQuery: 'Radio Astronomy'
+      })
     ]));
     expect(fileSystem.renames.map(({ to, overwrite }) => ({ to, overwrite }))).toEqual(
       destinations.map((to) => ({ to, overwrite: false }))

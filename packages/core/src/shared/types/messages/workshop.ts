@@ -90,6 +90,8 @@ export interface WorkshopLexicalGravityLens {
   slug: string;
   name: string;
   source: 'built-in' | 'project';
+  /** Writer-entered subject that produced a project lens. */
+  originQuery?: string;
   /** Human-readable angle distinguishing multiple generated takes. */
   variant?: string;
   description?: string;

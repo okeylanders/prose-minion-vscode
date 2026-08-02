@@ -61,14 +61,14 @@ describe('WorkshopLexicalGravityModal', () => {
     const { props } = renderModal();
 
     expect(screen.getByText(/passage-scoped directive/)).toBeTruthy();
-    expect((screen.getByPlaceholderText('Look up or invent a lens…') as HTMLInputElement).value)
+    expect((screen.getByPlaceholderText('Try “code vs. prose”…') as HTMLInputElement).value)
       .toBe('');
     expect((screen.getByRole('button', { name: /Build lens/ }) as HTMLButtonElement).disabled)
       .toBe(true);
-    const buildHeading = screen.getByText('Build New Lens');
-    const existingHeading = screen.getByText('Select From Existing');
-    expect(buildHeading.compareDocumentPosition(existingHeading) & Node.DOCUMENT_POSITION_FOLLOWING)
-      .toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Create New' }).getAttribute('aria-selected'))
+      .toBe('true');
+    expect(screen.queryByRole('button', { name: /Photography/ })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
     expect(screen.getByRole('button', { name: /Photography/ }).getAttribute('class'))
       .toContain('is-selected');
     expect(screen.getByRole('button', { name: /Photography/ }).getAttribute('title'))
@@ -93,6 +93,7 @@ describe('WorkshopLexicalGravityModal', () => {
 
   it('spends only on explicit preview and applies the exact edited four-value draft', () => {
     const { props, view } = renderModal();
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
     fireEvent.click(screen.getByRole('button', { name: /Music/ }));
     fireEvent.change(screen.getByRole('slider', { name: /Weight/ }), { target: { value: '40' } });
     fireEvent.change(screen.getByRole('slider', { name: /Reach/ }), { target: { value: '3' } });
@@ -257,7 +258,7 @@ describe('WorkshopLexicalGravityModal', () => {
 
   it('sends one or more selected generated lenses through one project-save boundary', () => {
     const { props, view } = renderModal();
-    const input = screen.getByPlaceholderText('Look up or invent a lens…');
+    const input = screen.getByPlaceholderText('Try “code vs. prose”…');
     fireEvent.change(input, { target: { value: 'falconry' } });
     fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
     expect(screen.getByRole('status', { name: 'Drafting three lens options' })).toBeTruthy();
@@ -321,7 +322,7 @@ describe('WorkshopLexicalGravityModal', () => {
       lensesSaved={{
         token,
         ok: true,
-        lenses: [{ ...candidate.lens, slug: 'falconry' }],
+        lenses: [{ ...candidate.lens, slug: 'falconry', originQuery: 'falconry' }],
         candidateIds: ['falconry-1', 'falconry-3'],
         remainingCandidateIds: ['falconry-2']
       }}
@@ -331,7 +332,12 @@ describe('WorkshopLexicalGravityModal', () => {
       .not.toContain('Falconry — The hunt');
     expect(view.container.querySelector('.pm-ws-lg-options')?.textContent)
       .not.toContain('Falconry — The stoop');
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
     expect(screen.getByTitle('Falconry — The hunt')).toBeTruthy();
+    expect(screen.getByTitle('Falconry — The hunt')
+      .querySelector('.pm-ws-lg-lens-search-term')?.textContent).toBe('falconry');
+    expect(screen.getByTitle('Falconry — The hunt').querySelector('svg')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'Create New' }));
     fireEvent.click(screen.getByRole('button', { name: /Falconry — The mews/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected lens' }));
     expect(props.onSaveLenses).toHaveBeenLastCalledWith(
@@ -351,13 +357,41 @@ describe('WorkshopLexicalGravityModal', () => {
       lensesSaved={{
         token,
         ok: true,
-        lenses: [{ ...secondCandidate.lens, slug: 'falconry-the-mews' }],
+        lenses: [{
+          ...secondCandidate.lens,
+          slug: 'falconry-the-mews',
+          originQuery: 'falconry'
+        }],
         candidateIds: ['falconry-2'],
         remainingCandidateIds: []
       }}
     />);
 
     expect(view.container.querySelector('.pm-ws-lg-options')).toBeNull();
+  });
+
+  it('infers the original search term for project lenses saved before query metadata', () => {
+    const source = builtInLexicalGravityLenses()[0];
+    renderModal({ kind: 'new' }, {
+      lenses: [{
+        ...source,
+        source: 'project',
+        slug: 'code-vs-prose',
+        name: 'Compile Time',
+        variant: 'Precision & Execution'
+      }, {
+        ...source,
+        source: 'project',
+        slug: 'code-vs-prose-mutability-control-flow',
+        name: 'Variable State',
+        variant: 'Mutability & Control Flow'
+      }]
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
+
+    expect(screen.getAllByText('code vs prose')).toHaveLength(2);
+    expect(screen.queryByText('project lens')).toBeNull();
   });
 
   it('uses the concise Apply action while editing the live directive', () => {
@@ -386,7 +420,7 @@ describe('WorkshopLexicalGravityModal', () => {
 
   it('explains when a generated subject already exists without spending another call', () => {
     const { props, view } = renderModal();
-    const input = screen.getByPlaceholderText('Look up or invent a lens…');
+    const input = screen.getByPlaceholderText('Try “code vs. prose”…');
     fireEvent.change(input, { target: { value: 'photography' } });
     fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
     expect(screen.getByRole('status', { name: 'Drafting three lens options' })).toBeTruthy();
@@ -408,7 +442,7 @@ describe('WorkshopLexicalGravityModal', () => {
 
   it('shows lens-build failures immediately beside the Build lens action', () => {
     const { props, view } = renderModal();
-    fireEvent.change(screen.getByPlaceholderText('Look up or invent a lens…'), {
+    fireEvent.change(screen.getByPlaceholderText('Try “code vs. prose”…'), {
       target: { value: 'falconry' }
     });
     fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));

@@ -24,6 +24,9 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   buildLexicalGravityDirectiveFrame
 } from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
+import {
+  lexicalGravityLensSlug
+} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
 
 export type WorkshopLexicalGravityOpening =
   | { kind: 'new'; seed?: WorkshopLexicalGravityDraft }
@@ -67,6 +70,7 @@ const previewSourceOverrideFor = (
 
 type LensTab = 'field' | 'gradient' | 'substitutions' | 'cliches';
 type WordPart = 'nouns' | 'verbs' | 'modifiers';
+type LensPickerTab = 'create' | 'library';
 
 let lexicalTokenCounter = 0;
 const mintToken = (kind: string): string =>
@@ -78,6 +82,31 @@ const weightLabel = (weight: number): string =>
   weight < 25 ? 'a trace' : weight < 55 ? 'present, not loud' : weight < 85 ? 'forward' : 'saturated';
 const reachLabel = (reach: number): string =>
   reach === 1 ? 'core vocabulary only' : reach === 2 ? 'core + adjacent' : 'core + far associations';
+
+const humanizeLensSlug = (slug: string): string => slug.replace(/-/g, ' ');
+
+const originalSearchTermFor = (
+  lens: WorkshopLexicalGravityLens,
+  library: WorkshopLexicalGravityLens[]
+): string | undefined => {
+  if (lens.source !== 'project') {return undefined;}
+  if (lens.originQuery) {return lens.originQuery;}
+
+  const variantSlug = lexicalGravityLensSlug(lens.variant ?? '');
+  const variantSuffix = variantSlug ? `-${variantSlug}` : '';
+  if (variantSuffix && lens.slug.endsWith(variantSuffix)) {
+    return humanizeLensSlug(lens.slug.slice(0, -variantSuffix.length));
+  }
+
+  const inferredRoot = library
+    .filter(({ source }) => source === 'project')
+    .filter((root) => library.some(
+      (other) => other.slug !== root.slug && other.slug.startsWith(`${root.slug}-`)
+    ))
+    .filter((root) => lens.slug === root.slug || lens.slug.startsWith(`${root.slug}-`))
+    .sort((left, right) => right.slug.length - left.slug.length)[0];
+  return humanizeLensSlug(inferredRoot?.slug ?? lens.slug);
+};
 
 const SUBSTITUTIONS = [
   ['plan', 'a plan'],
@@ -129,6 +158,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [wordPart, setWordPart] = React.useState<WordPart>('nouns');
   const [contrastIndex, setContrastIndex] = React.useState(0);
   const [lookup, setLookup] = React.useState('');
+  const [pickerTab, setPickerTab] = React.useState<LensPickerTab>('create');
   const [extraLens, setExtraLens] = React.useState<WorkshopLexicalGravityLens>();
   const [previewToken, setPreviewToken] = React.useState<string>();
   const [buildToken, setBuildToken] = React.useState<string>();
@@ -162,6 +192,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setWordPart('nouns');
     setContrastIndex(0);
     setLookup('');
+    setPickerTab(opening.kind === 'new' ? 'create' : 'library');
     setExtraLens(draft?.resolvedLens);
     setPreviewToken(undefined);
     setBuildToken(undefined);
@@ -243,6 +274,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       setPreview(undefined);
       setBuildToken(undefined);
       setSelectedCandidateIds([]);
+      setPickerTab('library');
       setBuildNotice(
         `${lensCandidates.existingLens.name} is already ${lensCandidates.existingLens.source === 'project' ? 'in the project library' : 'a built-in lens'}, so no model call was needed.`
       );
@@ -269,6 +301,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       ]);
       if ((lensesSaved.remainingCandidateIds?.length ?? 0) === 0) {
         setBuildToken(undefined);
+        setPickerTab('library');
       }
       setSelectedCandidateIds([]);
       setBuildError(undefined);
@@ -403,121 +436,159 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
 
         <div className="pm-ws-gesture-body pm-ws-lg-body">
           <div className="pm-ws-lg-field">
-            <div className="pm-ws-lg-section-title">Build New Lens</div>
-            <div className="pm-ws-lg-lookup">
-              <input
-                value={lookup}
-                disabled={locked || !!buildToken}
-                maxLength={PROMPT_BUDGETS.workshopWidgets.lexicalBuildQueryCharacters}
-                placeholder="Look up or invent a lens…"
-                onChange={(event) => setLookup(event.target.value)}
-                onKeyDown={(event) => { if (event.key === 'Enter') {build();} }}
-              />
-              <button type="button" disabled={locked || !lookup.trim() || !!buildToken} onClick={build}>
-                <Icon name="sparkle" size={12} /> {buildToken ? 'Drafting…' : 'Build lens'}
+            <div className="pm-ws-lg-picker-tabs" role="tablist" aria-label="Choose a lens source">
+              <button
+                type="button"
+                id="pm-ws-lg-create-tab"
+                role="tab"
+                aria-controls="pm-ws-lg-create-panel"
+                aria-selected={pickerTab === 'create'}
+                className={pickerTab === 'create' ? 'is-on' : ''}
+                onClick={() => setPickerTab('create')}
+              >
+                <Icon name="sparkle" size={12} /> Create New
+              </button>
+              <button
+                type="button"
+                id="pm-ws-lg-library-tab"
+                role="tab"
+                aria-controls="pm-ws-lg-library-panel"
+                aria-selected={pickerTab === 'library'}
+                className={pickerTab === 'library' ? 'is-on' : ''}
+                onClick={() => setPickerTab('library')}
+              >
+                <Icon name="orbit" size={12} /> Library <span>{availableLenses.length}</span>
               </button>
             </div>
-            {buildError && <div className="pm-ws-gesture-error pm-ws-lg-build-error" role="alert">{buildError}</div>}
-            {catalogError && <div className="pm-ws-lg-note">Built-ins remain available. {catalogError}</div>}
             {buildNotice && <div className="pm-ws-lg-note">{buildNotice}</div>}
-            {buildingLensCandidates && (
-              <div
-                className="pm-ws-lg-options pm-ws-lg-options-loading"
-                role="status"
-                aria-label="Drafting three lens options"
-              >
-                <div className="pm-ws-lg-cap">model drafting 3 takes…</div>
-                {[0, 1, 2].map((slot) => (
-                  <div
-                    className="pm-ws-lg-option-skeleton"
-                    aria-hidden="true"
-                    key={slot}
-                  >
-                    <i />
-                    <div><b /><span /></div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {candidates && (
-              <div className="pm-ws-lg-options">
-                <div className="pm-ws-lg-cap">
-                  model drafted {candidates.length} takes — select one or more to add
-                </div>
-                {candidates.map((candidate) => (
-                  <button
-                    type="button"
-                    aria-pressed={selectedCandidateIds.includes(candidate.candidateId)}
-                    className={selectedCandidateIds.includes(candidate.candidateId)
-                      ? 'is-selected'
-                      : undefined}
-                    key={candidate.candidateId}
-                    disabled={savingCandidates}
-                    onClick={() => toggleCandidate(candidate.candidateId)}
-                  >
-                    <i className="pm-ws-lg-option-check" aria-hidden="true">
-                      {selectedCandidateIds.includes(candidate.candidateId)
-                        && <Icon name="check" size={11} />}
-                    </i>
-                    <b>{candidate.lens.name}{candidate.lens.variant ? ` — ${candidate.lens.variant}` : ''}</b>
-                    <span>{candidate.lens.description ?? candidate.lens.gradient.join(' → ')}</span>
-                  </button>
-                ))}
-                <div className="pm-ws-lg-option-actions">
-                  <span>
-                    {selectedCandidateIds.length} selected
-                    {savedCandidateIds.length > 0 && ` · ${savedCandidateIds.length} already added`}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={selectedCandidateIds.length < 1 || savingCandidates}
-                    onClick={saveSelectedCandidates}
-                  >
-                    <Icon name="plus" size={12} />
-                    {savingCandidates
-                      ? 'Adding…'
-                      : selectedCandidateIds.length < 1
-                        ? 'Add selected lenses'
-                        : `Add ${selectedCandidateIds.length} selected ${selectedCandidateIds.length === 1 ? 'lens' : 'lenses'}`}
-                  </button>
-                </div>
-                <div className="pm-ws-lg-cap">
-                  Unsaved takes stay available until you close this sheet.
-                </div>
-              </div>
-            )}
             {lensesSaved?.ok && lensesSaved.lenses?.some(({ slug }) => slug === lens?.slug) && (
               <div className="pm-ws-lg-saved">
                 <Icon name="check" size={12} />
                 Saved {lensesSaved.lenses.length} {lensesSaved.lenses.length === 1 ? 'lens' : 'lenses'} to project — <code>{storagePath}</code> · available in every session, every thread
               </div>
             )}
-            <div className="pm-ws-lg-or"><span>OR</span></div>
-            <div className="pm-ws-lg-existing-title">Select From Existing</div>
-            <div className="pm-ws-gesture-flabel pm-ws-lg-library-label">
-              Lens <i>built-ins + project lenses · blending is Sprint 04</i>
-            </div>
-            <div className="pm-ws-lg-lenses">
-              {availableLenses.map((candidate) => {
-                const displayName = `${candidate.name}${candidate.variant ? ` — ${candidate.variant}` : ''}`;
-                return (
-                  <button
-                    type="button"
-                    className={`pm-ws-lg-lens${candidate.slug === lens?.slug ? ' is-selected' : ''}`}
-                    key={candidate.slug}
-                    title={displayName}
-                    disabled={previewControlsLocked}
-                    onClick={() => selectLens(candidate)}
-                  >
-                    <span className="pm-ws-lg-lens-name">
-                      {displayName}
-                      {candidate.source === 'project' && <em>project</em>}
-                    </span>
-                    <span className="pm-ws-lg-lens-words">{candidate.degrees[1].nouns.slice(0, 3).join(' · ')}</span>
+            {pickerTab === 'create' && (
+              <div
+                id="pm-ws-lg-create-panel"
+                className="pm-ws-lg-picker-panel"
+                role="tabpanel"
+                aria-labelledby="pm-ws-lg-create-tab"
+              >
+                <div className="pm-ws-lg-section-title">Build a lens from any comparison, subject, or field.</div>
+                <div className="pm-ws-lg-lookup">
+                  <input
+                    value={lookup}
+                    disabled={locked || !!buildToken}
+                    maxLength={PROMPT_BUDGETS.workshopWidgets.lexicalBuildQueryCharacters}
+                    placeholder="Try “code vs. prose”…"
+                    onChange={(event) => setLookup(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === 'Enter') {build();} }}
+                  />
+                  <button type="button" disabled={locked || !lookup.trim() || !!buildToken} onClick={build}>
+                    <Icon name="sparkle" size={12} /> {buildToken ? 'Drafting…' : 'Build lens'}
                   </button>
-                );
-              })}
-            </div>
+                </div>
+                {buildError && <div className="pm-ws-gesture-error pm-ws-lg-build-error" role="alert">{buildError}</div>}
+                {buildingLensCandidates && (
+                  <div
+                    className="pm-ws-lg-options pm-ws-lg-options-loading"
+                    role="status"
+                    aria-label="Drafting three lens options"
+                  >
+                    <div className="pm-ws-lg-cap">model drafting 3 takes…</div>
+                    {[0, 1, 2].map((slot) => (
+                      <div className="pm-ws-lg-option-skeleton" aria-hidden="true" key={slot}>
+                        <i />
+                        <div><b /><span /></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {candidates && (
+                  <div className="pm-ws-lg-options">
+                    <div className="pm-ws-lg-cap">
+                      model drafted {candidates.length} takes — select one or more to add
+                    </div>
+                    {candidates.map((candidate) => (
+                      <button
+                        type="button"
+                        aria-pressed={selectedCandidateIds.includes(candidate.candidateId)}
+                        className={selectedCandidateIds.includes(candidate.candidateId) ? 'is-selected' : undefined}
+                        key={candidate.candidateId}
+                        disabled={savingCandidates}
+                        onClick={() => toggleCandidate(candidate.candidateId)}
+                      >
+                        <i className="pm-ws-lg-option-check" aria-hidden="true">
+                          {selectedCandidateIds.includes(candidate.candidateId) && <Icon name="check" size={11} />}
+                        </i>
+                        <b>{candidate.lens.name}{candidate.lens.variant ? ` — ${candidate.lens.variant}` : ''}</b>
+                        <span>{candidate.lens.description ?? candidate.lens.gradient.join(' → ')}</span>
+                      </button>
+                    ))}
+                    <div className="pm-ws-lg-option-actions">
+                      <span>
+                        {selectedCandidateIds.length} selected
+                        {savedCandidateIds.length > 0 && ` · ${savedCandidateIds.length} already added`}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={selectedCandidateIds.length < 1 || savingCandidates}
+                        onClick={saveSelectedCandidates}
+                      >
+                        <Icon name="plus" size={12} />
+                        {savingCandidates
+                          ? 'Adding…'
+                          : selectedCandidateIds.length < 1
+                            ? 'Add selected lenses'
+                            : `Add ${selectedCandidateIds.length} selected ${selectedCandidateIds.length === 1 ? 'lens' : 'lenses'}`}
+                      </button>
+                    </div>
+                    <div className="pm-ws-lg-cap">
+                      Unsaved takes stay available until you close this sheet.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {pickerTab === 'library' && (
+              <div
+                id="pm-ws-lg-library-panel"
+                className="pm-ws-lg-picker-panel"
+                role="tabpanel"
+                aria-labelledby="pm-ws-lg-library-tab"
+              >
+                <div className="pm-ws-gesture-flabel pm-ws-lg-library-label">
+                  Choose a lens <i>built-ins + project lenses · blending is Sprint 04</i>
+                </div>
+                {catalogError && <div className="pm-ws-lg-note">Built-ins remain available. {catalogError}</div>}
+                <div className="pm-ws-lg-lenses">
+                  {availableLenses.map((candidate) => {
+                    const displayName = `${candidate.name}${candidate.variant ? ` — ${candidate.variant}` : ''}`;
+                    const originalSearchTerm = originalSearchTermFor(candidate, availableLenses);
+                    return (
+                      <button
+                        type="button"
+                        className={`pm-ws-lg-lens${originalSearchTerm ? ' has-search-term' : ''}${candidate.slug === lens?.slug ? ' is-selected' : ''}`}
+                        key={candidate.slug}
+                        title={displayName}
+                        disabled={previewControlsLocked}
+                        onClick={() => selectLens(candidate)}
+                      >
+                        {originalSearchTerm && (
+                          <span className="pm-ws-lg-lens-search-term">{originalSearchTerm}</span>
+                        )}
+                        <Icon name="orbit" size={15} />
+                        <span className="pm-ws-lg-lens-name">
+                          {displayName}
+                          {candidate.source === 'project' && <em>project</em>}
+                        </span>
+                        <span className="pm-ws-lg-lens-words">{candidate.degrees[1].nouns.slice(0, 3).join(' · ')}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <label className="pm-ws-lg-slider">
