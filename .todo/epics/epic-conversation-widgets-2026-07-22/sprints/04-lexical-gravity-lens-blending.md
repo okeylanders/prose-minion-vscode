@@ -4,16 +4,17 @@
 **Priority**: Low (v2 richness; ship 01–03 first)
 **Branch**: `sprint/conversation-widgets-04-lexical-gravity-lens-blending` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 3-5 days
-**Depends on**: Sprint 02B (Lexical Gravity single-lens) merged into `epic/conversation-widgets`
-**ADR**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md)
+**Depends on**: Sprint 02B-B (Lexical Gravity interpretive grammar) merged into `epic/conversation-widgets`
+**ADRs**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md); [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md)
 
 ## Goal
 
-Extend Lexical Gravity from single-lens to **blended lenses** — combine
-interpretive lenses / world-views (e.g. Photography + Music + Mathematics) — with
-**explicit dominance weighting**, never an unweighted average. Blending is where
-model output gets muddy; the whole design of this sprint is about keeping a blend
-*layered* rather than *confused*.
+Extend Lexical Gravity from single-lens to **blended interpretive grammars** —
+combine world-views (e.g. Photography + Music + Mathematics) with **explicit
+dominance weighting**, never an unweighted average. The dominant lens governs
+attention and semantic movement; subordinate lenses contribute named secondary
+logic or lexical texture. Blending is where model output gets muddy, so the
+design keeps the blend *layered* rather than *confused*.
 
 ## Expected Foundation
 
@@ -21,6 +22,9 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
   the `<prose-directive family="lexical-gravity" id="pd-N">` frame, the
   coordinator, edit-in-place + shift marker, the chip, the active-directive
   indicator + kill switch, and the explicit config-cached Preview action.
+- Sprint 02B-B will replace the word-field-only lens contract with a v2
+  interpretive grammar: premise, attention, axes, roles, dynamics, entailments,
+  narrative affordances, guardrails, and lexical realization data.
 - The committed directive payload already carries lens, weight,
   degrees-of-separation, and metaphor pull. Blending extends the payload to a
   *weighted set* of lenses.
@@ -31,6 +35,10 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
   `{ lens, dominance }` (e.g. Photography 70% / Music 30%), not an equal mix.
   Averages of strong flavors taste like nothing; unweighted blends read as
   confused. The UI enforces an explicit dominance split that sums to 100%.
+- **Dominance governs interpretive authority, not merely word frequency.** The
+  dominant lens supplies the primary attention logic and semantic dynamics.
+  Every subordinate contribution must be labeled as secondary logic, lexical
+  texture, or counterforce; a flat union of v2 `logic` objects is invalid.
 - **A cap on simultaneous lenses** (leaning: 3) to bound muddiness. Stated in the
   UI; documented in the ADR.
 - **The generated cloud/gradient reflects the blend faithfully** — the word
