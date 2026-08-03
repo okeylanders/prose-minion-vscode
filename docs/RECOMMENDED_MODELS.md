@@ -10,6 +10,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 
 **Best for:** Writing scenes, generating dialogue, style improvement, and avoiding "AI voice"
 
+### Meta Muse Spark 1.1 — Multimodal Editorial Reasoning
+
+- **Best For:** Manuscript-scale critique, mixed-media context, and exploratory editorial work
+- **Description:** Meta's multimodal reasoning model accepts text, images, video, audio, and PDFs with a 1M-token context window
+- **Links:**
+  - OpenRouter: https://openrouter.ai/meta/muse-spark-1.1
+  - Meta: https://ai.meta.com/
+
 ### Claude Sonnet 5 — New Sonnet Flagship
 
 - **Best For:** Default high-quality prose analysis, long-context critique, and mixed writing + tooling workflows
@@ -258,6 +266,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** Flagship Qwen3.7 model with 1M context and strong agent-centric instruction following
 - **Links:**
   - OpenRouter: https://openrouter.ai/qwen/qwen3.7-max
+  - Qwen: https://qwenlm.github.io/
+
+### Qwen3.8 Max — New Open-Model Flagship
+
+- **Best For:** Complex manuscript analysis, visual context, and long-horizon editorial planning
+- **Description:** Qwen's newest multimodal reasoning model with 1M context and strong general-purpose reasoning
+- **Links:**
+  - OpenRouter: https://openrouter.ai/qwen/qwen3.8-max
   - Qwen: https://qwenlm.github.io/
 
 ### Qwen3.7 Plus — High-Value Long Context

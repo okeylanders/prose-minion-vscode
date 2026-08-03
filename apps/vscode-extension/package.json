@@ -207,6 +207,7 @@
           "type": "string",
           "default": "anthropic/claude-sonnet-5",
           "enum": [
+            "meta/muse-spark-1.1",
             "anthropic/claude-sonnet-4.5",
             "anthropic/claude-sonnet-4.6",
             "anthropic/claude-sonnet-5",

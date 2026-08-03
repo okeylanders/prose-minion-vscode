@@ -43,6 +43,12 @@ export interface CuratedOpenRouterModel {
  */
 export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
   {
+    id: 'meta/muse-spark-1.1',
+    name: 'Muse Spark 1.1',
+    family: 'Muse',
+    description: 'Meta\'s multimodal reasoning model with 1M context; increasingly strong for nuanced category matching and context-heavy editorial search'
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     family: 'Claude Sonnet',
@@ -290,6 +296,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
  * Grouped by provider family and version progression
  */
 export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
+  {
+    id: 'meta/muse-spark-1.1',
+    name: 'Muse Spark 1.1',
+    family: 'Muse',
+    description: 'Meta\'s multimodal reasoning model with 1M context. A strong fit for manuscript-scale critique, mixed-media context, and exploratory editorial work.'
+  },
   {
     id: 'anthropic/claude-opus-4.1',
     name: 'Claude Opus 4.1',
@@ -703,6 +715,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Kimi K3',
     family: 'Kimi K3',
     description: 'Moonshot AI\'s big open-weight reasoner. Punches near the frontier at a lower price and handles very long documents well — a solid mid-cost pick for whole-manuscript analysis.'
+  },
+  {
+    id: 'qwen/qwen3.8-max',
+    name: 'Qwen3.8 Max',
+    family: 'Qwen3.8',
+    description: 'Qwen\'s flagship multimodal reasoner with 1M context. Strong for complex manuscript analysis, visual context, and long-horizon editorial planning.'
   },
   {
     id: 'mistralai/mistral-large-2512',
