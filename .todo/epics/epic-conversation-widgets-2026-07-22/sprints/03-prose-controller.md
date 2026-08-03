@@ -4,7 +4,7 @@
 **Priority**: Medium
 **Branch**: `sprint/conversation-widgets-03-prose-controller` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 8-12 days
-**Depends on**: Sprint 02B (standing prose-directive rail + coordinator) merged into `epic/conversation-widgets`
+**Depends on**: Sprint 02B-B (Lexical Gravity interpretive grammar) merged into `epic/conversation-widgets`; the standing rail itself arrived in Sprint 02B
 **Optional predecessor**: Sprint 02C may land first, but is not a gate
 **ADR**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md)
 
@@ -30,11 +30,15 @@ switch, both consulted at prose-generation time.
 
 ## Expected Foundation
 
-- Sprint 02B will establish the reserved standing frame, the between-runs
+- Sprint 02B establishes the reserved standing frame, the between-runs
   coordinator (in the `WorkshopConversationBehaviorService` mold),
   edit-in-place + shift markers, the presentation-only chip, and the active-
   directive indicator + kill switch. Prose Controller is a second *producer*
   onto that infrastructure.
+- Sprint 02B-B proves that standing prose directives separate semantic intent
+  from surface realization and keeps their persisted codecs exact and
+  inspectable. Prose Controller begins only after that contract is settled so it
+  does not copy the earlier word-field-only assumption into its craft chapters.
 - Sprint 02B leaves the family-neutral apply/remove IPC routes registered by
   `WorkshopLexicalGravityHandler`, because `MessageRouter` permits one owner per
   message type. Sprint 03 begins by moving those two routes into a shared
