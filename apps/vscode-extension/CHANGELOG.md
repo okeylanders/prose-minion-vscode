@@ -2,6 +2,16 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.1.1] - 2026-08-03
+
+### Added
+
+- **Curated model catalog refresh**: Added Meta Muse Spark 1.1 and Qwen3.8 Max
+  to the Recommended Models list, with 1M-context options for manuscript-scale
+  critique and mixed-media editorial work.
+- **Category Search option**: Added Meta Muse Spark 1.1 to the curated Category
+  Search model options. Existing model defaults remain unchanged.
+
 ## [2.1.0] - 2026-07-28
 
 ### Added

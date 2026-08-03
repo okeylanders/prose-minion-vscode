@@ -24,11 +24,11 @@
 
 ---
 
-## What's new in v2.1.0 — Workshop beta
+## What's new in v2.1.1 — Curated model catalog refresh
 
-- **A full Workshop editor tab** — start from an excerpt or an open conversation, choose a Writers' Room host, invite persona guests, and keep sustained manuscript work in one persistent thread.
-- **Context and craft tools that stay honest** — attach project resources and one-shot evidence, run any of the fourteen writing tools as visible sidecars, and give personas bounded access to focused analysis, dictionary, project-resource, and optional web-research capabilities.
-- **Durable writing sessions** — save, browse, rename, duplicate, reopen, and recover Workshop sessions with host-side state, explicit privacy boundaries, and versioned beta guidance for the new surface.
+- **Meta Muse Spark 1.1** — a 1M-context multimodal option for manuscript-scale critique, mixed-media context, and exploratory editorial work; it is also available for Category Search.
+- **Qwen3.8 Max** — a new 1M-context recommendation for complex manuscript analysis, visual context, and long-horizon editorial planning.
+- **Your current setup stays put** — existing model defaults and saved selections are unchanged. Workshop beta remains available for sustained, persona-hosted manuscript work.
 
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)
 
