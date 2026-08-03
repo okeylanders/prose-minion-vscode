@@ -53,6 +53,81 @@ const HANDLERS_ROOT = path.join(
   'application',
   'handlers'
 );
+const WORKSHOP_HANDLER_ROOT = path.join(HANDLERS_ROOT, 'domain');
+
+/**
+ * Phase-0 migration witness for ADR 2026-08-03. This map records current route
+ * truth before any files move. Every route must have exactly one owner. Later
+ * phases update the owner path as part of the same pure-move commit; the two
+ * generic standing routes must leave the Lexical handler in Phase 2.
+ */
+const WORKSHOP_WIDGET_ROUTE_OWNERS = [
+  {
+    messageType: 'WORKSHOP_WIDGET_GENERATE',
+    owner: 'application/handlers/domain/WorkshopWidgetHandler.ts'
+  },
+  {
+    messageType: 'WORKSHOP_REQUEST_WIDGET_CONFIG',
+    owner: 'application/handlers/domain/WorkshopWidgetHandler.ts'
+  },
+  {
+    messageType: 'WORKSHOP_COMMIT_WIDGET',
+    owner: 'application/handlers/domain/WorkshopWidgetHandler.ts'
+  },
+  {
+    messageType: 'WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES',
+    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+  },
+  {
+    messageType: 'WORKSHOP_PREVIEW_LEXICAL_GRAVITY',
+    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+  },
+  {
+    messageType: 'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS',
+    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+  },
+  {
+    messageType: 'WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES',
+    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+  },
+  // Legacy Phase-2 exceptions: family-generic routes have a feature owner.
+  {
+    messageType: 'WORKSHOP_APPLY_STANDING_WIDGET',
+    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+  },
+  {
+    messageType: 'WORKSHOP_REMOVE_STANDING_WIDGET',
+    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+  }
+] as const;
+
+/**
+ * Exact known false-generic ownership at the start of the refactor. This list
+ * may only shrink. A phase that removes an exception updates this witness in
+ * the same commit; Phase 7 requires an empty list.
+ */
+const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS = [
+  {
+    phase: 1,
+    file: 'application/handlers/domain/WorkshopWidgetHandler.ts',
+    marker: /GesturePlaygroundService/
+  },
+  {
+    phase: 1,
+    file: 'presentation/webview/hooks/domain/useWorkshop.ts',
+    marker: /message\.payload\.widgetId === 'gesture-playground'/
+  },
+  {
+    phase: 2,
+    file: 'application/services/workshop/directives/WorkshopStandingDirectiveService.ts',
+    marker: /family: 'lexical-gravity'/
+  },
+  {
+    phase: 2,
+    file: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts',
+    marker: /MessageType\.WORKSHOP_APPLY_STANDING_WIDGET/
+  }
+] as const;
 
 const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
@@ -127,6 +202,69 @@ describe('architectural boundaries', () => {
     ]);
     expect(offsetAdvancers).toEqual([
       'application/services/workshop/WorkshopRoomDeliveryService.ts'
+    ]);
+  });
+
+  it('Workshop widget and standing routes have exactly one explicit owner', () => {
+    const handlerFiles = collectSourceFiles(WORKSHOP_HANDLER_ROOT);
+    const actualOwners: Record<string, string> = {};
+
+    for (const { messageType, owner: expectedOwner } of WORKSHOP_WIDGET_ROUTE_OWNERS) {
+      const registration = new RegExp(
+        String.raw`(?:router\.register|registerMutation)\(\s*MessageType\.${messageType}\b`,
+        's'
+      );
+      const owners = handlerFiles
+        .filter((file) => registration.test(fs.readFileSync(file, 'utf8')))
+        .map((file) => path.relative(SRC_ROOT, file));
+
+      expect(owners).toEqual([expectedOwner]);
+      actualOwners[messageType] = owners[0];
+    }
+
+    expect(actualOwners).toEqual(Object.fromEntries(
+      WORKSHOP_WIDGET_ROUTE_OWNERS.map(({ messageType, owner }) => [messageType, owner])
+    ));
+  });
+
+  it('Workshop feature modules do not import the sibling feature', () => {
+    const sourceFiles = collectSourceFiles(SRC_ROOT);
+    const gestureOffenders = sourceFiles
+      .filter((file) => /GesturePlayground/i.test(path.relative(SRC_ROOT, file)))
+      .filter((file) => /(?:LexicalGravity|lexicalGravity|lexical-gravity)/.test(
+        fs.readFileSync(file, 'utf8')
+      ))
+      .map((file) => path.relative(SRC_ROOT, file));
+    const lexicalOffenders = sourceFiles
+      .filter((file) => /LexicalGravity/i.test(path.relative(SRC_ROOT, file)))
+      .filter((file) => /(?:GesturePlayground|gesturePlayground|gesture-playground)/.test(
+        fs.readFileSync(file, 'utf8')
+      ))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(gestureOffenders).toEqual([]);
+    expect(lexicalOffenders).toEqual([]);
+  });
+
+  it('Workshop handlers cannot bypass the session aggregate through internal ledgers', () => {
+    const INTERNAL_SESSION_LEDGER = /(?:WorkshopWidgetConfigLedger|WorkshopStandingDirectiveLedger)/;
+    const offenders = collectSourceFiles(WORKSHOP_HANDLER_ROOT)
+      .filter((file) => INTERNAL_SESSION_LEDGER.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps the accepted Workshop legacy ownership exceptions exact during migration', () => {
+    const observed = WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS
+      .filter(({ file, marker }) => marker.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8')))
+      .map(({ phase, file }) => `P${phase}:${file}`);
+
+    expect(observed).toEqual([
+      'P1:application/handlers/domain/WorkshopWidgetHandler.ts',
+      'P1:presentation/webview/hooks/domain/useWorkshop.ts',
+      'P2:application/services/workshop/directives/WorkshopStandingDirectiveService.ts',
+      'P2:application/handlers/domain/WorkshopLexicalGravityHandler.ts'
     ]);
   });
 });

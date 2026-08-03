@@ -1,14 +1,20 @@
 # Sprint 02C: Workshop Scope/Context IPC Extraction
 
-**Status**: Optional — decide after Sprint 02B-A review
-**Priority**: Medium
+**Status**: Superseded 2026-08-03 — mandatory work moved to Workshop Architecture Refactor Phase 4
+**Priority**: Historical plan; do not execute independently
 **Branch**: `sprint/conversation-widgets-02c-workshop-scope-context-ipc-extraction` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 1-2 days
 **Depends on**: Sprint 02B-A merged into `epic/conversation-widgets`
-**Blocks**: Nothing; if taken, land before Sprint 03 (Prose Controller)
+**Blocks**: Superseded by [Workshop Architecture Refactor Sprint 04](../../epic-workshop-architecture-refactor-2026-08-03/sprints/04-application-handler-extraction.md)
 **Tech debt**: [Workshop god files](../../../tech-debt/2026-07-25-workshop-god-files.md)
 
 ## Decision Gate
+
+**Supersession note:** The decision owner froze all Workshop feature work until
+the full responsibility refactor completes. The eight-route seam remains useful
+evidence, but it is no longer optional and this sprint is not the execution
+artifact. The architecture-refactor epic owns the move and its relationship to
+the other handler boundaries.
 
 Take this sprint only if Sprint 02B-A leaves the scope/context route cluster as a
 clean pure-move seam and `WorkshopHandler` would otherwise absorb more wiring

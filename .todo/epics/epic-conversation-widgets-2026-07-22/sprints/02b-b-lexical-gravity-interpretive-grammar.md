@@ -1,10 +1,10 @@
 # Sprint 02B-B: Lexical Gravity Interpretive Grammar
 
-**Status**: Planned — ADR proposed 2026-08-01
-**Priority**: High — gate before other widget behavior sprints
+**Status**: Paused — Workshop Architecture Refactor Phases 0-7 block feature implementation
+**Priority**: High after the architecture feature-resume gate closes
 **Branch**: `sprint/conversation-widgets-02b-b-lexical-gravity-interpretive-grammar` -> stacked on Sprint 02B-A until PR #99 merges, then retarget to `epic/conversation-widgets`
 **Estimated Effort**: 5-8 days
-**Depends on**: Sprint 02B-A
+**Depends on**: Sprint 02B-A and [Workshop Architecture Refactor Phase 7](../../epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md)
 **ADR**: [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md)
 
 ## Goal
@@ -17,6 +17,10 @@ last-mile realization layer.
 
 This sprint establishes that foundation before Prose Controller, lens blending,
 or another widget copies the current representation.
+
+Implementation is intentionally paused. PR #100 records this plan, its ADR, and
+the accepted architecture runway; no Lens Logic runtime work begins until the
+Workshop responsibility refactor closes.
 
 ## Locked decisions
 
@@ -144,4 +148,3 @@ or another widget copies the current representation.
 - V1 resources fail with an exact, actionable message and are not modified.
 - Round-trip persistence reconstructs the exact v2 standing frame.
 - Typechecks, lint, builds, architecture witnesses, and affected tests pass.
-

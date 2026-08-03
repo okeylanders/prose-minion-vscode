@@ -1,9 +1,10 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: In progress — Sprint 01 merged 2026-07-30; Sprints 02A and 02B
-merged 2026-07-31; Sprint 02B-A in progress; Sprint 02B-B planned as the next
-behavior gate; Sprint 02C optional
+**Status**: Paused — Workshop feature freeze accepted 2026-08-03. Sprint 01
+merged 2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed;
+Sprint 02B-B and all later behavior wait for the Workshop Architecture Refactor
+Phases 0-7 to close.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -22,11 +23,14 @@ resources, and writer-owned edit/kill lifecycle. Sprint 02B-A is the active
 follow-up: agent-prepared widget handoff, default-on proactive assistance, and
 Lexical Gravity/browser UX polish. Sprint 02B-B follows by replacing the
 word-field-only lens codec with an interpretive grammar before any other widget
-behavior sprint proceeds. Sprint 02C remains an optional pure-move handler
-extraction. Sprints 03 and 04 have not started.
+behavior sprint proceeds, but it is now paused behind the responsibility
+refactor. The old optional Sprint 02C is superseded by mandatory handler work in
+the [Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md).
+Sprints 03 and 04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;
-[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Proposed**
+[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Proposed**;
+[2026-08-03 — Workshop Feature Family and Module Boundaries](../../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) — **Accepted; blocks feature work through refactor Phase 7**
 **Integration branch**: `epic/conversation-widgets`
 
 ## Goal
@@ -171,9 +175,11 @@ with a second widget before adding v2 richness.
 | 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |
 
-Each implemented sprint lands as its own PR into `epic/conversation-widgets`.
-Sprint 02B-B is the next behavior gate. Sprint 02C is explicitly optional and
-non-blocking; Sprint 03 depends on 02B-B, not 02C. Final step after Sprint 04
+Each implemented feature sprint lands as its own PR into
+`epic/conversation-widgets`. Feature sequencing is frozen until the Workshop
+Architecture Refactor Phase 7 explicitly lifts the gate. Sprint 02C is
+superseded by that refactor; Sprint 02B-B becomes the next behavior sprint only
+after closure. Final step after Sprint 04
 (or the agreed cut line): one PR
 `epic/conversation-widgets →` the workshop integration line.
 

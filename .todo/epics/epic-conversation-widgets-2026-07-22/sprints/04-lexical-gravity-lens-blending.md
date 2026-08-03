@@ -1,10 +1,10 @@
 # Sprint 04: Lexical Gravity — Lens Blending
 
-**Status**: Planned
+**Status**: Paused — Workshop Architecture Refactor Phase 7 must lift the feature freeze
 **Priority**: Low (v2 richness; ship 01–03 first)
 **Branch**: `sprint/conversation-widgets-04-lexical-gravity-lens-blending` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 3-5 days
-**Depends on**: Sprint 02B-B (Lexical Gravity interpretive grammar) merged into `epic/conversation-widgets`
+**Depends on**: Sprint 02B-B merged into `epic/conversation-widgets` and Workshop Architecture Refactor Phase 7 complete
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md); [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md)
 
 ## Goal

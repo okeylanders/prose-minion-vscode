@@ -1,7 +1,7 @@
 # Tech Debt: `WorkshopSessionService` and `WorkshopHandler` are load-bearing god files
 
-- **Status**: Open
-- **Priority**: Medium
+- **Status**: In progress — absorbed by the Workshop Architecture Refactor epic
+- **Priority**: Critical — blocks Workshop feature development
 - **Filed**: 2026-07-25
 - **Source**: [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md),
   finding #7 (🎯🎯 strong consensus — Marcus, Parker, Stan), and
@@ -82,16 +82,24 @@ Named by the reviewers, in rough order of cohesion:
 
 ## Completion criteria
 
-- [ ] Both files under ~1,200 lines, with a stated path to under 1,000.
-- [ ] Each extraction is a pure move plus wiring — no behavior change in the
-      same commit.
-- [ ] Existing test suites pass unchanged (they are behavior-level, so a clean
-      extraction should not need them rewritten).
-- [ ] New sibling files carry the same header-comment convention as
-      `WorkshopSessionMessageHandler.ts`.
+- [ ] Each broad file has one legible primary responsibility or is a narrow
+      facade over named collaborators.
+- [ ] Each extraction follows an independently changing domain concept and owns
+      its complete state/helper/invariant cluster.
+- [ ] Behavior-preserving moves and behavior changes use separate commits.
+- [ ] Existing behavior suites pass; focused collaborator tests are added where
+      ownership becomes independently testable.
+- [ ] The final responsibility map can trace representative UI-to-persistence
+      actions without searching unrelated broad files.
+- [ ] Architecture fitness witnesses protect the resulting boundaries.
+
+There is no longer a numeric line-count completion target. Line count remains a
+pressure signal, not the definition of a coherent module.
 
 ## Related
 
+- [Workshop Architecture Refactor epic](../epics/epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
+- [ADR 2026-08-03: Workshop Feature Family and Module Boundaries](../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md)
 - [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md)
 - [PR #88 review](../../docs/pr-reviews/pr-88-persona-analysis-inputs-review.md)
 - ADR 2026-06-18: MessageHandler Composition-Root Consolidation
