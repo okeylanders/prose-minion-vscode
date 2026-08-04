@@ -2,6 +2,10 @@ import {
   WorkshopStandingDirectiveService
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import {
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS,
+  WorkshopStandingDirectiveOperations
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
+import {
   renderWorkshopStandingDirectiveFramesForSnapshots,
   renderWorkshopStandingDirectiveFramesFromState
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
@@ -44,9 +48,20 @@ const applyLexicalGravity = (
   service: WorkshopStandingDirectiveService,
   nextDraft: WorkshopLexicalGravityDraft,
   widgetConfigId?: string
-) => service.apply({ family: 'lexical-gravity', draft: nextDraft, widgetConfigId });
+) => service.apply(WORKSHOP_STANDING_DIRECTIVE_OPERATIONS.prepareApply({
+  requestToken: 'service-test',
+  widgetId: 'lexical-gravity',
+  draft: nextDraft,
+  widgetConfigId
+}));
 
 describe('WorkshopStandingDirectiveService', () => {
+  it('fails an unknown family lookup with a domain error instead of dereferencing undefined', () => {
+    expect(() => WORKSHOP_STANDING_DIRECTIVE_OPERATIONS.widgetIdForFamily(
+      'future-standing-family' as never
+    )).toThrow('Standing directive family future-standing-family is not implemented');
+  });
+
   it('stages first install until every retained prompt has been replaced', async () => {
     const session = new WorkshopSessionService(() => 100);
     const gate = deferred();
@@ -282,5 +297,115 @@ describe('WorkshopStandingDirectiveService', () => {
     mutate(state);
 
     expect(() => parseWorkshopSessionStateV1(state)).toThrow(message);
+  });
+
+  it('runs a test-only second family through apply, aggregate commit, and remove', async () => {
+    // Prose Controller remains feature-frozen and outside the persisted config
+    // union. This structural fake proves the shared kernel/registry seam without
+    // expanding production state or borrowing a Lexical draft as a fallback.
+    const config = {
+      id: 'wc-1',
+      widgetId: 'prose-controller',
+      revision: 1,
+      createdAt: 10,
+      draft: { intensity: 3 }
+    };
+    let activeDirective: {
+      id: string;
+      family: 'prose-controller';
+      widgetId: 'prose-controller';
+      widgetConfigId: string;
+      revision: number;
+      updatedAt: number;
+    } | undefined;
+    let committedConfig: typeof config | undefined;
+    let turnCounter = 0;
+    const session = {
+      getSnapshot: () => ({ activeRequestId: undefined }),
+      getStandingDirective: () => activeDirective,
+      getWidgetConfig: () => committedConfig,
+      prepareWidgetConfigCreation: () => ({
+        kind: 'creation',
+        counter: 1,
+        config
+      }),
+      prepareStandingDirectiveUpsert: () => {
+        const directive = {
+          id: 'pd-1',
+          family: 'prose-controller' as const,
+          widgetId: 'prose-controller' as const,
+          widgetConfigId: 'wc-1',
+          revision: 1,
+          updatedAt: 10
+        };
+        return {
+          action: 'installed',
+          directive,
+          state: { counter: 1, directives: [directive] }
+        };
+      },
+      prepareStandingDirectiveRemoval: () => activeDirective
+        ? {
+            action: 'removed',
+            directive: activeDirective,
+            state: { counter: 1, directives: [] }
+          }
+        : undefined,
+      commitStandingDirectiveMutation: (prepared: {
+        action: 'installed' | 'removed';
+        directive: typeof activeDirective;
+      }, preparedConfig?: { config: typeof config }) => {
+        if (prepared.action === 'removed') {
+          activeDirective = undefined;
+        } else {
+          activeDirective = prepared.directive;
+          committedConfig = preparedConfig?.config;
+        }
+        return { id: `turn-${++turnCounter}` };
+      }
+    };
+    const operations: WorkshopStandingDirectiveOperations = {
+      prepareApply: jest.fn(),
+      widgetIdForFamily: (family) => family === 'prose-controller'
+        ? 'prose-controller'
+        : 'lexical-gravity',
+      render: ({ directive }) => `<prose-controller id="${directive.id}" />`,
+      summarize: jest.fn(),
+      markerContent: jest.fn(),
+      formatSummary: jest.fn(),
+      describe: () => 'test-only Prose Controller frame'
+    };
+    const replaceStandingDirectiveFrames = jest.fn().mockResolvedValue(undefined);
+    const service = new WorkshopStandingDirectiveService(
+      session as never,
+      { replaceStandingDirectiveFrames } as never,
+      operations
+    );
+
+    const applied = await service.apply({
+      family: 'prose-controller',
+      widgetId: 'prose-controller',
+      widgetConfigInput: {
+        widgetId: 'prose-controller',
+        draft: config.draft
+      } as never,
+      editConflictMessage: 'test edit conflict',
+      alreadyActiveMessage: 'test family already active'
+    } as never);
+    const removed = await service.remove('prose-controller');
+
+    expect(applied).toMatchObject({
+      action: 'installed',
+      directiveId: 'pd-1',
+      config: { widgetId: 'prose-controller' }
+    });
+    expect(removed).toMatchObject({ removed: true, directiveId: 'pd-1' });
+    expect(replaceStandingDirectiveFrames).toHaveBeenNthCalledWith(
+      1,
+      ['<prose-controller id="pd-1" />']
+    );
+    expect(replaceStandingDirectiveFrames).toHaveBeenNthCalledWith(2, []);
+    expect(activeDirective).toBeUndefined();
+    expect(turnCounter).toBe(2);
   });
 });

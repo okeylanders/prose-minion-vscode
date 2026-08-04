@@ -1765,8 +1765,8 @@ export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
  * so a regenerate race resolves to the latest request (stale results are
  * dropped).
  */
-interface WorkshopWidgetGenerateBasePayload {
-  widgetId: WorkshopWidgetId;
+interface WorkshopGesturePlaygroundGenerateBasePayload {
+  widgetId: 'gesture-playground';
   token: string;
   targetPhrase: string;
   writerInstructions: string;
@@ -1775,25 +1775,27 @@ interface WorkshopWidgetGenerateBasePayload {
   sourceReferences: WorkshopWidgetSourceReference[];
 }
 
-export type WorkshopWidgetGeneratePayload =
-  | (WorkshopWidgetGenerateBasePayload & { mode: 'full' })
-  | (WorkshopWidgetGenerateBasePayload & {
+export type WorkshopGesturePlaygroundGeneratePayload =
+  | (WorkshopGesturePlaygroundGenerateBasePayload & { mode: 'full' })
+  | (WorkshopGesturePlaygroundGenerateBasePayload & {
       mode: 'more';
       dictionaryMarkdown: string;
       menu: WorkshopGestureMenuGroup[];
     });
 
-export interface WorkshopWidgetGenerateMessage extends MessageEnvelope<WorkshopWidgetGeneratePayload> {
-  type: MessageType.WORKSHOP_WIDGET_GENERATE;
+export interface WorkshopGesturePlaygroundGenerateMessage
+  extends MessageEnvelope<WorkshopGesturePlaygroundGeneratePayload> {
+  type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATE;
 }
 
 /** Abandon the in-flight generate call (modal closed, or superseded). */
-export interface CancelWidgetGenerateRequestMessage extends MessageEnvelope<CancelRequestPayload> {
-  type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST;
+export interface CancelGesturePlaygroundGenerateRequestMessage
+  extends MessageEnvelope<CancelRequestPayload> {
+  type: MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST;
 }
 
-export interface WorkshopWidgetGenerationProgressPayload {
-  widgetId: WorkshopWidgetId;
+export interface WorkshopGesturePlaygroundGenerationProgressPayload {
+  widgetId: 'gesture-playground';
   token: string;
   phase: 'started' | 'streaming' | 'completed' | 'cancelled';
   stage: 'requesting' | 'dictionary' | 'menu' | 'validating';
@@ -1805,13 +1807,13 @@ export interface WorkshopWidgetGenerationProgressPayload {
   outputTokenLimit: number;
 }
 
-export interface WorkshopWidgetGenerationProgressMessage
-  extends MessageEnvelope<WorkshopWidgetGenerationProgressPayload> {
-  type: MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS;
+export interface WorkshopGesturePlaygroundGenerationProgressMessage
+  extends MessageEnvelope<WorkshopGesturePlaygroundGenerationProgressPayload> {
+  type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS;
 }
 
-export interface WorkshopWidgetMenuResultPayload {
-  widgetId: WorkshopWidgetId;
+export interface WorkshopGesturePlaygroundMenuResultPayload {
+  widgetId: 'gesture-playground';
   token: string;
   mode: 'full' | 'more';
   ok: boolean;
@@ -1826,8 +1828,9 @@ export interface WorkshopWidgetMenuResultPayload {
   truncated?: boolean;
 }
 
-export interface WorkshopWidgetMenuResultMessage extends MessageEnvelope<WorkshopWidgetMenuResultPayload> {
-  type: MessageType.WORKSHOP_WIDGET_MENU_RESULT;
+export interface WorkshopGesturePlaygroundMenuResultMessage
+  extends MessageEnvelope<WorkshopGesturePlaygroundMenuResultPayload> {
+  type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT;
 }
 
 export interface WorkshopRequestLexicalGravityLensesMessage
@@ -1937,44 +1940,73 @@ export interface WorkshopWidgetConfigDataMessage extends MessageEnvelope<{
  * exploration cloud in `draft.menu` is persisted for chip re-hydration but
  * never enters the prompt.
  */
-export interface WorkshopCommitWidgetPayload {
-  widgetId: WorkshopWidgetId;
+export interface WorkshopGesturePlaygroundCommitPayload {
+  widgetId: 'gesture-playground';
+  requestToken: string;
   draft: WorkshopGestureDraft;
   /** Present on clone-and-recommit: the config this Draft was re-opened from. */
   clonedFromConfigId?: string;
 }
 
+/** Family rail contract; each supported one-shot widget contributes one exact arm. */
+export type WorkshopCommitWidgetPayload = WorkshopGesturePlaygroundCommitPayload;
+
 export interface WorkshopCommitWidgetMessage extends MessageEnvelope<WorkshopCommitWidgetPayload> {
   type: MessageType.WORKSHOP_COMMIT_WIDGET;
 }
 
+export interface WorkshopLexicalGravityApplyStandingWidgetPayload {
+  requestToken: string;
+  widgetId: 'lexical-gravity';
+  draft: WorkshopLexicalGravityDraft;
+  /** Present for edit-in-place; omitted for a first install. */
+  widgetConfigId?: string;
+}
+
+/** Each live standing feature contributes one exact widget/draft arm. */
+export type WorkshopApplyStandingWidgetPayload =
+  WorkshopLexicalGravityApplyStandingWidgetPayload;
+
 export interface WorkshopApplyStandingWidgetMessage
-  extends MessageEnvelope<{
-    widgetId: 'lexical-gravity';
-    draft: WorkshopLexicalGravityDraft;
-    /** Present for edit-in-place; omitted for a first install. */
-    widgetConfigId?: string;
-  }> {
+  extends MessageEnvelope<WorkshopApplyStandingWidgetPayload> {
   type: MessageType.WORKSHOP_APPLY_STANDING_WIDGET;
 }
 
+export interface WorkshopRemoveStandingWidgetPayload {
+  requestToken: string;
+  family: WorkshopStandingDirectiveFamily;
+}
+
 export interface WorkshopRemoveStandingWidgetMessage
-  extends MessageEnvelope<{ family: WorkshopStandingDirectiveFamily }> {
+  extends MessageEnvelope<WorkshopRemoveStandingWidgetPayload> {
   type: MessageType.WORKSHOP_REMOVE_STANDING_WIDGET;
 }
 
-export interface WorkshopWidgetActionResultPayload {
-  action: 'commit' | 'apply-standing' | 'remove-standing';
-  widgetId: WorkshopWidgetId;
+interface WorkshopWidgetActionResultBase {
+  requestToken: string;
   ok: boolean;
   widgetConfigId?: string;
   directiveId?: string;
   turnId?: string;
-  /** Distinguishes a real removal from an idempotent no-op. */
-  removed?: boolean;
   /** User-facing failure text when ok is false. */
   message?: string;
 }
+
+export type WorkshopWidgetActionResultPayload =
+  | (WorkshopWidgetActionResultBase & {
+      action: 'commit';
+      widgetId: 'gesture-playground';
+    })
+  | (WorkshopWidgetActionResultBase & {
+      action: 'apply-standing';
+      widgetId: 'lexical-gravity';
+    })
+  | (WorkshopWidgetActionResultBase & {
+      action: 'remove-standing';
+      widgetId: 'lexical-gravity' | 'prose-controller';
+      /** Distinguishes a real removal from an idempotent no-op. */
+      removed?: boolean;
+    });
 
 export interface WorkshopWidgetActionResultMessage
   extends MessageEnvelope<WorkshopWidgetActionResultPayload> {

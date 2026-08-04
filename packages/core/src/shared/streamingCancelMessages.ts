@@ -3,7 +3,7 @@ import {
   CancelCategorySearchRequestMessage,
   CancelContextRequestMessage,
   CancelDictionaryRequestMessage,
-  CancelWidgetGenerateRequestMessage,
+  CancelGesturePlaygroundGenerateRequestMessage,
   CancelWorkshopRequestMessage,
   MessageType,
   StreamingDomain
@@ -14,7 +14,7 @@ export type CancelRequestMessage =
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
   | CancelCategorySearchRequestMessage
-  | CancelWidgetGenerateRequestMessage
+  | CancelGesturePlaygroundGenerateRequestMessage
   | CancelWorkshopRequestMessage;
 
 /**
@@ -31,7 +31,7 @@ const cancelMessageTypes: Record<CancellableStreamingDomain, CancelRequestMessag
   search: MessageType.CANCEL_CATEGORY_SEARCH_REQUEST,
   workshop: MessageType.CANCEL_WORKSHOP_REQUEST,
   'workshop-context': MessageType.CANCEL_WORKSHOP_REQUEST,
-  'workshop-widget': MessageType.CANCEL_WIDGET_GENERATE_REQUEST
+  'workshop-gesture-playground': MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST
 };
 
 export function createCancelRequestMessage(

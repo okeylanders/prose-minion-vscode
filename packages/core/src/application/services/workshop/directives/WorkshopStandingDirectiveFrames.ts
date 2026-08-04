@@ -7,58 +7,53 @@ import {
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type { WorkshopSessionStateV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
-  buildLexicalGravityDirectiveFrame
-} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
-
-export interface WorkshopStandingDirectiveRendering {
-  directive: WorkshopStandingDirectiveSnapshot;
-  config: WorkshopWidgetConfigSnapshot;
-}
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS,
+  WorkshopStandingDirectiveOperations,
+  WorkshopStandingDirectiveRendering
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
 
 export function renderWorkshopStandingDirective(
-  input: WorkshopStandingDirectiveRendering
+  input: WorkshopStandingDirectiveRendering,
+  operations: WorkshopStandingDirectiveOperations = WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
 ): string {
-  const { directive, config } = input;
-  if (
-    directive.family === 'lexical-gravity'
-    && directive.widgetId === 'lexical-gravity'
-    && config.widgetId === 'lexical-gravity'
-  ) {
-    return buildLexicalGravityDirectiveFrame(directive, config.draft);
-  }
-  throw new Error(`No standing directive renderer registered for ${directive.family}`);
+  return operations.render(input);
 }
 
 export function renderWorkshopStandingDirectiveFrames(
-  session: WorkshopSessionService
+  session: WorkshopSessionService,
+  operations: WorkshopStandingDirectiveOperations = WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
 ): string[] {
   return renderWorkshopStandingDirectiveFramesForSnapshots(
     session.getStandingDirectives(),
-    (configId) => session.getWidgetConfig(configId)
+    (configId) => session.getWidgetConfig(configId),
+    operations
   );
 }
 
 export function renderWorkshopStandingDirectiveFramesForSnapshots(
   directives: readonly WorkshopStandingDirectiveSnapshot[],
-  resolveConfig: (configId: string) => WorkshopWidgetConfigSnapshot | undefined
+  resolveConfig: (configId: string) => WorkshopWidgetConfigSnapshot | undefined,
+  operations: WorkshopStandingDirectiveOperations = WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
 ): string[] {
   return directives.map((directive) => {
     const config = resolveConfig(directive.widgetConfigId);
     if (!config) {
       throw new Error(`Standing directive ${directive.id} has no widget config`);
     }
-    return renderWorkshopStandingDirective({ directive, config });
+    return renderWorkshopStandingDirective({ directive, config }, operations);
   });
 }
 
 export function renderWorkshopStandingDirectiveFramesFromState(
-  state: WorkshopSessionStateV1
+  state: WorkshopSessionStateV1,
+  operations: WorkshopStandingDirectiveOperations = WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
 ): string[] {
   const configsById = new Map(
     (state.widgetConfigs ?? []).map((config) => [config.id, config])
   );
   return renderWorkshopStandingDirectiveFramesForSnapshots(
     state.standingDirectives ?? [],
-    (configId) => configsById.get(configId)
+    (configId) => configsById.get(configId),
+    operations
   );
 }

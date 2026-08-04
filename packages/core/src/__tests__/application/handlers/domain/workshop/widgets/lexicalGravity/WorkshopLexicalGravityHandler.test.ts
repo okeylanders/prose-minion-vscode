@@ -41,13 +41,10 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     };
     const postMessage = jest.fn().mockResolvedValue(undefined);
     const handler = new WorkshopLexicalGravityHandler(
-      {} as never,
       model as never,
       repository as never,
-      {} as never,
       postMessage,
-      { appendLine: jest.fn() } as never,
-      { postSessionState: jest.fn(), postTurn: jest.fn(), markDirty: jest.fn() }
+      { appendLine: jest.fn() } as never
     );
     return { generated, handler, postMessage, repository };
   };
@@ -71,13 +68,10 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     };
     const postMessage = jest.fn().mockResolvedValue(undefined);
     const handler = new WorkshopLexicalGravityHandler(
-      {} as never,
       model as never,
       {} as never,
-      {} as never,
       postMessage,
-      { appendLine: jest.fn() } as never,
-      { postSessionState: jest.fn(), postTurn: jest.fn(), markDirty: jest.fn() }
+      { appendLine: jest.fn() } as never
     );
 
     await handler.handlePreview({
@@ -188,7 +182,6 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     const postMessage = jest.fn().mockResolvedValue(undefined);
     const handler = new WorkshopLexicalGravityHandler(
       {} as never,
-      {} as never,
       {
         list: jest.fn().mockResolvedValue([{
           ...source,
@@ -197,10 +190,8 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
         }]),
         availability: jest.fn().mockReturnValue({ displayPath: 'prose-minion/lenses' })
       } as never,
-      {} as never,
       postMessage,
-      { appendLine: jest.fn() } as never,
-      { postSessionState: jest.fn(), postTurn: jest.fn(), markDirty: jest.fn() }
+      { appendLine: jest.fn() } as never
     );
 
     await handler.handleRequestLenses({
@@ -215,65 +206,4 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
       .toEqual(expect.objectContaining({ name: 'Photography', source: 'built-in' }));
   });
 
-  it('logs successful install and idempotent removal lifecycle outcomes', async () => {
-    const resolvedLens = builtInLexicalGravityLens('photography')!;
-    const draft = {
-      lensSlug: 'photography',
-      weight: 60,
-      reach: 2 as const,
-      metaphorPull: false,
-      resolvedLens
-    };
-    const config = {
-      id: 'wc-1',
-      widgetId: 'lexical-gravity' as const,
-      revision: 1,
-      directiveId: 'pd-1',
-      createdAt: 1,
-      draft
-    };
-    const appendLine = jest.fn();
-    const postMessage = jest.fn().mockResolvedValue(undefined);
-    const directives = {
-      apply: jest.fn().mockResolvedValue({
-        action: 'installed',
-        directiveId: 'pd-1',
-        config,
-        turn: { id: 'turn-1-system-1' }
-      }),
-      remove: jest.fn().mockResolvedValue({ removed: false })
-    };
-    const handler = new WorkshopLexicalGravityHandler(
-      { getStandingDirective: jest.fn().mockReturnValue(undefined) } as never,
-      {} as never,
-      {} as never,
-      directives as never,
-      postMessage,
-      { appendLine } as never,
-      { postSessionState: jest.fn(), postTurn: jest.fn(), markDirty: jest.fn() }
-    );
-
-    await handler.handleApply({
-      type: MessageType.WORKSHOP_APPLY_STANDING_WIDGET,
-      source: 'webview.test',
-      timestamp: 1,
-      payload: { widgetId: 'lexical-gravity', draft }
-    });
-    await handler.handleRemove({
-      type: MessageType.WORKSHOP_REMOVE_STANDING_WIDGET,
-      source: 'webview.test',
-      timestamp: 2,
-      payload: { family: 'lexical-gravity' }
-    });
-
-    expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
-      'lexical-gravity installed: pd-1 -> wc-1'
-    ));
-    expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
-      'lexical-gravity remove no-op'
-    ));
-    expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
-      payload: expect.objectContaining({ action: 'remove-standing', ok: true, removed: false })
-    }));
-  });
 });

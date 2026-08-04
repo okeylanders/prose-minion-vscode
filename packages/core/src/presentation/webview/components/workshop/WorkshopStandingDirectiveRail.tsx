@@ -2,34 +2,28 @@
 
 import * as React from 'react';
 import {
-  WorkshopStandingDirectiveFamily,
+  WorkshopStandingDirectiveSnapshot,
   WorkshopStandingDirectiveSummary
 } from '@messages';
 import { Icon } from '@components/shared/Icon';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
-import {
-  formatLexicalGravitySummary
-} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 
 interface WorkshopStandingDirectiveRailProps {
   directives: WorkshopStandingDirectiveSummary[];
   disabled?: boolean;
+  removingWidgetIds?: readonly WorkshopStandingDirectiveSnapshot['widgetId'][];
+  formatSummary: (directive: WorkshopStandingDirectiveSummary) => string;
   onEdit: (widgetConfigId: string) => void;
-  onRemove: (family: WorkshopStandingDirectiveFamily) => void;
+  onRemove: (
+    directive: Pick<WorkshopStandingDirectiveSummary, 'family' | 'widgetId'>
+  ) => void;
 }
-
-const directiveConfig = (directive: WorkshopStandingDirectiveSummary): string => {
-  switch (directive.family) {
-    case 'lexical-gravity':
-      return formatLexicalGravitySummary(directive);
-    default:
-      return '';
-  }
-};
 
 export const WorkshopStandingDirectiveRail: React.FC<WorkshopStandingDirectiveRailProps> = ({
   directives,
   disabled,
+  removingWidgetIds = [],
+  formatSummary,
   onEdit,
   onRemove
 }) => {
@@ -40,16 +34,16 @@ export const WorkshopStandingDirectiveRail: React.FC<WorkshopStandingDirectiveRa
         <div className="pm-ws-standing-active" key={directive.id}>
           <span className="pm-ws-standing-pulse" aria-hidden="true" />
           <b>{workshopWidgetLabel(directive.widgetId)}</b>
-          <span className="pm-ws-standing-config">{directiveConfig(directive)}</span>
+          <span className="pm-ws-standing-config">{formatSummary(directive)}</span>
           <span className="pm-ws-standing-spacer" />
           <button type="button" disabled={disabled} onClick={() => onEdit(directive.widgetConfigId)}>Edit</button>
           <button
             type="button"
             className="pm-ws-standing-kill"
-            disabled={disabled}
+            disabled={disabled || removingWidgetIds.includes(directive.widgetId)}
             title={`Remove ${workshopWidgetLabel(directive.widgetId)}`}
             aria-label={`Remove ${workshopWidgetLabel(directive.widgetId)}`}
-            onClick={() => onRemove(directive.family)}
+            onClick={() => onRemove(directive)}
           >
             <Icon name="x" size={11} />
           </button>

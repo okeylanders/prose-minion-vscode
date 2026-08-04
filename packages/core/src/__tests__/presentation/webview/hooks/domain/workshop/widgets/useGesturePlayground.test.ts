@@ -17,16 +17,25 @@ describe('useGesturePlayground', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
   });
 
   it('owns Gesture commit acknowledgements until the modal consumes them', () => {
+    const vscode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
     const { result } = renderHook(() => useGesturePlayground());
+    act(() => result.current.commitWidget({
+      widgetId: 'gesture-playground',
+      draft: {} as never
+    }));
+    const requestToken = vscode.postMessage.mock.calls[0][0].payload.requestToken;
     const response: WorkshopWidgetActionResultMessage = {
       type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
       source: 'extension.workshop.widget',
       payload: {
         action: 'commit',
+        requestToken,
         widgetId: 'gesture-playground',
         ok: false,
         message: 'The session is still saving.'
@@ -41,11 +50,42 @@ describe('useGesturePlayground', () => {
     expect(result.current.widgetActionResult).toBeNull();
   });
 
+  it('ignores a stale commit acknowledgement with the right action and widget', () => {
+    const vscode = createMockVSCode();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+    const { result } = renderHook(() => useGesturePlayground());
+
+    act(() => result.current.commitWidget({
+      widgetId: 'gesture-playground',
+      draft: {} as never
+    }));
+    const requestToken = vscode.postMessage.mock.calls[0][0].payload.requestToken;
+
+    act(() => result.current.handleWidgetActionResult({
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      payload: {
+        action: 'commit',
+        requestToken: `${requestToken}-stale`,
+        widgetId: 'gesture-playground',
+        ok: true
+      },
+      timestamp: 0
+    }));
+
+    expect(result.current.widgetActionResult).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('no current commit request owns this token'),
+      expect.objectContaining({ requestToken: `${requestToken}-stale` })
+    );
+  });
+
   it('tracks token-keyed progress and clears it when that result settles', () => {
     const { result } = renderHook(() => useGesturePlayground());
 
     act(() => result.current.handleWidgetGenerationProgress({
-      type: MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS,
+      type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS,
       source: 'extension.workshop',
       payload: {
         widgetId: 'gesture-playground',
@@ -66,7 +106,7 @@ describe('useGesturePlayground', () => {
     });
 
     act(() => result.current.handleWidgetMenuResult({
-      type: MessageType.WORKSHOP_WIDGET_MENU_RESULT,
+      type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT,
       source: 'extension.workshop',
       payload: {
         widgetId: 'gesture-playground',
@@ -85,7 +125,7 @@ describe('useGesturePlayground', () => {
     const { result } = renderHook(() => useGesturePlayground());
 
     act(() => result.current.handleWidgetGenerationProgress({
-      type: MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS,
+      type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS,
       source: 'extension.workshop',
       payload: {
         widgetId: 'gesture-playground',
@@ -99,7 +139,7 @@ describe('useGesturePlayground', () => {
       timestamp: 1
     }));
     act(() => result.current.handleWidgetMenuResult({
-      type: MessageType.WORKSHOP_WIDGET_MENU_RESULT,
+      type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT,
       source: 'extension.workshop',
       payload: {
         widgetId: 'gesture-playground',

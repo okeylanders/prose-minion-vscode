@@ -4,29 +4,37 @@ import * as React from 'react';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
+  createWorkshopWidgetActionRequestToken
+} from '@hooks/domain/workshop/createWorkshopWidgetActionRequestToken';
+import {
+  reportWorkshopWidgetActionCorrelationIssue
+} from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
+import {
   MessageType,
   WorkshopCommitWidgetPayload,
+  WorkshopGesturePlaygroundGeneratePayload,
+  WorkshopGesturePlaygroundGenerationProgressMessage,
+  WorkshopGesturePlaygroundGenerationProgressPayload,
+  WorkshopGesturePlaygroundMenuResultMessage,
+  WorkshopGesturePlaygroundMenuResultPayload,
   WorkshopWidgetActionResultMessage,
-  WorkshopWidgetActionResultPayload,
-  WorkshopWidgetGeneratePayload,
-  WorkshopWidgetGenerationProgressMessage,
-  WorkshopWidgetGenerationProgressPayload,
-  WorkshopWidgetMenuResultMessage,
-  WorkshopWidgetMenuResultPayload
+  WorkshopWidgetActionResultPayload
 } from '@messages';
 
 export interface GesturePlaygroundState {
-  widgetMenuResult: WorkshopWidgetMenuResultPayload | null;
-  widgetGenerationProgress: WorkshopWidgetGenerationProgressPayload | null;
+  widgetMenuResult: WorkshopGesturePlaygroundMenuResultPayload | null;
+  widgetGenerationProgress: WorkshopGesturePlaygroundGenerationProgressPayload | null;
   widgetActionResult: WorkshopWidgetActionResultPayload | null;
 }
 
 export interface GesturePlaygroundActions {
-  generateWidgetMenu: (payload: WorkshopWidgetGeneratePayload) => void;
+  generateWidgetMenu: (payload: WorkshopGesturePlaygroundGeneratePayload) => void;
   cancelWidgetGenerate: (requestId: string) => void;
-  commitWidget: (payload: WorkshopCommitWidgetPayload) => void;
-  handleWidgetMenuResult: (message: WorkshopWidgetMenuResultMessage) => void;
-  handleWidgetGenerationProgress: (message: WorkshopWidgetGenerationProgressMessage) => void;
+  commitWidget: (payload: Omit<WorkshopCommitWidgetPayload, 'requestToken'>) => void;
+  handleWidgetMenuResult: (message: WorkshopGesturePlaygroundMenuResultMessage) => void;
+  handleWidgetGenerationProgress: (
+    message: WorkshopGesturePlaygroundGenerationProgressMessage
+  ) => void;
   handleWidgetActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   consumeWidgetActionResult: () => void;
 }
@@ -42,10 +50,11 @@ export type UseGesturePlaygroundReturn = GesturePlaygroundState &
 
 export function useGesturePlayground(): UseGesturePlaygroundReturn {
   const vscode = useVSCodeApi();
+  const latestCommitRequestTokenRef = React.useRef<string>();
   const [widgetMenuResult, setWidgetMenuResult] =
-    React.useState<WorkshopWidgetMenuResultPayload | null>(null);
+    React.useState<WorkshopGesturePlaygroundMenuResultPayload | null>(null);
   const [widgetGenerationProgress, setWidgetGenerationProgress] =
-    React.useState<WorkshopWidgetGenerationProgressPayload | null>(null);
+    React.useState<WorkshopGesturePlaygroundGenerationProgressPayload | null>(null);
   const [widgetActionResult, setWidgetActionResult] =
     React.useState<WorkshopWidgetActionResultPayload | null>(null);
 
@@ -58,25 +67,33 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
     });
   }, [vscode]);
 
-  const generateWidgetMenu = React.useCallback((payload: WorkshopWidgetGeneratePayload) => {
+  const generateWidgetMenu = React.useCallback((payload: WorkshopGesturePlaygroundGeneratePayload) => {
     setWidgetMenuResult(null);
     setWidgetGenerationProgress(null);
-    post(MessageType.WORKSHOP_WIDGET_GENERATE, payload);
+    post(MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATE, payload);
   }, [post]);
 
   const cancelWidgetGenerate = React.useCallback((requestId: string) => {
     vscode.postMessage(
-      createCancelRequestMessage('workshop-widget', requestId, 'webview.workshop.widget')
+      createCancelRequestMessage(
+        'workshop-gesture-playground',
+        requestId,
+        'webview.workshop.gesture-playground'
+      )
     );
   }, [vscode]);
 
-  const commitWidget = React.useCallback((payload: WorkshopCommitWidgetPayload) => {
+  const commitWidget = React.useCallback((
+    payload: Omit<WorkshopCommitWidgetPayload, 'requestToken'>
+  ) => {
+    const requestToken = createWorkshopWidgetActionRequestToken('commit');
+    latestCommitRequestTokenRef.current = requestToken;
     setWidgetActionResult(null);
-    post(MessageType.WORKSHOP_COMMIT_WIDGET, payload);
+    post(MessageType.WORKSHOP_COMMIT_WIDGET, { ...payload, requestToken });
   }, [post]);
 
   const handleWidgetMenuResult = React.useCallback(
-    (message: WorkshopWidgetMenuResultMessage) => {
+    (message: WorkshopGesturePlaygroundMenuResultMessage) => {
       setWidgetMenuResult(message.payload);
       setWidgetGenerationProgress((current) =>
         current?.token === message.payload.token ? null : current
@@ -86,7 +103,7 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
   );
 
   const handleWidgetGenerationProgress = React.useCallback(
-    (message: WorkshopWidgetGenerationProgressMessage) => {
+    (message: WorkshopGesturePlaygroundGenerationProgressMessage) => {
       setWidgetGenerationProgress(message.payload);
     },
     []
@@ -94,12 +111,32 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
 
   const handleWidgetActionResult = React.useCallback(
     (message: WorkshopWidgetActionResultMessage) => {
-      if (
-        message.payload.action === 'commit'
-        && message.payload.widgetId === 'gesture-playground'
-      ) {
-        setWidgetActionResult(message.payload);
+      const requestToken = message.payload.requestToken;
+      const widgetId: string = message.payload.widgetId;
+      if (message.payload.action !== 'commit') {
+        return;
       }
+      const expectedToken = latestCommitRequestTokenRef.current;
+      if (widgetId !== 'gesture-playground') {
+        if (requestToken === expectedToken) {
+          reportWorkshopWidgetActionCorrelationIssue(
+            'useGesturePlayground',
+            message,
+            'expected widget gesture-playground'
+          );
+        }
+        return;
+      }
+      if (requestToken !== expectedToken) {
+        reportWorkshopWidgetActionCorrelationIssue(
+          'useGesturePlayground',
+          message,
+          'no current commit request owns this token'
+        );
+        return;
+      }
+      latestCommitRequestTokenRef.current = undefined;
+      setWidgetActionResult(message.payload);
     },
     []
   );

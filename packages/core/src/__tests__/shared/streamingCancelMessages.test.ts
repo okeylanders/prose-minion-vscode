@@ -16,7 +16,7 @@ describe('createCancelRequestMessage', () => {
     ['context', MessageType.CANCEL_CONTEXT_REQUEST],
     ['search', MessageType.CANCEL_CATEGORY_SEARCH_REQUEST],
     ['workshop', MessageType.CANCEL_WORKSHOP_REQUEST],
-    ['workshop-widget', MessageType.CANCEL_WIDGET_GENERATE_REQUEST]
+    ['workshop-gesture-playground', MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST]
   ] as const)('builds a %s cancel message', (domain, type) => {
     expect(createCancelRequestMessage(domain, 'request-1', 'webview.test')).toEqual({
       type,

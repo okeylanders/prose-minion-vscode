@@ -13,7 +13,7 @@ import {
   MessageType,
   WorkshopCommitWidgetMessage,
   WorkshopGestureDraft,
-  WorkshopWidgetGenerateMessage
+  WorkshopGesturePlaygroundGenerateMessage
 } from '@messages';
 
 const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
@@ -52,9 +52,9 @@ const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDr
 });
 
 const generateMessage = (
-  overrides: Partial<WorkshopWidgetGenerateMessage['payload']> = {}
-): WorkshopWidgetGenerateMessage => ({
-  type: MessageType.WORKSHOP_WIDGET_GENERATE,
+  overrides: Partial<WorkshopGesturePlaygroundGenerateMessage['payload']> = {}
+): WorkshopGesturePlaygroundGenerateMessage => ({
+  type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATE,
   source: 'webview.workshop',
   timestamp: 1,
   payload: {
@@ -67,7 +67,7 @@ const generateMessage = (
     characterNotes: '',
     sourceReferences: [],
     ...overrides
-  } as WorkshopWidgetGenerateMessage['payload']
+  } as WorkshopGesturePlaygroundGenerateMessage['payload']
 });
 
 const commitMessage = (
@@ -78,6 +78,7 @@ const commitMessage = (
   timestamp: 1,
   payload: {
     widgetId: 'gesture-playground',
+    requestToken: 'commit-1',
     draft: draft(),
     ...overrides
   }
@@ -153,7 +154,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
   it('returns the menu under the request token', async () => {
     const { handler, posted, generateMenu } = build();
     await handler.handleGenerate(generateMessage());
-    const results = posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT);
+    const results = posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT);
     expect(results).toHaveLength(1);
     expect(results[0].payload).toEqual(expect.objectContaining({
       ok: true,
@@ -189,7 +190,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
 
     await handler.handleGenerate(generateMessage());
 
-    const progress = posted(MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS)
+    const progress = posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS)
       .map((message) => message.payload);
     expect(progress[0]).toEqual(expect.objectContaining({
       token: 'tok-1',
@@ -297,7 +298,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
     }));
 
     expect(generateMenu).not.toHaveBeenCalled();
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload).toEqual(
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload).toEqual(
       expect.objectContaining({
         ok: false,
         error: expect.stringMatching(expected)
@@ -321,9 +322,9 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
     await handler.handleGenerate(generateMessage({ sourceReferences }));
 
     expect(generateMenu).not.toHaveBeenCalled();
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.error)
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload.error)
       .toMatch(/no longer available/i);
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.error)
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload.error)
       .not.toMatch(/references exceed/i);
   });
 
@@ -338,7 +339,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
 
     await handler.handleGenerate(generateMessage());
 
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload).toEqual(
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload).toEqual(
       expect.objectContaining({
         ok: false,
         dictionaryMarkdown: expect.stringContaining('The scan survived'),
@@ -346,7 +347,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
         truncated: true
       })
     );
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.menu).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload.menu).toBeUndefined();
   });
 
   it('reports generation failures as a typed result, not a crash', async () => {
@@ -354,7 +355,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
       generateMenu: jest.fn().mockRejectedValue(new Error('unusable menu'))
     });
     await handler.handleGenerate(generateMessage());
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload).toEqual(
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload).toEqual(
       expect.objectContaining({ ok: false, error: expect.stringContaining('unusable menu') })
     );
   });
@@ -365,7 +366,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
       generateMessage({ widgetId: 'lexical-gravity' as never })
     );
     expect(generateMenu).not.toHaveBeenCalled();
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload.ok).toBe(false);
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload.ok).toBe(false);
   });
 
   it('drops the superseded call silently when a regenerate lands first', async () => {
@@ -387,13 +388,13 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
     const second = handler.handleGenerate(generateMessage({ token: 'tok-new' }));
     rejectFirst(new Error('late failure'));
     await Promise.all([first, second]);
-    const results = posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT);
+    const results = posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT);
     expect(results).toHaveLength(1);
     expect(results[0].payload.token).toBe('tok-new');
     expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
       'token tok-old, reason=superseded'
     ));
-    expect(posted(MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS)
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS)
       .map((message) => message.payload))
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -415,29 +416,29 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
     const pending = handler.handleGenerate(generateMessage());
 
     await handler.handleCancelGenerate({
-      type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST,
+      type: MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST,
       source: 'webview.workshop.widget',
       timestamp: 2,
-      payload: { domain: 'workshop-widget', requestId: 'not-the-token' }
+      payload: { domain: 'workshop-gesture-playground', requestId: 'not-the-token' }
     });
     expect(activeSignal?.aborted).toBe(false);
 
     await handler.handleCancelGenerate({
-      type: MessageType.CANCEL_WIDGET_GENERATE_REQUEST,
+      type: MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST,
       source: 'webview.workshop.widget',
       timestamp: 3,
-      payload: { domain: 'workshop-widget', requestId: 'tok-1' }
+      payload: { domain: 'workshop-gesture-playground', requestId: 'tok-1' }
     });
     await pending;
 
     expect(activeSignal?.aborted).toBe(true);
-    expect(posted(MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS))
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS))
       .toEqual(expect.arrayContaining([
         expect.objectContaining({
           payload: expect.objectContaining({ token: 'tok-1', phase: 'cancelled' })
         })
       ]));
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)).toHaveLength(0);
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)).toHaveLength(0);
   });
 
   it('merges fresh stateless additions without disturbing the existing options', async () => {
@@ -466,7 +467,7 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
       dictionaryMarkdown: draft().dictionaryMarkdown,
       menu
     }));
-    expect(posted(MessageType.WORKSHOP_WIDGET_MENU_RESULT)[0].payload)
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)[0].payload)
       .toEqual(expect.objectContaining({
         ok: true,
         mode: 'more',

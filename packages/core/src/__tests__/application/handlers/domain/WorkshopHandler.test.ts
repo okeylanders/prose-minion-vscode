@@ -301,8 +301,8 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS)).toBe(true);
     // Conversation Widgets (ADR 2026-07-22): generate + cancel are free
     // preview routes; commit is mutation-gated.
-    expect(router.hasHandler(MessageType.WORKSHOP_WIDGET_GENERATE)).toBe(true);
-    expect(router.hasHandler(MessageType.CANCEL_WIDGET_GENERATE_REQUEST)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATE)).toBe(true);
+    expect(router.hasHandler(MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_COMMIT_WIDGET)).toBe(true);
     expect(router.handlerCount).toBe(48);

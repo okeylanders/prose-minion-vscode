@@ -31,12 +31,12 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleCandidates: jest.fn(),
     handleLensesSaved: jest.fn()
   } as never,
+  standingDirectives: { handleActionResult: jest.fn() } as never,
   excerptVerify: { handleSelectionData: jest.fn() } as never,
   modelsSettings: { handleModelData: jest.fn(), handleSettingsData: jest.fn() } as never,
   tokenTracking: { handleTokenUsageUpdate: jest.fn() } as never,
   accountBalance: { handleAccountBalanceData: jest.fn() } as never,
   startupNotice: { handleStartupNoticeData: jest.fn() } as never,
-  showToast: jest.fn(),
   handleApiKeyStatus: jest.fn(),
   handleStatusMessage: jest.fn(),
   handleErrorMessage: jest.fn(),
@@ -60,6 +60,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
       timestamp: 2,
       payload: {
         action: 'remove-standing',
+        requestToken: 'remove-1',
         widgetId: 'lexical-gravity',
         ok: true,
         removed: true
@@ -72,9 +73,6 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.widgetHost.handleWidgetConfigData).toHaveBeenCalledWith(configMessage);
     expect(deps.gesturePlayground.handleWidgetActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.lexicalGravity.handleActionResult).toHaveBeenCalledWith(actionMessage);
-    expect(deps.showToast).toHaveBeenCalledWith({
-      message: 'Lexical Gravity removed.',
-      icon: 'check'
-    });
+    expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
   });
 });

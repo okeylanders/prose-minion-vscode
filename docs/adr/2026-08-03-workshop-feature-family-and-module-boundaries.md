@@ -134,6 +134,18 @@ An implementation may deviate when current code proves a more cohesive owner,
 but Phase 7 must record the reason. Accidental placement and empty symmetry are
 not acceptable deviations.
 
+Two Phase-2 clarifications are accepted:
+
+- `WorkshopStandingDirectiveFrames` remains as a thin public caller over the
+  closed standing-operations registry. It has five production call sites
+  outside the directive mutation slice, so deleting it would widen a route and
+  contract ownership phase without improving the variation boundary.
+- The executable migration-exception inventory may add a newly discovered
+  pre-existing violation only when the same change records its owning cleanup
+  phase and evidence marker. Once a phase's inventory is recorded, that phase's
+  entries may only shrink. This keeps the ledger honest without allowing new
+  violations to masquerade as discovery.
+
 ### 8. Extraction follows responsibility, not a numeric line limit
 
 No arbitrary maximum line count defines completion. A broad file is complete

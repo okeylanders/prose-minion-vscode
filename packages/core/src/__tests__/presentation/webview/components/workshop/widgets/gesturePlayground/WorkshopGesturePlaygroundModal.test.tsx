@@ -621,6 +621,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
       {...props}
       actionResult={{
         action: 'commit',
+        requestToken: 'commit-success',
         widgetId: 'gesture-playground',
         ok: true,
         widgetConfigId: 'wc-2',
@@ -640,6 +641,7 @@ describe('WorkshopGesturePlaygroundModal', () => {
       {...props}
       actionResult={{
         action: 'commit',
+        requestToken: 'commit-failure',
         widgetId: 'gesture-playground',
         ok: false,
         message: 'Wait for the current session save to finish.'

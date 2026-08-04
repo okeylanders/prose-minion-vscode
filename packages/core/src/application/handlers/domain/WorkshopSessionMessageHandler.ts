@@ -34,7 +34,7 @@ export type WorkshopMutationRouteRegistrar = (
   messageType: MessageType,
   handler: (message: never) => Promise<void>,
   sessionAction?: WorkshopSessionAction,
-  onBlocked?: (message: string) => void
+  onBlocked?: (reason: string, message: never) => void
 ) => void;
 
 export interface WorkshopSessionMessageHandlerOptions {
