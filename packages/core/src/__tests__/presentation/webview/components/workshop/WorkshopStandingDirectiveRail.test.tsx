@@ -36,6 +36,9 @@ describe('WorkshopStandingDirectiveRail', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Lexical Gravity' }));
     expect(onEdit).toHaveBeenCalledWith('wc-1');
-    expect(onRemove).toHaveBeenCalledWith('lexical-gravity');
+    expect(onRemove).toHaveBeenCalledWith(expect.objectContaining({
+      family: 'lexical-gravity',
+      widgetId: 'lexical-gravity'
+    }));
   });
 });

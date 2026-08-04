@@ -23,16 +23,16 @@ import {
 import { LogSink } from '@/platform';
 import {
   MessageType,
+  CancelGesturePlaygroundGenerateRequestMessage,
   WorkshopCommitWidgetMessage,
+  WorkshopGesturePlaygroundGenerateMessage,
+  WorkshopGesturePlaygroundGenerationProgressMessage,
+  WorkshopGesturePlaygroundMenuResultMessage,
   WorkshopGestureDraft,
   WorkshopGestureMenuGroup,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload,
-  WorkshopWidgetGenerateMessage,
-  WorkshopWidgetGenerationProgressMessage,
-  WorkshopWidgetSourceReference,
-  CancelWidgetGenerateRequestMessage,
-  WorkshopWidgetMenuResultMessage
+  WorkshopWidgetSourceReference
 } from '@messages';
 import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -71,7 +71,7 @@ export interface WorkshopGesturePlaygroundHandlerOptions {
 }
 
 type GestureGenerationStage =
-  WorkshopWidgetGenerationProgressMessage['payload']['stage'];
+  WorkshopGesturePlaygroundGenerationProgressMessage['payload']['stage'];
 
 const GESTURE_PROGRESS_REPORT_INTERVAL_CHARACTERS = 1_000;
 
@@ -99,20 +99,24 @@ export class WorkshopGesturePlaygroundHandler {
     registerMutation: WorkshopMutationRouteRegistrar
   ): void {
     // Generate is a pre-commit preview: no session state, no mutation gate.
-    router.register(MessageType.WORKSHOP_WIDGET_GENERATE, this.handleGenerate.bind(this));
     router.register(
-      MessageType.CANCEL_WIDGET_GENERATE_REQUEST,
+      MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATE,
+      this.handleGenerate.bind(this)
+    );
+    router.register(
+      MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST,
       this.handleCancelGenerate.bind(this)
     );
     registerMutation(
       MessageType.WORKSHOP_COMMIT_WIDGET,
       this.handleCommit.bind(this),
       undefined,
-      (message) => this.postActionResult({
+      (reason, message: WorkshopCommitWidgetMessage) => this.postActionResult({
         action: 'commit',
+        requestToken: message.payload.requestToken,
         widgetId: 'gesture-playground',
         ok: false,
-        message
+        message: reason
       })
     );
   }
@@ -122,7 +126,7 @@ export class WorkshopGesturePlaygroundHandler {
     this.activeGeneration = undefined;
   }
 
-  async handleGenerate(message: WorkshopWidgetGenerateMessage): Promise<void> {
+  async handleGenerate(message: WorkshopGesturePlaygroundGenerateMessage): Promise<void> {
     const {
       widgetId,
       token,
@@ -314,7 +318,9 @@ export class WorkshopGesturePlaygroundHandler {
     }
   }
 
-  async handleCancelGenerate(message: CancelWidgetGenerateRequestMessage): Promise<void> {
+  async handleCancelGenerate(
+    message: CancelGesturePlaygroundGenerateRequestMessage
+  ): Promise<void> {
     if (
       this.activeGeneration
       && message.payload.requestId === this.activeGeneration.token
@@ -330,10 +336,11 @@ export class WorkshopGesturePlaygroundHandler {
    * belongs to the Workshop run surface and cannot revoke an accepted widget.
    */
   async handleCommit(message: WorkshopCommitWidgetMessage): Promise<void> {
-    const { widgetId, draft, clonedFromConfigId } = message.payload;
+    const { widgetId, requestToken, draft, clonedFromConfigId } = message.payload;
     if (widgetId !== 'gesture-playground' || !isLiveWorkshopWidgetId(widgetId)) {
       this.postActionResult({
         action: 'commit',
+        requestToken,
         widgetId,
         ok: false,
         message: 'That widget is not available yet.'
@@ -342,13 +349,20 @@ export class WorkshopGesturePlaygroundHandler {
     }
     const invalid = this.validateGestureDraft(draft);
     if (invalid) {
-      this.postActionResult({ action: 'commit', widgetId, ok: false, message: invalid });
+      this.postActionResult({
+        action: 'commit',
+        requestToken,
+        widgetId,
+        ok: false,
+        message: invalid
+      });
       return;
     }
     const target = this.session.getChatTarget();
     if (target.kind === 'tool') {
       this.postActionResult({
         action: 'commit',
+        requestToken,
         widgetId,
         ok: false,
         message: 'Switch to a persona target before committing a widget — tool sidecars do not take gesture directions.'
@@ -358,6 +372,7 @@ export class WorkshopGesturePlaygroundHandler {
     if (this.options.isRoomRunActive()) {
       this.postActionResult({
         action: 'commit',
+        requestToken,
         widgetId,
         ok: false,
         message: 'Wait for the current Workshop response to finish before committing another widget.'
@@ -406,6 +421,7 @@ export class WorkshopGesturePlaygroundHandler {
           this.options.postSessionState();
           this.postActionResult({
             action: 'commit',
+            requestToken,
             widgetId,
             ok: true,
             widgetConfigId: config.id,
@@ -419,6 +435,7 @@ export class WorkshopGesturePlaygroundHandler {
       if (!accepted) {
         this.postActionResult({
           action: 'commit',
+          requestToken,
           widgetId,
           ok: false,
           widgetConfigId: config.id,
@@ -436,6 +453,7 @@ export class WorkshopGesturePlaygroundHandler {
       if (!accepted) {
         this.postActionResult({
           action: 'commit',
+          requestToken,
           widgetId,
           ok: false,
           widgetConfigId: configId,
@@ -575,9 +593,9 @@ export class WorkshopGesturePlaygroundHandler {
     });
   }
 
-  private postMenuResult(payload: WorkshopWidgetMenuResultMessage['payload']): void {
-    const result: WorkshopWidgetMenuResultMessage = {
-      type: MessageType.WORKSHOP_WIDGET_MENU_RESULT,
+  private postMenuResult(payload: WorkshopGesturePlaygroundMenuResultMessage['payload']): void {
+    const result: WorkshopGesturePlaygroundMenuResultMessage = {
+      type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT,
       source: 'extension.workshop',
       payload,
       timestamp: Date.now()
@@ -586,10 +604,10 @@ export class WorkshopGesturePlaygroundHandler {
   }
 
   private postGenerationProgress(
-    payload: WorkshopWidgetGenerationProgressMessage['payload']
+    payload: WorkshopGesturePlaygroundGenerationProgressMessage['payload']
   ): void {
-    const progress: WorkshopWidgetGenerationProgressMessage = {
-      type: MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS,
+    const progress: WorkshopGesturePlaygroundGenerationProgressMessage = {
+      type: MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS,
       source: 'extension.workshop',
       payload,
       timestamp: Date.now()

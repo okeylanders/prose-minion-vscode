@@ -5,66 +5,33 @@ import {
   WorkshopStandingDirectiveSummary,
   WorkshopWidgetConfigSnapshot
 } from '@messages';
-import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
-  lexicalGravityMarkerContent
-} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
-import {
-  summarizeLexicalGravityDraft
-} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS,
+  WorkshopStandingDirectiveOperations
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
 
 export function summarizeWorkshopStandingDirective(
   directive: WorkshopStandingDirectiveSnapshot,
-  config: WorkshopWidgetConfigSnapshot
+  config: WorkshopWidgetConfigSnapshot,
+  operations: WorkshopStandingDirectiveOperations = WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
 ): WorkshopStandingDirectiveSummary {
   if (directive.widgetId !== config.widgetId) {
     throw new Error(`Standing directive ${directive.id} has no matching widget config`);
   }
-  switch (directive.family) {
-    case 'lexical-gravity': {
-      if (directive.widgetId !== 'lexical-gravity' || config.widgetId !== 'lexical-gravity') {
-        throw new Error(`Lexical Gravity directive ${directive.id} has the wrong config`);
-      }
-      return {
-        ...directive,
-        family: 'lexical-gravity',
-        widgetId: 'lexical-gravity',
-        ...summarizeLexicalGravityDraft(config.draft)
-      };
-    }
-    case 'prose-controller':
-      throw new Error('Prose Controller standing directives are not implemented');
-    default:
-      return assertNever(directive.family);
-  }
+  return operations.summarize(directive, config);
 }
 
 export function workshopStandingDirectiveMarkerContent(
   action: 'installed' | 'shifted' | 'removed',
   directive: WorkshopStandingDirectiveSnapshot,
   previousConfig?: WorkshopWidgetConfigSnapshot,
-  currentConfig?: WorkshopWidgetConfigSnapshot
+  currentConfig?: WorkshopWidgetConfigSnapshot,
+  operations: WorkshopStandingDirectiveOperations = WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
 ): string {
-  switch (directive.family) {
-    case 'lexical-gravity':
-      return lexicalGravityMarkerContent(
-        action,
-        previousConfig?.widgetId === 'lexical-gravity' ? previousConfig : undefined,
-        currentConfig?.widgetId === 'lexical-gravity' ? currentConfig : undefined
-      );
-    case 'prose-controller': {
-      const verb = action === 'installed'
-        ? 'Installed'
-        : action === 'shifted'
-          ? 'Shifted'
-          : 'Removed';
-      return `${verb} ${workshopWidgetLabel(directive.widgetId)}.`;
-    }
-    default:
-      return assertNever(directive.family);
-  }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unsupported standing directive family: ${String(value)}`);
+  return operations.markerContent(
+    action,
+    directive,
+    previousConfig,
+    currentConfig
+  );
 }

@@ -318,10 +318,10 @@ export class MessageHandler {
       workshopSessionPersistenceCoordinator,
       {
         gesturePlayground: gesturePlaygroundService,
+        standingDirectives: workshopStandingDirectiveService,
         lexicalGravity: {
           model: lexicalGravityModelService,
-          repository: lexicalGravityLensRepository,
-          directives: workshopStandingDirectiveService
+          repository: lexicalGravityLensRepository
         }
       },
       outputChannel

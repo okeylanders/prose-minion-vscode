@@ -1,8 +1,8 @@
 /** Serialized application use cases for standing prose directives. */
 
 import {
-  WorkshopLexicalGravityDraft,
   WorkshopStandingDirectiveFamily,
+  WorkshopStandingDirectiveSnapshot,
   WorkshopTurn,
   WorkshopWidgetConfigSnapshot
 } from '@messages';
@@ -11,16 +11,19 @@ import { WorkshopConversationSettingsService } from '@/application/services/work
 import {
   renderWorkshopStandingDirectiveFramesForSnapshots
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
+import {
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS,
+  WorkshopStandingDirectiveApplyRequest,
+  WorkshopStandingDirectiveOperations
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
 
-export type WorkshopStandingDirectiveApplyRequest = {
-  family: 'lexical-gravity';
-  draft: WorkshopLexicalGravityDraft;
-  widgetConfigId?: string;
-};
+export type { WorkshopStandingDirectiveApplyRequest } from
+  '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
 
 export interface WorkshopStandingDirectiveApplyResult {
   action: 'installed' | 'shifted';
   directiveId: string;
+  directive: WorkshopStandingDirectiveSnapshot;
   config: WorkshopWidgetConfigSnapshot;
   turn: WorkshopTurn;
 }
@@ -36,7 +39,9 @@ export class WorkshopStandingDirectiveService {
 
   constructor(
     private readonly session: WorkshopSessionService,
-    private readonly conversationSettings: WorkshopConversationSettingsService
+    private readonly conversationSettings: WorkshopConversationSettingsService,
+    private readonly operations: WorkshopStandingDirectiveOperations =
+      WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
   ) {}
 
   async apply(
@@ -44,31 +49,35 @@ export class WorkshopStandingDirectiveService {
   ): Promise<WorkshopStandingDirectiveApplyResult> {
     return this.serialize(async () => {
       this.assertBetweenRuns();
-      const { draft, family, widgetConfigId } = request;
-      if (family !== 'lexical-gravity') {
-        throw new Error(`Standing directive family ${String(family)} is not implemented`);
+      const {
+        family,
+        widgetId,
+        widgetConfigInput,
+        widgetConfigId,
+        editConflictMessage,
+        alreadyActiveMessage
+      } = request;
+      if (this.operations.widgetIdForFamily(family) !== widgetId) {
+        throw new Error(`Standing directive family ${family} does not own ${widgetId}`);
       }
-      const active = this.session.getStandingDirective('lexical-gravity');
+      if (widgetConfigInput.widgetId !== widgetId) {
+        throw new Error(`Standing directive ${family} received config for ${widgetConfigInput.widgetId}`);
+      }
+      const active = this.session.getStandingDirective(family);
       if (widgetConfigId && active?.widgetConfigId !== widgetConfigId) {
-        throw new Error('Lexical Gravity can edit only its currently active configuration.');
+        throw new Error(editConflictMessage);
       }
       if (!widgetConfigId && active) {
-        throw new Error('Lexical Gravity is already active; reopen it to shift the directive.');
+        throw new Error(alreadyActiveMessage);
       }
 
       const preparedConfig = widgetConfigId
-        ? this.session.prepareWidgetConfigRevision(widgetConfigId, {
-            widgetId: 'lexical-gravity',
-            draft
-          })
-        : this.session.prepareWidgetConfigCreation({
-            widgetId: 'lexical-gravity',
-            draft
-          });
+        ? this.session.prepareWidgetConfigRevision(widgetConfigId, widgetConfigInput)
+        : this.session.prepareWidgetConfigCreation(widgetConfigInput);
       const config = preparedConfig.config;
       const preparedDirective = this.session.prepareStandingDirectiveUpsert({
-        family: 'lexical-gravity',
-        widgetId: 'lexical-gravity',
+        family,
+        widgetId,
         widgetConfigId: config.id,
         revision: config.revision
       });
@@ -76,7 +85,8 @@ export class WorkshopStandingDirectiveService {
         preparedDirective.state.directives,
         (configId) => configId === config.id
           ? config
-          : this.session.getWidgetConfig(configId)
+          : this.session.getWidgetConfig(configId),
+        this.operations
       );
       await this.conversationSettings.replaceStandingDirectiveFrames(frames);
       const turn = this.session.commitStandingDirectiveMutation(
@@ -86,6 +96,7 @@ export class WorkshopStandingDirectiveService {
       return {
         action: preparedDirective.action,
         directiveId: preparedDirective.directive.id,
+        directive: preparedDirective.directive,
         config: this.session.getWidgetConfig(config.id)!,
         turn
       };
@@ -101,7 +112,8 @@ export class WorkshopStandingDirectiveService {
       if (!prepared) {return { removed: false };}
       const frames = renderWorkshopStandingDirectiveFramesForSnapshots(
         prepared.state.directives,
-        (configId) => this.session.getWidgetConfig(configId)
+        (configId) => this.session.getWidgetConfig(configId),
+        this.operations
       );
       await this.conversationSettings.replaceStandingDirectiveFrames(frames);
       const turn = this.session.commitStandingDirectiveMutation(prepared);

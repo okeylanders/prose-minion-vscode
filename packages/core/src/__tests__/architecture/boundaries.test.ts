@@ -59,16 +59,16 @@ const WORKSHOP_HANDLER_ROOT = path.join(HANDLERS_ROOT, 'domain');
  * Phase-0 migration witness for ADR 2026-08-03. MessageRouter already rejects
  * duplicate registrations at runtime; this map adds a declared ownership
  * ledger that pins each inbound widget/standing route to its expected file.
- * Later phases update the owner path as part of the same pure-move commit; the
- * two generic standing routes must leave the Lexical handler in Phase 2.
+ * The two family-generic standing routes belong to the shared handler; feature
+ * handlers retain only their own catalog, preview, generation, and save routes.
  */
 const WORKSHOP_WIDGET_ROUTE_OWNERS = [
   {
-    messageType: 'WORKSHOP_WIDGET_GENERATE',
+    messageType: 'WORKSHOP_GESTURE_PLAYGROUND_GENERATE',
     owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
   },
   {
-    messageType: 'CANCEL_WIDGET_GENERATE_REQUEST',
+    messageType: 'CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST',
     owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
   },
   {
@@ -95,14 +95,13 @@ const WORKSHOP_WIDGET_ROUTE_OWNERS = [
     messageType: 'WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES',
     owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
   },
-  // Legacy Phase-2 exceptions: family-generic routes have a feature owner.
   {
     messageType: 'WORKSHOP_APPLY_STANDING_WIDGET',
-    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/WorkshopStandingDirectiveHandler.ts'
   },
   {
     messageType: 'WORKSHOP_REMOVE_STANDING_WIDGET',
-    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/WorkshopStandingDirectiveHandler.ts'
   }
 ] as const;
 
@@ -130,6 +129,45 @@ const WORKSHOP_WIDGET_HOST_HOOK = path.join(
   SRC_ROOT,
   'presentation/webview/hooks/domain/workshop/useWorkshopWidgetHost.ts'
 );
+const WORKSHOP_STANDING_DIRECTIVE_HOOK = path.join(
+  SRC_ROOT,
+  'presentation/webview/hooks/domain/workshop/useWorkshopStandingDirectives.ts'
+);
+const WORKSHOP_STANDING_DIRECTIVE_OPERATIONS = path.join(
+  SRC_ROOT,
+  'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts'
+);
+const WORKSHOP_GENERIC_STANDING_MECHANICS = [
+  path.join(
+    SRC_ROOT,
+    'application/services/workshop/directives/WorkshopStandingDirectiveFrames.ts'
+  ),
+  path.join(
+    SRC_ROOT,
+    'application/services/workshop/directives/WorkshopStandingDirectivePresentation.ts'
+  ),
+  path.join(
+    SRC_ROOT,
+    'presentation/webview/components/workshop/WorkshopStandingDirectiveRail.tsx'
+  )
+];
+const WORKSHOP_GENERIC_STANDING_COPY_SURFACES = [
+  ...WORKSHOP_GENERIC_STANDING_MECHANICS,
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS,
+  WORKSHOP_STANDING_DIRECTIVE_HOOK,
+  path.join(
+    SRC_ROOT,
+    'application/handlers/domain/workshop/WorkshopStandingDirectiveHandler.ts'
+  ),
+  path.join(
+    SRC_ROOT,
+    'application/services/workshop/directives/WorkshopStandingDirectiveService.ts'
+  ),
+  path.join(
+    SRC_ROOT,
+    'presentation/webview/hooks/domain/workshop/dispatchWorkshopWidgetActionResult.ts'
+  )
+];
 const GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE = new RegExp(
   [
     'WORKSHOP_REQUEST_WIDGET_CONFIG',
@@ -144,20 +182,22 @@ const GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE = new RegExp(
 );
 
 /**
- * Exact known false-generic ownership at the start of the refactor. This list
- * may only shrink. A phase that removes an exception updates this witness in
- * the same commit; Phase 7 requires an empty list.
+ * Exact known false-generic ownership for each inventoried phase. Newly
+ * discovered pre-existing violations may be recorded only with an owning
+ * cleanup phase; once that phase's inventory is recorded, its entries may only
+ * shrink. A phase that removes an exception updates this witness in the same
+ * commit; Phase 7 requires an empty list.
  */
 const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS = [
   {
-    phase: 2,
-    file: 'application/services/workshop/directives/WorkshopStandingDirectiveService.ts',
-    marker: /family: 'lexical-gravity'/
+    phase: 6,
+    file: 'shared/constants/workshopWidgets.ts',
+    marker: /LEXICAL_GRAVITY_WEIGHT/
   },
   {
-    phase: 2,
-    file: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts',
-    marker: /MessageType\.WORKSHOP_APPLY_STANDING_WIDGET/
+    phase: 6,
+    file: 'utils/workshopWidgetRecommendation.ts',
+    marker: /For Lexical Gravity/
   }
 ] as const;
 
@@ -299,6 +339,40 @@ describe('architectural boundaries', () => {
     expect(widgetHostSource).toMatch(/handleWidgetConfigData/);
   });
 
+  it('Workshop standing removal has one generic presentation owner', () => {
+    const featureOffenders = WORKSHOP_FEATURE_HOOKS
+      .filter((file) => /WORKSHOP_REMOVE_STANDING_WIDGET/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+    const standingOwner = fs.readFileSync(WORKSHOP_STANDING_DIRECTIVE_HOOK, 'utf8');
+
+    expect(featureOffenders).toEqual([]);
+    expect(standingOwner).toMatch(/WORKSHOP_REMOVE_STANDING_WIDGET/);
+    expect(standingOwner).toMatch(/requestToken/);
+    expect(standingOwner).toMatch(/workshopWidgetLabel/);
+  });
+
+  it('Workshop standing mechanics dispatch through one closed feature registry', () => {
+    const genericOffenders = WORKSHOP_GENERIC_STANDING_MECHANICS
+      .filter((file) => importsFeature(fs.readFileSync(file, 'utf8'), LEXICAL_FEATURE_REFERENCE))
+      .map((file) => path.relative(SRC_ROOT, file));
+    const operations = fs.readFileSync(WORKSHOP_STANDING_DIRECTIVE_OPERATIONS, 'utf8');
+
+    expect(genericOffenders).toEqual([]);
+    expect(operations).toMatch(/Record<WorkshopStandingDirectiveFamily/);
+    expect(operations).toMatch(
+      /'lexical-gravity': LEXICAL_GRAVITY_STANDING_DIRECTIVE_OPERATIONS/
+    );
+    expect(operations).toMatch(/'prose-controller': proseControllerEntry/);
+  });
+
+  it('Workshop generic standing surfaces carry no Lexical writer-facing copy', () => {
+    const offenders = WORKSHOP_GENERIC_STANDING_COPY_SURFACES
+      .filter((file) => /Lexical Gravity\b/.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
+  });
+
   it('Workshop handlers cannot bypass the session aggregate through internal ledgers', () => {
     const INTERNAL_SESSION_LEDGER = /(?:WorkshopWidgetConfigLedger|WorkshopStandingDirectiveLedger)/;
     const offenders = collectSourceFiles(WORKSHOP_HANDLER_ROOT)
@@ -326,8 +400,8 @@ describe('architectural boundaries', () => {
       .map(({ phase, file }) => `P${phase}:${file}`);
 
     expect(observed).toEqual([
-      'P2:application/services/workshop/directives/WorkshopStandingDirectiveService.ts',
-      'P2:application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+      'P6:shared/constants/workshopWidgets.ts',
+      'P6:utils/workshopWidgetRecommendation.ts'
     ]);
   });
 });

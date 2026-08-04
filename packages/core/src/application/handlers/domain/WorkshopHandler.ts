@@ -167,6 +167,9 @@ import { MessageRouter } from '@handlers/MessageRouter';
 import { WorkshopSessionMessageHandler } from '@handlers/domain/WorkshopSessionMessageHandler';
 import { WorkshopGesturePlaygroundHandler } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
+import {
+  WorkshopStandingDirectiveHandler
+} from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
@@ -252,10 +255,10 @@ export const isWorkshopHostReturnShortcut = (text: string, personaLabel: string)
  */
 export interface WorkshopWidgetRuntime {
   gesturePlayground: GesturePlaygroundService;
+  standingDirectives: WorkshopStandingDirectiveService;
   lexicalGravity: {
     model: LexicalGravityModelService;
     repository: LexicalGravityLensRepository;
-    directives: WorkshopStandingDirectiveService;
   };
 }
 
@@ -275,6 +278,7 @@ export class WorkshopHandler {
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
   private readonly gesturePlaygroundHandler: WorkshopGesturePlaygroundHandler;
   private readonly widgetHostHandler: WorkshopWidgetHostHandler;
+  private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
@@ -358,10 +362,13 @@ export class WorkshopHandler {
       this.outputChannel
     );
     this.lexicalGravityHandler = new WorkshopLexicalGravityHandler(
-      this.session,
       widgetRuntime.lexicalGravity.model,
       widgetRuntime.lexicalGravity.repository,
-      widgetRuntime.lexicalGravity.directives,
+      this.postMessage,
+      this.outputChannel
+    );
+    this.standingDirectiveHandler = new WorkshopStandingDirectiveHandler(
+      widgetRuntime.standingDirectives,
       this.postMessage,
       this.outputChannel,
       {
@@ -380,10 +387,13 @@ export class WorkshopHandler {
       messageType: MessageType,
       handler: (message: never) => Promise<void>,
       sessionAction?: WorkshopSessionAction,
-      onBlocked?: (message: string) => void
+      onBlocked?: (reason: string, message: never) => void
     ): void => {
       router.register(messageType, async (message) => {
-        if (this.rejectRoomMutationDuringSessionOperation(sessionAction, onBlocked)) {
+        const reportBlocked = onBlocked
+          ? (reason: string) => onBlocked(reason, message as never)
+          : undefined;
+        if (this.rejectRoomMutationDuringSessionOperation(sessionAction, reportBlocked)) {
           return;
         }
         await handler(message as never);
@@ -465,6 +475,7 @@ export class WorkshopHandler {
     this.sessionMessageHandler.registerRoutes(router, registerMutation);
     this.gesturePlaygroundHandler.registerRoutes(router, registerMutation);
     this.widgetHostHandler.registerRoutes(router);
+    this.standingDirectiveHandler.registerRoutes(router, registerMutation);
     this.lexicalGravityHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }

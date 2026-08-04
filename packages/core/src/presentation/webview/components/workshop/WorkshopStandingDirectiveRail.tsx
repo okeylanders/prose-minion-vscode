@@ -1,31 +1,24 @@
 /** Generic composer-adjacent rail for active standing directive families. */
 
 import * as React from 'react';
-import {
-  WorkshopStandingDirectiveFamily,
-  WorkshopStandingDirectiveSummary
-} from '@messages';
+import { WorkshopStandingDirectiveSummary } from '@messages';
 import { Icon } from '@components/shared/Icon';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
-  formatLexicalGravitySummary
-} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
 
 interface WorkshopStandingDirectiveRailProps {
   directives: WorkshopStandingDirectiveSummary[];
   disabled?: boolean;
   onEdit: (widgetConfigId: string) => void;
-  onRemove: (family: WorkshopStandingDirectiveFamily) => void;
+  onRemove: (
+    directive: Pick<WorkshopStandingDirectiveSummary, 'family' | 'widgetId'>
+  ) => void;
 }
 
-const directiveConfig = (directive: WorkshopStandingDirectiveSummary): string => {
-  switch (directive.family) {
-    case 'lexical-gravity':
-      return formatLexicalGravitySummary(directive);
-    default:
-      return '';
-  }
-};
+const directiveConfig = (directive: WorkshopStandingDirectiveSummary): string =>
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS.formatSummary(directive);
 
 export const WorkshopStandingDirectiveRail: React.FC<WorkshopStandingDirectiveRailProps> = ({
   directives,
@@ -49,7 +42,7 @@ export const WorkshopStandingDirectiveRail: React.FC<WorkshopStandingDirectiveRa
             disabled={disabled}
             title={`Remove ${workshopWidgetLabel(directive.widgetId)}`}
             aria-label={`Remove ${workshopWidgetLabel(directive.widgetId)}`}
-            onClick={() => onRemove(directive.family)}
+            onClick={() => onRemove(directive)}
           >
             <Icon name="x" size={11} />
           </button>

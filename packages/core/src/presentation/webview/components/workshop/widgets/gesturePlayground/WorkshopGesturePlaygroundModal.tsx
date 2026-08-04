@@ -23,9 +23,9 @@ import {
   WorkshopGestureDraft,
   WorkshopGestureMenuGroup,
   WorkshopGestureWidgetConfigSnapshot,
-  WorkshopWidgetGeneratePayload,
-  WorkshopWidgetGenerationProgressPayload,
-  WorkshopWidgetMenuResultPayload,
+  WorkshopGesturePlaygroundGeneratePayload,
+  WorkshopGesturePlaygroundGenerationProgressPayload,
+  WorkshopGesturePlaygroundMenuResultPayload,
   WorkshopWidgetRecommendationSeed,
   WorkshopWidgetActionResultPayload,
   WorkshopWidgetSourceReference,
@@ -47,12 +47,12 @@ export type WorkshopGestureOpening =
 interface WorkshopGesturePlaygroundModalProps {
   open: boolean;
   opening: WorkshopGestureOpening;
-  menuResult: WorkshopWidgetMenuResultPayload | null;
-  generationProgress: WorkshopWidgetGenerationProgressPayload | null;
+  menuResult: WorkshopGesturePlaygroundMenuResultPayload | null;
+  generationProgress: WorkshopGesturePlaygroundGenerationProgressPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;
   activeExcerpt: WorkshopExcerptSnapshot | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
-  onGenerate: (payload: WorkshopWidgetGeneratePayload) => void;
+  onGenerate: (payload: WorkshopGesturePlaygroundGeneratePayload) => void;
   onCancelGenerate: (requestId: string) => void;
   onCommit: (draft: WorkshopGestureDraft, clonedFromConfigId?: string) => void;
   onConsumeActionResult: () => void;
@@ -76,7 +76,7 @@ const sourceReferenceKey = (reference: WorkshopWidgetSourceReference): string =>
     ? reference.kind
     : `${reference.kind}:${reference.attachmentId}`;
 
-const stageLabels: Record<WorkshopWidgetGenerationProgressPayload['stage'], string> = {
+const stageLabels: Record<WorkshopGesturePlaygroundGenerationProgressPayload['stage'], string> = {
   requesting: 'Preparing the request',
   dictionary: 'Building the gesture dictionary',
   menu: 'Building creative alternatives',

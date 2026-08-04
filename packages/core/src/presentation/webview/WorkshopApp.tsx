@@ -118,6 +118,9 @@ import {
   useGesturePlayground
 } from '@hooks/domain/workshop/widgets/useGesturePlayground';
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
+import {
+  useWorkshopStandingDirectives
+} from '@hooks/domain/workshop/useWorkshopStandingDirectives';
 import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
@@ -215,6 +218,7 @@ export const WorkshopApp: React.FC = () => {
   const showToast = React.useCallback((next: WorkshopToastState) => {
     setToast(next);
   }, []);
+  const standingDirectives = useWorkshopStandingDirectives(showToast);
 
   React.useEffect(() => {
     if (!toast) {
@@ -275,12 +279,12 @@ export const WorkshopApp: React.FC = () => {
     widgetHost,
     gesturePlayground,
     lexicalGravity,
+    standingDirectives,
     excerptVerify,
     modelsSettings,
     tokenTracking,
     accountBalance,
     startupNotice,
-    showToast,
     handleApiKeyStatus,
     handleStatusMessage,
     handleErrorMessage,
@@ -293,6 +297,7 @@ export const WorkshopApp: React.FC = () => {
     ...widgetHost.persistedState,
     ...gesturePlayground.persistedState,
     ...lexicalGravity.persistedState,
+    ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
     ...tokenTracking.persistedState,
@@ -1494,7 +1499,7 @@ export const WorkshopApp: React.FC = () => {
               directives={workshop.standingDirectives}
               disabled={showLiveTurn || roomMutationLocked}
               onEdit={openWidgetConfig}
-              onRemove={lexicalGravity.remove}
+              onRemove={standingDirectives.remove}
             />
             <WorkshopComposer
               canMessage={workshop.canMessage && !roomMutationLocked}

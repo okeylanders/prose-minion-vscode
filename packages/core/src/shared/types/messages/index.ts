@@ -172,10 +172,10 @@ import {
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
   WorkshopSessionSaveStatusMessage,
-  WorkshopWidgetGenerateMessage,
-  CancelWidgetGenerateRequestMessage,
-  WorkshopWidgetGenerationProgressMessage,
-  WorkshopWidgetMenuResultMessage,
+  WorkshopGesturePlaygroundGenerateMessage,
+  CancelGesturePlaygroundGenerateRequestMessage,
+  WorkshopGesturePlaygroundGenerationProgressMessage,
+  WorkshopGesturePlaygroundMenuResultMessage,
   WorkshopRequestLexicalGravityLensesMessage,
   WorkshopLexicalGravityLensesDataMessage,
   WorkshopPreviewLexicalGravityMessage,
@@ -274,8 +274,8 @@ export type WebviewToExtensionMessage =
   | WorkshopDuplicateSessionMessage
   | WorkshopRevealSessionMessage
   | WorkshopDeleteSessionMessage
-  | WorkshopWidgetGenerateMessage
-  | CancelWidgetGenerateRequestMessage
+  | WorkshopGesturePlaygroundGenerateMessage
+  | CancelGesturePlaygroundGenerateRequestMessage
   | WorkshopRequestLexicalGravityLensesMessage
   | WorkshopPreviewLexicalGravityMessage
   | WorkshopBuildLexicalGravityLensMessage
@@ -324,8 +324,8 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
-  | WorkshopWidgetGenerationProgressMessage
-  | WorkshopWidgetMenuResultMessage
+  | WorkshopGesturePlaygroundGenerationProgressMessage
+  | WorkshopGesturePlaygroundMenuResultMessage
   | WorkshopLexicalGravityLensesDataMessage
   | WorkshopLexicalGravityPreviewResultMessage
   | WorkshopLexicalGravityLensCandidatesMessage

@@ -8,7 +8,6 @@ import type {
   SaveResultSuccessMessage,
   StatusMessage
 } from '@messages';
-import type { WorkshopToastState } from '@components/workshop/WorkshopToast';
 import type { UseAccountBalanceReturn } from '@hooks/domain/useAccountBalance';
 import type { UseModelsSettingsReturn } from '@hooks/domain/useModelsSettings';
 import type { UseStartupNoticeReturn } from '@hooks/domain/useStartupNotice';
@@ -26,6 +25,9 @@ import type {
 import type {
   UseLexicalGravityReturn
 } from '@hooks/domain/workshop/widgets/useLexicalGravity';
+import type {
+  UseWorkshopStandingDirectivesReturn
+} from '@hooks/domain/workshop/useWorkshopStandingDirectives';
 import {
   dispatchWorkshopWidgetActionResult
 } from '@hooks/domain/workshop/dispatchWorkshopWidgetActionResult';
@@ -36,12 +38,12 @@ export interface WorkshopAppMessageRouterDeps {
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
+  standingDirectives: UseWorkshopStandingDirectivesReturn;
   excerptVerify: UseWorkshopExcerptVerifyReturn;
   modelsSettings: UseModelsSettingsReturn;
   tokenTracking: UseTokenTrackingReturn;
   accountBalance: UseAccountBalanceReturn;
   startupNotice: UseStartupNoticeReturn;
-  showToast: (toast: WorkshopToastState) => void;
   handleApiKeyStatus: (message: ApiKeyStatusMessage) => void;
   handleStatusMessage: (message: StatusMessage) => void;
   handleErrorMessage: (message: ErrorMessage) => void;
@@ -57,12 +59,12 @@ export function buildWorkshopAppMessageRoutes(
     widgetHost,
     gesturePlayground,
     lexicalGravity,
+    standingDirectives,
     excerptVerify,
     modelsSettings,
     tokenTracking,
     accountBalance,
     startupNotice,
-    showToast,
     handleApiKeyStatus,
     handleStatusMessage,
     handleErrorMessage,
@@ -80,15 +82,16 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshop.handleContextAttachmentContent,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
-    [MessageType.WORKSHOP_WIDGET_MENU_RESULT]: gesturePlayground.handleWidgetMenuResult,
+    [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
+      gesturePlayground.handleWidgetMenuResult,
     [MessageType.WORKSHOP_WIDGET_CONFIG_DATA]: widgetHost.handleWidgetConfigData,
-    [MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS]:
+    [MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS]:
       gesturePlayground.handleWidgetGenerationProgress,
     [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: (message) => {
       dispatchWorkshopWidgetActionResult(message, {
         handleGestureActionResult: gesturePlayground.handleWidgetActionResult,
         handleLexicalActionResult: lexicalGravity.handleActionResult,
-        showToast
+        handleStandingDirectiveActionResult: standingDirectives.handleActionResult
       });
     },
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA]: lexicalGravity.handleLensesData,

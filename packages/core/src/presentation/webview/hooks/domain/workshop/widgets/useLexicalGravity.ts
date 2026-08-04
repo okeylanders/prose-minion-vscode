@@ -3,6 +3,9 @@
 import * as React from 'react';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import {
+  createWorkshopWidgetActionRequestToken
+} from '@hooks/domain/workshop/createWorkshopWidgetActionRequestToken';
+import {
   MessageType,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
@@ -13,7 +16,6 @@ import {
   WorkshopLexicalGravityPreviewResultPayload,
   WorkshopLexicalGravityLensesSavedMessage,
   WorkshopLexicalGravityLensesSavedPayload,
-  WorkshopStandingDirectiveFamily,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload
 } from '@messages';
@@ -38,7 +40,6 @@ export interface LexicalGravityActions {
     candidateIds: string[]
   ) => void;
   apply: (draft: WorkshopLexicalGravityDraft, widgetConfigId?: string) => void;
-  remove: (family: WorkshopStandingDirectiveFamily) => void;
   handleLensesData: (message: WorkshopLexicalGravityLensesDataMessage) => void;
   handlePreviewResult: (message: WorkshopLexicalGravityPreviewResultMessage) => void;
   handleCandidates: (message: WorkshopLexicalGravityLensCandidatesMessage) => void;
@@ -58,6 +59,7 @@ export type UseLexicalGravityReturn = LexicalGravityState & LexicalGravityAction
 
 export function useLexicalGravity(): UseLexicalGravityReturn {
   const vscode = useVSCodeApi();
+  const latestApplyRequestTokenRef = React.useRef<string>();
   const [lenses, setLenses] = React.useState<WorkshopLexicalGravityLens[]>([]);
   const [storagePath, setStoragePath] = React.useState<string>();
   const [catalogError, setCatalogError] = React.useState<string>();
@@ -98,14 +100,15 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     draft: WorkshopLexicalGravityDraft,
     widgetConfigId?: string
   ) => {
+    const requestToken = createWorkshopWidgetActionRequestToken('apply-standing');
+    latestApplyRequestTokenRef.current = requestToken;
+    setActionResult(null);
     post(MessageType.WORKSHOP_APPLY_STANDING_WIDGET, {
+      requestToken,
       widgetId: 'lexical-gravity',
       draft,
       widgetConfigId
     });
-  }, [post]);
-  const remove = React.useCallback((family: WorkshopStandingDirectiveFamily) => {
-    post(MessageType.WORKSHOP_REMOVE_STANDING_WIDGET, { family });
   }, [post]);
 
   const handleLensesData = React.useCallback((message: WorkshopLexicalGravityLensesDataMessage) => {
@@ -123,7 +126,14 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     setLensesSaved(message.payload);
   }, []);
   const handleActionResult = React.useCallback((message: WorkshopWidgetActionResultMessage) => {
-    if (message.payload.action === 'apply-standing') {setActionResult(message.payload);}
+    if (
+      message.payload.action === 'apply-standing'
+      && message.payload.widgetId === 'lexical-gravity'
+      && message.payload.requestToken === latestApplyRequestTokenRef.current
+    ) {
+      latestApplyRequestTokenRef.current = undefined;
+      setActionResult(message.payload);
+    }
   }, []);
   const clearTransientResults = React.useCallback(() => {
     setPreviewResult(null);
@@ -146,7 +156,6 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     buildLens,
     saveLenses,
     apply,
-    remove,
     handleLensesData,
     handlePreviewResult,
     handleCandidates,
