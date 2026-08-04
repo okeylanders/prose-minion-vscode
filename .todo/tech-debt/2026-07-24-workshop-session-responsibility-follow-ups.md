@@ -1,7 +1,7 @@
 # Workshop Session Responsibility Follow-ups
 
-**Status:** Active
-**Priority:** Medium
+**Status:** In progress — absorbed by Workshop Architecture Refactor Phases 3 and 5
+**Priority:** Critical within the feature-freeze gate
 **Origin:** Independent class-responsibility audit during PR #85 review remediation
 
 ## Files first
@@ -57,3 +57,6 @@ invariants.
 - New modules have explicit ownership comments and semantic filenames.
 - No additional durable format receives a version suffix unless it is an
   independently decoded on-disk schema.
+
+Execution and closure are now tracked by the
+[Workshop Architecture Refactor epic](../epics/epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md).

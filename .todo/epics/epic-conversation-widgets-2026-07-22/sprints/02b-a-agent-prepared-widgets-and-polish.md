@@ -1,6 +1,6 @@
 # Sprint 02B-A: Agent-Prepared Widgets and Lexical Gravity Polish
 
-**Status**: In progress
+**Status**: Complete — merged through PR #99 on 2026-08-02
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-02b-a-assists-and-polish` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 1-2 days

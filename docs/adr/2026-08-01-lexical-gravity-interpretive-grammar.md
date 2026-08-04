@@ -4,6 +4,7 @@
 - **Decision owner**: Okey
 - **Extends**: [ADR 2026-07-22 — Conversation Widgets](2026-07-22-conversation-widgets.md)
 - **Delivery**: [Sprint 02B-B — Lexical Gravity interpretive grammar](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-lexical-gravity-interpretive-grammar.md)
+- **Implementation gate**: Paused until [Workshop Architecture Refactor Phase 7](../../.todo/epics/epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md) explicitly lifts the feature freeze
 
 ## Context
 
@@ -196,4 +197,3 @@ field vocabulary fails even if it is fluent.
 - **Preserve v1 as a lexical-only variant.** Rejected: it creates two meanings of
   "lens," complicates blending, and makes every downstream consumer branch on a
   temporary alpha representation.
-

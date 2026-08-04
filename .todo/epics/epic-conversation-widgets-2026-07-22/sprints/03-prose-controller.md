@@ -1,11 +1,11 @@
 # Sprint 03: Prose Controller
 
-**Status**: Planned
+**Status**: Paused — Workshop Architecture Refactor Phase 7 must lift the feature freeze
 **Priority**: Medium
 **Branch**: `sprint/conversation-widgets-03-prose-controller` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 8-12 days
-**Depends on**: Sprint 02B-B (Lexical Gravity interpretive grammar) merged into `epic/conversation-widgets`; the standing rail itself arrived in Sprint 02B
-**Optional predecessor**: Sprint 02C may land first, but is not a gate
+**Depends on**: Sprint 02B-B merged into `epic/conversation-widgets` and Workshop Architecture Refactor Phase 7 complete; the standing rail itself arrived in Sprint 02B
+**Superseded predecessor**: Sprint 02C moved into the mandatory Workshop Architecture Refactor
 **ADR**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md)
 
 ## Goal
