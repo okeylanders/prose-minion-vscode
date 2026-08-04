@@ -16,7 +16,8 @@ implemented responsibility tree.
 - Complete the Workshop message split behind the existing barrel.
 - Make feature-specific payload names exact and generic family unions explicit.
 - Reorganize tests to mirror presentation, handler, service, and feature owners.
-- Update `docs/ARCHITECTURE.md`, ADR references, active epics, and debt records.
+- Update `CLAUDE.md` (and its `AGENTS.md` alias), `docs/ARCHITECTURE.md`, ADR
+  references, active epics, and debt records.
 - Archive or supersede completed extraction debt with closure notes.
 - Strengthen import, route-owner, composition, feature-isolation, and aggregate
   encapsulation witnesses against the final tree.

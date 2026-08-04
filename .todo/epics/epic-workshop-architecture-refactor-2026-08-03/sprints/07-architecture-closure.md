@@ -32,4 +32,7 @@ understandable enough for feature development to resume.
 - [ ] Full Jest, all TypeScript projects, lint, build/bundle, architecture
       witnesses, and `git diff --check` pass.
 - [ ] Final architecture map is published.
+- [ ] A Prose Controller reproduction fixture demonstrates zero edits to
+      Gesture/Lexical feature files and exactly one generic closed-registry
+      entry.
 - [ ] Okey explicitly decides whether to lift the feature freeze.

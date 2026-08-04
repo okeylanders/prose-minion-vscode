@@ -21,6 +21,10 @@ reduce `WorkshopApp` to shell, route, and layout composition.
   honest.
 - Split `workshop.css` by shell/session/context/feature responsibility without
   visual changes.
+- Preserve stylesheet import order as a behavior invariant: shared tokens,
+  then shell, session, context, and feature styles. Within the feature tier,
+  retain the pre-split source order unless an intentional visual change is
+  separately approved.
 - Extract modal subcontrollers only where independent workflow state proves the
   seam.
 
@@ -31,4 +35,9 @@ reduce `WorkshopApp` to shell, route, and layout composition.
 - [ ] `useWorkshop` is retired or reduced to an intentionally named compatibility
       facade with a removal plan inside this sprint.
 - [ ] Feature styles live with feature surfaces; shared tokens remain shared.
+- [ ] The assembled stylesheet follows the documented token -> shell -> session
+      -> context -> feature import order.
+- [ ] A manual visual pass records no regression across the room shell,
+      transcript/composer, named-session controls, context/resource surfaces,
+      Gesture Playground, Lexical Gravity, and the standing-widget rail.
 - [ ] Representative UI actions are traceable by filename without broad search.

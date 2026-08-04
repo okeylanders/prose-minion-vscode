@@ -64,16 +64,16 @@ The refactor will:
 
 ## Phase sequence
 
-| Phase | Sprint | Purpose | Exit |
-|---:|---|---|---|
-| 0 | [Architecture fitness witnesses](sprints/00-architecture-fitness-witnesses.md) | Accept the decision, pin behavior, and make migration debt executable | Target seams and current exceptions are explicit and tested |
-| 1 | [Feature-slice normalization](sprints/01-feature-slice-normalization.md) | Make Gesture and Lexical package ownership symmetric without behavior changes | Both features have named vertical slices |
-| 2 | [Shared route and contract ownership](sprints/02-shared-route-contract-ownership.md) | Move family-generic standing behavior out of Lexical and correct false-generic messages | A third standing family adds no Lexical edits or route collision |
-| 3 | [Presentation responsibility extraction](sprints/03-presentation-responsibility-extraction.md) | Split room, sessions, widget host, feature hooks, modal controllers, and styles | UI workflows trace through named owners |
-| 4 | [Application handler extraction](sprints/04-application-handler-extraction.md) | Move cohesive IPC clusters out of `WorkshopHandler` | Handler is a room/run orchestrator and slice composer |
-| 5 | [Session aggregate extraction](sprints/05-session-aggregate-extraction.md) | Extract proven state machines/ledgers behind the aggregate facade | Session concepts have named homes and focused tests |
-| 6 | [Contract, test, and documentation normalization](sprints/06-contract-test-doc-normalization.md) | Finish protocol split and align tests/docs with source ownership | Source, tests, and docs tell one story |
-| 7 | [Architecture closure](sprints/07-architecture-closure.md) | Audit every flow, remove migration exceptions, run full validation | Decision owner may lift the feature freeze |
+| Phase | Sprint | Purpose | Fitness witnesses installed or closed | Exit |
+|---:|---|---|---|---|
+| 0 | [Architecture fitness witnesses](sprints/00-architecture-fitness-witnesses.md) | Accept the decision, pin behavior, and make migration debt executable | #1 declared route locations; #3 feature isolation; #6 composition direction (retain existing guard); #7 aggregate encapsulation | Target seams and current exceptions are explicit and tested |
+| 1 | [Feature-slice normalization](sprints/01-feature-slice-normalization.md) | Make Gesture and Lexical package ownership symmetric without behavior changes | Migrate #1 and #3 owner paths with the pure moves | Both features have named vertical slices |
+| 2 | [Shared route and contract ownership](sprints/02-shared-route-contract-ownership.md) | Move family-generic standing behavior out of Lexical and correct false-generic messages | #2 generic standing ownership; #4 closed dispatch; #8 exact draft/message pairings; #9 action-result correlation | A third standing family adds no Lexical edits or route collision |
+| 3 | [Presentation responsibility extraction](sprints/03-presentation-responsibility-extraction.md) | Split room, sessions, widget host, feature hooks, modal controllers, and styles | #5 no feature async state in the room hook | UI workflows trace through named owners |
+| 4 | [Application handler extraction](sprints/04-application-handler-extraction.md) | Move cohesive IPC clusters out of `WorkshopHandler` | Update #1, #6, and #7 for extracted owners | Handler is a room/run orchestrator and slice composer |
+| 5 | [Session aggregate extraction](sprints/05-session-aggregate-extraction.md) | Extract proven state machines/ledgers behind the aggregate facade | Update #7 for internal moves without widening access | Session concepts have named homes and focused tests |
+| 6 | [Contract, test, and documentation normalization](sprints/06-contract-test-doc-normalization.md) | Finish protocol split and align tests/docs with source ownership | #10 source/test/documentation ownership agreement; strengthen #1-#9 against final paths | Source, tests, and docs tell one story |
+| 7 | [Architecture closure](sprints/07-architecture-closure.md) | Audit every flow, remove migration exceptions, run full validation | Audit #1-#10; remove all migration exceptions | Decision owner may lift the feature freeze |
 
 Phases are ordered. A later phase may prepare a strictly mechanical move early
 only when doing so avoids duplicate churn and does not weaken the current

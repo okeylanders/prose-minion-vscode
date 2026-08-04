@@ -153,7 +153,8 @@ continuing.
 
 Executable witnesses will protect, at minimum:
 
-1. one route owner per Workshop message type;
+1. a declared ownership location for every inbound Workshop widget and standing
+   route (duplicate registration is already rejected by `MessageRouter`);
 2. generic standing routes owned outside feature handlers after Phase 2;
 3. no direct Gesture-to-Lexical or Lexical-to-Gesture imports;
 4. approved closed registries as the only generic-to-feature dispatch points;
