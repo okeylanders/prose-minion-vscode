@@ -9,7 +9,7 @@ import { Icon } from '@components/shared/Icon';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
   formatLexicalGravitySummary
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 
 interface WorkshopStandingDirectiveRailProps {
   directives: WorkshopStandingDirectiveSummary[];

@@ -36,7 +36,6 @@ import {
   WorkshopPersonaId,
   WorkshopContextAttachmentSnapshot,
   WorkshopTurn,
-  WorkshopWidgetActionResultMessage,
   WorkshopWidgetId,
   isWorkshopWriterProfileActive,
   workshopExcerptSourcePath,
@@ -55,11 +54,11 @@ import { WorkshopWidgetsModal } from './components/workshop/WorkshopWidgetsModal
 import {
   WorkshopGesturePlaygroundModal,
   WorkshopGestureOpening
-} from './components/workshop/WorkshopGesturePlaygroundModal';
+} from '@components/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundModal';
 import {
   WorkshopLexicalGravityModal,
   WorkshopLexicalGravityOpening
-} from './components/workshop/WorkshopLexicalGravityModal';
+} from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal';
 import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopStandingDirectiveRail';
 import {
   stripWorkshopWidgetRecommendationControl
@@ -112,9 +111,13 @@ import { buildWorkshopToolAskPrefill } from '@utils/workshopToolAskPrefill';
 import { buildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
-import { useMessageRouter } from './hooks/useMessageRouter';
-import { useWorkshop } from './hooks/domain/useWorkshop';
-import { useLexicalGravity } from './hooks/domain/useLexicalGravity';
+import { useWorkshopAppMessageRouter } from '@hooks/useWorkshopAppMessageRouter';
+import { useWorkshop } from '@hooks/domain/useWorkshop';
+import { useWorkshopWidgetHost } from '@hooks/domain/workshop/useWorkshopWidgetHost';
+import {
+  useGesturePlayground
+} from '@hooks/domain/workshop/widgets/useGesturePlayground';
+import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
 import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
@@ -181,6 +184,8 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler.
   const workshop = useWorkshop();
+  const widgetHost = useWorkshopWidgetHost();
+  const gesturePlayground = useGesturePlayground();
   const lexicalGravity = useLexicalGravity();
   const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
@@ -265,68 +270,28 @@ export const WorkshopApp: React.FC = () => {
     [showToast]
   );
 
-  const handleWidgetActionResult = React.useCallback(
-    (message: WorkshopWidgetActionResultMessage) => {
-      workshop.handleWidgetActionResult(message);
-      lexicalGravity.handleActionResult(message);
-      if (message.payload.action === 'remove-standing') {
-        showToast(message.payload.ok
-          ? {
-              message: message.payload.removed
-                ? 'Lexical Gravity removed.'
-                : 'Lexical Gravity was already removed.',
-              icon: message.payload.removed ? 'check' : 'info'
-            }
-          : {
-              message: message.payload.message ?? 'Lexical Gravity could not be removed.',
-              icon: 'x',
-              tone: 'error'
-            });
-      }
-    },
-    [
-      lexicalGravity.handleActionResult,
-      workshop.handleWidgetActionResult,
-      showToast
-    ]
-  );
-
-  useMessageRouter({
-    [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
-    [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
-    [MessageType.WORKSHOP_SESSIONS_DATA]: workshop.handleSessionsData,
-    [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshop.handleSessionActionResult,
-    [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshop.handleSessionSaveStatus,
-    [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
-    [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
-    [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshop.handleContextAttachmentContent,
-    [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
-    [MessageType.WORKSHOP_WIDGET_MENU_RESULT]: workshop.handleWidgetMenuResult,
-    [MessageType.WORKSHOP_WIDGET_CONFIG_DATA]: workshop.handleWidgetConfigData,
-    [MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS]:
-      workshop.handleWidgetGenerationProgress,
-    [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: handleWidgetActionResult,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA]: lexicalGravity.handleLensesData,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT]: lexicalGravity.handlePreviewResult,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
-    [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
-    [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
-    [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
-    [MessageType.STATUS]: handleStatusMessage,
-    [MessageType.ERROR]: handleErrorMessage,
-    [MessageType.MODEL_DATA]: modelsSettings.handleModelData,
-    [MessageType.SETTINGS_DATA]: modelsSettings.handleSettingsData,
-    [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
-    [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
-    [MessageType.STARTUP_NOTICE_DATA]: startupNotice.handleStartupNoticeData,
-    [MessageType.API_KEY_STATUS]: handleApiKeyStatus,
-    [MessageType.COPY_RESULT_SUCCESS]: handleCopyResultSuccess,
-    [MessageType.SAVE_RESULT_SUCCESS]: handleSaveResultSuccess,
+  useWorkshopAppMessageRouter({
+    workshop,
+    widgetHost,
+    gesturePlayground,
+    lexicalGravity,
+    excerptVerify,
+    modelsSettings,
+    tokenTracking,
+    accountBalance,
+    startupNotice,
+    showToast,
+    handleApiKeyStatus,
+    handleStatusMessage,
+    handleErrorMessage,
+    handleCopyResultSuccess,
+    handleSaveResultSuccess
   });
 
   usePersistence({
     ...workshop.persistedState,
+    ...widgetHost.persistedState,
+    ...gesturePlayground.persistedState,
     ...lexicalGravity.persistedState,
     ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
@@ -378,10 +343,10 @@ export const WorkshopApp: React.FC = () => {
       return;
     }
     if (
-      workshop.widgetConfigResponseId === pendingWidgetConfigId
-      && workshop.widgetConfigData?.id === pendingWidgetConfigId
+      widgetHost.widgetConfigResponseId === pendingWidgetConfigId
+      && widgetHost.widgetConfigData?.id === pendingWidgetConfigId
     ) {
-      const config = workshop.widgetConfigData;
+      const config = widgetHost.widgetConfigData;
       if (config.widgetId === 'gesture-playground') {
         setGestureOpening({ kind: 'clone', config });
       } else if (config.widgetId === 'lexical-gravity') {
@@ -393,24 +358,24 @@ export const WorkshopApp: React.FC = () => {
         );
       }
       setPendingWidgetConfigId(null);
-      workshop.clearWidgetConfigData();
+      widgetHost.clearWidgetConfigData();
       return;
     }
     if (
-      workshop.widgetConfigResponseId === pendingWidgetConfigId
-      && workshop.widgetConfigError
+      widgetHost.widgetConfigResponseId === pendingWidgetConfigId
+      && widgetHost.widgetConfigError
     ) {
-      showToast({ message: workshop.widgetConfigError, icon: 'x', tone: 'error' });
+      showToast({ message: widgetHost.widgetConfigError, icon: 'x', tone: 'error' });
       setPendingWidgetConfigId(null);
-      workshop.clearWidgetConfigData();
+      widgetHost.clearWidgetConfigData();
     }
   }, [
     pendingWidgetConfigId,
     showToast,
-    workshop.clearWidgetConfigData,
-    workshop.widgetConfigData,
-    workshop.widgetConfigError,
-    workshop.widgetConfigResponseId,
+    widgetHost.clearWidgetConfigData,
+    widgetHost.widgetConfigData,
+    widgetHost.widgetConfigError,
+    widgetHost.widgetConfigResponseId,
     workshop.standingDirectives
   ]);
 
@@ -538,8 +503,8 @@ export const WorkshopApp: React.FC = () => {
   const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
   const openWidgetConfig = React.useCallback((widgetConfigId: string) => {
     setPendingWidgetConfigId(widgetConfigId);
-    workshop.requestWidgetConfig(widgetConfigId);
-  }, [workshop.requestWidgetConfig]);
+    widgetHost.requestWidgetConfig(widgetConfigId);
+  }, [widgetHost.requestWidgetConfig]);
   // Conversation Widgets (ADR 2026-07-22): three doors into the same
   // pre-commit surface — the browser (fresh), a persona recommend chip
   // (seeded), and a committed turn's chip (clone-and-recommit).
@@ -582,15 +547,15 @@ export const WorkshopApp: React.FC = () => {
   const closeGesture = React.useCallback(() => {
     setGestureOpening(null);
     setPendingWidgetConfigId(null);
-    workshop.clearWidgetConfigData();
-    workshop.consumeWidgetActionResult();
-  }, [workshop.clearWidgetConfigData, workshop.consumeWidgetActionResult]);
+    widgetHost.clearWidgetConfigData();
+    gesturePlayground.consumeWidgetActionResult();
+  }, [gesturePlayground.consumeWidgetActionResult, widgetHost.clearWidgetConfigData]);
   const closeLexicalGravity = React.useCallback(() => {
     setLexicalGravityOpening(null);
     setPendingWidgetConfigId(null);
-    workshop.clearWidgetConfigData();
+    widgetHost.clearWidgetConfigData();
     lexicalGravity.clearTransientResults();
-  }, [lexicalGravity.clearTransientResults, workshop.clearWidgetConfigData]);
+  }, [lexicalGravity.clearTransientResults, widgetHost.clearWidgetConfigData]);
   const closeStartupNotice = React.useCallback(
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]
@@ -1610,16 +1575,16 @@ export const WorkshopApp: React.FC = () => {
         <WorkshopGesturePlaygroundModal
           open
           opening={gestureOpening}
-          menuResult={workshop.widgetMenuResult}
-          generationProgress={workshop.widgetGenerationProgress}
-          actionResult={workshop.widgetActionResult}
+          menuResult={gesturePlayground.widgetMenuResult}
+          generationProgress={gesturePlayground.widgetGenerationProgress}
+          actionResult={gesturePlayground.widgetActionResult}
           activeExcerpt={workshop.excerpt}
           contextAttachments={workshop.contextAttachments}
-          onGenerate={workshop.generateWidgetMenu}
-          onCancelGenerate={workshop.cancelWidgetGenerate}
+          onGenerate={gesturePlayground.generateWidgetMenu}
+          onCancelGenerate={gesturePlayground.cancelWidgetGenerate}
           onCommit={(draft, clonedFromConfigId) =>
-            workshop.commitWidget({ widgetId: 'gesture-playground', draft, clonedFromConfigId })}
-          onConsumeActionResult={workshop.consumeWidgetActionResult}
+            gesturePlayground.commitWidget({ widgetId: 'gesture-playground', draft, clonedFromConfigId })}
+          onConsumeActionResult={gesturePlayground.consumeWidgetActionResult}
           onCopyDictionary={copyGestureDictionary}
           onSaveDictionary={saveGestureDictionary}
           widgetModelOptions={modelsSettings.modelOptions}

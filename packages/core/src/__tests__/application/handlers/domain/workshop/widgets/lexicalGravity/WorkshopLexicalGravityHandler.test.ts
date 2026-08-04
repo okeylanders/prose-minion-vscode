@@ -1,9 +1,9 @@
 import {
   WorkshopLexicalGravityHandler
-} from '@/application/handlers/domain/WorkshopLexicalGravityHandler';
+} from '@/application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
 import {
   builtInLexicalGravityLens
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import { MessageType, WorkshopLexicalGravityLensCandidate } from '@messages';
 
 const candidates = (): WorkshopLexicalGravityLensCandidate[] => {

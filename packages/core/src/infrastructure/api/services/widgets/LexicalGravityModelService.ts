@@ -16,10 +16,10 @@ import {
   cloneLexicalGravityDraft,
   lexicalGravityConfigKey,
   validateLexicalGravityLens
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import {
   lexicalGravityLensSlug
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 const LENSES_START = '===LEXICAL_GRAVITY_LENSES_V1===';

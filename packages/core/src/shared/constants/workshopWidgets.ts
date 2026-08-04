@@ -1,7 +1,7 @@
 /**
  * The Conversation Widgets registry — the single deterministic source for
  * widget ids ↔ labels ↔ rails ↔ availability (ADR 2026-07-22, decision 14).
- * The webview browser renders from it, WorkshopWidgetHandler validates
+ * The webview browser renders from it, WorkshopGesturePlaygroundHandler validates
  * commits against it, and the thread-artifact frame's `kind` attribute is
  * derived from it — so none of the three can drift, and the LLM never names
  * buttons. Icons are presentation-only and stay in the webview layer

@@ -7,10 +7,10 @@ import {
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 import {
   buildLexicalGravityDirectiveFrame
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 import {
   builtInLexicalGravityLens
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { parseWorkshopSessionStateV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {

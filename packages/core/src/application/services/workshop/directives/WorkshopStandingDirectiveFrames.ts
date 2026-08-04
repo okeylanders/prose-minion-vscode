@@ -8,7 +8,7 @@ import type { WorkshopSessionService } from '@/application/services/workshop/Wor
 import type { WorkshopSessionStateV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
   buildLexicalGravityDirectiveFrame
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 
 export interface WorkshopStandingDirectiveRendering {
   directive: WorkshopStandingDirectiveSnapshot;

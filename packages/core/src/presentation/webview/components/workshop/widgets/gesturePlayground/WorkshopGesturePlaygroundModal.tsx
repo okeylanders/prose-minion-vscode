@@ -36,7 +36,7 @@ import { ModelOption, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { ModelSelector } from '@components/shared/ModelSelector';
-import { WorkshopModalShell } from './WorkshopModalShell';
+import { WorkshopModalShell } from '@components/workshop/WorkshopModalShell';
 
 /** How the modal was opened; decides seeding and the commit button's label. */
 export type WorkshopGestureOpening =

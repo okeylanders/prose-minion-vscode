@@ -2,10 +2,10 @@ import {
   lexicalGravityConfigKey,
   validateLexicalGravityDraft,
   validateLexicalGravityLens
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import {
   builtInLexicalGravityLens
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 
 describe('LexicalGravityConfigCodec', () => {
   it('validates exact project lens shape and returns a defensive clone', () => {

@@ -8,10 +8,10 @@ import {
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import {
   lexicalGravityMarkerContent
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 import {
   summarizeLexicalGravityDraft
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 
 export function summarizeWorkshopStandingDirective(
   directive: WorkshopStandingDirectiveSnapshot,

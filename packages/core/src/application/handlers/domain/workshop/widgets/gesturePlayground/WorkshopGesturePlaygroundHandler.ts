@@ -17,7 +17,9 @@ import {
   GesturePlaygroundService,
   GestureSourceMaterial
 } from '@services/widgets/GesturePlaygroundService';
-import { buildGestureDirective } from '@/application/services/workshop/WorkshopPromptBuilder';
+import {
+  buildGestureDirective
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundDirective';
 import { LogSink } from '@/platform';
 import {
   MessageType,
@@ -30,15 +32,13 @@ import {
   WorkshopWidgetGenerationProgressMessage,
   WorkshopWidgetSourceReference,
   CancelWidgetGenerateRequestMessage,
-  WorkshopWidgetMenuResultMessage,
-  WorkshopRequestWidgetConfigMessage,
-  WorkshopWidgetConfigDataMessage
+  WorkshopWidgetMenuResultMessage
 } from '@messages';
 import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopMutationRouteRegistrar } from '@handlers/domain/WorkshopSessionMessageHandler';
 
-export interface WorkshopWidgetHandlerOptions {
+export interface WorkshopGesturePlaygroundHandlerOptions {
   /**
    * The one room-send seam (WorkshopHandler.executeMessage). Acceptance is a
    * separate milestone from the participant reply: `onRoomAccepted` fires
@@ -75,7 +75,7 @@ type GestureGenerationStage =
 
 const GESTURE_PROGRESS_REPORT_INTERVAL_CHARACTERS = 1_000;
 
-export class WorkshopWidgetHandler {
+export class WorkshopGesturePlaygroundHandler {
   private activeGeneration?: {
     controller: AbortController;
     token: string;
@@ -91,7 +91,7 @@ export class WorkshopWidgetHandler {
     private readonly gestureService: GesturePlaygroundService,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
-    private readonly options: WorkshopWidgetHandlerOptions
+    private readonly options: WorkshopGesturePlaygroundHandlerOptions
   ) {}
 
   registerRoutes(
@@ -103,10 +103,6 @@ export class WorkshopWidgetHandler {
     router.register(
       MessageType.CANCEL_WIDGET_GENERATE_REQUEST,
       this.handleCancelGenerate.bind(this)
-    );
-    router.register(
-      MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG,
-      this.handleRequestConfig.bind(this)
     );
     registerMutation(
       MessageType.WORKSHOP_COMMIT_WIDGET,
@@ -245,7 +241,7 @@ export class WorkshopWidgetHandler {
           menu
         });
         this.outputChannel.appendLine(
-          `[WorkshopWidgetHandler] Added gestures to ${menu.length} groups (token ${token})`
+          `[WorkshopGesturePlaygroundHandler] Added gestures to ${menu.length} groups (token ${token})`
         );
         return;
       }
@@ -284,7 +280,7 @@ export class WorkshopWidgetHandler {
           truncated: result.truncated
         });
         this.outputChannel.appendLine(
-          `[WorkshopWidgetHandler] Gesture dictionary and menu generated (${result.menu.length} groups, token ${token})`
+          `[WorkshopGesturePlaygroundHandler] Gesture dictionary and menu generated (${result.menu.length} groups, token ${token})`
         );
       } else {
         const menuError = result.menuError
@@ -299,7 +295,7 @@ export class WorkshopWidgetHandler {
           truncated: result.truncated
         });
         this.outputChannel.appendLine(
-          `[WorkshopWidgetHandler] Gesture dictionary recovered without a usable menu (token ${token}): ${menuError}`
+          `[WorkshopGesturePlaygroundHandler] Gesture dictionary recovered without a usable menu (token ${token}): ${menuError}`
         );
       }
     } catch (error) {
@@ -309,7 +305,7 @@ export class WorkshopWidgetHandler {
       const details = error instanceof Error ? error.message : String(error);
       this.postMenuResult({ widgetId, token, mode, ok: false, error: details });
       this.outputChannel.appendLine(
-        `[WorkshopWidgetHandler] Gesture Dictionary generation failed (token ${token}): ${details}`
+        `[WorkshopGesturePlaygroundHandler] Gesture Dictionary generation failed (token ${token}): ${details}`
       );
     } finally {
       if (this.activeGeneration?.controller === controller) {
@@ -325,22 +321,6 @@ export class WorkshopWidgetHandler {
     ) {
       this.cancelActiveGeneration('writer');
     }
-  }
-
-  async handleRequestConfig(message: WorkshopRequestWidgetConfigMessage): Promise<void> {
-    const configId = message.payload.configId.trim();
-    const config = /^wc-[1-9]\d*$/.test(configId)
-      ? this.session.getWidgetConfig(configId)
-      : undefined;
-    const response: WorkshopWidgetConfigDataMessage = {
-      type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA,
-      source: 'extension.workshop.widget',
-      timestamp: Date.now(),
-      payload: config
-        ? { configId, config }
-        : { configId, error: 'That widget configuration is no longer available.' }
-    };
-    await this.postMessage(response);
   }
 
   /**
@@ -399,7 +379,7 @@ export class WorkshopWidgetHandler {
       }${draft.includeDictionaryInCommit ? ', with the full Gesture Dictionary shared as reference' : ''}.`;
 
       this.outputChannel.appendLine(
-        `[WorkshopWidgetHandler] Widget commit staged (${config.id} → ${artifactId}, ${selectionCount} selections${clonedFromConfigId ? `, cloned from ${clonedFromConfigId}` : ''})`
+        `[WorkshopGesturePlaygroundHandler] Widget commit staged (${config.id} → ${artifactId}, ${selectionCount} selections${clonedFromConfigId ? `, cloned from ${clonedFromConfigId}` : ''})`
       );
       this.options.markDirty('widget config created');
 
@@ -432,7 +412,7 @@ export class WorkshopWidgetHandler {
             turnId: userTurnId
           });
           this.outputChannel.appendLine(
-            `[WorkshopWidgetHandler] Widget commit accepted (${config.id} on turn ${userTurnId})`
+            `[WorkshopGesturePlaygroundHandler] Widget commit accepted (${config.id} on turn ${userTurnId})`
           );
         }
       });
@@ -448,7 +428,7 @@ export class WorkshopWidgetHandler {
       }
       if (!outcome.committed) {
         this.outputChannel.appendLine(
-          `[WorkshopWidgetHandler] Widget ${config.id} remained committed after the participant response failed`
+          `[WorkshopGesturePlaygroundHandler] Widget ${config.id} remained committed after the participant response failed`
         );
       }
     } catch (error) {
@@ -463,7 +443,7 @@ export class WorkshopWidgetHandler {
         });
       }
       this.outputChannel.appendLine(
-        `[WorkshopWidgetHandler] Widget commit failed (${configId ?? 'before-config'}): ${details}`
+        `[WorkshopGesturePlaygroundHandler] Widget commit failed (${configId ?? 'before-config'}): ${details}`
       );
     }
   }
@@ -624,7 +604,7 @@ export class WorkshopWidgetHandler {
     }
     active.controller.abort();
     this.outputChannel.appendLine(
-      `[WorkshopWidgetHandler] Gesture generation cancelled ` +
+      `[WorkshopGesturePlaygroundHandler] Gesture generation cancelled ` +
       `(token ${active.token}, reason=${reason})`
     );
     this.postGenerationProgress({

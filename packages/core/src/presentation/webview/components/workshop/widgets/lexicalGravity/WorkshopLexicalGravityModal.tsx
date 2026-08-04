@@ -15,7 +15,7 @@ import { ModelOption, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { ModelSelector } from '@components/shared/ModelSelector';
-import { WorkshopModalShell } from './WorkshopModalShell';
+import { WorkshopModalShell } from '@components/workshop/WorkshopModalShell';
 import {
   LEXICAL_GRAVITY_REACH,
   LEXICAL_GRAVITY_WEIGHT
@@ -23,10 +23,10 @@ import {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   buildLexicalGravityDirectiveFrame
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 import {
   lexicalGravityLensSlug
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 
 export type WorkshopLexicalGravityOpening =
   | { kind: 'new'; seed?: WorkshopLexicalGravityDraft }

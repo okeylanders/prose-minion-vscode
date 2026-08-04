@@ -1,12 +1,12 @@
 /**
- * The widget IPC slice (ADR 2026-07-22, Sprint 01): generate is a free
+ * The Gesture Playground IPC slice (ADR 2026-07-22, Sprint 01): generate is a free
  * preview call with token correlation and cancel; commit is one atomic
  * route — config before send (the durable retry token), linkage and the
  * writer-origin manifest only when the reply lands, and the writer's staged
  * composer pills never consumed.
  */
 
-import { WorkshopWidgetHandler } from '@handlers/domain/WorkshopWidgetHandler';
+import { WorkshopGesturePlaygroundHandler } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -120,7 +120,7 @@ const build = (options: {
     });
   const generateMore = options.generateMore ?? jest.fn();
   const appendLine = jest.fn();
-  const handler = new WorkshopWidgetHandler(
+  const handler = new WorkshopGesturePlaygroundHandler(
     session,
     { generateMenu, generateMore } as never,
     postMessage,
@@ -149,7 +149,7 @@ const build = (options: {
   };
 };
 
-describe('WorkshopWidgetHandler — generate', () => {
+describe('WorkshopGesturePlaygroundHandler — generate', () => {
   it('returns the menu under the request token', async () => {
     const { handler, posted, generateMenu } = build();
     await handler.handleGenerate(generateMessage());
@@ -482,28 +482,7 @@ describe('WorkshopWidgetHandler — generate', () => {
   });
 });
 
-describe('WorkshopWidgetHandler — atomic commit', () => {
-  it('fetches the full authoring config only through the on-demand route', async () => {
-    const { handler, session, posted } = build();
-    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
-
-    await handler.handleRequestConfig({
-      type: MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG,
-      source: 'webview.workshop',
-      timestamp: 1,
-      payload: { configId: 'wc-1' }
-    });
-
-    expect(posted(MessageType.WORKSHOP_WIDGET_CONFIG_DATA)[0].payload)
-      .toEqual(expect.objectContaining({
-        configId: 'wc-1',
-        config: expect.objectContaining({
-          id: 'wc-1',
-          draft: expect.objectContaining({ dictionaryMarkdown: expect.any(String) })
-        })
-      }));
-  });
-
+describe('WorkshopGesturePlaygroundHandler — atomic commit', () => {
   it('persists config, ships outside the pending list, and stamps linkage on success', async () => {
     const { handler, session, sendRoomMessage, posted, markDirty } = build();
     // A staged composer pill must survive the widget commit untouched.

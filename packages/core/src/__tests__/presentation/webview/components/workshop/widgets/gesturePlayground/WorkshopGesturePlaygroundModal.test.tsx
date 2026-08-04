@@ -7,7 +7,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import {
   WorkshopGesturePlaygroundModal,
   WorkshopGestureOpening
-} from '@components/workshop/WorkshopGesturePlaygroundModal';
+} from '@components/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundModal';
 import {
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,

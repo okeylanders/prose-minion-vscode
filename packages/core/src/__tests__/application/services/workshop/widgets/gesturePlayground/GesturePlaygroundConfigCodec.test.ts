@@ -3,7 +3,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   assertGesturePlaygroundDraftShape,
   cloneGesturePlaygroundDraft
-} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 
 const draft = (): WorkshopGestureDraft => ({
   targetPhrase: 'she smiled',
