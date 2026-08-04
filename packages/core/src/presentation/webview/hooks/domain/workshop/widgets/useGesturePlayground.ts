@@ -8,8 +8,6 @@ import {
   WorkshopCommitWidgetPayload,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload,
-  WorkshopWidgetConfigDataMessage,
-  WorkshopWidgetConfigSnapshot,
   WorkshopWidgetGeneratePayload,
   WorkshopWidgetGenerationProgressMessage,
   WorkshopWidgetGenerationProgressPayload,
@@ -18,9 +16,6 @@ import {
 } from '@messages';
 
 export interface GesturePlaygroundState {
-  widgetConfigData: WorkshopWidgetConfigSnapshot | null;
-  widgetConfigResponseId: string | null;
-  widgetConfigError: string | null;
   widgetMenuResult: WorkshopWidgetMenuResultPayload | null;
   widgetGenerationProgress: WorkshopWidgetGenerationProgressPayload | null;
   widgetActionResult: WorkshopWidgetActionResultPayload | null;
@@ -29,11 +24,8 @@ export interface GesturePlaygroundState {
 export interface GesturePlaygroundActions {
   generateWidgetMenu: (payload: WorkshopWidgetGeneratePayload) => void;
   cancelWidgetGenerate: (requestId: string) => void;
-  requestWidgetConfig: (configId: string) => void;
-  clearWidgetConfigData: () => void;
   commitWidget: (payload: WorkshopCommitWidgetPayload) => void;
   handleWidgetMenuResult: (message: WorkshopWidgetMenuResultMessage) => void;
-  handleWidgetConfigData: (message: WorkshopWidgetConfigDataMessage) => void;
   handleWidgetGenerationProgress: (message: WorkshopWidgetGenerationProgressMessage) => void;
   handleWidgetActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   consumeWidgetActionResult: () => void;
@@ -50,10 +42,6 @@ export type UseGesturePlaygroundReturn = GesturePlaygroundState &
 
 export function useGesturePlayground(): UseGesturePlaygroundReturn {
   const vscode = useVSCodeApi();
-  const [widgetConfigData, setWidgetConfigData] =
-    React.useState<WorkshopWidgetConfigSnapshot | null>(null);
-  const [widgetConfigResponseId, setWidgetConfigResponseId] = React.useState<string | null>(null);
-  const [widgetConfigError, setWidgetConfigError] = React.useState<string | null>(null);
   const [widgetMenuResult, setWidgetMenuResult] =
     React.useState<WorkshopWidgetMenuResultPayload | null>(null);
   const [widgetGenerationProgress, setWidgetGenerationProgress] =
@@ -82,19 +70,6 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
     );
   }, [vscode]);
 
-  const requestWidgetConfig = React.useCallback((configId: string) => {
-    setWidgetConfigData(null);
-    setWidgetConfigResponseId(null);
-    setWidgetConfigError(null);
-    post(MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG, { configId });
-  }, [post]);
-
-  const clearWidgetConfigData = React.useCallback(() => {
-    setWidgetConfigData(null);
-    setWidgetConfigResponseId(null);
-    setWidgetConfigError(null);
-  }, []);
-
   const commitWidget = React.useCallback((payload: WorkshopCommitWidgetPayload) => {
     setWidgetActionResult(null);
     post(MessageType.WORKSHOP_COMMIT_WIDGET, payload);
@@ -106,15 +81,6 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
       setWidgetGenerationProgress((current) =>
         current?.token === message.payload.token ? null : current
       );
-    },
-    []
-  );
-
-  const handleWidgetConfigData = React.useCallback(
-    (message: WorkshopWidgetConfigDataMessage) => {
-      setWidgetConfigResponseId(message.payload.configId);
-      setWidgetConfigData(message.payload.config ?? null);
-      setWidgetConfigError(message.payload.error ?? null);
     },
     []
   );
@@ -144,19 +110,13 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
   );
 
   return {
-    widgetConfigData,
-    widgetConfigResponseId,
-    widgetConfigError,
     widgetMenuResult,
     widgetGenerationProgress,
     widgetActionResult,
     generateWidgetMenu,
     cancelWidgetGenerate,
-    requestWidgetConfig,
-    clearWidgetConfigData,
     commitWidget,
     handleWidgetMenuResult,
-    handleWidgetConfigData,
     handleWidgetGenerationProgress,
     handleWidgetActionResult,
     consumeWidgetActionResult,

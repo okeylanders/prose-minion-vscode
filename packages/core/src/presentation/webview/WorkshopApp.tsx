@@ -36,7 +36,6 @@ import {
   WorkshopPersonaId,
   WorkshopContextAttachmentSnapshot,
   WorkshopTurn,
-  WorkshopWidgetActionResultMessage,
   WorkshopWidgetId,
   isWorkshopWriterProfileActive,
   workshopExcerptSourcePath,
@@ -112,15 +111,13 @@ import { buildWorkshopToolAskPrefill } from '@utils/workshopToolAskPrefill';
 import { buildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
-import { useMessageRouter } from './hooks/useMessageRouter';
-import { useWorkshop } from './hooks/domain/useWorkshop';
+import { useWorkshopAppMessageRouter } from '@hooks/useWorkshopAppMessageRouter';
+import { useWorkshop } from '@hooks/domain/useWorkshop';
+import { useWorkshopWidgetHost } from '@hooks/domain/workshop/useWorkshopWidgetHost';
 import {
   useGesturePlayground
 } from '@hooks/domain/workshop/widgets/useGesturePlayground';
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
-import {
-  dispatchWorkshopWidgetActionResult
-} from '@hooks/domain/workshop/dispatchWorkshopWidgetActionResult';
 import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
@@ -187,6 +184,7 @@ export const WorkshopApp: React.FC = () => {
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler.
   const workshop = useWorkshop();
+  const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
   const lexicalGravity = useLexicalGravity();
   const excerptVerify = useWorkshopExcerptVerify();
@@ -272,57 +270,27 @@ export const WorkshopApp: React.FC = () => {
     [showToast]
   );
 
-  const handleWidgetActionResult = React.useCallback(
-    (message: WorkshopWidgetActionResultMessage) => {
-      dispatchWorkshopWidgetActionResult(message, {
-        handleGestureActionResult: gesturePlayground.handleWidgetActionResult,
-        handleLexicalActionResult: lexicalGravity.handleActionResult,
-        showToast
-      });
-    },
-    [
-      lexicalGravity.handleActionResult,
-      gesturePlayground.handleWidgetActionResult,
-      showToast
-    ]
-  );
-
-  useMessageRouter({
-    [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
-    [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
-    [MessageType.WORKSHOP_SESSIONS_DATA]: workshop.handleSessionsData,
-    [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshop.handleSessionActionResult,
-    [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshop.handleSessionSaveStatus,
-    [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
-    [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
-    [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshop.handleContextAttachmentContent,
-    [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
-    [MessageType.WORKSHOP_WIDGET_MENU_RESULT]: gesturePlayground.handleWidgetMenuResult,
-    [MessageType.WORKSHOP_WIDGET_CONFIG_DATA]: gesturePlayground.handleWidgetConfigData,
-    [MessageType.WORKSHOP_WIDGET_GENERATION_PROGRESS]:
-      gesturePlayground.handleWidgetGenerationProgress,
-    [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: handleWidgetActionResult,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA]: lexicalGravity.handleLensesData,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT]: lexicalGravity.handlePreviewResult,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
-    [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
-    [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
-    [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
-    [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
-    [MessageType.STATUS]: handleStatusMessage,
-    [MessageType.ERROR]: handleErrorMessage,
-    [MessageType.MODEL_DATA]: modelsSettings.handleModelData,
-    [MessageType.SETTINGS_DATA]: modelsSettings.handleSettingsData,
-    [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
-    [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
-    [MessageType.STARTUP_NOTICE_DATA]: startupNotice.handleStartupNoticeData,
-    [MessageType.API_KEY_STATUS]: handleApiKeyStatus,
-    [MessageType.COPY_RESULT_SUCCESS]: handleCopyResultSuccess,
-    [MessageType.SAVE_RESULT_SUCCESS]: handleSaveResultSuccess,
+  useWorkshopAppMessageRouter({
+    workshop,
+    widgetHost,
+    gesturePlayground,
+    lexicalGravity,
+    excerptVerify,
+    modelsSettings,
+    tokenTracking,
+    accountBalance,
+    startupNotice,
+    showToast,
+    handleApiKeyStatus,
+    handleStatusMessage,
+    handleErrorMessage,
+    handleCopyResultSuccess,
+    handleSaveResultSuccess
   });
 
   usePersistence({
     ...workshop.persistedState,
+    ...widgetHost.persistedState,
     ...gesturePlayground.persistedState,
     ...lexicalGravity.persistedState,
     ...excerptVerify.persistedState,
@@ -375,10 +343,10 @@ export const WorkshopApp: React.FC = () => {
       return;
     }
     if (
-      gesturePlayground.widgetConfigResponseId === pendingWidgetConfigId
-      && gesturePlayground.widgetConfigData?.id === pendingWidgetConfigId
+      widgetHost.widgetConfigResponseId === pendingWidgetConfigId
+      && widgetHost.widgetConfigData?.id === pendingWidgetConfigId
     ) {
-      const config = gesturePlayground.widgetConfigData;
+      const config = widgetHost.widgetConfigData;
       if (config.widgetId === 'gesture-playground') {
         setGestureOpening({ kind: 'clone', config });
       } else if (config.widgetId === 'lexical-gravity') {
@@ -390,24 +358,24 @@ export const WorkshopApp: React.FC = () => {
         );
       }
       setPendingWidgetConfigId(null);
-      gesturePlayground.clearWidgetConfigData();
+      widgetHost.clearWidgetConfigData();
       return;
     }
     if (
-      gesturePlayground.widgetConfigResponseId === pendingWidgetConfigId
-      && gesturePlayground.widgetConfigError
+      widgetHost.widgetConfigResponseId === pendingWidgetConfigId
+      && widgetHost.widgetConfigError
     ) {
-      showToast({ message: gesturePlayground.widgetConfigError, icon: 'x', tone: 'error' });
+      showToast({ message: widgetHost.widgetConfigError, icon: 'x', tone: 'error' });
       setPendingWidgetConfigId(null);
-      gesturePlayground.clearWidgetConfigData();
+      widgetHost.clearWidgetConfigData();
     }
   }, [
     pendingWidgetConfigId,
     showToast,
-    gesturePlayground.clearWidgetConfigData,
-    gesturePlayground.widgetConfigData,
-    gesturePlayground.widgetConfigError,
-    gesturePlayground.widgetConfigResponseId,
+    widgetHost.clearWidgetConfigData,
+    widgetHost.widgetConfigData,
+    widgetHost.widgetConfigError,
+    widgetHost.widgetConfigResponseId,
     workshop.standingDirectives
   ]);
 
@@ -535,8 +503,8 @@ export const WorkshopApp: React.FC = () => {
   const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
   const openWidgetConfig = React.useCallback((widgetConfigId: string) => {
     setPendingWidgetConfigId(widgetConfigId);
-    gesturePlayground.requestWidgetConfig(widgetConfigId);
-  }, [gesturePlayground.requestWidgetConfig]);
+    widgetHost.requestWidgetConfig(widgetConfigId);
+  }, [widgetHost.requestWidgetConfig]);
   // Conversation Widgets (ADR 2026-07-22): three doors into the same
   // pre-commit surface — the browser (fresh), a persona recommend chip
   // (seeded), and a committed turn's chip (clone-and-recommit).
@@ -579,15 +547,15 @@ export const WorkshopApp: React.FC = () => {
   const closeGesture = React.useCallback(() => {
     setGestureOpening(null);
     setPendingWidgetConfigId(null);
-    gesturePlayground.clearWidgetConfigData();
+    widgetHost.clearWidgetConfigData();
     gesturePlayground.consumeWidgetActionResult();
-  }, [gesturePlayground.clearWidgetConfigData, gesturePlayground.consumeWidgetActionResult]);
+  }, [gesturePlayground.consumeWidgetActionResult, widgetHost.clearWidgetConfigData]);
   const closeLexicalGravity = React.useCallback(() => {
     setLexicalGravityOpening(null);
     setPendingWidgetConfigId(null);
-    gesturePlayground.clearWidgetConfigData();
+    widgetHost.clearWidgetConfigData();
     lexicalGravity.clearTransientResults();
-  }, [lexicalGravity.clearTransientResults, gesturePlayground.clearWidgetConfigData]);
+  }, [lexicalGravity.clearTransientResults, widgetHost.clearWidgetConfigData]);
   const closeStartupNotice = React.useCallback(
     () => startupNotice.dismissStartupNotice(false),
     [startupNotice.dismissStartupNotice]

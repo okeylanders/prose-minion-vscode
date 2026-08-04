@@ -116,6 +116,32 @@ const MODULE_REFERENCE = new RegExp(
 );
 const GESTURE_FEATURE_REFERENCE = /(?:GesturePlayground|gesturePlayground|gesture-playground)/;
 const LEXICAL_FEATURE_REFERENCE = /(?:LexicalGravity|lexicalGravity|lexical-gravity)/;
+const WORKSHOP_FEATURE_HOOKS = [
+  path.join(
+    SRC_ROOT,
+    'presentation/webview/hooks/domain/workshop/widgets/useGesturePlayground.ts'
+  ),
+  path.join(
+    SRC_ROOT,
+    'presentation/webview/hooks/domain/workshop/widgets/useLexicalGravity.ts'
+  )
+];
+const WORKSHOP_WIDGET_HOST_HOOK = path.join(
+  SRC_ROOT,
+  'presentation/webview/hooks/domain/workshop/useWorkshopWidgetHost.ts'
+);
+const GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE = new RegExp(
+  [
+    'WORKSHOP_REQUEST_WIDGET_CONFIG',
+    'WORKSHOP_WIDGET_CONFIG_DATA',
+    'WorkshopWidgetConfigDataMessage',
+    'widgetConfigResponseId',
+    'widgetConfigError',
+    'requestWidgetConfig',
+    'clearWidgetConfigData',
+    'handleWidgetConfigData'
+  ].join('|')
+);
 
 /**
  * Exact known false-generic ownership at the start of the refactor. This list
@@ -258,6 +284,19 @@ describe('architectural boundaries', () => {
     expect(lexicalFiles.length).toBeGreaterThan(0);
     expect(gestureOffenders).toEqual([]);
     expect(lexicalOffenders).toEqual([]);
+  });
+
+  it('Workshop feature hooks do not own family-generic widget config lookup', () => {
+    const offenders = WORKSHOP_FEATURE_HOOKS
+      .filter((file) => GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE.test(
+        fs.readFileSync(file, 'utf8')
+      ))
+      .map((file) => path.relative(SRC_ROOT, file));
+    const widgetHostSource = fs.readFileSync(WORKSHOP_WIDGET_HOST_HOOK, 'utf8');
+
+    expect(offenders).toEqual([]);
+    expect(widgetHostSource).toMatch(/WORKSHOP_REQUEST_WIDGET_CONFIG/);
+    expect(widgetHostSource).toMatch(/handleWidgetConfigData/);
   });
 
   it('Workshop handlers cannot bypass the session aggregate through internal ledgers', () => {

@@ -22,7 +22,8 @@ recognizable as sibling feature slices without changing behavior.
   `widgets/gesturePlayground/GesturePlaygroundDirective.ts` while preserving
   the public barrel export name.
 - Extract `useGesturePlayground` from `useWorkshop`; move `useLexicalGravity`
-  into the sibling feature-hook package.
+  into the sibling feature-hook package; give family-generic config lookup a
+  matching `useWorkshopWidgetHost` presentation owner.
 - Move modal components into symmetric feature component packages.
 - Move and rename tests with their owners.
 
@@ -39,7 +40,9 @@ recognizable as sibling feature slices without changing behavior.
 Okey accepted the Sprint 01 runway recommendations on 2026-08-03:
 
 1. `WORKSHOP_REQUEST_WIDGET_CONFIG` moves to the family-generic
-   `WorkshopWidgetHostHandler` rather than acquiring a Gesture-specific owner.
+   `WorkshopWidgetHostHandler`, and its presentation request/response state
+   moves to `useWorkshopWidgetHost`, rather than either side acquiring a
+   Gesture-specific owner.
 2. The unused `useWorkshop.widgetConfigs` mirror is deleted under the alpha
    compatibility policy instead of being mislabeled as Gesture state.
 3. Extracted hook members retain their existing `widget*` vocabulary in this
@@ -51,14 +54,15 @@ remains in `workshop.css` for the presentation extraction in Phase 3.
 ## Completion criteria
 
 - [x] Both features have named handler, hook, service, component, and test homes.
+- [x] Family-generic widget config lookup has generic handler and presentation homes.
 - [x] `useWorkshop` no longer owns Gesture async workflow state/actions.
 - [x] The P1 legacy ownership exceptions are empty.
 - [x] Existing behavior tests pass without rewritten expectations.
 
 ## Verification
 
-- Focused Sprint 01 suites: 12 suites, 238 tests passed.
-- Full Jest: 162 suites, 1,793 tests, and 1 snapshot passed.
+- Focused review-fix regression suites: 6 suites, 22 tests passed.
+- Full Jest: 164 suites, 1,802 tests, and 1 snapshot passed.
 - Core, webview, and extension TypeScript projects passed.
 - ESLint completed with zero errors (existing warning baseline remains).
 - Production extension/webview bundle and bundle sentinel verification passed.

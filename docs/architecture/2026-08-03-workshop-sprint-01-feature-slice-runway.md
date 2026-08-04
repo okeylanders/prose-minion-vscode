@@ -25,7 +25,7 @@ Because Gesture Playground's ownership is spelled in family-generic names (`Work
 | 1 | Handler rename + package | `handlers/domain/WorkshopWidgetHandler.ts` (739) | `handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts` | STRONG |
 | 2 | Sibling handler move | `handlers/domain/WorkshopLexicalGravityHandler.ts` (347) | `…/workshop/widgets/lexicalGravity/` | STRONG |
 | 3 | Service packages | `services/workshop/widgets/GesturePlaygroundConfigCodec.ts` loose beside generics; `services/workshop/lexicalGravity/` a sibling of `widgets/` | `services/workshop/widgets/{gesturePlayground,lexicalGravity}/` | STRONG |
-| 4 | Hook extraction | GP workflow inside `useWorkshop.ts` (1,176) | `hooks/domain/workshop/widgets/useGesturePlayground.ts` + `useLexicalGravity.ts` moved | MODERATE — see F2 |
+| 4 | Hook extraction | GP workflow and family-generic config lookup inside `useWorkshop.ts` (1,176) | `useWorkshopWidgetHost.ts` owns generic config lookup; `widgets/useGesturePlayground.ts` + `useLexicalGravity.ts` own their feature workflows | MODERATE — see F1/F2 |
 | 5 | Component packages | both modals flat in `components/workshop/` | `components/workshop/widgets/<feature>/` (CSS follows in P3) | STRONG |
 
 ### Scope and highest risks
@@ -42,7 +42,7 @@ Because Gesture Playground's ownership is spelled in family-generic names (`Work
 
 | Decision | Options | Recommendation | Needed by |
 |---|---|---|---|
-| **D1** Who owns `WORKSHOP_REQUEST_WIDGET_CONFIG` after the rename? | (a) new `WorkshopWidgetHostHandler` in P1; (b) leave on the Gesture-named file and add a P2 exception; (c) pull the fix into P2 wholesale | **(a)** — it is a pure move of one route method, keeps the exception ledger shrinking-only, and gives P2 a generic owner to build on | Slice 2 |
+| **D1** Who owns `WORKSHOP_REQUEST_WIDGET_CONFIG` after the rename? | (a) a generic `WorkshopWidgetHostHandler` plus symmetric `useWorkshopWidgetHost` presentation hook in P1; (b) leave either side on a Gesture-named file and add a P2 exception; (c) pull the fix into P2 wholesale | **(a)** — it keeps both sides of the message boundary free of false-specific ownership, keeps the exception ledger shrinking-only, and gives P2 a generic owner to build on | Slices 2–3 |
 | **D2** What happens to `useWorkshop.widgetConfigs` (exposed, zero consumers)? | (a) delete under alpha rules; (b) park in `useWorkshop` pending P3's widget host | **(a)** — it is session-derived family data with no reader; migrating it into a Gesture hook would be a fresh mislabel | Slice 3 |
 | **D3** Do hook members keep `widget*` vocabulary in P1? | (a) keep, rename in P2 with the message renames; (b) rename now | **(a)** — one `WorkshopApp` churn instead of two, and P1 stays reviewable as placement-only | Slice 3 |
 
@@ -51,6 +51,10 @@ Because Gesture Playground's ownership is spelled in family-generic names (`Work
 **State:** `OPEN` · **Blockers:** none. Okey accepted D1–D3 as option (a) on
 2026-08-03, and slice 0 installs F2's characterization seam before the hook
 extraction.
+
+**Review clarification:** D1 applies to the ownership pattern across both sides
+of the message boundary. The generic presentation state therefore moves to
+`useWorkshopWidgetHost`, not to either feature hook.
 
 *Note:* the epic runway made P1 conditional on its **F1** (blind isolation witness). That is **resolved** on this branch — `boundaries.test.ts:108-111` pins the pre-rename Gesture paths and `:272` asserts the scanned set is non-empty; `:288-295` names missing exception files instead of throwing `ENOENT`. The epic's P1 condition is satisfied.
 
@@ -122,7 +126,9 @@ packages/core/src/
 │   ├── WorkshopApp.tsx                          [~] rewire to two feature hooks; fan-out preserved
 │   ├── hooks/domain/
 │   │   ├── useWorkshop.ts                       [~] −GP workflow, −widgetConfigs (D2)
-│   │   └── workshop/widgets/{useGesturePlayground.ts [+], useLexicalGravity.ts [>]}
+│   │   └── workshop/
+│   │       ├── useWorkshopWidgetHost.ts         [+] D1 — generic config request/response state
+│   │       └── widgets/{useGesturePlayground.ts [+], useLexicalGravity.ts [>]}
 │   ├── components/workshop/widgets/{gesturePlayground,lexicalGravity}/…Modal.tsx  [>]
 │   └── workshop.css                             [=] P3
 └── __tests__/  mirrors every path above; useWorkshop.test.ts splits its GP describes out
@@ -136,7 +142,8 @@ packages/core/src/
 | `WorkshopWidgetHostHandler` (new) | — | `WORKSHOP_REQUEST_WIDGET_CONFIG` → `session.getWidgetConfig` → `WORKSHOP_WIDGET_CONFIG_DATA` | Gains the generic lookup ADR §3 says a generic module may own | Thin *feature-agnostic route owner*; no state, no model calls |
 | `WorkshopLexicalGravityHandler` | LG catalog/preview/build/save **+ 2 standing routes** | identical body, new path | **Nothing** in P1. The standing routes stay until P2 — deliberately | Recorded P2 exception, unchanged |
 | `useWorkshop` | Room + sessions + context + GP async workflow | Room + sessions + context | Loses 6 GP state fields, 10 GP actions, the `'gesture-playground'` filter (`useWorkshop.ts:581`) | Still broad; P3 owns the rest |
-| `useGesturePlayground` (new) | — | GP menu/progress/config-fetch/commit-ack workflow | Gains everything above; mirrors `useLexicalGravity`'s tripartite shape | *Feature hook*, symmetric to its sibling |
+| `useWorkshopWidgetHost` (new) | — | Family-generic config request/response workflow | Gains the generic presentation half of D1 | Thin generic host hook; mirrors `WorkshopWidgetHostHandler` |
+| `useGesturePlayground` (new) | — | GP menu/progress/commit-ack workflow | Gains only Gesture-specific state/actions; mirrors `useLexicalGravity`'s tripartite shape | *Feature hook*, symmetric to its sibling |
 | `WorkshopPromptBuilder` | Room prompt assembly **+ one Gesture directive builder** | Room prompt assembly | Loses `buildGestureDirective` (barrel export name preserved) | Feature envy removed |
 | `WorkshopHandler` | — | — | **No responsibility change** — import paths and one added collaborator | Composition owner, untouched |
 
@@ -250,24 +257,24 @@ P1 buys one thing: **two features that look alike from the file tree**. It is th
 | Alternative | Shape | Benefits | Costs / risks | Verdict |
 |---|---|---|---|---|
 | **Minimal patch** | Rename the handler; leave hooks/components/services flat | Tiny diff; no App churn | Exit criterion 2 unmet; the P1 exception at `useWorkshop.ts:581` survives; P3 inherits a hook that still owns feature workflow | **Rejected** |
-| **Recommended** | All five moves + D1's carve-out + a slice-0 fan-out test | Two symmetric slices; no false owners; P2 starts from a generic seat | ~12 file moves, ~30 import rewrites, one test-file split; large-but-mechanical diff | **Retained** |
+| **Recommended** | All five moves + D1's full-stack carve-out + a slice-0 fan-out test | Two symmetric slices; no false owners; P2 starts from a generic seat | ~12 file moves, ~30 import rewrites, focused hook/test splits; large-but-mechanical diff | **Retained** |
 | **More generalized** | Fold P2's message renames into P1 | One rebase for the paused branches instead of two | Mixes contract change with pure move — direct ADR §9 violation; destroys the "no expectation rewritten" review property | **Rejected** |
 
 ### 2.7 Principle and quality tensions
 
 | Principle | Status | Support | Tension | Consequence | Witness |
 |---|---|---|---|---|---|
-| Naming truthfulness | `TENSION` → `STRONG` with D1 | Handler/hook/component names become feature-honest | Message names stay `WORKSHOP_WIDGET_*` until P2, so the hook's members read generic (D3) | A reviewer may read P1 as a half-rename — say so in the sprint doc | route ledger + this document |
+| Naming truthfulness | `TENSION` → `STRONG` with D1 | Handler/hook/component names become feature-honest; generic config lookup has generic owners on both sides | Message names stay `WORKSHOP_WIDGET_*` until P2 (D3) | A reviewer may read P1 as a half-rename — say so in the sprint doc | route ledger + generic presentation-ownership witness + this document |
 | Responsibility / cohesion | `ACCEPTABLE` | `useWorkshop` sheds a whole workflow; `WorkshopPromptBuilder` sheds feature envy | `useWorkshop` is still room+sessions+context (P3) | Expected; P1 is not the fix | sprint exit criteria |
 | Dependency direction | `STRONG` | No new inward dependency; `WorkshopHandler` stays the internal composition owner; `extension.ts` untouched | — | — | `boundaries.test.ts` construction guard |
-| Change isolation | `TENSION` | Feature packages become copyable | Without D1, Lexical's edit path depends on a Gesture-named file — invisible to the import-based isolation witness | P2 inherits a coupling it has to undo twice | none for route-level coupling |
+| Change isolation | `STRONG` with D1 | Feature packages become copyable; Lexical's edit path depends only on the generic host hook | A future extraction could drift generic state back into a feature hook | P2 starts without cross-feature config coupling | generic presentation-ownership witness |
 | Testability | `TENSION` | Tests move with owners; per-feature test homes appear | The one behavior P1 rewires (fan-out) is the one with no test | Regression would surface only in manual use | **F2 fix** |
 
 ### 2.8 Ranked findings
 
 | ID | Sev | Finding | Evidence | Smallest fix | Blocks |
 |---|---|---|---|---|---|
-| **F1** | **HIGH** | The rename gives a family-generic route a feature-specific owner, and the epic's destination tree has no generic handler-side home for it. | `handleRequestConfig` is widget-agnostic (`WorkshopWidgetHandler.ts:330-344`); `WorkshopApp.tsx:384-395` fans its response to *both* modals; `WorkshopApp.tsx:546-556` routes Lexical's "edit applied lens" door through it; ADR §3 lists "generic config lookup" as a permitted generic responsibility; semantic runway §D lists no generic widget handler. | D1 option (a): move `handleRequestConfig` + its two message types into `handlers/domain/workshop/widgets/WorkshopWidgetHostHandler.ts`, constructed by `WorkshopHandler` on the same closure mold; update the route ledger; record as an ADR §7 documented deviation. | slice 2 |
+| **F1** | **HIGH** | The rename gives family-generic config lookup a feature-specific owner unless both the handler and presentation state receive generic homes. | `handleRequestConfig` is widget-agnostic (`WorkshopWidgetHandler.ts:330-344`); `WorkshopApp.tsx:384-395` fans its response to *both* modals; `WorkshopApp.tsx:546-556` routes Lexical's "edit applied lens" door through it; ADR §3 lists "generic config lookup" as a permitted generic responsibility. | D1 option (a): move the route into `WorkshopWidgetHostHandler` and the request/response state into `useWorkshopWidgetHost`; update route and presentation-ownership witnesses. | slices 2–3 |
 | **F2** | **HIGH** | The one behavior P1 rewires — a three-way fan-out of a single message — has no test at its composition point. | `WorkshopApp.tsx:268-291` dispatches `WORKSHOP_WIDGET_ACTION_RESULT` to `workshop.handleWidgetActionResult`, `lexicalGravity.handleActionResult`, and the toast; there is no `WorkshopApp` test file; the only coverage is `useWorkshop.test.ts:430`, which *moves with the arm being extracted*. Dropping the Lexical arm leaves apply/remove acknowledgement and its toast silently dead. | Slice 0: a characterization test asserting all three consumers observe one action-result message (or a route-map assertion over `buildAppMessageRoutes`), landed **before** the extraction commit. | slice 3 |
 | **F3** | MEDIUM | `CANCEL_WIDGET_GENERATE_REQUEST` is an inbound widget route with no entry in the Phase-0 route-owner ledger, and P1 moves its owning file. | Registered at `WorkshopWidgetHandler.ts:104`; enum at `base.ts:176`; absent from `WORKSHOP_WIDGET_ROUTE_OWNERS` (`boundaries.test.ts:65-103`). Corrects the epic runway's "all nine request-bearing types appear" — that count covered `base.ts:159-175` only. | Add the entry in the same commit that moves the file. | nothing |
 | **F4** | MEDIUM | `useWorkshop.widgetConfigs` is exposed with zero presentation consumers; an unexamined extraction would carry family data into a Gesture-named hook. | Declared `:141`, set `:820` from the session snapshot, returned `:1050`; repo-wide grep finds no `workshop.widgetConfigs` reader in any component. | D2 option (a): delete it in the extraction commit (alpha rules) and let P3's widget host re-add a consumer-backed version if needed. | slice 3 |
@@ -351,7 +358,7 @@ P1 buys one thing: **two features that look alike from the file tree**. It is th
 | Contract consumers / migration / tests identified | **PASS** | No wire contract changes; route ownership table in §2.3 |
 | Persistence failure and rescue defined | **N/A — PASS** | No aggregate, codec semantic, or stored shape touched |
 | Runtime flows owned and testable | **PASS** | Slice 0 characterizes the action-result fan-out before extraction |
-| Negative-space and reproduction tests pass | **PASS** | D1(a) gives config lookup a generic owner (§2.4) |
+| Negative-space and reproduction tests pass | **PASS** | D1(a) gives config lookup generic owners on both sides and a presentation-ownership witness (§2.4) |
 | Tree / responsibilities / contracts / slices agree | **PASS** after the §3.1 resolutions are folded into the sprint doc |
 | Human decisions assigned | **PASS** | Okey accepted option (a) for D1, D2, and D3 on 2026-08-03 |
 

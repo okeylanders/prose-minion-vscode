@@ -14,7 +14,7 @@ export class WorkshopWidgetHostHandler {
   constructor(
     private readonly session: WorkshopSessionService,
     private readonly postMessage: MessageTransport,
-    _outputChannel: LogSink
+    private readonly outputChannel: LogSink
   ) {}
 
   registerRoutes(router: MessageRouter): void {
@@ -26,9 +26,17 @@ export class WorkshopWidgetHostHandler {
 
   async handleRequestConfig(message: WorkshopRequestWidgetConfigMessage): Promise<void> {
     const configId = message.payload.configId.trim();
-    const config = /^wc-[1-9]\d*$/.test(configId)
+    const isValidConfigId = /^wc-[1-9]\d*$/.test(configId);
+    const config = isValidConfigId
       ? this.session.getWidgetConfig(configId)
       : undefined;
+    if (!config) {
+      this.outputChannel.appendLine(
+        isValidConfigId
+          ? `[WorkshopWidgetHostHandler] Widget config ${configId} is unavailable`
+          : '[WorkshopWidgetHostHandler] Rejected an invalid widget config id'
+      );
+    }
     const response: WorkshopWidgetConfigDataMessage = {
       type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA,
       source: 'extension.workshop.widget',
