@@ -42,7 +42,7 @@ import {
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { renderWorkshopStandingDirectiveFrames } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 import { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
-import { WorkshopLexicalGravityHandler } from '@handlers/domain/WorkshopLexicalGravityHandler';
+import { WorkshopLexicalGravityHandler } from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
 import { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 import { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import {
@@ -165,7 +165,8 @@ import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { WorkshopSessionMessageHandler } from '@handlers/domain/WorkshopSessionMessageHandler';
-import { WorkshopWidgetHandler } from '@handlers/domain/WorkshopWidgetHandler';
+import { WorkshopGesturePlaygroundHandler } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
+import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
@@ -272,7 +273,8 @@ export class WorkshopHandler {
   private readonly disposeStatusListener: () => void;
   private readonly disposeSessionSaveStatusListener: () => void;
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
-  private readonly widgetHandler: WorkshopWidgetHandler;
+  private readonly gesturePlaygroundHandler: WorkshopGesturePlaygroundHandler;
+  private readonly widgetHostHandler: WorkshopWidgetHostHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
 
   /** The single in-flight Context wizard run — independent of activeRun. */
@@ -336,7 +338,7 @@ export class WorkshopHandler {
             : undefined
       }
     );
-    this.widgetHandler = new WorkshopWidgetHandler(
+    this.gesturePlaygroundHandler = new WorkshopGesturePlaygroundHandler(
       this.session,
       widgetRuntime.gesturePlayground,
       this.postMessage,
@@ -349,6 +351,11 @@ export class WorkshopHandler {
         reportError: (message, details) => this.sendError('workshop', message, details),
         isRoomRunActive: () => this.activeRun !== undefined
       }
+    );
+    this.widgetHostHandler = new WorkshopWidgetHostHandler(
+      this.session,
+      this.postMessage,
+      this.outputChannel
     );
     this.lexicalGravityHandler = new WorkshopLexicalGravityHandler(
       this.session,
@@ -456,7 +463,8 @@ export class WorkshopHandler {
     );
     registerMutation(MessageType.WORKSHOP_REPIN_EXCERPT, this.handleRepinExcerpt.bind(this));
     this.sessionMessageHandler.registerRoutes(router, registerMutation);
-    this.widgetHandler.registerRoutes(router, registerMutation);
+    this.gesturePlaygroundHandler.registerRoutes(router, registerMutation);
+    this.widgetHostHandler.registerRoutes(router);
     this.lexicalGravityHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }
@@ -468,7 +476,7 @@ export class WorkshopHandler {
    * survives: it belongs to the session, not to this handler.
    */
   dispose(): void {
-    this.widgetHandler.dispose();
+    this.gesturePlaygroundHandler.dispose();
     this.lexicalGravityHandler.dispose();
     this.disposeStatusListener();
     this.disposeSessionSaveStatusListener();

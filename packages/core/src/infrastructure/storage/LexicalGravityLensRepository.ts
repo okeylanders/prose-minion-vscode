@@ -6,11 +6,11 @@ import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import {
   cloneLexicalGravityLens,
   validateLexicalGravityLens
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import {
   composeLexicalGravityLensSlug,
   lexicalGravityLensSlug
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   isMissingFileSystemPathError

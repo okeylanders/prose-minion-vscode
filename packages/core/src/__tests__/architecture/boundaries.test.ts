@@ -65,50 +65,46 @@ const WORKSHOP_HANDLER_ROOT = path.join(HANDLERS_ROOT, 'domain');
 const WORKSHOP_WIDGET_ROUTE_OWNERS = [
   {
     messageType: 'WORKSHOP_WIDGET_GENERATE',
-    owner: 'application/handlers/domain/WorkshopWidgetHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
+  },
+  {
+    messageType: 'CANCEL_WIDGET_GENERATE_REQUEST',
+    owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
   },
   {
     messageType: 'WORKSHOP_REQUEST_WIDGET_CONFIG',
-    owner: 'application/handlers/domain/WorkshopWidgetHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/WorkshopWidgetHostHandler.ts'
   },
   {
     messageType: 'WORKSHOP_COMMIT_WIDGET',
-    owner: 'application/handlers/domain/WorkshopWidgetHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
   },
   {
     messageType: 'WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES',
-    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
   },
   {
     messageType: 'WORKSHOP_PREVIEW_LEXICAL_GRAVITY',
-    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
   },
   {
     messageType: 'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS',
-    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
   },
   {
     messageType: 'WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES',
-    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
   },
   // Legacy Phase-2 exceptions: family-generic routes have a feature owner.
   {
     messageType: 'WORKSHOP_APPLY_STANDING_WIDGET',
-    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
   },
   {
     messageType: 'WORKSHOP_REMOVE_STANDING_WIDGET',
-    owner: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
   }
 ] as const;
-
-// Phase 1 gives these false-generic owners honest Gesture names. Include their
-// current paths now so the feature-isolation witness protects the move instead
-// of becoming effective only after it.
-const GESTURE_OWNERS_UNDER_MIGRATION = new Set([
-  'application/handlers/domain/WorkshopWidgetHandler.ts',
-  'presentation/webview/hooks/domain/useWorkshop.ts'
-]);
 
 const MODULE_REFERENCE = new RegExp(
   [
@@ -128,23 +124,13 @@ const LEXICAL_FEATURE_REFERENCE = /(?:LexicalGravity|lexicalGravity|lexical-grav
  */
 const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS = [
   {
-    phase: 1,
-    file: 'application/handlers/domain/WorkshopWidgetHandler.ts',
-    marker: /GesturePlaygroundService/
-  },
-  {
-    phase: 1,
-    file: 'presentation/webview/hooks/domain/useWorkshop.ts',
-    marker: /message\.payload\.widgetId === 'gesture-playground'/
-  },
-  {
     phase: 2,
     file: 'application/services/workshop/directives/WorkshopStandingDirectiveService.ts',
     marker: /family: 'lexical-gravity'/
   },
   {
     phase: 2,
-    file: 'application/handlers/domain/WorkshopLexicalGravityHandler.ts',
+    file: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts',
     marker: /MessageType\.WORKSHOP_APPLY_STANDING_WIDGET/
   }
 ] as const;
@@ -257,8 +243,7 @@ describe('architectural boundaries', () => {
     const gestureFiles = sourceFiles
       .filter((file) => {
         const relativePath = path.relative(SRC_ROOT, file);
-        return /GesturePlayground/i.test(relativePath)
-          || GESTURE_OWNERS_UNDER_MIGRATION.has(relativePath);
+        return /GesturePlayground/i.test(relativePath);
       });
     const lexicalFiles = sourceFiles
       .filter((file) => /LexicalGravity/i.test(path.relative(SRC_ROOT, file)));
@@ -302,10 +287,8 @@ describe('architectural boundaries', () => {
       .map(({ phase, file }) => `P${phase}:${file}`);
 
     expect(observed).toEqual([
-      'P1:application/handlers/domain/WorkshopWidgetHandler.ts',
-      'P1:presentation/webview/hooks/domain/useWorkshop.ts',
       'P2:application/services/workshop/directives/WorkshopStandingDirectiveService.ts',
-      'P2:application/handlers/domain/WorkshopLexicalGravityHandler.ts'
+      'P2:application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
     ]);
   });
 });

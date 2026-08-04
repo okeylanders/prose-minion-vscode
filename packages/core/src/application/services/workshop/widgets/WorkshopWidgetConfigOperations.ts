@@ -18,11 +18,11 @@ import {
 import {
   cloneGesturePlaygroundDraft,
   summarizeGesturePlaygroundDraft
-} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
   cloneLexicalGravityDraft,
   summarizeLexicalGravityDraft
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 
 const unsupportedConfig = (value: never): never => {
   throw new Error(`Unsupported Workshop widget config: ${JSON.stringify(value)}`);

@@ -47,11 +47,11 @@ import type {
 import {
   assertGesturePlaygroundDraftShape,
   assertGesturePlaygroundRecommendationSeedShape
-} from '@/application/services/workshop/widgets/GesturePlaygroundConfigCodec';
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
   assertLexicalGravityDraftShape,
   assertLexicalGravityRecommendationSeedShape
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 
 export function assertWorkshopSessionStateShape(
   value: unknown

@@ -5,7 +5,7 @@ import {
 } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import {
   builtInLexicalGravityLens
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import { FileStat, FileSystem, FileType, Workspace } from '@/platform';
 
 class MemoryFileSystem implements FileSystem {

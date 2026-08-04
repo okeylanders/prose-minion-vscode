@@ -7,10 +7,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import {
   WorkshopLexicalGravityModal,
   WorkshopLexicalGravityOpening
-} from '@components/workshop/WorkshopLexicalGravityModal';
+} from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal';
 import {
   builtInLexicalGravityLenses
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import { ModelOption } from '@shared/types';
 
 const models: ModelOption[] = [{

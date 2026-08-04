@@ -1,6 +1,6 @@
 # Sprint 00: Architecture Fitness Witnesses
 
-**Status:** In progress
+**Status:** Completed — merged in PR #101
 
 **Branch:** `sprint/workshop-architecture-refactor-00-fitness-witnesses` -> `epic/workshop-architecture-refactor`
 
@@ -35,10 +35,10 @@ phases can remove debt without creating new hidden coupling.
 
 ## Completion criteria
 
-- [ ] Architecture tests fail on a second owner for a widget route.
-- [ ] Architecture tests fail if handlers reach into session ledgers.
-- [ ] Architecture tests fail if Gesture and Lexical feature modules import one
+- [x] Architecture tests fail on a second owner for a widget route.
+- [x] Architecture tests fail if handlers reach into session ledgers.
+- [x] Architecture tests fail if Gesture and Lexical feature modules import one
       another.
-- [ ] Known false-generic owners are listed exactly and assigned to P1/P2/P3.
-- [ ] ADR, epic, feature pause, and active debt agree.
-- [ ] Focused architecture tests, typecheck, lint, and `git diff --check` pass.
+- [x] Known false-generic owners are listed exactly and assigned to P1/P2/P3.
+- [x] ADR, epic, feature pause, and active debt agree.
+- [x] Focused architecture tests, typecheck, lint, and `git diff --check` pass.

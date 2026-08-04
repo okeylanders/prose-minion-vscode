@@ -3,10 +3,10 @@ import {
 } from '@services/widgets/LexicalGravityModelService';
 import {
   lexicalGravityConfigKey
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import {
   builtInLexicalGravityLens,
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const candidate = (variant: string) => ({

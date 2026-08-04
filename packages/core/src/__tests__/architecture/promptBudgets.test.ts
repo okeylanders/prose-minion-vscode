@@ -20,7 +20,7 @@ const NON_PROMPT_LIMITS = new Set([
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_BIGRAMS_PER_BATCH',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_TRIGRAMS_PER_BATCH',
   'presentation/webview/components/tabs/AnalysisTab.tsx:MAX_EXCERPT_LENGTH',
-  'presentation/webview/components/workshop/WorkshopLexicalGravityModal.tsx:PREVIEW_SOURCE_HEIGHT_CAP',
+  'presentation/webview/components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal.tsx:PREVIEW_SOURCE_HEIGHT_CAP',
   'shared/types/messages/ui.ts:WEBVIEW_ERROR_TEXT_MAX'
 ]);
 

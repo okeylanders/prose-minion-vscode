@@ -11,13 +11,13 @@ import {
   builtInLexicalGravityLens,
   builtInLexicalGravityLenses,
   lexicalGravityLensSlug
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityLenses';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import {
   validateLexicalGravityDraft
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityConfigCodec';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import {
   buildLexicalGravityDirectiveFrame
-} from '@/application/services/workshop/lexicalGravity/LexicalGravityDirective';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 import { LogSink } from '@/platform';
 import {
   MessageType,

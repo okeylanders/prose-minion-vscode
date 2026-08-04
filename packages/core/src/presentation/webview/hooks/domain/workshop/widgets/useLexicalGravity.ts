@@ -1,7 +1,7 @@
 /** Webview domain hook for Lexical Gravity's host-owned operations. */
 
 import * as React from 'react';
-import { useVSCodeApi } from '../useVSCodeApi';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import {
   MessageType,
   WorkshopLexicalGravityDraft,
