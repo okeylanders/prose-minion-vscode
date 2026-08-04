@@ -100,7 +100,7 @@ describe('prompt budgets', () => {
       gestureOutputTokens: 50_000,
       gestureMoreOutputTokens: 8_000,
       gestureRecommendationFrameAllowanceCharacters: 2_000,
-      gestureDictionaryCharacters: 32_000,
+      gestureDictionaryCharacters: 64_000,
       gestureNoteCharacters: 300,
       gestureMenuGroupsMinimum: 4,
       gestureMenuGroups: 6,

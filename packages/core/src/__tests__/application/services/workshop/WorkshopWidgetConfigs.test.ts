@@ -531,8 +531,11 @@ describe('WorkshopSessionService — widget configs', () => {
       PROMPT_BUDGETS.workshopWidgets.gestureDictionaryCharacters + 1
     );
 
-    expect(() => parseWorkshopSessionStateV1(state))
-      .toThrow(/at most 32000 characters/);
+    expect(() => parseWorkshopSessionStateV1(state)).toThrow(
+      new RegExp(
+        `at most ${PROMPT_BUDGETS.workshopWidgets.gestureDictionaryCharacters} characters`
+      )
+    );
   });
 
   it('clears configs and the counter at the new-session boundary', () => {
