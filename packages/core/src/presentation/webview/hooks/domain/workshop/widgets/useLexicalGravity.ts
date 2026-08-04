@@ -6,6 +6,9 @@ import {
   createWorkshopWidgetActionRequestToken
 } from '@hooks/domain/workshop/createWorkshopWidgetActionRequestToken';
 import {
+  reportWorkshopWidgetActionCorrelationIssue
+} from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
+import {
   MessageType,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
@@ -126,14 +129,32 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     setLensesSaved(message.payload);
   }, []);
   const handleActionResult = React.useCallback((message: WorkshopWidgetActionResultMessage) => {
-    if (
-      message.payload.action === 'apply-standing'
-      && message.payload.widgetId === 'lexical-gravity'
-      && message.payload.requestToken === latestApplyRequestTokenRef.current
-    ) {
-      latestApplyRequestTokenRef.current = undefined;
-      setActionResult(message.payload);
+    const requestToken = message.payload.requestToken;
+    const widgetId: string = message.payload.widgetId;
+    if (message.payload.action !== 'apply-standing') {
+      return;
     }
+    const expectedToken = latestApplyRequestTokenRef.current;
+    if (widgetId !== 'lexical-gravity') {
+      if (requestToken === expectedToken) {
+        reportWorkshopWidgetActionCorrelationIssue(
+          'useLexicalGravity',
+          message,
+          'expected widget lexical-gravity'
+        );
+      }
+      return;
+    }
+    if (requestToken !== expectedToken) {
+      reportWorkshopWidgetActionCorrelationIssue(
+        'useLexicalGravity',
+        message,
+        'no current apply request owns this token'
+      );
+      return;
+    }
+    latestApplyRequestTokenRef.current = undefined;
+    setActionResult(message.payload);
   }, []);
   const clearTransientResults = React.useCallback(() => {
     setPreviewResult(null);

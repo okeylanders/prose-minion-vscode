@@ -42,25 +42,31 @@ export class WorkshopStandingDirectiveHandler {
       MessageType.WORKSHOP_APPLY_STANDING_WIDGET,
       this.handleApply.bind(this),
       undefined,
-      (reason, message: WorkshopApplyStandingWidgetMessage) => void this.postAction({
-        action: 'apply-standing',
-        requestToken: message.payload.requestToken,
-        widgetId: message.payload.widgetId,
-        ok: false,
-        message: reason
-      })
+      (reason, message: WorkshopApplyStandingWidgetMessage) => void this.postBlockedAction(
+        reason,
+        {
+          action: 'apply-standing',
+          requestToken: message.payload.requestToken,
+          widgetId: message.payload.widgetId,
+          ok: false,
+          message: reason
+        }
+      )
     );
     registerMutation(
       MessageType.WORKSHOP_REMOVE_STANDING_WIDGET,
       this.handleRemove.bind(this),
       undefined,
-      (reason, message: WorkshopRemoveStandingWidgetMessage) => void this.postAction({
-        action: 'remove-standing',
-        requestToken: message.payload.requestToken,
-        widgetId: this.operations.widgetIdForFamily(message.payload.family),
-        ok: false,
-        message: reason
-      })
+      (reason, message: WorkshopRemoveStandingWidgetMessage) => void this.postBlockedAction(
+        reason,
+        {
+          action: 'remove-standing',
+          requestToken: message.payload.requestToken,
+          widgetId: message.payload.family,
+          ok: false,
+          message: reason
+        }
+      )
     );
   }
 
@@ -69,12 +75,12 @@ export class WorkshopStandingDirectiveHandler {
     try {
       const request = this.operations.prepareApply(message.payload);
       const result = await this.directives.apply(request);
-      if (result.config.widgetId !== request.widgetId) {
-        throw new Error(`Standing directive ${request.family} produced the wrong widget config`);
-      }
       this.options.postTurn(result.turn);
       this.options.postSessionState();
       this.options.markDirty(`${request.widgetId} ${result.action}`);
+      if (result.config.widgetId !== request.widgetId) {
+        throw new Error(`Standing directive ${request.family} produced the wrong widget config`);
+      }
       this.outputChannel.appendLine(
         `[WorkshopStandingDirectiveHandler] ${request.family} ${result.action}: ${result.directiveId} -> ${result.config.id} (revision ${result.config.revision}, ${this.operations.describe({ directive: result.directive, config: result.config })})`
       );
@@ -100,8 +106,9 @@ export class WorkshopStandingDirectiveHandler {
 
   async handleRemove(message: WorkshopRemoveStandingWidgetMessage): Promise<void> {
     const { family, requestToken } = message.payload;
-    const widgetId = this.operations.widgetIdForFamily(family);
+    let widgetId = family;
     try {
+      widgetId = this.operations.widgetIdForFamily(family);
       const result = await this.directives.remove(family);
       if (result.turn) {this.options.postTurn(result.turn);}
       if (result.removed) {
@@ -129,6 +136,16 @@ export class WorkshopStandingDirectiveHandler {
         message: this.errorMessage(error)
       });
     }
+  }
+
+  private async postBlockedAction(
+    reason: string,
+    payload: WorkshopWidgetActionResultMessage['payload']
+  ): Promise<void> {
+    this.outputChannel.appendLine(
+      `[WorkshopStandingDirectiveHandler] ${payload.action} blocked: ${reason}`
+    );
+    await this.postAction(payload);
   }
 
   private async postAction(

@@ -7,6 +7,9 @@ import {
   createWorkshopWidgetActionRequestToken
 } from '@hooks/domain/workshop/createWorkshopWidgetActionRequestToken';
 import {
+  reportWorkshopWidgetActionCorrelationIssue
+} from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
+import {
   MessageType,
   WorkshopCommitWidgetPayload,
   WorkshopGesturePlaygroundGeneratePayload,
@@ -108,14 +111,32 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
 
   const handleWidgetActionResult = React.useCallback(
     (message: WorkshopWidgetActionResultMessage) => {
-      if (
-        message.payload.action === 'commit'
-        && message.payload.widgetId === 'gesture-playground'
-        && message.payload.requestToken === latestCommitRequestTokenRef.current
-      ) {
-        latestCommitRequestTokenRef.current = undefined;
-        setWidgetActionResult(message.payload);
+      const requestToken = message.payload.requestToken;
+      const widgetId: string = message.payload.widgetId;
+      if (message.payload.action !== 'commit') {
+        return;
       }
+      const expectedToken = latestCommitRequestTokenRef.current;
+      if (widgetId !== 'gesture-playground') {
+        if (requestToken === expectedToken) {
+          reportWorkshopWidgetActionCorrelationIssue(
+            'useGesturePlayground',
+            message,
+            'expected widget gesture-playground'
+          );
+        }
+        return;
+      }
+      if (requestToken !== expectedToken) {
+        reportWorkshopWidgetActionCorrelationIssue(
+          'useGesturePlayground',
+          message,
+          'no current commit request owns this token'
+        );
+        return;
+      }
+      latestCommitRequestTokenRef.current = undefined;
+      setWidgetActionResult(message.payload);
     },
     []
   );

@@ -17,6 +17,7 @@ describe('useGesturePlayground', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
   });
 
@@ -51,6 +52,7 @@ describe('useGesturePlayground', () => {
 
   it('ignores a stale commit acknowledgement with the right action and widget', () => {
     const vscode = createMockVSCode();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
     const { result } = renderHook(() => useGesturePlayground());
 
@@ -73,6 +75,10 @@ describe('useGesturePlayground', () => {
     }));
 
     expect(result.current.widgetActionResult).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('no current commit request owns this token'),
+      expect.objectContaining({ requestToken: `${requestToken}-stale` })
+    );
   });
 
   it('tracks token-keyed progress and clears it when that result settles', () => {

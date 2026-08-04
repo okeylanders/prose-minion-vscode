@@ -15,16 +15,18 @@ import {
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityStandingDirectiveOperations';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 
-export type WorkshopStandingDirectiveApplyRequest = {
-  [Payload in WorkshopApplyStandingWidgetPayload as Payload['widgetId']]: {
-    family: Extract<WorkshopStandingDirectiveFamily, Payload['widgetId']>;
-    widgetId: Payload['widgetId'];
-    widgetConfigInput: Extract<WorkshopWidgetConfigInput, { widgetId: Payload['widgetId'] }>;
-    widgetConfigId?: string;
-    editConflictMessage: string;
-    alreadyActiveMessage: string;
-  }
-}[WorkshopApplyStandingWidgetPayload['widgetId']];
+export interface WorkshopLexicalGravityStandingDirectiveApplyRequest {
+  family: 'lexical-gravity';
+  widgetId: 'lexical-gravity';
+  widgetConfigInput: Extract<WorkshopWidgetConfigInput, { widgetId: 'lexical-gravity' }>;
+  widgetConfigId?: string;
+  editConflictMessage: string;
+  alreadyActiveMessage: string;
+}
+
+/** Each live standing feature contributes one exact prepared-request arm. */
+export type WorkshopStandingDirectiveApplyRequest =
+  WorkshopLexicalGravityStandingDirectiveApplyRequest;
 
 export interface WorkshopStandingDirectiveRendering {
   directive: WorkshopStandingDirectiveSnapshot;
@@ -53,12 +55,6 @@ export type WorkshopStandingDirectiveOperationEntries = Readonly<
   Record<WorkshopStandingDirectiveFamily, WorkshopStandingDirectiveOperationEntry>
 >;
 
-type WorkshopStandingApplyPreparers = {
-  [WidgetId in WorkshopApplyStandingWidgetPayload['widgetId']]: (
-    payload: Extract<WorkshopApplyStandingWidgetPayload, { widgetId: WidgetId }>
-  ) => WorkshopStandingDirectiveApplyRequest;
-};
-
 export interface WorkshopStandingDirectiveOperations {
   prepareApply(payload: WorkshopApplyStandingWidgetPayload): WorkshopStandingDirectiveApplyRequest;
   widgetIdForFamily(
@@ -79,8 +75,12 @@ export interface WorkshopStandingDirectiveOperations {
   describe(input: WorkshopStandingDirectiveRendering): string;
 }
 
-const unsupportedFamily = (family: WorkshopStandingDirectiveFamily): never => {
-  throw new Error(`Standing directive family ${family} is not implemented`);
+const unsupportedFamily = (family: unknown): never => {
+  throw new Error(`Standing directive family ${String(family)} is not implemented`);
+};
+
+const unsupportedApplyWidget = (widgetId: never): never => {
+  throw new Error(`Unsupported standing directive apply widget: ${String(widgetId)}`);
 };
 
 const proseControllerEntry: WorkshopStandingDirectiveOperationEntry = {
@@ -103,29 +103,32 @@ const proseControllerEntry: WorkshopStandingDirectiveOperationEntry = {
 export function createWorkshopStandingDirectiveOperations(
   entries: WorkshopStandingDirectiveOperationEntries
 ): WorkshopStandingDirectiveOperations {
-  const applyPreparers = {
-    'lexical-gravity': (payload) => entries['lexical-gravity'].prepareApply(payload)
-  } satisfies WorkshopStandingApplyPreparers;
+  const entryForFamily = (
+    family: WorkshopStandingDirectiveFamily
+  ): WorkshopStandingDirectiveOperationEntry =>
+    entries[family] ?? unsupportedFamily(family);
 
   return {
     prepareApply: (payload) => {
-      const prepare = applyPreparers[payload.widgetId] as (
-        input: WorkshopApplyStandingWidgetPayload
-      ) => WorkshopStandingDirectiveApplyRequest;
-      return prepare(payload);
+      switch (payload.widgetId) {
+        case 'lexical-gravity':
+          return entries['lexical-gravity'].prepareApply(payload);
+        default:
+          return unsupportedApplyWidget(payload.widgetId);
+      }
     },
-    widgetIdForFamily: (family) => entries[family].widgetId,
-    render: (input) => entries[input.directive.family].render(input),
-    summarize: (directive, config) => entries[directive.family].summarize(directive, config),
+    widgetIdForFamily: (family) => entryForFamily(family).widgetId,
+    render: (input) => entryForFamily(input.directive.family).render(input),
+    summarize: (directive, config) => entryForFamily(directive.family).summarize(directive, config),
     markerContent: (action, directive, previousConfig, currentConfig) =>
-      entries[directive.family].markerContent(
+      entryForFamily(directive.family).markerContent(
         action,
         directive,
         previousConfig,
         currentConfig
       ),
-    formatSummary: (summary) => entries[summary.family].formatSummary(summary),
-    describe: (input) => entries[input.directive.family].describe(input)
+    formatSummary: (summary) => entryForFamily(summary.family).formatSummary(summary),
+    describe: (input) => entryForFamily(input.directive.family).describe(input)
   };
 }
 

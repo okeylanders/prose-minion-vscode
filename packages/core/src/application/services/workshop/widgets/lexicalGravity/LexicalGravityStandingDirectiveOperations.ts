@@ -1,6 +1,10 @@
 /** Lexical Gravity semantics plugged into the shared standing transaction. */
 
 import type {
+  WorkshopLexicalGravityWidgetConfigSnapshot,
+  WorkshopStandingDirectiveSnapshot
+} from '@messages';
+import type {
   WorkshopStandingDirectiveOperationEntry,
   WorkshopStandingDirectiveRendering
 } from '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
@@ -14,17 +18,41 @@ import {
   lexicalGravityMarkerContent
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 
-const renderLexicalGravityDirective = ({
-  directive,
-  config
-}: WorkshopStandingDirectiveRendering): string => {
+type LexicalGravityDirective = WorkshopStandingDirectiveSnapshot & {
+  family: 'lexical-gravity';
+  widgetId: 'lexical-gravity';
+};
+
+interface LexicalGravityRendering {
+  directive: LexicalGravityDirective;
+  config: WorkshopLexicalGravityWidgetConfigSnapshot;
+}
+
+const asLexicalGravityDirective = (
+  directive: WorkshopStandingDirectiveSnapshot
+): LexicalGravityDirective => {
   if (
     directive.family !== 'lexical-gravity'
     || directive.widgetId !== 'lexical-gravity'
-    || config.widgetId !== 'lexical-gravity'
   ) {
+    throw new Error(`Lexical Gravity directive ${directive.id} has the wrong identity`);
+  }
+  return directive as LexicalGravityDirective;
+};
+
+const asLexicalGravityRendering = ({
+  directive,
+  config
+}: WorkshopStandingDirectiveRendering): LexicalGravityRendering => {
+  const lexicalDirective = asLexicalGravityDirective(directive);
+  if (config.widgetId !== 'lexical-gravity') {
     throw new Error(`Lexical Gravity directive ${directive.id} has the wrong config`);
   }
+  return { directive: lexicalDirective, config };
+};
+
+const renderLexicalGravityDirective = (input: WorkshopStandingDirectiveRendering): string => {
+  const { directive, config } = asLexicalGravityRendering(input);
   return buildLexicalGravityDirectiveFrame(directive, config.draft);
 };
 
@@ -46,25 +74,17 @@ export const LEXICAL_GRAVITY_STANDING_DIRECTIVE_OPERATIONS = {
   render: renderLexicalGravityDirective,
 
   summarize: (directive, config) => {
-    if (
-      directive.family !== 'lexical-gravity'
-      || directive.widgetId !== 'lexical-gravity'
-      || config.widgetId !== 'lexical-gravity'
-    ) {
-      throw new Error(`Lexical Gravity directive ${directive.id} has the wrong config`);
-    }
+    const lexical = asLexicalGravityRendering({ directive, config });
     return {
-      ...directive,
+      ...lexical.directive,
       family: 'lexical-gravity',
       widgetId: 'lexical-gravity',
-      ...summarizeLexicalGravityDraft(config.draft)
+      ...summarizeLexicalGravityDraft(lexical.config.draft)
     };
   },
 
   markerContent: (action, directive, previousConfig, currentConfig) => {
-    if (directive.family !== 'lexical-gravity' || directive.widgetId !== 'lexical-gravity') {
-      throw new Error(`Lexical Gravity directive ${directive.id} has the wrong identity`);
-    }
+    asLexicalGravityDirective(directive);
     return lexicalGravityMarkerContent(
       action,
       previousConfig?.widgetId === 'lexical-gravity' ? previousConfig : undefined,
@@ -72,18 +92,10 @@ export const LEXICAL_GRAVITY_STANDING_DIRECTIVE_OPERATIONS = {
     );
   },
 
-  formatSummary: (summary) => {
-    if (summary.family !== 'lexical-gravity') {
-      throw new Error(`Lexical Gravity cannot format ${summary.family}`);
-    }
-    return formatLexicalGravitySummary(summary);
-  },
+  formatSummary: formatLexicalGravitySummary,
 
   describe: (input) => {
-    const frame = renderLexicalGravityDirective(input);
-    if (input.config.widgetId !== 'lexical-gravity') {
-      throw new Error(`Lexical Gravity directive ${input.directive.id} has the wrong config`);
-    }
-    return `lens ${input.config.draft.lensSlug}, ${frame.length} chars`;
+    const { config } = asLexicalGravityRendering(input);
+    return `lens ${config.draft.lensSlug}, ${config.draft.weight}% weight, ${config.draft.reach}° reach`;
   }
 } satisfies WorkshopStandingDirectiveOperationEntry;

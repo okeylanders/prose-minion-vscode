@@ -1498,6 +1498,8 @@ export const WorkshopApp: React.FC = () => {
             <WorkshopStandingDirectiveRail
               directives={workshop.standingDirectives}
               disabled={showLiveTurn || roomMutationLocked}
+              removingWidgetIds={standingDirectives.removingWidgetIds}
+              formatSummary={standingDirectives.formatSummary}
               onEdit={openWidgetConfig}
               onRemove={standingDirectives.remove}
             />

@@ -115,10 +115,11 @@ describe('WorkshopStandingDirectiveHandler', () => {
   it('echoes the blocked request token and widget identity', async () => {
     const postMessage = jest.fn().mockResolvedValue(undefined);
     const registerMutation = jest.fn();
+    const appendLine = jest.fn();
     const handler = new WorkshopStandingDirectiveHandler(
       {} as never,
       postMessage,
-      { appendLine: jest.fn() } as never,
+      { appendLine } as never,
       { postSessionState: jest.fn(), postTurn: jest.fn(), markDirty: jest.fn() }
     );
 
@@ -143,6 +144,94 @@ describe('WorkshopStandingDirectiveHandler', () => {
         requestToken: 'remove-blocked',
         widgetId: 'lexical-gravity',
         ok: false
+      })
+    }));
+    expect(appendLine).toHaveBeenCalledWith(
+      '[WorkshopStandingDirectiveHandler] apply-standing blocked: The room is busy.'
+    );
+    expect(appendLine).toHaveBeenCalledWith(
+      '[WorkshopStandingDirectiveHandler] remove-standing blocked: The room is busy.'
+    );
+  });
+
+  it('catches a remove registry miss and still posts the correlated failure ack', async () => {
+    const directives = { remove: jest.fn() };
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const operations = {
+      widgetIdForFamily: jest.fn(() => {
+        throw new Error('registry entry missing');
+      })
+    };
+    const handler = new WorkshopStandingDirectiveHandler(
+      directives as never,
+      postMessage,
+      { appendLine: jest.fn() } as never,
+      { postSessionState: jest.fn(), postTurn: jest.fn(), markDirty: jest.fn() },
+      operations as never
+    );
+
+    await handler.handleRemove(removeMessage('remove-registry-miss'));
+
+    expect(directives.remove).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        action: 'remove-standing',
+        requestToken: 'remove-registry-miss',
+        widgetId: 'lexical-gravity',
+        ok: false,
+        message: 'registry entry missing'
+      })
+    }));
+  });
+
+  it('rejects a cross-widget apply result after resynchronizing committed state', async () => {
+    const directives = {
+      apply: jest.fn().mockResolvedValue({
+        action: 'installed',
+        directiveId: 'pd-1',
+        directive: {
+          id: 'pd-1',
+          family: 'lexical-gravity',
+          widgetId: 'lexical-gravity',
+          widgetConfigId: 'wc-1',
+          revision: 1,
+          updatedAt: 1
+        },
+        config: {
+          id: 'wc-1',
+          widgetId: 'gesture-playground',
+          revision: 1,
+          createdAt: 1,
+          draft: {}
+        },
+        turn: { id: 'turn-1' }
+      })
+    };
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const options = {
+      postSessionState: jest.fn(),
+      postTurn: jest.fn(),
+      markDirty: jest.fn()
+    };
+    const handler = new WorkshopStandingDirectiveHandler(
+      directives as never,
+      postMessage,
+      { appendLine: jest.fn() } as never,
+      options
+    );
+
+    await handler.handleApply(applyMessage('apply-cross-widget'));
+
+    expect(options.postTurn).toHaveBeenCalledWith({ id: 'turn-1' });
+    expect(options.postSessionState).toHaveBeenCalledTimes(1);
+    expect(options.markDirty).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        action: 'apply-standing',
+        requestToken: 'apply-cross-widget',
+        widgetId: 'lexical-gravity',
+        ok: false,
+        message: 'Standing directive lexical-gravity produced the wrong widget config'
       })
     }));
   });

@@ -17,6 +17,7 @@ describe('useLexicalGravity', () => {
   });
 
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
   });
 
@@ -63,6 +64,7 @@ describe('useLexicalGravity', () => {
 
   it('ignores an older apply result after a newer request owns the UI', () => {
     const vscode = createMockVSCode();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
     const { result } = renderHook(() => useLexicalGravity());
 
@@ -83,5 +85,9 @@ describe('useLexicalGravity', () => {
     }));
 
     expect(result.current.actionResult).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('no current apply request owns this token'),
+      expect.objectContaining({ requestToken: oldToken })
+    );
   });
 });

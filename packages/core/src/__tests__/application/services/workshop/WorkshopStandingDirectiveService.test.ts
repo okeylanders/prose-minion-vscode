@@ -56,6 +56,12 @@ const applyLexicalGravity = (
 }));
 
 describe('WorkshopStandingDirectiveService', () => {
+  it('fails an unknown family lookup with a domain error instead of dereferencing undefined', () => {
+    expect(() => WORKSHOP_STANDING_DIRECTIVE_OPERATIONS.widgetIdForFamily(
+      'future-standing-family' as never
+    )).toThrow('Standing directive family future-standing-family is not implemented');
+  });
+
   it('stages first install until every retained prompt has been replaced', async () => {
     const session = new WorkshopSessionService(() => 100);
     const gate = deferred();
