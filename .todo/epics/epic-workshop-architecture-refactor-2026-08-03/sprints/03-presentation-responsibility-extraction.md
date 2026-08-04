@@ -6,6 +6,8 @@
 
 **Depends on:** Sprint 02
 
+**Evidence:** [Sprint 03 architecture change runway](../../../../docs/architecture/2026-08-04-workshop-sprint-03-presentation-runway.md) — gate is `CONDITIONAL` pending decisions D1–D4 and the F5 ownership record.
+
 ## Goal
 
 Make each Workshop UI workflow traceable through a named hook/controller and
