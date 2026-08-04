@@ -3,7 +3,7 @@
  */
 
 /**
- * useWorkshop tests — the webview half of Sprint 2's reload-safety criterion
+ * Combined room/session characterization — the webview half of Sprint 2's reload-safety criterion
  * (PR #67 review #1: the one domain hook that shipped without a test).
  *
  * Behavior under test:
@@ -18,7 +18,8 @@
  */
 
 import { renderHook, act } from '@testing-library/react';
-import { useWorkshop } from '@hooks/domain/useWorkshop';
+import { useWorkshopRoom } from '@hooks/domain/workshop/useWorkshopRoom';
+import { useWorkshopSessions } from '@hooks/domain/workshop/useWorkshopSessions';
 import { MessageType } from '@shared/types';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
@@ -41,7 +42,7 @@ import type {
 } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
-jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
+jest.mock('@hooks/useVSCodeApi');
 
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 
@@ -130,7 +131,13 @@ const streamComplete = (
   timestamp: 0
 });
 
-describe('useWorkshop', () => {
+const useWorkshop = () => {
+  const room = useWorkshopRoom();
+  const sessions = useWorkshopSessions(room.replacementPort);
+  return { ...room, ...sessions };
+};
+
+describe('useWorkshopRoom + useWorkshopSessions', () => {
   let mockVSCode: ReturnType<typeof createMockVSCode>;
 
   beforeEach(() => {

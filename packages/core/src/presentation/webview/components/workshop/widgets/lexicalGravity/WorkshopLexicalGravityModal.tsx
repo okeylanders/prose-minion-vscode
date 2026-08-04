@@ -7,8 +7,6 @@ import {
   WorkshopLexicalGravityLensCandidatesPayload,
   WorkshopLexicalGravityLensesSavedPayload,
   WorkshopLexicalGravityPreviewResultPayload,
-  WorkshopLexicalGravityRecommendationSeed,
-  WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopWidgetActionResultPayload
 } from '@messages';
 import { ModelOption, ModelScope } from '@shared/types';
@@ -27,11 +25,13 @@ import {
 import {
   lexicalGravityLensSlug
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
+import type {
+  WorkshopLexicalGravityOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 
-export type WorkshopLexicalGravityOpening =
-  | { kind: 'new'; seed?: WorkshopLexicalGravityDraft }
-  | { kind: 'seed'; seed: WorkshopLexicalGravityRecommendationSeed; personaLabel: string }
-  | { kind: 'edit'; config: WorkshopLexicalGravityWidgetConfigSnapshot };
+export type {
+  WorkshopLexicalGravityOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 
 interface WorkshopLexicalGravityModalProps {
   open: boolean;

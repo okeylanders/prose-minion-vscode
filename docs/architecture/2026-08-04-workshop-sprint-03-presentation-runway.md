@@ -10,7 +10,7 @@ Repository-specific vocabulary is defined in the [Reader Terms Appendix](#band-5
 
 **Audience / task:** Decision owner (Okey) opening the P3 gate; implementer sequencing the moves.
 
-**Date:** 2026-08-04 · **Status:** `READY FOR REVIEW` · **Implementation gate:** **CONDITIONAL** — four decisions (D1–D4) required before slicing
+**Date:** 2026-08-04 · **Status:** `IMPLEMENTED — VISUAL PASS PENDING` · **Implementation gate:** **CLEARED** — D1 B, D2 A, D3 A for now, D4 A; Sprint 03 branch is the sole presentation owner
 
 ---
 
@@ -53,7 +53,7 @@ Because `WorkshopApp.tsx` (1,767 lines) and `useWorkshop.ts` (1,036 lines) are t
 
 ### Gate
 
-**State:** `CONDITIONAL` · **Blockers:** D1–D4 unanswered; **F5** (concurrent-ownership assignment) unrecorded. No `CRITICAL` unknown. Nothing in this sprint touches persistence, wire contracts, or the composition root, so the epic's locked constraints 2–6 are untouched by construction.
+**State:** `CLEARED` · **Decision record:** D1 B, D2 A, D3 A for now, and D4 A were accepted on 2026-08-04. **F5** is resolved by assigning all presentation and stylesheet files to the Sprint 03 branch, with no parallel co-owner. Nothing in this sprint touches persistence, wire contracts, or the application composition root, so the epic's locked constraints 2–6 are untouched by construction.
 
 ---
 
@@ -351,18 +351,18 @@ Its success metric: **after P3, a reviewer names the owner of any Workshop UI ac
 | Witnesses and scope | Sprint doc, `WorkshopApp.test.tsx`, `boundaries.test.ts` (#5 entry) | `boundaries.test.ts` also changes in slice 1 | Slice 0 first | Sprint 03 branch |
 | Hook split | `useWorkshopRoom.ts`, `useWorkshopSessions.ts`, `useWorkshop.ts`, `useWorkshopAppMessageRouter.ts`, both split test files | `WorkshopApp.tsx` (import + composition) | Slice 1 before controllers | Sprint 03 branch |
 | Controllers | `useWorkshopSessionSurfaces.ts`, `useWorkshopContextSheet.ts`, `useWorkshopWidgetOpening.ts` | `WorkshopApp.tsx` — **the single hottest lock point in the sprint** | Slices 2–3, sequential, never parallel | Sprint 03 branch |
-| Stylesheet | `workshop.css` → `styles/workshop/**` + two feature files + rail file | `WorkshopApp.tsx` import block | Slice 4, after W1 | **Unassigned — F5 must answer whether this is Claude Design's lane** |
+| Stylesheet | `workshop.css` → `styles/workshop/**` + two feature files + rail file | `WorkshopApp.tsx` import block | Slice 4, after W1 | Sprint 03 branch — F5 resolved with no parallel co-owner |
 | Close-out | Sprint doc, epic phase table | all of the above | Slice 5 last | Sprint 03 branch |
 
 `WorkshopApp.tsx` is edited by four of the five slices. It must not be co-owned inside this sprint; if **F5** assigns the stylesheet lane to a second contributor, that lane's only `WorkshopApp` edit is the import block, and it lands last.
 
-### 2.11 Unknowns that can reverse a decision
+### 2.11 Unknowns resolved during implementation
 
 | Unknown | Why it matters | How to resolve | Owner | Decision impact |
 |---|---|---|---|---|
-| Is any presentation file co-owned by Claude Design? (**F5**) | Sprint 03 touches the three hottest files; concurrent editing is unresolvable | Record the answer in the sprint doc | Okey | Changes the coordination map and possibly the slice order; does **not** change the architecture |
-| Does the declared token → shell → **session** → **context** → feature order re-sequence current tiers B and C? | The declared order puts session before context; today context/open-chat (`3701-4503`) precedes sessions (`4504-5535`) | W1 answers it empirically: if byte-identity holds under the declared order, no rule moved; if not, the declared order is the change and needs its own visual pass | Implementer, slice 4 | Could force the split to preserve the *current* order and document the deviation under ADR §7 |
-| Does splitting hooks change React render batching anywhere visible? | Two hooks mean two state roots where there was one | The `WorkshopApp` render test plus the existing streaming cases (`useWorkshop.test.ts:615-685`) exercise the one flicker-sensitive path | Implementer, slice 1 | Low — the live-run tracker is self-contained in the room hook |
+| Is any presentation file co-owned by Claude Design? (**F5**) | Sprint 03 touches the three hottest files; concurrent editing is unresolvable | **Resolved:** Sprint 03 branch is the sole owner | Okey | No sequencing change required |
+| Does the declared token → shell → **session** → **context** → feature order re-sequence current tiers B and C? | The declared order puts session before context; today context/open-chat (`3701-4503`) precedes sessions (`4504-5535`) | **Resolved by W1:** preserve token → shell → context → session → feature for byte identity | Implementer, slice 4 | The sprint records the deviation; no cascade change shipped |
+| Does splitting hooks change React render batching anywhere visible? | Two hooks mean two state roots where there was one | **Resolved by tests:** the shell witness, original combined behavior suite, and direct hook tests pass | Implementer, slice 1 | No observed automated regression; interactive visual pass remains pending |
 
 No unknown currently reverses the recommended architecture. The two that could change *sequencing* are recorded above.
 
@@ -377,7 +377,7 @@ No unknown currently reverses the recommended architecture. The two that could c
 | Sprint scope line 16 ("establish … `useWorkshopWidgetHost`") ↔ `useWorkshopWidgetHost.ts` | The hook exists and is witnessed | **F1** — restate scope |
 | Epic phase table (#5 installed in P3) ↔ `useWorkshop.ts` containing zero feature references | The invariant pre-dates the sprint | **F2** — install the guard, do not re-earn the invariant |
 | Completion criterion 3 ("feature styles live with feature surfaces") ↔ the order invariant (lines 24-27) | File location and import site are different rules; only the second controls cascade | **F4 / D4** |
-| Declared order (token → shell → session → context → feature) ↔ current file order (tokens+shell → context/open-chat → sessions → features) | The declared order re-sequences two tiers | Recorded as an unknown; **W1** resolves it empirically in slice 4 |
+| Declared order (token → shell → session → context → feature) ↔ current file order (tokens+shell → context/open-chat → sessions → features) | The declared order re-sequences two tiers | **Resolved by W1:** preserve the measured token → shell → context → session → feature order byte-for-byte |
 | Semantic runway P3 bullet 4 ("move widget components into symmetric feature packages") ↔ `components/workshop/widgets/**` | Already done in P1 | Only stylesheets remain from that bullet |
 | Completion criterion 5 (manual visual pass) ↔ rubric "a signal is not a witness until something reads it" | The sprint's headline regression evidence is unrepeatable | **F3 / D1(b)** and **W1** |
 | Proposed `useWorkshopSessions` ↔ `resetSession`'s thread rollback | The sessions workflow mutates room state | **F7** — declare a one-directional thread port |
@@ -425,7 +425,9 @@ No unknown currently reverses the recommended architecture. The two that could c
 
 **Evidence that caused the change:** the absent `WorkshopApp.test.tsx` beside 24 sibling component tests; the zero-match feature grep in `useWorkshop.ts`; the existing 75-line `useWorkshopWidgetHost.ts`; the `style-loader` configuration at `webpack.config.js:82-85` against the import positions at `WorkshopApp.tsx:52-73` versus `:129`; the generic comment at `workshop.css:6251` sitting inside the Lexical banner; and the 1,061-selector parse showing zero cross-tier duplicates — which is what makes W1 a realistic witness rather than a wish.
 
-**Remaining uncertainty:** whether the declared tier order re-sequences the current context and session tiers (W1 answers it in slice 4), and who owns the presentation files concurrently (**F5**, human).
+**Remaining uncertainty:** only the interactive VS Code visual pass. W1 resolved
+the tier order, and the Sprint 03 branch owns the presentation files without a
+parallel co-owner.
 
 ### 3.5 Implementation gate
 
@@ -434,12 +436,30 @@ No unknown currently reverses the recommended architecture. The two that could c
 | No unaccepted critical unknowns | **PASS** | Both open unknowns affect sequencing, not architecture (§2.11) |
 | Contract consumers / migration / tests identified | **PASS** | No wire or persisted contract changes; hook consumers enumerated (2 for `useWorkshop`) |
 | Persistence failure and rescue defined | **PASS — N/A** | Host owns all durable truth; `persistedState` stays empty |
-| Runtime flows owned and testable | **CONDITIONAL** | Owners are named; testability depends on **D1** |
+| Runtime flows owned and testable | **PASS** | D1 B landed: the real `WorkshopApp` render/smoke witness and direct controller tests pass |
 | Negative-space and reproduction tests pass | **PASS** | §2.4, §3.3 — with **F6** honored |
 | Tree / responsibilities / contracts / slices agree | **PASS** | §1.2 ↔ §1.3 ↔ §2.3 ↔ §2.9 reconciled in §3.1 |
-| Human decisions and coordination assigned | **FAIL** | D1–D4 unanswered; **F5** unrecorded |
+| Human decisions and coordination assigned | **PASS** | D1 B, D2 A, D3 A for now, D4 A; the Sprint 03 branch is the sole file owner |
 
-**Final gate:** `CONDITIONAL` — open on acceptance of D1–D4 and the **F5** ownership record. Nothing further needs investigating.
+**Final gate:** `CLEARED` on 2026-08-04. The implementation is complete except for the interactive VS Code visual pass recorded in the sprint document.
+
+### 3.6 Implementation close-out
+
+The target ownership moves landed as planned: production `useWorkshop` was
+retired in favor of room and sessions hooks connected by a one-way replacement
+port; the three accepted controllers own session surfaces, the shared context
+sheet, and widget opening; and the stylesheet was split behind W1/W2/W3.
+
+W1 resolved the only cascade uncertainty. The existing byte order was token ->
+shell -> context -> session -> feature. The sprint's initial prose placed
+session before context, but doing so would have been a behavior change. The
+implementation therefore preserves the measured order byte-for-byte and
+documents that resolution in the sprint instead of smuggling a visual change
+into an ownership refactor.
+
+Automated close-out passed 175 Jest suites / 1,836 tests / 1 snapshot, all three
+TypeScript projects, focused ESLint, production build and bundle sentinel, and
+the architecture witnesses. Interactive visual inspection remains pending.
 
 ---
 

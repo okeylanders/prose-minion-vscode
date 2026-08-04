@@ -133,6 +133,14 @@ const WORKSHOP_STANDING_DIRECTIVE_HOOK = path.join(
   SRC_ROOT,
   'presentation/webview/hooks/domain/workshop/useWorkshopStandingDirectives.ts'
 );
+const WORKSHOP_ROOM_HOOK = path.join(
+  SRC_ROOT,
+  'presentation/webview/hooks/domain/workshop/useWorkshopRoom.ts'
+);
+const WORKSHOP_SESSIONS_HOOK = path.join(
+  SRC_ROOT,
+  'presentation/webview/hooks/domain/workshop/useWorkshopSessions.ts'
+);
 const WORKSHOP_STANDING_DIRECTIVE_OPERATIONS = path.join(
   SRC_ROOT,
   'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts'
@@ -337,6 +345,22 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
     expect(widgetHostSource).toMatch(/WORKSHOP_REQUEST_WIDGET_CONFIG/);
     expect(widgetHostSource).toMatch(/handleWidgetConfigData/);
+  });
+
+  it('Workshop room and session hooks stay feature-free with one-way replacement ownership', () => {
+    const roomSource = fs.readFileSync(WORKSHOP_ROOM_HOOK, 'utf8');
+    const sessionsSource = fs.readFileSync(WORKSHOP_SESSIONS_HOOK, 'utf8');
+    const featureState = /(?:gesture|lexical|widget)/i;
+
+    expect(featureState.test(roomSource)).toBe(false);
+    expect(featureState.test(sessionsSource)).toBe(false);
+    expect(roomSource).not.toMatch(/from\s+['"][^'"]*useWorkshopSessions['"]/);
+    expect(sessionsSource).toMatch(/WorkshopRoomReplacementPort/);
+    expect(sessionsSource).toMatch(/roomReplacement\.beginReplacement\(\)/);
+    expect(fs.existsSync(path.join(
+      SRC_ROOT,
+      'presentation/webview/hooks/domain/useWorkshop.ts'
+    ))).toBe(false);
   });
 
   it('Workshop standing removal has one generic presentation owner', () => {

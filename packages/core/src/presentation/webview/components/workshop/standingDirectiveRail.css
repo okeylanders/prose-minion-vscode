@@ -1,0 +1,117 @@
+/* Standing rail + auditable thread markers — generic shell, amber lifetime. */
+[data-pm-surface="workshop"] .pm-ws-standing-rail { margin:2px 16px 0; }
+[data-pm-surface="workshop"] .pm-ws-standing-active { display:flex;align-items:center;gap:9px;padding:7px 11px;border:1px solid rgba(226,178,74,.4);background:rgba(226,178,74,.07);border-radius:10px;margin:2px 0 10px;font-size:12px;color:var(--pm-text-2); }
+[data-pm-surface="workshop"] .pm-ws-standing-pulse { flex:none;width:7px;height:7px;border-radius:50%;background:var(--pm-amber);animation:pm-ws-standing-pulse 2s infinite; }
+@keyframes pm-ws-standing-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(226,178,74,.35)}50%{box-shadow:0 0 0 4px rgba(226,178,74,0)} }
+[data-pm-surface="workshop"] .pm-ws-standing-active b { color:var(--pm-text);font-weight:600; }
+[data-pm-surface="workshop"] .pm-ws-standing-config { font:10.5px var(--pm-mono);color:var(--pm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+[data-pm-surface="workshop"] .pm-ws-standing-spacer { flex:1; }
+[data-pm-surface="workshop"] .pm-ws-standing-active button { flex:none;height:24px;padding:0 10px;border-radius:7px;border:1px solid var(--pm-border);background:var(--pm-surface-2);color:var(--pm-muted);font:500 11px var(--pm-sans);cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-standing-active button:hover { color:var(--pm-text);border-color:var(--pm-border-2); }
+[data-pm-surface="workshop"] .pm-ws-standing-active .pm-ws-standing-kill { width:24px;padding:0;display:grid;place-items:center; }
+[data-pm-surface="workshop"] .pm-ws-standing-active .pm-ws-standing-kill:hover { color:var(--pm-red);border-color:rgba(224,90,78,.5); }
+[data-pm-surface="workshop"] .pm-ws-standing-marker { align-self:center;display:flex;align-items:center;gap:7px;font:10px var(--pm-mono);color:var(--pm-dim);border:1px dashed var(--pm-border);border-radius:999px;padding:3px 12px;max-width:92%;background:transparent;cursor:pointer; }
+[data-pm-surface="workshop"] .pm-ws-standing-marker > span { width:6px;height:6px;border-radius:50%;background:var(--pm-amber);flex:none; }
+[data-pm-surface="workshop"] .pm-ws-standing-marker-shifted > span { background:var(--pm-accent-hi); }
+[data-pm-surface="workshop"] .pm-ws-standing-marker-removed > span { background:var(--pm-red); }
+[data-pm-surface="workshop"] .pm-ws-standing-marker:disabled { cursor:default; }
+
+@media (max-width: 680px) {
+  [data-pm-surface="workshop"] .pm-ws-lg-tabs { flex-wrap:wrap; }
+  [data-pm-surface="workshop"] .pm-ws-lg-tabs > span { width:100%;margin-left:0; }
+  [data-pm-surface="workshop"] .pm-ws-standing-active { flex-wrap:wrap; }
+  [data-pm-surface="workshop"] .pm-ws-standing-config { order:3;width:100%; }
+}
+@media (max-width: 520px) {
+  [data-pm-surface="workshop"] .pm-ws-lg-lenses { grid-template-columns:1fr; }
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-cancel {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--pm-muted);
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-cancel:hover:not(:disabled) {
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-commit {
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+  border: 1px solid var(--pm-accent-lo);
+  color: #fff;
+  border-radius: 9px;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-commit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+[data-pm-surface="workshop"] .pm-ws-gesture-commit:disabled {
+  filter: saturate(0.3) brightness(0.65);
+  cursor: not-allowed;
+}
+
+/* Committed-turn chip + persona recommend chip (both presentation-only). */
+[data-pm-surface="workshop"] .pm-ws-widget-chipwrap {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(224, 103, 58, 0.45);
+  background: linear-gradient(180deg, rgba(224, 103, 58, 0.16), rgba(224, 103, 58, 0.06));
+  color: var(--pm-text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip:hover {
+  border-color: var(--pm-accent);
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-widget-chip-meta {
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  color: var(--pm-dim);
+  border-left: 1px solid var(--pm-border);
+  padding-left: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-reco {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 16px 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(224, 103, 58, 0.5);
+  background: var(--pm-accent-soft);
+  color: var(--pm-accent-hi);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+  align-self: flex-start;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-reco:hover {
+  border-style: solid;
+}
+[data-pm-surface="workshop"] .pm-ws-widget-reco .pm-ws-widget-chip-meta {
+  border-left: none;
+  padding-left: 0;
+}
