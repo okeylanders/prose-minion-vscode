@@ -5,6 +5,34 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-08-03 — Curated model catalog refresh
+
+### Overview
+
+This patch adds two current long-context, multimodal models to Prose Minion's
+curated OpenRouter catalog without changing existing settings defaults or the
+extension's model-selection behavior.
+
+### Added
+
+- **Meta Muse Spark 1.1** is available in both the Recommended Models and
+  Category Search catalogs, with its corresponding extension setting enum.
+- **Qwen3.8 Max** is available in Recommended Models for manuscript-scale
+  critique, visual context, and long-horizon editorial planning.
+- The Recommended Models guide now describes both models and links to their
+  OpenRouter listings.
+
+### Compatibility
+
+- No breaking changes or migrations.
+- Existing saved model selections and all scoped defaults are unchanged.
+
+### Important files
+
+- `packages/core/src/infrastructure/api/providers/OpenRouterModels.ts`
+- `apps/vscode-extension/package.json`
+- `docs/RECOMMENDED_MODELS.md`
+
 ## [2.1.0] - 2026-07-28 — Workshop beta
 
 ### Overview
