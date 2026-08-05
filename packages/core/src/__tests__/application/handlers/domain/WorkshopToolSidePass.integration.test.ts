@@ -1,7 +1,7 @@
 import {
   WorkshopHandler,
   WorkshopWidgetRuntime
-} from '@/application/handlers/domain/WorkshopHandler';
+} from '@/application/handlers/domain/workshop/WorkshopHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopRoomDeliveryService

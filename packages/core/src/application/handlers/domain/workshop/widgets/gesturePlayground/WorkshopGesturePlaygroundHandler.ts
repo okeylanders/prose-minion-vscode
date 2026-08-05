@@ -36,7 +36,7 @@ import {
 } from '@messages';
 import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WorkshopMutationRouteRegistrar } from '@handlers/domain/WorkshopSessionMessageHandler';
+import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopSessionMessageHandler';
 
 export interface WorkshopGesturePlaygroundHandlerOptions {
   /**

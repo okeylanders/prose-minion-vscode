@@ -47,7 +47,7 @@ import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
-import { WorkshopHandler } from './domain/WorkshopHandler';
+import { WorkshopHandler } from './domain/workshop/WorkshopHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};

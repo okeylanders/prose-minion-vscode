@@ -164,7 +164,7 @@ import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities'
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
-import { WorkshopSessionMessageHandler } from '@handlers/domain/WorkshopSessionMessageHandler';
+import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/WorkshopSessionMessageHandler';
 import { WorkshopGesturePlaygroundHandler } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
