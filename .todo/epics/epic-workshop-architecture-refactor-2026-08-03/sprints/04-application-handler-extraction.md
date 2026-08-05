@@ -6,6 +6,17 @@
 
 **Depends on:** Sprint 03
 
+**Evidence:** [Sprint 04 architecture change runway](../../../../docs/architecture/2026-08-04-workshop-sprint-04-handler-runway.md) — gate **BLOCKED** pending decisions D1–D4.
+
+## Open decisions
+
+| ID | Decision | Recommendation | Needed by |
+|---|---|---|---|
+| D1 | Where the cuts fall: the superseded 02C eight-route list, helper-closure clusters, or clusters plus a context-intake service | Helper-closure clusters — excerpt/scope (6 routes) and context/resources (13) | slice 2 |
+| D2 | What happens to the 3,035-line `WorkshopHandler` behavior suite, which calls `handle*` directly | Split it by owner; add no new delegating passthroughs | slice 1 |
+| D3 | Whether the Context wizard moves with the context cluster | Yes, behind an explicit `cancelRun` / `isRunning` / `dispose` contract | slice 4 |
+| D4 | Whether `WorkshopHandler.ts` moves into `handlers/domain/workshop/` this sprint | Yes, as a slice-0 pure move | slice 0 |
+
 ## Goal
 
 Make `WorkshopHandler` a legible room/run orchestrator and Workshop-internal
