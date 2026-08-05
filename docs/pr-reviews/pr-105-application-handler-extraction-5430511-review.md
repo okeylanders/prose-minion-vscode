@@ -17,9 +17,9 @@ Signal legend: 🎯 Consensus = 2+ reviewers independently · 🧬 Pre-existing 
 
 | ID | Sev | Finding | Reviewer(s) | Signal | Status |
 | --- | --- | --- | --- | --- | --- |
-| F-01 | 🔴 Blocking | Spoofed `file://` excerpt source + `REREAD` is an unconfined arbitrary-file-read; contents reach the webview *and* the LLM prompt | Patricia | 🧬 Pre-existing | **Open** — explicitly excluded from this remediation pass by the author |
+| F-01 | 🔴 Blocking | Spoofed `file://` excerpt source + `REREAD` is an unconfined arbitrary-file-read; contents reach the webview *and* the LLM prompt | Patricia | 🧬 Pre-existing | **Open** — explicitly excluded from this remediation pass by the author; tracked in [Workshop excerpt source URI confinement](../../.todo/tech-debt/2026-08-05-workshop-excerpt-source-uri-confinement.md) |
 | F-02 | 🟠 High | "What's running?" derived twice in opposite precedence → two different refusal messages for one dual-active moment | Marcus | — | **Addressed** — one `currentRunKind()` now feeds both refusal projections; dual-active routing test added |
-| F-03 | 🟠 High | The new four-slice sibling boundary has no fitness-function witness (only last sprint's widgets are guarded) | Marcus | — | **Addressed** — architecture witness rejects imports between extracted context, excerpt/scope, and todo slices |
+| F-03 | 🟠 High | The new four-slice sibling boundary has no fitness-function witness (only last sprint's widgets are guarded) | Marcus | — | **Addressed** — architecture witness rejects imports between extracted session-message, context, excerpt/scope, and todo slices |
 | F-04 | 🟠 High | The named `handleSetExcerpt` race window's second guard has no test — its resource-path twin got the exact right one | Cal | — | **Addressed** — deferred provenance-resolution test starts a run before the second guard |
 | F-05 | 🟠 High | `cancelRun`'s `false` return is discarded — a stale context-wizard cancel leaves zero trail; its room-run twin logs | Oliver | — | **Addressed** — the central cancel route logs a rejected context request; routed test pins the signature |
 | F-06 | 🟡 Standard | Resource-load-failure translator has two byte-identical homes where the monolith had one | Parker | — | **Addressed** — translation/reporting now has one owner on `WorkshopContextIntakeService` |
@@ -55,6 +55,21 @@ Signal legend: 🎯 Consensus = 2+ reviewers independently · 🧬 Pre-existing 
 - `npm run lint` — **0 errors** (repository warnings remain).
 - `git diff --check` — clean.
 - F-01 remains unchanged by explicit author direction; F-02 through F-15 are addressed above.
+
+## Follow-up remediation review
+
+An independent pass at `20339e1` reproduced the full verification bundle and
+confirmed thirteen of the fourteen claimed fixes as complete and behavior-safe.
+It found one incomplete witness: F-03's extracted-sibling matrix contained only
+Context, Excerpt/Scope, and Todo while asserting a length of three, leaving all
+six directed import relationships involving `WorkshopSessionMessageHandler`
+unguarded. The matrix now includes the session-message slice and pins the
+four-slice boundary explicitly. F-01 remains intentionally excluded and is
+tracked in [Workshop excerpt source URI confinement](../../.todo/tech-debt/2026-08-05-workshop-excerpt-source-uri-confinement.md).
+
+Follow-up verification: the focused architecture suite passes 17/17, repository
+typecheck is clean, lint reports 0 errors (existing warnings remain), and
+`git diff --check` is clean.
 
 ---
 

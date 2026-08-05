@@ -114,6 +114,9 @@ its deferred flush ordering crosses the central and session handlers.
 - `WorkshopHandlerTestHarness.ts` assembles a real `MessageRouter` around the
   production handler family; aggregate behavior stimuli do not call handler
   methods directly.
+- Routed aggregate suites use `WorkshopHandler.<owner>.test.ts`; direct handler
+  unit suites use `<Handler>.test.ts`, and `WorkshopHandler.seams.test.ts` is
+  reserved for assembly and cross-slice invariants.
 - Owner suites cover room/run (45 cases), assembly/cross-slice behavior (16),
   excerpt/scope (15), context (24), todo (4), and session messages (10):
   **114 aggregate cases**, including the cross-slice wizard/excerpt refusal and

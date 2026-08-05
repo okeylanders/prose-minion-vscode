@@ -223,6 +223,10 @@ const WORKSHOP_CONTEXT_INTAKE_FORBIDDEN_REFERENCES = [
 ] as const;
 const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
   {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionMessageHandler.ts'),
+    reference: /WorkshopSessionMessageHandler/
+  },
+  {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopContextHandler.ts'),
     reference: /WorkshopContextHandler/
   },
@@ -501,7 +505,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(3);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(4);
     expect(offenders).toEqual([]);
   });
 
