@@ -13,6 +13,8 @@
 
 **Evidence:** [Workshop Module Semantic Runway and Architecture Horizon](../architecture/2026-08-03-workshop-module-semantic-runway.md)
 
+**Phase 4 refinement evidence:** [Application Handler Extraction Runway](../architecture/2026-08-04-workshop-sprint-04-handler-runway.md)
+
 **Delivery:** [Workshop Architecture Refactor epic](../../.todo/epics/epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
 
 ## Context
@@ -108,6 +110,49 @@ ledgers while retaining:
 - the stable aggregate API consumed by handlers.
 
 No handler receives an internal session ledger directly.
+
+#### Phase 4 refinement: application handler ownership (2026-08-04)
+
+The global `MessageHandler` and its `MessageRouter` remain the single ingress
+and dispatch mechanism for extension-to-webview IPC. Inside the Workshop
+domain, `WorkshopHandler` is the slice composer and retains only the nine
+room/run responsibilities: tool runs, quick actions, composer sends,
+participant/target changes, conversation settings, and the single cross-domain
+cancel route.
+
+The remaining Workshop routes have explicit application owners:
+
+- `WorkshopExcerptScopeHandler` owns the six excerpt replacement, file intake,
+  re-read, scope, and re-pin mutations;
+- `WorkshopContextHandler` owns the thirteen context, configured-resource,
+  message-attachment, and Context-wizard routes;
+- `WorkshopTodoHandler` owns the task-action grammar;
+- `WorkshopSessionMessageHandler` continues to own the nine session IPC
+  routes; and
+- standing-directive and widget handlers retain their existing route families.
+
+`WorkshopContextIntakeService` is the one composition-root-owned, route-free
+intake policy shared by the excerpt and context slices. It owns fresh catalog
+and disk reads, byte/word bounds, fingerprints, truncation, canonical
+provenance matching, and structured refusal descriptions. It has no router,
+transport, session, or logging authority. `WorkshopHandler` remains the only
+Workshop owner that constructs the `WORKSHOP_SESSION_STATE` envelope.
+
+The central cancel route delegates `workshop-context` requests to the context
+slice. A writer cancellation aborts the matching wizard but leaves its run slot
+occupied until that run's guarded `finally` publishes completion; disposal is
+terminal and clears the slot immediately. Excerpt mutations consume this state
+through a refusal-producing run gate rather than reaching across slice state.
+
+This intentionally refines the semantic-runway destination's single
+`WorkshopScopeContextHandler` into two handlers plus one data-only intake
+service. The current helper graph proved excerpt/scope transitions and context
+attachment/wizard workflows have separate reasons to change, while their
+shared disk/catalog mechanics belong to neither route owner. A complete
+48-route witness pins both the exact owner and whether each route uses the
+shared session-operation mutation gate or registers directly. Behavior tests
+dispatch through the real `MessageRouter`; test-only handler passthroughs are
+not part of the architecture.
 
 ### 5. Presentation state follows durability and workflow ownership
 
