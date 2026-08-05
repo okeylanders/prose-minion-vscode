@@ -33,7 +33,7 @@ export type WorkshopConfiguredResourceLoadResult =
  * provider metadata: the workspace has no invalidation port, so a cross-click
  * cache would serve stale paths, sizes, or symlink checks after writer edits.
  */
-export class WorkshopContextResourceCatalog {
+export class WorkshopContextIntakeCatalog {
   private readonly entriesByKey = new Map<string, ContextResourceSummary>();
 
   constructor(
@@ -107,11 +107,11 @@ export class WorkshopContextResourceCatalog {
 }
 
 /** Application seam for Workshop's configured-resource intake flows. */
-export class WorkshopContextResourceService {
+export class WorkshopContextIntakeService {
   constructor(private readonly providerFactory: ContextResourceProviderFactory) {}
 
-  async openCatalog(): Promise<WorkshopContextResourceCatalog> {
+  async openCatalog(): Promise<WorkshopContextIntakeCatalog> {
     const provider = await this.providerFactory.createProvider([...DEFAULT_CONTEXT_GROUPS]);
-    return new WorkshopContextResourceCatalog(provider);
+    return new WorkshopContextIntakeCatalog(provider);
   }
 }

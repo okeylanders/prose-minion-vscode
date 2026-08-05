@@ -37,8 +37,8 @@ import {
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import {
   WorkshopConfiguredResourceLoadResult,
-  WorkshopContextResourceService
-} from '@/application/services/workshop/WorkshopContextResourceService';
+  WorkshopContextIntakeService
+} from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { renderWorkshopStandingDirectiveFrames } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 import { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
@@ -295,7 +295,7 @@ export class WorkshopHandler {
     private readonly shell: ShellService,
     private readonly fileSystem: FileSystem,
     private readonly workspace: Workspace,
-    private readonly contextResourceService: WorkshopContextResourceService,
+    private readonly contextIntakeService: WorkshopContextIntakeService,
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
@@ -1708,7 +1708,7 @@ export class WorkshopHandler {
   /** Context Selector modal (Phase 4): the configured catalog, display-safe. */
   async handleRequestContextCatalog(_message: WorkshopRequestContextCatalogMessage): Promise<void> {
     try {
-      const catalog = await this.contextResourceService.openCatalog();
+      const catalog = await this.contextIntakeService.openCatalog();
       const entries: WorkshopContextCatalogEntry[] = catalog.entries().map((resource) => ({
         group: resource.group,
         path: resource.path,
@@ -1741,7 +1741,7 @@ export class WorkshopHandler {
     const query = rawQuery.slice(0, PROMPT_BUDGETS.workshopResource.queryCharacters).toLowerCase();
     const budgets = PROMPT_BUDGETS.workshopResource;
     try {
-      const catalog = await this.contextResourceService.openCatalog();
+      const catalog = await this.contextIntakeService.openCatalog();
       const candidates = catalog.entries();
       const scannable = candidates.slice(0, budgets.searchFiles);
       let bounded = candidates.length > scannable.length;
@@ -1803,7 +1803,7 @@ export class WorkshopHandler {
 
     let catalog;
     try {
-      catalog = await this.contextResourceService.openCatalog();
+      catalog = await this.contextIntakeService.openCatalog();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', 'Could not read the configured resource catalog.', details);
@@ -1857,7 +1857,7 @@ export class WorkshopHandler {
 
     let catalog;
     try {
-      catalog = await this.contextResourceService.openCatalog();
+      catalog = await this.contextIntakeService.openCatalog();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', 'Could not read the configured resource catalog.', details);
@@ -1992,7 +1992,7 @@ export class WorkshopHandler {
 
     let catalog;
     try {
-      catalog = await this.contextResourceService.openCatalog();
+      catalog = await this.contextIntakeService.openCatalog();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.sendError('workshop', 'Could not read the configured resource catalog.', details);
@@ -2139,7 +2139,7 @@ export class WorkshopHandler {
     if (requestedResources.length > 0) {
       let catalog;
       try {
-        catalog = await this.contextResourceService.openCatalog();
+        catalog = await this.contextIntakeService.openCatalog();
       } catch (error) {
         this.outputChannel.appendLine(
           `[WorkshopHandler] Context wizard could not read the configured resource catalog: ${error instanceof Error ? error.message : String(error)}`
@@ -2762,7 +2762,7 @@ export class WorkshopHandler {
     }
     let summaries;
     try {
-      summaries = (await this.contextResourceService.openCatalog()).entries();
+      summaries = (await this.contextIntakeService.openCatalog()).entries();
     } catch (error) {
       this.outputChannel.appendLine(
         `[WorkshopHandler] Excerpt-source resolution skipped — catalog unreadable: ${error instanceof Error ? error.message : String(error)}`

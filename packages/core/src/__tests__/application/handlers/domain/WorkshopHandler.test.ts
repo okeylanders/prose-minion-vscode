@@ -7,7 +7,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import {
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
-import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -250,7 +250,7 @@ describe('WorkshopHandler — Sprint 06B tool side-pass', () => {
       shell,
       fileSystem,
       workspace,
-      new WorkshopContextResourceService(resourceProviderFactory as never),
+      new WorkshopContextIntakeService(resourceProviderFactory as never),
       new WorkshopConversationSettingsService(
         session,
         service,

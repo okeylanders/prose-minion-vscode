@@ -6,7 +6,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import {
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
-import { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -101,7 +101,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       createFakeShellService(),
       createFakeFileSystem(),
       createFakeWorkspace(),
-      new WorkshopContextResourceService({
+      new WorkshopContextIntakeService({
         createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] }))
       } as never),
       new WorkshopConversationSettingsService(

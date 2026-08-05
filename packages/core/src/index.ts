@@ -92,7 +92,7 @@ export {
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 export { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
-export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+export { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';

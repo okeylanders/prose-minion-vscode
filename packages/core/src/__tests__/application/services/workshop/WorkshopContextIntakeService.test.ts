@@ -1,8 +1,8 @@
 import {
-  WorkshopContextResourceService
-} from '@/application/services/workshop/WorkshopContextResourceService';
+  WorkshopContextIntakeService
+} from '@/application/services/workshop/WorkshopContextIntakeService';
 
-describe('WorkshopContextResourceService', () => {
+describe('WorkshopContextIntakeService', () => {
   const summary = {
     group: 'characters',
     path: 'Characters/raven.md',
@@ -20,7 +20,7 @@ describe('WorkshopContextResourceService', () => {
 
   it('opens a fresh catalog for each interaction instead of retaining workspace metadata', async () => {
     const providerFactory = factory('First version.');
-    const service = new WorkshopContextResourceService(providerFactory as never);
+    const service = new WorkshopContextIntakeService(providerFactory as never);
 
     await service.openCatalog();
     await service.openCatalog();
@@ -30,7 +30,7 @@ describe('WorkshopContextResourceService', () => {
 
   it('rejects oversized resources before reading their content', async () => {
     const providerFactory = factory('Never read.', 101);
-    const service = new WorkshopContextResourceService(providerFactory as never);
+    const service = new WorkshopContextIntakeService(providerFactory as never);
     const catalog = await service.openCatalog();
 
     await expect(catalog.load(
@@ -42,7 +42,7 @@ describe('WorkshopContextResourceService', () => {
   });
 
   it('trims loaded text to the requested word bound and retains a source fingerprint', async () => {
-    const service = new WorkshopContextResourceService(factory('one two three four') as never);
+    const service = new WorkshopContextIntakeService(factory('one two three four') as never);
     const catalog = await service.openCatalog();
 
     await expect(catalog.load(

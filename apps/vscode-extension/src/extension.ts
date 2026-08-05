@@ -40,7 +40,7 @@ import {
   RunWorkshopToolSidePass,
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
-  WorkshopContextResourceService,
+  WorkshopContextIntakeService,
   WorkshopConversationSettingsService,
   WorkshopWriterProfileService,
   WorkshopSessionTimeService,
@@ -232,7 +232,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopWriterProfileService,
     () => workshopConversationSettingsService.getWebResearch().enabled
   );
-  const workshopContextResourceService = new WorkshopContextResourceService(contextResourceResolver);
+  const workshopContextIntakeService = new WorkshopContextIntakeService(contextResourceResolver);
   const workshopSessionTimeService = new WorkshopSessionTimeService();
   const workshopSessionStore = new WorkshopSessionStore(
     platform.fileSystem,
@@ -291,7 +291,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopRoomDeliveryService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,
-    workshopContextResourceService,
+    workshopContextIntakeService,
     workshopConversationSettingsService,
     workshopWriterProfileService,
     workshopSessionTimeService,

@@ -19,7 +19,7 @@ import type {
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import type { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import type { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
-import type { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import type { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import type { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import type { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -108,7 +108,7 @@ export interface CoreServices {
   workshopPersonaCapabilityFactory: WorkshopPersonaCapabilityFactory;
   workshopToolSidePass: RunWorkshopToolSidePass;
   /** Configured-resource intake for Workshop's context selector flows (Sprint 12). */
-  workshopContextResourceService: WorkshopContextResourceService;
+  workshopContextIntakeService: WorkshopContextIntakeService;
   /** Serialized Behavior + Writer Profile live-prompt coordination across webview surfaces. */
   workshopConversationSettingsService: WorkshopConversationSettingsService;
   /** Global writer-authored profile, deliberately outside the session aggregate. */
