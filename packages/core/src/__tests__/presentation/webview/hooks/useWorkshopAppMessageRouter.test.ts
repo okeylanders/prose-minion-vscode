@@ -5,18 +5,20 @@ import {
 import { MessageType, WorkshopWidgetActionResultMessage } from '@messages';
 
 const makeDeps = (): WorkshopAppMessageRouterDeps => ({
-  workshop: {
+  workshopRoom: {
     handleSessionState: jest.fn(),
     handleTurn: jest.fn(),
-    handleSessionsData: jest.fn(),
-    handleSessionActionResult: jest.fn(),
-    handleSessionSaveStatus: jest.fn(),
     handleContextCatalog: jest.fn(),
     handleContextAttachmentContent: jest.fn(),
     handleContextSearchResults: jest.fn(),
     handleStreamStarted: jest.fn(),
     handleStreamChunk: jest.fn(),
     handleStreamComplete: jest.fn()
+  } as never,
+  workshopSessions: {
+    handleSessionsData: jest.fn(),
+    handleSessionActionResult: jest.fn(),
+    handleSessionSaveStatus: jest.fn()
   } as never,
   widgetHost: { handleWidgetConfigData: jest.fn() } as never,
   gesturePlayground: {

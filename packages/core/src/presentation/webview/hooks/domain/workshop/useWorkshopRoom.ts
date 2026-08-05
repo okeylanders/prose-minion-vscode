@@ -1,5 +1,5 @@
 /**
- * useWorkshop — Domain hook for the Workshop editor tab (ADR 2026-07-03;
+ * useWorkshopRoom — room-state presentation owner for the Workshop editor tab (ADR 2026-07-03;
  * Sprint 2 session spine, Sprint 3 multi-turn). Mirrors WorkshopHandler, the
  * 12th domain.
  *
@@ -22,8 +22,8 @@
  */
 
 import * as React from 'react';
-import { useVSCodeApi } from '../useVSCodeApi';
-import { useStreaming } from '../useStreaming';
+import { useVSCodeApi } from '../../useVSCodeApi';
+import { useStreaming } from '../../useStreaming';
 import { MessageType } from '@shared/types';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
@@ -50,14 +50,9 @@ import {
   WorkshopChatTarget,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
-  WorkshopSessionSaveStatusMessage,
-  WorkshopSessionActionResultMessage,
-  WorkshopSessionAction,
   WorkshopSelectableSessionScope,
   WorkshopSessionScope,
-  WorkshopSessionSummary,
   WorkshopSessionStateMessage,
-  WorkshopSessionsDataMessage,
   WorkshopToolSidecarSnapshot,
   WorkshopToolId,
   WorkshopTodoAction,
@@ -92,7 +87,7 @@ interface LiveRun {
   phase: 'streaming' | 'settled';
 }
 
-export interface WorkshopState {
+export interface WorkshopRoomState {
   /** True once the first host snapshot has arrived (gate for "empty" UI). */
   sessionReady: boolean;
   /** Persistence is host truth; a false value is an explicit workspace policy, never a silent fallback. */
@@ -182,24 +177,9 @@ export interface WorkshopState {
   streamingInitialLatencyMs?: number;
   streamingChunksPerSecond: number;
   currentRequestId: string | null;
-  /** Browser data remains host-owned and is intentionally summary-only. */
-  sessionsAvailable: boolean | null;
-  sessionsUnavailableReason?: 'no-workspace' | 'multi-root';
-  currentSessionSummary?: WorkshopSessionSummary;
-  /** Stable active named-room identity; browser search results must not erase it. */
-  activeNamedSessionSummary?: WorkshopSessionSummary;
-  savedSessionSummaries: WorkshopSessionSummary[];
-  sessionsTruncated: boolean;
-  sessionsSearchTruncated: boolean;
-  sessionsPending: boolean;
-  sessionsError?: string;
-  sessionSearchQuery: string;
-  sessionActionPending?: WorkshopSessionAction;
-  sessionActionResult?: WorkshopSessionActionResultMessage['payload'];
-  sessionSaveStatus?: WorkshopSessionSaveStatusMessage['payload'];
 }
 
-export interface WorkshopActions {
+export interface WorkshopRoomActions {
   pinExcerpt: (text: string, source?: WorkshopExcerptSource) => void;
   pinFromFile: () => void;
   rereadExcerpt: () => void;
@@ -239,22 +219,9 @@ export interface WorkshopActions {
   ) => void;
   todoAction: (action: WorkshopTodoAction) => void;
   cancelRun: () => void;
-  resetSession: (options?: { clearWorkingSet?: boolean }) => void;
   requestSession: () => void;
-  requestSessions: (query?: string) => void;
-  setSessionSearchQuery: (query: string) => void;
-  saveSession: (title: string, sessionId?: string) => void;
-  openSession: (sessionId: string) => void;
-  renameSession: (sessionId: string, title: string) => void;
-  duplicateSession: (sessionId: string, title?: string) => void;
-  revealSession: (sessionId: string) => void;
-  deleteSession: (sessionId: string) => void;
-  consumeSessionActionResult: () => void;
   clearError: () => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
-  handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
-  handleSessionActionResult: (message: WorkshopSessionActionResultMessage) => void;
-  handleSessionSaveStatus: (message: WorkshopSessionSaveStatusMessage) => void;
   handleTurn: (message: WorkshopTurnMessage) => void;
   handleStreamStarted: (message: StreamStartedMessage) => void;
   handleStreamChunk: (message: StreamChunkMessage) => void;
@@ -269,13 +236,26 @@ export interface WorkshopActions {
  * aggregate with a stale copy. The empty `persistedState` keeps the
  * tripartite hook shape every sibling hook honors.
  */
-export type WorkshopPersistence = Record<string, never>;
+export type WorkshopRoomPersistence = Record<string, never>;
 
-export type UseWorkshopReturn = WorkshopState & WorkshopActions & {
-  persistedState: WorkshopPersistence;
+export interface WorkshopRoomThreadSnapshot {
+  turns: WorkshopTurn[];
+  totalTurns: number;
+  errorMessage: string;
+}
+
+/** One-way seam consumed by useWorkshopSessions for optimistic room replacement. */
+export interface WorkshopRoomReplacementPort {
+  beginReplacement: () => WorkshopRoomThreadSnapshot;
+  restoreReplacement: (snapshot: WorkshopRoomThreadSnapshot) => void;
+}
+
+export type UseWorkshopRoomReturn = WorkshopRoomState & WorkshopRoomActions & {
+  replacementPort: WorkshopRoomReplacementPort;
+  persistedState: WorkshopRoomPersistence;
 };
 
-export const useWorkshop = (): UseWorkshopReturn => {
+export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const vscode = useVSCodeApi();
   const streaming = useStreaming();
 
@@ -323,38 +303,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
   const [statusMessage, setStatusMessage] = React.useState('');
   const [tickerMessage, setTickerMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
-  const [sessionsAvailable, setSessionsAvailable] = React.useState<boolean | null>(null);
-  const [sessionsUnavailableReason, setSessionsUnavailableReason] = React.useState<
-    'no-workspace' | 'multi-root' | undefined
-  >();
-  const [currentSessionSummary, setCurrentSessionSummary] = React.useState<WorkshopSessionSummary>();
-  const [activeNamedSessionSummary, setActiveNamedSessionSummary] =
-    React.useState<WorkshopSessionSummary>();
-  const [savedSessionSummaries, setSavedSessionSummaries] = React.useState<WorkshopSessionSummary[]>([]);
-  const [sessionsTruncated, setSessionsTruncated] = React.useState(false);
-  const [sessionsSearchTruncated, setSessionsSearchTruncated] = React.useState(false);
-  const [sessionsPending, setSessionsPending] = React.useState(false);
-  const [sessionsError, setSessionsError] = React.useState<string>();
-  const [sessionSearchQuery, setSessionSearchQuery] = React.useState('');
-  const [sessionActionResult, setSessionActionResult] = React.useState<
-    WorkshopSessionActionResultMessage['payload']
-  >();
-  const [sessionActionPending, setSessionActionPending] =
-    React.useState<WorkshopSessionAction>();
-  const [sessionSaveStatus, setSessionSaveStatus] =
-    React.useState<WorkshopSessionSaveStatusMessage['payload']>();
-  const latestSessionsRequestIdRef = React.useRef<string>();
-  const latestSessionsQueryRef = React.useRef('');
-  const sessionsRequestCounterRef = React.useRef(0);
-  const pendingResetRollbackRef = React.useRef<{
-    turns: WorkshopTurn[];
-    totalTurns: number;
-  }>();
-  const pendingNamedActionRef = React.useRef<{
-    action: 'save' | 'rename' | 'delete';
-    sessionId: string;
-    title?: string;
-  }>();
 
   // The single live-run tracker: state drives rendering, the ref mirror lets
   // handlers compare without stale closures (StrictMode double-invokes state
@@ -592,87 +540,28 @@ export const useWorkshop = (): UseWorkshopReturn => {
     }
   }, [vscode]);
 
-  const resetSession = React.useCallback((options: { clearWorkingSet?: boolean } = {}) => {
+  const beginReplacement = React.useCallback((): WorkshopRoomThreadSnapshot => {
+    const snapshot = { turns: [...turns], totalTurns, errorMessage };
     setErrorMessage('');
-    setSessionActionPending('new');
-    pendingResetRollbackRef.current = {
-      turns: [...turns],
-      totalTurns
-    };
-    // New Session is a room replacement, not a filesystem refresh. Clear the
-    // visible thread immediately; the host snapshot confirms the new room, or
-    // the typed failure result restores this exact client-side window.
     setTurns([]);
     setTotalTurns(0);
-    post(MessageType.WORKSHOP_RESET_SESSION, {
-      ...(options.clearWorkingSet ? { clearWorkingSet: true } : {})
-    });
-  }, [post, totalTurns, turns]);
+    return snapshot;
+  }, [errorMessage, totalTurns, turns]);
+
+  const restoreReplacement = React.useCallback((snapshot: WorkshopRoomThreadSnapshot) => {
+    setTurns(snapshot.turns);
+    setTotalTurns(snapshot.totalTurns);
+    setErrorMessage(snapshot.errorMessage);
+  }, []);
+
+  const replacementPort = React.useMemo<WorkshopRoomReplacementPort>(() => ({
+    beginReplacement,
+    restoreReplacement
+  }), [beginReplacement, restoreReplacement]);
 
   const requestSession = React.useCallback(() => {
     post(MessageType.WORKSHOP_REQUEST_SESSION, {});
   }, [post]);
-
-  const requestSessions = React.useCallback((query?: string) => {
-    const nextQuery = query ?? sessionSearchQuery;
-    const requestId = `workshop-sessions-${Date.now()}-${++sessionsRequestCounterRef.current}`;
-    latestSessionsRequestIdRef.current = requestId;
-    latestSessionsQueryRef.current = nextQuery.trim();
-    setSessionsPending(true);
-    setSessionsError(undefined);
-    post(MessageType.WORKSHOP_LIST_SESSIONS, {
-      requestId,
-      ...(nextQuery.trim() ? { query: nextQuery.trim() } : {})
-    });
-  }, [post, sessionSearchQuery]);
-
-  const setSessionSearchQueryAction = React.useCallback((query: string) => {
-    setSessionSearchQuery(query);
-  }, []);
-
-  const saveSession = React.useCallback((title: string, sessionId?: string) => {
-    setSessionActionPending('save');
-    pendingNamedActionRef.current = sessionId
-      ? { action: 'save', sessionId, title }
-      : undefined;
-    post(MessageType.WORKSHOP_SAVE_SESSION, {
-      title,
-      ...(sessionId ? { sessionId } : {})
-    });
-  }, [post]);
-
-  const openSession = React.useCallback((sessionId: string) => {
-    setSessionActionPending('open');
-    post(MessageType.WORKSHOP_OPEN_SESSION, { sessionId });
-  }, [post]);
-
-  const renameSession = React.useCallback((sessionId: string, title: string) => {
-    setSessionActionPending('rename');
-    pendingNamedActionRef.current = { action: 'rename', sessionId, title };
-    post(MessageType.WORKSHOP_RENAME_SESSION, { sessionId, title });
-  }, [post]);
-
-  const duplicateSession = React.useCallback((sessionId: string, title?: string) => {
-    setSessionActionPending('duplicate');
-    post(MessageType.WORKSHOP_DUPLICATE_SESSION, {
-      sessionId,
-      ...(title?.trim() ? { title: title.trim() } : {})
-    });
-  }, [post]);
-
-  const revealSession = React.useCallback((sessionId: string) => {
-    post(MessageType.WORKSHOP_REVEAL_SESSION, { sessionId });
-  }, [post]);
-
-  const deleteSession = React.useCallback((sessionId: string) => {
-    setSessionActionPending('delete');
-    pendingNamedActionRef.current = { action: 'delete', sessionId };
-    post(MessageType.WORKSHOP_DELETE_SESSION, { sessionId });
-  }, [post]);
-
-  const consumeSessionActionResult = React.useCallback(() => {
-    setSessionActionResult(undefined);
-  }, []);
 
   const clearError = React.useCallback(() => setErrorMessage(''), []);
 
@@ -744,74 +633,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
     },
     [setLiveRun, streaming]
   );
-
-  const handleSessionsData = React.useCallback((message: WorkshopSessionsDataMessage) => {
-    if (message.payload.requestId !== latestSessionsRequestIdRef.current) {
-      return;
-    }
-    setSessionsPending(false);
-    setSessionsAvailable(message.payload.available);
-    setSessionsUnavailableReason(message.payload.unavailableReason);
-    setSessionsError(message.payload.error);
-    setCurrentSessionSummary(message.payload.current);
-    setSavedSessionSummaries(message.payload.sessions);
-    if (!message.payload.error) {
-      const activeNamedSession = message.payload.current
-        ? message.payload.sessions.find(
-            (session) => session.sessionId === message.payload.current?.sessionId
-          )
-        : undefined;
-      if (activeNamedSession) {
-        setActiveNamedSessionSummary(activeNamedSession);
-      } else if (latestSessionsQueryRef.current === '') {
-        // Only an unfiltered authoritative list can prove the live room is no
-        // longer associated. A browser search omitting the room must not make
-        // its header name disappear.
-        setActiveNamedSessionSummary(undefined);
-      }
-    }
-    setSessionsTruncated(!!message.payload.truncated);
-    setSessionsSearchTruncated(!!message.payload.searchTruncated);
-  }, []);
-
-  const handleSessionActionResult = React.useCallback((message: WorkshopSessionActionResultMessage) => {
-    if (message.payload.action === 'new') {
-      const rollback = pendingResetRollbackRef.current;
-      if (!message.payload.ok && rollback) {
-        setTurns(rollback.turns);
-        setTotalTurns(rollback.totalTurns);
-      }
-      pendingResetRollbackRef.current = undefined;
-    }
-    const pendingNamedAction = pendingNamedActionRef.current;
-    if (pendingNamedAction?.action === message.payload.action) {
-      if (message.payload.ok) {
-        setActiveNamedSessionSummary((active) => {
-          if (active?.sessionId !== pendingNamedAction.sessionId) {
-            return active;
-          }
-          if (pendingNamedAction.action === 'delete') {
-            return undefined;
-          }
-          return pendingNamedAction.title
-            ? { ...active, title: pendingNamedAction.title }
-            : active;
-        });
-      }
-      pendingNamedActionRef.current = undefined;
-    }
-    if (message.payload.action === 'new' && message.payload.ok) {
-      setActiveNamedSessionSummary(undefined);
-    }
-    setSessionActionPending((pending) =>
-      pending === message.payload.action ? undefined : pending
-    );
-    setSessionActionResult(message.payload);
-  }, []);
-
-  const handleSessionSaveStatus = React.useCallback((message: WorkshopSessionSaveStatusMessage) => {
-    setSessionSaveStatus(message.payload);
-  }, []);
 
   // totalTurns is deliberately NOT bumped here: a snapshot with the
   // authoritative count follows every host mutation, and a replay-cache dupe
@@ -957,20 +778,6 @@ export const useWorkshop = (): UseWorkshopReturn => {
     streamingInitialLatencyMs: streaming.initialLatencyMs,
     streamingChunksPerSecond: streaming.chunksPerSecond,
     currentRequestId,
-    sessionsAvailable,
-    sessionsUnavailableReason,
-    currentSessionSummary,
-    activeNamedSessionSummary,
-    savedSessionSummaries,
-    sessionsTruncated,
-    sessionsSearchTruncated,
-    sessionsPending,
-    sessionsError,
-    sessionSearchQuery,
-    sessionActionPending,
-    sessionActionResult,
-    sessionSaveStatus,
-
     // Actions
     pinExcerpt,
     pinFromFile,
@@ -1007,28 +814,17 @@ export const useWorkshop = (): UseWorkshopReturn => {
     setConversationSettings,
     todoAction,
     cancelRun,
-    resetSession,
     requestSession,
-    requestSessions,
-    setSessionSearchQuery: setSessionSearchQueryAction,
-    saveSession,
-    openSession,
-    renameSession,
-    duplicateSession,
-    revealSession,
-    deleteSession,
-    consumeSessionActionResult,
     clearError,
     handleSessionState,
-    handleSessionsData,
-    handleSessionActionResult,
-    handleSessionSaveStatus,
     handleTurn,
     handleStreamStarted,
     handleStreamChunk,
     handleStreamComplete,
     handleStatusMessage,
     handleErrorMessage,
+
+    replacementPort,
 
     // Persistence
     persistedState: {}

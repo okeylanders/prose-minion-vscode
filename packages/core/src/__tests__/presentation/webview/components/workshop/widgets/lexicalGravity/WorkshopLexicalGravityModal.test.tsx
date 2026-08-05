@@ -5,9 +5,11 @@
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import {
-  WorkshopLexicalGravityModal,
-  WorkshopLexicalGravityOpening
+  WorkshopLexicalGravityModal
 } from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal';
+import type {
+  WorkshopLexicalGravityOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import {
   builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';

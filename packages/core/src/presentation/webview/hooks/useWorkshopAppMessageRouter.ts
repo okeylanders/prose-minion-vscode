@@ -12,7 +12,8 @@ import type { UseAccountBalanceReturn } from '@hooks/domain/useAccountBalance';
 import type { UseModelsSettingsReturn } from '@hooks/domain/useModelsSettings';
 import type { UseStartupNoticeReturn } from '@hooks/domain/useStartupNotice';
 import type { UseTokenTrackingReturn } from '@hooks/domain/useTokenTracking';
-import type { UseWorkshopReturn } from '@hooks/domain/useWorkshop';
+import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
+import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
 import type {
   UseWorkshopExcerptVerifyReturn
 } from '@hooks/domain/useWorkshopExcerptVerify';
@@ -34,7 +35,8 @@ import {
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 
 export interface WorkshopAppMessageRouterDeps {
-  workshop: UseWorkshopReturn;
+  workshopRoom: UseWorkshopRoomReturn;
+  workshopSessions: UseWorkshopSessionsReturn;
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
@@ -55,7 +57,8 @@ export function buildWorkshopAppMessageRoutes(
   deps: WorkshopAppMessageRouterDeps
 ): MessageHandlerMap {
   const {
-    workshop,
+    workshopRoom,
+    workshopSessions,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -73,15 +76,15 @@ export function buildWorkshopAppMessageRoutes(
   } = deps;
 
   return {
-    [MessageType.WORKSHOP_SESSION_STATE]: workshop.handleSessionState,
-    [MessageType.WORKSHOP_TURN]: workshop.handleTurn,
-    [MessageType.WORKSHOP_SESSIONS_DATA]: workshop.handleSessionsData,
-    [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshop.handleSessionActionResult,
-    [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshop.handleSessionSaveStatus,
+    [MessageType.WORKSHOP_SESSION_STATE]: workshopRoom.handleSessionState,
+    [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
+    [MessageType.WORKSHOP_SESSIONS_DATA]: workshopSessions.handleSessionsData,
+    [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshopSessions.handleSessionActionResult,
+    [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshopSessions.handleSessionSaveStatus,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
-    [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshop.handleContextCatalog,
-    [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshop.handleContextAttachmentContent,
-    [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshop.handleContextSearchResults,
+    [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
+    [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
+    [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,
     [MessageType.WORKSHOP_WIDGET_CONFIG_DATA]: widgetHost.handleWidgetConfigData,
@@ -98,9 +101,9 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT]: lexicalGravity.handlePreviewResult,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
-    [MessageType.STREAM_STARTED]: workshop.handleStreamStarted,
-    [MessageType.STREAM_CHUNK]: workshop.handleStreamChunk,
-    [MessageType.STREAM_COMPLETE]: workshop.handleStreamComplete,
+    [MessageType.STREAM_STARTED]: workshopRoom.handleStreamStarted,
+    [MessageType.STREAM_CHUNK]: workshopRoom.handleStreamChunk,
+    [MessageType.STREAM_COMPLETE]: workshopRoom.handleStreamComplete,
     [MessageType.STATUS]: handleStatusMessage,
     [MessageType.ERROR]: handleErrorMessage,
     [MessageType.MODEL_DATA]: modelsSettings.handleModelData,

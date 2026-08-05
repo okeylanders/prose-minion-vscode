@@ -34,7 +34,6 @@ import {
   StatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
-  WorkshopContextAttachmentSnapshot,
   WorkshopTurn,
   WorkshopWidgetId,
   isWorkshopWriterProfileActive,
@@ -52,12 +51,10 @@ import { WORKSHOP_TURN_ID_ATTRIBUTE } from './components/workshop/WorkshopTurnBu
 import { WorkshopToolsModal } from './components/workshop/WorkshopToolsModal';
 import { WorkshopWidgetsModal } from './components/workshop/WorkshopWidgetsModal';
 import {
-  WorkshopGesturePlaygroundModal,
-  WorkshopGestureOpening
+  WorkshopGesturePlaygroundModal
 } from '@components/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundModal';
 import {
-  WorkshopLexicalGravityModal,
-  WorkshopLexicalGravityOpening
+  WorkshopLexicalGravityModal
 } from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal';
 import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopStandingDirectiveRail';
 import {
@@ -83,8 +80,7 @@ import {
   WorkshopOpenChatStart
 } from './components/workshop/WorkshopOpenChatStart';
 import {
-  WorkshopTextSheet,
-  WorkshopTextSheetMode
+  WorkshopTextSheet
 } from './components/workshop/WorkshopTextSheet';
 import { WORKSHOP_TOOLS_GATED_REASON } from './components/workshop/WorkshopComposer';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -112,7 +108,8 @@ import { buildWorkshopWidgetAskPrefill } from '@utils/workshopWidgetAskPrefill';
 import { useVSCodeApi } from './hooks/useVSCodeApi';
 import { usePersistence } from './hooks/usePersistence';
 import { useWorkshopAppMessageRouter } from '@hooks/useWorkshopAppMessageRouter';
-import { useWorkshop } from '@hooks/domain/useWorkshop';
+import { useWorkshopRoom } from '@hooks/domain/workshop/useWorkshopRoom';
+import { useWorkshopSessions } from '@hooks/domain/workshop/useWorkshopSessions';
 import { useWorkshopWidgetHost } from '@hooks/domain/workshop/useWorkshopWidgetHost';
 import {
   useGesturePlayground
@@ -121,12 +118,29 @@ import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGrav
 import {
   useWorkshopStandingDirectives
 } from '@hooks/domain/workshop/useWorkshopStandingDirectives';
+import {
+  useWorkshopWidgetOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
+import {
+  useWorkshopSessionSurfaces
+} from '@hooks/domain/workshop/controllers/useWorkshopSessionSurfaces';
+import {
+  useWorkshopContextSheet
+} from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
 import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
-import './workshop.css';
+// CSS import order is rendered behavior under style-loader. Feature files own
+// their rules; this composition point owns the preserved cascade order.
+import './styles/workshop/tokens.css';
+import './styles/workshop/shell.css';
+import './styles/workshop/context.css';
+import './styles/workshop/session.css';
+import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
+import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
+import './components/workshop/standingDirectiveRail.css';
 import './components/workshop/schematic/schematic.css';
 
 interface WorkshopTool extends WorkshopToolDescriptor {
@@ -186,7 +200,8 @@ export const WorkshopApp: React.FC = () => {
   // Domain hooks — same rails the sidebar rides (epic thesis: reuse, not
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler.
-  const workshop = useWorkshop();
+  const workshop = useWorkshopRoom();
+  const workshopSessions = useWorkshopSessions(workshop.replacementPort);
   const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
   const lexicalGravity = useLexicalGravity();
@@ -197,19 +212,10 @@ export const WorkshopApp: React.FC = () => {
   const [hasSavedKey, setHasSavedKey] = React.useState(false);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
-  /** Non-null while the Gesture Playground pre-commit surface is open. */
-  const [gestureOpening, setGestureOpening] = React.useState<WorkshopGestureOpening | null>(null);
-  const [lexicalGravityOpening, setLexicalGravityOpening] =
-    React.useState<WorkshopLexicalGravityOpening | null>(null);
-  const [pendingWidgetConfigId, setPendingWidgetConfigId] = React.useState<string | null>(null);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
   const [personaModalOpen, setPersonaModalOpen] = React.useState(false);
   const [schematicPersonaId, setSchematicPersonaId] = React.useState<WorkshopPersonaId | null>(null);
   const [contextSelectorOpen, setContextSelectorOpen] = React.useState(false);
-  const [sessionsMenuOpen, setSessionsMenuOpen] = React.useState(false);
-  const [saveSessionModalOpen, setSaveSessionModalOpen] = React.useState(false);
-  const [sessionBrowserOpen, setSessionBrowserOpen] = React.useState(false);
-  const sessionListInitializedRef = React.useRef(false);
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
@@ -219,6 +225,17 @@ export const WorkshopApp: React.FC = () => {
     setToast(next);
   }, []);
   const standingDirectives = useWorkshopStandingDirectives(showToast);
+  const handleWidgetOpeningError = React.useCallback(
+    (message: string) => showToast({ message, icon: 'x', tone: 'error' }),
+    [showToast]
+  );
+  const widgetOpening = useWorkshopWidgetOpening({
+    host: widgetHost,
+    standingDirectives: workshop.standingDirectives,
+    onError: handleWidgetOpeningError,
+    onCloseGesture: gesturePlayground.consumeWidgetActionResult,
+    onCloseLexicalGravity: lexicalGravity.clearTransientResults
+  });
 
   React.useEffect(() => {
     if (!toast) {
@@ -275,7 +292,8 @@ export const WorkshopApp: React.FC = () => {
   );
 
   useWorkshopAppMessageRouter({
-    workshop,
+    workshopRoom: workshop,
+    workshopSessions,
     widgetHost,
     gesturePlayground,
     lexicalGravity,
@@ -294,6 +312,7 @@ export const WorkshopApp: React.FC = () => {
 
   usePersistence({
     ...workshop.persistedState,
+    ...workshopSessions.persistedState,
     ...widgetHost.persistedState,
     ...gesturePlayground.persistedState,
     ...lexicalGravity.persistedState,
@@ -304,7 +323,7 @@ export const WorkshopApp: React.FC = () => {
     ...accountBalance.persistedState,
   });
 
-  // Initial data requests (session itself is requested inside useWorkshop)
+  // Initial data requests (session itself is requested inside useWorkshopRoom)
   React.useEffect(() => {
     modelsSettings.requestModelData();
   }, [modelsSettings.requestModelData]);
@@ -323,98 +342,6 @@ export const WorkshopApp: React.FC = () => {
       timestamp: Date.now(),
     });
   }, [vscode]);
-
-  React.useEffect(() => {
-    if (!workshop.sessionReady || sessionListInitializedRef.current) {
-      return;
-    }
-    sessionListInitializedRef.current = true;
-    workshop.requestSessions('');
-  }, [workshop.requestSessions, workshop.sessionReady]);
-
-  // The full session browser is intentionally a host-side bounded search. Debounce
-  // the query so the writer can type naturally without a filesystem scan for
-  // each keystroke; the hook's request id discards any late result.
-  React.useEffect(() => {
-    if (!sessionBrowserOpen) {
-      return undefined;
-    }
-    const timer = window.setTimeout(() => workshop.requestSessions(), 220);
-    return () => window.clearTimeout(timer);
-  }, [sessionBrowserOpen, workshop.requestSessions, workshop.sessionSearchQuery]);
-
-  React.useEffect(() => {
-    if (!pendingWidgetConfigId) {
-      return;
-    }
-    if (
-      widgetHost.widgetConfigResponseId === pendingWidgetConfigId
-      && widgetHost.widgetConfigData?.id === pendingWidgetConfigId
-    ) {
-      const config = widgetHost.widgetConfigData;
-      if (config.widgetId === 'gesture-playground') {
-        setGestureOpening({ kind: 'clone', config });
-      } else if (config.widgetId === 'lexical-gravity') {
-        const active = workshop.standingDirectives.some(
-          (directive) => directive.widgetConfigId === config.id
-        );
-        setLexicalGravityOpening(
-          active ? { kind: 'edit', config } : { kind: 'new', seed: config.draft }
-        );
-      }
-      setPendingWidgetConfigId(null);
-      widgetHost.clearWidgetConfigData();
-      return;
-    }
-    if (
-      widgetHost.widgetConfigResponseId === pendingWidgetConfigId
-      && widgetHost.widgetConfigError
-    ) {
-      showToast({ message: widgetHost.widgetConfigError, icon: 'x', tone: 'error' });
-      setPendingWidgetConfigId(null);
-      widgetHost.clearWidgetConfigData();
-    }
-  }, [
-    pendingWidgetConfigId,
-    showToast,
-    widgetHost.clearWidgetConfigData,
-    widgetHost.widgetConfigData,
-    widgetHost.widgetConfigError,
-    widgetHost.widgetConfigResponseId,
-    workshop.standingDirectives
-  ]);
-
-  React.useEffect(() => {
-    const result = workshop.sessionActionResult;
-    if (!result) {
-      return;
-    }
-    showToast({
-      message: result.message,
-      icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x',
-      ...(result.ok ? {} : { tone: 'error' })
-    });
-    if (result.ok && result.action === 'save') {
-      setSaveSessionModalOpen(false);
-    }
-    if (result.ok && (result.action === 'open' || result.action === 'new')) {
-      setSessionBrowserOpen(false);
-    }
-    const sessionIndexChanged =
-      result.ok && result.action !== 'reveal';
-    const activeRoomIdentityChanged =
-      result.ok && (
-        result.action === 'save' ||
-        result.action === 'open' ||
-        result.action === 'new'
-      );
-    if (activeRoomIdentityChanged) {
-      workshop.requestSessions('');
-    } else if (sessionBrowserOpen || sessionsMenuOpen || sessionIndexChanged) {
-      workshop.requestSessions();
-    }
-    workshop.consumeSessionActionResult();
-  }, [sessionBrowserOpen, sessionsMenuOpen, showToast, workshop]);
 
   // Error boundary plumbing — same reporting path as App.tsx
   const handleBoundaryError = React.useCallback(
@@ -454,7 +381,8 @@ export const WorkshopApp: React.FC = () => {
   });
 
   const roomMutationLocked =
-    workshop.isRunning || workshop.wizardRunning || workshop.sessionActionPending !== undefined;
+    workshop.isRunning || workshop.wizardRunning ||
+    workshopSessions.sessionActionPending !== undefined;
   // Sprint 13A §9: gating has two independent reasons, and the UI must say
   // WHICH one applies. No excerpt → a permanent, explained gate with a badge.
   // Busy room → a temporary `disabled`, exactly as before.
@@ -502,137 +430,70 @@ export const WorkshopApp: React.FC = () => {
     && workshop.personaGuests.filter((guest) => guest.liveness === 'live').length
       < WORKSHOP_GUEST_CAPACITY;
   const sessionMutationsDisabled = roomMutationLocked || !workshop.persistenceAvailable;
-
-  const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
-  const openWidgetsModal = React.useCallback(() => setWidgetsModalOpen(true), []);
-  const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
-  const openWidgetConfig = React.useCallback((widgetConfigId: string) => {
-    setPendingWidgetConfigId(widgetConfigId);
-    widgetHost.requestWidgetConfig(widgetConfigId);
-  }, [widgetHost.requestWidgetConfig]);
-  // Conversation Widgets (ADR 2026-07-22): three doors into the same
-  // pre-commit surface — the browser (fresh), a persona recommend chip
-  // (seeded), and a committed turn's chip (clone-and-recommit).
-  const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
-    setWidgetsModalOpen(false);
-    if (widgetId === 'gesture-playground') {
-      setGestureOpening({ kind: 'new' });
-    } else if (widgetId === 'lexical-gravity') {
-      const active = workshop.standingDirectives.find(
-        (directive) => directive.family === 'lexical-gravity'
-      );
-      if (active) {
-        openWidgetConfig(active.widgetConfigId);
-      } else {
-        setLexicalGravityOpening({ kind: 'new' });
-      }
-    }
-  }, [openWidgetConfig, workshop.standingDirectives]);
-  const openWidgetRecommendation = React.useCallback(
-    (
-      recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
-      personaLabel?: string
-    ) => {
-      if (recommendation.widgetId === 'gesture-playground') {
-        setGestureOpening({
-          kind: 'seed',
-          seed: recommendation.seed ?? {},
-          personaLabel: personaLabel ?? 'the persona'
-        });
-      } else if (recommendation.widgetId === 'lexical-gravity') {
-        setLexicalGravityOpening({
-          kind: 'seed',
-          seed: recommendation.seed ?? {},
-          personaLabel: personaLabel ?? 'the persona'
-        });
-      }
-    },
-    []
-  );
-  const closeGesture = React.useCallback(() => {
-    setGestureOpening(null);
-    setPendingWidgetConfigId(null);
-    widgetHost.clearWidgetConfigData();
-    gesturePlayground.consumeWidgetActionResult();
-  }, [gesturePlayground.consumeWidgetActionResult, widgetHost.clearWidgetConfigData]);
-  const closeLexicalGravity = React.useCallback(() => {
-    setLexicalGravityOpening(null);
-    setPendingWidgetConfigId(null);
-    widgetHost.clearWidgetConfigData();
-    lexicalGravity.clearTransientResults();
-  }, [lexicalGravity.clearTransientResults, widgetHost.clearWidgetConfigData]);
-  const closeStartupNotice = React.useCallback(
-    () => startupNotice.dismissStartupNotice(false),
-    [startupNotice.dismissStartupNotice]
-  );
-  const setSessionsMenuVisibility = React.useCallback((open: boolean) => {
-    setSessionsMenuOpen(open);
-    if (open) {
-      workshop.requestSessions('');
-    }
-  }, [workshop.requestSessions]);
-  const openSaveSessionModal = React.useCallback(() => {
-    setSessionsMenuOpen(false);
-    setSessionBrowserOpen(false);
-    setSaveSessionModalOpen(true);
-  }, []);
-  const closeSaveSessionModal = React.useCallback(() => setSaveSessionModalOpen(false), []);
-  const openSessionBrowser = React.useCallback(() => {
-    setSessionsMenuOpen(false);
-    setSaveSessionModalOpen(false);
-    workshop.setSessionSearchQuery('');
-    setSessionBrowserOpen(true);
-  }, [workshop.setSessionSearchQuery]);
-  const closeSessionBrowser = React.useCallback(() => setSessionBrowserOpen(false), []);
-  // window.confirm never renders inside VS Code's sandboxed webview (it
-  // returns false without a dialog), so state replacement confirms in-webview.
-  const [sessionConfirm, setSessionConfirm] = React.useState<
-    | { kind: 'new' }
-    | { kind: 'new-full' }
-    | { kind: 'open'; sessionId: string; title: string }
-    | { kind: 'replace-shelf'; resume: 'paste' | 'choose' }
-    | null
-  >(null);
   const hasReplaceableSessionState =
     workshop.hasHostConversation ||
     workshop.turns.length + workshop.hiddenTurns > 0 ||
     workshop.todos.length > 0 ||
     workshop.personaGuests.some((guest) => guest.liveness === 'live');
-  // The working set is what an ordinary new session deliberately KEEPS, so a
-  // full reset is only meaningful — and only offered — when some of it exists.
   const hasWorkingSet =
     !!workshop.excerpt ||
     !!workshop.shelvedExcerpt ||
     workshop.contextAttachments.length > 0;
-  const startNewSession = React.useCallback(() => {
-    if (hasReplaceableSessionState) {
-      setSessionConfirm({ kind: 'new' });
-      return;
-    }
-    workshop.resetSession();
-  }, [hasReplaceableSessionState, workshop.resetSession]);
-  // A full reset ALWAYS confirms when it would discard something: the excerpt
-  // and context are work the writer chose, and this is the one action in the
-  // room that throws them away.
-  const startFullReset = React.useCallback(() => {
-    if (hasReplaceableSessionState || hasWorkingSet) {
-      setSessionConfirm({ kind: 'new-full' });
-      return;
-    }
-    workshop.resetSession({ clearWorkingSet: true });
-  }, [hasReplaceableSessionState, hasWorkingSet, workshop.resetSession]);
-  const openStoredSession = React.useCallback((session: typeof workshop.savedSessionSummaries[number]) => {
-    if (hasReplaceableSessionState) {
-      setSessionConfirm({
-        kind: 'open',
-        sessionId: session.sessionId,
-        title: session.title
+  const handleSessionResult = React.useCallback(
+    (result: NonNullable<typeof workshopSessions.sessionActionResult>) => {
+      showToast({
+        message: result.message,
+        icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x',
+        ...(result.ok ? {} : { tone: 'error' })
       });
-      return;
-    }
-    workshop.openSession(session.sessionId);
-  }, [hasReplaceableSessionState, workshop.openSession]);
-  const cancelSessionConfirm = React.useCallback(() => setSessionConfirm(null), []);
+    },
+    [showToast]
+  );
+  const sessionSurfaces = useWorkshopSessionSurfaces({
+    sessionReady: workshop.sessionReady,
+    persistenceAvailable: workshop.persistenceAvailable,
+    sessionMutationsDisabled,
+    hasReplaceableSessionState,
+    hasWorkingSet,
+    sessionSearchQuery: workshopSessions.sessionSearchQuery,
+    sessionActionResult: workshopSessions.sessionActionResult,
+    requestSessions: workshopSessions.requestSessions,
+    setSessionSearchQuery: workshopSessions.setSessionSearchQuery,
+    resetSession: workshopSessions.resetSession,
+    openSession: workshopSessions.openSession,
+    consumeSessionActionResult: workshopSessions.consumeSessionActionResult,
+    onResult: handleSessionResult
+  });
+  const {
+    sessionsMenuOpen,
+    saveSessionModalOpen,
+    sessionBrowserOpen,
+    sessionConfirm,
+    setSessionsMenuVisibility,
+    openSaveSessionModal,
+    closeSaveSessionModal,
+    openSessionBrowser,
+    closeSessionBrowser,
+    startNewSession,
+    startFullReset,
+    openStoredSession,
+    cancelSessionConfirm
+  } = sessionSurfaces;
+
+  const openToolsModal = React.useCallback(() => setToolsModalOpen(true), []);
+  const openWidgetsModal = React.useCallback(() => setWidgetsModalOpen(true), []);
+  const closeWidgetsModal = React.useCallback(() => setWidgetsModalOpen(false), []);
+  // Conversation Widgets (ADR 2026-07-22): three doors into the same
+  // pre-commit surface — the browser (fresh), a persona recommend chip
+  // (seeded), and a committed turn's chip (clone-and-recommit).
+  const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
+    setWidgetsModalOpen(false);
+    widgetOpening.launchWidget(widgetId);
+  }, [widgetOpening.launchWidget]);
+  const closeStartupNotice = React.useCallback(
+    () => startupNotice.dismissStartupNotice(false),
+    [startupNotice.dismissStartupNotice]
+  );
   const openBehaviorModal = React.useCallback(() => setBehaviorModalOpen(true), []);
   const closeBehaviorModal = React.useCallback(() => setBehaviorModalOpen(false), []);
   const openContextSelector = React.useCallback((mode: 'attach' | 'excerpt' | 'message' = 'attach') => {
@@ -656,25 +517,6 @@ export const WorkshopApp: React.FC = () => {
 
   const openContext = openAttachSelector;
 
-  // ── The shared Edit/Preview sheet (Sprint 13A §5–§7) ──────────────────────
-  // One piece of state for all five cases. `attachmentId` is present only when
-  // the sheet is editing an existing attachment, and it is what a late
-  // WORKSHOP_CONTEXT_ATTACHMENT_CONTENT reply is matched against.
-  const [textSheet, setTextSheet] = React.useState<
-    { mode: WorkshopTextSheetMode; attachmentId?: string; seed?: string } | null
-  >(null);
-  const closeTextSheet = React.useCallback(() => {
-    setTextSheet(null);
-    workshop.clearAttachmentContent();
-  }, [workshop.clearAttachmentContent]);
-
-  const openPasteSheet = React.useCallback(() => {
-    setTextSheet({
-      mode: { kind: 'excerpt', retainedConversation: workshop.hasHostConversation },
-      seed: workshop.excerpt?.text ?? ''
-    });
-  }, [workshop.excerpt, workshop.hasHostConversation]);
-
   // A hand-pasted passage on the shelf exists NOWHERE else — no file on disk,
   // and the shelf is one slot with no history. Pinning over it is
   // unrecoverable, so it confirms first, the same care the full reset gets.
@@ -683,115 +525,48 @@ export const WorkshopApp: React.FC = () => {
     ? workshopExcerptTitle(workshop.shelvedExcerpt.source)
     : undefined;
   const shelvedPassageIsUnrecoverable = workshop.shelvedExcerpt?.source.kind === 'manual';
-  const addExcerptByPaste = React.useCallback(() => {
-    if (shelvedPassageIsUnrecoverable) {
-      setSessionConfirm({ kind: 'replace-shelf', resume: 'paste' });
-      return;
-    }
-    openPasteSheet();
-  }, [shelvedPassageIsUnrecoverable, openPasteSheet]);
-  const addExcerptFromProject = React.useCallback(() => {
-    if (shelvedPassageIsUnrecoverable) {
-      setSessionConfirm({ kind: 'replace-shelf', resume: 'choose' });
-      return;
-    }
-    openExcerptSelector();
-  }, [shelvedPassageIsUnrecoverable, openExcerptSelector]);
+  const contextSheet = useWorkshopContextSheet({
+    hasHostConversation: workshop.hasHostConversation,
+    excerpt: workshop.excerpt,
+    attachmentContent: workshop.attachmentContent,
+    verifiedExcerpt: excerptVerify.verified,
+    shelvedPassageIsUnrecoverable,
+    clearAttachmentContent: workshop.clearAttachmentContent,
+    requestContextAttachment: workshop.requestContextAttachment,
+    openContextAttachmentFile: workshop.openContextAttachmentFile,
+    pinExcerpt: workshop.pinExcerpt,
+    addContextText: workshop.addContextText,
+    updateContextText: workshop.updateContextText,
+    openExcerptSelector,
+    requestShelfReplacement: sessionSurfaces.requestShelfReplacement
+  });
+  const {
+    textSheet,
+    sheetAttachment,
+    verifiedDisplay: verifiedExcerpt,
+    openPasteSheet,
+    openAddTextSheet,
+    openAttachmentSheet,
+    addExcerptByPaste,
+    addExcerptFromProject,
+    applyTextSheet,
+    openAttachmentInEditor,
+    chooseExcerptFromSheet,
+    closeTextSheet
+  } = contextSheet;
 
   const acceptSessionConfirm = React.useCallback(() => {
-    if (!sessionConfirm) {
-      return;
-    }
-    setSessionConfirm(null);
-    if (sessionConfirm.kind === 'new') {
-      workshop.resetSession();
-    } else if (sessionConfirm.kind === 'new-full') {
-      workshop.resetSession({ clearWorkingSet: true });
-    } else if (sessionConfirm.kind === 'replace-shelf') {
-      if (sessionConfirm.resume === 'paste') {
-        openPasteSheet();
-      } else {
-        openExcerptSelector();
-      }
-    } else {
-      workshop.openSession(sessionConfirm.sessionId);
+    const resumption = sessionSurfaces.acceptSessionConfirm();
+    if (resumption?.resume === 'paste') {
+      openPasteSheet();
+    } else if (resumption?.resume === 'choose') {
+      openExcerptSelector();
     }
   }, [
-    sessionConfirm,
-    workshop.resetSession,
-    workshop.openSession,
+    sessionSurfaces.acceptSessionConfirm,
     openPasteSheet,
     openExcerptSelector
   ]);
-
-  const openAddTextSheet = React.useCallback(() => {
-    setTextSheet({ mode: { kind: 'context-new' }, seed: '' });
-  }, []);
-
-  const openAttachmentSheet = React.useCallback(
-    (attachment: WorkshopContextAttachmentSnapshot) => {
-      const mode: WorkshopTextSheetMode = attachment.origin === 'wizard'
-        ? { kind: 'context-wizard', label: attachment.label }
-        : attachment.kind === 'file'
-          ? {
-              kind: 'context-file',
-              label: attachment.label,
-              relativePath: attachment.relativePath
-            }
-          : { kind: 'context-text', label: attachment.label };
-      // Text notes already carry their body in the snapshot (the pill is the
-      // note's only home); file-backed bodies are fetched on demand.
-      if (attachment.content !== undefined) {
-        setTextSheet({ mode, attachmentId: attachment.id, seed: attachment.content });
-        return;
-      }
-      setTextSheet({ mode, attachmentId: attachment.id });
-      workshop.requestContextAttachment(attachment.id);
-    },
-    [workshop.requestContextAttachment]
-  );
-
-  const applyTextSheet = React.useCallback(
-    (text: string) => {
-      if (!textSheet) {
-        return;
-      }
-      if (textSheet.mode.kind === 'excerpt') {
-        // Verified provenance survives the move into the sheet: the claim
-        // applies only while the applied text still equals what the host
-        // verified against the editor selection.
-        const verified = excerptVerify.verified;
-        workshop.pinExcerpt(
-          text,
-          verified !== null && text === verified.text ? verified.source : undefined
-        );
-      } else if (textSheet.attachmentId) {
-        workshop.updateContextText(textSheet.attachmentId, text);
-      } else {
-        workshop.addContextText(text);
-      }
-      closeTextSheet();
-    },
-    [
-      closeTextSheet,
-      excerptVerify.verified,
-      textSheet,
-      workshop.addContextText,
-      workshop.pinExcerpt,
-      workshop.updateContextText
-    ]
-  );
-
-  const openAttachmentInEditor = React.useCallback(() => {
-    if (textSheet?.attachmentId) {
-      workshop.openContextAttachmentFile(textSheet.attachmentId);
-    }
-  }, [textSheet, workshop.openContextAttachmentFile]);
-
-  const chooseExcerptFromSheet = React.useCallback(() => {
-    setTextSheet(null);
-    openExcerptSelector();
-  }, [openExcerptSelector]);
 
   // ── Scope transitions (§2/§4) ─────────────────────────────────────────────
   const startOpenConversation = React.useCallback(
@@ -822,25 +597,6 @@ export const WorkshopApp: React.FC = () => {
     workshop.setChatTarget({ kind: 'host' });
     seedComposerDraft(buildWorkshopWidgetAskPrefill(widgetId, activePersona.label));
   }, [activePersona.label, seedComposerDraft, workshop.setChatTarget]);
-
-  // The fetched body, matched to the sheet that asked for it: a late reply for
-  // a pill the writer already closed must never paint into the open sheet.
-  const sheetAttachment = textSheet?.attachmentId !== undefined
-    && workshop.attachmentContent?.id === textSheet.attachmentId
-    ? workshop.attachmentContent
-    : undefined;
-
-  // Verified provenance is earned by a paste the host matched against the live
-  // editor selection. The sheet decides whether the claim still holds, because
-  // only the sheet knows the current draft.
-  const verifiedExcerpt = (() => {
-    const verified = excerptVerify.verified;
-    if (textSheet?.mode.kind !== 'excerpt' || verified?.source.kind !== 'editor-selection') {
-      return undefined;
-    }
-    const note = workshopExcerptSourcePath(verified.source);
-    return note ? { text: verified.text, note } : undefined;
-  })();
 
   const closeToolsModal = React.useCallback(() => setToolsModalOpen(false), []);
   const selectTool = React.useCallback(
@@ -1004,8 +760,8 @@ export const WorkshopApp: React.FC = () => {
       : undefined;
     return sourcePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Untitled session';
   })();
-  const activeNamedSession = workshop.activeNamedSessionSummary;
-  const activeSessionSaveStatus = workshop.sessionSaveStatus?.status ?? 'saved';
+  const activeNamedSession = workshopSessions.activeNamedSessionSummary;
+  const activeSessionSaveStatus = workshopSessions.sessionSaveStatus?.status ?? 'saved';
   const suggestedSessionTitle = activeNamedSession?.title ??
     `${excerptSessionLabel} — ${activePersona.label} — ${
       new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -1020,46 +776,6 @@ export const WorkshopApp: React.FC = () => {
     todoCount: workshop.todos.length,
     behavior: workshop.conversationBehavior
   };
-
-  React.useEffect(() => {
-    const handleSessionShortcut = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
-      ) {
-        return;
-      }
-      if (!(event.metaKey || event.ctrlKey)) {
-        return;
-      }
-      if (event.key.toLocaleLowerCase() === 's' && !event.shiftKey) {
-        event.preventDefault();
-        if (
-          workshop.sessionReady &&
-          workshop.persistenceAvailable &&
-          !sessionMutationsDisabled
-        ) {
-          openSaveSessionModal();
-        }
-      }
-      if (event.key.toLocaleLowerCase() === 'n' && event.shiftKey) {
-        event.preventDefault();
-        if (workshop.sessionReady && !sessionMutationsDisabled) {
-          startNewSession();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleSessionShortcut);
-    return () => window.removeEventListener('keydown', handleSessionShortcut);
-  }, [
-    openSaveSessionModal,
-    sessionMutationsDisabled,
-    startNewSession,
-    workshop.persistenceAvailable,
-    workshop.sessionReady
-  ]);
 
   return (
     <div className="pm-ws">
@@ -1110,7 +826,7 @@ export const WorkshopApp: React.FC = () => {
             open={sessionsMenuOpen}
             activeSessionTitle={activeNamedSession?.title}
             saveStatus={activeSessionSaveStatus}
-            sessions={workshop.savedSessionSummaries}
+            sessions={workshopSessions.savedSessionSummaries}
             disabled={
               !workshop.sessionReady ||
               sessionMutationsDisabled ||
@@ -1127,7 +843,7 @@ export const WorkshopApp: React.FC = () => {
           />
           {/* Model browser — the SAME ModelSelector + ModelBrowserModal the
               sidebar uses (assistant scope, same MODEL_DATA rails); only the
-              trigger is reskinned to the workshop chip via workshop.css. */}
+              trigger is reskinned to the workshop chip via the Workshop shell styles. */}
           <ModelSelector
             scope="assistant"
             options={modelsSettings.modelOptions}
@@ -1183,12 +899,12 @@ export const WorkshopApp: React.FC = () => {
           This room remains open in memory; save a named checkpoint before replacing it.
         </div>
       )}
-      {workshop.sessionSaveStatus?.status === 'error' && (
+      {workshopSessions.sessionSaveStatus?.status === 'error' && (
         <div className="pm-ws-degraded-memory" role="alert">
           <Icon name="save" size={14} />
           Automatic session recovery failed. Your room remains open in memory.
-          {workshop.sessionSaveStatus.error
-            ? ` ${workshop.sessionSaveStatus.error}`
+          {workshopSessions.sessionSaveStatus.error
+            ? ` ${workshopSessions.sessionSaveStatus.error}`
             : ' Check the Prose Minion output for details.'}
         </div>
       )}
@@ -1394,8 +1110,8 @@ export const WorkshopApp: React.FC = () => {
                 })}
                 onCopy={copyTurn}
                 onSave={saveTurn}
-                onOpenWidgetConfig={openWidgetConfig}
-                onOpenWidgetRecommendation={openWidgetRecommendation}
+                onOpenWidgetConfig={widgetOpening.openWidgetConfig}
+                onOpenWidgetRecommendation={widgetOpening.openWidgetRecommendation}
               />
 
               {showLiveTurn && (
@@ -1500,7 +1216,7 @@ export const WorkshopApp: React.FC = () => {
               disabled={showLiveTurn || roomMutationLocked}
               removingWidgetIds={standingDirectives.removingWidgetIds}
               formatSummary={standingDirectives.formatSummary}
-              onEdit={openWidgetConfig}
+              onEdit={widgetOpening.openWidgetConfig}
               onRemove={standingDirectives.remove}
             />
             <WorkshopComposer
@@ -1578,10 +1294,10 @@ export const WorkshopApp: React.FC = () => {
       {/* Gesture Playground (ADR 2026-07-22): the Draft remains mounted until
           the host acknowledges that its writer turn and artifact are room
           truth. The participant response continues after the sheet closes. */}
-      {gestureOpening && (
+      {widgetOpening.gestureOpening && (
         <WorkshopGesturePlaygroundModal
           open
-          opening={gestureOpening}
+          opening={widgetOpening.gestureOpening}
           menuResult={gesturePlayground.widgetMenuResult}
           generationProgress={gesturePlayground.widgetGenerationProgress}
           actionResult={gesturePlayground.widgetActionResult}
@@ -1602,13 +1318,13 @@ export const WorkshopApp: React.FC = () => {
             modelsSettings.setModelSelection('widget', modelId)}
           onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
           roomRunActive={workshop.isRunning}
-          onClose={closeGesture}
+          onClose={widgetOpening.closeGesture}
         />
       )}
-      {lexicalGravityOpening && (
+      {widgetOpening.lexicalGravityOpening && (
         <WorkshopLexicalGravityModal
           open
-          opening={lexicalGravityOpening}
+          opening={widgetOpening.lexicalGravityOpening}
           lenses={lexicalGravity.lenses}
           storagePath={lexicalGravity.storagePath}
           catalogError={lexicalGravity.catalogError}
@@ -1630,7 +1346,7 @@ export const WorkshopApp: React.FC = () => {
           onWidgetModelChange={(modelId) =>
             modelsSettings.setModelSelection('widget', modelId)}
           onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
-          onClose={closeLexicalGravity}
+          onClose={widgetOpening.closeLexicalGravity}
         />
       )}
       <WorkshopNoticeModal
@@ -1701,33 +1417,35 @@ export const WorkshopApp: React.FC = () => {
         suggestedTitle={suggestedSessionTitle}
         activeNamedSession={activeNamedSession}
         manifest={saveSessionManifest}
-        saving={workshop.sessionActionPending === 'save'}
+        saving={workshopSessions.sessionActionPending === 'save'}
         onClose={closeSaveSessionModal}
-        onSave={workshop.saveSession}
+        onSave={workshopSessions.saveSession}
       />
       <WorkshopSessionBrowserModal
         open={sessionBrowserOpen}
-        available={workshop.sessionsAvailable}
-        unavailableReason={workshop.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason}
-        current={workshop.currentSessionSummary}
+        available={workshopSessions.sessionsAvailable}
+        unavailableReason={
+          workshopSessions.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason
+        }
+        current={workshopSessions.currentSessionSummary}
         activeSessionId={activeNamedSession?.sessionId}
-        sessions={workshop.savedSessionSummaries}
-        truncated={workshop.sessionsTruncated}
-        searchTruncated={workshop.sessionsSearchTruncated}
-        pending={workshop.sessionsPending}
-        error={workshop.sessionsError}
-        query={workshop.sessionSearchQuery}
+        sessions={workshopSessions.savedSessionSummaries}
+        truncated={workshopSessions.sessionsTruncated}
+        searchTruncated={workshopSessions.sessionsSearchTruncated}
+        pending={workshopSessions.sessionsPending}
+        error={workshopSessions.sessionsError}
+        query={workshopSessions.sessionSearchQuery}
         mutationsDisabled={sessionMutationsDisabled}
-        actionPending={workshop.sessionActionPending}
+        actionPending={workshopSessions.sessionActionPending}
         onClose={closeSessionBrowser}
-        onQueryChange={workshop.setSessionSearchQuery}
-        onRefresh={() => workshop.requestSessions()}
+        onQueryChange={workshopSessions.setSessionSearchQuery}
+        onRefresh={() => workshopSessions.requestSessions()}
         onNewSession={startNewSession}
         onOpen={openStoredSession}
-        onRename={workshop.renameSession}
-        onDuplicate={workshop.duplicateSession}
-        onReveal={workshop.revealSession}
-        onDelete={workshop.deleteSession}
+        onRename={workshopSessions.renameSession}
+        onDuplicate={workshopSessions.duplicateSession}
+        onReveal={workshopSessions.revealSession}
+        onDelete={workshopSessions.deleteSession}
       />
       <WorkshopConfirmDialog
         open={sessionConfirm !== null}

@@ -22,11 +22,9 @@ import {
   WorkshopExcerptSnapshot,
   WorkshopGestureDraft,
   WorkshopGestureMenuGroup,
-  WorkshopGestureWidgetConfigSnapshot,
   WorkshopGesturePlaygroundGeneratePayload,
   WorkshopGesturePlaygroundGenerationProgressPayload,
   WorkshopGesturePlaygroundMenuResultPayload,
-  WorkshopWidgetRecommendationSeed,
   WorkshopWidgetActionResultPayload,
   WorkshopWidgetSourceReference,
   workshopExcerptTitle
@@ -37,12 +35,9 @@ import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { ModelSelector } from '@components/shared/ModelSelector';
 import { WorkshopModalShell } from '@components/workshop/WorkshopModalShell';
-
-/** How the modal was opened; decides seeding and the commit button's label. */
-export type WorkshopGestureOpening =
-  | { kind: 'new'; seedTargetPhrase?: string }
-  | { kind: 'seed'; seed: WorkshopWidgetRecommendationSeed; personaLabel: string }
-  | { kind: 'clone'; config: WorkshopGestureWidgetConfigSnapshot };
+import type {
+  WorkshopGestureOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 
 interface WorkshopGesturePlaygroundModalProps {
   open: boolean;

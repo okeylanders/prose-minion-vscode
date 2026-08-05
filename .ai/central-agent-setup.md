@@ -241,6 +241,13 @@ export type UseDomainReturn = DomainState & DomainActions & {
 - ✅ Explicit persistence declarations
 - ✅ Consistent pattern across all domain hooks
 
+**Presentation controllers** are UI state machines under a domain's
+`controllers/` directory. They still honor the tripartite interface, including
+an explicit empty `Persistence` contract when the host owns durable truth.
+Unlike transport-owning domain hooks, controllers receive host effects as
+injected callbacks or narrow ports; they must not reference `useVSCodeApi`,
+`MessageType`, or `postMessage` directly.
+
 #### 5. Composed Persistence Pattern
 **Location**: `App.tsx` + `usePersistence.ts`
 **Purpose**: Automatic, type-safe state synchronization across sessions
