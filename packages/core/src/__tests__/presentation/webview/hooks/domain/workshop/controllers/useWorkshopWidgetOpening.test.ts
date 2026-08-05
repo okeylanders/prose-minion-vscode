@@ -162,4 +162,39 @@ describe('useWorkshopWidgetOpening', () => {
     expect(result.current.gestureOpening).toBeNull();
     expect(result.current.lexicalGravityOpening).toBeNull();
   });
+
+  it('reports and settles an unsupported widget config instead of failing silently', () => {
+    let host = emptyHost();
+    const onError = jest.fn();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { result, rerender } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError,
+      onCloseGesture: jest.fn(),
+      onCloseLexicalGravity: jest.fn()
+    }));
+
+    act(() => result.current.openWidgetConfig('wc-prose'));
+    host = {
+      ...host,
+      widgetConfigResponseId: 'wc-prose',
+      widgetConfigData: {
+        ...gestureConfig,
+        id: 'wc-prose',
+        widgetId: 'prose-controller'
+      } as unknown as WorkshopWidgetOpeningHost['widgetConfigData']
+    };
+    rerender();
+
+    expect(onError).toHaveBeenCalledWith(
+      "prose-controller can't be opened in this version."
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "[Workshop] prose-controller can't be opened in this version."
+    );
+    expect(result.current.pendingWidgetConfigId).toBeNull();
+    expect(host.clearWidgetConfigData).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
 });

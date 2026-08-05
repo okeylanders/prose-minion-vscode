@@ -6,6 +6,10 @@ import * as path from 'path';
 
 const WEBVIEW_ROOT = path.resolve(__dirname, '..', '..', 'presentation', 'webview');
 const WORKSHOP_APP = path.join(WEBVIEW_ROOT, 'WorkshopApp.tsx');
+const WEBVIEW_ENTRY = path.join(WEBVIEW_ROOT, 'index.tsx');
+
+const CSS_MODULE_REFERENCE =
+  /(?:from\s*|import\s*|import\(\s*|require\(\s*)['"][^'"]*\.css['"]/;
 
 const WORKSHOP_STYLE_IMPORTS = [
   './styles/workshop/tokens.css',
@@ -28,11 +32,24 @@ const PRE_SPLIT_SEPARATOR_AFTER = new Set<string>([
   './components/workshop/widgets/lexicalGravity/lexicalGravity.css'
 ]);
 
+// Migration receipt, not a permanent content freeze. These paths and this
+// digest prove the Sprint 03 split preserved the retired monolith byte-for-byte.
+// At the first intentional Workshop stylesheet edit, delete this receipt test
+// and its PRE_SPLIT_* constants; the move is proven and this seal is spent.
+const PRE_SPLIT_ASSEMBLY = [
+  './styles/workshop/tokens.css',
+  './styles/workshop/shell.css',
+  './styles/workshop/context.css',
+  './styles/workshop/session.css',
+  './components/workshop/widgets/gesturePlayground/gesturePlayground.css',
+  './components/workshop/widgets/lexicalGravity/lexicalGravity.css',
+  './components/workshop/standingDirectiveRail.css'
+] as const;
 const PRE_SPLIT_SHA256 = '64783db8fdfc6a0295fb94b5c7e345d79063890b334fb9f73ea88f597092db2d';
 
 describe('Workshop stylesheet assembly', () => {
   it('preserves every pre-split byte in the declared cascade order', () => {
-    const assembled = WORKSHOP_STYLE_IMPORTS.map((importPath) =>
+    const assembled = PRE_SPLIT_ASSEMBLY.map((importPath) =>
       fs.readFileSync(path.resolve(WEBVIEW_ROOT, importPath), 'utf8')
       + (PRE_SPLIT_SEPARATOR_AFTER.has(importPath) ? '\n' : '')
     ).join('');
@@ -51,10 +68,21 @@ describe('Workshop stylesheet assembly', () => {
     ]);
 
     const selfImportOffenders = collectTypeScriptFiles(WEBVIEW_ROOT)
-      .filter((file) => file !== WORKSHOP_APP && path.basename(file) !== 'index.tsx')
-      .filter((file) => /import ['"].*\.css['"]/.test(fs.readFileSync(file, 'utf8')))
+      .filter((file) => file !== WORKSHOP_APP && file !== WEBVIEW_ENTRY)
+      .filter((file) => CSS_MODULE_REFERENCE.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(WEBVIEW_ROOT, file));
     expect(selfImportOffenders).toEqual([]);
+  });
+
+  it.each([
+    "import './a.css';",
+    "import styles from './a.css';",
+    "import * as styles from './a.css';",
+    "import { className } from './a.css';",
+    "const styles = require('./a.css');",
+    "const styles = import('./a.css');"
+  ])('recognizes CSS module references in %s', (source) => {
+    expect(CSS_MODULE_REFERENCE.test(source)).toBe(true);
   });
 });
 

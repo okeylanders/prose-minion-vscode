@@ -5,6 +5,7 @@ import { useWorkshopRoom } from '@hooks/domain/workshop/useWorkshopRoom';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
+  ErrorMessage,
   MessageType,
   WorkshopSessionStateMessage,
   WorkshopTurn
@@ -80,14 +81,26 @@ describe('useWorkshopRoom', () => {
     } as WorkshopTurn];
     const { result } = renderHook(() => useWorkshopRoom());
     act(() => result.current.handleSessionState(stateWithTurns(priorTurns, 5)));
+    const priorError: ErrorMessage = {
+      type: MessageType.ERROR,
+      source: 'extension.workshop',
+      payload: {
+        source: 'workshop.session' as never,
+        message: 'Keep this room error visible.'
+      },
+      timestamp: 1
+    };
+    act(() => result.current.handleErrorMessage(priorError));
 
     let snapshot: ReturnType<typeof result.current.replacementPort.beginReplacement>;
     act(() => { snapshot = result.current.replacementPort.beginReplacement(); });
     expect(result.current.turns).toEqual([]);
     expect(result.current.hiddenTurns).toBe(0);
+    expect(result.current.errorMessage).toBe('');
 
     act(() => result.current.replacementPort.restoreReplacement(snapshot));
     expect(result.current.turns).toEqual(priorTurns);
     expect(result.current.hiddenTurns).toBe(4);
+    expect(result.current.errorMessage).toBe('Keep this room error visible.');
   });
 });

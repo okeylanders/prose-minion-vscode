@@ -82,9 +82,9 @@ describe('useWorkshopSessionSurfaces', () => {
     expect(props.openSession).toHaveBeenCalledWith('saved-1');
 
     act(() => result.current.requestShelfReplacement('paste'));
-    let resume: 'paste' | 'choose' | undefined;
-    act(() => { resume = result.current.acceptSessionConfirm(); });
-    expect(resume).toBe('paste');
+    let resumption: { resume: 'paste' | 'choose' } | undefined;
+    act(() => { resumption = result.current.acceptSessionConfirm(); });
+    expect(resumption).toEqual({ resume: 'paste' });
     expect(result.current.sessionConfirm).toBeNull();
   });
 
@@ -106,6 +106,46 @@ describe('useWorkshopSessionSurfaces', () => {
     expect(props.consumeSessionActionResult).toHaveBeenCalledTimes(1);
     expect(result.current.saveSessionModalOpen).toBe(false);
   });
+
+  it('keeps the save surface open and skips hidden-list refresh when save fails', () => {
+    const props = options();
+    const { result, rerender } = renderHook(() => useWorkshopSessionSurfaces(props));
+    act(() => result.current.openSaveSessionModal());
+    (props.requestSessions as jest.Mock).mockClear();
+
+    props.sessionActionResult = {
+      action: 'save',
+      ok: false,
+      message: 'Could not save.'
+    };
+    rerender();
+
+    expect(result.current.saveSessionModalOpen).toBe(true);
+    expect(props.onResult).toHaveBeenCalledWith(props.sessionActionResult);
+    expect(props.requestSessions).not.toHaveBeenCalled();
+    expect(props.consumeSessionActionResult).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['open', 'new'] as const)(
+    'keeps the browser open and preserves its filter when %s fails',
+    (action) => {
+      const props = options({ sessionSearchQuery: 'chapter' });
+      const { result, rerender } = renderHook(() => useWorkshopSessionSurfaces(props));
+      act(() => result.current.openSessionBrowser());
+      (props.requestSessions as jest.Mock).mockClear();
+
+      props.sessionActionResult = {
+        action,
+        ok: false,
+        message: `Could not ${action}.`
+      };
+      rerender();
+
+      expect(result.current.sessionBrowserOpen).toBe(true);
+      expect(props.requestSessions).toHaveBeenCalledWith();
+      expect(props.requestSessions).not.toHaveBeenCalledWith('');
+    }
+  );
 
   it('routes shortcuts only outside editable controls and behind mutation gates', () => {
     const props = options();

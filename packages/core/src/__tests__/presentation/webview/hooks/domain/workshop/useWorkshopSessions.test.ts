@@ -19,7 +19,7 @@ describe('useWorkshopSessions', () => {
 
   it('owns named-session posts independently of room state', () => {
     const replacement: WorkshopRoomReplacementPort = {
-      beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0 })),
+      beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0, errorMessage: '' })),
       restoreReplacement: jest.fn()
     };
     const { result } = renderHook(() => useWorkshopSessions(replacement));
@@ -41,7 +41,11 @@ describe('useWorkshopSessions', () => {
   });
 
   it('restores the exact room snapshot when New Session is rejected', () => {
-    const snapshot = { turns: [{ id: 'prior' } as never], totalTurns: 9 };
+    const snapshot = {
+      turns: [{ id: 'prior' } as never],
+      totalTurns: 9,
+      errorMessage: 'Keep the prior room error visible.'
+    };
     const replacement: WorkshopRoomReplacementPort = {
       beginReplacement: jest.fn(() => snapshot),
       restoreReplacement: jest.fn()

@@ -12,6 +12,9 @@ export type WorkshopSessionConfirm =
   | { kind: 'open'; sessionId: string; title: string }
   | { kind: 'replace-shelf'; resume: 'paste' | 'choose' };
 
+/** Work this controller cannot resolve alone; the shell must finish it. */
+export type WorkshopSessionConfirmResumption = { resume: 'paste' | 'choose' };
+
 export interface UseWorkshopSessionSurfacesOptions {
   sessionReady: boolean;
   persistenceAvailable: boolean;
@@ -45,12 +48,18 @@ export interface WorkshopSessionSurfacesActions {
   startFullReset: () => void;
   openStoredSession: (session: WorkshopSessionSummary) => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
-  acceptSessionConfirm: () => 'paste' | 'choose' | undefined;
+  acceptSessionConfirm: () => WorkshopSessionConfirmResumption | undefined;
   cancelSessionConfirm: () => void;
 }
 
+export interface WorkshopSessionSurfacesPersistence {
+  // Host/session storage owns every durable value in this domain.
+}
+
 export type UseWorkshopSessionSurfacesReturn = WorkshopSessionSurfacesState &
-  WorkshopSessionSurfacesActions;
+  WorkshopSessionSurfacesActions & {
+    persistedState: WorkshopSessionSurfacesPersistence;
+  };
 
 export function useWorkshopSessionSurfaces({
   sessionReady,
@@ -193,7 +202,7 @@ export function useWorkshopSessionSurfaces({
     } else if (sessionConfirm.kind === 'open') {
       openSession(sessionConfirm.sessionId);
     } else {
-      return sessionConfirm.resume;
+      return { resume: sessionConfirm.resume };
     }
     return undefined;
   }, [openSession, resetSession, sessionConfirm]);
@@ -251,6 +260,7 @@ export function useWorkshopSessionSurfaces({
     openStoredSession,
     requestShelfReplacement,
     acceptSessionConfirm,
-    cancelSessionConfirm
+    cancelSessionConfirm,
+    persistedState: {}
   };
 }

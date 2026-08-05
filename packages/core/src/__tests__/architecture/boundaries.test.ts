@@ -141,6 +141,10 @@ const WORKSHOP_SESSIONS_HOOK = path.join(
   SRC_ROOT,
   'presentation/webview/hooks/domain/workshop/useWorkshopSessions.ts'
 );
+const WORKSHOP_PRESENTATION_CONTROLLERS = path.join(
+  SRC_ROOT,
+  'presentation/webview/hooks/domain/workshop/controllers'
+);
 const WORKSHOP_STANDING_DIRECTIVE_OPERATIONS = path.join(
   SRC_ROOT,
   'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts'
@@ -361,6 +365,15 @@ describe('architectural boundaries', () => {
       SRC_ROOT,
       'presentation/webview/hooks/domain/useWorkshop.ts'
     ))).toBe(false);
+  });
+
+  it('Workshop presentation controllers receive host effects instead of owning transport', () => {
+    const transportReference = /(?:useVSCodeApi|MessageType|postMessage)/;
+    const offenders = collectSourceFiles(WORKSHOP_PRESENTATION_CONTROLLERS)
+      .filter((file) => transportReference.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
   });
 
   it('Workshop standing removal has one generic presentation owner', () => {

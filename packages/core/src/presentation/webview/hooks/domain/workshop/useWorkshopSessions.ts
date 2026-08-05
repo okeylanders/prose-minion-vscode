@@ -1,7 +1,7 @@
 /** Named-session browser and action owner for the Workshop presentation. */
 
 import * as React from 'react';
-import { useVSCodeApi } from '../../useVSCodeApi';
+import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import {
   MessageType,
   WorkshopSessionAction,

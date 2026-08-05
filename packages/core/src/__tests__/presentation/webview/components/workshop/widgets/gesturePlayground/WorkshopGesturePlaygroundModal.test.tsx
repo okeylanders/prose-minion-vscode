@@ -5,9 +5,11 @@
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import {
-  WorkshopGesturePlaygroundModal,
-  WorkshopGestureOpening
+  WorkshopGesturePlaygroundModal
 } from '@components/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundModal';
+import type {
+  WorkshopGestureOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import {
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,

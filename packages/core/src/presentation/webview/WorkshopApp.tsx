@@ -200,9 +200,8 @@ export const WorkshopApp: React.FC = () => {
   // Domain hooks — same rails the sidebar rides (epic thesis: reuse, not
   // reinvention). Balance/models/tokens arrive through this webview's own
   // MessageHandler.
-  const workshopRoom = useWorkshopRoom();
-  const workshopSessions = useWorkshopSessions(workshopRoom.replacementPort);
-  const workshop = { ...workshopRoom, ...workshopSessions };
+  const workshop = useWorkshopRoom();
+  const workshopSessions = useWorkshopSessions(workshop.replacementPort);
   const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
   const lexicalGravity = useLexicalGravity();
@@ -226,10 +225,14 @@ export const WorkshopApp: React.FC = () => {
     setToast(next);
   }, []);
   const standingDirectives = useWorkshopStandingDirectives(showToast);
+  const handleWidgetOpeningError = React.useCallback(
+    (message: string) => showToast({ message, icon: 'x', tone: 'error' }),
+    [showToast]
+  );
   const widgetOpening = useWorkshopWidgetOpening({
     host: widgetHost,
     standingDirectives: workshop.standingDirectives,
-    onError: (message) => showToast({ message, icon: 'x', tone: 'error' }),
+    onError: handleWidgetOpeningError,
     onCloseGesture: gesturePlayground.consumeWidgetActionResult,
     onCloseLexicalGravity: lexicalGravity.clearTransientResults
   });
@@ -289,7 +292,7 @@ export const WorkshopApp: React.FC = () => {
   );
 
   useWorkshopAppMessageRouter({
-    workshopRoom,
+    workshopRoom: workshop,
     workshopSessions,
     widgetHost,
     gesturePlayground,
@@ -308,7 +311,7 @@ export const WorkshopApp: React.FC = () => {
   });
 
   usePersistence({
-    ...workshopRoom.persistedState,
+    ...workshop.persistedState,
     ...workshopSessions.persistedState,
     ...widgetHost.persistedState,
     ...gesturePlayground.persistedState,
@@ -378,7 +381,8 @@ export const WorkshopApp: React.FC = () => {
   });
 
   const roomMutationLocked =
-    workshop.isRunning || workshop.wizardRunning || workshop.sessionActionPending !== undefined;
+    workshop.isRunning || workshop.wizardRunning ||
+    workshopSessions.sessionActionPending !== undefined;
   // Sprint 13A §9: gating has two independent reasons, and the UI must say
   // WHICH one applies. No excerpt → a permanent, explained gate with a badge.
   // Busy room → a temporary `disabled`, exactly as before.
@@ -436,7 +440,7 @@ export const WorkshopApp: React.FC = () => {
     !!workshop.shelvedExcerpt ||
     workshop.contextAttachments.length > 0;
   const handleSessionResult = React.useCallback(
-    (result: NonNullable<typeof workshop.sessionActionResult>) => {
+    (result: NonNullable<typeof workshopSessions.sessionActionResult>) => {
       showToast({
         message: result.message,
         icon: result.ok ? (result.action === 'save' ? 'save' : 'check') : 'x',
@@ -451,13 +455,13 @@ export const WorkshopApp: React.FC = () => {
     sessionMutationsDisabled,
     hasReplaceableSessionState,
     hasWorkingSet,
-    sessionSearchQuery: workshop.sessionSearchQuery,
-    sessionActionResult: workshop.sessionActionResult,
-    requestSessions: workshop.requestSessions,
-    setSessionSearchQuery: workshop.setSessionSearchQuery,
-    resetSession: workshop.resetSession,
-    openSession: workshop.openSession,
-    consumeSessionActionResult: workshop.consumeSessionActionResult,
+    sessionSearchQuery: workshopSessions.sessionSearchQuery,
+    sessionActionResult: workshopSessions.sessionActionResult,
+    requestSessions: workshopSessions.requestSessions,
+    setSessionSearchQuery: workshopSessions.setSessionSearchQuery,
+    resetSession: workshopSessions.resetSession,
+    openSession: workshopSessions.openSession,
+    consumeSessionActionResult: workshopSessions.consumeSessionActionResult,
     onResult: handleSessionResult
   });
   const {
@@ -552,10 +556,10 @@ export const WorkshopApp: React.FC = () => {
   } = contextSheet;
 
   const acceptSessionConfirm = React.useCallback(() => {
-    const resume = sessionSurfaces.acceptSessionConfirm();
-    if (resume === 'paste') {
+    const resumption = sessionSurfaces.acceptSessionConfirm();
+    if (resumption?.resume === 'paste') {
       openPasteSheet();
-    } else if (resume === 'choose') {
+    } else if (resumption?.resume === 'choose') {
       openExcerptSelector();
     }
   }, [
@@ -756,8 +760,8 @@ export const WorkshopApp: React.FC = () => {
       : undefined;
     return sourcePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? 'Untitled session';
   })();
-  const activeNamedSession = workshop.activeNamedSessionSummary;
-  const activeSessionSaveStatus = workshop.sessionSaveStatus?.status ?? 'saved';
+  const activeNamedSession = workshopSessions.activeNamedSessionSummary;
+  const activeSessionSaveStatus = workshopSessions.sessionSaveStatus?.status ?? 'saved';
   const suggestedSessionTitle = activeNamedSession?.title ??
     `${excerptSessionLabel} — ${activePersona.label} — ${
       new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -822,7 +826,7 @@ export const WorkshopApp: React.FC = () => {
             open={sessionsMenuOpen}
             activeSessionTitle={activeNamedSession?.title}
             saveStatus={activeSessionSaveStatus}
-            sessions={workshop.savedSessionSummaries}
+            sessions={workshopSessions.savedSessionSummaries}
             disabled={
               !workshop.sessionReady ||
               sessionMutationsDisabled ||
@@ -895,12 +899,12 @@ export const WorkshopApp: React.FC = () => {
           This room remains open in memory; save a named checkpoint before replacing it.
         </div>
       )}
-      {workshop.sessionSaveStatus?.status === 'error' && (
+      {workshopSessions.sessionSaveStatus?.status === 'error' && (
         <div className="pm-ws-degraded-memory" role="alert">
           <Icon name="save" size={14} />
           Automatic session recovery failed. Your room remains open in memory.
-          {workshop.sessionSaveStatus.error
-            ? ` ${workshop.sessionSaveStatus.error}`
+          {workshopSessions.sessionSaveStatus.error
+            ? ` ${workshopSessions.sessionSaveStatus.error}`
             : ' Check the Prose Minion output for details.'}
         </div>
       )}
@@ -1413,33 +1417,35 @@ export const WorkshopApp: React.FC = () => {
         suggestedTitle={suggestedSessionTitle}
         activeNamedSession={activeNamedSession}
         manifest={saveSessionManifest}
-        saving={workshop.sessionActionPending === 'save'}
+        saving={workshopSessions.sessionActionPending === 'save'}
         onClose={closeSaveSessionModal}
-        onSave={workshop.saveSession}
+        onSave={workshopSessions.saveSession}
       />
       <WorkshopSessionBrowserModal
         open={sessionBrowserOpen}
-        available={workshop.sessionsAvailable}
-        unavailableReason={workshop.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason}
-        current={workshop.currentSessionSummary}
+        available={workshopSessions.sessionsAvailable}
+        unavailableReason={
+          workshopSessions.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason
+        }
+        current={workshopSessions.currentSessionSummary}
         activeSessionId={activeNamedSession?.sessionId}
-        sessions={workshop.savedSessionSummaries}
-        truncated={workshop.sessionsTruncated}
-        searchTruncated={workshop.sessionsSearchTruncated}
-        pending={workshop.sessionsPending}
-        error={workshop.sessionsError}
-        query={workshop.sessionSearchQuery}
+        sessions={workshopSessions.savedSessionSummaries}
+        truncated={workshopSessions.sessionsTruncated}
+        searchTruncated={workshopSessions.sessionsSearchTruncated}
+        pending={workshopSessions.sessionsPending}
+        error={workshopSessions.sessionsError}
+        query={workshopSessions.sessionSearchQuery}
         mutationsDisabled={sessionMutationsDisabled}
-        actionPending={workshop.sessionActionPending}
+        actionPending={workshopSessions.sessionActionPending}
         onClose={closeSessionBrowser}
-        onQueryChange={workshop.setSessionSearchQuery}
-        onRefresh={() => workshop.requestSessions()}
+        onQueryChange={workshopSessions.setSessionSearchQuery}
+        onRefresh={() => workshopSessions.requestSessions()}
         onNewSession={startNewSession}
         onOpen={openStoredSession}
-        onRename={workshop.renameSession}
-        onDuplicate={workshop.duplicateSession}
-        onReveal={workshop.revealSession}
-        onDelete={workshop.deleteSession}
+        onRename={workshopSessions.renameSession}
+        onDuplicate={workshopSessions.duplicateSession}
+        onReveal={workshopSessions.revealSession}
+        onDelete={workshopSessions.deleteSession}
       />
       <WorkshopConfirmDialog
         open={sessionConfirm !== null}

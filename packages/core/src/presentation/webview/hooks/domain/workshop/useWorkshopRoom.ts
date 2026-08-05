@@ -241,6 +241,7 @@ export type WorkshopRoomPersistence = Record<string, never>;
 export interface WorkshopRoomThreadSnapshot {
   turns: WorkshopTurn[];
   totalTurns: number;
+  errorMessage: string;
 }
 
 /** One-way seam consumed by useWorkshopSessions for optimistic room replacement. */
@@ -540,16 +541,17 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   }, [vscode]);
 
   const beginReplacement = React.useCallback((): WorkshopRoomThreadSnapshot => {
-    const snapshot = { turns: [...turns], totalTurns };
+    const snapshot = { turns: [...turns], totalTurns, errorMessage };
     setErrorMessage('');
     setTurns([]);
     setTotalTurns(0);
     return snapshot;
-  }, [totalTurns, turns]);
+  }, [errorMessage, totalTurns, turns]);
 
   const restoreReplacement = React.useCallback((snapshot: WorkshopRoomThreadSnapshot) => {
     setTurns(snapshot.turns);
     setTotalTurns(snapshot.totalTurns);
+    setErrorMessage(snapshot.errorMessage);
   }, []);
 
   const replacementPort = React.useMemo<WorkshopRoomReplacementPort>(() => ({

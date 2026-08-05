@@ -29,10 +29,6 @@ import type {
   WorkshopLexicalGravityOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 
-export type {
-  WorkshopLexicalGravityOpening
-} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
-
 interface WorkshopLexicalGravityModalProps {
   open: boolean;
   opening: WorkshopLexicalGravityOpening;

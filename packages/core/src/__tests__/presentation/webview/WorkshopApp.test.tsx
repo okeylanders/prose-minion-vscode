@@ -6,7 +6,8 @@ import { MessageType } from '@messages';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   DEFAULT_WORKSHOP_WRITER_PROFILE,
-  WorkshopSessionStateMessage
+  WorkshopSessionStateMessage,
+  WorkshopTurn
 } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
@@ -24,6 +25,19 @@ jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmL
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { WorkshopApp } from '@/presentation/webview/WorkshopApp';
 
+const existingTurn: WorkshopTurn = {
+  id: 'turn-1',
+  role: 'user',
+  kind: 'tool_run',
+  participant: 'writer',
+  artifact: 'tool_request',
+  toolId: 'prose',
+  toolLabel: 'Prose',
+  content: 'Run Prose on the pinned excerpt.',
+  timestamp: 1,
+  excerptVersion: 0
+};
+
 const readySession = (): WorkshopSessionStateMessage => ({
   type: MessageType.WORKSHOP_SESSION_STATE,
   source: 'extension.workshop',
@@ -38,12 +52,12 @@ const readySession = (): WorkshopSessionStateMessage => ({
       widgetConfigs: [],
       standingDirectives: [],
       todos: [],
-      turns: [],
-      totalTurns: 0,
+      turns: [existingTurn],
+      totalTurns: 1,
       truncatedTurns: 0,
-      roomHasMemory: false,
+      roomHasMemory: true,
       participants: {
-        host: { personaId: 'jill', hasConversation: false },
+        host: { personaId: 'jill', hasConversation: true },
         toolSidecars: [],
         personaGuests: [],
         chatTarget: { kind: 'host' }
@@ -70,7 +84,7 @@ describe('WorkshopApp', () => {
   });
 
   it('renders the room shell and opens its composed feature surfaces', () => {
-    render(<WorkshopApp />);
+    render(<WorkshopApp />, { wrapper: React.StrictMode });
 
     expect(screen.getByRole('heading', { name: 'Workshop' })).not.toBeNull();
     expect(screen.getByLabelText('Session rail')).not.toBeNull();
@@ -86,5 +100,10 @@ describe('WorkshopApp', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Tools' }));
     expect(screen.getByRole('dialog', { name: /tools/i })).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close tools' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sessions' }));
+    fireEvent.click(screen.getByText('New session').closest('button') as HTMLButtonElement);
+    expect(screen.getByRole('dialog', { name: 'Start a new session?' })).not.toBeNull();
   });
 });

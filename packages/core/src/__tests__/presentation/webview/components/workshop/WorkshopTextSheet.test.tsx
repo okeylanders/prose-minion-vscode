@@ -16,10 +16,10 @@
 
 import * as React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import {
-  WorkshopTextSheet,
+import { WorkshopTextSheet } from '@components/workshop/WorkshopTextSheet';
+import type {
   WorkshopTextSheetMode
-} from '@components/workshop/WorkshopTextSheet';
+} from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
 
 const renderSheet = (
   overrides: Partial<React.ComponentProps<typeof WorkshopTextSheet>> = {}

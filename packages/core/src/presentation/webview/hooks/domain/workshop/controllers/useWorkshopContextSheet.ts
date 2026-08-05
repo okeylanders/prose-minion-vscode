@@ -7,9 +7,12 @@ import {
   WorkshopExcerptSource,
   workshopExcerptSourcePath
 } from '@messages';
-import type { WorkshopAttachmentContentState } from '../useWorkshopRoom';
-import type { WorkshopVerifiedExcerpt } from '../../useWorkshopExcerptVerify';
+import type {
+  WorkshopAttachmentContentState
+} from '@hooks/domain/workshop/useWorkshopRoom';
+import type { WorkshopVerifiedExcerpt } from '@hooks/domain/useWorkshopExcerptVerify';
 
+/** What the sheet is being used for; drives kicker, copy, and affordances. */
 export type WorkshopTextSheetMode =
   | { kind: 'excerpt'; retainedConversation: boolean }
   | { kind: 'context-new' }
@@ -57,8 +60,14 @@ export interface WorkshopContextSheetActions {
   closeTextSheet: () => void;
 }
 
+export interface WorkshopContextSheetPersistence {
+  // Host/session storage owns every durable value in this domain.
+}
+
 export type UseWorkshopContextSheetReturn = WorkshopContextSheetState &
-  WorkshopContextSheetActions;
+  WorkshopContextSheetActions & {
+    persistedState: WorkshopContextSheetPersistence;
+  };
 
 export function useWorkshopContextSheet({
   hasHostConversation,
@@ -135,6 +144,9 @@ export function useWorkshopContextSheet({
       return;
     }
     if (textSheet.mode.kind === 'excerpt') {
+      // Verified provenance survives the move into the sheet: the claim
+      // applies only while the applied text still equals what the host
+      // verified against the editor selection.
       pinExcerpt(
         text,
         verifiedExcerpt !== null && text === verifiedExcerpt.text
@@ -167,6 +179,8 @@ export function useWorkshopContextSheet({
     openExcerptSelector();
   }, [openExcerptSelector]);
 
+  // The fetched body, matched to the sheet that asked for it: a late reply for
+  // a pill the writer already closed must never paint into the open sheet.
   const sheetAttachment = textSheet?.attachmentId !== undefined &&
     attachmentContent?.id === textSheet.attachmentId
     ? attachmentContent
@@ -192,6 +206,7 @@ export function useWorkshopContextSheet({
     applyTextSheet,
     openAttachmentInEditor,
     chooseExcerptFromSheet,
-    closeTextSheet
+    closeTextSheet,
+    persistedState: {}
   };
 }

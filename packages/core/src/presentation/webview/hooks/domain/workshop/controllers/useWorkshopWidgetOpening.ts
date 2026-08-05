@@ -13,6 +13,7 @@ import {
   WorkshopWidgetRecommendationSeed
 } from '@messages';
 
+/** How the modal was opened; decides seeding and the commit button's label. */
 export type WorkshopGestureOpening =
   | { kind: 'new'; seedTargetPhrase?: string }
   | { kind: 'seed'; seed: WorkshopWidgetRecommendationSeed; personaLabel: string }
@@ -56,8 +57,14 @@ export interface WorkshopWidgetOpeningActions {
   closeLexicalGravity: () => void;
 }
 
+export interface WorkshopWidgetOpeningPersistence {
+  // Host/session storage owns every durable value in this domain.
+}
+
 export type UseWorkshopWidgetOpeningReturn = WorkshopWidgetOpeningState &
-  WorkshopWidgetOpeningActions;
+  WorkshopWidgetOpeningActions & {
+    persistedState: WorkshopWidgetOpeningPersistence;
+  };
 
 export function useWorkshopWidgetOpening({
   host,
@@ -137,6 +144,8 @@ export function useWorkshopWidgetOpening({
 
     const config = host.widgetConfigData;
     if (config?.id === pendingWidgetConfigId) {
+      // The wire may be ahead of this webview's discriminated union.
+      const receivedWidgetId = String(config.widgetId);
       if (config.widgetId === 'gesture-playground') {
         setGestureOpening({ kind: 'clone', config });
       } else if (config.widgetId === 'lexical-gravity') {
@@ -146,6 +155,10 @@ export function useWorkshopWidgetOpening({
         setLexicalGravityOpening(
           active ? { kind: 'edit', config } : { kind: 'new', seed: config.draft }
         );
+      } else {
+        const message = `${receivedWidgetId} can't be opened in this version.`;
+        console.warn(`[Workshop] ${message}`);
+        onError(message);
       }
       setPendingWidgetConfigId(null);
       host.clearWidgetConfigData();
@@ -175,6 +188,7 @@ export function useWorkshopWidgetOpening({
     launchWidget,
     openWidgetRecommendation,
     closeGesture,
-    closeLexicalGravity
+    closeLexicalGravity,
+    persistedState: {}
   };
 }

@@ -27,11 +27,6 @@ import type {
   WorkshopTextSheetMode
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
 
-/** What the sheet is being used for; drives kicker, copy, and affordances. */
-export type {
-  WorkshopTextSheetMode
-} from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
-
 export interface WorkshopTextSheetProps {
   open: boolean;
   mode: WorkshopTextSheetMode;

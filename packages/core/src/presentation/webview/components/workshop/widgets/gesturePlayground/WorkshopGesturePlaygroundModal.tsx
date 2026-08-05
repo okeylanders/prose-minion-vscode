@@ -39,9 +39,6 @@ import type {
   WorkshopGestureOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 
-/** How the modal was opened; decides seeding and the commit button's label. */
-export type { WorkshopGestureOpening } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
-
 interface WorkshopGesturePlaygroundModalProps {
   open: boolean;
   opening: WorkshopGestureOpening;

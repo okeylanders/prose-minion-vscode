@@ -71,15 +71,17 @@ The close-out filename audit will trace these representative actions:
   tests beside both new hooks.
 - `useWorkshopSessionSurfaces`, `useWorkshopContextSheet`, and
   `useWorkshopWidgetOpening` own the three independent presentation state
-  machines accepted in D3. Scope transitions remain inline, and modal-local
+  machines accepted in D3. Their opening/mode unions live with the controllers
+  that own those states. Scope transitions remain inline, and modal-local
   workflow extraction remains deferred.
 - `workshop.css` is split into shared token/shell/context/session styles plus
   co-located Gesture, Lexical, and standing-rail styles. `WorkshopApp` is the
   single import composition point.
 - W1 proved that the pre-split byte order is token -> shell -> context ->
-  session -> feature. Reordering session ahead of context would have changed
-  the cascade, so this sprint preserves the measured order and records the
-  runway's anticipated deviation rather than shipping a visual change.
+  session -> feature -> generic standing rail. Reordering session ahead of
+  context or moving the generic rail ahead of the feature styles would have
+  changed the cascade, so this sprint preserves both measured deviations from
+  the runway diagram rather than shipping a visual change.
 
 The filename-first action audit resolves as follows:
 
@@ -91,21 +93,23 @@ The filename-first action audit resolves as follows:
   `useWorkshopContextSheet.ts`;
 - Gesture/Lexical open, reopen, correlation, and cleanup:
   `useWorkshopWidgetOpening.ts`;
-- shelved-passage re-pin: the explicit scope-transition callbacks in
-  `WorkshopApp.tsx`;
+- shelved-passage re-pin: `useWorkshopRoom.ts`;
 - standing-directive removal: `useWorkshopStandingDirectives.ts` through the
   existing `useWorkshopWidgetHost.ts` seam.
 
 ## Verification
 
-- `npm test -- --runInBand`: 175 suites, 1,836 tests, and 1 snapshot passed.
+- `npm test -- --runInBand`: 175 suites, 1,847 tests, and 1 snapshot passed.
 - `npm run typecheck`: all three TypeScript projects passed.
-- focused ESLint over the touched production and test paths passed with zero
-  errors.
+- full-repository ESLint passed with zero errors and 921 repo-wide convention
+  warnings; the focused touched paths retained only the two pre-existing
+  naming warnings in `WorkshopApp` and its `PmLogo` test mock.
 - `npm run build`: production bundles and the bundle sentinel passed; webpack
   emitted only the existing size warnings.
 - W1/W2/W3 architecture witnesses passed, including byte-identical stylesheet
   assembly and the single-import-site guard.
+- The StrictMode shell witness now crosses the extracted session controller:
+  a populated room opens the New Session confirmation through the composed UI.
 - Interactive VS Code visual inspection remains pending; it cannot be honestly
   performed in this headless implementation session.
 
@@ -119,8 +123,8 @@ The filename-first action audit resolves as follows:
       facade with a removal plan inside this sprint.
 - [x] Feature styles live with feature surfaces; shared tokens remain shared.
 - [x] The assembled stylesheet follows the measured token -> shell -> context
-      -> session -> feature import order without changing a byte of cascade.
-- [ ] A manual visual pass records no regression across the room shell,
-      transcript/composer, named-session controls, context/resource surfaces,
-      Gesture Playground, Lexical Gravity, and the standing-widget rail.
+      -> session -> feature -> generic rail import order without changing a
+      byte of cascade.
+- [ ] Walk the ten Traceability witnesses above in the Extension Development
+      Host and record the date, VS Code version, and observed result here.
 - [x] Representative UI actions are traceable by filename without broad search.
