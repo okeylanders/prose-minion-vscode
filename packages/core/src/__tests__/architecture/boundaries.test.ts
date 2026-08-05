@@ -221,6 +221,20 @@ const WORKSHOP_CONTEXT_INTAKE_FORBIDDEN_REFERENCES = [
   'WorkshopSessionService',
   'LogSink'
 ] as const;
+const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopContextHandler.ts'),
+    reference: /WorkshopContextHandler/
+  },
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopExcerptScopeHandler.ts'),
+    reference: /WorkshopExcerptScopeHandler/
+  },
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopTodoHandler.ts'),
+    reference: /WorkshopTodoHandler/
+  }
+] as const;
 
 const MODULE_REFERENCE = new RegExp(
   [
@@ -474,6 +488,21 @@ describe('architectural boundaries', () => {
       .filter((reference) => new RegExp(String.raw`\b${reference}\b`).test(source));
 
     expect(forbiddenReferences).toEqual([]);
+  });
+
+  it('keeps extracted Workshop handler slices from importing one another', () => {
+    const offenders = WORKSHOP_EXTRACTED_HANDLER_SLICES.flatMap((slice) => {
+      const source = fs.readFileSync(slice.file, 'utf8');
+      return WORKSHOP_EXTRACTED_HANDLER_SLICES
+        .filter((sibling) => sibling.file !== slice.file)
+        .filter((sibling) => importsFeature(source, sibling.reference))
+        .map((sibling) =>
+          `${path.relative(SRC_ROOT, slice.file)} -> ${path.relative(SRC_ROOT, sibling.file)}`
+        );
+    });
+
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(3);
+    expect(offenders).toEqual([]);
   });
 
   it('Workshop feature modules do not import the sibling feature', () => {

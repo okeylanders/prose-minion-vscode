@@ -8,7 +8,7 @@ import {
 } from './WorkshopHandlerTestHarness';
 import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
 
-describe('WorkshopHandler aggregate routing — assembly seams', () => {
+describe('WorkshopHandler routing — cross-owner seams', () => {
   let session: WorkshopHandlerTestHarness['session'];
   let log: WorkshopHandlerTestHarness['log'];
   let service: WorkshopHandlerTestHarness['service'];
@@ -404,6 +404,61 @@ describe('WorkshopHandler aggregate routing — assembly seams', () => {
     const runWizard = () =>
       router.route(message(MessageType.WORKSHOP_RUN_CONTEXT_WIZARD, {}) as any);
 
+    it('uses one run-state precedence for excerpt and session-operation refusals', async () => {
+      await pin();
+      let finishRoom!: () => void;
+      let finishWizard!: () => void;
+      service.startWorkshopPersonaConversation.mockImplementationOnce(
+        () => new Promise((resolve) => {
+          finishRoom = () => resolve(
+            analysisResult('Room reply.', { conversationId: 'host-conv' }) as any
+          );
+        })
+      );
+      contextAssistant.generateContext.mockImplementationOnce(
+        () => new Promise((resolve) => {
+          finishWizard = () => resolve({
+            toolName: 'context_assistant',
+            content: '',
+            timestamp: new Date(0),
+            requestedResources: []
+          });
+        })
+      );
+
+      const roomRun = router.route(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Keep thinking.' }
+      ) as any);
+      await Promise.resolve();
+      const wizardRun = runWizard();
+      await Promise.resolve();
+      expect(service.startWorkshopPersonaConversation).toHaveBeenCalledTimes(1);
+      expect(contextAssistant.generateContext).toHaveBeenCalledTimes(1);
+
+      await router.route(message(MessageType.WORKSHOP_SET_EXCERPT, {
+        text: 'A replacement that must wait.',
+        source: { kind: 'manual' }
+      }) as any);
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toBe(
+        'A tool is still running. Wait for it to finish (or start a new session) before replacing the excerpt.'
+      );
+
+      await router.route(message(MessageType.WORKSHOP_RENAME_SESSION, {
+        sessionId: 'saved-1',
+        title: 'Must Wait'
+      }) as any);
+      expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload).toEqual({
+        action: 'rename',
+        ok: false,
+        message: 'Wait for the current response to finish before you rename a saved session.'
+      });
+
+      finishRoom();
+      finishWizard();
+      await Promise.all([roomRun, wizardRun]);
+    });
+
     it('routes a wizard-time excerpt refusal through the excerpt owner', async () => {
       await pin();
       let reject!: (reason: unknown) => void;
@@ -465,6 +520,34 @@ describe('WorkshopHandler aggregate routing — assembly seams', () => {
 
       await runWizard();
       expect(contextAssistant.generateContext).toHaveBeenCalledTimes(2);
+    });
+
+    it('logs a stale Context-wizard cancellation request', async () => {
+      await pin();
+      let finish!: () => void;
+      contextAssistant.generateContext.mockImplementationOnce(
+        () => new Promise((resolve) => {
+          finish = () => resolve({
+            toolName: 'context_assistant',
+            content: '',
+            timestamp: new Date(0),
+            requestedResources: []
+          });
+        })
+      );
+
+      const run = runWizard();
+      await Promise.resolve();
+      await router.route(message(MessageType.CANCEL_WORKSHOP_REQUEST, {
+        requestId: 'stale-wizard-request',
+        domain: 'workshop-context'
+      }) as any);
+
+      expect(log.appendLine).toHaveBeenCalledWith(
+        '[WorkshopHandler] Cancel ignored: stale-wizard-request (domain=workshop-context)'
+      );
+      finish();
+      await run;
     });
 
     it('rejects a session reset while the Context wizard is active', async () => {

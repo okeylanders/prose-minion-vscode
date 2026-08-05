@@ -7,7 +7,6 @@ import {
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  WorkshopConfiguredResourceLoadResult,
   WorkshopContextIntakeService
 } from '@/application/services/workshop/WorkshopContextIntakeService';
 import {
@@ -18,6 +17,7 @@ import type {
   WorkshopRoomEffects,
   WorkshopRunGate
 } from '@handlers/domain/workshop/WorkshopHandlerContracts';
+import { MessageRouter } from '@handlers/MessageRouter';
 import { LogSink, ShellService } from '@/platform';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_SCOPE_LOCK_RECOVERY_MESSAGE } from '@shared/constants/workshopScope';
@@ -70,7 +70,10 @@ export class WorkshopExcerptScopeHandler {
     private readonly effects: WorkshopExcerptScopeEffects
   ) {}
 
-  registerRoutes(registerMutation: WorkshopMutationRouteRegistrar): void {
+  registerRoutes(
+    router: MessageRouter,
+    registerMutation: WorkshopMutationRouteRegistrar
+  ): void {
     registerMutation(MessageType.WORKSHOP_SET_EXCERPT, this.handleSetExcerpt.bind(this));
     registerMutation(
       MessageType.WORKSHOP_SET_EXCERPT_RESOURCE,
@@ -142,7 +145,12 @@ export class WorkshopExcerptScopeHandler {
       maxBytes: PROMPT_BUDGETS.fileExcerpt.bytes,
       maxWords: PROMPT_BUDGETS.fileExcerpt.words
     });
-    if (!this.reportConfiguredResourceLoadFailure(loaded, 'pin', PROMPT_BUDGETS.fileExcerpt.bytes)) {
+    if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
+      loaded,
+      'pin',
+      PROMPT_BUDGETS.fileExcerpt.bytes,
+      this.effects.reportError
+    )) {
       return;
     }
     const { resource } = loaded;
@@ -375,23 +383,6 @@ export class WorkshopExcerptScopeHandler {
     };
   }
 
-  private reportConfiguredResourceLoadFailure(
-    result: WorkshopConfiguredResourceLoadResult,
-    action: string,
-    maxBytes = PROMPT_BUDGETS.contextAttachments.fileBytes
-  ): result is Extract<WorkshopConfiguredResourceLoadResult, { kind: 'loaded' }> {
-    const refusal = this.contextIntakeService.describeConfiguredResourceFailure(
-      result,
-      action,
-      maxBytes
-    );
-    if (refusal) {
-      this.effects.reportError(refusal.message, refusal.details);
-      return false;
-    }
-    return true;
-  }
-
   private async withConfiguredResource(
     source: WorkshopExcerptSource
   ): Promise<WorkshopExcerptSource> {
@@ -414,7 +405,7 @@ export class WorkshopExcerptScopeHandler {
         break;
       case 'matched':
         this.outputChannel.appendLine(
-          `[WorkshopExcerptScopeHandler] Excerpt source resolved to configured resource [${match.summary.group}] ${match.summary.path}`
+          `[WorkshopExcerptScopeHandler] Excerpt source resolved to configured resource [${match.configuredResource.group}] ${match.configuredResource.path}`
         );
         break;
       case 'manual':

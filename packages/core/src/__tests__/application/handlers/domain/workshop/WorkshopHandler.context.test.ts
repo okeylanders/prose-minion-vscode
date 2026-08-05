@@ -9,7 +9,7 @@ import {
 } from './WorkshopHandlerTestHarness';
 import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
 
-describe('WorkshopHandler aggregate routing — context owner', () => {
+describe('WorkshopHandler routing — context owner', () => {
   let session: WorkshopHandlerTestHarness['session'];
   let log: WorkshopHandlerTestHarness['log'];
   let service: WorkshopHandlerTestHarness['service'];

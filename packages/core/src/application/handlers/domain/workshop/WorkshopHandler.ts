@@ -30,10 +30,11 @@ import {
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { renderWorkshopStandingDirectiveFrames } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
-import { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
-import { WorkshopLexicalGravityHandler } from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
-import { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
-import { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
+import {
+  WorkshopLexicalGravityHandler,
+  WorkshopLexicalGravityModelPort,
+  WorkshopLexicalGravityRepositoryPort
+} from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
 import {
   WorkshopPreparedTimeNotice,
   WorkshopSessionTimeService,
@@ -96,6 +97,7 @@ import {
   WorkshopChatTarget,
   LabeledContextBudgetSnapshot,
   WorkshopTurn,
+  WorkshopMessageAttachmentSnapshot,
   WorkshopTurnMessage,
   WorkshopTurnWidgetCommit,
   WorkshopWidgetId,
@@ -111,12 +113,15 @@ import type {
 import { WorkshopContextHandler } from '@handlers/domain/workshop/WorkshopContextHandler';
 import { WorkshopExcerptScopeHandler } from '@handlers/domain/workshop/WorkshopExcerptScopeHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
-import { WorkshopGesturePlaygroundHandler } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
+import {
+  WorkshopGesturePlaygroundHandler,
+  WorkshopGesturePlaygroundServicePort
+} from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
-  WorkshopStandingDirectiveHandler
+  WorkshopStandingDirectiveHandler,
+  WorkshopStandingDirectiveServicePort
 } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
-import { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -149,6 +154,59 @@ const behaviorFramesFor = (
     : undefined
 });
 
+type WorkshopPersonaBehaviorFrames = ReturnType<typeof behaviorFramesFor> & {
+  timeFrame?: string;
+};
+
+type WorkshopPendingHostUpdates = ReturnType<
+  WorkshopSessionService['collectPendingHostUpdates']
+>;
+type WorkshopTodoEvidenceFrame = ReturnType<typeof buildWorkshopTodoEvidence>;
+
+interface WorkshopTargetTurnInput {
+  requestId: string;
+  text: string;
+  displayText: string;
+  attachmentRefs: readonly WorkshopMessageAttachmentSnapshot[];
+  widgetCommitRef?: WorkshopTurnWidgetCommit;
+  roomCatchUp?: string;
+  hasConversationalCatchUp: boolean;
+  todoEvidence?: WorkshopTodoEvidenceFrame;
+  hostUpdateFrame?: string;
+  threadArtifactFrames: string[];
+  timeNotice?: WorkshopPreparedTimeNotice;
+}
+
+interface WorkshopTargetTurn {
+  userTurn: WorkshopTurn;
+  modelMessage: string;
+  statusMessage: string;
+  personaBehaviorFrames: WorkshopPersonaBehaviorFrames;
+}
+
+interface WorkshopMessageTargetPlan {
+  chatTarget: WorkshopChatTarget;
+  conversationId?: string;
+  label: string;
+  requestType: string;
+  toolId?: WorkshopToolId;
+  guestPersonaId?: WorkshopPersonaId;
+  missingConversationMessage?: string;
+  requiresExcerpt: boolean;
+  participantOwner?: WorkshopCapabilityPrincipal;
+  publishesRoomArtifacts: boolean;
+  createsRetainedConversation: boolean;
+  completionReason: string;
+  hostUpdateDeliveryLabel?: string;
+  collectPendingHostUpdates: () => WorkshopPendingHostUpdates | undefined;
+  buildTodoEvidence: () => WorkshopTodoEvidenceFrame;
+  buildHostUpdateFrame: (
+    pendingHostUpdates: WorkshopPendingHostUpdates | undefined
+  ) => string | undefined;
+  prepareTimeNotice: () => WorkshopPreparedTimeNotice | undefined;
+  prepareTurn: (input: WorkshopTargetTurnInput) => WorkshopTargetTurn;
+}
+
 /** Optional direct-mode shortcut; explicit target state remains authoritative. */
 export const isWorkshopHostReturnShortcut = (text: string, personaLabel: string): boolean =>
   new RegExp(
@@ -162,11 +220,11 @@ export const isWorkshopHostReturnShortcut = (text: string, personaLabel: string)
  * another positional argument to the already broad controller constructor.
  */
 export interface WorkshopWidgetRuntime {
-  gesturePlayground: GesturePlaygroundService;
-  standingDirectives: WorkshopStandingDirectiveService;
+  gesturePlayground: WorkshopGesturePlaygroundServicePort;
+  standingDirectives: WorkshopStandingDirectiveServicePort;
   lexicalGravity: {
-    model: LexicalGravityModelService;
-    repository: LexicalGravityLensRepository;
+    model: WorkshopLexicalGravityModelPort;
+    repository: WorkshopLexicalGravityRepositoryPort;
   };
 }
 
@@ -250,11 +308,7 @@ export class WorkshopHandler {
       contextIntakeService,
       this.outputChannel,
       {
-        excerptMutationBlockedReason: () => this.activeRun
-          ? MID_RUN_EXCERPT_GUARD_MESSAGE
-          : this.contextHandler.isRunning()
-            ? MID_WIZARD_EXCERPT_GUARD_MESSAGE
-            : undefined
+        excerptMutationBlockedReason: () => this.excerptMutationBlockedReason()
       },
       {
         postSessionState: () => this.postSessionState(),
@@ -277,13 +331,9 @@ export class WorkshopHandler {
           await this.flushDeferredConversationSettings();
         },
         reportError: (message, details) => {
-          this.sendError('workshop', message, details);
+          this.sendError('workshop', message, details, 'WorkshopSessionMessageHandler');
         },
-        activeRunLabel: () => this.contextHandler.isRunning()
-          ? 'Context wizard'
-          : this.activeRun
-            ? 'response'
-            : undefined
+        activeRunLabel: () => this.activeRunLabel()
       }
     );
     this.gesturePlaygroundHandler = new WorkshopGesturePlaygroundHandler(
@@ -296,7 +346,8 @@ export class WorkshopHandler {
           this.executeMessage(text, displayText, undefined, executeOptions),
         postSessionState: () => this.postSessionState(),
         markDirty: (reason) => this.sessionPersistence.markDirty(reason),
-        reportError: (message, details) => this.sendError('workshop', message, details),
+        reportError: (message, details) =>
+          this.sendError('workshop', message, details, 'WorkshopGesturePlaygroundHandler'),
         isRoomRunActive: () => this.activeRun !== undefined
       }
     );
@@ -365,14 +416,14 @@ export class WorkshopHandler {
       MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
       this.handleSetConversationSettings.bind(this)
     );
-    this.excerptScopeHandler.registerRoutes(registerMutation);
+    this.excerptScopeHandler.registerRoutes(router, registerMutation);
     this.contextHandler.registerRoutes(router, registerMutation);
     this.sessionMessageHandler.registerRoutes(router, registerMutation);
     this.gesturePlaygroundHandler.registerRoutes(router, registerMutation);
     this.widgetHostHandler.registerRoutes(router);
     this.standingDirectiveHandler.registerRoutes(router, registerMutation);
     this.lexicalGravityHandler.registerRoutes(router, registerMutation);
-    this.todoHandler.registerRoutes(registerMutation);
+    this.todoHandler.registerRoutes(router, registerMutation);
     router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
   }
 
@@ -820,6 +871,142 @@ export class WorkshopHandler {
     await this.executeMessage(prompt, actionLabel, { kind: 'tool', toolId });
   }
 
+  private resolveMessageTarget(
+    target: WorkshopChatTarget,
+    hostPersonaId: WorkshopPersonaId
+  ): WorkshopMessageTargetPlan {
+    switch (target.kind) {
+      case 'host': {
+        const conversationId = this.session.getHostConversationId();
+        return {
+          chatTarget: target,
+          conversationId,
+          label: workshopPersonaLabel(hostPersonaId),
+          requestType: 'workshop_host',
+          missingConversationMessage: undefined,
+          requiresExcerpt: false,
+          participantOwner: { kind: 'host' },
+          publishesRoomArtifacts: true,
+          createsRetainedConversation: !conversationId,
+          completionReason: 'persona turn completed',
+          hostUpdateDeliveryLabel: conversationId
+            ? 'retained delta frame'
+            : 'fresh-host initial envelope',
+          collectPendingHostUpdates: () => this.session.collectPendingHostUpdates(),
+          buildTodoEvidence: () =>
+            buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost()),
+          buildHostUpdateFrame: (pendingHostUpdates) => conversationId
+            ? buildWorkshopHostUpdateFrame(pendingHostUpdates)
+            : undefined,
+          prepareTimeNotice: () => this.sessionTime.prepareNotice('host'),
+          prepareTurn: (input) => {
+            const userTurn = this.session.beginPersonaMessage(
+              input.requestId,
+              input.displayText,
+              input.attachmentRefs,
+              input.widgetCommitRef
+            );
+            const personaBehaviorFrames: WorkshopPersonaBehaviorFrames = {
+              ...behaviorFramesFor(userTurn),
+              timeFrame: input.timeNotice?.frame
+            };
+            return {
+              userTurn,
+              personaBehaviorFrames,
+              modelMessage: buildWorkshopHostMessage(input.text, {
+                roomCatchUp: input.roomCatchUp,
+                todoEvidence: input.todoEvidence,
+                hostUpdate: input.hostUpdateFrame,
+                threadArtifactFrames: input.threadArtifactFrames,
+                ...(conversationId ? personaBehaviorFrames : {})
+              }),
+              statusMessage: input.hasConversationalCatchUp
+                ? `Catching ${workshopPersonaLabel(hostPersonaId)} up on the room…`
+                : `Streaming ${workshopPersonaLabel(hostPersonaId)}…`
+            };
+          }
+        };
+      }
+      case 'tool':
+        return {
+          chatTarget: target,
+          conversationId: this.session.getToolSidecarConversationId(target.toolId),
+          label: workshopToolLabel(target.toolId),
+          requestType: 'workshop_tool_message',
+          toolId: target.toolId,
+          missingConversationMessage: 'That tool conversation is no longer available.',
+          requiresExcerpt: true,
+          participantOwner: undefined,
+          publishesRoomArtifacts: false,
+          createsRetainedConversation: false,
+          completionReason: 'direct tool turn completed',
+          collectPendingHostUpdates: () => undefined,
+          buildTodoEvidence: () => undefined,
+          buildHostUpdateFrame: () => undefined,
+          prepareTimeNotice: () => undefined,
+          prepareTurn: (input) => ({
+            userTurn: this.session.beginDirectToolMessage(
+              target.toolId,
+              input.requestId,
+              input.displayText,
+              input.attachmentRefs
+            ),
+            personaBehaviorFrames: {},
+            modelMessage: input.threadArtifactFrames.length > 0
+              ? [...input.threadArtifactFrames.flatMap((frame) => [frame, '']), input.text]
+                  .join('\n')
+              : input.text,
+            statusMessage: `Continuing directly with ${workshopToolLabel(target.toolId)}…`
+          })
+        };
+      case 'personaGuest':
+        return {
+          chatTarget: target,
+          conversationId: this.session.getPersonaGuestConversationId(target.personaId),
+          label: workshopPersonaLabel(target.personaId),
+          requestType: 'workshop_guest_message',
+          guestPersonaId: target.personaId,
+          missingConversationMessage: 'That guest conversation is no longer available.',
+          requiresExcerpt: false,
+          participantOwner: { kind: 'personaGuest', personaId: target.personaId },
+          publishesRoomArtifacts: true,
+          createsRetainedConversation: false,
+          completionReason: 'persona turn completed',
+          collectPendingHostUpdates: () => undefined,
+          buildTodoEvidence: () => undefined,
+          buildHostUpdateFrame: () => undefined,
+          prepareTimeNotice: () =>
+            this.sessionTime.prepareNotice(workshopGuestConversationKey(target.personaId)),
+          prepareTurn: (input) => {
+            const userTurn = this.session.beginPersonaGuestMessage(
+              target.personaId,
+              input.requestId,
+              input.displayText,
+              input.attachmentRefs,
+              input.widgetCommitRef
+            );
+            const personaBehaviorFrames: WorkshopPersonaBehaviorFrames = {
+              ...behaviorFramesFor(userTurn),
+              timeFrame: input.timeNotice?.frame
+            };
+            return {
+              userTurn,
+              personaBehaviorFrames,
+              modelMessage: buildWorkshopGuestMessage(
+                input.text,
+                input.roomCatchUp,
+                input.threadArtifactFrames,
+                personaBehaviorFrames
+              ),
+              statusMessage: input.hasConversationalCatchUp
+                ? `Catching ${workshopPersonaLabel(target.personaId)} up on the room…`
+                : `Continuing with ${workshopPersonaLabel(target.personaId)}…`
+            };
+          }
+        };
+    }
+  }
+
   /** Route the one composer action to the stable host or explicit tool target. */
   private async executeMessage(
     text: string,
@@ -853,43 +1040,14 @@ export class WorkshopHandler {
       onRoomAccepted?: (userTurnId: string) => void;
     }
   ): Promise<{ committed: boolean; userTurnId?: string }> {
-    const target = targetOverride ?? this.session.getChatTarget();
     const personaId = this.session.getSelectedPersonaId();
-    const hostConversationId = this.session.getHostConversationId();
-    const targetDetails = (() => {
-      switch (target.kind) {
-        case 'host':
-          return {
-            conversationId: hostConversationId,
-            label: workshopPersonaLabel(personaId),
-            requestType: 'workshop_host',
-            toolId: undefined,
-            guestPersonaId: undefined,
-            missingConversationMessage: undefined
-          };
-        case 'tool':
-          return {
-            conversationId: this.session.getToolSidecarConversationId(target.toolId),
-            label: workshopToolLabel(target.toolId),
-            requestType: 'workshop_tool_message',
-            toolId: target.toolId,
-            guestPersonaId: undefined,
-            missingConversationMessage: 'That tool conversation is no longer available.'
-          };
-        case 'personaGuest':
-          return {
-            conversationId: this.session.getPersonaGuestConversationId(target.personaId),
-            label: workshopPersonaLabel(target.personaId),
-            requestType: 'workshop_guest_message',
-            toolId: undefined,
-            guestPersonaId: target.personaId,
-            missingConversationMessage: 'That guest conversation is no longer available.'
-          };
-      }
-    })();
+    const targetPlan = this.resolveMessageTarget(
+      targetOverride ?? this.session.getChatTarget(),
+      personaId
+    );
 
-    if (targetDetails.missingConversationMessage && !targetDetails.conversationId) {
-      this.sendError('workshop.send_message', targetDetails.missingConversationMessage);
+    if (targetPlan.missingConversationMessage && !targetPlan.conversationId) {
+      this.sendError('workshop.send_message', targetPlan.missingConversationMessage);
       return { committed: false };
     }
     // Sprint 13A §1: what a turn needs depends on the session's SCOPE, not on
@@ -910,7 +1068,7 @@ export class WorkshopHandler {
       return { committed: false };
     }
     if (!hasExcerpt) {
-      if (target.kind === 'tool') {
+      if (targetPlan.requiresExcerpt) {
         this.sendError(
           'workshop.send_message',
           'Add an excerpt before continuing with a tool.'
@@ -924,12 +1082,7 @@ export class WorkshopHandler {
     }
 
     this.preemptActiveRun();
-    const roomReader: WorkshopCapabilityPrincipal | undefined =
-      target.kind === 'host'
-        ? { kind: 'host' }
-        : target.kind === 'personaGuest'
-          ? { kind: 'personaGuest', personaId: target.personaId }
-          : undefined;
+    const roomReader = targetPlan.participantOwner;
     const writerProfile = this.conversationSettingsService.getWriterProfile();
     const roomDelivery = roomReader
       ? this.roomDelivery.prepare(roomReader, {
@@ -939,20 +1092,14 @@ export class WorkshopHandler {
       : undefined;
     const roomCatchUp = roomDelivery?.frame;
     const hasConversationalCatchUp = roomDelivery?.hasConversationalCatchUp ?? false;
-    const pendingHostUpdates = target.kind === 'host'
-      ? this.session.collectPendingHostUpdates()
-      : undefined;
-    const todoEvidence = target.kind === 'host'
-      ? buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost())
-      : undefined;
+    const pendingHostUpdates = targetPlan.collectPendingHostUpdates();
+    const todoEvidence = targetPlan.buildTodoEvidence();
     // A fresh host already receives the current excerpt and brief through its
     // initial envelope. Only retained conversations need a superseding delta.
-    const hostUpdateFrame = hostConversationId
-      ? buildWorkshopHostUpdateFrame(pendingHostUpdates)
-      : undefined;
+    const hostUpdateFrame = targetPlan.buildHostUpdateFrame(pendingHostUpdates);
     if (pendingHostUpdates) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Pending host update prepared (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${hostConversationId ? 'retained delta frame' : 'fresh-host initial envelope'})`
+        `[WorkshopHandler] Pending host update prepared (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${targetPlan.hostUpdateDeliveryLabel})`
       );
     }
     if (roomDelivery && roomDelivery.deliveredTurnIds.length > 0) {
@@ -960,7 +1107,7 @@ export class WorkshopHandler {
         `[WorkshopHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred, status=${hasConversationalCatchUp ? 'conversational' : 'lifecycle-only'}`
       );
     }
-    const { conversationId, label, requestType, toolId, guestPersonaId } = targetDetails;
+    const { conversationId, label, requestType, toolId, guestPersonaId } = targetPlan;
     const requestId = generateRequestId(requestType);
     const controller = new AbortController();
     // Staged one-shot thread-artifacts ride THIS message only (Phase 6B).
@@ -1010,85 +1157,32 @@ export class WorkshopHandler {
           selectionCount: widgetArtifact.selectionCount
         }
       : undefined;
-    let modelMessage: string;
-    let userTurn: WorkshopTurn;
-    let statusMessage: string;
-    const timeNotice = target.kind === 'host'
-      ? this.sessionTime.prepareNotice('host')
-      : target.kind === 'personaGuest'
-        ? this.sessionTime.prepareNotice(workshopGuestConversationKey(target.personaId))
-        : undefined;
-    let personaBehaviorFrames: {
-      interactionFrame?: string;
-      activationFrame?: string;
-      transitionFrame?: string;
-      timeFrame?: string;
-    } = {};
-    switch (target.kind) {
-      case 'host':
-        userTurn = this.session.beginPersonaMessage(
-          requestId,
-          displayText,
-          attachmentRefs,
-          widgetCommitRef
-        );
-        personaBehaviorFrames = {
-          ...behaviorFramesFor(userTurn),
-          timeFrame: timeNotice?.frame
-        };
-        modelMessage = buildWorkshopHostMessage(text, {
-          roomCatchUp,
-          todoEvidence,
-          hostUpdate: hostUpdateFrame,
-          threadArtifactFrames,
-          ...(conversationId ? personaBehaviorFrames : {})
-        });
-        statusMessage = hasConversationalCatchUp
-          ? `Catching ${label} up on the room…`
-          : `Streaming ${label}…`;
-        break;
-      case 'tool':
-        modelMessage = threadArtifactFrames.length > 0
-          ? [...threadArtifactFrames.flatMap((frame) => [frame, '']), text].join('\n')
-          : text;
-        userTurn = this.session.beginDirectToolMessage(
-          target.toolId,
-          requestId,
-          displayText,
-          attachmentRefs
-        );
-        statusMessage = `Continuing directly with ${label}…`;
-        break;
-      case 'personaGuest':
-        userTurn = this.session.beginPersonaGuestMessage(
-          target.personaId,
-          requestId,
-          displayText,
-          attachmentRefs,
-          widgetCommitRef
-        );
-        personaBehaviorFrames = {
-          ...behaviorFramesFor(userTurn),
-          timeFrame: timeNotice?.frame
-        };
-        modelMessage = buildWorkshopGuestMessage(
-          text,
-          roomCatchUp,
-          threadArtifactFrames,
-          personaBehaviorFrames
-        );
-        statusMessage = hasConversationalCatchUp
-          ? `Catching ${label} up on the room…`
-          : `Continuing with ${label}…`;
-        break;
-    }
+    const timeNotice = targetPlan.prepareTimeNotice();
+    const {
+      modelMessage,
+      userTurn,
+      statusMessage,
+      personaBehaviorFrames
+    } = targetPlan.prepareTurn({
+      requestId,
+      text,
+      displayText,
+      attachmentRefs,
+      widgetCommitRef,
+      roomCatchUp,
+      hasConversationalCatchUp,
+      todoEvidence,
+      hostUpdateFrame,
+      threadArtifactFrames,
+      timeNotice
+    });
     this.activeRun = { requestId, label, toolId, guestPersonaId, controller };
     // Sprint 13C: capabilities are participant-owned. Host and persona-guest
     // turns each mint one adapter with their own principal; direct-tool
     // sidecars stay capability-free instruments. Decide "which participant is
     // this" exactly once (PR #89 review #13) so the gate, the speaking
     // persona, and the persisted principal cannot drift apart.
-    const participantOwner = roomReader;
+    const participantOwner = targetPlan.participantOwner;
     const participantCapability = participantOwner
       ? this.capabilityFactory.create({
           requestId,
@@ -1110,7 +1204,7 @@ export class WorkshopHandler {
           }
         })
       : undefined;
-    if (target.kind !== 'tool' && widgetArtifact) {
+    if (targetPlan.publishesRoomArtifacts && widgetArtifact) {
       // The visible writer turn and its artifact body are one room-ledger
       // fact. Publish them together before inference so cancellation or
       // transport failure cannot persist a hollow turn that promises content
@@ -1163,7 +1257,7 @@ export class WorkshopHandler {
         label,
         result,
         aborted: controller.signal.aborted,
-        createsRetainedConversation: target.kind === 'host' && !hostConversationId,
+        createsRetainedConversation: targetPlan.createsRetainedConversation,
         copy: workshopMessageCompletionCopy(label),
         discardConversation: (id) => this.assistantToolService.discardConversation(id),
         log: (line) => this.outputChannel.appendLine(`[WorkshopHandler] ${line}`),
@@ -1207,12 +1301,12 @@ export class WorkshopHandler {
           `${roomDelivery.deliveredTurnIds.length} turns remain pending)`
         );
       }
-      if (assistantTurn && target.kind === 'host' && pendingHostUpdates) {
+      if (assistantTurn && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);
         this.outputChannel.appendLine(
           `[WorkshopHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
         );
-      } else if (target.kind === 'host' && pendingHostUpdates) {
+      } else if (pendingHostUpdates) {
         this.outputChannel.appendLine(
           `[WorkshopHandler] Pending host update retained after incomplete delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
         );
@@ -1221,32 +1315,31 @@ export class WorkshopHandler {
         // A failed/cancelled turn falls through to the catch, which leaves
         // the staged artifacts pending — the pills survive and a retry
         // ships the same ids.
-        if (target.kind !== 'tool') {
+        if (targetPlan.publishesRoomArtifacts) {
           this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
           this.outputChannel.appendLine(
             `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
             `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
           );
         }
-        this.session.commitMessageAttachments(messageAttachments.map((a) => a.id), target);
+        this.session.commitMessageAttachments(
+          messageAttachments.map((a) => a.id),
+          targetPlan.chatTarget
+        );
         this.outputChannel.appendLine(
           `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
         );
       }
       if (assistantTurn) {
         this.commitTimeNotice(timeNotice);
-        this.sessionPersistence.markDirty(
-          target.kind === 'tool'
-            ? 'direct tool turn completed'
-            : 'persona turn completed'
-        );
+        this.sessionPersistence.markDirty(targetPlan.completionReason);
       }
       this.postSessionState();
       return { committed: assistantTurn !== undefined, userTurnId: userTurn.id };
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.session.abandonRun(requestId);
-      if (target.kind === 'host' && pendingHostUpdates) {
+      if (pendingHostUpdates) {
         this.outputChannel.appendLine(
           `[WorkshopHandler] Pending host update retained after failed delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}): ${details}`
         );
@@ -1287,7 +1380,11 @@ export class WorkshopHandler {
   async handleCancelRequest(message: CancelWorkshopRequestMessage): Promise<void> {
     const { requestId, domain } = message.payload;
     if (domain === 'workshop-context') {
-      this.contextHandler.cancelRun(requestId);
+      if (!this.contextHandler.cancelRun(requestId)) {
+        this.outputChannel.appendLine(
+          `[WorkshopHandler] Cancel ignored: ${requestId} (domain=${domain})`
+        );
+      }
       return;
     }
     if (domain !== 'workshop') {
@@ -1325,6 +1422,35 @@ export class WorkshopHandler {
       this.sendError('workshop', message);
     }
     return true;
+  }
+
+  private currentRunKind(): 'room' | 'wizard' | undefined {
+    if (this.activeRun) {
+      return 'room';
+    }
+    return this.contextHandler.isRunning() ? 'wizard' : undefined;
+  }
+
+  private excerptMutationBlockedReason(): string | undefined {
+    switch (this.currentRunKind()) {
+      case 'room':
+        return MID_RUN_EXCERPT_GUARD_MESSAGE;
+      case 'wizard':
+        return MID_WIZARD_EXCERPT_GUARD_MESSAGE;
+      default:
+        return undefined;
+    }
+  }
+
+  private activeRunLabel(): 'Context wizard' | 'response' | undefined {
+    switch (this.currentRunKind()) {
+      case 'room':
+        return 'response';
+      case 'wizard':
+        return 'Context wizard';
+      default:
+        return undefined;
+    }
   }
 
   private preemptActiveRun(): void {

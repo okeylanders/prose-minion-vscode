@@ -1,7 +1,7 @@
 /** Focused IPC adapter for Lexical Gravity's catalog, preview, build, and save workflow. */
 
-import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { MessageTransport } from '@/application/handlers/MessageHandlerContracts';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopHandlerContracts';
 import { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
@@ -27,6 +27,16 @@ import {
   WorkshopSaveLexicalGravityLensesMessage
 } from '@messages';
 
+export type WorkshopLexicalGravityModelPort = Pick<
+  LexicalGravityModelService,
+  'buildLenses' | 'preview'
+>;
+
+export type WorkshopLexicalGravityRepositoryPort = Pick<
+  LexicalGravityLensRepository,
+  'availability' | 'list' | 'findForQuery' | 'saveManyForQuery'
+>;
+
 export class WorkshopLexicalGravityHandler {
   private previewRun?: AbortController;
   private buildRun?: AbortController;
@@ -38,8 +48,8 @@ export class WorkshopLexicalGravityHandler {
   };
 
   constructor(
-    private readonly model: LexicalGravityModelService,
-    private readonly repository: LexicalGravityLensRepository,
+    private readonly model: WorkshopLexicalGravityModelPort,
+    private readonly repository: WorkshopLexicalGravityRepositoryPort,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink
   ) {}

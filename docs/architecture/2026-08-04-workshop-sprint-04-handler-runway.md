@@ -94,7 +94,7 @@ packages/core/src/
     │   └── domain/workshop/
     │       ├── WorkshopHandler.ts                     [>][~]   1,527   9 routes + slice composition
     │       ├── WorkshopHandlerContracts.ts            [+]         30   registrar + room effects + run gate
-    │       ├── WorkshopSessionMessageHandler.ts       [>]        305   9 routes
+    │       ├── WorkshopSessionMessageHandler.ts       [>][~]     305   9 routes
     │       ├── WorkshopExcerptScopeHandler.ts         [+]        479   6 routes; delegates intake mechanics
     │       ├── WorkshopContextHandler.ts              [+]        861   13 routes + wizard; delegates intake mechanics
     │       ├── WorkshopTodoHandler.ts                 [+]         99   1 route
@@ -106,7 +106,7 @@ packages/core/src/
 apps/vscode-extension/src/extension.ts                  [~] constructs the renamed/evolved intake service
 ```
 
-`[>]` on both handlers is the accepted ADR §D directory move (D4=A). `[>]` on the service is a rename/evolution of the existing composition-root-owned instance (D1=C), **not** a second service. Everything under `widgets/` is untouched.
+`[>]` on both handlers is the accepted ADR §D directory move (D4=A). The session handler also carries `[~]` because the later extraction commit relocates its type-only mutation registrar into `WorkshopHandlerContracts.ts`; the dedicated move commit itself remains pure. `[>]` on the service is a rename/evolution of the existing composition-root-owned instance (D1=C), **not** a second service. Everything under `widgets/` is untouched.
 
 The values above are the implemented measurements, not the pre-implementation
 estimates. `WorkshopContextHandler` finished larger than estimated because all
@@ -123,7 +123,7 @@ meet a numeric limit.
 | **Excerpt & scope** | `SET_EXCERPT`, `PICK_EXCERPT_FILE`, `REREAD_EXCERPT`, `SET_EXCERPT_RESOURCE`, `SET_SESSION_SCOPE`, `REPIN_EXCERPT` | 6 | `WorkshopExcerptScopeHandler` `[+]` | `tryReplaceExcerpt`, `applyScopeTransition`; delegates disk/catalog intake, provenance matching, bounding, and refusal descriptions to `WorkshopContextIntakeService` |
 | **Context & resources** | `ADD_CONTEXT_TEXT`, `ADD_CONTEXT_FILE`, `REMOVE_CONTEXT_ATTACHMENT`, `UPDATE_CONTEXT_TEXT`, `REQUEST_CONTEXT_ATTACHMENT`, `OPEN_CONTEXT_ATTACHMENT_FILE`, `REQUEST_CONTEXT_CATALOG`, `SEARCH_CONTEXT_RESOURCES`, `ADD_CONTEXT_RESOURCES`, `ATTACH_MESSAGE_RESOURCES`, `ATTACH_MESSAGE_FILE`, `REMOVE_MESSAGE_ATTACHMENT`, `RUN_CONTEXT_WIZARD` | 13 | `WorkshopContextHandler` `[+]` | `applyContextAttachment`, `stageMessageAttachment`, `boundThreadArtifact`, `adoptWizardResult`, `wizardRun`; delegates disk/catalog intake, bounding, and refusal descriptions to `WorkshopContextIntakeService` |
 | **Todos** | `WORKSHOP_TODO_ACTION` | 1 | `WorkshopTodoHandler` `[+]` | none |
-| **Sessions** | 9 file/lifecycle routes | 9 | `WorkshopSessionMessageHandler` `[=]` | — |
+| **Sessions** | 9 file/lifecycle routes | 9 | `WorkshopSessionMessageHandler` `[~]` | mutation registrar type relocated to the shared handler contract |
 | **Widgets & standing** | 10 routes | 10 | 4 existing siblings `[=]` | — |
 | | | **48** | | |
 

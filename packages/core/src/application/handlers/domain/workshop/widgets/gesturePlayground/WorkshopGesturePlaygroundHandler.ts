@@ -10,8 +10,8 @@
  * so the composition root stays ignorant of workshop internals.
  */
 
-import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { MessageTransport } from '@/application/handlers/MessageHandlerContracts';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   GesturePlaygroundService,
@@ -75,6 +75,11 @@ type GestureGenerationStage =
 
 const GESTURE_PROGRESS_REPORT_INTERVAL_CHARACTERS = 1_000;
 
+export type WorkshopGesturePlaygroundServicePort = Pick<
+  GesturePlaygroundService,
+  'generateMenu' | 'generateMore'
+>;
+
 export class WorkshopGesturePlaygroundHandler {
   private activeGeneration?: {
     controller: AbortController;
@@ -88,7 +93,7 @@ export class WorkshopGesturePlaygroundHandler {
 
   constructor(
     private readonly session: WorkshopSessionService,
-    private readonly gestureService: GesturePlaygroundService,
+    private readonly gestureService: WorkshopGesturePlaygroundServicePort,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly options: WorkshopGesturePlaygroundHandlerOptions

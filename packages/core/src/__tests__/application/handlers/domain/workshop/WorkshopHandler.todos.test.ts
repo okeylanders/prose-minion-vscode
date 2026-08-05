@@ -8,7 +8,7 @@ import {
 } from './WorkshopHandlerTestHarness';
 import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
 
-describe('WorkshopHandler aggregate routing — todo owner', () => {
+describe('WorkshopHandler routing — todo owner', () => {
   let session: WorkshopHandlerTestHarness['session'];
   let postMessage: WorkshopHandlerTestHarness['postMessage'];
   let log: WorkshopHandlerTestHarness['log'];

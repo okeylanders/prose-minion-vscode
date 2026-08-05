@@ -49,7 +49,7 @@ describe('WorkshopTodoHandler', () => {
     const registerMutation: WorkshopMutationRouteRegistrar = (type, route) => {
       router.register(type, route as never);
     };
-    handler.registerRoutes(registerMutation);
+    handler.registerRoutes(router, registerMutation);
   });
 
   it('routes a valid task edit through the owner and publishes the committed state', async () => {

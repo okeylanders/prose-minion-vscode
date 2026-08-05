@@ -1,4 +1,5 @@
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { MessageRouter } from '@handlers/MessageRouter';
 import { LogSink } from '@/platform';
 import { MessageType, WorkshopTodoActionMessage } from '@messages';
 import type {
@@ -19,7 +20,10 @@ export class WorkshopTodoHandler {
     private readonly effects: WorkshopTodoEffects
   ) {}
 
-  registerRoutes(registerMutation: WorkshopMutationRouteRegistrar): void {
+  registerRoutes(
+    router: MessageRouter,
+    registerMutation: WorkshopMutationRouteRegistrar
+  ): void {
     registerMutation(MessageType.WORKSHOP_TODO_ACTION, this.handleTodoAction.bind(this));
   }
 

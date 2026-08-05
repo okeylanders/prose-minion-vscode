@@ -35,7 +35,7 @@ describe('WorkshopExcerptScopeHandler', () => {
     openCatalog: jest.Mock;
     toDisplayPath: jest.Mock;
     loadFile: jest.Mock;
-    describeConfiguredResourceFailure: jest.Mock;
+    reportConfiguredResourceLoadFailure: jest.Mock;
     matchConfiguredSource: jest.Mock;
   };
   let log: { appendLine: jest.Mock };
@@ -73,7 +73,9 @@ describe('WorkshopExcerptScopeHandler', () => {
       openCatalog: jest.fn(),
       toDisplayPath: jest.fn((value: string) => value),
       loadFile: jest.fn(),
-      describeConfiguredResourceFailure: jest.fn(),
+      reportConfiguredResourceLoadFailure: jest.fn(
+        (result: { kind: string }) => result.kind === 'loaded'
+      ),
       matchConfiguredSource: jest.fn(async (source) => (
         source.kind === 'manual'
           ? { kind: 'manual', source }
@@ -101,7 +103,7 @@ describe('WorkshopExcerptScopeHandler', () => {
     const registerMutation: WorkshopMutationRouteRegistrar = (type, route) => {
       router.register(type, route as never);
     };
-    handler.registerRoutes(registerMutation);
+    handler.registerRoutes(router, registerMutation);
   });
 
   it('registers exactly the six excerpt and scope mutation routes', () => {
@@ -158,6 +160,39 @@ describe('WorkshopExcerptScopeHandler', () => {
         sourceFingerprint: 'fingerprint-1'
       }
     });
+    await routed;
+
+    expect(effects.reportError).toHaveBeenCalledWith(runRefusal);
+    expect(session.replaceExcerpt).not.toHaveBeenCalled();
+    expect(effects.markDirty).not.toHaveBeenCalled();
+    expect(effects.postSessionState).not.toHaveBeenCalled();
+  });
+
+  it('re-checks the run gate after plain excerpt provenance resolution', async () => {
+    const matching = deferred<{
+      kind: 'unmatched';
+      source: {
+        kind: 'file';
+        sourceUri: string;
+        relativePath: string;
+      };
+    }>();
+    intake.matchConfiguredSource.mockReturnValueOnce(matching.promise);
+    const source = {
+      kind: 'file' as const,
+      sourceUri: 'file:///workspace/chapters/04.md',
+      relativePath: 'chapters/04.md'
+    };
+
+    const routed = router.route(message(MessageType.WORKSHOP_SET_EXCERPT, {
+      text: 'A valid passage.',
+      source
+    }) as never);
+    await Promise.resolve();
+    expect(intake.matchConfiguredSource).toHaveBeenCalledWith(source);
+
+    runRefusal = 'A tool started while provenance was resolving.';
+    matching.resolve({ kind: 'unmatched', source });
     await routed;
 
     expect(effects.reportError).toHaveBeenCalledWith(runRefusal);

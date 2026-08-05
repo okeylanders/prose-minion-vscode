@@ -51,7 +51,11 @@ export interface WorkshopConfiguredResourceRefusal {
 
 export type WorkshopConfiguredSourceMatch =
   | { kind: 'manual'; source: WorkshopExcerptSource }
-  | { kind: 'matched'; source: WorkshopExcerptSource; summary: ContextResourceSummary }
+  | {
+      kind: 'matched';
+      source: WorkshopExcerptSource;
+      configuredResource: WorkshopConfiguredResourceRef;
+    }
   | { kind: 'unmatched'; source: WorkshopExcerptSource }
   | { kind: 'ambiguous'; source: WorkshopExcerptSource; matchCount: number }
   | { kind: 'uri-unreadable'; source: WorkshopExcerptSource; details: string }
@@ -319,6 +323,20 @@ export class WorkshopContextIntakeService {
     }
   }
 
+  reportConfiguredResourceLoadFailure(
+    result: WorkshopConfiguredResourceLoadResult,
+    action: string,
+    maxBytes: number,
+    reportError: (message: string, details?: string) => void
+  ): result is Extract<WorkshopConfiguredResourceLoadResult, { kind: 'loaded' }> {
+    const refusal = this.describeConfiguredResourceFailure(result, action, maxBytes);
+    if (!refusal) {
+      return true;
+    }
+    reportError(refusal.message, refusal.details);
+    return false;
+  }
+
   async matchConfiguredSource(source: WorkshopExcerptSource): Promise<WorkshopConfiguredSourceMatch> {
     if (source.kind === 'manual') {
       return { kind: 'manual', source };
@@ -367,12 +385,13 @@ export class WorkshopContextIntakeService {
       return { kind: 'ambiguous', source: unstamped, matchCount: matches.length };
     }
     const summary = matches[0];
+    const configuredResource = { group: summary.group, path: summary.path };
     return {
       kind: 'matched',
-      summary,
+      configuredResource,
       source: {
         ...unstamped,
-        configuredResource: { group: summary.group, path: summary.path }
+        configuredResource
       }
     };
   }

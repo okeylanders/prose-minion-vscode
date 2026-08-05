@@ -6,8 +6,8 @@
  * and cancellation of superseded browser searches.
  */
 
-import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { MessageTransport } from '@/application/handlers/MessageHandlerContracts';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { LogSink, ShellService } from '@/platform';
 import {

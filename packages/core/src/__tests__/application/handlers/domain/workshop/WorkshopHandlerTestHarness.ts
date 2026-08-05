@@ -1,8 +1,8 @@
 import {
   WorkshopHandler,
   WorkshopWidgetRuntime
-} from '@/application/handlers/domain/workshop/WorkshopHandler';
-import { MessageRouter } from '@/application/handlers/MessageRouter';
+} from '@handlers/domain/workshop/WorkshopHandler';
+import { MessageRouter } from '@handlers/MessageRouter';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
@@ -44,14 +44,31 @@ export const message = (type: MessageType, payload: unknown) => ({
   timestamp: 1
 });
 
-const widgetRuntime = (gesturePlayground: unknown): WorkshopWidgetRuntime => ({
+const widgetRuntime = (
+  gesturePlayground: WorkshopWidgetRuntime['gesturePlayground']
+): WorkshopWidgetRuntime => ({
   gesturePlayground,
+  standingDirectives: {
+    apply: jest.fn(),
+    remove: jest.fn()
+  },
   lexicalGravity: {
-    model: {},
-    repository: {},
-    directives: {}
+    model: {
+      buildLenses: jest.fn(),
+      preview: jest.fn()
+    },
+    repository: {
+      availability: jest.fn(() => ({
+        rootPath: '/workspace',
+        lensesDirectory: '/workspace/prose-minion/lenses',
+        displayPath: 'prose-minion/lenses'
+      })),
+      list: jest.fn(),
+      findForQuery: jest.fn(),
+      saveManyForQuery: jest.fn()
+    }
   }
-} as unknown as WorkshopWidgetRuntime);
+});
 
 export interface WorkshopHandlerTestHarness {
   session: WorkshopSessionService;
@@ -262,7 +279,7 @@ export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness =
       timezone: 'America/Chicago'
     }),
     persistence,
-    widgetRuntime({ generateMenu: jest.fn() }),
+    widgetRuntime({ generateMenu: jest.fn(), generateMore: jest.fn() }),
     log
   );
   const router = new MessageRouter();

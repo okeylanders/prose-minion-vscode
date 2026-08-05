@@ -282,26 +282,75 @@ describe('WorkshopContextIntakeService', () => {
     });
   });
 
+  it('reports configured-resource load failures through one shared translator', () => {
+    const { providerFactory } = factory('body');
+    const service = serviceFor(providerFactory);
+    const reportError = jest.fn();
+    const result: WorkshopConfiguredResourceLoadResult = {
+      kind: 'unreadable',
+      summary,
+      details: 'permission denied'
+    };
+
+    expect(service.reportConfiguredResourceLoadFailure(
+      result,
+      'attach',
+      1_024,
+      reportError
+    )).toBe(false);
+    expect(reportError).toHaveBeenCalledWith(
+      'Could not read the selected resource to attach.',
+      'Characters/raven.md: permission denied'
+    );
+  });
+
   it('matches canonical absolute-path provenance and strips a forged webview claim', async () => {
     const { providerFactory } = factory('body');
     const service = serviceFor(providerFactory);
 
-    await expect(service.matchConfiguredSource({
+    const match = await service.matchConfiguredSource({
       kind: 'editor-selection',
       sourceUri: 'file:///workspace/Characters/raven.md',
       relativePath: 'Characters/raven.md',
       startLine: 4,
       endLine: 9,
       configuredResource: { group: 'themes', path: 'Themes/echoes.md' }
-    })).resolves.toMatchObject({
+    });
+
+    expect(match).toEqual({
       kind: 'matched',
+      configuredResource: { group: 'characters', path: 'Characters/raven.md' },
       source: {
         kind: 'editor-selection',
+        sourceUri: 'file:///workspace/Characters/raven.md',
+        relativePath: 'Characters/raven.md',
         startLine: 4,
         endLine: 9,
         configuredResource: { group: 'characters', path: 'Characters/raven.md' }
       }
     });
+    expect(JSON.stringify(match)).not.toContain('absolutePath');
+  });
+
+  it('returns uri-unreadable without opening the configured-resource catalog', async () => {
+    const { providerFactory } = factory('body');
+    const service = serviceFor(providerFactory);
+
+    await expect(service.matchConfiguredSource({
+      kind: 'file',
+      sourceUri: 'https://example.com/chapter.md',
+      relativePath: 'chapter.md',
+      configuredResource: { group: 'themes', path: 'Themes/forged.md' }
+    })).resolves.toMatchObject({
+      kind: 'uri-unreadable',
+      source: {
+        kind: 'file',
+        sourceUri: 'https://example.com/chapter.md',
+        relativePath: 'chapter.md'
+      },
+      details: expect.any(String)
+    });
+    expect(providerFactory.createProvider).not.toHaveBeenCalled();
   });
 
   it('reports ambiguous case-folded provenance without guessing', async () => {

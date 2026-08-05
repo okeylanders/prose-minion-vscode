@@ -17,21 +17,21 @@ Signal legend: 🎯 Consensus = 2+ reviewers independently · 🧬 Pre-existing 
 
 | ID | Sev | Finding | Reviewer(s) | Signal | Status |
 | --- | --- | --- | --- | --- | --- |
-| F-01 | 🔴 Blocking | Spoofed `file://` excerpt source + `REREAD` is an unconfined arbitrary-file-read; contents reach the webview *and* the LLM prompt | Patricia | 🧬 Pre-existing | **Open** — author's call (see note) |
-| F-02 | 🟠 High | "What's running?" derived twice in opposite precedence → two different refusal messages for one dual-active moment | Marcus | — | **Open** |
-| F-03 | 🟠 High | The new four-slice sibling boundary has no fitness-function witness (only last sprint's widgets are guarded) | Marcus | — | **Open** |
-| F-04 | 🟠 High | The named `handleSetExcerpt` race window's second guard has no test — its resource-path twin got the exact right one | Cal | — | **Open** |
-| F-05 | 🟠 High | `cancelRun`'s `false` return is discarded — a stale context-wizard cancel leaves zero trail; its room-run twin logs | Oliver | — | **Open** |
-| F-06 | 🟡 Standard | Resource-load-failure translator has two byte-identical homes where the monolith had one | Parker | — | **Open** |
-| F-07 | 🟡 Standard | `executeMessage` still 456 lines re-deciding host/tool/guest 16× — inherited, untouched by the split | Parker | 🧬 Pre-existing | **Open** |
-| F-08 | 🟡 Standard | Shared harness builds a `WorkshopWidgetRuntime` mock that violates its own type behind `as unknown as` | Parker | 🧬 Pre-existing | **Open** |
-| F-09 | 🟡 Standard | `uri-unreadable` — the one fail-safe branch with zero tests in an otherwise deliberate six-outcome matrix | Cal | — | **Open** |
-| F-10 | 🟡 Standard | `matchConfiguredSource` is now public and returns the host-only `absolutePath`; its "never crosses to webview" guard-comment was dropped, not relocated | Patricia | — | **Open** |
-| F-11 | 🟡 Standard | New per-slice `sendError` `owner` tag isn't wired for 2 of 5 siblings — one live mislabeled `[WorkshopHandler]` line | Oliver | — | **Open** |
-| F-12 | 🟡 Standard | `registerRoutes` drops the unused `router` param every sibling keeps — three call shapes now across seven siblings | Stan | — | **Open** |
-| F-13 | 🟡 Standard | New slices import via short `@handlers/` alias; every sibling *and this PR's own harness* use long `@/application/handlers/` | Stan | — | **Open** |
-| F-14 | 🟡 Standard | `.aggregate` / `.assembly` / `.roomRun` — new test-suffix vocabulary defined by no ADR or guide | Stan | — | **Open** |
-| F-15 | 🟡 Standard | Runway diagram stamps `WorkshopSessionMessageHandler.ts` a **pure** move, but the diff evicts a 7-line type export (type-only) | Bria | — | **Open** |
+| F-01 | 🔴 Blocking | Spoofed `file://` excerpt source + `REREAD` is an unconfined arbitrary-file-read; contents reach the webview *and* the LLM prompt | Patricia | 🧬 Pre-existing | **Open** — explicitly excluded from this remediation pass by the author |
+| F-02 | 🟠 High | "What's running?" derived twice in opposite precedence → two different refusal messages for one dual-active moment | Marcus | — | **Addressed** — one `currentRunKind()` now feeds both refusal projections; dual-active routing test added |
+| F-03 | 🟠 High | The new four-slice sibling boundary has no fitness-function witness (only last sprint's widgets are guarded) | Marcus | — | **Addressed** — architecture witness rejects imports between extracted context, excerpt/scope, and todo slices |
+| F-04 | 🟠 High | The named `handleSetExcerpt` race window's second guard has no test — its resource-path twin got the exact right one | Cal | — | **Addressed** — deferred provenance-resolution test starts a run before the second guard |
+| F-05 | 🟠 High | `cancelRun`'s `false` return is discarded — a stale context-wizard cancel leaves zero trail; its room-run twin logs | Oliver | — | **Addressed** — the central cancel route logs a rejected context request; routed test pins the signature |
+| F-06 | 🟡 Standard | Resource-load-failure translator has two byte-identical homes where the monolith had one | Parker | — | **Addressed** — translation/reporting now has one owner on `WorkshopContextIntakeService` |
+| F-07 | 🟡 Standard | `executeMessage` still 456 lines re-deciding host/tool/guest 16× — inherited, untouched by the split | Parker | 🧬 Pre-existing | **Addressed** — one target-plan resolver owns conversation, participant, prompt, turn, artifact, and completion policy |
+| F-08 | 🟡 Standard | Shared harness builds a `WorkshopWidgetRuntime` mock that violates its own type behind `as unknown as` | Parker | 🧬 Pre-existing | **Addressed** — widget collaborators expose narrow structural ports and the harness supplies a complete typed runtime |
+| F-09 | 🟡 Standard | `uri-unreadable` — the one fail-safe branch with zero tests in an otherwise deliberate six-outcome matrix | Cal | — | **Addressed** — malformed/non-file URI branch is covered and proves the catalog is not opened |
+| F-10 | 🟡 Standard | `matchConfiguredSource` is now public and returns the host-only `absolutePath`; its "never crosses to webview" guard-comment was dropped, not relocated | Patricia | — | **Addressed** — matched results expose only `{group, path}`; an exact test rejects `absolutePath` in the result |
+| F-11 | 🟡 Standard | New per-slice `sendError` `owner` tag isn't wired for 2 of 5 siblings — one live mislabeled `[WorkshopHandler]` line | Oliver | — | **Addressed** — session and Gesture Playground reporters now carry their owner tags; live session failure is asserted |
+| F-12 | 🟡 Standard | `registerRoutes` drops the unused `router` param every sibling keeps — three call shapes now across seven siblings | Stan | — | **Addressed** — extracted mutation-only siblings retain the common `(router, registerMutation)` shape |
+| F-13 | 🟡 Standard | New slices import via short `@handlers/` alias; every sibling *and this PR's own harness* use long `@/application/handlers/` | Stan | — | **Addressed** — the full Workshop handler family and shared harness use the documented semantic `@handlers` alias |
+| F-14 | 🟡 Standard | `.aggregate` / `.assembly` / `.roomRun` — new test-suffix vocabulary defined by no ADR or guide | Stan | — | **Addressed** — routed suites now use the sprint's existing owner vocabulary (`WorkshopHandler.<owner>.test.ts`) |
+| F-15 | 🟡 Standard | Runway diagram stamps `WorkshopSessionMessageHandler.ts` a **pure** move, but the diff evicts a 7-line type export (type-only) | Bria | — | **Addressed** — diagram, legend, and responsibility table now distinguish the pure move commit from later type relocation |
 | P-01 | ⭐ Praise | Two-slot mutation gate, cancel/dispose asymmetry, and persistence ordering all survive intact — plus the PR added the coverage the monolith never had | Blake | 🎯 Consensus | N/A — preserve |
 | P-02 | ⭐ Praise | The one race the runway feared is intact, wired through the new indirection, and covered by a live (not mocked) router test | Sam | 🎯 Consensus | N/A — preserve |
 | P-03 | ⭐ Praise | Run-state and transport ports are honestly narrow (single-method `WorkshopRunGate`, `Pick`-narrowed effects, grep-verified pure intake service) — and the claims are tested | Marcus | — | N/A — preserve |
@@ -47,6 +47,14 @@ Signal legend: 🎯 Consensus = 2+ reviewers independently · 🧬 Pre-existing 
 - `npm run typecheck` — clean across all three workspace projects.
 - Route arithmetic re-counted by hand: 9 (`WorkshopHandler`) + 13 (`WorkshopContextHandler`) + 6 (`WorkshopExcerptScopeHandler`) + 1 (`WorkshopTodoHandler`) = **29 direct registrations**, matching the deleted monolith name-for-name; full family ledger = 48.
 - F-01, F-02, F-04, F-05 spot-traced independently against the head working tree — all confirmed at the cited lines.
+
+## Remediation verification (working tree after review)
+
+- `npx jest --runInBand` — **183 suites / 1,883 tests / 1 snapshot, all pass**.
+- `npm run typecheck` — clean across core, webview, and extension projects.
+- `npm run lint` — **0 errors** (repository warnings remain).
+- `git diff --check` — clean.
+- F-01 remains unchanged by explicit author direction; F-02 through F-15 are addressed above.
 
 ---
 

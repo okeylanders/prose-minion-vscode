@@ -7,7 +7,6 @@ import {
   workshopTextNoteLabel
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  WorkshopConfiguredResourceLoadResult,
   WorkshopContextIntakeService
 } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
@@ -456,7 +455,12 @@ export class WorkshopContextHandler {
         maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
         maxWords: PROMPT_BUDGETS.contextAttachments.words
       });
-      if (!this.reportConfiguredResourceLoadFailure(loaded, 'attach')) {
+      if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
+        loaded,
+        'attach',
+        PROMPT_BUDGETS.contextAttachments.fileBytes,
+        this.effects.reportError
+      )) {
         continue;
       }
       const { resource } = loaded;
@@ -496,7 +500,12 @@ export class WorkshopContextHandler {
         maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
         maxWords: PROMPT_BUDGETS.workshopThreadArtifacts.words
       });
-      if (!this.reportConfiguredResourceLoadFailure(loaded, 'attach')) {
+      if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
+        loaded,
+        'attach',
+        PROMPT_BUDGETS.contextAttachments.fileBytes,
+        this.effects.reportError
+      )) {
         continue;
       }
       const { resource } = loaded;
@@ -692,7 +701,12 @@ export class WorkshopContextHandler {
             failed += 1;
             continue;
           }
-          if (!this.reportConfiguredResourceLoadFailure(loaded, 'attach')) {
+          if (!this.contextIntakeService.reportConfiguredResourceLoadFailure(
+            loaded,
+            'attach',
+            PROMPT_BUDGETS.contextAttachments.fileBytes,
+            this.effects.reportError
+          )) {
             skipped += 1;
             continue;
           }
@@ -842,20 +856,4 @@ export class WorkshopContextHandler {
       : [];
   }
 
-  private reportConfiguredResourceLoadFailure(
-    result: WorkshopConfiguredResourceLoadResult,
-    action: string,
-    maxBytes = PROMPT_BUDGETS.contextAttachments.fileBytes
-  ): result is Extract<WorkshopConfiguredResourceLoadResult, { kind: 'loaded' }> {
-    const refusal = this.contextIntakeService.describeConfiguredResourceFailure(
-      result,
-      action,
-      maxBytes
-    );
-    if (refusal) {
-      this.effects.reportError(refusal.message, refusal.details);
-      return false;
-    }
-    return true;
-  }
 }

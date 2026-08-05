@@ -8,9 +8,10 @@ import {
 } from './WorkshopHandlerTestHarness';
 import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
 
-describe('WorkshopHandler aggregate routing — session owner', () => {
+describe('WorkshopHandler routing — session owner', () => {
   let session: WorkshopHandlerTestHarness['session'];
   let postMessage: WorkshopHandlerTestHarness['postMessage'];
+  let log: WorkshopHandlerTestHarness['log'];
   let service: WorkshopHandlerTestHarness['service'];
   let shell: WorkshopHandlerTestHarness['shell'];
   let workspace: WorkshopHandlerTestHarness['workspace'];
@@ -27,6 +28,7 @@ describe('WorkshopHandler aggregate routing — session owner', () => {
     ({
       session,
       postMessage,
+      log,
       service,
       shell,
       workspace,
@@ -242,6 +244,9 @@ describe('WorkshopHandler aggregate routing — session owner', () => {
         message: 'Could not list Workshop sessions.',
         details: 'session directory is unreadable'
       });
+      expect(log.appendLine).toHaveBeenCalledWith(
+        '[WorkshopSessionMessageHandler] ERROR [workshop]: Could not list Workshop sessions. - session directory is unreadable'
+      );
     });
   });
 
