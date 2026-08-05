@@ -6,6 +6,15 @@
 
 **Depends on:** Sprint 04
 
+**Evidence:** [Sprint 05 architecture change runway](../../../../docs/architecture/2026-08-05-workshop-sprint-05-session-aggregate-runway.md) — gate **BLOCKED on D1**; no code moves until D1 is answered and slice S0 has landed.
+
+## Decisions required
+
+| ID | Question | Blocking |
+|---|---|---|
+| D1 | This sprint's scope names seven clusters. Two (widget configs, standing directives) are already extracted, and method-span measurement supports four of the remaining five: todos, turn ledger, passage/scope, participant roster. Writer-source manifests and the active run cannot be separated without duplicating invariants — the failure completion criterion 1 forbids. Accept the narrowed set with recorded retention reasons, or direct a different set. | **Yes** |
+| D2 | ~600 of the aggregate's lines are type declarations and module-private clone helpers rather than behavior. Take the optional mechanical slice S5 that moves them to `WorkshopSessionRecords.ts`, or leave them in place. | No |
+
 ## Goal
 
 Give independently changing Workshop session concepts named internal owners
