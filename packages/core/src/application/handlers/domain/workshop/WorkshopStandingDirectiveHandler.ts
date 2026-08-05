@@ -1,8 +1,8 @@
 /** Family-generic IPC owner for Workshop standing-directive mechanics. */
 
-import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { MessageTransport } from '@/application/handlers/MessageHandlerContracts';
-import { WorkshopMutationRouteRegistrar } from '@handlers/domain/WorkshopSessionMessageHandler';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
+import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopHandlerContracts';
 import { WorkshopStandingDirectiveService } from
   '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import {
@@ -24,9 +24,14 @@ export interface WorkshopStandingDirectiveHandlerOptions {
   markDirty: (reason: string) => void;
 }
 
+export type WorkshopStandingDirectiveServicePort = Pick<
+  WorkshopStandingDirectiveService,
+  'apply' | 'remove'
+>;
+
 export class WorkshopStandingDirectiveHandler {
   constructor(
-    private readonly directives: WorkshopStandingDirectiveService,
+    private readonly directives: WorkshopStandingDirectiveServicePort,
     private readonly postMessage: MessageTransport,
     private readonly outputChannel: LogSink,
     private readonly options: WorkshopStandingDirectiveHandlerOptions,

@@ -53,55 +53,190 @@ const HANDLERS_ROOT = path.join(
   'application',
   'handlers'
 );
-const WORKSHOP_HANDLER_ROOT = path.join(HANDLERS_ROOT, 'domain');
+const WORKSHOP_HANDLER_ROOT = path.join(HANDLERS_ROOT, 'domain', 'workshop');
+
+const WORKSHOP_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopHandler.ts';
+const WORKSHOP_SESSION_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopSessionMessageHandler.ts';
+const WORKSHOP_TODO_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
+const WORKSHOP_CONTEXT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopContextHandler.ts';
+const WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopExcerptScopeHandler.ts';
+const WORKSHOP_STANDING_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopStandingDirectiveHandler.ts';
+const WORKSHOP_WIDGET_HOST_HANDLER_OWNER =
+  'application/handlers/domain/workshop/widgets/WorkshopWidgetHostHandler.ts';
+const WORKSHOP_GESTURE_HANDLER_OWNER =
+  'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts';
+const WORKSHOP_LEXICAL_HANDLER_OWNER =
+  'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts';
 
 /**
- * Phase-0 migration witness for ADR 2026-08-03. MessageRouter already rejects
- * duplicate registrations at runtime; this map adds a declared ownership
- * ledger that pins each inbound widget/standing route to its expected file.
- * The two family-generic standing routes belong to the shared handler; feature
- * handlers retain only their own catalog, preview, generation, and save routes.
+ * Complete inbound Workshop route ledger. MessageRouter rejects duplicates at
+ * runtime; this static witness also catches missing registrations, registrations
+ * added without a ledger entry, and a route moving to the wrong sibling.
+ *
+ * Excerpt/scope and context/resource routes stay grouped separately so each
+ * sibling's ownership remains visible while the route inventory stays fixed.
  */
-const WORKSHOP_WIDGET_ROUTE_OWNERS = [
+const WORKSHOP_ROUTE_OWNERS = [
   {
-    messageType: 'WORKSHOP_GESTURE_PLAYGROUND_GENERATE',
-    owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
+    owner: WORKSHOP_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: [
+      'WORKSHOP_RUN_TOOL',
+      'WORKSHOP_QUICK_ACTION',
+      'WORKSHOP_SEND_MESSAGE',
+      'WORKSHOP_SELECT_PERSONA',
+      'WORKSHOP_SET_CHAT_TARGET',
+      'WORKSHOP_INVITE_GUEST',
+      'WORKSHOP_DISMISS_GUEST',
+      'WORKSHOP_SET_CONVERSATION_SETTINGS'
+    ]
   },
   {
-    messageType: 'CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST',
-    owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
+    owner: WORKSHOP_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['CANCEL_WORKSHOP_REQUEST']
   },
   {
-    messageType: 'WORKSHOP_REQUEST_WIDGET_CONFIG',
-    owner: 'application/handlers/domain/workshop/widgets/WorkshopWidgetHostHandler.ts'
+    owner: WORKSHOP_EXCERPT_SCOPE_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: [
+      'WORKSHOP_SET_EXCERPT',
+      'WORKSHOP_PICK_EXCERPT_FILE',
+      'WORKSHOP_REREAD_EXCERPT',
+      'WORKSHOP_SET_EXCERPT_RESOURCE',
+      'WORKSHOP_SET_SESSION_SCOPE',
+      'WORKSHOP_REPIN_EXCERPT'
+    ]
   },
   {
-    messageType: 'WORKSHOP_COMMIT_WIDGET',
-    owner: 'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts'
+    owner: WORKSHOP_CONTEXT_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: [
+      'WORKSHOP_ADD_CONTEXT_TEXT',
+      'WORKSHOP_ADD_CONTEXT_FILE',
+      'WORKSHOP_REMOVE_CONTEXT_ATTACHMENT',
+      'WORKSHOP_UPDATE_CONTEXT_TEXT',
+      'WORKSHOP_ADD_CONTEXT_RESOURCES',
+      'WORKSHOP_ATTACH_MESSAGE_RESOURCES',
+      'WORKSHOP_ATTACH_MESSAGE_FILE',
+      'WORKSHOP_REMOVE_MESSAGE_ATTACHMENT',
+      'WORKSHOP_RUN_CONTEXT_WIZARD'
+    ]
   },
   {
-    messageType: 'WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES',
-    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+    owner: WORKSHOP_CONTEXT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_REQUEST_CONTEXT_ATTACHMENT',
+      'WORKSHOP_OPEN_CONTEXT_ATTACHMENT_FILE',
+      'WORKSHOP_REQUEST_CONTEXT_CATALOG',
+      'WORKSHOP_SEARCH_CONTEXT_RESOURCES'
+    ]
   },
   {
-    messageType: 'WORKSHOP_PREVIEW_LEXICAL_GRAVITY',
-    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+    owner: WORKSHOP_TODO_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_TODO_ACTION']
   },
   {
-    messageType: 'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS',
-    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+    owner: WORKSHOP_SESSION_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: [
+      'WORKSHOP_RESET_SESSION',
+      'WORKSHOP_SAVE_SESSION',
+      'WORKSHOP_OPEN_SESSION',
+      'WORKSHOP_RENAME_SESSION',
+      'WORKSHOP_DUPLICATE_SESSION',
+      'WORKSHOP_DELETE_SESSION'
+    ]
   },
   {
-    messageType: 'WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES',
-    owner: 'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts'
+    owner: WORKSHOP_SESSION_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_REQUEST_SESSION',
+      'WORKSHOP_LIST_SESSIONS',
+      'WORKSHOP_REVEAL_SESSION'
+    ]
   },
   {
-    messageType: 'WORKSHOP_APPLY_STANDING_WIDGET',
-    owner: 'application/handlers/domain/workshop/WorkshopStandingDirectiveHandler.ts'
+    owner: WORKSHOP_GESTURE_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_GESTURE_PLAYGROUND_GENERATE',
+      'CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST'
+    ]
   },
   {
-    messageType: 'WORKSHOP_REMOVE_STANDING_WIDGET',
-    owner: 'application/handlers/domain/workshop/WorkshopStandingDirectiveHandler.ts'
+    owner: WORKSHOP_GESTURE_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_COMMIT_WIDGET']
+  },
+  {
+    owner: WORKSHOP_WIDGET_HOST_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_REQUEST_WIDGET_CONFIG']
+  },
+  {
+    owner: WORKSHOP_LEXICAL_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES',
+      'WORKSHOP_PREVIEW_LEXICAL_GRAVITY',
+      'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS'
+    ]
+  },
+  {
+    owner: WORKSHOP_LEXICAL_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: ['WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES']
+  },
+  {
+    owner: WORKSHOP_STANDING_HANDLER_OWNER,
+    registration: 'mutation',
+    messageTypes: [
+      'WORKSHOP_APPLY_STANDING_WIDGET',
+      'WORKSHOP_REMOVE_STANDING_WIDGET'
+    ]
+  }
+] as const;
+
+const WORKSHOP_CONTEXT_INTAKE_SERVICE = path.join(
+  SRC_ROOT,
+  'application',
+  'services',
+  'workshop',
+  'WorkshopContextIntakeService.ts'
+);
+const WORKSHOP_CONTEXT_INTAKE_FORBIDDEN_REFERENCES = [
+  'MessageType',
+  'MessageRouter',
+  'MessageTransport',
+  'WorkshopSessionService',
+  'LogSink'
+] as const;
+const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionMessageHandler.ts'),
+    reference: /WorkshopSessionMessageHandler/
+  },
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopContextHandler.ts'),
+    reference: /WorkshopContextHandler/
+  },
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopExcerptScopeHandler.ts'),
+    reference: /WorkshopExcerptScopeHandler/
+  },
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopTodoHandler.ts'),
+    reference: /WorkshopTodoHandler/
   }
 ] as const;
 
@@ -294,26 +429,84 @@ describe('architectural boundaries', () => {
     ]);
   });
 
-  it('Workshop widget and standing routes remain with their declared owners', () => {
+  it('keeps every Workshop route with its declared owner and gate classification', () => {
     const handlerFiles = collectSourceFiles(WORKSHOP_HANDLER_ROOT);
-    const actualOwners: Record<string, string> = {};
-
-    for (const { messageType, owner: expectedOwner } of WORKSHOP_WIDGET_ROUTE_OWNERS) {
-      const registration = new RegExp(
-        String.raw`(?:router\.register|registerMutation)\(\s*MessageType\.${messageType}\b`,
-        's'
+    const routeRegistration =
+      /(router\.register|registerMutation)\(\s*MessageType\.([A-Z0-9_]+)\b/g;
+    const actualOwnerPairs = handlerFiles.flatMap((file) => {
+      const owner = path.relative(SRC_ROOT, file);
+      return [...fs.readFileSync(file, 'utf8').matchAll(routeRegistration)]
+        .map((match) => [
+          match[2],
+          owner,
+          match[1] === 'registerMutation' ? 'mutation' : 'direct'
+        ] as const);
+    });
+    const expectedOwnerPairs = WORKSHOP_ROUTE_OWNERS.flatMap(({
+      owner,
+      registration,
+      messageTypes
+    }) =>
+      messageTypes.map((messageType) => [messageType, owner, registration] as const)
+    );
+    const duplicateLedgerEntries = expectedOwnerPairs
+      .map(([messageType]) => messageType)
+      .filter((messageType, index, messageTypes) =>
+        messageTypes.indexOf(messageType) !== index
       );
-      const owners = handlerFiles
-        .filter((file) => registration.test(fs.readFileSync(file, 'utf8')))
-        .map((file) => path.relative(SRC_ROOT, file));
+    const toOwnerRecord = (
+      ownerPairs: ReadonlyArray<readonly [string, string, 'mutation' | 'direct']>
+    ) => {
+      const ownersByMessageType: Record<string, string[]> = {};
+      for (const [messageType, owner, registration] of ownerPairs) {
+        (ownersByMessageType[messageType] ??= []).push(`${owner}#${registration}`);
+      }
+      return Object.fromEntries(
+        Object.entries(ownersByMessageType)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([messageType, owners]) => [messageType, owners.sort()])
+      );
+    };
 
-      expect(owners).toEqual([expectedOwner]);
-      actualOwners[messageType] = owners[0];
-    }
+    expect(expectedOwnerPairs).toHaveLength(48);
+    expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
+      .toHaveLength(34);
+    expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
+      .toHaveLength(14);
+    expect(duplicateLedgerEntries).toEqual([]);
+    expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
+  });
 
-    expect(actualOwners).toEqual(Object.fromEntries(
-      WORKSHOP_WIDGET_ROUTE_OWNERS.map(({ messageType, owner }) => [messageType, owner])
-    ));
+  it('only WorkshopHandler constructs the Workshop session-state envelope', () => {
+    const sessionStateLiteral = /type:\s*MessageType\.WORKSHOP_SESSION_STATE\b/;
+    const owners = collectSourceFiles(WORKSHOP_HANDLER_ROOT)
+      .filter((file) => sessionStateLiteral.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(owners).toEqual([WORKSHOP_HANDLER_OWNER]);
+  });
+
+  it('keeps Workshop context intake free of route, transport, session, and logging authority', () => {
+    const source = fs.readFileSync(WORKSHOP_CONTEXT_INTAKE_SERVICE, 'utf8');
+    const forbiddenReferences = WORKSHOP_CONTEXT_INTAKE_FORBIDDEN_REFERENCES
+      .filter((reference) => new RegExp(String.raw`\b${reference}\b`).test(source));
+
+    expect(forbiddenReferences).toEqual([]);
+  });
+
+  it('keeps extracted Workshop handler slices from importing one another', () => {
+    const offenders = WORKSHOP_EXTRACTED_HANDLER_SLICES.flatMap((slice) => {
+      const source = fs.readFileSync(slice.file, 'utf8');
+      return WORKSHOP_EXTRACTED_HANDLER_SLICES
+        .filter((sibling) => sibling.file !== slice.file)
+        .filter((sibling) => importsFeature(source, sibling.reference))
+        .map((sibling) =>
+          `${path.relative(SRC_ROOT, slice.file)} -> ${path.relative(SRC_ROOT, sibling.file)}`
+        );
+    });
+
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(4);
+    expect(offenders).toEqual([]);
   });
 
   it('Workshop feature modules do not import the sibling feature', () => {

@@ -1,7 +1,7 @@
 /** Family-generic IPC owner for Workshop widget-host mechanics. */
 
-import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { MessageTransport } from '@/application/handlers/MessageHandlerContracts';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { LogSink } from '@/platform';
 import {

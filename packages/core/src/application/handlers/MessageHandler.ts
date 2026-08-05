@@ -47,7 +47,7 @@ import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
-import { WorkshopHandler } from './domain/WorkshopHandler';
+import { WorkshopHandler } from './domain/workshop/WorkshopHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -176,7 +176,7 @@ export class MessageHandler {
       workshopRoomDeliveryService,
       workshopPersonaCapabilityFactory,
       workshopToolSidePass,
-      workshopContextResourceService,
+      workshopContextIntakeService,
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
@@ -299,8 +299,8 @@ export class MessageHandler {
 
     // Workshop editor tab (ADR 2026-07-03) — the 12th domain, composed exactly
     // like the other 11: injected services + platform ports, nothing
-    // constructed here beyond the handler itself. Shell/fileSystem/workspace
-    // feed the Sprint 3 "Pin from file…" seam (picker → read → provenance).
+    // constructed here beyond the handler itself. Shell owns host pickers and
+    // session file actions; the intake service owns file/workspace mechanics.
     this.workshopHandler = new WorkshopHandler(
       assistantToolService,
       contextAssistantService,
@@ -310,9 +310,7 @@ export class MessageHandler {
       workshopPersonaCapabilityFactory,
       this.postMessage.bind(this),
       this.platform.shell,
-      this.platform.fileSystem,
-      this.platform.workspace,
-      workshopContextResourceService,
+      workshopContextIntakeService,
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,

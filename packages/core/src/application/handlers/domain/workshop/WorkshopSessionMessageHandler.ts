@@ -6,8 +6,8 @@
  * and cancellation of superseded browser searches.
  */
 
-import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { MessageTransport } from '@/application/handlers/MessageHandlerContracts';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { LogSink, ShellService } from '@/platform';
 import {
@@ -25,17 +25,13 @@ import {
   WorkshopSessionActionResultMessage,
   WorkshopSessionsDataMessage
 } from '@messages';
+import type {
+  WorkshopMutationRouteRegistrar
+} from '@handlers/domain/workshop/WorkshopHandlerContracts';
 
 let sessionRequestCounter = 0;
 const generateSessionRequestId = (): string =>
   `workshop_sessions-${Date.now()}-${++sessionRequestCounter}`;
-
-export type WorkshopMutationRouteRegistrar = (
-  messageType: MessageType,
-  handler: (message: never) => Promise<void>,
-  sessionAction?: WorkshopSessionAction,
-  onBlocked?: (reason: string, message: never) => void
-) => void;
 
 export interface WorkshopSessionMessageHandlerOptions {
   postSessionState: () => void;
