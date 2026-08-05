@@ -14,6 +14,7 @@ import type { WorkshopSessionPersistenceCoordinator } from '@/application/servic
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
 import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
@@ -79,6 +80,8 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory;
     const settings = createFakeSettings();
+    const fileSystem = createFakeFileSystem();
+    const workspace = createFakeWorkspace();
     const writerProfileService = new WorkshopWriterProfileService(settings, output);
     const roomDelivery = new WorkshopRoomDeliveryService(session);
     const handler = new WorkshopHandler(
@@ -99,11 +102,16 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       capabilityFactory,
       postMessage,
       createFakeShellService(),
-      createFakeFileSystem(),
-      createFakeWorkspace(),
-      new WorkshopContextIntakeService({
-        createProvider: jest.fn(async () => ({ listResources: () => [], loadResources: async () => [] }))
-      } as never),
+      new WorkshopContextIntakeService(
+        {
+          createProvider: jest.fn(async () => ({
+            listResources: () => [],
+            loadResources: async () => []
+          }))
+        } as never,
+        fileSystem,
+        workspace
+      ),
       new WorkshopConversationSettingsService(
         session,
         assistantService,
@@ -142,14 +150,16 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
       } as unknown as WorkshopWidgetRuntime,
       output
     );
-    await handler.handleSetExcerpt({
+    const router = new MessageRouter();
+    handler.registerRoutes(router);
+    await router.route({
       type: MessageType.WORKSHOP_SET_EXCERPT,
       source: 'webview.workshop',
       payload: { text: 'The sentence under test.' },
       timestamp: 1
     });
 
-    await handler.handleRunTool({
+    await router.route({
       type: MessageType.WORKSHOP_RUN_TOOL,
       source: 'webview.workshop',
       payload: { toolId: 'prose' },

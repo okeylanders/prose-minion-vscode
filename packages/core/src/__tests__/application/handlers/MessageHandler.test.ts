@@ -7,6 +7,7 @@ import {
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
   DEFAULT_WORKSHOP_WRITER_PROFILE,
@@ -163,6 +164,16 @@ function createTestAssembly(): TestAssembly {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory,
     workshopToolSidePass: { run: jest.fn() } as unknown as RunWorkshopToolSidePass,
+    workshopContextIntakeService: new WorkshopContextIntakeService(
+      {
+        createProvider: jest.fn().mockResolvedValue({
+          listResources: () => [],
+          loadResources: async () => []
+        })
+      } as never,
+      platform.fileSystem,
+      platform.workspace
+    ),
     workshopConversationSettingsService: {
       applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       syncFromSettings: jest.fn().mockResolvedValue({ changed: false, deferred: false }),

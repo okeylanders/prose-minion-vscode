@@ -232,7 +232,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopWriterProfileService,
     () => workshopConversationSettingsService.getWebResearch().enabled
   );
-  const workshopContextIntakeService = new WorkshopContextIntakeService(contextResourceResolver);
+  const workshopContextIntakeService = new WorkshopContextIntakeService(
+    contextResourceResolver,
+    platform.fileSystem,
+    platform.workspace
+  );
   const workshopSessionTimeService = new WorkshopSessionTimeService();
   const workshopSessionStore = new WorkshopSessionStore(
     platform.fileSystem,

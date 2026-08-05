@@ -25,17 +25,13 @@ import {
   WorkshopSessionActionResultMessage,
   WorkshopSessionsDataMessage
 } from '@messages';
+import type {
+  WorkshopMutationRouteRegistrar
+} from '@handlers/domain/workshop/WorkshopHandlerContracts';
 
 let sessionRequestCounter = 0;
 const generateSessionRequestId = (): string =>
   `workshop_sessions-${Date.now()}-${++sessionRequestCounter}`;
-
-export type WorkshopMutationRouteRegistrar = (
-  messageType: MessageType,
-  handler: (message: never) => Promise<void>,
-  sessionAction?: WorkshopSessionAction,
-  onBlocked?: (reason: string, message: never) => void
-) => void;
 
 export interface WorkshopSessionMessageHandlerOptions {
   postSessionState: () => void;
