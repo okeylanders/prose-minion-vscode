@@ -6,6 +6,11 @@
 
 **Depends on:** Sprint 06
 
+**Evidence:** [Sprint 07 architecture change runway](../../../../docs/architecture/2026-08-06-workshop-sprint-07-architecture-closure-runway.md)
+— three decisions (D7-A handler disposition, D7-B reproduction-criterion reading,
+D7-C audit subject list) are open and gate the audit; five of the ten completion
+criteria below are already satisfied at base `0a742ca`.
+
 ## Goal
 
 Prove that the implemented Workshop architecture is coherent, protected, and
