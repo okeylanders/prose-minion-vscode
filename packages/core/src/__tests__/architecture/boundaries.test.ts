@@ -822,6 +822,18 @@ describe('architectural boundaries', () => {
     expect(owners).toEqual([WORKSHOP_ROOM_HANDLER_OWNER]);
   });
 
+  /**
+   * Scope is deliberate and narrower than the rule it protects.
+   *
+   * The scan covers HANDLERS_ROOT, so it proves that within the handler tree
+   * only MessageHandler constructs the room owner and only
+   * WorkshopSliceComposition constructs the eight siblings. It cannot see a
+   * sibling built outside that tree — a factory under
+   * `application/services/workshop/`, for instance — nor a construction that
+   * evades the `new Workshop*Handler(` shape (aliased import, Reflect.construct,
+   * a name without the Workshop prefix or Handler suffix). No such path exists
+   * today; widen the root here if one is ever introduced.
+   */
   it('keeps all Workshop handler construction at the two documented composition tiers', () => {
     const handlerConstruction = /new\s+(Workshop[A-Za-z0-9]+Handler)\s*\(/g;
     const constructions = collectSourceFiles(HANDLERS_ROOT).flatMap((file) =>
