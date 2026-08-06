@@ -1,6 +1,6 @@
 /**
  * The single Workshop run-completion decision tree, shared by the composer
- * path (WorkshopHandler.executeMessage) and the synthesis leg of the tool
+ * path (WorkshopRoomHandler.executeMessage) and the synthesis leg of the tool
  * side-pass (RunWorkshopToolSidePass).
  *
  * PR #72 review #7: the two inline copies of this four-branch machine had

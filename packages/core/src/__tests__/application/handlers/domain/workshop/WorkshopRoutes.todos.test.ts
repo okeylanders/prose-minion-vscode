@@ -4,19 +4,19 @@ import {
 import {
   analysisResult,
   message,
-  createWorkshopHandlerTestHarness
-} from './WorkshopHandlerTestHarness';
-import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
+  createWorkshopRouteTestHarness
+} from './WorkshopRouteTestHarness';
+import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
-describe('WorkshopHandler routing — todo owner', () => {
-  let session: WorkshopHandlerTestHarness['session'];
-  let postMessage: WorkshopHandlerTestHarness['postMessage'];
-  let log: WorkshopHandlerTestHarness['log'];
-  let service: WorkshopHandlerTestHarness['service'];
-  let router: WorkshopHandlerTestHarness['router'];
-  let posted: WorkshopHandlerTestHarness['posted'];
-  let pin: WorkshopHandlerTestHarness['pin'];
-  let runProse: WorkshopHandlerTestHarness['runProse'];
+describe('Workshop composed routing — todo owner', () => {
+  let session: WorkshopRouteTestHarness['session'];
+  let postMessage: WorkshopRouteTestHarness['postMessage'];
+  let log: WorkshopRouteTestHarness['log'];
+  let service: WorkshopRouteTestHarness['service'];
+  let router: WorkshopRouteTestHarness['router'];
+  let posted: WorkshopRouteTestHarness['posted'];
+  let pin: WorkshopRouteTestHarness['pin'];
+  let runProse: WorkshopRouteTestHarness['runProse'];
 
   beforeEach(() => {
     ({
@@ -28,7 +28,7 @@ describe('WorkshopHandler routing — todo owner', () => {
       posted,
       pin,
       runProse
-    } = createWorkshopHandlerTestHarness());
+    } = createWorkshopRouteTestHarness());
   });
 
   it('promotes only a structured report finding and attributes it on the next host turn', async () => {

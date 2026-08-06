@@ -1,4 +1,4 @@
-import { isWorkshopHostReturnShortcut } from '@/application/handlers/domain/workshop/WorkshopHandler';
+import { isWorkshopHostReturnShortcut } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
 import {
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -11,28 +11,28 @@ import {
 import {
   analysisResult,
   message,
-  createWorkshopHandlerTestHarness
-} from './WorkshopHandlerTestHarness';
-import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
+  createWorkshopRouteTestHarness
+} from './WorkshopRouteTestHarness';
+import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
-describe('WorkshopHandler routing — room and run owner', () => {
-  let session: WorkshopHandlerTestHarness['session'];
-  let postMessage: WorkshopHandlerTestHarness['postMessage'];
-  let log: WorkshopHandlerTestHarness['log'];
-  let service: WorkshopHandlerTestHarness['service'];
-  let settings: WorkshopHandlerTestHarness['settings'];
-  let handler: WorkshopHandlerTestHarness['handler'];
-  let router: WorkshopHandlerTestHarness['router'];
-  let roomDelivery: WorkshopHandlerTestHarness['roomDelivery'];
-  let writerProfileService: WorkshopHandlerTestHarness['writerProfileService'];
-  let capabilityFactory: WorkshopHandlerTestHarness['capabilityFactory'];
-  let contextBudgets: WorkshopHandlerTestHarness['contextBudgets'];
-  let persistence: WorkshopHandlerTestHarness['persistence'];
-  let posted: WorkshopHandlerTestHarness['posted'];
-  let storeContext: WorkshopHandlerTestHarness['storeContext'];
-  let pin: WorkshopHandlerTestHarness['pin'];
-  let runProse: WorkshopHandlerTestHarness['runProse'];
-  let setTimeNow: WorkshopHandlerTestHarness['setTimeNow'];
+describe('WorkshopRoomHandler routing — room and run owner', () => {
+  let session: WorkshopRouteTestHarness['session'];
+  let postMessage: WorkshopRouteTestHarness['postMessage'];
+  let log: WorkshopRouteTestHarness['log'];
+  let service: WorkshopRouteTestHarness['service'];
+  let settings: WorkshopRouteTestHarness['settings'];
+  let handler: WorkshopRouteTestHarness['handler'];
+  let router: WorkshopRouteTestHarness['router'];
+  let roomDelivery: WorkshopRouteTestHarness['roomDelivery'];
+  let writerProfileService: WorkshopRouteTestHarness['writerProfileService'];
+  let capabilityFactory: WorkshopRouteTestHarness['capabilityFactory'];
+  let contextBudgets: WorkshopRouteTestHarness['contextBudgets'];
+  let persistence: WorkshopRouteTestHarness['persistence'];
+  let posted: WorkshopRouteTestHarness['posted'];
+  let storeContext: WorkshopRouteTestHarness['storeContext'];
+  let pin: WorkshopRouteTestHarness['pin'];
+  let runProse: WorkshopRouteTestHarness['runProse'];
+  let setTimeNow: WorkshopRouteTestHarness['setTimeNow'];
 
   beforeEach(() => {
     ({
@@ -53,7 +53,7 @@ describe('WorkshopHandler routing — room and run owner', () => {
       pin,
       runProse,
       setTimeNow
-    } = createWorkshopHandlerTestHarness());
+    } = createWorkshopRouteTestHarness());
   });
 
   it('abandons an active run before flushing persistence on dispose', async () => {
@@ -515,7 +515,7 @@ describe('WorkshopHandler routing — room and run owner', () => {
     expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget)
       .toEqual({ label: 'Jill context' });
     expect(log.appendLine).toHaveBeenCalledWith(
-      '[WorkshopHandler] Guest dismissed (persona=margot, conversation=guest-conv)'
+      '[WorkshopRoomHandler] Guest dismissed (persona=margot, conversation=guest-conv)'
     );
     expect(session.getSnapshot().participants.personaGuests).toEqual([
       expect.objectContaining({ personaId: 'margot', liveness: 'disposed', hasConversation: false })

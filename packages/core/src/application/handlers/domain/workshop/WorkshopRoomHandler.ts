@@ -31,11 +31,6 @@ import { WorkshopContextIntakeService } from '@/application/services/workshop/Wo
 import { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import { renderWorkshopStandingDirectiveFrames } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 import {
-  WorkshopLexicalGravityHandler,
-  WorkshopLexicalGravityModelPort,
-  WorkshopLexicalGravityRepositoryPort
-} from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
-import {
   WorkshopPreparedTimeNotice,
   WorkshopSessionTimeService,
   workshopGuestConversationKey
@@ -90,7 +85,6 @@ import {
   WorkshopSetChatTargetMessage,
   WorkshopSetConversationSettingsMessage,
   WorkshopSessionStateMessage,
-  WorkshopSessionAction,
   WorkshopSessionSaveStatusMessage,
   WorkshopToolId,
   WorkshopPersonaId,
@@ -106,22 +100,13 @@ import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities'
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
-import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/WorkshopSessionMessageHandler';
 import type {
   WorkshopMutationRouteRegistrar
-} from '@handlers/domain/workshop/WorkshopHandlerContracts';
-import { WorkshopContextHandler } from '@handlers/domain/workshop/WorkshopContextHandler';
-import { WorkshopExcerptScopeHandler } from '@handlers/domain/workshop/WorkshopExcerptScopeHandler';
-import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 import {
-  WorkshopGesturePlaygroundHandler,
-  WorkshopGesturePlaygroundServicePort
-} from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
-import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
-import {
-  WorkshopStandingDirectiveHandler,
-  WorkshopStandingDirectiveServicePort
-} from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
+  WorkshopSliceComposition,
+  WorkshopWidgetRuntime
+} from '@handlers/domain/workshop/WorkshopSliceComposition';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -214,21 +199,7 @@ export const isWorkshopHostReturnShortcut = (text: string, personaLabel: string)
     'i'
   ).test(text.trim());
 
-/**
- * Widget-specific collaborators cross the Workshop boundary as one focused
- * feature bundle. Adding another widget extends this seam; it does not add
- * another positional argument to the already broad controller constructor.
- */
-export interface WorkshopWidgetRuntime {
-  gesturePlayground: WorkshopGesturePlaygroundServicePort;
-  standingDirectives: WorkshopStandingDirectiveServicePort;
-  lexicalGravity: {
-    model: WorkshopLexicalGravityModelPort;
-    repository: WorkshopLexicalGravityRepositoryPort;
-  };
-}
-
-export class WorkshopHandler {
+export class WorkshopRoomHandler {
   /** The single in-flight run — at most one; a new run preempts it. */
   private activeRun?: {
     requestId: string;
@@ -241,14 +212,7 @@ export class WorkshopHandler {
 
   private readonly disposeStatusListener: () => void;
   private readonly disposeSessionSaveStatusListener: () => void;
-  private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
-  private readonly gesturePlaygroundHandler: WorkshopGesturePlaygroundHandler;
-  private readonly widgetHostHandler: WorkshopWidgetHostHandler;
-  private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
-  private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
-  private readonly todoHandler: WorkshopTodoHandler;
-  private readonly contextHandler: WorkshopContextHandler;
-  private readonly excerptScopeHandler: WorkshopExcerptScopeHandler;
+  private readonly sliceComposition: WorkshopSliceComposition;
 
   constructor(
     private readonly assistantToolService: AssistantToolService,
@@ -286,100 +250,50 @@ export class WorkshopHandler {
         };
         void this.postMessage(message);
       });
-    this.contextHandler = new WorkshopContextHandler(
-      contextAssistantService,
-      this.session,
-      shell,
-      contextIntakeService,
-      this.postMessage,
-      this.outputChannel,
+    this.sliceComposition = new WorkshopSliceComposition(
       {
-        postSessionState: () => this.postSessionState(),
-        postTurn: (turn) => this.postTurn(turn),
-        markDirty: (reason) => this.sessionPersistence.markDirty(reason),
-        reportError: (message, details) =>
-          this.sendError('workshop', message, details, 'WorkshopContextHandler'),
-        sendStatus: (message) => this.sendStatus(message)
-      }
-    );
-    this.excerptScopeHandler = new WorkshopExcerptScopeHandler(
-      this.session,
-      shell,
-      contextIntakeService,
-      this.outputChannel,
-      {
-        excerptMutationBlockedReason: () => this.excerptMutationBlockedReason()
+        contextAssistantService,
+        session: this.session,
+        postMessage: this.postMessage,
+        shell,
+        contextIntakeService,
+        sessionPersistence: this.sessionPersistence,
+        widgetRuntime,
+        outputChannel: this.outputChannel
       },
       {
         postSessionState: () => this.postSessionState(),
         postTurn: (turn) => this.postTurn(turn),
         markDirty: (reason) => this.sessionPersistence.markDirty(reason),
-        reportError: (message, details) =>
-          this.sendError('workshop', message, details, 'WorkshopExcerptScopeHandler'),
+        reportError: (source, message, details, owner) =>
+          this.sendError(source, message, details, owner),
         sendStatus: (message) => this.sendStatus(message),
-        discardConversations: (conversationIds) => this.discardConversations(conversationIds)
-      }
-    );
-    this.sessionMessageHandler = new WorkshopSessionMessageHandler(
-      this.sessionPersistence,
-      this.postMessage,
-      shell,
-      this.outputChannel,
-      {
-        postSessionState: () => this.postSessionState(),
+        discardConversations: (conversationIds) => this.discardConversations(conversationIds),
+        excerptMutationBlockedReason: () => this.excerptMutationBlockedReason(),
         flushDeferredConversationSettings: async () => {
           await this.flushDeferredConversationSettings();
         },
-        reportError: (message, details) => {
-          this.sendError('workshop', message, details, 'WorkshopSessionMessageHandler');
-        },
-        activeRunLabel: () => this.activeRunLabel()
-      }
-    );
-    this.gesturePlaygroundHandler = new WorkshopGesturePlaygroundHandler(
-      this.session,
-      widgetRuntime.gesturePlayground,
-      this.postMessage,
-      this.outputChannel,
-      {
+        activeRunLabel: () => this.activeRunLabel(),
         sendRoomMessage: (text, displayText, executeOptions) =>
           this.executeMessage(text, displayText, undefined, executeOptions),
-        postSessionState: () => this.postSessionState(),
-        markDirty: (reason) => this.sessionPersistence.markDirty(reason),
-        reportError: (message, details) =>
-          this.sendError('workshop', message, details, 'WorkshopGesturePlaygroundHandler'),
-        isRoomRunActive: () => this.activeRun !== undefined
-      }
-    );
-    this.widgetHostHandler = new WorkshopWidgetHostHandler(
-      this.session,
-      this.postMessage,
-      this.outputChannel
-    );
-    this.lexicalGravityHandler = new WorkshopLexicalGravityHandler(
-      widgetRuntime.lexicalGravity.model,
-      widgetRuntime.lexicalGravity.repository,
-      this.postMessage,
-      this.outputChannel
-    );
-    this.standingDirectiveHandler = new WorkshopStandingDirectiveHandler(
-      widgetRuntime.standingDirectives,
-      this.postMessage,
-      this.outputChannel,
-      {
-        postSessionState: () => this.postSessionState(),
-        postTurn: (turn) => this.postTurn(turn),
-        markDirty: (reason) => this.sessionPersistence.markDirty(reason)
-      }
-    );
-    this.todoHandler = new WorkshopTodoHandler(
-      this.session,
-      this.outputChannel,
-      {
-        postSessionState: () => this.postSessionState(),
-        markDirty: (reason) => this.sessionPersistence.markDirty(reason),
-        reportError: (message, details) =>
-          this.sendError('workshop.todo', message, details, 'WorkshopTodoHandler')
+        isRoomRunActive: () => this.activeRun !== undefined,
+        disposeRoomSubscriptions: () => {
+          this.disposeStatusListener();
+          this.disposeSessionSaveStatusListener();
+        },
+        disposeActiveRoomRun: () => {
+          if (this.activeRun) {
+            this.outputChannel.appendLine(
+              `[WorkshopRoomHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
+            );
+            this.activeRun.controller.abort();
+            this.session.abandonRun(this.activeRun.requestId);
+            this.activeRun = undefined;
+          }
+        },
+        flushPersistence: () => {
+          void this.sessionPersistence.flush();
+        }
       }
     );
   }
@@ -388,43 +302,26 @@ export class WorkshopHandler {
    * Register message routes for the workshop domain
    */
   registerRoutes(router: MessageRouter): void {
-    const registerMutation: WorkshopMutationRouteRegistrar = (
-      messageType: MessageType,
-      handler: (message: never) => Promise<void>,
-      sessionAction?: WorkshopSessionAction,
-      onBlocked?: (reason: string, message: never) => void
-    ): void => {
-      router.register(messageType, async (message) => {
-        const reportBlocked = onBlocked
-          ? (reason: string) => onBlocked(reason, message as never)
-          : undefined;
-        if (this.rejectRoomMutationDuringSessionOperation(sessionAction, reportBlocked)) {
-          return;
-        }
-        await handler(message as never);
-      });
-    };
-
-    registerMutation(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
-    registerMutation(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
-    registerMutation(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
-    registerMutation(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
-    registerMutation(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
-    registerMutation(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
-    registerMutation(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
-    registerMutation(
-      MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
-      this.handleSetConversationSettings.bind(this)
-    );
-    this.excerptScopeHandler.registerRoutes(router, registerMutation);
-    this.contextHandler.registerRoutes(router, registerMutation);
-    this.sessionMessageHandler.registerRoutes(router, registerMutation);
-    this.gesturePlaygroundHandler.registerRoutes(router, registerMutation);
-    this.widgetHostHandler.registerRoutes(router);
-    this.standingDirectiveHandler.registerRoutes(router, registerMutation);
-    this.lexicalGravityHandler.registerRoutes(router, registerMutation);
-    this.todoHandler.registerRoutes(router, registerMutation);
-    router.register(MessageType.CANCEL_WORKSHOP_REQUEST, this.handleCancelRequest.bind(this));
+    this.sliceComposition.registerRoutes(router, (
+      router,
+      registerMutation: WorkshopMutationRouteRegistrar
+    ) => {
+      registerMutation(MessageType.WORKSHOP_RUN_TOOL, this.handleRunTool.bind(this));
+      registerMutation(MessageType.WORKSHOP_QUICK_ACTION, this.handleQuickAction.bind(this));
+      registerMutation(MessageType.WORKSHOP_SEND_MESSAGE, this.handleSendMessage.bind(this));
+      registerMutation(MessageType.WORKSHOP_INVITE_GUEST, this.handleInviteGuest.bind(this));
+      registerMutation(MessageType.WORKSHOP_DISMISS_GUEST, this.handleDismissGuest.bind(this));
+      registerMutation(MessageType.WORKSHOP_SELECT_PERSONA, this.handleSelectPersona.bind(this));
+      registerMutation(MessageType.WORKSHOP_SET_CHAT_TARGET, this.handleSetChatTarget.bind(this));
+      registerMutation(
+        MessageType.WORKSHOP_SET_CONVERSATION_SETTINGS,
+        this.handleSetConversationSettings.bind(this)
+      );
+      router.register(
+        MessageType.CANCEL_WORKSHOP_REQUEST,
+        this.handleCancelRequest.bind(this)
+      );
+    });
   }
 
   /**
@@ -434,21 +331,7 @@ export class WorkshopHandler {
    * survives: it belongs to the session, not to this handler.
    */
   dispose(): void {
-    this.gesturePlaygroundHandler.dispose();
-    this.lexicalGravityHandler.dispose();
-    this.disposeStatusListener();
-    this.disposeSessionSaveStatusListener();
-    this.sessionMessageHandler.dispose();
-    if (this.activeRun) {
-      this.outputChannel.appendLine(
-        `[WorkshopHandler] Aborting in-flight run on dispose: ${this.activeRun.requestId}`
-      );
-      this.activeRun.controller.abort();
-      this.session.abandonRun(this.activeRun.requestId);
-      this.activeRun = undefined;
-    }
-    this.contextHandler.dispose();
-    void this.sessionPersistence.flush();
+    this.sliceComposition.dispose();
   }
 
   // Message handlers
@@ -529,7 +412,7 @@ export class WorkshopHandler {
             : undefined
         ].filter(Boolean).join('; ');
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
+          `[WorkshopRoomHandler] Conversation settings are active but could not be persisted: ${persistenceDetails}`
         );
         this.sendError(
           'workshop',
@@ -544,7 +427,7 @@ export class WorkshopHandler {
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Conversation settings change rejected; prior settings retained: ${details}`
+        `[WorkshopRoomHandler] Conversation settings change rejected; prior settings retained: ${details}`
       );
       this.sendError(
         'workshop',
@@ -568,7 +451,7 @@ export class WorkshopHandler {
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[WorkshopHandler] External conversation settings sync failed: ${details}`
+        `[WorkshopRoomHandler] External conversation settings sync failed: ${details}`
       );
       this.sendError(
         'workshop',
@@ -744,7 +627,7 @@ export class WorkshopHandler {
           createsRetainedConversation: true,
           copy: workshopMessageCompletionCopy(workshopPersonaLabel(personaId)),
           discardConversation: (id) => this.assistantToolService.discardConversation(id),
-          log: (line) => this.outputChannel.appendLine(`[WorkshopHandler] ${line}`),
+          log: (line) => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`),
           events: {
             streamCompleted: (id, content, cancelled, usage, truncated) =>
               this.sendStreamComplete(id, content, cancelled, usage, truncated),
@@ -805,7 +688,7 @@ export class WorkshopHandler {
     }
     this.assistantToolService.discardConversation(conversationId);
     this.outputChannel.appendLine(
-      `[WorkshopHandler] Guest dismissed (persona=${personaId}, conversation=${conversationId})`
+      `[WorkshopRoomHandler] Guest dismissed (persona=${personaId}, conversation=${conversationId})`
     );
     this.sendStatus(`${workshopPersonaLabel(personaId)} left the room.`);
     this.sessionPersistence.markDirty('guest dismissed');
@@ -1099,12 +982,12 @@ export class WorkshopHandler {
     const hostUpdateFrame = targetPlan.buildHostUpdateFrame(pendingHostUpdates);
     if (pendingHostUpdates) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Pending host update prepared (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${targetPlan.hostUpdateDeliveryLabel})`
+        `[WorkshopRoomHandler] Pending host update prepared (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${targetPlan.hostUpdateDeliveryLabel})`
       );
     }
     if (roomDelivery && roomDelivery.deliveredTurnIds.length > 0) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred, status=${hasConversationalCatchUp ? 'conversational' : 'lifecycle-only'}`
+        `[WorkshopRoomHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred, status=${hasConversationalCatchUp ? 'conversational' : 'lifecycle-only'}`
       );
     }
     const { conversationId, label, requestType, toolId, guestPersonaId } = targetPlan;
@@ -1127,7 +1010,7 @@ export class WorkshopHandler {
     );
     if (messageAttachments.length > 0) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Message attachments riding this send: ${messageAttachments.map((a) => a.id).join(', ')}`
+        `[WorkshopRoomHandler] Message attachments riding this send: ${messageAttachments.map((a) => a.id).join(', ')}`
       );
     }
     // Widget commits share the frame builder and the ta-N mint but bypass the
@@ -1142,7 +1025,7 @@ export class WorkshopHandler {
         content: widgetArtifact.content
       });
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Widget artifact riding this send: ${widgetArtifact.id} (${widgetArtifact.widgetId}, config ${widgetArtifact.widgetConfigId})`
+        `[WorkshopRoomHandler] Widget artifact riding this send: ${widgetArtifact.id} (${widgetArtifact.widgetId}, config ${widgetArtifact.widgetConfigId})`
       );
     }
     const threadArtifactFrames = roomThreadArtifacts.map(
@@ -1211,7 +1094,7 @@ export class WorkshopHandler {
       // the room can never recover.
       this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
+        `[WorkshopRoomHandler] Room thread artifacts published on ${userTurn.id} ` +
         `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
       );
     }
@@ -1260,7 +1143,7 @@ export class WorkshopHandler {
         createsRetainedConversation: targetPlan.createsRetainedConversation,
         copy: workshopMessageCompletionCopy(label),
         discardConversation: (id) => this.assistantToolService.discardConversation(id),
-        log: (line) => this.outputChannel.appendLine(`[WorkshopHandler] ${line}`),
+        log: (line) => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`),
         events: {
           streamCompleted: (id, content, cancelled, usage, truncated) =>
             this.sendStreamComplete(id, content, cancelled, usage, truncated),
@@ -1276,7 +1159,7 @@ export class WorkshopHandler {
         try {
           this.roomDelivery.commit(roomDelivery);
           this.outputChannel.appendLine(
-            `[WorkshopHandler] Room delivery committed ` +
+            `[WorkshopRoomHandler] Room delivery committed ` +
             `(${roomDelivery.reader.kind === 'host'
               ? 'host'
               : `guest=${roomDelivery.reader.personaId}`}; ` +
@@ -1288,13 +1171,13 @@ export class WorkshopHandler {
           // the same contiguous prefix retries instead of misreporting the
           // successful participant turn as failed.
           this.outputChannel.appendLine(
-            `[WorkshopHandler] Room delivery acknowledgement retained for retry after ` +
+            `[WorkshopRoomHandler] Room delivery acknowledgement retained for retry after ` +
             `committed ${label} reply: ${error instanceof Error ? error.message : String(error)}`
           );
         }
       } else if (roomDelivery) {
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Room delivery retained after incomplete ${label} reply ` +
+          `[WorkshopRoomHandler] Room delivery retained after incomplete ${label} reply ` +
           `(${roomDelivery.reader.kind === 'host'
             ? 'host'
             : `guest=${roomDelivery.reader.personaId}`}; ` +
@@ -1304,11 +1187,11 @@ export class WorkshopHandler {
       if (assistantTurn && pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+          `[WorkshopRoomHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
         );
       } else if (pendingHostUpdates) {
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Pending host update retained after incomplete delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+          `[WorkshopRoomHandler] Pending host update retained after incomplete delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
         );
       }
       if (assistantTurn && messageAttachments.length > 0) {
@@ -1318,7 +1201,7 @@ export class WorkshopHandler {
         if (targetPlan.publishesRoomArtifacts) {
           this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
           this.outputChannel.appendLine(
-            `[WorkshopHandler] Room thread artifacts published on ${userTurn.id} ` +
+            `[WorkshopRoomHandler] Room thread artifacts published on ${userTurn.id} ` +
             `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
           );
         }
@@ -1327,7 +1210,7 @@ export class WorkshopHandler {
           targetPlan.chatTarget
         );
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
+          `[WorkshopRoomHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
         );
       }
       if (assistantTurn) {
@@ -1341,7 +1224,7 @@ export class WorkshopHandler {
       this.session.abandonRun(requestId);
       if (pendingHostUpdates) {
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Pending host update retained after failed delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}): ${details}`
+          `[WorkshopRoomHandler] Pending host update retained after failed delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}): ${details}`
         );
       }
       this.sendStreamComplete(requestId, '', true);
@@ -1351,7 +1234,7 @@ export class WorkshopHandler {
         const discardedConversationIds = this.session.clearAllConversations();
         this.discardConversations(discardedConversationIds);
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Conversation generation lost (${discardedConversationIds.length} conversations discarded: ${discardedConversationIds.join(', ') || 'none'}): ${details}`
+          `[WorkshopRoomHandler] Conversation generation lost (${discardedConversationIds.length} conversations discarded: ${discardedConversationIds.join(', ') || 'none'}): ${details}`
         );
         this.sessionPersistence.markDirty('expired conversation bindings cleared');
         this.sendError(
@@ -1380,55 +1263,36 @@ export class WorkshopHandler {
   async handleCancelRequest(message: CancelWorkshopRequestMessage): Promise<void> {
     const { requestId, domain } = message.payload;
     if (domain === 'workshop-context') {
-      if (!this.contextHandler.cancelRun(requestId)) {
+      if (!this.sliceComposition.cancelContextRun(requestId)) {
         this.outputChannel.appendLine(
-          `[WorkshopHandler] Cancel ignored: ${requestId} (domain=${domain})`
+          `[WorkshopRoomHandler] Cancel ignored: ${requestId} (domain=${domain})`
         );
       }
       return;
     }
     if (domain !== 'workshop') {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
+        `[WorkshopRoomHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
       );
       return;
     }
     if (this.activeRun?.requestId === requestId) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Cancel requested: ${requestId} (${this.activeRun.label})`
+        `[WorkshopRoomHandler] Cancel requested: ${requestId} (${this.activeRun.label})`
       );
       this.activeRun.controller.abort();
       return;
     }
     this.outputChannel.appendLine(
-      `[WorkshopHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
+      `[WorkshopRoomHandler] Cancel ignored: ${requestId} (domain=${domain}, active=${this.activeRun?.requestId ?? 'none'})`
     );
-  }
-
-  private rejectRoomMutationDuringSessionOperation(
-    sessionAction?: WorkshopSessionAction,
-    onBlocked?: (message: string) => void
-  ): boolean {
-    if (!this.sessionPersistence.isSessionOperationPending()) {
-      return false;
-    }
-    const message =
-      'Wait for the current session save or replacement to finish before changing the room.';
-    if (onBlocked) {
-      onBlocked(message);
-    } else if (sessionAction) {
-      this.sessionMessageHandler.postActionResult(sessionAction, false, message);
-    } else {
-      this.sendError('workshop', message);
-    }
-    return true;
   }
 
   private currentRunKind(): 'room' | 'wizard' | undefined {
     if (this.activeRun) {
       return 'room';
     }
-    return this.contextHandler.isRunning() ? 'wizard' : undefined;
+    return this.sliceComposition.isContextRunActive() ? 'wizard' : undefined;
   }
 
   private excerptMutationBlockedReason(): string | undefined {
@@ -1456,7 +1320,7 @@ export class WorkshopHandler {
   private preemptActiveRun(): void {
     if (this.activeRun) {
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Preempting in-flight run: ${this.activeRun.requestId} (${this.activeRun.label})`
+        `[WorkshopRoomHandler] Preempting in-flight run: ${this.activeRun.requestId} (${this.activeRun.label})`
       );
       this.activeRun.controller.abort();
       this.session.abandonRun(this.activeRun.requestId);
@@ -1500,7 +1364,7 @@ export class WorkshopHandler {
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(
-        `[WorkshopHandler] Deferred conversation settings sync failed: ${details}`
+        `[WorkshopRoomHandler] Deferred conversation settings sync failed: ${details}`
       );
       this.sendError(
         'workshop',
@@ -1637,7 +1501,7 @@ export class WorkshopHandler {
     source: ErrorSource,
     message: string,
     details?: string,
-    owner = 'WorkshopHandler'
+    owner = 'WorkshopRoomHandler'
   ): void {
     const errorMessage: ErrorMessage = {
       type: MessageType.ERROR,

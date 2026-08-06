@@ -16,7 +16,7 @@ import { MessageRouter } from '@handlers/MessageRouter';
 import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects
-} from '@handlers/domain/workshop/WorkshopHandlerContracts';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { LogSink, ShellService } from '@/platform';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';

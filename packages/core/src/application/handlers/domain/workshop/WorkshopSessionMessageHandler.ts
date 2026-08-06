@@ -1,7 +1,7 @@
 /**
  * Session-persistence IPC slice for Workshop.
  *
- * WorkshopHandler owns the room and run orchestration. This per-webview
+ * WorkshopRoomHandler owns the room and run orchestration. This per-webview
  * collaborator owns only New/Save/Open/browser messages, response envelopes,
  * and cancellation of superseded browser searches.
  */
@@ -27,7 +27,7 @@ import {
 } from '@messages';
 import type {
   WorkshopMutationRouteRegistrar
-} from '@handlers/domain/workshop/WorkshopHandlerContracts';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 
 let sessionRequestCounter = 0;
 const generateSessionRequestId = (): string =>

@@ -9,9 +9,9 @@ describe('agent-run caller-to-policy matrix', () => {
   it('keeps every migrated route on one explicit catalog, retention, visibility, and cleanup policy', () => {
     expect(AGENT_RUN_ROUTE_MATRIX.map(route => route.caller)).toEqual([
       'AssistantToolService dialogue/prose/writing sidebar',
-      'WorkshopHandler tool runs',
-      'WorkshopHandler persona host turns',
-      'WorkshopHandler persona guest sidecars (resolveWorkshopParticipantPolicy)',
+      'WorkshopRoomHandler tool runs',
+      'WorkshopRoomHandler persona host turns',
+      'WorkshopRoomHandler persona guest sidecars (resolveWorkshopParticipantPolicy)',
       'DictionaryService standard and parallel blocks',
       'CategorySearchService batches',
       'ContextAssistantService'

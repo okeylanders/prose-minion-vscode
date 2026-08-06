@@ -97,7 +97,7 @@ function createTestAssembly(): TestAssembly {
   const disposeCategoryStatusListener = jest.fn();
   const disposeDictionaryStatusListener = jest.fn();
   const assistantToolService = {
-    // Registered twice per handler: AnalysisHandler + WorkshopHandler.
+    // Registered twice per handler: AnalysisHandler + WorkshopRoomHandler.
     addStatusListener: jest.fn(() => jest.fn()),
     getConversationContextBudget: jest.fn(),
     getConversationContextSources: jest.fn().mockReturnValue([]),

@@ -1,7 +1,7 @@
 # Architecture Change Runway — Sprint 07: Architecture Closure
 
 **Date:** 2026-08-06
-**Status:** Ready for review — **implementation gate CONDITIONAL**
+**Status:** Accepted and implemented — final freeze decision remains with Okey
 **Decision owner:** Okey
 **Prepared by:** Ada Forge
 **Scope:** The Workshop closure audit — the `WorkshopHandler` retain-or-rename verdict, the
@@ -12,6 +12,13 @@ responsibility map, and the feature-freeze recommendation. No feature behavior.
 **Audience and reading budget:** Decision owner (Band 0, 30s) · architecture reviewer (Band 1–2,
 ~12 min) · implementer of the audit (Band 2.10 + Band 4)
 **Base commit:** `0a742ca` (merge of PR #107, Sprint 06)
+
+> **Implementation outcome (2026-08-06).** Okey's “ready to implement” accepted
+> the runway recommendations: D7-A(c), D7-B(b), and D7-C(b). The implemented
+> tree separates `WorkshopRoomHandler` from `WorkshopSliceComposition`, audits
+> all five freeze-gate facades, and pins the 17-seam Prose Controller fixture.
+> See the [final responsibility map](2026-08-06-workshop-responsibility-map.md).
+> D7-D remains explicitly unmade; implementation does not lift the freeze.
 
 > **What is different about this sprint.** Phases 0–6 moved code. Phase 7 moves almost none. Its
 > deliverable is *evidence*: two recorded verdicts and a published map that let a human decide

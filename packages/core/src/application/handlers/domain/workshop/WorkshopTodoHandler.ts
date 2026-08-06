@@ -5,7 +5,7 @@ import { MessageType, WorkshopTodoActionMessage } from '@messages';
 import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects
-} from '@handlers/domain/workshop/WorkshopHandlerContracts';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 
 type WorkshopTodoEffects = Pick<
   WorkshopRoomEffects,

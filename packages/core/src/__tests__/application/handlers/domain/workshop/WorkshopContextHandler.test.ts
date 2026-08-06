@@ -3,7 +3,7 @@ import { WorkshopContextHandler } from '@handlers/domain/workshop/WorkshopContex
 import type {
   WorkshopMutationRouteRegistrar,
   WorkshopRoomEffects
-} from '@handlers/domain/workshop/WorkshopHandlerContracts';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { MessageType } from '@messages';

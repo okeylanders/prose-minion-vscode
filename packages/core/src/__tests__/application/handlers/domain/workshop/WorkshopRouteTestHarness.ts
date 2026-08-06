@@ -1,7 +1,7 @@
+import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
 import {
-  WorkshopHandler,
   WorkshopWidgetRuntime
-} from '@handlers/domain/workshop/WorkshopHandler';
+} from '@handlers/domain/workshop/WorkshopSliceComposition';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -70,7 +70,7 @@ const widgetRuntime = (
   }
 });
 
-export interface WorkshopHandlerTestHarness {
+export interface WorkshopRouteTestHarness {
   session: WorkshopSessionService;
   postMessage: jest.Mock;
   log: LogSink;
@@ -80,7 +80,7 @@ export interface WorkshopHandlerTestHarness {
   fileSystem: FileSystem;
   workspace: Workspace;
   settings: SettingsStore;
-  handler: WorkshopHandler;
+  handler: WorkshopRoomHandler;
   router: MessageRouter;
   roomDelivery: WorkshopRoomDeliveryService;
   writerProfileService: WorkshopWriterProfileService;
@@ -104,7 +104,7 @@ export interface WorkshopHandlerTestHarness {
   runProse: () => Promise<void>;
 }
 
-export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness => {
+export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
   let timeNow = new Date('2026-07-23T14:00:00.000Z');
   const session = new WorkshopSessionService(() => 1);
   const contextBudgets = new Map<string, ContextBudgetSnapshot>();
@@ -244,7 +244,7 @@ export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness =
     deleteNamed: jest.fn().mockResolvedValue(undefined)
   } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
   const roomDelivery = new WorkshopRoomDeliveryService(session);
-  const handler = new WorkshopHandler(
+  const handler = new WorkshopRoomHandler(
     service,
     contextAssistant as never,
     session,

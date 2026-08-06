@@ -4,25 +4,25 @@ import {
 import {
   analysisResult,
   message,
-  createWorkshopHandlerTestHarness
-} from './WorkshopHandlerTestHarness';
-import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
+  createWorkshopRouteTestHarness
+} from './WorkshopRouteTestHarness';
+import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
-describe('WorkshopHandler routing — session owner', () => {
-  let session: WorkshopHandlerTestHarness['session'];
-  let postMessage: WorkshopHandlerTestHarness['postMessage'];
-  let log: WorkshopHandlerTestHarness['log'];
-  let service: WorkshopHandlerTestHarness['service'];
-  let shell: WorkshopHandlerTestHarness['shell'];
-  let workspace: WorkshopHandlerTestHarness['workspace'];
-  let router: WorkshopHandlerTestHarness['router'];
-  let contextBudgets: WorkshopHandlerTestHarness['contextBudgets'];
-  let contextSources: WorkshopHandlerTestHarness['contextSources'];
-  let persistence: WorkshopHandlerTestHarness['persistence'];
-  let posted: WorkshopHandlerTestHarness['posted'];
-  let storeContext: WorkshopHandlerTestHarness['storeContext'];
-  let pin: WorkshopHandlerTestHarness['pin'];
-  let runProse: WorkshopHandlerTestHarness['runProse'];
+describe('Workshop composed routing — session owner', () => {
+  let session: WorkshopRouteTestHarness['session'];
+  let postMessage: WorkshopRouteTestHarness['postMessage'];
+  let log: WorkshopRouteTestHarness['log'];
+  let service: WorkshopRouteTestHarness['service'];
+  let shell: WorkshopRouteTestHarness['shell'];
+  let workspace: WorkshopRouteTestHarness['workspace'];
+  let router: WorkshopRouteTestHarness['router'];
+  let contextBudgets: WorkshopRouteTestHarness['contextBudgets'];
+  let contextSources: WorkshopRouteTestHarness['contextSources'];
+  let persistence: WorkshopRouteTestHarness['persistence'];
+  let posted: WorkshopRouteTestHarness['posted'];
+  let storeContext: WorkshopRouteTestHarness['storeContext'];
+  let pin: WorkshopRouteTestHarness['pin'];
+  let runProse: WorkshopRouteTestHarness['runProse'];
 
   beforeEach(() => {
     ({
@@ -40,7 +40,7 @@ describe('WorkshopHandler routing — session owner', () => {
       storeContext,
       pin,
       runProse
-    } = createWorkshopHandlerTestHarness());
+    } = createWorkshopRouteTestHarness());
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {

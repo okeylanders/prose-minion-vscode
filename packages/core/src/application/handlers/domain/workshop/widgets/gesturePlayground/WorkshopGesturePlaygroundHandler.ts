@@ -1,13 +1,14 @@
 /**
  * Conversation Widgets IPC slice for Workshop (ADR 2026-07-22, Sprint 01).
  *
- * WorkshopHandler owns the room and run orchestration. This per-webview
+ * WorkshopRoomHandler owns the room and run orchestration. This per-webview
  * collaborator owns only the widget routes: the pre-commit GENERATE call
  * (touches no session state, freely cancellable) and the atomic COMMIT route
  * (persist config → mint artifact → ship through the injected room-send seam
- * → stamp linkage). It is constructed inside WorkshopHandler with closures
- * over the handler's private seams — the WorkshopSessionMessageHandler mold —
- * so the composition root stays ignorant of workshop internals.
+ * → stamp linkage). It is constructed inside WorkshopSliceComposition with
+ * closures over the room owner's private seams — the
+ * WorkshopSessionMessageHandler mold — so the application composition root
+ * stays ignorant of Workshop internals.
  */
 
 import { MessageRouter } from '@handlers/MessageRouter';
@@ -36,11 +37,11 @@ import {
 } from '@messages';
 import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopHandlerContracts';
+import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
 
 export interface WorkshopGesturePlaygroundHandlerOptions {
   /**
-   * The one room-send seam (WorkshopHandler.executeMessage). Acceptance is a
+   * The one room-send seam (WorkshopRoomHandler.executeMessage). Acceptance is a
    * separate milestone from the participant reply: `onRoomAccepted` fires
    * once the writer turn and artifact are room truth, so the authoring sheet
    * never waits on model latency or loses its Draft on a preflight rejection.

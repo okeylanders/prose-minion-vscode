@@ -2,7 +2,7 @@
 
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
-import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopHandlerContracts';
+import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopStandingDirectiveService } from
   '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import {

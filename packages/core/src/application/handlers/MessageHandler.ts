@@ -47,7 +47,7 @@ import { SourcesHandler } from './domain/SourcesHandler';
 import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
-import { WorkshopHandler } from './domain/workshop/WorkshopHandler';
+import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -76,7 +76,7 @@ export class MessageHandler {
   private readonly uiHandler: UIHandler;
   private readonly fileOperationsHandler: FileOperationsHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
-  private readonly workshopHandler: WorkshopHandler;
+  private readonly workshopHandler: WorkshopRoomHandler;
 
   // Per-instance registrations on SHARED services (sidebar + Workshop panel
   // each run a MessageHandler over the one CoreServices bundle). Dispose
@@ -301,7 +301,7 @@ export class MessageHandler {
     // like the other 11: injected services + platform ports, nothing
     // constructed here beyond the handler itself. Shell owns host pickers and
     // session file actions; the intake service owns file/workspace mechanics.
-    this.workshopHandler = new WorkshopHandler(
+    this.workshopHandler = new WorkshopRoomHandler(
       assistantToolService,
       contextAssistantService,
       workshopSessionService,

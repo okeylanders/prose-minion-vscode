@@ -63,8 +63,10 @@ const WORKSHOP_SESSION_COLLABORATOR_ROOT = path.join(
   'session'
 );
 
-const WORKSHOP_HANDLER_OWNER =
-  'application/handlers/domain/workshop/WorkshopHandler.ts';
+const WORKSHOP_ROOM_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopRoomHandler.ts';
+const WORKSHOP_SLICE_COMPOSITION_OWNER =
+  'application/handlers/domain/workshop/WorkshopSliceComposition.ts';
 const WORKSHOP_SESSION_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopSessionMessageHandler.ts';
 const WORKSHOP_TODO_HANDLER_OWNER =
@@ -92,7 +94,7 @@ const WORKSHOP_LEXICAL_HANDLER_OWNER =
  */
 const WORKSHOP_ROUTE_OWNERS = [
   {
-    owner: WORKSHOP_HANDLER_OWNER,
+    owner: WORKSHOP_ROOM_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: [
       'WORKSHOP_RUN_TOOL',
@@ -106,7 +108,7 @@ const WORKSHOP_ROUTE_OWNERS = [
     ]
   },
   {
-    owner: WORKSHOP_HANDLER_OWNER,
+    owner: WORKSHOP_ROOM_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: ['CANCEL_WORKSHOP_REQUEST']
   },
@@ -247,6 +249,16 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
     reference: /WorkshopTodoHandler/
   }
 ] as const;
+const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
+  'WorkshopContextHandler',
+  'WorkshopExcerptScopeHandler',
+  'WorkshopGesturePlaygroundHandler',
+  'WorkshopLexicalGravityHandler',
+  'WorkshopSessionMessageHandler',
+  'WorkshopStandingDirectiveHandler',
+  'WorkshopTodoHandler',
+  'WorkshopWidgetHostHandler'
+] as const;
 
 const MODULE_REFERENCE = new RegExp(
   [
@@ -322,9 +334,9 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:Gesture Playground|Lexical Gravity|GesturePlaygroundService|LexicalGravity(?:LensRepository|ModelService)|gesturePlaygroundService|lexicalGravity(?:LensRepository|ModelService))/
   },
   {
-    file: 'application/handlers/domain/workshop/WorkshopHandler.ts',
-    reason: 'room coordinator and feature-slice composition owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground(?:Handler)?|lexicalGravity(?:Handler)?)/
+    file: 'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
+    reason: 'Workshop-internal feature-slice composition owner',
+    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground(?:Handler)?|lexicalGravity(?:Handler)?)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionCheckpointNormalization.ts',
@@ -471,6 +483,35 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     reason: 'leaf neutralizer reserves feature-declared recommendation delimiters',
     allowedToken: /(?:lens-slug|metaphor-pull)/
   }
+] as const;
+
+/**
+ * Executable change-cost fixture for the next standing feature.
+ *
+ * D7-B reads the closure criterion as one explicit arm per generic seam, not
+ * one generic file total. Each path appears once even when the file owns
+ * several exhaustive switches; the entry represents the feature arm those
+ * switches implement together. Existing Gesture/Lexical feature paths are
+ * intentionally absent.
+ */
+const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
+  'application/handlers/MessageHandler.ts',
+  'application/handlers/MessageHandlerContracts.ts',
+  'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
+  'application/services/workshop/WorkshopSessionRecords.ts',
+  'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
+  'application/services/workshop/widgets/WorkshopWidgetConfigOperations.ts',
+  'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
+  'index.ts',
+  'presentation/webview/WorkshopApp.tsx',
+  'presentation/webview/components/workshop/WorkshopTurnBubble.tsx',
+  'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
+  'presentation/webview/hooks/domain/workshop/useWorkshopStandingDirectives.ts',
+  'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
+  'presentation/webview/utils/workshopWidgetAskPrefill.ts',
+  'shared/types/messages/base.ts',
+  'shared/types/messages/index.ts',
+  'shared/types/messages/workshop/index.ts'
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
   path.join(
@@ -703,13 +744,29 @@ describe('architectural boundaries', () => {
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
 
-  it('only WorkshopHandler constructs the Workshop session-state envelope', () => {
+  it('only WorkshopRoomHandler constructs the Workshop session-state envelope', () => {
     const sessionStateLiteral = /type:\s*MessageType\.WORKSHOP_SESSION_STATE\b/;
     const owners = collectSourceFiles(WORKSHOP_HANDLER_ROOT)
       .filter((file) => sessionStateLiteral.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
 
-    expect(owners).toEqual([WORKSHOP_HANDLER_OWNER]);
+    expect(owners).toEqual([WORKSHOP_ROOM_HANDLER_OWNER]);
+  });
+
+  it('keeps Workshop sibling construction inside WorkshopSliceComposition', () => {
+    const handlerConstruction = /new\s+(Workshop[A-Za-z0-9]+Handler)\s*\(/g;
+    const constructions = collectSourceFiles(WORKSHOP_HANDLER_ROOT).flatMap((file) =>
+      [...fs.readFileSync(file, 'utf8').matchAll(handlerConstruction)]
+        .map((match) => ({
+          handler: match[1],
+          owner: path.relative(SRC_ROOT, file)
+        }))
+    ).sort((left, right) => left.handler.localeCompare(right.handler));
+
+    expect(constructions).toEqual(WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES.map((handler) => ({
+      handler,
+      owner: WORKSHOP_SLICE_COMPOSITION_OWNER
+    })));
   });
 
   it('keeps Workshop context intake free of route, transport, session, and logging authority', () => {
@@ -828,6 +885,33 @@ describe('architectural boundaries', () => {
       missingApprovedSurfaces: [],
       unusedApprovedSurfaces: [],
       offenders: []
+    });
+  });
+
+  it('reproduces Prose Controller with zero sibling-feature edits and one arm per generic seam', () => {
+    const approvedGenericPaths = new Set(
+      WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES.map(({ file }) => file)
+    );
+    const entries = [...PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES];
+    const duplicateEntries = entries.filter((file, index) => entries.indexOf(file) !== index);
+    const missingEntries = entries.filter((file) => !fs.existsSync(path.join(SRC_ROOT, file)));
+    const unapprovedEntries = entries.filter((file) => !approvedGenericPaths.has(file));
+    const siblingFeatureEntries = entries.filter((file) =>
+      GESTURE_FEATURE_REFERENCE.test(file) || LEXICAL_FEATURE_REFERENCE.test(file)
+    );
+
+    expect({
+      genericSeamCount: entries.length,
+      duplicateEntries,
+      missingEntries,
+      unapprovedEntries,
+      siblingFeatureEntries
+    }).toEqual({
+      genericSeamCount: 17,
+      duplicateEntries: [],
+      missingEntries: [],
+      unapprovedEntries: [],
+      siblingFeatureEntries: []
     });
   });
 
