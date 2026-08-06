@@ -6,7 +6,7 @@
 **Decision:** [ADR 2026-08-03 — Workshop Feature Family and Module Boundaries](../adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) §3, §7, §8
 **Branch point:** `b577d60e` (Sprint 05 merged, PR #106)
 **Audience:** decision owner + implementer. **Task:** approve the scope correction, then implement.
-**Status:** `READY FOR REVIEW` — three blocking decisions (D1–D3) and one required pre-slice (S0).
+**Status:** `IMPLEMENTED AND VERIFIED 2026-08-06` — Okey accepted D1–D3; S0 preceded the contract moves; the full typecheck, test, lint, build, and bundle-verification gates pass.
 
 ---
 
@@ -54,22 +54,24 @@ nothing is looking.**
 
 ### Accepted human decisions
 
-- **D1 (blocking).** Adopt the inverted witness **before** emptying the exception list, at the
-  cost of one extra slice? **Recommended: yes.** **Owner: Okey.**
-- **D2 (blocking).** The ADR §D message tree names 8 files, none of which houses settings
+- **D1 (accepted).** Adopt the inverted witness **before** emptying the exception list, at the
+  cost of one extra slice? **Decision: yes.** **Owner: Okey.**
+- **D2 (accepted).** The ADR §D message tree names 8 files, none of which houses settings
   defaults/validators. Add a 9th (`settings.ts`) as a recorded ADR §7 deviation, or place the
-  runtime block inside `session.ts`/`participants.ts` by association? **Recommended: 9th
+  runtime block inside `session.ts`/`participants.ts` by association? **Decision: 9th
   file.** **Owner: Okey.**
-- **D3 (blocking).** Sprint 04 explicitly deferred the `WorkshopHandler` → `WorkshopRoomHandler`
+- **D3 (accepted).** Sprint 04 explicitly deferred the `WorkshopHandler` → `WorkshopRoomHandler`
   naming tension to "Sprint 06's contract/name normalization pass"
   ([sprint-04 runway:334](2026-08-04-workshop-sprint-04-handler-runway.md)). Sprint 06's scope
-  never claims it. Claim it, or record it as a Phase 7 item? **Recommended: record for Phase 7**
+  never claims it. Claim it, or record it as a Phase 7 item? **Decision: record for Phase 7**
   — the rename collides with the ADR §D tree and is not a contract correction. **Owner: Okey.**
 
 ### Gate
 
-**BLOCKED on D1–D3.** Every other gate condition in §3.5 passes. No contract moves until D1
-is answered and S0 has landed.
+**CLEARED 2026-08-06.** D1–D3 were accepted. S0 then landed red against exactly the two known
+false generics before any contract move, satisfying the sequencing gate. The final witness
+also covers camelCase identifiers and kebab-case wire ids, uses line-scoped approvals where
+possible, and rejects stale allowlist entries.
 
 ---
 
@@ -591,7 +593,7 @@ lines (from 2,976) and carries a naming tension Sprint 04 recorded and explicitl
 `.todo/archive/`, closing the only tracking artifact for a criterion nobody has asserted is
 met — and Phase 7's audit finds no open record to check against.
 
-*Smallest fix:* answer D3. Archive the genuinely superseded records
+*Smallest fix:* D3 was accepted. Archive the genuinely superseded records
 (`2026-07-24-workshop-session-responsibility-follow-ups.md`, marked "absorbed by Phases 3 and
 5"); leave god-files open with a progress note citing the measured reductions, and let Phase 7
 close it.
@@ -769,10 +771,11 @@ scan or an import scan. Answerable inside S0; does not change the slice order.
 | Each representative runtime flow has an owner and verification path | ✅ — Q1–Q6 map to named suites or to S0's new witness |
 | Generic owners pass negative-space and reproduction tests | ✅ — §2.4 states the negative space; §3.3 requires zero feature-file edits |
 | Target tree, responsibilities, contracts, slices mutually consistent | ✅ — contradictions resolved (§3.1) |
-| Human decisions explicit and assigned | ⛔ — **D1, D2, D3 open (Okey)** |
+| Human decisions explicit and assigned | ✅ — **D1, D2, D3 accepted by Okey on 2026-08-06** |
 | Coordination / file ownership recorded | ✅ — §2.11; S1/S2 strictly sequential on `workshop.ts` |
 
-**Verdict: BLOCKED on D1–D3.** On acceptance, S0 may begin immediately.
+**Verdict: CLEARED.** D1–D3 were accepted; S0 began immediately and proved the witness red
+before the contract split.
 
 ---
 
@@ -881,8 +884,8 @@ closed registries has no automated witness — both known violations were found 
 honest; it buys the only detection for the violation class this epic exists to remove. The
 ninth message file is an ADR §7 deviation and must be recorded as one.
 
-**Unresolved.** D1 (witness before ledger), D2 (`settings.ts` as a recorded deviation),
-D3 (who owns the `WorkshopHandler` rename).
+**Resolved 2026-08-06.** D1: witness before ledger. D2: `settings.ts` as a recorded deviation.
+D3: the `WorkshopHandler` naming question remains owned by Phase 7.
 
 **Not yet accepted.** This seed feeds a Phase 7 ADR amendment. ADR §3 (generic modules hold no
 feature logic) and §7 (destination tree with documented deviations) already govern; neither

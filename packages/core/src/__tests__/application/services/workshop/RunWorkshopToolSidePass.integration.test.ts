@@ -29,7 +29,7 @@ import {
   createFakeWorkspace
 } from '../../../mocks/platform';
 
-describe('Workshop tool side-pass — handler to agent engine', () => {
+describe('RunWorkshopToolSidePass — handler to agent engine', () => {
   it('uses isolated retained tool and host policies without crossing conversation identities', async () => {
     const engine = {
       runInitial: jest.fn().mockImplementation(async ({ toolName }) => ({

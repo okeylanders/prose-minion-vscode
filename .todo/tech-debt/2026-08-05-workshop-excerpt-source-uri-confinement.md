@@ -28,7 +28,7 @@ symlink behavior decided explicitly, and fail closed before calling `readFile`.
 
 ## Related files
 
-- `packages/core/src/shared/types/messages/workshop.ts`
+- `packages/core/src/shared/types/messages/workshop/session.ts`
 - `packages/core/src/application/handlers/domain/workshop/WorkshopExcerptScopeHandler.ts`
 - `packages/core/src/application/services/workshop/WorkshopContextIntakeService.ts`
 - `packages/core/src/__tests__/application/handlers/domain/workshop/WorkshopHandler.excerptScope.test.ts`

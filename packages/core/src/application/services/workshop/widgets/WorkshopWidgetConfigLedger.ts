@@ -7,7 +7,7 @@
  */
 
 import {
-  WorkshopGestureDraft,
+  WorkshopGesturePlaygroundDraft,
   WorkshopLexicalGravityDraft,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetConfigSummary
@@ -19,7 +19,7 @@ export interface WorkshopWidgetConfigLedgerState {
 }
 
 export type WorkshopWidgetConfigInput =
-  | { widgetId: 'gesture-playground'; draft: WorkshopGestureDraft }
+  | { widgetId: 'gesture-playground'; draft: WorkshopGesturePlaygroundDraft }
   | { widgetId: 'lexical-gravity'; draft: WorkshopLexicalGravityDraft };
 
 export interface WorkshopWidgetConfigIdentity {

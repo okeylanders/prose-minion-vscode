@@ -168,9 +168,9 @@ controller for every Workshop modal and state transition.
 
 The monolithic Workshop message module is split behind its existing barrel into
 session, context, participants, widgets, Gesture Playground, Lexical Gravity,
-and standing-directive contracts. Feature-specific shapes receive specific
-names. Generic unions exist only at intentional family boundaries and remain
-exact discriminated unions.
+standing-directive, and settings contracts. Feature-specific shapes receive
+specific names. Generic unions exist only at intentional family boundaries and
+remain exact discriminated unions.
 
 ### 7. The destination tree is a constraint with documented deviations
 
@@ -190,6 +190,16 @@ Two Phase-2 clarifications are accepted:
   phase and evidence marker. Once a phase's inventory is recorded, that phase's
   entries may only shrink. This keeps the ledger honest without allowing new
   violations to masquerade as discovery.
+
+One Phase-6 deviation is accepted:
+
+- `shared/types/messages/workshop/settings.ts` is the ninth Workshop contract
+  module. The original destination tree named message subdomains but no owner
+  for the runtime defaults, setting descriptors, validators, coercers, and
+  equality functions already exported by the Workshop barrel. Keeping those
+  codecs together preserves their single trust-boundary parser responsibility;
+  scattering them into session or participant contracts by association would
+  make the implemented ownership less cohesive than the proposed tree.
 
 ### 8. Extraction follows responsibility, not a numeric line limit
 

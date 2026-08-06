@@ -31,6 +31,7 @@ import * as path from 'path';
 
 // __dirname = packages/core/src/__tests__/architecture -> core's src root.
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
+const REPOSITORY_ROOT = path.resolve(SRC_ROOT, '..', '..', '..');
 
 const SKIP_DIRS = new Set<string>([
   path.join(SRC_ROOT, '__tests__'), // tests mock vscode by design
@@ -257,6 +258,149 @@ const MODULE_REFERENCE = new RegExp(
 );
 const GESTURE_FEATURE_REFERENCE = /(?:GesturePlayground|gesturePlayground|gesture-playground)/;
 const LEXICAL_FEATURE_REFERENCE = /(?:LexicalGravity|lexicalGravity|lexical-gravity)/;
+const WORKSHOP_FEATURE_VOCABULARY =
+  /(?:Lexical\s*Gravity|lexicalGravity|lexical-gravity|LEXICAL_GRAVITY|Gesture\s*Playground|gesturePlayground|gesture-playground|GESTURE_PLAYGROUND)/;
+
+interface ApprovedGenericFeatureSurface {
+  readonly file: string;
+  readonly reason: string;
+  /** Omit only when the complete file is the named integration seam. */
+  readonly allowedLine?: RegExp;
+}
+
+/**
+ * Generic-path modules may name a feature only at an explicit family boundary.
+ * Keeping the list here makes the inverse of the feature-path witness reviewable:
+ * a new generic owner cannot silently acquire feature vocabulary just because its
+ * path never names that feature.
+ */
+const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatureSurface[] = [
+  {
+    file: 'application/handlers/MessageHandler.ts',
+    reason: 'composition-root feature-service wiring',
+    allowedLine: /(?:gesturePlaygroundService|lexicalGravity(?:ModelService|LensRepository|:))/
+  },
+  {
+    file: 'application/handlers/MessageHandlerContracts.ts',
+    reason: 'composition-root service contract'
+  },
+  {
+    file: 'application/handlers/domain/workshop/WorkshopHandler.ts',
+    reason: 'room coordinator and feature-slice composition owner'
+  },
+  {
+    file: 'application/services/workshop/WorkshopSessionCheckpointNormalization.ts',
+    reason: 'closed persisted-config normalization dispatch'
+  },
+  {
+    file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
+    reason: 'closed persisted union validator'
+  },
+  {
+    file: 'application/services/workshop/WorkshopRunCompletion.ts',
+    reason: 'recommendation source-availability boundary',
+    allowedLine: /recommendation\.widgetId !== 'gesture-playground'/
+  },
+  {
+    file: 'application/services/workshop/WorkshopSessionRecords.ts',
+    reason: 'closed recommendation-clone dispatch',
+    allowedLine: /case '(?:gesture-playground|lexical-gravity)':/
+  },
+  {
+    file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',
+    reason: 'approved closed standing-feature registry'
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
+    reason: 'explicit widget-family draft union owner'
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetConfigOperations.ts',
+    reason: 'closed widget-config operations dispatch'
+  },
+  {
+    file: 'index.ts',
+    reason: 'core public composition barrel'
+  },
+  {
+    file: 'presentation/webview/WorkshopApp.tsx',
+    reason: 'Workshop presentation composition root'
+  },
+  {
+    file: 'presentation/webview/components/SettingsOverlay.tsx',
+    reason: 'writer-facing model-setting description'
+  },
+  {
+    file: 'presentation/webview/components/workshop/WorkshopTurnBubble.tsx',
+    reason: 'closed widget-recommendation presentation dispatch'
+  },
+  {
+    file: 'presentation/webview/components/workshop/workshopWidgetIcons.ts',
+    reason: 'closed widget-icon presentation registry',
+    allowedLine: /'(?:gesture-playground|lexical-gravity)':/
+  },
+  {
+    file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
+    reason: 'closed widget-opening presentation controller'
+  },
+  {
+    file: 'presentation/webview/hooks/domain/workshop/useWorkshopStandingDirectives.ts',
+    reason: 'standing-directive presentation integration seam'
+  },
+  {
+    file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
+    reason: 'Workshop webview route-composition table'
+  },
+  {
+    file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
+    reason: 'closed writer-ask prefill registry',
+    allowedLine: /'(?:gesture-playground|lexical-gravity)':/
+  },
+  {
+    file: 'shared/constants/promptBudgets.ts',
+    reason: 'central deterministic prompt-budget catalog'
+  },
+  {
+    file: 'shared/constants/workshopWidgets.ts',
+    reason: 'generic widget catalog may own feature ids and labels, not feature value grammar',
+    allowedLine:
+      /(?:WorkshopGesturePlaygroundHandler|(?:id|label): '(?:gesture-playground|lexical-gravity|Gesture Playground|Lexical Gravity)')/
+  },
+  {
+    file: 'shared/streamingCancelMessages.ts',
+    reason: 'closed streaming-cancellation registry'
+  },
+  {
+    file: 'shared/types/messages/base.ts',
+    reason: 'closed MessageType wire-value registry'
+  },
+  {
+    file: 'shared/types/messages/index.ts',
+    reason: 'message union composition barrel'
+  },
+  {
+    file: 'shared/types/messages/streaming.ts',
+    reason: 'closed streaming-domain wire union',
+    allowedLine: /'workshop-gesture-playground'/
+  },
+  {
+    file: 'shared/types/messages/workshop/index.ts',
+    reason: 'Workshop message subdomain composition barrel',
+    allowedLine: /export \* from '\.\/(?:gesturePlayground|lexicalGravity)';/
+  },
+  {
+    file: 'shared/types/messages/workshop/standingDirectives.ts',
+    reason: 'explicit standing-family summary and payload union owner'
+  },
+  {
+    file: 'shared/types/messages/workshop/widgets.ts',
+    reason: 'explicit widget-family config, recommendation, and result union owner'
+  },
+  {
+    file: 'utils/workshopWidgetRecommendation.ts',
+    reason: 'approved closed widget-recommendation registry'
+  }
+] as const;
 const WORKSHOP_FEATURE_HOOKS = [
   path.join(
     SRC_ROOT,
@@ -342,18 +486,14 @@ const GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE = new RegExp(
  * shrink. A phase that removes an exception updates this witness in the same
  * commit; Phase 7 requires an empty list.
  */
-const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS = [
-  {
-    phase: 6,
-    file: 'shared/constants/workshopWidgets.ts',
-    marker: /LEXICAL_GRAVITY_WEIGHT/
-  },
-  {
-    phase: 6,
-    file: 'utils/workshopWidgetRecommendation.ts',
-    marker: /For Lexical Gravity/
-  }
-] as const;
+interface WorkshopLegacyOwnershipException {
+  readonly phase: number;
+  readonly file: string;
+  readonly marker: RegExp;
+}
+
+const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS:
+  readonly WorkshopLegacyOwnershipException[] = [];
 
 const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
@@ -538,6 +678,64 @@ describe('architectural boundaries', () => {
     expect(lexicalOffenders).toEqual([]);
   });
 
+  it('non-feature Workshop modules name features only at approved family seams', () => {
+    const approvals = new Map(
+      WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES.map((surface) => [surface.file, surface])
+    );
+    const missingApprovedSurfaces = WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES
+      .filter(({ file }) => !fs.existsSync(path.join(SRC_ROOT, file)))
+      .map(({ file }) => file);
+    const unusedApprovedSurfaces = WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES
+      .filter(({ file, allowedLine }) => {
+        const fullPath = path.join(SRC_ROOT, file);
+        if (!fs.existsSync(fullPath)) {
+          return false;
+        }
+        return !fs.readFileSync(fullPath, 'utf8')
+          .split('\n')
+          .some((line) =>
+            WORKSHOP_FEATURE_VOCABULARY.test(line)
+            && (allowedLine === undefined || allowedLine.test(line.trim()))
+          );
+      })
+      .map(({ file }) => file);
+    const offenders = collectSourceFiles(SRC_ROOT).flatMap((file) => {
+      const relativePath = path.relative(SRC_ROOT, file);
+      if (
+        GESTURE_FEATURE_REFERENCE.test(relativePath)
+        || LEXICAL_FEATURE_REFERENCE.test(relativePath)
+      ) {
+        return [];
+      }
+      const featureLines = fs.readFileSync(file, 'utf8')
+        .split('\n')
+        .flatMap((line, index) =>
+          WORKSHOP_FEATURE_VOCABULARY.test(line)
+            ? [{ line: index + 1, text: line.trim() }]
+            : []
+        );
+      if (featureLines.length === 0) {
+        return [];
+      }
+      const approval = approvals.get(relativePath);
+      if (approval && approval.allowedLine === undefined) {
+        return [];
+      }
+      const unapprovedLines = approval?.allowedLine
+        ? featureLines.filter(({ text }) => !approval.allowedLine!.test(text))
+        : featureLines;
+      return unapprovedLines.length > 0
+        ? [{ file: relativePath, lines: unapprovedLines.map(({ line }) => line) }]
+        : [];
+    });
+
+    expect({ missingApprovedSurfaces, unusedApprovedSurfaces, offenders }).toEqual({
+      missingApprovedSurfaces: [],
+      unusedApprovedSurfaces: [],
+      offenders: []
+    });
+  });
+
   it('Workshop feature hooks do not own family-generic widget config lookup', () => {
     const offenders = WORKSHOP_FEATURE_HOOKS
       .filter((file) => GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE.test(
@@ -691,6 +889,51 @@ describe('architectural boundaries', () => {
     expect(installOffsets.every((offset) => offset > firstLiveFieldInstall)).toBe(true);
   });
 
+  it('Workshop source, test, and architecture docs agree on normalized ownership', () => {
+    const workshopMessageRoot = path.join(SRC_ROOT, 'shared', 'types', 'messages', 'workshop');
+    const messageModules = fs.readdirSync(workshopMessageRoot)
+      .filter((file) => file.endsWith('.ts'))
+      .sort();
+    const ownedTests = [
+      'application/services/workshop/RunWorkshopToolSidePass.integration.test.ts',
+      'application/services/workshop/WorkshopPromptBuilder.threadArtifactFrame.test.ts'
+    ];
+    const retiredTests = [
+      'application/handlers/domain/WorkshopToolSidePass.integration.test.ts',
+      'application/services/workshop/WorkshopWidgetFrames.test.ts'
+    ];
+    const testRoot = path.join(SRC_ROOT, '__tests__');
+    const agentGuide = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, '.ai', 'central-agent-setup.md'),
+      'utf8'
+    );
+    const architecture = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, 'docs', 'ARCHITECTURE.md'),
+      'utf8'
+    );
+
+    expect(messageModules).toEqual([
+      'context.ts',
+      'gesturePlayground.ts',
+      'index.ts',
+      'lexicalGravity.ts',
+      'participants.ts',
+      'session.ts',
+      'settings.ts',
+      'standingDirectives.ts',
+      'widgets.ts'
+    ]);
+    expect(ownedTests.filter((file) => !fs.existsSync(path.join(testRoot, file)))).toEqual([]);
+    expect(retiredTests.filter((file) => fs.existsSync(path.join(testRoot, file)))).toEqual([]);
+    for (const document of [agentGuide, architecture]) {
+      expect(document).toContain('handlers/domain/workshop/');
+      expect(document).toContain('shared/types/messages/workshop/');
+      expect(document).toContain('useWorkshopRoom');
+      expect(document).toContain('useWorkshopSessions');
+      expect(document).not.toMatch(/\| `useWorkshop` \|/);
+    }
+  });
+
   it('keeps the accepted Workshop legacy ownership exceptions exact during migration', () => {
     const missingFiles = WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS
       .map(({ phase, file }) => ({ phase, file, fullPath: path.join(SRC_ROOT, file) }))
@@ -708,9 +951,6 @@ describe('architectural boundaries', () => {
       })
       .map(({ phase, file }) => `P${phase}:${file}`);
 
-    expect(observed).toEqual([
-      'P6:shared/constants/workshopWidgets.ts',
-      'P6:utils/workshopWidgetRecommendation.ts'
-    ]);
+    expect(observed).toEqual([]);
   });
 });

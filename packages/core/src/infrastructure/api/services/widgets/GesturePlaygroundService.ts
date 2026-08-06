@@ -10,7 +10,7 @@
  */
 
 import {
-  WorkshopGestureMenuGroup,
+  WorkshopGesturePlaygroundMenuGroup,
   WorkshopWidgetSourceReference,
   TokenUsage
 } from '@messages';
@@ -38,12 +38,12 @@ export interface GestureSourceMaterial {
 
 export interface GestureMoreRequest extends Omit<GestureMenuRequest, 'sourceMaterials'> {
   dictionaryMarkdown: string;
-  menu: WorkshopGestureMenuGroup[];
+  menu: WorkshopGesturePlaygroundMenuGroup[];
 }
 
 export type GestureMoreResult =
   | { cancelled: true; usage?: TokenUsage }
-  | { cancelled: false; additions: WorkshopGestureMenuGroup[]; usage?: TokenUsage };
+  | { cancelled: false; additions: WorkshopGesturePlaygroundMenuGroup[]; usage?: TokenUsage };
 
 export type GestureMenuResult =
   | {
@@ -54,7 +54,7 @@ export type GestureMenuResult =
   | {
       cancelled: false;
       dictionaryMarkdown: string;
-      menu?: WorkshopGestureMenuGroup[];
+      menu?: WorkshopGesturePlaygroundMenuGroup[];
       /** Present only when the dictionary survived but the menu did not. */
       menuError?: string;
       usage?: TokenUsage;
@@ -69,7 +69,7 @@ const MENU_END = '===END_GESTURE_MENU_V1===';
 
 interface ParsedGestureResponse {
   dictionaryMarkdown: string;
-  menu?: WorkshopGestureMenuGroup[];
+  menu?: WorkshopGesturePlaygroundMenuGroup[];
   menuError?: string;
 }
 
@@ -263,7 +263,7 @@ export class GesturePlaygroundService {
   private buildMoreUserMessage(
     request: GestureMoreRequest,
     targetPhrase: string,
-    currentMenu: readonly WorkshopGestureMenuGroup[]
+    currentMenu: readonly WorkshopGesturePlaygroundMenuGroup[]
   ): string {
     const quoted = (label: string, value: string): string =>
       `${label} (quoted task data):\n${JSON.stringify(value.trim())}`;
@@ -364,7 +364,7 @@ export class GesturePlaygroundService {
     return dictionaryMarkdown;
   }
 
-  private extractMenu(normalized: string): WorkshopGestureMenuGroup[] {
+  private extractMenu(normalized: string): WorkshopGesturePlaygroundMenuGroup[] {
     this.requireUniqueMarker(normalized, MENU_START);
     this.requireUniqueMarker(normalized, MENU_END);
 
@@ -399,7 +399,7 @@ export class GesturePlaygroundService {
     return this.validateMenu(parsed, BUDGET.gestureGeneratedOptionsPerGroup);
   }
 
-  private extractStandaloneMenu(content: string): WorkshopGestureMenuGroup[] {
+  private extractStandaloneMenu(content: string): WorkshopGesturePlaygroundMenuGroup[] {
     const normalized = content.replace(/\r\n?/g, '\n').trim();
     this.requireUniqueMarker(normalized, MENU_START);
     this.requireUniqueMarker(normalized, MENU_END);
@@ -427,7 +427,7 @@ export class GesturePlaygroundService {
   private validateMenu(
     parsed: unknown,
     maximumOptionsPerGroup: number
-  ): WorkshopGestureMenuGroup[] {
+  ): WorkshopGesturePlaygroundMenuGroup[] {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       throw new Error('menu is not an object');
     }
@@ -452,7 +452,7 @@ export class GesturePlaygroundService {
     }
 
     const seenOptions = new Set<string>();
-    return object.groups.map((groupValue, groupIndex): WorkshopGestureMenuGroup => {
+    return object.groups.map((groupValue, groupIndex): WorkshopGesturePlaygroundMenuGroup => {
       if (typeof groupValue !== 'object' || groupValue === null || Array.isArray(groupValue)) {
         throw new Error(`group ${groupIndex + 1} is not an object`);
       }

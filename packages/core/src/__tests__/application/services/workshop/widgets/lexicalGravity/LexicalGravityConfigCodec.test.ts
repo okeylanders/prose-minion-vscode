@@ -1,4 +1,8 @@
 import {
+  isLexicalGravityReach,
+  isLexicalGravityWeight,
+  LEXICAL_GRAVITY_REACH,
+  LEXICAL_GRAVITY_WEIGHT,
   lexicalGravityConfigKey,
   validateLexicalGravityDraft,
   validateLexicalGravityLens
@@ -8,6 +12,30 @@ import {
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 
 describe('LexicalGravityConfigCodec', () => {
+  it('owns the exact weight and reach value grammar', () => {
+    expect(LEXICAL_GRAVITY_WEIGHT).toEqual({ minimum: 10, maximum: 100, step: 5 });
+    expect([9, 11, 63, 101].map(isLexicalGravityWeight)).toEqual([
+      false,
+      false,
+      false,
+      false
+    ]);
+    expect([10, 15, 100].map(isLexicalGravityWeight)).toEqual([true, true, true]);
+
+    expect(LEXICAL_GRAVITY_REACH).toEqual({
+      minimum: 1,
+      maximum: 3,
+      values: [1, 2, 3]
+    });
+    expect([0, 1, 2, 3, 4].map(isLexicalGravityReach)).toEqual([
+      false,
+      true,
+      true,
+      true,
+      false
+    ]);
+  });
+
   it('validates exact project lens shape and returns a defensive clone', () => {
     const source = { ...builtInLexicalGravityLens('photography')!, source: 'project' as const };
 

@@ -20,8 +20,8 @@ import * as React from 'react';
 import {
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,
-  WorkshopGestureDraft,
-  WorkshopGestureMenuGroup,
+  WorkshopGesturePlaygroundDraft,
+  WorkshopGesturePlaygroundMenuGroup,
   WorkshopGesturePlaygroundGeneratePayload,
   WorkshopGesturePlaygroundGenerationProgressPayload,
   WorkshopGesturePlaygroundMenuResultPayload,
@@ -49,7 +49,7 @@ interface WorkshopGesturePlaygroundModalProps {
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   onGenerate: (payload: WorkshopGesturePlaygroundGeneratePayload) => void;
   onCancelGenerate: (requestId: string) => void;
-  onCommit: (draft: WorkshopGestureDraft, clonedFromConfigId?: string) => void;
+  onCommit: (draft: WorkshopGesturePlaygroundDraft, clonedFromConfigId?: string) => void;
   onConsumeActionResult: () => void;
   onCopyDictionary: (content: string) => void;
   onSaveDictionary: (content: string) => void;
@@ -105,7 +105,7 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
   const [characterNotes, setCharacterNotes] = React.useState('');
   const [sourceReferences, setSourceReferences] = React.useState<WorkshopWidgetSourceReference[]>([]);
   const [note, setNote] = React.useState('');
-  const [menu, setMenu] = React.useState<WorkshopGestureMenuGroup[] | undefined>(undefined);
+  const [menu, setMenu] = React.useState<WorkshopGesturePlaygroundMenuGroup[] | undefined>(undefined);
   const [dictionaryMarkdown, setDictionaryMarkdown] = React.useState('');
   const [selections, setSelections] = React.useState<string[]>([]);
   const [includeDictionaryInCommit, setIncludeDictionaryInCommit] =

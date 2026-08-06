@@ -1,6 +1,6 @@
 # Sprint 03: Presentation Responsibility Extraction
 
-**Status:** Implementation complete — interactive visual pass pending
+**Status:** Complete — merged in PR #104; interactive visual pass remains a Phase 7 closure input
 
 **Branch:** `sprint/workshop-architecture-refactor-03-presentation` -> `epic/workshop-architecture-refactor`
 

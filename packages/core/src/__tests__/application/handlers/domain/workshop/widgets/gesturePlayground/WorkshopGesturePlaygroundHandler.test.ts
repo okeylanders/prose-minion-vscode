@@ -12,7 +12,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   MessageType,
   WorkshopCommitWidgetMessage,
-  WorkshopGestureDraft,
+  WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundGenerateMessage
 } from '@messages';
 
@@ -37,7 +37,7 @@ const menu = [
   }
 ];
 
-const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDraft => ({
+const draft = (overrides: Partial<WorkshopGesturePlaygroundDraft> = {}): WorkshopGesturePlaygroundDraft => ({
   targetPhrase: 'she smiled',
   writerInstructions: 'Keep it private.',
   contextText: '',

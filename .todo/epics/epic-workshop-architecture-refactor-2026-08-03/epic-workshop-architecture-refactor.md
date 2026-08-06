@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-03
 
-**Status:** Phase 3 implementation complete — interactive visual pass pending
+**Status:** Phase 6 implemented and verified — Phases 0–5 merged; Phase 6 awaits review/merge; interactive visual pass remains for Phase 7
 
 **Priority:** Critical — blocks all new Workshop feature development
 
@@ -114,9 +114,9 @@ checks. Phase 7 runs:
 - [ ] Gesture Playground and Lexical Gravity share one ownership pattern.
 - [ ] Generic modules contain only proven shared behavior or explicit closed
       dispatch.
-- [ ] `WorkshopApp`, `useWorkshop`, `WorkshopHandler`, and
-      `WorkshopSessionService` have one clear primary responsibility or are
-      narrow facades over named collaborators.
+- [ ] `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`,
+      `WorkshopHandler`, and `WorkshopSessionService` have one clear primary
+      responsibility or are narrow facades over named collaborators.
 - [ ] Representative UI-to-persistence traces are documented and match code.
 - [ ] Full verification passes.
 - [ ] Okey explicitly lifts the Workshop feature freeze.

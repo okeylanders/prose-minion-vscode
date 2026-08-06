@@ -37,8 +37,8 @@ hide materially different decisions in a small PR.
 
 - `packages/core/src/presentation/webview/WorkshopApp.tsx`
 - `packages/core/src/presentation/webview/components/workshop/WorkshopParticipantRail.tsx`
-- `packages/core/src/presentation/webview/hooks/domain/useWorkshop.ts`
-- `packages/core/src/application/handlers/domain/WorkshopHandler.ts`
+- `packages/core/src/presentation/webview/hooks/domain/workshop/useWorkshopRoom.ts`
+- `packages/core/src/application/handlers/domain/workshop/WorkshopHandler.ts`
 - `packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopParticipantRail.test.tsx`
 
 ## Completion Criteria

@@ -6,7 +6,7 @@ import {
   WorkshopWidgetOpeningHost
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import {
-  WorkshopGestureWidgetConfigSnapshot,
+  WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary
 } from '@messages';
@@ -14,7 +14,7 @@ import {
   builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 
-const gestureConfig: WorkshopGestureWidgetConfigSnapshot = {
+const gestureConfig: WorkshopGesturePlaygroundWidgetConfigSnapshot = {
   id: 'wc-gesture',
   widgetId: 'gesture-playground',
   revision: 1,

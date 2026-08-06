@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import {
-  WorkshopGestureWidgetConfigSnapshot,
+  WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
@@ -10,14 +10,14 @@ import {
   WorkshopTurn,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetId,
-  WorkshopWidgetRecommendationSeed
+  WorkshopGesturePlaygroundRecommendationSeed
 } from '@messages';
 
 /** How the modal was opened; decides seeding and the commit button's label. */
 export type WorkshopGestureOpening =
   | { kind: 'new'; seedTargetPhrase?: string }
-  | { kind: 'seed'; seed: WorkshopWidgetRecommendationSeed; personaLabel: string }
-  | { kind: 'clone'; config: WorkshopGestureWidgetConfigSnapshot };
+  | { kind: 'seed'; seed: WorkshopGesturePlaygroundRecommendationSeed; personaLabel: string }
+  | { kind: 'clone'; config: WorkshopGesturePlaygroundWidgetConfigSnapshot };
 
 export type WorkshopLexicalGravityOpening =
   | { kind: 'new'; seed?: WorkshopLexicalGravityDraft }

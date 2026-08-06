@@ -1,6 +1,6 @@
 # Workshop Session Responsibility Follow-ups
 
-**Status:** In progress — absorbed by Workshop Architecture Refactor Phases 3 and 5
+**Status:** Archived 2026-08-06 — superseded by Workshop Architecture Refactor Phases 3 and 5
 **Priority:** Critical within the feature-freeze gate
 **Origin:** Independent class-responsibility audit during PR #85 review remediation
 
@@ -59,4 +59,16 @@ invariants.
   independently decoded on-disk schema.
 
 Execution and closure are now tracked by the
-[Workshop Architecture Refactor epic](../epics/epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md).
+[Workshop Architecture Refactor epic](../../epics/epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md).
+
+## Closure note
+
+- Phase 3 retired `useWorkshop`, introduced `useWorkshopRoom` and
+  `useWorkshopSessions`, and extracted the session-surface controllers.
+- Phase 5 extracted the passage scope, participant roster, todo ledger, turn
+  ledger, persistence coordination, and time ownership behind
+  `WorkshopSessionService` without widening the aggregate boundary.
+- Conditional future seams in the store, archive translation, and browser
+  remain ordinary change triggers rather than active extraction work. The
+  still-open broad-facade question is tracked separately by
+  `2026-07-25-workshop-god-files.md` for Phase 7.

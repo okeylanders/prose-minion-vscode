@@ -2,9 +2,9 @@ import {
   WorkshopWidgetHostHandler
 } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
-import { MessageType, WorkshopGestureDraft } from '@messages';
+import { MessageType, WorkshopGesturePlaygroundDraft } from '@messages';
 
-const draft: WorkshopGestureDraft = {
+const draft: WorkshopGesturePlaygroundDraft = {
   targetPhrase: 'she smiled',
   writerInstructions: '',
   contextText: '',

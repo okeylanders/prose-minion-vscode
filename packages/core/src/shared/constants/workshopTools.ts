@@ -10,7 +10,7 @@
  * presentation-only and stay in the webview layer.
  */
 
-import { WorkshopToolId } from '../types/messages/workshop';
+import type { WorkshopToolId } from '@messages';
 
 export type WorkshopToolGroup = 'Primary' | 'Craft & Voice' | 'Technical';
 

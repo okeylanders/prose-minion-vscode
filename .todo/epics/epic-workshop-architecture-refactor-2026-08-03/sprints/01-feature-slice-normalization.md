@@ -1,6 +1,6 @@
 # Sprint 01: Feature-Slice Normalization
 
-**Status:** Implementation complete — awaiting review
+**Status:** Complete — merged in PR #102
 
 **Branch:** `sprint/workshop-architecture-refactor-01-feature-slices` -> `epic/workshop-architecture-refactor`
 

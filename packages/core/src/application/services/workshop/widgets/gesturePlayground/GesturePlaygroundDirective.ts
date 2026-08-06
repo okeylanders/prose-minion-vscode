@@ -1,8 +1,8 @@
-import { WorkshopGestureDraft } from '@messages';
+import { WorkshopGesturePlaygroundDraft } from '@messages';
 
 /** Build the compact room directive for one committed Gesture Playground draft. */
 export function buildGestureDirective(input: Pick<
-  WorkshopGestureDraft,
+  WorkshopGesturePlaygroundDraft,
   | 'targetPhrase'
   | 'selections'
   | 'note'

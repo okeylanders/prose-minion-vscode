@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-31
 **Reviewed**: 2026-07-31
-**Status**: Deferred — address before a third live widget
+**Status**: In progress — feature registry landed in Workshop Architecture Refactor Phase 6; per-widget response ceilings remain
 **Priority**: Medium
 **Estimated Effort**: Small-Medium
 **Origin**: PR #98 review finding F-19
@@ -20,6 +20,20 @@ The Sprint 02B-A Use Tools & Widgets switch does not make this contract
 conditional. Explicit writer requests for a widget must still work when
 proactive assistance is disabled, so hiding the grammar behind that switch
 would be a false optimization.
+
+## Phase 6 progress (2026-08-06)
+
+- Gesture Playground and Lexical Gravity now own their prompt fragments,
+  marker grammar, and field validation in named feature modules.
+- `workshopWidgetRecommendation.ts` owns only the common envelope, live-id
+  gate, exact two-arm registry, dispatch, and transcript/retention cleanup.
+- The inverse architecture witness permits that generic module as the one
+  closed recommendation registry and rejects feature vocabulary in unapproved
+  generic paths.
+- The existing 15,300-character absolute pre-ID ceiling remains unchanged to
+  keep this normalization behavior-preserving. Selecting a smaller ceiling by
+  parsed widget id is the only remaining completion item and stays required
+  before a third live widget.
 
 ## Recommendation
 
@@ -39,6 +53,9 @@ is a pure handler move.
 ## Related Files
 
 - `packages/core/src/utils/workshopWidgetRecommendation.ts`
+- `packages/core/src/utils/workshopWidgetRecommendationProtocol.ts`
+- `packages/core/src/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundRecommendation.ts`
+- `packages/core/src/application/services/workshop/widgets/lexicalGravity/LexicalGravityRecommendation.ts`
 - `packages/core/src/infrastructure/api/services/analysis/AssistantToolService.ts`
 - `packages/core/src/shared/constants/workshopWidgets.ts`
 - `packages/core/src/shared/constants/promptBudgets.ts`

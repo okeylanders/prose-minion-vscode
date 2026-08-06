@@ -1,130 +1,74 @@
 /**
- * Deterministic extraction of persona widget recommendations
- * (ADR 2026-07-22 decision 13, actionable-findings mold): a bounded contract
- * instruction, a strict fail-closed parse, and a typed field on the turn.
- * Malformed sections reject wholesale, and ids that are not `live` in the
- * widget registry reject too — comp-only widgets never render chips. The
- * model recommends; only the writer commits.
- *
- * Lives under `@/utils` (not the application layer) for the same reason as
- * workshopPromptFrames: the contract instruction rides the INITIAL persona
- * envelope, which is assembled in infrastructure, and infrastructure must
- * not import application.
+ * Feature-neutral Workshop widget-recommendation envelope and closed dispatch.
+ * Feature prompt copy, markers, and validation live in their named widget
+ * packages; this module owns only the bounded frame, live-id gate, registry,
+ * and transcript/retention cleanup shared by the family.
  */
 
 import {
-  WorkshopWidgetRecommendation,
-  WorkshopWidgetSourceReference
+  WorkshopWidgetId,
+  WorkshopWidgetRecommendation
 } from '@messages';
-import {
-  isLexicalGravityReach,
-  isLexicalGravityWeight,
-  isLiveWorkshopWidgetId,
-  LEXICAL_GRAVITY_REACH,
-  LEXICAL_GRAVITY_WEIGHT
-} from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { isLiveWorkshopWidgetId } from '@shared/constants/workshopWidgets';
+import {
+  GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundRecommendation';
+import {
+  LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityRecommendation';
+import {
+  extractWorkshopWidgetRecommendationId,
+  TRY_WIDGET_HEADING,
+  WorkshopWidgetRecommendationEntry,
+  WorkshopWidgetRecommendationField,
+  WorkshopWidgetRecommendationInspection,
+  WorkshopWidgetRecommendationInvalidFieldReason,
+  WorkshopWidgetRecommendationRejection
+} from '@/utils/workshopWidgetRecommendationProtocol';
+
+export type {
+  WorkshopWidgetRecommendationField,
+  WorkshopWidgetRecommendationInspection,
+  WorkshopWidgetRecommendationInvalidFieldReason,
+  WorkshopWidgetRecommendationRejection
+} from '@/utils/workshopWidgetRecommendationProtocol';
+
+type RecommendationWidgetId = WorkshopWidgetRecommendation['widgetId'];
+
+/**
+ * The only generic-to-feature recommendation dispatch point. A new live
+ * recommendation arm must supply one named entry and make this Record compile.
+ */
+export const WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES: Readonly<
+  Record<RecommendationWidgetId, WorkshopWidgetRecommendationEntry>
+> = Object.freeze({
+  'gesture-playground': GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY,
+  'lexical-gravity': LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
+});
+
+const CATALOG_ENTRIES = [
+  GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY,
+  LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
+] as const;
+const INSTRUCTION_ENTRIES = [
+  LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY,
+  GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY
+] as const;
 
 export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
   '<workshop-widget-recommendation-contract>',
-  'The writer has two interactive widgets you may recommend: Gesture Playground explores one exact embodied beat; Lexical Gravity installs a writer-approved lexical field that influences story prose only when prose is composed or revised.',
+  `The writer has two interactive widgets you may recommend: ${CATALOG_ENTRIES
+    .map(({ catalogSummary }) => catalogSummary)
+    .join('; ')}.`,
   'Each response is independent: recommend at most one widget in this response, and only when it would genuinely help. A recommendation or uncommitted chip from an earlier turn never counts against this response and never suppresses a fresh recommendation. When the writer explicitly asks you to prepare or configure a live widget, emit a fresh, complete frame if the supplied material supports its required fields; do not merely acknowledge the request. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
-  `For Lexical Gravity, propose but never install. Choose one starter lens slug from photography, music, mathematics, weather, botany, architecture; weight must be ${LEXICAL_GRAVITY_WEIGHT.minimum}–${LEXICAL_GRAVITY_WEIGHT.maximum} in steps of ${LEXICAL_GRAVITY_WEIGHT.step}; reach is ${LEXICAL_GRAVITY_REACH.values.join(', ')}; metaphor-pull is true or false. The writer can change every value before explicitly installing it.`,
-  'Lexical Gravity frame:',
-  '### Try a widget',
-  '<workshop-widget-recommendation version="1">',
-  '<widget-id>',
-  'lexical-gravity',
-  '</widget-id>',
-  '<lens-slug>',
-  'photography',
-  '</lens-slug>',
-  '<weight>',
-  '60',
-  '</weight>',
-  '<reach>',
-  '2',
-  '</reach>',
-  '<metaphor-pull>',
-  'false',
-  '</metaphor-pull>',
-  '</workshop-widget-recommendation>',
-  'Gesture Playground frame:',
-  'This is a quality-first handoff, not a token-saving exercise. Do not be thrifty, terse, or generically minimal in the prefill fields. Supply enough grounded material that the dictionary model can understand the dramatic problem without reconstructing it from scraps. Source references save duplicate transcription; they are not permission to thin out the creative direction or character thinking:',
-  `- \`target-phrase\`: copy the exact phrase from the supplied passage, without quotation marks or paraphrase. Maximum ${PROMPT_BUDGETS.workshopWidgets.gestureTargetPhraseCharacters.toLocaleString('en-US')} characters.`,
-  `- \`writer-instructions\`: give substantive, specific direction explaining the beat's dramatic job, what an alternative must preserve, what to avoid, and which creative territory is worth exploring. Be complete but stay within ${PROMPT_BUDGETS.workshopWidgets.gestureWriterInstructionsCharacters.toLocaleString('en-US')} characters.`,
-  `- \`surrounding-context\`: copy a generous, consecutive stretch of the supplied prose around the phrase—normally the full relevant beat and useful paragraphs before and after—within ${PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters.toLocaleString('en-US')} characters. When a source reference below carries the full excerpt or attachment, include enough exact consecutive local prose to locate the beat without pointlessly copying the whole referenced source. Preserve source wording; never summarize, pad, or invent passage text.`,
-  `- \`source-references\`: use \`active-excerpt\` and/or exact \`context-attachment:ctx-N\` reference identifiers shown in the supplied Workshop material when the dictionary model would benefit from reading those sources in full. Use \`none\` when no source should ride. Never invent an identifier. The complete field may contain at most ${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferences} references and ${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters.toLocaleString('en-US')} characters.`,
-  `- \`character-notes\`: give grounded sentences about who this person is in this beat: immediate pressure, intention or defense, relationship dynamics, self-control, physical habits or constraints, and relevant voice/history. Distinguish supplied facts from reasonable scene inference; never invent project facts. Be complete but stay within ${PROMPT_BUDGETS.workshopWidgets.gestureCharacterNotesCharacters.toLocaleString('en-US')} characters.`,
-  'The four prose fields and the source-references field are required when you recommend the widget. If the supplied material cannot support them honestly, omit a discretionary recommendation; for an explicit writer request, say what material is missing instead of fabricating a frame or merely acknowledging the request. Everything remains editable and nothing runs until the writer chooses it. Do not explain widget mechanics in prose—the chip and prefilled form do that.',
-  'Use this reserved heading and these tags exactly once, alone on their lines. Do not repeat the heading or use any of the reserved tags inside a field:',
-  '### Try a widget',
-  '<workshop-widget-recommendation version="1">',
-  '<widget-id>',
-  'gesture-playground',
-  '</widget-id>',
-  '<target-phrase>',
-  '[exact phrase from the supplied passage]',
-  '</target-phrase>',
-  '<writer-instructions>',
-  '[substantial, scene-specific creative direction]',
-  '</writer-instructions>',
-  '<surrounding-context>',
-  '[generous consecutive source prose around the phrase]',
-  '</surrounding-context>',
-  '<source-references>',
-  '[none, or one exact active-excerpt/context-attachment:ctx-N identifier per line]',
-  '</source-references>',
-  '<character-notes>',
-  '[substantial, evidence-grounded character notes for this beat]',
-  '</character-notes>',
-  '</workshop-widget-recommendation>',
+  ...INSTRUCTION_ENTRIES.map(({ instruction }) => instruction),
   '</workshop-widget-recommendation-contract>'
 ].join('\n');
 
-const TRY_WIDGET_HEADING = '### Try a widget';
-const FRAME_START = '<workshop-widget-recommendation version="1">';
-const FRAME_END = '</workshop-widget-recommendation>';
-const WIDGET_ID_START = '<widget-id>';
-const WIDGET_ID_END = '</widget-id>';
-const TARGET_PHRASE_START = '<target-phrase>';
-const TARGET_PHRASE_END = '</target-phrase>';
-const WRITER_INSTRUCTIONS_START = '<writer-instructions>';
-const WRITER_INSTRUCTIONS_END = '</writer-instructions>';
-const SURROUNDING_CONTEXT_START = '<surrounding-context>';
-const SURROUNDING_CONTEXT_END = '</surrounding-context>';
-const SOURCE_REFERENCES_START = '<source-references>';
-const SOURCE_REFERENCES_END = '</source-references>';
-const CHARACTER_NOTES_START = '<character-notes>';
-const CHARACTER_NOTES_END = '</character-notes>';
-const LENS_SLUG_START = '<lens-slug>';
-const LENS_SLUG_END = '</lens-slug>';
-const WEIGHT_START = '<weight>';
-const WEIGHT_END = '</weight>';
-const REACH_START = '<reach>';
-const REACH_END = '</reach>';
-const METAPHOR_PULL_START = '<metaphor-pull>';
-const METAPHOR_PULL_END = '</metaphor-pull>';
-const ORDERED_MARKERS = [
-  FRAME_START,
-  WIDGET_ID_START,
-  WIDGET_ID_END,
-  TARGET_PHRASE_START,
-  TARGET_PHRASE_END,
-  WRITER_INSTRUCTIONS_START,
-  WRITER_INSTRUCTIONS_END,
-  SURROUNDING_CONTEXT_START,
-  SURROUNDING_CONTEXT_END,
-  SOURCE_REFERENCES_START,
-  SOURCE_REFERENCES_END,
-  CHARACTER_NOTES_START,
-  CHARACTER_NOTES_END,
-  FRAME_END
-] as const;
-
 const WIDGET_BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
-/** Exact ceiling for the complete recommendation tail, including protocol syntax. */
+/** Existing family-wide safety ceiling for the complete recommendation tail. */
 export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
   WIDGET_BUDGET.gestureTargetPhraseCharacters
   + WIDGET_BUDGET.gestureWriterInstructionsCharacters
@@ -133,70 +77,10 @@ export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
   + WIDGET_BUDGET.gestureSourceReferenceCharacters
   + WIDGET_BUDGET.gestureRecommendationFrameAllowanceCharacters;
 
-export type WorkshopWidgetRecommendationRejection =
-  | 'duplicate_heading'
-  | 'frame_too_long'
-  | 'invalid_frame'
-  | 'unknown_or_unavailable_widget'
-  | 'invalid_field'
-  | 'field_too_long';
-
-export type WorkshopWidgetRecommendationField =
-  | 'targetPhrase'
-  | 'writerInstructions'
-  | 'contextText'
-  | 'sourceReferences'
-  | 'characterNotes'
-  | 'lensSlug'
-  | 'weight'
-  | 'reach'
-  | 'metaphorPull';
-
-export type WorkshopWidgetRecommendationInvalidFieldReason =
-  | 'empty'
-  | 'target_missing_from_context'
-  | 'invalid_source_references'
-  | 'unsupported_lens'
-  | 'invalid_weight'
-  | 'invalid_reach'
-  | 'invalid_metaphor_pull';
-
-interface WorkshopWidgetRecommendationRejectedBase {
-  outcome: 'rejected';
-  recommendation?: undefined;
-}
-
-export type WorkshopWidgetRecommendationInspection =
-  | { outcome: 'absent'; recommendation?: undefined }
-  | { outcome: 'accepted'; recommendation: WorkshopWidgetRecommendation }
-  | (WorkshopWidgetRecommendationRejectedBase & {
-      rejection: Exclude<
-      WorkshopWidgetRecommendationRejection,
-        'field_too_long' | 'frame_too_long' | 'invalid_field'
-      >;
-    })
-  | (WorkshopWidgetRecommendationRejectedBase & {
-      rejection: 'invalid_field';
-      field: WorkshopWidgetRecommendationField;
-      reason: WorkshopWidgetRecommendationInvalidFieldReason;
-    })
-  | (WorkshopWidgetRecommendationRejectedBase & {
-      rejection: 'field_too_long';
-      field: WorkshopWidgetRecommendationField;
-      actualCharacters: number;
-      maximumCharacters: number;
-    })
-  | (WorkshopWidgetRecommendationRejectedBase & {
-      rejection: 'frame_too_long';
-      actualCharacters: number;
-      maximumCharacters: number;
-    });
-
 /**
  * Parse one exact `### Try a widget` section carrying a versioned multiline
- * frame. The frame is deliberately not JSON: copied prose can contain quotes,
- * newlines, and punctuation without making the control brittle. Anything
- * malformed, incomplete, duplicated, or over budget rejects wholesale.
+ * frame. Feature fields dispatch through the exact registry above; malformed,
+ * incomplete, duplicated, unavailable, or over-budget controls reject whole.
  */
 export function inspectWorkshopWidgetRecommendation(
   content: string
@@ -214,304 +98,30 @@ export function inspectWorkshopWidgetRecommendation(
 
   const sectionLines = lines.slice(headingIndexes[0] + 1);
   const sectionCharacters = sectionLines.join('\n').length;
-  const maximumSectionCharacters = WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS;
-  if (sectionCharacters > maximumSectionCharacters) {
+  if (sectionCharacters > WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS) {
     return {
       outcome: 'rejected',
       rejection: 'frame_too_long',
       actualCharacters: sectionCharacters,
-      maximumCharacters: maximumSectionCharacters
+      maximumCharacters: WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS
     };
   }
 
-  const widgetId = extractWidgetId(sectionLines);
-  if (!widgetId || !isLiveWorkshopWidgetId(widgetId)) {
+  const widgetId = extractWorkshopWidgetRecommendationId(sectionLines);
+  if (!widgetId || !isLiveWorkshopWidgetId(widgetId) || !isRecommendationWidgetId(widgetId)) {
     return { outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' };
   }
-  if (widgetId === 'lexical-gravity') {
-    return inspectLexicalGravityRecommendation(sectionLines);
-  }
-
-  const markerIndexes = new Map<string, number>();
-  for (const marker of ORDERED_MARKERS) {
-    const indexes = sectionLines.flatMap((line, index) =>
-      line === marker ? [index] : []
-    );
-    if (indexes.length !== 1) {
-      return { outcome: 'rejected', rejection: 'invalid_frame' };
-    }
-    markerIndexes.set(marker, indexes[0]);
-  }
-
-  const orderedIndexes = ORDERED_MARKERS.map((marker) => markerIndexes.get(marker)!);
-  if (orderedIndexes.some((index, ordinal) => ordinal > 0 && index <= orderedIndexes[ordinal - 1])) {
-    return { outcome: 'rejected', rejection: 'invalid_frame' };
-  }
-  const frameStartIndex = markerIndexes.get(FRAME_START)!;
-  const frameEndIndex = markerIndexes.get(FRAME_END)!;
-  if (
-    sectionLines.slice(0, frameStartIndex).some((line) => line.trim().length > 0)
-    || sectionLines.slice(frameEndIndex + 1).some((line) => line.trim().length > 0)
-  ) {
-    return { outcome: 'rejected', rejection: 'invalid_frame' };
-  }
-
-  const field = (start: string, end: string): string => sectionLines
-    .slice(markerIndexes.get(start)! + 1, markerIndexes.get(end)!)
-    .join('\n')
-    .trim();
-  const onlyBlankBetween = (left: string, right: string): boolean => sectionLines
-    .slice(markerIndexes.get(left)! + 1, markerIndexes.get(right)!)
-    .every((line) => line.trim().length === 0);
-  const boundaryGaps = ORDERED_MARKERS.flatMap((marker, index) =>
-    index % 2 === 0
-      ? [[marker, ORDERED_MARKERS[index + 1]] as const]
-      : []
-  );
-  if (boundaryGaps.some(([left, right]) => !onlyBlankBetween(left, right))) {
-    return { outcome: 'rejected', rejection: 'invalid_frame' };
-  }
-
-  if (widgetId !== 'gesture-playground') {
-    return { outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' };
-  }
-
-  const budget = PROMPT_BUDGETS.workshopWidgets;
-  const targetPhrase = field(TARGET_PHRASE_START, TARGET_PHRASE_END);
-  const writerInstructions = field(
-    WRITER_INSTRUCTIONS_START,
-    WRITER_INSTRUCTIONS_END
-  );
-  const contextText = field(SURROUNDING_CONTEXT_START, SURROUNDING_CONTEXT_END);
-  const sourceReferenceText = field(SOURCE_REFERENCES_START, SOURCE_REFERENCES_END);
-  const characterNotes = field(CHARACTER_NOTES_START, CHARACTER_NOTES_END);
-  const fields: Array<{
-    field: WorkshopWidgetRecommendationField;
-    value: string;
-    maximum: number;
-  }> = [
-    {
-      field: 'targetPhrase',
-      value: targetPhrase,
-      maximum: budget.gestureTargetPhraseCharacters
-    },
-    {
-      field: 'writerInstructions',
-      value: writerInstructions,
-      maximum: budget.gestureWriterInstructionsCharacters
-    },
-    { field: 'contextText', value: contextText, maximum: budget.gestureContextCharacters },
-    {
-      field: 'sourceReferences',
-      value: sourceReferenceText,
-      maximum: budget.gestureSourceReferenceCharacters
-    },
-    {
-      field: 'characterNotes',
-      value: characterNotes,
-      maximum: budget.gestureCharacterNotesCharacters
-    }
-  ];
-  const emptyField = fields.find(({ value }) => value.length === 0);
-  if (emptyField) {
-    return {
-      outcome: 'rejected',
-      rejection: 'invalid_field',
-      field: emptyField.field,
-      reason: 'empty'
-    };
-  }
-  const overlongField = fields.find(({ value, maximum }) => value.length > maximum);
-  if (overlongField) {
-    return {
-      outcome: 'rejected',
-      rejection: 'field_too_long',
-      field: overlongField.field,
-      actualCharacters: overlongField.value.length,
-      maximumCharacters: overlongField.maximum
-    };
-  }
-  if (
-    normalizeEvidenceText(contextText).includes(normalizeEvidenceText(targetPhrase)) === false
-  ) {
-    return {
-      outcome: 'rejected',
-      rejection: 'invalid_field',
-      field: 'contextText',
-      reason: 'target_missing_from_context'
-    };
-  }
-  const sourceReferences = parseSourceReferences(sourceReferenceText);
-  if (!sourceReferences) {
-    return {
-      outcome: 'rejected',
-      rejection: 'invalid_field',
-      field: 'sourceReferences',
-      reason: 'invalid_source_references'
-    };
-  }
-
-  return {
-    outcome: 'accepted',
-    recommendation: {
-      widgetId,
-      seed: {
-        targetPhrase,
-        writerInstructions,
-        contextText,
-        characterNotes,
-        sourceReferences
-      }
-    }
-  };
+  return WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES[widgetId].inspect(sectionLines);
 }
 
-const LEXICAL_MARKERS = [
-  FRAME_START,
-  WIDGET_ID_START,
-  WIDGET_ID_END,
-  LENS_SLUG_START,
-  LENS_SLUG_END,
-  WEIGHT_START,
-  WEIGHT_END,
-  REACH_START,
-  REACH_END,
-  METAPHOR_PULL_START,
-  METAPHOR_PULL_END,
-  FRAME_END
-] as const;
-
-function extractWidgetId(sectionLines: readonly string[]): string | undefined {
-  const start = sectionLines.flatMap((line, index) => line === WIDGET_ID_START ? [index] : []);
-  const end = sectionLines.flatMap((line, index) => line === WIDGET_ID_END ? [index] : []);
-  if (start.length !== 1 || end.length !== 1 || end[0] <= start[0]) {return undefined;}
-  return sectionLines.slice(start[0] + 1, end[0]).join('\n').trim();
-}
-
-function inspectLexicalGravityRecommendation(
-  sectionLines: readonly string[]
-): WorkshopWidgetRecommendationInspection {
-  const indexes = new Map<string, number>();
-  for (const marker of LEXICAL_MARKERS) {
-    const found = sectionLines.flatMap((line, index) => line === marker ? [index] : []);
-    if (found.length !== 1) {return { outcome: 'rejected', rejection: 'invalid_frame' };}
-    indexes.set(marker, found[0]);
-  }
-  const ordered = LEXICAL_MARKERS.map((marker) => indexes.get(marker)!);
-  if (ordered.some((index, ordinal) => ordinal > 0 && index <= ordered[ordinal - 1])) {
-    return { outcome: 'rejected', rejection: 'invalid_frame' };
-  }
-  if (
-    sectionLines.slice(0, indexes.get(FRAME_START)!).some((line) => line.trim())
-    || sectionLines.slice(indexes.get(FRAME_END)! + 1).some((line) => line.trim())
-  ) {
-    return { outcome: 'rejected', rejection: 'invalid_frame' };
-  }
-  const field = (start: string, end: string): string => sectionLines
-    .slice(indexes.get(start)! + 1, indexes.get(end)!)
-    .join('\n')
-    .trim();
-  const boundaryGaps = LEXICAL_MARKERS.flatMap((marker, index) =>
-    index % 2 === 0 ? [[marker, LEXICAL_MARKERS[index + 1]] as const] : []
-  );
-  if (boundaryGaps.some(([left, right]) => sectionLines
-    .slice(indexes.get(left)! + 1, indexes.get(right)!)
-    .some((line) => line.trim()))) {
-    return { outcome: 'rejected', rejection: 'invalid_frame' };
-  }
-  const lensSlug = field(LENS_SLUG_START, LENS_SLUG_END);
-  const weight = Number(field(WEIGHT_START, WEIGHT_END));
-  const reach = Number(field(REACH_START, REACH_END));
-  const metaphorText = field(METAPHOR_PULL_START, METAPHOR_PULL_END);
-  // Trust-boundary allowlist: personas may seed host-owned starters only, never
-  // name an arbitrary project lens whose body would enter a system prompt.
-  const builtIns = new Set([
-    'photography', 'music', 'mathematics', 'weather', 'botany', 'architecture'
-  ]);
-  if (!builtIns.has(lensSlug)) {
-    return {
-      outcome: 'rejected', rejection: 'invalid_field', field: 'lensSlug', reason: 'unsupported_lens'
-    };
-  }
-  if (!isLexicalGravityWeight(weight)) {
-    return {
-      outcome: 'rejected', rejection: 'invalid_field', field: 'weight', reason: 'invalid_weight'
-    };
-  }
-  if (!isLexicalGravityReach(reach)) {
-    return {
-      outcome: 'rejected', rejection: 'invalid_field', field: 'reach', reason: 'invalid_reach'
-    };
-  }
-  if (metaphorText !== 'true' && metaphorText !== 'false') {
-    return {
-      outcome: 'rejected',
-      rejection: 'invalid_field',
-      field: 'metaphorPull',
-      reason: 'invalid_metaphor_pull'
-    };
-  }
-  return {
-    outcome: 'accepted',
-    recommendation: {
-      widgetId: 'lexical-gravity',
-      seed: {
-        lensSlug,
-        weight,
-        reach,
-        metaphorPull: metaphorText === 'true'
-      }
-    }
-  };
-}
-
-const CONTEXT_ATTACHMENT_REFERENCE = /^context-attachment:(ctx-[1-9]\d*)$/;
-
-function parseSourceReferences(value: string): WorkshopWidgetSourceReference[] | undefined {
-  const budget = PROMPT_BUDGETS.workshopWidgets;
-  if (value.length === 0 || value.length > budget.gestureSourceReferenceCharacters) {
-    return undefined;
-  }
-  const lines = value.split('\n').map((line) => line.trim());
-  if (lines.some((line) => line.length === 0)) {
-    return undefined;
-  }
-  if (lines.length === 1 && lines[0] === 'none') {
-    return [];
-  }
-  if (lines.includes('none') || lines.length > budget.gestureSourceReferences) {
-    return undefined;
-  }
-
-  const seen = new Set<string>();
-  const references: WorkshopWidgetSourceReference[] = [];
-  for (const line of lines) {
-    if (seen.has(line)) {
-      return undefined;
-    }
-    seen.add(line);
-    if (line === 'active-excerpt') {
-      references.push({ kind: 'active-excerpt' });
-      continue;
-    }
-    const match = CONTEXT_ATTACHMENT_REFERENCE.exec(line);
-    if (!match) {
-      return undefined;
-    }
-    references.push({ kind: 'context-attachment', attachmentId: match[1] });
-  }
-  return references;
-}
-
-function normalizeEvidenceText(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
+function isRecommendationWidgetId(value: WorkshopWidgetId): value is RecommendationWidgetId {
+  return Object.prototype.hasOwnProperty.call(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES, value);
 }
 
 /**
- * A recommendation control renders as a chip and editable form, not as a wall
- * of machine framing in the transcript. The exact reserved heading owns the
- * final tail even when the frame later rejects, so malformed or truncated
- * control debris cannot become persisted, copied, or saved prose.
+ * Recommendation controls render as chips and editable forms, not machine
+ * framing in the transcript. The reserved heading owns the final tail even
+ * when a frame rejects, so malformed debris cannot persist as prose.
  */
 export function stripWorkshopWidgetRecommendationControl(content: string): string {
   const lines = content.replace(/\r\n?/g, '\n').split('\n');
@@ -521,11 +131,7 @@ export function stripWorkshopWidgetRecommendationControl(content: string): strin
     : content;
 }
 
-/**
- * Retained provider history must not replay the private widget protocol. A
- * frame-only response keeps one neutral assistant row so the transcript stays
- * well formed without teaching later turns to imitate the control syntax.
- */
+/** Remove the private widget protocol before retained provider history. */
 export function sanitizeWorkshopWidgetRecommendationForRetention(content: string): string {
   const stripped = stripWorkshopWidgetRecommendationControl(content).trim();
   return stripped || '[Widget setup delivered through the Workshop interface.]';
