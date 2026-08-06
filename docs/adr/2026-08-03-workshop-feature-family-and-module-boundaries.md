@@ -95,9 +95,11 @@ variant dispatch reviewable.
 
 ### 4. The Workshop room and session remain coherent facades
 
-`WorkshopHandler` remains the Workshop-internal composition owner and the owner
-of cross-slice room/run orchestration. It delegates cohesive IPC clusters to
-named sibling handlers.
+`WorkshopRoomHandler` owns cross-slice room/run orchestration and the sole
+Workshop session-state transport envelope. `WorkshopSliceComposition` is the
+Workshop-internal composition seam: it constructs the named sibling handlers,
+owns the shared session-operation mutation gate, and fans route registration
+and disposal across them. Neither owner absorbs feature semantics.
 
 `WorkshopSessionService` remains the aggregate facade and sole whole-session
 mutation boundary. It delegates independently changing state machines and
@@ -153,6 +155,41 @@ shared disk/catalog mechanics belong to neither route owner. A complete
 shared session-operation mutation gate or registers directly. Behavior tests
 dispatch through the real `MessageRouter`; test-only handler passthroughs are
 not part of the architecture.
+
+#### Phase 7 amendment: honest room and composition ownership (2026-08-06)
+
+The Phase 4 statement above records the boundary at that phase. Phase 7
+supersedes its dual-role naming: the former `WorkshopHandler` was predominantly
+room/run orchestration but also physically constructed eight sibling route
+owners. A rename alone would have left `WorkshopRoomHandler` composing handlers
+unrelated to room execution.
+
+Phase 7 therefore selected the third disposition:
+
+- `WorkshopRoomHandler` retains the nine room/run routes, the single
+  `activeRun` slot, targeting/execution, streaming/status/error messages, and
+  the sole `WORKSHOP_SESSION_STATE` constructor;
+- `WorkshopSliceComposition` constructs the eight sibling handlers, owns the
+  shared session-operation mutation gate, and coordinates route registration
+  plus the preserved slice/room teardown sequence; and
+- `WorkshopRouteContracts` owns the widget-runtime bundle, stable composition
+  dependencies, call-after-construction room effects, guarded registrar, and
+  route-owner attribution shared across that seam. Stable services stay in the
+  dependency bundle; a callback enters the effects interface only for live
+  room state or a private room-owned operation.
+
+This is a responsibility split, not a size split. The run engine remains intact
+because targeting, execution, preemption, completion, and transport envelopes
+share one lifecycle invariant. All 48 routes retain their semantic owners and
+gate classifications. Persisted shapes and wire behavior are unchanged; the
+handler log prefix now follows the live owner name.
+
+Phase 7 also records that the next-feature reproduction criterion means one
+explicit entry per applicable closed registry plus zero edits to existing
+feature slices. It does not mean one generic file total, which would require
+the dynamic plugin architecture rejected above. The final audit covers all five
+feature-freeze facades and is published in the
+[Workshop responsibility map](../architecture/2026-08-06-workshop-responsibility-map.md).
 
 ### 5. Presentation state follows durability and workflow ownership
 

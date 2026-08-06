@@ -5,7 +5,7 @@
  * reference comp's TOOLS table (docs/design/pm-frames-fulltab.js).
  *
  * This is the single deterministic source for tool ids ↔ labels: the webview
- * palette renders from it and WorkshopHandler labels turns with it, so the two
+ * palette renders from it and WorkshopRoomHandler labels turns with it, so the two
  * can't drift — and the LLM never names buttons (epic invariant). Icons are
  * presentation-only and stay in the webview layer.
  */

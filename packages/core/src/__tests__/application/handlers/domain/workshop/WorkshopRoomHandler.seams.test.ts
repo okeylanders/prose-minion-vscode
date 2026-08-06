@@ -4,20 +4,20 @@ import {
 import {
   analysisResult,
   message,
-  createWorkshopHandlerTestHarness
-} from './WorkshopHandlerTestHarness';
-import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
+  createWorkshopRouteTestHarness
+} from './WorkshopRouteTestHarness';
+import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
-describe('WorkshopHandler routing — cross-owner seams', () => {
-  let session: WorkshopHandlerTestHarness['session'];
-  let log: WorkshopHandlerTestHarness['log'];
-  let service: WorkshopHandlerTestHarness['service'];
-  let contextAssistant: WorkshopHandlerTestHarness['contextAssistant'];
-  let router: WorkshopHandlerTestHarness['router'];
-  let persistence: WorkshopHandlerTestHarness['persistence'];
-  let posted: WorkshopHandlerTestHarness['posted'];
-  let pin: WorkshopHandlerTestHarness['pin'];
-  let runProse: WorkshopHandlerTestHarness['runProse'];
+describe('WorkshopRoomHandler routing — cross-owner seams', () => {
+  let session: WorkshopRouteTestHarness['session'];
+  let log: WorkshopRouteTestHarness['log'];
+  let service: WorkshopRouteTestHarness['service'];
+  let contextAssistant: WorkshopRouteTestHarness['contextAssistant'];
+  let router: WorkshopRouteTestHarness['router'];
+  let persistence: WorkshopRouteTestHarness['persistence'];
+  let posted: WorkshopRouteTestHarness['posted'];
+  let pin: WorkshopRouteTestHarness['pin'];
+  let runProse: WorkshopRouteTestHarness['runProse'];
 
   beforeEach(() => {
     ({
@@ -30,7 +30,7 @@ describe('WorkshopHandler routing — cross-owner seams', () => {
       posted,
       pin,
       runProse
-    } = createWorkshopHandlerTestHarness());
+    } = createWorkshopRouteTestHarness());
   });
 
   it('registers one composer route and one target route without enter/exit variants', () => {
@@ -115,6 +115,10 @@ describe('WorkshopHandler routing — cross-owner seams', () => {
     expect(session.getExcerpt()).toBeUndefined();
     expect(posted(MessageType.ERROR).at(-1).payload.message)
       .toMatch(/session save or replacement/i);
+    expect(log.appendLine).toHaveBeenCalledWith(
+      '[WorkshopExcerptScopeHandler] ERROR [workshop]: ' +
+      'Wait for the current session save or replacement to finish before changing the room.'
+    );
   });
 
   it('returns a widget-owned rejection when commit meets the session-operation gate', async () => {
@@ -544,7 +548,7 @@ describe('WorkshopHandler routing — cross-owner seams', () => {
       }) as any);
 
       expect(log.appendLine).toHaveBeenCalledWith(
-        '[WorkshopHandler] Cancel ignored: stale-wizard-request (domain=workshop-context)'
+        '[WorkshopRoomHandler] Cancel ignored: stale-wizard-request (domain=workshop-context)'
       );
       finish();
       await run;

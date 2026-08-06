@@ -109,23 +109,23 @@ checks. Phase 7 runs:
 
 ## Feature-resume criteria
 
-- [ ] P0-P7 are complete.
-- [ ] Known architecture migration exceptions are empty.
-- [ ] Gesture Playground and Lexical Gravity share one ownership pattern.
-- [ ] Generic modules contain only proven shared behavior or explicit closed
+- [x] P0-P7 are complete.
+- [x] Known architecture migration exceptions are empty.
+- [x] Gesture Playground and Lexical Gravity share one ownership pattern.
+- [x] Generic modules contain only proven shared behavior or explicit closed
       dispatch.
-- [ ] `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`,
-      `WorkshopHandler` (or its Phase 7 renamed successor), and
+- [x] `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`,
+      `WorkshopRoomHandler`, and
       `WorkshopSessionService` have one clear primary responsibility or are
       narrow facades over named collaborators.
-- [ ] Phase 7 records whether `WorkshopHandler` remains the honest room/run
-      owner or is renamed to `WorkshopRoomHandler`, with source, tests,
+- [x] Phase 7 records that the room/run owner is renamed to
+      `WorkshopRoomHandler`, with source, tests,
       witnesses, and docs aligned to that verdict.
-- [ ] The [Workshop god-files debt](../../tech-debt/2026-07-25-workshop-god-files.md)
+- [x] The [Workshop god-files debt](../../tech-debt/2026-07-25-workshop-god-files.md)
       closes only after its responsibility and traceability criteria are
       evidenced; otherwise it and the feature freeze remain open.
-- [ ] Representative UI-to-persistence traces are documented and match code.
-- [ ] Full verification passes.
+- [x] Representative UI-to-persistence traces are documented and match code.
+- [x] Full verification passes.
 - [ ] Okey explicitly lifts the Workshop feature freeze.
 
 ## Paused feature work

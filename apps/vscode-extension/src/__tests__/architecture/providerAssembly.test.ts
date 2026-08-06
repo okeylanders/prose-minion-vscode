@@ -22,7 +22,7 @@ const EXTENSION_MANIFEST = path.resolve(APP_SRC_ROOT, '..', 'package.json');
  * bundle built in extension.ts. `new MessageHandler` is the ONE sanctioned
  * construction — the per-webview message seam. This is a suffix-convention
  * net (it catches service-shaped class names, not arbitrary classes): Handler
- * IS in the net, so a Sprint-2 `new WorkshopHandler(...)` inside a provider
+ * IS in the net, so a `new WorkshopRoomHandler(...)` inside a provider
  * fails here rather than slipping through (PR #66 review, Cal).
  */
 const FORBIDDEN_SERVICE_CONSTRUCTION = new RegExp(

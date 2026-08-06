@@ -59,8 +59,9 @@ packages/core/src/
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
 │           └── workshop/                  # 9 route owners + shared contracts
-│               ├── WorkshopHandler.ts     # Room/run orchestrator + slice composer
-│               ├── WorkshopHandlerContracts.ts
+│               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
+│               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
+│               ├── WorkshopRouteContracts.ts
 │               ├── WorkshopContextHandler.ts
 │               ├── WorkshopExcerptScopeHandler.ts
 │               ├── WorkshopSessionMessageHandler.ts

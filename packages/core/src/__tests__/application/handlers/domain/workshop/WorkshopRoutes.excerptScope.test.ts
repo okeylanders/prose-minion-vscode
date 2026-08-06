@@ -5,21 +5,21 @@ import {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   message,
-  createWorkshopHandlerTestHarness
-} from './WorkshopHandlerTestHarness';
-import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
+  createWorkshopRouteTestHarness
+} from './WorkshopRouteTestHarness';
+import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
-describe('WorkshopHandler routing — excerpt and scope owner', () => {
-  let session: WorkshopHandlerTestHarness['session'];
-  let postMessage: WorkshopHandlerTestHarness['postMessage'];
-  let log: WorkshopHandlerTestHarness['log'];
-  let shell: WorkshopHandlerTestHarness['shell'];
-  let fileSystem: WorkshopHandlerTestHarness['fileSystem'];
-  let router: WorkshopHandlerTestHarness['router'];
-  let resourceFiles: WorkshopHandlerTestHarness['resourceFiles'];
-  let resourceProviderFactory: WorkshopHandlerTestHarness['resourceProviderFactory'];
-  let posted: WorkshopHandlerTestHarness['posted'];
-  let pin: WorkshopHandlerTestHarness['pin'];
+describe('Workshop composed routing — excerpt and scope owner', () => {
+  let session: WorkshopRouteTestHarness['session'];
+  let postMessage: WorkshopRouteTestHarness['postMessage'];
+  let log: WorkshopRouteTestHarness['log'];
+  let shell: WorkshopRouteTestHarness['shell'];
+  let fileSystem: WorkshopRouteTestHarness['fileSystem'];
+  let router: WorkshopRouteTestHarness['router'];
+  let resourceFiles: WorkshopRouteTestHarness['resourceFiles'];
+  let resourceProviderFactory: WorkshopRouteTestHarness['resourceProviderFactory'];
+  let posted: WorkshopRouteTestHarness['posted'];
+  let pin: WorkshopRouteTestHarness['pin'];
 
   beforeEach(() => {
     ({
@@ -33,7 +33,7 @@ describe('WorkshopHandler routing — excerpt and scope owner', () => {
       resourceProviderFactory,
       posted,
       pin
-    } = createWorkshopHandlerTestHarness());
+    } = createWorkshopRouteTestHarness());
   });
 
   it('pins a picked file with durable head-slice provenance', async () => {

@@ -2,7 +2,7 @@ import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { WorkshopExcerptScopeHandler } from '@handlers/domain/workshop/WorkshopExcerptScopeHandler';
 import type {
   WorkshopMutationRouteRegistrar
-} from '@handlers/domain/workshop/WorkshopHandlerContracts';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { MessageType } from '@messages';
 
 const message = (type: MessageType, payload: unknown) => ({

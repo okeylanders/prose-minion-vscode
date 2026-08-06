@@ -1,6 +1,6 @@
 /**
  * useWorkshopRoom — room-state presentation owner for the Workshop editor tab (ADR 2026-07-03;
- * Sprint 2 session spine, Sprint 3 multi-turn). Mirrors WorkshopHandler, the
+ * Sprint 2 session spine, Sprint 3 multi-turn). Mirrors WorkshopRoomHandler, the
  * 12th domain.
  *
  * The hook RENDERS the session; it never owns it. Host-side

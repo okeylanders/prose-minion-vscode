@@ -1,7 +1,7 @@
-import {
-  WorkshopHandler,
+import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
+import type {
   WorkshopWidgetRuntime
-} from '@handlers/domain/workshop/WorkshopHandler';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -70,7 +70,7 @@ const widgetRuntime = (
   }
 });
 
-export interface WorkshopHandlerTestHarness {
+export interface WorkshopRouteTestHarness {
   session: WorkshopSessionService;
   postMessage: jest.Mock;
   log: LogSink;
@@ -80,7 +80,7 @@ export interface WorkshopHandlerTestHarness {
   fileSystem: FileSystem;
   workspace: Workspace;
   settings: SettingsStore;
-  handler: WorkshopHandler;
+  handler: WorkshopRoomHandler;
   router: MessageRouter;
   roomDelivery: WorkshopRoomDeliveryService;
   writerProfileService: WorkshopWriterProfileService;
@@ -97,6 +97,8 @@ export interface WorkshopHandlerTestHarness {
   }>;
   resourceProviderFactory: { createProvider: jest.Mock; };
   persistence: jest.Mocked<WorkshopSessionPersistenceCoordinator>;
+  disposeStatusListener: jest.Mock;
+  disposeSessionSaveStatusListener: jest.Mock;
   setTimeNow: (value: Date) => void;
   posted: (type: MessageType) => any[];
   storeContext: (key: string, promptTokens: number, completionTokens?: number) => void;
@@ -104,13 +106,15 @@ export interface WorkshopHandlerTestHarness {
   runProse: () => Promise<void>;
 }
 
-export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness => {
+export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
   let timeNow = new Date('2026-07-23T14:00:00.000Z');
   const session = new WorkshopSessionService(() => 1);
   const contextBudgets = new Map<string, ContextBudgetSnapshot>();
   const contextSources = new Map<string, import('@messages').ContextSourceEntry[]>();
   const postMessage = jest.fn().mockResolvedValue(undefined);
   const log = { appendLine: jest.fn() } as unknown as LogSink;
+  const disposeStatusListener = jest.fn();
+  const disposeSessionSaveStatusListener = jest.fn();
   const service = {
     analyzeDialogue: jest.fn().mockResolvedValue(
       analysisResult('tool report', { conversationId: 'tool-conv' })
@@ -140,7 +144,7 @@ export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness =
     getConversationContextSources: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextSources.get(conversationId) ?? [] : []
     ),
-    addStatusListener: jest.fn(() => jest.fn())
+    addStatusListener: jest.fn(() => disposeStatusListener)
   } as unknown as jest.Mocked<AssistantToolService>;
   const contextAssistant = {
     generateContext: jest.fn().mockResolvedValue({
@@ -201,7 +205,9 @@ export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness =
     getDegradedConversations: jest.fn().mockReturnValue([]),
     isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
     isSessionOperationPending: jest.fn().mockReturnValue(false),
-    addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
+    addSessionSaveStatusListener: jest.fn().mockReturnValue(
+      disposeSessionSaveStatusListener
+    ),
     waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
     markDirty: jest.fn(),
     flush: jest.fn().mockResolvedValue(undefined),
@@ -244,7 +250,7 @@ export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness =
     deleteNamed: jest.fn().mockResolvedValue(undefined)
   } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
   const roomDelivery = new WorkshopRoomDeliveryService(session);
-  const handler = new WorkshopHandler(
+  const handler = new WorkshopRoomHandler(
     service,
     contextAssistant as never,
     session,
@@ -333,6 +339,8 @@ export const createWorkshopHandlerTestHarness = (): WorkshopHandlerTestHarness =
     resourceFiles,
     resourceProviderFactory,
     persistence,
+    disposeStatusListener,
+    disposeSessionSaveStatusListener,
     setTimeNow: (value: Date) => {
       timeNow = value;
     },

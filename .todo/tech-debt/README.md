@@ -65,7 +65,7 @@ elsewhere.
 | Low | [Build command gate semantics](2026-06-29-build-command-gate-semantics.md) | Deferred |
 | Low | [Workshop bounded turn packer](2026-07-14-workshop-bounded-turn-packer.md) | Deferred |
 | Medium | [Persona prompt/validator contract drift](2026-07-26-persona-prompt-validator-contract-drift.md) | Open |
-| Medium | [Workshop god files](2026-07-25-workshop-god-files.md) | Open |
+| Was critical | [Workshop god files](2026-07-25-workshop-god-files.md) | Resolved — freeze decision pending |
 | Medium | [Widget recommendation prompt assembly](2026-07-31-workshop-widget-recommendation-prompt-assembly.md) | Deferred |
 | Low | [Filesystem missing-file error contract](2026-07-27-filesystem-missing-error-contract.md) | Partially mitigated |
 | Low | [Widget-config counter integrity validation](2026-07-31-widget-config-counter-integrity.md) | Identified |

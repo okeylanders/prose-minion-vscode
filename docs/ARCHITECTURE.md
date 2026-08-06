@@ -148,7 +148,7 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
-| `useWorkshopRoom` | `WorkshopHandler` | Room/thread/context state and retained host orchestration |
+| `useWorkshopRoom` | `WorkshopRoomHandler` | Room/thread/context state and retained host orchestration |
 | `useWorkshopSessions` | `WorkshopSessionMessageHandler` | Named-session lifecycle and browser actions |
 | `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation, correlation, and one-shot commit |
 | `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows |
@@ -253,12 +253,17 @@ new selection.
 
 ### 7. Workshop Feature-Family Ownership
 
-Workshop is internally sliced under `application/handlers/domain/workshop/`:
-`WorkshopHandler` owns room/run orchestration and composes the context,
-excerpt/scope, session, todo, standing-directive, widget-host, Gesture
-Playground, and Lexical Gravity route owners. `WorkshopSessionService` remains
-the whole-session mutation boundary; extracted ledgers and state machines stay
+Workshop is internally sliced under `application/handlers/domain/workshop/`.
+`WorkshopRoomHandler` owns the nine room/run routes, one active-run slot, and
+the sole Workshop session-state envelope. `WorkshopSliceComposition` constructs
+and registers the context, excerpt/scope, session, todo, standing-directive,
+widget-host, Gesture Playground, and Lexical Gravity route owners behind the
+shared session-operation mutation gate. `WorkshopSessionService` remains the
+whole-session mutation boundary; extracted ledgers and state machines stay
 behind that facade.
+
+The final filename-first dependency map and five-facade audit live in
+[Workshop Responsibility and Dependency Map](architecture/2026-08-06-workshop-responsibility-map.md).
 
 Contracts mirror those owners under `shared/types/messages/workshop/`:
 

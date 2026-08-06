@@ -1,10 +1,26 @@
 # Sprint 07: Architecture Closure
 
-**Status:** Planned
+**Status:** Implemented — closure evidence complete; feature-freeze decision pending
 
 **Branch:** `sprint/workshop-architecture-refactor-07-closure` -> `epic/workshop-architecture-refactor`
 
 **Depends on:** Sprint 06
+
+**Evidence:** [Sprint 07 architecture change runway](../../../../docs/architecture/2026-08-06-workshop-sprint-07-architecture-closure-runway.md)
+— the pre-implementation runway left D7-A, D7-B, and D7-C open and measured five
+of ten completion criteria as already satisfied at base `0a742ca`; their recorded
+outcomes and review corrections appear below.
+
+**Final map:** [Workshop responsibility and dependency map](../../../../docs/architecture/2026-08-06-workshop-responsibility-map.md)
+
+## Decisions recorded
+
+| Decision | Outcome |
+|---|---|
+| D7-A — handler disposition | **C.** Extract `WorkshopSliceComposition`, then rename the room/run owner to `WorkshopRoomHandler`. The room owner retains the nine room/run routes, single active-run slot, and sole session-state envelope. |
+| D7-B — reproduction criterion | **B.** One explicit arm per applicable closed generic seam, with zero edits to existing feature slices. The review-hardened fixture derives 20 generic seams, classifies every approved generic surface, and requires zero Gesture/Lexical edits. |
+| D7-C — audit subjects | **B.** Audit all five freeze-gate facades: `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`, `WorkshopRoomHandler`, and `WorkshopSessionService`. |
+| D7-D — feature freeze | Pending Okey's explicit decision. Implementation does not lift it implicitly. |
 
 ## Goal
 
@@ -45,22 +61,38 @@ Phase 7 owns both closure decisions:
 
 ## Completion criteria
 
-- [ ] Every generic owner contains only proven shared mechanics or explicit
+- [x] Every generic owner contains only proven shared mechanics or explicit
       closed dispatch.
-- [ ] Every feature owns its semantics across presentation and application.
-- [ ] Broad facades have one primary responsibility and named collaborators.
-- [ ] The `WorkshopHandler` retain-or-rename verdict is recorded; if renamed,
+- [x] Every feature owns its semantics across presentation and application.
+- [x] Broad facades have one primary responsibility and named collaborators.
+- [x] The `WorkshopHandler` retain-or-rename verdict is recorded; if renamed,
       source, tests, witnesses, log-prefix expectations, and docs consistently
-      use `WorkshopRoomHandler`.
-- [ ] The Workshop god-files record stays open until its completion criteria
-      are evidenced; an unmet criterion blocks debt closure and the feature
-      freeze lift.
-- [ ] A reviewer can trace representative actions by filename.
-- [ ] All migration exceptions are empty.
-- [ ] Full Jest, all TypeScript projects, lint, build/bundle, architecture
+      use `WorkshopRoomHandler` in the implemented/live architecture.
+- [x] The Workshop god-files record stayed open until its completion criteria
+      were evidenced.
+
+      > Measured against (`0a742cac`): “An unmet criterion blocks debt closure
+      > and the feature freeze lift.” The final audit closes the code-level debt;
+      > D7-D remains the independent freeze-lift decision.
+- [x] A reviewer can trace representative actions by filename.
+- [x] All migration exceptions are empty.
+- [x] Full Jest, all TypeScript projects, lint, build/bundle, architecture
       witnesses, and `git diff --check` pass.
-- [ ] Final architecture map is published.
-- [ ] A Prose Controller reproduction fixture demonstrates zero edits to
-      Gesture/Lexical feature files and exactly one generic closed-registry
-      entry.
+- [x] Final architecture map is published.
+- [x] A Prose Controller reproduction fixture demonstrates zero edits to
+      Gesture/Lexical feature files and exactly one entry per applicable
+      generic closed registry.
 - [ ] Okey explicitly decides whether to lift the feature freeze.
+
+## Validation evidence
+
+Validated on the implemented Sprint 07 tree:
+
+- `npm test -- --runInBand` — 189 suites, 1,939 tests, 1 snapshot passed;
+- `npm run typecheck` — core, webview, and extension projects clean;
+- `npm run lint -- --quiet` — zero errors;
+- `npm run build` — extension and webview production bundles compiled; bundle
+  verifier found all three sentinel utilities (existing webpack size warnings only);
+- `packages/core/src/__tests__/architecture/boundaries.test.ts` — 23 closure
+  witnesses pass, including composition ownership and Prose Controller reproduction; and
+- `git diff --check` — clean.

@@ -5,24 +5,24 @@ import {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   message,
-  createWorkshopHandlerTestHarness
-} from './WorkshopHandlerTestHarness';
-import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
+  createWorkshopRouteTestHarness
+} from './WorkshopRouteTestHarness';
+import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
-describe('WorkshopHandler routing — context owner', () => {
-  let session: WorkshopHandlerTestHarness['session'];
-  let log: WorkshopHandlerTestHarness['log'];
-  let service: WorkshopHandlerTestHarness['service'];
-  let contextAssistant: WorkshopHandlerTestHarness['contextAssistant'];
-  let shell: WorkshopHandlerTestHarness['shell'];
-  let fileSystem: WorkshopHandlerTestHarness['fileSystem'];
-  let workspace: WorkshopHandlerTestHarness['workspace'];
-  let router: WorkshopHandlerTestHarness['router'];
-  let resourceFiles: WorkshopHandlerTestHarness['resourceFiles'];
-  let resourceProviderFactory: WorkshopHandlerTestHarness['resourceProviderFactory'];
-  let posted: WorkshopHandlerTestHarness['posted'];
-  let pin: WorkshopHandlerTestHarness['pin'];
-  let runProse: WorkshopHandlerTestHarness['runProse'];
+describe('Workshop composed routing — context owner', () => {
+  let session: WorkshopRouteTestHarness['session'];
+  let log: WorkshopRouteTestHarness['log'];
+  let service: WorkshopRouteTestHarness['service'];
+  let contextAssistant: WorkshopRouteTestHarness['contextAssistant'];
+  let shell: WorkshopRouteTestHarness['shell'];
+  let fileSystem: WorkshopRouteTestHarness['fileSystem'];
+  let workspace: WorkshopRouteTestHarness['workspace'];
+  let router: WorkshopRouteTestHarness['router'];
+  let resourceFiles: WorkshopRouteTestHarness['resourceFiles'];
+  let resourceProviderFactory: WorkshopRouteTestHarness['resourceProviderFactory'];
+  let posted: WorkshopRouteTestHarness['posted'];
+  let pin: WorkshopRouteTestHarness['pin'];
+  let runProse: WorkshopRouteTestHarness['runProse'];
 
   beforeEach(() => {
     ({
@@ -39,7 +39,7 @@ describe('WorkshopHandler routing — context owner', () => {
       posted,
       pin,
       runProse
-    } = createWorkshopHandlerTestHarness());
+    } = createWorkshopRouteTestHarness());
   });
 
   it('rejects an over-budget text note at attach time — nothing over-budget reaches a tool pass', async () => {

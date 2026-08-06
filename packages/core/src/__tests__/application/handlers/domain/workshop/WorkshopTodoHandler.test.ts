@@ -2,7 +2,7 @@ import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import type {
   WorkshopMutationRouteRegistrar
-} from '@handlers/domain/workshop/WorkshopHandlerContracts';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { MessageType, WorkshopTodoActionMessage } from '@messages';
 
 const message = (

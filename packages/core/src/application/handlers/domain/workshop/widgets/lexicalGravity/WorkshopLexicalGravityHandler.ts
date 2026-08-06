@@ -2,7 +2,7 @@
 
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
-import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopHandlerContracts';
+import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 import {

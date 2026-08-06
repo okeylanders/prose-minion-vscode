@@ -1,4 +1,4 @@
-import { isWorkshopHostReturnShortcut } from '@/application/handlers/domain/workshop/WorkshopHandler';
+import { isWorkshopHostReturnShortcut } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
 import {
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
@@ -11,28 +11,44 @@ import {
 import {
   analysisResult,
   message,
-  createWorkshopHandlerTestHarness
-} from './WorkshopHandlerTestHarness';
-import type { WorkshopHandlerTestHarness } from './WorkshopHandlerTestHarness';
+  createWorkshopRouteTestHarness
+} from './WorkshopRouteTestHarness';
+import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
-describe('WorkshopHandler routing — room and run owner', () => {
-  let session: WorkshopHandlerTestHarness['session'];
-  let postMessage: WorkshopHandlerTestHarness['postMessage'];
-  let log: WorkshopHandlerTestHarness['log'];
-  let service: WorkshopHandlerTestHarness['service'];
-  let settings: WorkshopHandlerTestHarness['settings'];
-  let handler: WorkshopHandlerTestHarness['handler'];
-  let router: WorkshopHandlerTestHarness['router'];
-  let roomDelivery: WorkshopHandlerTestHarness['roomDelivery'];
-  let writerProfileService: WorkshopHandlerTestHarness['writerProfileService'];
-  let capabilityFactory: WorkshopHandlerTestHarness['capabilityFactory'];
-  let contextBudgets: WorkshopHandlerTestHarness['contextBudgets'];
-  let persistence: WorkshopHandlerTestHarness['persistence'];
-  let posted: WorkshopHandlerTestHarness['posted'];
-  let storeContext: WorkshopHandlerTestHarness['storeContext'];
-  let pin: WorkshopHandlerTestHarness['pin'];
-  let runProse: WorkshopHandlerTestHarness['runProse'];
-  let setTimeNow: WorkshopHandlerTestHarness['setTimeNow'];
+interface WorkshopDisposableSliceComposition {
+  gesturePlaygroundHandler: { dispose: () => void };
+  lexicalGravityHandler: { dispose: () => void };
+  sessionMessageHandler: { dispose: () => void };
+  contextHandler: { dispose: () => void };
+}
+
+const disposableCompositionOf = (
+  handler: WorkshopRouteTestHarness['handler']
+): WorkshopDisposableSliceComposition => (
+  handler as unknown as { sliceComposition: WorkshopDisposableSliceComposition }
+).sliceComposition;
+
+describe('WorkshopRoomHandler routing — room and run owner', () => {
+  let session: WorkshopRouteTestHarness['session'];
+  let postMessage: WorkshopRouteTestHarness['postMessage'];
+  let log: WorkshopRouteTestHarness['log'];
+  let service: WorkshopRouteTestHarness['service'];
+  let settings: WorkshopRouteTestHarness['settings'];
+  let handler: WorkshopRouteTestHarness['handler'];
+  let router: WorkshopRouteTestHarness['router'];
+  let roomDelivery: WorkshopRouteTestHarness['roomDelivery'];
+  let writerProfileService: WorkshopRouteTestHarness['writerProfileService'];
+  let capabilityFactory: WorkshopRouteTestHarness['capabilityFactory'];
+  let contextBudgets: WorkshopRouteTestHarness['contextBudgets'];
+  let persistence: WorkshopRouteTestHarness['persistence'];
+  let disposeStatusListener: WorkshopRouteTestHarness['disposeStatusListener'];
+  let disposeSessionSaveStatusListener:
+    WorkshopRouteTestHarness['disposeSessionSaveStatusListener'];
+  let posted: WorkshopRouteTestHarness['posted'];
+  let storeContext: WorkshopRouteTestHarness['storeContext'];
+  let pin: WorkshopRouteTestHarness['pin'];
+  let runProse: WorkshopRouteTestHarness['runProse'];
+  let setTimeNow: WorkshopRouteTestHarness['setTimeNow'];
 
   beforeEach(() => {
     ({
@@ -48,15 +64,17 @@ describe('WorkshopHandler routing — room and run owner', () => {
       capabilityFactory,
       contextBudgets,
       persistence,
+      disposeStatusListener,
+      disposeSessionSaveStatusListener,
       posted,
       storeContext,
       pin,
       runProse,
       setTimeNow
-    } = createWorkshopHandlerTestHarness());
+    } = createWorkshopRouteTestHarness());
   });
 
-  it('abandons an active run before flushing persistence on dispose', async () => {
+  it('runs every composed teardown step in the preserved lifecycle order', async () => {
     await pin();
     service.startWorkshopPersonaConversation.mockImplementationOnce(
       async (_input, options) => new Promise((resolve) => {
@@ -66,6 +84,11 @@ describe('WorkshopHandler routing — room and run owner', () => {
       })
     );
     const abandonRun = jest.spyOn(session, 'abandonRun');
+    const composition = disposableCompositionOf(handler);
+    const disposeGesture = jest.spyOn(composition.gesturePlaygroundHandler, 'dispose');
+    const disposeLexical = jest.spyOn(composition.lexicalGravityHandler, 'dispose');
+    const disposeSession = jest.spyOn(composition.sessionMessageHandler, 'dispose');
+    const disposeContext = jest.spyOn(composition.contextHandler, 'dispose');
     const delivery = router.route(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Hold this thought through shutdown.' }
@@ -76,10 +99,25 @@ describe('WorkshopHandler routing — room and run owner', () => {
     handler.dispose();
     await delivery;
 
+    expect(disposeGesture).toHaveBeenCalledTimes(1);
+    expect(disposeLexical).toHaveBeenCalledTimes(1);
+    expect(disposeStatusListener).toHaveBeenCalledTimes(1);
+    expect(disposeSessionSaveStatusListener).toHaveBeenCalledTimes(1);
+    expect(disposeSession).toHaveBeenCalledTimes(1);
     expect(abandonRun).toHaveBeenCalledWith(requestId);
+    expect(disposeContext).toHaveBeenCalledTimes(1);
     expect(persistence.flush).toHaveBeenCalled();
-    expect(abandonRun.mock.invocationCallOrder[0])
-      .toBeLessThan(persistence.flush.mock.invocationCallOrder.at(-1)!);
+    const invocationOrder: number[] = [
+      disposeGesture.mock.invocationCallOrder[0]!,
+      disposeLexical.mock.invocationCallOrder[0]!,
+      disposeStatusListener.mock.invocationCallOrder[0]!,
+      disposeSessionSaveStatusListener.mock.invocationCallOrder[0]!,
+      disposeSession.mock.invocationCallOrder[0]!,
+      abandonRun.mock.invocationCallOrder[0]!,
+      disposeContext.mock.invocationCallOrder[0]!,
+      persistence.flush.mock.invocationCallOrder.at(-1)!
+    ];
+    expect(invocationOrder).toEqual([...invocationOrder].sort((left, right) => left - right));
   });
 
   it('commits carry-cues-only behavior changes without rebuilding persona prompts', async () => {
@@ -515,7 +553,7 @@ describe('WorkshopHandler routing — room and run owner', () => {
     expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.contextBudget)
       .toEqual({ label: 'Jill context' });
     expect(log.appendLine).toHaveBeenCalledWith(
-      '[WorkshopHandler] Guest dismissed (persona=margot, conversation=guest-conv)'
+      '[WorkshopRoomHandler] Guest dismissed (persona=margot, conversation=guest-conv)'
     );
     expect(session.getSnapshot().participants.personaGuests).toEqual([
       expect.objectContaining({ personaId: 'margot', liveness: 'disposed', hasConversation: false })

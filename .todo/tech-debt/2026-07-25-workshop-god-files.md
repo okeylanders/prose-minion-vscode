@@ -1,7 +1,7 @@
-# Tech Debt: `WorkshopSessionService` and `WorkshopHandler` are load-bearing god files
+# Resolved Tech Debt: Workshop aggregate and room owners were load-bearing god files
 
-- **Status**: In progress — absorbed by the Workshop Architecture Refactor epic
-- **Priority**: Critical — blocks Workshop feature development
+- **Status**: Resolved 2026-08-06 by Workshop Architecture Refactor Phase 7; freeze decision pending
+- **Priority**: Was critical — feature-freeze gate now awaits only Okey's explicit decision
 - **Filed**: 2026-07-25
 - **Source**: [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md),
   finding #7 (🎯🎯 strong consensus — Marcus, Parker, Stan), and
@@ -11,14 +11,13 @@
 ## Problem
 
 The original debt was two files absorbing every new Workshop feature instead
-of shedding any. Phases 4 and 5 have reduced and narrowed both substantially,
-but Phase 7 still needs to certify that each remaining facade has one legible
-primary responsibility:
+of shedding any. Phases 4 and 5 narrowed both; Phase 7 completed the audit and
+made the remaining handler boundary explicit:
 
 | File | Lines (post-13A) | Nearest sibling |
 | --- | --- | --- |
 | `packages/core/src/application/services/workshop/WorkshopSessionService.ts` | 2,121 (Phase 5, 2026-08-06) | `session/WorkshopPassageScope.ts`, `WorkshopParticipantRoster.ts`, `WorkshopTodoLedger.ts`, `WorkshopTurnLedger.ts` |
-| `packages/core/src/application/handlers/domain/workshop/WorkshopHandler.ts` | 1,653 (Phase 4, 2026-08-06) | Five shared route owners plus three widget route owners |
+| `packages/core/src/application/handlers/domain/workshop/WorkshopRoomHandler.ts` | 1,517 (Phase 7, 2026-08-06) | `WorkshopSliceComposition` plus eight named route owners |
 
 Line count remains pressure evidence, not the completion rule. The open question
 is whether the remaining lines form one coherent aggregate facade and one
@@ -27,11 +26,12 @@ coherent room/run orchestrator, not whether either crosses an arbitrary limit.
 ## Why it matters
 
 The codebase has now applied the proven pattern across both files.
-`WorkshopHandler` composes named context, excerpt/scope, session, todo,
-standing-directive, and widget route owners. `WorkshopSessionService` delegates
-to named passage, participant, todo, turn, widget-config, standing-directive,
-persistence, and time collaborators while remaining the sole whole-session
-mutation boundary.
+`WorkshopRoomHandler` owns only room/run orchestration and transport envelopes;
+`WorkshopSliceComposition` constructs the named context, excerpt/scope,
+session, todo, standing-directive, and widget route owners and holds the shared
+mutation gate. `WorkshopSessionService` delegates closed passage, participant,
+todo, turn, widget-config, and standing-directive state while remaining the
+sole whole-session mutation boundary and cross-record integrity owner.
 
 The cost is concentration risk: a single file is becoming the place every
 Workshop change has to touch, which makes review harder, merge conflicts more
@@ -66,34 +66,56 @@ lines. The two larger files below remain the tracked debt.
 - **2026-08-06 — Sprint 06 deliberately leaves this record open.** Okey accepted
   D3: the `WorkshopHandler` → `WorkshopRoomHandler` naming tension and final
   facade-cohesion verdict belong to Phase 7, not the contract-normalization diff.
+- **2026-08-06 — Phase 7 closes the measured boundary.**
+  `WorkshopSliceComposition` now owns eight sibling constructions, guarded
+  route assembly, and slice disposal. `WorkshopRoomHandler` retains exactly the
+  nine room/run routes, one active-run slot, and the only Workshop session-state
+  envelope. The five-facade audit and representative traces are published in
+  the final responsibility map.
 
-## Phase 7 handoff
+## Phase 7 disposition
 
 [Sprint 07: Architecture Closure](../epics/epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md)
-owns the D3 disposition. Entering Phase 7 does not itself close this record.
-That sprint must:
+records D7-A as option C: extract composition and rename the remainder. D7-B
+reads the next-feature fixture as one explicit arm per applicable closed seam,
+not one generic file total. D7-C audits all five feature-freeze facades.
 
-1. record whether the observed room/run boundary justifies retaining
-   `WorkshopHandler` or warrants a behavior-preserving rename to
-   `WorkshopRoomHandler`;
-2. align source, tests, architecture witnesses, and documentation if the rename
-   is selected; and
-3. close this debt only when representative traces and the final responsibility
-   map evidence every completion criterion below.
+The [final responsibility map](../../docs/architecture/2026-08-06-workshop-responsibility-map.md)
+shows that the five facades have one primary responsibility or are narrow
+composition/aggregate facades over named collaborators. Seven representative
+actions trace by filename from UI through returned or durable truth. The audit
+found no remaining responsibility with an independent invariant and reason to
+change; further extraction would be cosmetic line-count work.
 
-If the evidence does not support closure, this record stays open and continues
-to block the Workshop feature-freeze lift. Phase 7 must not manufacture closure
-through a cosmetic rename or arbitrary line-count extraction.
+The code-level debt is closed. The feature freeze is not implicitly lifted:
+the epic still requires Okey's explicit decision.
 
-## Remaining closure questions
+## Closure guard — satisfied
 
-1. Does `WorkshopHandler`'s remaining room/run orchestration justify its name,
-   or would `WorkshopRoomHandler` make the boundary materially easier to find?
-2. Are `WorkshopHandler` and `WorkshopSessionService` now narrow facades over
-   their named collaborators under representative end-to-end traces?
-3. Does any remaining responsibility have an independent invariant and reason
-   to change, rather than merely contributing line count? If not, stop
-   extracting.
+Phase 7 was measured against the original rule recorded before implementation:
+
+> If the evidence does not support closure, this record stays open and
+> continues to block the Workshop feature-freeze lift. Phase 7 must not
+> manufacture closure through a cosmetic rename or arbitrary line-count
+> extraction.
+
+The final split follows independently changing responsibilities, preserves the
+room/run lifecycle intact, and leaves the feature-freeze decision open. The
+guard remains part of the resolved record so a future audit can reconstruct
+the rule rather than only the outcome.
+
+## Closure questions — answered
+
+1. **Name:** the remaining room/run boundary is now
+   `WorkshopRoomHandler`; the separate construction/gate responsibility is
+   named `WorkshopSliceComposition` ([closure decisions](../../docs/architecture/2026-08-06-workshop-responsibility-map.md#closure-decisions)).
+2. **Facade coherence:** the five-facade audit records one primary
+   responsibility and named collaborators for both broad owners
+   ([five-facade audit](../../docs/architecture/2026-08-06-workshop-responsibility-map.md#five-facade-audit)).
+3. **Stop condition:** the audit found no remaining responsibility with both an
+   independent invariant and reason to change; further extraction would divide
+   the room/run or aggregate integrity lifecycle merely to lower line counts
+   ([closure verdict](../../docs/architecture/2026-08-06-workshop-responsibility-map.md#closure-verdict)).
 
 Presentation-modal workflow ownership is tracked separately in
 `2026-08-04-workshop-modal-workflow-ownership.md`; it is not a reason to reopen
@@ -101,18 +123,19 @@ the aggregate or handler boundaries here.
 
 ## Completion criteria
 
-- [ ] Each broad file has one legible primary responsibility or is a narrow
+- [x] Each broad file has one legible primary responsibility or is a narrow
       facade over named collaborators.
-- [ ] Each extraction follows an independently changing domain concept and owns
+- [x] Each extraction follows an independently changing domain concept and owns
       its complete state/helper/invariant cluster.
-- [ ] Behavior-preserving moves and behavior changes use separate commits.
-- [ ] Existing behavior suites pass; focused collaborator tests are added where
+- [x] Behavior-preserving moves and behavior changes use separate commits.
+- [x] Existing behavior suites pass; focused collaborator tests are added where
       ownership becomes independently testable.
-- [ ] The final responsibility map can trace representative UI-to-persistence
+- [x] The final responsibility map can trace representative UI-to-persistence
       actions without searching unrelated broad files.
-- [ ] Architecture fitness witnesses protect the resulting boundaries.
-- [ ] The `WorkshopHandler` retain-or-rename verdict is explicit and every
-      source, test, witness, and document uses the selected name consistently.
+- [x] Architecture fitness witnesses protect the resulting boundaries.
+- [x] The `WorkshopHandler` retain-or-rename verdict is explicit and every
+      source, test, witness, and live architecture document uses the selected
+      name consistently.
 
 There is no longer a numeric line-count completion target. Line count remains a
 pressure signal, not the definition of a coherent module.
@@ -120,6 +143,7 @@ pressure signal, not the definition of a coherent module.
 ## Related
 
 - [Workshop Architecture Refactor epic](../epics/epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
+- [Workshop Responsibility and Dependency Map](../../docs/architecture/2026-08-06-workshop-responsibility-map.md)
 - [ADR 2026-08-03: Workshop Feature Family and Module Boundaries](../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md)
 - [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md)
 - [PR #88 review](../../docs/pr-reviews/pr-88-persona-analysis-inputs-review.md)

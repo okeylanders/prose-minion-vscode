@@ -1,7 +1,9 @@
 import {
-  WorkshopHandler,
+  WorkshopRoomHandler
+} from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
+import type {
   WorkshopWidgetRuntime
-} from '@/application/handlers/domain/workshop/WorkshopHandler';
+} from '@/application/handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopRoomDeliveryService
@@ -88,7 +90,7 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
     const workspace = createFakeWorkspace();
     const writerProfileService = new WorkshopWriterProfileService(settings, output);
     const roomDelivery = new WorkshopRoomDeliveryService(session);
-    const handler = new WorkshopHandler(
+    const handler = new WorkshopRoomHandler(
       assistantService,
       { generateContext: jest.fn() } as never,
       session,
