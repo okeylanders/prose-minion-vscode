@@ -1,11 +1,13 @@
 /** Workshop excerpt intake and pre-memory session-scope IPC slice. */
 
 import {
-  WorkshopExcerptReplacement,
   WorkshopScopeLockedError,
-  WorkshopScopeTransition,
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
+import type {
+  WorkshopExcerptReplacement,
+  WorkshopScopeTransition
+} from '@/application/services/workshop/WorkshopSessionRecords';
 import {
   WorkshopContextIntakeService
 } from '@/application/services/workshop/WorkshopContextIntakeService';

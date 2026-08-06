@@ -22,7 +22,7 @@ import {
 import type {
   WorkshopContextAttachment,
   WorkshopMessageAttachment
-} from '@/application/services/workshop/WorkshopSessionService';
+} from '@/application/services/workshop/WorkshopSessionRecords';
 import {
   validateWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1Integrity';

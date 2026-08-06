@@ -253,6 +253,20 @@ describe('WorkshopSessionService committed persistence', () => {
         state.shelvedExcerpt = JSON.parse(JSON.stringify(state.excerpt));
       },
       message: 'both a pinned and a shelved excerpt'
+    },
+    {
+      label: 'the host manifest contains multiple live pins',
+      mutate: (value: unknown) => {
+        const state = value as WorkshopSessionStateV1;
+        const livePin = state.writerSources.host.find(
+          (source) => source.kind === 'pin' && source.stale !== true
+        );
+        if (!livePin) {
+          throw new Error('Fixture no longer contains a live host pin.');
+        }
+        state.writerSources.host.push({ ...livePin });
+      },
+      message: 'multiple live host pins (count=2; excerptVersions=1,1)'
     }
   ])('rejects raw state when $label', ({ mutate, message }) => {
     const value: unknown = buildCompleteState();
@@ -626,6 +640,47 @@ describe('WorkshopSessionService committed persistence', () => {
 
     expect(() => session.hydrateCommittedState(invalid, {}, currentBehavior))
       .toThrow('turn counter trails');
+    expect(session.exportCommittedState()).toEqual(before);
+  });
+
+  it('does not partially hydrate when the final collaborator preparation fails', () => {
+    const session = new WorkshopSessionService(() => 90_000);
+    session.hydrateCommittedState(
+      buildCompleteState(),
+      {
+        host: 'live-host',
+        ['tool:prose']: 'live-tool',
+        ['guest:margot']: 'live-guest'
+      },
+      currentBehavior
+    );
+    const before = session.exportCommittedState();
+    const incoming = buildCompleteState();
+    incoming.excerpt!.text = 'Incoming passage.';
+    incoming.turns[0].content = 'Incoming turn.';
+    incoming.todos[0].text = 'Incoming task.';
+    incoming.participants.chatTarget = { kind: 'host' };
+    incoming.counters.widgetConfig = 12;
+    incoming.counters.standingDirective = 14;
+
+    const roster = (
+      session as unknown as {
+        participantRoster: { prepareState: (...args: unknown[]) => unknown };
+      }
+    ).participantRoster;
+    jest.spyOn(roster, 'prepareState').mockImplementation(() => {
+      throw new Error('roster preparation failed');
+    });
+
+    expect(() => session.hydrateCommittedState(
+      incoming,
+      {
+        host: 'incoming-host',
+        ['tool:prose']: 'incoming-tool',
+        ['guest:margot']: 'incoming-guest'
+      },
+      currentBehavior
+    )).toThrow('roster preparation failed');
     expect(session.exportCommittedState()).toEqual(before);
   });
 

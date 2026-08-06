@@ -2,7 +2,7 @@ import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame
 } from '@/application/services/workshop/WorkshopPromptBuilder';
-import type { WorkshopContextAttachment } from '@/application/services/workshop/WorkshopSessionService';
+import type { WorkshopContextAttachment } from '@/application/services/workshop/WorkshopSessionRecords';
 import {
   WorkshopAnalysisInputProvenance,
   WorkshopAnalysisInputSelection

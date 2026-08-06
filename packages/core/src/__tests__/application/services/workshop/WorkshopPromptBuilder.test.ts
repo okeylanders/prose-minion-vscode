@@ -13,6 +13,9 @@ import {
   buildWorkshopThreadArtifactFrame,
   buildWorkshopTodoEvidence
 } from '@/application/services/workshop/WorkshopPromptBuilder';
+import type {
+  WorkshopContextAttachment
+} from '@/application/services/workshop/WorkshopSessionRecords';
 import { WorkshopTodoItem, WorkshopTurn } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
@@ -23,8 +26,8 @@ beforeEach(() => {
 });
 
 const attachment = (
-  overrides: Partial<import('@/application/services/workshop/WorkshopSessionService').WorkshopContextAttachment> = {}
-): import('@/application/services/workshop/WorkshopSessionService').WorkshopContextAttachment => ({
+  overrides: Partial<WorkshopContextAttachment> = {}
+): WorkshopContextAttachment => ({
   id: 'ctx-1',
   kind: 'text',
   origin: 'writer',

@@ -175,7 +175,7 @@ export class WorkshopWidgetConfigLedger {
     };
   }
 
-  /** Install only a state returned by `prepareState`; this phase must not throw. */
+  /** Install state produced by this ledger's prepare phase; this must not throw. */
   installPreparedState(state: WorkshopWidgetConfigLedgerState): void {
     this.configs = state.configs;
     this.counter = state.counter;

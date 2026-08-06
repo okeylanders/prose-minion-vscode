@@ -1,11 +1,13 @@
 /** Workshop context attachments, configured resources, and wizard IPC slice. */
 
 import {
-  WorkshopContextAttachmentInput,
-  WorkshopMessageAttachmentInput,
   WorkshopSessionService,
   workshopTextNoteLabel
 } from '@/application/services/workshop/WorkshopSessionService';
+import type {
+  WorkshopContextAttachmentInput,
+  WorkshopMessageAttachmentInput
+} from '@/application/services/workshop/WorkshopSessionRecords';
 import {
   WorkshopContextIntakeService
 } from '@/application/services/workshop/WorkshopContextIntakeService';
