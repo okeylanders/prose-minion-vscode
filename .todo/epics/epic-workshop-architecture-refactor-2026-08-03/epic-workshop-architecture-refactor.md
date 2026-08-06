@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-03
 
-**Status:** Phase 6 implemented and verified — Phases 0–5 merged; Phase 6 awaits review/merge; interactive visual pass remains for Phase 7
+**Status:** Complete — Phases 0–7 are implemented and verified; Okey lifted the Workshop feature freeze on 2026-08-06. The epic is ready for its final integration PR into `main`.
 
 **Priority:** Critical — blocks all new Workshop feature development
 
@@ -126,7 +126,7 @@ checks. Phase 7 runs:
       evidenced; otherwise it and the feature freeze remain open.
 - [x] Representative UI-to-persistence traces are documented and match code.
 - [x] Full verification passes.
-- [ ] Okey explicitly lifts the Workshop feature freeze.
+- [x] Okey explicitly lifted the Workshop feature freeze on 2026-08-06.
 
 ## Paused feature work
 

@@ -1,7 +1,7 @@
 # Workshop Responsibility and Dependency Map
 
 **Date:** 2026-08-06
-**Status:** Phase 7 closure audit complete; feature freeze remains decision-owner controlled
+**Status:** Phase 7 closure audit complete; Okey confirmed the reproduction reading and lifted the feature freeze on 2026-08-06
 **Scope:** Implemented Workshop architecture after Sprints 00–07
 
 ## Closure decisions
@@ -9,9 +9,9 @@
 | Decision | Outcome | Evidence |
 |---|---|---|
 | Handler disposition (D7-A) | Extract the composition seam and rename the room/run owner to `WorkshopRoomHandler` | The former class was mostly room/run behavior but also constructed eight sibling handlers. `WorkshopSliceComposition` now owns only that assembly, the shared mutation gate, route fan-out, and slice disposal. |
-| Reproduction reading (D7-B) | One explicit arm per closed generic seam, with zero edits to existing feature slices | The executable Prose Controller fixture derives 20 applicable seams, classifies all 33 approved generic surfaces, and names why the other 13 require no new arm. No Gesture Playground or Lexical Gravity path is touched. |
+| Reproduction reading (D7-B) | One explicit arm per closed generic seam, with zero edits to existing feature slices | Okey explicitly confirmed this reading on 2026-08-06. The executable Prose Controller fixture derives 20 applicable seams, classifies all 33 approved generic surfaces, and names why the other 13 require no new arm. No Gesture Playground or Lexical Gravity path is touched. |
 | Audit subjects (D7-C) | Audit all five feature-freeze facades | `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`, `WorkshopRoomHandler`, and `WorkshopSessionService` are covered below. |
-| Feature freeze (D7-D) | Not lifted by implementation | The architecture evidence supports lifting it, but the epic requires Okey's explicit decision. |
+| Feature freeze (D7-D) | Lifted by Okey on 2026-08-06 | The architecture evidence supports resuming feature development; the decision is now explicitly recorded rather than inferred from implementation. |
 
 No message type, route count, persisted shape, transport envelope, or product
 behavior changed. The operationally visible rename is the log prefix
@@ -156,8 +156,15 @@ exception list.
 The god-files debt is resolved: both formerly load-bearing files now have one
 legible primary responsibility and named collaborators, and all five
 feature-freeze facades trace by filename. The architecture supports resuming
-feature development. The Workshop feature freeze nevertheless remains in place
-until Okey explicitly lifts it, as required by the epic.
+feature development, and Okey explicitly lifted the Workshop feature freeze on
+2026-08-06.
+
+## Release boundary
+
+This merge is a release candidate, not an authorized versioned release. It does
+not authorize an official package or Marketplace version increment/pin, nor an
+official persisted-codec version pin. Those decisions wait for the outstanding
+Workshop naming work and the Conversation Widgets epic/features to complete.
 
 ## Validation record
 

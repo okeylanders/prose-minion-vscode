@@ -1,6 +1,6 @@
 # Sprint 07: Architecture Closure
 
-**Status:** Implemented — closure evidence complete; feature-freeze decision pending
+**Status:** Complete — closure evidence accepted; Okey confirmed D7-B(b) and lifted the feature freeze on 2026-08-06
 
 **Branch:** `sprint/workshop-architecture-refactor-07-closure` -> `epic/workshop-architecture-refactor`
 
@@ -18,9 +18,9 @@ outcomes and review corrections appear below.
 | Decision | Outcome |
 |---|---|
 | D7-A — handler disposition | **C.** Extract `WorkshopSliceComposition`, then rename the room/run owner to `WorkshopRoomHandler`. The room owner retains the nine room/run routes, single active-run slot, and sole session-state envelope. |
-| D7-B — reproduction criterion | **B.** One explicit arm per applicable closed generic seam, with zero edits to existing feature slices. The review-hardened fixture derives 20 generic seams, classifies every approved generic surface, and requires zero Gesture/Lexical edits. |
+| D7-B — reproduction criterion | **B.** One explicit arm per applicable closed generic seam, with zero edits to existing feature slices. Okey explicitly confirmed this reading on 2026-08-06. The review-hardened fixture derives 20 generic seams, classifies every approved generic surface, and requires zero Gesture/Lexical edits. |
 | D7-C — audit subjects | **B.** Audit all five freeze-gate facades: `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`, `WorkshopRoomHandler`, and `WorkshopSessionService`. |
-| D7-D — feature freeze | Pending Okey's explicit decision. Implementation does not lift it implicitly. |
+| D7-D — feature freeze | **Lifted by Okey on 2026-08-06.** The implementation did not lift it implicitly; the decision follows the completed closure evidence. |
 
 ## Goal
 
@@ -82,7 +82,7 @@ Phase 7 owns both closure decisions:
 - [x] A Prose Controller reproduction fixture demonstrates zero edits to
       Gesture/Lexical feature files and exactly one entry per applicable
       generic closed registry.
-- [ ] Okey explicitly decides whether to lift the feature freeze.
+- [x] Okey explicitly lifted the feature freeze on 2026-08-06.
 
 ## Validation evidence
 

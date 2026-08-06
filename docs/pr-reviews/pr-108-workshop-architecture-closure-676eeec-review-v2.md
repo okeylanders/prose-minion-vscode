@@ -20,7 +20,7 @@ superseded, or not actionable.
 | F-07 | 🟡 Standard | Ninth sibling meets an unguarded disposal slot and a misleading sort coupling | Sam | 1 runway-prompted | — | **Addressed** |
 | F-08 | 🟡 Standard | Host effects handed to sibling constructors before the field they dereference is assigned | Blake | 1 runway-prompted | — | **Addressed** |
 | F-09 | 🟡 Standard | Debt-closure criterion rewritten from falsifiable rule to past-tense report; guard deleted | Bria | 1 runway-prompted | — | **Addressed** |
-| F-10 | 🟡 Standard | D7-B attested only by the implementing commit's own prose | Bria | 1 runway-prompted | — | **Partially addressed — owner confirmation pending** |
+| F-10 | 🟡 Standard | D7-B attested only by the implementing commit's own prose | Bria | 1 runway-prompted | — | **Addressed 2026-08-06** — Okey explicitly confirmed D7-B(b) in the closure-runway decision record; the historical same-commit ordering remains unasserted. |
 | F-11 | 🔵 Nit | Current ADR still instructs against adding state to `WorkshopHandler` | Stan, Bria | 2 runway-prompted | — | **Addressed** |
 | P-01 | 🟢 Praise | Behavior preservation verified end-to-end, not asserted | Blake, Tim, Patricia | 3 independent | — | N/A — preserve |
 | P-02 | 🟢 Praise | Sibling-construction witness derives actuals and fails in both directions | Marcus, Cal | 2 independent | — | N/A — preserve |

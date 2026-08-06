@@ -1,10 +1,12 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: Paused — Workshop feature freeze accepted 2026-08-03. Sprint 01
+**Status**: Ready to resume after the Workshop Architecture Refactor merges to
+`main`; Okey lifted the Workshop feature freeze on 2026-08-06. Sprint 01
 merged 2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed;
-Sprint 02B-B and all later behavior wait for the Workshop Architecture Refactor
-Phases 0-7 to close.
+Sprint 02B-B and all later behavior were paused for the Workshop Architecture
+Refactor Phases 0-7; that gate is now satisfied, with the architecture epic's
+final integration into `main` as the new base.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:

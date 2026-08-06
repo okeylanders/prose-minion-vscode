@@ -16,12 +16,17 @@ responsibility map, and the feature-freeze recommendation. No feature behavior.
 > **Implementation outcome (2026-08-06).** The implementation applied the
 > runway recommendations D7-A(c), D7-B(b), and D7-C(b). The implementing commit
 > does not independently prove that the decision preceded the fixture; PR #108
-> F-10 therefore leaves explicit decision-owner confirmation as a review action
-> rather than manufacturing a sequence from “ready to implement.” The tree
-> separates `WorkshopRoomHandler` from `WorkshopSliceComposition`, audits all
-> five freeze-gate facades, and derives the 20-seam Prose Controller fixture.
-> See the [final responsibility map](2026-08-06-workshop-responsibility-map.md).
-> D7-D remains explicitly unmade; implementation does not lift the freeze.
+> F-10 correctly kept explicit decision-owner confirmation open rather than
+> manufacturing a sequence from “ready to implement.” The tree separates
+> `WorkshopRoomHandler` from `WorkshopSliceComposition`, audits all five
+> freeze-gate facades, and derives the 20-seam Prose Controller fixture. See
+> the [final responsibility map](2026-08-06-workshop-responsibility-map.md).
+
+> **Decision-owner confirmation (2026-08-06).** Okey confirms D7-B(b): one
+> explicit arm per applicable generic closed registry, with zero edits to
+> existing feature slices. Okey also lifts D7-D, the Workshop feature freeze.
+> This confirmation does not claim to reconstruct the same-commit ordering;
+> it records the decision now, as F-10 requested.
 
 > **What is different about this sprint.** Phases 0–6 moved code. Phase 7 moves almost none. Its
 > deliverable is *evidence*: two recorded verdicts and a published map that let a human decide
@@ -685,7 +690,9 @@ advertises neither.
 its own witness; one behavior-preserving commit in an audit phase; 27 log prefixes churn against an
 accepted precedent; the freeze lift rests on a measured extension cost rather than an aspirational one.
 
-**Unresolved.** D7-A, D7-B, D7-C, and D7-D — all Okey's.
+**Decision record updated 2026-08-06.** Okey confirmed D7-B(b) and lifted
+D7-D. The historical same-commit ordering remains intentionally unverifiable;
+the confirmation records the decision without asserting otherwise.
 
 ---
 

@@ -1,7 +1,7 @@
 # Resolved Tech Debt: Workshop aggregate and room owners were load-bearing god files
 
-- **Status**: Resolved 2026-08-06 by Workshop Architecture Refactor Phase 7; freeze decision pending
-- **Priority**: Was critical — feature-freeze gate now awaits only Okey's explicit decision
+- **Status**: Resolved 2026-08-06 by Workshop Architecture Refactor Phase 7; Okey lifted the feature freeze on 2026-08-06
+- **Priority**: Was critical — feature-freeze gate is satisfied
 - **Filed**: 2026-07-25
 - **Source**: [PR #86 review](../../docs/pr-reviews/pr-86-open-chat-session-scope-review.md),
   finding #7 (🎯🎯 strong consensus — Marcus, Parker, Stan), and
@@ -87,8 +87,9 @@ actions trace by filename from UI through returned or durable truth. The audit
 found no remaining responsibility with an independent invariant and reason to
 change; further extraction would be cosmetic line-count work.
 
-The code-level debt is closed. The feature freeze is not implicitly lifted:
-the epic still requires Okey's explicit decision.
+The code-level debt is closed. The implementation did not lift the feature
+freeze implicitly; Okey explicitly lifted it on 2026-08-06 after reviewing the
+closure evidence.
 
 ## Closure guard — satisfied
 
@@ -99,10 +100,9 @@ Phase 7 was measured against the original rule recorded before implementation:
 > manufacture closure through a cosmetic rename or arbitrary line-count
 > extraction.
 
-The final split follows independently changing responsibilities, preserves the
-room/run lifecycle intact, and leaves the feature-freeze decision open. The
-guard remains part of the resolved record so a future audit can reconstruct
-the rule rather than only the outcome.
+The final split follows independently changing responsibilities and preserves
+the room/run lifecycle intact. The guard remains part of the resolved record so
+a future audit can reconstruct the rule rather than only the outcome.
 
 ## Closure questions — answered
 
