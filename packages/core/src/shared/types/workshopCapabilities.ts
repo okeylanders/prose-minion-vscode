@@ -1,5 +1,8 @@
 import type { TokenUsage } from './messages/tokenUsage';
-import type { WorkshopPersonaId, WorkshopToolId } from './messages/workshop';
+import type {
+  WorkshopPersonaId,
+  WorkshopToolId
+} from '@messages';
 import type { ContextPathGroup } from './context';
 
 export type WorkshopCapabilityOperation =

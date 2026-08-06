@@ -38,7 +38,7 @@ should be reviewed deliberately before they become a durable product contract.
 ## Related files
 
 - `packages/core/src/application/services/workshop/WorkshopResourceCapability.ts`
-- `packages/core/src/application/handlers/domain/WorkshopHandler.ts`
+- `packages/core/src/application/handlers/domain/workshop/WorkshopContextHandler.ts`
 - `packages/core/src/shared/constants/promptBudgets.ts`
 - `packages/core/src/application/services/workshop/WorkshopCapabilityXmlCodec.ts`
 - `packages/core/src/presentation/webview/components/workshop/WorkshopContextSelectorModal.tsx`

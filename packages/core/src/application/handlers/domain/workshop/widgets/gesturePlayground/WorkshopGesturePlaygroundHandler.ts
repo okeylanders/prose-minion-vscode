@@ -28,8 +28,8 @@ import {
   WorkshopGesturePlaygroundGenerateMessage,
   WorkshopGesturePlaygroundGenerationProgressMessage,
   WorkshopGesturePlaygroundMenuResultMessage,
-  WorkshopGestureDraft,
-  WorkshopGestureMenuGroup,
+  WorkshopGesturePlaygroundDraft,
+  WorkshopGesturePlaygroundMenuGroup,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload,
   WorkshopWidgetSourceReference
@@ -472,7 +472,7 @@ export class WorkshopGesturePlaygroundHandler {
   }
 
   /** Deterministic pre-flight — the same bounds the generate service enforces. */
-  private validateGestureDraft(draft: WorkshopGestureDraft): string | undefined {
+  private validateGestureDraft(draft: WorkshopGesturePlaygroundDraft): string | undefined {
     const budget = PROMPT_BUDGETS.workshopWidgets;
     if (typeof draft.includeDictionaryInCommit !== 'boolean') {
       return 'Choose whether the full Gesture Dictionary should be shared with the room.';
@@ -534,7 +534,7 @@ export class WorkshopGesturePlaygroundHandler {
   }
 
   private validateGestureMenu(
-    menu: readonly WorkshopGestureMenuGroup[]
+    menu: readonly WorkshopGesturePlaygroundMenuGroup[]
   ): string | undefined {
     const budget = PROMPT_BUDGETS.workshopWidgets;
     if (
@@ -577,9 +577,9 @@ export class WorkshopGesturePlaygroundHandler {
   }
 
   private mergeGestureMenus(
-    current: readonly WorkshopGestureMenuGroup[],
-    additions: readonly WorkshopGestureMenuGroup[]
-  ): WorkshopGestureMenuGroup[] {
+    current: readonly WorkshopGesturePlaygroundMenuGroup[],
+    additions: readonly WorkshopGesturePlaygroundMenuGroup[]
+  ): WorkshopGesturePlaygroundMenuGroup[] {
     const maximum = PROMPT_BUDGETS.workshopWidgets.gestureOptionsPerGroup;
     return current.map((group, index) => {
       const seen = new Set(group.options.map((option) => option.toLocaleLowerCase()));

@@ -16,7 +16,7 @@ defensible, but contributors currently have no rule for choosing between them.
 - `packages/core/src/infrastructure/api/orchestration/ResourceReadXmlCodec.ts`
 - `packages/core/src/application/services/workshop/WorkshopCapabilityXmlCodec.ts`
 - `packages/core/src/shared/types/workshopCapabilities.ts`
-- `packages/core/src/shared/types/messages/workshop.ts`
+- `packages/core/src/shared/types/messages/workshop/context.ts`
 
 ## Completion criteria
 

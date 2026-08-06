@@ -6,7 +6,7 @@
  * and host-side file naming cannot drift independently.
  */
 
-import { WorkshopToolId } from '../types/messages/workshop';
+import type { WorkshopToolId } from '@messages';
 import { WORKSHOP_TOOL_CATALOG } from './workshopTools';
 
 export const PROSE_RESULT_TOOL_NAME = 'prose_analysis';

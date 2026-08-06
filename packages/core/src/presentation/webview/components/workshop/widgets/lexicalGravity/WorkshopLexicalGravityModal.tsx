@@ -17,7 +17,7 @@ import { WorkshopModalShell } from '@components/workshop/WorkshopModalShell';
 import {
   LEXICAL_GRAVITY_REACH,
   LEXICAL_GRAVITY_WEIGHT
-} from '@shared/constants/workshopWidgets';
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   buildLexicalGravityDirectiveFrame

@@ -59,7 +59,7 @@ import {
 import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopStandingDirectiveRail';
 import {
   stripWorkshopWidgetRecommendationControl
-} from '@/utils/workshopWidgetRecommendation';
+} from '@/utils/workshopWidgetRecommendationProtocol';
 import { WorkshopNoticeModal } from './components/workshop/WorkshopNoticeModal';
 import { useStartupNotice } from './hooks/domain/useStartupNotice';
 import { WorkshopChooseHostModal } from './components/workshop/WorkshopChooseHostModal';
@@ -233,7 +233,7 @@ export const WorkshopApp: React.FC = () => {
     host: widgetHost,
     standingDirectives: workshop.standingDirectives,
     onError: handleWidgetOpeningError,
-    onCloseGesture: gesturePlayground.consumeWidgetActionResult,
+    onCloseGesturePlayground: gesturePlayground.consumeWidgetActionResult,
     onCloseLexicalGravity: lexicalGravity.clearTransientResults
   });
 
@@ -1294,10 +1294,10 @@ export const WorkshopApp: React.FC = () => {
       {/* Gesture Playground (ADR 2026-07-22): the Draft remains mounted until
           the host acknowledges that its writer turn and artifact are room
           truth. The participant response continues after the sheet closes. */}
-      {widgetOpening.gestureOpening && (
+      {widgetOpening.gesturePlaygroundOpening && (
         <WorkshopGesturePlaygroundModal
           open
-          opening={widgetOpening.gestureOpening}
+          opening={widgetOpening.gesturePlaygroundOpening}
           menuResult={gesturePlayground.widgetMenuResult}
           generationProgress={gesturePlayground.widgetGenerationProgress}
           actionResult={gesturePlayground.widgetActionResult}
@@ -1318,7 +1318,7 @@ export const WorkshopApp: React.FC = () => {
             modelsSettings.setModelSelection('widget', modelId)}
           onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
           roomRunActive={workshop.isRunning}
-          onClose={widgetOpening.closeGesture}
+          onClose={widgetOpening.closeGesturePlayground}
         />
       )}
       {widgetOpening.lexicalGravityOpening && (

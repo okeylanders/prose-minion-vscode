@@ -13,9 +13,9 @@ import {
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
-  WorkshopGestureDraft,
-  WorkshopGestureRecommendationSeed,
-  WorkshopGestureWidgetConfigSnapshot,
+  WorkshopGesturePlaygroundDraft,
+  WorkshopGesturePlaygroundRecommendationSeed,
+  WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopThreadArtifactWidgetCommit,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation
@@ -26,7 +26,7 @@ const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
 
 const gestureConfig = (
   config: WorkshopWidgetConfigSnapshot | undefined
-): WorkshopGestureWidgetConfigSnapshot => {
+): WorkshopGesturePlaygroundWidgetConfigSnapshot => {
   if (config?.widgetId !== 'gesture-playground') {
     throw new Error('Expected Gesture Playground config');
   }
@@ -35,7 +35,7 @@ const gestureConfig = (
 
 const gestureSeed = (
   recommendation: WorkshopWidgetRecommendation | undefined
-): WorkshopGestureRecommendationSeed => {
+): WorkshopGesturePlaygroundRecommendationSeed => {
   if (recommendation?.widgetId !== 'gesture-playground' || !recommendation.seed) {
     throw new Error('Expected Gesture Playground recommendation seed');
   }
@@ -51,7 +51,7 @@ const threadArtifactCommit = (
   return commit;
 };
 
-const draft = (overrides: Partial<WorkshopGestureDraft> = {}): WorkshopGestureDraft => ({
+const draft = (overrides: Partial<WorkshopGesturePlaygroundDraft> = {}): WorkshopGesturePlaygroundDraft => ({
   targetPhrase: 'she smiled',
   writerInstructions: 'Keep the reaction private.',
   contextText: 'He set the mug down. She smiled.',

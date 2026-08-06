@@ -14,6 +14,9 @@ import type { WorkshopSessionPersistenceCoordinator } from '@/application/servic
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import {
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -29,7 +32,7 @@ import {
   createFakeWorkspace
 } from '../../../mocks/platform';
 
-describe('Workshop tool side-pass — handler to agent engine', () => {
+describe('RunWorkshopToolSidePass — handler to agent engine', () => {
   it('uses isolated retained tool and host policies without crossing conversation identities', async () => {
     const engine = {
       runInitial: jest.fn().mockImplementation(async ({ toolName }) => ({
@@ -68,6 +71,7 @@ describe('Workshop tool side-pass — handler to agent engine', () => {
           maxTokens: 1_000
         })
       } as unknown as ToolOptionsProvider,
+      WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
       { appendLine: jest.fn() } as unknown as LogSink
     );
     await new Promise((resolve) => setTimeout(resolve, 0));

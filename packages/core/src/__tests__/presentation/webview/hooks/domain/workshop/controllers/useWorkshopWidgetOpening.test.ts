@@ -6,7 +6,7 @@ import {
   WorkshopWidgetOpeningHost
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import {
-  WorkshopGestureWidgetConfigSnapshot,
+  WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary
 } from '@messages';
@@ -14,7 +14,7 @@ import {
   builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 
-const gestureConfig: WorkshopGestureWidgetConfigSnapshot = {
+const gestureConfig: WorkshopGesturePlaygroundWidgetConfigSnapshot = {
   id: 'wc-gesture',
   widgetId: 'gesture-playground',
   revision: 1,
@@ -72,32 +72,32 @@ const emptyHost = (): WorkshopWidgetOpeningHost => ({
 describe('useWorkshopWidgetOpening', () => {
   it('owns fresh, recommendation, and close transitions', () => {
     const host = emptyHost();
-    const onCloseGesture = jest.fn();
+    const onCloseGesturePlayground = jest.fn();
     const { result } = renderHook(() => useWorkshopWidgetOpening({
       host,
       standingDirectives: [],
       onError: jest.fn(),
-      onCloseGesture,
+      onCloseGesturePlayground,
       onCloseLexicalGravity: jest.fn()
     }));
 
     act(() => result.current.launchWidget('gesture-playground'));
-    expect(result.current.gestureOpening).toEqual({ kind: 'new' });
+    expect(result.current.gesturePlaygroundOpening).toEqual({ kind: 'new' });
 
     act(() => result.current.openWidgetRecommendation({
       widgetId: 'gesture-playground',
       seed: { targetPhrase: 'the cup shook' }
     }, 'Margot'));
-    expect(result.current.gestureOpening).toEqual({
+    expect(result.current.gesturePlaygroundOpening).toEqual({
       kind: 'seed',
       seed: { targetPhrase: 'the cup shook' },
       personaLabel: 'Margot'
     });
 
-    act(() => result.current.closeGesture());
-    expect(result.current.gestureOpening).toBeNull();
+    act(() => result.current.closeGesturePlayground());
+    expect(result.current.gesturePlaygroundOpening).toBeNull();
     expect(host.clearWidgetConfigData).toHaveBeenCalledTimes(1);
-    expect(onCloseGesture).toHaveBeenCalledTimes(1);
+    expect(onCloseGesturePlayground).toHaveBeenCalledTimes(1);
   });
 
   it('reopens only the exact requested config and preserves active Lexical edit identity', () => {
@@ -106,7 +106,7 @@ describe('useWorkshopWidgetOpening', () => {
       host,
       standingDirectives: [activeLexical],
       onError: jest.fn(),
-      onCloseGesture: jest.fn(),
+      onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn()
     }));
 
@@ -121,7 +121,7 @@ describe('useWorkshopWidgetOpening', () => {
     };
     rerender();
     expect(result.current.pendingWidgetConfigId).toBe(lexicalConfig.id);
-    expect(result.current.gestureOpening).toBeNull();
+    expect(result.current.gesturePlaygroundOpening).toBeNull();
 
     host = {
       ...host,
@@ -143,7 +143,7 @@ describe('useWorkshopWidgetOpening', () => {
       host,
       standingDirectives: [],
       onError,
-      onCloseGesture: jest.fn(),
+      onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn()
     }));
 
@@ -159,7 +159,7 @@ describe('useWorkshopWidgetOpening', () => {
       'That widget configuration is no longer available.'
     );
     expect(result.current.pendingWidgetConfigId).toBeNull();
-    expect(result.current.gestureOpening).toBeNull();
+    expect(result.current.gesturePlaygroundOpening).toBeNull();
     expect(result.current.lexicalGravityOpening).toBeNull();
   });
 
@@ -171,7 +171,7 @@ describe('useWorkshopWidgetOpening', () => {
       host,
       standingDirectives: [],
       onError,
-      onCloseGesture: jest.fn(),
+      onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn()
     }));
 

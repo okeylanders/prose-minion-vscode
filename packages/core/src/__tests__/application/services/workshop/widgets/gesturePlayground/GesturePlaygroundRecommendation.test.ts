@@ -1,19 +1,10 @@
-/**
- * The persona recommend/prefill protocol (ADR 2026-07-22 decision 13):
- * strict, fail-closed, and live-gated — a malformed frame or a comp-only
- * widget id rejects wholesale rather than rendering a dead chip.
- */
-
-import {
-  inspectWorkshopWidgetRecommendation,
-  sanitizeWorkshopWidgetRecommendationForRetention,
-  stripWorkshopWidgetRecommendationControl,
-  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
-} from '@/utils/workshopWidgetRecommendation';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION,
+  inspectGesturePlaygroundRecommendation
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundRecommendation';
 
 interface RecommendationFrameFields {
-  widgetId?: string;
   targetPhrase?: string;
   writerInstructions?: string;
   surroundingContext?: string;
@@ -21,12 +12,11 @@ interface RecommendationFrameFields {
   characterNotes?: string;
 }
 
-function recommendationFrame(fields: RecommendationFrameFields = {}): string {
+function recommendationSection(fields: RecommendationFrameFields = {}): string[] {
   return [
-    '### Try a widget',
     '<workshop-widget-recommendation version="1">',
     '<widget-id>',
-    fields.widgetId ?? 'gesture-playground',
+    'gesture-playground',
     '</widget-id>',
     '<target-phrase>',
     fields.targetPhrase ?? 'His eyes stretched wide.',
@@ -47,54 +37,36 @@ function recommendationFrame(fields: RecommendationFrameFields = {}): string {
       ?? 'Micah has been containing his fear for Nate. In this beat, recognition overwhelms that defense before he can disguise it.',
     '</character-notes>',
     '</workshop-widget-recommendation>'
-  ].join('\n');
+  ].join('\n').split('\n');
 }
 
-function lexicalRecommendationFrame(
-  overrides: Partial<Record<'lensSlug' | 'weight' | 'reach' | 'metaphorPull', string>> = {}
-): string {
-  return [
-    '### Try a widget',
-    '<workshop-widget-recommendation version="1">',
-    '<widget-id>', 'lexical-gravity', '</widget-id>',
-    '<lens-slug>', overrides.lensSlug ?? 'photography', '</lens-slug>',
-    '<weight>', overrides.weight ?? '60', '</weight>',
-    '<reach>', overrides.reach ?? '2', '</reach>',
-    '<metaphor-pull>', overrides.metaphorPull ?? 'false', '</metaphor-pull>',
-    '</workshop-widget-recommendation>'
-  ].join('\n');
-}
-
-describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
-  it('requires a generous quality-first handoff with every rich prefill field', () => {
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+describe('GesturePlaygroundRecommendation', () => {
+  it('owns the quality-first prompt and every rich prefill field', () => {
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       'This is a quality-first handoff, not a token-saving exercise.'
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       'Do not be thrifty, terse, or generically minimal'
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       'copy a generous, consecutive stretch of the supplied prose'
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       'The four prose fields and the source-references field are required'
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
-      'A recommendation or uncommitted chip from an earlier turn never counts against this response'
-    );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       `${PROMPT_BUDGETS.workshopWidgets.gestureTargetPhraseCharacters.toLocaleString('en-US')} characters`
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       `${PROMPT_BUDGETS.workshopWidgets.gestureWriterInstructionsCharacters.toLocaleString('en-US')} characters`
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       `${PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters.toLocaleString('en-US')} characters`
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       `${PROMPT_BUDGETS.workshopWidgets.gestureCharacterNotesCharacters.toLocaleString('en-US')} characters`
     );
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(
+    expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(
       `${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferences} references and `
       + `${PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters.toLocaleString('en-US')} characters`
     );
@@ -105,19 +77,13 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
       'source-references',
       'character-notes'
     ]) {
-      expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(`<${tag}>`);
-      expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(`</${tag}>`);
+      expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(`<${tag}>`);
+      expect(GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION).toContain(`</${tag}>`);
     }
-  });
-});
-
-describe('inspectWorkshopWidgetRecommendation', () => {
-  it('is absent when no exact section exists', () => {
-    expect(inspectWorkshopWidgetRecommendation('Just prose about a smile.').outcome).toBe('absent');
   });
 
   it('accepts the complete multiline frame and preserves rich field content', () => {
-    const result = inspectWorkshopWidgetRecommendation(recommendationFrame({
+    const result = inspectGesturePlaygroundRecommendation(recommendationSection({
       targetPhrase: 'His eyes stretched wide.',
       writerInstructions: [
         'Keep this as recognition rather than generic surprise.',
@@ -163,31 +129,8 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     });
   });
 
-  it('accepts the closed Lexical Gravity prefill while leaving installation to the writer', () => {
-    expect(inspectWorkshopWidgetRecommendation(lexicalRecommendationFrame({
-      lensSlug: 'music',
-      weight: '40',
-      reach: '3',
-      metaphorPull: 'true'
-    }))).toEqual({
-      outcome: 'accepted',
-      recommendation: {
-        widgetId: 'lexical-gravity',
-        seed: { lensSlug: 'music', weight: 40, reach: 3, metaphorPull: true }
-      }
-    });
-    expect(inspectWorkshopWidgetRecommendation(
-      lexicalRecommendationFrame({ lensSlug: 'falconry' })
-    )).toEqual({
-      outcome: 'rejected',
-      rejection: 'invalid_field',
-      field: 'lensSlug',
-      reason: 'unsupported_lens'
-    });
-  });
-
   it('accepts only host-addressable source references and preserves their order', () => {
-    expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
+    expect(inspectGesturePlaygroundRecommendation(recommendationSection({
       sourceReferences: [
         'active-excerpt',
         'context-attachment:ctx-2',
@@ -207,27 +150,10 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     }));
   });
 
-  it('normalizes CRLF framing while retaining multiline field boundaries', () => {
-    const result = inspectWorkshopWidgetRecommendation(
-      recommendationFrame({
-        writerInstructions: 'First sentence.\nSecond sentence.'
-      }).replace(/\n/g, '\r\n')
-    );
-
-    expect(result.outcome).toBe('accepted');
-    expect(
-      result.recommendation?.widgetId === 'gesture-playground'
-        ? result.recommendation.seed?.writerInstructions
-        : undefined
-    ).toBe(
-      'First sentence.\nSecond sentence.'
-    );
-  });
-
   it('rejects a recommendation that omits or empties any required rich field', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(
-        recommendationFrame({ writerInstructions: '   ' })
+      inspectGesturePlaygroundRecommendation(
+        recommendationSection({ writerInstructions: '   ' })
       )
     ).toEqual({
       outcome: 'rejected',
@@ -236,20 +162,20 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       reason: 'empty'
     });
 
-    const missingContextFrame = recommendationFrame().replace(
+    const missingContextFrame = recommendationSection().join('\n').replace(
       '<surrounding-context>\nMicah looked past Jasper and into the dark hall.\nHis eyes stretched wide.\nNate followed his gaze but saw nothing.\n</surrounding-context>\n',
       ''
     );
-    expect(inspectWorkshopWidgetRecommendation(missingContextFrame)).toEqual({
+    expect(inspectGesturePlaygroundRecommendation(missingContextFrame.split('\n'))).toEqual({
       outcome: 'rejected',
       rejection: 'invalid_frame'
     });
 
-    const missingSourcesFrame = recommendationFrame().replace(
+    const missingSourcesFrame = recommendationSection().join('\n').replace(
       '<source-references>\nnone\n</source-references>\n',
       ''
     );
-    expect(inspectWorkshopWidgetRecommendation(missingSourcesFrame)).toEqual({
+    expect(inspectGesturePlaygroundRecommendation(missingSourcesFrame.split('\n'))).toEqual({
       outcome: 'rejected',
       rejection: 'invalid_frame'
     });
@@ -268,7 +194,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     ]
   ])('rejects invalid source references: %s', (label, sourceReferences) => {
     expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({ sourceReferences }))
+      inspectGesturePlaygroundRecommendation(recommendationSection({ sourceReferences }))
     ).toEqual({
       outcome: 'rejected',
       rejection: 'invalid_field',
@@ -281,7 +207,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     const maximum = PROMPT_BUDGETS.workshopWidgets.gestureSourceReferenceCharacters;
     const sourceReferences = `context-attachment:ctx-${'9'.repeat(maximum)}`;
     expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({ sourceReferences }))
+      inspectGesturePlaygroundRecommendation(recommendationSection({ sourceReferences }))
     ).toEqual({
       outcome: 'rejected',
       rejection: 'field_too_long',
@@ -292,7 +218,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
   });
 
   it('rejects context that does not contain the exact target evidence', () => {
-    expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
+    expect(inspectGesturePlaygroundRecommendation(recommendationSection({
       targetPhrase: 'His eyes stretched wide.',
       surroundingContext: 'Micah looked past Jasper. Nate followed his gaze.'
     }))).toEqual({
@@ -303,57 +229,29 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     });
   });
 
-  it('requires the exact frame to be the final response content', () => {
-    expect(
-      inspectWorkshopWidgetRecommendation(`${recommendationFrame()}\n\n### Epilogue\nMore prose.`)
-    ).toEqual({ outcome: 'rejected', rejection: 'invalid_frame' });
-    expect(
-      inspectWorkshopWidgetRecommendation(
-        '### Try a widget\nA prefatory line inside the control section.\n'
-        + recommendationFrame().split('\n').slice(1).join('\n')
-      )
-    ).toEqual({ outcome: 'rejected', rejection: 'invalid_frame' });
-  });
-
-  it('rejects duplicate headings wholesale', () => {
-    const result = inspectWorkshopWidgetRecommendation(
-      `${recommendationFrame()}\n\n${recommendationFrame()}`
-    );
-    expect(result).toEqual({ outcome: 'rejected', rejection: 'duplicate_heading' });
-  });
-
-  it('rejects widgets that are not live — comp-only cards never grow chips', () => {
-    expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'show-vs-tell' }))
-    ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
-    expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'made-up-widget' }))
-    ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
-  });
-
   it('rejects duplicated, reordered, or unrecognized frame material', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(
-        recommendationFrame().replace(
+      inspectGesturePlaygroundRecommendation(
+        recommendationSection().join('\n').replace(
           '</target-phrase>',
           '</target-phrase>\n</target-phrase>'
-        )
+        ).split('\n')
       )
     ).toEqual({ outcome: 'rejected', rejection: 'invalid_frame' });
 
     expect(
-      inspectWorkshopWidgetRecommendation(
-        recommendationFrame().replace(
+      inspectGesturePlaygroundRecommendation(
+        recommendationSection().join('\n').replace(
           '<writer-instructions>',
           '<unknown-field>\nnope\n</unknown-field>\n<writer-instructions>'
-        )
+        ).split('\n')
       )
     ).toEqual({ outcome: 'rejected', rejection: 'invalid_frame' });
 
-    const ordered = recommendationFrame({
+    const ordered = recommendationSection({
       writerInstructions: 'WRITER DIRECTIONS',
       surroundingContext: 'SOURCE CONTEXT'
-    });
+    }).join('\n');
     const writerBlock = [
       '<writer-instructions>',
       'WRITER DIRECTIONS',
@@ -369,7 +267,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       `${contextBlock}\n${writerBlock}`
     );
     expect(reordered).not.toBe(ordered);
-    expect(inspectWorkshopWidgetRecommendation(reordered)).toEqual({
+    expect(inspectGesturePlaygroundRecommendation(reordered.split('\n'))).toEqual({
       outcome: 'rejected',
       rejection: 'invalid_frame'
     });
@@ -381,13 +279,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
   ] as const)('accepts %s at its exact bound and rejects one character more', (field, budgetKey) => {
     const maximum = PROMPT_BUDGETS.workshopWidgets[budgetKey];
     expect(
-      inspectWorkshopWidgetRecommendation(
-        recommendationFrame({ [field]: 'x'.repeat(maximum) })
+      inspectGesturePlaygroundRecommendation(
+        recommendationSection({ [field]: 'x'.repeat(maximum) })
       ).outcome
     ).toBe('accepted');
     expect(
-      inspectWorkshopWidgetRecommendation(
-        recommendationFrame({ [field]: 'x'.repeat(maximum + 1) })
+      inspectGesturePlaygroundRecommendation(
+        recommendationSection({ [field]: 'x'.repeat(maximum + 1) })
       )
     ).toEqual({
       outcome: 'rejected',
@@ -401,13 +299,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
   it('enforces the target-phrase bound while keeping it grounded in context', () => {
     const maximum = PROMPT_BUDGETS.workshopWidgets.gestureTargetPhraseCharacters;
     const atBound = 'x'.repeat(maximum);
-    expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
+    expect(inspectGesturePlaygroundRecommendation(recommendationSection({
       targetPhrase: atBound,
       surroundingContext: atBound
     })).outcome).toBe('accepted');
 
     const overBound = 'x'.repeat(maximum + 1);
-    expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
+    expect(inspectGesturePlaygroundRecommendation(recommendationSection({
       targetPhrase: overBound,
       surroundingContext: overBound
     }))).toEqual({
@@ -423,12 +321,12 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     const maximum = PROMPT_BUDGETS.workshopWidgets.gestureContextCharacters;
     const targetPhrase = 'His eyes stretched wide.';
     const atBound = `${targetPhrase}${'x'.repeat(maximum - targetPhrase.length)}`;
-    expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
+    expect(inspectGesturePlaygroundRecommendation(recommendationSection({
       targetPhrase,
       surroundingContext: atBound
     })).outcome).toBe('accepted');
 
-    expect(inspectWorkshopWidgetRecommendation(recommendationFrame({
+    expect(inspectGesturePlaygroundRecommendation(recommendationSection({
       targetPhrase,
       surroundingContext: `${atBound}x`
     }))).toEqual({
@@ -438,48 +336,5 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       actualCharacters: maximum + 1,
       maximumCharacters: maximum
     });
-  });
-
-  it('rejects an oversized whole frame before inspecting its fields', () => {
-    expect(
-      inspectWorkshopWidgetRecommendation(
-        recommendationFrame({ surroundingContext: 'x'.repeat(15_000) })
-      )
-    ).toEqual({
-      outcome: 'rejected',
-      rejection: 'frame_too_long',
-      actualCharacters: expect.any(Number),
-      maximumCharacters: expect.any(Number)
-    });
-  });
-});
-
-describe('stripWorkshopWidgetRecommendationControl', () => {
-  it('removes an accepted final control frame while preserving visible prose', () => {
-    expect(
-      stripWorkshopWidgetRecommendationControl(
-        `The reaction needs a more specific dramatic shape.\n\n${recommendationFrame()}`
-      )
-    ).toBe('The reaction needs a more specific dramatic shape.');
-  });
-
-  it('also removes rejected or truncated control debris from visible prose', () => {
-    expect(
-      stripWorkshopWidgetRecommendationControl(
-        'Useful advice remains visible.\n\n### Try a widget\n'
-        + '<workshop-widget-recommendation version="1">\n<widget-id>\ngesture-playground'
-      )
-    ).toBe('Useful advice remains visible.');
-  });
-
-  it('leaves ordinary prose and inexact headings untouched', () => {
-    const content = 'Try a widget if useful.\n\n### Try a widget later\nThis is ordinary prose.';
-    expect(stripWorkshopWidgetRecommendationControl(content)).toBe(content);
-  });
-
-  it('replaces a frame-only retained response with a neutral non-protocol row', () => {
-    const sanitized = sanitizeWorkshopWidgetRecommendationForRetention(recommendationFrame());
-    expect(sanitized).toBe('[Widget setup delivered through the Workshop interface.]');
-    expect(sanitized).not.toContain('workshop-widget-recommendation');
   });
 });

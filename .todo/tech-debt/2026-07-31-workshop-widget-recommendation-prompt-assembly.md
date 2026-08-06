@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-31
 **Reviewed**: 2026-07-31
-**Status**: Deferred — address before a third live widget
+**Status**: In progress — feature registry landed in Workshop Architecture Refactor Phase 6; per-widget response ceilings remain
 **Priority**: Medium
 **Estimated Effort**: Small-Medium
 **Origin**: PR #98 review finding F-19
@@ -21,6 +21,26 @@ conditional. Explicit writer requests for a widget must still work when
 proactive assistance is disabled, so hiding the grammar behind that switch
 would be a false optimization.
 
+## Phase 6 progress (2026-08-06)
+
+- Gesture Playground and Lexical Gravity now own their prompt fragments,
+  marker grammar, and field validation in named feature modules.
+- `WorkshopWidgetRecommendationOperations.ts` owns the live-id gate, exact
+  two-arm registry, dispatch, aggregate ceiling, and prompt assembly. The pure
+  protocol module owns only common markers, frame helpers, and cleanup.
+- Prompt membership is derived once from live registry values; separate
+  feature-owned order metadata preserves catalog and instruction order without
+  duplicate family lists or a hardcoded widget count.
+- The inverse architecture witness permits that generic module as the one
+  closed recommendation registry and rejects feature vocabulary in unapproved
+  generic paths.
+- The prompt-budget suite pins the assembled recurring contract at 4,811
+  characters so any later widget makes its standing cost explicit in review.
+- The existing 15,300-character absolute pre-ID ceiling remains unchanged to
+  keep this normalization behavior-preserving. Selecting a smaller ceiling by
+  parsed widget id is the only remaining completion item and stays required
+  before a third live widget.
+
 ## Recommendation
 
 - Give each live widget a local recommendation-instruction fragment beside its
@@ -38,11 +58,14 @@ is a pure handler move.
 
 ## Related Files
 
-- `packages/core/src/utils/workshopWidgetRecommendation.ts`
+- `packages/core/src/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts`
+- `packages/core/src/utils/workshopWidgetRecommendationProtocol.ts`
+- `packages/core/src/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundRecommendation.ts`
+- `packages/core/src/application/services/workshop/widgets/lexicalGravity/LexicalGravityRecommendation.ts`
 - `packages/core/src/infrastructure/api/services/analysis/AssistantToolService.ts`
 - `packages/core/src/shared/constants/workshopWidgets.ts`
 - `packages/core/src/shared/constants/promptBudgets.ts`
-- `packages/core/src/__tests__/utils/workshopWidgetRecommendation.test.ts`
+- `packages/core/src/__tests__/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.test.ts`
 - `packages/core/src/__tests__/architecture/promptBudgets.test.ts`
 - `docs/pr-reviews/pr-98-lexical-gravity-standing-rail-2a02727-review-v2.md`
 

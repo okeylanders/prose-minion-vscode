@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-03
 
-**Status:** Phase 3 implementation complete — interactive visual pass pending
+**Status:** Phase 6 implemented and verified — Phases 0–5 merged; Phase 6 awaits review/merge; interactive visual pass remains for Phase 7
 
 **Priority:** Critical — blocks all new Workshop feature development
 
@@ -73,7 +73,7 @@ The refactor will:
 | 4 | [Application handler extraction](sprints/04-application-handler-extraction.md) | Move cohesive IPC clusters out of `WorkshopHandler` | Update #1, #6, and #7 for extracted owners | Handler is a room/run orchestrator and slice composer |
 | 5 | [Session aggregate extraction](sprints/05-session-aggregate-extraction.md) | Extract proven state machines/ledgers behind the aggregate facade | Update #7 for internal moves without widening access | Session concepts have named homes and focused tests |
 | 6 | [Contract, test, and documentation normalization](sprints/06-contract-test-doc-normalization.md) | Finish protocol split and align tests/docs with source ownership | #10 source/test/documentation ownership agreement; strengthen #1-#9 against final paths | Source, tests, and docs tell one story |
-| 7 | [Architecture closure](sprints/07-architecture-closure.md) | Audit every flow, remove migration exceptions, run full validation | Audit #1-#10; remove all migration exceptions | Decision owner may lift the feature freeze |
+| 7 | [Architecture closure](sprints/07-architecture-closure.md) | Audit every flow, resolve the handler-name and god-files closure decisions, remove migration exceptions, and run full validation | Audit #1-#10; remove all migration exceptions | Handler naming and god-files debt have evidence-backed dispositions; decision owner may lift the feature freeze |
 
 Phases are ordered. A later phase may prepare a strictly mechanical move early
 only when doing so avoids duplicate churn and does not weaken the current
@@ -114,9 +114,16 @@ checks. Phase 7 runs:
 - [ ] Gesture Playground and Lexical Gravity share one ownership pattern.
 - [ ] Generic modules contain only proven shared behavior or explicit closed
       dispatch.
-- [ ] `WorkshopApp`, `useWorkshop`, `WorkshopHandler`, and
+- [ ] `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`,
+      `WorkshopHandler` (or its Phase 7 renamed successor), and
       `WorkshopSessionService` have one clear primary responsibility or are
       narrow facades over named collaborators.
+- [ ] Phase 7 records whether `WorkshopHandler` remains the honest room/run
+      owner or is renamed to `WorkshopRoomHandler`, with source, tests,
+      witnesses, and docs aligned to that verdict.
+- [ ] The [Workshop god-files debt](../../tech-debt/2026-07-25-workshop-god-files.md)
+      closes only after its responsibility and traceability criteria are
+      evidenced; otherwise it and the feature freeze remain open.
 - [ ] Representative UI-to-persistence traces are documented and match code.
 - [ ] Full verification passes.
 - [ ] Okey explicitly lifts the Workshop feature freeze.

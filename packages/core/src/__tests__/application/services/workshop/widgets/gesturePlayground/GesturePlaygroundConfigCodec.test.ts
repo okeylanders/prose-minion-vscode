@@ -1,11 +1,11 @@
-import { WorkshopGestureDraft } from '@messages';
+import { WorkshopGesturePlaygroundDraft } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   assertGesturePlaygroundDraftShape,
   cloneGesturePlaygroundDraft
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 
-const draft = (): WorkshopGestureDraft => ({
+const draft = (): WorkshopGesturePlaygroundDraft => ({
   targetPhrase: 'she smiled',
   writerInstructions: 'Keep the response guarded.',
   contextText: 'She folded the letter before answering.',
@@ -27,7 +27,7 @@ const draft = (): WorkshopGestureDraft => ({
   includeDictionaryInCommit: false
 });
 
-const assertDraft = (value: WorkshopGestureDraft): void =>
+const assertDraft = (value: WorkshopGesturePlaygroundDraft): void =>
   assertGesturePlaygroundDraftShape(value, 'draft');
 
 describe('GesturePlaygroundConfigCodec', () => {

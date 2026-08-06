@@ -6,7 +6,7 @@
  * display-safe summary fields, and development-checkpoint defaults.
  */
 
-import { WorkshopGestureDraft } from '@messages';
+import { WorkshopGesturePlaygroundDraft } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   arrayOf,
@@ -26,7 +26,7 @@ export interface GesturePlaygroundDraftSummary {
 }
 
 export interface GesturePlaygroundDraftHydrationDefaults {
-  draft: WorkshopGestureDraft;
+  draft: WorkshopGesturePlaygroundDraft;
   defaultedDictionarySharing: boolean;
   defaultedSourceReferences: boolean;
 }
@@ -241,8 +241,8 @@ export function assertGesturePlaygroundRecommendationSeedShape(
 }
 
 export function cloneGesturePlaygroundDraft(
-  draft: WorkshopGestureDraft
-): WorkshopGestureDraft {
+  draft: WorkshopGesturePlaygroundDraft
+): WorkshopGesturePlaygroundDraft {
   return {
     targetPhrase: draft.targetPhrase,
     writerInstructions: draft.writerInstructions,
@@ -258,7 +258,7 @@ export function cloneGesturePlaygroundDraft(
 }
 
 export function summarizeGesturePlaygroundDraft(
-  draft: WorkshopGestureDraft
+  draft: WorkshopGesturePlaygroundDraft
 ): GesturePlaygroundDraftSummary {
   return {
     targetPhrase: draft.targetPhrase,
@@ -267,7 +267,7 @@ export function summarizeGesturePlaygroundDraft(
 }
 
 export function normalizeGesturePlaygroundDraftForHydration(
-  draft: WorkshopGestureDraft
+  draft: WorkshopGesturePlaygroundDraft
 ): GesturePlaygroundDraftHydrationDefaults {
   const defaultedDictionarySharing = typeof draft.includeDictionaryInCommit !== 'boolean';
   const defaultedSourceReferences = !Array.isArray(draft.sourceReferences);

@@ -24,9 +24,10 @@ it should be a user setting, not a code constant.
   `package.json` contribution → `ConfigurationHandler` getter → domain hook →
   Settings overlay, with bidirectional sync.
 - The aggregate lives host-side in `WorkshopSessionService.addContextAttachment`
-  (budget check) and `WorkshopHandler` (per-file head-slice to the aggregate
-  cap, error copy) — both read `PROMPT_BUDGETS.contextAttachments.words`
-  today. Thread the configured value through instead; the webview meter
+  (budget check) and `WorkshopContextHandler`/`WorkshopContextIntakeService`
+  (per-file head-slice to the aggregate cap and refusal copy) — all read
+  `PROMPT_BUDGETS.contextAttachments.words` today. Thread the configured value
+  through instead; the webview meter
   (`ContextPanel`) and Context Selector estimate footer need the live value
   too (snapshot field or settings message, not a second source of truth).
 - Guard rails: sane minimum (e.g. 1,000), and decide behavior when the
@@ -38,7 +39,8 @@ it should be a user setting, not a code constant.
 
 - `packages/core/src/shared/constants/promptBudgets.ts` (current constant)
 - `packages/core/src/application/services/workshop/WorkshopSessionService.ts`
-- `packages/core/src/application/handlers/domain/WorkshopHandler.ts`
+- `packages/core/src/application/handlers/domain/workshop/WorkshopContextHandler.ts`
+- `packages/core/src/application/services/workshop/WorkshopContextIntakeService.ts`
 - `packages/core/src/presentation/webview/components/workshop/ContextPanel.tsx`
 - `packages/core/src/presentation/webview/components/workshop/WorkshopContextSelectorModal.tsx`
 

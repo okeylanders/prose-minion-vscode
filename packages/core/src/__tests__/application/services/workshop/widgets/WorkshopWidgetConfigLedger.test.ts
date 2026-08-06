@@ -1,6 +1,6 @@
 import {
-  WorkshopGestureDraft,
-  WorkshopGestureWidgetConfigSnapshot,
+  WorkshopGesturePlaygroundDraft,
+  WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopWidgetConfigSnapshot
 } from '@messages';
 import {
@@ -13,14 +13,14 @@ const draftOperations = WORKSHOP_WIDGET_CONFIG_OPERATIONS;
 
 const gestureConfig = (
   config: WorkshopWidgetConfigSnapshot | undefined
-): WorkshopGestureWidgetConfigSnapshot => {
+): WorkshopGesturePlaygroundWidgetConfigSnapshot => {
   if (config?.widgetId !== 'gesture-playground') {
     throw new Error('Expected Gesture Playground config');
   }
   return config;
 };
 
-const draft = (targetPhrase = 'she smiled'): WorkshopGestureDraft => ({
+const draft = (targetPhrase = 'she smiled'): WorkshopGesturePlaygroundDraft => ({
   targetPhrase,
   writerInstructions: 'Keep the response guarded.',
   contextText: 'She folded the letter before answering.',

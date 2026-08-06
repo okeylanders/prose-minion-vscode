@@ -1,6 +1,6 @@
 # Sprint 04: Application Handler Extraction
 
-**Status:** Complete — implemented and verified locally 2026-08-04 (uncommitted)
+**Status:** Complete — merged in PR #105
 
 **Branch:** `sprint/workshop-architecture-refactor-04-handlers` -> `epic/workshop-architecture-refactor`
 

@@ -31,6 +31,7 @@ import * as path from 'path';
 
 // __dirname = packages/core/src/__tests__/architecture -> core's src root.
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
+const REPOSITORY_ROOT = path.resolve(SRC_ROOT, '..', '..', '..');
 
 const SKIP_DIRS = new Set<string>([
   path.join(SRC_ROOT, '__tests__'), // tests mock vscode by design
@@ -257,6 +258,220 @@ const MODULE_REFERENCE = new RegExp(
 );
 const GESTURE_FEATURE_REFERENCE = /(?:GesturePlayground|gesturePlayground|gesture-playground)/;
 const LEXICAL_FEATURE_REFERENCE = /(?:LexicalGravity|lexicalGravity|lexical-gravity)/;
+const WORKSHOP_FEATURE_SEMANTICS_TOKEN_SOURCE = [
+  String.raw`\b[A-Za-z0-9_]*(?:(?:Gesture|gesture|Lexical|lexical)[A-Z])[A-Za-z0-9_]*\b`,
+  String.raw`\b[A-Z0-9_]*(?:GESTURE|LEXICAL)_[A-Z0-9_]+\b`,
+  String.raw`\b[a-z0-9_-]*(?:gesture|lexical)[_-][a-z0-9_-]+\b`,
+  String.raw`\b(?:Gesture\s+Playground|Lexical\s+Gravity)\b`,
+  String.raw`\b(?:LENS_SLUGS|WEIGHT_STEP|lensSlug|metaphorPull|lens-slug|metaphor-pull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references)\b`
+].join('|');
+const WORKSHOP_NON_FEATURE_SEMANTIC_COLLISIONS = new Set([
+  'lexicalDensity',
+  'calculateLexicalDensityPercent',
+  'lexical_density',
+  'gesture-analysis'
+]);
+
+interface WorkshopFeatureSemanticOccurrence {
+  readonly line: number;
+  readonly column: number;
+  readonly token: string;
+}
+
+function collectWorkshopFeatureSemanticOccurrences(
+  source: string
+): WorkshopFeatureSemanticOccurrence[] {
+  return source.split('\n').flatMap((line, lineIndex) => [
+    ...line.matchAll(new RegExp(WORKSHOP_FEATURE_SEMANTICS_TOKEN_SOURCE, 'g'))
+  ].flatMap((match) => WORKSHOP_NON_FEATURE_SEMANTIC_COLLISIONS.has(match[0])
+    ? []
+    : [{
+        line: lineIndex + 1,
+        column: (match.index ?? 0) + 1,
+        token: match[0]
+      }]));
+}
+
+function matchesApprovedFeatureToken(token: string, allowedToken: RegExp): boolean {
+  const stableFlags = allowedToken.flags.replace(/[gy]/g, '');
+  return new RegExp(`^(?:${allowedToken.source})$`, stableFlags).test(token);
+}
+
+interface ApprovedGenericFeatureSurface {
+  readonly file: string;
+  readonly reason: string;
+  /** Matches the complete extracted semantic token, never an arbitrary source line. */
+  readonly allowedToken: RegExp;
+}
+
+/**
+ * Generic-path modules may name a feature only at an explicit family boundary.
+ * Keeping the list here makes the inverse of the feature-path witness reviewable:
+ * a new generic owner cannot silently acquire feature vocabulary just because its
+ * path never names that feature.
+ */
+const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatureSurface[] = [
+  {
+    file: 'application/handlers/MessageHandler.ts',
+    reason: 'composition-root feature-service wiring',
+    allowedToken: /(?:gesturePlayground(?:Service)?|lexicalGravity(?:LensRepository|ModelService)?)/
+  },
+  {
+    file: 'application/handlers/MessageHandlerContracts.ts',
+    reason: 'composition-root service contract',
+    allowedToken: /(?:Gesture Playground|Lexical Gravity|GesturePlaygroundService|LexicalGravity(?:LensRepository|ModelService)|gesturePlaygroundService|lexicalGravity(?:LensRepository|ModelService))/
+  },
+  {
+    file: 'application/handlers/domain/workshop/WorkshopHandler.ts',
+    reason: 'room coordinator and feature-slice composition owner',
+    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground(?:Handler)?|lexicalGravity(?:Handler)?)/
+  },
+  {
+    file: 'application/services/workshop/WorkshopSessionCheckpointNormalization.ts',
+    reason: 'closed persisted-config normalization dispatch',
+    allowedToken: /(?:GesturePlaygroundConfigCodec|gesture-playground|gesturePlayground|normalizeGesturePlaygroundDraftForHydration)/
+  },
+  {
+    file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
+    reason: 'closed persisted union validator',
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)ConfigCodec|assert(?:GesturePlayground|LexicalGravity)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
+  },
+  {
+    file: 'application/services/workshop/WorkshopRunCompletion.ts',
+    reason: 'recommendation source-availability boundary',
+    allowedToken: /(?:gesture-playground|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references)/
+  },
+  {
+    file: 'application/services/workshop/WorkshopSessionRecords.ts',
+    reason: 'closed recommendation-clone dispatch',
+    allowedToken: /(?:gesture-playground|lexical-gravity)/
+  },
+  {
+    file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',
+    reason: 'approved closed standing-feature registry',
+    allowedToken: /(?:LEXICAL_GRAVITY_STANDING_DIRECTIVE_OPERATIONS|LexicalGravityStandingDirectiveOperations|WorkshopLexicalGravityStandingDirectiveApplyRequest|lexical-gravity|lexicalGravity)/
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
+    reason: 'explicit widget-family draft union owner',
+    allowedToken: /(?:WorkshopGesturePlaygroundDraft|WorkshopLexicalGravityDraft|gesture-playground|lexical-gravity)/
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetConfigOperations.ts',
+    reason: 'closed widget-config operations dispatch',
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)ConfigCodec|clone(?:GesturePlayground|LexicalGravity)Draft|summarize(?:GesturePlayground|LexicalGravity)Draft|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
+  },
+  {
+    file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
+    reason: 'closed widget-recommendation registry and prompt composer',
+    allowedToken: /(?:GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY|LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
+  },
+  {
+    file: 'index.ts',
+    reason: 'core public composition barrel',
+    allowedToken: /(?:GesturePlaygroundDirective|GesturePlaygroundService|LexicalGravityLensRepository|LexicalGravityModelService|buildGestureDirective|gesturePlayground)/
+  },
+  {
+    file: 'presentation/webview/WorkshopApp.tsx',
+    reason: 'Workshop presentation composition root',
+    allowedToken: /(?:GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|closeGesturePlayground|closeLexicalGravity|copyGestureDictionary|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityOpening|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useGesturePlayground|useLexicalGravity)/
+  },
+  {
+    file: 'presentation/webview/components/SettingsOverlay.tsx',
+    reason: 'writer-facing model-setting description',
+    allowedToken: /Gesture Playground/
+  },
+  {
+    file: 'presentation/webview/components/workshop/WorkshopTurnBubble.tsx',
+    reason: 'closed widget-recommendation presentation dispatch',
+    allowedToken: /(?:Gesture Playground|Lexical Gravity|gesture-playground|lensSlug)/
+  },
+  {
+    file: 'presentation/webview/components/workshop/workshopWidgetIcons.ts',
+    reason: 'closed widget-icon presentation registry',
+    allowedToken: /(?:gesture-playground|lexical-gravity)/
+  },
+  {
+    file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
+    reason: 'closed widget-opening presentation controller',
+    allowedToken: /(?:WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeGesturePlayground|closeLexicalGravity|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseGesturePlayground|onCloseLexicalGravity|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+  },
+  {
+    file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopWidgetActionResult.ts',
+    reason: 'closed widget-result presentation dispatch',
+    allowedToken: /(?:handleGestureActionResult|handleLexicalActionResult)/
+  },
+  {
+    file: 'presentation/webview/hooks/domain/workshop/useWorkshopStandingDirectives.ts',
+    reason: 'standing-directive presentation integration seam',
+    allowedToken: /(?:LexicalGravityDirective|formatLexicalGravitySummary|lexical-gravity|lexicalGravity)/
+  },
+  {
+    file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
+    reason: 'Workshop webview route-composition table',
+    allowedToken: /(?:UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useGesturePlayground|useLexicalGravity)/
+  },
+  {
+    file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
+    reason: 'closed writer-ask prefill registry',
+    allowedToken: /(?:gesture-playground|lexical-gravity)/
+  },
+  {
+    file: 'shared/constants/promptBudgets.ts',
+    reason: 'central deterministic prompt-budget catalog',
+    allowedToken: /(?:Gesture Playground|gesture[A-Z][A-Za-z0-9]*|lexical[A-Z][A-Za-z0-9]*)/
+  },
+  {
+    file: 'shared/constants/resultToolNames.ts',
+    reason: 'closed tool-result name catalog',
+    allowedToken: /(?:GESTURE_DICTIONARY_RESULT_TOOL_NAME|gesture-dictionary|gesture_dictionary)/
+  },
+  {
+    file: 'shared/constants/workshopWidgets.ts',
+    reason: 'generic widget catalog may own feature ids and labels, not feature value grammar',
+    allowedToken: /(?:WorkshopGesturePlaygroundHandler|gesture-playground|lexical-gravity|Gesture Playground|Lexical Gravity)/
+  },
+  {
+    file: 'shared/streamingCancelMessages.ts',
+    reason: 'closed streaming-cancellation registry',
+    allowedToken: /(?:CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST|CancelGesturePlaygroundGenerateRequestMessage|workshop-gesture-playground)/
+  },
+  {
+    file: 'shared/types/messages/base.ts',
+    reason: 'closed MessageType wire-value registry',
+    allowedToken: /(?:Gesture Playground|(?:CANCEL_|WORKSHOP_).*(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY).*|(?:cancel_|workshop_).*(?:gesture_playground|lexical_gravity).*)/
+  },
+  {
+    file: 'shared/types/messages/index.ts',
+    reason: 'message union composition barrel',
+    allowedToken: /.*(?:GesturePlayground|LexicalGravity).*/
+  },
+  {
+    file: 'shared/types/messages/streaming.ts',
+    reason: 'closed streaming-domain wire union',
+    allowedToken: /workshop-gesture-playground/
+  },
+  {
+    file: 'shared/types/messages/workshop/index.ts',
+    reason: 'Workshop message subdomain composition barrel',
+    allowedToken: /(?:gesturePlayground|lexicalGravity)/
+  },
+  {
+    file: 'shared/types/messages/workshop/standingDirectives.ts',
+    reason: 'explicit standing-family summary and payload union owner',
+    allowedToken: /(?:WorkshopLexicalGravityApplyStandingWidgetPayload|WorkshopLexicalGravityReach|WorkshopLexicalGravityStandingDirectiveSummary|lexical-gravity|lexicalGravity|metaphorPull)/
+  },
+  {
+    file: 'shared/types/messages/workshop/widgets.ts',
+    reason: 'explicit widget-family config, recommendation, and result union owner',
+    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|metaphorPull)/
+  },
+  {
+    file: 'utils/workshopPromptFrames.ts',
+    reason: 'leaf neutralizer reserves feature-declared recommendation delimiters',
+    allowedToken: /(?:lens-slug|metaphor-pull)/
+  }
+] as const;
 const WORKSHOP_FEATURE_HOOKS = [
   path.join(
     SRC_ROOT,
@@ -305,9 +520,17 @@ const WORKSHOP_GENERIC_STANDING_MECHANICS = [
     'presentation/webview/components/workshop/WorkshopStandingDirectiveRail.tsx'
   )
 ];
-const WORKSHOP_GENERIC_STANDING_COPY_SURFACES = [
+const WORKSHOP_GENERIC_FEATURE_COPY_SURFACES = [
   ...WORKSHOP_GENERIC_STANDING_MECHANICS,
   WORKSHOP_STANDING_DIRECTIVE_OPERATIONS,
+  path.join(
+    SRC_ROOT,
+    'application',
+    'services',
+    'workshop',
+    'widgets',
+    'WorkshopWidgetRecommendationOperations.ts'
+  ),
   WORKSHOP_STANDING_DIRECTIVE_HOOK,
   path.join(
     SRC_ROOT,
@@ -342,18 +565,14 @@ const GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE = new RegExp(
  * shrink. A phase that removes an exception updates this witness in the same
  * commit; Phase 7 requires an empty list.
  */
-const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS = [
-  {
-    phase: 6,
-    file: 'shared/constants/workshopWidgets.ts',
-    marker: /LEXICAL_GRAVITY_WEIGHT/
-  },
-  {
-    phase: 6,
-    file: 'utils/workshopWidgetRecommendation.ts',
-    marker: /For Lexical Gravity/
-  }
-] as const;
+interface WorkshopLegacyOwnershipException {
+  readonly phase: number;
+  readonly file: string;
+  readonly marker: RegExp;
+}
+
+const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS:
+  readonly WorkshopLegacyOwnershipException[] = [];
 
 const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
@@ -538,6 +757,80 @@ describe('architectural boundaries', () => {
     expect(lexicalOffenders).toEqual([]);
   });
 
+  it('extracts feature semantics as exact tokens without flagging known prose metrics', () => {
+    const occurrences = collectWorkshopFeatureSemanticOccurrences([
+      'type Drift = WorkshopGestureDrift;',
+      "const result = 'gesture_dictionary';",
+      'const field = lensSlug;',
+      'const LENS_SLUGS = new Set();',
+      'const WEIGHT_STEP = 5;',
+      "const reasons = ['invalid_weight', 'invalid_reach'];",
+      'const metric = calculateLexicalDensityPercent(source);'
+    ].join('\n'));
+
+    expect(occurrences.map(({ token }) => token)).toEqual([
+      'WorkshopGestureDrift',
+      'gesture_dictionary',
+      'lensSlug',
+      'LENS_SLUGS',
+      'WEIGHT_STEP',
+      'invalid_weight',
+      'invalid_reach'
+    ]);
+    expect(matchesApprovedFeatureToken('gesturePlayground', /gesturePlayground/)).toBe(true);
+    expect(matchesApprovedFeatureToken('gesturePlaygroundExtra', /gesturePlayground/)).toBe(false);
+  });
+
+  it('non-feature Workshop modules name features only at approved family seams', () => {
+    const approvals = new Map(
+      WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES.map((surface) => [surface.file, surface])
+    );
+    const missingApprovedSurfaces = WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES
+      .filter(({ file }) => !fs.existsSync(path.join(SRC_ROOT, file)))
+      .map(({ file }) => file);
+    const unusedApprovedSurfaces = WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES
+      .filter(({ file, allowedToken }) => {
+        const fullPath = path.join(SRC_ROOT, file);
+        if (!fs.existsSync(fullPath)) {
+          return false;
+        }
+        return !collectWorkshopFeatureSemanticOccurrences(
+          fs.readFileSync(fullPath, 'utf8')
+        ).some(({ token }) => matchesApprovedFeatureToken(token, allowedToken));
+      })
+      .map(({ file }) => file);
+    const offenders = collectSourceFiles(SRC_ROOT).flatMap((file) => {
+      const relativePath = path.relative(SRC_ROOT, file);
+      if (
+        GESTURE_FEATURE_REFERENCE.test(relativePath)
+        || LEXICAL_FEATURE_REFERENCE.test(relativePath)
+      ) {
+        return [];
+      }
+      const featureOccurrences = collectWorkshopFeatureSemanticOccurrences(
+        fs.readFileSync(file, 'utf8')
+      );
+      if (featureOccurrences.length === 0) {
+        return [];
+      }
+      const approval = approvals.get(relativePath);
+      const unapprovedOccurrences = approval
+        ? featureOccurrences.filter(({ token }) =>
+            !matchesApprovedFeatureToken(token, approval.allowedToken)
+          )
+        : featureOccurrences;
+      return unapprovedOccurrences.length > 0
+        ? [{ file: relativePath, occurrences: unapprovedOccurrences }]
+        : [];
+    });
+
+    expect({ missingApprovedSurfaces, unusedApprovedSurfaces, offenders }).toEqual({
+      missingApprovedSurfaces: [],
+      unusedApprovedSurfaces: [],
+      offenders: []
+    });
+  });
+
   it('Workshop feature hooks do not own family-generic widget config lookup', () => {
     const offenders = WORKSHOP_FEATURE_HOOKS
       .filter((file) => GENERIC_WIDGET_CONFIG_PRESENTATION_REFERENCE.test(
@@ -602,9 +895,11 @@ describe('architectural boundaries', () => {
     expect(operations).toMatch(/'prose-controller': proseControllerEntry/);
   });
 
-  it('Workshop generic standing surfaces carry no Lexical writer-facing copy', () => {
-    const offenders = WORKSHOP_GENERIC_STANDING_COPY_SURFACES
-      .filter((file) => /Lexical Gravity\b/.test(fs.readFileSync(file, 'utf8')))
+  it('Workshop generic family surfaces carry no feature-owned writer-facing copy', () => {
+    const offenders = WORKSHOP_GENERIC_FEATURE_COPY_SURFACES
+      .filter((file) => /\b(?:Gesture Playground|Lexical Gravity)\b/.test(
+        fs.readFileSync(file, 'utf8')
+      ))
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
@@ -691,6 +986,85 @@ describe('architectural boundaries', () => {
     expect(installOffsets.every((offset) => offset > firstLiveFieldInstall)).toBe(true);
   });
 
+  it('Workshop source, test, and architecture docs agree on normalized ownership', () => {
+    const workshopMessageRoot = path.join(SRC_ROOT, 'shared', 'types', 'messages', 'workshop');
+    const messageModules = fs.readdirSync(workshopMessageRoot)
+      .filter((file) => file.endsWith('.ts'))
+      .sort();
+    const ownedTests = [
+      'application/services/workshop/RunWorkshopToolSidePass.integration.test.ts',
+      'application/services/workshop/WorkshopPromptBuilder.threadArtifactFrame.test.ts'
+    ];
+    const retiredTests = [
+      'application/handlers/domain/WorkshopToolSidePass.integration.test.ts',
+      'application/services/workshop/WorkshopWidgetFrames.test.ts'
+    ];
+    const testRoot = path.join(SRC_ROOT, '__tests__');
+    const documents = [
+      {
+        name: '.ai/central-agent-setup.md',
+        anchor: '└── workshop/        # Workshop contracts behind one subdomain barrel',
+        treeAnchor: '└── workshop/        # Workshop contracts behind one subdomain barrel',
+        text: fs.readFileSync(
+          path.join(REPOSITORY_ROOT, '.ai', 'central-agent-setup.md'),
+          'utf8'
+        )
+      },
+      {
+        name: 'docs/ARCHITECTURE.md',
+        anchor: 'Contracts mirror those owners under',
+        treeAnchor: 'workshop/\n├── index.ts',
+        text: fs.readFileSync(
+          path.join(REPOSITORY_ROOT, 'docs', 'ARCHITECTURE.md'),
+          'utf8'
+        )
+      }
+    ];
+
+    expect(messageModules).toEqual([
+      'context.ts',
+      'gesturePlayground.ts',
+      'index.ts',
+      'lexicalGravity.ts',
+      'participants.ts',
+      'session.ts',
+      'settings.ts',
+      'standingDirectives.ts',
+      'widgets.ts'
+    ]);
+    expect(ownedTests.filter((file) => !fs.existsSync(path.join(testRoot, file)))).toEqual([]);
+    expect(retiredTests.filter((file) => fs.existsSync(path.join(testRoot, file)))).toEqual([]);
+    const missingDocReferences = documents.flatMap(({ name, text }) => [
+      'handlers/domain/workshop/',
+      'shared/types/messages/workshop/',
+      'useWorkshopRoom',
+      'useWorkshopSessions'
+    ].filter((reference) => !text.includes(reference))
+      .map((reference) => `${name}: ${reference}`));
+    const documentedMessageModules = documents.map(({ name, anchor, treeAnchor, text }) => {
+      const anchorIndex = text.indexOf(anchor);
+      const treeStart = anchorIndex >= 0 ? text.indexOf(treeAnchor, anchorIndex) : -1;
+      const fenceEnd = treeStart >= 0 ? text.indexOf('```', treeStart) : -1;
+      const workshopTree = treeStart >= 0 && fenceEnd > treeStart
+        ? text.slice(treeStart, fenceEnd)
+        : '';
+      return {
+        name,
+        modules: [...workshopTree.matchAll(
+          /^[│ ]*[├└]──\s+([A-Za-z][A-Za-z0-9]*\.ts)\b/gm
+        )].map((match) => match[1]).sort()
+      };
+    });
+
+    expect({ missingDocReferences, documentedMessageModules }).toEqual({
+      missingDocReferences: [],
+      documentedMessageModules: documents.map(({ name }) => ({
+        name,
+        modules: messageModules
+      }))
+    });
+  });
+
   it('keeps the accepted Workshop legacy ownership exceptions exact during migration', () => {
     const missingFiles = WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS
       .map(({ phase, file }) => ({ phase, file, fullPath: path.join(SRC_ROOT, file) }))
@@ -708,9 +1082,6 @@ describe('architectural boundaries', () => {
       })
       .map(({ phase, file }) => `P${phase}:${file}`);
 
-    expect(observed).toEqual([
-      'P6:shared/constants/workshopWidgets.ts',
-      'P6:utils/workshopWidgetRecommendation.ts'
-    ]);
+    expect(observed).toEqual([]);
   });
 });
