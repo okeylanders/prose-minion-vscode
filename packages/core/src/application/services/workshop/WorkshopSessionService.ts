@@ -147,24 +147,6 @@ export {
   WorkshopScopeLockedError,
   workshopParticipantSubjectStatus
 } from '@/application/services/workshop/session/WorkshopPassageScope';
-export type {
-  WorkshopCapabilityArtifactInput,
-  WorkshopContextAttachment,
-  WorkshopContextAttachmentInput,
-  WorkshopContextAttachmentResult,
-  WorkshopContextAttachmentUpdateResult,
-  WorkshopExcerptInput,
-  WorkshopExcerptReplacement,
-  WorkshopMessageAttachment,
-  WorkshopMessageAttachmentInput,
-  WorkshopMessageAttachmentResult,
-  WorkshopPendingHostUpdates,
-  WorkshopParticipantSubjectStatus,
-  WorkshopPersonaGuestJoinStart,
-  WorkshopScopeTransition,
-  WorkshopSessionHydrationResult,
-  WorkshopToolReportCompletion
-} from '@/application/services/workshop/WorkshopSessionRecords';
 
 export { WORKSHOP_TODO_BOUNDS } from '@/application/services/workshop/WorkshopSessionLimits';
 
@@ -192,7 +174,16 @@ export class WorkshopSessionActiveRunPersistenceError extends Error {
   }
 }
 
-/** A pure aggregate: no I/O, no vscode, and only an injectable clock. */
+/**
+ * A pure aggregate: no I/O, no vscode, and only an injectable clock.
+ *
+ * Session state owners expose export/prepare/install/reset. Add a narrower
+ * mutation-level prepare/install contract only when a caller must cross
+ * provider I/O between those phases; otherwise mutate directly. Every
+ * time-dependent collaborator requires an injected clock. Reset preserves a
+ * counter when its ids must never recur during this aggregate's lifetime
+ * (turns and todos); otherwise it restores the construction-time counter.
+ */
 export class WorkshopSessionService {
   /** Pinned/shelved passage and immutable-before-memory scope state machine. */
   private readonly passageScope: WorkshopPassageScope;
@@ -1153,15 +1144,15 @@ export class WorkshopSessionService {
 
   /** Dispose one guest while preserving its historical thread attribution. */
   dismissPersonaGuest(personaId: WorkshopPersonaId): string | undefined {
-    const conversationId = this.participantRoster.dismissPersonaGuest(personaId);
-    if (conversationId === undefined) {
+    const dismissal = this.participantRoster.dismissPersonaGuest(personaId);
+    if (!dismissal) {
       return undefined;
     }
     this.guestWriterSources.delete(personaId);
     if (this.activeRun?.target === 'personaGuest' && this.activeRun.guestPersonaId === personaId) {
       this.activeRun = undefined;
     }
-    return conversationId;
+    return dismissal.conversationId;
   }
 
   isPersonaSelectionLocked(): boolean {
@@ -1885,7 +1876,10 @@ export class WorkshopSessionService {
     const activeHostPin = hostConversationId ? activeHostPins[0] : undefined;
     const discardedConversationIds = this.participantRoster.conversationIds();
 
-    // Synchronous field replacement after every validation/clone/remap step.
+    // Prepared collaborator values are aggregate-owned mutable drafts until
+    // this shared barrier: degradation may reconcile them above it, but no
+    // throwing work may cross below it. Everything after here is synchronous,
+    // assignment-only installation of the fully reconciled room.
     this.contextAttachments = contextAttachments;
     this.contextRevision = normalized.revisions.context;
     this.pendingContextRevision = pendingContextRevision;
@@ -1944,7 +1938,7 @@ export class WorkshopSessionService {
       todos: this.todoLedger.list(passageState.excerptVersion),
       widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
       standingDirectives: this.standingDirectiveSummaries(),
-      turns: windowed.map(cloneTurn),
+      turns: windowed,
       totalTurns: this.turnLedger.count(),
       truncatedTurns: this.turnLedger.count() - windowed.length,
       roomHasMemory: this.hasRoomMemory(),

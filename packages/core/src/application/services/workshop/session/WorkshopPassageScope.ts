@@ -74,7 +74,7 @@ export class WorkshopPassageScope {
   private replacementCount = 0;
   private pendingRevisionVersion?: number;
 
-  constructor(private readonly now: () => number = Date.now) {}
+  constructor(private readonly now: () => number) {}
 
   getScope(): WorkshopSessionScope {
     return this.scope;
@@ -274,7 +274,7 @@ export class WorkshopPassageScope {
     };
   }
 
-  /** Install only state returned by prepareState; this phase performs assignments only. */
+  /** Install state produced by this scope's prepare phase; this must not throw. */
   installPreparedState(state: WorkshopPassageScopeState): void {
     this.excerpt = state.excerpt;
     this.scope = state.scope;

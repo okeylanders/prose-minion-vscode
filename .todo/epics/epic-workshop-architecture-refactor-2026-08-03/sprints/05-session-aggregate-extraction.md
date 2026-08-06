@@ -1,6 +1,6 @@
 # Sprint 05: Session Aggregate Extraction
 
-**Status:** Complete — implemented and verified locally 2026-08-05 (uncommitted)
+**Status:** Complete — implemented 2026-08-05; PR #106 review addressed 2026-08-06
 
 **Branch:** `sprint/workshop-architecture-refactor-05-session-aggregate` -> `epic/workshop-architecture-refactor`
 
@@ -65,17 +65,33 @@ session collaborator classes from the directory so future additions are covered
 without another hard-coded regex.
 
 Hydration now visibly has two phases. Every collaborator validates and clones
-through `prepareState` above the first aggregate assignment; only prepared state
-crosses the install barrier. A fault-injection test compares the full committed
-state before and after a throwing preparation, and an architecture test pins all
-`.prepareState(...)` calls above that barrier. The duplicate-live-host-pin rule
-also moved to `WorkshopSessionStateV1Integrity`, giving persisted-state validity
-one owner.
+through `prepareState` above the first aggregate assignment; prepared values are
+mutable aggregate drafts only for throw-free degradation reconciliation before
+the barrier. A populated-state fault-injection test throws from the final roster
+prepare and proves the full committed state remains unchanged. The architecture
+witness requires matching prepare/install collaborator sets, every prepare above
+the first live assignment, and every install below it. The shared conventions
+now live beside the collaborators in `session/README.md`.
+
+The duplicate-live-host-pin rule moved to
+`WorkshopSessionStateV1Integrity`, giving persisted-state validity one owner and
+intentionally running the rule before runtime-binding degradation. A corrupt
+two-live-pin checkpoint with a dead host binding is therefore refused instead
+of degraded open. Released writers cannot produce that shape, so this is
+consistent corruption rejection outside the codec-migration contract and does
+not require a schema bump.
 
 The ordinary reset contract needed one correction to the runway's generic
 wording: existing behavior cleared turn and todo rows while preserving their
 monotonic counters. The extracted ledgers preserve those counters; only the rows
-reset. This is deliberate compatibility, not cached cross-cluster state.
+reset. This is deliberate compatibility, not cached cross-cluster state, and a
+facade-level regression now proves the post-reset IDs advance.
+
+The review identified a second intentional correction: a context-only host
+delivery no longer treats absent excerpt generations as a successful excerpt
+commit. That old `undefined === undefined` path appended a duplicate live pin
+row; the guarded path preserves the existing pin manifest, now covered by an
+observing aggregate assertion.
 
 ### D2 records boundary
 
@@ -83,9 +99,9 @@ reset. This is deliberate compatibility, not cached cross-cluster state.
 host-to-webview projections. The file comment records that co-location as an
 intentional maintenance boundary: a nested mutable or host-private field and its
 defensive copy change together. It owns no I/O or mutation policy. Existing
-type imports through `WorkshopSessionService` remain source-compatible via
-explicit re-exports, while production type-only consumers now name the records
-module directly.
+internal type consumers now name this canonical records module directly; the
+near-dead `WorkshopSessionService` type re-export path was removed after its one
+remaining test consumer moved.
 
 ### Retained aggregate clusters
 
@@ -109,12 +125,13 @@ remaining declarations/copy discipline out as well. The final composition is:
 
 | File | Lines | Interpretation |
 |---|---:|---|
-| `WorkshopSessionService.ts` | 2,127 | Aggregate behavior, retained coupled clusters, public delegation, whole-session lifecycle |
-| `WorkshopSessionRecords.ts` | 401 | Record contracts and defensive copy/projection discipline |
-| `WorkshopTodoLedger.ts` | 199 | Todo invariants and state contract |
-| `WorkshopTurnLedger.ts` | 132 | Generic identity/order ledger and state contract |
+| `WorkshopSessionService.ts` | 2,121 | Aggregate behavior, retained coupled clusters, public delegation, whole-session lifecycle |
+| `WorkshopSessionRecords.ts` | 390 | Record contracts and the single turn-copy/projection discipline |
+| `WorkshopTodoLedger.ts` | 200 | Todo invariants and state contract |
+| `WorkshopTurnLedger.ts` | 113 | Generic identity/order ledger and state contract |
 | `WorkshopPassageScope.ts` | 351 | Passage/scope state machine and state contract |
-| `WorkshopParticipantRoster.ts` | 444 | Participant/routing state, offsets, snapshots, and state contract |
+| `WorkshopParticipantRoster.ts` | 451 | Participant/routing state, offsets, snapshots, and state contract |
+| `session/README.md` | 22 | Lifecycle, clock, mutation-discipline, and reset-counter conventions |
 
 The larger collaborator estimates were deliberately allowed to absorb complete
 prepare/install/reset contracts, defensive copying, and boundary documentation;
@@ -130,23 +147,25 @@ policy, so another boundary would add ceremony without independent change.
 
 - No public aggregate method signature changed.
 - No message, payload, persisted field, checkpoint schema, or autosave ordering changed.
-- Existing aggregate type exports remain available; the core barrel continues
-  to expose `WorkshopSessionHydrationResult`.
+- Session record types have one canonical internal import origin; the core
+  barrel continues to expose `WorkshopSessionHydrationResult`.
 - The Gesture Playground test that mutated the former private `participants`
   field now constructs and targets a real tool sidecar through public aggregate
   behavior.
+- Two deliberate corrections are declared above: context-only delivery cannot
+  duplicate a host pin, and corrupt multi-live-pin checkpoints are refused
+  before runtime-binding degradation.
 
 ### Verification
 
 - Full typecheck: passed for core, webview, and VS Code adapter.
-- ESLint: zero errors; 921 existing warnings.
+- ESLint: zero errors; 921 repository-baseline warnings.
 - Production build and bundle sentinel verification: passed; webpack retained
   its existing three asset-size recommendations.
-- Full Jest baseline: **187 suites, 1,918 tests, 1 snapshot — all passed**.
-- Workshop services, Workshop handlers, and architecture boundary suite:
-  **46 suites, 718 tests — all passed**.
+- Full Jest baseline after review fixes: **187 suites, 1,922 tests, 1 snapshot — all passed**.
+- Six directly affected service, collaborator, prompt, and architecture suites:
+  **161 tests — all passed**.
 - `git diff --check`: passed.
 
-No commit was created as part of this implementation request. The unrelated
-untracked `docs/adr/2026-08-05-whats-new-notice-ledger.md` was present before
-the sprint work and remains untouched.
+Implementation is published in PR #106. The unrelated untracked
+`docs/adr/2026-08-05-whats-new-notice-ledger.md` remains untouched.

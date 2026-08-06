@@ -194,36 +194,7 @@ export function cloneToolWriterSources(
 }
 
 export function cloneTurn(turn: WorkshopTurn): WorkshopTurn {
-  return {
-    ...turn,
-    behavior: turn.behavior ? { ...turn.behavior } : undefined,
-    behaviorTransition: turn.behaviorTransition
-      ? {
-          ...turn.behaviorTransition,
-          from: { ...turn.behaviorTransition.from },
-          to: { ...turn.behaviorTransition.to }
-        }
-      : undefined,
-    usage: turn.usage ? { ...turn.usage } : undefined,
-    citations: turn.citations?.map((citation) => ({ ...citation })),
-    capability: turn.capability ? cloneCapabilityDetails(turn.capability) : undefined,
-    analysisInputs: turn.analysisInputs
-      ? cloneAnalysisInputs(turn.analysisInputs)
-      : undefined,
-    actionableFindings: turn.actionableFindings
-      ? cloneFindings(turn.actionableFindings)
-      : undefined,
-    messageAttachments: turn.messageAttachments
-      ? turn.messageAttachments.map(cloneMessageAttachmentSnapshot)
-      : undefined,
-    widgetCommit: turn.widgetCommit ? { ...turn.widgetCommit } : undefined,
-    standingDirectiveChange: turn.standingDirectiveChange
-      ? { ...turn.standingDirectiveChange }
-      : undefined,
-    widgetRecommendation: turn.widgetRecommendation
-      ? cloneWidgetRecommendation(turn.widgetRecommendation)
-      : undefined
-  };
+  return cloneRecord(turn);
 }
 
 export function cloneWidgetRecommendation(
@@ -392,6 +363,24 @@ function cloneMetadataValue(value: unknown): unknown {
     return Object.fromEntries(
       Object.entries(value).map(([key, nested]) => [key, cloneMetadataValue(nested)])
     );
+  }
+  return value;
+}
+
+/**
+ * Workshop turns are JSON-shaped records, but this copier preserves own
+ * `undefined` fields as well as nested arrays and objects. Keeping the single
+ * turn-copy rule here means new nested turn decorations are isolated without
+ * requiring a second ledger-specific copy implementation to stay in sync.
+ */
+function cloneRecord<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map(cloneRecord) as T;
+  }
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [key, cloneRecord(nested)])
+    ) as T;
   }
   return value;
 }

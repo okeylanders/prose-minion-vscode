@@ -656,7 +656,7 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('Workshop aggregate hydration prepares every ledger before installing live fields', () => {
+  it('Workshop aggregate hydration prepares every collaborator before the install barrier', () => {
     const sessionSource = fs.readFileSync(
       path.join(
         SRC_ROOT,
@@ -670,15 +670,25 @@ describe('architectural boundaries', () => {
     const hydrationStart = sessionSource.indexOf('  hydrateCommittedState(');
     const hydrationEnd = sessionSource.indexOf('\n  getSnapshot()', hydrationStart);
     const hydrationBody = sessionSource.slice(hydrationStart, hydrationEnd);
-    const prepareOffsets = [...hydrationBody.matchAll(/\.prepareState\(/g)]
-      .map((match) => match.index);
+    const prepareCalls = [
+      ...hydrationBody.matchAll(/this\.([A-Za-z][A-Za-z0-9]*)\.prepareState\(/g)
+    ];
+    const installCalls = [
+      ...hydrationBody.matchAll(/this\.([A-Za-z][A-Za-z0-9]*)\.installPreparedState\(/g)
+    ];
+    const prepareOffsets = prepareCalls.map((match) => match.index);
+    const installOffsets = installCalls.map((match) => match.index);
     const firstLiveFieldInstall = hydrationBody.search(/\n\s*this\.[A-Za-z][A-Za-z0-9]*\s*=/);
 
     expect(hydrationStart).toBeGreaterThanOrEqual(0);
     expect(hydrationEnd).toBeGreaterThan(hydrationStart);
     expect(prepareOffsets.length).toBeGreaterThan(0);
+    expect(installOffsets.length).toBeGreaterThan(0);
+    expect(installCalls.map((match) => match[1]).sort())
+      .toEqual(prepareCalls.map((match) => match[1]).sort());
     expect(firstLiveFieldInstall).toBeGreaterThanOrEqual(0);
     expect(prepareOffsets.every((offset) => offset < firstLiveFieldInstall)).toBe(true);
+    expect(installOffsets.every((offset) => offset > firstLiveFieldInstall)).toBe(true);
   });
 
   it('keeps the accepted Workshop legacy ownership exceptions exact during migration', () => {

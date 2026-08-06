@@ -2,6 +2,8 @@
 
 **Date:** 2026-08-05
 
+**Review resolution:** 2026-08-06, PR #106
+
 **Branch:** `sprint/workshop-architecture-refactor-05-session-aggregate`
 
 **Sprint:** [Session Aggregate Extraction](../.todo/epics/epic-workshop-architecture-refactor-2026-08-03/sprints/05-session-aggregate-extraction.md)
@@ -30,13 +32,29 @@
 - `WorkshopSessionService` remains the only production facade and whole-session
   mutation boundary. Handlers do not import or receive internal collaborators.
 - Hydration prepares every collaborator above the first assignment and installs
-  only prepared state below the barrier. Fault injection and an ordering fitness
-  witness protect all-or-nothing restoration.
+  only reconciled prepared state below the barrier. The ordering witness now
+  pairs prepare/install owners and pins every install below the first live
+  assignment; populated-state fault injection throws from the final roster
+  prepare and proves all-or-nothing restoration.
 - The duplicate-live-host-pin rule now lives in
   `WorkshopSessionStateV1Integrity` rather than a hydration-only check.
 - Ordinary reset preserves the existing monotonic turn/todo counters while
   clearing their rows. This corrects an over-broad “construction state” phrase
-  in the runway without changing behavior.
+  in the runway without changing behavior, with a facade-level ID regression.
+- Context-only host delivery intentionally no longer appends a duplicate pin
+  when both excerpt generations are absent. The manifest behavior is declared
+  and protected by an observing regression.
+- Two-live-pin corruption is intentionally refused before runtime-binding
+  degradation. Released writers cannot produce that shape, so no checkpoint
+  schema migration is required.
+- `WorkshopSessionRecords` is the one turn-copy and record-type import origin;
+  the aggregate's near-dead type re-export block and the snapshot double clone
+  were removed.
+- Guest dismissal now distinguishes “no transition” from “disposed without a
+  conversation-id payload,” so manifest and active-run cleanup cannot be skipped.
+- Session collaborator conventions are recorded in `session/README.md`.
+- PR review F-10 (rollback double-failure observability) is inherited and tracked
+  in `.todo/tech-debt/2026-08-06-workshop-rollback-failure-observability.md`.
 - Room delivery remains an aggregate operation: the facade validates the turn
   head, then delegates participant-local offset compare-and-set behavior.
 - A Gesture Playground test no longer mutates the aggregate's former private
@@ -46,10 +64,11 @@
 
 ## Size
 
-- `WorkshopSessionService.ts`: 2,127 lines (2,894 at the runway branch point)
-- `WorkshopSessionRecords.ts`: 401 lines
-- Collaborators: todo 199, turn 132, passage/scope 351, participant roster 444
-- Focused collaborator suites: 905 lines total
+- `WorkshopSessionService.ts`: 2,121 lines (2,894 at the runway branch point)
+- `WorkshopSessionRecords.ts`: 390 lines
+- Collaborators: todo 200, turn 113, passage/scope 351, participant roster 451
+- `session/README.md`: 22 lines
+- Focused collaborator suites: 930 lines total
 
 ## Verification
 
@@ -57,16 +76,15 @@
 - ESLint: zero errors; 921 repository-baseline warnings.
 - Production build and bundle sentinel: passed; three existing webpack size
   recommendations remain.
-- Full Jest baseline: 187 suites, 1,918 tests, and 1 snapshot passed.
-- Workshop services, Workshop handlers, and architecture boundaries: 46 suites,
-  718 tests passed.
+- Full Jest baseline after PR review fixes: 187 suites, 1,922 tests, and 1
+  snapshot passed.
+- Six directly affected suites: 161 tests passed.
 - Independent S1–S4 correctness/architecture review: no findings.
 - Independent records/copy-boundary review: redaction and clone behavior match
   the pre-extraction implementation; two documentation/import nits were fixed.
 - `git diff --check`: passed.
 
-## Working-tree note
+## Publication note
 
-No commit was created. The unrelated untracked
-`docs/adr/2026-08-05-whats-new-notice-ledger.md` existed before this sprint work
-and was left untouched.
+The implementation is published in PR #106. The unrelated untracked
+`docs/adr/2026-08-05-whats-new-notice-ledger.md` remains untouched.

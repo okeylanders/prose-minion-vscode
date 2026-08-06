@@ -8,6 +8,7 @@
  */
 
 import type { WorkshopTurn, WorkshopTurnRole } from '@messages';
+import { cloneTurn } from '@/application/services/workshop/WorkshopSessionRecords';
 
 export interface WorkshopTurnLedgerState {
   counter: number;
@@ -24,18 +25,16 @@ export class WorkshopTurnLedger {
     return `turn-${++this.counter}-${role}-${this.now()}`;
   }
 
-  append(turn: WorkshopTurn): WorkshopTurn {
+  append(turn: WorkshopTurn): void {
     if (this.contains(turn.id)) {
       throw new Error(`Duplicate Workshop turn ${turn.id}`);
     }
-    const stored = cloneRecord(turn);
-    this.turns.push(stored);
-    return cloneRecord(stored);
+    this.turns.push(cloneTurn(turn));
   }
 
   find(id: string): WorkshopTurn | undefined {
     const turn = this.turns.find((candidate) => candidate.id === id);
-    return turn ? cloneRecord(turn) : undefined;
+    return turn ? cloneTurn(turn) : undefined;
   }
 
   contains(id: string): boolean {
@@ -44,11 +43,11 @@ export class WorkshopTurnLedger {
 
   head(): WorkshopTurn | undefined {
     const turn = this.turns.at(-1);
-    return turn ? cloneRecord(turn) : undefined;
+    return turn ? cloneTurn(turn) : undefined;
   }
 
   all(): WorkshopTurn[] {
-    return this.turns.map(cloneRecord);
+    return this.turns.map(cloneTurn);
   }
 
   count(): number {
@@ -62,7 +61,7 @@ export class WorkshopTurnLedger {
     if (limit === 0) {
       return [];
     }
-    return this.turns.slice(-limit).map(cloneRecord);
+    return this.turns.slice(-limit).map(cloneTurn);
   }
 
   /**
@@ -74,19 +73,19 @@ export class WorkshopTurnLedger {
     if (index < 0) {
       return undefined;
     }
-    const candidate = cloneRecord(this.turns[index]);
+    const candidate = cloneTurn(this.turns[index]);
     mutate(candidate);
     if (candidate.id !== id) {
       throw new Error(`Cannot change Workshop turn identity ${id} to ${candidate.id}`);
     }
-    this.turns[index] = cloneRecord(candidate);
-    return cloneRecord(this.turns[index]);
+    this.turns[index] = cloneTurn(candidate);
+    return cloneTurn(this.turns[index]);
   }
 
   exportState(): WorkshopTurnLedgerState {
     return {
       counter: this.counter,
-      turns: this.turns.map(cloneRecord)
+      turns: this.turns.map(cloneTurn)
     };
   }
 
@@ -97,11 +96,11 @@ export class WorkshopTurnLedger {
   prepareState(state: WorkshopTurnLedgerState): WorkshopTurnLedgerState {
     return {
       counter: state.counter,
-      turns: state.turns.map(cloneRecord)
+      turns: state.turns.map(cloneTurn)
     };
   }
 
-  /** Install only state returned by `prepareState`; this phase must not throw. */
+  /** Install state produced by this ledger's prepare phase; this must not throw. */
   installPreparedState(state: WorkshopTurnLedgerState): void {
     this.counter = state.counter;
     this.turns = state.turns;
@@ -111,22 +110,4 @@ export class WorkshopTurnLedger {
   reset(): void {
     this.turns = [];
   }
-}
-
-/**
- * Turns are JSON-shaped records, but this copier intentionally preserves own
- * `undefined` fields as well as nested arrays and objects. It therefore
- * matches the aggregate's existing in-memory copy semantics without learning
- * the meaning of any turn decoration.
- */
-function cloneRecord<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value.map(cloneRecord) as T;
-  }
-  if (value !== null && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, nested]) => [key, cloneRecord(nested)])
-    ) as T;
-  }
-  return value;
 }

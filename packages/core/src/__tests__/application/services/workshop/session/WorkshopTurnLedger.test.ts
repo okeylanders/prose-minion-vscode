@@ -45,7 +45,7 @@ describe('WorkshopTurnLedger', () => {
       .toThrow(`Duplicate Workshop turn ${ids[1]}`);
   });
 
-  it('returns defensive copies from append and every read surface', () => {
+  it('isolates appended input and returns defensive copies from every read surface', () => {
     const ledger = new WorkshopTurnLedger(() => 1);
     const input = turn('turn-1-user-1', 'Original.', {
       actionableFindings: [{ key: 'finding-1', ordinal: 1, text: 'Tighten this.' }],
@@ -59,11 +59,10 @@ describe('WorkshopTurnLedger', () => {
       }
     });
 
-    const appended = ledger.append(input);
+    ledger.append(input);
     input.content = 'Mutated input.';
     input.actionableFindings![0].text = 'Mutated input finding.';
     ((input.capability!.metadata!.location) as { path: string }).path = 'mutated.md';
-    appended.content = 'Mutated append result.';
 
     const found = ledger.find(input.id)!;
     found.actionableFindings![0].text = 'Mutated find result.';

@@ -54,6 +54,11 @@ export interface RetiredWorkshopToolSidecar extends WorkshopToolSidecarState {
   toolId: WorkshopToolId;
 }
 
+/** Present only when a live guest actually transitioned to disposed. */
+export interface WorkshopPersonaGuestDismissal {
+  conversationId: string | undefined;
+}
+
 export class WorkshopParticipantRoster {
   private host: WorkshopHostParticipantState = newHost();
   private toolSidecars: Partial<Record<WorkshopToolId, WorkshopToolSidecarState>> = {};
@@ -176,7 +181,9 @@ export class WorkshopParticipantRoster {
   }
 
   /** Dispose one guest while preserving its historical attribution tombstone. */
-  dismissPersonaGuest(personaId: WorkshopPersonaId): string | undefined {
+  dismissPersonaGuest(
+    personaId: WorkshopPersonaId
+  ): WorkshopPersonaGuestDismissal | undefined {
     const guest = this.personaGuests.get(personaId);
     if (!guest || guest.liveness === 'disposed') {
       return undefined;
@@ -190,7 +197,7 @@ export class WorkshopParticipantRoster {
     ) {
       this.chatTarget = { kind: 'host' };
     }
-    return conversationId;
+    return { conversationId };
   }
 
   /**
@@ -359,7 +366,7 @@ export class WorkshopParticipantRoster {
     return prepared;
   }
 
-  /** Install only state returned by `prepareState`; this phase must not throw. */
+  /** Install state produced by this roster's prepare phase; this must not throw. */
   installPreparedState(state: WorkshopParticipantRosterState): void {
     this.host = state.host;
     this.toolSidecars = state.toolSidecars;

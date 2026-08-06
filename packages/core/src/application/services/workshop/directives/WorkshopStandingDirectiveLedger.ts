@@ -121,6 +121,7 @@ export class WorkshopStandingDirectiveLedger {
     };
   }
 
+  /** Install state produced by this ledger's prepare phase; this must not throw. */
   installPreparedState(state: WorkshopStandingDirectiveLedgerState): void {
     this.counter = state.counter;
     this.directives = state.directives;

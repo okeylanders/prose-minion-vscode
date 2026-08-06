@@ -47,7 +47,9 @@ describe('WorkshopParticipantRoster', () => {
     expect(() => roster.validatePersonaGuestInvitation('wren'))
       .toThrow('Workshop supports at most 2 live guests');
 
-    expect(roster.dismissPersonaGuest('margot')).toBe('guest-margot');
+    expect(roster.dismissPersonaGuest('margot')).toEqual({
+      conversationId: 'guest-margot'
+    });
     expect(roster.liveGuestCount()).toBe(1);
     roster.adoptPersonaGuest('margot', 'guest-margot-new', 'turn-new-head');
     expect(roster.getPersonaGuestConversationId('margot')).toBe('guest-margot-new');
@@ -70,6 +72,30 @@ describe('WorkshopParticipantRoster', () => {
     expect(roster.setChatTarget({ kind: 'personaGuest', personaId: 'margot' })).toBe(true);
     roster.dismissPersonaGuest('margot');
     expect(roster.getChatTarget()).toEqual({ kind: 'host' });
+  });
+
+  it('reports a real dismissal even when a live guest has no conversation id', () => {
+    const roster = new WorkshopParticipantRoster();
+    const prepared = roster.prepareState({
+      host: { personaId: 'jill' },
+      toolSidecars: {},
+      personaGuests: new Map([['margot', {
+        personaId: 'margot',
+        liveness: 'live'
+      }]]),
+      chatTarget: { kind: 'personaGuest', personaId: 'margot' }
+    });
+    roster.installPreparedState(prepared);
+
+    expect(roster.dismissPersonaGuest('margot')).toEqual({
+      conversationId: undefined
+    });
+    expect(roster.exportState().personaGuests.get('margot')).toMatchObject({
+      liveness: 'disposed',
+      conversationId: undefined
+    });
+    expect(roster.getChatTarget()).toEqual({ kind: 'host' });
+    expect(roster.dismissPersonaGuest('margot')).toBeUndefined();
   });
 
   it('adopts, replaces, and retires tool sidecars without leaking their records', () => {

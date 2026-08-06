@@ -2,8 +2,9 @@
  * Session-owned ledger for writer-promoted Workshop tasks.
  *
  * The ledger owns task identity, ordering, editing, status, bounds, and
- * immutable finding provenance. Excerpt version remains aggregate-owned and is
- * supplied to every operation that derives staleness; it is never cached here.
+ * immutable finding provenance. Excerpt version is owned by
+ * `WorkshopPassageScope`; the aggregate supplies it to every operation that
+ * derives staleness. It is never cached here.
  */
 
 import {
@@ -175,7 +176,7 @@ export class WorkshopTodoLedger {
     };
   }
 
-  /** Install only a state returned by `prepareState`; this phase must not throw. */
+  /** Install state produced by this ledger's prepare phase; this must not throw. */
   installPreparedState(state: WorkshopTodoLedgerState): void {
     this.counter = state.counter;
     this.todos = state.todos;
