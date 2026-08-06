@@ -67,6 +67,24 @@ lines. The two larger files below remain the tracked debt.
   D3: the `WorkshopHandler` → `WorkshopRoomHandler` naming tension and final
   facade-cohesion verdict belong to Phase 7, not the contract-normalization diff.
 
+## Phase 7 handoff
+
+[Sprint 07: Architecture Closure](../epics/epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md)
+owns the D3 disposition. Entering Phase 7 does not itself close this record.
+That sprint must:
+
+1. record whether the observed room/run boundary justifies retaining
+   `WorkshopHandler` or warrants a behavior-preserving rename to
+   `WorkshopRoomHandler`;
+2. align source, tests, architecture witnesses, and documentation if the rename
+   is selected; and
+3. close this debt only when representative traces and the final responsibility
+   map evidence every completion criterion below.
+
+If the evidence does not support closure, this record stays open and continues
+to block the Workshop feature-freeze lift. Phase 7 must not manufacture closure
+through a cosmetic rename or arbitrary line-count extraction.
+
 ## Remaining closure questions
 
 1. Does `WorkshopHandler`'s remaining room/run orchestration justify its name,
@@ -93,6 +111,8 @@ the aggregate or handler boundaries here.
 - [ ] The final responsibility map can trace representative UI-to-persistence
       actions without searching unrelated broad files.
 - [ ] Architecture fitness witnesses protect the resulting boundaries.
+- [ ] The `WorkshopHandler` retain-or-rename verdict is explicit and every
+      source, test, witness, and document uses the selected name consistently.
 
 There is no longer a numeric line-count completion target. Line count remains a
 pressure signal, not the definition of a coherent module.

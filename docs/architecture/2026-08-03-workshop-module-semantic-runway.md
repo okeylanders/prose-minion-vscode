@@ -792,12 +792,23 @@ Prose Controller adds a new operations entry and its own feature handler/hook. I
 
 - Walk every Workshop action end to end and publish the final responsibility map.
 - Confirm each generic module owns only proven family behavior and each feature module owns its semantic rules.
+- Resolve Sprint 06 D3 from the observed room/run boundary: record whether
+  `WorkshopHandler` remains the honest name or perform a behavior-preserving
+  rename to `WorkshopRoomHandler`, including ADR destination-tree and
+  log-prefix reconciliation.
+- Keep the [Workshop god-files debt](../../.todo/tech-debt/2026-07-25-workshop-god-files.md)
+  open until the final responsibility map and representative traces evidence
+  its closure criteria; if they do not, the debt and feature freeze remain
+  open.
 - Confirm the destination tree or record any intentional deviations with reasons.
 - Run focused and full tests, all TypeScript projects, lint, build/bundle verification, architecture witnesses, and `git diff --check`.
 - Perform a fresh maintainability review using filename-first responsibility inventories and representative UI-to-persistence traces.
 - Explicitly mark the feature freeze lifted only when the implemented architecture is understandable without reconstructing hidden ownership from large files.
 
-**Exit:** The refactor is complete and Workshop feature development may resume. No arbitrary LOC ceiling is required; the acceptance criterion is coherent responsibility ownership, copyability, traceability, and protected boundaries.
+**Exit:** The handler name and god-files debt have evidence-backed dispositions,
+the refactor is complete, and Workshop feature development may resume. No
+arbitrary LOC ceiling is required; the acceptance criterion is coherent
+responsibility ownership, copyability, traceability, and protected boundaries.
 
 ### Phase 8 — Lock and implement Lexical Gravity v2
 

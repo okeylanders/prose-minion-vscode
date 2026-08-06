@@ -331,7 +331,7 @@ The internal assembly contract changes from `CoreServices.workshopContextResourc
 | What do all remaining members share? | They participate in the run lifecycle: they start, preempt, cancel, settle, or gate an in-flight model call, or they compose the slices that do. |
 | What must it *not* know? | Attachment word budgets, catalog paths, truncation policy, todo action grammar, scope-transition logging, excerpt fingerprints. |
 | What would the next feature edit? | Its own slice file, plus one line in `registerRoutes` and one entry in the route-owner witness. |
-| Does the name still tell the truth? | **Not fully.** `WorkshopHandler` after extraction is a room/run orchestrator; `WorkshopRoomHandler` would be truer. Renaming it collides with the ADR §D tree, which names it `WorkshopHandler`. **Leave the name, record the tension** — Sprint 06 owns the contract/name normalization pass. |
+| Does the name still tell the truth? | **Not fully.** `WorkshopHandler` after extraction is a room/run orchestrator; `WorkshopRoomHandler` would be truer. Renaming it collides with the ADR §D tree, which names it `WorkshopHandler`. **Leave the name, record the tension** — Sprint 06 accepted D3 and carried the evidence-backed verdict into Phase 7 architecture closure. |
 | Does `WorkshopContextHandler` risk the same drift? | D1=C removes disk/catalog mechanics before the route move, targeting ~450 lines. The handler may know Workshop context/message-attachment workflow and wizard lifecycle; it must not reabsorb byte/word parsing or catalog policy. |
 
 The generic-name test also applies to `WorkshopContextIntakeService`: every operation must turn an untrusted external text source into a bounded, provenance-bearing result or refusal descriptor. A future intake variant may add one data-returning method or result variant, but not a route registration or session mutation. If it needs `MessageType`, `MessageTransport`, `WorkshopSessionService`, or `LogSink`, the service name is being used to launder handler behavior across the boundary.
@@ -381,7 +381,7 @@ unchanged.
 | Principle / quality | Status | Evidence of support | Tension or violation | Consequence | Planned witness | Confidence |
 |---|---|---|---|---|---|---|
 | Single responsibility | `ACCEPTABLE` | Room/run, context workflow, excerpt/scope workflow, todo behavior, and intake mechanics each have a named owner | `WorkshopContextIntakeService` serves two handler clusters, so its negative space must be enforced | Shared mechanics do not become shared UI orchestration | Route-free dependency witness + focused service tests (Q8) | MODERATE |
-| Naming truthfulness | `TENSION` | Every new sibling is named for its cluster | `WorkshopHandler` no longer describes what it holds | Reader expects a facade, finds an orchestrator | Sprint 06 normalization | HIGH |
+| Naming truthfulness | `TENSION` | Every new sibling is named for its cluster | `WorkshopHandler` no longer describes what it holds | Reader expects a facade, finds an orchestrator | Phase 7 closure verdict (carried by Sprint 06 D3) | HIGH |
 | Dependency direction | `STRONG` | Siblings stay built inside `WorkshopHandler`; the application intake service stays root-owned and injected | `CoreServices`/root wiring changes during the rename | Assembly churn, but no second composition root or inward host dependency | `boundaries.test.ts:260-266` + `MessageHandler` assembly tests | HIGH |
 | Aggregate encapsulation | `STRONG` | No sibling touches an internal ledger | — | — | `boundaries.test.ts:413-420` (directory-scoped, inherits new files) | HIGH |
 | Open/closed | `ACCEPTABLE` | New cluster = new file + 1 registration line | Witness map is hand-maintained; a 48-entry literal invites drift | A forgotten entry silently un-guards a route | Extend #1; prefer an inventory assertion over a literal | MODERATE |
@@ -518,7 +518,7 @@ line counts and verification are recorded in §1.2 and §3.6.
 | Changed public contracts identify consumers, compatibility, tests | ✅ the only contract change is internal (`WorkshopHandlerContracts`); no wire contract moves |
 | Persisted state changes define ownership/migration/rollback | ✅ **none exist** |
 | Each runtime flow has an owner and a verification path | ✅ §1.5, Q1–Q7 |
-| Generic owners pass negative-space and reproduction tests | ⚠️ passes, **with** the recorded naming tension on `WorkshopHandler` (§2.4) deferred to Sprint 06 |
+| Generic owners pass negative-space and reproduction tests | ⚠️ passes, **with** the recorded naming tension on `WorkshopHandler` (§2.4) carried through Sprint 06 D3 to Phase 7 |
 | Target tree, responsibilities, contracts, slices mutually consistent | ✅ §1.2 / §1.3 / §2.3 / §2.10 reconciled |
 | Human decisions explicit and assigned | ✅ **D1=C, D2=C refined, D3=A, D4=A accepted by Okey on 2026-08-04** |
 | Coordination and file ownership recorded | ✅ §2.11 |
