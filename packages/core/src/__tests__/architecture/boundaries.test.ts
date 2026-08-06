@@ -54,6 +54,13 @@ const HANDLERS_ROOT = path.join(
   'handlers'
 );
 const WORKSHOP_HANDLER_ROOT = path.join(HANDLERS_ROOT, 'domain', 'workshop');
+const WORKSHOP_SESSION_COLLABORATOR_ROOT = path.join(
+  SRC_ROOT,
+  'application',
+  'services',
+  'workshop',
+  'session'
+);
 
 const WORKSHOP_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopHandler.ts';
@@ -603,13 +610,75 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('Workshop handlers cannot bypass the session aggregate through internal ledgers', () => {
-    const INTERNAL_SESSION_LEDGER = /(?:WorkshopWidgetConfigLedger|WorkshopStandingDirectiveLedger)/;
+  it('Workshop handlers cannot bypass the session aggregate through internal collaborators', () => {
+    const existingLedgerFiles = [
+      path.join(
+        SRC_ROOT,
+        'application',
+        'services',
+        'workshop',
+        'widgets',
+        'WorkshopWidgetConfigLedger.ts'
+      ),
+      path.join(
+        SRC_ROOT,
+        'application',
+        'services',
+        'workshop',
+        'directives',
+        'WorkshopStandingDirectiveLedger.ts'
+      )
+    ];
+    const collaboratorNames = [
+      ...existingLedgerFiles,
+      ...collectSourceFiles(WORKSHOP_SESSION_COLLABORATOR_ROOT)
+    ].flatMap((file) => {
+      const className = path.basename(file, '.ts');
+      return new RegExp(`export class ${className}\\b`).test(fs.readFileSync(file, 'utf8'))
+        ? [className]
+        : [];
+    });
+    const internalSessionCollaborator = new RegExp(
+      `(?:${collaboratorNames.join('|')})`
+    );
     const offenders = collectSourceFiles(WORKSHOP_HANDLER_ROOT)
-      .filter((file) => INTERNAL_SESSION_LEDGER.test(fs.readFileSync(file, 'utf8')))
+      .filter((file) => internalSessionCollaborator.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC_ROOT, file));
 
+    expect(collaboratorNames).toEqual(expect.arrayContaining([
+      'WorkshopWidgetConfigLedger',
+      'WorkshopStandingDirectiveLedger',
+      'WorkshopTodoLedger',
+      'WorkshopTurnLedger',
+      'WorkshopPassageScope',
+      'WorkshopParticipantRoster'
+    ]));
     expect(offenders).toEqual([]);
+  });
+
+  it('Workshop aggregate hydration prepares every ledger before installing live fields', () => {
+    const sessionSource = fs.readFileSync(
+      path.join(
+        SRC_ROOT,
+        'application',
+        'services',
+        'workshop',
+        'WorkshopSessionService.ts'
+      ),
+      'utf8'
+    );
+    const hydrationStart = sessionSource.indexOf('  hydrateCommittedState(');
+    const hydrationEnd = sessionSource.indexOf('\n  getSnapshot()', hydrationStart);
+    const hydrationBody = sessionSource.slice(hydrationStart, hydrationEnd);
+    const prepareOffsets = [...hydrationBody.matchAll(/\.prepareState\(/g)]
+      .map((match) => match.index);
+    const firstLiveFieldInstall = hydrationBody.search(/\n\s*this\.[A-Za-z][A-Za-z0-9]*\s*=/);
+
+    expect(hydrationStart).toBeGreaterThanOrEqual(0);
+    expect(hydrationEnd).toBeGreaterThan(hydrationStart);
+    expect(prepareOffsets.length).toBeGreaterThan(0);
+    expect(firstLiveFieldInstall).toBeGreaterThanOrEqual(0);
+    expect(prepareOffsets.every((offset) => offset < firstLiveFieldInstall)).toBe(true);
   });
 
   it('keeps the accepted Workshop legacy ownership exceptions exact during migration', () => {

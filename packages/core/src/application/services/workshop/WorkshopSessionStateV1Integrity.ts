@@ -425,6 +425,12 @@ export function validateWorkshopSessionStateV1(
       throw new Error(`Invalid persisted Workshop tool manifest ${rawToolId}`);
     }
   }
+  const activeHostPins = state.writerSources.host.filter(
+    (source) => source.kind === 'pin' && source.stale !== true
+  );
+  if (activeHostPins.length > 1) {
+    throw new Error('Persisted Workshop state contains multiple live host pins');
+  }
 
   const target = state.participants.chatTarget;
   if (target.kind === 'tool' && !toolIds.has(target.toolId)) {

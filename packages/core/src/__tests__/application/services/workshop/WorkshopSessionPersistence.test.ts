@@ -253,6 +253,20 @@ describe('WorkshopSessionService committed persistence', () => {
         state.shelvedExcerpt = JSON.parse(JSON.stringify(state.excerpt));
       },
       message: 'both a pinned and a shelved excerpt'
+    },
+    {
+      label: 'the host manifest contains multiple live pins',
+      mutate: (value: unknown) => {
+        const state = value as WorkshopSessionStateV1;
+        const livePin = state.writerSources.host.find(
+          (source) => source.kind === 'pin' && source.stale !== true
+        );
+        if (!livePin) {
+          throw new Error('Fixture no longer contains a live host pin.');
+        }
+        state.writerSources.host.push({ ...livePin });
+      },
+      message: 'multiple live host pins'
     }
   ])('rejects raw state when $label', ({ mutate, message }) => {
     const value: unknown = buildCompleteState();

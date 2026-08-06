@@ -50,7 +50,7 @@ export {
 } from '@/application/services/workshop/WorkshopSessionService';
 export type {
   WorkshopSessionHydrationResult
-} from '@/application/services/workshop/WorkshopSessionService';
+} from '@/application/services/workshop/WorkshopSessionRecords';
 export {
   parseWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';

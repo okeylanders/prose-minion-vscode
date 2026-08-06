@@ -639,9 +639,10 @@ describe('WorkshopGesturePlaygroundHandler — atomic commit', () => {
 
   it('refuses tool-sidecar targets with a usable message', async () => {
     const { handler, session, sendRoomMessage, posted } = build();
-    // Force the chat target to a tool.
-    (session as unknown as { participants: { chatTarget: unknown } })
-      .participants.chatTarget = { kind: 'tool', toolId: 'prose' };
+    session.setExcerpt({ text: 'A pinned passage.', source: { kind: 'manual' } });
+    session.beginToolRun('prose', 'req-sidecar');
+    session.completeToolReport('req-sidecar', 'Report.', 'conversation-tool');
+    expect(session.setChatTarget({ kind: 'tool', toolId: 'prose' })).toBe(true);
     await handler.handleCommit(commitMessage());
     expect(sendRoomMessage).not.toHaveBeenCalled();
     expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload.message)

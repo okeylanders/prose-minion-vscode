@@ -213,9 +213,9 @@ describe('WorkshopSessionService — widget configs', () => {
       .toBe('ta-1');
   });
 
-  it('does not partially hydrate when widget-state preparation fails', () => {
+  it('does not partially hydrate the committed aggregate when ledger preparation fails', () => {
     session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
-    const before = session.getSnapshot();
+    const before = session.exportCommittedState();
 
     const incoming = new WorkshopSessionService(() => 10_000);
     incoming.setSessionScope('open');
@@ -238,7 +238,7 @@ describe('WorkshopSessionService — widget configs', () => {
       {},
       DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
     )).toThrow('clone failed');
-    expect(session.getSnapshot()).toEqual(before);
+    expect(session.exportCommittedState()).toEqual(before);
   });
 
   it('round-trips the complete persona recommendation seed through V1 state', () => {
