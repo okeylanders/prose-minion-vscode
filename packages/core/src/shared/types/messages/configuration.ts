@@ -10,7 +10,7 @@ import { TokenUsage } from './tokenUsage';
 // Model Configuration Types
 // ============================================================================
 
-export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category';
+export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget';
 
 export interface ModelOption {
   id: string;

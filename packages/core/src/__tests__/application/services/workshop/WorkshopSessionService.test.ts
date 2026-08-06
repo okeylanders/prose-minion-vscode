@@ -6,6 +6,9 @@ import {
 import {
   WorkshopRoomDeliveryService
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
+import type {
+  WorkshopParticipantRosterState
+} from '@/application/services/workshop/session/WorkshopParticipantRoster';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', () => {
@@ -113,7 +116,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       interactionMode: 'balanced',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     });
     pin();
 
@@ -133,7 +137,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       interactionMode: 'conversational' as const,
       expressionLevel: 'subtle' as const,
       relationalDepth: 'reserved' as const,
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     };
     service.setConversationBehavior(selected);
     selected.interactionMode = 'analysis' as never;
@@ -179,7 +184,8 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       interactionMode: 'analysis',
       expressionLevel: 'subtle',
       relationalDepth: 'reserved',
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     });
 
     expect(remembered.getConversationBehavior()).toMatchObject({
@@ -341,6 +347,50 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.getSnapshot().todos).toHaveLength(1);
     service.reset();
     expect(service.getSnapshot().todos).toEqual([]);
+  });
+
+  it('preserves monotonic turn and todo identities across an aggregate reset', () => {
+    pin();
+    service.beginToolRun('prose', 'first-report');
+    const firstReport = service.completeToolReport(
+      'first-report',
+      'First report.',
+      'first-tool-conversation',
+      undefined,
+      false,
+      [{ key: 'finding-1', ordinal: 1, text: 'First task.' }]
+    )!.turn;
+    const firstTodo = service.addTodoFromFinding(firstReport.id, 'finding-1');
+    const beforeReset = service.exportCommittedState().counters;
+
+    service.reset();
+
+    expect(service.exportCommittedState()).toMatchObject({
+      counters: {
+        turn: beforeReset.turn,
+        todo: beforeReset.todo
+      },
+      turns: [],
+      todos: []
+    });
+
+    service.beginToolRun('prose', 'second-report');
+    const secondReport = service.completeToolReport(
+      'second-report',
+      'Second report.',
+      'second-tool-conversation',
+      undefined,
+      false,
+      [{ key: 'finding-2', ordinal: 1, text: 'Second task.' }]
+    )!.turn;
+    const secondTodo = service.addTodoFromFinding(secondReport.id, 'finding-2');
+
+    expect(secondReport.id).toMatch(
+      new RegExp(`^turn-${beforeReset.turn + 2}-assistant-`)
+    );
+    expect(secondTodo.id).toMatch(new RegExp(`^todo-${beforeReset.todo + 1}-`));
+    expect(secondReport.id).not.toBe(firstReport.id);
+    expect(secondTodo.id).not.toBe(firstTodo.id);
   });
 
   it('reorders and defensively clones task snapshots', () => {
@@ -551,11 +601,19 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(service.collectPendingHostUpdates()).toBeUndefined();
     service.beginPersonaMessage('host-1', 'Begin.');
     service.completeRun('host-1', 'Ready.', undefined, false, 'host-conv');
+    const pinsBeforeContextDelivery = service
+      .collectWriterSources({ kind: 'host' })
+      .filter((source) => source.kind === 'pin');
+    expect(pinsBeforeContextDelivery).toHaveLength(1);
 
     expect(textAttachment('First change\u2026').ok).toBe(true);
     const firstDelivery = service.collectPendingHostUpdates()!;
     expect(textAttachment('Second change\u2026').ok).toBe(true);
     service.commitPendingHostUpdates(firstDelivery);
+    expect(
+      service.collectWriterSources({ kind: 'host' })
+        .filter((source) => source.kind === 'pin')
+    ).toEqual(pinsBeforeContextDelivery);
     // The newer generation stays pending and ships the FULL current list.
     expect(service.collectPendingHostUpdates()?.contextAttachments?.attachments).toHaveLength(3);
 
@@ -982,6 +1040,45 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
         activeTarget: false
       }
     ]);
+  });
+
+  it('cleans aggregate guest state when dismissal has no conversation id payload', () => {
+    pin();
+    service.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Guest context\u2026',
+      words: 2,
+      content: 'Guest context.'
+    });
+    service.adoptPersonaGuest(
+      'margot',
+      'margot-conversation',
+      service.collectWriterSources({ kind: 'host' })
+    );
+    service.beginPersonaGuestMessage('margot', 'guest-run', 'Stay with this.');
+
+    const roster = (
+      service as unknown as {
+        participantRoster: {
+          exportState: () => WorkshopParticipantRosterState;
+          prepareState: (
+            state: WorkshopParticipantRosterState
+          ) => WorkshopParticipantRosterState;
+          installPreparedState: (state: WorkshopParticipantRosterState) => void;
+        };
+      }
+    ).participantRoster;
+    const latentState = roster.exportState();
+    latentState.personaGuests.get('margot')!.conversationId = undefined;
+    roster.installPreparedState(roster.prepareState(latentState));
+
+    expect(service.dismissPersonaGuest('margot')).toBeUndefined();
+    expect(service.collectWriterSources({
+      kind: 'personaGuest',
+      personaId: 'margot'
+    })).toEqual([]);
+    expect(() => service.exportCommittedState()).not.toThrow();
   });
 
   it('tracks one inbound room offset per participant and stamps guest turns', () => {

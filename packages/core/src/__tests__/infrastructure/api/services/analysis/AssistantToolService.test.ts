@@ -4,6 +4,9 @@ import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import { API_KEY_NOT_CONFIGURED_HEADING, DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
+import {
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 
 const workshopCapability = { catalog: 'workshopPersona' } as never;
 
@@ -38,6 +41,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       manager as AIResourceManager,
       { getPromptLoader: () => ({ loadSharedPrompts: jest.fn().mockResolvedValue('shared prompts'), loadPrompts }) } as unknown as ResourceLoaderService,
       { getOptions: jest.fn().mockReturnValue({ includeCraftGuides: true, temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
+      WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
       { appendLine: jest.fn() } as never
     );
 
@@ -105,7 +109,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'balanced',
         expressionLevel: 'amplified',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE,
       activationFrame: '<workshop-behavior-activation mode="balanced" expression="amplified">mode and signature floor</workshop-behavior-activation>',
@@ -136,9 +141,25 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       toolName: 'workshop_persona_quinn',
       policy: expect.objectContaining({ id: 'workshop-host', capabilityCatalog: 'workshopPersona', retention: 'retain' }),
       capability: workshopCapability,
-      userMessage: expect.stringContaining('<pinned-excerpt>')
+      userMessage: expect.stringContaining('<pinned-excerpt>'),
+      options: expect.objectContaining({
+        retainedAssistantContentSanitizer: expect.any(Function)
+      })
     }));
+    const retainedSanitizer = engine.runInitial.mock.calls[0][0]
+      .options?.retainedAssistantContentSanitizer!;
+    expect(retainedSanitizer(
+      'Useful prose.\n\n### Try a widget\n<workshop-widget-recommendation version="1">'
+    )).toBe('Useful prose.');
+    const systemMessage = engine.runInitial.mock.calls[0][0].systemMessage;
+    expect(systemMessage).toContain('<workshop-widget-recommendation-contract>');
+    expect(systemMessage).toContain('Do not be thrifty');
+    expect(systemMessage).toContain('<surrounding-context>');
+    expect(systemMessage).toContain('<source-references>');
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
+    expect(userMessage).toContain(
+      '<pinned-excerpt>\nWidget reference: active-excerpt'
+    );
     expect(userMessage).toContain('<context-attachments count="1">');
     expect(userMessage.indexOf('</context-attachments>'))
       .toBeLessThan(userMessage.indexOf('<workshop-behavior-activation'));
@@ -159,7 +180,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'conversational',
         expressionLevel: 'subtle',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     });
@@ -176,7 +198,11 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     ]);
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'workshop_guest_margot',
-      systemMessage: 'guest system prompt',
+      // The widget-recommendation contract rides every persona system message
+      // (ADR 2026-07-22 decision 13).
+      systemMessage: expect.stringMatching(
+        /guest system prompt[\s\S]*Do not be thrifty[\s\S]*<character-notes>/
+      ),
       userMessage: expect.stringContaining('<workshop-transcript>'),
       policy: expect.objectContaining({ id: 'workshop-tool-no-resources', capabilityCatalog: 'none', retention: 'retain' }),
     }));
@@ -196,7 +222,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'conversational',
         expressionLevel: 'subtle',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     }, { capability });
@@ -232,7 +259,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'analysis',
         expressionLevel: 'full',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     }, { capability: workshopCapability });
@@ -283,7 +311,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       interactionMode: 'analysis' as const,
       expressionLevel: 'amplified' as const,
       relationalDepth: 'attuned' as const,
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     };
     await service.replaceWorkshopConversationSettings([
       { conversationId: 'host-conv', personaId: 'penny', role: 'host' },
@@ -321,7 +350,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       interactionMode: 'conversational',
       expressionLevel: 'full',
       relationalDepth: 'attuned',
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     }, DEFAULT_WORKSHOP_WRITER_PROFILE)).rejects.toThrow('guest prompt missing');
 
     expect(engine.replaceSystemMessagesBetweenRuns).not.toHaveBeenCalled();
@@ -380,7 +410,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       interactionMode: 'balanced' as const,
       expressionLevel: 'amplified' as const,
       relationalDepth: 'attuned' as const,
-      carryCuesThroughSession: true
+      carryCuesThroughSession: true,
+      proactiveAssistance: true
     };
 
     const outcomes = await service.importWorkshopConversationArchive([
@@ -413,7 +444,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     const imports = engine.importConversationsBetweenRuns.mock.calls[0][0];
     expect(imports[0].systemMessage).toContain('workshop-personas/base.md');
     expect(imports[0].systemMessage).toContain('<standing-directive id="sd-1">');
+    expect(imports[0].systemMessage).toContain('<workshop-widget-recommendation-contract>');
     expect(imports[1].systemMessage).toContain('workshop-personas/guest-base.md');
+    expect(imports[1].systemMessage).toContain('<workshop-widget-recommendation-contract>');
     expect(imports[2].systemMessage).toContain('writing-tools-assistant/focus/continuity.md');
     expect(imports[2].systemMessage).toContain('shared prompts');
   });
@@ -448,7 +481,8 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         interactionMode: 'balanced',
         expressionLevel: 'full',
         relationalDepth: 'attuned',
-        carryCuesThroughSession: true
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
     });

@@ -7,6 +7,7 @@ import {
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
   DEFAULT_WORKSHOP_WRITER_PROFILE,
@@ -96,7 +97,7 @@ function createTestAssembly(): TestAssembly {
   const disposeCategoryStatusListener = jest.fn();
   const disposeDictionaryStatusListener = jest.fn();
   const assistantToolService = {
-    // Registered twice per handler: AnalysisHandler + WorkshopHandler.
+    // Registered twice per handler: AnalysisHandler + WorkshopRoomHandler.
     addStatusListener: jest.fn(() => jest.fn()),
     getConversationContextBudget: jest.fn(),
     getConversationContextSources: jest.fn().mockReturnValue([]),
@@ -163,6 +164,16 @@ function createTestAssembly(): TestAssembly {
       create: jest.fn(() => ({ catalog: 'workshopPersona' }))
     } as unknown as WorkshopPersonaCapabilityFactory,
     workshopToolSidePass: { run: jest.fn() } as unknown as RunWorkshopToolSidePass,
+    workshopContextIntakeService: new WorkshopContextIntakeService(
+      {
+        createProvider: jest.fn().mockResolvedValue({
+          listResources: () => [],
+          loadResources: async () => []
+        })
+      } as never,
+      platform.fileSystem,
+      platform.workspace
+    ),
     workshopConversationSettingsService: {
       applyFromWebview: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
       syncFromSettings: jest.fn().mockResolvedValue({ changed: false, deferred: false }),
@@ -434,13 +445,19 @@ describe('MessageHandler assembly', () => {
     );
   });
 
-  it('hot-swaps model settings without rebuilding services or retained conversations', async () => {
+  it.each([
+    'proseMinion.assistantModel',
+    'proseMinion.dictionaryModel',
+    'proseMinion.contextModel',
+    'proseMinion.categoryModel',
+    'proseMinion.widgetModel'
+  ])('hot-swaps %s without rebuilding services or retained conversations', async (modelKey) => {
     const assembly = createTestAssembly();
     const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
-    let contextModelChecks = 0;
+    let modelKeyChecks = 0;
 
     handler.handleConfigurationChange(section =>
-      section === 'proseMinion.contextModel' && ++contextModelChecks === 1
+      section === modelKey && ++modelKeyChecks === 1
     );
     await flushQueuedWork();
 

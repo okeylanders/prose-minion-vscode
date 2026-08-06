@@ -1,10 +1,11 @@
 # Sprint 03: Prose Controller
 
-**Status**: Planned
+**Status**: Paused — Workshop Architecture Refactor Phase 7 must lift the feature freeze
 **Priority**: Medium
 **Branch**: `sprint/conversation-widgets-03-prose-controller` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 8-12 days
-**Depends on**: Sprint 02 (standing prose-directive rail + coordinator) merged into `epic/conversation-widgets`
+**Depends on**: Sprint 02B-B merged into `epic/conversation-widgets` and Workshop Architecture Refactor Phase 7 complete; the standing rail itself arrived in Sprint 02B
+**Superseded predecessor**: Sprint 02C moved into the mandatory Workshop Architecture Refactor
 **ADR**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md)
 
 ## Goal
@@ -20,19 +21,30 @@ The interface should feel like an interactive **Art of the Craft textbook**, not
 a mixing desk whose mystery sliders happen to be labeled "lyrical." Every lever
 teaches what it changes, shows the passage's current tendency when measurable,
 demonstrates the likely gain and cost, and lets the writer preview an example
-before committing a compact directive. It reuses the Sprint 02 standing rail,
+before committing a compact directive. It reuses the Sprint 02B standing rail,
 coordinator, chip, and kill-switch wholesale.
 
 Lexical Gravity and Prose Controller coexist as **distinct active directives** on
 the same passage — a writer can run both — each with its own chip and kill
 switch, both consulted at prose-generation time.
 
-## Current Reality
+## Expected Foundation
 
-- Sprint 02 shipped the reserved standing frame, the between-runs coordinator
-  (in the `WorkshopConversationBehaviorService` mold), edit-in-place + shift
-  markers, the presentation-only chip, and the active-directive indicator + kill
-  switch. Prose Controller is a second *producer* onto that infrastructure.
+- Sprint 02B establishes the reserved standing frame, the between-runs
+  coordinator (in the `WorkshopConversationBehaviorService` mold),
+  edit-in-place + shift markers, the presentation-only chip, and the active-
+  directive indicator + kill switch. Prose Controller is a second *producer*
+  onto that infrastructure.
+- Sprint 02B-B proves that standing prose directives separate semantic intent
+  from surface realization and keeps their persisted codecs exact and
+  inspectable. Prose Controller begins only after that contract is settled so it
+  does not copy the earlier word-field-only assumption into its craft chapters.
+- Sprint 02B leaves the family-neutral apply/remove IPC routes registered by
+  `WorkshopLexicalGravityHandler`, because `MessageRouter` permits one owner per
+  message type. Sprint 03 begins by moving those two routes into a shared
+  standing-directive handler/dispatcher, then adds Prose Controller as a family
+  member. This is a scheduled ownership move, not a second route registration
+  or a fork of the Lexical handler.
 - The measure tools already compute deterministic prose metrics (POS via wink,
   sentence stats, punctuation counts, style flags). These are the natural
   deterministic scaffold for Prose Controller's live preview — reuse them; do not
@@ -93,12 +105,13 @@ switch, both consulted at prose-generation time.
   optional live preview**, not deterministic post-processing of prose. The widget
   does not rewrite the persona's output; it shapes what the persona is asked to
   produce.
-- **Deterministic scaffold reuse.** Live preview uses the existing measure-tool
+- **Deterministic scaffold reuse.** The widget uses the existing measure-tool
   metrics (POS counts, sentence-length distribution, punctuation histogram) to
   show the writer where the passage currently sits vs. the requested bias; only
-  the example rewrites hit the model, behind an explicit recompute action or
-  debounce like Sprint 02. Qualitative craft levers that cannot be measured
-  honestly show explanation and examples rather than a fabricated score.
+  the example rewrites hit the model, behind an explicit Preview action. Control
+  changes invalidate the cached preview without calling the model, matching
+  Sprint 02B. Qualitative craft levers that cannot be measured honestly show
+  explanation and examples rather than a fabricated score.
 - **The rich surface compiles to a small directive.** Neutral controls disappear;
   related non-neutral choices are collapsed into concise instruction-shaped
   guidance; contradictions fail validation or are surfaced for the writer to
@@ -111,10 +124,10 @@ switch, both consulted at prose-generation time.
   standing scene/summary/evidence bias. The separate
   [Show vs. Tell Playground](../concepts/show-v-tell-playground.md) is a local,
   one-shot experiment for a selected beat. They share vocabulary, not state.
-- **Reuse Sprint 02 rail wholesale.** New reserved frame variant (or a shared
-  prose-directive frame carrying a `kind`) — decided in the ADR — but the
-  coordinator, between-runs discipline, chip, shift marker, indicator, and kill
-  switch are reused, not forked.
+- **Reuse Sprint 02B rail wholesale.** The controller uses the shared
+  `<prose-directive family="prose-controller" id="pd-N">` envelope with a
+  host-minted closed family; the coordinator, between-runs discipline, chip,
+  shift marker, indicator, and kill switch are reused, not forked.
 - **Core-only logic**; only the composer/indicator mount touches the adapter.
 
 ## Scope / Deliverables
@@ -123,12 +136,14 @@ switch, both consulted at prose-generation time.
    disclosure, definitions/cautions/examples, semantic scales, chapter/all
    reset, and transparent starter presets.
 2. **Current → target → preview comparison**: deterministic passage readouts
-   where supported plus explicitly generated example rewrites behind a
-   recompute/debounce boundary.
-3. **Validated directive compiler + frame**: omit neutral values, collapse
+   where supported plus generated example rewrites behind an explicit Preview
+   action and config-keyed cache.
+3. **Shared standing-route ownership + validated directive compiler/frame**:
+   move family-neutral apply/remove IPC registration out of the Lexical-specific
+   handler, then omit neutral values, collapse
    related choices, detect contradictions, and emit compact guidance on the
    standing rail through the shared coordinator.
-4. **Commit / edit-in-place / kill** via the Sprint 02 infrastructure; persisted
+4. **Commit / edit-in-place / kill** via the Sprint 02B infrastructure; persisted
    config by stable id.
 5. **Coexistence with Lexical Gravity**: both directives active, both chips
    present, precedence per ADR.
@@ -141,7 +156,7 @@ switch, both consulted at prose-generation time.
 ## Out of Scope
 
 - Any change to the standing-rail coordinator's core semantics (that stabilized
-  in Sprint 02; changes here are a smell — capture as debt).
+  in Sprint 02B; changes here are a smell — capture as debt).
 - Deterministic prose rewriting / enforcement (knobs are biases, not filters).
 - An exhaustive craft curriculum or completed exercise tracking (the Learner
   concepts own structured teaching beyond each lever's embedded explanation).

@@ -1,0 +1,71 @@
+/* ============================================================
+   Prose Minion — Workshop editor-tab surface (ADR 2026-07-03)
+
+   Frame Minion design language, ported from docs/design/pm-mock.css
+   (warm-brown tokens, coral accent) with layout adapted from the approved
+   Direction B prototype (pm-fulltab.css / pm-direction-b.css).
+
+   EVERYTHING here is scoped under [data-pm-surface="workshop"] — the #root
+   stamp the host writes for the Workshop panel — so the sidebar surface
+   (.app-container, styled in index.css) is untouched in both directions.
+   The two roots never nest, so the --pm-* token names can safely mirror the
+   sidebar's vocabulary while carrying the FM mock's fixed values: the
+   Workshop is pinned warm-dark in v1 (no follow-VS-Code mode).
+   ============================================================ */
+
+[data-pm-surface="workshop"] {
+  /* Warm dark browns (FM language — verbatim from pm-mock.css) */
+  --pm-bg:          #15110d;
+  --pm-bg-grad-top: #211910;
+  --pm-surface:     #221a13;
+  --pm-surface-2:   #2b2017;
+  --pm-surface-3:   #36281b;
+  --pm-inset:       #1b150f;
+  --pm-border:      #3a2c1f;
+  --pm-border-2:    #4d3a28;
+  --pm-border-soft: #2e231a;
+
+  --pm-text:        #f3ece1;
+  --pm-text-2:      #c9bbab;
+  --pm-muted:       #a4937f;
+  --pm-dim:         #7a6c5b;
+  --pm-faint:       #5c5044;
+
+  /* Accent — coral/orange (PM skull + FM brand) */
+  --pm-accent:      #e0673a;
+  --pm-accent-hi:   #ee7d49;
+  --pm-accent-lo:   #c8552c;
+  --pm-accent-soft: rgba(224, 103, 58, 0.14);
+  --pm-accent-line: linear-gradient(90deg, #e8763f 0%, #d2592f 48%, rgba(210, 89, 47, 0) 100%);
+
+  --pm-blue:   #5aa2f0;
+  --pm-green:  #6fc98a;
+  --pm-pink:   #e0589e;
+  --pm-amber:  #e2b24a;
+  --pm-red:    #ef7d66;
+
+  /* Stable participant identity palette. Roster slots are assigned in
+     WORKSHOP_PERSONA_CATALOG order; these tokens can later travel from the
+     context dot into participant-card accents without re-deriving identity. */
+  --pm-identity-0:  #ee7d49;
+  --pm-identity-1:  #5aa2f0;
+  --pm-identity-2:  #6fc98a;
+  --pm-identity-3:  #e0589e;
+  --pm-identity-4:  #e2b24a;
+  --pm-identity-5:  #a78bfa;
+  --pm-identity-6:  #4fc3c8;
+  --pm-identity-7:  #f08aa6;
+  --pm-identity-8:  #a8c95f;
+  --pm-identity-9:  #7db7e8;
+  --pm-identity-10: #d99a62;
+  --pm-identity-11: #c69cf4;
+
+  --pm-r-card: 12px;
+  --pm-r-tile: 9px;
+  --pm-r-input: 8px;
+  --pm-r-button: 8px;
+  --pm-r-pill: 999px;
+
+  --pm-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --pm-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+}

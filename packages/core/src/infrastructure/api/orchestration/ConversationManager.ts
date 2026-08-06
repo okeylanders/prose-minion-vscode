@@ -16,7 +16,7 @@ import { randomUUID } from 'node:crypto';
  * Thrown when a caller references a conversation id this manager no longer
  * holds — typically after a config change rebuilt the AI resources (each
  * rebuild gets a fresh manager) or an explicit delete. Multi-turn callers
- * (WorkshopHandler) catch this by name to surface an honest "conversation
+ * (WorkshopRoomHandler) catch this by name to surface an honest "conversation
  * expired" message instead of silently cold-restarting.
  */
 export class ConversationNotFoundError extends Error {

@@ -1,5 +1,8 @@
 import { ContextPathGroup, TokenUsage } from '@shared/types';
-import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
+import type {
+  OpenRouterReasoningOptions,
+  OpenRouterWebSearchTool
+} from '@providers/OpenRouterClient';
 import type { UrlCitation } from '@messages';
 
 /** The caller-selected capability surface available to one agent turn. */
@@ -125,6 +128,14 @@ export interface AgentRunOptions {
   readonly onToken?: StreamingTokenCallback;
   /** Provider server tools explicitly granted to this one inference request. */
   readonly tools?: OpenRouterWebSearchTool[];
+  /** Optional provider-normalized reasoning budget for a bounded operation. */
+  readonly reasoning?: OpenRouterReasoningOptions;
+  /**
+   * Deterministic final-response cleanup applied only to the assistant message
+   * committed into retained provider history. The returned `rawContent` and
+   * visible result remain untouched so the owning domain can parse controls.
+   */
+  readonly retainedAssistantContentSanitizer?: (content: string) => string;
 }
 
 export interface InitialRunRequest {
@@ -147,6 +158,12 @@ export interface ContinuationRunRequest {
 }
 
 export interface ExecutionResult {
+  /**
+   * Provider content before presentation cleanup or the human truncation
+   * footer. Structured-output consumers parse this; visible surfaces use
+   * `content`.
+   */
+  readonly rawContent?: string;
   readonly content: string;
   readonly usedGuides: string[];
   readonly requestedResources: string[];

@@ -468,6 +468,7 @@ export interface WorkshopConversationBehavior {
   expressionLevel: WorkshopPersonaExpressionLevel;
   relationalDepth: WorkshopRelationalDepth;
   carryCuesThroughSession: boolean;
+  proactiveAssistance: boolean;
 }
 ```
 
@@ -478,14 +479,16 @@ const DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR = {
   interactionMode: 'balanced',
   expressionLevel: 'full',
   relationalDepth: 'attuned',
-  carryCuesThroughSession: true
+  carryCuesThroughSession: true,
+  proactiveAssistance: true
 } as const;
 ```
 
 The complete writer-selected object is persisted in VS Code Settings under
 `proseMinion.workshop.conversationBehavior`. Activation validates the stored
 object as one closed value and seeds the host aggregate from it, so response
-style, expression level, relational depth, and the session-cue toggle
+style, expression level, relational depth, session-cue toggle, and
+proactive-assistance permission
 survive extension and editor restarts. A successful modal Apply first completes
 any required retained-prompt replacement and commits the room object, then
 writes that same complete object to settings.
@@ -516,8 +519,31 @@ system-message batch described in Section 2. A combined behavior change is one
 batch, never a sequence of partial replacements. It replaces the messages and
 commits the new behavior object without changing any conversation id. A failure
 leaves the prior object and all system messages active. A change limited to
-session attunement remains frame-controlled and does not replace system
-messages.
+session attunement or proactive assistance remains frame-controlled and does
+not replace system messages.
+
+### 2026-07-31 amendment: writer-controlled proactive assistance
+
+`proactiveAssistance` is a default-on writer permission for persona
+initiative. When enabled, the trusted last-mile activation frame tells the
+current persona to actively consider **at most one** materially useful assist:
+suggest one bounded deterministic tool when evidence would improve the answer, or
+prepare one live widget recommendation when editable exploration would help.
+It is not a quota, and it never authorizes the model to open UI, run a tool
+without the writer-visible workflow, install a directive, or commit an artifact.
+
+The writer may turn it off. When disabled, the pre-amendment discretionary behavior remains in force;
+explicit writer requests for tools and widgets still work. The field rides the
+closed `<workshop-interaction>` object and `<workshop-behavior-activation>`
+frame adjacent to the writer turn. Because it changes last-mile initiative
+rather than persona identity, interaction posture, expression, or relational
+permission, changing only this field does not replace retained persona system
+messages and does not enter behavior-transition metadata.
+
+Pre-release session checkpoints may contain behavior-stamped turns written
+before this field existed. The development-checkpoint normalizer admits that
+one missing field, stamps the approved default `true`, and writes only the
+current complete shape thereafter; wrong types and unknown fields still fail.
 
 The effective behavior is stamped onto persona-directed writer turns and their
 corresponding persona replies. This makes a restored transcript honest when the
@@ -1427,6 +1453,7 @@ export interface WorkshopConversationBehavior {
   expressionLevel: WorkshopPersonaExpressionLevel;
   relationalDepth: WorkshopRelationalDepth;
   carryCuesThroughSession: boolean;
+  proactiveAssistance: boolean;
 }
 ```
 

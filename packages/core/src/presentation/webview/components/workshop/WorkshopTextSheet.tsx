@@ -23,14 +23,9 @@ import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { WorkshopModalShell } from './WorkshopModalShell';
 import { countWords } from '@/utils/textUtils';
-
-/** What the sheet is being used for; drives kicker, copy, and affordances. */
-export type WorkshopTextSheetMode =
-  | { kind: 'excerpt'; retainedConversation: boolean }
-  | { kind: 'context-new' }
-  | { kind: 'context-text'; label: string }
-  | { kind: 'context-wizard'; label: string }
-  | { kind: 'context-file'; label: string; relativePath?: string };
+import type {
+  WorkshopTextSheetMode
+} from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
 
 export interface WorkshopTextSheetProps {
   open: boolean;

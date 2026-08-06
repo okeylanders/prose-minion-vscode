@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — The Widget System · Spread 00</title>
+<link rel="stylesheet" href="pm-mock.css">
+<link rel="stylesheet" href="pm-fulltab.css">
+<link rel="stylesheet" href="pm-widgets.css">
+<style>a{color:var(--accent-hi)}a:hover{color:var(--text)}</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="20" y="24" width="60" height="40" rx="8" fill="#221a13" stroke="#3a2c1f"/><rect x="27" y="32" width="34" height="7" rx="3" fill="#2b2017"/><rect x="27" y="44" width="46" height="7" rx="3" fill="#36281b"/><rect x="30" y="70" width="40" height="11" rx="5.5" fill="#e0673a"/></svg>
+</template>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="canvas-head">
+    <div class="canvas-kicker">Prose Minion · Conversation Widgets — Spread 00 · The system · <a href="Prose Minion - Gesture Playground.html">Spread 01 · Gesture Playground</a> · <a href="Prose Minion - Lexical Gravity.html">02</a> · <a href="Prose Minion - Prose Controller.html">03</a> · <a href="Prose Minion - Show vs Tell.html">04</a> · <a href="Prose Minion - Learner Storytelling Craft.html">05</a> · <a href="Prose Minion - Learner English.html">06</a> · <a href="Prose Minion - Writers Dictionary.html">10 · Writer's Dictionary</a></div>
+    <h1>Widgets — a third kind of thing in the room</h1>
+    <p><b>Tools</b> run once and return an artifact. <b>Messages</b> just say things. A <b>widget</b> is played <b>before it commits</b>: it opens from a new <b>Widgets</b> button beside Tools, the writer plays inside a pre-commit surface, and the commit drops two things into the thread at once — a visible event and an optional shaping payload on the rail its <b>lifetime</b> selects (one-shot → thread-artifact; durable → standing prose directive).</p>
+    <p class="note"><b>It's interactive:</b> §1 runs the whole spine using Sprint 01's widget as the stand-in — click <b>Widgets</b>, play, commit, then re-open the chip. Each widget's own decisions now live on its own spread; this page is the host, the browser, and the rails. <b>Gesture Playground → <a href="Prose Minion - Gesture Playground.html">Spread 01</a>.</b></p>
+  </div>
+
+  <div class="sec" data-screen-label="01 The flow, live">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The whole spine, live</h2><p>composer menu → play → commit → chip → clone-and-recommit</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Workshop thread + composer</span><span class="frame-tag accent">Interactive</span><span class="d">Sprint 01 lifecycle end-to-end</span></div>
+        <div class="cw-stage" id="cwStage"></div>
+      </div>
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">What this frame decides</span></div>
+        <ul class="annot">
+          <li><b>Widgets sits beside Tools</b> — the composer's third affordance: <b>+</b> attaches, <b>Tools</b> runs one-shot analyzers, <b>Widgets</b> opens play-before-commit surfaces. Coral tint marks it as a PM-native, stateful door.</li>
+          <li><b>Nothing lands until commit.</b> The modal edits a local Draft; Cancel/Esc discards it. Only a commit adds the selected artifact to the room.</li>
+          <li><b>Persona protocol, minimum viable</b> — Jill's message carries a <b>recommend</b> chip with an optional <b>prefill</b> seed. Launch falls out of recommend; auto-commit is out of scope in Sprint 01.</li>
+          <li><b>The commit is a normal turn</b> — a visible message plus a one-shot thread-artifact that rides exactly one turn, then becomes ordinary history.</li>
+          <li><b>Clone-and-recommit.</b> The chip on a committed turn re-opens the exact prior Draft; committing again creates a <i>new</i> turn at the head. The old chip stays as a historical marker — history is never rewritten.</li>
+          <li><b>The widget in this demo is a stand-in</b> for the pattern. Gesture Playground's own input shape, menu grouping, and committed frame are on <a href="Prose Minion - Gesture Playground.html">Spread 01</a>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="02 Widget browser">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The widget browser</h2><p>same browse-and-pick language as the Tools &amp; Model pickers</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Widget browser</span><span class="frame-tag accent">New</span><span class="d">opens from the Widgets button</span></div>
+        <div class="cw-framebox browser" id="cwBrowserFrame"></div>
+      </div>
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">Anatomy &amp; decisions</span></div>
+        <ul class="annot">
+          <li><b>Rail badge per widget</b> — lifetime is the load-bearing choice, so it's on every row: <b>one-shot</b> (coral) rides one turn as a thread-artifact; <b>standing</b> (amber) installs a passage-scoped prose directive; <b>resource</b> (blue) keeps durable truth outside the thread.</li>
+          <li><b>Honest registry state</b> — only Sprint 01 is clickable. Committed sprints and concept springs are visible but disabled, so the menu is a roadmap, not a lie.</li>
+          <li><b>Full blurbs, never truncated</b> — same conviction as the Model Browser: this surface beats a flat menu because it can explain.</li>
+          <li><b>The Dictionary is in the registry now</b> — as a <b>report widget</b>, not the participant-with-a-popup it looked like from here. Its run <i>is</i> its commit, and the whole report rides one turn: <a href="Prose Minion - Writers Dictionary.html">Spread 10</a>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="03 The rails and the spreads">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Two rails, and one spread per widget</h2><p>where a commit can land, and where each widget's decisions are drawn</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">The rails</span><span class="d">lifetime is the load-bearing choice</span></div>
+        <div class="cw-railcard">
+          <div class="cap">a widget picks exactly one at commit</div>
+          <div class="cw-code"><span class="tag">one-shot → &lt;thread-artifact&gt;</span>
+rides exactly one turn, then becomes ordinary history.
+re-launch semantics: <span class="k">clone-and-recommit</span>.
+
+<span class="tag">standing → &lt;prose-directive&gt;</span>
+re-shipped each run while active, consulted only when prose
+is written; one per family, killable in one click.
+re-launch semantics: <span class="k">edit-in-place + shift marker</span>.
+
+<span class="tag">resource → project file</span>
+durable truth outside the thread; the commit leaves a
+visible event, the knowledge lives in the project.</div>
+          <p class="under">Everything else — the composer button, the browser, the Draft persistence, the neutralizer registration — is shared host machinery. A new widget should only have to bring its pre-commit surface and the frame it commits.</p>
+        </div>
+      </div>
+      <div class="frame">
+        <div class="frame-label"><span class="t">The widget spreads</span><span class="d">one page per widget, same template</span></div>
+        <div class="cw-railcard">
+          <div class="cap">drawn so far</div>
+          <div class="cw-idx">
+            <a class="cw-idxr" href="Prose Minion - Gesture Playground.html"><span class="ic" id="ixA"></span><span class="bt"><span class="nm">Gesture Playground <span class="cw-rail oneshot">one-shot</span> <span class="sp">Spread 01 · Sprint 01</span></span><span class="bl">The rail proved on the cheap side: one call, a bounded menu of gesture directions, multi-select, one committed turn.</span></span></a>
+            <a class="cw-idxr st" href="Prose Minion - Lexical Gravity.html"><span class="ic" id="ixB"></span><span class="bt"><span class="nm">Lexical Gravity <span class="cw-rail standing">standing</span> <span class="sp">Spread 02 · Sprint 02</span></span><span class="bl">The durable rail: an active-directive strip, edit-in-place, shift markers, one-click kill — and a lens library that persists as project resources.</span></span></a>
+            <a class="cw-idxr st" href="Prose Minion - Prose Controller.html"><span class="ic" id="ixC"></span><span class="bt"><span class="nm">Prose Controller <span class="cw-rail standing">standing</span> <span class="sp">Spread 03 · Sprint 03</span></span><span class="bl">Seven craft chapters with a live example under every lever, and proof that two families coexist on one rail with two kill switches.</span></span></a>
+            <a class="cw-idxr" href="Prose Minion - Show vs Tell.html"><span class="ic" id="ixD"></span><span class="bt"><span class="nm">Show vs. Tell Playground <span class="cw-rail oneshot">one-shot</span> <span class="sp">Spread 04 · concept spring</span></span><span class="bl">A continuum with a tradeoff readout instead of a morality slider, and a payload that carries prose or direction under a visible ceiling.</span></span></a>
+            <a class="cw-idxr" href="Prose Minion - Learner Storytelling Craft.html"><span class="ic" id="ixE"></span><span class="bt"><span class="nm">Learner — The Storytelling Craft <span class="cw-rail oneshot">one-shot · optional</span> <span class="sp">Spread 05 · concept spring</span></span><span class="bl">The shared Learner shell: read, inspect the passage, practise, bring back only what was useful — and the first widget where committing nothing is a good outcome.</span></span></a>
+            <a class="cw-idxr" href="Prose Minion - Learner English.html"><span class="ic" id="ixF"></span><span class="bt"><span class="nm">Learner — English <span class="cw-rail oneshot">one-shot · optional</span> <span class="sp">Spread 06 · concept spring</span></span><span class="bl">The same shell with a second pack — an authority ladder instead of a rulebook, a parse that shows both readings when it can’t decide, and a standing draft it is forbidden to install.</span></span></a>
+            <a class="cw-idxr" href="Prose Minion - Creative Variations Explorer.html"><span class="ic" id="ixG"></span><span class="bt"><span class="nm">Creative Variations Explorer <span class="cw-rail oneshot">one-shot</span> <span class="sp">Spread 07 · concept spring</span></span><span class="bl">The general variation surface: declared invariants, a verbalized sampling dial or a bound four-menu frame, a measured distinctness readout with a drawn collapse state, and side-by-side comparison.</span></span></a>
+            <a class="cw-idxr" href="Prose Minion - Writers Dictionary.html"><span class="ic" id="ixH"></span><span class="bt"><span class="nm">Writer's Dictionary <span class="cw-rail oneshot">one-shot · report</span> <span class="sp">Spread 10 · concept spring</span></span><span class="bl">The first report widget: two fields, one call, fifteen typed blocks, and no curation step — the run is the commit, the whole document rides one turn, and nothing stands.</span></span></a>
+          </div>
+          <p class="under">Each spread follows the same shape: the rail live in §1, the pre-commit surface, then what actually commits. Concept springs use the template too — that's how a spring gets argued with before it becomes a sprint.</p>
+        </div>
+      </div>
+      <div class="frame" style="max-width:340px">
+        <div class="frame-label"><span class="t">Why one page per widget</span></div>
+        <ul class="annot">
+          <li><b>The system page stops growing.</b> This spread argues the host, the browser, and the rails; it doesn't have to re-litigate every widget's inputs.</li>
+          <li><b>Widgets get compared like for like</b> — same three sections, same order, so the differences that matter (lifetime, surface, committed frame) sit in the same place on every page.</li>
+          <li><b>A concept spring is cheap to draw and cheap to kill.</b> One page, one template, no edits to the system spread.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-foot">
+    <p class="muted">Widget by widget from here: <a href="Prose Minion - Gesture Playground.html"><b>Spread 01</b></a> · <a href="Prose Minion - Lexical Gravity.html"><b>02</b></a> · <a href="Prose Minion - Prose Controller.html"><b>03</b></a> · <a href="Prose Minion - Show vs Tell.html"><b>04</b></a> · <a href="Prose Minion - Learner Storytelling Craft.html"><b>05</b></a> · <a href="Prose Minion - Learner English.html"><b>06</b></a> · <a href="Prose Minion - Creative Variations Explorer.html"><b>07</b></a> · <a href="Prose Minion - Writers Dictionary.html"><b>10</b></a>. Still undrawn: Lens Blending (Sprint 04), and the concept springs — Decisions and the Project Scratch Pad. Say the word if you want the browser to carry search or a "recently played" row.</p>
+  </div>
+
+</div>
+
+<script src="icons.js"></script>
+<script src="pm-widgets.js"></script>
+<script>
+const flow = mountWidgetFlow('cwStage');
+mountBrowserFrame('cwBrowserFrame', flow.openGesture);
+[['ixA','hand'],['ixB','orbit'],['ixC','sliders'],['ixD','eye'],['ixE','book'],['ixF','cap'],['ixG','branch'],['ixH','dict']].forEach(([id,ic])=>{ document.getElementById(id).innerHTML = cwIc(ic,{size:15,sw:1.7}); });
+</script>
+</body>
+</html>

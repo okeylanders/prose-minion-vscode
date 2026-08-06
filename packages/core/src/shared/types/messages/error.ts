@@ -73,6 +73,7 @@ export type ErrorSource =
   | 'workshop.select_persona'
   | 'workshop.set_chat_target'
   | 'workshop.todo'
+  | 'workshop.widget_recommendation'
 
   // Unknown/legacy (fallback)
   | 'unknown';

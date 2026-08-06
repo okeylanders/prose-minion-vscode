@@ -8,9 +8,9 @@
  * (index.tsx) cannot drift — the compiler links what used to be two
  * hand-synced string literals (PR #66 review, Marcus).
  *
- * workshop.css necessarily repeats the literal inside its attribute selectors
- * (CSS cannot import constants); changing a surface value here means updating
- * the stylesheet's `[data-pm-surface="…"]` scope with it.
+ * Workshop styles necessarily repeat the literal inside their attribute
+ * selectors (CSS cannot import constants); changing a surface value here means
+ * updating each stylesheet's `[data-pm-surface="…"]` scope with it.
  */
 
 export const PM_SURFACE_ATTR = 'data-pm-surface';

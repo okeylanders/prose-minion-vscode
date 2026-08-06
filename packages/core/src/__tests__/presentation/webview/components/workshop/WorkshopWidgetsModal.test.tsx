@@ -5,43 +5,69 @@
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopWidgetsModal } from '@components/workshop/WorkshopWidgetsModal';
-import { WORKSHOP_WIDGET_GROUPS } from '@components/workshop/workshopWidgets';
+import { WORKSHOP_WIDGET_GROUPS } from '@components/workshop/workshopWidgetIcons';
 
-describe('WorkshopWidgetsModal (coming-soon preview)', () => {
+describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
   afterEach(cleanup);
 
   const renderModal = () => {
-    const props = { open: true, onClose: jest.fn() };
+    const props = {
+      open: true,
+      onClose: jest.fn(),
+      onLaunchWidget: jest.fn(),
+      onAskAgentToConfigure: jest.fn()
+    };
     render(<WorkshopWidgetsModal {...props} />);
     return props;
   };
 
-  it('renders the full preview registry', () => {
+  it('renders the full registry from the shared catalog', () => {
     renderModal();
     for (const group of WORKSHOP_WIDGET_GROUPS) {
       expect(screen.getByText(group.name)).toBeTruthy();
     }
     const cardCount = WORKSHOP_WIDGET_GROUPS.reduce((n, group) => n + group.items.length, 0);
     expect(document.querySelectorAll('.pm-ws-sb-card')).toHaveLength(cardCount);
-    expect(screen.getByText(/A preview of what’s coming soon/)).toBeTruthy();
+    expect(screen.getAllByText('Coming soon').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Sprint 02B').length).toBeGreaterThan(0);
     expect(document.querySelector('.pm-ws-browser-modal')?.className)
       .toContain('pm-ws-modal-sheet');
   });
 
-  it('keeps the primary action "Coming soon" and disabled even with a selection', () => {
-    renderModal();
-    const launch = screen.getByRole('button', { name: 'Coming soon' }) as HTMLButtonElement;
-    expect(launch.disabled).toBe(true);
+  it('launches the live widget when selected', () => {
+    const { onLaunchWidget } = renderModal();
+    fireEvent.click(screen.getAllByRole('button', { name: /Gesture Playground/ })[0]);
+    const launch = screen.getByRole('button', { name: 'Open widget' }) as HTMLButtonElement;
+    expect(launch.disabled).toBe(false);
+    fireEvent.click(launch);
+    expect(onLaunchWidget).toHaveBeenCalledWith('gesture-playground');
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: /Gesture Playground/ }));
-    // Selection surfaces in the footer summary, but nothing becomes launchable.
-    expect(launch.disabled).toBe(true);
-    expect(launch.textContent).toBe('Coming soon');
+  it('launches Lexical Gravity from the standing section', () => {
+    const { onLaunchWidget } = renderModal();
+    fireEvent.click(screen.getAllByRole('button', { name: /Lexical Gravity/ })[0]);
+    const launch = screen.getByRole('button', { name: 'Open widget' }) as HTMLButtonElement;
+    expect(launch.disabled).toBe(false);
+    fireEvent.click(launch);
+    expect(onLaunchWidget).toHaveBeenCalledWith('lexical-gravity');
+  });
+
+  it('hands the selected live widget to the agent-configure boundary', () => {
+    const { onAskAgentToConfigure } = renderModal();
+    fireEvent.click(screen.getAllByRole('button', { name: /Lexical Gravity/ })[0]);
+    const ask = screen.getByRole('button', {
+      name: 'Ask agent to configure, then open'
+    }) as HTMLButtonElement;
+    expect(ask.disabled).toBe(false);
+    fireEvent.click(ask);
+    expect(onAskAgentToConfigure).toHaveBeenCalledWith('lexical-gravity');
   });
 
   it('closes via Cancel without launching anything', () => {
-    const { onClose } = renderModal();
+    const { onClose, onLaunchWidget, onAskAgentToConfigure } = renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onLaunchWidget).not.toHaveBeenCalled();
+    expect(onAskAgentToConfigure).not.toHaveBeenCalled();
   });
 });

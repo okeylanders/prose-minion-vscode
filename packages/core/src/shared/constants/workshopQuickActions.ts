@@ -4,7 +4,7 @@
  * copy, prompts are the follow-up text sent into the retained conversation.
  */
 
-import { WorkshopToolId } from '../types/messages/workshop';
+import type { WorkshopToolId } from '@messages';
 import { WORKSHOP_TOOL_CATALOG, workshopToolLabel } from './workshopTools';
 
 export interface WorkshopQuickAction {

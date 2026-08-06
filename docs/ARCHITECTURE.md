@@ -63,7 +63,8 @@ packages/core/src/
 │       ├── MessageHandler.ts           # Main dispatcher
 │       ├── MessageHandlerContracts.ts  # CoreServices + typed transport/cache/seams
 │       ├── MessageRouter.ts            # Strategy registry (MessageType → handler)
-│       └── domain/                     # 12 domain handlers (including Workshop)
+│       └── domain/                     # 11 flat domains + Workshop feature family
+│           └── workshop/               # Room owner, 5 shared slices, 3 widget owners
 ├── domain/             # Domain models
 │   └── models/
 ├── infrastructure/     # External integrations
@@ -77,6 +78,7 @@ packages/core/src/
 ├── utils/             # Shared helpers
 └── shared/            # Shared types
     └── types/messages/  # Message contracts (domain-organized)
+        └── workshop/    # 9 subdomain modules behind index.ts
 ```
 
 ---
@@ -146,7 +148,11 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
-| `useWorkshop` | `WorkshopHandler` | Pinned excerpt, persona host, and retained tool sidecars |
+| `useWorkshopRoom` | `WorkshopRoomHandler` | Room/thread/context state and retained host orchestration |
+| `useWorkshopSessions` | `WorkshopSessionMessageHandler` | Named-session lifecycle and browser actions |
+| `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation, correlation, and one-shot commit |
+| `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows |
+| `useWorkshopStandingDirectives` | `WorkshopStandingDirectiveHandler` | Generic standing apply/remove lifecycle |
 
 ### 4. Tripartite Hook Interface
 
@@ -244,6 +250,40 @@ model captured when its HTTP request was dispatched; the next request uses the
 new selection.
 
 **References**: [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md), [Workshop Excerpt Revision and Room Memory (2026-07-11)](adr/2026-07-11-workshop-excerpt-revision-and-room-memory.md)
+
+### 7. Workshop Feature-Family Ownership
+
+Workshop is internally sliced under `application/handlers/domain/workshop/`.
+`WorkshopRoomHandler` owns the nine room/run routes, one active-run slot, and
+the sole Workshop session-state envelope. `WorkshopSliceComposition` constructs
+and registers the context, excerpt/scope, session, todo, standing-directive,
+widget-host, Gesture Playground, and Lexical Gravity route owners behind the
+shared session-operation mutation gate. `WorkshopSessionService` remains the
+whole-session mutation boundary; extracted ledgers and state machines stay
+behind that facade.
+
+The final filename-first dependency map and five-facade audit live in
+[Workshop Responsibility and Dependency Map](architecture/2026-08-06-workshop-responsibility-map.md).
+
+Contracts mirror those owners under `shared/types/messages/workshop/`:
+
+```text
+workshop/
+├── index.ts                 # Stable subdomain barrel; @messages remains public
+├── session.ts               # Snapshot, turns, excerpt, session IPC
+├── context.ts               # Context and message-attachment contracts
+├── participants.ts          # Persona/tool ids and participant IPC
+├── widgets.ts               # Explicit family unions and generic widget IPC
+├── standingDirectives.ts    # Standing family snapshot/summary/change
+├── gesturePlayground.ts     # Gesture draft, generation, and commit contracts
+├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
+└── settings.ts              # Defaults, validators, coercers, equality
+```
+
+Application and presentation consumers import these contracts through
+`@messages`. Generic modules may name a feature only at reviewed composition,
+exact-union, or closed-registry seams; architecture witnesses scan the inverse
+case so feature semantics cannot hide behind a generic filename.
 
 ---
 

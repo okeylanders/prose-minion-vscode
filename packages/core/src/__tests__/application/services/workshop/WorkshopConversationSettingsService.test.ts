@@ -15,7 +15,8 @@ const balanced: WorkshopConversationBehavior = {
   interactionMode: 'balanced',
   expressionLevel: 'full',
   relationalDepth: 'attuned',
-  carryCuesThroughSession: true
+  carryCuesThroughSession: true,
+  proactiveAssistance: true
 };
 
 const analysis: WorkshopConversationBehavior = {
@@ -83,7 +84,8 @@ describe('WorkshopConversationSettingsService', () => {
         { conversationId: 'guest-conv', personaId: 'margot', role: 'guest' }
       ],
       analysis,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
     expect(session.getConversationBehavior()).toEqual(analysis);
     expect(settings.update).not.toHaveBeenCalled();
@@ -113,13 +115,15 @@ describe('WorkshopConversationSettingsService', () => {
       1,
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       analysis,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenNthCalledWith(
       2,
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       conversational,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
 
     await service.syncFromSettings();
@@ -295,14 +299,16 @@ describe('WorkshopConversationSettingsService', () => {
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       reflective,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
   });
 
   it('does not rebuild persona prompts when only carry-cues continuity changes', async () => {
     const withoutCarry: WorkshopConversationBehavior = {
       ...balanced,
-      carryCuesThroughSession: false
+      carryCuesThroughSession: false,
+      proactiveAssistance: true
     };
 
     await expect(service.applyFromWebview(withoutCarry, DEFAULT_WORKSHOP_WRITER_PROFILE)).resolves.toEqual({
@@ -312,6 +318,23 @@ describe('WorkshopConversationSettingsService', () => {
 
     expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
     expect(session.getConversationBehavior()).toEqual(withoutCarry);
+  });
+
+  it('does not rebuild persona prompts when only proactive assistance changes', async () => {
+    const withoutProactiveAssistance: WorkshopConversationBehavior = {
+      ...balanced,
+      proactiveAssistance: false
+    };
+
+    await expect(
+      service.applyFromWebview(withoutProactiveAssistance, DEFAULT_WORKSHOP_WRITER_PROFILE)
+    ).resolves.toEqual({
+      changed: true,
+      deferred: false
+    });
+
+    expect(assistant.replaceWorkshopConversationSettings).not.toHaveBeenCalled();
+    expect(session.getConversationBehavior()).toEqual(withoutProactiveAssistance);
   });
 
   it('does not rebuild persona prompts when an empty profile is enabled', async () => {
@@ -350,7 +373,8 @@ describe('WorkshopConversationSettingsService', () => {
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [{ conversationId: 'host-conv', personaId: 'jill', role: 'host' }],
       balanced,
-      profile
+      profile,
+      []
     );
     expect(settings.update).toHaveBeenCalledTimes(1);
     expect(settings.update).toHaveBeenCalledWith(
@@ -382,7 +406,8 @@ describe('WorkshopConversationSettingsService', () => {
     expect(assistant.replaceWorkshopConversationSettings).toHaveBeenCalledWith(
       [],
       balanced,
-      DEFAULT_WORKSHOP_WRITER_PROFILE
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      []
     );
     expect(service.getWriterProfile()).toEqual(DEFAULT_WORKSHOP_WRITER_PROFILE);
   });

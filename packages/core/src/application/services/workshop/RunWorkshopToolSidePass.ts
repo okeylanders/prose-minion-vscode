@@ -7,6 +7,7 @@ import {
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+import { renderWorkshopStandingDirectiveFrames } from '@/application/services/workshop/directives/WorkshopStandingDirectiveFrames';
 import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame,
@@ -58,6 +59,7 @@ export interface WorkshopToolSidePassEvents {
   sessionChanged: () => void;
   status: (message: string, tickerMessage?: string) => void;
   error: (message: string, details?: string) => void;
+  widgetRecommendationRejected: (message: string, details?: string) => void;
   settled: (requestId: string) => void;
 }
 
@@ -238,6 +240,7 @@ export class RunWorkshopToolSidePass {
             message: hostMessage,
             behavior: behaviorMetadata.behavior!,
             writerProfile,
+            standingDirectiveFrames: renderWorkshopStandingDirectiveFrames(this.session),
             messageIsTrustedEnvelope: true,
             ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
@@ -264,7 +267,8 @@ export class RunWorkshopToolSidePass {
           streamCompleted: events.streamCompleted,
           turnCompleted: events.turnCompleted,
           status: events.status,
-          error: events.error
+          error: events.error,
+          widgetRecommendationRejected: events.widgetRecommendationRejected
         }
       });
       if (synthesisTurn) {

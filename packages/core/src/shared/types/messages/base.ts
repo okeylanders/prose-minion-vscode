@@ -153,7 +153,27 @@ export enum MessageType {
   WORKSHOP_SESSION_STATE = 'workshop_session_state',
   WORKSHOP_SESSIONS_DATA = 'workshop_sessions_data',
   WORKSHOP_SESSION_ACTION_RESULT = 'workshop_session_action_result',
-  WORKSHOP_SESSION_SAVE_STATUS = 'workshop_session_save_status'
+  WORKSHOP_SESSION_SAVE_STATUS = 'workshop_session_save_status',
+
+  // Conversation Widgets (ADR 2026-07-22; Sprint 01 widget host + Gesture Playground)
+  WORKSHOP_GESTURE_PLAYGROUND_GENERATE = 'workshop_gesture_playground_generate',
+  WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS = 'workshop_gesture_playground_generation_progress',
+  WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT = 'workshop_gesture_playground_menu_result',
+  WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES = 'workshop_request_lexical_gravity_lenses',
+  WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA = 'workshop_lexical_gravity_lenses_data',
+  WORKSHOP_PREVIEW_LEXICAL_GRAVITY = 'workshop_preview_lexical_gravity',
+  WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT = 'workshop_lexical_gravity_preview_result',
+  WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS = 'workshop_build_lexical_gravity_lens',
+  WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES = 'workshop_lexical_gravity_lens_candidates',
+  WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES = 'workshop_save_lexical_gravity_lenses',
+  WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED = 'workshop_lexical_gravity_lenses_saved',
+  WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
+  WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',
+  WORKSHOP_COMMIT_WIDGET = 'workshop_commit_widget',
+  WORKSHOP_APPLY_STANDING_WIDGET = 'workshop_apply_standing_widget',
+  WORKSHOP_REMOVE_STANDING_WIDGET = 'workshop_remove_standing_widget',
+  WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',
+  CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST = 'cancel_gesture_playground_generate_request'
 }
 
 export interface BaseMessage {

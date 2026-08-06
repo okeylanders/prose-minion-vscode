@@ -31,6 +31,17 @@ interface WorkshopTurnBubbleProps {
   onAddTodo?: (sourceTurnId: string, findingKey: string) => void;
   onCopy: (content: string, turn: WorkshopTurn) => void;
   onSave: (content: string, turn: WorkshopTurn) => void;
+  /**
+   * Chip click on a committed widget turn (ADR 2026-07-22): re-opens the
+   * exact Draft for clone-and-recommit. Presentation-only — the model never
+   * sees the chip.
+   */
+  onOpenWidgetConfig?: (widgetConfigId: string) => void;
+  /** Persona recommend chip: opens the widget seeded from the parsed prefill. */
+  onOpenWidgetRecommendation?: (
+    recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
+    personaLabel?: string
+  ) => void;
 }
 
 interface ParsedVariation {
@@ -158,7 +169,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onTalkDirectly,
   onAddTodo = () => undefined,
   onCopy,
-  onSave
+  onSave,
+  onOpenWidgetConfig,
+  onOpenWidgetRecommendation
 }) => {
   // Persona replies are editorial conversation, not a tool artifact. Never
   // reinterpret their headings as tool variations with copy/save provenance.
@@ -225,6 +238,22 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
     );
   }
 
+  if (turn.artifact === 'standing_directive_change' && turn.standingDirectiveChange) {
+    const action = turn.standingDirectiveChange.action;
+    return (
+      <button
+        type="button"
+        className={`pm-ws-standing-marker pm-ws-standing-marker-${action}`}
+        title="Re-open this standing directive configuration"
+        disabled={!onOpenWidgetConfig}
+        onClick={() => onOpenWidgetConfig?.(turn.standingDirectiveChange!.widgetConfigId)}
+      >
+        <span aria-hidden="true" />
+        {turn.content}
+      </button>
+    );
+  }
+
   if (
     turn.participant === 'session' ||
     turn.artifact === 'session_start' ||
@@ -270,6 +299,22 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </span>
           )}
           <div className="pm-ws-turn-message">{turn.content}</div>
+          {turn.widgetCommit?.rail === 'thread-artifact' && onOpenWidgetConfig && (
+            <div className="pm-ws-widget-chipwrap">
+              <button
+                type="button"
+                className="pm-ws-widget-chip"
+                title="Presentation-only — the model never sees this chip"
+                onClick={() => onOpenWidgetConfig(turn.widgetCommit!.widgetConfigId)}
+              >
+                <Icon name="hand" size={13} /> Gesture Playground{' '}
+                <span className="pm-ws-widget-chip-meta">
+                  {turn.widgetCommit.selectionCount} direction
+                  {turn.widgetCommit.selectionCount === 1 ? '' : 's'} · re-open
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       );
     }
@@ -459,6 +504,26 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </button>
           )}
         </div>
+        {turn.widgetRecommendation && onOpenWidgetRecommendation && (
+          <button
+            type="button"
+            className="pm-ws-widget-reco"
+            title={`Opens ${turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'Gesture Playground' : 'Lexical Gravity'} prefilled — everything stays editable, nothing runs until you say so`}
+            onClick={() => onOpenWidgetRecommendation(turn.widgetRecommendation!, turn.personaLabel)}
+          >
+            <Icon name={turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'hand' : 'orbit'} size={13} />{' '}
+            {turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'Gesture Playground' : 'Lexical Gravity'}{' '}
+            <span className="pm-ws-widget-chip-meta">
+              {turn.widgetRecommendation.widgetId === 'gesture-playground'
+                ? turn.widgetRecommendation.seed?.targetPhrase
+                  ? `prefilled · “${turn.widgetRecommendation.seed.targetPhrase}”`
+                  : 'recommended'
+                : turn.widgetRecommendation.seed?.lensSlug
+                  ? `prefilled · ${turn.widgetRecommendation.seed.lensSlug}`
+                  : 'recommended'}
+            </span>
+          </button>
+        )}
       </div>
       {quickActionToolId && (
         <WorkshopQuickActionBar

@@ -28,6 +28,9 @@ import {
   WorkshopSessionSearchIndexV1,
   WorkshopStoredSessionSummary
 } from '@/infrastructure/storage/WorkshopSessionSearchIndexV1';
+import {
+  isMissingFileSystemPathError
+} from '@/infrastructure/storage/fileSystemErrors';
 
 export type {
   WorkshopStoredSessionSummary
@@ -1035,7 +1038,7 @@ function isNamedSessionFileName(name: string): boolean {
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return /ENOENT|not found|unseeded path/i.test(errorMessage(error));
+  return isMissingFileSystemPathError(error);
 }
 
 function isDestinationExistsError(error: unknown): boolean {

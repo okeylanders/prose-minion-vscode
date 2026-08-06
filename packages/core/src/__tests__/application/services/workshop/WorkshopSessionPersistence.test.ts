@@ -16,7 +16,8 @@ const currentBehavior: WorkshopConversationBehavior = {
   interactionMode: 'conversational',
   expressionLevel: 'subtle',
   relationalDepth: 'reserved',
-  carryCuesThroughSession: false
+  carryCuesThroughSession: false,
+  proactiveAssistance: true
 };
 
 const buildCompleteState = (): WorkshopSessionStateV1 => {
@@ -252,6 +253,20 @@ describe('WorkshopSessionService committed persistence', () => {
         state.shelvedExcerpt = JSON.parse(JSON.stringify(state.excerpt));
       },
       message: 'both a pinned and a shelved excerpt'
+    },
+    {
+      label: 'the host manifest contains multiple live pins',
+      mutate: (value: unknown) => {
+        const state = value as WorkshopSessionStateV1;
+        const livePin = state.writerSources.host.find(
+          (source) => source.kind === 'pin' && source.stale !== true
+        );
+        if (!livePin) {
+          throw new Error('Fixture no longer contains a live host pin.');
+        }
+        state.writerSources.host.push({ ...livePin });
+      },
+      message: 'multiple live host pins (count=2; excerptVersions=1,1)'
     }
   ])('rejects raw state when $label', ({ mutate, message }) => {
     const value: unknown = buildCompleteState();
@@ -386,7 +401,7 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(result).toEqual({
       discardedConversationIds: [],
       degradedConversationKeys: [],
-      migrations: []
+      normalizations: []
     });
     expect(restored.getHostConversationId()).toBe('host-runtime-after-open');
     expect(restored.getToolSidecarConversationId('prose')).toBe('tool-runtime-after-open');
@@ -441,10 +456,27 @@ describe('WorkshopSessionService committed persistence', () => {
     const restored = new WorkshopSessionService(() => 50_000);
     const result = restored.hydrateCommittedState(state, {}, currentBehavior);
 
-    expect(result.migrations).toContain('defaulted-capability-principal');
+    expect(result.normalizations).toContain('defaulted-capability-principal');
     const hydrated = restored.exportCommittedState().turns
       .find((turn) => turn.capability)!;
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'host' });
+  });
+
+  it('records proactive assistance as off on historical behavior stamps', () => {
+    const state = buildCompleteState();
+    const stampedTurn = state.turns.find((turn) => turn.behavior !== undefined);
+    if (!stampedTurn?.behavior) {
+      throw new Error('Fixture no longer contains a behavior-stamped turn.');
+    }
+    delete (stampedTurn.behavior as Partial<typeof stampedTurn.behavior>).proactiveAssistance;
+
+    expect(() => parseWorkshopSessionStateV1(state)).not.toThrow();
+    const restored = new WorkshopSessionService(() => 50_000);
+    const result = restored.hydrateCommittedState(state, {}, currentBehavior);
+
+    expect(result.normalizations).toContain('defaulted-proactive-assistance');
+    expect(restored.exportCommittedState().turns.find((turn) => turn.id === stampedTurn.id)?.behavior)
+      .toMatchObject({ proactiveAssistance: false });
   });
 
   it('never relabels an already-stamped guest principal during hydration (review #10)', () => {
@@ -466,7 +498,7 @@ describe('WorkshopSessionService committed persistence', () => {
 
     // A regression to always-stamp would relabel guest evidence as host —
     // silently defeating the privacy guarantee on the next save/load.
-    expect(result.migrations).not.toContain('defaulted-capability-principal');
+    expect(result.normalizations).not.toContain('defaulted-capability-principal');
     const hydrated = restored.exportCommittedState().turns
       .find((turn) => turn.capability)!;
     expect(hydrated.capability!.invokedBy).toEqual({ kind: 'personaGuest', personaId: 'margot' });
@@ -491,7 +523,7 @@ describe('WorkshopSessionService committed persistence', () => {
     }, currentBehavior);
     const normalized = restored.exportCommittedState();
 
-    expect(result.migrations).toEqual(expect.arrayContaining([
+    expect(result.normalizations).toEqual(expect.arrayContaining([
       'discarded-legacy-delivery-cursors',
       'headed-missing-room-offsets'
     ]));
@@ -611,6 +643,47 @@ describe('WorkshopSessionService committed persistence', () => {
     expect(session.exportCommittedState()).toEqual(before);
   });
 
+  it('does not partially hydrate when the final collaborator preparation fails', () => {
+    const session = new WorkshopSessionService(() => 90_000);
+    session.hydrateCommittedState(
+      buildCompleteState(),
+      {
+        host: 'live-host',
+        ['tool:prose']: 'live-tool',
+        ['guest:margot']: 'live-guest'
+      },
+      currentBehavior
+    );
+    const before = session.exportCommittedState();
+    const incoming = buildCompleteState();
+    incoming.excerpt!.text = 'Incoming passage.';
+    incoming.turns[0].content = 'Incoming turn.';
+    incoming.todos[0].text = 'Incoming task.';
+    incoming.participants.chatTarget = { kind: 'host' };
+    incoming.counters.widgetConfig = 12;
+    incoming.counters.standingDirective = 14;
+
+    const roster = (
+      session as unknown as {
+        participantRoster: { prepareState: (...args: unknown[]) => unknown };
+      }
+    ).participantRoster;
+    jest.spyOn(roster, 'prepareState').mockImplementation(() => {
+      throw new Error('roster preparation failed');
+    });
+
+    expect(() => session.hydrateCommittedState(
+      incoming,
+      {
+        host: 'incoming-host',
+        ['tool:prose']: 'incoming-tool',
+        ['guest:margot']: 'incoming-guest'
+      },
+      currentBehavior
+    )).toThrow('roster preparation failed');
+    expect(session.exportCommittedState()).toEqual(before);
+  });
+
   it('preserves skipped monotonic counters instead of inferring them from surviving rows', () => {
     const state = buildCompleteState();
     state.counters = {
@@ -670,6 +743,73 @@ describe('WorkshopSessionService committed persistence', () => {
     restored.hydrateCommittedState(state, {}, currentBehavior);
     expect(restored.exportCommittedState().turns).toHaveLength(storedTurns);
     expect(restored.exportCommittedState().turns[0].content).toBe('Marker 0.');
+  });
+
+  it('round-trips host-private room artifact bodies without exposing them in the snapshot', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setSessionScope('open');
+    const staged = session.addMessageAttachment({
+      label: 'mara.md',
+      words: 5,
+      content: 'Mara turns the mug once before answering.'
+    });
+    if (!staged.ok) {
+      throw new Error('Expected the room-artifact fixture to stage.');
+    }
+    const writerTurn = session.beginPersonaMessage(
+      'host-run',
+      'Use this reference.',
+      [{ id: staged.attachment.id, label: staged.attachment.label, words: 5 }]
+    );
+    session.completeRun('host-run', 'I will use it.', undefined, false, 'host-before-save');
+    session.recordRoomThreadArtifacts(writerTurn.id, [{
+      id: staged.attachment.id,
+      name: 'mara.md',
+      content: 'Mara turns the mug once before answering.'
+    }]);
+    session.commitMessageAttachments([staged.attachment.id]);
+
+    expect(JSON.stringify(session.getSnapshot()))
+      .not.toContain('Mara turns the mug once before answering.');
+    const state = parseWorkshopSessionStateV1(
+      JSON.parse(JSON.stringify(session.exportCommittedState()))
+    );
+    expect(state.threadArtifacts).toEqual([
+      expect.objectContaining({ id: 'ta-1', turnId: writerTurn.id })
+    ]);
+
+    const restored = new WorkshopSessionService(() => 2);
+    restored.hydrateCommittedState(
+      state,
+      { host: 'host-after-save' },
+      currentBehavior
+    );
+    expect(restored.getRoomThreadArtifactsForTurn(writerTurn.id)).toEqual([{
+      id: 'ta-1',
+      turnId: writerTurn.id,
+      name: 'mara.md',
+      content: 'Mara turns the mug once before answering.'
+    }]);
+  });
+
+  it('refuses to publish a room artifact against a private direct-tool turn', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setExcerpt({ text: 'Pinned.', source: { kind: 'manual' } });
+    session.beginToolRun('prose', 'report-run');
+    session.completeToolReport('report-run', 'Report.', 'prose-conv');
+    const privateTurn = session.beginDirectToolMessage(
+      'prose',
+      'private-run',
+      'Private follow-up.',
+      [{ id: 'ta-1', label: 'private.md', words: 1 }]
+    );
+    session.completeRun('private-run', 'Private answer.');
+
+    expect(() => session.recordRoomThreadArtifacts(privateTurn.id, [{
+      id: 'ta-1',
+      name: 'private.md',
+      content: 'Private body.'
+    }])).toThrow(/private turn/);
   });
 
   it('rejects blank markers and persists deterministic start/resume dividers', () => {

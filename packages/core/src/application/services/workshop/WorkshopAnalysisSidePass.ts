@@ -10,7 +10,7 @@ import {
   describeWorkshopInheritedExcerpt,
   WorkshopPersonaAnalysisRunInputs
 } from '@/application/services/workshop/WorkshopAnalysisInputs';
-import type { WorkshopToolReportCompletion } from '@/application/services/workshop/WorkshopSessionService';
+import type { WorkshopToolReportCompletion } from '@/application/services/workshop/WorkshopSessionRecords';
 import {
   AnalysisStreamingOptions,
   AssistantToolService

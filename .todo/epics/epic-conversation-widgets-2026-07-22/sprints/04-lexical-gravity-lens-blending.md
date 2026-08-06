@@ -1,26 +1,30 @@
 # Sprint 04: Lexical Gravity — Lens Blending
 
-**Status**: Planned
+**Status**: Paused — Workshop Architecture Refactor Phase 7 must lift the feature freeze
 **Priority**: Low (v2 richness; ship 01–03 first)
 **Branch**: `sprint/conversation-widgets-04-lexical-gravity-lens-blending` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 3-5 days
-**Depends on**: Sprint 02 (Lexical Gravity single-lens) merged into `epic/conversation-widgets`
-**ADR**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md)
+**Depends on**: Sprint 02B-B merged into `epic/conversation-widgets` and Workshop Architecture Refactor Phase 7 complete
+**ADRs**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md); [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md)
 
 ## Goal
 
-Extend Lexical Gravity from single-lens to **blended lenses** — combine
-interpretive lenses / world-views (e.g. Photography + Music + Mathematics) — with
-**explicit dominance weighting**, never an unweighted average. Blending is where
-model output gets muddy; the whole design of this sprint is about keeping a blend
-*layered* rather than *confused*.
+Extend Lexical Gravity from single-lens to **blended interpretive grammars** —
+combine world-views (e.g. Photography + Music + Mathematics) with **explicit
+dominance weighting**, never an unweighted average. The dominant lens governs
+attention and semantic movement; subordinate lenses contribute named secondary
+logic or lexical texture. Blending is where model output gets muddy, so the
+design keeps the blend *layered* rather than *confused*.
 
-## Current Reality
+## Expected Foundation
 
-- Sprint 02 shipped single-lens Lexical Gravity on the standing rail: the
-  `<workshop-prose-gravity>` frame, the coordinator, edit-in-place + shift
-  marker, the chip, the active-directive indicator + kill switch, and the
-  debounced/ cached live-generation path.
+- Sprint 02B will establish single-lens Lexical Gravity on the standing rail:
+  the `<prose-directive family="lexical-gravity" id="pd-N">` frame, the
+  coordinator, edit-in-place + shift marker, the chip, the active-directive
+  indicator + kill switch, and the explicit config-cached Preview action.
+- Sprint 02B-B will replace the word-field-only lens contract with a v2
+  interpretive grammar: premise, attention, axes, roles, dynamics, entailments,
+  narrative affordances, guardrails, and lexical realization data.
 - The committed directive payload already carries lens, weight,
   degrees-of-separation, and metaphor pull. Blending extends the payload to a
   *weighted set* of lenses.
@@ -31,6 +35,10 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
   `{ lens, dominance }` (e.g. Photography 70% / Music 30%), not an equal mix.
   Averages of strong flavors taste like nothing; unweighted blends read as
   confused. The UI enforces an explicit dominance split that sums to 100%.
+- **Dominance governs interpretive authority, not merely word frequency.** The
+  dominant lens supplies the primary attention logic and semantic dynamics.
+  Every subordinate contribution must be labeled as secondary logic, lexical
+  texture, or counterforce; a flat union of v2 `logic` objects is invalid.
 - **A cap on simultaneous lenses** (leaning: 3) to bound muddiness. Stated in the
   UI; documented in the ADR.
 - **The generated cloud/gradient reflects the blend faithfully** — the word
@@ -39,7 +47,7 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
 - **The committed directive states the blend as layered guidance**, naming the
   dominant lens and the subordinate tint(s) with their weights — not a flat
   union of vocabularies.
-- **Everything else is inherited from Sprint 02**: same rail, coordinator,
+- **Everything else is inherited from Sprint 02B**: same rail, coordinator,
   between-runs discipline, edit-in-place, chip, indicator, kill switch. This
   sprint changes the *payload richness and the widget UI*, not the rail.
 
@@ -49,8 +57,9 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
    visualize per-lens leaning in the cloud/gradient.
 2. **Extended directive payload**: weighted lens set; validation (weights sum,
    count cap).
-3. **Blended generation path**: the live model call reflects dominance; debounced
-   / cached as in Sprint 02.
+3. **Blended preview path**: the explicit Preview call reflects dominance and is
+   cached by the blend config; changing controls invalidates it without calling
+   the model, as in Sprint 02B.
 4. **Layered committed directive** naming dominant + subordinate tints.
 5. Tests: payload validation (sum, cap); the directive renders as layered
    guidance, not a flat union; single-lens remains a degenerate 1-element blend
@@ -61,7 +70,7 @@ model output gets muddy; the whole design of this sprint is about keeping a blen
 - Prose Controller (Sprint 03).
 - Any standing-rail coordinator change.
 - Cross-widget blending (Lexical Gravity × Prose Controller precedence stays as
-  the ADR rule from Sprint 03).
+  the accepted ADR rule).
 
 ## Completion Criteria
 

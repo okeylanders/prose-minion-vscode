@@ -6,7 +6,7 @@
  */
 
 import { LogSink, SettingsStore, ShellService } from '@/platform';
-import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { AIResourceManager, DEFAULT_WIDGET_MODEL } from '@orchestration/AIResourceManager';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
@@ -423,7 +423,8 @@ export class ConfigurationHandler {
       assistant: this.settings.get<string>('proseMinion', 'assistantModel') || fallback,
       dictionary: this.settings.get<string>('proseMinion', 'dictionaryModel') || fallback,
       context: this.settings.get<string>('proseMinion', 'contextModel') || fallback,
-      category: this.settings.get<string>('proseMinion', 'categoryModel') || fallback
+      category: this.settings.get<string>('proseMinion', 'categoryModel') || fallback,
+      widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL
     };
 
     // SPRINT 05: Get resolved model selections from AIResourceManager
@@ -450,6 +451,8 @@ export class ConfigurationHandler {
         return 'contextModel';
       case 'category':
         return 'categoryModel';
+      case 'widget':
+        return 'widgetModel';
       default:
         const exhaustiveCheck: never = scope;
         throw new Error(`Unknown model scope: ${exhaustiveCheck}`);

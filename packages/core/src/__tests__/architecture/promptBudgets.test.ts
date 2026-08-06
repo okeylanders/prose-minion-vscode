@@ -4,6 +4,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
 const BUDGET_MODULE = path.join(SRC_ROOT, 'shared', 'constants', 'promptBudgets.ts');
@@ -11,7 +15,7 @@ const TEST_ROOT = path.join(SRC_ROOT, '__tests__');
 const LOOKS_LIKE_LIMIT = /(?:^MAX(?:_|$)|_(?:MAX|LIMIT|CAP|CEILING|THRESHOLD)(?:_|$))/;
 
 // Existing bounds that are explicitly not prompt truncation: provider
-// concurrency and the webview-safe error display cap.
+// concurrency, protocol tolerance, and bounded webview layout.
 const NON_PROMPT_LIMITS = new Set([
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
@@ -19,6 +23,7 @@ const NON_PROMPT_LIMITS = new Set([
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_BIGRAMS_PER_BATCH',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_TRIGRAMS_PER_BATCH',
   'presentation/webview/components/tabs/AnalysisTab.tsx:MAX_EXCERPT_LENGTH',
+  'presentation/webview/components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal.tsx:PREVIEW_SOURCE_HEIGHT_CAP',
   'shared/types/messages/ui.ts:WEBVIEW_ERROR_TEXT_MAX'
 ]);
 
@@ -84,6 +89,48 @@ describe('prompt budgets', () => {
       readSourceBytes: 2 * 1024 * 1024,
       readBytes: 64 * 1024
     });
+  });
+
+  it('pins the model-facing Conversation Widget budgets and aggregate frame ceiling', () => {
+    expect(PROMPT_BUDGETS.workshopWidgets).toEqual({
+      gestureTargetPhraseCharacters: 300,
+      gestureWriterInstructionsCharacters: 1_000,
+      gestureContextCharacters: 10_000,
+      gestureCharacterNotesCharacters: 1_500,
+      gestureSourceReferences: 8,
+      gestureSourceReferenceCharacters: 500,
+      gestureReferencedSourceCharacters: 420_000,
+      gestureOutputTokens: 50_000,
+      gestureMoreOutputTokens: 8_000,
+      gestureRecommendationFrameAllowanceCharacters: 2_000,
+      gestureDictionaryCharacters: 64_000,
+      gestureNoteCharacters: 300,
+      gestureMenuGroupsMinimum: 4,
+      gestureMenuGroups: 6,
+      gestureOptionsPerGroupMinimum: 3,
+      gestureGeneratedOptionsPerGroup: 5,
+      gestureOptionsPerGroup: 10,
+      gestureOptionCharacters: 220,
+      gestureSelectionsPerCommit: 8,
+      lexicalLensNameCharacters: 80,
+      lexicalLensSlugCharacters: 64,
+      lexicalLensVariantCharacters: 120,
+      lexicalLensDescriptionCharacters: 320,
+      lexicalTermCharacters: 80,
+      lexicalTermsPerBucket: 12,
+      lexicalGradientTerms: 12,
+      lexicalCliches: 8,
+      lexicalPhraseCharacters: 240,
+      lexicalSampleCharacters: 800,
+      lexicalBuildQueryCharacters: 100,
+      lexicalBuildCandidates: 3,
+      lexicalBuildOutputTokens: 8_000,
+      lexicalPreviewCharacters: 1_200,
+      lexicalPreviewOutputTokens: 3_600,
+      lexicalDirectiveCharacters: 3_000
+    });
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(15_300);
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(4_811);
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

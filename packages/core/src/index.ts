@@ -50,7 +50,7 @@ export {
 } from '@/application/services/workshop/WorkshopSessionService';
 export type {
   WorkshopSessionHydrationResult
-} from '@/application/services/workshop/WorkshopSessionService';
+} from '@/application/services/workshop/WorkshopSessionRecords';
 export {
   parseWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -92,9 +92,38 @@ export {
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 export { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
-export { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+export { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
+export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
+export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+export { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
+export {
+  buildGestureDirective
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundDirective';
+export {
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
+  inspectWorkshopWidgetRecommendation
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
+export {
+  stripWorkshopWidgetRecommendationControl
+} from '@/utils/workshopWidgetRecommendationProtocol';
+export {
+  WORKSHOP_WIDGET_CATALOG,
+  workshopWidgetDescriptor,
+  workshopWidgetLabel,
+  isWorkshopWidgetId,
+  isLiveWorkshopWidgetId,
+  workshopWidgetArtifactKind,
+  workshopWidgetIdFromArtifactKind
+} from '@shared/constants/workshopWidgets';
+export type {
+  WorkshopWidgetDescriptor,
+  WorkshopWidgetGroupDescriptor,
+  WorkshopWidgetRail,
+  WorkshopWidgetGroupName
+} from '@shared/constants/workshopWidgets';
 
 // --- Infrastructure: Workshop workspace-session store ---
 export {

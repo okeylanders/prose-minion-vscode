@@ -41,6 +41,21 @@ describe('WorkshopConversationBehaviorModal', () => {
     expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('pm-ws-behavior-tab');
     expect(screen.getByText('Response style')).not.toBeNull();
     expect(screen.getByText('Relational depth')).not.toBeNull();
+    expect(screen.getByText('Initiative')).not.toBeNull();
+    expect(screen.getByRole('switch', { name: 'Use tools and widgets' })
+      .getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('lets the writer turn proactive tool and widget assistance off', () => {
+    const { props } = renderModal();
+    fireEvent.click(screen.getByRole('switch', { name: 'Use tools and widgets' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply to next turn' }));
+
+    expect(props.onApply).toHaveBeenCalledWith(
+      { ...DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, proactiveAssistance: false },
+      DEFAULT_WORKSHOP_WRITER_PROFILE,
+      DEFAULT_WORKSHOP_WEB_RESEARCH_SETTINGS
+    );
   });
 
   it('supports arrow-key tab navigation and moves focus', () => {

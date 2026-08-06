@@ -46,7 +46,7 @@ packages/core/src/
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
 │       ├── MessageHandlerContracts.ts # CoreServices + typed transport/cache/secrets seams
 │       ├── MessageRouter.ts     # Strategy registry (MessageType → handler)
-│       └── domain/              # Domain-specific handlers (11)
+│       └── domain/              # 11 flat domains + the Workshop feature family
 │           ├── AnalysisHandler.ts
 │           ├── DictionaryHandler.ts
 │           ├── ContextHandler.ts
@@ -57,7 +57,20 @@ packages/core/src/
 │           ├── SourcesHandler.ts
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
-│           └── AccountBalanceHandler.ts   # OpenRouter account-balance slice
+│           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
+│           └── workshop/                  # 9 route owners + shared contracts
+│               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
+│               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
+│               ├── WorkshopRouteContracts.ts
+│               ├── WorkshopContextHandler.ts
+│               ├── WorkshopExcerptScopeHandler.ts
+│               ├── WorkshopSessionMessageHandler.ts
+│               ├── WorkshopStandingDirectiveHandler.ts
+│               ├── WorkshopTodoHandler.ts
+│               └── widgets/
+│                   ├── WorkshopWidgetHostHandler.ts
+│                   ├── gesturePlayground/WorkshopGesturePlaygroundHandler.ts
+│                   └── lexicalGravity/WorkshopLexicalGravityHandler.ts
 ├── domain/            # Domain layer (business logic)
 │   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
@@ -83,7 +96,17 @@ packages/core/src/
             ├── accountBalance.ts # OpenRouter account balance
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
-            └── results.ts       # Result messages
+            ├── results.ts       # Result messages
+            └── workshop/        # Workshop contracts behind one subdomain barrel
+                ├── index.ts
+                ├── session.ts
+                ├── context.ts
+                ├── participants.ts
+                ├── widgets.ts
+                ├── standingDirectives.ts
+                ├── gesturePlayground.ts
+                ├── lexicalGravity.ts
+                └── settings.ts
 ```
 
 ### Presentation Hooks (Webview)
@@ -115,12 +138,23 @@ packages/core/src/presentation/webview/
 │       ├── useTokensSettings.ts        # Max tokens configuration
 │       ├── useTokenTracking.ts         # Token usage tracking
 │       ├── useWordFrequencySettings.ts # Word frequency tool settings
-│       └── useWordSearchSettings.ts    # Word search tool settings
+│       ├── useWordSearchSettings.ts    # Word search tool settings
+│       └── workshop/
+│           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
+│           ├── useWorkshopSessions.ts  # Named-session lifecycle
+│           ├── useWorkshopWidgetHost.ts
+│           ├── useWorkshopStandingDirectives.ts
+│           ├── controllers/            # Transient modal/surface state machines
+│           └── widgets/                # Named feature transport/correlation hooks
 ```
 
 Patterns and conventions:
 - Strategy routing: `useMessageRouter({ [MessageType.X]: handler })` with a ref to maintain a stable event listener.
 - Persistence: Each hook exposes `persistedState`; App composes them into `usePersistence` to sync `vscode.setState`.
+- Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
+  retired `useWorkshop` facade. Generic widget mechanics use explicit closed
+  registries; Gesture Playground and Lexical Gravity keep feature-specific
+  contracts, handlers, codecs, prompts, and presentation hooks in named slices.
 - Message enums: Use `STATUS` for status messages, `MODEL_DATA`/`REQUEST_MODEL_DATA` for model options, and `SET_MODEL_SELECTION` for user selection. Avoid ad-hoc enums like `STATUS_MESSAGE`, `MODEL_OPTIONS_DATA`, or `SET_MODEL`.
 - UI settings: Toggle UI prefs (e.g., token widget) via `UPDATE_SETTING` with nested keys like `ui.showTokenWidget`.
 - Metrics: Provide `setPathText` and `clearSubtoolResult` so subtools can refresh independently.
@@ -240,6 +274,13 @@ export type UseDomainReturn = DomainState & DomainActions & {
 - ✅ Type-safe composition in App.tsx
 - ✅ Explicit persistence declarations
 - ✅ Consistent pattern across all domain hooks
+
+**Presentation controllers** are UI state machines under a domain's
+`controllers/` directory. They still honor the tripartite interface, including
+an explicit empty `Persistence` contract when the host owns durable truth.
+Unlike transport-owning domain hooks, controllers receive host effects as
+injected callbacks or narrow ports; they must not reference `useVSCodeApi`,
+`MessageType`, or `postMessage` directly.
 
 #### 5. Composed Persistence Pattern
 **Location**: `App.tsx` + `usePersistence.ts`
@@ -540,9 +581,9 @@ All aliases now re-root into `packages/core/src`. The single source of truth for
 - [apps/vscode-extension/package.json](apps/vscode-extension/package.json) - Extension manifest and configuration (`contributes.*`)
 - [extension.ts](apps/vscode-extension/src/extension.ts) - Composition root: activation, service construction, DI
 - [MessageHandler.ts](packages/core/src/application/handlers/MessageHandler.ts) - Main message dispatcher (routes to domain handlers)
-- [packages/core/src/application/handlers/domain/](packages/core/src/application/handlers/domain/) - Domain-specific handlers (11, organized by feature)
+- [packages/core/src/application/handlers/domain/](packages/core/src/application/handlers/domain/) - 11 flat domain handlers plus the `handlers/domain/workshop/` feature family
 - [packages/core/src/platform/](packages/core/src/platform/) - The host ports a non-VS-Code app must implement
-- [packages/core/src/shared/types/messages/](packages/core/src/shared/types/messages/) - Message contracts by domain (import from `@messages` barrel)
+- [packages/core/src/shared/types/messages/](packages/core/src/shared/types/messages/) - Message contracts by domain; Workshop is split under `shared/types/messages/workshop/` while consumers keep importing from the `@messages` barrel
 - [OpenRouterModels.ts](packages/core/src/infrastructure/api/providers/OpenRouterModels.ts) - Available AI models
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) - Detailed architecture documentation
 
@@ -663,25 +704,26 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Coverage** (as of 2026-06-24):
-- 49 suites / 373 tests (40% coverage targets held — see ADR-2025-11-15)
+**Test Inventory** (measured 2026-08-06):
+- 189 suites / 1,937 tests / 1 snapshot
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 domain handlers
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's nine route owners
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
-- ❌ UI components (React components - deferred to v1.0)
-- ❌ OpenRouter API integration (external dependency - manual testing only)
-- ❌ VSCode extension activation (requires @vscode/test-electron)
+- ❌ Interactive Extension Development Host behavior and visual inspection
+- ❌ Live, billable provider calls (provider clients are tested with mocked transport)
+- ❌ End-to-end VS Code activation through `@vscode/test-electron`
 
 **Testing Philosophy**:
 - **Infrastructure-First**: Protect architectural patterns that every feature depends on
-- **Lightweight**: 40% coverage target (not 80-100%) to balance velocity with safety
-- **Token-Conscious**: Focus on high-value tests; defer comprehensive TDD until v1.0
+- **Confidence-driven**: Protect contracts, state transitions, failure modes, and
+  architecture boundaries rather than optimizing for a coverage percentage
+- **Proportionate**: Match verification depth to the behavior and blast radius
 
 **References**:
 - [ADR-2025-11-15: Lightweight Testing Framework](docs/adr/2025-11-15-lightweight-testing-framework.md)
@@ -746,6 +788,30 @@ Potential areas for expansion:
 5. **Track Debt Immediately**: Document in `.todo/tech-debt/` with priority. Don't let tracking block progress.
 
 6. **Alpha Freedom**: No backward compatibility until v1.0. Remove dead code aggressively. Breaking changes are free.
+
+### Workshop Session Codec Evolution
+
+Workshop session JSON is a Marketplace-published writer-data contract even
+while Workshop features are under active development. Follow [ADR
+2026-07-30](docs/adr/2026-07-30-workshop-session-codec-evolution.md):
+
+- During an unfinished epic, put narrowly named, deterministic repairs for
+  local development checkpoints in `WorkshopSessionCheckpointNormalization`.
+  Log and regression-test every normalization; do not call it a version
+  migration.
+- When a Marketplace release changes persisted session semantics or makes a
+  formerly valid shape newly required, increment `schemaVersion` and add an
+  explicit adjacent released-codec migration. Test with an authentic fixture
+  from the preceding Marketplace version and write only the current version.
+- Do not create placeholder migrations or copy intermediate development
+  normalizations into a release migration unless the prior released format
+  genuinely requires that transformation.
+- Keep the top-level session codec as the public version boundary. When a
+  second widget makes the widget-config codec genuinely plural, extract each
+  widget's persisted draft/config validation, cloning, and checkpoint
+  normalization into a widget-local codec. Widget pills remain session-owned;
+  they do not need independent schema versions unless they become separately
+  stored or decoded outside a Workshop session.
 
 ### Operational Tips
 

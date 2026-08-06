@@ -171,7 +171,25 @@ import {
   WorkshopSessionStateMessage,
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
-  WorkshopSessionSaveStatusMessage
+  WorkshopSessionSaveStatusMessage,
+  WorkshopGesturePlaygroundGenerateMessage,
+  CancelGesturePlaygroundGenerateRequestMessage,
+  WorkshopGesturePlaygroundGenerationProgressMessage,
+  WorkshopGesturePlaygroundMenuResultMessage,
+  WorkshopRequestLexicalGravityLensesMessage,
+  WorkshopLexicalGravityLensesDataMessage,
+  WorkshopPreviewLexicalGravityMessage,
+  WorkshopLexicalGravityPreviewResultMessage,
+  WorkshopBuildLexicalGravityLensMessage,
+  WorkshopLexicalGravityLensCandidatesMessage,
+  WorkshopSaveLexicalGravityLensesMessage,
+  WorkshopLexicalGravityLensesSavedMessage,
+  WorkshopRequestWidgetConfigMessage,
+  WorkshopWidgetConfigDataMessage,
+  WorkshopCommitWidgetMessage,
+  WorkshopApplyStandingWidgetMessage,
+  WorkshopRemoveStandingWidgetMessage,
+  WorkshopWidgetActionResultMessage
 } from './workshop';
 
 export type WebviewToExtensionMessage =
@@ -255,7 +273,17 @@ export type WebviewToExtensionMessage =
   | WorkshopRenameSessionMessage
   | WorkshopDuplicateSessionMessage
   | WorkshopRevealSessionMessage
-  | WorkshopDeleteSessionMessage;
+  | WorkshopDeleteSessionMessage
+  | WorkshopGesturePlaygroundGenerateMessage
+  | CancelGesturePlaygroundGenerateRequestMessage
+  | WorkshopRequestLexicalGravityLensesMessage
+  | WorkshopPreviewLexicalGravityMessage
+  | WorkshopBuildLexicalGravityLensMessage
+  | WorkshopSaveLexicalGravityLensesMessage
+  | WorkshopRequestWidgetConfigMessage
+  | WorkshopCommitWidgetMessage
+  | WorkshopApplyStandingWidgetMessage
+  | WorkshopRemoveStandingWidgetMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -295,4 +323,12 @@ export type ExtensionToWebviewMessage =
   | WorkshopSessionSaveStatusMessage
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
-  | WorkshopContextAttachmentContentMessage;
+  | WorkshopContextAttachmentContentMessage
+  | WorkshopGesturePlaygroundGenerationProgressMessage
+  | WorkshopGesturePlaygroundMenuResultMessage
+  | WorkshopLexicalGravityLensesDataMessage
+  | WorkshopLexicalGravityPreviewResultMessage
+  | WorkshopLexicalGravityLensCandidatesMessage
+  | WorkshopLexicalGravityLensesSavedMessage
+  | WorkshopWidgetConfigDataMessage
+  | WorkshopWidgetActionResultMessage;

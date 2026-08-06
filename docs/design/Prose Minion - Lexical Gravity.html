@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Lexical Gravity · Spread 02</title>
+<link rel="stylesheet" href="pm-mock.css">
+<link rel="stylesheet" href="pm-fulltab.css">
+<link rel="stylesheet" href="pm-widgets.css">
+<link rel="stylesheet" href="pm-gravity.css">
+<style>a{color:var(--accent-hi)}a:hover{color:var(--text)}</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><circle cx="50" cy="50" r="26" fill="none" stroke="#3a2c1f" stroke-width="3"/><circle cx="50" cy="50" r="10" fill="#e0673a"/><circle cx="72" cy="32" r="6" fill="#e2b24a"/><circle cx="28" cy="68" r="6" fill="#2b2017" stroke="#4d3a28"/></svg>
+</template>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="canvas-head">
+    <div class="canvas-kicker">Prose Minion · Conversation Widgets — Spread 02 · <a href="Prose Minion - Gesture Playground.html">← Spread 01 · Gesture Playground</a> · <a href="Prose Minion - Conversation Widgets.html">Spread 00 · The system</a> · <a href="Prose Minion - Prose Controller.html">03</a> · <a href="Prose Minion - Show vs Tell.html">04</a></div>
+    <h1>Lexical Gravity — the standing rail's first widget</h1>
+    <p>Sprint 01 proved the spine on the cheap rail (<a href="Prose Minion - Gesture Playground.html">Spread 01</a>). This widget builds the <b>durable</b> one: commit installs a <b>passage-scoped prose directive</b> that every persona and every mode honors uniformly, consulted only when prose is written. Not attunement, not behavior, not a lens on anyone — <b>a direction the passage's prose should gravitate</b>. And the re-launch semantics flip: standing widgets <b>edit in place</b> instead of clone-and-recommit.</p>
+    <p class="note"><b>It's interactive:</b> in §1, install a lens via Jill's chip or <b>Widgets</b>. The amber strip that appears above the composer is the live directive — <b>Edit</b> it (shift marker lands in the thread) or kill it with one click. In the panel: the word field, gradient, and substitution tabs are deterministic and instant; <b>Preview the Effect</b> and <b>Build lens</b> are the model calls. Try building the <i>falconry</i> lens — it saves to the project.</p>
+  </div>
+
+  <div class="sec" data-screen-label="01 Standing rail, live">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The standing rail, live</h2><p>install → active indicator → edit-in-place → shift marker → kill</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Workshop thread + composer</span><span class="frame-tag accent">Interactive</span><span class="d">the full standing lifecycle</span></div>
+        <div class="cw-stage" id="lgStage"></div>
+      </div>
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">What this frame decides</span></div>
+        <ul class="annot">
+          <li><b>The active directive is always visible</b> — an amber strip docked with the composer, not buried in a menu. You always know what's pulling on the passage; kill is one click, never a hunt.</li>
+          <li><b>Amber = standing.</b> Coral marks one-shot commits (Spread 01); amber marks durable passage state. Same coding as the rail badges in the browser.</li>
+          <li><b>Edit-in-place, not clone.</b> One active directive per family. Editing swaps the standing frame <b>between runs</b> and drops a <span style="font-family:var(--mono);font-size:11px">shifted X → Y</span> marker — the same event class and cache cost as a mode change.</li>
+          <li><b>Install / shift / kill are thread markers</b> — cheap, visible, auditable history of what was pulling when.</li>
+          <li><b>Personas propose, never install.</b> Jill's chip prefills the panel; standing state is durable, so it is always writer-committed (the ADR leaning, made concrete).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="02 Pre-commit surface">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The pre-commit surface</h2><p>lens · weight · reach · metaphor pull — scaffold instant, model call explicit</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Opened via Jill's chip</span><span class="d">Photography · 60% · 2°, pre-preview</span></div>
+        <div class="cw-framebox" id="lgFrameA"></div>
+      </div>
+      <div class="frame">
+        <div class="frame-label"><span class="t">Pushed harder</span><span class="d">Music · 85% · 3° · substitution view, after Preview</span></div>
+        <div class="cw-framebox" id="lgFrameB"></div>
+      </div>
+      <div class="frame" style="max-width:360px">
+        <div class="frame-label"><span class="t">Decisions</span></div>
+        <ul class="annot">
+          <li><b>Config is four values</b> — lens, weight, reach, metaphor pull. Compact enough to persist by stable id, re-hydrate, and diff for the shift marker.</li>
+          <li><b>The lens is a lexical field, not a word list</b> — separate fields per part of speech (nouns / verbs / modifiers), bucketed by degree of separation. Reach decides how deep the pull reads.</li>
+          <li><b>Semantic gradient</b> — each lens carries a general → lens gradient (<i>plan → arrangement → composition → score</i>) so weight has a legible meaning: where on the gradient the prose should sit.</li>
+          <li><b>Substitution view</b> — this lens vs. general vs. a contrast lens (<i>score</i> vs. <i>plan</i> vs. <i>blueprint</i>), so the writer sees the pull as choices, not vibes. Shuffle the contrast column.</li>
+          <li><b>Everything in the box is deterministic scaffold</b> — instant and model-free. <b>Preview the Effect</b> is the explicit model seam, fast tier, re-rolled on demand; the committed directive never re-runs it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="03 Lens library">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Growing the lens library</h2><p>look up or invent a lens — model-drafted, writer-picked, project-persisted</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Build lens: "falconry"</span><span class="frame-tag accent">New</span><span class="d">two drafted takes, pre-pick</span></div>
+        <div class="cw-framebox" id="lgFrameC"></div>
+      </div>
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">Decisions</span></div>
+        <ul class="annot">
+          <li><b>The built-ins are a starter set, not the catalog.</b> Type any domain — the model drafts the full lexical field (POS buckets, gradient, substitutions, metaphor line) as <b>a few takes with details</b>; the writer picks one. Never one silent answer.</li>
+          <li><b>Chosen lenses persist as project resources</b> (<span style="font-family:var(--mono);font-size:10.5px">resources/lenses/falconry.json</span>) — compiled once, reusable in every session and thread, editable as a file. Durable truth lives in the project, not the conversation.</li>
+          <li><b>Writer's-Dictionary-grade knowledge, widget-sized</b> — the dictionary tool already produces lexical-field reports; this reuses that muscle but stores the result instead of re-generating it per session.</li>
+          <li><b>Building a lens is pre-commit play</b> — drafting and picking touch nothing on the rail. Only Install does.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="04 What rides the rail">
+    <div class="sec-head"><span class="sec-num">04</span><h2>What rides the standing rail</h2><p>a reserved frame consulted only at prose-generation time</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">What the model sees</span><span class="d">passage-scoped standing frame</span></div>
+        <div class="cw-railcard">
+          <div class="cap">re-shipped each run while active · never in history</div>
+          <div class="cw-code"><span class="tag">&lt;prose-directive family="lexical-gravity" id="pd-2"&gt;</span>
+<span class="k">lens:</span> photography · <span class="k">weight:</span> 60% · <span class="k">reach:</span> 2°
+When writing prose for the workshopped passage, let its lexis
+gravitate toward photography — aperture, frame, exposure, grain —
+strongest where perception and memory carry the beat. Never name
+the lens. This shapes the work, not the speaker.
+<span class="tag">&lt;/prose-directive&gt;</span></div>
+          <p class="under">The shape precedent is <span style="font-family:var(--mono);font-size:10.5px">&lt;workshop-session-attunement&gt;</span>, but not the home — leaning: its <b>own reserved frame</b>, so it's consulted only at prose time and killed independently. Open ADR question, stated as such.</p>
+        </div>
+      </div>
+      <div class="frame">
+        <div class="frame-label"><span class="t">Lifecycle in the thread</span><span class="d">three marker events, one active strip</span></div>
+        <div class="cw-railcard">
+          <div class="cap">same event class as a mode / expression change</div>
+          <div class="lg-life">
+            <div class="lg-marker"><span class="d"></span>Lexical Gravity installed — Photography · 60% · 2°</div>
+            <p class="why"><b>Install</b> — commit lands between runs; the directive starts riding with the next prose generation.</p>
+            <div class="lg-marker shift"><span class="d"></span>shifted — Photography · 60% → Music · 40%</div>
+            <p class="why"><b>Shift</b> — edit-in-place swaps the live frame via the <span style="font-family:var(--mono);font-size:10px">replaceWorkshopConversationBehavior</span> pattern. Changes remain local until Apply updates the live frame.</p>
+            <div class="lg-marker kill"><span class="d"></span>Lexical Gravity removed — the passage stops gravitating</div>
+            <p class="why"><b>Kill</b> — one click on the strip. The markers stay: an auditable record of what was pulling when.</p>
+          </div>
+        </div>
+      </div>
+      <div class="frame" style="max-width:360px">
+        <div class="frame-label"><span class="t">Invariants</span></div>
+        <ul class="annot">
+          <li><b>Never crosses the persona boundary.</b> No identity, no lens-on-anyone, no mode or expression change. Honored uniformly by every persona and every mode.</li>
+          <li><b>Coordinator in the <span style="font-family:var(--mono);font-size:11px">WorkshopConversationBehaviorService</span> mold</b> — active-run guard, serialization discipline, changes only between runs.</li>
+          <li><b>Config persists by stable id</b> host-side; the strip's Edit re-hydrates the exact panel, not a summary.</li>
+          <li><b>Reserved frame registers with the neutralizer</b> in the same change it ships.</li>
+          <li><b>Coexists with Prose Controller</b> (Sprint 03) — distinct families, each with its own strip and kill. Precedence under conflict is an open ADR question.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-foot">
+    <p class="muted">Next spread: <a href="Prose Minion - Prose Controller.html"><b>Prose Controller → Spread 03</b></a> — the other half of the prose-shaping pair (<i>how the passage is made</i>, where Gravity is <i>what words</i>), on this same standing rail with its own strip. For the ADR: own reserved frame vs. shared standing-context budget; Gravity vs. Controller precedence under conflict; and now the <b>lens library as a project resource</b> — where lens files live, and whether the Dictionary tool and Gravity share the field-compiler.</p>
+  </div>
+
+</div>
+
+<script src="icons.js"></script>
+<script src="pm-widgets.js"></script>
+<script src="pm-gravity.js"></script>
+<script>
+mountGravityFlow('lgStage');
+mountGravityFrame('lgFrameA', {banner:'seed', lens:'photography', weight:60, reach:2});
+mountGravityFrame('lgFrameB', {lens:'music', weight:85, reach:3, metaphor:true, preview:true, tab:'subs', contrast:'architecture'});
+mountGravityFrame('lgFrameC', {lens:'photography', weight:60, reach:2, lookup:'options'});
+</script>
+</body>
+</html>

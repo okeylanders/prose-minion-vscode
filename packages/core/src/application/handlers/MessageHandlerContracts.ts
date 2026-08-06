@@ -19,7 +19,7 @@ import type {
 } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import type { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import type { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
-import type { WorkshopContextResourceService } from '@/application/services/workshop/WorkshopContextResourceService';
+import type { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import type { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import type { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -33,6 +33,10 @@ import type { StandardsService } from '@services/resources/StandardsService';
 import type { CategorySearchService } from '@services/search/CategorySearchService';
 import type { WordSearchService } from '@services/search/WordSearchService';
 import type { AccountBalanceService } from '@/infrastructure/account';
+import type { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
+import type { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
+import type { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
+import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import type { PlatformDisposable } from '@/platform';
 
@@ -104,7 +108,7 @@ export interface CoreServices {
   workshopPersonaCapabilityFactory: WorkshopPersonaCapabilityFactory;
   workshopToolSidePass: RunWorkshopToolSidePass;
   /** Configured-resource intake for Workshop's context selector flows (Sprint 12). */
-  workshopContextResourceService: WorkshopContextResourceService;
+  workshopContextIntakeService: WorkshopContextIntakeService;
   /** Serialized Behavior + Writer Profile live-prompt coordination across webview surfaces. */
   workshopConversationSettingsService: WorkshopConversationSettingsService;
   /** Global writer-authored profile, deliberately outside the session aggregate. */
@@ -113,4 +117,12 @@ export interface CoreServices {
   workshopSessionTimeService: WorkshopSessionTimeService;
   /** Ordered aggregate + conversation archive persistence boundary. */
   workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator;
+  /** Gesture Playground pre-commit dictionary + menu generation (ADR 2026-07-22). */
+  gesturePlaygroundService: GesturePlaygroundService;
+  /** Lexical Gravity's two explicit model seams: preview and lens building. */
+  lexicalGravityModelService: LexicalGravityModelService;
+  /** Project-owned reusable lexical fields under prose-minion/lenses. */
+  lexicalGravityLensRepository: LexicalGravityLensRepository;
+  /** Serialized standing-frame replacement and session commit coordinator. */
+  workshopStandingDirectiveService: WorkshopStandingDirectiveService;
 }

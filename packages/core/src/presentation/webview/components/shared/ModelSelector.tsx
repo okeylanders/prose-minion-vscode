@@ -14,8 +14,10 @@ interface ModelSelectorProps {
   value?: string;
   onChange: (scope: ModelScope, modelId: string) => void;
   onOpenBrowser?: () => void;
+  onBrowserOpenChange?: (open: boolean) => void;
   label: string;
   helperText?: string;
+  disabled?: boolean;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
@@ -24,8 +26,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   value,
   onChange,
   onOpenBrowser,
+  onBrowserOpenChange,
   label,
-  helperText
+  helperText,
+  disabled = false
 }) => {
   const [browserOpen, setBrowserOpen] = React.useState(false);
 
@@ -36,6 +40,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const openBrowser = () => {
     onOpenBrowser?.();
     setBrowserOpen(true);
+    onBrowserOpenChange?.(true);
+  };
+
+  const closeBrowser = () => {
+    setBrowserOpen(false);
+    onBrowserOpenChange?.(false);
   };
 
   return (
@@ -47,7 +57,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         type="button"
         className="model-selector-trigger"
         onClick={openBrowser}
-        disabled={options.length === 0}
+        disabled={disabled || options.length === 0}
         aria-label={`Browse ${label.toLowerCase()} options. Current model: ${selectedLabel}`}
         title={`Browse ${label.toLowerCase()} options`}
       >
@@ -63,7 +73,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         options={options}
         value={selectedValue}
         label={label}
-        onClose={() => setBrowserOpen(false)}
+        onClose={closeBrowser}
         onSelect={onChange}
       />
     </div>

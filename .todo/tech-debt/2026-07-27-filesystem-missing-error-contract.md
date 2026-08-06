@@ -1,6 +1,6 @@
 # Filesystem Missing-File Error Contract
 
-**Status:** Identified
+**Status:** Partially mitigated in PR #98; stable port contract remains
 **Priority:** Low
 **Origin:** Workshop storage-bounds review
 
@@ -17,6 +17,12 @@ checkpoint into a read failure.
 - `packages/core/src/platform/FileSystem.ts`
 - `apps/vscode-extension/src/platform/vscode/VsCodeFileSystem.ts`
 - `packages/core/src/infrastructure/storage/WorkshopSessionStore.ts`
+- `packages/core/src/infrastructure/storage/LexicalGravityLensRepository.ts`
+- `packages/core/src/infrastructure/storage/fileSystemErrors.ts`
+
+PR #98 centralizes the temporary message classifier so new project-backed
+libraries do not grow their own subtly different regex. That is a containment
+measure, not the host-agnostic error contract described below.
 
 ## Completion criteria
 

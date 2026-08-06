@@ -18,16 +18,40 @@ import {
   WORKSHOP_GUEST_CAPACITY
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId } from '@shared/constants/workshopTools';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  isLiveWorkshopWidgetId,
+  isWorkshopWidgetId,
+  workshopWidgetIdFromArtifactKind
+} from '@shared/constants/workshopWidgets';
 import {
   WORKSHOP_TODO_BOUNDS
 } from '@/application/services/workshop/WorkshopSessionLimits';
 import {
-  MAXIMUM_PERSISTED_JSON_DEPTH
-} from '@/application/services/workshop/persistedJson';
+  arrayOf,
+  booleanAt,
+  enumAt,
+  exactKeys,
+  exactObject,
+  jsonObjectAt,
+  numberAt,
+  objectAt,
+  optionalBooleanAt,
+  optionalNumberAt,
+  optionalStringAt,
+  shapeError,
+  stringAt
+} from '@/application/services/workshop/persistedValidation';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  assertGesturePlaygroundDraftShape,
+  assertGesturePlaygroundRecommendationSeedShape
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
+import {
+  assertLexicalGravityDraftShape,
+  assertLexicalGravityRecommendationSeedShape
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 
 export function assertWorkshopSessionStateShape(
   value: unknown
@@ -50,7 +74,13 @@ export function assertWorkshopSessionStateShape(
       'scope',
       'shelvedExcerpt',
       'selectedToolId',
-      'lastCommittedPersonaBehavior'
+      'lastCommittedPersonaBehavior',
+      // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
+      'widgetConfigs',
+      // Optional since Sprint 02B: pre-directive checkpoints have none.
+      'standingDirectives',
+      // Optional: pre-room-artifact-ledger checkpoints retain refs only.
+      'threadArtifacts'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -77,11 +107,60 @@ export function assertWorkshopSessionStateShape(
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
   }
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
+  if (state.widgetConfigs !== undefined) {
+    arrayOf(state.widgetConfigs, 'Workshop session state.widgetConfigs', assertWidgetConfig);
+  }
+  if (state.standingDirectives !== undefined) {
+    arrayOf(
+      state.standingDirectives,
+      'Workshop session state.standingDirectives',
+      assertStandingDirective
+    );
+  }
+  if (state.threadArtifacts !== undefined) {
+    arrayOf(
+      state.threadArtifacts,
+      'Workshop session state.threadArtifacts',
+      assertThreadArtifact
+    );
+  }
   if (state.lastCommittedPersonaBehavior !== undefined) {
     assertLastCommittedBehavior(
       state.lastCommittedPersonaBehavior,
       'Workshop session state.lastCommittedPersonaBehavior'
     );
+  }
+}
+
+function assertThreadArtifact(value: unknown, path: string): void {
+  const artifact = exactObject(
+    value,
+    path,
+    ['id', 'turnId', 'name', 'content'],
+    ['kind', 'sourcePath', 'truncation']
+  );
+  stringAt(artifact.id, `${path}.id`);
+  stringAt(artifact.turnId, `${path}.turnId`);
+  stringAt(artifact.name, `${path}.name`);
+  stringAt(artifact.content, `${path}.content`);
+  optionalStringAt(artifact.sourcePath, `${path}.sourcePath`);
+  if (
+    artifact.kind !== undefined
+    && (
+      typeof artifact.kind !== 'string'
+      || workshopWidgetIdFromArtifactKind(artifact.kind) === undefined
+    )
+  ) {
+    shapeError(`${path}.kind`, 'widget:<registry id>');
+  }
+  if (artifact.truncation !== undefined) {
+    const truncation = exactObject(
+      artifact.truncation,
+      `${path}.truncation`,
+      ['keptWords', 'totalWords']
+    );
+    numberAt(truncation.keptWords, `${path}.truncation.keptWords`);
+    numberAt(truncation.totalWords, `${path}.truncation.totalWords`);
   }
 }
 
@@ -234,12 +313,61 @@ function assertCounters(value: unknown): void {
   const counters = exactObject(
     value,
     'Workshop session state.counters',
-    ['attachment', 'threadArtifact', 'turn', 'todo']
+    ['attachment', 'threadArtifact', 'turn', 'todo'],
+    // Optional since ADR 2026-07-22: pre-widget checkpoints have none.
+    ['widgetConfig', 'standingDirective']
   );
   numberAt(counters.attachment, 'Workshop session state.counters.attachment');
   numberAt(counters.threadArtifact, 'Workshop session state.counters.threadArtifact');
   numberAt(counters.turn, 'Workshop session state.counters.turn');
   numberAt(counters.todo, 'Workshop session state.counters.todo');
+  optionalNumberAt(counters.widgetConfig, 'Workshop session state.counters.widgetConfig');
+  optionalNumberAt(
+    counters.standingDirective,
+    'Workshop session state.counters.standingDirective'
+  );
+}
+
+function assertWidgetConfig(value: unknown, path: string): void {
+  const config = exactObject(
+    value,
+    path,
+    ['id', 'widgetId', 'revision', 'draft', 'createdAt'],
+    ['clonedFromConfigId', 'committedTurnId', 'artifactId', 'directiveId']
+  );
+  stringAt(config.id, `${path}.id`);
+  if (!isWorkshopWidgetId(config.widgetId)) {
+    shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+  }
+  numberAt(config.revision, `${path}.revision`);
+  numberAt(config.createdAt, `${path}.createdAt`);
+  optionalStringAt(config.clonedFromConfigId, `${path}.clonedFromConfigId`);
+  optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
+  optionalStringAt(config.artifactId, `${path}.artifactId`);
+  optionalStringAt(config.directiveId, `${path}.directiveId`);
+  if (config.widgetId === 'gesture-playground') {
+    assertGesturePlaygroundDraftShape(config.draft, `${path}.draft`);
+    return;
+  }
+  if (config.widgetId === 'lexical-gravity') {
+    assertLexicalGravityDraftShape(config.draft, `${path}.draft`);
+    return;
+  }
+  shapeError(`${path}.widgetId`, 'a widget with a persisted config codec');
+}
+
+function assertStandingDirective(value: unknown, path: string): void {
+  const directive = exactObject(
+    value,
+    path,
+    ['id', 'family', 'widgetId', 'widgetConfigId', 'revision', 'updatedAt']
+  );
+  stringAt(directive.id, `${path}.id`);
+  enumAt(directive.family, `${path}.family`, ['lexical-gravity', 'prose-controller']);
+  enumAt(directive.widgetId, `${path}.widgetId`, ['lexical-gravity', 'prose-controller']);
+  stringAt(directive.widgetConfigId, `${path}.widgetConfigId`);
+  numberAt(directive.revision, `${path}.revision`);
+  numberAt(directive.updatedAt, `${path}.updatedAt`);
 }
 
 function assertWriterSources(value: unknown): void {
@@ -322,7 +450,11 @@ function assertTurn(value: unknown, path: string): void {
       'citations',
       'truncated',
       'behavior',
-      'behaviorTransition'
+      'behaviorTransition',
+      // Conversation Widgets (ADR 2026-07-22).
+      'widgetCommit',
+      'widgetRecommendation',
+      'standingDirectiveChange'
     ]
   );
   stringAt(turn.id, `${path}.id`);
@@ -346,6 +478,7 @@ function assertTurn(value: unknown, path: string): void {
       'resource_read',
       'excerpt_revision',
       'context_change',
+      'standing_directive_change',
       'session_start',
       'session_resume',
       'scope_change'
@@ -398,6 +531,77 @@ function assertTurn(value: unknown, path: string): void {
   if (turn.behaviorTransition !== undefined) {
     assertBehaviorTransition(turn.behaviorTransition, `${path}.behaviorTransition`);
   }
+  if (turn.widgetCommit !== undefined) {
+    assertTurnWidgetCommit(turn.widgetCommit, `${path}.widgetCommit`);
+  }
+  if (turn.widgetRecommendation !== undefined) {
+    assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
+  }
+  if (turn.standingDirectiveChange !== undefined) {
+    assertStandingDirectiveChange(
+      turn.standingDirectiveChange,
+      `${path}.standingDirectiveChange`
+    );
+  }
+}
+
+function assertTurnWidgetCommit(value: unknown, path: string): void {
+  const raw = objectAt(value, path);
+  if (raw.rail === 'thread-artifact') {
+    const commit = exactObject(
+      raw,
+      path,
+      ['widgetId', 'widgetConfigId', 'rail', 'artifactId', 'selectionCount']
+    );
+    if (!isWorkshopWidgetId(commit.widgetId)) {
+      shapeError(`${path}.widgetId`, 'known Conversation Widget id');
+    }
+    stringAt(commit.widgetConfigId, `${path}.widgetConfigId`);
+    stringAt(commit.artifactId, `${path}.artifactId`);
+    numberAt(commit.selectionCount, `${path}.selectionCount`);
+    return;
+  }
+  const commit = exactObject(
+    raw,
+    path,
+    ['widgetId', 'widgetConfigId', 'rail', 'directiveId', 'revision']
+  );
+  enumAt(commit.rail, `${path}.rail`, ['standing']);
+  enumAt(commit.widgetId, `${path}.widgetId`, ['lexical-gravity', 'prose-controller']);
+  stringAt(commit.widgetConfigId, `${path}.widgetConfigId`);
+  stringAt(commit.directiveId, `${path}.directiveId`);
+  numberAt(commit.revision, `${path}.revision`);
+}
+
+function assertStandingDirectiveChange(value: unknown, path: string): void {
+  const change = exactObject(
+    value,
+    path,
+    ['action', 'family', 'widgetId', 'directiveId', 'widgetConfigId', 'revision']
+  );
+  enumAt(change.action, `${path}.action`, ['installed', 'shifted', 'removed']);
+  enumAt(change.family, `${path}.family`, ['lexical-gravity', 'prose-controller']);
+  enumAt(change.widgetId, `${path}.widgetId`, ['lexical-gravity', 'prose-controller']);
+  stringAt(change.directiveId, `${path}.directiveId`);
+  stringAt(change.widgetConfigId, `${path}.widgetConfigId`);
+  numberAt(change.revision, `${path}.revision`);
+}
+
+function assertTurnWidgetRecommendation(value: unknown, path: string): void {
+  const recommendation = exactObject(value, path, ['widgetId'], ['seed']);
+  if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
+    shapeError(`${path}.widgetId`, 'live Conversation Widget id');
+  }
+  if (recommendation.seed === undefined) return;
+  if (recommendation.widgetId === 'gesture-playground') {
+    assertGesturePlaygroundRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
+  }
+  if (recommendation.widgetId === 'lexical-gravity') {
+    assertLexicalGravityRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
+  }
+  shapeError(`${path}.widgetId`, 'a widget with a recommendation codec');
 }
 
 function assertCitation(value: unknown, path: string): void {
@@ -524,7 +728,14 @@ function assertBehavior(value: unknown, path: string): void {
   const behavior = exactObject(
     value,
     path,
-    ['interactionMode', 'expressionLevel', 'relationalDepth', 'carryCuesThroughSession']
+    [
+      'interactionMode',
+      'expressionLevel',
+      'relationalDepth',
+      'carryCuesThroughSession'
+    ],
+    // Development-checkpoint compatibility: 02B-A added this behavior stamp.
+    ['proactiveAssistance']
   );
   if (!isWorkshopInteractionMode(behavior.interactionMode)) {
     shapeError(`${path}.interactionMode`, 'valid Workshop interaction mode');
@@ -536,6 +747,7 @@ function assertBehavior(value: unknown, path: string): void {
     shapeError(`${path}.relationalDepth`, 'valid Workshop relational depth');
   }
   booleanAt(behavior.carryCuesThroughSession, `${path}.carryCuesThroughSession`);
+  optionalBooleanAt(behavior.proactiveAssistance, `${path}.proactiveAssistance`);
 }
 
 function assertLastCommittedBehavior(value: unknown, path: string): void {
@@ -721,161 +933,4 @@ function assertTodoSource(value: unknown, path: string): void {
   stringAt(source.findingKey, `${path}.findingKey`);
   stringAt(source.findingText, `${path}.findingText`);
   numberAt(source.excerptVersion, `${path}.excerptVersion`);
-}
-
-function exactObject(
-  value: unknown,
-  path: string,
-  required: readonly string[],
-  optional: readonly string[] = []
-): Record<string, unknown> {
-  const object = objectAt(value, path);
-  exactKeys(object, path, required, optional);
-  return object;
-}
-
-function objectAt(value: unknown, path: string): Record<string, unknown> {
-  if (
-    typeof value !== 'object'
-    || value === null
-    || Array.isArray(value)
-    || Object.getPrototypeOf(value) !== Object.prototype
-  ) {
-    shapeError(path, 'plain object');
-  }
-  return value as Record<string, unknown>;
-}
-
-function exactKeys(
-  object: Record<string, unknown>,
-  path: string,
-  required: readonly string[],
-  optional: readonly string[] = []
-): void {
-  const allowed = new Set([...required, ...optional]);
-  const unknown = Object.keys(object).find((key) => !allowed.has(key));
-  if (unknown) {
-    throw new Error(`${path} contains unknown field ${unknown}`);
-  }
-  const missing = required.find(
-    (key) => !Object.prototype.hasOwnProperty.call(object, key) || object[key] === undefined
-  );
-  if (missing) {
-    throw new Error(`${path} is missing required field ${missing}`);
-  }
-}
-
-function arrayOf(
-  value: unknown,
-  path: string,
-  assertItem: (item: unknown, itemPath: string) => void
-): void {
-  if (!Array.isArray(value)) {
-    shapeError(path, 'array');
-  }
-  value.forEach((item, index) => assertItem(item, `${path}[${index}]`));
-}
-
-function stringAt(value: unknown, path: string): void {
-  if (typeof value !== 'string') {
-    shapeError(path, 'string');
-  }
-}
-
-function optionalStringAt(value: unknown, path: string): void {
-  if (value !== undefined) {
-    stringAt(value, path);
-  }
-}
-
-function numberAt(value: unknown, path: string): void {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    shapeError(path, 'finite number');
-  }
-}
-
-function optionalNumberAt(value: unknown, path: string): void {
-  if (value !== undefined) {
-    numberAt(value, path);
-  }
-}
-
-function booleanAt(value: unknown, path: string): void {
-  if (typeof value !== 'boolean') {
-    shapeError(path, 'boolean');
-  }
-}
-
-function optionalBooleanAt(value: unknown, path: string): void {
-  if (value !== undefined) {
-    booleanAt(value, path);
-  }
-}
-
-function enumAt(value: unknown, path: string, allowed: readonly string[]): void {
-  if (typeof value !== 'string' || !allowed.includes(value)) {
-    shapeError(path, allowed.join(' | '));
-  }
-}
-
-function jsonObjectAt(value: unknown, path: string): void {
-  objectAt(value, path);
-  assertJsonValue(value, path);
-}
-
-/**
- * Free-form JSON validation for capability metadata.
- *
- * This runs on BOTH sides of the durable boundary: on read against a
- * `JSON.parse` result (where `undefined` cannot occur) and on write against the
- * live in-memory object (where it routinely does — any optional metadata field
- * the persona omitted is an `undefined` member).
- *
- * So it must honor the same policy `clonePersistedJson` documents: an
- * `undefined` OBJECT MEMBER is an absent member, exactly as `JSON.stringify`
- * omits it. Rejecting one used to fail every save of a session containing a
- * `resource.read` without an explicit `endLine` — the validator refusing a value
- * that would never have reached disk.
- *
- * An `undefined` ARRAY ITEM is a different matter and stays refused: JSON has no
- * hole, so `JSON.stringify` writes `null` there, silently changing the data.
- */
-function assertJsonValue(value: unknown, path: string, depth = 0): void {
-  if (depth > MAXIMUM_PERSISTED_JSON_DEPTH) {
-    throw new Error(
-      `${path} exceeds the maximum JSON nesting depth of ${MAXIMUM_PERSISTED_JSON_DEPTH}.`
-    );
-  }
-  if (
-    value === null
-    || typeof value === 'string'
-    || typeof value === 'boolean'
-  ) {
-    return;
-  }
-  if (typeof value === 'number') {
-    numberAt(value, path);
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((item, index) =>
-      assertJsonValue(item, `${path}[${index}]`, depth + 1)
-    );
-    return;
-  }
-  if (value === undefined) {
-    // Only reachable as an array item: object members are skipped below.
-    shapeError(path, 'a JSON value (an undefined array item would be written as null)');
-  }
-  const object = objectAt(value, path);
-  for (const [key, nested] of Object.entries(object)) {
-    if (nested === undefined) {
-      continue;
-    }
-    assertJsonValue(nested, `${path}.${key}`, depth + 1);
-  }
-}
-
-function shapeError(path: string, expected: string): never {
-  throw new Error(`${path} must be ${expected}`);
 }

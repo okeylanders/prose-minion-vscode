@@ -40,14 +40,19 @@ import {
   RunWorkshopToolSidePass,
   WorkshopAnalysisSidePass,
   WorkshopPersonaCapabilityFactory,
-  WorkshopContextResourceService,
+  WorkshopContextIntakeService,
   WorkshopConversationSettingsService,
   WorkshopWriterProfileService,
   WorkshopSessionTimeService,
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
+  GesturePlaygroundService,
+  LexicalGravityModelService,
+  LexicalGravityLensRepository,
+  WorkshopStandingDirectiveService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
   coerceWorkshopConversationBehavior,
   toInclusiveLineRange,
 } from '@prose-minion/core';
@@ -125,6 +130,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     aiResourceManager,
     resourceLoader,
     toolOptions,
+    WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
     outputChannel
   );
   const dictionaryService = new DictionaryService(
@@ -214,6 +220,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel,
     workshopWriterProfileService
   );
+  const workshopStandingDirectiveService = new WorkshopStandingDirectiveService(
+    workshopSessionService,
+    workshopConversationSettingsService
+  );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,
     workshopAnalysisSidePass,
@@ -224,7 +234,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopWriterProfileService,
     () => workshopConversationSettingsService.getWebResearch().enabled
   );
-  const workshopContextResourceService = new WorkshopContextResourceService(contextResourceResolver);
+  const workshopContextIntakeService = new WorkshopContextIntakeService(
+    contextResourceResolver,
+    platform.fileSystem,
+    platform.workspace
+  );
   const workshopSessionTimeService = new WorkshopSessionTimeService();
   const workshopSessionStore = new WorkshopSessionStore(
     platform.fileSystem,
@@ -247,6 +261,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Otherwise a fast webview message can race hydration and lose committed work.
   await workshopSessionPersistenceCoordinator.initialize();
 
+  // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one
+  // quality-first model call, routed through the manager-owned `widget` scope.
+  const gesturePlaygroundService = new GesturePlaygroundService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    outputChannel
+  );
+  const lexicalGravityModelService = new LexicalGravityModelService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    outputChannel
+  );
+  const lexicalGravityLensRepository = new LexicalGravityLensRepository(
+    platform.fileSystem,
+    platform.workspace,
+    outputChannel
+  );
+
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -265,11 +297,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopRoomDeliveryService,
     workshopPersonaCapabilityFactory,
     workshopToolSidePass,
-    workshopContextResourceService,
+    workshopContextIntakeService,
     workshopConversationSettingsService,
     workshopWriterProfileService,
     workshopSessionTimeService,
-    workshopSessionPersistenceCoordinator
+    workshopSessionPersistenceCoordinator,
+    gesturePlaygroundService,
+    lexicalGravityModelService,
+    lexicalGravityLensRepository,
+    workshopStandingDirectiveService
   };
 
   // Migrate API key from settings to SecretStorage if needed

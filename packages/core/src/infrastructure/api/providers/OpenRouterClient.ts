@@ -23,7 +23,13 @@ export interface OpenRouterRequest {
   messages: OpenRouterMessage[];
   temperature?: number;
   max_tokens?: number;
+  reasoning?: OpenRouterReasoningOptions;
   usage?: { include: boolean };
+}
+
+export interface OpenRouterReasoningOptions {
+  effort: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'none';
+  exclude?: boolean;
 }
 
 export interface OpenRouterWebSearchTool {
@@ -41,7 +47,7 @@ export interface OpenRouterResponse {
   choices: Array<{
     message: {
       role: string;
-      content: string;
+      content: unknown;
       annotations?: unknown;
     };
     finish_reason: string;
@@ -107,6 +113,7 @@ export class OpenRouterClient {
       maxTokens?: number;
       signal?: AbortSignal;
       tools?: OpenRouterWebSearchTool[];
+      reasoning?: OpenRouterReasoningOptions;
     }
   ): Promise<{
     content: string;
@@ -134,6 +141,7 @@ export class OpenRouterClient {
         temperature: options?.temperature ?? 0.7,
         max_tokens: requestedMaxOutputTokens,
         usage: { include: true },
+        ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
         ...(options?.tools ? { tools: options.tools } : {})
       })
     });
@@ -152,7 +160,7 @@ export class OpenRouterClient {
     const usage = this.toTokenUsage(data.usage);
     return {
       id: data.id,
-      content: data.choices[0].message.content,
+      content: this.toAssistantContent(data.choices[0].message.content),
       finishReason: data.choices[0]?.finish_reason,
       usage,
       citations: this.toUrlCitations(data.choices[0].message.annotations),
@@ -167,6 +175,20 @@ export class OpenRouterClient {
   }
 
   /**
+   * OpenRouter's OpenAI-compatible response permits `message.content: null`
+   * when a provider finishes without emitting a final answer. Normalize that
+   * provider edge here so downstream orchestration can keep an honest string
+   * contract and report an empty response instead of crashing during cleanup.
+   */
+  private toAssistantContent(content: unknown): string {
+    if (typeof content === 'string') return content;
+    this.outputChannel?.appendLine(
+      `[OpenRouterClient] Provider returned ${content === null ? 'null' : typeof content} assistant content; treating it as an empty response.`
+    );
+    return '';
+  }
+
+  /**
    * Create a streaming chat completion using Server-Sent Events (SSE).
    * Yields tokens progressively as they arrive from the server.
    * When cancelled via signal, server stops generating (saves tokens).
@@ -178,6 +200,7 @@ export class OpenRouterClient {
       maxTokens?: number;
       signal?: AbortSignal;
       tools?: OpenRouterWebSearchTool[];
+      reasoning?: OpenRouterReasoningOptions;
     }
   ): AsyncGenerator<{
     token: string;
@@ -206,6 +229,7 @@ export class OpenRouterClient {
         temperature: options?.temperature ?? 0.7,
         max_tokens: requestedMaxOutputTokens,
         stream_options: { include_usage: true },
+        ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
         ...(options?.tools ? { tools: options.tools } : {})
       })
     });

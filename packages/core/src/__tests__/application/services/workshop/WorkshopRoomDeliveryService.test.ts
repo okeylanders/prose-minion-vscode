@@ -217,6 +217,69 @@ describe('WorkshopRoomDeliveryService', () => {
       .toEqual([prepared.deliveredTurnIds[1]]);
   });
 
+  it('delivers a room-turn artifact to another participant exactly once', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setSessionScope('open');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
+    const writerTurn = session.beginPersonaGuestMessage(
+      'margot',
+      'margot-run',
+      'Read these notes.',
+      [{ id: 'ta-1', label: 'mara.md', words: 4 }]
+    );
+    session.completeRun('margot-run', 'I see the pressure.');
+    session.recordRoomThreadArtifacts(writerTurn.id, [{
+      id: 'ta-1',
+      name: 'mara.md',
+      content: 'Mara keeps both hands around the cooling mug.'
+    }]);
+
+    const delivery = new WorkshopRoomDeliveryService(session);
+    const hostCatchUp = delivery.prepare({ kind: 'host' });
+
+    expect(hostCatchUp.frame).toContain('<thread-artifact id="ta-1">');
+    expect(hostCatchUp.frame).toContain('Mara keeps both hands around the cooling mug.');
+    expect(
+      delivery.prepare({ kind: 'personaGuest', personaId: 'margot' }).frame
+    ).toBeUndefined();
+
+    delivery.commit(hostCatchUp);
+    expect(session.collectWriterSources({ kind: 'host' })).toEqual([
+      expect.objectContaining({
+        kind: 'message-attachment',
+        artifactId: 'ta-1',
+        label: 'mara.md'
+      })
+    ]);
+    expect(delivery.prepare({ kind: 'host' }).frame).toBeUndefined();
+  });
+
+  it('counts artifact bodies when the runaway guard chooses a whole-turn prefix', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setSessionScope('open');
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
+    const writerTurn = session.beginPersonaGuestMessage(
+      'margot',
+      'margot-run',
+      'Short.',
+      [{ id: 'ta-1', label: 'large.md', words: 100 }]
+    );
+    session.completeRun('margot-run', 'Also short.');
+    session.recordRoomThreadArtifacts(writerTurn.id, [{
+      id: 'ta-1',
+      name: 'large.md',
+      content: 'x'.repeat(500)
+    }]);
+
+    const prepared = new WorkshopRoomDeliveryService(session, 100)
+      .prepare({ kind: 'host' });
+
+    // The first whole turn is never split, but its artifact consumes the
+    // guard and leaves the following reply pending.
+    expect(prepared.deliveredTurnIds).toEqual([writerTurn.id]);
+    expect(prepared.deferredTurns).toBe(1);
+  });
+
   it('advances through the delivered prefix rather than a newer ineligible ledger tail', () => {
     const session = new WorkshopSessionService(() => 1);
     session.setExcerpt({ text: 'Passage.', source: { kind: 'manual' } });
