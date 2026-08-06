@@ -25,6 +25,16 @@ const models: ModelOption[] = [{
   provider: 'Google'
 }];
 
+const previewFixture = (configKey: string, sourceText: string, text: string) => ({
+  version: 2 as const,
+  configKey,
+  sourceText,
+  semanticPositions: [],
+  selectedDynamicId: null,
+  openEntailment: null,
+  text
+});
+
 const renderModal = (
   opening: WorkshopLexicalGravityOpening = { kind: 'new' },
   overrides: Partial<React.ComponentProps<typeof WorkshopLexicalGravityModal>> = {}
@@ -118,11 +128,11 @@ describe('WorkshopLexicalGravityModal', () => {
       previewResult={{
         token,
         ok: true,
-        preview: {
-          configKey: 'music|40|3|1',
-          sourceText: builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample,
-          text: 'A *resonant* preview.'
-        }
+        preview: previewFixture(
+          'music|40|3|1',
+          builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample,
+          'A *resonant* preview.'
+        )
       }}
     />);
 
@@ -175,11 +185,11 @@ describe('WorkshopLexicalGravityModal', () => {
       previewResult={{
         token: firstToken,
         ok: true,
-        preview: {
-          configKey: 'photography|60|2|0',
-          sourceText: generatedSource,
-          text: 'The generated after prose.'
-        }
+        preview: previewFixture(
+          'photography|60|2|0',
+          generatedSource,
+          'The generated after prose.'
+        )
       }}
     />);
 
@@ -230,11 +240,11 @@ describe('WorkshopLexicalGravityModal', () => {
           reach: 2,
           metaphorPull: false,
           resolvedLens: lens,
-          preview: {
-            configKey: 'photography|60|2|0',
+          preview: previewFixture(
+            'photography|60|2|0',
             sourceText,
-            text: 'The old model framed the rain.'
-          }
+            'The old model framed the rain.'
+          )
         }
       }
     });

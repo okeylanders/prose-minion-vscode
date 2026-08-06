@@ -8,8 +8,13 @@ import {
   validateLexicalGravityLens
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import {
-  builtInLexicalGravityLens
+  builtInLexicalGravityLens,
+  builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
+import {
+  buildLexicalGravityDirectiveFrame
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 describe('LexicalGravityConfigCodec', () => {
   it('owns the exact weight and reach value grammar', () => {
@@ -41,8 +46,36 @@ describe('LexicalGravityConfigCodec', () => {
 
     const validated = validateLexicalGravityLens(source);
     validated.degrees[1].nouns[0] = 'mutated';
+    validated.logic.attention.foregrounds[0] = 'mutated';
+    validated.logic.axes[0].poles[0] = 'mutated';
+    validated.logic.roles[0].description = 'mutated';
+    validated.logic.dynamics[0].entailment = 'mutated';
 
     expect(source.degrees[1].nouns[0]).toBe('aperture');
+    expect(source.logic.attention.foregrounds[0]).not.toBe('mutated');
+    expect(source.logic.axes[0].poles[0]).not.toBe('mutated');
+    expect(source.logic.roles[0].description).not.toBe('mutated');
+    expect(source.logic.dynamics[0].entailment).not.toBe('mutated');
+  });
+
+  it('validates every built-in as one complete v2 interpretive grammar', () => {
+    const lenses = builtInLexicalGravityLenses();
+
+    expect(lenses).toHaveLength(6);
+    expect(() => lenses.forEach(validateLexicalGravityLens)).not.toThrow();
+    expect(lenses.every(({ version, logic }) =>
+      version === 2
+      && logic.axes.length >= 2
+      && logic.roles.length >= 2
+      && logic.dynamics.length >= 2
+    )).toBe(true);
+  });
+
+  it('rejects version 1 instead of inventing interpretive logic', () => {
+    const current = builtInLexicalGravityLens('photography')!;
+    expect(() => validateLexicalGravityLens({ ...current, version: 1 })).toThrow(
+      /lens\.version must be 2/i
+    );
   });
 
   it('rejects unknown lens fields', () => {
@@ -56,6 +89,22 @@ describe('LexicalGravityConfigCodec', () => {
     const duplicate = builtInLexicalGravityLens('photography')!;
     duplicate.degrees[1].nouns = ['frame', 'FRAME'];
     expect(() => validateLexicalGravityLens(duplicate)).toThrow(/without duplicates/);
+  });
+
+  it('requires exact lens logic ids, axis tuples, and collection bounds', () => {
+    const duplicateRole = builtInLexicalGravityLens('photography')!;
+    duplicateRole.logic.roles[1].id = duplicateRole.logic.roles[0].id;
+    expect(() => validateLexicalGravityLens(duplicateRole)).toThrow(/unique id/);
+
+    const invalidAxis = builtInLexicalGravityLens('photography')! as unknown as {
+      logic: { axes: Array<{ poles: string[] }> };
+    };
+    invalidAxis.logic.axes[0].poles = ['one'];
+    expect(() => validateLexicalGravityLens(invalidAxis)).toThrow(/two-string tuple/);
+
+    const missingGuardrails = builtInLexicalGravityLens('photography')!;
+    missingGuardrails.logic.guardrails = [];
+    expect(() => validateLexicalGravityLens(missingGuardrails)).toThrow(/2–4 strings/);
   });
 
   it('rejects each invalid control and the single-lens mismatch independently', () => {
@@ -85,7 +134,7 @@ describe('LexicalGravityConfigCodec', () => {
     })).toThrow(/selected lensSlug/);
   });
 
-  it('rejects a shape-valid lens whose reach-3 directive exceeds its prompt budget', () => {
+  it('renders a worst-case valid v2 lens within the measured aggregate prompt budget', () => {
     const oversized = builtInLexicalGravityLens('photography')!;
     for (const degree of [1, 2, 3] as const) {
       for (const part of ['nouns', 'verbs', 'modifiers'] as const) {
@@ -111,9 +160,54 @@ describe('LexicalGravityConfigCodec', () => {
       ending: 'e'.repeat(200)
     };
     oversized.metaphor = 'm'.repeat(200);
+    oversized.logic.premise = 'p'.repeat(400);
+    oversized.logic.attention.foregrounds = Array.from(
+      { length: 4 },
+      (_, index) => `${index}-${'f'.repeat(177)}`
+    );
+    oversized.logic.attention.backgrounds = Array.from(
+      { length: 4 },
+      (_, index) => `${index}-${'b'.repeat(177)}`
+    );
+    oversized.logic.axes = Array.from({ length: 4 }, (_, index) => ({
+      id: `axis-${index}`,
+      name: `${index}-${'n'.repeat(77)}`,
+      poles: [
+        `${index}-${'l'.repeat(97)}`,
+        `${index}-${'r'.repeat(97)}`
+      ] as [string, string]
+    }));
+    oversized.logic.roles = Array.from({ length: 4 }, (_, index) => ({
+      id: `role-${index}`,
+      name: `${index}-${'n'.repeat(77)}`,
+      description: `${index}-${'d'.repeat(237)}`
+    }));
+    oversized.logic.dynamics = Array.from({ length: 4 }, (_, index) => ({
+      id: `dynamic-${index}`,
+      operation: `${index}-${'o'.repeat(77)}`,
+      movement: `${index}-${'m'.repeat(197)}`,
+      entailment: `${index}-${'e'.repeat(357)}`,
+      narrativeAffordance: `${index}-${'a'.repeat(357)}`
+    }));
+    oversized.logic.guardrails = Array.from(
+      { length: 4 },
+      (_, index) => `${index}-${'g'.repeat(237)}`
+    );
 
-    expect(() => validateLexicalGravityLens(oversized)).toThrow(
-      /reach-3 directive fits within 3000 characters/
+    expect(() => validateLexicalGravityLens(oversized)).not.toThrow();
+    const frame = buildLexicalGravityDirectiveFrame(
+      { id: 'pd-worst-case', revision: Number.MAX_SAFE_INTEGER },
+      {
+        lensSlug: oversized.slug,
+        weight: 100,
+        reach: 3,
+        metaphorPull: true,
+        resolvedLens: oversized
+      }
+    );
+    expect(frame.length).toBeGreaterThan(12_000);
+    expect(frame.length).toBeLessThanOrEqual(
+      PROMPT_BUDGETS.workshopWidgets.lexicalDirectiveCharacters
     );
   });
 
@@ -126,10 +220,20 @@ describe('LexicalGravityConfigCodec', () => {
       metaphorPull: false,
       resolvedLens,
       preview: {
+        version: 2 as const,
         configKey: lexicalGravityConfigKey({
           lensSlug: 'music', weight: 40, reach: 2, metaphorPull: false
         }),
         sourceText: 'The room waited beneath the quiet rafters.',
+        semanticPositions: [{
+          element: 'the room',
+          roleId: 'rest',
+          axisId: 'time',
+          axisPosition: 'suspended after the expected answer',
+          significance: 'The missing reply becomes active pressure.'
+        }],
+        selectedDynamicId: 'hold-rest',
+        openEntailment: 'The next speaker must answer the silence before the old rhythm can resume.',
         text: 'The room held a muted cadence.'
       }
     };
@@ -137,5 +241,35 @@ describe('LexicalGravityConfigCodec', () => {
     expect(validateLexicalGravityDraft(draft)).toEqual(draft);
     draft.preview.configKey = 'stale|config';
     expect(() => validateLexicalGravityDraft(draft)).toThrow(/current four-value config key/);
+  });
+
+  it('rejects Preview positions and dynamics not declared by the resolved lens', () => {
+    const resolvedLens = builtInLexicalGravityLens('music')!;
+    const base = {
+      lensSlug: 'music',
+      weight: 40,
+      reach: 2 as const,
+      metaphorPull: false,
+      resolvedLens,
+      preview: {
+        version: 2 as const,
+        configKey: lexicalGravityConfigKey({
+          lensSlug: 'music', weight: 40, reach: 2, metaphorPull: false
+        }),
+        sourceText: 'The room waited.',
+        semanticPositions: [{
+          element: 'the room', roleId: 'camera', axisId: null,
+          axisPosition: null, significance: 'It waits.'
+        }],
+        selectedDynamicId: null as string | null,
+        openEntailment: null,
+        text: 'The room waited.'
+      }
+    };
+
+    expect(() => validateLexicalGravityDraft(base)).toThrow(/roleId.*selected lens/);
+    base.preview.semanticPositions[0].roleId = 'rest';
+    base.preview.selectedDynamicId = 'develop';
+    expect(() => validateLexicalGravityDraft(base)).toThrow(/selectedDynamicId.*selected lens/);
   });
 });

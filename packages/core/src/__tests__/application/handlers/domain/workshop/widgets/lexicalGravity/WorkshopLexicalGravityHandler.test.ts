@@ -61,8 +61,12 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     const sourceText = 'Elias watched rain gather in the empty birdbath.';
     const model = {
       preview: jest.fn().mockResolvedValue({
+        version: 2,
         configKey: 'photography|60|2|0',
         sourceText,
+        semanticPositions: [],
+        selectedDynamicId: null,
+        openEntailment: null,
         text: 'Elias framed the rain inside the birdbath.'
       })
     };
@@ -183,11 +187,14 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     const handler = new WorkshopLexicalGravityHandler(
       {} as never,
       {
-        list: jest.fn().mockResolvedValue([{
-          ...source,
-          source: 'project',
-          name: 'Counterfeit Photography'
-        }]),
+        list: jest.fn().mockResolvedValue({
+          lenses: [{
+            ...source,
+            source: 'project',
+            name: 'Counterfeit Photography'
+          }],
+          incompatibleResources: []
+        }),
         availability: jest.fn().mockReturnValue({ displayPath: 'prose-minion/lenses' })
       } as never,
       postMessage,
@@ -204,6 +211,38 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     const payload = postMessage.mock.calls[0][0].payload;
     expect(payload.lenses.find(({ slug }: { slug: string }) => slug === 'photography'))
       .toEqual(expect.objectContaining({ name: 'Photography', source: 'built-in' }));
+  });
+
+  it('forwards actionable incompatible project resources with the lens catalog', async () => {
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const incompatibility = {
+      resourceName: 'old-lens.json',
+      foundVersion: 1,
+      message: 'Regenerate this version 1 lens with Build lens.'
+    };
+    const handler = new WorkshopLexicalGravityHandler(
+      {} as never,
+      {
+        list: jest.fn().mockResolvedValue({
+          lenses: [],
+          incompatibleResources: [incompatibility]
+        }),
+        availability: jest.fn().mockReturnValue({ displayPath: 'prose-minion/lenses' })
+      } as never,
+      postMessage,
+      { appendLine: jest.fn() } as never
+    );
+
+    await handler.handleRequestLenses({
+      type: MessageType.WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES,
+      source: 'webview.test',
+      timestamp: 1,
+      payload: {}
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ incompatibleResources: [incompatibility] })
+    }));
   });
 
 });

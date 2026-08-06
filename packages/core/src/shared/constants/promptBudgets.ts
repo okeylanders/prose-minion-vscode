@@ -100,6 +100,26 @@ export interface PromptBudgets {
     lexicalLensSlugCharacters: number;
     lexicalLensVariantCharacters: number;
     lexicalLensDescriptionCharacters: number;
+    lexicalLogicPremiseCharacters: number;
+    lexicalAttentionItemsMinimum: number;
+    lexicalAttentionItems: number;
+    lexicalAttentionItemCharacters: number;
+    lexicalLogicAxesMinimum: number;
+    lexicalLogicAxes: number;
+    lexicalLogicIdCharacters: number;
+    lexicalLogicNameCharacters: number;
+    lexicalAxisPoleCharacters: number;
+    lexicalLogicRolesMinimum: number;
+    lexicalLogicRoles: number;
+    lexicalRoleDescriptionCharacters: number;
+    lexicalLogicDynamicsMinimum: number;
+    lexicalLogicDynamics: number;
+    lexicalDynamicMovementCharacters: number;
+    lexicalDynamicEntailmentCharacters: number;
+    lexicalDynamicAffordanceCharacters: number;
+    lexicalLogicGuardrailsMinimum: number;
+    lexicalLogicGuardrails: number;
+    lexicalGuardrailCharacters: number;
     lexicalTermCharacters: number;
     lexicalTermsPerBucket: number;
     lexicalGradientTerms: number;
@@ -109,7 +129,14 @@ export interface PromptBudgets {
     lexicalBuildQueryCharacters: number;
     lexicalBuildCandidates: number;
     lexicalBuildOutputTokens: number;
+    lexicalBuildResponseCharacters: number;
     lexicalPreviewCharacters: number;
+    lexicalPreviewResponseCharacters: number;
+    lexicalPreviewPositions: number;
+    lexicalPreviewElementCharacters: number;
+    lexicalPreviewAxisPositionCharacters: number;
+    lexicalPreviewSignificanceCharacters: number;
+    lexicalPreviewEntailmentCharacters: number;
     lexicalPreviewOutputTokens: number;
     lexicalDirectiveCharacters: number;
   }>;
@@ -185,6 +212,26 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalLensSlugCharacters: 64,
     lexicalLensVariantCharacters: 120,
     lexicalLensDescriptionCharacters: 320,
+    lexicalLogicPremiseCharacters: 400,
+    lexicalAttentionItemsMinimum: 2,
+    lexicalAttentionItems: 4,
+    lexicalAttentionItemCharacters: 180,
+    lexicalLogicAxesMinimum: 2,
+    lexicalLogicAxes: 4,
+    lexicalLogicIdCharacters: 64,
+    lexicalLogicNameCharacters: 80,
+    lexicalAxisPoleCharacters: 100,
+    lexicalLogicRolesMinimum: 2,
+    lexicalLogicRoles: 4,
+    lexicalRoleDescriptionCharacters: 240,
+    lexicalLogicDynamicsMinimum: 2,
+    lexicalLogicDynamics: 4,
+    lexicalDynamicMovementCharacters: 200,
+    lexicalDynamicEntailmentCharacters: 360,
+    lexicalDynamicAffordanceCharacters: 360,
+    lexicalLogicGuardrailsMinimum: 2,
+    lexicalLogicGuardrails: 4,
+    lexicalGuardrailCharacters: 240,
     lexicalTermCharacters: 80,
     lexicalTermsPerBucket: 12,
     lexicalGradientTerms: 12,
@@ -194,8 +241,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalBuildQueryCharacters: 100,
     lexicalBuildCandidates: 3,
     lexicalBuildOutputTokens: 8_000,
+    lexicalBuildResponseCharacters: 200_000,
     lexicalPreviewCharacters: 1_200,
+    lexicalPreviewResponseCharacters: 12_000,
+    lexicalPreviewPositions: 6,
+    lexicalPreviewElementCharacters: 160,
+    lexicalPreviewAxisPositionCharacters: 160,
+    lexicalPreviewSignificanceCharacters: 320,
+    lexicalPreviewEntailmentCharacters: 500,
     lexicalPreviewOutputTokens: 3_600,
-    lexicalDirectiveCharacters: 3_000
+    lexicalDirectiveCharacters: 16_000
   }
 };

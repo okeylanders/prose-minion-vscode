@@ -1,10 +1,10 @@
 # Sprint 02B-B: Lexical Gravity Interpretive Grammar
 
-**Status**: Paused — Workshop Architecture Refactor Phases 0-7 block feature implementation
-**Priority**: High after the architecture feature-resume gate closes
-**Branch**: `sprint/conversation-widgets-02b-b-lexical-gravity-interpretive-grammar` -> stacked on Sprint 02B-A until PR #99 merges, then retarget to `epic/conversation-widgets`
+**Status**: In progress — backend v2 contract and protocols implemented; Lens Logic presentation pending Claude Design
+**Priority**: High
+**Branch**: `sprint/conversation-widgets-02b-b-lexical-gravity-interpretive-grammar` -> `epic/conversation-widgets`
 **Estimated Effort**: 5-8 days
-**Depends on**: Sprint 02B-A and [Workshop Architecture Refactor Phase 7](../../epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md)
+**Depends on**: Sprint 02B-A and completed [Workshop Architecture Refactor Phase 7](../../epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md)
 **ADR**: [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md)
 
 ## Goal
@@ -18,9 +18,21 @@ last-mile realization layer.
 This sprint establishes that foundation before Prose Controller, lens blending,
 or another widget copies the current representation.
 
-Implementation is intentionally paused. PR #100 records this plan, its ADR, and
-the accepted architecture runway; no Lens Logic runtime work begins until the
-Workshop responsibility refactor closes.
+The architecture feature gate is closed. Okey explicitly resumed feature work
+on 2026-08-06 after Phase 7 accepted the final responsibility map and closure
+evidence.
+
+## Implementation progress — 2026-08-06
+
+- Locked the shared v2 lens, Preview, and incompatibility contracts.
+- Converted all six built-ins to validated interpretive grammars.
+- Advanced lens building and Preview to strict sentinel-framed v2 JSON.
+- Added semantics-first standing-frame rendering and measured its worst-case
+  valid prompt bound.
+- Added actionable, non-mutating version-1 project-resource diagnostics.
+- Preserved the existing modal structure so Claude Design can integrate the
+  Lens Logic presentation against the locked contract without a competing UI
+  diff.
 
 ## Locked decisions
 

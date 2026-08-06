@@ -1,7 +1,10 @@
 /** Project-backed library for writer-generated Lexical Gravity fields. */
 
 import * as path from 'path';
-import { WorkshopLexicalGravityLens } from '@messages';
+import {
+  WorkshopLexicalGravityLens,
+  WorkshopLexicalGravityLensIncompatibility
+} from '@messages';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
 import {
   cloneLexicalGravityLens,
@@ -42,6 +45,16 @@ export interface LexicalGravityLibraryAvailability {
   displayPath: string;
 }
 
+export interface LexicalGravityLensCatalog {
+  lenses: WorkshopLexicalGravityLens[];
+  incompatibleResources: WorkshopLexicalGravityLensIncompatibility[];
+}
+
+interface LexicalGravityLensReadResult {
+  lens?: WorkshopLexicalGravityLens;
+  incompatibility?: WorkshopLexicalGravityLensIncompatibility;
+}
+
 export class LexicalGravityLensRepository {
   private temporaryCounter = 0;
 
@@ -62,36 +75,45 @@ export class LexicalGravityLensRepository {
     };
   }
 
-  async list(): Promise<WorkshopLexicalGravityLens[]> {
+  async list(): Promise<LexicalGravityLensCatalog> {
     const available = this.availability();
     let entries: Array<[string, FileType]>;
     try {
       entries = await this.fileSystem.readDirectory(available.lensesDirectory);
     } catch (error) {
-      if (isMissingFileSystemPathError(error)) {return [];}
+      if (isMissingFileSystemPathError(error)) {
+        return { lenses: [], incompatibleResources: [] };
+      }
       throw error;
     }
     const files = entries
       .filter(([name, type]) => type === FileType.File && name.endsWith('.json'))
       .sort(([left], [right]) => left.localeCompare(right, 'en-US'))
       .slice(0, LEXICAL_GRAVITY_LIBRARY_LIMITS.maximumFiles);
-    const lenses = await Promise.all(files.map(([name]) => this.readLens(
+    const results = await Promise.all(files.map(([name]) => this.readLens(
       path.join(available.lensesDirectory, name),
       name,
       true
     )));
-    return lenses.filter((lens): lens is WorkshopLexicalGravityLens => lens !== undefined);
+    return {
+      lenses: results.flatMap(({ lens }) => lens ? [lens] : []),
+      incompatibleResources: results.flatMap(
+        ({ incompatibility }) => incompatibility ? [incompatibility] : []
+      )
+    };
   }
 
   async findForQuery(query: string): Promise<WorkshopLexicalGravityLens | undefined> {
     const available = this.availability();
     const slug = lexicalGravityLensSlug(query);
     if (!slug) {throw new Error('Lens subject must include at least one letter or number');}
-    return this.readLens(
+    const result = await this.readLens(
       path.join(available.lensesDirectory, `${slug}.json`),
       `${slug}.json`,
       false
     );
+    if (result.incompatibility) {throw new Error(result.incompatibility.message);}
+    return result.lens;
   }
 
   async saveManyForQuery(
@@ -199,7 +221,7 @@ export class LexicalGravityLensRepository {
     filePath: string,
     displayName: string,
     tolerateInvalid: boolean
-  ): Promise<WorkshopLexicalGravityLens | undefined> {
+  ): Promise<LexicalGravityLensReadResult> {
     try {
       const stat = await this.fileSystem.stat(filePath);
       if (
@@ -210,18 +232,29 @@ export class LexicalGravityLensRepository {
       }
       const raw = decoder.decode(await this.fileSystem.readFile(filePath));
       const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (parsed.version === 1) {
+        return {
+          incompatibility: {
+            resourceName: displayName,
+            foundVersion: 1,
+            message:
+              `Saved Lexical Gravity lens ${displayName} uses version 1. ` +
+              'Leave the file in place or remove it manually, then use Build lens to regenerate a version 2 interpretive grammar.'
+          }
+        };
+      }
       const lens = validateLexicalGravityLens({ ...parsed, source: 'project' });
       const fileSlug = path.basename(displayName, '.json');
       if (lens.slug !== fileSlug) {
         throw new Error(`declared slug ${lens.slug} does not match filename ${fileSlug}`);
       }
-      return lens;
+      return { lens };
     } catch (error) {
-      if (isMissingFileSystemPathError(error)) {return undefined;}
+      if (isMissingFileSystemPathError(error)) {return {};}
       const message = error instanceof Error ? error.message : String(error);
       if (tolerateInvalid) {
         this.log.appendLine(`[LexicalGravityLensRepository] Skipped ${displayName}: ${message}`);
-        return undefined;
+        return {};
       }
       throw new Error(`Saved Lexical Gravity lens ${displayName} is invalid: ${message}`);
     }

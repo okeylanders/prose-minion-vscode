@@ -88,7 +88,7 @@ export class WorkshopLexicalGravityHandler {
     try {
       const projects = await this.repository.list();
       const bySlug = new Map(builtIns.map((lens) => [lens.slug, lens]));
-      projects.forEach((lens) => {
+      projects.lenses.forEach((lens) => {
         if (!bySlug.has(lens.slug)) {bySlug.set(lens.slug, lens);}
       });
       const message: WorkshopLexicalGravityLensesDataMessage = {
@@ -97,6 +97,7 @@ export class WorkshopLexicalGravityHandler {
         timestamp: Date.now(),
         payload: {
           lenses: [...bySlug.values()],
+          incompatibleResources: projects.incompatibleResources,
           storagePath: this.repository.availability().displayPath
         }
       };
@@ -106,7 +107,11 @@ export class WorkshopLexicalGravityHandler {
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA,
         source: 'extension.workshop.lexical-gravity',
         timestamp: Date.now(),
-        payload: { lenses: builtIns, error: this.errorMessage(error) }
+        payload: {
+          lenses: builtIns,
+          incompatibleResources: [],
+          error: this.errorMessage(error)
+        }
       } satisfies WorkshopLexicalGravityLensesDataMessage);
     }
   }

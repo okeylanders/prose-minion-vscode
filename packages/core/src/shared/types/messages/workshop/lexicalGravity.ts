@@ -22,13 +22,46 @@ export interface WorkshopLexicalGravitySubstitutions {
   ending: string;
 }
 
+export interface WorkshopLexicalGravityLensAxis {
+  id: string;
+  name: string;
+  poles: [string, string];
+}
+
+export interface WorkshopLexicalGravityLensRole {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface WorkshopLexicalGravityLensDynamic {
+  id: string;
+  operation: string;
+  movement: string;
+  entailment: string;
+  narrativeAffordance: string;
+}
+
+/** Reusable, passage-independent meaning grammar for one lens. */
+export interface WorkshopLexicalGravityLensLogic {
+  premise: string;
+  attention: {
+    foregrounds: string[];
+    backgrounds: string[];
+  };
+  axes: WorkshopLexicalGravityLensAxis[];
+  roles: WorkshopLexicalGravityLensRole[];
+  dynamics: WorkshopLexicalGravityLensDynamic[];
+  guardrails: string[];
+}
+
 /**
  * One complete, deterministic lexical field. Built-ins and project-authored
  * fields share this contract so choosing a generated take makes every panel
  * tab immediately available without another model call.
  */
 export interface WorkshopLexicalGravityLens {
-  version: 1;
+  version: 2;
   slug: string;
   name: string;
   source: 'built-in' | 'project';
@@ -37,6 +70,8 @@ export interface WorkshopLexicalGravityLens {
   /** Human-readable angle distinguishing multiple generated takes. */
   variant?: string;
   description?: string;
+  /** Interpretive grammar applied before vocabulary is selected. */
+  logic: WorkshopLexicalGravityLensLogic;
   degrees: {
     1: WorkshopLexicalGravityWordBucket;
     2: WorkshopLexicalGravityWordBucket;
@@ -49,11 +84,26 @@ export interface WorkshopLexicalGravityLens {
   sample: string;
 }
 
+/** One passage fact positioned in reusable lens semantics for Preview. */
+export interface WorkshopLexicalGravitySemanticPosition {
+  element: string;
+  roleId: string;
+  axisId: string | null;
+  axisPosition: string | null;
+  significance: string;
+}
+
 export interface WorkshopLexicalGravityPreview {
+  version: 2;
   /** Stable key of the four writer-facing values this preview demonstrates. */
   configKey: string;
-  /** The prose transformed by this preview; optional only for older checkpoints. */
-  sourceText?: string;
+  sourceText: string;
+  /** Writer-facing declarative mappings, never hidden model reasoning. */
+  semanticPositions: WorkshopLexicalGravitySemanticPosition[];
+  /** Null records an honest semantic no-op. */
+  selectedDynamicId: string | null;
+  /** Passage-specific pressure left open by the selected dynamic, if any. */
+  openEntailment: string | null;
   text: string;
 }
 
@@ -81,8 +131,15 @@ export interface WorkshopRequestLexicalGravityLensesMessage
 
 export interface WorkshopLexicalGravityLensesDataPayload {
   lenses: WorkshopLexicalGravityLens[];
+  incompatibleResources: WorkshopLexicalGravityLensIncompatibility[];
   storagePath?: string;
   error?: string;
+}
+
+export interface WorkshopLexicalGravityLensIncompatibility {
+  resourceName: string;
+  foundVersion: number | null;
+  message: string;
 }
 
 export interface WorkshopLexicalGravityLensesDataMessage

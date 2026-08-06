@@ -218,6 +218,11 @@ describe('WorkshopStandingDirectiveService', () => {
       draft()
     ));
     expect(frames[0]).toContain('Keep it dormant during analysis, critique, planning');
+    expect(frames[0]).toContain('Interpretive premise:');
+    expect(frames[0]).toContain('Dynamic fix-record (Fix the record):');
+    expect(frames[0]).toContain('Application order: preserve facts, viewpoint, voice');
+    expect(frames[0].indexOf('Interpretive premise:'))
+      .toBeLessThan(frames[0].indexOf('Degree 1:'));
     expect(frames[0]).toContain('Degree 2:');
     expect(frames[0]).not.toContain('Degree 3:');
   });

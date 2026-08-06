@@ -55,12 +55,12 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
     value,
     path,
     [
-      'version', 'slug', 'name', 'source', 'degrees', 'gradient', 'cliches',
+      'version', 'slug', 'name', 'source', 'logic', 'degrees', 'gradient', 'cliches',
       'substitutions', 'metaphor', 'sample'
     ],
     ['originQuery', 'variant', 'description']
   );
-  if (item.version !== 1) {shapeError(`${path}.version`, '1');}
+  if (item.version !== 2) {shapeError(`${path}.version`, '2');}
   boundedStringAt(item.slug, `${path}.slug`, BUDGET.lexicalLensSlugCharacters, false);
   if (!SLUG.test(item.slug as string)) {
     shapeError(`${path}.slug`, 'a lowercase kebab-case lens slug');
@@ -85,6 +85,7 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
     BUDGET.lexicalLensDescriptionCharacters,
     false
   );
+  assertLexicalGravityLensLogicShape(item.logic, `${path}.logic`);
   const degrees = exactObject(item.degrees, `${path}.degrees`, ['1', '2', '3']);
   for (const degree of [1, 2, 3] as const) {
     const bucket = exactObject(
@@ -175,16 +176,49 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
     const preview = exactObject(
       draft.preview,
       `${path}.preview`,
-      ['configKey', 'text'],
-      ['sourceText']
+      [
+        'version', 'configKey', 'sourceText', 'semanticPositions',
+        'selectedDynamicId', 'openEntailment', 'text'
+      ]
     );
+    if (preview.version !== 2) {shapeError(`${path}.preview.version`, '2');}
     boundedStringAt(preview.configKey, `${path}.preview.configKey`, 256, false);
-    optionalBoundedStringAt(
+    boundedStringAt(
       preview.sourceText,
       `${path}.preview.sourceText`,
       BUDGET.lexicalSampleCharacters,
       false
     );
+    assertLexicalGravitySemanticPositions(
+      preview.semanticPositions,
+      `${path}.preview.semanticPositions`,
+      draft.resolvedLens as WorkshopLexicalGravityLens
+    );
+    assertSelectedDynamic(
+      preview.selectedDynamicId,
+      `${path}.preview.selectedDynamicId`,
+      draft.resolvedLens as WorkshopLexicalGravityLens
+    );
+    if (
+      (preview.semanticPositions as unknown[]).length === 0
+      && preview.selectedDynamicId !== null
+    ) {
+      shapeError(
+        `${path}.preview.selectedDynamicId`,
+        'null when no semantic positions are declared'
+      );
+    }
+    assertNullableBoundedString(
+      preview.openEntailment,
+      `${path}.preview.openEntailment`,
+      BUDGET.lexicalPreviewEntailmentCharacters
+    );
+    if (preview.openEntailment !== null && preview.selectedDynamicId === null) {
+      shapeError(
+        `${path}.preview.openEntailment`,
+        'null when no lens dynamic is selected'
+      );
+    }
     boundedStringAt(
       preview.text,
       `${path}.preview.text`,
@@ -272,6 +306,20 @@ export function cloneLexicalGravityLens(
   });
   return {
     ...source,
+    logic: {
+      premise: source.logic.premise,
+      attention: {
+        foregrounds: [...source.logic.attention.foregrounds],
+        backgrounds: [...source.logic.attention.backgrounds]
+      },
+      axes: source.logic.axes.map((axis) => ({
+        ...axis,
+        poles: [...axis.poles] as [string, string]
+      })),
+      roles: source.logic.roles.map((role) => ({ ...role })),
+      dynamics: source.logic.dynamics.map((dynamic) => ({ ...dynamic })),
+      guardrails: [...source.logic.guardrails]
+    },
     degrees: {
       1: cloneBucket(source.degrees[1]),
       2: cloneBucket(source.degrees[2]),
@@ -292,7 +340,10 @@ export function cloneLexicalGravityDraft(
     reach: draft.reach,
     metaphorPull: draft.metaphorPull,
     resolvedLens: cloneLexicalGravityLens(draft.resolvedLens),
-    preview: draft.preview ? { ...draft.preview } : undefined
+    preview: draft.preview ? {
+      ...draft.preview,
+      semanticPositions: draft.preview.semanticPositions.map((position) => ({ ...position }))
+    } : undefined
   };
 }
 
@@ -322,4 +373,263 @@ function assertUniqueBoundedStrings(
     if (seen.has(key)) {shapeError(path, 'strings without duplicates');}
     seen.add(key);
   });
+}
+
+function assertLexicalGravityLensLogicShape(value: unknown, path: string): void {
+  const logic = exactObject(
+    value,
+    path,
+    ['premise', 'attention', 'axes', 'roles', 'dynamics', 'guardrails']
+  );
+  boundedStringAt(
+    logic.premise,
+    `${path}.premise`,
+    BUDGET.lexicalLogicPremiseCharacters,
+    false
+  );
+  const attention = exactObject(
+    logic.attention,
+    `${path}.attention`,
+    ['foregrounds', 'backgrounds']
+  );
+  assertUniqueBoundedStrings(
+    attention.foregrounds,
+    `${path}.attention.foregrounds`,
+    BUDGET.lexicalAttentionItemsMinimum,
+    BUDGET.lexicalAttentionItems,
+    BUDGET.lexicalAttentionItemCharacters
+  );
+  assertUniqueBoundedStrings(
+    attention.backgrounds,
+    `${path}.attention.backgrounds`,
+    BUDGET.lexicalAttentionItemsMinimum,
+    BUDGET.lexicalAttentionItems,
+    BUDGET.lexicalAttentionItemCharacters
+  );
+  assertLogicAxes(logic.axes, `${path}.axes`);
+  assertLogicRoles(logic.roles, `${path}.roles`);
+  assertLogicDynamics(logic.dynamics, `${path}.dynamics`);
+  assertUniqueBoundedStrings(
+    logic.guardrails,
+    `${path}.guardrails`,
+    BUDGET.lexicalLogicGuardrailsMinimum,
+    BUDGET.lexicalLogicGuardrails,
+    BUDGET.lexicalGuardrailCharacters
+  );
+}
+
+function assertLogicAxes(value: unknown, path: string): void {
+  assertCollectionLength(
+    value,
+    path,
+    BUDGET.lexicalLogicAxesMinimum,
+    BUDGET.lexicalLogicAxes,
+    'axes'
+  );
+  const ids = new Set<string>();
+  arrayOf(value, path, (axisValue, axisPath) => {
+    const axis = exactObject(axisValue, axisPath, ['id', 'name', 'poles']);
+    assertLogicId(axis.id, `${axisPath}.id`, ids);
+    boundedStringAt(
+      axis.name,
+      `${axisPath}.name`,
+      BUDGET.lexicalLogicNameCharacters,
+      false
+    );
+    if (!Array.isArray(axis.poles) || axis.poles.length !== 2) {
+      shapeError(`${axisPath}.poles`, 'a two-string tuple');
+    }
+    const poles = axis.poles as unknown[];
+    boundedStringAt(
+      poles[0],
+      `${axisPath}.poles[0]`,
+      BUDGET.lexicalAxisPoleCharacters,
+      false
+    );
+    boundedStringAt(
+      poles[1],
+      `${axisPath}.poles[1]`,
+      BUDGET.lexicalAxisPoleCharacters,
+      false
+    );
+    if ((poles[0] as string).toLocaleLowerCase('en-US')
+      === (poles[1] as string).toLocaleLowerCase('en-US')) {
+      shapeError(`${axisPath}.poles`, 'two distinct strings');
+    }
+  });
+}
+
+function assertLogicRoles(value: unknown, path: string): void {
+  assertCollectionLength(
+    value,
+    path,
+    BUDGET.lexicalLogicRolesMinimum,
+    BUDGET.lexicalLogicRoles,
+    'roles'
+  );
+  const ids = new Set<string>();
+  arrayOf(value, path, (roleValue, rolePath) => {
+    const role = exactObject(roleValue, rolePath, ['id', 'name', 'description']);
+    assertLogicId(role.id, `${rolePath}.id`, ids);
+    boundedStringAt(
+      role.name,
+      `${rolePath}.name`,
+      BUDGET.lexicalLogicNameCharacters,
+      false
+    );
+    boundedStringAt(
+      role.description,
+      `${rolePath}.description`,
+      BUDGET.lexicalRoleDescriptionCharacters,
+      false
+    );
+  });
+}
+
+function assertLogicDynamics(value: unknown, path: string): void {
+  assertCollectionLength(
+    value,
+    path,
+    BUDGET.lexicalLogicDynamicsMinimum,
+    BUDGET.lexicalLogicDynamics,
+    'dynamics'
+  );
+  const ids = new Set<string>();
+  arrayOf(value, path, (dynamicValue, dynamicPath) => {
+    const dynamic = exactObject(
+      dynamicValue,
+      dynamicPath,
+      ['id', 'operation', 'movement', 'entailment', 'narrativeAffordance']
+    );
+    assertLogicId(dynamic.id, `${dynamicPath}.id`, ids);
+    boundedStringAt(
+      dynamic.operation,
+      `${dynamicPath}.operation`,
+      BUDGET.lexicalLogicNameCharacters,
+      false
+    );
+    boundedStringAt(
+      dynamic.movement,
+      `${dynamicPath}.movement`,
+      BUDGET.lexicalDynamicMovementCharacters,
+      false
+    );
+    boundedStringAt(
+      dynamic.entailment,
+      `${dynamicPath}.entailment`,
+      BUDGET.lexicalDynamicEntailmentCharacters,
+      false
+    );
+    boundedStringAt(
+      dynamic.narrativeAffordance,
+      `${dynamicPath}.narrativeAffordance`,
+      BUDGET.lexicalDynamicAffordanceCharacters,
+      false
+    );
+  });
+}
+
+function assertLogicId(value: unknown, path: string, ids: Set<string>): void {
+  boundedStringAt(value, path, BUDGET.lexicalLogicIdCharacters, false);
+  const id = value as string;
+  if (!SLUG.test(id)) {shapeError(path, 'a lowercase kebab-case id');}
+  if (ids.has(id)) {shapeError(path, 'a unique id');}
+  ids.add(id);
+}
+
+function assertCollectionLength(
+  value: unknown,
+  path: string,
+  minimum: number,
+  maximum: number,
+  label: string
+): void {
+  if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
+    shapeError(path, `an array of ${minimum}–${maximum} ${label}`);
+  }
+}
+
+function assertLexicalGravitySemanticPositions(
+  value: unknown,
+  path: string,
+  lens: WorkshopLexicalGravityLens
+): void {
+  if (!Array.isArray(value) || value.length > BUDGET.lexicalPreviewPositions) {
+    shapeError(path, `an array of 0–${BUDGET.lexicalPreviewPositions} mappings`);
+  }
+  const roleIds = new Set(lens.logic.roles.map(({ id }) => id));
+  const axisIds = new Set(lens.logic.axes.map(({ id }) => id));
+  arrayOf(value, path, (positionValue, positionPath) => {
+    const position = exactObject(
+      positionValue,
+      positionPath,
+      ['element', 'roleId', 'axisId', 'axisPosition', 'significance']
+    );
+    boundedStringAt(
+      position.element,
+      `${positionPath}.element`,
+      BUDGET.lexicalPreviewElementCharacters,
+      false
+    );
+    boundedStringAt(
+      position.roleId,
+      `${positionPath}.roleId`,
+      BUDGET.lexicalLogicIdCharacters,
+      false
+    );
+    if (!roleIds.has(position.roleId as string)) {
+      shapeError(`${positionPath}.roleId`, 'an id declared by the selected lens');
+    }
+    assertNullableBoundedString(
+      position.axisId,
+      `${positionPath}.axisId`,
+      BUDGET.lexicalLogicIdCharacters
+    );
+    assertNullableBoundedString(
+      position.axisPosition,
+      `${positionPath}.axisPosition`,
+      BUDGET.lexicalPreviewAxisPositionCharacters
+    );
+    if ((position.axisId === null) !== (position.axisPosition === null)) {
+      shapeError(
+        position.axisId === null
+          ? `${positionPath}.axisPosition`
+          : `${positionPath}.axisId`,
+        'null unless both axis fields are present'
+      );
+    }
+    if (position.axisId !== null && !axisIds.has(position.axisId as string)) {
+      shapeError(`${positionPath}.axisId`, 'an id declared by the selected lens');
+    }
+    boundedStringAt(
+      position.significance,
+      `${positionPath}.significance`,
+      BUDGET.lexicalPreviewSignificanceCharacters,
+      false
+    );
+  });
+}
+
+function assertSelectedDynamic(
+  value: unknown,
+  path: string,
+  lens: WorkshopLexicalGravityLens
+): void {
+  assertNullableBoundedString(value, path, BUDGET.lexicalLogicIdCharacters);
+  if (
+    value !== null
+    && !lens.logic.dynamics.some(({ id }) => id === value)
+  ) {
+    shapeError(path, 'an id declared by the selected lens or null');
+  }
+}
+
+function assertNullableBoundedString(
+  value: unknown,
+  path: string,
+  maximumCharacters: number
+): void {
+  if (value !== null) {
+    boundedStringAt(value, path, maximumCharacters, false);
+  }
 }

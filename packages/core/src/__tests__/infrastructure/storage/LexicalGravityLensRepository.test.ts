@@ -123,7 +123,10 @@ describe('LexicalGravityLensRepository', () => {
       destinations.map((to) => ({ to, overwrite: false }))
     );
     await expect(store.findForQuery('radio astronomy')).resolves.toEqual(saved[0]);
-    await expect(store.list()).resolves.toEqual(expect.arrayContaining(saved));
+    await expect(store.list()).resolves.toEqual({
+      lenses: expect.arrayContaining(saved),
+      incompatibleResources: []
+    });
   });
 
   it('requires at least one generated lens in a save batch', async () => {
@@ -164,9 +167,10 @@ describe('LexicalGravityLensRepository', () => {
     await expect(repository().findForQuery('photography')).resolves.toEqual(
       expect.objectContaining({ slug: 'photography', source: 'project' })
     );
-    await expect(repository().list()).resolves.toEqual([
-      expect.objectContaining({ slug: 'photography', source: 'project' })
-    ]);
+    await expect(repository().list()).resolves.toEqual({
+      lenses: [expect.objectContaining({ slug: 'photography', source: 'project' })],
+      incompatibleResources: []
+    });
     expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
       'declared slug photography does not match filename wrong-name'
     ));
@@ -197,10 +201,34 @@ describe('LexicalGravityLensRepository', () => {
       new TextEncoder().encode('{not json')
     );
 
-    await expect(store.list()).resolves.toEqual([]);
+    await expect(store.list()).resolves.toEqual({
+      lenses: [],
+      incompatibleResources: []
+    });
     expect(appendLine).toHaveBeenCalledWith(expect.stringContaining('Skipped broken.json'));
     await expect(store.findForQuery('broken')).rejects.toThrow(
       'Saved Lexical Gravity lens broken.json is invalid'
     );
+  });
+
+  it('reports a version-1 resource without modifying it and gives regeneration guidance', async () => {
+    const source = builtInLexicalGravityLens('photography')!;
+    const { logic: _logic, ...legacy } = source;
+    const filePath = path.join(directory, 'photography.json');
+    const bytes = new TextEncoder().encode(JSON.stringify({ ...legacy, version: 1 }));
+    fileSystem.files.set(filePath, bytes);
+
+    await expect(repository().list()).resolves.toEqual({
+      lenses: [],
+      incompatibleResources: [{
+        resourceName: 'photography.json',
+        foundVersion: 1,
+        message: expect.stringMatching(/uses version 1.*Build lens.*version 2/i)
+      }]
+    });
+    await expect(repository().findForQuery('photography')).rejects.toThrow(
+      /uses version 1.*Build lens.*version 2/i
+    );
+    expect(fileSystem.files.get(filePath)).toEqual(bytes);
   });
 });
