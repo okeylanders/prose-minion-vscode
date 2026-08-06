@@ -8,7 +8,7 @@ import {
   WorkshopGesturePlaygroundModal
 } from '@components/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundModal';
 import type {
-  WorkshopGestureOpening
+  WorkshopGesturePlaygroundOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import {
   WorkshopContextAttachmentSnapshot,
@@ -72,7 +72,7 @@ const config: WorkshopWidgetConfigSnapshot = {
 };
 
 const renderModal = (
-  opening: WorkshopGestureOpening,
+  opening: WorkshopGesturePlaygroundOpening,
   overrides: Partial<React.ComponentProps<typeof WorkshopGesturePlaygroundModal>> = {}
 ) => {
   const props = {

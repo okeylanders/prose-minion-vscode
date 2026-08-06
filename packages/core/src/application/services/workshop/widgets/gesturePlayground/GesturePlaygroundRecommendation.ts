@@ -1,11 +1,13 @@
 /** Gesture Playground prompt copy and strict recommendation-field parser. */
 
-import { WorkshopWidgetSourceReference } from '@messages';
+import {
+  WorkshopWidgetRecommendation,
+  WorkshopWidgetSourceReference
+} from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   inspectExactWorkshopWidgetRecommendationFrame,
   WorkshopWidgetRecommendationEntry,
-  WorkshopWidgetRecommendationField,
   WorkshopWidgetRecommendationInspection,
   workshopWidgetRecommendationField,
   WIDGET_RECOMMENDATION_FRAME_END,
@@ -25,7 +27,7 @@ const SOURCE_REFERENCES_END = '</source-references>';
 const CHARACTER_NOTES_START = '<character-notes>';
 const CHARACTER_NOTES_END = '</character-notes>';
 
-const GESTURE_PLAYGROUND_MARKERS = [
+export const GESTURE_PLAYGROUND_RECOMMENDATION_MARKERS = [
   WIDGET_RECOMMENDATION_FRAME_START,
   WIDGET_RECOMMENDATION_ID_START,
   WIDGET_RECOMMENDATION_ID_END,
@@ -42,6 +44,30 @@ const GESTURE_PLAYGROUND_MARKERS = [
   WIDGET_RECOMMENDATION_FRAME_END
 ] as const;
 
+type GesturePlaygroundRecommendation = Extract<
+  WorkshopWidgetRecommendation,
+  { widgetId: 'gesture-playground' }
+>;
+
+export type GesturePlaygroundRecommendationField =
+  | 'targetPhrase'
+  | 'writerInstructions'
+  | 'contextText'
+  | 'sourceReferences'
+  | 'characterNotes';
+
+export type GesturePlaygroundRecommendationInvalidFieldReason =
+  | 'empty'
+  | 'target_missing_from_context'
+  | 'invalid_source_references';
+
+export type GesturePlaygroundRecommendationInspection =
+  WorkshopWidgetRecommendationInspection<
+    GesturePlaygroundRecommendation,
+    GesturePlaygroundRecommendationField,
+    GesturePlaygroundRecommendationInvalidFieldReason
+  >;
+
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
 export const GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION = [
@@ -53,7 +79,6 @@ export const GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION = [
   `- \`source-references\`: use \`active-excerpt\` and/or exact \`context-attachment:ctx-N\` reference identifiers shown in the supplied Workshop material when the dictionary model would benefit from reading those sources in full. Use \`none\` when no source should ride. Never invent an identifier. The complete field may contain at most ${BUDGET.gestureSourceReferences} references and ${BUDGET.gestureSourceReferenceCharacters.toLocaleString('en-US')} characters.`,
   `- \`character-notes\`: give grounded sentences about who this person is in this beat: immediate pressure, intention or defense, relationship dynamics, self-control, physical habits or constraints, and relevant voice/history. Distinguish supplied facts from reasonable scene inference; never invent project facts. Be complete but stay within ${BUDGET.gestureCharacterNotesCharacters.toLocaleString('en-US')} characters.`,
   'The four prose fields and the source-references field are required when you recommend the widget. If the supplied material cannot support them honestly, omit a discretionary recommendation; for an explicit writer request, say what material is missing instead of fabricating a frame or merely acknowledging the request. Everything remains editable and nothing runs until the writer chooses it. Do not explain widget mechanics in prose—the chip and prefilled form do that.',
-  'Use this reserved heading and these tags exactly once, alone on their lines. Do not repeat the heading or use any of the reserved tags inside a field:',
   '### Try a widget',
   WIDGET_RECOMMENDATION_FRAME_START,
   WIDGET_RECOMMENDATION_ID_START,
@@ -79,10 +104,10 @@ export const GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION = [
 
 export function inspectGesturePlaygroundRecommendation(
   sectionLines: readonly string[]
-): WorkshopWidgetRecommendationInspection {
+): GesturePlaygroundRecommendationInspection {
   const inspected = inspectExactWorkshopWidgetRecommendationFrame(
     sectionLines,
-    GESTURE_PLAYGROUND_MARKERS
+    GESTURE_PLAYGROUND_RECOMMENDATION_MARKERS
   );
   if (!(inspected instanceof Map)) {
     return inspected;
@@ -96,7 +121,7 @@ export function inspectGesturePlaygroundRecommendation(
   const sourceReferenceText = field(SOURCE_REFERENCES_START, SOURCE_REFERENCES_END);
   const characterNotes = field(CHARACTER_NOTES_START, CHARACTER_NOTES_END);
   const fields: Array<{
-    field: WorkshopWidgetRecommendationField;
+    field: GesturePlaygroundRecommendationField;
     value: string;
     maximum: number;
   }> = [
@@ -212,9 +237,16 @@ function normalizeEvidenceText(value: string): string {
 }
 
 export const GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY:
-  WorkshopWidgetRecommendationEntry = Object.freeze({
+  WorkshopWidgetRecommendationEntry<
+    GesturePlaygroundRecommendation,
+    GesturePlaygroundRecommendationField,
+    GesturePlaygroundRecommendationInvalidFieldReason
+  > = Object.freeze({
     widgetId: 'gesture-playground',
     catalogSummary: 'Gesture Playground explores one exact embodied beat',
+    catalogOrder: 0,
+    instructionOrder: 1,
     instruction: GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION,
+    reservedMarkers: GESTURE_PLAYGROUND_RECOMMENDATION_MARKERS,
     inspect: inspectGesturePlaygroundRecommendation
   });

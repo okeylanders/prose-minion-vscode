@@ -14,7 +14,7 @@ import {
 } from '@messages';
 
 /** How the modal was opened; decides seeding and the commit button's label. */
-export type WorkshopGestureOpening =
+export type WorkshopGesturePlaygroundOpening =
   | { kind: 'new'; seedTargetPhrase?: string }
   | { kind: 'seed'; seed: WorkshopGesturePlaygroundRecommendationSeed; personaLabel: string }
   | { kind: 'clone'; config: WorkshopGesturePlaygroundWidgetConfigSnapshot };
@@ -36,12 +36,12 @@ export interface UseWorkshopWidgetOpeningOptions {
   host: WorkshopWidgetOpeningHost;
   standingDirectives: WorkshopStandingDirectiveSummary[];
   onError: (message: string) => void;
-  onCloseGesture: () => void;
+  onCloseGesturePlayground: () => void;
   onCloseLexicalGravity: () => void;
 }
 
 export interface WorkshopWidgetOpeningState {
-  gestureOpening: WorkshopGestureOpening | null;
+  gesturePlaygroundOpening: WorkshopGesturePlaygroundOpening | null;
   lexicalGravityOpening: WorkshopLexicalGravityOpening | null;
   pendingWidgetConfigId: string | null;
 }
@@ -53,7 +53,7 @@ export interface WorkshopWidgetOpeningActions {
     recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
     personaLabel?: string
   ) => void;
-  closeGesture: () => void;
+  closeGesturePlayground: () => void;
   closeLexicalGravity: () => void;
 }
 
@@ -70,11 +70,11 @@ export function useWorkshopWidgetOpening({
   host,
   standingDirectives,
   onError,
-  onCloseGesture,
+  onCloseGesturePlayground,
   onCloseLexicalGravity
 }: UseWorkshopWidgetOpeningOptions): UseWorkshopWidgetOpeningReturn {
-  const [gestureOpening, setGestureOpening] =
-    React.useState<WorkshopGestureOpening | null>(null);
+  const [gesturePlaygroundOpening, setGesturePlaygroundOpening] =
+    React.useState<WorkshopGesturePlaygroundOpening | null>(null);
   const [lexicalGravityOpening, setLexicalGravityOpening] =
     React.useState<WorkshopLexicalGravityOpening | null>(null);
   const [pendingWidgetConfigId, setPendingWidgetConfigId] = React.useState<string | null>(null);
@@ -86,7 +86,7 @@ export function useWorkshopWidgetOpening({
 
   const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
     if (widgetId === 'gesture-playground') {
-      setGestureOpening({ kind: 'new' });
+      setGesturePlaygroundOpening({ kind: 'new' });
       return;
     }
     if (widgetId === 'lexical-gravity') {
@@ -107,7 +107,7 @@ export function useWorkshopWidgetOpening({
       personaLabel?: string
     ) => {
       if (recommendation.widgetId === 'gesture-playground') {
-        setGestureOpening({
+        setGesturePlaygroundOpening({
           kind: 'seed',
           seed: recommendation.seed ?? {},
           personaLabel: personaLabel ?? 'the persona'
@@ -123,12 +123,12 @@ export function useWorkshopWidgetOpening({
     []
   );
 
-  const closeGesture = React.useCallback(() => {
-    setGestureOpening(null);
+  const closeGesturePlayground = React.useCallback(() => {
+    setGesturePlaygroundOpening(null);
     setPendingWidgetConfigId(null);
     host.clearWidgetConfigData();
-    onCloseGesture();
-  }, [host.clearWidgetConfigData, onCloseGesture]);
+    onCloseGesturePlayground();
+  }, [host.clearWidgetConfigData, onCloseGesturePlayground]);
 
   const closeLexicalGravity = React.useCallback(() => {
     setLexicalGravityOpening(null);
@@ -147,7 +147,7 @@ export function useWorkshopWidgetOpening({
       // The wire may be ahead of this webview's discriminated union.
       const receivedWidgetId = String(config.widgetId);
       if (config.widgetId === 'gesture-playground') {
-        setGestureOpening({ kind: 'clone', config });
+        setGesturePlaygroundOpening({ kind: 'clone', config });
       } else if (config.widgetId === 'lexical-gravity') {
         const active = standingDirectives.some(
           (directive) => directive.widgetConfigId === config.id
@@ -181,13 +181,13 @@ export function useWorkshopWidgetOpening({
   ]);
 
   return {
-    gestureOpening,
+    gesturePlaygroundOpening,
     lexicalGravityOpening,
     pendingWidgetConfigId,
     openWidgetConfig,
     launchWidget,
     openWidgetRecommendation,
-    closeGesture,
+    closeGesturePlayground,
     closeLexicalGravity,
     persistedState: {}
   };

@@ -17,34 +17,18 @@ export type WorkshopWidgetRecommendationRejection =
   | 'invalid_field'
   | 'field_too_long';
 
-export type WorkshopWidgetRecommendationField =
-  | 'targetPhrase'
-  | 'writerInstructions'
-  | 'contextText'
-  | 'sourceReferences'
-  | 'characterNotes'
-  | 'lensSlug'
-  | 'weight'
-  | 'reach'
-  | 'metaphorPull';
-
-export type WorkshopWidgetRecommendationInvalidFieldReason =
-  | 'empty'
-  | 'target_missing_from_context'
-  | 'invalid_source_references'
-  | 'unsupported_lens'
-  | 'invalid_weight'
-  | 'invalid_reach'
-  | 'invalid_metaphor_pull';
-
 interface WorkshopWidgetRecommendationRejectedBase {
   outcome: 'rejected';
   recommendation?: undefined;
 }
 
-export type WorkshopWidgetRecommendationInspection =
+export type WorkshopWidgetRecommendationInspection<
+  Recommendation extends WorkshopWidgetRecommendation = WorkshopWidgetRecommendation,
+  Field extends string = string,
+  InvalidFieldReason extends string = string
+> =
   | { outcome: 'absent'; recommendation?: undefined }
-  | { outcome: 'accepted'; recommendation: WorkshopWidgetRecommendation }
+  | { outcome: 'accepted'; recommendation: Recommendation }
   | (WorkshopWidgetRecommendationRejectedBase & {
       rejection: Exclude<
       WorkshopWidgetRecommendationRejection,
@@ -53,12 +37,12 @@ export type WorkshopWidgetRecommendationInspection =
     })
   | (WorkshopWidgetRecommendationRejectedBase & {
       rejection: 'invalid_field';
-      field: WorkshopWidgetRecommendationField;
-      reason: WorkshopWidgetRecommendationInvalidFieldReason;
+      field: Field;
+      reason: InvalidFieldReason;
     })
   | (WorkshopWidgetRecommendationRejectedBase & {
       rejection: 'field_too_long';
-      field: WorkshopWidgetRecommendationField;
+      field: Field;
       actualCharacters: number;
       maximumCharacters: number;
     })
@@ -68,13 +52,30 @@ export type WorkshopWidgetRecommendationInspection =
       maximumCharacters: number;
     });
 
-export interface WorkshopWidgetRecommendationEntry {
-  readonly widgetId: WorkshopWidgetRecommendation['widgetId'];
+export type InvalidWorkshopWidgetRecommendationFrame =
+  WorkshopWidgetRecommendationRejectedBase & {
+    rejection: 'invalid_frame';
+  };
+
+export interface WorkshopWidgetRecommendationEntry<
+  Recommendation extends WorkshopWidgetRecommendation = WorkshopWidgetRecommendation,
+  Field extends string = string,
+  InvalidFieldReason extends string = string
+> {
+  readonly widgetId: Recommendation['widgetId'];
   /** One clause used by the generic contract introduction. */
   readonly catalogSummary: string;
+  /** Stable feature-owned ordering without a second family membership list. */
+  readonly catalogOrder: number;
+  /** Stable feature-owned prompt ordering without a second family membership list. */
+  readonly instructionOrder: number;
   /** Complete feature-owned instructions and example frame. */
   readonly instruction: string;
-  inspect(sectionLines: readonly string[]): WorkshopWidgetRecommendationInspection;
+  /** Every reserved delimiter required by this feature's exact frame grammar. */
+  readonly reservedMarkers: readonly string[];
+  inspect(
+    sectionLines: readonly string[]
+  ): WorkshopWidgetRecommendationInspection<Recommendation, Field, InvalidFieldReason>;
 }
 
 export function extractWorkshopWidgetRecommendationId(
@@ -99,7 +100,7 @@ export function extractWorkshopWidgetRecommendationId(
 export function inspectExactWorkshopWidgetRecommendationFrame(
   sectionLines: readonly string[],
   orderedMarkers: readonly string[]
-): Map<string, number> | WorkshopWidgetRecommendationInspection {
+): Map<string, number> | InvalidWorkshopWidgetRecommendationFrame {
   const indexes = new Map<string, number>();
   for (const marker of orderedMarkers) {
     const found = sectionLines.flatMap((line, index) => line === marker ? [index] : []);
@@ -147,4 +148,23 @@ export function workshopWidgetRecommendationField(
     .slice(indexes.get(start)! + 1, indexes.get(end)!)
     .join('\n')
     .trim();
+}
+
+/**
+ * Recommendation controls render as chips and editable forms, not machine
+ * framing in the transcript. The reserved heading owns the final tail even
+ * when a frame rejects, so malformed debris cannot persist as prose.
+ */
+export function stripWorkshopWidgetRecommendationControl(content: string): string {
+  const lines = content.replace(/\r\n?/g, '\n').split('\n');
+  const headingIndex = lines.findIndex((line) => line === TRY_WIDGET_HEADING);
+  return headingIndex >= 0
+    ? lines.slice(0, headingIndex).join('\n').trimEnd()
+    : content;
+}
+
+/** Remove the private widget protocol before retained provider history. */
+export function sanitizeWorkshopWidgetRecommendationForRetention(content: string): string {
+  const stripped = stripWorkshopWidgetRecommendationControl(content).trim();
+  return stripped || '[Widget setup delivered through the Workshop interface.]';
 }

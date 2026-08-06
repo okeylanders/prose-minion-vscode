@@ -1,5 +1,6 @@
 /** Lexical Gravity prompt copy and strict recommendation-field parser. */
 
+import { WorkshopWidgetRecommendation } from '@messages';
 import {
   isLexicalGravityReach,
   isLexicalGravityWeight,
@@ -26,7 +27,7 @@ const REACH_END = '</reach>';
 const METAPHOR_PULL_START = '<metaphor-pull>';
 const METAPHOR_PULL_END = '</metaphor-pull>';
 
-const LEXICAL_GRAVITY_MARKERS = [
+export const LEXICAL_GRAVITY_RECOMMENDATION_MARKERS = [
   WIDGET_RECOMMENDATION_FRAME_START,
   WIDGET_RECOMMENDATION_ID_START,
   WIDGET_RECOMMENDATION_ID_END,
@@ -40,6 +41,31 @@ const LEXICAL_GRAVITY_MARKERS = [
   METAPHOR_PULL_END,
   WIDGET_RECOMMENDATION_FRAME_END
 ] as const;
+
+type LexicalGravityRecommendation = Extract<
+  WorkshopWidgetRecommendation,
+  { widgetId: 'lexical-gravity' }
+>;
+
+export type LexicalGravityRecommendationField =
+  | 'lensSlug'
+  | 'weight'
+  | 'reach'
+  | 'metaphorPull';
+
+export type LexicalGravityRecommendationInvalidFieldReason =
+  | 'empty'
+  | 'unsupported_lens'
+  | 'invalid_weight'
+  | 'invalid_reach'
+  | 'invalid_metaphor_pull';
+
+export type LexicalGravityRecommendationInspection =
+  WorkshopWidgetRecommendationInspection<
+    LexicalGravityRecommendation,
+    LexicalGravityRecommendationField,
+    LexicalGravityRecommendationInvalidFieldReason
+  >;
 
 const BUILT_IN_LENS_SLUGS = new Set([
   'photography',
@@ -75,10 +101,10 @@ export const LEXICAL_GRAVITY_RECOMMENDATION_INSTRUCTION = [
 
 export function inspectLexicalGravityRecommendation(
   sectionLines: readonly string[]
-): WorkshopWidgetRecommendationInspection {
+): LexicalGravityRecommendationInspection {
   const inspected = inspectExactWorkshopWidgetRecommendationFrame(
     sectionLines,
-    LEXICAL_GRAVITY_MARKERS
+    LEXICAL_GRAVITY_RECOMMENDATION_MARKERS
   );
   if (!(inspected instanceof Map)) {
     return inspected;
@@ -87,9 +113,26 @@ export function inspectLexicalGravityRecommendation(
   const field = (start: string, end: string): string =>
     workshopWidgetRecommendationField(sectionLines, inspected, start, end);
   const lensSlug = field(LENS_SLUG_START, LENS_SLUG_END);
-  const weight = Number(field(WEIGHT_START, WEIGHT_END));
-  const reach = Number(field(REACH_START, REACH_END));
+  const weightText = field(WEIGHT_START, WEIGHT_END);
+  const reachText = field(REACH_START, REACH_END);
   const metaphorText = field(METAPHOR_PULL_START, METAPHOR_PULL_END);
+  const emptyField = [
+    { field: 'lensSlug' as const, value: lensSlug },
+    { field: 'weight' as const, value: weightText },
+    { field: 'reach' as const, value: reachText },
+    { field: 'metaphorPull' as const, value: metaphorText }
+  ].find(({ value }) => value.length === 0);
+  if (emptyField) {
+    return {
+      outcome: 'rejected',
+      rejection: 'invalid_field',
+      field: emptyField.field,
+      reason: 'empty'
+    };
+  }
+
+  const weight = Number(weightText);
+  const reach = Number(reachText);
 
   // Personas may seed host-owned starters only, never name an arbitrary
   // project lens whose body would enter a system prompt.
@@ -141,10 +184,17 @@ export function inspectLexicalGravityRecommendation(
 }
 
 export const LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY:
-  WorkshopWidgetRecommendationEntry = Object.freeze({
+  WorkshopWidgetRecommendationEntry<
+    LexicalGravityRecommendation,
+    LexicalGravityRecommendationField,
+    LexicalGravityRecommendationInvalidFieldReason
+  > = Object.freeze({
     widgetId: 'lexical-gravity',
     catalogSummary:
       'Lexical Gravity installs a writer-approved lexical field that influences story prose only when prose is composed or revised',
+    catalogOrder: 1,
+    instructionOrder: 0,
     instruction: LEXICAL_GRAVITY_RECOMMENDATION_INSTRUCTION,
+    reservedMarkers: LEXICAL_GRAVITY_RECOMMENDATION_MARKERS,
     inspect: inspectLexicalGravityRecommendation
   });

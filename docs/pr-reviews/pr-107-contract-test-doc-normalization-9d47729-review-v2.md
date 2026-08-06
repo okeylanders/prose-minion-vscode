@@ -12,20 +12,46 @@ superseded, or not actionable.
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | Witness selects by feature *name*, not feature *semantics* | Oliver, Sam, Patricia | 3 independent | 🎯🎯 Strong Consensus | **Open** |
-| F-02 | 🟠 High | Neither approval tier constrains what it claims | Cal, Sam, Stan, Parker | 4 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-03 | 🟡 Standard | Reserved-marker neutralization list orphaned by the split | Patricia | 1 independent | — | **Open** |
-| F-04 | 🟡 Standard | Half-derived prompt: list is generated, count is prose | Bria, Tim, Marcus | 2 independent · 1 runway-prompted | 🎯 Consensus | **Open** |
-| F-05 | 🟡 Standard | Registry landed in `utils/`, imports upward, no ADR §7 record | Marcus, Stan, Tim | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-06 | 🟡 Standard | Three of four Lexical Gravity rejection branches untested | Cal, Blake | 1 independent · 1 runway-prompted | — | **Open** |
-| F-07 | 🟡 Standard | Empty `<lens-slug>` conflated with `unsupported_lens` | Sam | 1 runway-prompted | — | **Open** |
-| F-08 | 🟡 Standard | `WorkshopGestureOpening` survived the rename pass | Parker, Oliver | 2 independent | 🎯 Consensus | **Open** |
-| F-09 | 🟡 Standard | Doc-agreement witness pins substrings and fails opaquely | Cal, Parker, Oliver | 3 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-10 | 🟡 Standard | Criterion 3, the ADR, and the witness say three different things | Bria | 1 runway-prompted | — | **Open** |
-| F-11 | 🟡 Standard | New feature slices ship without mirrored test files | Stan | 1 independent | — | **Open** |
+| F-01 | 🟠 High | Witness selects by feature *name*, not feature *semantics* | Oliver, Sam, Patricia | 3 independent | 🎯🎯 Strong Consensus | **Addressed** |
+| F-02 | 🟠 High | Neither approval tier constrains what it claims | Cal, Sam, Stan, Parker | 4 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-03 | 🟡 Standard | Reserved-marker neutralization list orphaned by the split | Patricia | 1 independent | — | **Addressed** |
+| F-04 | 🟡 Standard | Half-derived prompt: list is generated, count is prose | Bria, Tim, Marcus | 2 independent · 1 runway-prompted | 🎯 Consensus | **Addressed** |
+| F-05 | 🟡 Standard | Registry landed in `utils/`, imports upward, no ADR §7 record | Marcus, Stan, Tim | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-06 | 🟡 Standard | Three of four Lexical Gravity rejection branches untested | Cal, Blake | 1 independent · 1 runway-prompted | — | **Addressed** |
+| F-07 | 🟡 Standard | Empty `<lens-slug>` conflated with `unsupported_lens` | Sam | 1 runway-prompted | — | **Addressed** |
+| F-08 | 🟡 Standard | `WorkshopGestureOpening` survived the rename pass | Parker, Oliver | 2 independent | 🎯 Consensus | **Addressed** |
+| F-09 | 🟡 Standard | Doc-agreement witness pins substrings and fails opaquely | Cal, Parker, Oliver | 3 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-10 | 🟡 Standard | Criterion 3, the ADR, and the witness say three different things | Bria | 1 runway-prompted | — | **Addressed** |
+| F-11 | 🟡 Standard | New feature slices ship without mirrored test files | Stan | 1 independent | — | **Addressed** |
 | P-01 | ✅ Praise | Migration provably behavior-preserving; the protocol seam is why | Blake, Bria, Tim, Marcus, Patricia | 1 independent · 4 runway-prompted | — | **N/A — preserve** |
 | P-02 | ✅ Praise | Rejection failure trail is honest across four layers | Oliver | 1 runway-prompted | — | **N/A — preserve** |
 | P-03 | ✅ Praise | `BUILT_IN_LENS_SLUGS` gate intact, with defense in depth downstream | Patricia | 1 independent | — | **N/A — preserve** |
+
+## Remediation record — 2026-08-06
+
+The review remains published as issued below; this ledger records the follow-up
+changes that closed every actionable row.
+
+| ID | Resolution evidence |
+| --- | --- |
+| F-01 | Feature fields and invalid reasons now live in the named recommendation slices. The inverse witness extracts Pascal/camel/constant/wire and distinctive semantic tokens, with a focused detector test and explicit collision set. |
+| F-02 | Every approved generic surface is token-scoped; there are no whole-file or line-scoped bypasses. Failures report file, line, column, and exact token, and generic family mechanics have a writer-facing-copy guard. |
+| F-03 | Each feature entry exports its complete `reservedMarkers` tuple. The delimiter suite derives markers from the registry and proves every one is neutralized. |
+| F-04 | One live-entry collection now drives catalog and instruction assembly; feature-owned order metadata preserves both sequences, and the hardcoded widget count is gone. Prompt-budget coverage pins the 4,811-character recurring contract. |
+| F-05 | The registry/parser orchestration moved to `application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts`; the leaf protocol retains only pure frame helpers and cleanup. `AssistantToolService` receives the assembled instruction through composition-root injection. |
+| F-06 | The Lexical Gravity feature suite now executes invalid weight, reach, and metaphor-pull branches with exact field/reason assertions. |
+| F-07 | Empty Lexical Gravity fields reject as `empty` before lens/value validation; the suite covers all four fields. |
+| F-08 | The controller, app, modal, and tests now use `WorkshopGesturePlaygroundOpening`, `gesturePlaygroundOpening`, and fully qualified close callback names. |
+| F-09 | The agreement witness labels each document, parses its Workshop tree, compares the discovered module list to the filesystem inventory, and reports missing ownership references as named diagnostics. |
+| F-10 | Sprint criterion 3 now uses the ADR's dispatch rule and explicitly distinguishes closed registries from reviewed composition/contract seams. |
+| F-11 | Recommendation behavior is covered by mirrored `GesturePlaygroundRecommendation.test.ts` and `LexicalGravityRecommendation.test.ts` suites; generic envelope behavior follows `WorkshopWidgetRecommendationOperations`. |
+
+**Observed validation:** `npm run typecheck` passed all three TypeScript
+projects; `npm test -- --runInBand` passed 189 suites / 1,937 tests / 1
+snapshot; `npm run lint` completed with 0 errors and 923 warnings; `npm run
+build` compiled both production bundles and passed the three-sentinel bundle
+check (webpack emitted its three existing size advisories); `git diff --check`
+passed.
 
 ## Review coverage
 

@@ -36,12 +36,12 @@ import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { ModelSelector } from '@components/shared/ModelSelector';
 import { WorkshopModalShell } from '@components/workshop/WorkshopModalShell';
 import type {
-  WorkshopGestureOpening
+  WorkshopGesturePlaygroundOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 
 interface WorkshopGesturePlaygroundModalProps {
   open: boolean;
-  opening: WorkshopGestureOpening;
+  opening: WorkshopGesturePlaygroundOpening;
   menuResult: WorkshopGesturePlaygroundMenuResultPayload | null;
   generationProgress: WorkshopGesturePlaygroundGenerationProgressPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;

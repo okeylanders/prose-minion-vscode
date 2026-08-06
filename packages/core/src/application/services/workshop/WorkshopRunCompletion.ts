@@ -22,9 +22,11 @@ import {
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
 import {
   inspectWorkshopWidgetRecommendation,
-  stripWorkshopWidgetRecommendationControl,
   WorkshopWidgetRecommendationInspection
-} from '@/utils/workshopWidgetRecommendation';
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
+import {
+  stripWorkshopWidgetRecommendationControl
+} from '@/utils/workshopWidgetRecommendationProtocol';
 import { boundedLogText } from '@/utils/boundedLogText';
 
 export interface WorkshopRunCompletionCopy {

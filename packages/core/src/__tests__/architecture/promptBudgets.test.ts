@@ -4,7 +4,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS } from '@/utils/workshopWidgetRecommendation';
+import {
+  WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
 const BUDGET_MODULE = path.join(SRC_ROOT, 'shared', 'constants', 'promptBudgets.ts');
@@ -127,6 +130,7 @@ describe('prompt budgets', () => {
       lexicalDirectiveCharacters: 3_000
     });
     expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(15_300);
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(4_811);
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

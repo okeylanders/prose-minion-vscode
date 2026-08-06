@@ -4,6 +4,9 @@ import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import { API_KEY_NOT_CONFIGURED_HEADING, DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
+import {
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 
 const workshopCapability = { catalog: 'workshopPersona' } as never;
 
@@ -38,6 +41,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       manager as AIResourceManager,
       { getPromptLoader: () => ({ loadSharedPrompts: jest.fn().mockResolvedValue('shared prompts'), loadPrompts }) } as unknown as ResourceLoaderService,
       { getOptions: jest.fn().mockReturnValue({ includeCraftGuides: true, temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
+      WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
       { appendLine: jest.fn() } as never
     );
 

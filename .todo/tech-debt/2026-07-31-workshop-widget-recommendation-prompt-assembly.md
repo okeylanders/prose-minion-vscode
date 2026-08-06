@@ -25,11 +25,17 @@ would be a false optimization.
 
 - Gesture Playground and Lexical Gravity now own their prompt fragments,
   marker grammar, and field validation in named feature modules.
-- `workshopWidgetRecommendation.ts` owns only the common envelope, live-id
-  gate, exact two-arm registry, dispatch, and transcript/retention cleanup.
+- `WorkshopWidgetRecommendationOperations.ts` owns the live-id gate, exact
+  two-arm registry, dispatch, aggregate ceiling, and prompt assembly. The pure
+  protocol module owns only common markers, frame helpers, and cleanup.
+- Prompt membership is derived once from live registry values; separate
+  feature-owned order metadata preserves catalog and instruction order without
+  duplicate family lists or a hardcoded widget count.
 - The inverse architecture witness permits that generic module as the one
   closed recommendation registry and rejects feature vocabulary in unapproved
   generic paths.
+- The prompt-budget suite pins the assembled recurring contract at 4,811
+  characters so any later widget makes its standing cost explicit in review.
 - The existing 15,300-character absolute pre-ID ceiling remains unchanged to
   keep this normalization behavior-preserving. Selecting a smaller ceiling by
   parsed widget id is the only remaining completion item and stays required
@@ -52,14 +58,14 @@ is a pure handler move.
 
 ## Related Files
 
-- `packages/core/src/utils/workshopWidgetRecommendation.ts`
+- `packages/core/src/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts`
 - `packages/core/src/utils/workshopWidgetRecommendationProtocol.ts`
 - `packages/core/src/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundRecommendation.ts`
 - `packages/core/src/application/services/workshop/widgets/lexicalGravity/LexicalGravityRecommendation.ts`
 - `packages/core/src/infrastructure/api/services/analysis/AssistantToolService.ts`
 - `packages/core/src/shared/constants/workshopWidgets.ts`
 - `packages/core/src/shared/constants/promptBudgets.ts`
-- `packages/core/src/__tests__/utils/workshopWidgetRecommendation.test.ts`
+- `packages/core/src/__tests__/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.test.ts`
 - `packages/core/src/__tests__/architecture/promptBudgets.test.ts`
 - `docs/pr-reviews/pr-98-lexical-gravity-standing-rail-2a02727-review-v2.md`
 

@@ -104,9 +104,11 @@ export {
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundDirective';
 export {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
-  inspectWorkshopWidgetRecommendation,
+  inspectWorkshopWidgetRecommendation
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
+export {
   stripWorkshopWidgetRecommendationControl
-} from '@/utils/workshopWidgetRecommendation';
+} from '@/utils/workshopWidgetRecommendationProtocol';
 export {
   WORKSHOP_WIDGET_CATALOG,
   workshopWidgetDescriptor,

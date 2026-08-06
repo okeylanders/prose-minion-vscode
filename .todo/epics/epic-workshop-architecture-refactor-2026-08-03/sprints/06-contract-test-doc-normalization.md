@@ -43,9 +43,10 @@ implemented responsibility tree.
 - **S0:** The inverse witness was proven red against exactly
   `shared/constants/workshopWidgets.ts` and
   `utils/workshopWidgetRecommendation.ts` before either owner moved. Its final
-  scan covers title/PascalCase, camelCase, kebab-case wire ids, and uppercase
-  constants; narrowly justified family seams are line-scoped where possible,
-  and stale allowlist entries fail the witness.
+  scan covers title/PascalCase, camelCase, kebab/snake wire ids, uppercase
+  constants, and distinctive feature semantics. Every justified family seam
+  is scoped to complete extracted tokens, and stale allowlist entries fail the
+  witness.
 - **S1:** `WorkshopGesture*` contracts now use the exact
   `WorkshopGesturePlayground*` family name; the backward-friendly generic alias
   was deleted.
@@ -67,8 +68,8 @@ implemented responsibility tree.
 ## Verification
 
 - `npm run typecheck` — passed all three TypeScript projects.
-- `npm test -- --runInBand` — passed 187 suites, 1,925 tests, and 1 snapshot.
-- `npm run lint` — passed with no errors (repository warning baseline remains).
+- `npm test -- --runInBand` — passed 189 suites, 1,937 tests, and 1 snapshot.
+- `npm run lint` — passed with 0 errors and 923 warnings.
 - `npm run build` — production extension and webview bundles compiled; bundle
   verification found all three sentinel utilities.
 - `git diff --check` — passed.
@@ -78,5 +79,7 @@ implemented responsibility tree.
 - [x] Source, test, and documentation trees use the same names and boundaries.
 - [x] No active plan points to retired paths or optional seams that are now
       mandatory/completed.
-- [x] Generic modules import feature code only through approved closed registries.
+- [x] Generic family mechanics dispatch to feature code only through approved
+      closed registries; composition roots and explicit contract unions remain
+      the reviewed feature-naming seams.
 - [x] P0's migration exception list is empty.

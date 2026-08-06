@@ -52,6 +52,7 @@ import {
   WorkshopStandingDirectiveService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
+  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
   coerceWorkshopConversationBehavior,
   toInclusiveLineRange,
 } from '@prose-minion/core';
@@ -129,6 +130,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     aiResourceManager,
     resourceLoader,
     toolOptions,
+    WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
     outputChannel
   );
   const dictionaryService = new DictionaryService(

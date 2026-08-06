@@ -66,9 +66,8 @@ import {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { buildWorkshopWriterProfileFrame } from '@/utils/workshopWriterProfile';
 import {
-  sanitizeWorkshopWidgetRecommendationForRetention,
-  WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
-} from '@/utils/workshopWidgetRecommendation';
+  sanitizeWorkshopWidgetRecommendationForRetention
+} from '@/utils/workshopWidgetRecommendationProtocol';
 import type { OpenRouterWebSearchTool } from '@providers/OpenRouterClient';
 
 /**
@@ -218,6 +217,7 @@ export class AssistantToolService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly resourceLoader: ResourceLoaderService,
     private readonly toolOptions: ToolOptionsProvider,
+    private readonly workshopWidgetRecommendationInstruction: string,
     private readonly outputChannel?: LogSink
   ) {
     this.statusListeners = new ListenerSet(
@@ -879,7 +879,11 @@ export class AssistantToolService {
       .filter(Boolean);
     // Personas may recommend (never commit) Conversation Widgets — the
     // contract rides every persona system message (ADR 2026-07-22).
-    return [systemPrompt, ...directives, WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION].join('\n\n');
+    return [
+      systemPrompt,
+      ...directives,
+      this.workshopWidgetRecommendationInstruction
+    ].join('\n\n');
   }
 
   /**

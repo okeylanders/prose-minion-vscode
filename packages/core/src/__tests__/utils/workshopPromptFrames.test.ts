@@ -4,6 +4,9 @@ import {
   wrapAgentFetchedArtifactEvidence
 } from '@/utils/workshopPromptFrames';
 import { buildWorkshopAnalysisScopeFrame } from '@/application/services/workshop/WorkshopPromptBuilder';
+import {
+  WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES
+} from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 
 describe('buildWorkshopAnalysisScopeFrame', () => {
   it('reports only current inherited-input facts and reserves its delimiter', () => {
@@ -121,46 +124,26 @@ describe('neutralizeReservedPersonaPromptDelimiters', () => {
     expect(neutralized).not.toContain('</thread-artifact>');
   });
 
-  it('reserves the widget recommendation contract and every nested field delimiter', () => {
-    const input = [
+  it('reserves the contract and every feature-declared recommendation delimiter', () => {
+    const featureMarkers = [
+      ...new Set(Object.values(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES)
+        .flatMap(({ reservedMarkers }) => reservedMarkers))
+    ];
+    const markers = [
       '<workshop-widget-recommendation-contract>',
       '</workshop-widget-recommendation-contract>',
-      '<workshop-widget-recommendation version="1">',
-      '</workshop-widget-recommendation>',
-      '<widget-id>',
-      '</widget-id>',
-      '<target-phrase>',
-      '</target-phrase>',
-      '<writer-instructions>',
-      '</writer-instructions>',
-      '<surrounding-context>',
-      '</surrounding-context>',
-      '<source-references>',
-      '</source-references>',
-      '<character-notes>',
-      '</character-notes>',
-      '<lens-slug>',
-      '</lens-slug>',
-      '<weight>',
-      '</weight>',
-      '<reach>',
-      '</reach>',
-      '<metaphor-pull>',
-      '</metaphor-pull>',
+      ...featureMarkers,
       '<prose-directive id="pd-1" family="lexical-gravity">',
       '</prose-directive>'
-    ].join(' body ');
+    ];
+    const input = markers.join(' body ');
 
     const output = neutralizeReservedPersonaPromptDelimiters(input);
 
-    expect(output).not.toMatch(
-      /<\/?(?:workshop-widget-recommendation-contract|workshop-widget-recommendation|widget-id|target-phrase|writer-instructions|surrounding-context|source-references|character-notes|lens-slug|weight|reach|metaphor-pull|prose-directive)(?=[\s>])/i
-    );
-    expect(output).toContain(
-      '&lt;workshop-widget-recommendation version="1"&gt;'
-    );
-    expect(output).toContain('&lt;surrounding-context&gt;');
-    expect(output).toContain('&lt;source-references&gt;');
+    for (const marker of markers) {
+      expect(output).not.toContain(marker);
+      expect(output).toContain(marker.replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+    }
     expect(output).toContain('body');
   });
 });

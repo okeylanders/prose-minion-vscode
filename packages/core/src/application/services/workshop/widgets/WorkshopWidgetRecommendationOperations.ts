@@ -1,8 +1,9 @@
 /**
- * Feature-neutral Workshop widget-recommendation envelope and closed dispatch.
- * Feature prompt copy, markers, and validation live in their named widget
- * packages; this module owns only the bounded frame, live-id gate, registry,
- * and transcript/retention cleanup shared by the family.
+ * Closed Workshop widget-recommendation registry and family-wide operations.
+ *
+ * Each named feature owns its prompt copy, markers, field vocabulary, and
+ * parser. This module is the one application seam that composes those slices
+ * into a bounded prompt contract and dispatches accepted live widget ids.
  */
 
 import {
@@ -12,25 +13,38 @@ import {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { isLiveWorkshopWidgetId } from '@shared/constants/workshopWidgets';
 import {
+  GesturePlaygroundRecommendationField,
+  GesturePlaygroundRecommendationInvalidFieldReason,
   GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundRecommendation';
 import {
+  LexicalGravityRecommendationField,
+  LexicalGravityRecommendationInvalidFieldReason,
   LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityRecommendation';
 import {
   extractWorkshopWidgetRecommendationId,
   TRY_WIDGET_HEADING,
   WorkshopWidgetRecommendationEntry,
-  WorkshopWidgetRecommendationField,
-  WorkshopWidgetRecommendationInspection,
-  WorkshopWidgetRecommendationInvalidFieldReason,
-  WorkshopWidgetRecommendationRejection
+  WorkshopWidgetRecommendationInspection as ProtocolWorkshopWidgetRecommendationInspection
 } from '@/utils/workshopWidgetRecommendationProtocol';
 
+export type WorkshopWidgetRecommendationField =
+  | GesturePlaygroundRecommendationField
+  | LexicalGravityRecommendationField;
+
+export type WorkshopWidgetRecommendationInvalidFieldReason =
+  | GesturePlaygroundRecommendationInvalidFieldReason
+  | LexicalGravityRecommendationInvalidFieldReason;
+
+export type WorkshopWidgetRecommendationInspection =
+  ProtocolWorkshopWidgetRecommendationInspection<
+    WorkshopWidgetRecommendation,
+    WorkshopWidgetRecommendationField,
+    WorkshopWidgetRecommendationInvalidFieldReason
+  >;
+
 export type {
-  WorkshopWidgetRecommendationField,
-  WorkshopWidgetRecommendationInspection,
-  WorkshopWidgetRecommendationInvalidFieldReason,
   WorkshopWidgetRecommendationRejection
 } from '@/utils/workshopWidgetRecommendationProtocol';
 
@@ -40,29 +54,30 @@ type RecommendationWidgetId = WorkshopWidgetRecommendation['widgetId'];
  * The only generic-to-feature recommendation dispatch point. A new live
  * recommendation arm must supply one named entry and make this Record compile.
  */
-export const WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES: Readonly<
-  Record<RecommendationWidgetId, WorkshopWidgetRecommendationEntry>
-> = Object.freeze({
+export const WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES = Object.freeze({
   'gesture-playground': GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY,
   'lexical-gravity': LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
-});
+}) satisfies Readonly<
+  Record<RecommendationWidgetId, WorkshopWidgetRecommendationEntry>
+>;
 
-const CATALOG_ENTRIES = [
-  GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY,
-  LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
-] as const;
-const INSTRUCTION_ENTRIES = [
-  LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY,
-  GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY
-] as const;
+const LIVE_RECOMMENDATION_ENTRIES = Object.values(
+  WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES
+).filter(({ widgetId }) => isLiveWorkshopWidgetId(widgetId));
 
 export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
   '<workshop-widget-recommendation-contract>',
-  `The writer has two interactive widgets you may recommend: ${CATALOG_ENTRIES
+  `The writer has the following interactive widgets you may recommend: ${[
+    ...LIVE_RECOMMENDATION_ENTRIES
+  ]
+    .sort((left, right) => left.catalogOrder - right.catalogOrder)
     .map(({ catalogSummary }) => catalogSummary)
     .join('; ')}.`,
   'Each response is independent: recommend at most one widget in this response, and only when it would genuinely help. A recommendation or uncommitted chip from an earlier turn never counts against this response and never suppresses a fresh recommendation. When the writer explicitly asks you to prepare or configure a live widget, emit a fresh, complete frame if the supplied material supports its required fields; do not merely acknowledge the request. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
-  ...INSTRUCTION_ENTRIES.map(({ instruction }) => instruction),
+  'Use the reserved heading and every tag in the selected frame exactly once, alone on their lines. Do not repeat the heading or use any reserved tag inside a field.',
+  ...[...LIVE_RECOMMENDATION_ENTRIES]
+    .sort((left, right) => left.instructionOrder - right.instructionOrder)
+    .map(({ instruction }) => instruction),
   '</workshop-widget-recommendation-contract>'
 ].join('\n');
 
@@ -116,23 +131,4 @@ export function inspectWorkshopWidgetRecommendation(
 
 function isRecommendationWidgetId(value: WorkshopWidgetId): value is RecommendationWidgetId {
   return Object.prototype.hasOwnProperty.call(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES, value);
-}
-
-/**
- * Recommendation controls render as chips and editable forms, not machine
- * framing in the transcript. The reserved heading owns the final tail even
- * when a frame rejects, so malformed debris cannot persist as prose.
- */
-export function stripWorkshopWidgetRecommendationControl(content: string): string {
-  const lines = content.replace(/\r\n?/g, '\n').split('\n');
-  const headingIndex = lines.findIndex((line) => line === TRY_WIDGET_HEADING);
-  return headingIndex >= 0
-    ? lines.slice(0, headingIndex).join('\n').trimEnd()
-    : content;
-}
-
-/** Remove the private widget protocol before retained provider history. */
-export function sanitizeWorkshopWidgetRecommendationForRetention(content: string): string {
-  const stripped = stripWorkshopWidgetRecommendationControl(content).trim();
-  return stripped || '[Widget setup delivered through the Workshop interface.]';
 }
