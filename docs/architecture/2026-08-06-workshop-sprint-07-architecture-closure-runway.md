@@ -13,10 +13,13 @@ responsibility map, and the feature-freeze recommendation. No feature behavior.
 ~12 min) · implementer of the audit (Band 2.10 + Band 4)
 **Base commit:** `0a742ca` (merge of PR #107, Sprint 06)
 
-> **Implementation outcome (2026-08-06).** Okey's “ready to implement” accepted
-> the runway recommendations: D7-A(c), D7-B(b), and D7-C(b). The implemented
-> tree separates `WorkshopRoomHandler` from `WorkshopSliceComposition`, audits
-> all five freeze-gate facades, and pins the 17-seam Prose Controller fixture.
+> **Implementation outcome (2026-08-06).** The implementation applied the
+> runway recommendations D7-A(c), D7-B(b), and D7-C(b). The implementing commit
+> does not independently prove that the decision preceded the fixture; PR #108
+> F-10 therefore leaves explicit decision-owner confirmation as a review action
+> rather than manufacturing a sequence from “ready to implement.” The tree
+> separates `WorkshopRoomHandler` from `WorkshopSliceComposition`, audits all
+> five freeze-gate facades, and derives the 20-seam Prose Controller fixture.
 > See the [final responsibility map](2026-08-06-workshop-responsibility-map.md).
 > D7-D remains explicitly unmade; implementation does not lift the freeze.
 
@@ -54,7 +57,7 @@ responsibility map, and the feature-freeze recommendation. No feature behavior.
 |---|---|---|---|
 | `WorkshopHandler` identity (source, 5 test files, 2 witnesses, log prefix ×27) | Move 1 | A cosmetic rename is mistaken for the closure the debt record forbids (`L85-86`) | **HIGH** |
 | God-files debt record | Move 2 | Debt closes on 2 of the 5 facades the epic's gate actually names (**F3**) | **HIGH** |
-| Reproduction-test criterion | Move 4 | Literal reading fails 17:1; per-registry reading passes — auditor picks (**F1**) | **HIGH** |
+| Reproduction-test criterion | Move 4 | Literal reading fails 20:1 after review correction; per-registry reading passes — auditor picks (**F1**) | **HIGH** |
 | Architecture witnesses (21 invariants) | Moves 1, 3 | Rename desynchronizes `WORKSHOP_HANDLER_OWNER` paths and witness #10 | MODERATE |
 | Feature freeze | All | Freeze lifts on an audit that measured the wrong thing | **CRITICAL** (consequence, not likelihood) |
 
@@ -253,7 +256,8 @@ sequenceDiagram
 **Notable.** Eight named files, zero god-file reads, and the only feature-specific hop is behind an
 explicit closed registry. [Inferred] This trace is the epic's thesis working. It is also the
 strongest single piece of evidence *for* closing the god-files debt — and it is why **F1**'s
-measurement matters so much: the trace is beautiful, and the reproduction cost is still 17 files.
+measurement matters so much: the trace is beautiful, and the review-hardened
+reproduction cost is still 20 files.
 
 ### 1.7 Blast-radius summary
 
@@ -293,7 +297,7 @@ Everything in this packet is in service of that sentence.
 | Handler name | ADR §4: "`WorkshopHandler` remains the Workshop-internal composition owner **and** the owner of cross-slice room/run orchestration" | Both roles present; 73% room/run, 10% composition | The ADR states the dual role plainly — the *name* is what omits it | Which role Okey wants the filename to advertise |
 | Room scope | ADR §4 Phase-4: "only the nine room/run responsibilities" | Exactly 9 routes | Held precisely | — |
 | Facade cohesion | Debt: "narrow facades over named collaborators" | `WorkshopSessionService` delegates to 7 named collaborators; `WorkshopHandler` to 8 named siblings | Both are facades by structure | Whether 1,653 / 2,121 lines *reads* as narrow to a newcomer — a human judgement, not a measurement |
-| Reproduction cost | Sprint: "exactly one generic closed-registry entry" | 17 generic surfaces would need a new arm | The criterion cannot mean what it literally says | Which reading Okey intended (**D7-B**) |
+| Reproduction cost | Sprint: "exactly one generic closed-registry entry" | 20 generic surfaces would need a new arm after PR #108 review correction | The criterion cannot mean what it literally says | Which reading Okey intended (**D7-B**) |
 | Freeze subjects | Epic gate names 4 facades | Sprint + debt track 2 | Two subjects are unowned | Whether that was deliberate (**D7-C**) |
 | Witness trust | Sprint 06 review F-01/F-02: witnesses had blind spots | Both repaired in `ace148a`; `allowedToken` now required + anchored | The empty exception list is now certified by a token-level scan | — |
 
@@ -326,7 +330,7 @@ interpretation. Every generic owner's feature vocabulary is dispatch or composit
 
 | Type | Source | Stimulus | Environment | Artifact | Expected response | Response measure |
 |---|---|---|---|---|---|---|
-| Change | Implementer | Add Prose Controller | Post-freeze | Whole Workshop tree | New feature slice + one arm per closed registry | **Measured**: 0 edits to Gesture/Lexical slices; 17 generic files gain an arm (**F1**) |
+| Change | Implementer | Add Prose Controller | Post-freeze | Whole Workshop tree | New feature slice + one arm per closed registry | **Measured**: 0 edits to Gesture/Lexical slices; 20 generic files gain an arm after review hardening (**F1**) |
 | Change | Newcomer | "Where does a standing-directive apply happen?" | Cold read | Source tree | 8 named files, no god-file read | **Verified** — §1.6 |
 | Failure | Auditor | Runs the audit with D7-B unanswered | This sprint | Fixture | Auditor must not choose the reading | **Blocked by gate** — D7-B precedes the fixture |
 | Failure | Reviewer | Rename lands, `WorkshopRoomHandler.context.test.ts` exists | Post-rename | Test tree | Filename must not lie | Witness #10 source/test/doc agreement (**F2**) |
@@ -355,7 +359,7 @@ an audit rather than an eighth refactor.
 | Naming truthfulness | **TENSION** | Siblings are all named by slice | The one file that is *not* named by its slice is the one the epic exists to de-mystify | A newcomer reads `WorkshopHandler` as "the Workshop handler" — the god file | D7-A verdict + witness #10 | STRONG |
 | Responsibility / cohesion | **ACCEPTABLE** | 8 named siblings, 7 named collaborators; both are structurally facades | 1,653 / 2,121 lines still concentrate change | Merge pressure stays real | Trace test §1.6 | STRONG |
 | Dependency direction | **STRONG** | One composition root; `core` is `vscode`-free; siblings don't import each other | — | — | `boundaries.test.ts:613,723` | STRONG |
-| Change isolation / evolvability | **TENSION** | 0 edits to existing feature slices for a new feature | 17 generic surfaces still gain an arm | The "copyable pattern" costs more than the sprint claims | **F1** | STRONG |
+| Change isolation / evolvability | **TENSION** | 0 edits to existing feature slices for a new feature | 20 generic surfaces still gain an arm | The "copyable pattern" costs more than the sprint claims | **F1** | STRONG |
 | Testability | **STRONG** | 189 suites; route-driven behavior tests through the real router | — | — | Measured green | STRONG |
 | Operability | **ACCEPTABLE** | Per-sibling log prefixes since Sprint 04 | A rename restarts prefix churn | Stale triage greps | Sprint 04 F9 map | MODERATE |
 
@@ -363,7 +367,7 @@ an audit rather than an eighth refactor.
 
 | ID | Severity | Finding | Evidence | Smallest fix | Blocks |
 |---|---|---|---|---|---|
-| **F1** | **CRITICAL** | The reproduction-test criterion admits two readings that produce opposite verdicts, and the sprint does not say which one governs — so whoever runs the audit authors the freeze-lift result | Sprint `07-architecture-closure.md:63-65`; measured: 32 approved generic surfaces, 23 name `lexical-gravity`, 6 already name `prose-controller`, **17 would need a new arm** | Answer **D7-B** in the sprint doc *before* the fixture is built | The fixture, and therefore the freeze lift |
+| **F1** | **CRITICAL** | The reproduction-test criterion admits two readings that produce opposite verdicts, and the sprint does not say which one governs — so whoever runs the audit authors the freeze-lift result | Sprint `07-architecture-closure.md:63-65`; initial runway measurement: 32 approved surfaces / 17 arms; PR #108 review correction: 33 approved / **20 arms** | Answer **D7-B** in the sprint doc *before* the fixture is built | The fixture, and therefore the freeze lift |
 | **F2** | **HIGH** | The retain-or-rename binary is false: `WorkshopHandler` is 73% room/run and 10% composition, so *both* offered options leave a lying filename | §1.4 line map; `boundaries.test.ts:325` names the dual role verbatim: `'room coordinator and feature-slice composition owner'` | Add option (c) to **D7-A**: extract the composition seam, then rename | The handler verdict |
 | **F3** | **HIGH** | The epic's freeze gate names **5** facades; the sprint's inherited decision and the debt record track **2**. `WorkshopApp.tsx` (1,485), `useWorkshopRoom.ts` (832 / 37 `useState`), and `useWorkshopSessions.ts` (262) have no owner in this sprint | Epic `:117-120` lists all five; sprint `:14-28` and debt `:20-21` list two | Answer **D7-C**; add the three to the audit subject list and the published map | The map, and the completeness of the gate |
 | **F4** | **MEDIUM** | A rename would make `WorkshopHandler.context.test.ts` / `.excerptScope.test.ts` / `.sessions.test.ts` / `.todos.test.ts` into `WorkshopRoomHandler.*` — filenames claiming a *room* handler owns context, excerpt, session, and todo routes. Witness #10 requires source/test/doc agreement | 4 route-driven suites named for the composer; unit suites for the same slices already exist alongside them | Rename those four to `WorkshopRoutes.*.test.ts` (they test the composed router surface, not the room) | Witness #10 |
@@ -407,7 +411,7 @@ Ordered. Slice 0 is the only one that may run before D7-A/B/C are answered.
 |---|---|---|---|---|---|---|
 | **0** | **Record the entry baseline** — measurements in §1.1, the five satisfied criteria, and the three open decisions | Sprint doc, this runway | None | Numbers reproduce at `0a742ca` | — | Doc-only |
 | **1** | **Decisions** — Okey answers D7-A, D7-B, D7-C | Sprint doc, debt record | None | Each decision has a recorded rationale | 0 | Doc-only |
-| **2** | **Reproduction fixture** under the agreed reading; publish the measured cost either way | New fixture test + map | None | Fixture asserts the agreed property; the 17-file figure is published even if reading (b) wins | 1 (**D7-B**) | Test-only |
+| **2** | **Reproduction fixture** under the agreed reading; publish the measured cost either way | New fixture test + map | None | Fixture asserts the agreed property; the derived 20-file figure is published even if reading (b) wins | 1 (**D7-B**) | Test-only |
 | **3** | **Facade audit** across all subjects from D7-C; publish the responsibility + dependency map | `docs/architecture/…responsibility-map.md` | None | Every audited facade has a named-collaborator list and one traced action | 1 (**D7-C**) | Doc-only |
 | **4** | **Handler disposition** per D7-A. If (b)/(c): one behavior-preserving commit — source, 6 test files, 2 witness constants, 27 log prefixes, harness — and **no** behavior change | Handler tree, `boundaries.test.ts` | Log prefix only | Full Jest green with identical assertions apart from prefix strings; 48-route ledger unchanged | 1 (**D7-A**) | Single revertable commit |
 | **5** | **Debt disposition** — close with evidence per criterion, or hold with the unmet ones named | Debt record | None | Every criterion cites a file, test, or measurement | 2, 3, 4 | Doc-only |
@@ -446,7 +450,7 @@ No concurrent work on `epic/workshop-architecture-refactor` at `0a742ca`. The br
 |---|---|---|
 | Sprint criteria ↔ base commit | Sprint reads as 10 open items; 5 are already satisfied | **F5** — record them satisfied-on-entry with `0a742ca` as evidence |
 | Sprint scope ↔ epic freeze gate | Sprint audits 2 facades; the gate names 5 | **F3** → **D7-C** |
-| Sprint criterion ↔ measured tree | "exactly one generic closed-registry entry" vs 17 | **F1** → **D7-B**; the criterion is ambiguous, not the architecture broken |
+| Sprint criterion ↔ measured tree | "exactly one generic closed-registry entry" vs 20 after review correction | **F1** → **D7-B**; the criterion is ambiguous, not the architecture broken |
 | Sprint options ↔ observed responsibilities | retain/rename binary vs a 73/10 split | **F2** → **D7-A(c)** |
 | Proposed rename ↔ test tree | `WorkshopRoomHandler.context.test.ts` would lie | **F4** — rename those suites to `WorkshopRoutes.*` |
 | My first read ↔ PR #107 | I initially carried F-01/F-02 forward as open risks | **Corrected** — both were repaired in `ace148a`; verified in the current witness source. Recorded under §2.9, not as findings |
@@ -458,7 +462,7 @@ Assume this merged and the freeze lifted. What breaks?
 
 | Failure story | Cause | Evidence / missing evidence | Prevention |
 |---|---|---|---|
-| Prose Controller lands and touches 17 generic files; the team concludes the epic failed | The fixture measured the per-registry property while everyone remembered the literal promise | Measured: 17 | **F1** — publish the 17-file figure *even when reading (b) wins*. Slice 2 requires this |
+| Prose Controller lands and touches 20 generic files; the team concludes the epic failed | The fixture measured the per-registry property while everyone remembered the literal promise | Measured: 20 after PR #108 review correction | **F1** — publish the derived figure *even when reading (b) wins*. Slice 2 requires this |
 | Six months on, `WorkshopRoomHandler` has quietly re-absorbed slice composition | The composition seam was never extracted; the rename made the file *feel* solved | §1.4 | **D7-A(c)**, plus a witness asserting the composition seam owns the sibling constructions |
 | A writer's cancel races a completing run and double-delivers | Slice 4 split `activeRun` across two objects | Single-slot invariant (§2.3) | Slice 4 must not move `activeRun`; the `roomAndRun` + `seams` suites gate it |
 | The debt closes; a later reviewer finds `WorkshopApp.tsx` at 1,485 lines and reopens everything | The audit covered 2 of 5 named facades | **F3** | **D7-C(b)** |
@@ -471,14 +475,22 @@ Assume this merged and the freeze lifted. What breaks?
 **Files it adds:** a feature slice mirroring `lexicalGravity/` — messages, config codec, directive,
 handler, model service, hook, modal, styles, tests.
 **Existing *feature* files it must edit:** **0** — guaranteed by the feature-isolation witness.
-**Generic files it must edit:** **17** of the 32 approved generic surfaces.
+**Generic files it must edit:** **20** of the 33 approved generic surfaces.
 **Already prepared for it:** **6** — `widgets.ts`, `standingDirectives.ts`, `workshopWidgets.ts`
 (flip `live`), `workshopWidgetIcons.ts`, `WorkshopSessionStateV1Shape.ts`, and
 `WorkshopStandingDirectiveOperations.ts`, which already carries a `proseControllerEntry` **throwing
 stub** at `:86-101` — a real implementation *replaces* it rather than adding an entry.
 
+**PR #108 review correction:** the original 17-file snapshot omitted
+`dispatchWorkshopWidgetActionResult.ts` and the centralized `promptBudgets.ts`
+catalog. Moving the new composition contracts to `WorkshopRouteContracts.ts`
+adds that contracts module as an explicit generic seam. The executable fixture
+now partitions all 33 approved surfaces into 20 applicable seams and 13
+reasoned exclusions, so a newly approved generic surface cannot remain
+silently unclassified.
+
 **Verdict:** **PASSES** the "no existing-feature edits" clause and the "closed dispatch, one arm per
-registry" clause. **FAILS** the literal "exactly one generic closed-registry entry" clause, 17:1.
+registry" clause. **FAILS** the literal "exactly one generic closed-registry entry" clause, 20:1.
 [Inferred] The literal clause was never achievable in a closed-registry architecture — closed
 dispatch means every registry names every variant, which is the property that makes variants
 reviewable. The criterion is describing a *plugin* architecture the ADR explicitly rejected
@@ -600,22 +612,25 @@ ADR §4's "nine room/run responsibilities" is exact.
 
 ### 4.4 Reproduction-cost measurement
 
-Of the 32 entries in `WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES`:
+Of the 33 entries in `WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES` after PR #108 remediation:
 
-- **23** name `lexical-gravity` — the nearest sibling and the correct analogue, both standing-rail widgets;
+- **24** name `lexical-gravity` — the nearest sibling and the correct analogue, both standing-rail widgets;
 - **6** already name `prose-controller`;
-- **17** would need a new arm.
+- **20** would need a new arm;
+- **13** are classified with a checked reason for requiring no new arm.
 
 Already prepared: `messages/workshop/widgets.ts`, `messages/workshop/standingDirectives.ts`,
 `constants/workshopWidgets.ts` (`live: false` → `true`), `workshopWidgetIcons.ts`,
 `WorkshopSessionStateV1Shape.ts`, `WorkshopStandingDirectiveOperations.ts` (throwing stub at `:86-101`).
 
-Would need a new arm: `MessageHandler.ts`, `MessageHandlerContracts.ts`, `WorkshopHandler.ts`,
+Would need a new arm: `MessageHandler.ts`, `MessageHandlerContracts.ts`,
+`WorkshopRouteContracts.ts`, `WorkshopSliceComposition.ts`,
 `WorkshopSessionRecords.ts`, `WorkshopWidgetConfigLedger.ts`, `WorkshopWidgetConfigOperations.ts`
 (4 switches), `WorkshopWidgetRecommendationOperations.ts`, `index.ts`, `WorkshopApp.tsx`,
-`WorkshopTurnBubble.tsx`, `useWorkshopWidgetOpening.ts`, `useWorkshopStandingDirectives.ts`,
-`useWorkshopAppMessageRouter.ts`, `workshopWidgetAskPrefill.ts`, `messages/base.ts`,
-`messages/index.ts`, `messages/workshop/index.ts`.
+`WorkshopTurnBubble.tsx`, `useWorkshopWidgetOpening.ts`,
+`dispatchWorkshopWidgetActionResult.ts`, `useWorkshopStandingDirectives.ts`,
+`useWorkshopAppMessageRouter.ts`, `workshopWidgetAskPrefill.ts`, `promptBudgets.ts`,
+`messages/base.ts`, `messages/index.ts`, `messages/workshop/index.ts`.
 
 ### 4.5 Fitness witnesses
 
@@ -664,7 +679,7 @@ advertises neither.
 - **A3** *(recommended)* Extract the ~170-line composition seam, rename the remainder to
   `WorkshopRoomHandler`, and rename the four route-driven suites to `WorkshopRoutes.*`.
 - **B1** Read the reproduction criterion literally (one generic file total) — **unsatisfiable under closed dispatch**.
-- **B2** *(recommended)* Read it as one entry per closed registry plus zero existing-feature edits, and publish the 17-file cost.
+- **B2** *(recommended)* Read it as one entry per closed registry plus zero existing-feature edits, and publish the derived 20-file cost.
 
 **Consequences of the recommendation.** Every filename tells the truth; the composition seam gains
 its own witness; one behavior-preserving commit in an audit phase; 27 log prefixes churn against an
@@ -682,7 +697,7 @@ accepted precedent; the freeze lift rests on a measured extension cost rather th
 |---|---|---|---|
 | `Facade` | A file that keeps one boundary (aggregate mutation, room orchestration) while delegating internals to named collaborators. **Not** a size claim — the debt explicitly retired line-count targets | The debt closes on "narrow facade," so what counts as one decides the verdict | current · ADR §4, §8 |
 | `Slice composer` | The ~170 lines that construct the 8 sibling handlers and register their routes. Distinct from the room orchestrator that shares the class | The heart of **F2** | current · `WorkshopHandler.ts:253-428` |
-| `Closed registry` | Dispatch among an explicitly enumerated set of feature variants, chosen over dynamic plugin discovery to keep variants reviewable and unions exact. Its defining cost: **every registry names every variant** | Directly causes the 17-file reproduction cost — the cost is the design working, not failing | current · ADR §3 |
+| `Closed registry` | Dispatch among an explicitly enumerated set of feature variants, chosen over dynamic plugin discovery to keep variants reviewable and unions exact. Its defining cost: **every registry names every variant** | Directly causes the review-hardened 20-file reproduction cost — the cost is the design working, not failing | current · ADR §3 |
 | `Mutation route` / `registerMutation` | A route wrapped in the shared gate that refuses room mutations while a session operation is in flight. 34 of 48 routes | The gate class is half of what the route ledger pins | current · `WorkshopHandler.ts:391-406` |
 | `Architecture witness` / `fitness function` | An executable test asserting a structural property. Ten were promised; 21 invariants exist | Sprint 07's evidence rests on them | current · `boundaries.test.ts` |
 | `Migration exception` | An entry recording a known, accepted violation during migration. Phase 7 requires the list empty | Already `[]` — a criterion satisfied on entry | current · `boundaries.test.ts:575` |

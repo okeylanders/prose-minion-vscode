@@ -11,21 +11,47 @@ superseded, or not actionable.
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | Prose Controller fixture cannot fail on the drift it names; the count of 17 is contestable | Sam, Cal | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-02 | 🟡 Standard | Sibling-construction witness cannot see `MessageHandler.ts`, the documented wiring site | Sam, Marcus | 1 independent | — | **Open** |
-| F-03 | 🟡 Standard | Seam contracts live in the implementation file; the ADR shipped in this PR says they don't | Marcus, Stan, Parker | 3 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-04 | 🟡 Standard | Disposal sequence split across two files is pinned by one pairwise assertion | Cal, Marcus | 2 independent | 🎯 Consensus | **Open** |
-| F-05 | 🟡 Standard | Documentation inside the split files still describes the pre-split shape | Parker, Marcus | 2 independent | 🎯 Consensus | **Open** |
-| F-06 | 🟡 Standard | Session-gate refusals stamped with a file that owns neither the gate nor the routes | Oliver | 1 runway-prompted | — | **Open** |
-| F-07 | 🟡 Standard | Ninth sibling meets an unguarded disposal slot and a misleading sort coupling | Sam | 1 runway-prompted | — | **Open** |
-| F-08 | 🟡 Standard | Host effects handed to sibling constructors before the field they dereference is assigned | Blake | 1 runway-prompted | — | **Open** |
-| F-09 | 🟡 Standard | Debt-closure criterion rewritten from falsifiable rule to past-tense report; guard deleted | Bria | 1 runway-prompted | — | **Open** |
-| F-10 | 🟡 Standard | D7-B attested only by the implementing commit's own prose | Bria | 1 runway-prompted | — | **Open** |
-| F-11 | 🔵 Nit | Current ADR still instructs against adding state to `WorkshopHandler` | Stan, Bria | 2 runway-prompted | — | **Open** |
+| F-01 | 🟠 High | Prose Controller fixture cannot fail on the drift it names; the count of 17 is contestable | Sam, Cal | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-02 | 🟡 Standard | Sibling-construction witness cannot see `MessageHandler.ts`, the documented wiring site | Sam, Marcus | 1 independent | — | **Addressed** |
+| F-03 | 🟡 Standard | Seam contracts live in the implementation file; the ADR shipped in this PR says they don't | Marcus, Stan, Parker | 3 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-04 | 🟡 Standard | Disposal sequence split across two files is pinned by one pairwise assertion | Cal, Marcus | 2 independent | 🎯 Consensus | **Addressed** |
+| F-05 | 🟡 Standard | Documentation inside the split files still describes the pre-split shape | Parker, Marcus | 2 independent | 🎯 Consensus | **Addressed** |
+| F-06 | 🟡 Standard | Session-gate refusals stamped with a file that owns neither the gate nor the routes | Oliver | 1 runway-prompted | — | **Addressed** |
+| F-07 | 🟡 Standard | Ninth sibling meets an unguarded disposal slot and a misleading sort coupling | Sam | 1 runway-prompted | — | **Addressed** |
+| F-08 | 🟡 Standard | Host effects handed to sibling constructors before the field they dereference is assigned | Blake | 1 runway-prompted | — | **Addressed** |
+| F-09 | 🟡 Standard | Debt-closure criterion rewritten from falsifiable rule to past-tense report; guard deleted | Bria | 1 runway-prompted | — | **Addressed** |
+| F-10 | 🟡 Standard | D7-B attested only by the implementing commit's own prose | Bria | 1 runway-prompted | — | **Partially addressed — owner confirmation pending** |
+| F-11 | 🔵 Nit | Current ADR still instructs against adding state to `WorkshopHandler` | Stan, Bria | 2 runway-prompted | — | **Addressed** |
 | P-01 | 🟢 Praise | Behavior preservation verified end-to-end, not asserted | Blake, Tim, Patricia | 3 independent | — | N/A — preserve |
 | P-02 | 🟢 Praise | Sibling-construction witness derives actuals and fails in both directions | Marcus, Cal | 2 independent | — | N/A — preserve |
 | P-03 | 🟢 Praise | Five sibling `reportError` owner tags survived a 230-line relocation | Oliver | 1 independent | — | N/A — preserve |
 | P-04 | 🟢 Praise | D7-D left genuinely unmade in all five artifacts | Bria | 1 independent | — | N/A — preserve |
+
+## Remediation record — 2026-08-06
+
+| Finding | Resolution evidence |
+| --- | --- |
+| F-01 | The fixture now partitions all 33 approved generic surfaces into 20 applicable seams and 13 reasoned exclusions, requires the partition to be total/disjoint, and explicitly includes the result dispatcher, prompt-budget catalog, and relocated contracts seam. The governance documents publish the derived 20-file result. |
+| F-02 | The construction witness scans `HANDLERS_ROOT` and asserts the complete two-tier truth: `MessageHandler` constructs `WorkshopRoomHandler`; `WorkshopSliceComposition` constructs the eight siblings. |
+| F-03 | `WorkshopWidgetRuntime`, composition dependencies, `WorkshopSliceHostEffects`, and room-route registration moved into `WorkshopRouteContracts`. Persistence pass-through effects were removed, error attribution was made explicit, and the ADR now states the seam admission rule. |
+| F-04 | The route harness exposes both listener disposers. The room/run suite now proves the full invocation order across four disposable siblings, both listener disposers, active-run abandonment, and the persistence flush. |
+| F-05 | Room and composition docblocks now name their actual owners, delegation, and teardown responsibilities; the widget-runtime growth rationale was restored. |
+| F-06 | Each slice receives an owner-bound mutation registrar, and a route-driven session-gate test proves excerpt refusals log under `WorkshopExcerptScopeHandler`. |
+| F-07 | Expected constructions are sorted before comparison, and the disposal test fails if any currently disposable sibling is omitted. |
+| F-08 | The host-effects contract states call-after-construction semantics, and `currentRunKind()` safely tolerates the construction window instead of dereferencing an unassigned composition. |
+| F-09 | The sprint restores the original falsifiable measured-against rule; the resolved debt retains the anti-cosmetic guard and all three closure questions with links to their answers. |
+| F-10 | The runway no longer claims that repository history proves decision ordering. It records D7-B(b) as the applied implementation outcome and leaves explicit decision-owner confirmation pending. No PR comment was manufactured or posted. |
+| F-11 | The live widget-state ADR now names `WorkshopRoomHandler`, `WorkshopSliceComposition`, and `WorkshopSessionService` with their current ownership constraints. |
+
+The adjacent debt index was also reconciled from `Medium | Open` to the resolved
+code-debt state with the independent freeze decision still pending. Horizon
+items remain non-blocking; the unrelated feature-plan commit was not rewritten.
+
+**Remediation validation:** focused architecture/room/seam suites — 3 suites,
+86 tests; full Jest — 189 suites, 1,939 tests, 1 snapshot; all three TypeScript
+projects; quiet ESLint; production extension/webview build plus three bundle
+sentinels; and `git diff --check`. The build retains only the existing webpack
+size warnings and Jest retains the existing ts-jest configuration warning.
 
 ## Review coverage
 

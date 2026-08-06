@@ -4,16 +4,11 @@
  * extension.ts remains the application composition root, while MessageHandler
  * assembles the domain ingress owners. This Workshop-internal seam assembles
  * route slices around the room/run owner, owns the shared session-operation
- * mutation gate, and fans out slice disposal. It has no room execution state
- * and constructs no transport envelopes.
+ * mutation gate, and fans out slice plus room teardown in the preserved
+ * lifecycle order. It owns no room execution state and constructs no transport
+ * envelopes; room-owned steps enter as named host effects.
  */
 
-import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
-import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
-import { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
-import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
-import { LogSink, ShellService } from '@/platform';
-import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { WorkshopContextHandler } from '@handlers/domain/workshop/WorkshopContextHandler';
 import { WorkshopExcerptScopeHandler } from '@handlers/domain/workshop/WorkshopExcerptScopeHandler';
@@ -22,75 +17,20 @@ import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/Work
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
 import {
-  WorkshopGesturePlaygroundHandler,
-  WorkshopGesturePlaygroundHandlerOptions,
-  WorkshopGesturePlaygroundServicePort
+  WorkshopGesturePlaygroundHandler
 } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import {
-  WorkshopLexicalGravityHandler,
-  WorkshopLexicalGravityModelPort,
-  WorkshopLexicalGravityRepositoryPort
+  WorkshopLexicalGravityHandler
 } from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
 import type {
-  WorkshopMutationRouteRegistrar
+  WorkshopMutationRouteOwner,
+  WorkshopMutationRouteRegistrar,
+  WorkshopRoomRouteRegistration,
+  WorkshopSliceCompositionDependencies,
+  WorkshopSliceHostEffects
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
-import type {
-  ErrorSource,
-  WorkshopSessionAction,
-  WorkshopTurn
-} from '@messages';
+import type { WorkshopSessionAction } from '@messages';
 import { MessageType } from '@messages';
-import type {
-  WorkshopStandingDirectiveServicePort
-} from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
-
-/** Feature collaborators cross the Workshop boundary as one focused bundle. */
-export interface WorkshopWidgetRuntime {
-  gesturePlayground: WorkshopGesturePlaygroundServicePort;
-  standingDirectives: WorkshopStandingDirectiveServicePort;
-  lexicalGravity: {
-    model: WorkshopLexicalGravityModelPort;
-    repository: WorkshopLexicalGravityRepositoryPort;
-  };
-}
-
-export interface WorkshopSliceCompositionDependencies {
-  contextAssistantService: ContextAssistantService;
-  session: WorkshopSessionService;
-  postMessage: MessageTransport;
-  shell: ShellService;
-  contextIntakeService: WorkshopContextIntakeService;
-  sessionPersistence: WorkshopSessionPersistenceCoordinator;
-  widgetRuntime: WorkshopWidgetRuntime;
-  outputChannel: LogSink;
-}
-
-export interface WorkshopSliceHostEffects {
-  postSessionState: () => void;
-  postTurn: (turn: WorkshopTurn) => void;
-  markDirty: (reason: string) => void;
-  reportError: (
-    source: ErrorSource,
-    message: string,
-    details: string | undefined,
-    owner: string
-  ) => void;
-  sendStatus: (message: string) => void;
-  discardConversations: (conversationIds: readonly string[]) => void;
-  excerptMutationBlockedReason: () => string | undefined;
-  flushDeferredConversationSettings: () => Promise<void>;
-  activeRunLabel: () => 'Context wizard' | 'response' | undefined;
-  sendRoomMessage: WorkshopGesturePlaygroundHandlerOptions['sendRoomMessage'];
-  isRoomRunActive: () => boolean;
-  disposeRoomSubscriptions: () => void;
-  disposeActiveRoomRun: () => void;
-  flushPersistence: () => void;
-}
-
-export type WorkshopRoomRouteRegistration = (
-  router: MessageRouter,
-  registerMutation: WorkshopMutationRouteRegistrar
-) => void;
 
 export class WorkshopSliceComposition {
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
@@ -116,6 +56,7 @@ export class WorkshopSliceComposition {
       widgetRuntime,
       outputChannel
     } = dependencies;
+    const markDirty = (reason: string): void => sessionPersistence.markDirty(reason);
 
     this.contextHandler = new WorkshopContextHandler(
       contextAssistantService,
@@ -127,9 +68,9 @@ export class WorkshopSliceComposition {
       {
         postSessionState: host.postSessionState,
         postTurn: host.postTurn,
-        markDirty: host.markDirty,
+        markDirty,
         reportError: (message, details) =>
-          host.reportError('workshop', message, details, 'WorkshopContextHandler'),
+          host.reportRouteError('workshop', message, details, 'WorkshopContextHandler'),
         sendStatus: host.sendStatus
       }
     );
@@ -144,9 +85,9 @@ export class WorkshopSliceComposition {
       {
         postSessionState: host.postSessionState,
         postTurn: host.postTurn,
-        markDirty: host.markDirty,
+        markDirty,
         reportError: (message, details) =>
-          host.reportError('workshop', message, details, 'WorkshopExcerptScopeHandler'),
+          host.reportRouteError('workshop', message, details, 'WorkshopExcerptScopeHandler'),
         sendStatus: host.sendStatus,
         discardConversations: (conversationIds) => host.discardConversations(conversationIds)
       }
@@ -160,7 +101,7 @@ export class WorkshopSliceComposition {
         postSessionState: host.postSessionState,
         flushDeferredConversationSettings: host.flushDeferredConversationSettings,
         reportError: (message, details) =>
-          host.reportError('workshop', message, details, 'WorkshopSessionMessageHandler'),
+          host.reportRouteError('workshop', message, details, 'WorkshopSessionMessageHandler'),
         activeRunLabel: host.activeRunLabel
       }
     );
@@ -172,9 +113,9 @@ export class WorkshopSliceComposition {
       {
         sendRoomMessage: host.sendRoomMessage,
         postSessionState: host.postSessionState,
-        markDirty: host.markDirty,
+        markDirty,
         reportError: (message, details) =>
-          host.reportError('workshop', message, details, 'WorkshopGesturePlaygroundHandler'),
+          host.reportRouteError('workshop', message, details, 'WorkshopGesturePlaygroundHandler'),
         isRoomRunActive: host.isRoomRunActive
       }
     );
@@ -196,7 +137,7 @@ export class WorkshopSliceComposition {
       {
         postSessionState: host.postSessionState,
         postTurn: host.postTurn,
-        markDirty: host.markDirty
+        markDirty
       }
     );
     this.todoHandler = new WorkshopTodoHandler(
@@ -204,9 +145,9 @@ export class WorkshopSliceComposition {
       outputChannel,
       {
         postSessionState: host.postSessionState,
-        markDirty: host.markDirty,
+        markDirty,
         reportError: (message, details) =>
-          host.reportError('workshop.todo', message, details, 'WorkshopTodoHandler')
+          host.reportRouteError('workshop.todo', message, details, 'WorkshopTodoHandler')
       }
     );
   }
@@ -215,32 +156,39 @@ export class WorkshopSliceComposition {
     router: MessageRouter,
     registerRoomRoutes: WorkshopRoomRouteRegistration
   ): void {
-    const registerMutation: WorkshopMutationRouteRegistrar = (
-      messageType: MessageType,
-      handler: (message: never) => Promise<void>,
-      sessionAction?: WorkshopSessionAction,
-      onBlocked?: (reason: string, message: never) => void
-    ): void => {
-      router.register(messageType, async (message) => {
-        const reportBlocked = onBlocked
-          ? (reason: string) => onBlocked(reason, message as never)
-          : undefined;
-        if (this.rejectMutationDuringSessionOperation(sessionAction, reportBlocked)) {
-          return;
-        }
-        await handler(message as never);
-      });
-    };
-
-    registerRoomRoutes(router, registerMutation);
-    this.excerptScopeHandler.registerRoutes(router, registerMutation);
-    this.contextHandler.registerRoutes(router, registerMutation);
-    this.sessionMessageHandler.registerRoutes(router, registerMutation);
-    this.gesturePlaygroundHandler.registerRoutes(router, registerMutation);
+    registerRoomRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopRoomHandler')
+    );
+    this.excerptScopeHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopExcerptScopeHandler')
+    );
+    this.contextHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopContextHandler')
+    );
+    this.sessionMessageHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopSessionMessageHandler')
+    );
+    this.gesturePlaygroundHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopGesturePlaygroundHandler')
+    );
     this.widgetHostHandler.registerRoutes(router);
-    this.standingDirectiveHandler.registerRoutes(router, registerMutation);
-    this.lexicalGravityHandler.registerRoutes(router, registerMutation);
-    this.todoHandler.registerRoutes(router, registerMutation);
+    this.standingDirectiveHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopStandingDirectiveHandler')
+    );
+    this.lexicalGravityHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopLexicalGravityHandler')
+    );
+    this.todoHandler.registerRoutes(
+      router,
+      this.createMutationRegistrar(router, 'WorkshopTodoHandler')
+    );
   }
 
   isContextRunActive(): boolean {
@@ -252,16 +200,41 @@ export class WorkshopSliceComposition {
   }
 
   dispose(): void {
+    // Preserve the lifecycle phases: feature work, room listeners, session
+    // work, active room run, context work, then the final persistence flush.
     this.gesturePlaygroundHandler.dispose();
     this.lexicalGravityHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();
     this.host.disposeActiveRoomRun();
     this.contextHandler.dispose();
-    this.host.flushPersistence();
+    void this.dependencies.sessionPersistence.flush();
+  }
+
+  private createMutationRegistrar(
+    router: MessageRouter,
+    owner: WorkshopMutationRouteOwner
+  ): WorkshopMutationRouteRegistrar {
+    return (
+      messageType: MessageType,
+      handler: (message: never) => Promise<void>,
+      sessionAction?: WorkshopSessionAction,
+      onBlocked?: (reason: string, message: never) => void
+    ): void => {
+      router.register(messageType, async (message) => {
+        const reportBlocked = onBlocked
+          ? (reason: string) => onBlocked(reason, message as never)
+          : undefined;
+        if (this.rejectMutationDuringSessionOperation(owner, sessionAction, reportBlocked)) {
+          return;
+        }
+        await handler(message as never);
+      });
+    };
   }
 
   private rejectMutationDuringSessionOperation(
+    owner: WorkshopMutationRouteOwner,
     sessionAction?: WorkshopSessionAction,
     onBlocked?: (message: string) => void
   ): boolean {
@@ -275,7 +248,7 @@ export class WorkshopSliceComposition {
     } else if (sessionAction) {
       this.sessionMessageHandler.postActionResult(sessionAction, false, message);
     } else {
-      this.host.reportError('workshop', message, undefined, 'WorkshopRoomHandler');
+      this.host.reportRouteError('workshop', message, undefined, owner);
     }
     return true;
   }

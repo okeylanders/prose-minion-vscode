@@ -171,9 +171,12 @@ Phase 7 therefore selected the third disposition:
   the sole `WORKSHOP_SESSION_STATE` constructor;
 - `WorkshopSliceComposition` constructs the eight sibling handlers, owns the
   shared session-operation mutation gate, and coordinates route registration
-  and slice disposal; and
-- `WorkshopRouteContracts` names the effects and guarded registrar shared
-  across that seam.
+  plus the preserved slice/room teardown sequence; and
+- `WorkshopRouteContracts` owns the widget-runtime bundle, stable composition
+  dependencies, call-after-construction room effects, guarded registrar, and
+  route-owner attribution shared across that seam. Stable services stay in the
+  dependency bundle; a callback enters the effects interface only for live
+  room state or a private room-owned operation.
 
 This is a responsibility split, not a size split. The run engine remains intact
 because targeting, execution, preemption, completion, and transport envelopes

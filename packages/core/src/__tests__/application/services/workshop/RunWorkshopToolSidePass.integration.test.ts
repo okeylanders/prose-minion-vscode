@@ -1,9 +1,9 @@
 import {
   WorkshopRoomHandler
 } from '@/application/handlers/domain/workshop/WorkshopRoomHandler';
-import {
+import type {
   WorkshopWidgetRuntime
-} from '@/application/handlers/domain/workshop/WorkshopSliceComposition';
+} from '@/application/handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   WorkshopRoomDeliveryService

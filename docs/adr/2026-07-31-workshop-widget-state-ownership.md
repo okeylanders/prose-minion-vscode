@@ -88,8 +88,9 @@ general-purpose `utils` module.
 Sprint 02A does not create an empty standing-directive framework. Sprint 02B
 will add its coordinator and handler with Lexical Gravity as the first concrete
 producer. New routes and directive state must enter through focused
-collaborators; they must not be added directly to `WorkshopHandler` or
-`WorkshopSessionService`.
+collaborators; they must not be added directly to `WorkshopRoomHandler` or
+`WorkshopSessionService`. `WorkshopSliceComposition` may gain construction and
+registration wiring for a new collaborator, never its feature state or grammar.
 
 ## Consequences
 

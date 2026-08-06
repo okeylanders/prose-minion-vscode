@@ -115,6 +115,10 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(session.getExcerpt()).toBeUndefined();
     expect(posted(MessageType.ERROR).at(-1).payload.message)
       .toMatch(/session save or replacement/i);
+    expect(log.appendLine).toHaveBeenCalledWith(
+      '[WorkshopExcerptScopeHandler] ERROR [workshop]: ' +
+      'Wait for the current session save or replacement to finish before changing the room.'
+    );
   });
 
   it('returns a widget-owned rejection when commit meets the session-operation gate', async () => {

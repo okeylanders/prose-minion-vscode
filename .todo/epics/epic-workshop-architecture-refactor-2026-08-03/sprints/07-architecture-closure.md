@@ -7,9 +7,9 @@
 **Depends on:** Sprint 06
 
 **Evidence:** [Sprint 07 architecture change runway](../../../../docs/architecture/2026-08-06-workshop-sprint-07-architecture-closure-runway.md)
-— three decisions (D7-A handler disposition, D7-B reproduction-criterion reading,
-D7-C audit subject list) are open and gate the audit; five of the ten completion
-criteria below are already satisfied at base `0a742ca`.
+— the pre-implementation runway left D7-A, D7-B, and D7-C open and measured five
+of ten completion criteria as already satisfied at base `0a742ca`; their recorded
+outcomes and review corrections appear below.
 
 **Final map:** [Workshop responsibility and dependency map](../../../../docs/architecture/2026-08-06-workshop-responsibility-map.md)
 
@@ -18,7 +18,7 @@ criteria below are already satisfied at base `0a742ca`.
 | Decision | Outcome |
 |---|---|
 | D7-A — handler disposition | **C.** Extract `WorkshopSliceComposition`, then rename the room/run owner to `WorkshopRoomHandler`. The room owner retains the nine room/run routes, single active-run slot, and sole session-state envelope. |
-| D7-B — reproduction criterion | **B.** One explicit arm per applicable closed generic seam, with zero edits to existing feature slices. The fixture pins 17 generic seams and zero Gesture/Lexical edits. |
+| D7-B — reproduction criterion | **B.** One explicit arm per applicable closed generic seam, with zero edits to existing feature slices. The review-hardened fixture derives 20 generic seams, classifies every approved generic surface, and requires zero Gesture/Lexical edits. |
 | D7-C — audit subjects | **B.** Audit all five freeze-gate facades: `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`, `WorkshopRoomHandler`, and `WorkshopSessionService`. |
 | D7-D — feature freeze | Pending Okey's explicit decision. Implementation does not lift it implicitly. |
 
@@ -68,8 +68,12 @@ Phase 7 owns both closure decisions:
 - [x] The `WorkshopHandler` retain-or-rename verdict is recorded; if renamed,
       source, tests, witnesses, log-prefix expectations, and docs consistently
       use `WorkshopRoomHandler` in the implemented/live architecture.
-- [x] The Workshop god-files record stayed open until every completion
-      criterion was evidenced; it is closed by the final audit.
+- [x] The Workshop god-files record stayed open until its completion criteria
+      were evidenced.
+
+      > Measured against (`0a742cac`): “An unmet criterion blocks debt closure
+      > and the feature freeze lift.” The final audit closes the code-level debt;
+      > D7-D remains the independent freeze-lift decision.
 - [x] A reviewer can trace representative actions by filename.
 - [x] All migration exceptions are empty.
 - [x] Full Jest, all TypeScript projects, lint, build/bundle, architecture

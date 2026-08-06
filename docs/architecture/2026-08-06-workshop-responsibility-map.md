@@ -9,7 +9,7 @@
 | Decision | Outcome | Evidence |
 |---|---|---|
 | Handler disposition (D7-A) | Extract the composition seam and rename the room/run owner to `WorkshopRoomHandler` | The former class was mostly room/run behavior but also constructed eight sibling handlers. `WorkshopSliceComposition` now owns only that assembly, the shared mutation gate, route fan-out, and slice disposal. |
-| Reproduction reading (D7-B) | One explicit arm per closed generic seam, with zero edits to existing feature slices | The executable Prose Controller fixture pins 17 generic seams, one entry per seam, and no Gesture Playground or Lexical Gravity path. |
+| Reproduction reading (D7-B) | One explicit arm per closed generic seam, with zero edits to existing feature slices | The executable Prose Controller fixture derives 20 applicable seams, classifies all 33 approved generic surfaces, and names why the other 13 require no new arm. No Gesture Playground or Lexical Gravity path is touched. |
 | Audit subjects (D7-C) | Audit all five feature-freeze facades | `WorkshopApp`, `useWorkshopRoom`, `useWorkshopSessions`, `WorkshopRoomHandler`, and `WorkshopSessionService` are covered below. |
 | Feature freeze (D7-D) | Not lifted by implementation | The architecture evidence supports lifting it, but the epic requires Okey's explicit decision. |
 
@@ -125,8 +125,14 @@ feature:
 
 - existing Gesture Playground files edited: **0**;
 - existing Lexical Gravity files edited: **0**;
-- generic seams receiving one explicit Prose Controller arm: **17**;
-- duplicate, missing, unapproved, or feature-owned seam entries: **0**.
+- generic seams receiving one explicit Prose Controller arm: **20**;
+- approved generic surfaces recorded as already prepared or inapplicable: **13**;
+- unclassified, duplicate, missing, unapproved, or feature-owned seam entries: **0**.
+
+PR #108 review added the inverse partition guard and corrected the earlier
+17-file snapshot. The result dispatcher and central prompt-budget catalog are
+applicable seams; moving the composition interfaces into
+`WorkshopRouteContracts` makes that contracts module an explicit seam as well.
 
 This is the cost of the ADR's closed-registry choice. “Exactly one generic file
 total” would require an open plugin system and contradict the accepted design.

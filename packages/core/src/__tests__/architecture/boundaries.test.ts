@@ -65,6 +65,7 @@ const WORKSHOP_SESSION_COLLABORATOR_ROOT = path.join(
 
 const WORKSHOP_ROOM_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopRoomHandler.ts';
+const MESSAGE_HANDLER_OWNER = 'application/handlers/MessageHandler.ts';
 const WORKSHOP_SLICE_COMPOSITION_OWNER =
   'application/handlers/domain/workshop/WorkshopSliceComposition.ts';
 const WORKSHOP_SESSION_HANDLER_OWNER =
@@ -339,6 +340,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground(?:Handler)?|lexicalGravity(?:Handler)?)/
   },
   {
+    file: 'application/handlers/domain/workshop/WorkshopRouteContracts.ts',
+    reason: 'Workshop-internal composition contract owner',
+    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
+  },
+  {
     file: 'application/services/workshop/WorkshopSessionCheckpointNormalization.ts',
     reason: 'closed persisted-config normalization dispatch',
     allowedToken: /(?:GesturePlaygroundConfigCodec|gesture-playground|gesturePlayground|normalizeGesturePlaygroundDraftForHydration)/
@@ -497,6 +503,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
 const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'application/handlers/MessageHandler.ts',
   'application/handlers/MessageHandlerContracts.ts',
+  'application/handlers/domain/workshop/WorkshopRouteContracts.ts',
   'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
   'application/services/workshop/WorkshopSessionRecords.ts',
   'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
@@ -506,12 +513,74 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'presentation/webview/WorkshopApp.tsx',
   'presentation/webview/components/workshop/WorkshopTurnBubble.tsx',
   'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
+  'presentation/webview/hooks/domain/workshop/dispatchWorkshopWidgetActionResult.ts',
   'presentation/webview/hooks/domain/workshop/useWorkshopStandingDirectives.ts',
   'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
   'presentation/webview/utils/workshopWidgetAskPrefill.ts',
+  'shared/constants/promptBudgets.ts',
   'shared/types/messages/base.ts',
   'shared/types/messages/index.ts',
   'shared/types/messages/workshop/index.ts'
+] as const;
+
+/**
+ * Approved generic surfaces that do not require a new Prose Controller arm.
+ * The reason beside every exclusion makes the applicability decision
+ * reviewable; together with the seam list this must partition all approvals.
+ */
+const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
+  {
+    file: 'application/services/workshop/WorkshopSessionCheckpointNormalization.ts',
+    reason: 'legacy Gesture hydration repair, not a live feature registry'
+  },
+  {
+    file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
+    reason: 'already validates the reserved prose-controller config arm'
+  },
+  {
+    file: 'application/services/workshop/WorkshopRunCompletion.ts',
+    reason: 'delegates recommendation semantics through the feature operations registry'
+  },
+  {
+    file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',
+    reason: 'already owns the prose-controller throwing placeholder to replace'
+  },
+  {
+    file: 'presentation/webview/components/SettingsOverlay.tsx',
+    reason: 'describes the shared widget model setting without per-feature dispatch'
+  },
+  {
+    file: 'presentation/webview/components/workshop/workshopWidgetIcons.ts',
+    reason: 'already contains the exhaustive prose-controller icon entry'
+  },
+  {
+    file: 'shared/constants/resultToolNames.ts',
+    reason: 'maps saved analysis tools; standing-widget preview is not a saved tool result'
+  },
+  {
+    file: 'shared/constants/workshopWidgets.ts',
+    reason: 'already contains the reserved prose-controller catalog entry'
+  },
+  {
+    file: 'shared/streamingCancelMessages.ts',
+    reason: 'maps streaming domains; the standing-widget preview precedent is non-streaming'
+  },
+  {
+    file: 'shared/types/messages/streaming.ts',
+    reason: 'declares streaming domains only; Prose Controller uses widget result contracts'
+  },
+  {
+    file: 'shared/types/messages/workshop/standingDirectives.ts',
+    reason: 'already includes prose-controller in the standing-family contract'
+  },
+  {
+    file: 'shared/types/messages/workshop/widgets.ts',
+    reason: 'already reserves the prose-controller widget/config union arm'
+  },
+  {
+    file: 'utils/workshopPromptFrames.ts',
+    reason: 'already neutralizes the family-generic prose-directive envelope'
+  }
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
   path.join(
@@ -753,9 +822,9 @@ describe('architectural boundaries', () => {
     expect(owners).toEqual([WORKSHOP_ROOM_HANDLER_OWNER]);
   });
 
-  it('keeps Workshop sibling construction inside WorkshopSliceComposition', () => {
+  it('keeps all Workshop handler construction at the two documented composition tiers', () => {
     const handlerConstruction = /new\s+(Workshop[A-Za-z0-9]+Handler)\s*\(/g;
-    const constructions = collectSourceFiles(WORKSHOP_HANDLER_ROOT).flatMap((file) =>
+    const constructions = collectSourceFiles(HANDLERS_ROOT).flatMap((file) =>
       [...fs.readFileSync(file, 'utf8').matchAll(handlerConstruction)]
         .map((match) => ({
           handler: match[1],
@@ -763,10 +832,18 @@ describe('architectural boundaries', () => {
         }))
     ).sort((left, right) => left.handler.localeCompare(right.handler));
 
-    expect(constructions).toEqual(WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES.map((handler) => ({
-      handler,
-      owner: WORKSHOP_SLICE_COMPOSITION_OWNER
-    })));
+    const expectedConstructions = [
+      {
+        handler: 'WorkshopRoomHandler',
+        owner: MESSAGE_HANDLER_OWNER
+      },
+      ...WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES.map((handler) => ({
+        handler,
+        owner: WORKSHOP_SLICE_COMPOSITION_OWNER
+      }))
+    ].sort((left, right) => left.handler.localeCompare(right.handler));
+
+    expect(constructions).toEqual(expectedConstructions);
   });
 
   it('keeps Workshop context intake free of route, transport, session, and logging authority', () => {
@@ -893,26 +970,40 @@ describe('architectural boundaries', () => {
       WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES.map(({ file }) => file)
     );
     const entries = [...PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES];
-    const duplicateEntries = entries.filter((file, index) => entries.indexOf(file) !== index);
-    const missingEntries = entries.filter((file) => !fs.existsSync(path.join(SRC_ROOT, file)));
-    const unapprovedEntries = entries.filter((file) => !approvedGenericPaths.has(file));
+    const inapplicable = PROSE_CONTROLLER_INAPPLICABLE_SURFACES.map(({ file }) => file);
+    const partition = [...entries, ...inapplicable];
+    const classifiedPaths = new Set<string>(partition);
+    const duplicateEntries = partition.filter((file, index) => partition.indexOf(file) !== index);
+    const missingEntries = partition.filter((file) => !fs.existsSync(path.join(SRC_ROOT, file)));
+    const unapprovedEntries = partition.filter((file) => !approvedGenericPaths.has(file));
+    const unclassifiedApprovedSurfaces = [...approvedGenericPaths]
+      .filter((file) => !classifiedPaths.has(file));
+    const missingInapplicabilityReasons = PROSE_CONTROLLER_INAPPLICABLE_SURFACES
+      .filter(({ reason }) => reason.trim().length === 0)
+      .map(({ file }) => file);
     const siblingFeatureEntries = entries.filter((file) =>
       GESTURE_FEATURE_REFERENCE.test(file) || LEXICAL_FEATURE_REFERENCE.test(file)
     );
 
     expect({
-      genericSeamCount: entries.length,
       duplicateEntries,
       missingEntries,
       unapprovedEntries,
+      unclassifiedApprovedSurfaces,
+      missingInapplicabilityReasons,
       siblingFeatureEntries
     }).toEqual({
-      genericSeamCount: 17,
       duplicateEntries: [],
       missingEntries: [],
       unapprovedEntries: [],
+      unclassifiedApprovedSurfaces: [],
+      missingInapplicabilityReasons: [],
       siblingFeatureEntries: []
     });
+    expect(entries).toContain(
+      'presentation/webview/hooks/domain/workshop/dispatchWorkshopWidgetActionResult.ts'
+    );
+    expect(entries).toContain('shared/constants/promptBudgets.ts');
   });
 
   it('Workshop feature hooks do not own family-generic widget config lookup', () => {

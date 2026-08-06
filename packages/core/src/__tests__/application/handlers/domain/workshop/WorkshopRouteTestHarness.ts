@@ -1,7 +1,7 @@
 import { WorkshopRoomHandler } from '@handlers/domain/workshop/WorkshopRoomHandler';
-import {
+import type {
   WorkshopWidgetRuntime
-} from '@handlers/domain/workshop/WorkshopSliceComposition';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
 import { WorkshopAnalysisSidePass } from '@/application/services/workshop/WorkshopAnalysisSidePass';
@@ -97,6 +97,8 @@ export interface WorkshopRouteTestHarness {
   }>;
   resourceProviderFactory: { createProvider: jest.Mock; };
   persistence: jest.Mocked<WorkshopSessionPersistenceCoordinator>;
+  disposeStatusListener: jest.Mock;
+  disposeSessionSaveStatusListener: jest.Mock;
   setTimeNow: (value: Date) => void;
   posted: (type: MessageType) => any[];
   storeContext: (key: string, promptTokens: number, completionTokens?: number) => void;
@@ -111,6 +113,8 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
   const contextSources = new Map<string, import('@messages').ContextSourceEntry[]>();
   const postMessage = jest.fn().mockResolvedValue(undefined);
   const log = { appendLine: jest.fn() } as unknown as LogSink;
+  const disposeStatusListener = jest.fn();
+  const disposeSessionSaveStatusListener = jest.fn();
   const service = {
     analyzeDialogue: jest.fn().mockResolvedValue(
       analysisResult('tool report', { conversationId: 'tool-conv' })
@@ -140,7 +144,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     getConversationContextSources: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextSources.get(conversationId) ?? [] : []
     ),
-    addStatusListener: jest.fn(() => jest.fn())
+    addStatusListener: jest.fn(() => disposeStatusListener)
   } as unknown as jest.Mocked<AssistantToolService>;
   const contextAssistant = {
     generateContext: jest.fn().mockResolvedValue({
@@ -201,7 +205,9 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     getDegradedConversations: jest.fn().mockReturnValue([]),
     isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
     isSessionOperationPending: jest.fn().mockReturnValue(false),
-    addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
+    addSessionSaveStatusListener: jest.fn().mockReturnValue(
+      disposeSessionSaveStatusListener
+    ),
     waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
     markDirty: jest.fn(),
     flush: jest.fn().mockResolvedValue(undefined),
@@ -333,6 +339,8 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     resourceFiles,
     resourceProviderFactory,
     persistence,
+    disposeStatusListener,
+    disposeSessionSaveStatusListener,
     setTimeNow: (value: Date) => {
       timeNow = value;
     },

@@ -1,14 +1,12 @@
 /**
- * Workshop domain handler (ADR 2026-07-03; Sprint 2 session spine, Sprint 3
- * multi-turn).
+ * Workshop room/run orchestration owner (ADR 2026-07-03; architecture-refactor
+ * Sprint 07).
  *
- * The 12th domain. Routes the Workshop editor tab's messages onto the
- * EXISTING analysis tools: WORKSHOP_RUN_TOOL invokes dialogue / prose / the
- * twelve WritingToolsFocus modes through AssistantToolService, streams chunks
- * under `domain: 'workshop'`, and appends the completed turn pair to the
- * shared WorkshopSessionService aggregate. Session truth lives in the
- * service (composition-root-owned, outlives this handler); the handler owns
- * only messaging, streaming, and run lifecycle.
+ * Owns the nine room/run routes, the single active-run slot, preemption,
+ * transport envelopes, and the sole WORKSHOP_SESSION_STATE constructor.
+ * WorkshopSliceComposition owns the shared mutation gate and composes the
+ * eight sibling route handlers around this room owner. Session truth lives in
+ * WorkshopSessionService and outlives both handler surfaces.
  *
  * Sprint 06B makes every tool run an isolated retained sidecar: the exact tool
  * report lands first, then the permanent persona host receives bounded
@@ -101,12 +99,10 @@ import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
-  WorkshopMutationRouteRegistrar
-} from '@handlers/domain/workshop/WorkshopRouteContracts';
-import {
-  WorkshopSliceComposition,
+  WorkshopMutationRouteRegistrar,
   WorkshopWidgetRuntime
-} from '@handlers/domain/workshop/WorkshopSliceComposition';
+} from '@handlers/domain/workshop/WorkshopRouteContracts';
+import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
 
 // Generate unique request IDs (module-scoped counter, same idiom as AnalysisHandler)
 let requestIdCounter = 0;
@@ -264,8 +260,7 @@ export class WorkshopRoomHandler {
       {
         postSessionState: () => this.postSessionState(),
         postTurn: (turn) => this.postTurn(turn),
-        markDirty: (reason) => this.sessionPersistence.markDirty(reason),
-        reportError: (source, message, details, owner) =>
+        reportRouteError: (source, message, details, owner) =>
           this.sendError(source, message, details, owner),
         sendStatus: (message) => this.sendStatus(message),
         discardConversations: (conversationIds) => this.discardConversations(conversationIds),
@@ -290,17 +285,12 @@ export class WorkshopRoomHandler {
             this.session.abandonRun(this.activeRun.requestId);
             this.activeRun = undefined;
           }
-        },
-        flushPersistence: () => {
-          void this.sessionPersistence.flush();
         }
       }
     );
   }
 
-  /**
-   * Register message routes for the workshop domain
-   */
+  /** Register the nine room/run routes beside the composed sibling routes. */
   registerRoutes(router: MessageRouter): void {
     this.sliceComposition.registerRoutes(router, (
       router,
@@ -325,10 +315,9 @@ export class WorkshopRoomHandler {
   }
 
   /**
-   * Release the shared-service subscription and abort any in-flight run.
-   * The session aggregate survives (it is composition-root-owned) — only this
-   * webview's run and listeners die with it. The retained conversation also
-   * survives: it belongs to the session, not to this handler.
+   * Delegate the preserved Workshop teardown sequence to the composition.
+   * Room listeners and the active run are released through named host effects;
+   * the session aggregate and retained conversation survive this webview.
    */
   dispose(): void {
     this.sliceComposition.dispose();
@@ -1292,7 +1281,7 @@ export class WorkshopRoomHandler {
     if (this.activeRun) {
       return 'room';
     }
-    return this.sliceComposition.isContextRunActive() ? 'wizard' : undefined;
+    return this.sliceComposition?.isContextRunActive() ? 'wizard' : undefined;
   }
 
   private excerptMutationBlockedReason(): string | undefined {

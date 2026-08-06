@@ -15,6 +15,19 @@ import {
 } from './WorkshopRouteTestHarness';
 import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 
+interface WorkshopDisposableSliceComposition {
+  gesturePlaygroundHandler: { dispose: () => void };
+  lexicalGravityHandler: { dispose: () => void };
+  sessionMessageHandler: { dispose: () => void };
+  contextHandler: { dispose: () => void };
+}
+
+const disposableCompositionOf = (
+  handler: WorkshopRouteTestHarness['handler']
+): WorkshopDisposableSliceComposition => (
+  handler as unknown as { sliceComposition: WorkshopDisposableSliceComposition }
+).sliceComposition;
+
 describe('WorkshopRoomHandler routing — room and run owner', () => {
   let session: WorkshopRouteTestHarness['session'];
   let postMessage: WorkshopRouteTestHarness['postMessage'];
@@ -28,6 +41,9 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
   let capabilityFactory: WorkshopRouteTestHarness['capabilityFactory'];
   let contextBudgets: WorkshopRouteTestHarness['contextBudgets'];
   let persistence: WorkshopRouteTestHarness['persistence'];
+  let disposeStatusListener: WorkshopRouteTestHarness['disposeStatusListener'];
+  let disposeSessionSaveStatusListener:
+    WorkshopRouteTestHarness['disposeSessionSaveStatusListener'];
   let posted: WorkshopRouteTestHarness['posted'];
   let storeContext: WorkshopRouteTestHarness['storeContext'];
   let pin: WorkshopRouteTestHarness['pin'];
@@ -48,6 +64,8 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       capabilityFactory,
       contextBudgets,
       persistence,
+      disposeStatusListener,
+      disposeSessionSaveStatusListener,
       posted,
       storeContext,
       pin,
@@ -56,7 +74,7 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
     } = createWorkshopRouteTestHarness());
   });
 
-  it('abandons an active run before flushing persistence on dispose', async () => {
+  it('runs every composed teardown step in the preserved lifecycle order', async () => {
     await pin();
     service.startWorkshopPersonaConversation.mockImplementationOnce(
       async (_input, options) => new Promise((resolve) => {
@@ -66,6 +84,11 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       })
     );
     const abandonRun = jest.spyOn(session, 'abandonRun');
+    const composition = disposableCompositionOf(handler);
+    const disposeGesture = jest.spyOn(composition.gesturePlaygroundHandler, 'dispose');
+    const disposeLexical = jest.spyOn(composition.lexicalGravityHandler, 'dispose');
+    const disposeSession = jest.spyOn(composition.sessionMessageHandler, 'dispose');
+    const disposeContext = jest.spyOn(composition.contextHandler, 'dispose');
     const delivery = router.route(message(
       MessageType.WORKSHOP_SEND_MESSAGE,
       { text: 'Hold this thought through shutdown.' }
@@ -76,10 +99,25 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
     handler.dispose();
     await delivery;
 
+    expect(disposeGesture).toHaveBeenCalledTimes(1);
+    expect(disposeLexical).toHaveBeenCalledTimes(1);
+    expect(disposeStatusListener).toHaveBeenCalledTimes(1);
+    expect(disposeSessionSaveStatusListener).toHaveBeenCalledTimes(1);
+    expect(disposeSession).toHaveBeenCalledTimes(1);
     expect(abandonRun).toHaveBeenCalledWith(requestId);
+    expect(disposeContext).toHaveBeenCalledTimes(1);
     expect(persistence.flush).toHaveBeenCalled();
-    expect(abandonRun.mock.invocationCallOrder[0])
-      .toBeLessThan(persistence.flush.mock.invocationCallOrder.at(-1)!);
+    const invocationOrder: number[] = [
+      disposeGesture.mock.invocationCallOrder[0]!,
+      disposeLexical.mock.invocationCallOrder[0]!,
+      disposeStatusListener.mock.invocationCallOrder[0]!,
+      disposeSessionSaveStatusListener.mock.invocationCallOrder[0]!,
+      disposeSession.mock.invocationCallOrder[0]!,
+      abandonRun.mock.invocationCallOrder[0]!,
+      disposeContext.mock.invocationCallOrder[0]!,
+      persistence.flush.mock.invocationCallOrder.at(-1)!
+    ];
+    expect(invocationOrder).toEqual([...invocationOrder].sort((left, right) => left - right));
   });
 
   it('commits carry-cues-only behavior changes without rebuilding persona prompts', async () => {

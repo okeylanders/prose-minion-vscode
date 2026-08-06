@@ -90,6 +90,33 @@ change; further extraction would be cosmetic line-count work.
 The code-level debt is closed. The feature freeze is not implicitly lifted:
 the epic still requires Okey's explicit decision.
 
+## Closure guard — satisfied
+
+Phase 7 was measured against the original rule recorded before implementation:
+
+> If the evidence does not support closure, this record stays open and
+> continues to block the Workshop feature-freeze lift. Phase 7 must not
+> manufacture closure through a cosmetic rename or arbitrary line-count
+> extraction.
+
+The final split follows independently changing responsibilities, preserves the
+room/run lifecycle intact, and leaves the feature-freeze decision open. The
+guard remains part of the resolved record so a future audit can reconstruct
+the rule rather than only the outcome.
+
+## Closure questions — answered
+
+1. **Name:** the remaining room/run boundary is now
+   `WorkshopRoomHandler`; the separate construction/gate responsibility is
+   named `WorkshopSliceComposition` ([closure decisions](../../docs/architecture/2026-08-06-workshop-responsibility-map.md#closure-decisions)).
+2. **Facade coherence:** the five-facade audit records one primary
+   responsibility and named collaborators for both broad owners
+   ([five-facade audit](../../docs/architecture/2026-08-06-workshop-responsibility-map.md#five-facade-audit)).
+3. **Stop condition:** the audit found no remaining responsibility with both an
+   independent invariant and reason to change; further extraction would divide
+   the room/run or aggregate integrity lifecycle merely to lower line counts
+   ([closure verdict](../../docs/architecture/2026-08-06-workshop-responsibility-map.md#closure-verdict)).
+
 Presentation-modal workflow ownership is tracked separately in
 `2026-08-04-workshop-modal-workflow-ownership.md`; it is not a reason to reopen
 the aggregate or handler boundaries here.
