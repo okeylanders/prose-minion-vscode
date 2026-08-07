@@ -4,6 +4,11 @@ import { MessageEnvelope, MessageType } from '../base';
 export type WorkshopLexicalGravityReach = 1 | 2 | 3;
 export type WorkshopLexicalGravityApplicationMode = 'interpret' | 'recompose';
 
+/** Independently named format clocks; equality today is deliberate, not shared identity. */
+export const LEXICAL_GRAVITY_LENS_VERSION = 2 as const;
+export const LEXICAL_GRAVITY_PREVIEW_VERSION = 2 as const;
+export const LEXICAL_GRAVITY_LENS_RESPONSE_ENVELOPE_VERSION = 2 as const;
+
 export interface WorkshopLexicalGravityWordBucket {
   nouns: string[];
   verbs: string[];
@@ -62,7 +67,7 @@ export interface WorkshopLexicalGravityLensLogic {
  * tab immediately available without another model call.
  */
 export interface WorkshopLexicalGravityLens {
-  version: 2;
+  version: typeof LEXICAL_GRAVITY_LENS_VERSION;
   slug: string;
   name: string;
   source: 'built-in' | 'project';
@@ -95,7 +100,7 @@ export interface WorkshopLexicalGravitySemanticPosition {
 }
 
 export interface WorkshopLexicalGravityPreview {
-  version: 2;
+  version: typeof LEXICAL_GRAVITY_PREVIEW_VERSION;
   /** Stable key of the five writer-facing values this preview demonstrates. */
   configKey: string;
   sourceText: string;

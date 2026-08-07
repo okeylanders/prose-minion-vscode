@@ -1,4 +1,5 @@
 import {
+  LEXICAL_GRAVITY_LENS_VERSION,
   WorkshopLexicalGravityLens
 } from '@messages';
 import { cloneLexicalGravityLens } from './LexicalGravityConfigCodec';
@@ -6,7 +7,11 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 const lens = (
   value: Omit<WorkshopLexicalGravityLens, 'version' | 'source'>
-): WorkshopLexicalGravityLens => ({ version: 2, source: 'built-in', ...value });
+): WorkshopLexicalGravityLens => ({
+  version: LEXICAL_GRAVITY_LENS_VERSION,
+  source: 'built-in',
+  ...value
+});
 
 /** The six approved Spread 02 starter fields. */
 const BUILT_IN_LENSES: readonly WorkshopLexicalGravityLens[] = [

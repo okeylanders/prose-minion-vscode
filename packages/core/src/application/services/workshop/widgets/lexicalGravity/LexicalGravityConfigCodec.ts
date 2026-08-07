@@ -1,6 +1,8 @@
 /** Exact persisted and project-resource grammar for Lexical Gravity. */
 
 import {
+  LEXICAL_GRAVITY_LENS_VERSION,
+  LEXICAL_GRAVITY_PREVIEW_VERSION,
   WorkshopLexicalGravityApplicationMode,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
@@ -66,7 +68,9 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
     ],
     ['originQuery', 'variant', 'description']
   );
-  if (item.version !== 2) {shapeError(`${path}.version`, '2');}
+  if (item.version !== LEXICAL_GRAVITY_LENS_VERSION) {
+    shapeError(`${path}.version`, String(LEXICAL_GRAVITY_LENS_VERSION));
+  }
   boundedStringAt(item.slug, `${path}.slug`, BUDGET.lexicalLensSlugCharacters, false);
   if (!SLUG.test(item.slug as string)) {
     shapeError(`${path}.slug`, 'a lowercase kebab-case lens slug');
@@ -150,6 +154,9 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
 }
 
 export function assertLexicalGravityDraftShape(value: unknown, path: string): void {
+  // ADR 2026-08-01 section 6 deliberately rejects pre-v2 development
+  // checkpoints. Unlike later-added Gesture fields, a v1 Lexical Gravity word
+  // field cannot be defaulted into the required interpretive grammar honestly.
   const draft = exactObject(
     value,
     path,
@@ -192,7 +199,9 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
         'selectedDynamicId', 'openEntailment', 'text'
       ]
     );
-    if (preview.version !== 2) {shapeError(`${path}.preview.version`, '2');}
+    if (preview.version !== LEXICAL_GRAVITY_PREVIEW_VERSION) {
+      shapeError(`${path}.preview.version`, String(LEXICAL_GRAVITY_PREVIEW_VERSION));
+    }
     boundedStringAt(preview.configKey, `${path}.preview.configKey`, 256, false);
     boundedStringAt(
       preview.sourceText,

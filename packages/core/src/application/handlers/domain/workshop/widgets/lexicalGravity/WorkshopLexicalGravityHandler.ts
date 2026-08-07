@@ -1,5 +1,6 @@
 /** Focused IPC adapter for Lexical Gravity's catalog, preview, build, and save workflow. */
 
+import * as path from 'path';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
@@ -163,7 +164,17 @@ export class WorkshopLexicalGravityHandler {
     this.buildRun = controller;
     try {
       if (rebuildResourceName) {
-        await this.repository.assertIncompatibleResource(rebuildResourceName);
+        const incompatibility = await this.repository.assertIncompatibleResource(
+          rebuildResourceName
+        );
+        const rebuildSlug = path.basename(incompatibility.resourceName, '.json');
+        if (builtInLexicalGravityLens(rebuildSlug)) {
+          throw new Error(
+            `Lexical Gravity lens ${incompatibility.resourceName} collides with a built-in ` +
+            'lens and will not be overwritten. Rename the file and its v1 slug to a ' +
+            'non-built-in canonical name before rebuilding.'
+          );
+        }
         const candidates = await this.model.buildLenses(query, { signal: controller.signal });
         if (controller.signal.aborted) {return;}
         this.latestBuild = {

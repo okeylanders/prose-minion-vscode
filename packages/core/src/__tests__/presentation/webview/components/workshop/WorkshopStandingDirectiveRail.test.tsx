@@ -14,7 +14,9 @@ describe('WorkshopStandingDirectiveRail', () => {
   it('keeps the active influence visible, editable, and killable', () => {
     const onEdit = jest.fn();
     const onRemove = jest.fn();
-    const formatSummary = jest.fn().mockReturnValue('Photography · 60% · 2° · metaphor');
+    const formatSummary = jest.fn().mockReturnValue(
+      'Photography · interpret · 60% · 2° · metaphor'
+    );
     render(<WorkshopStandingDirectiveRail
       directives={[{
         id: 'pd-1',
@@ -24,6 +26,7 @@ describe('WorkshopStandingDirectiveRail', () => {
         revision: 2,
         updatedAt: 100,
         lensName: 'Photography',
+        applicationMode: 'interpret',
         weight: 60,
         reach: 2,
         metaphorPull: true
@@ -34,7 +37,7 @@ describe('WorkshopStandingDirectiveRail', () => {
     />);
 
     expect(screen.getByLabelText('Active prose directives')).toBeTruthy();
-    expect(screen.getByText('Photography · 60% · 2° · metaphor')).toBeTruthy();
+    expect(screen.getByText('Photography · interpret · 60% · 2° · metaphor')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Lexical Gravity' }));
     expect(onEdit).toHaveBeenCalledWith('wc-1');
@@ -57,6 +60,7 @@ describe('WorkshopStandingDirectiveRail', () => {
         revision: 2,
         updatedAt: 100,
         lensName: 'Photography',
+        applicationMode: 'interpret',
         weight: 60,
         reach: 2,
         metaphorPull: true

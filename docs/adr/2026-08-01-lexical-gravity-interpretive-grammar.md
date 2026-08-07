@@ -1,6 +1,6 @@
 # ADR 2026-08-01: Lexical Gravity Interpretive Grammar
 
-- **Status**: Proposed
+- **Status**: Accepted — implementation in PR #110; interactive F5 acceptance pending
 - **Decision owner**: Okey
 - **Extends**: [ADR 2026-07-22 — Conversation Widgets](2026-07-22-conversation-widgets.md)
 - **Delivery**: [Sprint 02B-B — Lexical Gravity interpretive grammar](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-lexical-gravity-interpretive-grammar.md)
@@ -120,7 +120,10 @@ The five writer-facing controls retain narrow meanings:
   use it as a plan for beat order, attention, revelation, syntax, rhythm, and
   paragraph shape. Neither gear may invent scene facts.
 - **Weight** controls how strongly or frequently that grammar influences prose;
-  it is not a stakes or consequence value.
+  it is not a stakes or consequence value. Its writer-facing bands were redrawn
+  from four to five (`trace`, `subtle`, `forward`, `insistent`, `saturating`)
+  because the widened scope now includes composition as well as lexical
+  realization; this recalibrates the labels, not the control's meaning.
 - **Reach** controls lexical distance into the source domain; it does not disable
   the lens logic.
 - **Metaphor pull** controls permission for explicit cross-domain comparison;

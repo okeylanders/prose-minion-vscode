@@ -60,6 +60,19 @@ For `logic`, supply 2–4 foregrounds, 2–4 backgrounds, 2–4 axes, 2–4 role
 
 Every dynamic must perform a meaningful state change. Its entailment says what follows from that change. Its narrative affordance says what open pressure the change can create without demanding resolution. Avoid generic profundity that could fit any domain.
 
+Stay inside these validator ceilings; counts include spaces:
+
+- name ≤ 80 characters; variant ≤ 120 characters; description ≤ 320 characters
+- premise ≤ 400 characters
+- each foreground/background ≤ 180 characters
+- each id ≤ 64 characters; each axis/role display name ≤ 80 characters; each axis pole ≤ 100 characters
+- each role description ≤ 240 characters
+- each dynamic movement ≤ 200 characters; entailment ≤ 360 characters; narrative affordance ≤ 360 characters
+- each guardrail ≤ 240 characters
+- each lexical term and gradient term ≤ 80 characters
+- each cliché side, substitution, and metaphor ≤ 240 characters
+- sample ≤ 800 characters
+
 Degree 1 is broadly usable, degree 2 is field-specific, and degree 3 is vivid specialist language. Supply 5–8 varied terms in every nouns, verbs, and modifiers array. Supply 6–10 ordered gradient terms and 4–6 cliché/fresh contrasts. In `substitutions`, prefer one vivid, idiomatic word for each value. Use a compact phrase only when no single word carries the distinction naturally. Prefer concrete, surprising, usable language over thesaurus noise. The three `variant` values must be distinct.
 
 The outer response protocol is exact and contains no Markdown fence or commentary:

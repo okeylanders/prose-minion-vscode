@@ -31,7 +31,7 @@ the [Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026
 Sprints 03 and 04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;
-[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Proposed**;
+[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Accepted**; implementation in PR #110 with interactive F5 acceptance pending;
 [2026-08-03 — Workshop Feature Family and Module Boundaries](../../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) — **Accepted; blocks feature work through refactor Phase 7**
 **Integration branch**: `epic/conversation-widgets`
 

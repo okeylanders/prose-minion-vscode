@@ -12,6 +12,7 @@ import {
 
 const lexicalDraft = {
   lensSlug: 'photography',
+  applicationMode: 'interpret' as const,
   weight: 60,
   reach: 2 as const,
   metaphorPull: false,

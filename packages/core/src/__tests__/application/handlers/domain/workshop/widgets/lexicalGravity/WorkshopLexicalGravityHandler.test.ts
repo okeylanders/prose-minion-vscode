@@ -222,7 +222,12 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
     const generated = candidates();
     const model = { buildLenses: jest.fn().mockResolvedValue(generated) };
     const repository = {
-      assertIncompatibleResource: jest.fn().mockResolvedValue({}),
+      assertIncompatibleResource: jest.fn().mockResolvedValue({
+        resourceName: 'legacy-falconry.json',
+        foundVersion: 1,
+        rebuildQuery: 'falconry',
+        message: 'Rebuild it.'
+      }),
       replaceIncompatibleForQuery: jest.fn(),
       availability: jest.fn().mockReturnValue({ displayPath: 'prose-minion/lenses' })
     };
@@ -254,6 +259,43 @@ describe('WorkshopLexicalGravityHandler generated-lens saves', () => {
       payload: expect.objectContaining({
         ok: false,
         error: expect.stringMatching(/exactly one generated take/)
+      })
+    }));
+  });
+
+  it('refuses to rebuild a v1 resource whose replacement would be hidden by a built-in', async () => {
+    const generated = candidates();
+    const model = { buildLenses: jest.fn().mockResolvedValue(generated) };
+    const repository = {
+      assertIncompatibleResource: jest.fn().mockResolvedValue({
+        resourceName: 'photography.json',
+        foundVersion: 1,
+        rebuildQuery: 'photography',
+        message: 'Rebuild it.'
+      })
+    };
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = new WorkshopLexicalGravityHandler(
+      model as never,
+      repository as never,
+      postMessage,
+      { appendLine: jest.fn() } as never
+    );
+
+    await handler.handleBuild({
+      ...buildMessage,
+      payload: {
+        ...buildMessage.payload,
+        query: 'photography',
+        rebuildResourceName: 'photography.json'
+      }
+    });
+
+    expect(model.buildLenses).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        ok: false,
+        error: expect.stringMatching(/collides with a built-in.*will not be overwritten/i)
       })
     }));
   });

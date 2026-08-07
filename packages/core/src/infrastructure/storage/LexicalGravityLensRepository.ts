@@ -18,6 +18,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   isMissingFileSystemPathError
 } from '@/infrastructure/storage/fileSystemErrors';
+import { isRecord } from '@/application/services/workshop/persistedValidation';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -255,16 +256,20 @@ export class LexicalGravityLensRepository {
 
   private incompatibleResourceName(resourceName: string): string {
     const name = resourceName.trim();
-    const slug = path.basename(name, '.json');
-    if (
-      name !== path.basename(name)
-      || name !== `${slug}.json`
-      || !slug
-      || lexicalGravityLensSlug(slug) !== slug
-    ) {
+    if (!this.canonicalResourceSlug(name)) {
       throw new Error('Lexical Gravity rebuild target must be one cataloged lens filename');
     }
     return name;
+  }
+
+  private canonicalResourceSlug(resourceName: string): string | undefined {
+    const slug = path.basename(resourceName, '.json');
+    return resourceName === path.basename(resourceName)
+      && resourceName === `${slug}.json`
+      && !!slug
+      && lexicalGravityLensSlug(slug) === slug
+      ? slug
+      : undefined;
   }
 
   private async assertDestinationMissing(filePath: string): Promise<void> {
@@ -294,6 +299,7 @@ export class LexicalGravityLensRepository {
     displayName: string,
     tolerateInvalid: boolean
   ): Promise<LexicalGravityLensReadResult> {
+    let parsed: Record<string, unknown> | undefined;
     try {
       const stat = await this.fileSystem.stat(filePath);
       if (
@@ -303,8 +309,13 @@ export class LexicalGravityLensRepository {
         throw new Error('invalid size/type');
       }
       const raw = decoder.decode(await this.fileSystem.readFile(filePath));
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      parsed = JSON.parse(raw) as Record<string, unknown>;
       if (parsed.version === 1) {
+        const fileSlug = this.canonicalResourceSlug(displayName);
+        if (!fileSlug) {
+          throw new Error('filename is not a canonical lowercase lens slug');
+        }
+        this.assertRecognizableLegacyLens(parsed, fileSlug);
         const rebuildQuery = this.legacyRebuildQuery(parsed, displayName);
         return {
           incompatibility: {
@@ -328,9 +339,51 @@ export class LexicalGravityLensRepository {
       const message = error instanceof Error ? error.message : String(error);
       if (tolerateInvalid) {
         this.log.appendLine(`[LexicalGravityLensRepository] Skipped ${displayName}: ${message}`);
-        return {};
+        return {
+          incompatibility: {
+            resourceName: displayName,
+            foundVersion: null,
+            rebuildQuery: this.legacyRebuildQuery(parsed ?? {}, displayName),
+            message:
+              `Saved Lexical Gravity lens ${displayName} could not be loaded: ${message}. ` +
+              'Fix or remove the project file before using this lens.'
+          }
+        };
       }
       throw new Error(`Saved Lexical Gravity lens ${displayName} is invalid: ${message}`);
+    }
+  }
+
+  private assertRecognizableLegacyLens(
+    parsed: Record<string, unknown>,
+    fileSlug: string
+  ): void {
+    const degrees = parsed.degrees;
+    const hasLegacyBuckets = isRecord(degrees)
+      && ['1', '2', '3'].every((degree) => {
+        const bucket = degrees[degree];
+        return isRecord(bucket)
+          && ['nouns', 'verbs', 'modifiers'].every((part) => (
+            Array.isArray(bucket[part])
+            && (bucket[part] as unknown[]).length > 0
+            && (bucket[part] as unknown[]).every(
+              (term) => typeof term === 'string' && term.trim().length > 0
+            )
+          ));
+      });
+    const hasLegacyGradient = Array.isArray(parsed.gradient)
+      && parsed.gradient.length > 0
+      && parsed.gradient.every(
+        (term) => typeof term === 'string' && term.trim().length > 0
+      );
+    if (
+      parsed.slug !== fileSlug
+      || typeof parsed.name !== 'string'
+      || parsed.name.trim().length === 0
+      || !hasLegacyBuckets
+      || !hasLegacyGradient
+    ) {
+      throw new Error('version 1 marker does not match a recognizable legacy lens');
     }
   }
 

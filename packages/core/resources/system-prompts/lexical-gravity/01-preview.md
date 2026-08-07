@@ -23,6 +23,15 @@ Respect Weight as the strength and frequency of the selected gear. In `interpret
 
 `semanticPositions` are concise writer-facing declarations, not private reasoning. Each mapping must use a `roleId` declared by the supplied lens. Use a declared `axisId` plus a concise `axisPosition`, or set both fields to null. `selectedDynamicId` must be a declared dynamic id or null. `openEntailment` must be null when no dynamic is selected.
 
+Stay inside these validator ceilings; counts include spaces:
+
+- 0–6 semantic positions
+- element ≤ 160 characters
+- axisPosition ≤ 160 characters when present
+- significance ≤ 320 characters
+- openEntailment ≤ 500 characters when present
+- text ≤ 1200 characters
+
 Return this exact JSON shape:
 
 ```json

@@ -354,6 +354,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   }, [invalidatePreview]);
   const rebuildIncompatible = React.useCallback(
     (resource: WorkshopLexicalGravityLensIncompatibility) => {
+      if (resource.foundVersion !== 1) {return;}
       setIncompatibleNote(undefined);
       setLookup(resource.rebuildQuery);
       setRebuildTarget(resource);
@@ -646,9 +647,15 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                         <Icon name="orbit" size={15} />
                         <span className="pm-ws-lg-lens-name">
                           {resource.rebuildQuery}
-                          <em className="pm-ws-lg-v1tag">v1</em>
+                          <em className="pm-ws-lg-v1tag">
+                            {resource.foundVersion === 1 ? 'v1' : 'unreadable'}
+                          </em>
                         </span>
-                        <span className="pm-ws-lg-lens-words">word field only — not installable</span>
+                        <span className="pm-ws-lg-lens-words">
+                          {resource.foundVersion === 1
+                            ? 'word field only — not installable'
+                            : 'project file could not be loaded'}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -656,9 +663,11 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                 {incompatibleNote && (
                   <div className="pm-ws-lg-note-v1" role="note">
                     {incompatibleNote.message}
-                    <button type="button" onClick={() => rebuildIncompatible(incompatibleNote)}>
-                      Rebuild and overwrite
-                    </button>
+                    {incompatibleNote.foundVersion === 1 && (
+                      <button type="button" onClick={() => rebuildIncompatible(incompatibleNote)}>
+                        Rebuild and overwrite
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

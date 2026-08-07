@@ -11,23 +11,34 @@ superseded, or not actionable.
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🔴 Blocking | `npx jest` red at head; 3 suites run zero assertions, one shelters a stale expectation | Blake, Cal | 1 independent · 1 runway-prompted | — | **Open** |
-| F-02 | 🟠 High | Rebuilding a v1 lens named after a built-in destroys the file and hides the replacement | Sam | 1 runway-prompted | — | **Open** |
-| F-03 | 🟠 High | Pre-v2 draft in a persisted session rejects the whole checkpoint; no repair path, no test | Blake, Cal, Stan | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-04 | 🟠 High | An invalid v2 lens file is invisible to the writer (`readLens` returns `{}` for two facts) | Oliver, Parker | 1 independent · 1 runway-prompted | — | **Open** |
-| F-05 | 🟡 Standard | Non-canonically-named v1 file gets a Rebuild button that can never succeed | Blake, Marcus, Bria, Sam | 4 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-06 | 🟡 Standard | `version: 1` is the sole predicate authorizing the only irreversible write | Patricia | 1 independent | — | **Open** |
+| F-01 | 🔴 Blocking | `npx jest` red at head; 3 suites run zero assertions, one shelters a stale expectation | Blake, Cal | 1 independent · 1 runway-prompted | — | **Addressed** — all missing fixtures and the stale rail label corrected |
+| F-02 | 🟠 High | Rebuilding a v1 lens named after a built-in destroys the file and hides the replacement | Sam | 1 runway-prompted | — | **Addressed** — built-in collisions refused before generation or write |
+| F-03 | 🟠 High | Pre-v2 draft in a persisted session rejects the whole checkpoint; no repair path, no test | Blake, Cal, Stan | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** — strict ADR §6 policy documented beside the codec and pinned by tests |
+| F-04 | 🟠 High | An invalid v2 lens file is invisible to the writer (`readLens` returns `{}` for two facts) | Oliver, Parker | 1 independent · 1 runway-prompted | — | **Addressed** — unreadable project files are writer-visible and non-rebuildable |
+| F-05 | 🟡 Standard | Non-canonically-named v1 file gets a Rebuild button that can never succeed | Blake, Marcus, Bria, Sam | 4 runway-prompted | 🧭 Corroborated Runway | **Addressed** — non-canonical names surface as non-rebuildable file errors |
+| F-06 | 🟡 Standard | `version: 1` is the sole predicate authorizing the only irreversible write | Patricia | 1 independent | — | **Addressed** — overwrite now requires recognizable v1 lens identity and shape |
 | F-07 | 🟡 Standard | Widget drafts have no semantic-validation layer | Marcus | 1 runway-prompted | — | **Deferred** — forward-looking; decide before Prose Controller |
-| F-08 | 🟡 Standard | Generation and validation envelopes disagree; neither prompt states the numbers | Tim, Sam | 1 independent · 1 runway-prompted | — | **Open** |
+| F-08 | 🟡 Standard | Generation and validation envelopes disagree; neither prompt states the numbers | Tim, Sam | 1 independent · 1 runway-prompted | — | **Addressed** — prompts state bounds; build/preview ceilings cover validated output plus reasoning |
 | F-09 | 🟡 Standard | Two persistence primitives invented widget-local | Stan | 1 runway-prompted | — | **Deferred** — one duplication may be the honest price; record against Prose Controller |
-| F-10 | 🟡 Standard | Four independently-versioned things all spell themselves `2` | Parker | 1 runway-prompted | — | **Open** |
-| F-11 | 🔵 Nit | Weight scale recalibrated while the ADR asserts Weight's meaning is unchanged | Bria | 1 runway-prompted | — | **Open** |
+| F-10 | 🟡 Standard | Four independently-versioned things all spell themselves `2` | Parker | 1 runway-prompted | — | **Addressed** — lens, preview, and response-envelope clocks named independently |
+| F-11 | 🔵 Nit | Weight scale recalibrated while the ADR asserts Weight's meaning is unchanged | Bria | 1 runway-prompted | — | **Addressed** — ADR records the five-band presentation recalibration |
 | P-1 | 💚 Praise | Preview validity is a property of the (lens, preview) pair | Marcus | 1 runway-prompted | — | N/A — preserve |
 | P-2 | 💚 Praise | Both empty states narrated in the writer's vocabulary | Parker, Bria | 1 independent · 1 runway-prompted | — | N/A — preserve |
 | P-3 | 💚 Praise | Re-assert-before-publish atomic write | Stan | 1 independent | — | N/A — preserve |
 | P-4 | 💚 Praise | Model→filesystem and model→webview boundaries held completely | Patricia | 1 runway-prompted | — | N/A — preserve |
 | P-5 | 💚 Praise | Directive budget raise is measured, and the measurement is why it is defensible | Tim | 1 runway-prompted | — | N/A — preserve |
 | P-6 | 💚 Praise | Preview rejection log pairs validator reason with an actionable remedy | Oliver | 1 independent | — | N/A — preserve |
+
+### Remediation record — 2026-08-07
+
+- **F-01:** Added `applicationMode` to every stale standing-directive/widget-opening fixture, including two additional rail fixtures found by the full suite, and kept the exact writer-facing summary assertion.
+- **F-02 / F-05 / F-06:** Rebuild now requires a canonical, recognizable v1 lens and refuses a slug that collides with a built-in before model spend. Tests prove rejected files retain their bytes and no rename occurs.
+- **F-03:** Kept the ADR's strict pre-v2 checkpoint policy. A v1 word field cannot be defaulted into honest v2 roles, axes, dynamics, and guardrails; current Lexical Gravity configs round-trip, while a pre-v2 draft's rejection is explicit and executable.
+- **F-04:** Catalog reads now distinguish absence from refusal. Invalid or non-canonical project files reach the Library as `foundVersion: null`, show the validation reason, and expose no overwrite action.
+- **F-08:** Both prompts state their validator ceilings. The three-candidate build budget is 24,000 output tokens, covering the measured ~20,000-token maximal valid envelope. Preview is 5,000 because [OpenRouter counts reasoning as output and maps low effort to roughly 20% of `max_tokens`](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens), leaving room for the 12,000-character response envelope.
+- **F-10 / F-11:** Named the independent lens, preview, and response-envelope version clocks; accepted the ADR and documented why the writer-facing Weight bands changed without changing Weight's domain meaning.
+- **F-07 / F-09:** Remain deliberately deferred as recorded above; this remediation did not pre-empt the Prose Controller boundary decision.
+- **Validation:** 189 Jest suites / 1,962 tests / 1 snapshot, all three TypeScript projects, quiet ESLint, production extension + webview build, bundle sentinels, and `git diff --check` pass. Interactive F5 acceptance and live billable model calls remain outside this remediation.
 
 ## Review coverage
 

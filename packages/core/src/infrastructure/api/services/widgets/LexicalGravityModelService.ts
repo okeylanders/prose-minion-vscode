@@ -1,6 +1,8 @@
 /** Model-backed exploration for Lexical Gravity preview and project lenses. */
 
 import {
+  LEXICAL_GRAVITY_LENS_RESPONSE_ENVELOPE_VERSION,
+  LEXICAL_GRAVITY_LENS_VERSION,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
   WorkshopLexicalGravityLensCandidate,
@@ -174,8 +176,14 @@ export class LexicalGravityModelService {
         'Lexical Gravity lens response',
         ['version', 'candidates']
       );
-      if (parsed.version !== 2 || !Array.isArray(parsed.candidates)) {
-        throw new Error('root must contain version 2 and candidates');
+      if (
+        parsed.version !== LEXICAL_GRAVITY_LENS_RESPONSE_ENVELOPE_VERSION
+        || !Array.isArray(parsed.candidates)
+      ) {
+        throw new Error(
+          `root must contain version ${LEXICAL_GRAVITY_LENS_RESPONSE_ENVELOPE_VERSION} ` +
+          'and candidates'
+        );
       }
       if (parsed.candidates.length !== BUDGET.lexicalBuildCandidates) {
         throw new Error(`expected exactly ${BUDGET.lexicalBuildCandidates} candidates`);
@@ -188,7 +196,7 @@ export class LexicalGravityModelService {
         }
         const lens = validateLexicalGravityLens({
           ...(raw as Record<string, unknown>),
-          version: 2,
+          version: LEXICAL_GRAVITY_LENS_VERSION,
           slug,
           source: 'project'
         });

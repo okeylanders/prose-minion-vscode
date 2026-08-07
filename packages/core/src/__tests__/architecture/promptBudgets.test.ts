@@ -144,7 +144,7 @@ describe('prompt budgets', () => {
       lexicalSampleCharacters: 800,
       lexicalBuildQueryCharacters: 100,
       lexicalBuildCandidates: 3,
-      lexicalBuildOutputTokens: 8_000,
+      lexicalBuildOutputTokens: 24_000,
       lexicalBuildResponseCharacters: 200_000,
       lexicalPreviewCharacters: 1_200,
       lexicalPreviewResponseCharacters: 12_000,
@@ -153,7 +153,7 @@ describe('prompt budgets', () => {
       lexicalPreviewAxisPositionCharacters: 160,
       lexicalPreviewSignificanceCharacters: 320,
       lexicalPreviewEntailmentCharacters: 500,
-      lexicalPreviewOutputTokens: 3_600,
+      lexicalPreviewOutputTokens: 5_000,
       lexicalDirectiveCharacters: 16_000
     });
     expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(15_300);
@@ -161,6 +161,17 @@ describe('prompt budgets', () => {
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {
+    const buildPrompt = fs.readFileSync(
+      path.resolve(
+        SRC_ROOT,
+        '..',
+        'resources',
+        'system-prompts',
+        'lexical-gravity',
+        '00-build-lens.md'
+      ),
+      'utf8'
+    );
     const previewPrompt = fs.readFileSync(
       path.resolve(SRC_ROOT, '..', 'resources', 'system-prompts', 'lexical-gravity', '01-preview.md'),
       'utf8'
@@ -170,6 +181,22 @@ describe('prompt budgets', () => {
     expect(previewPrompt).toContain('`recompose`: use the semantic positions');
     expect(previewPrompt).toContain('do not preserve the source sentence-by-sentence');
     expect(previewPrompt).not.toContain('and sentence count');
+
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    for (const fragment of [
+      `premise ≤ ${budget.lexicalLogicPremiseCharacters} characters`,
+      `role description ≤ ${budget.lexicalRoleDescriptionCharacters} characters`,
+      `sample ≤ ${budget.lexicalSampleCharacters} characters`
+    ]) {
+      expect(buildPrompt).toContain(fragment);
+    }
+    for (const fragment of [
+      `0–${budget.lexicalPreviewPositions} semantic positions`,
+      `element ≤ ${budget.lexicalPreviewElementCharacters} characters`,
+      `text ≤ ${budget.lexicalPreviewCharacters} characters`
+    ]) {
+      expect(previewPrompt).toContain(fragment);
+    }
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

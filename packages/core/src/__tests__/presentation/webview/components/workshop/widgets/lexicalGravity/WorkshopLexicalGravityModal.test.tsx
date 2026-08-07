@@ -665,6 +665,25 @@ describe('WorkshopLexicalGravityModal', () => {
     );
   });
 
+  it('surfaces an unreadable project lens without offering a destructive rebuild', () => {
+    renderModal({ kind: 'new' }, {
+      incompatibleResources: [{
+        resourceName: 'broken.json',
+        foundVersion: null,
+        rebuildQuery: 'broken',
+        message: 'Saved Lexical Gravity lens broken.json could not be loaded.'
+      }]
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
+    const card = screen.getByTitle('broken.json');
+    expect(card.textContent).toContain('unreadable');
+    expect(card.textContent).toContain('project file could not be loaded');
+    fireEvent.click(card);
+    expect(screen.getByText(/broken.json could not be loaded/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Rebuild and overwrite' })).toBeNull();
+  });
+
   it('shows lens-build failures immediately beside the Build lens action', () => {
     const { props, view } = renderModal();
     fireEvent.change(screen.getByPlaceholderText('Try “code vs. prose”…'), {

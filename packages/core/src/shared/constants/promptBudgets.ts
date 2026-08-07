@@ -240,7 +240,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalSampleCharacters: 800,
     lexicalBuildQueryCharacters: 100,
     lexicalBuildCandidates: 3,
-    lexicalBuildOutputTokens: 8_000,
+    lexicalBuildOutputTokens: 24_000,
     lexicalBuildResponseCharacters: 200_000,
     lexicalPreviewCharacters: 1_200,
     lexicalPreviewResponseCharacters: 12_000,
@@ -249,7 +249,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalPreviewAxisPositionCharacters: 160,
     lexicalPreviewSignificanceCharacters: 320,
     lexicalPreviewEntailmentCharacters: 500,
-    lexicalPreviewOutputTokens: 3_600,
+    lexicalPreviewOutputTokens: 5_000,
     lexicalDirectiveCharacters: 16_000
   }
 };
