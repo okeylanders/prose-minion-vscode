@@ -3,7 +3,8 @@
 - **Status**: Accepted — 2026-07-29; Gesture Dictionary generation and
   source-reference/streaming amendments accepted 2026-07-29; Lexical Gravity
   Spread 02 frame/lens-library amendments accepted 2026-07-31; multi-select
-  generated-lens save amendment accepted 2026-07-31
+  generated-lens save amendment accepted 2026-07-31; widget checkpoint
+  recovery and persistence-lifecycle sequencing amended 2026-08-07
 - **Decision owner**: Okey
 - **Planning source**: epic and sprint plans drafted 2026-07-22
   ([epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md));
@@ -11,9 +12,13 @@
   design spreads (Spread 00 · the widget system, Spread 01 · Gesture
   Playground) and an architecture pass over the shipped Workshop code.
 - **Delivery**: [Conversation Widgets epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md),
-  Sprints 01, 02A–02B, optional 02C, and 03–04. Sprint 01 (widget host +
-  Gesture Playground) proves the one-shot rail; Sprint 02A formalizes widget
-  state ownership; Sprint 02B builds the standing rail with Lexical Gravity.
+  Sprints 01, 02A–02B-B, 02D, and 03–04. Sprint 01 (widget host + Gesture
+  Playground) proves the one-shot rail; Sprint 02A formalizes widget state
+  ownership; Sprint 02B builds the standing rail with Lexical Gravity; Sprint
+  02B-B must recover recognized prior widget checkpoints before exit; Sprint
+  02D establishes the copyable widget persistence lifecycle before Sprint 03.
+  The former optional Sprint 02C was superseded by the completed Workshop
+  Architecture Refactor and removed.
 - **Context**: The Workshop has two kinds of thing: **tools** (deterministic
   one-shot analyzers, stateless, identical in every mode) and **plain
   messages** (freeform persona turns). This ADR adds the third: the

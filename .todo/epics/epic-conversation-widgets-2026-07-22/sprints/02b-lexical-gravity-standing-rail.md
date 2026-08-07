@@ -45,9 +45,9 @@ ownership questions this sprint now builds on:
 - No standing-directive coordinator was prebuilt. It arrives here with Lexical
   Gravity as its first concrete producer.
 
-The optional Sprint 02C scope/context IPC extraction is intentionally **not** a
-dependency of this feature. Decide whether to take that pure-move cleanup only
-after 02B review, before Prose Controller.
+The scope/context IPC extraction is intentionally **not** a dependency of this
+feature. That responsibility later moved into the mandatory Workshop
+Architecture Refactor and is no longer a Conversation Widgets sprint.
 
 ## Design / ADR Reconciliation
 
@@ -192,7 +192,8 @@ maps to Sprint 02B after the sequencing split.
 
 - Lens **blending** / multi-lens dominance (Sprint 04).
 - Prose Controller knobs (Sprint 03).
-- The optional Workshop scope/context IPC extraction (Sprint 02C).
+- Workshop scope/context IPC extraction, subsequently completed by the
+  Workshop Architecture Refactor.
 
 ## Completion Criteria
 

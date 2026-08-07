@@ -5,21 +5,22 @@
 
 ## Resolution ledger
 
-Status legend: **Open** = act before merge · **Deferred** = accepted follow-up with reason ·
-**Addressed** = fixed · **Partially addressed** = fixed with remainder · **N/A** = praise,
-superseded, or not actionable.
+Status legend: **Open** = act before merge · **Planned** = accepted, scheduled
+work not yet implemented · **Deferred** = accepted follow-up with reason ·
+**Addressed** = fixed · **Partially addressed** = fixed with remainder ·
+**N/A** = praise, superseded, or not actionable.
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | F-01 | 🔴 Blocking | `npx jest` red at head; 3 suites run zero assertions, one shelters a stale expectation | Blake, Cal | 1 independent · 1 runway-prompted | — | **Addressed** — all missing fixtures and the stale rail label corrected |
 | F-02 | 🟠 High | Rebuilding a v1 lens named after a built-in destroys the file and hides the replacement | Sam | 1 runway-prompted | — | **Addressed** — built-in collisions refused before generation or write |
-| F-03 | 🟠 High | Pre-v2 draft in a persisted session rejects the whole checkpoint; no repair path, no test | Blake, Cal, Stan | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** — strict ADR §6 policy documented beside the codec and pinned by tests |
+| F-03 | 🟠 High | Pre-v2 draft in a persisted session rejects the whole checkpoint; no repair path, no test | Blake, Cal, Stan | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Planned — Sprint 02B-B exit gate** — live checkpoint evidence reversed strict rejection; feature-owned lexical recovery is specified |
 | F-04 | 🟠 High | An invalid v2 lens file is invisible to the writer (`readLens` returns `{}` for two facts) | Oliver, Parker | 1 independent · 1 runway-prompted | — | **Addressed** — unreadable project files are writer-visible and non-rebuildable |
 | F-05 | 🟡 Standard | Non-canonically-named v1 file gets a Rebuild button that can never succeed | Blake, Marcus, Bria, Sam | 4 runway-prompted | 🧭 Corroborated Runway | **Addressed** — non-canonical names surface as non-rebuildable file errors |
 | F-06 | 🟡 Standard | `version: 1` is the sole predicate authorizing the only irreversible write | Patricia | 1 independent | — | **Addressed** — overwrite now requires recognizable v1 lens identity and shape |
-| F-07 | 🟡 Standard | Widget drafts have no semantic-validation layer | Marcus | 1 runway-prompted | — | **Deferred** — forward-looking; decide before Prose Controller |
+| F-07 | 🟡 Standard | Widget drafts have no semantic-validation layer | Marcus | 1 runway-prompted | — | **Planned — Sprint 02D** — distinct checkpoint shape, normalization, current shape, and feature integrity passes accepted |
 | F-08 | 🟡 Standard | Generation and validation envelopes disagree; neither prompt states the numbers | Tim, Sam | 1 independent · 1 runway-prompted | — | **Addressed** — prompts state bounds; build/preview ceilings cover validated output plus reasoning |
-| F-09 | 🟡 Standard | Two persistence primitives invented widget-local | Stan | 1 runway-prompted | — | **Deferred** — one duplication may be the honest price; record against Prose Controller |
+| F-09 | 🟡 Standard | Two persistence primitives invented widget-local | Stan | 1 runway-prompted | — | **Planned — Sprint 02D** — promote bounded-array and nullable-string grammar before Prose Controller |
 | F-10 | 🟡 Standard | Four independently-versioned things all spell themselves `2` | Parker | 1 runway-prompted | — | **Addressed** — lens, preview, and response-envelope clocks named independently |
 | F-11 | 🔵 Nit | Weight scale recalibrated while the ADR asserts Weight's meaning is unchanged | Bria | 1 runway-prompted | — | **Addressed** — ADR records the five-band presentation recalibration |
 | P-1 | 💚 Praise | Preview validity is a property of the (lens, preview) pair | Marcus | 1 runway-prompted | — | N/A — preserve |
@@ -33,12 +34,26 @@ superseded, or not actionable.
 
 - **F-01:** Added `applicationMode` to every stale standing-directive/widget-opening fixture, including two additional rail fixtures found by the full suite, and kept the exact writer-facing summary assertion.
 - **F-02 / F-05 / F-06:** Rebuild now requires a canonical, recognizable v1 lens and refuses a slug that collides with a built-in before model spend. Tests prove rejected files retain their bytes and no rename occurs.
-- **F-03:** Kept the ADR's strict pre-v2 checkpoint policy. A v1 word field cannot be defaulted into honest v2 roles, axes, dynamics, and guardrails; current Lexical Gravity configs round-trip, while a pre-v2 draft's rejection is explicit and executable.
+- **F-03:** The initial remediation kept strict rejection because no live
+  checkpoint was known. A valid rolling and named development checkpoint was
+  then observed with the prior Lexical config. Okey chose salvage: the
+  [Sprint 02B-B recovery plan](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-widget-codec-recovery-mode.md)
+  preserves v1 as first-class Lexical gear without fabricating interpretive
+  grammar, routes Gesture's existing defaults through the same feature-owned
+  recovery-result seam, and adds independent Tell/Blend/Show evidence mode.
+  Implementation remains an exit gate.
 - **F-04:** Catalog reads now distinguish absence from refusal. Invalid or non-canonical project files reach the Library as `foundVersion: null`, show the validation reason, and expose no overwrite action.
 - **F-08:** Both prompts state their validator ceilings. The three-candidate build budget is 24,000 output tokens, covering the measured ~20,000-token maximal valid envelope. Preview is 5,000 because [OpenRouter counts reasoning as output and maps low effort to roughly 20% of `max_tokens`](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens), leaving room for the 12,000-character response envelope.
 - **F-10 / F-11:** Named the independent lens, preview, and response-envelope version clocks; accepted the ADR and documented why the writer-facing Weight bands changed without changing Weight's domain meaning.
-- **F-07 / F-09:** Remain deliberately deferred as recorded above; this remediation did not pre-empt the Prose Controller boundary decision.
+- **F-07 / F-09:** The boundary decision is accepted and recorded in
+  [Sprint 02D](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02d-widget-persistence-grammar-and-integrity.md),
+  mandatory after 02B-B and before Prose Controller. They remain Planned until
+  that sprint's implementation and witnesses land.
 - **Validation:** 189 Jest suites / 1,962 tests / 1 snapshot, all three TypeScript projects, quiet ESLint, production extension + webview build, bundle sentinels, and `git diff --check` pass. Interactive F5 acceptance and live billable model calls remain outside this remediation.
+
+Parts I-IV below preserve the evidence and conclusions at review time. Where
+they describe strict v1 rejection or only Interpret/Recompose, the resolution
+ledger above is the controlling post-review decision record.
 
 ## Review coverage
 

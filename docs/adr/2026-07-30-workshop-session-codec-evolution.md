@@ -1,6 +1,6 @@
 # ADR 2026-07-30: Workshop Session Codec Evolution
 
-**Status:** Accepted
+**Status:** Accepted; clarified 2026-08-07 for feature-owned widget recovery
 **Date:** 2026-07-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence and the Session Browser](2026-07-14-workshop-session-persistence.md)
 **Scope:** Workshop session checkpoint codec
@@ -29,6 +29,17 @@ The normalizer is allowed to repair development-only shapes such as a Gesture
 Playground draft written before `sourceReferences` existed. It must not become
 a home for a Marketplace-to-Marketplace contract transition.
 
+`WorkshopSessionCheckpointNormalization` owns orchestration, not every
+feature's compatibility knowledge. For persisted widget drafts, it delegates
+exact prior-shape recognition, deterministic repair, current-shape validation,
+and semantic integrity to a closed registry of feature-owned codecs, then
+collects their named outcomes. The central normalizer must not learn lens,
+gesture, chapter, or other widget semantics.
+
+That closed widget-lifecycle registry is an internal current-checkpoint
+dispatcher. It does not choose or sequence released session schema migrations;
+the top-level `schemaVersion` remains the public compatibility clock.
+
 When a Marketplace release changes persisted Workshop session semantics or a
 previously valid required shape, that release increments `schemaVersion` and
 adds an explicit adjacent version migration (for example `V1ToV2`). The codec
@@ -56,5 +67,6 @@ No version bump occurs for a release that leaves the persisted contract intact.
 - The first widget Marketplace release starts from the actual shipped V1 data,
   rather than preserving accidental development history forever.
 - Versioned migrations remain small, ordered, and auditable.
-- A future codec dispatcher is intentionally deferred until the first formal
-  schema bump; an empty abstraction would only do theater.
+- A formal released-session migration dispatcher remains deferred until the
+  first schema bump. The closed current-checkpoint widget dispatcher may arrive
+  earlier once multiple persisted widgets make the lifecycle concrete.

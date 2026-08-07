@@ -1,6 +1,8 @@
 # ADR 2026-08-01: Lexical Gravity Interpretive Grammar
 
-- **Status**: Accepted — implementation in PR #110; interactive F5 acceptance pending
+- **Status**: Accepted; amended 2026-08-07 with first-class Lexical gear,
+  independent Tell/Blend/Show evidence mode, and checkpoint recovery —
+  implementation in PR #110; interactive F5 acceptance pending
 - **Decision owner**: Okey
 - **Extends**: [ADR 2026-07-22 — Conversation Widgets](2026-07-22-conversation-widgets.md)
 - **Delivery**: [Sprint 02B-B — Lexical Gravity interpretive grammar](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-lexical-gravity-interpretive-grammar.md)
@@ -111,23 +113,32 @@ to demonstrate the lens.
 create. It does not require suspense in every beat, quantify consequence, or
 introduce a consequence meter.
 
-The five writer-facing controls retain narrow meanings:
+The six writer-facing controls retain narrow meanings:
 
 - **Lens** chooses the interpretive grammar.
-- **Application gear** is a hard switch between `interpret` and `recompose`.
-  Interpret preserves the passage's recognizable arrangement while sharpening
-  it locally. Recompose retains the same inspectable semantic reading but may
+- **Application gear** is a hard switch among `lexical`, `interpret`, and
+  `recompose`. Lexical applies only the surface word field, preserving the v1
+  ability to change diction and imagery without applying Lens Logic. Interpret
+  preserves the passage's recognizable arrangement while sharpening its
+  semantic reading locally. Recompose retains that inspectable reading but may
   use it as a plan for beat order, attention, revelation, syntax, rhythm, and
-  paragraph shape. Neither gear may invent scene facts.
+  paragraph shape. No gear may invent scene facts.
+- **Evidence mode** is an independent `tell | blend | show` instruction for how
+  Lexical Gravity's own influence becomes legible. Tell permits direct naming,
+  explanation, and compression; Blend chooses a proportionate mixture; Show
+  enacts the lens through action, image, behavior, spatial relation, sequence,
+  silence, and consequence. It does not replace application gear and does not
+  own Prose Controller's independent narrative-handling instruction.
 - **Weight** controls how strongly or frequently that grammar influences prose;
   it is not a stakes or consequence value. Its writer-facing bands were redrawn
   from four to five (`trace`, `subtle`, `forward`, `insistent`, `saturating`)
   because the widened scope now includes composition as well as lexical
   realization; this recalibrates the labels, not the control's meaning.
-- **Reach** controls lexical distance into the source domain; it does not disable
-  the lens logic.
+- **Reach** controls lexical distance into the source domain. It does not disable
+  Lens Logic in Interpret/Recompose; the explicit Lexical gear is what elects
+  not to apply that logic.
 - **Metaphor pull** controls permission for explicit cross-domain comparison;
-  the interpretive grammar remains active when it is off.
+  it does not select whether Lens Logic is active.
 
 ### 5. Preview makes the interpretation inspectable
 
@@ -143,12 +154,19 @@ UI presents them as an explanation of what the lens noticed and moved, making it
 possible to distinguish an interpretive change from vocabulary wearing a
 costume.
 
-Both application gears return the same inspectable semantic artifact. In
+The two interpretive gears return the same inspectable semantic artifact. In
 `interpret`, the rewritten prose enacts it through restrained local revision.
 In `recompose`, the rewritten prose must enact it compositionally: at high
 Weight, an honest mapping produces a visibly different arrangement rather than
-an unchanged passage with domain commentary inserted into it. Application gear
-is part of `configKey`, so changing gear invalidates an earlier preview.
+an unchanged passage with domain commentary inserted into it. The evidence mode
+governs whether either gear states that interpretation directly, blends
+statement with embodiment, or shows it through observable consequence.
+`recompose` must not default to explanatory narration merely because the
+semantic mapping is available. `lexical` returns no semantic positions,
+dynamic, or entailment and demonstrates only the selected surface field, but
+its vocabulary may still land through direct statement, a blend, or embodied
+detail. Application gear and evidence mode are both part of `configKey`, so
+changing either invalidates an earlier preview.
 
 The locked contract is:
 
@@ -171,11 +189,13 @@ interface WorkshopLexicalGravityPreview {
   text: string;
 }
 
-type WorkshopLexicalGravityApplicationMode = 'interpret' | 'recompose';
+type WorkshopLexicalGravityApplicationMode = 'lexical' | 'interpret' | 'recompose';
+type WorkshopLexicalGravityEvidenceMode = 'tell' | 'blend' | 'show';
 
 interface WorkshopLexicalGravityDraft {
   lensSlug: string;
   applicationMode: WorkshopLexicalGravityApplicationMode;
+  evidenceMode: WorkshopLexicalGravityEvidenceMode;
   weight: number;
   reach: 1 | 2 | 3;
   metaphorPull: boolean;
@@ -190,15 +210,23 @@ An empty positioning list requires a null dynamic and null entailment. The host
 adds `configKey` and `sourceText`; the model returns only the versioned semantic
 positions, selected dynamic id, open entailment, and rewritten text.
 
-### 6. Version 1 does not remain as a second runtime path
+### 6. Project v1 does not become an interpretive runtime path; session v1 recovers lexically
 
-This is alpha software. The v2 codec replaces v1 rather than adding optional
-logic or a compatibility union. Built-ins and generated project lenses become
+This is alpha software. Built-ins and generated project lens resources become
 v2 together. A v1 project resource is left untouched during discovery and
-reported as incompatible with an actionable rebuild message; it is not heuristically
-upgraded because inferential structure cannot be reconstructed deterministically
-from a word list. Pre-v2 development session snapshots are likewise not a
-supported persistence contract.
+reported as incompatible with an actionable rebuild message; it is not
+heuristically upgraded because inferential structure cannot be reconstructed
+deterministically from a word list.
+
+Session-embedded v1 resolved-lens snapshots are different: they are the exact
+authoring state a prior Workshop chat used. The feature codec recognizes the
+strict old shape and recovers it under the first-class `lexical` gear, preserving
+its word field and original standing-frame behavior without inventing Lens
+Logic. It defaults evidence mode to Blend, the neutral representation of the
+previously unconstrained renderer. Current v2 checkpoints written before the
+field existed receive the same deterministic default. Unknown or partially
+recognizable shapes still fail closed. See the
+[Widget Codec Recovery Mode plan](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-widget-codec-recovery-mode.md).
 
 Catalog reads report incompatible project resources without editing them:
 
@@ -835,6 +863,9 @@ field vocabulary fails even if it is fluent.
 - **Treat high weight as high consequence.** Rejected: lexical saturation and
   narrative potential are independent. One quiet attention reversal can carry
   more consequence than a paragraph saturated with lens terminology.
-- **Preserve v1 as a lexical-only variant.** Rejected: it creates two meanings of
-  "lens," complicates blending, and makes every downstream consumer branch on a
-  temporary alpha representation.
+- **Keep every v1 project lens as a second installable lens variant.** Rejected:
+  it creates two project-resource meanings of "lens," complicates blending, and
+  makes every downstream consumer branch on a temporary alpha representation.
+  The amended decision instead makes Lexical a first-class application gear for
+  current v2 lenses and permits only exact session-embedded v1 snapshots in a
+  bounded recovery arm.

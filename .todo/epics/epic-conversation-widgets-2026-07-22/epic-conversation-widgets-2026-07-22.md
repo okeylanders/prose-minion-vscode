@@ -1,12 +1,12 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: Ready to resume after the Workshop Architecture Refactor merges to
-`main`; Okey lifted the Workshop feature freeze on 2026-08-06. Sprint 01
-merged 2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed;
-Sprint 02B-B and all later behavior were paused for the Workshop Architecture
-Refactor Phases 0-7; that gate is now satisfied, with the architecture epic's
-final integration into `main` as the new base.
+**Status**: Active. Okey lifted the Workshop feature freeze on 2026-08-06 after
+the Workshop Architecture Refactor completed Phases 0-7. Sprint 01 merged
+2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed; Sprint
+02B-B is in progress. Widget codec recovery is a Sprint 02B-B exit gate, then
+Sprint 02D establishes the persistence grammar/integrity family boundary before
+Prose Controller or any other persisted widget begins.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -23,16 +23,19 @@ merged through [PR #98](https://github.com/okeylanders/prose-minion-vscode/pull/
 single-lens Lexical Gravity, the standing prose-directive rail, project lens
 resources, and writer-owned edit/kill lifecycle. Sprint 02B-A is the active
 follow-up: agent-prepared widget handoff, default-on proactive assistance, and
-Lexical Gravity/browser UX polish. Sprint 02B-B follows by replacing the
-word-field-only lens codec with an interpretive grammar before any other widget
-behavior sprint proceeds, but it is now paused behind the responsibility
-refactor. The old optional Sprint 02C is superseded by mandatory handler work in
-the [Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md).
-Sprints 03 and 04 have not started.
+Lexical Gravity/browser UX polish. Sprint 02B-B replaces the word-field-only
+lens codec with an interpretive grammar before later widget behavior proceeds;
+its [Widget Codec Recovery Mode](sprints/02b-b-widget-codec-recovery-mode.md)
+exit plan now salvages recognized v1 session snapshots instead of rejecting the
+whole room. The old optional Sprint 02C scope/context extraction was completed
+under the mandatory
+[Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
+and its superseded sprint file was removed. Sprint 02D records the accepted
+F-07/F-09 foundation. Sprints 03 and 04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;
 [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Accepted**; implementation in PR #110 with interactive F5 acceptance pending;
-[2026-08-03 — Workshop Feature Family and Module Boundaries](../../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) — **Accepted; blocks feature work through refactor Phase 7**
+[2026-08-03 — Workshop Feature Family and Module Boundaries](../../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) — **Accepted; Phase 7 completed and feature gate lifted**
 **Integration branch**: `epic/conversation-widgets`
 
 ## Goal
@@ -172,16 +175,17 @@ with a second widget before adding v2 richness.
 | 2A | [Widget state architecture](sprints/02a-widget-state-architecture.md) | none (refactor) | Session ownership stays singular while widget config lifecycle and persisted field rules gain focused seams before the second widget. |
 | 2B | [Lexical Gravity + standing prose-directive rail](sprints/02b-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: four-value single-lens config, deterministic lexical-field scaffold, explicit preview/build model seams, project lens library, edit-in-place + shift marker, amber active strip + one-click kill. |
 | 2B-A | [Agent-prepared widgets + UX polish](sprints/02b-a-agent-prepared-widgets-and-polish.md) | host handoff + standing UI | A selected live widget can become an editable request to the current Host; personas gain a writer-controlled, default-on proactive-assistance permission; the browser and Lexical Gravity surface match the refined design and use lifecycle language instead of payment metaphors. |
-| 2B-B | [Lexical Gravity interpretive grammar](sprints/02b-b-lexical-gravity-interpretive-grammar.md) | standing context + lens resources | The lens codec represents attention, semantic positions, dynamics, and entailments before lexical realization; Preview makes the mapping inspectable. This gates later widget behavior sprints. |
-| 2C | [Workshop scope/context IPC extraction](sprints/02c-workshop-scope-context-ipc-extraction.md) | none (optional refactor) | If the seam remains a pure move after 02B, eight cohesive scope/context routes leave `WorkshopHandler` before Prose Controller adds pressure. It blocks nothing. |
+| 2B-B | [Lexical Gravity interpretive grammar](sprints/02b-b-lexical-gravity-interpretive-grammar.md) | standing context + lens resources | The lens codec represents attention, semantic positions, dynamics, and entailments before lexical realization; independent Lexical/Interpret/Recompose and Tell/Blend/Show axes determine how that reading acts and becomes legible. Preview makes the mapping inspectable. This gates later widget behavior sprints. |
+| 2B-B exit | [Widget Codec Recovery Mode](sprints/02b-b-widget-codec-recovery-mode.md) | checkpoint hydration | Gesture and Lexical codecs own their checkpoint normalizations; recognized prior drafts recover through those feature routines, Lexical Gravity v1 retains its original lexical-only standing behavior, and material recovery is reported once to the writer. |
+| 2D | [Widget persistence grammar and integrity](sprints/02d-widget-persistence-grammar-and-integrity.md) | none (persistence foundation) | Persisted widget codecs gain distinct checkpoint-shape, normalization, current-shape, and semantic-integrity operations; shared JSON primitives stop multiplying before Prose Controller. |
 | 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |
 
 Each implemented feature sprint lands as its own PR into
 `epic/conversation-widgets`. Feature sequencing is frozen until the Workshop
-Architecture Refactor Phase 7 explicitly lifts the gate. Sprint 02C is
-superseded by that refactor; Sprint 02B-B becomes the next behavior sprint only
-after closure. Final step after Sprint 04
+Architecture Refactor Phase 7 explicitly lifts the gate. That gate is closed;
+Sprint 02B-B is active, its recovery plan is an exit condition, and Sprint 02D
+must land before Sprint 03. Final step after Sprint 04
 (or the agreed cut line): one PR
 `epic/conversation-widgets →` the workshop integration line.
 
