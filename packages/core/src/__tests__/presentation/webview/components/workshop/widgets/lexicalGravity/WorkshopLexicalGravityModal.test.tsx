@@ -666,6 +666,9 @@ describe('WorkshopLexicalGravityModal', () => {
       .toBe(true);
     expect((screen.getByRole('button', { name: 'Recompose' }) as HTMLButtonElement).disabled)
       .toBe(true);
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
+    expect(screen.getByTitle(lens.name).getAttribute('class'))
+      .not.toContain('is-selected');
   });
 
   it('reports v1 resources and carries an explicit overwrite target through Build lens', () => {

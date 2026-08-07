@@ -52,6 +52,15 @@ export function buildLexicalGravityDirectiveFrame(
     `Useful substitutions: ${substitutionLines.join('; ')}.`,
     `Avoid the worn form when the fresh alternative fits: ${clicheLines.join('; ')}.`
   ];
+  const semanticField = [
+    `Weight: ${draft.weight}/100. Let the interpretive grammar influence prose at that strength or frequency without forcing it into every sentence.`,
+    `Reach: ${draft.reach}/3. Draw only from vocabulary degrees 1 through ${draft.reach}.`,
+    `Metaphor pull: ${draft.metaphorPull ? `on — use ${quote(lens.metaphor, 240)} as an available conceptual pressure, never a mandatory comparison` : 'off — avoid explicit cross-domain comparison; the interpretive grammar remains active'}.`,
+    ...degreeLines,
+    `Gradient: ${terms(lens.gradient)}.`,
+    `Useful substitutions: ${substitutionLines.join('; ')}.`,
+    `Avoid the worn form when the fresh alternative fits: ${clicheLines.join('; ')}.`
+  ];
   const evidenceInstruction = lexicalGravityEvidenceInstruction(draft.evidenceMode);
   const closing = [
     evidenceInstruction,
@@ -96,7 +105,7 @@ export function buildLexicalGravityDirectiveFrame(
       ? 'Application gear: RECOMPOSE. When writing or revising prose, use the semantic map as a composition plan. You may reorder existing beats, redistribute attention, delay or advance existing revelations, and rebuild syntax or paragraph shape when that better enacts the selected dynamic. Preserve scene facts, causality, viewpoint, and character voice; transformation is structural, not permission to invent.'
       : 'Application gear: INTERPRET. Keep the existing beat order and scene arrangement recognizable. Use the semantic map to sharpen attention, implication, syntax, and local phrasing without structurally rebuilding the passage.',
     'If no honest semantic mapping exists, keep the influence subtle or do nothing. Never invent a prop, secret, intention, or plot event to demonstrate the lens.',
-    ...lexicalField,
+    ...semanticField,
     ...closing
   ].join('\n');
   return assertDirectiveBudget(frame);

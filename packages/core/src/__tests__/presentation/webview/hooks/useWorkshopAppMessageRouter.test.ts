@@ -87,7 +87,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
       source: 'extension.workshop',
       timestamp: 1,
       payload: {
-        code: 'recovered-lexical-gravity-v1',
+        code: 'recovered-widget-lexical-gravity-v1',
         widgetId: 'lexical-gravity',
         configId: 'wc-1',
         message: 'Recovered.'

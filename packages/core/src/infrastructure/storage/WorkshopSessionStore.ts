@@ -307,6 +307,7 @@ export class WorkshopSessionStore {
   async renameNamed(sessionId: string, title: string): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
     const found = await this.requireNamedSession(sessionId, paths);
+    this.assertNamedSessionNeedsNoRecoveryBeforeMutation(found);
     const nextTitle = title.trim();
     if (!nextTitle) {
       throw new Error('Workshop session title cannot be blank.');
@@ -337,7 +338,8 @@ export class WorkshopSessionStore {
     duplicate: WorkshopPersistedSessionV1
   ): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
-    await this.requireNamedSession(sourceSessionId, paths);
+    const source = await this.requireNamedSession(sourceSessionId, paths);
+    this.assertNamedSessionNeedsNoRecoveryBeforeMutation(source);
     if (duplicate.sessionId === sourceSessionId) {
       throw new Error('A duplicated Workshop session must have a fresh session id.');
     }
@@ -917,6 +919,20 @@ export class WorkshopSessionStore {
     session: WorkshopPersistedSessionV1
   ): WorkshopPersistedSessionV1 {
     return parseWorkshopPersistedSession(session);
+  }
+
+  /**
+   * Recovery commits only through intentional session hydration and its later
+   * save. Browser metadata operations must never silently rewrite writer data.
+   */
+  private assertNamedSessionNeedsNoRecoveryBeforeMutation(
+    session: StoredNamedSession
+  ): void {
+    if (session.recoveryNotices.length > 0) {
+      throw new Error(
+        'Open this Workshop session before renaming or duplicating it so its saved configuration can be recovered deliberately.'
+      );
+    }
   }
 
   private assertExactFileSize(size: number, displayName: string): void {

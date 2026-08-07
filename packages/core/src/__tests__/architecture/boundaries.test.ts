@@ -347,7 +347,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
     reason: 'closed persisted-config recovery dispatch',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)ConfigCodec|assert(?:GesturePlayground|LexicalGravity)Draft(?:Checkpoint)?Shape|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity)Draft(?:Checkpoint)?Shape|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
@@ -506,6 +506,7 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'application/handlers/domain/workshop/WorkshopRouteContracts.ts',
   'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
   'application/services/workshop/WorkshopSessionRecords.ts',
+  'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
   'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
   'application/services/workshop/widgets/WorkshopWidgetConfigOperations.ts',
   'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
@@ -529,10 +530,6 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
  * reviewable; together with the seam list this must partition all approvals.
  */
 const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
-  {
-    file: 'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
-    reason: 'checkpoint recovery dispatch grows only when a feature has a recognized prior draft'
-  },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
     reason: 'already validates the reserved prose-controller config arm'

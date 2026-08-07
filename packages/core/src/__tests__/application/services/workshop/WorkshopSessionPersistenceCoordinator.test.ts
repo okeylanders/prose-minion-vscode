@@ -362,6 +362,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       id: 'wc-1',
       widgetId: 'lexical-gravity',
       revision: 1,
+      directiveId: 'pd-1',
+      committedTurnId: checkpoint.workshop.turns[0]?.id,
       createdAt: now.getTime(),
       draft: {
         lensSlug: 'music',
@@ -371,6 +373,15 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
         resolvedLens: { ...legacyLens, version: 1 }
       }
     } as never];
+    checkpoint.workshop.counters.standingDirective = 1;
+    checkpoint.workshop.standingDirectives = [{
+      id: 'pd-1',
+      family: 'lexical-gravity',
+      widgetId: 'lexical-gravity',
+      widgetConfigId: 'wc-1',
+      revision: 1,
+      updatedAt: now.getTime()
+    }];
     const recovered = decodeWorkshopPersistedSessionCheckpoint(
       JSON.parse(JSON.stringify(checkpoint))
     );
@@ -385,7 +396,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(store.readCurrentWithRecovery).toHaveBeenCalledTimes(1);
     expect(coordinator.consumeRecoveryNotices()).toEqual([
       expect.objectContaining({
-        code: 'recovered-lexical-gravity-v1',
+        code: 'recovered-widget-lexical-gravity-v1',
         configId: 'wc-1'
       })
     ]);
@@ -400,6 +411,16 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       resolvedLens: { version: 1 }
     });
     expect(namedDraft).toEqual(currentDraft);
+    expect(current?.workshop.standingDirectives).toEqual([
+      expect.objectContaining({ id: 'pd-1', widgetConfigId: 'wc-1' })
+    ]);
+    expect(current?.workshop.widgetConfigs?.[0]).toMatchObject({
+      committedTurnId: checkpoint.workshop.turns[0]?.id,
+      directiveId: 'pd-1'
+    });
+    expect(named[0].workshop.standingDirectives).toEqual(
+      current?.workshop.standingDirectives
+    );
   });
 
   it('refuses to serialize the aggregate/provider seam while a run is active', async () => {

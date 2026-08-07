@@ -7,12 +7,14 @@ import type {
 import {
   assertGesturePlaygroundDraftCheckpointShape,
   assertGesturePlaygroundDraftShape,
-  normalizeGesturePlaygroundDraftForHydration
+  normalizeGesturePlaygroundDraftForHydration,
+  type GesturePlaygroundCheckpointNormalization
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
   assertLexicalGravityDraftCheckpointShape,
   assertLexicalGravityDraftShape,
-  normalizeLexicalGravityDraftForHydration
+  normalizeLexicalGravityDraftForHydration,
+  type LexicalGravityCheckpointNormalization
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import type {
   WorkshopWidgetDraftRecoveryResult,
@@ -26,12 +28,8 @@ export interface WorkshopWidgetConfigRecoveryResult {
 }
 
 export type WorkshopWidgetCheckpointNormalization =
-  | ReturnType<
-      typeof normalizeGesturePlaygroundDraftForHydration
-    >['normalizations'][number]
-  | ReturnType<
-      typeof normalizeLexicalGravityDraftForHydration
-    >['normalizations'][number];
+  | GesturePlaygroundCheckpointNormalization
+  | LexicalGravityCheckpointNormalization;
 
 export function assertWorkshopWidgetDraftShape(
   widgetId: WorkshopWidgetId,
@@ -97,11 +95,8 @@ function liftWorkshopWidgetRecovery<
     WorkshopWidgetCheckpointNormalization
   >
 ): WorkshopWidgetConfigRecoveryResult {
-  const recovered = result.normalizations.length === 0
-    ? config
-    : { ...config, draft: result.draft };
   return {
-    config: recovered,
+    config: { ...config, draft: result.draft } as TConfig,
     normalizations: result.normalizations,
     notices: result.notices.map((notice) => ({
       ...notice,

@@ -60,8 +60,8 @@ export const LEXICAL_GRAVITY_EVIDENCE_MODES = Object.freeze([
 ] as const);
 
 export const LEXICAL_GRAVITY_RECOVERY_NOTICE = Object.freeze({
-  code: 'recovered-lexical-gravity-v1',
-  message: 'Restored an older Lexical Gravity configuration in lexical-only mode. Its vocabulary, weight, reach, metaphor behavior, and saved preview were preserved. Lens Logic becomes available when you update the lens.'
+  code: 'recovered-widget-lexical-gravity-v1',
+  message: 'Restored an older Lexical Gravity configuration in lexical-only mode. Its vocabulary, weight, reach, and metaphor behavior were preserved. Lens Logic becomes available when you update the lens.'
 });
 
 export type LexicalGravityCheckpointNormalization =
@@ -557,11 +557,6 @@ export function normalizeLexicalGravityDraftForHydration(
     && checkpoint.applicationMode === undefined
     && checkpoint.evidenceMode === undefined
   ) {
-    const preview = checkpoint.preview as {
-      configKey: string;
-      text: string;
-      sourceText?: string;
-    } | undefined;
     const draft: WorkshopLexicalGravityDraft = {
       lensSlug: checkpoint.lensSlug as string,
       applicationMode: 'lexical',
@@ -569,25 +564,7 @@ export function normalizeLexicalGravityDraftForHydration(
       weight: checkpoint.weight as number,
       reach: checkpoint.reach as WorkshopLexicalGravityReach,
       metaphorPull: checkpoint.metaphorPull as boolean,
-      resolvedLens: cloneLexicalGravityResolvedLens(lens),
-      preview: preview?.sourceText
-        ? {
-            version: LEXICAL_GRAVITY_PREVIEW_VERSION,
-            configKey: lexicalGravityConfigKey({
-              lensSlug: checkpoint.lensSlug as string,
-              applicationMode: 'lexical',
-              evidenceMode: 'blend',
-              weight: checkpoint.weight as number,
-              reach: checkpoint.reach as WorkshopLexicalGravityReach,
-              metaphorPull: checkpoint.metaphorPull as boolean
-            }),
-            sourceText: preview.sourceText,
-            semanticPositions: [],
-            selectedDynamicId: null,
-            openEntailment: null,
-            text: preview.text
-          }
-        : undefined
+      resolvedLens: cloneLexicalGravityResolvedLens(lens)
     };
     assertLexicalGravityDraftShape(draft, 'Recovered Lexical Gravity draft');
     return {
@@ -607,19 +584,9 @@ export function normalizeLexicalGravityDraftForHydration(
     const draft = {
       ...oldDraft,
       evidenceMode: 'blend' as const,
-      preview: oldDraft.preview
-        ? {
-            ...oldDraft.preview,
-            configKey: lexicalGravityConfigKey({
-              lensSlug: oldDraft.lensSlug,
-              applicationMode: oldDraft.applicationMode,
-              evidenceMode: 'blend',
-              weight: oldDraft.weight,
-              reach: oldDraft.reach,
-              metaphorPull: oldDraft.metaphorPull
-            })
-          }
-        : undefined
+      // The preview predates evidence mode in the model prompt and cannot
+      // honestly claim the current six-value configuration identity.
+      preview: undefined
     } as WorkshopLexicalGravityDraft;
     assertLexicalGravityDraftShape(draft, 'Recovered Lexical Gravity draft');
     return {
@@ -727,14 +694,17 @@ export function cloneLexicalGravityDraft(
     weight: draft.weight,
     reach: draft.reach,
     metaphorPull: draft.metaphorPull,
-    resolvedLens: cloneLexicalGravityResolvedLens(draft.resolvedLens),
     preview: draft.preview ? {
       ...draft.preview,
       semanticPositions: draft.preview.semanticPositions.map((position) => ({ ...position }))
     } : undefined
   };
   if (draft.applicationMode === 'lexical') {
-    return { ...common, applicationMode: 'lexical' };
+    return {
+      ...common,
+      applicationMode: 'lexical',
+      resolvedLens: cloneLexicalGravityResolvedLens(draft.resolvedLens)
+    };
   }
   return {
     ...common,

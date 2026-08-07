@@ -647,7 +647,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                       return (
                         <button
                           type="button"
-                          className={`pm-ws-lg-lens${originalSearchTerm ? ' has-search-term' : ''}${candidate.slug === lens?.slug ? ' is-selected' : ''}`}
+                          className={`pm-ws-lg-lens${originalSearchTerm ? ' has-search-term' : ''}${candidate === lens ? ' is-selected' : ''}`}
                           key={candidate.slug}
                           title={displayName}
                           disabled={previewControlsLocked}

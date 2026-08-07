@@ -56,7 +56,7 @@ describe('Workshop composed routing — session owner', () => {
 
   it('posts recovery notices after session state and consumes them only once', async () => {
     const notice = {
-      code: 'recovered-lexical-gravity-v1',
+      code: 'recovered-widget-lexical-gravity-v1',
       widgetId: 'lexical-gravity',
       configId: 'wc-1',
       message: 'Restored an older Lexical Gravity configuration.'

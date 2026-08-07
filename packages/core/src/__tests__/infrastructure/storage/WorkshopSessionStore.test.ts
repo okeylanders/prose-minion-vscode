@@ -522,6 +522,36 @@ describe('WorkshopSessionStore', () => {
     await expect(store.readNamed('rename-me')).resolves.toMatchObject({ title: 'After' });
   });
 
+  it('requires a recovered legacy checkpoint to be opened before rename or duplicate can write it', async () => {
+    const store = createStore();
+    const saved = await store.saveNamed(session('legacy-room', 'Legacy room'));
+    const filePath = await store.resolveRevealPath('legacy-room');
+    const checkpoint = fileSystem.json(filePath) as WorkshopPersistedSessionV1;
+    const { logic: _logic, ...legacyLens } = builtInLexicalGravityLens('music')!;
+    checkpoint.workshop.counters.widgetConfig = 1;
+    checkpoint.workshop.widgetConfigs = [{
+      id: 'wc-1',
+      widgetId: 'lexical-gravity',
+      revision: 1,
+      createdAt: clock.getTime(),
+      draft: {
+        lensSlug: 'music',
+        weight: 40,
+        reach: 2,
+        metaphorPull: false,
+        resolvedLens: { ...legacyLens, version: 1 }
+      }
+    } as never];
+    fileSystem.setJson(filePath, checkpoint);
+
+    await expect(store.renameNamed('legacy-room', 'Renamed legacy room'))
+      .rejects.toThrow(/Open this Workshop session/);
+    await expect(store.duplicateNamed('legacy-room', session('legacy-copy', 'Legacy copy')))
+      .rejects.toThrow(/Open this Workshop session/);
+    expect(fileSystem.json(filePath)).toEqual(checkpoint);
+    expect(saved.sessionId).toBe('legacy-room');
+  });
+
   it('updates a named checkpoint in place without duplicating its file or identity', async () => {
     const store = createStore();
     const saved = await store.saveNamed(session('living-room', 'Before'));

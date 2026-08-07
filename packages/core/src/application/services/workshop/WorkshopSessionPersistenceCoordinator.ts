@@ -467,15 +467,20 @@ export class WorkshopSessionPersistenceCoordinator {
     requestedTitle?: string
   ): Promise<WorkshopStoredSessionSummary> {
     return this.serializeSessionOperation(async () => {
-      const source = await this.store.readNamed(sourceSessionId);
+      const source = await this.store.readNamedWithRecovery(sourceSessionId);
       if (!source) {
         throw new Error(`Named Workshop session ${sourceSessionId} was not found.`);
       }
+      if (source.recoveryNotices.length > 0) {
+        throw new Error(
+          'Open this Workshop session before renaming or duplicating it so its saved configuration can be recovered deliberately.'
+        );
+      }
       const now = normalizedIso(this.now());
       const duplicate: WorkshopPersistedSessionV1 = {
-        ...source,
+        ...source.session,
         sessionId: this.idFactory(),
-        title: this.requireTitle(requestedTitle ?? `${source.title} copy`),
+        title: this.requireTitle(requestedTitle ?? `${source.session.title} copy`),
         createdAt: now,
         updatedAt: now,
         savedAt: now

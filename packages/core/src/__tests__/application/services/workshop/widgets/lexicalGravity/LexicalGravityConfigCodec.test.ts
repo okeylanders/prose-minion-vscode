@@ -252,17 +252,14 @@ describe('LexicalGravityConfigCodec', () => {
     expect(result.draft).toMatchObject({
       applicationMode: 'lexical',
       evidenceMode: 'blend',
-      resolvedLens: { version: 1, slug: 'music' },
-      preview: {
-        semanticPositions: [],
-        selectedDynamicId: null,
-        openEntailment: null
-      }
+      resolvedLens: { version: 1, slug: 'music' }
     });
+    expect(result.draft.preview).toBeUndefined();
     expect(result.normalizations).toContain('recovered-widget-lexical-gravity-v1');
     expect(result.notices).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: 'recovered-lexical-gravity-v1' })
+      expect.objectContaining({ code: 'recovered-widget-lexical-gravity-v1' })
     ]));
+    expect(result.notices[0]?.message).not.toMatch(/preview/i);
     expect(() => validateLexicalGravityDraft(result.draft)).not.toThrow();
     expect(normalizeLexicalGravityDraftForHydration(result.draft)).toMatchObject({
       normalizations: [],
@@ -275,6 +272,24 @@ describe('LexicalGravityConfigCodec', () => {
       { id: 'pd-legacy', revision: 1 },
       result.draft
     ));
+    expect(buildLegacyLexicalGravityDirectiveFrame(
+  { id: 'pd-legacy', revision: 1 },
+  result.draft
+)).toMatchInlineSnapshot(`
+"<prose-directive id="pd-legacy" family="lexical-gravity" revision="1">
+This is a standing passage-prose directive. Keep it dormant during analysis, critique, planning, and ordinary conversation. Apply it only when you compose or revise story prose for the writer.
+Lens: Music.
+Weight: 40/100. Let this field influence diction and imagery at that intensity without making every sentence announce the lens.
+Reach: 2/3. Draw only from vocabulary degrees 1 through 2.
+Metaphor pull: off — prefer lexical influence over explicit comparison.
+Degree 1: nouns [tempo, chord, key, refrain, cadence]; verbs [tune, resolve, swell, hum]; modifiers [off-key, muted, resonant, minor].
+Degree 2: nouns [dissonance, downbeat, tremolo, rest, interval]; verbs [modulate, syncopate, harmonize, transpose]; modifiers [staccato, legato, atonal].
+Gradient: plan, outline, pattern, sequence, arrangement.
+Useful substitutions: plan → score; conflict → dissonance; agreement → harmony; turning → key change; ending → coda.
+Avoid the worn form when the fresh alternative fits: struck a chord → resonated in a minor key; music to my ears → landed like a held note; marching to their own drum → keeping a time signature nobody else could count; change their tune → modulate mid-phrase.
+Preserve character voice, scene facts, clarity, and the writer's requested meaning. The directive bends choices; it does not overwrite the story.
+</prose-directive>"
+`);
 
     expect(() => normalizeLexicalGravityDraftForHydration({
       ...checkpoint,
@@ -303,6 +318,30 @@ describe('LexicalGravityConfigCodec', () => {
     expect(frame).not.toContain('Interpretive premise:');
   });
 
+  it('retains the semantic frame wording for current interpretive gears', () => {
+    const lens = builtInLexicalGravityLens('music')!;
+    const frame = buildLexicalGravityDirectiveFrame(
+      { id: 'pd-semantic', revision: 1 },
+      {
+        lensSlug: lens.slug,
+        applicationMode: 'interpret',
+        evidenceMode: 'blend',
+        weight: 40,
+        reach: 2,
+        metaphorPull: false,
+        resolvedLens: lens
+      }
+    );
+
+    expect(frame).toContain(
+      'Let the interpretive grammar influence prose at that strength or frequency'
+    );
+    expect(frame).toContain(
+      'off — avoid explicit cross-domain comparison; the interpretive grammar remains active'
+    );
+    expect(frame).not.toContain('prefer lexical influence over explicit comparison');
+  });
+
   it('treats evidence mode as an independent preview identity axis', () => {
     const common = {
       lensSlug: 'music',
@@ -315,7 +354,7 @@ describe('LexicalGravityConfigCodec', () => {
       .not.toBe(lexicalGravityConfigKey({ ...common, evidenceMode: 'tell' }));
   });
 
-  it('defaults the pre-evidence v2 checkpoint to Blend and rewrites derived preview identity', () => {
+  it('defaults the pre-evidence v2 checkpoint to Blend and discards its stale preview', () => {
     const checkpoint = {
       lensSlug: 'music',
       applicationMode: 'interpret' as const,
@@ -337,7 +376,7 @@ describe('LexicalGravityConfigCodec', () => {
     expect(() => validateLexicalGravityDraft(checkpoint)).toThrow(/evidenceMode/);
     const recovered = normalizeLexicalGravityDraftForHydration(checkpoint);
     expect(recovered.draft.evidenceMode).toBe('blend');
-    expect(recovered.draft.preview?.configKey).toBe('music|interpret|blend|40|2|0');
+    expect(recovered.draft.preview).toBeUndefined();
     expect(recovered.normalizations).toEqual([
       'defaulted-widget-lexical-gravity-evidence-mode'
     ]);
