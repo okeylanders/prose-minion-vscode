@@ -1326,6 +1326,7 @@ export const WorkshopApp: React.FC = () => {
           open
           opening={widgetOpening.lexicalGravityOpening}
           lenses={lexicalGravity.lenses}
+          incompatibleResources={lexicalGravity.incompatibleResources}
           storagePath={lexicalGravity.storagePath}
           catalogError={lexicalGravity.catalogError}
           previewResult={lexicalGravity.previewResult}

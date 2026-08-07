@@ -28,6 +28,7 @@ const draft = (
   reach: 1 | 2 | 3 = 2
 ): WorkshopLexicalGravityDraft => ({
   lensSlug,
+  applicationMode: 'interpret',
   weight,
   reach,
   metaphorPull: true,
@@ -88,7 +89,7 @@ describe('WorkshopStandingDirectiveService', () => {
       config: expect.objectContaining({ id: 'wc-1', revision: 1 })
     }));
     expect(result.turn.content).toBe(
-      'Lexical Gravity installed — Photography · 60% · 2° · metaphor'
+      'Lexical Gravity installed — Photography · interpret · 60% · 2° · metaphor'
     );
     expect(session.getStandingDirectives()).toEqual([
       expect.objectContaining({ id: 'pd-1', widgetConfigId: 'wc-1', revision: 1 })
@@ -142,10 +143,10 @@ describe('WorkshopStandingDirectiveService', () => {
     expect(first.directiveId).toBe('pd-1');
     expect(second.directiveId).toBe('pd-1');
     expect(first.turn.content).toBe(
-      'shifted — Photography · 60% · 2° · metaphor → Music · 40% · 1° · metaphor'
+      'shifted — Photography · interpret · 60% · 2° · metaphor → Music · interpret · 40% · 1° · metaphor'
     );
     expect(second.turn.content).toBe(
-      'shifted — Music · 40% · 1° · metaphor → Mathematics · 75% · 3° · metaphor'
+      'shifted — Music · interpret · 40% · 1° · metaphor → Mathematics · interpret · 75% · 3° · metaphor'
     );
     expect(replaceStandingDirectiveFrames).toHaveBeenCalledTimes(3);
 

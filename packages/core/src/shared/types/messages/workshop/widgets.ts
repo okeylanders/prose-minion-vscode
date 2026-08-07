@@ -88,6 +88,7 @@ export type WorkshopLexicalGravityWidgetConfigSummary =
   Omit<WorkshopLexicalGravityWidgetConfigSnapshot, 'draft'> & {
     lensName: string;
     lensVariant?: string;
+    applicationMode: WorkshopLexicalGravityDraft['applicationMode'];
     weight: number;
     reach: WorkshopLexicalGravityReach;
     metaphorPull: boolean;

@@ -65,6 +65,8 @@ const widgetRuntime = (
       })),
       list: jest.fn(),
       findForQuery: jest.fn(),
+      assertIncompatibleResource: jest.fn(),
+      replaceIncompatibleForQuery: jest.fn(),
       saveManyForQuery: jest.fn()
     }
   }

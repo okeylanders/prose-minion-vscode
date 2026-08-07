@@ -96,6 +96,6 @@ export const LEXICAL_GRAVITY_STANDING_DIRECTIVE_OPERATIONS = {
 
   describe: (input) => {
     const { config } = asLexicalGravityRendering(input);
-    return `lens ${config.draft.lensSlug}, ${config.draft.weight}% weight, ${config.draft.reach}° reach`;
+    return `lens ${config.draft.lensSlug}, ${config.draft.applicationMode} gear, ${config.draft.weight}% weight, ${config.draft.reach}° reach`;
   }
 } satisfies WorkshopStandingDirectiveOperationEntry;

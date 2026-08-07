@@ -477,7 +477,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/types/messages/workshop/standingDirectives.ts',
     reason: 'explicit standing-family summary and payload union owner',
-    allowedToken: /(?:WorkshopLexicalGravityApplyStandingWidgetPayload|WorkshopLexicalGravityReach|WorkshopLexicalGravityStandingDirectiveSummary|lexical-gravity|lexicalGravity|metaphorPull)/
+    allowedToken: /(?:WorkshopLexicalGravityApplicationMode|WorkshopLexicalGravityApplyStandingWidgetPayload|WorkshopLexicalGravityReach|WorkshopLexicalGravityStandingDirectiveSummary|lexical-gravity|lexicalGravity|metaphorPull)/
   },
   {
     file: 'shared/types/messages/workshop/widgets.ts',

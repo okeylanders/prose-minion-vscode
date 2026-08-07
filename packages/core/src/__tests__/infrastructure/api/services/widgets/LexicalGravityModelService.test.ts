@@ -73,6 +73,7 @@ const createService = (content: unknown) => {
 
 const musicDraft = () => ({
   lensSlug: 'music',
+  applicationMode: 'recompose' as const,
   weight: 40,
   reach: 2 as const,
   metaphorPull: false,
@@ -122,7 +123,7 @@ describe('LexicalGravityModelService', () => {
     expect(runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'lexical-gravity-preview',
       userMessage: expect.stringMatching(
-        /"The room waited beneath the quiet rafters\."[\s\S]*sentinel-framed Preview v2 JSON/
+        /"applicationMode": "recompose"[\s\S]*"The room waited beneath the quiet rafters\."[\s\S]*sentinel-framed Preview v2 JSON/
       ),
       options: expect.objectContaining({
         temperature: 0.55,

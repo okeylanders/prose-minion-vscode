@@ -223,12 +223,90 @@ describe('LexicalGravityLensRepository', () => {
       incompatibleResources: [{
         resourceName: 'photography.json',
         foundVersion: 1,
-        message: expect.stringMatching(/uses version 1.*Build lens.*version 2/i)
+        rebuildQuery: 'Photography',
+        message: expect.stringMatching(/uses version 1.*version 2.*overwrite/i)
       }]
     });
     await expect(repository().findForQuery('photography')).rejects.toThrow(
-      /uses version 1.*Build lens.*version 2/i
+      /uses version 1.*version 2.*overwrite/i
     );
     expect(fileSystem.files.get(filePath)).toEqual(bytes);
+  });
+
+  it('atomically replaces only the named version-1 resource and preserves its filename', async () => {
+    const source = builtInLexicalGravityLens('photography')!;
+    const { logic: _logic, ...legacy } = source;
+    const filePath = path.join(directory, 'old-camera.json');
+    fileSystem.files.set(filePath, new TextEncoder().encode(JSON.stringify({
+      ...legacy,
+      version: 1,
+      slug: 'old-camera',
+      name: 'Old Camera',
+      originQuery: 'camera obscura'
+    })));
+
+    const saved = await repository().replaceIncompatibleForQuery(
+      'old-camera.json',
+      'camera obscura',
+      { ...source, variant: 'Negative space' }
+    );
+
+    expect(saved).toEqual(expect.objectContaining({
+      version: 2,
+      slug: 'old-camera',
+      source: 'project',
+      originQuery: 'camera obscura',
+      variant: 'Negative space'
+    }));
+    expect(fileSystem.renames).toContainEqual(expect.objectContaining({
+      to: filePath,
+      overwrite: true
+    }));
+    await expect(repository().findForQuery('old camera')).resolves.toEqual(saved);
+  });
+
+  it('refuses traversal and a replacement target that stopped being version 1', async () => {
+    const source = builtInLexicalGravityLens('photography')!;
+    const filePath = path.join(directory, 'camera.json');
+    fileSystem.files.set(filePath, new TextEncoder().encode(JSON.stringify({
+      ...source,
+      slug: 'camera',
+      source: 'project'
+    })));
+
+    await expect(repository().replaceIncompatibleForQuery(
+      '../camera.json',
+      'camera',
+      source
+    )).rejects.toThrow(/cataloged lens filename/);
+    await expect(repository().replaceIncompatibleForQuery(
+      'camera.json',
+      'camera',
+      source
+    )).rejects.toThrow(/no longer a version 1 resource/);
+  });
+
+  it('preserves the legacy bytes when replacement publication fails', async () => {
+    const source = builtInLexicalGravityLens('photography')!;
+    const { logic: _logic, ...legacy } = source;
+    const filePath = path.join(directory, 'camera.json');
+    const legacyBytes = new TextEncoder().encode(JSON.stringify({
+      ...legacy,
+      version: 1,
+      slug: 'camera',
+      name: 'Camera'
+    }));
+    fileSystem.files.set(filePath, legacyBytes);
+    fileSystem.failRenameTo = filePath;
+
+    await expect(repository().replaceIncompatibleForQuery(
+      'camera.json',
+      'camera',
+      source
+    )).rejects.toThrow('EIO');
+
+    expect(fileSystem.files.get(filePath)).toEqual(legacyBytes);
+    expect([...fileSystem.files.keys()].filter((filePath) => filePath.endsWith('.tmp')))
+      .toEqual([]);
   });
 });

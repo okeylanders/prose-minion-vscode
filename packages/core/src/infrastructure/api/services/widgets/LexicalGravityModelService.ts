@@ -100,6 +100,7 @@ export class LexicalGravityModelService {
         'Interpret and rewrite the source sample using the configured lens.',
         `Configuration (quoted JSON task data):\n${JSON.stringify({
           weight: draft.weight,
+          applicationMode: draft.applicationMode,
           reach: draft.reach,
           metaphorPull: draft.metaphorPull,
           lens: draft.resolvedLens

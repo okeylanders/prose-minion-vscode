@@ -160,6 +160,18 @@ describe('prompt budgets', () => {
     expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(4_811);
   });
 
+  it('keeps Lexical Gravity Preview as two explicit application gears', () => {
+    const previewPrompt = fs.readFileSync(
+      path.resolve(SRC_ROOT, '..', 'resources', 'system-prompts', 'lexical-gravity', '01-preview.md'),
+      'utf8'
+    );
+
+    expect(previewPrompt).toContain('`interpret`: keep the source\'s beat order');
+    expect(previewPrompt).toContain('`recompose`: use the semantic positions');
+    expect(previewPrompt).toContain('do not preserve the source sentence-by-sentence');
+    expect(previewPrompt).not.toContain('and sentence count');
+  });
+
   it('recognizes mutable, field, and suffix-style budget declarations', () => {
     const source = [
       'let MAX_WORDS = 10;',

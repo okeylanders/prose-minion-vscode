@@ -2,6 +2,7 @@
 
 import { MessageEnvelope, MessageType } from '../base';
 import {
+  WorkshopLexicalGravityApplicationMode,
   WorkshopLexicalGravityApplyStandingWidgetPayload,
   WorkshopLexicalGravityReach
 } from './lexicalGravity';
@@ -27,6 +28,7 @@ export interface WorkshopLexicalGravityStandingDirectiveSummary
   widgetId: 'lexical-gravity';
   lensName: string;
   lensVariant?: string;
+  applicationMode: WorkshopLexicalGravityApplicationMode;
   weight: number;
   reach: WorkshopLexicalGravityReach;
   metaphorPull: boolean;

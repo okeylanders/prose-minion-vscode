@@ -2,6 +2,7 @@
 
 import { MessageEnvelope, MessageType } from '../base';
 export type WorkshopLexicalGravityReach = 1 | 2 | 3;
+export type WorkshopLexicalGravityApplicationMode = 'interpret' | 'recompose';
 
 export interface WorkshopLexicalGravityWordBucket {
   nouns: string[];
@@ -95,7 +96,7 @@ export interface WorkshopLexicalGravitySemanticPosition {
 
 export interface WorkshopLexicalGravityPreview {
   version: 2;
-  /** Stable key of the four writer-facing values this preview demonstrates. */
+  /** Stable key of the five writer-facing values this preview demonstrates. */
   configKey: string;
   sourceText: string;
   /** Writer-facing declarative mappings, never hidden model reasoning. */
@@ -107,9 +108,10 @@ export interface WorkshopLexicalGravityPreview {
   text: string;
 }
 
-/** Four authored controls plus the resolved lens and optional cached preview. */
+/** Five authored controls plus the resolved lens and optional cached preview. */
 export interface WorkshopLexicalGravityDraft {
   lensSlug: string;
+  applicationMode: WorkshopLexicalGravityApplicationMode;
   weight: number;
   reach: WorkshopLexicalGravityReach;
   metaphorPull: boolean;
@@ -139,6 +141,8 @@ export interface WorkshopLexicalGravityLensesDataPayload {
 export interface WorkshopLexicalGravityLensIncompatibility {
   resourceName: string;
   foundVersion: number | null;
+  /** Bounded subject recovered from the legacy resource for Build lens. */
+  rebuildQuery: string;
   message: string;
 }
 
@@ -169,7 +173,12 @@ export interface WorkshopLexicalGravityPreviewResultMessage
 }
 
 export interface WorkshopBuildLexicalGravityLensMessage
-  extends MessageEnvelope<{ token: string; query: string }> {
+  extends MessageEnvelope<{
+    token: string;
+    query: string;
+    /** Exact host-reported v1 filename to replace after the writer chooses one take. */
+    rebuildResourceName?: string;
+  }> {
   type: MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS;
 }
 
@@ -211,6 +220,8 @@ export interface WorkshopLexicalGravityLensesSavedPayload {
   candidateIds: string[];
   /** Generated candidates still available to save without another model call. */
   remainingCandidateIds?: string[];
+  /** Present when this save atomically replaced one verified v1 resource. */
+  replacedResourceName?: string;
   storagePath?: string;
   error?: string;
 }

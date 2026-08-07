@@ -1,6 +1,6 @@
 # Sprint 02B-B: Lexical Gravity Interpretive Grammar
 
-**Status**: In progress — backend v2 contract and protocols implemented; Lens Logic presentation pending Claude Design
+**Status**: In progress — v2 backend and Claude Design presentation implemented; F5 acceptance pending
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-02b-b-lexical-gravity-interpretive-grammar` -> `epic/conversation-widgets`
 **Estimated Effort**: 5-8 days
@@ -33,6 +33,12 @@ evidence.
 - Preserved the existing modal structure so Claude Design can integrate the
   Lens Logic presentation against the locked contract without a competing UI
   diff.
+- Installed the Lens Logic and Preview Interpretation presentation, then added a
+  persisted Interpret/Recompose application gear so the same semantic reading
+  can drive either restrained revision or structural rewriting.
+- Added an explicit, correlated rebuild flow that lets the writer choose one v2
+  take and atomically overwrite the exact incompatible v1 resource without
+  deleting it first.
 
 ## Locked decisions
 
@@ -49,9 +55,10 @@ evidence.
 - The directive applies lens logic before selecting lens vocabulary. It may
   create open narrative pressure only when grounded in existing scene facts and
   a meaningful character concern.
-- Weight remains influence strength/frequency; reach remains lexical distance;
-  metaphor pull remains permission for explicit comparison. None is repurposed
-  as a consequence score.
+- Application gear is a hard Interpret/Recompose switch. Weight remains
+  influence strength/frequency; reach remains lexical distance; metaphor pull
+  remains permission for explicit comparison. None is repurposed as a
+  consequence score.
 - Preview returns a strict composite artifact: concise positioning, selected
   dynamic, open entailment, and rewritten prose. No private reasoning is
   requested or displayed.
@@ -61,9 +68,10 @@ evidence.
 - Prompt budgets are measured from worst-case valid v2 fixtures. Do not simply
   raise the standing-directive budget until the renderer proves the required
   bound.
-- V1 project lens files remain untouched and are reported with an actionable
-  regeneration message. No heuristic or model call happens during repository
-  load or session hydration.
+- V1 project lens files remain untouched during load and are reported with an
+  actionable rebuild message. A writer-authorized rebuild may overwrite the
+  exact revalidated v1 filename atomically; no heuristic or model call happens
+  during repository load or session hydration.
 
 ## Delivery sequence
 
@@ -138,7 +146,7 @@ evidence.
 - A consequence meter, score, or persisted scene-charge ledger.
 - Multi-lens blending.
 - Prose Controller implementation.
-- Automatic migration or rewriting of user-owned v1 project resources.
+- Automatic migration or unprompted rewriting of user-owned v1 project resources.
 - Changes to persona identity, expression calibration, or conversation behavior.
 
 ## Completion criteria
@@ -157,6 +165,7 @@ evidence.
   metaphor-off still applies the interpretive grammar.
 - A lens that cannot map honestly may produce a semantic no-op rather than
   inventing scene facts.
-- V1 resources fail with an exact, actionable message and are not modified.
+- V1 resources fail with an exact, actionable message and are not modified
+  unless the writer explicitly chooses one generated replacement take.
 - Round-trip persistence reconstructs the exact v2 standing frame.
 - Typechecks, lint, builds, architecture witnesses, and affected tests pass.

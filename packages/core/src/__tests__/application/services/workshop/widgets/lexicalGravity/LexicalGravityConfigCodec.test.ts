@@ -111,6 +111,7 @@ describe('LexicalGravityConfigCodec', () => {
     const photography = builtInLexicalGravityLens('photography')!;
     expect(() => validateLexicalGravityDraft({
       lensSlug: 'photography',
+      applicationMode: 'interpret',
       weight: 63,
       reach: 2,
       metaphorPull: false,
@@ -119,6 +120,7 @@ describe('LexicalGravityConfigCodec', () => {
 
     expect(() => validateLexicalGravityDraft({
       lensSlug: 'photography',
+      applicationMode: 'interpret',
       weight: 60,
       reach: 4,
       metaphorPull: false,
@@ -127,11 +129,21 @@ describe('LexicalGravityConfigCodec', () => {
 
     expect(() => validateLexicalGravityDraft({
       lensSlug: 'music',
+      applicationMode: 'interpret',
       weight: 60,
       reach: 2,
       metaphorPull: false,
       resolvedLens: photography
     })).toThrow(/selected lensSlug/);
+
+    expect(() => validateLexicalGravityDraft({
+      lensSlug: 'photography',
+      applicationMode: 'decorate',
+      weight: 60,
+      reach: 2,
+      metaphorPull: false,
+      resolvedLens: photography
+    })).toThrow(/applicationMode must be interpret \| recompose/);
   });
 
   it('renders a worst-case valid v2 lens within the measured aggregate prompt budget', () => {
@@ -199,6 +211,7 @@ describe('LexicalGravityConfigCodec', () => {
       { id: 'pd-worst-case', revision: Number.MAX_SAFE_INTEGER },
       {
         lensSlug: oversized.slug,
+        applicationMode: 'recompose',
         weight: 100,
         reach: 3,
         metaphorPull: true,
@@ -211,10 +224,11 @@ describe('LexicalGravityConfigCodec', () => {
     );
   });
 
-  it('accepts only a preview tied to the current four-value configuration', () => {
+  it('accepts only a preview tied to the current five-value configuration', () => {
     const resolvedLens = builtInLexicalGravityLens('music')!;
     const draft = {
       lensSlug: 'music',
+      applicationMode: 'recompose' as const,
       weight: 40,
       reach: 2 as const,
       metaphorPull: false,
@@ -222,7 +236,8 @@ describe('LexicalGravityConfigCodec', () => {
       preview: {
         version: 2 as const,
         configKey: lexicalGravityConfigKey({
-          lensSlug: 'music', weight: 40, reach: 2, metaphorPull: false
+          lensSlug: 'music', applicationMode: 'recompose', weight: 40, reach: 2,
+          metaphorPull: false
         }),
         sourceText: 'The room waited beneath the quiet rafters.',
         semanticPositions: [{
@@ -240,13 +255,21 @@ describe('LexicalGravityConfigCodec', () => {
 
     expect(validateLexicalGravityDraft(draft)).toEqual(draft);
     draft.preview.configKey = 'stale|config';
-    expect(() => validateLexicalGravityDraft(draft)).toThrow(/current four-value config key/);
+    expect(() => validateLexicalGravityDraft(draft)).toThrow(/current five-value config key/);
+    expect(lexicalGravityConfigKey({
+      lensSlug: 'music', applicationMode: 'interpret', weight: 40, reach: 2,
+      metaphorPull: false
+    })).not.toBe(lexicalGravityConfigKey({
+      lensSlug: 'music', applicationMode: 'recompose', weight: 40, reach: 2,
+      metaphorPull: false
+    }));
   });
 
   it('rejects Preview positions and dynamics not declared by the resolved lens', () => {
     const resolvedLens = builtInLexicalGravityLens('music')!;
     const base = {
       lensSlug: 'music',
+      applicationMode: 'interpret' as const,
       weight: 40,
       reach: 2 as const,
       metaphorPull: false,
@@ -254,7 +277,8 @@ describe('LexicalGravityConfigCodec', () => {
       preview: {
         version: 2 as const,
         configKey: lexicalGravityConfigKey({
-          lensSlug: 'music', weight: 40, reach: 2, metaphorPull: false
+          lensSlug: 'music', applicationMode: 'interpret', weight: 40, reach: 2,
+          metaphorPull: false
         }),
         sourceText: 'The room waited.',
         semanticPositions: [{

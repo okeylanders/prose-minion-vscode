@@ -1,6 +1,7 @@
 /** Exact persisted and project-resource grammar for Lexical Gravity. */
 
 import {
+  WorkshopLexicalGravityApplicationMode,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
   WorkshopLexicalGravityReach,
@@ -35,6 +36,11 @@ export const LEXICAL_GRAVITY_REACH = Object.freeze({
   maximum: 3,
   values: [1, 2, 3] as const
 });
+
+export const LEXICAL_GRAVITY_APPLICATION_MODES = Object.freeze([
+  'interpret',
+  'recompose'
+] as const);
 
 export function isLexicalGravityWeight(value: unknown): value is number {
   return Number.isSafeInteger(value)
@@ -147,7 +153,7 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
   const draft = exactObject(
     value,
     path,
-    ['lensSlug', 'weight', 'reach', 'metaphorPull', 'resolvedLens'],
+    ['lensSlug', 'applicationMode', 'weight', 'reach', 'metaphorPull', 'resolvedLens'],
     ['preview']
   );
   boundedStringAt(
@@ -155,6 +161,11 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
     `${path}.lensSlug`,
     BUDGET.lexicalLensSlugCharacters,
     false
+  );
+  enumAt(
+    draft.applicationMode,
+    `${path}.applicationMode`,
+    LEXICAL_GRAVITY_APPLICATION_MODES
   );
   numberAt(draft.weight, `${path}.weight`);
   if (!isLexicalGravityWeight(draft.weight)) {
@@ -227,12 +238,13 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
     );
     const expected = lexicalGravityConfigKey({
       lensSlug: draft.lensSlug as string,
+      applicationMode: draft.applicationMode as WorkshopLexicalGravityApplicationMode,
       weight: draft.weight as number,
       reach: draft.reach as 1 | 2 | 3,
       metaphorPull: draft.metaphorPull as boolean
     });
     if (preview.configKey !== expected) {
-      shapeError(`${path}.preview.configKey`, 'the current four-value config key');
+      shapeError(`${path}.preview.configKey`, 'the current five-value config key');
     }
   }
 }
@@ -285,11 +297,12 @@ export function summarizeLexicalGravityDraft(
   draft: WorkshopLexicalGravityDraft
 ): Pick<
   WorkshopLexicalGravityWidgetConfigSummary,
-  'lensName' | 'lensVariant' | 'weight' | 'reach' | 'metaphorPull'
+  'lensName' | 'lensVariant' | 'applicationMode' | 'weight' | 'reach' | 'metaphorPull'
 > {
   return {
     lensName: draft.resolvedLens.name,
     lensVariant: draft.resolvedLens.variant,
+    applicationMode: draft.applicationMode,
     weight: draft.weight,
     reach: draft.reach,
     metaphorPull: draft.metaphorPull
@@ -336,6 +349,7 @@ export function cloneLexicalGravityDraft(
 ): WorkshopLexicalGravityDraft {
   return {
     lensSlug: draft.lensSlug,
+    applicationMode: draft.applicationMode,
     weight: draft.weight,
     reach: draft.reach,
     metaphorPull: draft.metaphorPull,
@@ -349,11 +363,12 @@ export function cloneLexicalGravityDraft(
 
 export function lexicalGravityConfigKey(input: {
   lensSlug: string;
+  applicationMode: WorkshopLexicalGravityApplicationMode;
   weight: number;
   reach: WorkshopLexicalGravityReach;
   metaphorPull: boolean;
 }): string {
-  return `${input.lensSlug}|${input.weight}|${input.reach}|${input.metaphorPull ? 1 : 0}`;
+  return `${input.lensSlug}|${input.applicationMode}|${input.weight}|${input.reach}|${input.metaphorPull ? 1 : 0}`;
 }
 
 function assertUniqueBoundedStrings(

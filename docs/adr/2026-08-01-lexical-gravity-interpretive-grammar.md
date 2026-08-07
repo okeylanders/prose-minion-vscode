@@ -111,9 +111,14 @@ to demonstrate the lens.
 create. It does not require suspense in every beat, quantify consequence, or
 introduce a consequence meter.
 
-The four writer-facing controls retain narrow meanings:
+The five writer-facing controls retain narrow meanings:
 
 - **Lens** chooses the interpretive grammar.
+- **Application gear** is a hard switch between `interpret` and `recompose`.
+  Interpret preserves the passage's recognizable arrangement while sharpening
+  it locally. Recompose retains the same inspectable semantic reading but may
+  use it as a plan for beat order, attention, revelation, syntax, rhythm, and
+  paragraph shape. Neither gear may invent scene facts.
 - **Weight** controls how strongly or frequently that grammar influences prose;
   it is not a stakes or consequence value.
 - **Reach** controls lexical distance into the source domain; it does not disable
@@ -135,6 +140,13 @@ UI presents them as an explanation of what the lens noticed and moved, making it
 possible to distinguish an interpretive change from vocabulary wearing a
 costume.
 
+Both application gears return the same inspectable semantic artifact. In
+`interpret`, the rewritten prose enacts it through restrained local revision.
+In `recompose`, the rewritten prose must enact it compositionally: at high
+Weight, an honest mapping produces a visibly different arrangement rather than
+an unchanged passage with domain commentary inserted into it. Application gear
+is part of `configKey`, so changing gear invalidates an earlier preview.
+
 The locked contract is:
 
 ```typescript
@@ -155,6 +167,18 @@ interface WorkshopLexicalGravityPreview {
   openEntailment: string | null;
   text: string;
 }
+
+type WorkshopLexicalGravityApplicationMode = 'interpret' | 'recompose';
+
+interface WorkshopLexicalGravityDraft {
+  lensSlug: string;
+  applicationMode: WorkshopLexicalGravityApplicationMode;
+  weight: number;
+  reach: 1 | 2 | 3;
+  metaphorPull: boolean;
+  resolvedLens: WorkshopLexicalGravityLens;
+  preview?: WorkshopLexicalGravityPreview;
+}
 ```
 
 `roleId`, `axisId`, and `selectedDynamicId` must refer to ids declared by the
@@ -167,8 +191,8 @@ positions, selected dynamic id, open entailment, and rewritten text.
 
 This is alpha software. The v2 codec replaces v1 rather than adding optional
 logic or a compatibility union. Built-ins and generated project lenses become
-v2 together. A v1 project resource is left untouched on disk and reported as
-incompatible with an actionable regeneration message; it is not heuristically
+v2 together. A v1 project resource is left untouched during discovery and
+reported as incompatible with an actionable rebuild message; it is not heuristically
 upgraded because inferential structure cannot be reconstructed deterministically
 from a word list. Pre-v2 development session snapshots are likewise not a
 supported persistence contract.
@@ -179,6 +203,7 @@ Catalog reads report incompatible project resources without editing them:
 interface WorkshopLexicalGravityLensIncompatibility {
   resourceName: string;
   foundVersion: number | null;
+  rebuildQuery: string;
   message: string;
 }
 
@@ -190,9 +215,14 @@ interface WorkshopLexicalGravityLensesDataPayload {
 }
 ```
 
-A version-1 resource remains byte-for-byte untouched and receives guidance to
-regenerate it through **Build lens**. Corrupt or unrelated invalid JSON remains
-a logged skip rather than being mislabeled as a migratable v1 resource.
+A version-1 resource remains byte-for-byte untouched during catalog load. The
+writer may explicitly send its exact cataloged filename through **Build lens**,
+choose exactly one generated v2 take, and atomically overwrite that file in
+place. The repository revalidates that the target is still v1 immediately
+before an overwrite, rejects traversal or arbitrary filenames, and preserves
+the old file unless temporary-file publication succeeds. This is an authored
+replacement, not heuristic migration. Corrupt or unrelated invalid JSON remains
+a logged skip rather than being mislabeled as a rebuildable v1 resource.
 
 ## CDD reference fixtures
 

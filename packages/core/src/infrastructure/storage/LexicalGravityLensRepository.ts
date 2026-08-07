@@ -116,6 +116,64 @@ export class LexicalGravityLensRepository {
     return result.lens;
   }
 
+  async assertIncompatibleResource(
+    resourceName: string
+  ): Promise<WorkshopLexicalGravityLensIncompatibility> {
+    const available = this.availability();
+    const safeName = this.incompatibleResourceName(resourceName);
+    const result = await this.readLens(
+      path.join(available.lensesDirectory, safeName),
+      safeName,
+      false
+    );
+    if (!result.incompatibility || result.incompatibility.foundVersion !== 1) {
+      throw new Error(
+        `Lexical Gravity lens ${safeName} is no longer a version 1 resource and will not be overwritten.`
+      );
+    }
+    return result.incompatibility;
+  }
+
+  async replaceIncompatibleForQuery(
+    resourceName: string,
+    query: string,
+    candidate: WorkshopLexicalGravityLens
+  ): Promise<WorkshopLexicalGravityLens> {
+    const available = this.availability();
+    const safeName = this.incompatibleResourceName(resourceName);
+    const subject = query.trim().slice(0, PROMPT_BUDGETS.workshopWidgets.lexicalBuildQueryCharacters);
+    if (!subject) {throw new Error('Lens subject must include at least one letter or number');}
+    const slug = path.basename(safeName, '.json');
+    const lens = validateLexicalGravityLens({
+      ...cloneLexicalGravityLens(candidate),
+      slug,
+      source: 'project',
+      originQuery: subject
+    });
+    const destination = path.join(available.lensesDirectory, safeName);
+    const temporary = path.join(
+      available.lensesDirectory,
+      `.${slug}.${++this.temporaryCounter}.tmp`
+    );
+
+    await this.assertIncompatibleResource(safeName);
+    await this.fileSystem.createDirectory(available.lensesDirectory);
+    try {
+      await this.fileSystem.writeFile(
+        temporary,
+        encoder.encode(`${JSON.stringify(lens, null, 2)}\n`)
+      );
+      // Refuse a stale UI action if the writer or another process changed the
+      // resource while the replacement candidate was being prepared.
+      await this.assertIncompatibleResource(safeName);
+      await this.fileSystem.rename(temporary, destination, { overwrite: true });
+    } catch (error) {
+      await this.deleteAfterFailure(temporary);
+      throw error;
+    }
+    return cloneLexicalGravityLens(lens);
+  }
+
   async saveManyForQuery(
     query: string,
     candidates: WorkshopLexicalGravityLens[],
@@ -195,6 +253,20 @@ export class LexicalGravityLensRepository {
     return slug;
   }
 
+  private incompatibleResourceName(resourceName: string): string {
+    const name = resourceName.trim();
+    const slug = path.basename(name, '.json');
+    if (
+      name !== path.basename(name)
+      || name !== `${slug}.json`
+      || !slug
+      || lexicalGravityLensSlug(slug) !== slug
+    ) {
+      throw new Error('Lexical Gravity rebuild target must be one cataloged lens filename');
+    }
+    return name;
+  }
+
   private async assertDestinationMissing(filePath: string): Promise<void> {
     try {
       await this.fileSystem.stat(filePath);
@@ -233,13 +305,15 @@ export class LexicalGravityLensRepository {
       const raw = decoder.decode(await this.fileSystem.readFile(filePath));
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       if (parsed.version === 1) {
+        const rebuildQuery = this.legacyRebuildQuery(parsed, displayName);
         return {
           incompatibility: {
             resourceName: displayName,
             foundVersion: 1,
+            rebuildQuery,
             message:
               `Saved Lexical Gravity lens ${displayName} uses version 1. ` +
-              'Leave the file in place or remove it manually, then use Build lens to regenerate a version 2 interpretive grammar.'
+              'Rebuild it as a version 2 interpretive grammar and choose one take to overwrite this file in place.'
           }
         };
       }
@@ -258,5 +332,18 @@ export class LexicalGravityLensRepository {
       }
       throw new Error(`Saved Lexical Gravity lens ${displayName} is invalid: ${message}`);
     }
+  }
+
+  private legacyRebuildQuery(
+    parsed: Record<string, unknown>,
+    displayName: string
+  ): string {
+    const candidate = [parsed.originQuery, parsed.name]
+      .find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+    const fallback = path.basename(displayName, '.json').replace(/-+/g, ' ');
+    return (candidate?.trim() || fallback).slice(
+      0,
+      PROMPT_BUDGETS.workshopWidgets.lexicalBuildQueryCharacters
+    );
   }
 }

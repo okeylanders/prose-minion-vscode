@@ -62,6 +62,9 @@ export function buildLexicalGravityDirectiveFrame(
     ...dynamicLines,
     `Guardrails: ${logicItems(lens.logic.guardrails)}.`,
     'Application order: preserve facts, viewpoint, voice, and requested meaning; position only existing passage elements in fitting roles or axes; select at most one useful dynamic for a local beat; let its entailment sharpen a real concern or open pressure; only then realize the move through lexical choices.',
+    draft.applicationMode === 'recompose'
+      ? 'Application gear: RECOMPOSE. When writing or revising prose, use the semantic map as a composition plan. You may reorder existing beats, redistribute attention, delay or advance existing revelations, and rebuild syntax or paragraph shape when that better enacts the selected dynamic. Preserve scene facts, causality, viewpoint, and character voice; transformation is structural, not permission to invent.'
+      : 'Application gear: INTERPRET. Keep the existing beat order and scene arrangement recognizable. Use the semantic map to sharpen attention, implication, syntax, and local phrasing without structurally rebuilding the passage.',
     'If no honest semantic mapping exists, keep the influence subtle or do nothing. Never invent a prop, secret, intention, or plot event to demonstrate the lens.',
     `Weight: ${draft.weight}/100. Let the interpretive grammar influence prose at that strength or frequency without forcing it into every sentence.`,
     `Reach: ${draft.reach}/3. Draw only from vocabulary degrees 1 through ${draft.reach}.`,
@@ -86,6 +89,7 @@ export function assertLexicalGravityLensRenderable(
     { id: 'pd-validation', revision: Number.MAX_SAFE_INTEGER },
     {
       lensSlug: lens.slug,
+      applicationMode: 'recompose',
       weight: 100,
       reach: 3,
       metaphorPull: true,
@@ -98,6 +102,7 @@ export function formatLexicalGravityDraft(draft: WorkshopLexicalGravityDraft): s
   return formatLexicalGravitySummary({
     lensName: draft.resolvedLens.name,
     lensVariant: draft.resolvedLens.variant,
+    applicationMode: draft.applicationMode,
     weight: draft.weight,
     reach: draft.reach,
     metaphorPull: draft.metaphorPull
@@ -107,10 +112,10 @@ export function formatLexicalGravityDraft(draft: WorkshopLexicalGravityDraft): s
 export function formatLexicalGravitySummary(
   summary: Pick<
     WorkshopLexicalGravityStandingDirectiveSummary,
-    'lensName' | 'lensVariant' | 'weight' | 'reach' | 'metaphorPull'
+    'lensName' | 'lensVariant' | 'applicationMode' | 'weight' | 'reach' | 'metaphorPull'
   >
 ): string {
-  return `${summary.lensName}${summary.lensVariant ? ` — ${summary.lensVariant}` : ''} · ${summary.weight}% · ${summary.reach}°${summary.metaphorPull ? ' · metaphor' : ''}`;
+  return `${summary.lensName}${summary.lensVariant ? ` — ${summary.lensVariant}` : ''} · ${summary.applicationMode} · ${summary.weight}% · ${summary.reach}°${summary.metaphorPull ? ' · metaphor' : ''}`;
 }
 
 export function lexicalGravityMarkerContent(
