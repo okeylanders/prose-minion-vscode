@@ -70,7 +70,7 @@ const renderModal = (
 describe('WorkshopLexicalGravityModal', () => {
   afterEach(cleanup);
 
-  it('ports the approved four-value surface and keeps deterministic play model-free', () => {
+  it('ports the approved control surface and keeps deterministic play model-free', () => {
     const { props } = renderModal();
 
     expect(screen.getByText(/passage-scoped directive/)).toBeTruthy();
@@ -104,7 +104,7 @@ describe('WorkshopLexicalGravityModal', () => {
     expect(screen.getByText(/<prose-directive id="pd-preview"/)).toBeTruthy();
   });
 
-  it('spends only on explicit preview and applies the exact edited four-value draft', () => {
+  it('spends only on explicit preview and applies the exact edited draft', () => {
     const { props, view } = renderModal();
     fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
     fireEvent.click(screen.getByRole('button', { name: /Music/ }));
@@ -187,7 +187,7 @@ describe('WorkshopLexicalGravityModal', () => {
         token: firstToken,
         ok: true,
         preview: previewFixture(
-          'photography|interpret|60|2|0',
+          'photography|interpret|blend|60|2|0',
           generatedSource,
           'The generated after prose.'
         )
@@ -238,12 +238,13 @@ describe('WorkshopLexicalGravityModal', () => {
         draft: {
           lensSlug: lens.slug,
           applicationMode: 'interpret',
+          evidenceMode: 'blend',
           weight: 60,
           reach: 2,
           metaphorPull: false,
           resolvedLens: lens,
           preview: previewFixture(
-            'photography|interpret|60|2|0',
+            'photography|interpret|blend|60|2|0',
             sourceText,
             'The old model framed the rain.'
           )
@@ -421,6 +422,7 @@ describe('WorkshopLexicalGravityModal', () => {
         draft: {
           lensSlug: lens.slug,
           applicationMode: 'interpret',
+          evidenceMode: 'blend',
           weight: 60,
           reach: 2,
           metaphorPull: false,
@@ -500,7 +502,7 @@ describe('WorkshopLexicalGravityModal', () => {
         ok: true,
         preview: {
           version: 2,
-          configKey: 'photography|interpret|60|2|0',
+          configKey: 'photography|interpret|blend|60|2|0',
           sourceText: lens.sample,
           semanticPositions: [{
             element: 'Nate',
@@ -545,7 +547,7 @@ describe('WorkshopLexicalGravityModal', () => {
         ok: true,
         preview: {
           version: 2,
-          configKey: 'photography|interpret|60|2|0',
+          configKey: 'photography|interpret|blend|60|2|0',
           sourceText: lens.sample,
           semanticPositions: [{
             element: 'the window reflection',
@@ -578,7 +580,7 @@ describe('WorkshopLexicalGravityModal', () => {
         token,
         ok: true,
         preview: previewFixture(
-          'photography|interpret|60|2|0',
+          'photography|interpret|blend|60|2|0',
           lens.sample,
           'Unchanged in spirit.'
         )
@@ -590,20 +592,27 @@ describe('WorkshopLexicalGravityModal', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('offers a hard Interpret/Recompose gear and sends it through preview and install', () => {
+  it('keeps application gear independent from Tell/Blend/Show', () => {
     const { props, view } = renderModal();
+    const lexical = screen.getByRole('button', { name: 'Lexical' });
     const interpret = screen.getByRole('button', { name: 'Interpret' });
     const recompose = screen.getByRole('button', { name: 'Recompose' });
+    const blend = screen.getByRole('button', { name: 'Blend' });
+    const show = screen.getByRole('button', { name: 'Show' });
+    expect(lexical.getAttribute('aria-pressed')).toBe('false');
     expect(interpret.getAttribute('aria-pressed')).toBe('true');
     expect(recompose.getAttribute('aria-pressed')).toBe('false');
+    expect(blend.getAttribute('aria-pressed')).toBe('true');
 
     fireEvent.click(recompose);
+    fireEvent.click(show);
     expect(recompose.getAttribute('aria-pressed')).toBe('true');
+    expect(show.getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByText(/rebuild beat order, attention, revelation, and syntax/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
     expect(props.onPreview).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ applicationMode: 'recompose' }),
+      expect.objectContaining({ applicationMode: 'recompose', evidenceMode: 'show' }),
       expect.any(String)
     );
     const token = (props.onPreview as jest.Mock).mock.calls[0][0] as string;
@@ -614,7 +623,7 @@ describe('WorkshopLexicalGravityModal', () => {
         token,
         ok: true,
         preview: previewFixture(
-          'photography|recompose|60|2|0',
+          'photography|recompose|show|60|2|0',
           lens.sample,
           'The passage was recomposed.'
         )
@@ -622,9 +631,41 @@ describe('WorkshopLexicalGravityModal', () => {
     />);
     fireEvent.click(screen.getByRole('button', { name: 'Install on passage' }));
     expect(props.onApply).toHaveBeenCalledWith(
-      expect.objectContaining({ applicationMode: 'recompose' }),
+      expect.objectContaining({ applicationMode: 'recompose', evidenceMode: 'show' }),
       undefined
     );
+  });
+
+  it('reopens a recovered v1 field honestly and gates semantic gears', () => {
+    const lens = builtInLexicalGravityLenses()[0];
+    const { logic: _logic, ...wordField } = lens;
+    renderModal({
+      kind: 'edit',
+      config: {
+        id: 'wc-1',
+        widgetId: 'lexical-gravity',
+        revision: 1,
+        createdAt: 1,
+        draft: {
+          lensSlug: lens.slug,
+          applicationMode: 'lexical',
+          evidenceMode: 'blend',
+          weight: 60,
+          reach: 2,
+          metaphorPull: false,
+          resolvedLens: { ...wordField, version: 1 }
+        }
+      }
+    });
+
+    expect(screen.getByText(/Lens Logic is unavailable/)).toBeTruthy();
+    expect(screen.getByText(/Lens Logic stays inactive either way/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Lexical' }).getAttribute('aria-pressed'))
+      .toBe('true');
+    expect((screen.getByRole('button', { name: 'Interpret' }) as HTMLButtonElement).disabled)
+      .toBe(true);
+    expect((screen.getByRole('button', { name: 'Recompose' }) as HTMLButtonElement).disabled)
+      .toBe(true);
   });
 
   it('reports v1 resources and carries an explicit overwrite target through Build lens', () => {

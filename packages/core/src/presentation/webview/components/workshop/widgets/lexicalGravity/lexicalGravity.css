@@ -81,7 +81,7 @@
 [data-pm-surface="workshop"] .pm-ws-lg-application-gear > div:first-child { flex:1;min-width:0; }
 [data-pm-surface="workshop"] .pm-ws-lg-gear-label { display:block;font:10px var(--pm-mono);letter-spacing:.13em;text-transform:uppercase;color:var(--pm-dim); }
 [data-pm-surface="workshop"] .pm-ws-lg-application-gear p { margin:4px 0 0;font-size:11px;line-height:1.5;color:var(--pm-muted); }
-[data-pm-surface="workshop"] .pm-ws-lg-gear-switch { flex:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:3px;border:1px solid var(--pm-border);border-radius:8px;background:var(--pm-inset); }
+[data-pm-surface="workshop"] .pm-ws-lg-gear-switch { flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:3px;border:1px solid var(--pm-border);border-radius:8px;background:var(--pm-inset); }
 [data-pm-surface="workshop"] .pm-ws-lg-gear-switch button { min-height:29px;padding:5px 10px;border:0;border-radius:6px;background:transparent;color:var(--pm-dim);font:600 10.5px var(--pm-sans);cursor:pointer; }
 [data-pm-surface="workshop"] .pm-ws-lg-gear-switch button:hover { color:var(--pm-text-2); }
 [data-pm-surface="workshop"] .pm-ws-lg-gear-switch button.is-selected { background:var(--pm-accent-soft);color:var(--pm-accent-hi);box-shadow:inset 0 0 0 1px var(--pm-accent-lo); }

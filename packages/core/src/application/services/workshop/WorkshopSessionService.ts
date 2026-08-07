@@ -60,6 +60,7 @@ import {
   workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
 import {
+  assertCurrentWorkshopSessionStateV1,
   WorkshopConversationLogicalKey,
   WorkshopRuntimeConversationBindings,
   WorkshopSessionStateV1
@@ -1767,6 +1768,7 @@ export class WorkshopSessionService {
     const normalized = normalization.state;
     // The compatibility exception terminates at the migration boundary. From
     // this point on, the current invariant is absolute.
+    assertCurrentWorkshopSessionStateV1(normalized);
     validateWorkshopSessionStateV1(normalized);
 
     const passageState = this.passageScope.prepareState({
@@ -1904,7 +1906,8 @@ export class WorkshopSessionService {
     return {
       discardedConversationIds,
       degradedConversationKeys,
-      normalizations: normalization.normalizations
+      normalizations: normalization.normalizations,
+      recoveryNotices: normalization.notices
     };
   }
 

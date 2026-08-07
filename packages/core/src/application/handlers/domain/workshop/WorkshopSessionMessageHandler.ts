@@ -23,6 +23,7 @@ import {
   WorkshopSaveSessionMessage,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
+  WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionsDataMessage
 } from '@messages';
 import type {
@@ -121,6 +122,7 @@ export class WorkshopSessionMessageHandler {
     await this.persistence.waitForSessionOperations();
     await this.options.flushDeferredConversationSettings();
     this.options.postSessionState();
+    this.postRecoveryNotices();
   }
 
   async handleSaveSession(message: WorkshopSaveSessionMessage): Promise<void> {
@@ -209,6 +211,7 @@ export class WorkshopSessionMessageHandler {
     try {
       const result = await this.persistence.openNamed(message.payload?.sessionId ?? '');
       this.options.postSessionState();
+      this.postRecoveryNotices();
       const degraded = result.degradedConversationKeys.length;
       this.postActionResult(
         'open',
@@ -221,6 +224,18 @@ export class WorkshopSessionMessageHandler {
       );
     } catch (error) {
       this.postActionFailure('open', error);
+    }
+  }
+
+  private postRecoveryNotices(): void {
+    for (const notice of this.persistence.consumeRecoveryNotices()) {
+      const message: WorkshopSessionRecoveryNoticeMessage = {
+        type: MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE,
+        source: 'extension.workshop',
+        payload: { ...notice },
+        timestamp: Date.now()
+      };
+      void this.postMessage(message);
     }
   }
 

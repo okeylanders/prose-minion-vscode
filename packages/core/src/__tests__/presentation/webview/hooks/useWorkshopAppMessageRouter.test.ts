@@ -18,7 +18,8 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   workshopSessions: {
     handleSessionsData: jest.fn(),
     handleSessionActionResult: jest.fn(),
-    handleSessionSaveStatus: jest.fn()
+    handleSessionSaveStatus: jest.fn(),
+    handleSessionRecoveryNotice: jest.fn()
   } as never,
   widgetHost: { handleWidgetConfigData: jest.fn() } as never,
   gesturePlayground: {
@@ -76,5 +77,25 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.gesturePlayground.handleWidgetActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.lexicalGravity.handleActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
+  });
+
+  it('routes consume-once checkpoint recovery notices to the session owner', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const message = {
+      type: MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: {
+        code: 'recovered-lexical-gravity-v1',
+        widgetId: 'lexical-gravity',
+        configId: 'wc-1',
+        message: 'Recovered.'
+      }
+    } as const;
+
+    routes[MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE]!(message as never);
+
+    expect(deps.workshopSessions.handleSessionRecoveryNotice).toHaveBeenCalledWith(message);
   });
 });

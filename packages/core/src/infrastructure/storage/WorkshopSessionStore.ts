@@ -10,6 +10,8 @@
 
 import * as path from 'path';
 import {
+  decodeWorkshopPersistedSessionCheckpoint,
+  WorkshopPersistedSessionCheckpointDecodeResult,
   WorkshopPersistedSessionV1,
   parseWorkshopPersistedSession
 } from '@/application/services/workshop/WorkshopPersistedSession';
@@ -143,6 +145,8 @@ interface StoredNamedSession {
   filePath: string;
   fileName: string;
   session: WorkshopPersistedSessionV1;
+  normalizations: WorkshopPersistedSessionCheckpointDecodeResult['normalizations'];
+  recoveryNotices: WorkshopPersistedSessionCheckpointDecodeResult['recoveryNotices'];
 }
 
 interface CachedNamedSessionPath {
@@ -192,6 +196,12 @@ export class WorkshopSessionStore {
   }
 
   async readCurrent(): Promise<WorkshopPersistedSessionV1 | undefined> {
+    return (await this.readCurrentWithRecovery())?.session;
+  }
+
+  async readCurrentWithRecovery(): Promise<
+    WorkshopPersistedSessionCheckpointDecodeResult | undefined
+  > {
     const paths = this.requireAvailability();
     return this.readSessionFileExact(paths.currentPath, 'current.json');
   }
@@ -262,9 +272,21 @@ export class WorkshopSessionStore {
 
   /** Load a named checkpoint by durable identity; a caller-supplied path is never accepted. */
   async readNamed(sessionId: string): Promise<WorkshopPersistedSessionV1 | undefined> {
+    return (await this.readNamedWithRecovery(sessionId))?.session;
+  }
+
+  async readNamedWithRecovery(sessionId: string): Promise<
+    WorkshopPersistedSessionCheckpointDecodeResult | undefined
+  > {
     const paths = this.requireAvailability();
     const found = await this.findNamedSession(sessionId, paths);
-    return found?.session;
+    return found
+      ? {
+          session: found.session,
+          normalizations: found.normalizations,
+          recoveryNotices: found.recoveryNotices
+        }
+      : undefined;
   }
 
   async list(query?: string, signal?: AbortSignal): Promise<WorkshopSessionListResult> {
@@ -396,9 +418,9 @@ export class WorkshopSessionStore {
     const cacheKey = this.namedSessionCacheKey(paths, sessionId);
     const cached = this.namedSessionPaths.get(cacheKey);
     if (cached) {
-      const session = await this.readSessionFileExact(cached.filePath, cached.fileName);
-      if (session?.sessionId === sessionId) {
-        return { ...cached, session };
+      const decoded = await this.readSessionFileExact(cached.filePath, cached.fileName);
+      if (decoded?.session.sessionId === sessionId) {
+        return { ...cached, ...decoded };
       }
       // Missing or manually replaced: fall back to a full conflict-aware
       // resolution instead of writing through a stale path.
@@ -491,9 +513,9 @@ export class WorkshopSessionStore {
         if (searchIndex && searchIndex.sessionId !== requestedSessionId) {
           continue;
         }
-        const session = await this.readSessionFileExact(filePath, fileName);
-        if (session) {
-          sessions.push({ filePath, fileName, session });
+        const decoded = await this.readSessionFileExact(filePath, fileName);
+        if (decoded) {
+          sessions.push({ filePath, fileName, ...decoded });
         }
       } catch (error) {
         const failure = error instanceof WorkshopSessionFileReadError
@@ -644,7 +666,7 @@ export class WorkshopSessionStore {
   private async readSessionFileExact(
     filePath: string,
     displayName: string
-  ): Promise<WorkshopPersistedSessionV1 | undefined> {
+  ): Promise<WorkshopPersistedSessionCheckpointDecodeResult | undefined> {
     try {
       const stat = await this.fileSystem.stat(filePath);
       this.assertExactFileSize(stat.size, displayName);
@@ -670,7 +692,7 @@ export class WorkshopSessionStore {
       this.assertExactFileSize(bytes.byteLength, displayName);
       const text = decoder.decode(bytes);
       assertPersistedJsonNestingDepth(text, `Workshop session ${displayName}`);
-      return parseWorkshopPersistedSession(JSON.parse(text));
+      return decodeWorkshopPersistedSessionCheckpoint(JSON.parse(text));
     } catch (error) {
       if (error instanceof WorkshopSessionFileReadError) {
         throw error;
@@ -695,7 +717,12 @@ export class WorkshopSessionStore {
         this.skip(displayName, `file exceeds ${this.limits.maximumFileBytes} byte browser bound`);
         return { limited: true };
       }
-      return { session: parseWorkshopPersistedSession(JSON.parse(decoder.decode(bytes))), limited: false };
+      return {
+        session: decodeWorkshopPersistedSessionCheckpoint(
+          JSON.parse(decoder.decode(bytes))
+        ).session,
+        limited: false
+      };
     } catch (error) {
       if (!isMissingFileError(error)) {
         this.skip(displayName, errorMessage(error));

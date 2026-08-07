@@ -6,6 +6,7 @@ import {
   MessageType,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
+  WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionSaveStatusMessage,
   WorkshopSessionSummary,
   WorkshopSessionsDataMessage
@@ -30,6 +31,7 @@ export interface WorkshopSessionsState {
   sessionActionPending?: WorkshopSessionAction;
   sessionActionResult?: WorkshopSessionActionResultMessage['payload'];
   sessionSaveStatus?: WorkshopSessionSaveStatusMessage['payload'];
+  recoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][];
 }
 
 export interface WorkshopSessionsActions {
@@ -46,6 +48,8 @@ export interface WorkshopSessionsActions {
   handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
   handleSessionActionResult: (message: WorkshopSessionActionResultMessage) => void;
   handleSessionSaveStatus: (message: WorkshopSessionSaveStatusMessage) => void;
+  handleSessionRecoveryNotice: (message: WorkshopSessionRecoveryNoticeMessage) => void;
+  consumeRecoveryNotice: () => void;
 }
 
 export type WorkshopSessionsPersistence = Record<string, never>;
@@ -79,6 +83,9 @@ export function useWorkshopSessions(
     React.useState<WorkshopSessionAction>();
   const [sessionSaveStatus, setSessionSaveStatus] =
     React.useState<WorkshopSessionSaveStatusMessage['payload']>();
+  const [recoveryNotices, setRecoveryNotices] = React.useState<
+    WorkshopSessionRecoveryNoticeMessage['payload'][]
+  >([]);
   const latestSessionsRequestIdRef = React.useRef<string>();
   const latestSessionsQueryRef = React.useRef('');
   const sessionsRequestCounterRef = React.useRef(0);
@@ -230,6 +237,25 @@ export function useWorkshopSessions(
     setSessionSaveStatus(message.payload);
   }, []);
 
+  const handleSessionRecoveryNotice = React.useCallback(
+    (message: WorkshopSessionRecoveryNoticeMessage) => {
+      setRecoveryNotices((current) => {
+        const key = `${message.payload.code}:${message.payload.configId}`;
+        if (current.some((notice) => `${notice.code}:${notice.configId}` === key)) {
+          return current;
+        }
+        return current.length >= 8
+          ? current
+          : [...current, { ...message.payload }];
+      });
+    },
+    []
+  );
+
+  const consumeRecoveryNotice = React.useCallback(() => {
+    setRecoveryNotices((current) => current.slice(1));
+  }, []);
+
   return {
     sessionsAvailable,
     sessionsUnavailableReason,
@@ -244,6 +270,7 @@ export function useWorkshopSessions(
     sessionActionPending,
     sessionActionResult,
     sessionSaveStatus,
+    recoveryNotices,
     resetSession,
     requestSessions,
     setSessionSearchQuery,
@@ -257,6 +284,8 @@ export function useWorkshopSessions(
     handleSessionsData,
     handleSessionActionResult,
     handleSessionSaveStatus,
+    handleSessionRecoveryNotice,
+    consumeRecoveryNotice,
     persistedState: {}
   };
 }

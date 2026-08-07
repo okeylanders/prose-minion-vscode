@@ -74,6 +74,7 @@ const createService = (content: unknown) => {
 const musicDraft = () => ({
   lensSlug: 'music',
   applicationMode: 'recompose' as const,
+  evidenceMode: 'blend' as const,
   weight: 40,
   reach: 2 as const,
   metaphorPull: false,

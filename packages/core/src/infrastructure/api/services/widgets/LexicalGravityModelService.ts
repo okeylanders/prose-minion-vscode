@@ -99,10 +99,11 @@ export class LexicalGravityModelService {
       toolName: 'lexical-gravity-preview',
       systemMessage,
       userMessage: [
-        'Interpret and rewrite the source sample using the configured lens.',
+        'Rewrite the source sample using the configured Lexical Gravity controls.',
         `Configuration (quoted JSON task data):\n${JSON.stringify({
           weight: draft.weight,
           applicationMode: draft.applicationMode,
+          evidenceMode: draft.evidenceMode,
           reach: draft.reach,
           metaphorPull: draft.metaphorPull,
           lens: draft.resolvedLens

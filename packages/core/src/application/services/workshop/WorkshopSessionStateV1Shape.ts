@@ -45,16 +45,31 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
-  assertGesturePlaygroundDraftShape,
   assertGesturePlaygroundRecommendationSeedShape
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
-  assertLexicalGravityDraftShape,
   assertLexicalGravityRecommendationSeedShape
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
+import {
+  assertWorkshopWidgetDraftCheckpointShape,
+  assertWorkshopWidgetDraftShape
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery';
 
 export function assertWorkshopSessionStateShape(
   value: unknown
+): asserts value is WorkshopSessionStateV1 {
+  assertWorkshopSessionShape(value, false);
+}
+
+export function assertWorkshopSessionCheckpointShape(
+  value: unknown
+): asserts value is WorkshopSessionStateV1 {
+  assertWorkshopSessionShape(value, true);
+}
+
+function assertWorkshopSessionShape(
+  value: unknown,
+  checkpoint: boolean
 ): asserts value is WorkshopSessionStateV1 {
   const state = exactObject(
     value,
@@ -108,7 +123,11 @@ export function assertWorkshopSessionStateShape(
   }
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
   if (state.widgetConfigs !== undefined) {
-    arrayOf(state.widgetConfigs, 'Workshop session state.widgetConfigs', assertWidgetConfig);
+    arrayOf(
+      state.widgetConfigs,
+      'Workshop session state.widgetConfigs',
+      (config, path) => assertWidgetConfig(config, path, checkpoint)
+    );
   }
   if (state.standingDirectives !== undefined) {
     arrayOf(
@@ -328,7 +347,7 @@ function assertCounters(value: unknown): void {
   );
 }
 
-function assertWidgetConfig(value: unknown, path: string): void {
+function assertWidgetConfig(value: unknown, path: string, checkpoint: boolean): void {
   const config = exactObject(
     value,
     path,
@@ -345,15 +364,15 @@ function assertWidgetConfig(value: unknown, path: string): void {
   optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
   optionalStringAt(config.artifactId, `${path}.artifactId`);
   optionalStringAt(config.directiveId, `${path}.directiveId`);
-  if (config.widgetId === 'gesture-playground') {
-    assertGesturePlaygroundDraftShape(config.draft, `${path}.draft`);
-    return;
+  if (config.widgetId !== 'gesture-playground' && config.widgetId !== 'lexical-gravity') {
+    shapeError(`${path}.widgetId`, 'a widget with a persisted config codec');
   }
-  if (config.widgetId === 'lexical-gravity') {
-    assertLexicalGravityDraftShape(config.draft, `${path}.draft`);
-    return;
+  const widgetId = config.widgetId as 'gesture-playground' | 'lexical-gravity';
+  if (checkpoint) {
+    assertWorkshopWidgetDraftCheckpointShape(widgetId, config.draft, `${path}.draft`);
+  } else {
+    assertWorkshopWidgetDraftShape(widgetId, config.draft, `${path}.draft`);
   }
-  shapeError(`${path}.widgetId`, 'a widget with a persisted config codec');
 }
 
 function assertStandingDirective(value: unknown, path: string): void {

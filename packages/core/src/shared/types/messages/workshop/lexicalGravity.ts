@@ -2,7 +2,11 @@
 
 import { MessageEnvelope, MessageType } from '../base';
 export type WorkshopLexicalGravityReach = 1 | 2 | 3;
-export type WorkshopLexicalGravityApplicationMode = 'interpret' | 'recompose';
+export type WorkshopLexicalGravityApplicationMode =
+  | 'lexical'
+  | 'interpret'
+  | 'recompose';
+export type WorkshopLexicalGravityEvidenceMode = 'tell' | 'blend' | 'show';
 
 /** Independently named format clocks; equality today is deliberate, not shared identity. */
 export const LEXICAL_GRAVITY_LENS_VERSION = 2 as const;
@@ -90,6 +94,36 @@ export interface WorkshopLexicalGravityLens {
   sample: string;
 }
 
+/**
+ * Exact word-field contract embedded in checkpoints written by Lexical
+ * Gravity v1. It remains useful in lexical-only mode, but deliberately carries
+ * no interpretive grammar: recovery must not invent semantic claims that the
+ * writer never selected.
+ */
+export interface WorkshopLexicalGravityLegacyLensV1 {
+  version: 1;
+  slug: string;
+  name: string;
+  source: 'built-in' | 'project';
+  originQuery?: string;
+  variant?: string;
+  description?: string;
+  degrees: {
+    1: WorkshopLexicalGravityWordBucket;
+    2: WorkshopLexicalGravityWordBucket;
+    3: WorkshopLexicalGravityWordBucket;
+  };
+  gradient: string[];
+  cliches: WorkshopLexicalGravityCliche[];
+  substitutions: WorkshopLexicalGravitySubstitutions;
+  metaphor: string;
+  sample: string;
+}
+
+export type WorkshopLexicalGravityResolvedLens =
+  | WorkshopLexicalGravityLens
+  | WorkshopLexicalGravityLegacyLensV1;
+
 /** One passage fact positioned in reusable lens semantics for Preview. */
 export interface WorkshopLexicalGravitySemanticPosition {
   element: string;
@@ -101,7 +135,7 @@ export interface WorkshopLexicalGravitySemanticPosition {
 
 export interface WorkshopLexicalGravityPreview {
   version: typeof LEXICAL_GRAVITY_PREVIEW_VERSION;
-  /** Stable key of the five writer-facing values this preview demonstrates. */
+  /** Stable key of the six writer-facing values this preview demonstrates. */
   configKey: string;
   sourceText: string;
   /** Writer-facing declarative mappings, never hidden model reasoning. */
@@ -113,16 +147,33 @@ export interface WorkshopLexicalGravityPreview {
   text: string;
 }
 
-/** Five authored controls plus the resolved lens and optional cached preview. */
-export interface WorkshopLexicalGravityDraft {
+interface WorkshopLexicalGravityDraftBase {
   lensSlug: string;
-  applicationMode: WorkshopLexicalGravityApplicationMode;
+  evidenceMode: WorkshopLexicalGravityEvidenceMode;
   weight: number;
   reach: WorkshopLexicalGravityReach;
   metaphorPull: boolean;
-  resolvedLens: WorkshopLexicalGravityLens;
   preview?: WorkshopLexicalGravityPreview;
 }
+
+/** Lexical-only mode can truthfully apply either a current or recovered word field. */
+export interface WorkshopLexicalGravityLexicalDraft
+  extends WorkshopLexicalGravityDraftBase {
+  applicationMode: 'lexical';
+  resolvedLens: WorkshopLexicalGravityResolvedLens;
+}
+
+/** Semantic gears require the current v2 interpretive grammar. */
+export interface WorkshopLexicalGravitySemanticDraft
+  extends WorkshopLexicalGravityDraftBase {
+  applicationMode: 'interpret' | 'recompose';
+  resolvedLens: WorkshopLexicalGravityLens;
+}
+
+/** Six authored controls plus the resolved lens and optional cached preview. */
+export type WorkshopLexicalGravityDraft =
+  | WorkshopLexicalGravityLexicalDraft
+  | WorkshopLexicalGravitySemanticDraft;
 
 export interface WorkshopLexicalGravityRecommendationSeed {
   lensSlug?: string;

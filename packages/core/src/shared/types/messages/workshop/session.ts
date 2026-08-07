@@ -32,6 +32,7 @@ import {
 import {
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSummary,
+  WorkshopWidgetId,
   WorkshopWidgetRecommendation
 } from './widgets';
 
@@ -755,4 +756,14 @@ export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
   error?: string;
 }> {
   type: MessageType.WORKSHOP_SESSION_SAVE_STATUS;
+}
+
+/** Consume-once, feature-authored notice after successful checkpoint recovery. */
+export interface WorkshopSessionRecoveryNoticeMessage extends MessageEnvelope<{
+  code: string;
+  widgetId: WorkshopWidgetId;
+  configId: string;
+  message: string;
+}> {
+  type: MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE;
 }

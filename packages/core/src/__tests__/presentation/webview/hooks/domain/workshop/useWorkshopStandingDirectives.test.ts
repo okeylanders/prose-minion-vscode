@@ -249,9 +249,10 @@ describe('useWorkshopStandingDirectives', () => {
       updatedAt: 1,
       lensName: 'Photography',
       applicationMode: 'interpret',
+      evidenceMode: 'blend',
       weight: 60,
       reach: 2,
       metaphorPull: true
-    })).toBe('Photography · interpret · 60% · 2° · metaphor');
+    })).toBe('Photography · interpret · blend · 60% · 2° · metaphor');
   });
 });

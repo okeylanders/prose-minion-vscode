@@ -172,6 +172,7 @@ import {
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
   WorkshopSessionSaveStatusMessage,
+  WorkshopSessionRecoveryNoticeMessage,
   WorkshopGesturePlaygroundGenerateMessage,
   CancelGesturePlaygroundGenerateRequestMessage,
   WorkshopGesturePlaygroundGenerationProgressMessage,
@@ -321,6 +322,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage
   | WorkshopSessionSaveStatusMessage
+  | WorkshopSessionRecoveryNoticeMessage
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage

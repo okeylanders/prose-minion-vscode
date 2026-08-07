@@ -154,6 +154,7 @@ export enum MessageType {
   WORKSHOP_SESSIONS_DATA = 'workshop_sessions_data',
   WORKSHOP_SESSION_ACTION_RESULT = 'workshop_session_action_result',
   WORKSHOP_SESSION_SAVE_STATUS = 'workshop_session_save_status',
+  WORKSHOP_SESSION_RECOVERY_NOTICE = 'workshop_session_recovery_notice',
 
   // Conversation Widgets (ADR 2026-07-22; Sprint 01 widget host + Gesture Playground)
   WORKSHOP_GESTURE_PLAYGROUND_GENERATE = 'workshop_gesture_playground_generate',

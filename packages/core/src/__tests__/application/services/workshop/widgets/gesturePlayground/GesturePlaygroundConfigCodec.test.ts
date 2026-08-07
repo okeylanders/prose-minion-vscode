@@ -2,7 +2,9 @@ import { WorkshopGesturePlaygroundDraft } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   assertGesturePlaygroundDraftShape,
-  cloneGesturePlaygroundDraft
+  assertGesturePlaygroundDraftCheckpointShape,
+  cloneGesturePlaygroundDraft,
+  normalizeGesturePlaygroundDraftForHydration
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 
 const draft = (): WorkshopGesturePlaygroundDraft => ({
@@ -92,5 +94,29 @@ describe('GesturePlaygroundConfigCodec', () => {
     const duplicate = cloneGesturePlaygroundDraft(draft());
     duplicate.selections.push(duplicate.selections[0]);
     expect(() => assertDraft(duplicate)).toThrow(/without duplicate directions/);
+  });
+
+  it('owns its checkpoint defaults and returns stable recovery codes', () => {
+    const checkpoint = draft() as unknown as Record<string, unknown>;
+    delete checkpoint.includeDictionaryInCommit;
+    delete checkpoint.sourceReferences;
+
+    expect(() => assertGesturePlaygroundDraftCheckpointShape(checkpoint, 'draft'))
+      .not.toThrow();
+    expect(() => assertGesturePlaygroundDraftShape(checkpoint, 'draft'))
+      .toThrow(/missing required field/);
+
+    const result = normalizeGesturePlaygroundDraftForHydration(
+      checkpoint as unknown as WorkshopGesturePlaygroundDraft
+    );
+    expect(result.draft).toMatchObject({
+      includeDictionaryInCommit: false,
+      sourceReferences: []
+    });
+    expect(result.normalizations).toEqual([
+      'defaulted-widget-dictionary-sharing',
+      'defaulted-widget-source-references'
+    ]);
+    expect(result.notices).toEqual([]);
   });
 });

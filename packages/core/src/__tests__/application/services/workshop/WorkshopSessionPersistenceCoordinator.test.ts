@@ -4,8 +4,12 @@ import {
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import {
+  decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
+import {
+  builtInLexicalGravityLens
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type {
@@ -138,6 +142,12 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
         currentPath: '/workspace/prose-minion/sessions/current.json'
       }),
       readCurrent: jest.fn(async () => current),
+      readCurrentWithRecovery: jest.fn(async () => {
+        const restored = await store.readCurrent();
+        return restored
+          ? { session: restored, normalizations: [], recoveryNotices: [] }
+          : undefined;
+      }),
       writeCurrent: jest.fn(async (next: WorkshopPersistedSessionV1) => {
         current = JSON.parse(JSON.stringify(next)) as WorkshopPersistedSessionV1;
       }),
@@ -162,6 +172,12 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       readNamed: jest.fn(async (id: string) =>
         named.find((entry) => entry.sessionId === id)
       ),
+      readNamedWithRecovery: jest.fn(async (id: string) => {
+        const restored = await store.readNamed(id);
+        return restored
+          ? { session: restored, normalizations: [], recoveryNotices: [] }
+          : undefined;
+      }),
       renameNamed: jest.fn(),
       duplicateNamed: jest.fn(),
       deleteNamed: jest.fn(),
@@ -332,6 +348,58 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(coordinator.isCurrentCheckpointProtected()).toBe(false);
     expect(current?.sessionId).toBe('healthy-room');
     expect(current?.workshop.excerpt?.text).toBe('Changed after repair.');
+  });
+
+  it('retains one recovery notice and converges current plus its named twin', async () => {
+    const checkpoint = persistedSession(
+      'legacy-room',
+      'Legacy room',
+      'A synthetic checkpoint excerpt.'
+    );
+    const { logic: _logic, ...legacyLens } = builtInLexicalGravityLens('music')!;
+    checkpoint.workshop.counters.widgetConfig = 1;
+    checkpoint.workshop.widgetConfigs = [{
+      id: 'wc-1',
+      widgetId: 'lexical-gravity',
+      revision: 1,
+      createdAt: now.getTime(),
+      draft: {
+        lensSlug: 'music',
+        weight: 40,
+        reach: 2,
+        metaphorPull: false,
+        resolvedLens: { ...legacyLens, version: 1 }
+      }
+    } as never];
+    const recovered = decodeWorkshopPersistedSessionCheckpoint(
+      JSON.parse(JSON.stringify(checkpoint))
+    );
+    expect(recovered.recoveryNotices).toHaveLength(1);
+    current = checkpoint;
+    named.push(checkpoint);
+    store.readCurrentWithRecovery.mockResolvedValue(recovered);
+    const coordinator = createCoordinator();
+
+    const hydration = await coordinator.initialize();
+    expect(hydration.restored).toBe(true);
+    expect(store.readCurrentWithRecovery).toHaveBeenCalledTimes(1);
+    expect(coordinator.consumeRecoveryNotices()).toEqual([
+      expect.objectContaining({
+        code: 'recovered-lexical-gravity-v1',
+        configId: 'wc-1'
+      })
+    ]);
+    expect(coordinator.consumeRecoveryNotices()).toEqual([]);
+    await coordinator.flush();
+
+    const currentDraft = current?.workshop.widgetConfigs?.[0].draft as never;
+    const namedDraft = named[0].workshop.widgetConfigs?.[0].draft as never;
+    expect(currentDraft).toMatchObject({
+      applicationMode: 'lexical',
+      evidenceMode: 'blend',
+      resolvedLens: { version: 1 }
+    });
+    expect(namedDraft).toEqual(currentDraft);
   });
 
   it('refuses to serialize the aggregate/provider seam while a run is active', async () => {

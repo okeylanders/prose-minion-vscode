@@ -205,6 +205,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     }),
     getDegradedConversationKeys: jest.fn().mockReturnValue([]),
     getDegradedConversations: jest.fn().mockReturnValue([]),
+    consumeRecoveryNotices: jest.fn().mockReturnValue([]),
     isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
     isSessionOperationPending: jest.fn().mockReturnValue(false),
     addSessionSaveStatusListener: jest.fn().mockReturnValue(

@@ -42,6 +42,7 @@ const lexicalConfig: WorkshopLexicalGravityWidgetConfigSnapshot = {
   draft: {
     lensSlug: lens.slug,
     applicationMode: 'interpret',
+    evidenceMode: 'blend',
     weight: 60,
     reach: 2,
     metaphorPull: true,
@@ -58,6 +59,7 @@ const activeLexical: WorkshopStandingDirectiveSummary = {
   updatedAt: 2,
   lensName: lens.name,
   applicationMode: 'interpret',
+  evidenceMode: 'blend',
   weight: 60,
   reach: 2,
   metaphorPull: true

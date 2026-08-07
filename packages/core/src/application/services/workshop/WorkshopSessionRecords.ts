@@ -44,6 +44,9 @@ import type {
 import type {
   WorkshopThreadArtifact
 } from '@/application/services/workshop/WorkshopThreadArtifactFrame';
+import type {
+  WorkshopWidgetRecoveryNotice
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 
 export type WorkshopActivePhase =
   | 'tool_report'
@@ -181,6 +184,7 @@ export interface WorkshopSessionHydrationResult {
   discardedConversationIds: string[];
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   normalizations: WorkshopSessionCheckpointNormalization[];
+  recoveryNotices: WorkshopWidgetRecoveryNotice[];
 }
 
 export function cloneToolWriterSources(

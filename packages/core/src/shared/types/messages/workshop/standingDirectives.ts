@@ -4,6 +4,7 @@ import { MessageEnvelope, MessageType } from '../base';
 import {
   WorkshopLexicalGravityApplicationMode,
   WorkshopLexicalGravityApplyStandingWidgetPayload,
+  WorkshopLexicalGravityEvidenceMode,
   WorkshopLexicalGravityReach
 } from './lexicalGravity';
 
@@ -29,6 +30,7 @@ export interface WorkshopLexicalGravityStandingDirectiveSummary
   lensName: string;
   lensVariant?: string;
   applicationMode: WorkshopLexicalGravityApplicationMode;
+  evidenceMode: WorkshopLexicalGravityEvidenceMode;
   weight: number;
   reach: WorkshopLexicalGravityReach;
   metaphorPull: boolean;

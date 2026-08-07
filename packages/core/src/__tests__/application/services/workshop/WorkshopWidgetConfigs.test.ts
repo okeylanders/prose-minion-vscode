@@ -59,6 +59,7 @@ const lexicalConfig = (
 const lexicalDraft = (): WorkshopLexicalGravityDraft => ({
   lensSlug: 'photography',
   applicationMode: 'interpret',
+  evidenceMode: 'blend',
   weight: 60,
   reach: 2,
   metaphorPull: false,
@@ -247,18 +248,31 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(lexicalConfig(restored.getWidgetConfig('wc-1')).draft).toEqual(lexicalDraft());
   });
 
-  it('rejects pre-v2 Lexical Gravity drafts whose word field cannot supply grammar', () => {
+  it('recovers an exact pre-v2 Lexical Gravity word field without inventing grammar', () => {
     session.setSessionScope('open');
     session.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
     const state = session.exportCommittedState();
     const persistedDraft = state.widgetConfigs![0].draft as unknown as Record<string, unknown>;
     delete persistedDraft.applicationMode;
+    delete persistedDraft.evidenceMode;
     const persistedLens = persistedDraft.resolvedLens as Record<string, unknown>;
     persistedLens.version = 1;
     delete persistedLens.logic;
 
-    expect(() => parseWorkshopSessionStateV1(state))
-      .toThrow(/draft is missing required field applicationMode/);
+    const restored = new WorkshopSessionService(() => 10_000);
+    const result = restored.hydrateCommittedState(
+      parseWorkshopSessionStateV1(state),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    expect(result.normalizations).toContain('recovered-widget-lexical-gravity-v1');
+    expect(result.recoveryNotices).toHaveLength(1);
+    expect(lexicalConfig(restored.getWidgetConfig('wc-1')).draft).toMatchObject({
+      applicationMode: 'lexical',
+      evidenceMode: 'blend',
+      resolvedLens: { version: 1 }
+    });
   });
 
   it('does not partially hydrate the committed aggregate when ledger preparation fails', () => {

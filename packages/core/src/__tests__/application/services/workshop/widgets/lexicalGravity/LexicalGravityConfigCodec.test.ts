@@ -4,6 +4,7 @@ import {
   LEXICAL_GRAVITY_REACH,
   LEXICAL_GRAVITY_WEIGHT,
   lexicalGravityConfigKey,
+  normalizeLexicalGravityDraftForHydration,
   validateLexicalGravityDraft,
   validateLexicalGravityLens
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
@@ -12,6 +13,7 @@ import {
   builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 import {
+  buildLegacyLexicalGravityDirectiveFrame,
   buildLexicalGravityDirectiveFrame
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityDirective';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -112,6 +114,7 @@ describe('LexicalGravityConfigCodec', () => {
     expect(() => validateLexicalGravityDraft({
       lensSlug: 'photography',
       applicationMode: 'interpret',
+      evidenceMode: 'blend',
       weight: 63,
       reach: 2,
       metaphorPull: false,
@@ -121,6 +124,7 @@ describe('LexicalGravityConfigCodec', () => {
     expect(() => validateLexicalGravityDraft({
       lensSlug: 'photography',
       applicationMode: 'interpret',
+      evidenceMode: 'blend',
       weight: 60,
       reach: 4,
       metaphorPull: false,
@@ -130,6 +134,7 @@ describe('LexicalGravityConfigCodec', () => {
     expect(() => validateLexicalGravityDraft({
       lensSlug: 'music',
       applicationMode: 'interpret',
+      evidenceMode: 'blend',
       weight: 60,
       reach: 2,
       metaphorPull: false,
@@ -139,11 +144,12 @@ describe('LexicalGravityConfigCodec', () => {
     expect(() => validateLexicalGravityDraft({
       lensSlug: 'photography',
       applicationMode: 'decorate',
+      evidenceMode: 'blend',
       weight: 60,
       reach: 2,
       metaphorPull: false,
       resolvedLens: photography
-    })).toThrow(/applicationMode must be interpret \| recompose/);
+    })).toThrow(/applicationMode must be lexical \| interpret \| recompose/);
   });
 
   it('renders a worst-case valid v2 lens within the measured aggregate prompt budget', () => {
@@ -212,6 +218,7 @@ describe('LexicalGravityConfigCodec', () => {
       {
         lensSlug: oversized.slug,
         applicationMode: 'recompose',
+        evidenceMode: 'blend',
         weight: 100,
         reach: 3,
         metaphorPull: true,
@@ -224,11 +231,125 @@ describe('LexicalGravityConfigCodec', () => {
     );
   });
 
-  it('accepts only a preview tied to the current five-value configuration', () => {
+  it('recovers only the exact v1 word-field checkpoint into lexical + blend', () => {
+    const current = builtInLexicalGravityLens('music')!;
+    const { logic: _logic, ...wordField } = current;
+    const checkpoint = {
+      lensSlug: 'music',
+      weight: 40,
+      reach: 2,
+      metaphorPull: false,
+      resolvedLens: { ...wordField, version: 1 },
+      preview: {
+        configKey: 'music|40|2|0',
+        sourceText: 'The room waited beneath the quiet rafters.',
+        text: 'The room held a muted cadence.'
+      }
+    };
+
+    const result = normalizeLexicalGravityDraftForHydration(checkpoint);
+
+    expect(result.draft).toMatchObject({
+      applicationMode: 'lexical',
+      evidenceMode: 'blend',
+      resolvedLens: { version: 1, slug: 'music' },
+      preview: {
+        semanticPositions: [],
+        selectedDynamicId: null,
+        openEntailment: null
+      }
+    });
+    expect(result.normalizations).toContain('recovered-widget-lexical-gravity-v1');
+    expect(result.notices).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: 'recovered-lexical-gravity-v1' })
+    ]));
+    expect(() => validateLexicalGravityDraft(result.draft)).not.toThrow();
+    expect(normalizeLexicalGravityDraftForHydration(result.draft)).toMatchObject({
+      normalizations: [],
+      notices: []
+    });
+    expect(buildLexicalGravityDirectiveFrame(
+      { id: 'pd-legacy', revision: 1 },
+      result.draft
+    )).toBe(buildLegacyLexicalGravityDirectiveFrame(
+      { id: 'pd-legacy', revision: 1 },
+      result.draft
+    ));
+
+    expect(() => normalizeLexicalGravityDraftForHydration({
+      ...checkpoint,
+      resolvedLens: { ...checkpoint.resolvedLens, inventedLogic: {} }
+    })).toThrow(/unknown field inventedLogic/);
+  });
+
+  it('states Blend explicitly for a current v2 lens in lexical gear', () => {
+    const lens = builtInLexicalGravityLens('music')!;
+
+    const frame = buildLexicalGravityDirectiveFrame(
+      { id: 'pd-current-lexical', revision: 1 },
+      {
+        lensSlug: lens.slug,
+        applicationMode: 'lexical',
+        evidenceMode: 'blend',
+        weight: 40,
+        reach: 2,
+        metaphorPull: false,
+        resolvedLens: lens
+      }
+    );
+
+    expect(frame).toContain('Application gear: LEXICAL.');
+    expect(frame).toContain('Evidence mode: BLEND.');
+    expect(frame).not.toContain('Interpretive premise:');
+  });
+
+  it('treats evidence mode as an independent preview identity axis', () => {
+    const common = {
+      lensSlug: 'music',
+      applicationMode: 'recompose' as const,
+      weight: 40,
+      reach: 2 as const,
+      metaphorPull: false
+    };
+    expect(lexicalGravityConfigKey({ ...common, evidenceMode: 'show' }))
+      .not.toBe(lexicalGravityConfigKey({ ...common, evidenceMode: 'tell' }));
+  });
+
+  it('defaults the pre-evidence v2 checkpoint to Blend and rewrites derived preview identity', () => {
+    const checkpoint = {
+      lensSlug: 'music',
+      applicationMode: 'interpret' as const,
+      weight: 40,
+      reach: 2 as const,
+      metaphorPull: false,
+      resolvedLens: builtInLexicalGravityLens('music')!,
+      preview: {
+        version: 2 as const,
+        configKey: 'music|interpret|40|2|0',
+        sourceText: 'The room waited.',
+        semanticPositions: [],
+        selectedDynamicId: null,
+        openEntailment: null,
+        text: 'The room waited.'
+      }
+    };
+
+    expect(() => validateLexicalGravityDraft(checkpoint)).toThrow(/evidenceMode/);
+    const recovered = normalizeLexicalGravityDraftForHydration(checkpoint);
+    expect(recovered.draft.evidenceMode).toBe('blend');
+    expect(recovered.draft.preview?.configKey).toBe('music|interpret|blend|40|2|0');
+    expect(recovered.normalizations).toEqual([
+      'defaulted-widget-lexical-gravity-evidence-mode'
+    ]);
+    expect(recovered.notices).toEqual([]);
+  });
+
+  it('accepts only a preview tied to the current six-value configuration', () => {
     const resolvedLens = builtInLexicalGravityLens('music')!;
     const draft = {
       lensSlug: 'music',
       applicationMode: 'recompose' as const,
+      evidenceMode: 'blend' as const,
       weight: 40,
       reach: 2 as const,
       metaphorPull: false,
@@ -236,7 +357,7 @@ describe('LexicalGravityConfigCodec', () => {
       preview: {
         version: 2 as const,
         configKey: lexicalGravityConfigKey({
-          lensSlug: 'music', applicationMode: 'recompose', weight: 40, reach: 2,
+          lensSlug: 'music', applicationMode: 'recompose', evidenceMode: 'blend', weight: 40, reach: 2,
           metaphorPull: false
         }),
         sourceText: 'The room waited beneath the quiet rafters.',
@@ -255,12 +376,12 @@ describe('LexicalGravityConfigCodec', () => {
 
     expect(validateLexicalGravityDraft(draft)).toEqual(draft);
     draft.preview.configKey = 'stale|config';
-    expect(() => validateLexicalGravityDraft(draft)).toThrow(/current five-value config key/);
+    expect(() => validateLexicalGravityDraft(draft)).toThrow(/current six-value config key/);
     expect(lexicalGravityConfigKey({
-      lensSlug: 'music', applicationMode: 'interpret', weight: 40, reach: 2,
+      lensSlug: 'music', applicationMode: 'interpret', evidenceMode: 'blend', weight: 40, reach: 2,
       metaphorPull: false
     })).not.toBe(lexicalGravityConfigKey({
-      lensSlug: 'music', applicationMode: 'recompose', weight: 40, reach: 2,
+      lensSlug: 'music', applicationMode: 'recompose', evidenceMode: 'blend', weight: 40, reach: 2,
       metaphorPull: false
     }));
   });
@@ -270,6 +391,7 @@ describe('LexicalGravityConfigCodec', () => {
     const base = {
       lensSlug: 'music',
       applicationMode: 'interpret' as const,
+      evidenceMode: 'blend' as const,
       weight: 40,
       reach: 2 as const,
       metaphorPull: false,
@@ -277,7 +399,7 @@ describe('LexicalGravityConfigCodec', () => {
       preview: {
         version: 2 as const,
         configKey: lexicalGravityConfigKey({
-          lensSlug: 'music', applicationMode: 'interpret', weight: 40, reach: 2,
+          lensSlug: 'music', applicationMode: 'interpret', evidenceMode: 'blend', weight: 40, reach: 2,
           metaphorPull: false
         }),
         sourceText: 'The room waited.',

@@ -27,6 +27,7 @@ describe('WorkshopStandingDirectiveRail', () => {
         updatedAt: 100,
         lensName: 'Photography',
         applicationMode: 'interpret',
+        evidenceMode: 'blend',
         weight: 60,
         reach: 2,
         metaphorPull: true
@@ -61,6 +62,7 @@ describe('WorkshopStandingDirectiveRail', () => {
         updatedAt: 100,
         lensName: 'Photography',
         applicationMode: 'interpret',
+        evidenceMode: 'blend',
         weight: 60,
         reach: 2,
         metaphorPull: true

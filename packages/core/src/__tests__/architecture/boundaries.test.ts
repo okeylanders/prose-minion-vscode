@@ -345,9 +345,9 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
   },
   {
-    file: 'application/services/workshop/WorkshopSessionCheckpointNormalization.ts',
-    reason: 'closed persisted-config normalization dispatch',
-    allowedToken: /(?:GesturePlaygroundConfigCodec|gesture-playground|gesturePlayground|normalizeGesturePlaygroundDraftForHydration)/
+    file: 'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
+    reason: 'closed persisted-config recovery dispatch',
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)ConfigCodec|assert(?:GesturePlayground|LexicalGravity)Draft(?:Checkpoint)?Shape|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
@@ -477,12 +477,12 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/types/messages/workshop/standingDirectives.ts',
     reason: 'explicit standing-family summary and payload union owner',
-    allowedToken: /(?:WorkshopLexicalGravityApplicationMode|WorkshopLexicalGravityApplyStandingWidgetPayload|WorkshopLexicalGravityReach|WorkshopLexicalGravityStandingDirectiveSummary|lexical-gravity|lexicalGravity|metaphorPull)/
+    allowedToken: /(?:WorkshopLexicalGravityApplicationMode|WorkshopLexicalGravityApplyStandingWidgetPayload|WorkshopLexicalGravityEvidenceMode|WorkshopLexicalGravityReach|WorkshopLexicalGravityStandingDirectiveSummary|lexical-gravity|lexicalGravity|metaphorPull)/
   },
   {
     file: 'shared/types/messages/workshop/widgets.ts',
     reason: 'explicit widget-family config, recommendation, and result union owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|metaphorPull)/
+    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|metaphorPull)/
   },
   {
     file: 'utils/workshopPromptFrames.ts',
@@ -530,8 +530,8 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
  */
 const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
-    file: 'application/services/workshop/WorkshopSessionCheckpointNormalization.ts',
-    reason: 'legacy Gesture hydration repair, not a live feature registry'
+    file: 'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
+    reason: 'checkpoint recovery dispatch grows only when a feature has a recognized prior draft'
   },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',

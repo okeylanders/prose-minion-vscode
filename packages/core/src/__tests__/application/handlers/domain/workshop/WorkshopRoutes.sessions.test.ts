@@ -54,6 +54,31 @@ describe('Workshop composed routing — session owner', () => {
     });
   });
 
+  it('posts recovery notices after session state and consumes them only once', async () => {
+    const notice = {
+      code: 'recovered-lexical-gravity-v1',
+      widgetId: 'lexical-gravity',
+      configId: 'wc-1',
+      message: 'Restored an older Lexical Gravity configuration.'
+    } as const;
+    persistence.consumeRecoveryNotices
+      .mockReturnValueOnce([notice])
+      .mockReturnValueOnce([]);
+
+    await router.route(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as any);
+    await router.route(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as any);
+
+    const sessionStateOrder = postMessage.mock.calls.findIndex(
+      ([entry]) => entry.type === MessageType.WORKSHOP_SESSION_STATE
+    );
+    const recoveryOrder = postMessage.mock.calls.findIndex(
+      ([entry]) => entry.type === MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE
+    );
+    expect(recoveryOrder).toBeGreaterThan(sessionStateOrder);
+    expect(posted(MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE)[0].payload).toEqual(notice);
+  });
+
   it('settles a routed session action rejected behind an earlier operation', async () => {
     persistence.isSessionOperationPending.mockReturnValue(true);
 
