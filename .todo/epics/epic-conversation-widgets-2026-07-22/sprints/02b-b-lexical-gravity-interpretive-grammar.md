@@ -1,11 +1,13 @@
 # Sprint 02B-B: Lexical Gravity Interpretive Grammar
 
-**Status**: Paused — Workshop Architecture Refactor Phases 0-7 block feature implementation
-**Priority**: High after the architecture feature-resume gate closes
-**Branch**: `sprint/conversation-widgets-02b-b-lexical-gravity-interpretive-grammar` -> stacked on Sprint 02B-A until PR #99 merges, then retarget to `epic/conversation-widgets`
+**Status**: Complete — v2 backend, Claude Design presentation, widget codec recovery exit plan, and F5 acceptance verified 2026-08-07
+**Priority**: High
+**Branch**: `sprint/conversation-widgets-02b-b-lexical-gravity-interpretive-grammar` -> `epic/conversation-widgets`
 **Estimated Effort**: 5-8 days
-**Depends on**: Sprint 02B-A and [Workshop Architecture Refactor Phase 7](../../epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md)
+**Depends on**: Sprint 02B-A and completed [Workshop Architecture Refactor Phase 7](../../epic-workshop-architecture-refactor-2026-08-03/sprints/07-architecture-closure.md)
 **ADR**: [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md)
+**Exit plan**: [Widget Codec Recovery Mode](02b-b-widget-codec-recovery-mode.md)
+**Next foundation**: [Sprint 02D — Widget Persistence Grammar and Integrity](02d-widget-persistence-grammar-and-integrity.md)
 
 ## Goal
 
@@ -18,14 +20,63 @@ last-mile realization layer.
 This sprint establishes that foundation before Prose Controller, lens blending,
 or another widget copies the current representation.
 
-Implementation is intentionally paused. PR #100 records this plan, its ADR, and
-the accepted architecture runway; no Lens Logic runtime work begins until the
-Workshop responsibility refactor closes.
+The architecture feature gate is closed. Okey explicitly resumed feature work
+on 2026-08-06 after Phase 7 accepted the final responsibility map and closure
+evidence.
+
+## Exit Gate: Recover Prior Widget Checkpoints
+
+On 2026-08-07, a valid live development checkpoint proved review F-03's
+predicted failure: one embedded Lexical Gravity v1 config caused the entire
+rolling room to be rejected while its browser sidecar still listed the session.
+The associated named checkpoint carried the same valid v1 config and would fail
+through the Open path as well.
+
+Sprint 02B-B therefore does not exit with strict checkpoint rejection as its
+final policy. Implement the linked recovery plan before completion:
+
+- recognize only the exact old v1 Lexical draft shape;
+- preserve its original lexical-only standing behavior without inventing v2
+  roles, axes, dynamics, or entailments;
+- preserve the room, config/directive linkage, transcript, and conversation
+  archive;
+- emit named normalization evidence and a consume-once writer notice; and
+- prove rolling and associated named checkpoints converge through ordered
+  autosave.
+
+This automatic recovery applies only to session-embedded resolved-lens
+snapshots. Writer-owned v1 project lens files retain the explicit
+rebuild/selection/atomic-replacement workflow.
+
+F-07 and F-09 are accepted but intentionally follow in Sprint 02D, where the
+recovery seam becomes a complete copyable persistence lifecycle before Prose
+Controller.
+
+## Implementation progress — 2026-08-06
+
+- Locked the shared v2 lens, Preview, and incompatibility contracts.
+- Converted all six built-ins to validated interpretive grammars.
+- Advanced lens building and Preview to strict sentinel-framed v2 JSON.
+- Added semantics-first standing-frame rendering and measured its worst-case
+  valid prompt bound.
+- Added actionable, non-mutating version-1 project-resource diagnostics.
+- Preserved the existing modal structure so Claude Design can integrate the
+  Lens Logic presentation against the locked contract without a competing UI
+  diff.
+- Installed the Lens Logic and Preview Interpretation presentation, then added
+  persisted Interpret/Recompose application gears so the same semantic reading
+  can drive either restrained revision or structural rewriting. The 2026-08-07
+  exit decision adds Lexical as a first-class third gear for surface-only pull.
+- Added an explicit, correlated rebuild flow that lets the writer choose one v2
+  take and atomically overwrite the exact incompatible v1 resource without
+  deleting it first.
 
 ## Locked decisions
 
-- `WorkshopLexicalGravityLens.version` advances from `1` to `2`; there is no
-  optional-logic v1/v2 runtime union.
+- Project and catalog lenses advance from version `1` to strict version `2`;
+  there is no optional-logic project-lens union. A session snapshot may retain
+  the exact recognized v1 resolved lens only in the explicit Lexical recovery
+  arm, where Lens Logic is honestly unavailable.
 - The required `logic` object contains premise, foreground/background attention,
   semantic axes, roles, dynamics with entailments and narrative affordances, and
   guardrails. The ADR owns the field grammar.
@@ -37,9 +88,18 @@ Workshop responsibility refactor closes.
 - The directive applies lens logic before selecting lens vocabulary. It may
   create open narrative pressure only when grounded in existing scene facts and
   a meaningful character concern.
-- Weight remains influence strength/frequency; reach remains lexical distance;
-  metaphor pull remains permission for explicit comparison. None is repurposed
-  as a consequence score.
+- Application gear is a hard Lexical/Interpret/Recompose switch. Lexical applies
+  the word field without Lens Logic; Interpret applies an inspectable semantic
+  reading through local revision; Recompose may reorganize existing beats to
+  enact that reading. Weight remains influence strength/frequency; reach remains
+  lexical distance; metaphor pull remains permission for explicit comparison.
+  None is repurposed as a consequence score or show/tell control.
+- Evidence mode is a separate Tell/Blend/Show switch governing how **LG's own**
+  influence becomes legible in prose. It is not a fourth application gear.
+  Recompose changes compositional permission; Show changes evidence style, so
+  Recompose+Show can enact an interpretation through action, image, behavior,
+  sequence, silence, and consequence. Prose Controller may later carry an
+  independent narrative-handling instruction in deliberate tension with LG.
 - Preview returns a strict composite artifact: concise positioning, selected
   dynamic, open entailment, and rewritten prose. No private reasoning is
   requested or displayed.
@@ -49,9 +109,10 @@ Workshop responsibility refactor closes.
 - Prompt budgets are measured from worst-case valid v2 fixtures. Do not simply
   raise the standing-directive budget until the renderer proves the required
   bound.
-- V1 project lens files remain untouched and are reported with an actionable
-  regeneration message. No heuristic or model call happens during repository
-  load or session hydration.
+- V1 project lens files remain untouched during load and are reported with an
+  actionable rebuild message. A writer-authorized rebuild may overwrite the
+  exact revalidated v1 filename atomically; no heuristic or model call happens
+  during repository load or session hydration.
 
 ## Delivery sequence
 
@@ -126,7 +187,9 @@ Workshop responsibility refactor closes.
 - A consequence meter, score, or persisted scene-charge ledger.
 - Multi-lens blending.
 - Prose Controller implementation.
-- Automatic migration or rewriting of user-owned v1 project resources.
+- Automatic migration or unprompted rewriting of user-owned v1 project
+  resources. Session-embedded v1 checkpoint recovery is separately required by
+  the Sprint 02B-B exit plan.
 - Changes to persona identity, expression calibration, or conversation behavior.
 
 ## Completion criteria
@@ -141,10 +204,27 @@ Workshop responsibility refactor closes.
   entailment that remains legible after conspicuous photography words are
   removed.
 - Low and high weight differ in influence intensity, not invented stakes;
-  changing reach affects lexical specificity without disabling lens logic;
-  metaphor-off still applies the interpretive grammar.
+  changing reach affects lexical specificity without disabling Lens Logic in
+  Interpret/Recompose; metaphor-off still applies the interpretive grammar in
+  those gears.
+- Lexical gear produces a useful superficial change with no semantic positions,
+  selected dynamic, or entailment. Interpret/Recompose remain strict Lens Logic
+  modes.
+- A Recompose acceptance fixture can realize the interpretation through shown
+  evidence rather than added explanation; changing composition does not imply
+  moving toward Tell.
+- Tell/Blend/Show composes independently with every application gear, participates
+  in Preview invalidation, and defaults to Blend for prior v2 and recovered v1
+  checkpoints.
 - A lens that cannot map honestly may produce a semantic no-op rather than
   inventing scene facts.
-- V1 resources fail with an exact, actionable message and are not modified.
+- V1 resources fail with an exact, actionable message and are not modified
+  unless the writer explicitly chooses one generated replacement take.
+- A recognized Lexical Gravity v1 session config restores in lexical-only mode
+  with its room and standing behavior intact, while unknown/corrupt shapes still
+  protect the checkpoint.
+- Material widget recovery is reported once to the writer; current and
+  associated named checkpoints advance through the existing ordered autosave
+  path.
 - Round-trip persistence reconstructs the exact v2 standing frame.
 - Typechecks, lint, builds, architecture witnesses, and affected tests pass.

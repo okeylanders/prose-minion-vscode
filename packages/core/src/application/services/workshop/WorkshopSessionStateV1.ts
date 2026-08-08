@@ -27,6 +27,7 @@ import {
   validateWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
 import {
+  assertWorkshopSessionCheckpointShape,
   assertWorkshopSessionStateShape
 } from '@/application/services/workshop/WorkshopSessionStateV1Shape';
 import {
@@ -159,7 +160,7 @@ export interface WorkshopSessionStateV1 {
  * this preflight succeeds.
  */
 export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStateV1 {
-  assertWorkshopSessionStateShape(value);
+  assertWorkshopSessionCheckpointShape(value);
   const decoded = clonePersistedJson(value, 'workshop');
   // Compatibility states are accepted only at the raw checkpoint boundary.
   // Hydration runs the named V1 migration and validates its output again
@@ -168,4 +169,11 @@ export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStat
     allowLegacyOpenSessionWithExcerpt: true
   });
   return decoded;
+}
+
+/** Strict current-state witness used after checkpoint normalization. */
+export function assertCurrentWorkshopSessionStateV1(
+  value: unknown
+): asserts value is WorkshopSessionStateV1 {
+  assertWorkshopSessionStateShape(value);
 }

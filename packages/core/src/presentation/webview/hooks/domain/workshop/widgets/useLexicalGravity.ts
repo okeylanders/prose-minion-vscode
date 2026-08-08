@@ -12,6 +12,7 @@ import {
   MessageType,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
+  WorkshopLexicalGravityLensIncompatibility,
   WorkshopLexicalGravityLensCandidatesMessage,
   WorkshopLexicalGravityLensCandidatesPayload,
   WorkshopLexicalGravityLensesDataMessage,
@@ -25,6 +26,7 @@ import {
 
 export interface LexicalGravityState {
   lenses: WorkshopLexicalGravityLens[];
+  incompatibleResources: WorkshopLexicalGravityLensIncompatibility[];
   storagePath?: string;
   catalogError?: string;
   previewResult: WorkshopLexicalGravityPreviewResultPayload | null;
@@ -36,7 +38,7 @@ export interface LexicalGravityState {
 export interface LexicalGravityActions {
   requestLenses: () => void;
   preview: (token: string, draft: WorkshopLexicalGravityDraft, sourceText: string) => void;
-  buildLens: (token: string, query: string) => void;
+  buildLens: (token: string, query: string, rebuildResourceName?: string) => void;
   saveLenses: (
     token: string,
     query: string,
@@ -64,6 +66,8 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
   const vscode = useVSCodeApi();
   const latestApplyRequestTokenRef = React.useRef<string>();
   const [lenses, setLenses] = React.useState<WorkshopLexicalGravityLens[]>([]);
+  const [incompatibleResources, setIncompatibleResources] =
+    React.useState<WorkshopLexicalGravityLensIncompatibility[]>([]);
   const [storagePath, setStoragePath] = React.useState<string>();
   const [catalogError, setCatalogError] = React.useState<string>();
   const [previewResult, setPreviewResult] =
@@ -89,8 +93,16 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
   ) => {
     post(MessageType.WORKSHOP_PREVIEW_LEXICAL_GRAVITY, { token, draft, sourceText });
   }, [post]);
-  const buildLens = React.useCallback((token: string, query: string) => {
-    post(MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS, { token, query });
+  const buildLens = React.useCallback((
+    token: string,
+    query: string,
+    rebuildResourceName?: string
+  ) => {
+    post(MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS, {
+      token,
+      query,
+      ...(rebuildResourceName ? { rebuildResourceName } : {})
+    });
   }, [post]);
   const saveLenses = React.useCallback((
     token: string,
@@ -116,6 +128,7 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
 
   const handleLensesData = React.useCallback((message: WorkshopLexicalGravityLensesDataMessage) => {
     setLenses(message.payload.lenses);
+    setIncompatibleResources(message.payload.incompatibleResources);
     setStoragePath(message.payload.storagePath);
     setCatalogError(message.payload.error);
   }, []);
@@ -166,6 +179,7 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
 
   return {
     lenses,
+    incompatibleResources,
     storagePath,
     catalogError,
     previewResult,

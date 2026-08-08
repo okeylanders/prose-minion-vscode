@@ -28,6 +28,8 @@ const draft = (
   reach: 1 | 2 | 3 = 2
 ): WorkshopLexicalGravityDraft => ({
   lensSlug,
+  applicationMode: 'interpret',
+  evidenceMode: 'blend',
   weight,
   reach,
   metaphorPull: true,
@@ -88,7 +90,7 @@ describe('WorkshopStandingDirectiveService', () => {
       config: expect.objectContaining({ id: 'wc-1', revision: 1 })
     }));
     expect(result.turn.content).toBe(
-      'Lexical Gravity installed — Photography · 60% · 2° · metaphor'
+      'Lexical Gravity installed — Photography · interpret · blend · 60% · 2° · metaphor'
     );
     expect(session.getStandingDirectives()).toEqual([
       expect.objectContaining({ id: 'pd-1', widgetConfigId: 'wc-1', revision: 1 })
@@ -142,10 +144,10 @@ describe('WorkshopStandingDirectiveService', () => {
     expect(first.directiveId).toBe('pd-1');
     expect(second.directiveId).toBe('pd-1');
     expect(first.turn.content).toBe(
-      'shifted — Photography · 60% · 2° · metaphor → Music · 40% · 1° · metaphor'
+      'shifted — Photography · interpret · blend · 60% · 2° · metaphor → Music · interpret · blend · 40% · 1° · metaphor'
     );
     expect(second.turn.content).toBe(
-      'shifted — Music · 40% · 1° · metaphor → Mathematics · 75% · 3° · metaphor'
+      'shifted — Music · interpret · blend · 40% · 1° · metaphor → Mathematics · interpret · blend · 75% · 3° · metaphor'
     );
     expect(replaceStandingDirectiveFrames).toHaveBeenCalledTimes(3);
 
@@ -218,6 +220,11 @@ describe('WorkshopStandingDirectiveService', () => {
       draft()
     ));
     expect(frames[0]).toContain('Keep it dormant during analysis, critique, planning');
+    expect(frames[0]).toContain('Interpretive premise:');
+    expect(frames[0]).toContain('Dynamic fix-record (Fix the record):');
+    expect(frames[0]).toContain('Application order: preserve facts, viewpoint, voice');
+    expect(frames[0].indexOf('Interpretive premise:'))
+      .toBeLessThan(frames[0].indexOf('Degree 1:'));
     expect(frames[0]).toContain('Degree 2:');
     expect(frames[0]).not.toContain('Degree 3:');
   });

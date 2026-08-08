@@ -4,7 +4,11 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
-import { MessageType, WorkshopWidgetActionResultMessage } from '@messages';
+import {
+  MessageType,
+  WorkshopLexicalGravityLensesDataMessage,
+  WorkshopWidgetActionResultMessage
+} from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('@hooks/useVSCodeApi');
@@ -19,6 +23,53 @@ describe('useLexicalGravity', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
+  });
+
+  it('surfaces catalog incompatibilities alongside usable lenses without discarding either', () => {
+    const { result } = renderHook(() => useLexicalGravity());
+    const incompatibility = {
+      resourceName: 'kinetic-biomechanics.json',
+      foundVersion: 1,
+      rebuildQuery: 'kinetic biomechanics',
+      message: 'Saved Lexical Gravity lens kinetic-biomechanics.json uses version 1.'
+    };
+    const lensesData: WorkshopLexicalGravityLensesDataMessage = {
+      type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA,
+      source: 'extension.workshop.lexical-gravity',
+      timestamp: 1,
+      payload: {
+        lenses: [],
+        incompatibleResources: [incompatibility],
+        storagePath: 'prose-minion/lenses'
+      }
+    };
+
+    act(() => result.current.handleLensesData(lensesData));
+
+    expect(result.current.incompatibleResources).toEqual([incompatibility]);
+    expect(result.current.storagePath).toBe('prose-minion/lenses');
+    expect(result.current.catalogError).toBeUndefined();
+  });
+
+  it('carries the exact incompatible resource name through the build request', () => {
+    const vscode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+    const { result } = renderHook(() => useLexicalGravity());
+
+    act(() => result.current.buildLens(
+      'build-1',
+      'kinetic biomechanics',
+      'kinetic-biomechanics.json'
+    ));
+
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS,
+      payload: {
+        token: 'build-1',
+        query: 'kinetic biomechanics',
+        rebuildResourceName: 'kinetic-biomechanics.json'
+      }
+    }));
   });
 
   it('owns apply acknowledgements and ignores sibling feature commits', () => {

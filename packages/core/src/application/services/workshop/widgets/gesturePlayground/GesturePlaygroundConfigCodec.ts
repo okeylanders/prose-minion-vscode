@@ -19,19 +19,35 @@ import {
   shapeError,
   stringAt
 } from '@/application/services/workshop/persistedValidation';
+import type {
+  WorkshopWidgetDraftRecoveryResult
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 
 export interface GesturePlaygroundDraftSummary {
   targetPhrase: string;
   selectionCount: number;
 }
 
-export interface GesturePlaygroundDraftHydrationDefaults {
-  draft: WorkshopGesturePlaygroundDraft;
-  defaultedDictionarySharing: boolean;
-  defaultedSourceReferences: boolean;
+export type GesturePlaygroundCheckpointNormalization =
+  | 'defaulted-widget-dictionary-sharing'
+  | 'defaulted-widget-source-references';
+
+export function assertGesturePlaygroundDraftCheckpointShape(
+  value: unknown,
+  path: string
+): void {
+  assertGesturePlaygroundDraftShapeInternal(value, path, true);
 }
 
 export function assertGesturePlaygroundDraftShape(value: unknown, path: string): void {
+  assertGesturePlaygroundDraftShapeInternal(value, path, false);
+}
+
+function assertGesturePlaygroundDraftShapeInternal(
+  value: unknown,
+  path: string,
+  allowCheckpointDefaults: boolean
+): void {
   const budget = PROMPT_BUDGETS.workshopWidgets;
   const draft = exactObject(
     value,
@@ -44,12 +60,14 @@ export function assertGesturePlaygroundDraftShape(value: unknown, path: string):
       'dictionaryMarkdown',
       'menu',
       'selections',
-      'note'
+      'note',
+      ...(allowCheckpointDefaults
+        ? []
+        : ['includeDictionaryInCommit', 'sourceReferences'])
     ],
-    // Both fields joined the evolving development checkpoint after the first
-    // Gesture drafts. Hydration supplies safe defaults before current
-    // integrity is enforced.
-    ['includeDictionaryInCommit', 'sourceReferences']
+    allowCheckpointDefaults
+      ? ['includeDictionaryInCommit', 'sourceReferences']
+      : []
   );
   boundedStringAt(
     draft.targetPhrase,
@@ -268,19 +286,28 @@ export function summarizeGesturePlaygroundDraft(
 
 export function normalizeGesturePlaygroundDraftForHydration(
   draft: WorkshopGesturePlaygroundDraft
-): GesturePlaygroundDraftHydrationDefaults {
+): WorkshopWidgetDraftRecoveryResult<
+  WorkshopGesturePlaygroundDraft,
+  GesturePlaygroundCheckpointNormalization
+> {
   const defaultedDictionarySharing = typeof draft.includeDictionaryInCommit !== 'boolean';
   const defaultedSourceReferences = !Array.isArray(draft.sourceReferences);
-  if (!defaultedDictionarySharing && !defaultedSourceReferences) {
-    return { draft, defaultedDictionarySharing, defaultedSourceReferences };
+  const normalizations: GesturePlaygroundCheckpointNormalization[] = [];
+  if (defaultedDictionarySharing) {
+    normalizations.push('defaulted-widget-dictionary-sharing');
+  }
+  if (defaultedSourceReferences) {
+    normalizations.push('defaulted-widget-source-references');
   }
   return {
-    draft: {
-      ...draft,
-      ...(defaultedDictionarySharing ? { includeDictionaryInCommit: false } : {}),
-      ...(defaultedSourceReferences ? { sourceReferences: [] } : {})
-    },
-    defaultedDictionarySharing,
-    defaultedSourceReferences
+    draft: normalizations.length === 0
+      ? draft
+      : {
+          ...draft,
+          ...(defaultedDictionarySharing ? { includeDictionaryInCommit: false } : {}),
+          ...(defaultedSourceReferences ? { sourceReferences: [] } : {})
+        },
+    normalizations,
+    notices: []
   };
 }

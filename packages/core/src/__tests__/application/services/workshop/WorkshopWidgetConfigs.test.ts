@@ -16,11 +16,16 @@ import {
   WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundRecommendationSeed,
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
+  WorkshopLexicalGravityDraft,
+  WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopThreadArtifactWidgetCommit,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  builtInLexicalGravityLens
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
 
 const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
 
@@ -41,6 +46,25 @@ const gestureSeed = (
   }
   return recommendation.seed;
 };
+
+const lexicalConfig = (
+  config: WorkshopWidgetConfigSnapshot | undefined
+): WorkshopLexicalGravityWidgetConfigSnapshot => {
+  if (config?.widgetId !== 'lexical-gravity') {
+    throw new Error('Expected Lexical Gravity config');
+  }
+  return config;
+};
+
+const lexicalDraft = (): WorkshopLexicalGravityDraft => ({
+  lensSlug: 'photography',
+  applicationMode: 'interpret',
+  evidenceMode: 'blend',
+  weight: 60,
+  reach: 2,
+  metaphorPull: false,
+  resolvedLens: builtInLexicalGravityLens('photography')!
+});
 
 const threadArtifactCommit = (
   commit: import('@messages').WorkshopTurnWidgetCommit | undefined
@@ -211,6 +235,44 @@ describe('WorkshopSessionService — widget configs', () => {
       restoredTurns.find((candidate) => candidate.id === turn.id)?.widgetCommit
     ).artifactId)
       .toBe('ta-1');
+  });
+
+  it('round-trips a current Lexical Gravity grammar through V1 session state', () => {
+    session.setSessionScope('open');
+    session.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
+    const state = parseWorkshopSessionStateV1(session.exportCommittedState());
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(state, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+
+    expect(lexicalConfig(restored.getWidgetConfig('wc-1')).draft).toEqual(lexicalDraft());
+  });
+
+  it('recovers an exact pre-v2 Lexical Gravity word field without inventing grammar', () => {
+    session.setSessionScope('open');
+    session.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
+    const state = session.exportCommittedState();
+    const persistedDraft = state.widgetConfigs![0].draft as unknown as Record<string, unknown>;
+    delete persistedDraft.applicationMode;
+    delete persistedDraft.evidenceMode;
+    const persistedLens = persistedDraft.resolvedLens as Record<string, unknown>;
+    persistedLens.version = 1;
+    delete persistedLens.logic;
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    const result = restored.hydrateCommittedState(
+      parseWorkshopSessionStateV1(state),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    expect(result.normalizations).toContain('recovered-widget-lexical-gravity-v1');
+    expect(result.recoveryNotices).toHaveLength(1);
+    expect(lexicalConfig(restored.getWidgetConfig('wc-1')).draft).toMatchObject({
+      applicationMode: 'lexical',
+      evidenceMode: 'blend',
+      resolvedLens: { version: 1 }
+    });
   });
 
   it('does not partially hydrate the committed aggregate when ledger preparation fails', () => {

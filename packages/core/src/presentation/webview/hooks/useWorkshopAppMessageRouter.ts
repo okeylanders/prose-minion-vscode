@@ -81,6 +81,8 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshopSessions.handleSessionsData,
     [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshopSessions.handleSessionActionResult,
     [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshopSessions.handleSessionSaveStatus,
+    [MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE]:
+      workshopSessions.handleSessionRecoveryNotice,
     [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,

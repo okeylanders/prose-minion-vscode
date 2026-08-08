@@ -926,4 +926,5 @@ Primary declared-intent anchors:
 - `.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-lexical-gravity-interpretive-grammar.md:10-35`, `120-146`
 - `.todo/tech-debt/2026-07-25-workshop-god-files.md`
 - `.todo/tech-debt/2026-07-24-workshop-session-responsibility-follow-ups.md`
-- `.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02c-workshop-scope-context-ipc-extraction.md`
+- Historical Conversation Widgets Sprint 02C plan (deleted after its scope was
+  superseded by [Workshop Architecture Refactor Sprint 04](../../.todo/epics/epic-workshop-architecture-refactor-2026-08-03/sprints/04-application-handler-extraction.md))

@@ -8,6 +8,7 @@ import {
 } from './gesturePlayground';
 import {
   WorkshopLexicalGravityDraft,
+  WorkshopLexicalGravityEvidenceMode,
   WorkshopLexicalGravityReach,
   WorkshopLexicalGravityRecommendationSeed
 } from './lexicalGravity';
@@ -88,6 +89,8 @@ export type WorkshopLexicalGravityWidgetConfigSummary =
   Omit<WorkshopLexicalGravityWidgetConfigSnapshot, 'draft'> & {
     lensName: string;
     lensVariant?: string;
+    applicationMode: WorkshopLexicalGravityDraft['applicationMode'];
+    evidenceMode: WorkshopLexicalGravityEvidenceMode;
     weight: number;
     reach: WorkshopLexicalGravityReach;
     metaphorPull: boolean;

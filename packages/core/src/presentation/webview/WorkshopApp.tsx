@@ -245,6 +245,15 @@ export const WorkshopApp: React.FC = () => {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
+  React.useEffect(() => {
+    const recoveryNotice = workshopSessions.recoveryNotices[0];
+    if (!recoveryNotice || toast) {
+      return;
+    }
+    setToast({ message: recoveryNotice.message, icon: 'refresh' });
+    workshopSessions.consumeRecoveryNotice();
+  }, [toast, workshopSessions.consumeRecoveryNotice, workshopSessions.recoveryNotices]);
+
   const handleApiKeyStatus = React.useCallback((message: ApiKeyStatusMessage) => {
     setHasSavedKey(!!message.payload?.hasSavedKey);
   }, []);
@@ -1326,6 +1335,7 @@ export const WorkshopApp: React.FC = () => {
           open
           opening={widgetOpening.lexicalGravityOpening}
           lenses={lexicalGravity.lenses}
+          incompatibleResources={lexicalGravity.incompatibleResources}
           storagePath={lexicalGravity.storagePath}
           catalogError={lexicalGravity.catalogError}
           previewResult={lexicalGravity.previewResult}

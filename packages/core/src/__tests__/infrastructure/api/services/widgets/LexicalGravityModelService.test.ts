@@ -16,12 +16,36 @@ const candidate = (variant: string) => ({
 });
 
 const buildResponse = [
-  '===LEXICAL_GRAVITY_LENSES_V1===',
+  '===LEXICAL_GRAVITY_LENSES_V2===',
   JSON.stringify({
-    version: 1,
+    version: 2,
     candidates: [candidate('Technical'), candidate('Domestic'), candidate('Cosmic')]
   }),
-  '===END_LEXICAL_GRAVITY_LENSES_V1==='
+  '===END_LEXICAL_GRAVITY_LENSES_V2==='
+].join('\n');
+
+const previewBody = (
+  text = 'The room held its breath in a minor cadence.',
+  overrides: Record<string, unknown> = {}
+) => ({
+  version: 2,
+  semanticPositions: [{
+    element: 'the room',
+    roleId: 'rest',
+    axisId: 'time',
+    axisPosition: 'suspended after the expected answer',
+    significance: 'The missing reply becomes active pressure.'
+  }],
+  selectedDynamicId: 'hold-rest',
+  openEntailment: 'The next speaker must answer the silence before the old rhythm resumes.',
+  text,
+  ...overrides
+});
+
+const previewResponse = (body = previewBody()) => [
+  '===LEXICAL_GRAVITY_PREVIEW_V2===',
+  JSON.stringify(body),
+  '===END_LEXICAL_GRAVITY_PREVIEW_V2==='
 ].join('\n');
 
 const createService = (content: unknown) => {
@@ -47,8 +71,18 @@ const createService = (content: unknown) => {
   };
 };
 
+const musicDraft = () => ({
+  lensSlug: 'music',
+  applicationMode: 'recompose' as const,
+  evidenceMode: 'blend' as const,
+  weight: 40,
+  reach: 2 as const,
+  metaphorPull: false,
+  resolvedLens: builtInLexicalGravityLens('music')!
+});
+
 describe('LexicalGravityModelService', () => {
-  it('builds exactly three validated project candidates through the widget scope', async () => {
+  it('builds exactly three validated v2 project candidates through the widget scope', async () => {
     const { service, manager, promptLoader, runInitial } = createService(buildResponse);
 
     const result = await service.buildLenses('Radio Astronomy');
@@ -59,35 +93,30 @@ describe('LexicalGravityModelService', () => {
     ]);
     expect(runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'lexical-gravity-build',
-      userMessage: expect.stringContaining('"Radio Astronomy"'),
+      userMessage: expect.stringMatching(/interpretive-grammar takes[\s\S]*"Radio Astronomy"/),
       options: expect.objectContaining({
         temperature: 0.75,
         maxTokens: PROMPT_BUDGETS.workshopWidgets.lexicalBuildOutputTokens
       })
     }));
-    expect(result).toHaveLength(3);
     expect(result.map((item) => item.candidateId)).toEqual([
       'radio-astronomy-1', 'radio-astronomy-2', 'radio-astronomy-3'
     ]);
-    expect(result.every((item) => item.lens.source === 'project')).toBe(true);
+    expect(result.every(({ lens }) => lens.version === 2 && lens.source === 'project'))
+      .toBe(true);
+    expect(result.every(({ lens }) => lens.logic.dynamics.length > 0)).toBe(true);
   });
 
-  it('previews one exact config and returns the source beside its transformed prose', async () => {
-    const previewText = 'The room held its breath in a minor cadence.';
-    const { service, promptLoader, runInitial } = createService(previewText);
-    const draft = {
-      lensSlug: 'music',
-      weight: 40,
-      reach: 2 as const,
-      metaphorPull: false,
-      resolvedLens: builtInLexicalGravityLens('music')!
-    };
-
+  it('returns strict semantic positioning, one dynamic, open entailment, and prose', async () => {
+    const body = previewBody('"Wait," she said. The unanswered note held.');
+    const { service, promptLoader, runInitial } = createService(previewResponse(body));
+    const draft = musicDraft();
     const sourceText = 'The room waited beneath the quiet rafters.';
+
     await expect(service.preview(draft, sourceText)).resolves.toEqual({
+      ...body,
       configKey: lexicalGravityConfigKey(draft),
-      sourceText,
-      text: previewText
+      sourceText
     });
     expect(promptLoader.loadPrompts).toHaveBeenCalledWith([
       'lexical-gravity/01-preview.md'
@@ -95,7 +124,7 @@ describe('LexicalGravityModelService', () => {
     expect(runInitial).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'lexical-gravity-preview',
       userMessage: expect.stringMatching(
-        new RegExp(`${JSON.stringify(sourceText).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*Return only the rewritten passage\\.`)
+        /"applicationMode": "recompose"[\s\S]*"The room waited beneath the quiet rafters\."[\s\S]*sentinel-framed Preview v2 JSON/
       ),
       options: expect.objectContaining({
         temperature: 0.55,
@@ -105,124 +134,80 @@ describe('LexicalGravityModelService', () => {
     }));
   });
 
-  it('normalizes returned prose without requiring a model-authored protocol', async () => {
-    const sourceText = 'A bell moved through the empty house.';
-    const plain = createService(
-      '\r\nThe bell tolled through the house in a minor interval.\r\n'
+  it('accepts an honest semantic no-op', async () => {
+    const body = previewBody('The room waited.', {
+      semanticPositions: [],
+      selectedDynamicId: null,
+      openEntailment: null
+    });
+
+    await expect(createService(previewResponse(body)).service.preview(
+      musicDraft(),
+      'The room waited.'
+    )).resolves.toMatchObject(body);
+  });
+
+  it('fails closed on undeclared semantic references and wrapper prose', async () => {
+    const undeclared = previewBody('The room waited.', { selectedDynamicId: 'develop' });
+    const rejected = createService(previewResponse(undeclared));
+    await expect(rejected.service.preview(musicDraft(), 'The room waited.'))
+      .rejects.toThrow('selected widget model did not return a usable preview');
+    expect(rejected.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('selectedDynamicId must be an id declared by the selected lens')
     );
-    const draft = {
-      lensSlug: 'music',
-      weight: 40,
-      reach: 2 as const,
-      metaphorPull: false,
-      resolvedLens: builtInLexicalGravityLens('music')!
-    };
 
-    await expect(plain.service.preview(draft, sourceText)).resolves.toEqual({
-      configKey: lexicalGravityConfigKey(draft),
-      sourceText,
-      text: 'The bell tolled through the house in a minor interval.'
-    });
+    const wrapped = createService(`Here is the result:\n${previewResponse()}`);
+    await expect(wrapped.service.preview(musicDraft(), 'The room waited.'))
+      .rejects.toThrow('selected widget model did not return a usable preview');
+    expect(wrapped.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('response sentinels must be the first and last lines')
+    );
   });
 
-  it.each([
-    ['straight', '"The bell *tolled* through the empty house."'],
-    ['curly', '“The bell *tolled* through the empty house.”']
-  ])('preserves an ambiguous enclosing %s quote pair rather than corrupting prose', async (_label, response) => {
-    const quoted = createService(response);
-    const draft = {
-      lensSlug: 'music',
-      weight: 40,
-      reach: 2 as const,
-      metaphorPull: false,
-      resolvedLens: builtInLexicalGravityLens('music')!
-    };
-
-    await expect(quoted.service.preview(draft, 'A bell rang.')).resolves.toEqual({
-      configKey: lexicalGravityConfigKey(draft),
-      sourceText: 'A bell rang.',
-      text: response
-    });
-  });
-
-  it('preserves separate dialogue quotes at the beginning and end of a passage', async () => {
-    const response = '"Hold the light steady," she said. "I cannot see the grain."';
-    const quoted = createService(response);
-    const draft = {
-      lensSlug: 'music',
-      weight: 40,
-      reach: 2 as const,
-      metaphorPull: false,
-      resolvedLens: builtInLexicalGravityLens('music')!
-    };
-
-    await expect(quoted.service.preview(draft, 'She asked him to hold the light.'))
-      .resolves.toMatchObject({ text: response });
-  });
-
-  it('logs and translates a provider response without final text', async () => {
+  it('logs and translates a provider response without the required protocol', async () => {
     const malformed = createService(null);
-    const draft = {
-      lensSlug: 'music',
-      weight: 40,
-      reach: 2 as const,
-      metaphorPull: false,
-      resolvedLens: builtInLexicalGravityLens('music')!
-    };
 
-    await expect(malformed.service.preview(draft, 'A bell rang.'))
+    await expect(malformed.service.preview(musicDraft(), 'A bell rang.'))
       .rejects.toThrow('selected widget model did not return a usable preview');
     expect(malformed.appendLine).toHaveBeenCalledWith(
-      expect.stringContaining('response did not contain text')
+      expect.stringContaining('response sentinels must appear exactly once')
     );
   });
 
-  it('rejects truncated preview prose instead of caching an incomplete passage', async () => {
-    const truncated = createService('The bell tolled through');
+  it('rejects truncated Preview JSON instead of caching an incomplete artifact', async () => {
+    const truncated = createService(previewResponse());
     truncated.runInitial.mockResolvedValueOnce({
-      content: 'The bell tolled through',
-      rawContent: 'The bell tolled through',
+      content: previewResponse(),
+      rawContent: previewResponse(),
       finishReason: 'length'
     });
-    const draft = {
-      lensSlug: 'music',
-      weight: 40,
-      reach: 2 as const,
-      metaphorPull: false,
-      resolvedLens: builtInLexicalGravityLens('music')!
-    };
 
-    await expect(truncated.service.preview(draft, 'A bell rang.'))
+    await expect(truncated.service.preview(musicDraft(), 'A bell rang.'))
       .rejects.toThrow('selected widget model did not return a usable preview');
     expect(truncated.appendLine).toHaveBeenCalledWith(
       expect.stringContaining('response reached its output limit')
     );
   });
 
-  it('fails closed on wrapper prose, duplicate variants, and output truncation', async () => {
+  it('fails closed on lens wrapper prose, duplicate variants, and output truncation', async () => {
     const wrapperProse = `Here you go!\n${buildResponse}`;
     const rejected = createService(wrapperProse);
     await expect(rejected.service.buildLenses('Light'))
-      .rejects.toThrow('unusable lexical fields');
+      .rejects.toThrow('unusable interpretive lenses');
     expect(rejected.appendLine).toHaveBeenCalledWith(
       expect.stringContaining('response sentinels must be the first and last lines')
     );
-    expect(rejected.appendLine).toHaveBeenCalledWith([
-      '[LexicalGravityModelService] Rejected lens response body BEGIN',
-      wrapperProse,
-      '[LexicalGravityModelService] Rejected lens response body END'
-    ].join('\n'));
 
     const duplicateVariants = [
-      '===LEXICAL_GRAVITY_LENSES_V1===',
+      '===LEXICAL_GRAVITY_LENSES_V2===',
       JSON.stringify({
-        version: 1,
+        version: 2,
         candidates: [candidate('Same'), candidate('Same'), candidate('Other')]
       }),
-      '===END_LEXICAL_GRAVITY_LENSES_V1==='
+      '===END_LEXICAL_GRAVITY_LENSES_V2==='
     ].join('\n');
     await expect(createService(duplicateVariants).service.buildLenses('Light'))
-      .rejects.toThrow('unusable lexical fields');
+      .rejects.toThrow('unusable interpretive lenses');
 
     const truncated = createService(buildResponse);
     truncated.runInitial.mockResolvedValueOnce({

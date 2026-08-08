@@ -1,5 +1,6 @@
 /** Focused IPC adapter for Lexical Gravity's catalog, preview, build, and save workflow. */
 
+import * as path from 'path';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
@@ -34,7 +35,12 @@ export type WorkshopLexicalGravityModelPort = Pick<
 
 export type WorkshopLexicalGravityRepositoryPort = Pick<
   LexicalGravityLensRepository,
-  'availability' | 'list' | 'findForQuery' | 'saveManyForQuery'
+  | 'availability'
+  | 'list'
+  | 'findForQuery'
+  | 'assertIncompatibleResource'
+  | 'saveManyForQuery'
+  | 'replaceIncompatibleForQuery'
 >;
 
 export class WorkshopLexicalGravityHandler {
@@ -45,6 +51,7 @@ export class WorkshopLexicalGravityHandler {
     query: string;
     candidates: WorkshopLexicalGravityLensCandidate[];
     savedCandidateIds: Set<string>;
+    rebuildResourceName?: string;
   };
 
   constructor(
@@ -88,7 +95,7 @@ export class WorkshopLexicalGravityHandler {
     try {
       const projects = await this.repository.list();
       const bySlug = new Map(builtIns.map((lens) => [lens.slug, lens]));
-      projects.forEach((lens) => {
+      projects.lenses.forEach((lens) => {
         if (!bySlug.has(lens.slug)) {bySlug.set(lens.slug, lens);}
       });
       const message: WorkshopLexicalGravityLensesDataMessage = {
@@ -97,6 +104,7 @@ export class WorkshopLexicalGravityHandler {
         timestamp: Date.now(),
         payload: {
           lenses: [...bySlug.values()],
+          incompatibleResources: projects.incompatibleResources,
           storagePath: this.repository.availability().displayPath
         }
       };
@@ -106,7 +114,11 @@ export class WorkshopLexicalGravityHandler {
         type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA,
         source: 'extension.workshop.lexical-gravity',
         timestamp: Date.now(),
-        payload: { lenses: builtIns, error: this.errorMessage(error) }
+        payload: {
+          lenses: builtIns,
+          incompatibleResources: [],
+          error: this.errorMessage(error)
+        }
       } satisfies WorkshopLexicalGravityLensesDataMessage);
     }
   }
@@ -146,10 +158,35 @@ export class WorkshopLexicalGravityHandler {
   async handleBuild(message: WorkshopBuildLexicalGravityLensMessage): Promise<void> {
     const token = message.payload.token;
     const query = message.payload.query.trim();
+    const rebuildResourceName = message.payload.rebuildResourceName?.trim();
     this.buildRun?.abort();
     const controller = new AbortController();
     this.buildRun = controller;
     try {
+      if (rebuildResourceName) {
+        const incompatibility = await this.repository.assertIncompatibleResource(
+          rebuildResourceName
+        );
+        const rebuildSlug = path.basename(incompatibility.resourceName, '.json');
+        if (builtInLexicalGravityLens(rebuildSlug)) {
+          throw new Error(
+            `Lexical Gravity lens ${incompatibility.resourceName} collides with a built-in ` +
+            'lens and will not be overwritten. Rename the file and its v1 slug to a ' +
+            'non-built-in canonical name before rebuilding.'
+          );
+        }
+        const candidates = await this.model.buildLenses(query, { signal: controller.signal });
+        if (controller.signal.aborted) {return;}
+        this.latestBuild = {
+          token,
+          query,
+          candidates,
+          savedCandidateIds: new Set(),
+          rebuildResourceName
+        };
+        await this.postCandidates({ token, query, ok: true, candidates });
+        return;
+      }
       const slug = lexicalGravityLensSlug(query);
       const existingLens = builtInLexicalGravityLens(slug)
         ?? await this.repository.findForQuery(query);
@@ -196,6 +233,33 @@ export class WorkshopLexicalGravityHandler {
       );
       if (trustedCandidates.length !== selectedIds.size) {
         throw new Error('Those generated lens choices have expired. Build the lens again.');
+      }
+      if (generated.rebuildResourceName && trustedCandidates.length !== 1) {
+        throw new Error('Choose exactly one generated take to replace the version 1 lens.');
+      }
+      if (generated.rebuildResourceName) {
+        const lens = await this.repository.replaceIncompatibleForQuery(
+          generated.rebuildResourceName,
+          query,
+          trustedCandidates[0].lens
+        );
+        const replacedResourceName = generated.rebuildResourceName;
+        this.latestBuild = undefined;
+        await this.postMessage({
+          type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED,
+          source: 'extension.workshop.lexical-gravity',
+          timestamp: Date.now(),
+          payload: {
+            token,
+            ok: true,
+            lenses: [lens],
+            candidateIds: [trustedCandidates[0].candidateId],
+            remainingCandidateIds: [],
+            replacedResourceName,
+            storagePath: this.repository.availability().displayPath
+          }
+        } satisfies WorkshopLexicalGravityLensesSavedMessage);
+        return;
       }
       const lenses = await this.repository.saveManyForQuery(
         query,

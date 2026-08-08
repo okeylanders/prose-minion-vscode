@@ -7,10 +7,21 @@
  */
 
 import {
+  assertCurrentWorkshopSessionStateV1,
   parseWorkshopSessionStateV1,
   WorkshopConversationLogicalKey,
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  normalizeWorkshopSessionCheckpointForHydration,
+  WorkshopSessionCheckpointNormalization
+} from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
+import {
+  validateWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
+import type {
+  WorkshopWidgetRecoveryNotice
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 import {
   parseWorkshopSessionTemporalStateV1,
   WorkshopSessionTemporalStateV1
@@ -57,6 +68,12 @@ export interface WorkshopPersistedSessionV1 {
   summary: WorkshopPersistedSummaryV1;
   workshop: WorkshopSessionStateV1;
   conversations: ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[];
+}
+
+export interface WorkshopPersistedSessionCheckpointDecodeResult {
+  session: WorkshopPersistedSessionV1;
+  normalizations: WorkshopSessionCheckpointNormalization[];
+  recoveryNotices: WorkshopWidgetRecoveryNotice[];
 }
 
 function parseSummary(value: unknown): WorkshopPersistedSummaryV1 {
@@ -106,7 +123,24 @@ function parseSummary(value: unknown): WorkshopPersistedSummaryV1 {
  * and temporal state preflight here; each conversation archive entry still
  * performs its own validation during import so corruption degrades locally.
  */
-export function parseWorkshopPersistedSession(value: unknown): WorkshopPersistedSessionV1 {
+export function decodeWorkshopPersistedSessionCheckpoint(
+  value: unknown
+): WorkshopPersistedSessionCheckpointDecodeResult {
+  assertWorkshopPersistedSessionEnvelope(value);
+  const checkpoint = parseWorkshopSessionStateV1(value.workshop);
+  const recovery = normalizeWorkshopSessionCheckpointForHydration(checkpoint);
+  assertCurrentWorkshopSessionStateV1(recovery.state);
+  validateWorkshopSessionStateV1(recovery.state);
+  return {
+    normalizations: recovery.normalizations,
+    recoveryNotices: recovery.notices,
+    session: decodeWorkshopPersistedSessionEnvelope(value, recovery.state)
+  };
+}
+
+function assertWorkshopPersistedSessionEnvelope(
+  value: unknown
+): asserts value is Record<string, unknown> {
   if (!isRecord(value)) {
     throw new Error('Workshop session file must contain a JSON object.');
   }
@@ -144,20 +178,34 @@ export function parseWorkshopPersistedSession(value: unknown): WorkshopPersisted
   if (!Array.isArray(value.conversations)) {
     throw new Error('Workshop session file has invalid conversation archive.');
   }
+}
 
+function decodeWorkshopPersistedSessionEnvelope(
+  value: Record<string, unknown>,
+  workshop: WorkshopSessionStateV1
+): WorkshopPersistedSessionV1 {
   return {
     schemaVersion: 1,
-    sessionId: value.sessionId,
-    title: value.title,
-    createdAt: normalizeTimestamp(value.createdAt),
-    updatedAt: normalizeTimestamp(value.updatedAt),
+    sessionId: value.sessionId as string,
+    title: value.title as string,
+    createdAt: normalizeTimestamp(value.createdAt as string),
+    updatedAt: normalizeTimestamp(value.updatedAt as string),
     ...(value.savedAt !== undefined
-      ? { savedAt: normalizeTimestamp(value.savedAt) }
+      ? { savedAt: normalizeTimestamp(value.savedAt as string) }
       : {}),
     temporal: parseWorkshopSessionTemporalStateV1(value.temporal),
     summary: parseSummary(value.summary),
-    workshop: parseWorkshopSessionStateV1(value.workshop),
+    workshop,
     conversations: clonePersistedJson(value.conversations, 'conversations') as
       ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[]
   };
+}
+
+/** Strict current-state parser used by writes and already-canonical callers. */
+export function parseWorkshopPersistedSession(value: unknown): WorkshopPersistedSessionV1 {
+  assertWorkshopPersistedSessionEnvelope(value);
+  const workshop = parseWorkshopSessionStateV1(value.workshop);
+  assertCurrentWorkshopSessionStateV1(workshop);
+  validateWorkshopSessionStateV1(workshop);
+  return decodeWorkshopPersistedSessionEnvelope(value, workshop);
 }

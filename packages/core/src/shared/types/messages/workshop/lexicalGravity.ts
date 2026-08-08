@@ -2,6 +2,16 @@
 
 import { MessageEnvelope, MessageType } from '../base';
 export type WorkshopLexicalGravityReach = 1 | 2 | 3;
+export type WorkshopLexicalGravityApplicationMode =
+  | 'lexical'
+  | 'interpret'
+  | 'recompose';
+export type WorkshopLexicalGravityEvidenceMode = 'tell' | 'blend' | 'show';
+
+/** Independently named format clocks; equality today is deliberate, not shared identity. */
+export const LEXICAL_GRAVITY_LENS_VERSION = 2 as const;
+export const LEXICAL_GRAVITY_PREVIEW_VERSION = 2 as const;
+export const LEXICAL_GRAVITY_LENS_RESPONSE_ENVELOPE_VERSION = 2 as const;
 
 export interface WorkshopLexicalGravityWordBucket {
   nouns: string[];
@@ -22,19 +32,80 @@ export interface WorkshopLexicalGravitySubstitutions {
   ending: string;
 }
 
+export interface WorkshopLexicalGravityLensAxis {
+  id: string;
+  name: string;
+  poles: [string, string];
+}
+
+export interface WorkshopLexicalGravityLensRole {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface WorkshopLexicalGravityLensDynamic {
+  id: string;
+  operation: string;
+  movement: string;
+  entailment: string;
+  narrativeAffordance: string;
+}
+
+/** Reusable, passage-independent meaning grammar for one lens. */
+export interface WorkshopLexicalGravityLensLogic {
+  premise: string;
+  attention: {
+    foregrounds: string[];
+    backgrounds: string[];
+  };
+  axes: WorkshopLexicalGravityLensAxis[];
+  roles: WorkshopLexicalGravityLensRole[];
+  dynamics: WorkshopLexicalGravityLensDynamic[];
+  guardrails: string[];
+}
+
 /**
  * One complete, deterministic lexical field. Built-ins and project-authored
  * fields share this contract so choosing a generated take makes every panel
  * tab immediately available without another model call.
  */
 export interface WorkshopLexicalGravityLens {
-  version: 1;
+  version: typeof LEXICAL_GRAVITY_LENS_VERSION;
   slug: string;
   name: string;
   source: 'built-in' | 'project';
   /** Writer-entered subject that produced a project lens. */
   originQuery?: string;
   /** Human-readable angle distinguishing multiple generated takes. */
+  variant?: string;
+  description?: string;
+  /** Interpretive grammar applied before vocabulary is selected. */
+  logic: WorkshopLexicalGravityLensLogic;
+  degrees: {
+    1: WorkshopLexicalGravityWordBucket;
+    2: WorkshopLexicalGravityWordBucket;
+    3: WorkshopLexicalGravityWordBucket;
+  };
+  gradient: string[];
+  cliches: WorkshopLexicalGravityCliche[];
+  substitutions: WorkshopLexicalGravitySubstitutions;
+  metaphor: string;
+  sample: string;
+}
+
+/**
+ * Exact word-field contract embedded in checkpoints written by Lexical
+ * Gravity v1. It remains useful in lexical-only mode, but deliberately carries
+ * no interpretive grammar: recovery must not invent semantic claims that the
+ * writer never selected.
+ */
+export interface WorkshopLexicalGravityLegacyLensV1 {
+  version: 1;
+  slug: string;
+  name: string;
+  source: 'built-in' | 'project';
+  originQuery?: string;
   variant?: string;
   description?: string;
   degrees: {
@@ -49,23 +120,60 @@ export interface WorkshopLexicalGravityLens {
   sample: string;
 }
 
+export type WorkshopLexicalGravityResolvedLens =
+  | WorkshopLexicalGravityLens
+  | WorkshopLexicalGravityLegacyLensV1;
+
+/** One passage fact positioned in reusable lens semantics for Preview. */
+export interface WorkshopLexicalGravitySemanticPosition {
+  element: string;
+  roleId: string;
+  axisId: string | null;
+  axisPosition: string | null;
+  significance: string;
+}
+
 export interface WorkshopLexicalGravityPreview {
-  /** Stable key of the four writer-facing values this preview demonstrates. */
+  version: typeof LEXICAL_GRAVITY_PREVIEW_VERSION;
+  /** Stable key of the six writer-facing values this preview demonstrates. */
   configKey: string;
-  /** The prose transformed by this preview; optional only for older checkpoints. */
-  sourceText?: string;
+  sourceText: string;
+  /** Writer-facing declarative mappings, never hidden model reasoning. */
+  semanticPositions: WorkshopLexicalGravitySemanticPosition[];
+  /** Null records an honest semantic no-op. */
+  selectedDynamicId: string | null;
+  /** Passage-specific pressure left open by the selected dynamic, if any. */
+  openEntailment: string | null;
   text: string;
 }
 
-/** Four authored controls plus the resolved lens and optional cached preview. */
-export interface WorkshopLexicalGravityDraft {
+interface WorkshopLexicalGravityDraftBase {
   lensSlug: string;
+  evidenceMode: WorkshopLexicalGravityEvidenceMode;
   weight: number;
   reach: WorkshopLexicalGravityReach;
   metaphorPull: boolean;
-  resolvedLens: WorkshopLexicalGravityLens;
   preview?: WorkshopLexicalGravityPreview;
 }
+
+/** Lexical-only mode can truthfully apply either a current or recovered word field. */
+export interface WorkshopLexicalGravityLexicalDraft
+  extends WorkshopLexicalGravityDraftBase {
+  applicationMode: 'lexical';
+  resolvedLens: WorkshopLexicalGravityResolvedLens;
+}
+
+/** Semantic gears require the current v2 interpretive grammar. */
+export interface WorkshopLexicalGravitySemanticDraft
+  extends WorkshopLexicalGravityDraftBase {
+  applicationMode: 'interpret' | 'recompose';
+  resolvedLens: WorkshopLexicalGravityLens;
+}
+
+/** Six authored controls plus the resolved lens and optional cached preview. */
+export type WorkshopLexicalGravityDraft =
+  | WorkshopLexicalGravityLexicalDraft
+  | WorkshopLexicalGravitySemanticDraft;
 
 export interface WorkshopLexicalGravityRecommendationSeed {
   lensSlug?: string;
@@ -81,8 +189,17 @@ export interface WorkshopRequestLexicalGravityLensesMessage
 
 export interface WorkshopLexicalGravityLensesDataPayload {
   lenses: WorkshopLexicalGravityLens[];
+  incompatibleResources: WorkshopLexicalGravityLensIncompatibility[];
   storagePath?: string;
   error?: string;
+}
+
+export interface WorkshopLexicalGravityLensIncompatibility {
+  resourceName: string;
+  foundVersion: number | null;
+  /** Bounded subject recovered from the legacy resource for Build lens. */
+  rebuildQuery: string;
+  message: string;
 }
 
 export interface WorkshopLexicalGravityLensesDataMessage
@@ -112,7 +229,12 @@ export interface WorkshopLexicalGravityPreviewResultMessage
 }
 
 export interface WorkshopBuildLexicalGravityLensMessage
-  extends MessageEnvelope<{ token: string; query: string }> {
+  extends MessageEnvelope<{
+    token: string;
+    query: string;
+    /** Exact host-reported v1 filename to replace after the writer chooses one take. */
+    rebuildResourceName?: string;
+  }> {
   type: MessageType.WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS;
 }
 
@@ -154,6 +276,8 @@ export interface WorkshopLexicalGravityLensesSavedPayload {
   candidateIds: string[];
   /** Generated candidates still available to save without another model call. */
   remainingCandidateIds?: string[];
+  /** Present when this save atomically replaced one verified v1 resource. */
+  replacedResourceName?: string;
   storagePath?: string;
   error?: string;
 }

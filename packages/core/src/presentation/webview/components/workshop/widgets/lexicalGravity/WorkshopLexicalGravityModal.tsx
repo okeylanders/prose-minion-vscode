@@ -3,10 +3,14 @@
 import * as React from 'react';
 import {
   WorkshopLexicalGravityDraft,
+  WorkshopLexicalGravityApplicationMode,
+  WorkshopLexicalGravityEvidenceMode,
   WorkshopLexicalGravityLens,
   WorkshopLexicalGravityLensCandidatesPayload,
+  WorkshopLexicalGravityLensIncompatibility,
   WorkshopLexicalGravityLensesSavedPayload,
   WorkshopLexicalGravityPreviewResultPayload,
+  WorkshopLexicalGravityResolvedLens,
   WorkshopWidgetActionResultPayload
 } from '@messages';
 import { ModelOption, ModelScope } from '@shared/types';
@@ -28,11 +32,18 @@ import {
 import type {
   WorkshopLexicalGravityOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
+import {
+  WorkshopLexicalGravityLensLogic
+} from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityLensLogic';
+import {
+  WorkshopLexicalGravityPreviewReading
+} from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityPreviewReading';
 
 interface WorkshopLexicalGravityModalProps {
   open: boolean;
   opening: WorkshopLexicalGravityOpening;
   lenses: WorkshopLexicalGravityLens[];
+  incompatibleResources: WorkshopLexicalGravityLensIncompatibility[];
   storagePath?: string;
   catalogError?: string;
   previewResult: WorkshopLexicalGravityPreviewResultPayload | null;
@@ -45,7 +56,7 @@ interface WorkshopLexicalGravityModalProps {
     draft: WorkshopLexicalGravityDraft,
     sourceText: string
   ) => void;
-  onBuildLens: (token: string, query: string) => void;
+  onBuildLens: (token: string, query: string, rebuildResourceName?: string) => void;
   onSaveLenses: (token: string, query: string, candidateIds: string[]) => void;
   onApply: (draft: WorkshopLexicalGravityDraft, widgetConfigId?: string) => void;
   onClearTransientResults: () => void;
@@ -75,7 +86,7 @@ const PREVIEW_SOURCE_MIN_HEIGHT = 74;
 const PREVIEW_SOURCE_HEIGHT_CAP = 240;
 
 const weightLabel = (weight: number): string =>
-  weight < 25 ? 'a trace' : weight < 55 ? 'present, not loud' : weight < 85 ? 'forward' : 'saturated';
+  weight <= 15 ? 'trace' : weight <= 35 ? 'subtle' : weight <= 65 ? 'forward' : weight <= 85 ? 'insistent' : 'saturating';
 const reachLabel = (reach: number): string =>
   reach === 1 ? 'core vocabulary only' : reach === 2 ? 'core + adjacent' : 'core + far associations';
 
@@ -116,6 +127,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   open,
   opening,
   lenses,
+  incompatibleResources,
   storagePath,
   catalogError,
   previewResult,
@@ -142,6 +154,12 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       : undefined;
   const initialSeed = opening.kind === 'seed' ? opening.seed : initialDraft;
   const [lensSlug, setLensSlug] = React.useState(initialSeed?.lensSlug ?? 'photography');
+  const [applicationMode, setApplicationMode] = React.useState<WorkshopLexicalGravityApplicationMode>(
+    initialDraft?.applicationMode ?? 'interpret'
+  );
+  const [evidenceMode, setEvidenceMode] = React.useState<WorkshopLexicalGravityEvidenceMode>(
+    initialDraft?.evidenceMode ?? 'blend'
+  );
   const [weight, setWeight] = React.useState(initialSeed?.weight ?? 60);
   const [reach, setReach] = React.useState<1 | 2 | 3>(initialSeed?.reach ?? 2);
   const [metaphorPull, setMetaphorPull] = React.useState(initialSeed?.metaphorPull ?? false);
@@ -155,7 +173,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [contrastIndex, setContrastIndex] = React.useState(0);
   const [lookup, setLookup] = React.useState('');
   const [pickerTab, setPickerTab] = React.useState<LensPickerTab>('create');
-  const [extraLens, setExtraLens] = React.useState<WorkshopLexicalGravityLens>();
+  const [extraLens, setExtraLens] = React.useState<WorkshopLexicalGravityResolvedLens>();
   const [previewToken, setPreviewToken] = React.useState<string>();
   const [buildToken, setBuildToken] = React.useState<string>();
   const [selectedCandidateIds, setSelectedCandidateIds] = React.useState<string[]>([]);
@@ -166,6 +184,10 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   const [error, setError] = React.useState<string>();
   const [buildError, setBuildError] = React.useState<string>();
   const [buildNotice, setBuildNotice] = React.useState<string>();
+  const [incompatibleNote, setIncompatibleNote] =
+    React.useState<WorkshopLexicalGravityLensIncompatibility>();
+  const [rebuildTarget, setRebuildTarget] =
+    React.useState<WorkshopLexicalGravityLensIncompatibility>();
   const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
   const previewSourceRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -178,6 +200,8 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
         : undefined;
     const seed = opening.kind === 'seed' ? opening.seed : draft;
     setLensSlug(seed?.lensSlug ?? 'photography');
+    setApplicationMode(draft?.applicationMode ?? 'interpret');
+    setEvidenceMode(draft?.evidenceMode ?? 'blend');
     setWeight(seed?.weight ?? 60);
     setReach(seed?.reach ?? 2);
     setMetaphorPull(seed?.metaphorPull ?? false);
@@ -200,29 +224,52 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setError(undefined);
     setBuildError(undefined);
     setBuildNotice(undefined);
+    setIncompatibleNote(undefined);
+    setRebuildTarget(undefined);
     onClearTransientResults();
     onRequestLenses();
   }, [open, opening, onClearTransientResults, onRequestLenses]);
 
   const availableLenses = React.useMemo(() => {
-    const bySlug = new Map(lenses.map((lens) => [lens.slug, lens]));
-    if (extraLens) {bySlug.set(extraLens.slug, extraLens);}
+    const bySlug = new Map<string, WorkshopLexicalGravityResolvedLens>(
+      lenses.map((lens) => [lens.slug, lens])
+    );
+    if (extraLens?.version === 2) {bySlug.set(extraLens.slug, extraLens);}
     return [...bySlug.values()];
   }, [extraLens, lenses]);
-  const lens = availableLenses.find((candidate) => candidate.slug === lensSlug)
-    ?? extraLens
-    ?? availableLenses[0];
+  const lens = extraLens?.version === 1
+    ? extraLens
+    : availableLenses.find((candidate) => candidate.slug === lensSlug)
+      ?? extraLens
+      ?? availableLenses[0];
   const contrasts = availableLenses.filter((candidate) => candidate.slug !== lens?.slug);
   const contrast = contrasts[contrastIndex % Math.max(contrasts.length, 1)];
   const previewSource = previewSourceOverride ?? lens?.sample ?? '';
-  const draft: WorkshopLexicalGravityDraft | undefined = lens ? {
-    lensSlug: lens.slug,
-    weight,
-    reach,
-    metaphorPull,
-    resolvedLens: lens,
-    preview
-  } : undefined;
+  const draft: WorkshopLexicalGravityDraft | undefined = lens
+    ? applicationMode === 'lexical'
+      ? {
+          lensSlug: lens.slug,
+          applicationMode,
+          evidenceMode,
+          weight,
+          reach,
+          metaphorPull,
+          resolvedLens: lens,
+          preview
+        }
+      : lens.version === 2
+        ? {
+            lensSlug: lens.slug,
+            applicationMode,
+            evidenceMode,
+            weight,
+            reach,
+            metaphorPull,
+            resolvedLens: lens,
+            preview
+          }
+        : undefined
+    : undefined;
   const directivePreview = draft
     ? buildLexicalGravityDirectiveFrame({ id: 'pd-preview', revision: 1 }, draft)
     : undefined;
@@ -302,6 +349,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       setSelectedCandidateIds([]);
       setBuildError(undefined);
       setBuildNotice(undefined);
+      setRebuildTarget(undefined);
       onRequestLenses();
     } else {
       setBuildError(lensesSaved.error ?? 'The project lenses could not be saved.');
@@ -327,8 +375,20 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setExtraLens(next.source === 'project' ? next : undefined);
     setLensSlug(next.slug);
     setContrastIndex(0);
+    setIncompatibleNote(undefined);
+    setRebuildTarget(undefined);
     invalidatePreview();
   }, [invalidatePreview]);
+  const rebuildIncompatible = React.useCallback(
+    (resource: WorkshopLexicalGravityLensIncompatibility) => {
+      if (resource.foundVersion !== 1) {return;}
+      setIncompatibleNote(undefined);
+      setLookup(resource.rebuildQuery);
+      setRebuildTarget(resource);
+      setPickerTab('create');
+    },
+    []
+  );
   const build = React.useCallback(() => {
     if (!lookup.trim() || buildToken) {return;}
     const token = mintToken('build');
@@ -340,14 +400,16 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setError(undefined);
     setBuildError(undefined);
     setBuildNotice(undefined);
-    onBuildLens(token, lookup.trim());
-  }, [buildToken, lookup, onBuildLens]);
+    onBuildLens(token, lookup.trim(), rebuildTarget?.resourceName);
+  }, [buildToken, lookup, onBuildLens, rebuildTarget]);
   const toggleCandidate = React.useCallback((candidateId: string) => {
     if (savingCandidates) {return;}
     setSelectedCandidateIds((current) => current.includes(candidateId)
       ? current.filter((selectedId) => selectedId !== candidateId)
-      : [...current, candidateId]);
-  }, [savingCandidates]);
+      : rebuildTarget
+        ? [candidateId]
+        : [...current, candidateId]);
+  }, [rebuildTarget, savingCandidates]);
   const requestPreview = React.useCallback(() => {
     const sourceText = previewSource.trim();
     if (!draft || !sourceText || previewToken) {return;}
@@ -413,7 +475,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
           </div>
           <h2 id="pm-ws-lexical-gravity-title"><Icon name="orbit" size={17} /> Lexical Gravity</h2>
           <p className="pm-ws-gesture-sub">
-            Pull the passage’s lexis toward an interpretive lens. Installs a <b>passage-scoped directive</b> consulted only when prose is written — a knob on the <b>work</b>, never on the participant.
+            Read or reshape the passage through an interpretive lens. Installs a <b>passage-scoped directive</b> consulted only when prose is written — a knob on the <b>work</b>, never on the participant.
           </p>
           {opening.kind === 'edit' && (
             <div className="pm-ws-gesture-banner pm-ws-gesture-banner-clone">
@@ -460,7 +522,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             {lensesSaved?.ok && lensesSaved.lenses?.some(({ slug }) => slug === lens?.slug) && (
               <div className="pm-ws-lg-saved">
                 <Icon name="check" size={12} />
-                Saved {lensesSaved.lenses.length} {lensesSaved.lenses.length === 1 ? 'lens' : 'lenses'} to project — <code>{storagePath}</code> · available in every session, every thread
+                {lensesSaved.replacedResourceName
+                  ? <>Rebuilt and replaced <code>{lensesSaved.replacedResourceName}</code> in place</>
+                  : <>Saved {lensesSaved.lenses.length} {lensesSaved.lenses.length === 1 ? 'lens' : 'lenses'} to project — <code>{storagePath}</code> · available in every session, every thread</>}
               </div>
             )}
             {pickerTab === 'create' && (
@@ -471,6 +535,18 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                 aria-labelledby="pm-ws-lg-create-tab"
               >
                 <div className="pm-ws-lg-section-title">Build a lens from any comparison, subject, or field.</div>
+                {rebuildTarget && (
+                  <div className="pm-ws-lg-note-v1 pm-ws-lg-rebuild-target" role="status">
+                    One selected take will atomically replace <code>{rebuildTarget.resourceName}</code>. The old file remains intact unless the replacement succeeds.
+                    <button
+                      type="button"
+                      disabled={!!buildToken}
+                      onClick={() => setRebuildTarget(undefined)}
+                    >
+                      Cancel replacement
+                    </button>
+                  </div>
+                )}
                 <div className="pm-ws-lg-lookup">
                   <input
                     value={lookup}
@@ -481,7 +557,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                     onKeyDown={(event) => { if (event.key === 'Enter') {build();} }}
                   />
                   <button type="button" disabled={locked || !lookup.trim() || !!buildToken} onClick={build}>
-                    <Icon name="sparkle" size={12} /> {buildToken ? 'Drafting…' : 'Build lens'}
+                    <Icon name="sparkle" size={12} /> {buildToken ? 'Drafting…' : rebuildTarget ? 'Build replacements' : 'Build lens'}
                   </button>
                 </div>
                 {buildError && <div className="pm-ws-gesture-error pm-ws-lg-build-error" role="alert">{buildError}</div>}
@@ -503,7 +579,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                 {candidates && (
                   <div className="pm-ws-lg-options">
                     <div className="pm-ws-lg-cap">
-                      model drafted {candidates.length} takes — select one or more to add
+                      model drafted {candidates.length} takes — {rebuildTarget ? 'select exactly one to replace the legacy lens' : 'select one or more to add'}
                     </div>
                     {candidates.map((candidate) => (
                       <button
@@ -531,16 +607,20 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                         disabled={selectedCandidateIds.length < 1 || savingCandidates}
                         onClick={saveSelectedCandidates}
                       >
-                        <Icon name="plus" size={12} />
+                        <Icon name={rebuildTarget ? 'refresh' : 'plus'} size={12} />
                         {savingCandidates
-                          ? 'Adding…'
+                          ? rebuildTarget ? 'Replacing…' : 'Adding…'
                           : selectedCandidateIds.length < 1
-                            ? 'Add selected lenses'
-                            : `Add ${selectedCandidateIds.length} selected ${selectedCandidateIds.length === 1 ? 'lens' : 'lenses'}`}
+                            ? rebuildTarget ? 'Choose one replacement' : 'Add selected lenses'
+                            : rebuildTarget
+                              ? `Replace ${rebuildTarget.resourceName}`
+                              : `Add ${selectedCandidateIds.length} selected ${selectedCandidateIds.length === 1 ? 'lens' : 'lenses'}`}
                       </button>
                     </div>
                     <div className="pm-ws-lg-cap">
-                      Unsaved takes stay available until you close this sheet.
+                      {rebuildTarget
+                        ? 'The chosen take keeps this filename; the other takes are discarded after replacement.'
+                        : 'Unsaved takes stay available until you close this sheet.'}
                     </div>
                   </div>
                 )}
@@ -557,34 +637,150 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                   Choose a lens <i>built-ins + project lenses · blending is Sprint 04</i>
                 </div>
                 {catalogError && <div className="pm-ws-lg-note">Built-ins remain available. {catalogError}</div>}
-                <div className="pm-ws-lg-lenses">
-                  {availableLenses.map((candidate) => {
-                    const displayName = `${candidate.name}${candidate.variant ? ` — ${candidate.variant}` : ''}`;
-                    const originalSearchTerm = originalSearchTermFor(candidate, availableLenses);
-                    return (
+                <div className="pm-ws-lg-lenswrap">
+                  <div className="pm-ws-lg-lenses">
+                    {availableLenses.map((candidate) => {
+                      const displayName = `${candidate.name}${candidate.variant ? ` — ${candidate.variant}` : ''}`;
+                      const originalSearchTerm = candidate.version === 2
+                        ? originalSearchTermFor(candidate, lenses)
+                        : undefined;
+                      return (
+                        <button
+                          type="button"
+                          className={`pm-ws-lg-lens${originalSearchTerm ? ' has-search-term' : ''}${candidate === lens ? ' is-selected' : ''}`}
+                          key={candidate.slug}
+                          title={displayName}
+                          disabled={previewControlsLocked}
+                          onClick={() => {
+                            if (candidate.version === 2) {selectLens(candidate);}
+                          }}
+                        >
+                          {originalSearchTerm && (
+                            <span className="pm-ws-lg-lens-search-term">{originalSearchTerm}</span>
+                          )}
+                          <Icon name="orbit" size={15} />
+                          <span className="pm-ws-lg-lens-name">
+                            {displayName}
+                            {candidate.source === 'project' && <em>project</em>}
+                          </span>
+                          <span className="pm-ws-lg-lens-words">{candidate.degrees[1].nouns.slice(0, 3).join(' · ')}</span>
+                        </button>
+                      );
+                    })}
+                    {incompatibleResources.map((resource) => (
                       <button
                         type="button"
-                        className={`pm-ws-lg-lens${originalSearchTerm ? ' has-search-term' : ''}${candidate.slug === lens?.slug ? ' is-selected' : ''}`}
-                        key={candidate.slug}
-                        title={displayName}
-                        disabled={previewControlsLocked}
-                        onClick={() => selectLens(candidate)}
+                        className={`pm-ws-lg-lens is-v1${incompatibleNote?.resourceName === resource.resourceName ? ' is-selected' : ''}`}
+                        key={resource.resourceName}
+                        title={resource.resourceName}
+                        onClick={() => setIncompatibleNote(resource)}
                       >
-                        {originalSearchTerm && (
-                          <span className="pm-ws-lg-lens-search-term">{originalSearchTerm}</span>
-                        )}
                         <Icon name="orbit" size={15} />
                         <span className="pm-ws-lg-lens-name">
-                          {displayName}
-                          {candidate.source === 'project' && <em>project</em>}
+                          {resource.rebuildQuery}
+                          <em className="pm-ws-lg-v1tag">
+                            {resource.foundVersion === 1 ? 'v1' : 'unreadable'}
+                          </em>
                         </span>
-                        <span className="pm-ws-lg-lens-words">{candidate.degrees[1].nouns.slice(0, 3).join(' · ')}</span>
+                        <span className="pm-ws-lg-lens-words">
+                          {resource.foundVersion === 1
+                            ? 'word field only — not installable'
+                            : 'project file could not be loaded'}
+                        </span>
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
+                {incompatibleNote && (
+                  <div className="pm-ws-lg-note-v1" role="note">
+                    {incompatibleNote.message}
+                    {incompatibleNote.foundVersion === 1 && (
+                      <button type="button" onClick={() => rebuildIncompatible(incompatibleNote)}>
+                        Rebuild and overwrite
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
+          </div>
+
+          {lens?.version === 2
+            ? <WorkshopLexicalGravityLensLogic lens={lens} />
+            : lens && (
+                <div className="pm-ws-lg-note-v1" role="note">
+                  <b>Lens Logic is unavailable for this recovered word field.</b>{' '}
+                  Lexical-only mode preserves its vocabulary without inventing an interpretive grammar. Choose or rebuild a current lens to use Interpret or Recompose.
+                </div>
+              )}
+
+          <div className="pm-ws-lg-application-gear">
+            <div>
+              <span className="pm-ws-lg-gear-label">Application gear</span>
+              <p>
+                {applicationMode === 'lexical'
+                  ? 'Bend diction and imagery through the word field without applying Lens Logic.'
+                  : applicationMode === 'interpret'
+                    ? 'Read through the lens; preserve the passage’s arrangement and sharpen it locally.'
+                    : 'Keep the reading, then use it to rebuild beat order, attention, revelation, and syntax.'}
+              </p>
+            </div>
+            <div className="pm-ws-lg-gear-switch" role="group" aria-label="Application gear">
+              <button
+                type="button"
+                aria-pressed={applicationMode === 'lexical'}
+                className={applicationMode === 'lexical' ? 'is-selected' : undefined}
+                disabled={previewControlsLocked}
+                onClick={() => { setApplicationMode('lexical'); invalidatePreview(); }}
+              >
+                Lexical
+              </button>
+              <button
+                type="button"
+                aria-pressed={applicationMode === 'interpret'}
+                className={applicationMode === 'interpret' ? 'is-selected' : undefined}
+                disabled={previewControlsLocked || lens?.version !== 2}
+                onClick={() => { setApplicationMode('interpret'); invalidatePreview(); }}
+              >
+                Interpret
+              </button>
+              <button
+                type="button"
+                aria-pressed={applicationMode === 'recompose'}
+                className={applicationMode === 'recompose' ? 'is-selected' : undefined}
+                disabled={previewControlsLocked || lens?.version !== 2}
+                onClick={() => { setApplicationMode('recompose'); invalidatePreview(); }}
+              >
+                Recompose
+              </button>
+            </div>
+          </div>
+
+          <div className="pm-ws-lg-application-gear">
+            <div>
+              <span className="pm-ws-lg-gear-label">Evidence mode</span>
+              <p>
+                {evidenceMode === 'tell'
+                  ? 'Make this lens’s influence legible through direct naming, explanation, or compression.'
+                  : evidenceMode === 'show'
+                    ? 'Embody this lens through action, image, behavior, sequence, silence, and consequence.'
+                    : 'Let this lens choose a proportionate mixture of statement and embodied evidence.'}
+              </p>
+            </div>
+            <div className="pm-ws-lg-gear-switch" role="group" aria-label="Evidence mode">
+              {(['tell', 'blend', 'show'] as const).map((mode) => (
+                <button
+                  type="button"
+                  key={mode}
+                  aria-pressed={evidenceMode === mode}
+                  className={evidenceMode === mode ? 'is-selected' : undefined}
+                  disabled={previewControlsLocked}
+                  onClick={() => { setEvidenceMode(mode); invalidatePreview(); }}
+                >
+                  {mode[0].toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
 
           <label className="pm-ws-lg-slider">
@@ -592,7 +788,15 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             <input type="range" min={LEXICAL_GRAVITY_REACH.minimum} max={LEXICAL_GRAVITY_REACH.maximum} step={1} value={reach} disabled={previewControlsLocked} onChange={(event) => { setReach(Number(event.target.value) as 1 | 2 | 3); invalidatePreview(); }} />
           </label>
           <div className="pm-ws-lg-toggle-row">
-            <div><b>Metaphor pull</b><span>Let images cross domains — not just word choice but figuration drawn through the lens.</span></div>
+            <div>
+              <b>Metaphor pull</b>
+              <span>
+                Let images cross domains — not just word choice but figuration drawn through the lens.{' '}
+                {applicationMode === 'lexical'
+                  ? 'Lens Logic stays inactive either way.'
+                  : 'The interpretive grammar stays active either way.'}
+              </span>
+            </div>
             <button type="button" role="switch" aria-checked={metaphorPull} className={metaphorPull ? 'is-on' : ''} disabled={previewControlsLocked} onClick={() => { setMetaphorPull((value) => !value); invalidatePreview(); }}><i /></button>
           </div>
 
@@ -638,7 +842,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
               {tab === 'substitutions' && (
                 <table className="pm-ws-lg-substitutions"><thead><tr><th>general</th><th>{lens.name.toLowerCase()}</th><th>vs. {contrast?.name.toLowerCase() ?? '—'} <button type="button" title="Shuffle contrast lens" onClick={() => setContrastIndex((value) => value + 1)}>↻</button></th></tr></thead><tbody>{SUBSTITUTIONS.map(([key, label]) => <tr key={key}><td>{label}</td><td>{lens.substitutions[key]}</td><td>{contrast?.substitutions[key] ?? '—'}</td></tr>)}</tbody></table>
               )}
-              <div className="pm-ws-lg-fcap">deterministic scaffold — no model call, redrawn instantly</div>
+              <div className="pm-ws-lg-fcap">lexical realization layer — deterministic scaffold, no model call, redrawn instantly</div>
             </div>
           )}
 
@@ -677,13 +881,18 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
                 </span>
               )}
               {preview && (
-                <div className="pm-ws-lg-preview-result">
-                  <b>After</b>
-                  <MarkdownRenderer
-                    content={preview.text}
-                    className="pm-ws-lg-preview-markdown"
-                  />
-                </div>
+                <>
+                  {lens.version === 2 && applicationMode !== 'lexical' && (
+                    <WorkshopLexicalGravityPreviewReading lens={lens} preview={preview} />
+                  )}
+                  <div className="pm-ws-lg-preview-result">
+                    <b>After</b>
+                    <MarkdownRenderer
+                      content={preview.text}
+                      className="pm-ws-lg-preview-markdown"
+                    />
+                  </div>
+                </>
               )}
             </div>
           )}

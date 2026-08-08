@@ -27,9 +27,13 @@ import {
   workshopGuestConversationKey
 } from '@/application/services/workshop/WorkshopSessionTimeService';
 import {
+  WorkshopPersistedSessionCheckpointDecodeResult,
   WorkshopPersistedSessionV1,
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
+import type {
+  WorkshopWidgetRecoveryNotice
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 import {
   WorkshopConversationSettingsService
 } from '@/application/services/workshop/WorkshopConversationSettingsService';
@@ -72,6 +76,7 @@ interface LiveSessionRollback {
   temporal: ReturnType<WorkshopSessionTimeService['exportRuntimeState']>;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   degradedConversations: WorkshopConversationDegradation[];
+  recoveryNotices: WorkshopWidgetRecoveryNotice[];
 }
 
 interface WorkshopHydrationTransaction extends WorkshopSessionHydrateResult {
@@ -132,6 +137,7 @@ export class WorkshopSessionPersistenceCoordinator {
   private writtenRevision = 0;
   private degradedConversationKeys: WorkshopConversationLogicalKey[] = [];
   private degradedConversations: WorkshopConversationDegradation[] = [];
+  private pendingRecoveryNotices: WorkshopWidgetRecoveryNotice[] = [];
   private currentCheckpointError?: string;
   private acceptedWorkspaceRoot?: string;
   private initialUnavailableReason?: Extract<
@@ -173,6 +179,12 @@ export class WorkshopSessionPersistenceCoordinator {
 
   getDegradedConversations(): WorkshopConversationDegradation[] {
     return this.degradedConversations.map((entry) => ({ ...entry }));
+  }
+
+  consumeRecoveryNotices(): WorkshopWidgetRecoveryNotice[] {
+    const notices = this.pendingRecoveryNotices.map((notice) => ({ ...notice }));
+    this.pendingRecoveryNotices = [];
+    return notices;
   }
 
   isCurrentCheckpointProtected(): boolean {
@@ -221,19 +233,19 @@ export class WorkshopSessionPersistenceCoordinator {
     };
     if (availability.available) {
       try {
-        const current = await this.store.readCurrent();
+        const current = await this.readCurrentCheckpoint();
         if (current) {
           try {
-            if (await this.store.readNamed(current.sessionId)) {
-              this.activeNamedSessionId = current.sessionId;
+            if (await this.store.readNamed(current.session.sessionId)) {
+              this.activeNamedSessionId = current.session.sessionId;
             }
           } catch (error) {
             this.outputChannel.appendLine(
               `[WorkshopSessionPersistence] Could not confirm named autosave target ` +
-              `(id=${current.sessionId}): ${this.errorMessage(error)}`
+              `(id=${current.session.sessionId}): ${this.errorMessage(error)}`
             );
           }
-          result = await this.hydrate(current);
+          result = await this.hydrate(current.session, true, true, current);
         } else {
           this.recordStartMarker();
           this.markDirty('initial session');
@@ -409,14 +421,14 @@ export class WorkshopSessionPersistenceCoordinator {
 
   async openNamed(sessionId: string): Promise<WorkshopSessionHydrateResult> {
     return this.serializeSessionOperation(async () => {
-      const persisted = await this.store.readNamed(sessionId);
+      const persisted = await this.readNamedCheckpoint(sessionId);
       if (!persisted) {
         throw new Error(`Named Workshop session ${sessionId} was not found.`);
       }
       const rollback = this.captureRollback();
       let hydration: WorkshopHydrationTransaction;
       try {
-        hydration = await this.hydrate(persisted, false, false);
+        hydration = await this.hydrate(persisted.session, false, false, persisted);
         this.time.touch();
         this.activeNamedSessionId = sessionId;
         const promoted = await this.capture(this.identity);
@@ -455,15 +467,20 @@ export class WorkshopSessionPersistenceCoordinator {
     requestedTitle?: string
   ): Promise<WorkshopStoredSessionSummary> {
     return this.serializeSessionOperation(async () => {
-      const source = await this.store.readNamed(sourceSessionId);
+      const source = await this.store.readNamedWithRecovery(sourceSessionId);
       if (!source) {
         throw new Error(`Named Workshop session ${sourceSessionId} was not found.`);
       }
+      if (source.recoveryNotices.length > 0) {
+        throw new Error(
+          'Open this Workshop session before renaming or duplicating it so its saved configuration can be recovered deliberately.'
+        );
+      }
       const now = normalizedIso(this.now());
       const duplicate: WorkshopPersistedSessionV1 = {
-        ...source,
+        ...source.session,
         sessionId: this.idFactory(),
-        title: this.requireTitle(requestedTitle ?? `${source.title} copy`),
+        title: this.requireTitle(requestedTitle ?? `${source.session.title} copy`),
         createdAt: now,
         updatedAt: now,
         savedAt: now
@@ -614,7 +631,11 @@ export class WorkshopSessionPersistenceCoordinator {
   private async hydrate(
     persisted: WorkshopPersistedSessionV1,
     retirePreviousConversations = true,
-    scheduleResumeAutosave = true
+    scheduleResumeAutosave = true,
+    checkpointRecovery?: Pick<
+      WorkshopPersistedSessionCheckpointDecodeResult,
+      'normalizations' | 'recoveryNotices'
+    >
   ): Promise<WorkshopHydrationTransaction> {
     // Structural preflight happens before ConversationManager can mint ids.
     const workshop = parseWorkshopSessionStateV1(persisted.workshop);
@@ -660,7 +681,10 @@ export class WorkshopSessionPersistenceCoordinator {
         bindings as WorkshopRuntimeConversationBindings,
         this.session.getConversationBehavior()
       );
-      this.logCheckpointNormalizations(hydration.normalizations);
+      this.logCheckpointNormalizations(unique([
+        ...(checkpointRecovery?.normalizations ?? []),
+        ...hydration.normalizations
+      ]));
     } catch (error) {
       importedIds.forEach((conversationId) =>
         this.assistantToolService.discardConversation(conversationId)
@@ -703,6 +727,10 @@ export class WorkshopSessionPersistenceCoordinator {
     };
     this.degradedConversationKeys = degradedKeys;
     this.degradedConversations = degradedConversations;
+    this.pendingRecoveryNotices = [
+      ...(checkpointRecovery?.recoveryNotices ?? []),
+      ...hydration.recoveryNotices
+    ].map((notice) => ({ ...notice }));
     this.session.recordSessionMarker('resume', this.time.describeVisibleMarker('resume'));
     if (retirePreviousConversations) {
       hydration.discardedConversationIds.forEach((conversationId) =>
@@ -724,6 +752,18 @@ export class WorkshopSessionPersistenceCoordinator {
       degradedConversations,
       discardedConversationIds: hydration.discardedConversationIds
     };
+  }
+
+  private async readCurrentCheckpoint(): Promise<
+    WorkshopPersistedSessionCheckpointDecodeResult | undefined
+  > {
+    return this.store.readCurrentWithRecovery();
+  }
+
+  private async readNamedCheckpoint(
+    sessionId: string
+  ): Promise<WorkshopPersistedSessionCheckpointDecodeResult | undefined> {
+    return this.store.readNamedWithRecovery(sessionId);
   }
 
   private importDescriptors(
@@ -864,7 +904,8 @@ export class WorkshopSessionPersistenceCoordinator {
       bindings,
       temporal: this.time.exportRuntimeState(),
       degradedConversationKeys: [...this.degradedConversationKeys],
-      degradedConversations: this.getDegradedConversations()
+      degradedConversations: this.getDegradedConversations(),
+      recoveryNotices: this.pendingRecoveryNotices.map((notice) => ({ ...notice }))
     };
   }
 
@@ -896,6 +937,7 @@ export class WorkshopSessionPersistenceCoordinator {
     this.activeNamedSessionId = rollback.activeNamedSessionId;
     this.degradedConversationKeys = [...rollback.degradedConversationKeys];
     this.degradedConversations = rollback.degradedConversations.map((entry) => ({ ...entry }));
+    this.pendingRecoveryNotices = rollback.recoveryNotices.map((notice) => ({ ...notice }));
   }
 
   private recordStartMarker(): void {
