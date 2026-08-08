@@ -2,7 +2,7 @@
 
 - **Status**: Accepted; amended 2026-08-07 with first-class Lexical gear,
   independent Tell/Blend/Show evidence mode, and checkpoint recovery —
-  implementation in PR #110; interactive F5 acceptance pending
+  implementation verified by interactive F5 acceptance
 - **Decision owner**: Okey
 - **Extends**: [ADR 2026-07-22 — Conversation Widgets](2026-07-22-conversation-widgets.md)
 - **Delivery**: [Sprint 02B-B — Lexical Gravity interpretive grammar](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-lexical-gravity-interpretive-grammar.md)

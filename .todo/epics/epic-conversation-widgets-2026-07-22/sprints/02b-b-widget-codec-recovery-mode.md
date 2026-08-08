@@ -1,7 +1,7 @@
 # Sprint 02B-B Exit Plan: Widget Codec Recovery Mode
 
 **Date**: 2026-08-07
-**Status**: Approved for implementation before Sprint 02B-B exits
+**Status**: Implemented and verified — F5 recovery acceptance passed 2026-08-07
 **Decision owner**: Okey Landers
 **Prepared by**: Ada Forge
 **Scope**: Development-checkpoint recovery for recognized prior widget drafts;
@@ -10,7 +10,7 @@ with Lexical Gravity v1 as the first behavioral recovery
 **Branch**: `sprint/conversation-widgets-02b-b-lexical-gravity-interpretive-grammar`
 **Parent sprint**: [Sprint 02B-B — Lexical Gravity Interpretive Grammar](02b-b-lexical-gravity-interpretive-grammar.md)
 **Follow-up foundation**: [Sprint 02D — Widget Persistence Grammar and Integrity](02d-widget-persistence-grammar-and-integrity.md)
-**Implementation gate**: Open; documentation does not authorize project-resource rewrites
+**Implementation gate**: Closed; session-embedded recovery is verified and documentation still does not authorize project-resource rewrites
 
 ## 0. Change Card — 30 seconds
 
@@ -306,10 +306,10 @@ only the minimum coherent session/config/directive linkage.
 | R-04 | Standard | Current/named twins can drift if recovery persistence is tested through only one door | Ordered dual-write integration witness | Sprint 02B-B exit |
 | R-05 | Standard | Show/Tell is currently an unstated model choice, and Recompose tends to prove interpretation through explanation | Independent required `evidenceMode`, defaulted to Blend for prior checkpoints | Sprint 02B-B exit |
 
-**Implementation gate:** `OPEN`. The decision owner has selected salvage over
-checkpoint rejection. No critical unknown changes the architecture; the exact
-UI control for deliberately upgrading a lexical-only config may follow, but
-automatic hydration must not perform that semantic upgrade.
+**Implementation gate:** `CLOSED` — the decision owner verified F5 recovery on
+2026-08-07. Salvage is the shipped policy; the exact UI control for deliberately
+upgrading a lexical-only config may follow, but automatic hydration must not
+perform that semantic upgrade.
 
 ## 9. Self-Review and Re-plan Verdict
 

@@ -4,9 +4,9 @@
 **Status**: Active. Okey lifted the Workshop feature freeze on 2026-08-06 after
 the Workshop Architecture Refactor completed Phases 0-7. Sprint 01 merged
 2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed; Sprint
-02B-B is in progress. Widget codec recovery is a Sprint 02B-B exit gate, then
-Sprint 02D establishes the persistence grammar/integrity family boundary before
-Prose Controller or any other persisted widget begins.
+02B-B is complete, including widget codec recovery and F5 acceptance. Sprint
+02D establishes the persistence grammar/integrity family boundary before Prose
+Controller or any other persisted widget begins.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -34,7 +34,7 @@ and its superseded sprint file was removed. Sprint 02D records the accepted
 F-07/F-09 foundation. Sprints 03 and 04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;
-[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Accepted**; implementation in PR #110 with interactive F5 acceptance pending;
+[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Accepted**; implementation in PR #110 with interactive F5 acceptance verified;
 [2026-08-03 — Workshop Feature Family and Module Boundaries](../../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) — **Accepted; Phase 7 completed and feature gate lifted**
 **Integration branch**: `epic/conversation-widgets`
 
