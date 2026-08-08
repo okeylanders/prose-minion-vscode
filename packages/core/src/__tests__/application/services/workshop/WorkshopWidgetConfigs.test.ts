@@ -26,6 +26,9 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   builtInLexicalGravityLens
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
+import {
+  lexicalGravityConfigKey
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 
 const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
 
@@ -248,6 +251,40 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(lexicalConfig(restored.getWidgetConfig('wc-1')).draft).toEqual(lexicalDraft());
   });
 
+  it('rejects widget semantic corruption after normalization and before live mutation', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const before = session.exportCommittedState();
+
+    const incoming = new WorkshopSessionService(() => 10_000);
+    incoming.setSessionScope('open');
+    incoming.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
+    const state = incoming.exportCommittedState();
+    const persistedDraft = lexicalConfig(state.widgetConfigs![0]).draft;
+    persistedDraft.preview = {
+      version: 2,
+      configKey: lexicalGravityConfigKey(persistedDraft),
+      sourceText: 'The room waited.',
+      semanticPositions: [{
+        element: 'the room',
+        roleId: 'unknown-role',
+        axisId: null,
+        axisPosition: null,
+        significance: 'The room holds the pressure.'
+      }],
+      selectedDynamicId: null,
+      openEntailment: null,
+      text: 'The room waited.'
+    };
+
+    const decoded = parseWorkshopSessionStateV1(state);
+    expect(() => session.hydrateCommittedState(
+      decoded,
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    )).toThrow(/roleId.*selected lens/);
+    expect(session.exportCommittedState()).toEqual(before);
+  });
+
   it('recovers an exact pre-v2 Lexical Gravity word field without inventing grammar', () => {
     session.setSessionScope('open');
     session.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
@@ -436,11 +473,18 @@ describe('WorkshopSessionService — widget configs', () => {
       },
       message: /source references within 500 characters/
     }
-  ])('rejects $label at persistence ingress', ({ mutate, message }) => {
+  ])('rejects $label before live hydration', ({ mutate, message }) => {
     session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
     const state = session.exportCommittedState();
     mutate(state);
-    expect(() => parseWorkshopSessionStateV1(state)).toThrow(message);
+    expect(() => {
+      const decoded = parseWorkshopSessionStateV1(state);
+      new WorkshopSessionService(() => 10_000).hydrateCommittedState(
+        decoded,
+        {},
+        DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+      );
+    }).toThrow(message);
   });
 
   it('rejects malformed recommendation source references at persistence ingress', () => {

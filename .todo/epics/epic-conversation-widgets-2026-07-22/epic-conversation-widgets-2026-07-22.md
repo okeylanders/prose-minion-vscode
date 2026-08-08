@@ -5,8 +5,9 @@
 the Workshop Architecture Refactor completed Phases 0-7. Sprint 01 merged
 2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed; Sprint
 02B-B is complete, including widget codec recovery and F5 acceptance. Sprint
-02D establishes the persistence grammar/integrity family boundary before Prose
-Controller or any other persisted widget begins.
+02D is complete on its sprint branch, establishing the persistence
+grammar/integrity family boundary before Prose Controller or any other
+persisted widget begins.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -30,8 +31,9 @@ exit plan now salvages recognized v1 session snapshots instead of rejecting the
 whole room. The old optional Sprint 02C scope/context extraction was completed
 under the mandatory
 [Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
-and its superseded sprint file was removed. Sprint 02D records the accepted
-F-07/F-09 foundation. Sprints 03 and 04 have not started.
+and its superseded sprint file was removed. Sprint 02D implements the accepted
+F-07/F-09 foundation with an exhaustive four-operation lifecycle registry and
+post-normalization widget integrity. Sprints 03 and 04 have not started.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;
 [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Accepted**; implementation in PR #110 with interactive F5 acceptance verified;
@@ -182,10 +184,10 @@ with a second widget before adding v2 richness.
 | 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |
 
 Each implemented feature sprint lands as its own PR into
-`epic/conversation-widgets`. Feature sequencing is frozen until the Workshop
-Architecture Refactor Phase 7 explicitly lifts the gate. That gate is closed;
-Sprint 02B-B is active, its recovery plan is an exit condition, and Sprint 02D
-must land before Sprint 03. Final step after Sprint 04
+`epic/conversation-widgets`. The Workshop Architecture Refactor Phase 7 lifted
+the feature gate. Sprint 02B-B and its recovery exit are complete; Sprint 02D
+is complete on its sprint branch and must merge into
+`epic/conversation-widgets` before Sprint 03 begins. Final step after Sprint 04
 (or the agreed cut line): one PR
 `epic/conversation-widgets →` the workshop integration line.
 

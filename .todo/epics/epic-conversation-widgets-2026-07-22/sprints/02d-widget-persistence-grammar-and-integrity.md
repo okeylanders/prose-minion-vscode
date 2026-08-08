@@ -1,6 +1,6 @@
 # Sprint 02D: Widget Persistence Grammar and Integrity
 
-**Status**: Planned — architecture decision accepted 2026-08-07
+**Status**: Complete — implemented and verified 2026-08-07
 **Priority**: High; mandatory before the next persisted widget
 **Branch**: `sprint/conversation-widgets-02d-widget-persistence-grammar` -> `epic/conversation-widgets`
 **Estimated Effort**: 1-2 days
@@ -182,11 +182,41 @@ It must not require edits to Gesture Playground or Lexical Gravity feature
 files. Shared `persistedValidation.ts` changes only if Prose Controller proves a
 new primitive is genuinely mechanical across widget families.
 
+## Implementation Receipt — 2026-08-07
+
+- `WorkshopWidgetPersistenceLifecycle` replaces the three-switch recovery
+  dispatcher with one closed, exhaustive registry over
+  `WorkshopWidgetConfigSnapshot['widgetId']`. Every persisted union arm owns
+  checkpoint shape, hydration normalization, current shape, and integrity.
+- Gesture Playground and Lexical Gravity use shared `boundedArrayAt` and
+  `nullableBoundedStringAt` grammar. Gesture menu/selection/source-reference
+  relationships and Lexical lens/preview relationships now live in named
+  integrity passes rather than raw structural recognition.
+- Lexical preview role, axis, dynamic, nullity, and six-value config-key
+  correlations run only after checkpoint normalization. Lens identity,
+  uniqueness, and directive renderability follow the same structural/semantic
+  split.
+- `WorkshopSessionStateV1Integrity` invokes widget integrity on normalized
+  current state. Raw compatibility preflight explicitly skips that phase;
+  aggregate hydration validates it before installing any live state.
+- The registry's mapped `satisfies WorkshopWidgetPersistenceLifecycleRegistry`
+  constraint is the compile-time completeness and feature-draft typing witness.
+  Its focused architecture test
+  asserts the two earned persisted arms exactly once and proves roadmap widget
+  IDs do not masquerade as codecs.
+- Regression coverage proves recognized prior drafts normalize first, unknown
+  Lexical references fail in integrity rather than shape, and semantic
+  corruption cannot partially replace the live aggregate.
+- Verification: 191 Jest suites / 1,989 tests / 2 snapshots; all three
+  TypeScript projects; quiet ESLint; production extension + webview build;
+  bundle sentinels; and `git diff --check` pass. Webpack reports only its known
+  webview size advisories.
+
 ## Completion Criteria
 
-- The implemented validation flow matches the decision map.
-- F-07 and F-09 are marked addressed in the PR #110 review ledger.
-- No feature semantics enter a generic persistence module.
-- The Prose Controller sprint depends on this completed foundation.
-- The reproduction test passes in code and architecture tests, not only in
+- [x] The implemented validation flow matches the decision map.
+- [x] F-07 and F-09 are marked addressed in the PR #110 review ledger.
+- [x] No feature semantics enter a generic persistence module.
+- [x] The Prose Controller sprint depends on this completed foundation.
+- [x] The reproduction test passes in code and architecture tests, not only in
   prose.

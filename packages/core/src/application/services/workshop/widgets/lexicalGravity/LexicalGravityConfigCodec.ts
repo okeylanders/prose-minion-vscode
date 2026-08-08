@@ -17,9 +17,11 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   arrayOf,
   booleanAt,
+  boundedArrayAt,
   boundedStringAt,
   enumAt,
   exactObject,
+  nullableBoundedStringAt,
   numberAt,
   objectAt,
   optionalBooleanAt,
@@ -121,14 +123,6 @@ export function assertLexicalGravityLensShape(value: unknown, path: string): voi
   );
   assertLexicalGravityLensLogicShape(item.logic, `${path}.logic`);
   assertLexicalGravityWordFieldShape(item, path);
-  try {
-    assertLexicalGravityLensRenderable(value as WorkshopLexicalGravityLens);
-  } catch {
-    shapeError(
-      path,
-      `a lens whose reach-3 directive fits within ${BUDGET.lexicalDirectiveCharacters} characters`
-    );
-  }
 }
 
 export function assertLexicalGravityLegacyLensV1Shape(
@@ -172,22 +166,6 @@ export function assertLexicalGravityLegacyLensV1Shape(
     false
   );
   assertLexicalGravityWordFieldShape(item, path);
-  try {
-    buildLegacyLexicalGravityDirectiveFrame(
-      { id: 'pd-validation', revision: Number.MAX_SAFE_INTEGER },
-      {
-        resolvedLens: value as WorkshopLexicalGravityLegacyLensV1,
-        weight: 100,
-        reach: 3,
-        metaphorPull: true
-      }
-    );
-  } catch {
-    shapeError(
-      path,
-      `a lens whose reach-3 directive fits within ${BUDGET.lexicalDirectiveCharacters} characters`
-    );
-  }
 }
 
 function assertLexicalGravityWordFieldShape(
@@ -202,7 +180,7 @@ function assertLexicalGravityWordFieldShape(
       ['nouns', 'verbs', 'modifiers']
     );
     for (const part of ['nouns', 'verbs', 'modifiers'] as const) {
-      assertUniqueBoundedStrings(
+      assertBoundedStrings(
         bucket[part],
         `${path}.degrees.${degree}.${part}`,
         2,
@@ -211,16 +189,14 @@ function assertLexicalGravityWordFieldShape(
       );
     }
   }
-  assertUniqueBoundedStrings(
+  assertBoundedStrings(
     item.gradient,
     `${path}.gradient`,
     3,
     BUDGET.lexicalGradientTerms,
     BUDGET.lexicalTermCharacters
   );
-  if (!Array.isArray(item.cliches) || item.cliches.length < 1 || item.cliches.length > BUDGET.lexicalCliches) {
-    shapeError(`${path}.cliches`, `an array of 1–${BUDGET.lexicalCliches} contrasts`);
-  }
+  boundedArrayAt(item.cliches, `${path}.cliches`, 1, BUDGET.lexicalCliches, 'contrasts');
   arrayOf(item.cliches, `${path}.cliches`, (entryValue, entryPath) => {
     const entry = exactObject(entryValue, entryPath, ['worn', 'fresh']);
     boundedStringAt(entry.worn, `${entryPath}.worn`, BUDGET.lexicalPhraseCharacters, false);
@@ -278,18 +254,34 @@ export function assertLexicalGravityDraftShape(value: unknown, path: string): vo
   enumAt(draft.evidenceMode, `${path}.evidenceMode`, LEXICAL_GRAVITY_EVIDENCE_MODES);
   const lens = objectAt(draft.resolvedLens, `${path}.resolvedLens`);
   if (lens.version === 1) {
-    if (draft.applicationMode !== 'lexical') {
-      shapeError(`${path}.applicationMode`, 'lexical for a recovered v1 lens');
-    }
     assertLexicalGravityLegacyLensV1Shape(lens, `${path}.resolvedLens`);
   } else {
     assertLexicalGravityLensShape(lens, `${path}.resolvedLens`);
   }
-  if ((lens.slug as string) !== draft.lensSlug) {
+  if (draft.preview !== undefined) {
+    assertCurrentLexicalGravityPreviewShape(draft.preview, `${path}.preview`);
+  }
+}
+
+/** Cross-field and renderability rules for an already current-shaped draft. */
+export function assertLexicalGravityDraftIntegrity(
+  draft: WorkshopLexicalGravityDraft,
+  path: string
+): void {
+  const lens = draft.resolvedLens;
+  if (lens.version === 1) {
+    if (draft.applicationMode !== 'lexical') {
+      shapeError(`${path}.applicationMode`, 'lexical for a recovered v1 lens');
+    }
+    assertLexicalGravityLegacyLensV1Integrity(lens, `${path}.resolvedLens`);
+  } else {
+    assertLexicalGravityLensIntegrity(lens, `${path}.resolvedLens`);
+  }
+  if (lens.slug !== draft.lensSlug) {
     shapeError(`${path}.resolvedLens.slug`, 'the selected lensSlug');
   }
   if (draft.preview !== undefined) {
-    assertCurrentLexicalGravityPreview(draft, path);
+    assertCurrentLexicalGravityPreviewIntegrity(draft, path);
   }
 }
 
@@ -322,62 +314,83 @@ function assertLexicalGravityDraftControls(
   booleanAt(draft.metaphorPull, `${path}.metaphorPull`);
 }
 
-function assertCurrentLexicalGravityPreview(
-  draft: Record<string, unknown>,
+function assertCurrentLexicalGravityPreviewShape(
+  value: unknown,
   path: string
 ): void {
   const preview = exactObject(
-    draft.preview,
-    `${path}.preview`,
+    value,
+    path,
     [
       'version', 'configKey', 'sourceText', 'semanticPositions',
       'selectedDynamicId', 'openEntailment', 'text'
     ]
   );
   if (preview.version !== LEXICAL_GRAVITY_PREVIEW_VERSION) {
-    shapeError(`${path}.preview.version`, String(LEXICAL_GRAVITY_PREVIEW_VERSION));
+    shapeError(`${path}.version`, String(LEXICAL_GRAVITY_PREVIEW_VERSION));
   }
-  boundedStringAt(preview.configKey, `${path}.preview.configKey`, 256, false);
+  boundedStringAt(preview.configKey, `${path}.configKey`, 256, false);
   boundedStringAt(
     preview.sourceText,
-    `${path}.preview.sourceText`,
+    `${path}.sourceText`,
     BUDGET.lexicalSampleCharacters,
     false
   );
-  const lens = draft.resolvedLens as WorkshopLexicalGravityResolvedLens;
+  assertLexicalGravitySemanticPositionsShape(
+    preview.semanticPositions,
+    `${path}.semanticPositions`
+  );
+  nullableBoundedStringAt(
+    preview.selectedDynamicId,
+    `${path}.selectedDynamicId`,
+    BUDGET.lexicalLogicIdCharacters,
+    false
+  );
+  nullableBoundedStringAt(
+    preview.openEntailment,
+    `${path}.openEntailment`,
+    BUDGET.lexicalPreviewEntailmentCharacters,
+    false
+  );
+  boundedStringAt(
+    preview.text,
+    `${path}.text`,
+    BUDGET.lexicalPreviewCharacters,
+    false
+  );
+}
+
+function assertCurrentLexicalGravityPreviewIntegrity(
+  draft: WorkshopLexicalGravityDraft,
+  path: string
+): void {
+  const preview = draft.preview!;
+  const lens = draft.resolvedLens;
   if (draft.applicationMode === 'lexical') {
-    if (!Array.isArray(preview.semanticPositions) || preview.semanticPositions.length !== 0) {
+    if (preview.semanticPositions.length !== 0) {
       shapeError(`${path}.preview.semanticPositions`, 'an empty array in lexical mode');
     }
     if (preview.selectedDynamicId !== null) {
       shapeError(`${path}.preview.selectedDynamicId`, 'null in lexical mode');
     }
   } else {
-    assertLexicalGravitySemanticPositions(
+    assertLexicalGravitySemanticPositionsIntegrity(
       preview.semanticPositions,
       `${path}.preview.semanticPositions`,
       lens as WorkshopLexicalGravityLens
     );
-    assertSelectedDynamic(
+    assertSelectedDynamicIntegrity(
       preview.selectedDynamicId,
       `${path}.preview.selectedDynamicId`,
       lens as WorkshopLexicalGravityLens
     );
   }
-  if (
-    (preview.semanticPositions as unknown[]).length === 0
-    && preview.selectedDynamicId !== null
-  ) {
+  if (preview.semanticPositions.length === 0 && preview.selectedDynamicId !== null) {
     shapeError(
       `${path}.preview.selectedDynamicId`,
       'null when no semantic positions are declared'
     );
   }
-  assertNullableBoundedString(
-    preview.openEntailment,
-    `${path}.preview.openEntailment`,
-    BUDGET.lexicalPreviewEntailmentCharacters
-  );
   if (preview.openEntailment !== null && preview.selectedDynamicId === null) {
     shapeError(
       `${path}.preview.openEntailment`,
@@ -387,19 +400,13 @@ function assertCurrentLexicalGravityPreview(
   if (draft.applicationMode === 'lexical' && preview.openEntailment !== null) {
     shapeError(`${path}.preview.openEntailment`, 'null in lexical mode');
   }
-  boundedStringAt(
-    preview.text,
-    `${path}.preview.text`,
-    BUDGET.lexicalPreviewCharacters,
-    false
-  );
   const expected = lexicalGravityConfigKey({
-    lensSlug: draft.lensSlug as string,
-    applicationMode: draft.applicationMode as WorkshopLexicalGravityApplicationMode,
-    evidenceMode: draft.evidenceMode as WorkshopLexicalGravityEvidenceMode,
-    weight: draft.weight as number,
-    reach: draft.reach as 1 | 2 | 3,
-    metaphorPull: draft.metaphorPull as boolean
+    lensSlug: draft.lensSlug,
+    applicationMode: draft.applicationMode,
+    evidenceMode: draft.evidenceMode,
+    weight: draft.weight,
+    reach: draft.reach,
+    metaphorPull: draft.metaphorPull
   });
   if (preview.configKey !== expected) {
     shapeError(`${path}.preview.configKey`, 'the current six-value config key');
@@ -419,43 +426,7 @@ function assertLexicalGravityPreEvidenceDraftShape(value: unknown, path: string)
     shapeError(`${path}.resolvedLens.slug`, 'the selected lensSlug');
   }
   if (draft.preview !== undefined) {
-    const preview = exactObject(
-      draft.preview,
-      `${path}.preview`,
-      [
-        'version', 'configKey', 'sourceText', 'semanticPositions',
-        'selectedDynamicId', 'openEntailment', 'text'
-      ]
-    );
-    if (preview.version !== LEXICAL_GRAVITY_PREVIEW_VERSION) {
-      shapeError(`${path}.preview.version`, String(LEXICAL_GRAVITY_PREVIEW_VERSION));
-    }
-    const migrated = {
-      ...draft,
-      evidenceMode: 'blend',
-      preview: {
-        ...preview,
-        configKey: lexicalGravityConfigKey({
-          lensSlug: draft.lensSlug as string,
-          applicationMode: draft.applicationMode as WorkshopLexicalGravityApplicationMode,
-          evidenceMode: 'blend',
-          weight: draft.weight as number,
-          reach: draft.reach as WorkshopLexicalGravityReach,
-          metaphorPull: draft.metaphorPull as boolean
-        })
-      }
-    };
-    assertCurrentLexicalGravityPreview(migrated, path);
-    const expectedLegacyKey = lexicalGravityPreEvidenceConfigKey(draft as {
-      lensSlug: string;
-      applicationMode: WorkshopLexicalGravityApplicationMode;
-      weight: number;
-      reach: WorkshopLexicalGravityReach;
-      metaphorPull: boolean;
-    });
-    if (preview.configKey !== expectedLegacyKey) {
-      shapeError(`${path}.preview.configKey`, 'the prior five-value config key');
-    }
+    assertCurrentLexicalGravityPreviewShape(draft.preview, `${path}.preview`);
   }
 }
 
@@ -494,15 +465,6 @@ function assertLexicalGravityLegacyDraftV1Shape(value: unknown, path: string): v
       BUDGET.lexicalPreviewCharacters,
       false
     );
-    const expected = lexicalGravityLegacyV1ConfigKey(draft as {
-      lensSlug: string;
-      weight: number;
-      reach: WorkshopLexicalGravityReach;
-      metaphorPull: boolean;
-    });
-    if (preview.configKey !== expected) {
-      shapeError(`${path}.preview.configKey`, 'the Lexical Gravity v1 config key');
-    }
   }
 }
 
@@ -540,6 +502,10 @@ export function validateLexicalGravityDraft(
   value: unknown
 ): WorkshopLexicalGravityDraft {
   assertLexicalGravityDraftShape(value, 'Lexical Gravity draft');
+  assertLexicalGravityDraftIntegrity(
+    value as WorkshopLexicalGravityDraft,
+    'Lexical Gravity draft'
+  );
   return cloneLexicalGravityDraft(value as WorkshopLexicalGravityDraft);
 }
 
@@ -557,6 +523,21 @@ export function normalizeLexicalGravityDraftForHydration(
     && checkpoint.applicationMode === undefined
     && checkpoint.evidenceMode === undefined
   ) {
+    if (checkpoint.preview !== undefined) {
+      const preview = checkpoint.preview as { configKey: string };
+      const expected = lexicalGravityLegacyV1ConfigKey(checkpoint as unknown as {
+        lensSlug: string;
+        weight: number;
+        reach: WorkshopLexicalGravityReach;
+        metaphorPull: boolean;
+      });
+      if (preview.configKey !== expected) {
+        shapeError(
+          'Lexical Gravity checkpoint draft.preview.configKey',
+          'the Lexical Gravity v1 config key'
+        );
+      }
+    }
     const draft: WorkshopLexicalGravityDraft = {
       lensSlug: checkpoint.lensSlug as string,
       applicationMode: 'lexical',
@@ -577,6 +558,35 @@ export function normalizeLexicalGravityDraftForHydration(
     };
   }
   if (checkpoint.evidenceMode === undefined) {
+    if (checkpoint.preview !== undefined) {
+      const preview = checkpoint.preview as NonNullable<
+        WorkshopLexicalGravityDraft['preview']
+      >;
+      const priorDraft = checkpoint as unknown as Omit<
+        WorkshopLexicalGravityDraft,
+        'evidenceMode'
+      >;
+      const expectedPriorKey = lexicalGravityPreEvidenceConfigKey(priorDraft);
+      if (preview.configKey !== expectedPriorKey) {
+        shapeError(
+          'Lexical Gravity checkpoint draft.preview.configKey',
+          'the prior five-value config key'
+        );
+      }
+      const currentIdentity = lexicalGravityConfigKey({
+        ...priorDraft,
+        evidenceMode: 'blend'
+      });
+      const semanticWitness = {
+        ...priorDraft,
+        evidenceMode: 'blend' as const,
+        preview: { ...preview, configKey: currentIdentity }
+      } as WorkshopLexicalGravityDraft;
+      assertLexicalGravityDraftIntegrity(
+        semanticWitness,
+        'Lexical Gravity checkpoint draft'
+      );
+    }
     const oldDraft = checkpoint as unknown as Omit<
       WorkshopLexicalGravityDraft,
       'evidenceMode'
@@ -606,6 +616,10 @@ export function validateLexicalGravityLens(
   value: unknown
 ): WorkshopLexicalGravityLens {
   assertLexicalGravityLensShape(value, 'Lexical Gravity lens');
+  assertLexicalGravityLensIntegrity(
+    value as WorkshopLexicalGravityLens,
+    'Lexical Gravity lens'
+  );
   return cloneLexicalGravityLens(value as WorkshopLexicalGravityLens);
 }
 
@@ -743,22 +757,16 @@ function lexicalGravityLegacyV1ConfigKey(input: {
   return `${input.lensSlug}|${input.weight}|${input.reach}|${input.metaphorPull ? 1 : 0}`;
 }
 
-function assertUniqueBoundedStrings(
+function assertBoundedStrings(
   value: unknown,
   path: string,
   minimum: number,
   maximum: number,
   maximumCharacters: number
 ): void {
-  if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
-    shapeError(path, `an array of ${minimum}–${maximum} strings`);
-  }
-  const seen = new Set<string>();
+  boundedArrayAt(value, path, minimum, maximum, 'strings');
   arrayOf(value, path, (item, itemPath) => {
     boundedStringAt(item, itemPath, maximumCharacters, false);
-    const key = (item as string).toLocaleLowerCase('en-US');
-    if (seen.has(key)) {shapeError(path, 'strings without duplicates');}
-    seen.add(key);
   });
 }
 
@@ -779,24 +787,24 @@ function assertLexicalGravityLensLogicShape(value: unknown, path: string): void 
     `${path}.attention`,
     ['foregrounds', 'backgrounds']
   );
-  assertUniqueBoundedStrings(
+  assertBoundedStrings(
     attention.foregrounds,
     `${path}.attention.foregrounds`,
     BUDGET.lexicalAttentionItemsMinimum,
     BUDGET.lexicalAttentionItems,
     BUDGET.lexicalAttentionItemCharacters
   );
-  assertUniqueBoundedStrings(
+  assertBoundedStrings(
     attention.backgrounds,
     `${path}.attention.backgrounds`,
     BUDGET.lexicalAttentionItemsMinimum,
     BUDGET.lexicalAttentionItems,
     BUDGET.lexicalAttentionItemCharacters
   );
-  assertLogicAxes(logic.axes, `${path}.axes`);
-  assertLogicRoles(logic.roles, `${path}.roles`);
-  assertLogicDynamics(logic.dynamics, `${path}.dynamics`);
-  assertUniqueBoundedStrings(
+  assertLogicAxesShape(logic.axes, `${path}.axes`);
+  assertLogicRolesShape(logic.roles, `${path}.roles`);
+  assertLogicDynamicsShape(logic.dynamics, `${path}.dynamics`);
+  assertBoundedStrings(
     logic.guardrails,
     `${path}.guardrails`,
     BUDGET.lexicalLogicGuardrailsMinimum,
@@ -805,27 +813,24 @@ function assertLexicalGravityLensLogicShape(value: unknown, path: string): void 
   );
 }
 
-function assertLogicAxes(value: unknown, path: string): void {
-  assertCollectionLength(
+function assertLogicAxesShape(value: unknown, path: string): void {
+  boundedArrayAt(
     value,
     path,
     BUDGET.lexicalLogicAxesMinimum,
     BUDGET.lexicalLogicAxes,
     'axes'
   );
-  const ids = new Set<string>();
   arrayOf(value, path, (axisValue, axisPath) => {
     const axis = exactObject(axisValue, axisPath, ['id', 'name', 'poles']);
-    assertLogicId(axis.id, `${axisPath}.id`, ids);
+    assertLogicIdShape(axis.id, `${axisPath}.id`);
     boundedStringAt(
       axis.name,
       `${axisPath}.name`,
       BUDGET.lexicalLogicNameCharacters,
       false
     );
-    if (!Array.isArray(axis.poles) || axis.poles.length !== 2) {
-      shapeError(`${axisPath}.poles`, 'a two-string tuple');
-    }
+    boundedArrayAt(axis.poles, `${axisPath}.poles`, 2, 2, 'strings');
     const poles = axis.poles as unknown[];
     boundedStringAt(
       poles[0],
@@ -839,25 +844,20 @@ function assertLogicAxes(value: unknown, path: string): void {
       BUDGET.lexicalAxisPoleCharacters,
       false
     );
-    if ((poles[0] as string).toLocaleLowerCase('en-US')
-      === (poles[1] as string).toLocaleLowerCase('en-US')) {
-      shapeError(`${axisPath}.poles`, 'two distinct strings');
-    }
   });
 }
 
-function assertLogicRoles(value: unknown, path: string): void {
-  assertCollectionLength(
+function assertLogicRolesShape(value: unknown, path: string): void {
+  boundedArrayAt(
     value,
     path,
     BUDGET.lexicalLogicRolesMinimum,
     BUDGET.lexicalLogicRoles,
     'roles'
   );
-  const ids = new Set<string>();
   arrayOf(value, path, (roleValue, rolePath) => {
     const role = exactObject(roleValue, rolePath, ['id', 'name', 'description']);
-    assertLogicId(role.id, `${rolePath}.id`, ids);
+    assertLogicIdShape(role.id, `${rolePath}.id`);
     boundedStringAt(
       role.name,
       `${rolePath}.name`,
@@ -873,22 +873,21 @@ function assertLogicRoles(value: unknown, path: string): void {
   });
 }
 
-function assertLogicDynamics(value: unknown, path: string): void {
-  assertCollectionLength(
+function assertLogicDynamicsShape(value: unknown, path: string): void {
+  boundedArrayAt(
     value,
     path,
     BUDGET.lexicalLogicDynamicsMinimum,
     BUDGET.lexicalLogicDynamics,
     'dynamics'
   );
-  const ids = new Set<string>();
   arrayOf(value, path, (dynamicValue, dynamicPath) => {
     const dynamic = exactObject(
       dynamicValue,
       dynamicPath,
       ['id', 'operation', 'movement', 'entailment', 'narrativeAffordance']
     );
-    assertLogicId(dynamic.id, `${dynamicPath}.id`, ids);
+    assertLogicIdShape(dynamic.id, `${dynamicPath}.id`);
     boundedStringAt(
       dynamic.operation,
       `${dynamicPath}.operation`,
@@ -916,36 +915,17 @@ function assertLogicDynamics(value: unknown, path: string): void {
   });
 }
 
-function assertLogicId(value: unknown, path: string, ids: Set<string>): void {
+function assertLogicIdShape(value: unknown, path: string): void {
   boundedStringAt(value, path, BUDGET.lexicalLogicIdCharacters, false);
   const id = value as string;
   if (!SLUG.test(id)) {shapeError(path, 'a lowercase kebab-case id');}
-  if (ids.has(id)) {shapeError(path, 'a unique id');}
-  ids.add(id);
 }
 
-function assertCollectionLength(
+function assertLexicalGravitySemanticPositionsShape(
   value: unknown,
-  path: string,
-  minimum: number,
-  maximum: number,
-  label: string
+  path: string
 ): void {
-  if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
-    shapeError(path, `an array of ${minimum}–${maximum} ${label}`);
-  }
-}
-
-function assertLexicalGravitySemanticPositions(
-  value: unknown,
-  path: string,
-  lens: WorkshopLexicalGravityLens
-): void {
-  if (!Array.isArray(value) || value.length > BUDGET.lexicalPreviewPositions) {
-    shapeError(path, `an array of 0–${BUDGET.lexicalPreviewPositions} mappings`);
-  }
-  const roleIds = new Set(lens.logic.roles.map(({ id }) => id));
-  const axisIds = new Set(lens.logic.axes.map(({ id }) => id));
+  boundedArrayAt(value, path, 0, BUDGET.lexicalPreviewPositions, 'mappings');
   arrayOf(value, path, (positionValue, positionPath) => {
     const position = exactObject(
       positionValue,
@@ -964,30 +944,18 @@ function assertLexicalGravitySemanticPositions(
       BUDGET.lexicalLogicIdCharacters,
       false
     );
-    if (!roleIds.has(position.roleId as string)) {
-      shapeError(`${positionPath}.roleId`, 'an id declared by the selected lens');
-    }
-    assertNullableBoundedString(
+    nullableBoundedStringAt(
       position.axisId,
       `${positionPath}.axisId`,
-      BUDGET.lexicalLogicIdCharacters
+      BUDGET.lexicalLogicIdCharacters,
+      false
     );
-    assertNullableBoundedString(
+    nullableBoundedStringAt(
       position.axisPosition,
       `${positionPath}.axisPosition`,
-      BUDGET.lexicalPreviewAxisPositionCharacters
+      BUDGET.lexicalPreviewAxisPositionCharacters,
+      false
     );
-    if ((position.axisId === null) !== (position.axisPosition === null)) {
-      shapeError(
-        position.axisId === null
-          ? `${positionPath}.axisPosition`
-          : `${positionPath}.axisId`,
-        'null unless both axis fields are present'
-      );
-    }
-    if (position.axisId !== null && !axisIds.has(position.axisId as string)) {
-      shapeError(`${positionPath}.axisId`, 'an id declared by the selected lens');
-    }
     boundedStringAt(
       position.significance,
       `${positionPath}.significance`,
@@ -997,26 +965,121 @@ function assertLexicalGravitySemanticPositions(
   });
 }
 
-function assertSelectedDynamic(
-  value: unknown,
+function assertLexicalGravitySemanticPositionsIntegrity(
+  positions: NonNullable<WorkshopLexicalGravityDraft['preview']>['semanticPositions'],
   path: string,
   lens: WorkshopLexicalGravityLens
 ): void {
-  assertNullableBoundedString(value, path, BUDGET.lexicalLogicIdCharacters);
-  if (
-    value !== null
-    && !lens.logic.dynamics.some(({ id }) => id === value)
-  ) {
+  const roleIds = new Set(lens.logic.roles.map(({ id }) => id));
+  const axisIds = new Set(lens.logic.axes.map(({ id }) => id));
+  for (const [index, position] of positions.entries()) {
+    const positionPath = `${path}[${index}]`;
+    if (!roleIds.has(position.roleId)) {
+      shapeError(`${positionPath}.roleId`, 'an id declared by the selected lens');
+    }
+    if ((position.axisId === null) !== (position.axisPosition === null)) {
+      shapeError(
+        position.axisId === null
+          ? `${positionPath}.axisPosition`
+          : `${positionPath}.axisId`,
+        'null unless both axis fields are present'
+      );
+    }
+    if (position.axisId !== null && !axisIds.has(position.axisId)) {
+      shapeError(`${positionPath}.axisId`, 'an id declared by the selected lens');
+    }
+  }
+}
+
+function assertSelectedDynamicIntegrity(
+  value: string | null,
+  path: string,
+  lens: WorkshopLexicalGravityLens
+): void {
+  if (value !== null && !lens.logic.dynamics.some(({ id }) => id === value)) {
     shapeError(path, 'an id declared by the selected lens or null');
   }
 }
 
-function assertNullableBoundedString(
-  value: unknown,
-  path: string,
-  maximumCharacters: number
+export function assertLexicalGravityLensIntegrity(
+  lens: WorkshopLexicalGravityLens,
+  path: string
 ): void {
-  if (value !== null) {
-    boundedStringAt(value, path, maximumCharacters, false);
+  assertLexicalGravityWordFieldIntegrity(lens, path);
+  assertUniqueStrings(lens.logic.attention.foregrounds, `${path}.logic.attention.foregrounds`);
+  assertUniqueStrings(lens.logic.attention.backgrounds, `${path}.logic.attention.backgrounds`);
+  assertUniqueStrings(lens.logic.guardrails, `${path}.logic.guardrails`);
+  assertUniqueIds(lens.logic.axes, `${path}.logic.axes`);
+  assertUniqueIds(lens.logic.roles, `${path}.logic.roles`);
+  assertUniqueIds(lens.logic.dynamics, `${path}.logic.dynamics`);
+  for (const [index, axis] of lens.logic.axes.entries()) {
+    if (axis.poles[0].toLocaleLowerCase('en-US') === axis.poles[1].toLocaleLowerCase('en-US')) {
+      shapeError(`${path}.logic.axes[${index}].poles`, 'two distinct strings');
+    }
+  }
+  try {
+    assertLexicalGravityLensRenderable(lens);
+  } catch {
+    shapeError(
+      path,
+      `a lens whose reach-3 directive fits within ${BUDGET.lexicalDirectiveCharacters} characters`
+    );
+  }
+}
+
+function assertLexicalGravityLegacyLensV1Integrity(
+  lens: WorkshopLexicalGravityLegacyLensV1,
+  path: string
+): void {
+  assertLexicalGravityWordFieldIntegrity(lens, path);
+  try {
+    buildLegacyLexicalGravityDirectiveFrame(
+      { id: 'pd-validation', revision: Number.MAX_SAFE_INTEGER },
+      { resolvedLens: lens, weight: 100, reach: 3, metaphorPull: true }
+    );
+  } catch {
+    shapeError(
+      path,
+      `a lens whose reach-3 directive fits within ${BUDGET.lexicalDirectiveCharacters} characters`
+    );
+  }
+}
+
+function assertLexicalGravityWordFieldIntegrity(
+  lens: WorkshopLexicalGravityResolvedLens,
+  path: string
+): void {
+  for (const degree of [1, 2, 3] as const) {
+    for (const part of ['nouns', 'verbs', 'modifiers'] as const) {
+      assertUniqueStrings(
+        lens.degrees[degree][part],
+        `${path}.degrees.${degree}.${part}`
+      );
+    }
+  }
+  assertUniqueStrings(lens.gradient, `${path}.gradient`);
+}
+
+function assertUniqueStrings(values: readonly string[], path: string): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    const key = value.toLocaleLowerCase('en-US');
+    if (seen.has(key)) {
+      shapeError(path, 'strings without duplicates');
+    }
+    seen.add(key);
+  }
+}
+
+function assertUniqueIds(
+  values: readonly { id: string }[],
+  path: string
+): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value.id)) {
+      shapeError(path, 'entries with unique ids');
+    }
+    seen.add(value.id);
   }
 }

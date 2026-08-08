@@ -14,6 +14,9 @@ import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  validateWorkshopWidgetDraftIntegrity
+} from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 
 export interface WorkshopSessionStateV1ValidationOptions {
   /**
@@ -22,6 +25,8 @@ export interface WorkshopSessionStateV1ValidationOptions {
    * state and validates again under the current invariant.
    */
   allowLegacyOpenSessionWithExcerpt?: boolean;
+  /** Raw checkpoint preflight runs before widget-local normalization. */
+  skipWidgetDraftIntegrity?: boolean;
 }
 
 export function validateWorkshopSessionStateV1(
@@ -248,6 +253,13 @@ export function validateWorkshopSessionStateV1(
     }
     if (config.artifactId !== undefined && config.directiveId !== undefined) {
       throw new Error(`Persisted Workshop widget config ${config.id} spans both rails`);
+    }
+    if (options.skipWidgetDraftIntegrity !== true) {
+      validateWorkshopWidgetDraftIntegrity(
+        config.widgetId,
+        config.draft,
+        `Workshop session state.widgetConfigs.${config.id}.draft`
+      );
     }
   }
   if (greatestWidgetConfigNumber > (state.counters.widgetConfig ?? 0)) {

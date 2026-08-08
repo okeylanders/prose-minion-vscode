@@ -345,9 +345,9 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
   },
   {
-    file: 'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
-    reason: 'closed persisted-config recovery dispatch',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity)Draft(?:Checkpoint)?Shape|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
+    file: 'application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle.ts',
+    reason: 'closed persisted-config lifecycle registry',
+    allowedToken: /(?:Workshop(?:GesturePlayground|LexicalGravity)Draft|(?:GesturePlayground|LexicalGravity)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity)Draft(?:CheckpointShape|Integrity|Shape)|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
@@ -506,7 +506,7 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'application/handlers/domain/workshop/WorkshopRouteContracts.ts',
   'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
   'application/services/workshop/WorkshopSessionRecords.ts',
-  'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
+  'application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle.ts',
   'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
   'application/services/workshop/widgets/WorkshopWidgetConfigOperations.ts',
   'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',

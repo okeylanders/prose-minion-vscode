@@ -53,7 +53,7 @@ import {
 import {
   assertWorkshopWidgetDraftCheckpointShape,
   assertWorkshopWidgetDraftShape
-} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery';
+} from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 
 export function assertWorkshopSessionStateShape(
   value: unknown

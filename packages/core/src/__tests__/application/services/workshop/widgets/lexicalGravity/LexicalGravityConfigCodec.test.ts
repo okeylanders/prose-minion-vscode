@@ -1,6 +1,8 @@
 import {
   isLexicalGravityReach,
   isLexicalGravityWeight,
+  assertLexicalGravityDraftIntegrity,
+  assertLexicalGravityDraftShape,
   LEXICAL_GRAVITY_REACH,
   LEXICAL_GRAVITY_WEIGHT,
   lexicalGravityConfigKey,
@@ -102,7 +104,7 @@ describe('LexicalGravityConfigCodec', () => {
       logic: { axes: Array<{ poles: string[] }> };
     };
     invalidAxis.logic.axes[0].poles = ['one'];
-    expect(() => validateLexicalGravityLens(invalidAxis)).toThrow(/two-string tuple/);
+    expect(() => validateLexicalGravityLens(invalidAxis)).toThrow(/array of 2 strings/);
 
     const missingGuardrails = builtInLexicalGravityLens('photography')!;
     missingGuardrails.logic.guardrails = [];
@@ -381,6 +383,10 @@ Preserve character voice, scene facts, clarity, and the writer's requested meani
       'defaulted-widget-lexical-gravity-evidence-mode'
     ]);
     expect(recovered.notices).toEqual([]);
+    expect(() => normalizeLexicalGravityDraftForHydration({
+      ...checkpoint,
+      preview: { ...checkpoint.preview, configKey: 'stale|prior|identity' }
+    })).toThrow(/prior five-value config key/);
   });
 
   it('accepts only a preview tied to the current six-value configuration', () => {
@@ -452,6 +458,9 @@ Preserve character voice, scene facts, clarity, and the writer's requested meani
       }
     };
 
+    expect(() => assertLexicalGravityDraftShape(base, 'draft')).not.toThrow();
+    expect(() => assertLexicalGravityDraftIntegrity(base, 'draft'))
+      .toThrow(/roleId.*selected lens/);
     expect(() => validateLexicalGravityDraft(base)).toThrow(/roleId.*selected lens/);
     base.preview.semanticPositions[0].roleId = 'rest';
     base.preview.selectedDynamicId = 'develop';

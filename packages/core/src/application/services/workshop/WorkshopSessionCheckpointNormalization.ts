@@ -12,7 +12,7 @@ import type {
 import {
   recoverWorkshopWidgetConfigCheckpoint,
   WorkshopWidgetCheckpointNormalization
-} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery';
+} from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 import type {
   WorkshopWidgetRecoveryNotice
 } from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
