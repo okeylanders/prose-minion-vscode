@@ -83,8 +83,17 @@ const build = (
   const promptLoader = {
     loadPrompts: jest.fn().mockResolvedValue('gesture dictionary system prompt')
   } as never;
-  const service = new GesturePlaygroundService(manager, promptLoader, { appendLine } as never);
-  return { service, runInitial, manager, promptLoader, appendLine };
+  const capture = jest.fn().mockResolvedValue({
+    filePath: '/workspace/prose-minion/recovery/model-responses/rejected.response.txt',
+    storageScope: 'project'
+  });
+  const service = new GesturePlaygroundService(
+    manager,
+    promptLoader,
+    { capture },
+    { appendLine } as never
+  );
+  return { service, runInitial, manager, promptLoader, appendLine, capture };
 };
 
 const request = {
@@ -452,7 +461,7 @@ describe('GesturePlaygroundService.generateMenu', () => {
       '  ]',
       '}'
     ].join('\n'));
-    const { service, appendLine } = build(malformed);
+    const { service, appendLine, capture } = build(malformed);
 
     const result = await service.generateMenu(request);
 
@@ -464,6 +473,11 @@ describe('GesturePlaygroundService.generateMenu', () => {
     expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
       '[GesturePlaygroundService] Rejected response preview (last 200 characters):'
     ));
+    expect(capture).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'gesture-playground',
+      rawResponse: malformed,
+      rejection: expect.stringContaining('menu JSON did not parse')
+    }));
   });
 
   it('returns a specific 50K ceiling diagnosis when a valid dictionary is length-truncated', async () => {

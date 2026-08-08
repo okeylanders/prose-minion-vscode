@@ -205,6 +205,7 @@ export class OpenRouterClient {
   ): AsyncGenerator<{
     token: string;
     done: boolean;
+    id?: string;
     usage?: TokenUsage;
     finishReason?: string;
     observation?: InferenceRequestObservation;
@@ -251,12 +252,16 @@ export class OpenRouterClient {
       let finishReason: string | undefined;
       let usage: TokenUsage | undefined;
       let responseModel = requestedModel;
+      // Tests and non-browser host adapters may provide a minimal fetch shape
+      // without Headers; stream frames still carry the canonical response id.
+      let responseId = response.headers?.get('X-Generation-Id') ?? undefined;
       let routerMetadata: unknown;
       let terminalEmitted = false;
       let citations: UrlCitation[] | undefined;
       const terminal = () => ({
         token: '',
         done: true,
+        id: responseId,
         usage,
         finishReason,
         observation: usage ? this.toObservation(
@@ -291,6 +296,9 @@ export class OpenRouterClient {
 
           try {
             const parsed = JSON.parse(data);
+            if (typeof parsed.id === 'string' && parsed.id) {
+              responseId = parsed.id;
+            }
             const delta = parsed.choices?.[0]?.delta;
             const token = delta?.content || '';
             const finish = parsed.choices?.[0]?.finish_reason;

@@ -12,6 +12,7 @@
  */
 
 import * as vscode from 'vscode';
+import * as path from 'node:path';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
 import { WorkshopPanelProvider } from './application/providers/WorkshopPanelProvider';
 // Core services + the Platform port type — imported via the public barrel only
@@ -49,6 +50,7 @@ import {
   GesturePlaygroundService,
   LexicalGravityModelService,
   LexicalGravityLensRepository,
+  RejectedModelResponseRecoveryService,
   WorkshopStandingDirectiveService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -263,14 +265,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one
   // quality-first model call, routed through the manager-owned `widget` scope.
+  const rejectedModelResponseRecovery = new RejectedModelResponseRecoveryService(
+    platform.fileSystem,
+    platform.workspace,
+    platform.shell,
+    path.join(context.globalStorageUri.fsPath, 'recovery'),
+    outputChannel
+  );
   const gesturePlaygroundService = new GesturePlaygroundService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
+    rejectedModelResponseRecovery,
     outputChannel
   );
   const lexicalGravityModelService = new LexicalGravityModelService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
+    rejectedModelResponseRecovery,
     outputChannel
   );
   const lexicalGravityLensRepository = new LexicalGravityLensRepository(

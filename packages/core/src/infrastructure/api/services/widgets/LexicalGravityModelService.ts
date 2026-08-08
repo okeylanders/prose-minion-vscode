@@ -14,6 +14,8 @@ import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
+import type { RejectedModelResponseRecovery } from '@/application/services/RejectedModelResponseRecoveryService';
+import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import {
   cloneLexicalGravityDraft,
   lexicalGravityConfigKey,
@@ -35,6 +37,7 @@ export class LexicalGravityModelService {
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
+    private readonly rejectedResponseRecovery: RejectedModelResponseRecovery,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -69,10 +72,11 @@ export class LexicalGravityModelService {
       }
     });
     if (result.cancelled) {throw new Error('Lexical lens generation was cancelled.');}
-    if (result.finishReason === 'length') {
-      throw new Error('Lexical lens generation reached its output limit. Try again.');
-    }
-    return this.parseCandidates(result.rawContent ?? result.content, normalizedQuery);
+    return this.parseCandidates(
+      result.rawContent ?? result.content,
+      normalizedQuery,
+      result
+    );
   }
 
   async preview(
@@ -155,17 +159,29 @@ export class LexicalGravityModelService {
         boundedLogText(typeof content === 'string' ? content : String(content ?? '')),
         '[LexicalGravityModelService] Rejected preview response body END'
       ].join('\n'));
+      const recovery = await this.captureRejectedResponse(
+        'lexical-gravity-preview',
+        `Preview for lens ${JSON.stringify(draft.resolvedLens?.name ?? draft.resolvedLens?.slug ?? 'custom')} using ${sourceText.length} source characters`,
+        typeof content === 'string' ? content : String(content ?? ''),
+        reason,
+        result
+      );
       throw new Error(
-        'The selected widget model did not return a usable preview. Try Preview again or choose another model.'
+        `The selected widget model did not return a usable preview.${recovery} `
+        + 'Try Preview again or choose another model.'
       );
     }
   }
 
-  private parseCandidates(
+  private async parseCandidates(
     content: string,
-    query: string
-  ): WorkshopLexicalGravityLensCandidate[] {
+    query: string,
+    result: ExecutionResult
+  ): Promise<WorkshopLexicalGravityLensCandidate[]> {
     try {
+      if (result.finishReason === 'length') {
+        throw new Error('response reached its output limit');
+      }
       const framed = this.extractFrame(
         content,
         LENSES_START,
@@ -220,10 +236,40 @@ export class LexicalGravityModelService {
           '[LexicalGravityModelService] Rejected lens response body END'
         ].join('\n')
       );
+      const recovery = await this.captureRejectedResponse(
+        'lexical-gravity-build',
+        `Build three interpretive lenses for ${JSON.stringify(query)}`,
+        content,
+        reason,
+        result
+      );
       throw new Error(
-        'The model returned unusable interpretive lenses. Try building the lens again.'
+        `The model returned unusable interpretive lenses (${reason}).${recovery} `
+        + 'Try building the lens again.'
       );
     }
+  }
+
+  private async captureRejectedResponse(
+    toolName: string,
+    requestSummary: string,
+    rawResponse: string,
+    rejection: string,
+    result: ExecutionResult
+  ): Promise<string> {
+    const receipt = await this.rejectedResponseRecovery.capture({
+      toolName,
+      requestSummary,
+      rawResponse,
+      rejection,
+      modelId: result.modelId,
+      providerResponseId: result.providerResponseId,
+      finishReason: result.finishReason,
+      usage: result.usage
+    });
+    return receipt
+      ? ` The complete response was saved for recovery at ${receipt.filePath}.`
+      : ' The complete response could not be saved; see the Prose Minion output for details.';
   }
 
   private extractFrame(

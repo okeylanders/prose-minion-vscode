@@ -15,6 +15,10 @@ export class VsCodeShellService implements ShellService {
     return Promise.resolve(vscode.window.showInformationMessage(message, ...actions));
   }
 
+  showWarningMessage(message: string, ...actions: string[]): Promise<string | undefined> {
+    return Promise.resolve(vscode.window.showWarningMessage(message, ...actions));
+  }
+
   showModalInformationMessage(message: string, ...actions: string[]): Promise<string | undefined> {
     return Promise.resolve(vscode.window.showInformationMessage(message, { modal: true }, ...actions));
   }

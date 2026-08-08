@@ -119,6 +119,33 @@ describe('AgentRunEngine', () => {
     );
   });
 
+  it('preserves the provider response id and actual model for recovery consumers', async () => {
+    client.createChatCompletion.mockResolvedValue({
+      id: 'gen-fable-123',
+      content: 'Malformed structured response',
+      observation: {
+        modelId: 'anthropic/claude-fable-5',
+        promptTokens: 1757,
+        completionTokens: 10061,
+        totalTokens: 11818,
+        requestedMaxOutputTokens: 50_000,
+        finishReason: 'stop',
+        contextCompression: 'unknown',
+        measuredAt: 1
+      }
+    });
+
+    const result = await engine.runInitial({
+      toolName: 'lexical-gravity-build',
+      systemMessage: 'Return JSON.',
+      userMessage: 'Build Fable lenses.',
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources
+    });
+
+    expect(result.providerResponseId).toBe('gen-fable-123');
+    expect(result.modelId).toBe('anthropic/claude-fable-5');
+  });
+
   it('sanitizes only the assistant row committed to retained history', async () => {
     const raw = 'Visible advice.\n\n<private-widget-control>seed</private-widget-control>';
     client.createChatCompletion.mockResolvedValue({ content: raw });

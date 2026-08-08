@@ -231,7 +231,7 @@ describe('OpenRouterClient model hot-swap', () => {
   it('emits streaming terminal usage and metadata exactly once when they arrive after finish reason', async () => {
     const originalFetch = global.fetch;
     const fetchMock = jest.fn().mockResolvedValue(streamingResponse(
-      { model: 'model/resolved', choices: [{ delta: { content: 'Hi' }, finish_reason: null }] },
+      { id: 'gen-stream-123', model: 'model/resolved', choices: [{ delta: { content: 'Hi' }, finish_reason: null }] },
       { model: 'model/resolved', choices: [{ delta: {}, finish_reason: 'stop' }] },
       {
         choices: [],
@@ -254,6 +254,7 @@ describe('OpenRouterClient model hot-swap', () => {
       expect(chunks.filter(chunk => chunk.done)).toHaveLength(1);
       expect(chunks.at(-1)).toMatchObject({
         done: true,
+        id: 'gen-stream-123',
         finishReason: 'stop',
         usage: { promptTokens: 12, completionTokens: 2, totalTokens: 14 },
         observation: {

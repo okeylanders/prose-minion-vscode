@@ -94,6 +94,13 @@ export { WorkshopAnalysisSidePass } from '@/application/services/workshop/Worksh
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 export { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+export {
+  RejectedModelResponseRecoveryService
+} from '@/application/services/RejectedModelResponseRecoveryService';
+export type {
+  RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryReceipt
+} from '@/application/services/RejectedModelResponseRecoveryService';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
