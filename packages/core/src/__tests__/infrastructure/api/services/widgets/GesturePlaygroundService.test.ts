@@ -85,15 +85,18 @@ const build = (
   } as never;
   const capture = jest.fn().mockResolvedValue({
     filePath: '/workspace/prose-minion/recovery/model-responses/rejected.response.txt',
+    toolName: 'gesture-playground',
     storageScope: 'project'
   });
+  const present = jest.fn().mockResolvedValue(undefined);
   const service = new GesturePlaygroundService(
     manager,
     promptLoader,
     { capture },
+    { present },
     { appendLine } as never
   );
-  return { service, runInitial, manager, promptLoader, appendLine, capture };
+  return { service, runInitial, manager, promptLoader, appendLine, capture, present };
 };
 
 const request = {
@@ -461,7 +464,7 @@ describe('GesturePlaygroundService.generateMenu', () => {
       '  ]',
       '}'
     ].join('\n'));
-    const { service, appendLine, capture } = build(malformed);
+    const { service, appendLine, capture, present } = build(malformed);
 
     const result = await service.generateMenu(request);
 
@@ -478,10 +481,13 @@ describe('GesturePlaygroundService.generateMenu', () => {
       rawResponse: malformed,
       rejection: expect.stringContaining('menu JSON did not parse')
     }));
+    expect(present).toHaveBeenCalledWith(expect.objectContaining({
+      filePath: '/workspace/prose-minion/recovery/model-responses/rejected.response.txt'
+    }));
   });
 
   it('returns a specific 50K ceiling diagnosis when a valid dictionary is length-truncated', async () => {
-    const { service } = build(dictionaryOnly(), { finishReason: 'length' });
+    const { service, capture } = build(dictionaryOnly(), { finishReason: 'length' });
 
     const result = await service.generateMenu(request);
 
@@ -490,6 +496,8 @@ describe('GesturePlaygroundService.generateMenu', () => {
       truncated: true,
       menuError: expect.stringContaining('50,000-token output ceiling')
     }));
+    expect(completed(result).menuError).toContain('rejected.response.txt');
+    expect(capture).toHaveBeenCalledWith(expect.objectContaining({ rawResponse: dictionaryOnly() }));
     expect(completed(result).menu).toBeUndefined();
   });
 
@@ -555,5 +563,35 @@ describe('GesturePlaygroundService.generateMenu', () => {
       cancelled: false,
       additions
     }));
+  });
+
+  it('keeps a valid additional menu even when the provider reports the output ceiling', async () => {
+    const additions = groups.map((group, groupIndex) => ({
+      heading: group.heading,
+      options: Array.from(
+        { length: 3 },
+        (_, optionIndex) => `Fresh ${groupIndex + 1}.${optionIndex + 1} consequence`
+      )
+    }));
+    const { service, capture } = build(
+      menuOnly(JSON.stringify({ version: 1, groups: additions })),
+      { finishReason: 'length' }
+    );
+
+    await expect(service.generateMore({ ...request, dictionaryMarkdown, menu: groups })).resolves.toEqual({
+      cancelled: false,
+      additions,
+      usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 }
+    });
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it('tells the writer when a rejected additional menu could not be saved', async () => {
+    const { service, capture, present } = build('not a menu');
+    capture.mockResolvedValueOnce(undefined);
+
+    await expect(service.generateMore({ ...request, dictionaryMarkdown, menu: groups }))
+      .rejects.toThrow('complete response could not be saved');
+    expect(present).not.toHaveBeenCalled();
   });
 });

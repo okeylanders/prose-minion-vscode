@@ -19,7 +19,14 @@ import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
-import type { RejectedModelResponseRecovery } from '@/application/services/RejectedModelResponseRecoveryService';
+import {
+  persistRejectedWidgetResponse,
+  recoveryLocationNotice
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+import type {
+  RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryPresenter
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 
 export interface GestureMenuRequest {
@@ -80,6 +87,7 @@ export class GesturePlaygroundService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
     private readonly rejectedResponseRecovery: RejectedModelResponseRecovery,
+    private readonly rejectedResponseRecoveryPresenter: RejectedModelResponseRecoveryPresenter,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -130,7 +138,11 @@ export class GesturePlaygroundService {
       ...parsed,
       cancelled: false,
       menuError: truncated && !parsed.menu
-        ? `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token output ceiling before the alternatives menu closed. The Gesture Dictionary is still available; try Generate again for a new menu.`
+        ? [
+          `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token output ceiling before the alternatives menu closed.`,
+          parsed.menuError ?? '',
+          'The Gesture Dictionary is still available; try Generate again for a new menu.'
+        ].filter(Boolean).join(' ')
         : parsed.menuError,
       usage: result.usage,
       truncated
@@ -181,9 +193,6 @@ export class GesturePlaygroundService {
 
     const content = result.rawContent ?? result.content;
     try {
-      if (result.finishReason === 'length') {
-        throw new Error('The additional gesture response reached its output limit.');
-      }
       const additions = this.extractStandaloneMenu(content);
       const expectedHeadings = currentMenu.map((group) => group.heading);
       if (
@@ -203,14 +212,18 @@ export class GesturePlaygroundService {
       return { cancelled: false, additions, usage: result.usage };
     } catch (error) {
       const message = this.errorMessage(error);
-      const recovery = await this.captureRejectedResponse(
-        'gesture-playground-more',
-        `Generate additional gestures for ${JSON.stringify(targetPhrase)}`,
-        content,
-        message,
-        result
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'gesture-playground-more',
+          requestSummary: `Generate additional gestures for ${JSON.stringify(targetPhrase)}`,
+          rawResponse: content,
+          rejection: message,
+          result
+        }
       );
-      throw new Error(`${message}${recovery}`);
+      throw new Error(`${message} ${recoveryLocationNotice(receipt)}`);
     }
   }
 
@@ -330,17 +343,25 @@ export class GesturePlaygroundService {
     } catch (error) {
       const message = this.errorMessage(error);
       this.logRejectedResponse('composite response', message, content);
-      const recovery = await this.captureRejectedResponse(
-        'gesture-playground', requestSummary, content, message, result
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'gesture-playground',
+          requestSummary,
+          rawResponse: content,
+          rejection: message,
+          result
+        }
       );
       if (truncated) {
         throw new Error(
           `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token `
-          + `output ceiling before the Gesture Dictionary closed.${recovery} Try Generate again.`
+          + `output ceiling before the Gesture Dictionary closed. ${recoveryLocationNotice(receipt)} Try Generate again.`
         );
       }
       throw new Error(
-        `The model returned an unusable Gesture Dictionary (${message}).${recovery} Try Generate again.`
+        `The model returned an unusable Gesture Dictionary (${message}). ${recoveryLocationNotice(receipt)} Try Generate again.`
       );
     }
 
@@ -352,39 +373,25 @@ export class GesturePlaygroundService {
     } catch (error) {
       const message = this.errorMessage(error);
       this.logRejectedResponse('alternatives menu', message, content);
-      const recovery = await this.captureRejectedResponse(
-        'gesture-playground', requestSummary, content, message, result
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'gesture-playground',
+          requestSummary,
+          rawResponse: content,
+          rejection: message,
+          result
+        }
       );
       return {
         dictionaryMarkdown,
         menuError:
           `The alternatives menu was unusable (${message}). `
-          + `${recovery.trim()} The Gesture Dictionary is still available; `
+          + `${recoveryLocationNotice(receipt)} The Gesture Dictionary is still available; `
           + 'try Generate again for a new menu.'
       };
     }
-  }
-
-  private async captureRejectedResponse(
-    toolName: string,
-    requestSummary: string,
-    rawResponse: string,
-    rejection: string,
-    result: ExecutionResult
-  ): Promise<string> {
-    const receipt = await this.rejectedResponseRecovery.capture({
-      toolName,
-      requestSummary,
-      rawResponse,
-      rejection,
-      modelId: result.modelId,
-      providerResponseId: result.providerResponseId,
-      finishReason: result.finishReason,
-      usage: result.usage
-    });
-    return receipt
-      ? ` The complete response was saved for recovery at ${receipt.filePath}.`
-      : ' The complete response could not be saved; see the Prose Minion output for details.';
   }
 
   private extractDictionary(normalized: string): string {

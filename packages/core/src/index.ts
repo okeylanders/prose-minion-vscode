@@ -95,12 +95,17 @@ export { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 export { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 export {
-  RejectedModelResponseRecoveryService
-} from '@/application/services/RejectedModelResponseRecoveryService';
+  RejectedModelResponseRecoveryStore,
+  RejectedModelResponseRecoveryShellPresenter,
+  persistRejectedWidgetResponse,
+  recoveryLocationNotice
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 export type {
   RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryPresenter,
   RejectedModelResponseRecoveryReceipt
-} from '@/application/services/RejectedModelResponseRecoveryService';
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+export type { RecoverableWidgetToolName } from '@messages';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';

@@ -60,20 +60,24 @@ const createService = (content: unknown) => {
   const appendLine = jest.fn();
   const capture = jest.fn().mockResolvedValue({
     filePath: '/workspace/prose-minion/recovery/model-responses/rejected.response.txt',
+    toolName: 'lexical-gravity-build',
     storageScope: 'project'
   });
+  const present = jest.fn().mockResolvedValue(undefined);
   return {
     service: new LexicalGravityModelService(
       manager as never,
       promptLoader as never,
       { capture },
+      { present },
       { appendLine } as never
     ),
     manager,
     promptLoader,
     runInitial,
     appendLine,
-    capture
+    capture,
+    present
   };
 };
 
@@ -180,6 +184,15 @@ describe('LexicalGravityModelService', () => {
     );
   });
 
+  it('tells the writer when a rejected preview could not be saved', async () => {
+    const rejected = createService('not the preview protocol');
+    rejected.capture.mockResolvedValueOnce(undefined);
+
+    await expect(rejected.service.preview(musicDraft(), 'A bell rang.'))
+      .rejects.toThrow('complete response could not be saved');
+    expect(rejected.present).not.toHaveBeenCalled();
+  });
+
   it('rejects truncated Preview JSON instead of caching an incomplete artifact', async () => {
     const truncated = createService(previewResponse());
     truncated.runInitial.mockResolvedValueOnce({
@@ -207,6 +220,9 @@ describe('LexicalGravityModelService', () => {
       toolName: 'lexical-gravity-build',
       rawResponse: wrapperProse,
       finishReason: 'stop'
+    }));
+    expect(rejected.present).toHaveBeenCalledWith(expect.objectContaining({
+      filePath: '/workspace/prose-minion/recovery/model-responses/rejected.response.txt'
     }));
 
     const duplicateVariants = [

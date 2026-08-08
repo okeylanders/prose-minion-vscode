@@ -50,7 +50,8 @@ import {
   GesturePlaygroundService,
   LexicalGravityModelService,
   LexicalGravityLensRepository,
-  RejectedModelResponseRecoveryService,
+  RejectedModelResponseRecoveryStore,
+  RejectedModelResponseRecoveryShellPresenter,
   WorkshopStandingDirectiveService,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -265,23 +266,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one
   // quality-first model call, routed through the manager-owned `widget` scope.
-  const rejectedModelResponseRecovery = new RejectedModelResponseRecoveryService(
+  const rejectedModelResponseRecovery = new RejectedModelResponseRecoveryStore(
     platform.fileSystem,
     platform.workspace,
-    platform.shell,
     path.join(context.globalStorageUri.fsPath, 'recovery'),
+    outputChannel
+  );
+  const rejectedModelResponseRecoveryPresenter = new RejectedModelResponseRecoveryShellPresenter(
+    platform.shell,
     outputChannel
   );
   const gesturePlaygroundService = new GesturePlaygroundService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
     rejectedModelResponseRecovery,
+    rejectedModelResponseRecoveryPresenter,
     outputChannel
   );
   const lexicalGravityModelService = new LexicalGravityModelService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
     rejectedModelResponseRecovery,
+    rejectedModelResponseRecoveryPresenter,
     outputChannel
   );
   const lexicalGravityLensRepository = new LexicalGravityLensRepository(

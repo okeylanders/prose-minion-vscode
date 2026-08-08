@@ -14,7 +14,14 @@ import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
-import type { RejectedModelResponseRecovery } from '@/application/services/RejectedModelResponseRecoveryService';
+import {
+  persistRejectedWidgetResponse,
+  recoveryLocationNotice
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+import type {
+  RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryPresenter
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import {
   cloneLexicalGravityDraft,
@@ -38,6 +45,7 @@ export class LexicalGravityModelService {
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
     private readonly rejectedResponseRecovery: RejectedModelResponseRecovery,
+    private readonly rejectedResponseRecoveryPresenter: RejectedModelResponseRecoveryPresenter,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -159,15 +167,19 @@ export class LexicalGravityModelService {
         boundedLogText(typeof content === 'string' ? content : String(content ?? '')),
         '[LexicalGravityModelService] Rejected preview response body END'
       ].join('\n'));
-      const recovery = await this.captureRejectedResponse(
-        'lexical-gravity-preview',
-        `Preview for lens ${JSON.stringify(draft.resolvedLens?.name ?? draft.resolvedLens?.slug ?? 'custom')} using ${sourceText.length} source characters`,
-        typeof content === 'string' ? content : String(content ?? ''),
-        reason,
-        result
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'lexical-gravity-preview',
+          requestSummary: `Preview for lens ${JSON.stringify(draft.resolvedLens?.name ?? draft.resolvedLens?.slug ?? 'custom')} using ${sourceText.length} source characters`,
+          rawResponse: typeof content === 'string' ? content : String(content ?? ''),
+          rejection: reason,
+          result
+        }
       );
       throw new Error(
-        `The selected widget model did not return a usable preview.${recovery} `
+        `The selected widget model did not return a usable preview. ${recoveryLocationNotice(receipt)} `
         + 'Try Preview again or choose another model.'
       );
     }
@@ -236,40 +248,22 @@ export class LexicalGravityModelService {
           '[LexicalGravityModelService] Rejected lens response body END'
         ].join('\n')
       );
-      const recovery = await this.captureRejectedResponse(
-        'lexical-gravity-build',
-        `Build three interpretive lenses for ${JSON.stringify(query)}`,
-        content,
-        reason,
-        result
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'lexical-gravity-build',
+          requestSummary: `Build three interpretive lenses for ${JSON.stringify(query)}`,
+          rawResponse: content,
+          rejection: reason,
+          result
+        }
       );
       throw new Error(
-        `The model returned unusable interpretive lenses (${reason}).${recovery} `
+        `The model returned unusable interpretive lenses (${reason}). ${recoveryLocationNotice(receipt)} `
         + 'Try building the lens again.'
       );
     }
-  }
-
-  private async captureRejectedResponse(
-    toolName: string,
-    requestSummary: string,
-    rawResponse: string,
-    rejection: string,
-    result: ExecutionResult
-  ): Promise<string> {
-    const receipt = await this.rejectedResponseRecovery.capture({
-      toolName,
-      requestSummary,
-      rawResponse,
-      rejection,
-      modelId: result.modelId,
-      providerResponseId: result.providerResponseId,
-      finishReason: result.finishReason,
-      usage: result.usage
-    });
-    return receipt
-      ? ` The complete response was saved for recovery at ${receipt.filePath}.`
-      : ' The complete response could not be saved; see the Prose Minion output for details.';
   }
 
   private extractFrame(

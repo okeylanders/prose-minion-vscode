@@ -15,23 +15,24 @@
 Every structured widget response rejected after a completed provider call is a
 recoverable artifact, not merely a log event.
 
-Core owns a host-agnostic `RejectedModelResponseRecoveryService`. The VS Code
-composition root gives it the live `Workspace`, the existing `FileSystem` and
-`ShellService` ports, and an extension-global fallback directory. On rejection
-it:
+Core owns a host-agnostic storage adapter plus an opt-in VS Code presenter. The
+composition root gives the store the live `Workspace`, `FileSystem`, and an
+extension-global fallback directory; it gives the presenter `ShellService`.
+On rejection the widget explicitly persists, then presents the resulting
+receipt:
 
 1. writes the complete untouched provider body as an immediately editable
    `.response.txt`, preserving the provider's original character offsets;
 2. writes a versioned `.metadata.json` sidecar containing the validation error,
    tool/request summary, provider generation id, model, finish reason, usage,
-   response filename, and character count;
+   response filename, character count, and a typed response-contract id;
 3. writes each artifact through a temporary file and native rename so a crash
    cannot leave a deceptively valid partial artifact; the response is committed
    first, so a sidecar failure never sacrifices the paid body;
-4. stores under the first open project at
+4. stores under the single open project at
    `prose-minion/recovery/model-responses/`, creating a recovery-local
-   `.gitignore`; extension-global storage is used when no project is open or
-   project persistence fails;
+   `.gitignore`; extension-global storage is used when no project is open,
+   multiple project roots are open, or project persistence fails;
 5. opens the exact response file in an editor tab automatically and shows a warning
    with an action to reveal it in the operating system;
 6. returns the absolute recovery path so the normal webview failure also names
@@ -44,6 +45,11 @@ independent of that external setting.
 
 Bounded Output-channel diagnostics remain bounded. They are useful for ordinary
 support logs but are no longer treated as the recovery medium.
+
+The metadata stores the static response contract rather than the original full
+prompt. A future repair action can recover malformed JSON mechanically from its
+sentinels/schema without persisting a second copy of manuscript input. It must
+add a content hash and input/cost bounds before automatic retransmission.
 
 ## Scope
 
