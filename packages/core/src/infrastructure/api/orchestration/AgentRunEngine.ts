@@ -40,6 +40,7 @@ interface TerminationContext {
 
 interface TurnResult {
   readonly content: string;
+  readonly providerResponseId?: string;
   /** Sanitized content emitted incrementally for a capability-enabled turn. */
   readonly visibleContent?: string;
   readonly finishReason?: string;
@@ -466,6 +467,8 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
+        providerResponseId: last.providerResponseId,
+        modelId: latestObservation?.modelId,
         citations: runCitations,
         cancelled
       };
@@ -620,6 +623,7 @@ export class AgentRunEngine {
         this.logCapabilityInspection(capability, inspection, response.content);
         return {
           content: response.content,
+          providerResponseId: response.id,
           finishReason: response.finishReason,
           usage: response.usage,
           observation: response.observation,
@@ -640,6 +644,7 @@ export class AgentRunEngine {
     let usage: TokenUsage | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
+    let providerResponseId: string | undefined;
     let citations: UrlCitation[] | undefined;
     let cancelled = false;
     let classification: 'undecided' | 'text' | 'candidate' = 'undecided';
@@ -654,6 +659,7 @@ export class AgentRunEngine {
         reasoning: options.reasoning
       })) {
         if (chunk.done) {
+          providerResponseId = chunk.id ?? providerResponseId;
           usage = chunk.usage ?? usage;
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
@@ -718,6 +724,7 @@ export class AgentRunEngine {
     }
     return {
       content,
+      providerResponseId,
       visibleContent: visibilityGuard?.content,
       finishReason,
       usage,

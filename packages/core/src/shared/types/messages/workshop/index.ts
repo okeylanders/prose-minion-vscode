@@ -22,4 +22,5 @@ export * from './gesturePlayground';
 export * from './lexicalGravity';
 export * from './standingDirectives';
 export * from './widgets';
+export * from './recovery';
 export * from './session';

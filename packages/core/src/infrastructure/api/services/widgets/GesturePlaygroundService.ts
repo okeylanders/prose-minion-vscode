@@ -19,6 +19,15 @@ import { AIResourceManager } from '@orchestration/AIResourceManager';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
+import {
+  persistRejectedWidgetResponse,
+  recoveryLocationNotice
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+import type {
+  RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryPresenter
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 
 export interface GestureMenuRequest {
   targetPhrase: string;
@@ -77,6 +86,8 @@ export class GesturePlaygroundService {
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
+    private readonly rejectedResponseRecovery: RejectedModelResponseRecovery,
+    private readonly rejectedResponseRecoveryPresenter: RejectedModelResponseRecoveryPresenter,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -117,15 +128,21 @@ export class GesturePlaygroundService {
     }
 
     const truncated = result.finishReason === 'length';
-    const parsed = this.parseCompositeResponse(
+    const parsed = await this.parseCompositeResponse(
       result.rawContent ?? result.content,
-      truncated
+      truncated,
+      result,
+      `Generate a Gesture Dictionary for ${JSON.stringify(targetPhrase)}`
     );
     return {
       ...parsed,
       cancelled: false,
       menuError: truncated && !parsed.menu
-        ? `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token output ceiling before the alternatives menu closed. The Gesture Dictionary is still available; try Generate again for a new menu.`
+        ? [
+          `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token output ceiling before the alternatives menu closed.`,
+          parsed.menuError ?? '',
+          'The Gesture Dictionary is still available; try Generate again for a new menu.'
+        ].filter(Boolean).join(' ')
         : parsed.menuError,
       usage: result.usage,
       truncated
@@ -174,23 +191,40 @@ export class GesturePlaygroundService {
       return { cancelled: true, usage: result.usage };
     }
 
-    const additions = this.extractStandaloneMenu(result.rawContent ?? result.content);
-    const expectedHeadings = currentMenu.map((group) => group.heading);
-    if (
-      additions.length !== expectedHeadings.length
-      || additions.some((group, index) => group.heading !== expectedHeadings[index])
-    ) {
-      throw new Error('Additional gestures must preserve the current menu headings and order');
+    const content = result.rawContent ?? result.content;
+    try {
+      const additions = this.extractStandaloneMenu(content);
+      const expectedHeadings = currentMenu.map((group) => group.heading);
+      if (
+        additions.length !== expectedHeadings.length
+        || additions.some((group, index) => group.heading !== expectedHeadings[index])
+      ) {
+        throw new Error('Additional gestures must preserve the current menu headings and order');
+      }
+      const existing = new Set(
+        currentMenu.flatMap((group) => group.options.map((option) => option.toLocaleLowerCase()))
+      );
+      if (!additions.some((group) =>
+        group.options.some((option) => !existing.has(option.toLocaleLowerCase()))
+      )) {
+        throw new Error('The model returned no new gesture options');
+      }
+      return { cancelled: false, additions, usage: result.usage };
+    } catch (error) {
+      const message = this.errorMessage(error);
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'gesture-playground-more',
+          requestSummary: `Generate additional gestures for ${JSON.stringify(targetPhrase)}`,
+          rawResponse: content,
+          rejection: message,
+          result
+        }
+      );
+      throw new Error(`${message} ${recoveryLocationNotice(receipt)}`);
     }
-    const existing = new Set(
-      currentMenu.flatMap((group) => group.options.map((option) => option.toLocaleLowerCase()))
-    );
-    if (!additions.some((group) =>
-      group.options.some((option) => !existing.has(option.toLocaleLowerCase()))
-    )) {
-      throw new Error('The model returned no new gesture options');
-    }
-    return { cancelled: false, additions, usage: result.usage };
   }
 
   private validateRequest(request: GestureMenuRequest, targetPhrase: string): void {
@@ -295,10 +329,12 @@ export class GesturePlaygroundService {
     ].join('\n\n');
   }
 
-  private parseCompositeResponse(
+  private async parseCompositeResponse(
     content: string,
-    truncated = false
-  ): ParsedGestureResponse {
+    truncated: boolean,
+    result: ExecutionResult,
+    requestSummary: string
+  ): Promise<ParsedGestureResponse> {
     const normalized = content.replace(/\r\n?/g, '\n').trim();
     let dictionaryMarkdown: string;
 
@@ -307,14 +343,25 @@ export class GesturePlaygroundService {
     } catch (error) {
       const message = this.errorMessage(error);
       this.logRejectedResponse('composite response', message, content);
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'gesture-playground',
+          requestSummary,
+          rawResponse: content,
+          rejection: message,
+          result
+        }
+      );
       if (truncated) {
         throw new Error(
           `The response reached the ${BUDGET.gestureOutputTokens.toLocaleString('en-US')}-token `
-          + 'output ceiling before the Gesture Dictionary closed. Try Generate again.'
+          + `output ceiling before the Gesture Dictionary closed. ${recoveryLocationNotice(receipt)} Try Generate again.`
         );
       }
       throw new Error(
-        `The model returned an unusable Gesture Dictionary (${message}). Try Generate again.`
+        `The model returned an unusable Gesture Dictionary (${message}). ${recoveryLocationNotice(receipt)} Try Generate again.`
       );
     }
 
@@ -326,11 +373,23 @@ export class GesturePlaygroundService {
     } catch (error) {
       const message = this.errorMessage(error);
       this.logRejectedResponse('alternatives menu', message, content);
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'gesture-playground',
+          requestSummary,
+          rawResponse: content,
+          rejection: message,
+          result
+        }
+      );
       return {
         dictionaryMarkdown,
         menuError:
           `The alternatives menu was unusable (${message}). `
-          + 'The Gesture Dictionary is still available; try Generate again for a new menu.'
+          + `${recoveryLocationNotice(receipt)} The Gesture Dictionary is still available; `
+          + 'try Generate again for a new menu.'
       };
     }
   }

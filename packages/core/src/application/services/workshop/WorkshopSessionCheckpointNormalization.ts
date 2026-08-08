@@ -10,9 +10,9 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
-  recoverWorkshopWidgetConfigCheckpoint,
+  normalizeWorkshopWidgetConfigForHydration,
   WorkshopWidgetCheckpointNormalization
-} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery';
+} from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 import type {
   WorkshopWidgetRecoveryNotice
 } from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
@@ -100,7 +100,7 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   }
 
   const widgetConfigs = state.widgetConfigs?.map((config) => {
-    const recovery = recoverWorkshopWidgetConfigCheckpoint(config);
+    const recovery = normalizeWorkshopWidgetConfigForHydration(config);
     normalizations.push(...recovery.normalizations);
     notices.push(...recovery.notices);
     return recovery.config;

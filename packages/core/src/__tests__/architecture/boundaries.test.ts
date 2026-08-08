@@ -345,9 +345,9 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
   },
   {
-    file: 'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
-    reason: 'closed persisted-config recovery dispatch',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity)Draft(?:Checkpoint)?Shape|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
+    file: 'application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle.ts',
+    reason: 'closed persisted-config lifecycle registry',
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity)Draft(?:CheckpointShape|Integrity|Shape)|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
@@ -383,6 +383,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
     reason: 'closed widget-recommendation registry and prompt composer',
     allowedToken: /(?:GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY|LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
+  },
+  {
+    file: 'shared/types/messages/workshop/recovery.ts',
+    reason: 'closed rejected-widget response-contract registry',
+    allowedToken: /(?:RECOVERABLE_WIDGET_RESPONSE_CONTRACTS|RecoverableWidgetToolName|RejectedModelResponseContract|gesture-playground(?:-[a-z0-9]+)*|lexical-gravity(?:-[a-z0-9]+)*|(?:END_)?(?:GESTURE|LEXICAL)_[A-Z0-9_]+)/
   },
   {
     file: 'index.ts',
@@ -506,7 +511,7 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'application/handlers/domain/workshop/WorkshopRouteContracts.ts',
   'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
   'application/services/workshop/WorkshopSessionRecords.ts',
-  'application/services/workshop/widgets/WorkshopWidgetCheckpointRecovery.ts',
+  'application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle.ts',
   'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
   'application/services/workshop/widgets/WorkshopWidgetConfigOperations.ts',
   'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
@@ -521,7 +526,8 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'shared/constants/promptBudgets.ts',
   'shared/types/messages/base.ts',
   'shared/types/messages/index.ts',
-  'shared/types/messages/workshop/index.ts'
+  'shared/types/messages/workshop/index.ts',
+  'shared/types/messages/workshop/recovery.ts'
 ] as const;
 
 /**
@@ -1211,6 +1217,7 @@ describe('architectural boundaries', () => {
       'index.ts',
       'lexicalGravity.ts',
       'participants.ts',
+      'recovery.ts',
       'session.ts',
       'settings.ts',
       'standingDirectives.ts',

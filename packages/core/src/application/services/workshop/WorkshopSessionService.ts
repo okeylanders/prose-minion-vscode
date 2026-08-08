@@ -1762,7 +1762,8 @@ export class WorkshopSessionService {
     currentBehavior: WorkshopConversationBehavior
   ): WorkshopSessionHydrationResult {
     validateWorkshopSessionStateV1(state, {
-      allowLegacyOpenSessionWithExcerpt: true
+      allowLegacyOpenSessionWithExcerpt: true,
+      skipWidgetDraftIntegrity: true
     });
     const normalization = normalizeWorkshopSessionCheckpointForHydration(state);
     const normalized = normalization.state;

@@ -106,4 +106,20 @@ describe('WorkshopApp', () => {
     fireEvent.click(screen.getByText('New session').closest('button') as HTMLButtonElement);
     expect(screen.getByRole('dialog', { name: 'Start a new session?' })).not.toBeNull();
   });
+
+  it('shows the actual rolling-checkpoint restore diagnostic', () => {
+    render(<WorkshopApp />);
+    const message = readySession();
+    message.payload.persistence.currentCheckpointProtected = true;
+    message.payload.persistence.currentCheckpointError =
+      'Persisted Workshop turn counter must be a non-negative safe integer';
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: message }));
+    });
+
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('current.json could not be restored');
+    expect(alert.textContent).toContain('turn counter must be a non-negative safe integer');
+  });
 });

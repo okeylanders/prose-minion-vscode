@@ -74,6 +74,32 @@ export function arrayOf(
   value.forEach((item, index) => assertItem(item, `${path}[${index}]`));
 }
 
+/** `itemNoun` names the domain items, not their JSON representation. */
+export function boundedArrayAt(
+  value: unknown,
+  path: string,
+  minimum: number,
+  maximum: number,
+  itemNoun: string
+): asserts value is unknown[] {
+  const expected = minimum === maximum
+    ? `an array containing exactly ${minimum} ${itemNoun}`
+    : minimum === 0
+      ? `an array of at most ${maximum} ${itemNoun}`
+      : `an array of ${minimum}–${maximum} ${itemNoun}`;
+  if (
+    !Number.isSafeInteger(minimum)
+    || !Number.isSafeInteger(maximum)
+    || minimum < 0
+    || maximum < minimum
+  ) {
+    throw new Error(`Invalid persisted array bounds ${minimum}–${maximum} for ${path}.`);
+  }
+  if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
+    shapeError(path, expected);
+  }
+}
+
 export function stringAt(value: unknown, path: string): void {
   if (typeof value !== 'string') {
     shapeError(path, 'string');
@@ -93,6 +119,17 @@ export function boundedStringAt(
   }
   if (text.length > maximumCharacters) {
     shapeError(path, `a string of at most ${maximumCharacters} characters`);
+  }
+}
+
+export function nullableBoundedStringAt(
+  value: unknown,
+  path: string,
+  maximumCharacters: number,
+  allowBlank = true
+): void {
+  if (value !== null) {
+    boundedStringAt(value, path, maximumCharacters, allowBlank);
   }
 }
 

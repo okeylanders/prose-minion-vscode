@@ -15,6 +15,15 @@ import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { PromptLoader } from '@/tools/shared/prompts';
 import { LogSink } from '@/platform';
 import {
+  persistRejectedWidgetResponse,
+  recoveryLocationNotice
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+import type {
+  RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryPresenter
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+import type { ExecutionResult } from '@orchestration/AgentRunContracts';
+import {
   cloneLexicalGravityDraft,
   lexicalGravityConfigKey,
   validateLexicalGravityDraft,
@@ -35,6 +44,8 @@ export class LexicalGravityModelService {
   constructor(
     private readonly aiResourceManager: AIResourceManager,
     private readonly promptLoader: PromptLoader,
+    private readonly rejectedResponseRecovery: RejectedModelResponseRecovery,
+    private readonly rejectedResponseRecoveryPresenter: RejectedModelResponseRecoveryPresenter,
     private readonly outputChannel?: LogSink
   ) {}
 
@@ -69,10 +80,11 @@ export class LexicalGravityModelService {
       }
     });
     if (result.cancelled) {throw new Error('Lexical lens generation was cancelled.');}
-    if (result.finishReason === 'length') {
-      throw new Error('Lexical lens generation reached its output limit. Try again.');
-    }
-    return this.parseCandidates(result.rawContent ?? result.content, normalizedQuery);
+    return this.parseCandidates(
+      result.rawContent ?? result.content,
+      normalizedQuery,
+      result
+    );
   }
 
   async preview(
@@ -155,17 +167,33 @@ export class LexicalGravityModelService {
         boundedLogText(typeof content === 'string' ? content : String(content ?? '')),
         '[LexicalGravityModelService] Rejected preview response body END'
       ].join('\n'));
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'lexical-gravity-preview',
+          requestSummary: `Preview for lens ${JSON.stringify(draft.resolvedLens?.name ?? draft.resolvedLens?.slug ?? 'custom')} using ${sourceText.length} source characters`,
+          rawResponse: typeof content === 'string' ? content : String(content ?? ''),
+          rejection: reason,
+          result
+        }
+      );
       throw new Error(
-        'The selected widget model did not return a usable preview. Try Preview again or choose another model.'
+        `The selected widget model did not return a usable preview. ${recoveryLocationNotice(receipt)} `
+        + 'Try Preview again or choose another model.'
       );
     }
   }
 
-  private parseCandidates(
+  private async parseCandidates(
     content: string,
-    query: string
-  ): WorkshopLexicalGravityLensCandidate[] {
+    query: string,
+    result: ExecutionResult
+  ): Promise<WorkshopLexicalGravityLensCandidate[]> {
     try {
+      if (result.finishReason === 'length') {
+        throw new Error('response reached its output limit');
+      }
       const framed = this.extractFrame(
         content,
         LENSES_START,
@@ -220,8 +248,20 @@ export class LexicalGravityModelService {
           '[LexicalGravityModelService] Rejected lens response body END'
         ].join('\n')
       );
+      const receipt = await persistRejectedWidgetResponse(
+        this.rejectedResponseRecovery,
+        this.rejectedResponseRecoveryPresenter,
+        {
+          toolName: 'lexical-gravity-build',
+          requestSummary: `Build three interpretive lenses for ${JSON.stringify(query)}`,
+          rawResponse: content,
+          rejection: reason,
+          result
+        }
+      );
       throw new Error(
-        'The model returned unusable interpretive lenses. Try building the lens again.'
+        `The model returned unusable interpretive lenses (${reason}). ${recoveryLocationNotice(receipt)} `
+        + 'Try building the lens again.'
       );
     }
   }

@@ -170,6 +170,10 @@ export interface ExecutionResult {
   readonly artifacts: CapabilityArtifact[];
   readonly usage?: TokenUsage;
   readonly finishReason?: string;
+  /** Provider generation id for the final inference call, when supplied. */
+  readonly providerResponseId?: string;
+  /** Actual provider-reported model id for the final inference call. */
+  readonly modelId?: string;
   readonly cancelled?: boolean;
   readonly conversationId?: string;
   readonly citations?: UrlCitation[];

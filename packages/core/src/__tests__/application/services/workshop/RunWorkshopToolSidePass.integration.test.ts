@@ -139,6 +139,7 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
         getDegradedConversationKeys: jest.fn().mockReturnValue([]),
         getDegradedConversations: jest.fn().mockReturnValue([]),
         isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
+        getCurrentCheckpointError: jest.fn().mockReturnValue(undefined),
         isSessionOperationPending: jest.fn().mockReturnValue(false),
         addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
         waitForSessionOperations: jest.fn().mockResolvedValue(undefined),

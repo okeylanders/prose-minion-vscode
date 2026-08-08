@@ -27,6 +27,8 @@ export interface PickedFile {
 export interface ShellService {
   /** Non-modal notification with optional action buttons; resolves to the chosen action or undefined. */
   showInformationMessage(message: string, ...actions: string[]): Promise<string | undefined>;
+  /** Non-modal warning with optional action buttons; resolves to the chosen action or undefined. */
+  showWarningMessage(message: string, ...actions: string[]): Promise<string | undefined>;
   /** Modal (blocking) confirm with optional action buttons; resolves to the chosen action or undefined. */
   showModalInformationMessage(message: string, ...actions: string[]): Promise<string | undefined>;
   copyToClipboard(text: string): Promise<void>;

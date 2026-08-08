@@ -94,6 +94,7 @@ export interface WorkshopRoomState {
   persistenceAvailable: boolean;
   persistenceUnavailableReason?: 'no-workspace' | 'multi-root';
   currentCheckpointProtected: boolean;
+  currentCheckpointError?: string;
   /** Affected logical persona keys when a persisted archive used T2 recovery. */
   degradedConversationKeys: string[];
   degradedConversations: WorkshopConversationDegradation[];
@@ -265,6 +266,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     'no-workspace' | 'multi-root' | undefined
   >();
   const [currentCheckpointProtected, setCurrentCheckpointProtected] = React.useState(false);
+  const [currentCheckpointError, setCurrentCheckpointError] = React.useState<string>();
   const [degradedConversationKeys, setDegradedConversationKeys] = React.useState<string[]>([]);
   const [degradedConversations, setDegradedConversations] =
     React.useState<WorkshopConversationDegradation[]>([]);
@@ -582,6 +584,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setCurrentCheckpointProtected(
         message.payload.persistence.currentCheckpointProtected === true
       );
+      setCurrentCheckpointError(message.payload.persistence.currentCheckpointError);
       setDegradedConversationKeys([...message.payload.persistence.degradedConversationKeys]);
       setDegradedConversations(
         (message.payload.persistence.degradedConversations ?? []).map((entry) => ({ ...entry }))
@@ -736,6 +739,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     persistenceAvailable,
     persistenceUnavailableReason,
     currentCheckpointProtected,
+    currentCheckpointError,
     degradedConversationKeys,
     degradedConversations,
     excerpt,

@@ -58,16 +58,26 @@ const createService = (content: unknown) => {
   const manager = { getEngine: jest.fn().mockReturnValue({ runInitial }) };
   const promptLoader = { loadPrompts: jest.fn().mockResolvedValue('lexical system prompt') };
   const appendLine = jest.fn();
+  const capture = jest.fn().mockResolvedValue({
+    filePath: '/workspace/prose-minion/recovery/model-responses/rejected.response.txt',
+    toolName: 'lexical-gravity-build',
+    storageScope: 'project'
+  });
+  const present = jest.fn().mockResolvedValue(undefined);
   return {
     service: new LexicalGravityModelService(
       manager as never,
       promptLoader as never,
+      { capture },
+      { present },
       { appendLine } as never
     ),
     manager,
     promptLoader,
     runInitial,
-    appendLine
+    appendLine,
+    capture,
+    present
   };
 };
 
@@ -174,6 +184,15 @@ describe('LexicalGravityModelService', () => {
     );
   });
 
+  it('tells the writer when a rejected preview could not be saved', async () => {
+    const rejected = createService('not the preview protocol');
+    rejected.capture.mockResolvedValueOnce(undefined);
+
+    await expect(rejected.service.preview(musicDraft(), 'A bell rang.'))
+      .rejects.toThrow('complete response could not be saved');
+    expect(rejected.present).not.toHaveBeenCalled();
+  });
+
   it('rejects truncated Preview JSON instead of caching an incomplete artifact', async () => {
     const truncated = createService(previewResponse());
     truncated.runInitial.mockResolvedValueOnce({
@@ -193,10 +212,18 @@ describe('LexicalGravityModelService', () => {
     const wrapperProse = `Here you go!\n${buildResponse}`;
     const rejected = createService(wrapperProse);
     await expect(rejected.service.buildLenses('Light'))
-      .rejects.toThrow('unusable interpretive lenses');
+      .rejects.toThrow('/workspace/prose-minion/recovery/model-responses/rejected.response.txt');
     expect(rejected.appendLine).toHaveBeenCalledWith(
       expect.stringContaining('response sentinels must be the first and last lines')
     );
+    expect(rejected.capture).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'lexical-gravity-build',
+      rawResponse: wrapperProse,
+      finishReason: 'stop'
+    }));
+    expect(rejected.present).toHaveBeenCalledWith(expect.objectContaining({
+      filePath: '/workspace/prose-minion/recovery/model-responses/rejected.response.txt'
+    }));
 
     const duplicateVariants = [
       '===LEXICAL_GRAVITY_LENSES_V2===',

@@ -18,9 +18,9 @@ work not yet implemented · **Deferred** = accepted follow-up with reason ·
 | F-04 | 🟠 High | An invalid v2 lens file is invisible to the writer (`readLens` returns `{}` for two facts) | Oliver, Parker | 1 independent · 1 runway-prompted | — | **Addressed** — unreadable project files are writer-visible and non-rebuildable |
 | F-05 | 🟡 Standard | Non-canonically-named v1 file gets a Rebuild button that can never succeed | Blake, Marcus, Bria, Sam | 4 runway-prompted | 🧭 Corroborated Runway | **Addressed** — non-canonical names surface as non-rebuildable file errors |
 | F-06 | 🟡 Standard | `version: 1` is the sole predicate authorizing the only irreversible write | Patricia | 1 independent | — | **Addressed** — overwrite now requires recognizable v1 lens identity and shape |
-| F-07 | 🟡 Standard | Widget drafts have no semantic-validation layer | Marcus | 1 runway-prompted | — | **Planned — Sprint 02D** — distinct checkpoint shape, normalization, current shape, and feature integrity passes accepted |
+| F-07 | 🟡 Standard | Widget drafts have no semantic-validation layer | Marcus | 1 runway-prompted | — | **Addressed — Sprint 02D** — exhaustive four-operation lifecycle registry; widget integrity runs on normalized current state before live hydration |
 | F-08 | 🟡 Standard | Generation and validation envelopes disagree; neither prompt states the numbers | Tim, Sam | 1 independent · 1 runway-prompted | — | **Addressed** — prompts state bounds; build/preview ceilings cover validated output plus reasoning |
-| F-09 | 🟡 Standard | Two persistence primitives invented widget-local | Stan | 1 runway-prompted | — | **Planned — Sprint 02D** — promote bounded-array and nullable-string grammar before Prose Controller |
+| F-09 | 🟡 Standard | Two persistence primitives invented widget-local | Stan | 1 runway-prompted | — | **Addressed — Sprint 02D** — shared bounded-array and nullable-string primitives adopted by both persisted widget codecs |
 | F-10 | 🟡 Standard | Four independently-versioned things all spell themselves `2` | Parker | 1 runway-prompted | — | **Addressed** — lens, preview, and response-envelope clocks named independently |
 | F-11 | 🔵 Nit | Weight scale recalibrated while the ADR asserts Weight's meaning is unchanged | Bria | 1 runway-prompted | — | **Addressed** — ADR records the five-band presentation recalibration |
 | P-1 | 💚 Praise | Preview validity is a property of the (lens, preview) pair | Marcus | 1 runway-prompted | — | N/A — preserve |
@@ -45,11 +45,26 @@ work not yet implemented · **Deferred** = accepted follow-up with reason ·
 - **F-04:** Catalog reads now distinguish absence from refusal. Invalid or non-canonical project files reach the Library as `foundVersion: null`, show the validation reason, and expose no overwrite action.
 - **F-08:** Both prompts state their validator ceilings. The three-candidate build budget is 24,000 output tokens, covering the measured ~20,000-token maximal valid envelope. Preview is 5,000 because [OpenRouter counts reasoning as output and maps low effort to roughly 20% of `max_tokens`](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens), leaving room for the 12,000-character response envelope.
 - **F-10 / F-11:** Named the independent lens, preview, and response-envelope version clocks; accepted the ADR and documented why the writer-facing Weight bands changed without changing Weight's domain meaning.
-- **F-07 / F-09:** The boundary decision is accepted and recorded in
+- **F-07 / F-09:** The boundary decision is implemented and recorded in
   [Sprint 02D](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02d-widget-persistence-grammar-and-integrity.md),
-  mandatory after 02B-B and before Prose Controller. They remain Planned until
-  that sprint's implementation and witnesses land.
+  mandatory after 02B-B and before Prose Controller. The lifecycle registry,
+  shared primitives, and post-normalization integrity witnesses are complete.
 - **Validation:** 189 Jest suites / 1,962 tests / 1 snapshot, all three TypeScript projects, quiet ESLint, production extension + webview build, bundle sentinels, and `git diff --check` pass. Interactive F5 acceptance and live billable model calls remain outside this remediation.
+
+### Sprint 02D remediation receipt — 2026-08-07
+
+- **F-07:** Replaced recovery-only dispatch with an exhaustive closed lifecycle
+  registry. Gesture and Lexical codecs now expose distinct checkpoint-shape,
+  normalize, current-shape, and integrity operations; normalized session state
+  invokes widget integrity before aggregate installation. Tests prove Lexical
+  role/config correlations pass raw shape and fail the semantic phase without
+  partially mutating the room.
+- **F-09:** Added shared `boundedArrayAt` and `nullableBoundedStringAt`
+  primitives with boundary and blank-policy tests, then removed the widget-local
+  array/null twins from Gesture and Lexical persistence grammar.
+- **Validation:** 191 Jest suites / 1,989 tests / 2 snapshots, all three
+  TypeScript projects, quiet ESLint, production extension + webview build,
+  bundle sentinels, and `git diff --check` pass.
 
 Parts I-IV below preserve the evidence and conclusions at review time. Where
 they describe strict v1 rejection or only Interpret/Recompose, the resolution

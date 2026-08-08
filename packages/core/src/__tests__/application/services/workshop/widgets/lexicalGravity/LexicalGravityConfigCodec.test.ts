@@ -1,6 +1,8 @@
 import {
   isLexicalGravityReach,
   isLexicalGravityWeight,
+  assertLexicalGravityDraftIntegrity,
+  assertLexicalGravityDraftShape,
   LEXICAL_GRAVITY_REACH,
   LEXICAL_GRAVITY_WEIGHT,
   lexicalGravityConfigKey,
@@ -102,11 +104,12 @@ describe('LexicalGravityConfigCodec', () => {
       logic: { axes: Array<{ poles: string[] }> };
     };
     invalidAxis.logic.axes[0].poles = ['one'];
-    expect(() => validateLexicalGravityLens(invalidAxis)).toThrow(/two-string tuple/);
+    expect(() => validateLexicalGravityLens(invalidAxis))
+      .toThrow(/array containing exactly 2 poles/);
 
     const missingGuardrails = builtInLexicalGravityLens('photography')!;
     missingGuardrails.logic.guardrails = [];
-    expect(() => validateLexicalGravityLens(missingGuardrails)).toThrow(/2–4 strings/);
+    expect(() => validateLexicalGravityLens(missingGuardrails)).toThrow(/2–4 guardrails/);
   });
 
   it('rejects each invalid control and the single-lens mismatch independently', () => {
@@ -381,6 +384,10 @@ Preserve character voice, scene facts, clarity, and the writer's requested meani
       'defaulted-widget-lexical-gravity-evidence-mode'
     ]);
     expect(recovered.notices).toEqual([]);
+    expect(() => normalizeLexicalGravityDraftForHydration({
+      ...checkpoint,
+      preview: { ...checkpoint.preview, configKey: 'stale|prior|identity' }
+    })).toThrow(/prior five-value config key/);
   });
 
   it('accepts only a preview tied to the current six-value configuration', () => {
@@ -452,9 +459,31 @@ Preserve character voice, scene facts, clarity, and the writer's requested meani
       }
     };
 
-    expect(() => validateLexicalGravityDraft(base)).toThrow(/roleId.*selected lens/);
-    base.preview.semanticPositions[0].roleId = 'rest';
+    expect(() => assertLexicalGravityDraftShape(base, 'draft')).not.toThrow();
+    expect(() => assertLexicalGravityDraftIntegrity(base, 'draft'))
+      .toThrow(/roleId.*selected lens/);
+    const position = base.preview.semanticPositions[0] as {
+      roleId: string;
+      axisId: string | null;
+      axisPosition: string | null;
+    };
+    position.roleId = 'rest';
+
+    position.axisId = 'unknown-axis';
+    position.axisPosition = 'toward pressure';
+    expect(() => assertLexicalGravityDraftShape(base, 'draft')).not.toThrow();
+    expect(() => assertLexicalGravityDraftIntegrity(base, 'draft'))
+      .toThrow(/axisId.*selected lens/);
+
+    position.axisId = null;
+    expect(() => assertLexicalGravityDraftShape(base, 'draft')).not.toThrow();
+    expect(() => assertLexicalGravityDraftIntegrity(base, 'draft'))
+      .toThrow(/axisPosition.*null unless both axis fields are present/);
+
+    position.axisPosition = null;
     base.preview.selectedDynamicId = 'develop';
-    expect(() => validateLexicalGravityDraft(base)).toThrow(/selectedDynamicId.*selected lens/);
+    expect(() => assertLexicalGravityDraftShape(base, 'draft')).not.toThrow();
+    expect(() => assertLexicalGravityDraftIntegrity(base, 'draft'))
+      .toThrow(/selectedDynamicId.*selected lens/);
   });
 });
