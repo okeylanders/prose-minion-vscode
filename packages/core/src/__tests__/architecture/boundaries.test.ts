@@ -347,7 +347,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle.ts',
     reason: 'closed persisted-config lifecycle registry',
-    allowedToken: /(?:Workshop(?:GesturePlayground|LexicalGravity)Draft|(?:GesturePlayground|LexicalGravity)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity)Draft(?:CheckpointShape|Integrity|Shape)|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity)Draft(?:CheckpointShape|Integrity|Shape)|normalize(?:GesturePlayground|LexicalGravity)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',

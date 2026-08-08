@@ -185,6 +185,7 @@ function assertLexicalGravityWordFieldShape(
         `${path}.degrees.${degree}.${part}`,
         2,
         BUDGET.lexicalTermsPerBucket,
+        'terms',
         BUDGET.lexicalTermCharacters
       );
     }
@@ -194,9 +195,10 @@ function assertLexicalGravityWordFieldShape(
     `${path}.gradient`,
     3,
     BUDGET.lexicalGradientTerms,
+    'gradient terms',
     BUDGET.lexicalTermCharacters
   );
-  boundedArrayAt(item.cliches, `${path}.cliches`, 1, BUDGET.lexicalCliches, 'contrasts');
+  boundedArrayAt(item.cliches, `${path}.cliches`, 1, BUDGET.lexicalCliches, 'cliches');
   arrayOf(item.cliches, `${path}.cliches`, (entryValue, entryPath) => {
     const entry = exactObject(entryValue, entryPath, ['worn', 'fresh']);
     boundedStringAt(entry.worn, `${entryPath}.worn`, BUDGET.lexicalPhraseCharacters, false);
@@ -577,6 +579,9 @@ export function normalizeLexicalGravityDraftForHydration(
         ...priorDraft,
         evidenceMode: 'blend'
       });
+      // This current-shaped witness exists only so integrity can judge the
+      // prior preview's semantics under its new identity. It is never returned:
+      // whole-checkpoint trust still requires the discarded preview to cohere.
       const semanticWitness = {
         ...priorDraft,
         evidenceMode: 'blend' as const,
@@ -762,9 +767,10 @@ function assertBoundedStrings(
   path: string,
   minimum: number,
   maximum: number,
+  itemNoun: string,
   maximumCharacters: number
 ): void {
-  boundedArrayAt(value, path, minimum, maximum, 'strings');
+  boundedArrayAt(value, path, minimum, maximum, itemNoun);
   arrayOf(value, path, (item, itemPath) => {
     boundedStringAt(item, itemPath, maximumCharacters, false);
   });
@@ -792,6 +798,7 @@ function assertLexicalGravityLensLogicShape(value: unknown, path: string): void 
     `${path}.attention.foregrounds`,
     BUDGET.lexicalAttentionItemsMinimum,
     BUDGET.lexicalAttentionItems,
+    'attention items',
     BUDGET.lexicalAttentionItemCharacters
   );
   assertBoundedStrings(
@@ -799,6 +806,7 @@ function assertLexicalGravityLensLogicShape(value: unknown, path: string): void 
     `${path}.attention.backgrounds`,
     BUDGET.lexicalAttentionItemsMinimum,
     BUDGET.lexicalAttentionItems,
+    'attention items',
     BUDGET.lexicalAttentionItemCharacters
   );
   assertLogicAxesShape(logic.axes, `${path}.axes`);
@@ -809,6 +817,7 @@ function assertLexicalGravityLensLogicShape(value: unknown, path: string): void 
     `${path}.guardrails`,
     BUDGET.lexicalLogicGuardrailsMinimum,
     BUDGET.lexicalLogicGuardrails,
+    'guardrails',
     BUDGET.lexicalGuardrailCharacters
   );
 }
@@ -830,7 +839,7 @@ function assertLogicAxesShape(value: unknown, path: string): void {
       BUDGET.lexicalLogicNameCharacters,
       false
     );
-    boundedArrayAt(axis.poles, `${axisPath}.poles`, 2, 2, 'strings');
+    boundedArrayAt(axis.poles, `${axisPath}.poles`, 2, 2, 'poles');
     const poles = axis.poles as unknown[];
     boundedStringAt(
       poles[0],
@@ -925,7 +934,7 @@ function assertLexicalGravitySemanticPositionsShape(
   value: unknown,
   path: string
 ): void {
-  boundedArrayAt(value, path, 0, BUDGET.lexicalPreviewPositions, 'mappings');
+  boundedArrayAt(value, path, 0, BUDGET.lexicalPreviewPositions, 'semantic positions');
   arrayOf(value, path, (positionValue, positionPath) => {
     const position = exactObject(
       positionValue,
@@ -1019,10 +1028,10 @@ export function assertLexicalGravityLensIntegrity(
   }
   try {
     assertLexicalGravityLensRenderable(lens);
-  } catch {
+  } catch (error) {
     shapeError(
       path,
-      `a lens whose reach-3 directive fits within ${BUDGET.lexicalDirectiveCharacters} characters`
+      `a renderable lens at reach 3; renderer reported: ${errorMessage(error)}`
     );
   }
 }
@@ -1037,12 +1046,16 @@ function assertLexicalGravityLegacyLensV1Integrity(
       { id: 'pd-validation', revision: Number.MAX_SAFE_INTEGER },
       { resolvedLens: lens, weight: 100, reach: 3, metaphorPull: true }
     );
-  } catch {
+  } catch (error) {
     shapeError(
       path,
-      `a lens whose reach-3 directive fits within ${BUDGET.lexicalDirectiveCharacters} characters`
+      `a renderable legacy lens at reach 3; renderer reported: ${errorMessage(error)}`
     );
   }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function assertLexicalGravityWordFieldIntegrity(

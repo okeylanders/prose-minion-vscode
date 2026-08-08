@@ -191,6 +191,10 @@ export class WorkshopSessionPersistenceCoordinator {
     return this.currentCheckpointError !== undefined;
   }
 
+  getCurrentCheckpointError(): string | undefined {
+    return this.currentCheckpointError;
+  }
+
   isSessionOperationPending(): boolean {
     return this.pendingSessionOperations > 0;
   }

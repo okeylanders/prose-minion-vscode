@@ -316,6 +316,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(session.getSnapshot().turns.at(-1)?.artifact).toBe('session_start');
     expect(store.writeCurrent).not.toHaveBeenCalled();
     expect(coordinator.isCurrentCheckpointProtected()).toBe(true);
+    expect(coordinator.getCurrentCheckpointError())
+      .toContain('turn counter must be a non-negative safe integer');
   });
 
   it('allows a named rescue checkpoint while unreadable current autosave remains protected', async () => {
@@ -332,6 +334,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(named.at(-1)?.workshop.excerpt?.text).toBe('Work recovered in memory.');
     expect(store.writeCurrent).not.toHaveBeenCalled();
     expect(coordinator.isCurrentCheckpointProtected()).toBe(true);
+    expect(coordinator.getCurrentCheckpointError()).toContain('current.json is malformed');
   });
 
   it('resumes rolling autosave only after an explicit session replacement succeeds', async () => {
@@ -346,6 +349,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.flush();
 
     expect(coordinator.isCurrentCheckpointProtected()).toBe(false);
+    expect(coordinator.getCurrentCheckpointError()).toBeUndefined();
     expect(current?.sessionId).toBe('healthy-room');
     expect(current?.workshop.excerpt?.text).toBe('Changed after repair.');
   });

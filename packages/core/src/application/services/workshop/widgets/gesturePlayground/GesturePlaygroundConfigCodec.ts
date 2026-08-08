@@ -111,7 +111,7 @@ function assertGesturePlaygroundDraftShapeInternal(
     `${path}.selections`,
     1,
     budget.gestureSelectionsPerCommit,
-    'strings'
+    'directions'
   );
   arrayOf(draft.selections, `${path}.selections`, (selection, selectionPath) => {
     boundedStringAt(selection, selectionPath, budget.gestureOptionCharacters, false);
@@ -137,7 +137,7 @@ function assertGesturePlaygroundDraftShapeInternal(
       `${groupPath}.options`,
       budget.gestureOptionsPerGroupMinimum,
       budget.gestureOptionsPerGroup,
-      'strings'
+      'options'
     );
     arrayOf(group.options, `${groupPath}.options`, (option, optionPath) => {
       boundedStringAt(option, optionPath, budget.gestureOptionCharacters, false);
@@ -324,6 +324,7 @@ export function normalizeGesturePlaygroundDraftForHydration(
     ...(defaultedDictionarySharing ? { includeDictionaryInCommit: false } : {}),
     ...(defaultedSourceReferences ? { sourceReferences: [] } : {})
   } as WorkshopGesturePlaygroundDraft;
+  assertGesturePlaygroundDraftShape(normalized, 'Recovered Gesture Playground draft');
   return {
     draft: cloneGesturePlaygroundDraft(normalized),
     normalizations,

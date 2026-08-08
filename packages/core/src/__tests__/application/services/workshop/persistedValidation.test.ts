@@ -24,6 +24,11 @@ describe('persistedValidation', () => {
       expect(() => boundedArrayAt({}, 'draft.items', 0, 3, 'items'))
         .toThrow('draft.items must be an array of at most 3 items');
     });
+
+    it('names exact domain items without implying their JSON representation', () => {
+      expect(() => boundedArrayAt([], 'draft.poles', 2, 2, 'poles'))
+        .toThrow('draft.poles must be an array containing exactly 2 poles');
+    });
   });
 
   describe('nullableBoundedStringAt', () => {

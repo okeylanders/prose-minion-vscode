@@ -1397,6 +1397,7 @@ export class WorkshopRoomHandler {
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,
           currentCheckpointProtected: this.sessionPersistence.isCurrentCheckpointProtected(),
+          currentCheckpointError: this.sessionPersistence.getCurrentCheckpointError(),
           degradedConversationKeys: this.sessionPersistence.getDegradedConversationKeys(),
           degradedConversations: this.sessionPersistence.getDegradedConversations()
         }

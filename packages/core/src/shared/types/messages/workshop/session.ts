@@ -668,8 +668,10 @@ export interface WorkshopSessionStatePayload {
   persistence: {
     available: boolean;
     unavailableReason?: 'no-workspace' | 'multi-root';
-    /** True when an unreadable current.json is protected from automatic overwrite. */
+    /** True when a current.json that failed restoration is protected from automatic overwrite. */
     currentCheckpointProtected?: boolean;
+    /** Display-safe restoration diagnostic for the protected rolling checkpoint. */
+    currentCheckpointError?: string;
     /** Non-empty only when product state survived but retained memory did not. */
     degradedConversationKeys: string[];
     /** Display-safe explanation for each participant whose retained memory degraded. */

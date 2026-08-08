@@ -15,7 +15,7 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
-  validateWorkshopWidgetDraftIntegrity
+  assertWorkshopWidgetDraftIntegrity
 } from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 
 export interface WorkshopSessionStateV1ValidationOptions {
@@ -255,7 +255,7 @@ export function validateWorkshopSessionStateV1(
       throw new Error(`Persisted Workshop widget config ${config.id} spans both rails`);
     }
     if (options.skipWidgetDraftIntegrity !== true) {
-      validateWorkshopWidgetDraftIntegrity(
+      assertWorkshopWidgetDraftIntegrity(
         config.widgetId,
         config.draft,
         `Workshop session state.widgetConfigs.${config.id}.draft`

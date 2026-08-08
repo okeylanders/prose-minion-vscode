@@ -1,19 +1,22 @@
 import {
-  assertWorkshopWidgetDraftShape,
+  assertWorkshopWidgetCurrentDraftShape,
+  isPersistedWorkshopWidgetId,
+  type PersistedWorkshopWidgetId,
   persistedWorkshopWidgetLifecycleIds
 } from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 
 describe('WorkshopWidgetPersistenceLifecycle architecture', () => {
-  it('registers every persisted widget-union arm exactly once', () => {
+  it('publishes the compiler-checked persisted-widget set', () => {
     const ids = persistedWorkshopWidgetLifecycleIds();
 
-    expect(ids).toEqual(['gesture-playground', 'lexical-gravity']);
-    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids.every(isPersistedWorkshopWidgetId)).toBe(true);
   });
 
   it('does not mistake roadmap catalog entries for persisted codecs', () => {
-    expect(() => assertWorkshopWidgetDraftShape(
-      'prose-controller',
+    expect(isPersistedWorkshopWidgetId('prose-controller')).toBe(false);
+    expect(() => assertWorkshopWidgetCurrentDraftShape(
+      'prose-controller' as PersistedWorkshopWidgetId,
       {},
       'draft'
     )).toThrow(/Unsupported persisted Workshop widget: prose-controller/);

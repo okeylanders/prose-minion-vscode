@@ -51,8 +51,9 @@ import {
   assertLexicalGravityRecommendationSeedShape
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 import {
-  assertWorkshopWidgetDraftCheckpointShape,
-  assertWorkshopWidgetDraftShape
+  assertWorkshopWidgetCheckpointDraftShape,
+  assertWorkshopWidgetCurrentDraftShape,
+  isPersistedWorkshopWidgetId
 } from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 
 export function assertWorkshopSessionStateShape(
@@ -364,14 +365,13 @@ function assertWidgetConfig(value: unknown, path: string, checkpoint: boolean): 
   optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
   optionalStringAt(config.artifactId, `${path}.artifactId`);
   optionalStringAt(config.directiveId, `${path}.directiveId`);
-  if (config.widgetId !== 'gesture-playground' && config.widgetId !== 'lexical-gravity') {
+  if (!isPersistedWorkshopWidgetId(config.widgetId)) {
     shapeError(`${path}.widgetId`, 'a widget with a persisted config codec');
   }
-  const widgetId = config.widgetId as 'gesture-playground' | 'lexical-gravity';
   if (checkpoint) {
-    assertWorkshopWidgetDraftCheckpointShape(widgetId, config.draft, `${path}.draft`);
+    assertWorkshopWidgetCheckpointDraftShape(config.widgetId, config.draft, `${path}.draft`);
   } else {
-    assertWorkshopWidgetDraftShape(widgetId, config.draft, `${path}.draft`);
+    assertWorkshopWidgetCurrentDraftShape(config.widgetId, config.draft, `${path}.draft`);
   }
 }
 

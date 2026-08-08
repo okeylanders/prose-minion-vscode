@@ -1,6 +1,6 @@
 /** Closed lifecycle registry for every earned persisted widget-config arm. */
 
-import type { WorkshopWidgetConfigSnapshot, WorkshopWidgetId } from '@messages';
+import type { WorkshopWidgetConfigSnapshot } from '@messages';
 import {
   assertGesturePlaygroundDraftCheckpointShape,
   assertGesturePlaygroundDraftIntegrity,
@@ -30,7 +30,7 @@ export type WorkshopWidgetCheckpointNormalization =
   | GesturePlaygroundCheckpointNormalization
   | LexicalGravityCheckpointNormalization;
 
-type PersistedWorkshopWidgetId = WorkshopWidgetConfigSnapshot['widgetId'];
+export type PersistedWorkshopWidgetId = WorkshopWidgetConfigSnapshot['widgetId'];
 type PersistedWorkshopWidgetDraft<Id extends PersistedWorkshopWidgetId> =
   Extract<WorkshopWidgetConfigSnapshot, { widgetId: Id }>['draft'];
 
@@ -45,7 +45,7 @@ interface WorkshopWidgetPersistenceLifecycleFor<
     WorkshopWidgetCheckpointNormalization
   >;
   assertCurrentShape: (draft: unknown, path: string) => void;
-  validateIntegrity: (
+  assertIntegrity: (
     draft: PersistedWorkshopWidgetDraft<Id>,
     path: string
   ) => void;
@@ -56,33 +56,32 @@ type WorkshopWidgetPersistenceLifecycleRegistry = {
 };
 
 /** Type-erased only after registry construction, at the runtime id boundary. */
-interface WorkshopWidgetPersistenceLifecycle {
-  assertCheckpointShape: (draft: unknown, path: string) => void;
-  normalizeForHydration: (
-    draft: unknown
-  ) => WorkshopWidgetDraftRecoveryResult<unknown, WorkshopWidgetCheckpointNormalization>;
-  assertCurrentShape: (draft: unknown, path: string) => void;
-  validateIntegrity: (draft: unknown, path: string) => void;
-}
+type WorkshopWidgetPersistenceLifecycle = Omit<
+  WorkshopWidgetPersistenceLifecycleFor<PersistedWorkshopWidgetId>,
+  'assertIntegrity'
+> & {
+  assertIntegrity: (draft: unknown, path: string) => void;
+};
 
 /**
  * The registry is deliberately closed. Its mapped `satisfies` contract is the
  * architecture witness: every arm of the persisted config union contributes
  * exactly one correctly typed four-operation lifecycle before TypeScript will
- * build.
+ * build. Widget-local `assert*` names one phase; the aggregate's `validate*`
+ * names a composite pass across structural and semantic invariants.
  */
 const WORKSHOP_WIDGET_PERSISTENCE_LIFECYCLES = {
   'gesture-playground': {
     assertCheckpointShape: assertGesturePlaygroundDraftCheckpointShape,
     normalizeForHydration: normalizeGesturePlaygroundDraftForHydration,
     assertCurrentShape: assertGesturePlaygroundDraftShape,
-    validateIntegrity: assertGesturePlaygroundDraftIntegrity
+    assertIntegrity: assertGesturePlaygroundDraftIntegrity
   },
   'lexical-gravity': {
     assertCheckpointShape: assertLexicalGravityDraftCheckpointShape,
     normalizeForHydration: normalizeLexicalGravityDraftForHydration,
     assertCurrentShape: assertLexicalGravityDraftShape,
-    validateIntegrity: assertLexicalGravityDraftIntegrity
+    assertIntegrity: assertLexicalGravityDraftIntegrity
   }
 } satisfies WorkshopWidgetPersistenceLifecycleRegistry;
 
@@ -90,31 +89,42 @@ export function persistedWorkshopWidgetLifecycleIds(): PersistedWorkshopWidgetId
   return Object.keys(WORKSHOP_WIDGET_PERSISTENCE_LIFECYCLES) as PersistedWorkshopWidgetId[];
 }
 
-export function assertWorkshopWidgetDraftShape(
-  widgetId: WorkshopWidgetId,
+export function isPersistedWorkshopWidgetId(
+  widgetId: unknown
+): widgetId is PersistedWorkshopWidgetId {
+  return typeof widgetId === 'string'
+    && Object.prototype.hasOwnProperty.call(
+      WORKSHOP_WIDGET_PERSISTENCE_LIFECYCLES,
+      widgetId
+    );
+}
+
+export function assertWorkshopWidgetCurrentDraftShape(
+  widgetId: PersistedWorkshopWidgetId,
   draft: unknown,
   path: string
 ): void {
   lifecycleFor(widgetId).assertCurrentShape(draft, path);
 }
 
-export function assertWorkshopWidgetDraftCheckpointShape(
-  widgetId: WorkshopWidgetId,
+export function assertWorkshopWidgetCheckpointDraftShape(
+  widgetId: PersistedWorkshopWidgetId,
   draft: unknown,
   path: string
 ): void {
   lifecycleFor(widgetId).assertCheckpointShape(draft, path);
 }
 
-export function validateWorkshopWidgetDraftIntegrity(
-  widgetId: WorkshopWidgetId,
+/** Requires a current-shape assertion for the draft before this phase runs. */
+export function assertWorkshopWidgetDraftIntegrity(
+  widgetId: PersistedWorkshopWidgetId,
   draft: unknown,
   path: string
 ): void {
-  lifecycleFor(widgetId).validateIntegrity(draft, path);
+  lifecycleFor(widgetId).assertIntegrity(draft, path);
 }
 
-export function recoverWorkshopWidgetConfigCheckpoint(
+export function normalizeWorkshopWidgetConfigForHydration(
   config: WorkshopWidgetConfigSnapshot
 ): WorkshopWidgetConfigRecoveryResult {
   return liftWorkshopWidgetRecovery(
@@ -123,11 +133,10 @@ export function recoverWorkshopWidgetConfigCheckpoint(
   );
 }
 
-function lifecycleFor(widgetId: WorkshopWidgetId): WorkshopWidgetPersistenceLifecycle {
-  if (!Object.prototype.hasOwnProperty.call(
-    WORKSHOP_WIDGET_PERSISTENCE_LIFECYCLES,
-    widgetId
-  )) {
+function lifecycleFor(
+  widgetId: PersistedWorkshopWidgetId
+): WorkshopWidgetPersistenceLifecycle {
+  if (!isPersistedWorkshopWidgetId(widgetId)) {
     throw new Error(`Unsupported persisted Workshop widget: ${widgetId}`);
   }
   return WORKSHOP_WIDGET_PERSISTENCE_LIFECYCLES[

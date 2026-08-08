@@ -66,7 +66,8 @@ describe('GesturePlaygroundConfigCodec', () => {
       (_, index) => `Direction 1.${index + 1}`
     );
 
-    expect(() => assertDraft(value)).toThrow(/draft\.menu\[0\]\.options must be an array of 3–10 strings/);
+    expect(() => assertDraft(value))
+      .toThrow(/draft\.menu\[0\]\.options must be an array of 3–10 options/);
   });
 
   it('rejects duplicate options across menu groups', () => {
@@ -95,13 +96,13 @@ describe('GesturePlaygroundConfigCodec', () => {
   it('rejects empty, over-limit, and duplicate selections', () => {
     const empty = draft();
     empty.selections = [];
-    expect(() => assertDraft(empty)).toThrow(/an array of 1–8 strings/);
+    expect(() => assertDraft(empty)).toThrow(/an array of 1–8 directions/);
 
     const overLimit = draft();
     overLimit.selections = overLimit.menu
       .flatMap((group) => group.options)
       .slice(0, PROMPT_BUDGETS.workshopWidgets.gestureSelectionsPerCommit + 1);
-    expect(() => assertDraft(overLimit)).toThrow(/an array of 1–8 strings/);
+    expect(() => assertDraft(overLimit)).toThrow(/an array of 1–8 directions/);
 
     const duplicate = cloneGesturePlaygroundDraft(draft());
     duplicate.selections.push(duplicate.selections[0]);

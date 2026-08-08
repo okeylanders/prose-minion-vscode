@@ -201,6 +201,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
       available: false,
       unavailableReason: 'multi-root',
       currentCheckpointProtected: true,
+      currentCheckpointError: 'current.json failed schema validation',
       degradedConversationKeys: ['host', 'guest:margot']
     };
 
@@ -209,6 +210,8 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     expect(result.current.persistenceAvailable).toBe(false);
     expect(result.current.persistenceUnavailableReason).toBe('multi-root');
     expect(result.current.currentCheckpointProtected).toBe(true);
+    expect(result.current.currentCheckpointError)
+      .toBe('current.json failed schema validation');
     expect(result.current.degradedConversationKeys).toEqual(['host', 'guest:margot']);
   });
 

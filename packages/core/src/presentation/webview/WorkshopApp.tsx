@@ -904,8 +904,13 @@ export const WorkshopApp: React.FC = () => {
       {workshop.currentCheckpointProtected && (
         <div className="pm-ws-degraded-memory" role="alert">
           <Icon name="save" size={14} />
-          Automatic recovery is paused because <code>current.json</code> could not be read.
-          This room remains open in memory; save a named checkpoint before replacing it.
+          <span>
+            Automatic recovery is paused because <code>current.json</code> could not be restored.{' '}
+            This room remains open in memory; save a named checkpoint before replacing it.
+            {workshop.currentCheckpointError
+              ? ` ${workshop.currentCheckpointError}`
+              : ' Check the Prose Minion output for details.'}
+          </span>
         </div>
       )}
       {workshopSessions.sessionSaveStatus?.status === 'error' && (

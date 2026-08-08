@@ -212,6 +212,27 @@ new primitive is genuinely mechanical across widget families.
   bundle sentinels; and `git diff --check` pass. Webpack reports only its known
   webview size advisories.
 
+### PR #111 review remediation — 2026-08-08
+
+- The persisted-widget runtime guard and architecture witness now derive from
+  the exhaustive lifecycle registry instead of repeating its two IDs.
+- Lifecycle names now describe checkpoint shape, hydration normalization,
+  current shape, and integrity consistently; Gesture recovery proves its own
+  current-shape postcondition.
+- Regression coverage attributes role, axis, axis-nullity, and dynamic
+  violations to integrity, splits raw-shape failures from post-normalization
+  failures, and proves failed hydration cannot mutate the live aggregate.
+- Rolling-checkpoint protection now carries the actual restore diagnostic to
+  the Workshop banner. Renderability and bounded-array diagnostics likewise
+  retain truthful causes and domain vocabulary.
+- F-05 and F-08 remain intentionally deferred under the review ledger's stated
+  triggers. The separately reviewed rejected-model-response recovery work was
+  left untouched.
+- Verification: 192 Jest suites / 2,003 tests / 2 snapshots; all three
+  TypeScript projects; ESLint with 0 errors (933 pre-existing warnings);
+  production extension + webview build/bundle sentinels; and
+  `git diff --check` pass.
+
 ## Completion Criteria
 
 - [x] The implemented validation flow matches the decision map.

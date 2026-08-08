@@ -452,7 +452,15 @@ describe('WorkshopSessionService — widget configs', () => {
         }];
       },
       message: /a ctx-<n> attachment id/
-    },
+    }
+  ])('rejects $label during checkpoint-shape parsing', ({ mutate, message }) => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const state = session.exportCommittedState();
+    mutate(state);
+    expect(() => parseWorkshopSessionStateV1(state)).toThrow(message);
+  });
+
+  it.each([
     {
       label: 'duplicate source references',
       mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
@@ -473,19 +481,23 @@ describe('WorkshopSessionService — widget configs', () => {
       },
       message: /source references within 500 characters/
     }
-  ])('rejects $label before live hydration', ({ mutate, message }) => {
-    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
-    const state = session.exportCommittedState();
-    mutate(state);
-    expect(() => {
-      const decoded = parseWorkshopSessionStateV1(state);
-      new WorkshopSessionService(() => 10_000).hydrateCommittedState(
+  ])(
+    'rejects $label during post-normalization integrity without mutating the live session',
+    ({ mutate, message }) => {
+      session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+      const before = session.exportCommittedState();
+      const incoming = session.exportCommittedState();
+      mutate(incoming);
+      const decoded = parseWorkshopSessionStateV1(incoming);
+
+      expect(() => session.hydrateCommittedState(
         decoded,
         {},
         DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
-      );
-    }).toThrow(message);
-  });
+      )).toThrow(message);
+      expect(session.exportCommittedState()).toEqual(before);
+    }
+  );
 
   it('rejects malformed recommendation source references at persistence ingress', () => {
     session.setSessionScope('open');

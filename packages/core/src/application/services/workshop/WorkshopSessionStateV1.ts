@@ -154,11 +154,11 @@ export interface WorkshopSessionStateV1 {
 }
 
 /**
- * Decode the host-private aggregate at the raw JSON boundary. Structural
- * validation is exact-key and recursive; compatibility-safe aggregate
- * integrity then runs on a defensive clone. Widget-local integrity waits until
- * recognized prior drafts have normalized to current shape. Conversation
- * import may safely happen only after the full hydrate preflight succeeds.
+ * Decode the host-private aggregate at the raw JSON boundary. Exact checkpoint
+ * structure and compatibility-safe aggregate invariants run on a defensive
+ * clone. Widget-local semantics intentionally wait until callers normalize,
+ * assert current shape, and run strict integrity; this return value alone is
+ * not hydration- or import-ready.
  */
 export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStateV1 {
   assertWorkshopSessionCheckpointShape(value);
