@@ -1,6 +1,6 @@
 # Sprint 04: Lexical Gravity — Lens Blending
 
-**Status**: Paused — Workshop Architecture Refactor Phase 7 must lift the feature freeze
+**Status**: Planned — follows Sprint 03; the Workshop feature freeze lifted after Architecture Refactor Phase 7
 **Priority**: Low (v2 richness; ship 01–03 first)
 **Branch**: `sprint/conversation-widgets-04-lexical-gravity-lens-blending` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 3-5 days

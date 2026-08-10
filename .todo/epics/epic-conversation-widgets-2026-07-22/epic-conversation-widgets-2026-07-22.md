@@ -5,9 +5,10 @@
 the Workshop Architecture Refactor completed Phases 0-7. Sprint 01 merged
 2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed; Sprint
 02B-B is complete, including widget codec recovery and F5 acceptance. Sprint
-02D is complete on its sprint branch, establishing the persistence
-grammar/integrity family boundary before Prose Controller or any other
-persisted widget begins.
+02D merged through [PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111)
+on 2026-08-08, establishing the persistence grammar/integrity family boundary
+before Prose Controller or any other persisted widget begins. Sprint 03 is next;
+Sprint 04 remains later v2 richness work.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -22,18 +23,21 @@ local persisted codec, hydration regained a structural prepare/install boundary,
 and shared shape grammar consolidated into `persistedValidation`. Sprint 02B
 merged through [PR #98](https://github.com/okeylanders/prose-minion-vscode/pull/98):
 single-lens Lexical Gravity, the standing prose-directive rail, project lens
-resources, and writer-owned edit/kill lifecycle. Sprint 02B-A is the active
-follow-up: agent-prepared widget handoff, default-on proactive assistance, and
-Lexical Gravity/browser UX polish. Sprint 02B-B replaces the word-field-only
+resources, and writer-owned edit/kill lifecycle. Sprint 02B-A landed through
+[PR #99](https://github.com/okeylanders/prose-minion-vscode/pull/99):
+agent-prepared widget handoff, default-on proactive assistance, and Lexical
+Gravity/browser UX polish. Sprint 02B-B replaces the word-field-only
 lens codec with an interpretive grammar before later widget behavior proceeds;
 its [Widget Codec Recovery Mode](sprints/02b-b-widget-codec-recovery-mode.md)
 exit plan now salvages recognized v1 session snapshots instead of rejecting the
 whole room. The old optional Sprint 02C scope/context extraction was completed
 under the mandatory
 [Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
-and its superseded sprint file was removed. Sprint 02D implements the accepted
-F-07/F-09 foundation with an exhaustive four-operation lifecycle registry and
-post-normalization widget integrity. Sprints 03 and 04 have not started.
+and its superseded sprint file was removed. Sprint 02D merged through
+[PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111),
+implementing the accepted F-07/F-09 foundation with an exhaustive
+four-operation lifecycle registry and post-normalization widget integrity.
+Sprint 03 is the next unstarted implementation slice; Sprint 04 follows it.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;
 [2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Accepted**; implementation in PR #110 with interactive F5 acceptance verified;
@@ -186,8 +190,9 @@ with a second widget before adding v2 richness.
 Each implemented feature sprint lands as its own PR into
 `epic/conversation-widgets`. The Workshop Architecture Refactor Phase 7 lifted
 the feature gate. Sprint 02B-B and its recovery exit are complete; Sprint 02D
-is complete on its sprint branch and must merge into
-`epic/conversation-widgets` before Sprint 03 begins. Final step after Sprint 04
+merged into `epic/conversation-widgets` through
+[PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111).
+Sprint 03 begins from that completed foundation. Final step after Sprint 04
 (or the agreed cut line): one PR
 `epic/conversation-widgets →` the workshop integration line.
 
