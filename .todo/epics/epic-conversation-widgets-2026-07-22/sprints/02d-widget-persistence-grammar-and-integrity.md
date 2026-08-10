@@ -5,7 +5,7 @@
 **Branch**: `sprint/conversation-widgets-02d-widget-persistence-grammar` -> `epic/conversation-widgets`
 **Estimated Effort**: 1-2 days
 **Depends on**: Sprint 02B-B, including its [Widget Codec Recovery Mode exit plan](02b-b-widget-codec-recovery-mode.md)
-**Blocks**: [Sprint 03 — Prose Controller](03-prose-controller.md) and every later persisted widget
+**Blocks**: [Sprint 03 — Creative Variations](03-creative-variations.md) and every later persisted widget
 **Review sources**: [PR #110 review F-07 and F-09](../../../../docs/pr-reviews/pr-110-lexical-gravity-interpretive-grammar-dde10a4-review-v2.md)
 
 ## Goal

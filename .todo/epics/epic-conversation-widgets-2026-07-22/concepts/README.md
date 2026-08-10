@@ -25,8 +25,8 @@ surface while the concept declares its actual lifecycle:
 | [Project Scratch Pad](project-scratch-pad.md) | Project-scoped JSON entries with writer/persona read and append | Lock multi-root ownership, atomic writes, and capability permissions. |
 | [Learner: English](learner-english.md) | English-language curriculum and passage exploration | Define the shared Learner shell and trustworthy packaged curriculum. |
 | [Learner: Art of the Craft](learner-art-of-the-craft.md) | Storytelling-craft curriculum and passage exploration | Share the Learner shell without collapsing the two curricula into one vague tutor. |
-| [Show vs. Tell Playground](show-v-tell-playground.md) | Local continuum playground for generated variations | Validate its boundary with Prose Controller's standing scene/summary lever. |
-| [Creative Variations Playground](creative-variations-playground.md) | Local structured variation studio | Prove typed generation, compact one-shot commit, and reuse across existing tool variation prompts. |
+| [Show vs. Tell Playground](show-v-tell-playground.md) | Promoted to Sprint 05 | Validate its local continuum boundary against Prose Controller's standing scene/summary lever. |
+| [Creative Variations Playground](creative-variations-playground.md) | Promoted to Sprint 03 | Prove typed generation, compact one-shot commit, and a copyable variation-workup seam. |
 | [Topic Relationship Explorer](topic-relationship-explorer.md) | A named topic derived against the passage as an ordered, span-verified dossier | Settle who owns the `relation` enum, and keep Ask from becoming a second chat. |
 | [Genre Relationship Explorer](genre-relationship-explorer.md) | A chapter surveyed against its shelf-neighbors; two-sided tells with ¶ addresses | Settle who owns the `dimension` enum, and scope the standing pin as a second slice. |
 

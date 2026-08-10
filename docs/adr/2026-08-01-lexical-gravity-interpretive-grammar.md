@@ -1,8 +1,10 @@
 # ADR 2026-08-01: Lexical Gravity Interpretive Grammar
 
 - **Status**: Accepted; amended 2026-08-07 with first-class Lexical gear,
-  independent Tell/Blend/Show evidence mode, and checkpoint recovery —
-  implementation verified by interactive F5 acceptance
+  independent Tell/Blend/Show evidence mode, and checkpoint recovery; amended
+  2026-08-10 to replace planned dominance-weighted blending with a
+  model-selected lens stack — implementation verified by interactive F5
+  acceptance for the delivered v2 grammar
 - **Decision owner**: Okey
 - **Extends**: [ADR 2026-07-22 — Conversation Widgets](2026-07-22-conversation-widgets.md)
 - **Delivery**: [Sprint 02B-B — Lexical Gravity interpretive grammar](../../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/02b-b-lexical-gravity-interpretive-grammar.md)
@@ -30,10 +32,10 @@ meaningful transition, and leaves an expectation, obligation, asymmetry, or
 instability behind. The prose need not resolve that stored pressure, but it
 should be able to create it deliberately.
 
-This must be corrected before lens blending or another standing widget copies
-the current contract. Blending lexical inventories before lenses have
-inferential structure would produce weighted vocabulary, not layered
-world-views.
+This must be corrected before a later Lexical Gravity stack or another standing
+widget copies the current contract. Selecting among lexical inventories before
+lenses have inferential structure would produce weighted vocabulary, not
+meaningful alternative world-views.
 
 ## Decision
 
@@ -837,8 +839,9 @@ field vocabulary fails even if it is fluent.
 - Preview becomes debuggable and writer-accountable.
 - Narrative consequence can emerge from semantic movement without forcing plot
   invention or immediate resolution.
-- Future dominance-weighted blends can layer world-views rather than merge word
-  bags.
+- A future model-selected stack can preserve several independent world-views
+  without merging their word bags or pretending the writer supplied arithmetic
+  dominance.
 - `weight`, `reach`, and `metaphorPull` stop carrying ambiguous semantic jobs.
 
 ### Costs and risks
@@ -864,7 +867,7 @@ field vocabulary fails even if it is fluent.
   narrative potential are independent. One quiet attention reversal can carry
   more consequence than a paragraph saturated with lens terminology.
 - **Keep every v1 project lens as a second installable lens variant.** Rejected:
-  it creates two project-resource meanings of "lens," complicates blending, and
+  it creates two project-resource meanings of "lens," complicates lens stacking, and
   makes every downstream consumer branch on a temporary alpha representation.
   The amended decision instead makes Lexical a first-class application gear for
   current v2 lenses and permits only exact session-embedded v1 snapshots in a

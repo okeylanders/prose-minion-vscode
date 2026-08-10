@@ -17,8 +17,8 @@ domain notices, how it positions scene elements, which state changes belong to
 the domain, and what those changes imply. The existing word field becomes the
 last-mile realization layer.
 
-This sprint establishes that foundation before Prose Controller, lens blending,
-or another widget copies the current representation.
+This sprint establishes that foundation before Prose Controller, the later
+Lexical Gravity stack, or another widget copies the current representation.
 
 The architecture feature gate is closed. Okey explicitly resumed feature work
 on 2026-08-06 after Phase 7 accepted the final responsibility map and closure
@@ -165,7 +165,8 @@ Controller.
 
 - Update the case-study language from word field alone to interpretive grammar +
   semantic positioning + lexical realization.
-- Update the Sprint 04 blend plan so dominance layers interpretive grammars.
+- Update the Sprint 06 stack plan so independently preserved interpretive
+  grammars can be selected by local passage fit.
 - Add codec, repository, parser, directive, UI, round-trip, budget, and
   architecture tests.
 
@@ -185,7 +186,7 @@ Controller.
 ## Out of scope
 
 - A consequence meter, score, or persisted scene-charge ledger.
-- Multi-lens blending.
+- A model-selected multi-lens stack.
 - Prose Controller implementation.
 - Automatic migration or unprompted rewriting of user-owned v1 project
   resources. Session-embedded v1 checkpoint recovery is separately required by

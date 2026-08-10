@@ -1,7 +1,7 @@
 # Concept Spring: Creative Variations Playground
 
-**Status**: Concept spring
-**Priority candidate**: High
+**Status**: Promoted to [Sprint 03 — Creative Variations](../sprints/03-creative-variations.md)
+**Priority**: High
 **Classification**: Conversation Widget
 **Likely rail**: One-shot thread artifact
 **Depends on**: Widget host + Gesture Playground (Sprint 01)

@@ -1,7 +1,7 @@
 # Concept Spring: Show vs. Tell Playground
 
-**Status**: Concept spring
-**Priority candidate**: Medium
+**Status**: Promoted to [Sprint 05 — Show vs. Tell](../sprints/05-show-vs-tell.md)
+**Priority**: Medium
 **Classification**: Conversation Widget
 **Likely rail**: One-shot thread artifact
 

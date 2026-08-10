@@ -20,8 +20,8 @@ behavior.
 
 Lexical Gravity lets the writer bias the passage's prose toward an interpretive
 lens / world-view — "write this toward a Photography lens" — and hands the room a
-compact directive at commit time. This sprint ships **single-lens** only;
-blending is Sprint 04.
+compact directive at commit time. This sprint ships **one active Lexical Gravity
+directive** only; the later model-selected stack is Sprint 06.
 
 ## Resolved Foundation from Sprint 02A
 
@@ -190,7 +190,7 @@ maps to Sprint 02B after the sequencing split.
 
 ## Out of Scope
 
-- Lens **blending** / multi-lens dominance (Sprint 04).
+- A model-selected Lexical Gravity stack (Sprint 06).
 - Prose Controller knobs (Sprint 03).
 - Workshop scope/context IPC extraction, subsequently completed by the
   Workshop Architecture Refactor.
