@@ -1,11 +1,15 @@
 /** Generic recommendation-registry, envelope, and transcript-cleanup coverage. */
 
 import {
+  buildWorkshopWidgetRecommendationInstruction,
   inspectWorkshopWidgetRecommendation,
   WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES,
   WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
 } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
+import {
+  fixedWorkshopWidgetAvailabilityPolicy
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import {
   sanitizeWorkshopWidgetRecommendationForRetention,
   stripWorkshopWidgetRecommendationControl
@@ -84,6 +88,18 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
       WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['gesture-playground'].instruction
     ));
   });
+
+  it('builds route-test instructions from an exact injected availability set', () => {
+    const gestureOnly = fixedWorkshopWidgetAvailabilityPolicy(['gesture-playground']);
+    const instruction = buildWorkshopWidgetRecommendationInstruction(gestureOnly);
+
+    expect(instruction).toContain(
+      WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['gesture-playground'].instruction
+    );
+    expect(instruction).not.toContain(
+      WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['lexical-gravity'].instruction
+    );
+  });
 });
 
 describe('inspectWorkshopWidgetRecommendation', () => {
@@ -122,6 +138,13 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     expect(
       inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'made-up-widget' }))
     ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
+  });
+
+  it('uses the injected availability policy before feature dispatch', () => {
+    expect(inspectWorkshopWidgetRecommendation(
+      recommendationFrame({ widgetId: 'lexical-gravity' }),
+      fixedWorkshopWidgetAvailabilityPolicy(['gesture-playground'])
+    )).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
   });
 
   it('rejects an oversized whole frame before feature inspection', () => {

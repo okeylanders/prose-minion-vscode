@@ -11,7 +11,10 @@ import {
   WorkshopWidgetRecommendation
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { isLiveWorkshopWidgetId } from '@shared/constants/workshopWidgets';
+import {
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
+  type WorkshopWidgetAvailabilityPolicy
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import {
   GesturePlaygroundRecommendationField,
   GesturePlaygroundRecommendationInvalidFieldReason,
@@ -61,25 +64,37 @@ export const WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES = Object.freeze({
   Record<RecommendationWidgetId, WorkshopWidgetRecommendationEntry>
 >;
 
-const LIVE_RECOMMENDATION_ENTRIES = Object.values(
-  WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES
-).filter(({ widgetId }) => isLiveWorkshopWidgetId(widgetId));
+function availableRecommendationEntries(
+  availability: WorkshopWidgetAvailabilityPolicy
+): WorkshopWidgetRecommendationEntry[] {
+  return Object.values(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES)
+    .filter(({ widgetId }) => availability.isAvailable(widgetId));
+}
 
-export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
-  '<workshop-widget-recommendation-contract>',
-  `The writer has the following interactive widgets you may recommend: ${[
-    ...LIVE_RECOMMENDATION_ENTRIES
-  ]
-    .sort((left, right) => left.catalogOrder - right.catalogOrder)
-    .map(({ catalogSummary }) => catalogSummary)
-    .join('; ')}.`,
-  'Each response is independent: recommend at most one widget in this response, and only when it would genuinely help. A recommendation or uncommitted chip from an earlier turn never counts against this response and never suppresses a fresh recommendation. When the writer explicitly asks you to prepare or configure a live widget, emit a fresh, complete frame if the supplied material supports its required fields; do not merely acknowledge the request. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
-  'Use the reserved heading and every tag in the selected frame exactly once, alone on their lines. Do not repeat the heading or use any reserved tag inside a field.',
-  ...[...LIVE_RECOMMENDATION_ENTRIES]
-    .sort((left, right) => left.instructionOrder - right.instructionOrder)
-    .map(({ instruction }) => instruction),
-  '</workshop-widget-recommendation-contract>'
-].join('\n');
+export function buildWorkshopWidgetRecommendationInstruction(
+  availability: WorkshopWidgetAvailabilityPolicy =
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+): string {
+  const availableEntries = availableRecommendationEntries(availability);
+  return [
+    '<workshop-widget-recommendation-contract>',
+    `The writer has the following interactive widgets you may recommend: ${[
+      ...availableEntries
+    ]
+      .sort((left, right) => left.catalogOrder - right.catalogOrder)
+      .map(({ catalogSummary }) => catalogSummary)
+      .join('; ')}.`,
+    'Each response is independent: recommend at most one widget in this response, and only when it would genuinely help. A recommendation or uncommitted chip from an earlier turn never counts against this response and never suppresses a fresh recommendation. When the writer explicitly asks you to prepare or configure a live widget, emit a fresh, complete frame if the supplied material supports its required fields; do not merely acknowledge the request. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
+    'Use the reserved heading and every tag in the selected frame exactly once, alone on their lines. Do not repeat the heading or use any reserved tag inside a field.',
+    ...[...availableEntries]
+      .sort((left, right) => left.instructionOrder - right.instructionOrder)
+      .map(({ instruction }) => instruction),
+    '</workshop-widget-recommendation-contract>'
+  ].join('\n');
+}
+
+export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION =
+  buildWorkshopWidgetRecommendationInstruction();
 
 const WIDGET_BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
@@ -98,7 +113,9 @@ export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
  * incomplete, duplicated, unavailable, or over-budget controls reject whole.
  */
 export function inspectWorkshopWidgetRecommendation(
-  content: string
+  content: string,
+  availability: WorkshopWidgetAvailabilityPolicy =
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
 ): WorkshopWidgetRecommendationInspection {
   const lines = content.replace(/\r\n?/g, '\n').split('\n');
   const headingIndexes = lines.flatMap((line, index) =>
@@ -123,12 +140,16 @@ export function inspectWorkshopWidgetRecommendation(
   }
 
   const widgetId = extractWorkshopWidgetRecommendationId(sectionLines);
-  if (!widgetId || !isLiveWorkshopWidgetId(widgetId) || !isRecommendationWidgetId(widgetId)) {
+  if (
+    !widgetId
+    || !isRecommendationWidgetId(widgetId)
+    || !availability.isAvailable(widgetId)
+  ) {
     return { outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' };
   }
   return WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES[widgetId].inspect(sectionLines);
 }
 
-function isRecommendationWidgetId(value: WorkshopWidgetId): value is RecommendationWidgetId {
+function isRecommendationWidgetId(value: string): value is RecommendationWidgetId {
   return Object.prototype.hasOwnProperty.call(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES, value);
 }

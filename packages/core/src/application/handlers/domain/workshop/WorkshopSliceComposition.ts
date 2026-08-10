@@ -22,6 +22,12 @@ import {
 import {
   WorkshopLexicalGravityHandler
 } from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
+import {
+  WorkshopOneShotWidgetCommitCoordinator
+} from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
+import {
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import type {
   WorkshopMutationRouteOwner,
   WorkshopMutationRouteRegistrar,
@@ -108,21 +114,26 @@ export class WorkshopSliceComposition {
     this.gesturePlaygroundHandler = new WorkshopGesturePlaygroundHandler(
       session,
       widgetRuntime.gesturePlayground,
+      WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
       postMessage,
+      outputChannel
+    );
+    const oneShotCommitCoordinator = new WorkshopOneShotWidgetCommitCoordinator(
+      session,
       outputChannel,
       {
         sendRoomMessage: host.sendRoomMessage,
         postSessionState: host.postSessionState,
-        markDirty,
-        reportError: (message, details) =>
-          host.reportRouteError('workshop', message, details, 'WorkshopGesturePlaygroundHandler'),
-        isRoomRunActive: host.isRoomRunActive
+        markDirty
       }
     );
     this.widgetHostHandler = new WorkshopWidgetHostHandler(
       session,
+      oneShotCommitCoordinator,
+      WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
       postMessage,
-      outputChannel
+      outputChannel,
+      { isRoomRunActive: host.isRoomRunActive }
     );
     this.lexicalGravityHandler = new WorkshopLexicalGravityHandler(
       widgetRuntime.lexicalGravity.model,
@@ -172,11 +183,11 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopSessionMessageHandler')
     );
-    this.gesturePlaygroundHandler.registerRoutes(
+    this.gesturePlaygroundHandler.registerRoutes(router);
+    this.widgetHostHandler.registerRoutes(
       router,
-      this.createMutationRegistrar(router, 'WorkshopGesturePlaygroundHandler')
+      this.createMutationRegistrar(router, 'WorkshopWidgetHostHandler')
     );
-    this.widgetHostHandler.registerRoutes(router);
     this.standingDirectiveHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopStandingDirectiveHandler')

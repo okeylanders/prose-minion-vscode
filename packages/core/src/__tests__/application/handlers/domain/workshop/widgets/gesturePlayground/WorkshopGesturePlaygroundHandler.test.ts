@@ -1,17 +1,17 @@
 /**
  * The Gesture Playground IPC slice (ADR 2026-07-22, Sprint 01): generate is a free
- * preview call with token correlation and cancel; commit is one atomic
- * route — config before send (the durable retry token), linkage and the
- * writer-origin manifest only when the reply lands, and the writer's staged
- * composer pills never consumed.
+ * preview call with token correlation and cancel. One-shot commit behavior is
+ * owned by the Widget Host and coordinator suites.
  */
 
 import { WorkshopGesturePlaygroundHandler } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
+import {
   MessageType,
-  WorkshopCommitWidgetMessage,
   WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundGenerateMessage
 } from '@messages';
@@ -70,50 +70,14 @@ const generateMessage = (
   } as WorkshopGesturePlaygroundGenerateMessage['payload']
 });
 
-const commitMessage = (
-  overrides: Partial<WorkshopCommitWidgetMessage['payload']> = {}
-): WorkshopCommitWidgetMessage => ({
-  type: MessageType.WORKSHOP_COMMIT_WIDGET,
-  source: 'webview.workshop',
-  timestamp: 1,
-  payload: {
-    widgetId: 'gesture-playground',
-    requestToken: 'commit-1',
-    draft: draft(),
-    ...overrides
-  }
-});
-
 const build = (options: {
-  sendOutcome?: { committed: boolean; userTurnId?: string };
-  sendError?: Error;
   generateMenu?: jest.Mock;
   generateMore?: jest.Mock;
-  roomRunActive?: boolean;
-  acceptBeforeOutcome?: boolean;
 } = {}) => {
   let clock = 0;
   const session = new WorkshopSessionService(() => ++clock);
   session.setSessionScope('open');
   const postMessage = jest.fn().mockResolvedValue(undefined);
-  const sendRoomMessage = options.sendError
-    ? jest.fn().mockRejectedValue(options.sendError)
-    : jest.fn().mockImplementation(async (
-        _text: string,
-        _displayText: string,
-        executeOptions: { onRoomAccepted: (userTurnId: string) => void }
-      ) => {
-        // The real seam mints the visible turn before replying.
-        const turn = session.beginPersonaMessage('req-live', 'visible');
-        const outcome = options.sendOutcome ?? { committed: true, userTurnId: turn.id };
-        if (outcome.committed || options.acceptBeforeOutcome) {
-          executeOptions.onRoomAccepted(turn.id);
-        }
-        session.completeRun('req-live', 'reply');
-        return outcome;
-      });
-  const markDirty = jest.fn();
-  const postSessionState = jest.fn();
   const generateMenu = options.generateMenu
     ?? jest.fn().mockResolvedValue({
       dictionaryMarkdown: '# Gesture Dictionary\n\nA private deflection.',
@@ -124,15 +88,9 @@ const build = (options: {
   const handler = new WorkshopGesturePlaygroundHandler(
     session,
     { generateMenu, generateMore } as never,
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
     postMessage,
-    { appendLine } as never,
-    {
-      sendRoomMessage: sendRoomMessage as never,
-      postSessionState,
-      markDirty,
-      reportError: jest.fn(),
-      isRoomRunActive: () => options.roomRunActive ?? false
-    }
+    { appendLine } as never
   );
   const posted = (type: MessageType) =>
     postMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type);
@@ -140,9 +98,6 @@ const build = (options: {
     handler,
     session,
     postMessage,
-    sendRoomMessage,
-    markDirty,
-    postSessionState,
     generateMenu,
     generateMore,
     appendLine,
@@ -480,233 +435,5 @@ describe('WorkshopGesturePlaygroundHandler — generate', () => {
           ]
         }))
       }));
-  });
-});
-
-describe('WorkshopGesturePlaygroundHandler — atomic commit', () => {
-  it('persists config, ships outside the pending list, and stamps linkage on success', async () => {
-    const { handler, session, sendRoomMessage, posted, markDirty } = build();
-    // A staged composer pill must survive the widget commit untouched.
-    session.addMessageAttachment({ label: 'notes.md', words: 3, content: 'notes' });
-
-    await handler.handleCommit(commitMessage());
-
-    expect(sendRoomMessage).toHaveBeenCalledWith(
-      expect.stringContaining('she smiled'),
-      expect.any(String),
-      expect.objectContaining({
-        includeMessageAttachments: false,
-        widgetArtifact: expect.objectContaining({
-          id: 'ta-2',
-          widgetId: 'gesture-playground',
-          widgetConfigId: 'wc-1',
-          content: expect.stringContaining('Gesture directions I want for "she smiled":')
-        })
-      })
-    );
-    const config = session.getWidgetConfig('wc-1')!;
-    expect(config.committedTurnId).toBeDefined();
-    expect(config.artifactId).toBe('ta-2');
-    // The composer pill is still pending — it belonged to the writer's draft.
-    expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(1);
-    expect(markDirty).toHaveBeenCalledWith('widget config created');
-    expect(markDirty).toHaveBeenCalledWith('widget commit accepted');
-    const results = posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT);
-    expect(results[0].payload).toEqual(expect.objectContaining({
-      ok: true,
-      widgetConfigId: 'wc-1'
-    }));
-  });
-
-  it('publishes commit linkage only after the room accepts the writer turn', async () => {
-    const { handler, session, sendRoomMessage, posted, markDirty, postSessionState } = build();
-    let acceptRoom!: () => void;
-    let settleSend!: () => void;
-    let acceptedTurnId!: string;
-    sendRoomMessage.mockImplementation((
-      _text: string,
-      _displayText: string,
-      executeOptions: { onRoomAccepted: (userTurnId: string) => void }
-    ) => new Promise<{ committed: boolean; userTurnId: string }>((resolve) => {
-      acceptRoom = () => {
-        const turn = session.beginPersonaMessage('req-deferred', 'visible');
-        acceptedTurnId = turn.id;
-        executeOptions.onRoomAccepted(turn.id);
-        session.completeRun('req-deferred', 'reply');
-      };
-      settleSend = () => resolve({ committed: true, userTurnId: acceptedTurnId });
-    }));
-
-    const pendingCommit = handler.handleCommit(commitMessage());
-    await Promise.resolve();
-
-    expect(session.getWidgetConfig('wc-1')).toBeDefined();
-    expect(session.getWidgetConfig('wc-1')!.committedTurnId).toBeUndefined();
-    expect(session.getWidgetConfig('wc-1')!.artifactId).toBeUndefined();
-    expect(markDirty).toHaveBeenCalledTimes(1);
-    expect(markDirty).toHaveBeenCalledWith('widget config created');
-    expect(postSessionState).not.toHaveBeenCalled();
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(0);
-    expect(session.collectWriterSources({ kind: 'host' })).toEqual([]);
-
-    acceptRoom();
-
-    expect(session.getWidgetConfig('wc-1')).toMatchObject({
-      committedTurnId: acceptedTurnId,
-      artifactId: 'ta-1'
-    });
-    expect(markDirty).toHaveBeenCalledTimes(2);
-    expect(markDirty).toHaveBeenLastCalledWith('widget commit accepted');
-    expect(postSessionState).toHaveBeenCalledTimes(1);
-    expect(session.collectWriterSources({ kind: 'host' })).toEqual([
-      expect.objectContaining({
-        kind: 'message-attachment',
-        artifactId: 'ta-1'
-      })
-    ]);
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(1);
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload).toMatchObject({
-      action: 'commit',
-      requestToken: 'commit-1',
-      widgetId: 'gesture-playground',
-      widgetConfigId: 'wc-1',
-      turnId: acceptedTurnId,
-      ok: true
-    });
-
-    settleSend();
-    await pendingCommit;
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(1);
-  });
-
-  it('includes the full Gesture Dictionary only when the writer opts in', async () => {
-    const { handler, sendRoomMessage } = build();
-
-    await handler.handleCommit(commitMessage({
-      draft: draft({ includeDictionaryInCommit: true })
-    }));
-
-    expect(sendRoomMessage).toHaveBeenCalledWith(
-      expect.stringContaining('full Gesture Dictionary shared as reference'),
-      expect.any(String),
-      expect.objectContaining({
-        widgetArtifact: expect.objectContaining({
-          content: expect.stringContaining(
-            'Full Gesture Dictionary shared by the writer as reference:\n' +
-            '# Gesture Dictionary\n\nA private deflection.'
-          )
-        })
-      })
-    );
-  });
-
-  it('keeps the config as the retry token when the room does not accept', async () => {
-    const { handler, session, posted } = build({ sendOutcome: { committed: false } });
-    await handler.handleCommit(commitMessage());
-    expect(session.getWidgetConfig('wc-1')).toBeDefined();
-    expect(session.getWidgetConfig('wc-1')!.committedTurnId).toBeUndefined();
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload).toEqual(
-      expect.objectContaining({ ok: false, widgetConfigId: 'wc-1' })
-    );
-  });
-
-  it('keeps the config when the send throws', async () => {
-    const { handler, session, posted } = build({ sendError: new Error('network down') });
-    await handler.handleCommit(commitMessage());
-    expect(session.getWidgetConfig('wc-1')).toBeDefined();
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload.ok).toBe(false);
-  });
-
-  it('keeps an accepted commit when the participant response later fails', async () => {
-    const { handler, session, posted } = build({
-      sendOutcome: { committed: false, userTurnId: 'turn-user' },
-      acceptBeforeOutcome: true
-    });
-
-    await handler.handleCommit(commitMessage());
-
-    expect(session.getWidgetConfig('wc-1')).toMatchObject({
-      committedTurnId: expect.any(String),
-      artifactId: 'ta-1'
-    });
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(1);
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload.ok).toBe(true);
-  });
-
-  it('rejects a re-entrant commit before creating another config', async () => {
-    const { handler, session, sendRoomMessage, posted } = build({ roomRunActive: true });
-
-    await handler.handleCommit(commitMessage());
-
-    expect(sendRoomMessage).not.toHaveBeenCalled();
-    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload)
-      .toMatchObject({ ok: false, message: expect.stringMatching(/current Workshop response/i) });
-  });
-
-  it.each([
-    ['no selections', { draft: draft({ selections: [] }) }],
-    ['blank phrase', { draft: draft({ targetPhrase: '   ' }) }],
-    ['duplicate selections', { draft: draft({ selections: ['same', 'same'] }) }],
-    ['missing dictionary', { draft: draft({ dictionaryMarkdown: '' }) }],
-    ['missing menu', { draft: draft({ menu: undefined as never }) }],
-    ['missing source references', { draft: draft({ sourceReferences: undefined as never }) }],
-    [
-      'missing dictionary-sharing choice',
-      { draft: draft({ includeDictionaryInCommit: undefined as never }) }
-    ],
-    [
-      'duplicate source references',
-      {
-        draft: draft({
-          sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'active-excerpt' }]
-        })
-      }
-    ],
-    [
-      'path-bearing source reference',
-      {
-        draft: draft({
-          sourceReferences: [
-            {
-              kind: 'context-attachment',
-              attachmentId: 'ctx-1',
-              path: '/workspace/secret.md'
-            } as never
-          ]
-        })
-      }
-    ],
-    [
-      'serialized source references over budget',
-      {
-        draft: draft({
-          sourceReferences: [{
-            kind: 'context-attachment',
-            attachmentId: oversizedContextAttachmentId
-          }]
-        })
-      }
-    ],
-    ['selection outside menu', { draft: draft({ selections: ['invented client option'] }) }],
-    ['non-live widget', { widgetId: 'prose-controller' as never }]
-  ])('rejects before any state change: %s', async (_label, overrides) => {
-    const { handler, session, sendRoomMessage, posted } = build();
-    await handler.handleCommit(commitMessage(overrides));
-    expect(sendRoomMessage).not.toHaveBeenCalled();
-    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload.ok).toBe(false);
-  });
-
-  it('refuses tool-sidecar targets with a usable message', async () => {
-    const { handler, session, sendRoomMessage, posted } = build();
-    session.setExcerpt({ text: 'A pinned passage.', source: { kind: 'manual' } });
-    session.beginToolRun('prose', 'req-sidecar');
-    session.completeToolReport('req-sidecar', 'Report.', 'conversation-tool');
-    expect(session.setChatTarget({ kind: 'tool', toolId: 'prose' })).toBe(true);
-    await handler.handleCommit(commitMessage());
-    expect(sendRoomMessage).not.toHaveBeenCalled();
-    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload.message)
-      .toMatch(/persona target/);
   });
 });

@@ -2,7 +2,6 @@ import type { ContextAssistantService } from '@services/analysis/ContextAssistan
 import type { MessageTransport } from '@handlers/MessageHandlerContracts';
 import type { MessageRouter } from '@handlers/MessageRouter';
 import type {
-  WorkshopGesturePlaygroundHandlerOptions,
   WorkshopGesturePlaygroundServicePort
 } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import type {
@@ -19,6 +18,9 @@ import type {
 import type {
   WorkshopSessionPersistenceCoordinator
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+import type {
+  WorkshopOneShotWidgetRoomSend
+} from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
 import type { LogSink, ShellService } from '@/platform';
 import type {
   ErrorSource,
@@ -44,7 +46,8 @@ export type WorkshopMutationRouteOwner =
   | 'WorkshopRoomHandler'
   | 'WorkshopSessionMessageHandler'
   | 'WorkshopStandingDirectiveHandler'
-  | 'WorkshopTodoHandler';
+  | 'WorkshopTodoHandler'
+  | 'WorkshopWidgetHostHandler';
 
 /**
  * Room-owned effects available to Workshop route slices.
@@ -114,7 +117,7 @@ export interface WorkshopSliceHostEffects {
   excerptMutationBlockedReason: () => string | undefined;
   flushDeferredConversationSettings: () => Promise<void>;
   activeRunLabel: () => 'Context wizard' | 'response' | undefined;
-  sendRoomMessage: WorkshopGesturePlaygroundHandlerOptions['sendRoomMessage'];
+  sendRoomMessage: WorkshopOneShotWidgetRoomSend;
   isRoomRunActive: () => boolean;
   disposeRoomSubscriptions: () => void;
   disposeActiveRoomRun: () => void;

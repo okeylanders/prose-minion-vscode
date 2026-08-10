@@ -190,7 +190,7 @@ const WORKSHOP_ROUTE_OWNERS = [
     ]
   },
   {
-    owner: WORKSHOP_GESTURE_HANDLER_OWNER,
+    owner: WORKSHOP_WIDGET_HOST_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_COMMIT_WIDGET']
   },
@@ -437,6 +437,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /(?:(?:GesturePlayground|LexicalGravity)ConfigCodec|clone(?:GesturePlayground|LexicalGravity)Draft|summarize(?:GesturePlayground|LexicalGravity)Draft|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
   },
   {
+    file: 'application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations.ts',
+    reason: 'closed one-shot feature-compiler dispatch',
+    allowedToken: /(?:GesturePlaygroundOneShotCommit|prepareGesturePlaygroundOneShotCommit|gesture-playground|gesturePlayground)/
+  },
+  {
     file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
     reason: 'closed widget-recommendation registry and prompt composer',
     allowedToken: /(?:GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY|LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
@@ -592,6 +597,10 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
  * reviewable; together with the seam list this must partition all approvals.
  */
 const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
+  {
+    file: 'application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations.ts',
+    reason: 'Prose Controller is standing and never enters the one-shot commit dispatch'
+  },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
     reason: 'already validates the reserved prose-controller config arm'
