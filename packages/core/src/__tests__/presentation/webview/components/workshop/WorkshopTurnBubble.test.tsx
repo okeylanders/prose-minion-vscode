@@ -417,6 +417,43 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
   });
 
+  it('reopens a committed one-shot widget from its writer-turn chip', () => {
+    const onOpenWidgetConfig = jest.fn();
+
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          id: 'widget-turn',
+          role: 'user',
+          kind: 'message',
+          participant: 'writer',
+          artifact: 'persona_message',
+          content: 'Try these directions.',
+          timestamp: 1,
+          excerptVersion: 1,
+          widgetCommit: {
+            widgetId: 'gesture-playground',
+            widgetConfigId: 'wc-7',
+            rail: 'thread-artifact',
+            artifactId: 'ta-8',
+            selectionCount: 2
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+        onOpenWidgetConfig={onOpenWidgetConfig}
+      />
+    );
+
+    const chip = screen.getByRole('button', { name: /Gesture Playground/ });
+    expect(chip.textContent).toContain('2 directions · re-open');
+    fireEvent.click(chip);
+    expect(onOpenWidgetConfig).toHaveBeenCalledWith('wc-7');
+  });
+
   it('forwards the complete rich persona seed when its widget chip is opened', () => {
     const onOpenWidgetRecommendation = jest.fn();
     const recommendation = {

@@ -28,6 +28,11 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  persistedWorkshopWidgetLifecycleIds,
+  type PersistedWorkshopWidgetId
+} from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
+import { workshopWidgetDescriptor } from '@shared/constants/workshopWidgets';
 
 // __dirname = packages/core/src/__tests__/architecture -> core's src root.
 const SRC_ROOT = path.resolve(__dirname, '..', '..');
@@ -271,13 +276,65 @@ const MODULE_REFERENCE = new RegExp(
 );
 const GESTURE_FEATURE_REFERENCE = /(?:GesturePlayground|gesturePlayground|gesture-playground)/;
 const LEXICAL_FEATURE_REFERENCE = /(?:LexicalGravity|lexicalGravity|lexical-gravity)/;
-const WORKSHOP_FEATURE_SEMANTICS_TOKEN_SOURCE = [
-  String.raw`\b[A-Za-z0-9_]*(?:(?:Gesture|gesture|Lexical|lexical)[A-Z])[A-Za-z0-9_]*\b`,
-  String.raw`\b[A-Z0-9_]*(?:GESTURE|LEXICAL)_[A-Z0-9_]+\b`,
-  String.raw`\b[a-z0-9_-]*(?:gesture|lexical)[_-][a-z0-9_-]+\b`,
-  String.raw`\b(?:Gesture\s+Playground|Lexical\s+Gravity)\b`,
-  String.raw`\b(?:LENS_SLUGS|WEIGHT_STEP|lensSlug|metaphorPull|lens-slug|metaphor-pull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references)\b`
-].join('|');
+
+/**
+ * Closed feature inventory for cross-slice architecture witnesses. A feature
+ * joins only when its first named source module lands; reserved catalog ids are
+ * not implementations.
+ */
+interface WorkshopFeatureBoundaryDescriptor {
+  readonly widgetId: PersistedWorkshopWidgetId;
+  readonly name: string;
+  readonly pathReference: RegExp;
+  readonly importReference: RegExp;
+  readonly semanticTokenSources: readonly string[];
+  readonly minimumSourceFiles: number;
+}
+
+const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] = [
+  {
+    widgetId: 'gesture-playground',
+    name: 'Gesture Playground',
+    pathReference: /GesturePlayground/i,
+    importReference: GESTURE_FEATURE_REFERENCE,
+    semanticTokenSources: [
+      String.raw`\b[A-Za-z0-9_]*(?:(?:Gesture|gesture)[A-Z])[A-Za-z0-9_]*\b`,
+      String.raw`\b[A-Z0-9_]*GESTURE_[A-Z0-9_]+\b`,
+      String.raw`\b[a-z0-9_-]*gesture[_-][a-z0-9_-]+\b`,
+      String.raw`\bGesture\s+Playground\b`,
+      String.raw`\b(?:target_missing_from_context|invalid_source_references)\b`
+    ],
+    minimumSourceFiles: 5
+  },
+  {
+    widgetId: 'lexical-gravity',
+    name: 'Lexical Gravity',
+    pathReference: /LexicalGravity/i,
+    importReference: LEXICAL_FEATURE_REFERENCE,
+    semanticTokenSources: [
+      String.raw`\b[A-Za-z0-9_]*(?:(?:Lexical|lexical)[A-Z])[A-Za-z0-9_]*\b`,
+      String.raw`\b[A-Z0-9_]*LEXICAL_[A-Z0-9_]+\b`,
+      String.raw`\b[a-z0-9_-]*lexical[_-][a-z0-9_-]+\b`,
+      String.raw`\bLexical\s+Gravity\b`,
+      String.raw`\b(?:LENS_SLUGS|WEIGHT_STEP|lensSlug|metaphorPull|lens-slug|metaphor-pull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull)\b`
+    ],
+    minimumSourceFiles: 1
+  }
+];
+
+/** One-shot slices receive selected text through UI contracts, never host write authority. */
+const ONE_SHOT_FORBIDDEN_IMPORT_REFERENCE = new RegExp(
+  String.raw`\b(?:Platform|EditorContext|FileSystem|Workspace|ShellService|WorkshopTurnBubble|parseVariations|VARIATION_HEADING)\b`
+);
+const ONE_SHOT_PLATFORM_MODULE_REFERENCE = new RegExp(
+  String.raw`(?:from\s+|import\(\s*|require\(\s*)['"]@/platform(?:/[^'"]*)?['"]`
+);
+const ONE_SHOT_ALLOWED_PLATFORM_IMPORT = new RegExp(
+  String.raw`^import\s+(?:type\s+)?{\s*LogSink\s*}\s+from\s+['"]@/platform['"]$`
+);
+const WORKSHOP_FEATURE_SEMANTICS_TOKEN_SOURCE = WORKSHOP_FEATURE_BOUNDARIES
+  .flatMap(({ semanticTokenSources }) => semanticTokenSources)
+  .join('|');
 const WORKSHOP_NON_FEATURE_SEMANTIC_COLLISIONS = new Set([
   'lexicalDensity',
   'calculateLexicalDensityPercent',
@@ -497,13 +554,12 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
 ] as const;
 
 /**
- * Executable change-cost fixture for the next standing feature.
+ * Reviewable generic-seam inventory for the next standing feature.
  *
- * D7-B reads the closure criterion as one explicit arm per generic seam, not
- * one generic file total. Each path appears once even when the file owns
- * several exhaustive switches; the entry represents the feature arm those
- * switches implement together. Existing Gesture/Lexical feature paths are
- * intentionally absent.
+ * Each path appears once even when the file owns several exhaustive switches.
+ * This proves that every approved generic surface has an applicability decision;
+ * the later feature fixture and commit-diff review prove the actual arms and
+ * zero sibling edits. Existing Gesture/Lexical feature paths are absent here.
  */
 const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
   'application/handlers/MessageHandler.ts',
@@ -722,6 +778,62 @@ function importsFeature(source: string, featureReference: RegExp): boolean {
     .some((moduleReference) => featureReference.test(moduleReference));
 }
 
+function forbiddenOneShotImportReference(moduleReference: string): string | undefined {
+  const forbiddenNamedReference = moduleReference
+    .match(ONE_SHOT_FORBIDDEN_IMPORT_REFERENCE)?.[0];
+  if (forbiddenNamedReference) {
+    return forbiddenNamedReference;
+  }
+  if (
+    ONE_SHOT_PLATFORM_MODULE_REFERENCE.test(moduleReference)
+    && !ONE_SHOT_ALLOWED_PLATFORM_IMPORT.test(moduleReference)
+  ) {
+    return 'platform authority import';
+  }
+  return undefined;
+}
+
+interface WorkshopGenericSeamInventoryFixture {
+  readonly entries: readonly string[];
+  readonly inapplicableSurfaces: readonly {
+    readonly file: string;
+    readonly reason: string;
+  }[];
+}
+
+function inspectWorkshopGenericSeamInventory(
+  fixture: WorkshopGenericSeamInventoryFixture
+): {
+  readonly duplicateEntries: string[];
+  readonly missingEntries: string[];
+  readonly unapprovedEntries: string[];
+  readonly unclassifiedApprovedSurfaces: string[];
+  readonly missingInapplicabilityReasons: string[];
+  readonly siblingFeatureEntries: string[];
+} {
+  const approvedGenericPaths = new Set(
+    WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES.map(({ file }) => file)
+  );
+  const entries = [...fixture.entries];
+  const inapplicable = fixture.inapplicableSurfaces.map(({ file }) => file);
+  const partition = [...entries, ...inapplicable];
+  const classifiedPaths = new Set<string>(partition);
+
+  return {
+    duplicateEntries: partition.filter((file, index) => partition.indexOf(file) !== index),
+    missingEntries: partition.filter((file) => !fs.existsSync(path.join(SRC_ROOT, file))),
+    unapprovedEntries: partition.filter((file) => !approvedGenericPaths.has(file)),
+    unclassifiedApprovedSurfaces: [...approvedGenericPaths]
+      .filter((file) => !classifiedPaths.has(file)),
+    missingInapplicabilityReasons: fixture.inapplicableSurfaces
+      .filter(({ reason }) => reason.trim().length === 0)
+      .map(({ file }) => file),
+    siblingFeatureEntries: entries.filter((file) =>
+      WORKSHOP_FEATURE_BOUNDARIES.some(({ pathReference }) => pathReference.test(file))
+    )
+  };
+}
+
 describe('architectural boundaries', () => {
   it('core imports no vscode anywhere (static OR dynamic import)', () => {
     const offenders = collectSourceFiles(SRC_ROOT)
@@ -884,26 +996,68 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('Workshop feature modules do not import the sibling feature', () => {
-    const sourceFiles = collectSourceFiles(SRC_ROOT);
-    const gestureFiles = sourceFiles
-      .filter((file) => {
-        const relativePath = path.relative(SRC_ROOT, file);
-        return /GesturePlayground/i.test(relativePath);
-      });
-    const lexicalFiles = sourceFiles
-      .filter((file) => /LexicalGravity/i.test(path.relative(SRC_ROOT, file)));
-    const gestureOffenders = gestureFiles
-      .filter((file) => importsFeature(fs.readFileSync(file, 'utf8'), LEXICAL_FEATURE_REFERENCE))
-      .map((file) => path.relative(SRC_ROOT, file));
-    const lexicalOffenders = lexicalFiles
-      .filter((file) => importsFeature(fs.readFileSync(file, 'utf8'), GESTURE_FEATURE_REFERENCE))
-      .map((file) => path.relative(SRC_ROOT, file));
+  it('tracks every implemented persisted widget in the feature-boundary inventory', () => {
+    const describedWidgetIds = WORKSHOP_FEATURE_BOUNDARIES
+      .map(({ widgetId }) => widgetId)
+      .sort();
+    const persistedWidgetIds = persistedWorkshopWidgetLifecycleIds().sort();
+    const missingCatalogDescriptors = describedWidgetIds
+      .filter((widgetId) => !workshopWidgetDescriptor(widgetId));
 
-    expect(gestureFiles.length).toBeGreaterThanOrEqual(5);
-    expect(lexicalFiles.length).toBeGreaterThan(0);
-    expect(gestureOffenders).toEqual([]);
-    expect(lexicalOffenders).toEqual([]);
+    expect(missingCatalogDescriptors).toEqual([]);
+    expect(describedWidgetIds).toEqual(persistedWidgetIds);
+  });
+
+  it('Workshop feature modules do not import sibling features', () => {
+    const sourceFiles = collectSourceFiles(SRC_ROOT);
+    const featureFiles = WORKSHOP_FEATURE_BOUNDARIES.map((feature) => ({
+      feature,
+      files: sourceFiles.filter((file) =>
+        feature.pathReference.test(path.relative(SRC_ROOT, file))
+      )
+    }));
+    const underrepresentedFeatures = featureFiles
+      .filter(({ feature, files }) => files.length < feature.minimumSourceFiles)
+      .map(({ feature, files }) =>
+        `${feature.name}: ${files.length} < ${feature.minimumSourceFiles}`
+      );
+    const offenders = featureFiles.flatMap(({ feature, files }) =>
+      files.flatMap((file) => WORKSHOP_FEATURE_BOUNDARIES
+        .filter((sibling) => sibling.name !== feature.name)
+        .filter((sibling) => importsFeature(
+          fs.readFileSync(file, 'utf8'),
+          sibling.importReference
+        ))
+        .map((sibling) =>
+          `${path.relative(SRC_ROOT, file)} -> ${sibling.name}`
+        ))
+    );
+
+    expect(underrepresentedFeatures).toEqual([]);
+    expect(offenders).toEqual([]);
+  });
+
+  it('one-shot feature modules import neither host mutation authority nor the legacy report parser', () => {
+    const sourceFiles = collectSourceFiles(SRC_ROOT);
+    const oneShotFeatures = WORKSHOP_FEATURE_BOUNDARIES
+      .filter(({ widgetId }) => workshopWidgetDescriptor(widgetId)?.rail === 'oneshot');
+    const oneShotFiles = sourceFiles.filter((file) => {
+      const relativePath = path.relative(SRC_ROOT, file);
+      return oneShotFeatures.some(({ pathReference }) => pathReference.test(relativePath));
+    });
+    const offenders = oneShotFiles.flatMap((file) =>
+      (fs.readFileSync(file, 'utf8').match(MODULE_REFERENCE) ?? [])
+        .flatMap((moduleReference) => {
+          const forbiddenReference = forbiddenOneShotImportReference(moduleReference);
+          return forbiddenReference
+            ? [`${path.relative(SRC_ROOT, file)} -> ${forbiddenReference}`]
+            : [];
+        })
+    );
+
+    expect(oneShotFeatures.length).toBeGreaterThan(0);
+    expect(oneShotFiles.length).toBeGreaterThan(0);
+    expect(offenders).toEqual([]);
   });
 
   it('extracts feature semantics as exact tokens without flagging known prose metrics', () => {
@@ -950,10 +1104,9 @@ describe('architectural boundaries', () => {
       .map(({ file }) => file);
     const offenders = collectSourceFiles(SRC_ROOT).flatMap((file) => {
       const relativePath = path.relative(SRC_ROOT, file);
-      if (
-        GESTURE_FEATURE_REFERENCE.test(relativePath)
-        || LEXICAL_FEATURE_REFERENCE.test(relativePath)
-      ) {
+      if (WORKSHOP_FEATURE_BOUNDARIES.some(({ pathReference }) =>
+        pathReference.test(relativePath)
+      )) {
         return [];
       }
       const featureOccurrences = collectWorkshopFeatureSemanticOccurrences(
@@ -980,34 +1133,12 @@ describe('architectural boundaries', () => {
     });
   });
 
-  it('reproduces Prose Controller with zero sibling-feature edits and one arm per generic seam', () => {
-    const approvedGenericPaths = new Set(
-      WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES.map(({ file }) => file)
-    );
+  it('inventories every approved generic seam for Prose Controller without sibling paths', () => {
     const entries = [...PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES];
-    const inapplicable = PROSE_CONTROLLER_INAPPLICABLE_SURFACES.map(({ file }) => file);
-    const partition = [...entries, ...inapplicable];
-    const classifiedPaths = new Set<string>(partition);
-    const duplicateEntries = partition.filter((file, index) => partition.indexOf(file) !== index);
-    const missingEntries = partition.filter((file) => !fs.existsSync(path.join(SRC_ROOT, file)));
-    const unapprovedEntries = partition.filter((file) => !approvedGenericPaths.has(file));
-    const unclassifiedApprovedSurfaces = [...approvedGenericPaths]
-      .filter((file) => !classifiedPaths.has(file));
-    const missingInapplicabilityReasons = PROSE_CONTROLLER_INAPPLICABLE_SURFACES
-      .filter(({ reason }) => reason.trim().length === 0)
-      .map(({ file }) => file);
-    const siblingFeatureEntries = entries.filter((file) =>
-      GESTURE_FEATURE_REFERENCE.test(file) || LEXICAL_FEATURE_REFERENCE.test(file)
-    );
-
-    expect({
-      duplicateEntries,
-      missingEntries,
-      unapprovedEntries,
-      unclassifiedApprovedSurfaces,
-      missingInapplicabilityReasons,
-      siblingFeatureEntries
-    }).toEqual({
+    expect(inspectWorkshopGenericSeamInventory({
+      entries,
+      inapplicableSurfaces: PROSE_CONTROLLER_INAPPLICABLE_SURFACES
+    })).toEqual({
       duplicateEntries: [],
       missingEntries: [],
       unapprovedEntries: [],

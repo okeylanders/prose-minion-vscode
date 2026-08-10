@@ -71,6 +71,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
     await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
       widgetId: 'gesture-playground',
+      requestToken: 'commit-retry',
       draft: {
         targetPhrase: 'she smiled',
         writerInstructions: '',
@@ -102,6 +103,17 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       })
     ]));
     expect(session.getWidgetConfig('wc-1')).toBeDefined();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      source: 'extension.workshop.widget',
+      payload: {
+        action: 'commit',
+        requestToken: 'commit-retry',
+        widgetId: 'gesture-playground',
+        ok: true,
+        widgetConfigId: 'wc-1',
+        turnId: writerTurn?.id
+      }
+    });
   });
 
   it('guards routed room mutations while a shared session operation is pending', async () => {
@@ -126,6 +138,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
     await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
       widgetId: 'gesture-playground',
+      requestToken: 'commit-blocked',
       draft: {
         targetPhrase: 'she smiled',
         writerInstructions: '',
@@ -148,6 +161,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       source: 'extension.workshop.widget',
       payload: {
         action: 'commit',
+        requestToken: 'commit-blocked',
         widgetId: 'gesture-playground',
         ok: false,
         message: expect.stringMatching(/session save or replacement/i)

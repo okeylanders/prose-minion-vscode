@@ -518,6 +518,67 @@ describe('WorkshopGesturePlaygroundHandler — atomic commit', () => {
     }));
   });
 
+  it('publishes commit linkage only after the room accepts the writer turn', async () => {
+    const { handler, session, sendRoomMessage, posted, markDirty, postSessionState } = build();
+    let acceptRoom!: () => void;
+    let settleSend!: () => void;
+    let acceptedTurnId!: string;
+    sendRoomMessage.mockImplementation((
+      _text: string,
+      _displayText: string,
+      executeOptions: { onRoomAccepted: (userTurnId: string) => void }
+    ) => new Promise<{ committed: boolean; userTurnId: string }>((resolve) => {
+      acceptRoom = () => {
+        const turn = session.beginPersonaMessage('req-deferred', 'visible');
+        acceptedTurnId = turn.id;
+        executeOptions.onRoomAccepted(turn.id);
+        session.completeRun('req-deferred', 'reply');
+      };
+      settleSend = () => resolve({ committed: true, userTurnId: acceptedTurnId });
+    }));
+
+    const pendingCommit = handler.handleCommit(commitMessage());
+    await Promise.resolve();
+
+    expect(session.getWidgetConfig('wc-1')).toBeDefined();
+    expect(session.getWidgetConfig('wc-1')!.committedTurnId).toBeUndefined();
+    expect(session.getWidgetConfig('wc-1')!.artifactId).toBeUndefined();
+    expect(markDirty).toHaveBeenCalledTimes(1);
+    expect(markDirty).toHaveBeenCalledWith('widget config created');
+    expect(postSessionState).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(0);
+    expect(session.collectWriterSources({ kind: 'host' })).toEqual([]);
+
+    acceptRoom();
+
+    expect(session.getWidgetConfig('wc-1')).toMatchObject({
+      committedTurnId: acceptedTurnId,
+      artifactId: 'ta-1'
+    });
+    expect(markDirty).toHaveBeenCalledTimes(2);
+    expect(markDirty).toHaveBeenLastCalledWith('widget commit accepted');
+    expect(postSessionState).toHaveBeenCalledTimes(1);
+    expect(session.collectWriterSources({ kind: 'host' })).toEqual([
+      expect.objectContaining({
+        kind: 'message-attachment',
+        artifactId: 'ta-1'
+      })
+    ]);
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)[0].payload).toMatchObject({
+      action: 'commit',
+      requestToken: 'commit-1',
+      widgetId: 'gesture-playground',
+      widgetConfigId: 'wc-1',
+      turnId: acceptedTurnId,
+      ok: true
+    });
+
+    settleSend();
+    await pendingCommit;
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT)).toHaveLength(1);
+  });
+
   it('includes the full Gesture Dictionary only when the writer opts in', async () => {
     const { handler, sendRoomMessage } = build();
 

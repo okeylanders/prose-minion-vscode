@@ -10,10 +10,10 @@
 
 **Creative Variations Playground** gives a writer several genuinely different
 takes on the same selected or pasted material while preserving the work's
-declared invariants. It turns the existing "Creative Variations" sections in
-tools such as Stock & Signature, Decision Points, and Freshness into a
-deliberate, reusable Workshop surface instead of a formatting convention hidden
-inside individual reports.
+declared invariants. It establishes the typed Workshop surface that existing
+"Creative Variations" sections in tools such as Stock & Signature, Decision
+Points, and Freshness may eventually hand off into, instead of making a report
+formatting convention carry an interactive lifecycle.
 
 It is a comparison studio, not an automatic rewrite button: the writer supplies
 the moment and its constraints, sees a bounded set of distinct approaches with
@@ -24,10 +24,12 @@ the next room turn.
 
 - selected text from the excerpt/editor, or pasted text;
 - surrounding passage context when available;
-- intent and invariants — facts, character state, POV, voice, plot outcome, or
-  wording that must survive;
-- optional creative pressure such as `less familiar`, `more physical`,
-  `raise the commitment`, `quiet it down`, or a free-text direction;
+- one nonblank `must survive` field for facts, character state, emotional truth,
+  or reader effect every take must preserve;
+- one `must not change` field for optional hard boundaries such as POV, tense,
+  plot outcome, or exact dialogue; the model never invents either field;
+- one required custom aim plus a verbalized sampling distance: `Familiar`,
+  `Adjacent`, `Tail`, or `Far tail`; new drafts default to `Tail`;
 - requested count, bounded to three to five alternatives.
 
 Open-chat use is allowed for pasted material, but the widget must label the
@@ -47,18 +49,25 @@ typed, bounded response schema before presentation.
 
 ## Commit and lifecycle
 
-- The writer selects zero or more directions and may add a note.
+- The writer selects one or more cards and may add a note. Each selected card
+  carries direction by default; full prose requires an explicit per-card choice.
+- Advisory risks require explicit per-risk acceptance before their card may
+  commit. A card carrying a model-declared `hard-conflict` flag against `must
+  not change` remains visible but is commit-ineligible. Whole-workup regeneration
+  replaces the workup and risk ids and clears selections, carry modes, and risk
+  acceptances.
 - Commit creates a one-shot thread artifact containing only the selected
-  direction(s), their essential constraints, and the writer note — never the
-  whole discarded generation cloud.
-- A presentation-only chip reopens the exact saved widget draft. Revisiting
-  clones and recommits; it never rewrites an earlier room turn.
+  carry content, essential constraints, accepted advisory risks, and writer note
+  — never the whole discarded generation cloud.
+- A presentation-only chip reopens the exact saved authoring truth: inputs,
+  display-safe provenance, generated workup, selections, per-card carry modes,
+  accepted advisory risks, and note. Focus, scroll, and expanded panels remain
+  ephemeral. Revisiting clones and recommits; it never rewrites an earlier turn.
 - Copying a full variation is available from the widget. Applying it back to a
   source document remains behind the separately tracked **Workshop Apply to
   Draft** safety design.
-- A persona (host or guest once Sprint 13 guest permissions land) may recommend
-  or prefill the widget. It cannot silently generate, select, or commit the
-  writer's creative choice.
+- A permitted persona may recommend or prefill the widget. It cannot silently
+  generate, select, or commit the writer's creative choice.
 
 ## Relationship to existing surfaces
 
@@ -78,19 +87,19 @@ typed, bounded response schema before presentation.
 After Sprint 01, ship selected/pasted seed + intent/invariants + one
 three-to-five variation generation + structured cards + multi-select + one-shot
 artifact commit + persisted draft/chip reopen. Defer comparison history across
-multiple runs, live regeneration, direct editor apply, and durable prose
-directives.
+multiple runs, partial/card-level regeneration, direct editor apply, and durable
+prose directives.
 
-## Promotion gates
+## Promotion disposition
 
-1. The Conversation Widgets ADR is accepted and Sprint 01 has proven the
+1. **Satisfied.** The Conversation Widgets ADR is accepted and Sprint 01 proved the
    widget host, typed config persistence, chip, and clone-and-recommit rails.
-2. The generator's structured result has a closed schema, item/count/character
-   bounds, cancellation, and visible failure state.
-3. Commit payload and prompt-frame budget are specified separately from the
-   larger exploration result.
-4. Persona recommendation/prefill permissions are consistent for host and
-   guest; writer commit remains the authority boundary.
-5. The Stock & Signature, Decision Points, and Freshness prompt owners agree
-   which existing Creative Variations instructions become widget-prefill
-   metadata versus report-only prose.
+2. **Carried into Sprint 03.** The generator's structured result must have a
+   closed schema, item/count/character bounds, cancellation, and visible failure.
+3. **Carried into Sprint 03.** Commit payload and prompt-frame budget are
+   specified separately from the larger exploration result.
+4. **Satisfied as an authority rule; exercised in Sprint 03.** Permitted persona
+   recommendation/prefill remains subordinate to writer generate/select/commit.
+5. **Deferred.** Before a later report-prefill slice, Stock & Signature, Decision
+   Points, Freshness, and other analysis owners must agree which instructions
+   become typed widget-prefill metadata versus report prose.
