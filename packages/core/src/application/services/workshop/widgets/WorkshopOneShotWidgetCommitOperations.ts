@@ -1,4 +1,4 @@
-/** Closed dispatch from one-shot wire payloads to named feature compilers. */
+/** Closed dispatch from one-shot wire payloads to named feature preparations. */
 
 import type {
   WorkshopCommitWidgetPayload,
@@ -17,23 +17,29 @@ export type WorkshopOneShotWidgetConfigInput = Extract<
   { widgetId: WorkshopOneShotWidgetId }
 >;
 
-export interface WorkshopOneShotWidgetPreparedCommit {
+export interface WorkshopOneShotWidgetCommitPlan {
   widgetId: WorkshopOneShotWidgetId;
   widgetConfigInput: WorkshopOneShotWidgetConfigInput;
   clonedFromConfigId?: string;
   roomText: string;
   displayText: string;
-  toolTargetRefusalMessage: string;
+  /** Optional feature voice; the host owns a neutral tool-target fallback. */
+  toolTargetRefusalMessage?: string;
   artifact: {
     label: string;
     content: string;
+    /** Count of writer-selected units; presentation derives the noun from the widget. */
     selectionCount: number;
   };
 }
 
-export type WorkshopOneShotWidgetCommitPreparation =
-  | { ok: true; commit: WorkshopOneShotWidgetPreparedCommit }
-  | { ok: false; message: string };
+export type WorkshopOneShotWidgetCommitPreparationResult =
+  | { ok: true; commit: WorkshopOneShotWidgetCommitPlan }
+  | {
+      ok: false;
+      reason: 'unsupported-one-shot-widget' | 'invalid-draft';
+      message: string;
+    };
 
 interface WorkshopOneShotWidgetCommitOperationEntry<
   Id extends WorkshopOneShotWidgetId
@@ -41,7 +47,7 @@ interface WorkshopOneShotWidgetCommitOperationEntry<
   widgetId: Id;
   prepare: (
     payload: Extract<WorkshopCommitWidgetPayload, { widgetId: Id }>
-  ) => WorkshopOneShotWidgetCommitPreparation;
+  ) => WorkshopOneShotWidgetCommitPreparationResult;
 }
 
 type WorkshopOneShotWidgetCommitOperationRegistry = {
@@ -59,7 +65,7 @@ const WORKSHOP_ONE_SHOT_WIDGET_COMMIT_OPERATIONS = {
 type WorkshopOneShotWidgetCommitOperation = {
   prepare: (
     payload: WorkshopCommitWidgetPayload
-  ) => WorkshopOneShotWidgetCommitPreparation;
+  ) => WorkshopOneShotWidgetCommitPreparationResult;
 };
 
 export function supportsWorkshopOneShotWidgetCommit(
@@ -73,7 +79,14 @@ export function supportsWorkshopOneShotWidgetCommit(
 
 export function prepareWorkshopOneShotWidgetCommit(
   payload: WorkshopCommitWidgetPayload
-): WorkshopOneShotWidgetCommitPreparation {
+): WorkshopOneShotWidgetCommitPreparationResult {
+  if (!supportsWorkshopOneShotWidgetCommit(payload.widgetId)) {
+    return {
+      ok: false,
+      reason: 'unsupported-one-shot-widget',
+      message: 'That widget does not support one-shot commits.'
+    };
+  }
   const entry = WORKSHOP_ONE_SHOT_WIDGET_COMMIT_OPERATIONS[
     payload.widgetId
   ] as unknown as WorkshopOneShotWidgetCommitOperation;

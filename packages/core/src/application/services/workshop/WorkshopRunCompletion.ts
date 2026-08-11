@@ -25,6 +25,9 @@ import {
   WorkshopWidgetRecommendationInspection
 } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 import {
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
+import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
 import { boundedLogText } from '@/utils/boundedLogText';
@@ -208,7 +211,10 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       `Actionable findings ${actionableFindings.outcome}: ${actionableFindings.findings.length} items (${label}${actionableFindings.outcome === 'rejected' ? `; reason=${actionableFindings.rejection}` : ''})`
     );
   }
-  const widgetRecommendation = inspectWorkshopWidgetRecommendation(result.content);
+  const widgetRecommendation = inspectWorkshopWidgetRecommendation(
+    result.content,
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  );
   const unavailableWidgetSource = widgetRecommendation.outcome === 'accepted'
     ? unavailableWidgetSourceReference(session, widgetRecommendation.recommendation)
     : undefined;

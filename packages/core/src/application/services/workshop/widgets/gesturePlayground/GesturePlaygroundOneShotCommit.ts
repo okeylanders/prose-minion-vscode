@@ -12,17 +12,17 @@ import {
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundDirective';
 import {
   gesturePlaygroundSourceReferencesValidationError
-} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundSourceReferences';
 import type {
-  WorkshopOneShotWidgetCommitPreparation
+  WorkshopOneShotWidgetCommitPreparationResult
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 
 export function prepareGesturePlaygroundOneShotCommit(
   payload: WorkshopGesturePlaygroundCommitPayload
-): WorkshopOneShotWidgetCommitPreparation {
+): WorkshopOneShotWidgetCommitPreparationResult {
   const invalid = validateGesturePlaygroundDraft(payload.draft);
   if (invalid) {
-    return { ok: false, message: invalid };
+    return { ok: false, reason: 'invalid-draft', message: invalid };
   }
   const { draft } = payload;
   const displayText = `For “${draft.targetPhrase.trim()}” — here are the gesture directions I want${

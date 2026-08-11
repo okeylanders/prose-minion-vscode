@@ -59,7 +59,8 @@ describe('GesturePlaygroundOneShotCommit', () => {
       commit: expect.objectContaining({
         widgetId: 'gesture-playground',
         widgetConfigInput: { widgetId: 'gesture-playground', draft: draft() },
-        roomText: expect.stringContaining('she smiled'),
+        roomText: 'For “she smiled” — here are the gesture directions I want.',
+        displayText: 'For “she smiled” — here are the gesture directions I want.',
         artifact: {
           label: 'Gesture Playground',
           content: expect.stringContaining(
@@ -69,6 +70,35 @@ describe('GesturePlaygroundOneShotCommit', () => {
         }
       })
     });
+  });
+
+  it.each([
+    [
+      'without optional clauses',
+      {},
+      'For “she smiled” — here are the gesture directions I want.'
+    ],
+    [
+      'with a writer note',
+      { note: 'Keep the refusal quiet' },
+      'For “she smiled” — here are the gesture directions I want — Keep the refusal quiet.'
+    ],
+    [
+      'with the full dictionary',
+      { includeDictionaryInCommit: true },
+      'For “she smiled” — here are the gesture directions I want, with the full Gesture Dictionary shared as reference.'
+    ]
+  ])('keeps room and writer-visible text exact %s', (_label, overrides, expected) => {
+    const result = prepareGesturePlaygroundOneShotCommit(payload({
+      draft: draft(overrides as Partial<WorkshopGesturePlaygroundDraft>)
+    }));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.commit.roomText).toBe(expected);
+    expect(result.commit.displayText).toBe(expected);
   });
 
   it('includes the full dictionary only when the writer explicitly opts in', () => {
@@ -122,6 +152,19 @@ describe('GesturePlaygroundOneShotCommit', () => {
       draft: draft(draftOverrides as Partial<WorkshopGesturePlaygroundDraft>)
     }));
 
-    expect(result).toEqual({ ok: false, message: expect.any(String) });
+    expect(result).toEqual({
+      ok: false,
+      reason: 'invalid-draft',
+      message: expect.any(String)
+    });
+  });
+
+  it.each([
+    ['blank phrase', { targetPhrase: '   ' }, 'Gesture Playground needs a target phrase.'],
+    ['no selections', { selections: [] }, 'Keep at least one direction before committing.']
+  ])('keeps the writer-facing refusal exact: %s', (_label, overrides, expected) => {
+    expect(prepareGesturePlaygroundOneShotCommit(payload({
+      draft: draft(overrides)
+    }))).toEqual({ ok: false, reason: 'invalid-draft', message: expected });
   });
 });

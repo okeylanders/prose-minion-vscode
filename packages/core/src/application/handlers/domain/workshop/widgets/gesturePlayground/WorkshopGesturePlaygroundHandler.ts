@@ -18,7 +18,7 @@ import type {
 } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import {
   gesturePlaygroundSourceReferencesValidationError
-} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundSourceReferences';
 import { LogSink } from '@/platform';
 import {
   MessageType,

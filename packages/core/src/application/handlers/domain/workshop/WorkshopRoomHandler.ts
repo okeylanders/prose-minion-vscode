@@ -35,6 +35,9 @@ import {
 } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import type {
+  WorkshopOneShotWidgetRoomArtifact
+} from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
 import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame,
@@ -92,7 +95,6 @@ import {
   WorkshopMessageAttachmentSnapshot,
   WorkshopTurnMessage,
   WorkshopTurnWidgetCommit,
-  WorkshopWidgetId,
 } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
@@ -897,21 +899,14 @@ export class WorkshopRoomHandler {
        * commit route sets this, and it never sets includeMessageAttachments —
        * the writer's staged pills belong to the message they were typing.
        */
-      widgetArtifact?: {
-        id: string;
-        widgetId: WorkshopWidgetId;
-        widgetConfigId: string;
-        label: string;
-        content: string;
-        selectionCount: number;
-      };
+      widgetArtifact?: WorkshopOneShotWidgetRoomArtifact;
       /**
        * Widget commits close their authoring sheet once the room owns the
        * writer turn and artifact, not after the participant finishes replying.
        */
       onRoomAccepted?: (userTurnId: string) => void;
     }
-  ): Promise<{ committed: boolean; userTurnId?: string }> {
+  ): Promise<{ committed: boolean }> {
     const personaId = this.session.getSelectedPersonaId();
     const targetPlan = this.resolveMessageTarget(
       targetOverride ?? this.session.getChatTarget(),
@@ -1207,7 +1202,7 @@ export class WorkshopRoomHandler {
         this.sessionPersistence.markDirty(targetPlan.completionReason);
       }
       this.postSessionState();
-      return { committed: assistantTurn !== undefined, userTurnId: userTurn.id };
+      return { committed: assistantTurn !== undefined };
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.session.abandonRun(requestId);
@@ -1237,7 +1232,7 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.send_message', `Failed to message ${label}`, details);
       }
       this.postSessionState();
-      return { committed: false, userTurnId: userTurn.id };
+      return { committed: false };
     } finally {
       this.settleActiveRun(requestId);
     }

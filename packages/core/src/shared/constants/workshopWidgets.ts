@@ -245,6 +245,11 @@ const WIDGETS_BY_ID: ReadonlyMap<WorkshopWidgetId, WorkshopWidgetDescriptor> = n
   WORKSHOP_WIDGET_CATALOG.flatMap((group) => group.items.map((widget) => [widget.id, widget]))
 );
 
+const WIDGET_SELECTION_UNIT_LABELS: ReadonlyMap<WorkshopWidgetId, string> = new Map([
+  ['gesture-playground', 'direction'],
+  ['creative-variations', 'variation']
+]);
+
 /** Descriptor lookup; undefined for ids this build does not know. */
 export function workshopWidgetDescriptor(id: WorkshopWidgetId): WorkshopWidgetDescriptor | undefined {
   return WIDGETS_BY_ID.get(id);
@@ -253,6 +258,15 @@ export function workshopWidgetDescriptor(id: WorkshopWidgetId): WorkshopWidgetDe
 /** Display label for a widget id; falls back to the raw id for forward compat. */
 export function workshopWidgetLabel(id: WorkshopWidgetId): string {
   return WIDGETS_BY_ID.get(id)?.label ?? id;
+}
+
+/** Writer-selected unit named by the widget, never by the shared artifact rail. */
+export function workshopWidgetSelectionUnitLabel(
+  id: WorkshopWidgetId,
+  count: number
+): string {
+  const singular = WIDGET_SELECTION_UNIT_LABELS.get(id) ?? 'selection';
+  return `${singular}${count === 1 ? '' : 's'}`;
 }
 
 /** True when the wire value names a widget this build knows about. */

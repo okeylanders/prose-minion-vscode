@@ -127,6 +127,7 @@ export interface WorkshopThreadArtifactWidgetCommit {
   widgetConfigId: string;
   rail: 'thread-artifact';
   artifactId: string;
+  /** Feature-neutral telemetry; presentation derives its noun from widgetId. */
   selectionCount: number;
 }
 

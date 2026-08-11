@@ -41,7 +41,6 @@ export type WorkshopMutationRouteRegistrar = (
 export type WorkshopMutationRouteOwner =
   | 'WorkshopContextHandler'
   | 'WorkshopExcerptScopeHandler'
-  | 'WorkshopGesturePlaygroundHandler'
   | 'WorkshopLexicalGravityHandler'
   | 'WorkshopRoomHandler'
   | 'WorkshopSessionMessageHandler'

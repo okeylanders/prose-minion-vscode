@@ -8,7 +8,7 @@ import type {
 } from '@/application/services/workshop/WorkshopSessionService';
 import type {
   WorkshopOneShotWidgetId,
-  WorkshopOneShotWidgetPreparedCommit
+  WorkshopOneShotWidgetCommitPlan
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 import type { LogSink } from '@/platform';
 
@@ -25,11 +25,13 @@ export type WorkshopOneShotWidgetRoomSend = (
   text: string,
   displayText: string,
   executeOptions: {
+    /** The writer's staged composer attachments belong to their unfinished message. */
     includeMessageAttachments: false;
     widgetArtifact: WorkshopOneShotWidgetRoomArtifact;
+    /** Acceptance is separate from participant settlement so the sheet closes promptly. */
     onRoomAccepted: (userTurnId: string) => void;
   }
-) => Promise<{ committed: boolean; userTurnId?: string }>;
+) => Promise<{ committed: boolean }>;
 
 export interface WorkshopOneShotWidgetCommitCoordinatorOptions {
   sendRoomMessage: WorkshopOneShotWidgetRoomSend;
@@ -50,7 +52,7 @@ export class WorkshopOneShotWidgetCommitCoordinator {
   ) {}
 
   async commit(
-    prepared: WorkshopOneShotWidgetPreparedCommit,
+    prepared: WorkshopOneShotWidgetCommitPlan,
     target: WorkshopChatTarget,
     onAccepted: (result: { widgetConfigId: string; turnId: string }) => void
   ): Promise<WorkshopOneShotWidgetCommitOutcome> {
@@ -77,10 +79,10 @@ export class WorkshopOneShotWidgetCommitCoordinator {
         {
           includeMessageAttachments: false,
           widgetArtifact: {
+            ...prepared.artifact,
             id: artifactId,
             widgetId: prepared.widgetId,
-            widgetConfigId: config.id,
-            ...prepared.artifact
+            widgetConfigId: config.id
           },
           onRoomAccepted: (turnId) => {
             this.session.recordWidgetCommit(config.id, { turnId, artifactId });

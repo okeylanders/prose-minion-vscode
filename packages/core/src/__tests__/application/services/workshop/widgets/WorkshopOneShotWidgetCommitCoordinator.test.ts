@@ -3,7 +3,7 @@ import {
   type WorkshopOneShotWidgetRoomSend
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
 import type {
-  WorkshopOneShotWidgetPreparedCommit
+  WorkshopOneShotWidgetCommitPlan
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type { WorkshopGesturePlaygroundDraft } from '@messages';
@@ -27,8 +27,8 @@ const draft: WorkshopGesturePlaygroundDraft = {
 };
 
 const prepared = (
-  overrides: Partial<WorkshopOneShotWidgetPreparedCommit> = {}
-): WorkshopOneShotWidgetPreparedCommit => ({
+  overrides: Partial<WorkshopOneShotWidgetCommitPlan> = {}
+): WorkshopOneShotWidgetCommitPlan => ({
   widgetId: 'gesture-playground',
   widgetConfigInput: { widgetId: 'gesture-playground', draft },
   roomText: 'Here are the directions I want.',
@@ -54,7 +54,7 @@ const build = (sendRoomMessage?: jest.MockedFunction<WorkshopOneShotWidgetRoomSe
     const turn = session.beginPersonaMessage('req-live', 'visible');
     options.onRoomAccepted(turn.id);
     session.completeRun('req-live', 'reply');
-    return { committed: true, userTurnId: turn.id };
+    return { committed: true };
   });
   const markDirty = jest.fn();
   const postSessionState = jest.fn();
@@ -125,9 +125,9 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
       _text,
       _displayText,
       options
-    ) => new Promise<{ committed: boolean; userTurnId: string }>((resolve) => {
+    ) => new Promise<{ committed: boolean }>((resolve) => {
       acceptRoom = () => options.onRoomAccepted('turn-deferred');
-      settleSend = () => resolve({ committed: true, userTurnId: 'turn-deferred' });
+      settleSend = () => resolve({ committed: true });
     })) as jest.MockedFunction<WorkshopOneShotWidgetRoomSend>;
     const harness = build(sendRoomMessage);
     const onAccepted = jest.fn();
@@ -141,6 +141,7 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
     expect(harness.markDirty).toHaveBeenCalledTimes(1);
     expect(harness.postSessionState).not.toHaveBeenCalled();
     expect(onAccepted).not.toHaveBeenCalled();
+    expect(harness.session.collectWriterSources({ kind: 'host' })).toEqual([]);
 
     acceptRoom();
     expect(harness.session.getWidgetConfig('wc-1')).toMatchObject({
@@ -152,6 +153,14 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
       widgetConfigId: 'wc-1',
       turnId: 'turn-deferred'
     });
+    expect(harness.session.collectWriterSources({ kind: 'host' })).toEqual([
+      expect.objectContaining({
+        kind: 'message-attachment',
+        origin: 'writer',
+        artifactId: 'ta-1',
+        label: 'Gesture Playground'
+      })
+    ]);
 
     settleSend();
     await expect(pending).resolves.toEqual({
@@ -198,7 +207,7 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
       options
     ) => {
       options.onRoomAccepted('turn-accepted');
-      return { committed: false, userTurnId: 'turn-accepted' };
+      return { committed: false };
     });
     harness = build(sendRoomMessage);
 
@@ -217,5 +226,56 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
       committedTurnId: 'turn-accepted',
       artifactId: 'ta-1'
     });
+  });
+
+  it('records artifact delivery for the exact persona guest target', async () => {
+    const harness = build();
+
+    await harness.coordinator.commit(
+      prepared(),
+      { kind: 'personaGuest', personaId: 'margot' },
+      jest.fn()
+    );
+
+    expect(harness.session.collectWriterSources({ kind: 'host' })).toEqual([]);
+    expect(harness.session.collectWriterSources({
+      kind: 'personaGuest',
+      personaId: 'margot'
+    })).toEqual([
+      expect.objectContaining({
+        kind: 'message-attachment',
+        origin: 'writer',
+        artifactId: 'ta-1',
+        label: 'Gesture Playground'
+      })
+    ]);
+  });
+
+  it('keeps authority over artifact identity keys supplied by a feature plan', async () => {
+    const harness = build();
+    const artifact = {
+      ...prepared().artifact,
+      id: 'ta-forged',
+      widgetId: 'creative-variations',
+      widgetConfigId: 'wc-forged'
+    } as never;
+
+    await harness.coordinator.commit(
+      prepared({ artifact }),
+      { kind: 'host' },
+      jest.fn()
+    );
+
+    expect(harness.sendRoomMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.objectContaining({
+        widgetArtifact: expect.objectContaining({
+          id: 'ta-1',
+          widgetId: 'gesture-playground',
+          widgetConfigId: 'wc-1'
+        })
+      })
+    );
   });
 });

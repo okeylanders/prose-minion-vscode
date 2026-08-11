@@ -608,6 +608,8 @@ function assertStandingDirectiveChange(value: unknown, path: string): void {
 
 function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   const recommendation = exactObject(value, path, ['widgetId'], ['seed']);
+  // Persisted recommendations are deliberately catalog-bound, not route-policy-bound:
+  // a staged build must not write a session that the shipped codec cannot reopen.
   if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
     shapeError(`${path}.widgetId`, 'live Conversation Widget id');
   }

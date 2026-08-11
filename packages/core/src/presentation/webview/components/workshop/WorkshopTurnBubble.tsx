@@ -18,6 +18,10 @@ import { WorkshopToolId, WorkshopTurn } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
+import {
+  workshopWidgetLabel,
+  workshopWidgetSelectionUnitLabel
+} from '@shared/constants/workshopWidgets';
 
 interface WorkshopTurnBubbleProps {
   turn: WorkshopTurn;
@@ -276,6 +280,9 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
 
   if (turn.role === 'user') {
     if (turn.kind === 'message') {
+      const widgetCommit = turn.widgetCommit?.rail === 'thread-artifact'
+        ? turn.widgetCommit
+        : undefined;
       return (
         <div
           className={`pm-ws-turn pm-ws-turn-user${
@@ -299,18 +306,21 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </span>
           )}
           <div className="pm-ws-turn-message">{turn.content}</div>
-          {turn.widgetCommit?.rail === 'thread-artifact' && onOpenWidgetConfig && (
+          {widgetCommit && onOpenWidgetConfig && (
             <div className="pm-ws-widget-chipwrap">
               <button
                 type="button"
                 className="pm-ws-widget-chip"
                 title="Presentation-only — the model never sees this chip"
-                onClick={() => onOpenWidgetConfig(turn.widgetCommit!.widgetConfigId)}
+                onClick={() => onOpenWidgetConfig(widgetCommit.widgetConfigId)}
               >
-                <Icon name="hand" size={13} /> Gesture Playground{' '}
+                <Icon name="hand" size={13} /> {workshopWidgetLabel(widgetCommit.widgetId)}{' '}
                 <span className="pm-ws-widget-chip-meta">
-                  {turn.widgetCommit.selectionCount} direction
-                  {turn.widgetCommit.selectionCount === 1 ? '' : 's'} · re-open
+                  {widgetCommit.selectionCount}{' '}
+                  {workshopWidgetSelectionUnitLabel(
+                    widgetCommit.widgetId,
+                    widgetCommit.selectionCount
+                  )} · re-open
                 </span>
               </button>
             </div>

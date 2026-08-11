@@ -7,8 +7,7 @@ import type {
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  prepareWorkshopOneShotWidgetCommit,
-  supportsWorkshopOneShotWidgetCommit
+  prepareWorkshopOneShotWidgetCommit
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 import type {
   WorkshopOneShotWidgetCommitCoordinator
@@ -30,6 +29,16 @@ export interface WorkshopWidgetHostHandlerOptions {
   /** Backend race guard; the webview also disables commit while a room run owns the slot. */
   isRoomRunActive: () => boolean;
 }
+
+type WorkshopWidgetCommitRefusalReason =
+  | 'widget-unavailable'
+  | 'unsupported-one-shot-widget'
+  | 'invalid-draft'
+  | 'tool-target'
+  | 'room-run-active';
+
+const DEFAULT_TOOL_TARGET_REFUSAL_MESSAGE =
+  'Switch to a persona target before committing a widget.';
 
 export class WorkshopWidgetHostHandler {
   constructor(
@@ -89,51 +98,45 @@ export class WorkshopWidgetHostHandler {
 
   async handleCommit(message: WorkshopCommitWidgetMessage): Promise<void> {
     const { widgetId, requestToken } = message.payload;
-    if (
-      !supportsWorkshopOneShotWidgetCommit(widgetId)
-      || !this.availability.isAvailable(widgetId)
-    ) {
-      this.postActionResult({
-        action: 'commit',
+    if (!this.availability.isAvailable(widgetId)) {
+      this.refuseCommit(
         requestToken,
         widgetId,
-        ok: false,
-        message: 'That widget is not available yet.'
-      });
+        'widget-unavailable',
+        'That widget is not available yet.'
+      );
       return;
     }
 
     const preparation = prepareWorkshopOneShotWidgetCommit(message.payload);
     if (!preparation.ok) {
-      this.postActionResult({
-        action: 'commit',
+      this.refuseCommit(
         requestToken,
         widgetId,
-        ok: false,
-        message: preparation.message
-      });
+        preparation.reason,
+        preparation.message
+      );
       return;
     }
 
     const target = this.session.getChatTarget();
     if (target.kind === 'tool') {
-      this.postActionResult({
-        action: 'commit',
+      this.refuseCommit(
         requestToken,
         widgetId,
-        ok: false,
-        message: preparation.commit.toolTargetRefusalMessage
-      });
+        'tool-target',
+        preparation.commit.toolTargetRefusalMessage
+          ?? DEFAULT_TOOL_TARGET_REFUSAL_MESSAGE
+      );
       return;
     }
     if (this.options.isRoomRunActive()) {
-      this.postActionResult({
-        action: 'commit',
+      this.refuseCommit(
         requestToken,
         widgetId,
-        ok: false,
-        message: 'Wait for the current Workshop response to finish before committing another widget.'
-      });
+        'room-run-active',
+        'Wait for the current Workshop response to finish before committing another widget.'
+      );
       return;
     }
 
@@ -168,6 +171,28 @@ export class WorkshopWidgetHostHandler {
         message: 'The commit failed before the room accepted it. Your draft is still open — try again.'
       });
     }
+  }
+
+  private refuseCommit(
+    requestToken: string,
+    widgetId: WorkshopCommitWidgetMessage['payload']['widgetId'],
+    reason: WorkshopWidgetCommitRefusalReason,
+    message: string
+  ): void {
+    const boundedToken = typeof requestToken === 'string'
+      ? requestToken.slice(0, 160)
+      : '<invalid>';
+    this.outputChannel.appendLine(
+      `[WorkshopWidgetHostHandler] Commit refused `
+      + `(reason=${reason}, requestToken=${JSON.stringify(boundedToken)})`
+    );
+    this.postActionResult({
+      action: 'commit',
+      requestToken,
+      widgetId,
+      ok: false,
+      message
+    });
   }
 
   private postActionResult(payload: WorkshopWidgetActionResultPayload): void {

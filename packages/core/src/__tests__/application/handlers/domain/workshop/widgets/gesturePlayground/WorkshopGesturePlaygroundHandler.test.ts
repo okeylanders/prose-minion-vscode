@@ -8,7 +8,7 @@ import { WorkshopGesturePlaygroundHandler } from '@handlers/domain/workshop/widg
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
-  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  fixedWorkshopWidgetAvailabilityPolicy
 } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import {
   MessageType,
@@ -73,6 +73,7 @@ const generateMessage = (
 const build = (options: {
   generateMenu?: jest.Mock;
   generateMore?: jest.Mock;
+  available?: boolean;
 } = {}) => {
   let clock = 0;
   const session = new WorkshopSessionService(() => ++clock);
@@ -88,7 +89,9 @@ const build = (options: {
   const handler = new WorkshopGesturePlaygroundHandler(
     session,
     { generateMenu, generateMore } as never,
-    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
+    fixedWorkshopWidgetAvailabilityPolicy(
+      options.available === false ? [] : ['gesture-playground']
+    ),
     postMessage,
     { appendLine } as never
   );
@@ -106,6 +109,22 @@ const build = (options: {
 };
 
 describe('WorkshopGesturePlaygroundHandler — generate', () => {
+  it('refuses the generate route when its injected policy marks the widget unavailable', async () => {
+    const { handler, posted, generateMenu } = build({ available: false });
+
+    await handler.handleGenerate(generateMessage());
+
+    expect(generateMenu).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT)).toEqual([
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          ok: false,
+          error: 'That widget is not available yet.'
+        })
+      })
+    ]);
+  });
+
   it('returns the menu under the request token', async () => {
     const { handler, posted, generateMenu } = build();
     await handler.handleGenerate(generateMessage());

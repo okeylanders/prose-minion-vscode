@@ -454,6 +454,41 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(onOpenWidgetConfig).toHaveBeenCalledWith('wc-7');
   });
 
+  it('derives a one-shot chip label and selected-unit noun from its widget id', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          id: 'creative-widget-turn',
+          role: 'user',
+          kind: 'message',
+          participant: 'writer',
+          artifact: 'persona_message',
+          content: 'Try these variations.',
+          timestamp: 1,
+          excerptVersion: 1,
+          widgetCommit: {
+            widgetId: 'creative-variations',
+            widgetConfigId: 'wc-8',
+            rail: 'thread-artifact',
+            artifactId: 'ta-9',
+            selectionCount: 3
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+        onOpenWidgetConfig={jest.fn()}
+      />
+    );
+
+    const chip = screen.getByRole('button', { name: /Creative Variations Explorer/ });
+    expect(chip.textContent).toContain('3 variations · re-open');
+    expect(chip.textContent).not.toContain('Gesture Playground');
+    expect(chip.textContent).not.toContain('directions');
+  });
+
   it('forwards the complete rich persona seed when its widget chip is opened', () => {
     const onOpenWidgetRecommendation = jest.fn();
     const recommendation = {

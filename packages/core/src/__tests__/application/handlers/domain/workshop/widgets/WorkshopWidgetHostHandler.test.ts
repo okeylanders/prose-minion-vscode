@@ -8,7 +8,8 @@ import {
 import {
   MessageType,
   WorkshopCommitWidgetMessage,
-  WorkshopGesturePlaygroundDraft
+  WorkshopGesturePlaygroundDraft,
+  WorkshopWidgetId
 } from '@messages';
 
 const draft: WorkshopGesturePlaygroundDraft = {
@@ -46,6 +47,7 @@ const commitMessage = (
 describe('WorkshopWidgetHostHandler', () => {
   const createHandler = (options: {
     available?: boolean;
+    availableWidgetIds?: readonly WorkshopWidgetId[];
     roomRunActive?: boolean;
     commitOutcome?:
       | { status: 'accepted'; widgetConfigId: string; turnId: string }
@@ -72,7 +74,8 @@ describe('WorkshopWidgetHostHandler', () => {
       session,
       { commit } as never,
       fixedWorkshopWidgetAvailabilityPolicy(
-        options.available === false ? [] : ['gesture-playground']
+        options.availableWidgetIds
+          ?? (options.available === false ? [] : ['gesture-playground'])
       ),
       postMessage,
       { appendLine, show: jest.fn(), clear: jest.fn() },
@@ -181,6 +184,10 @@ describe('WorkshopWidgetHostHandler', () => {
     const unavailable = createHandler({ available: false });
     await unavailable.handler.handleCommit(commitMessage());
     expect(unavailable.commit).not.toHaveBeenCalled();
+    expect(unavailable.appendLine).toHaveBeenCalledWith(
+      '[WorkshopWidgetHostHandler] Commit refused '
+      + '(reason=widget-unavailable, requestToken="commit-1")'
+    );
 
     const invalid = createHandler();
     await invalid.handler.handleCommit(commitMessage({
@@ -190,6 +197,30 @@ describe('WorkshopWidgetHostHandler', () => {
     expect(invalid.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       payload: expect.objectContaining({ ok: false, message: expect.any(String) })
     }));
+    expect(invalid.appendLine).toHaveBeenCalledWith(
+      '[WorkshopWidgetHostHandler] Commit refused '
+      + '(reason=invalid-draft, requestToken="commit-1")'
+    );
+  });
+
+  it('refuses an available non-one-shot widget inside the closed dispatch', async () => {
+    const unsupported = createHandler({ availableWidgetIds: ['prose-controller'] });
+
+    await unsupported.handler.handleCommit(commitMessage({
+      widgetId: 'prose-controller'
+    } as never));
+
+    expect(unsupported.commit).not.toHaveBeenCalled();
+    expect(unsupported.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        ok: false,
+        message: 'That widget does not support one-shot commits.'
+      })
+    }));
+    expect(unsupported.appendLine).toHaveBeenCalledWith(
+      '[WorkshopWidgetHostHandler] Commit refused '
+      + '(reason=unsupported-one-shot-widget, requestToken="commit-1")'
+    );
   });
 
   it('refuses tool-sidecar and re-entrant room targets before transaction state changes', async () => {
@@ -203,6 +234,10 @@ describe('WorkshopWidgetHostHandler', () => {
     expect(toolTarget.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       payload: expect.objectContaining({ message: expect.stringMatching(/persona target/) })
     }));
+    expect(toolTarget.appendLine).toHaveBeenCalledWith(
+      '[WorkshopWidgetHostHandler] Commit refused '
+      + '(reason=tool-target, requestToken="commit-1")'
+    );
 
     const activeRoom = createHandler({ roomRunActive: true });
     await activeRoom.handler.handleCommit(commitMessage());
@@ -210,6 +245,10 @@ describe('WorkshopWidgetHostHandler', () => {
     expect(activeRoom.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       payload: expect.objectContaining({ message: expect.stringMatching(/current Workshop response/i) })
     }));
+    expect(activeRoom.appendLine).toHaveBeenCalledWith(
+      '[WorkshopWidgetHostHandler] Commit refused '
+      + '(reason=room-run-active, requestToken="commit-1")'
+    );
   });
 
   it.each([

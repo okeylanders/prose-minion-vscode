@@ -408,12 +408,12 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
     reason: 'Workshop-internal feature-slice composition owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground(?:Handler)?|lexicalGravity(?:Handler)?)/
+    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground(?:Handler)?|lexicalGravity(?:Handler)?)/
   },
   {
     file: 'application/handlers/domain/workshop/WorkshopRouteContracts.ts',
     reason: 'Workshop-internal composition contract owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|HandlerOptions|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
+    allowedToken: /(?:WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
   },
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle.ts',
@@ -452,7 +452,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   },
   {
     file: 'application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations.ts',
-    reason: 'closed one-shot feature-compiler dispatch',
+    reason: 'closed one-shot feature-preparation dispatch',
     allowedToken: /(?:GesturePlaygroundOneShotCommit|prepareGesturePlaygroundOneShotCommit|gesture-playground|gesturePlayground)/
   },
   {

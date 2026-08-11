@@ -8,7 +8,8 @@ import {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
 } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 import {
-  fixedWorkshopWidgetAvailabilityPolicy
+  fixedWorkshopWidgetAvailabilityPolicy,
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
 } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import {
   sanitizeWorkshopWidgetRecommendationForRetention,
@@ -48,6 +49,12 @@ function recommendationFrame(fields: RecommendationFrameFields = {}): string {
     '</workshop-widget-recommendation>'
   ].join('\n');
 }
+
+const inspectWithCatalog = (content: string) =>
+  inspectWorkshopWidgetRecommendation(
+    content,
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  );
 
 describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
   it('assembles every registered feature once inside the generic response contract', () => {
@@ -104,21 +111,21 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
 
 describe('inspectWorkshopWidgetRecommendation', () => {
   it('is absent when no exact section exists', () => {
-    expect(inspectWorkshopWidgetRecommendation('Just prose about a smile.').outcome).toBe('absent');
+    expect(inspectWithCatalog('Just prose about a smile.').outcome).toBe('absent');
   });
 
   it('normalizes CRLF framing before dispatching a live widget id', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame().replace(/\n/g, '\r\n')).outcome
+      inspectWithCatalog(recommendationFrame().replace(/\n/g, '\r\n')).outcome
     ).toBe('accepted');
   });
 
   it('requires the exact frame to be the final response content', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(`${recommendationFrame()}\n\n### Epilogue\nMore prose.`)
+      inspectWithCatalog(`${recommendationFrame()}\n\n### Epilogue\nMore prose.`)
     ).toEqual({ outcome: 'rejected', rejection: 'invalid_frame' });
     expect(
-      inspectWorkshopWidgetRecommendation(
+      inspectWithCatalog(
         '### Try a widget\nA prefatory line inside the control section.\n'
         + recommendationFrame().split('\n').slice(1).join('\n')
       )
@@ -127,16 +134,16 @@ describe('inspectWorkshopWidgetRecommendation', () => {
 
   it('rejects duplicate headings wholesale', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(`${recommendationFrame()}\n\n${recommendationFrame()}`)
+      inspectWithCatalog(`${recommendationFrame()}\n\n${recommendationFrame()}`)
     ).toEqual({ outcome: 'rejected', rejection: 'duplicate_heading' });
   });
 
   it('rejects widget ids that are not live and host-addressable', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'show-vs-tell' }))
+      inspectWithCatalog(recommendationFrame({ widgetId: 'show-vs-tell' }))
     ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
     expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({ widgetId: 'made-up-widget' }))
+      inspectWithCatalog(recommendationFrame({ widgetId: 'made-up-widget' }))
     ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
   });
 
@@ -149,7 +156,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
 
   it('rejects an oversized whole frame before feature inspection', () => {
     expect(
-      inspectWorkshopWidgetRecommendation(recommendationFrame({
+      inspectWithCatalog(recommendationFrame({
         surroundingContext: 'x'.repeat(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS + 1)
       }))
     ).toEqual({

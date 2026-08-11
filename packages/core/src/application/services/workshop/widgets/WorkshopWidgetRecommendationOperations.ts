@@ -72,8 +72,7 @@ function availableRecommendationEntries(
 }
 
 export function buildWorkshopWidgetRecommendationInstruction(
-  availability: WorkshopWidgetAvailabilityPolicy =
-    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  availability: WorkshopWidgetAvailabilityPolicy
 ): string {
   const availableEntries = availableRecommendationEntries(availability);
   return [
@@ -94,7 +93,9 @@ export function buildWorkshopWidgetRecommendationInstruction(
 }
 
 export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION =
-  buildWorkshopWidgetRecommendationInstruction();
+  buildWorkshopWidgetRecommendationInstruction(
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  );
 
 const WIDGET_BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
@@ -114,8 +115,7 @@ export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
  */
 export function inspectWorkshopWidgetRecommendation(
   content: string,
-  availability: WorkshopWidgetAvailabilityPolicy =
-    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  availability: WorkshopWidgetAvailabilityPolicy
 ): WorkshopWidgetRecommendationInspection {
   const lines = content.replace(/\r\n?/g, '\n').split('\n');
   const headingIndexes = lines.flatMap((line, index) =>
