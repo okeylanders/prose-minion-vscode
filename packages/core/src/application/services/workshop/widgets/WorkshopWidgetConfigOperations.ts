@@ -16,6 +16,10 @@ import {
   WorkshopWidgetConfigOperations
 } from '@/application/services/workshop/widgets/WorkshopWidgetConfigLedger';
 import {
+  cloneCreativeVariationsDraft,
+  summarizeCreativeVariationsDraft
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
   cloneGesturePlaygroundDraft,
   summarizeGesturePlaygroundDraft
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
@@ -52,6 +56,12 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
           widgetId: input.widgetId,
           draft: cloneLexicalGravityDraft(input.draft)
         };
+      case 'creative-variations':
+        return {
+          ...identity,
+          widgetId: input.widgetId,
+          draft: cloneCreativeVariationsDraft(input.draft)
+        };
       default:
         return unsupportedConfig(input);
     }
@@ -75,6 +85,12 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
           widgetId: input.widgetId,
           draft: cloneLexicalGravityDraft(input.draft)
         };
+      case 'creative-variations':
+        return {
+          ...identity,
+          widgetId: input.widgetId,
+          draft: cloneCreativeVariationsDraft(input.draft)
+        };
       default:
         return unsupportedConfig(input);
     }
@@ -86,6 +102,8 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
         return { ...config, draft: cloneGesturePlaygroundDraft(config.draft) };
       case 'lexical-gravity':
         return { ...config, draft: cloneLexicalGravityDraft(config.draft) };
+      case 'creative-variations':
+        return { ...config, draft: cloneCreativeVariationsDraft(config.draft) };
       default:
         return unsupportedConfig(config);
     }
@@ -100,6 +118,10 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
       case 'lexical-gravity': {
         const { draft, ...identity } = config;
         return { ...identity, ...summarizeLexicalGravityDraft(draft) };
+      }
+      case 'creative-variations': {
+        const { draft, ...identity } = config;
+        return { ...identity, ...summarizeCreativeVariationsDraft(draft) };
       }
       default:
         return unsupportedConfig(config);

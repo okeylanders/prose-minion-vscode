@@ -2,6 +2,13 @@
 
 import type { WorkshopWidgetConfigSnapshot } from '@messages';
 import {
+  assertCreativeVariationsDraftCheckpointShape,
+  assertCreativeVariationsDraftIntegrity,
+  assertCreativeVariationsDraftShape,
+  normalizeCreativeVariationsDraftForHydration,
+  type CreativeVariationsCheckpointNormalization
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
   assertGesturePlaygroundDraftCheckpointShape,
   assertGesturePlaygroundDraftIntegrity,
   assertGesturePlaygroundDraftShape,
@@ -28,7 +35,8 @@ export interface WorkshopWidgetConfigRecoveryResult {
 
 export type WorkshopWidgetCheckpointNormalization =
   | GesturePlaygroundCheckpointNormalization
-  | LexicalGravityCheckpointNormalization;
+  | LexicalGravityCheckpointNormalization
+  | CreativeVariationsCheckpointNormalization;
 
 export type PersistedWorkshopWidgetId = WorkshopWidgetConfigSnapshot['widgetId'];
 type PersistedWorkshopWidgetDraft<Id extends PersistedWorkshopWidgetId> =
@@ -82,6 +90,12 @@ const WORKSHOP_WIDGET_PERSISTENCE_LIFECYCLES = {
     normalizeForHydration: normalizeLexicalGravityDraftForHydration,
     assertCurrentShape: assertLexicalGravityDraftShape,
     assertIntegrity: assertLexicalGravityDraftIntegrity
+  },
+  'creative-variations': {
+    assertCheckpointShape: assertCreativeVariationsDraftCheckpointShape,
+    normalizeForHydration: normalizeCreativeVariationsDraftForHydration,
+    assertCurrentShape: assertCreativeVariationsDraftShape,
+    assertIntegrity: assertCreativeVariationsDraftIntegrity
   }
 } satisfies WorkshopWidgetPersistenceLifecycleRegistry;
 

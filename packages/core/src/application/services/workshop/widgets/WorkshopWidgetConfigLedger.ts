@@ -7,6 +7,7 @@
  */
 
 import {
+  WorkshopCreativeVariationsDraft,
   WorkshopGesturePlaygroundDraft,
   WorkshopLexicalGravityDraft,
   WorkshopWidgetConfigSnapshot,
@@ -20,7 +21,8 @@ export interface WorkshopWidgetConfigLedgerState {
 
 export type WorkshopWidgetConfigInput =
   | { widgetId: 'gesture-playground'; draft: WorkshopGesturePlaygroundDraft }
-  | { widgetId: 'lexical-gravity'; draft: WorkshopLexicalGravityDraft };
+  | { widgetId: 'lexical-gravity'; draft: WorkshopLexicalGravityDraft }
+  | { widgetId: 'creative-variations'; draft: WorkshopCreativeVariationsDraft };
 
 export interface WorkshopWidgetConfigIdentity {
   id: string;

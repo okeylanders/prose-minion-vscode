@@ -240,6 +240,19 @@ describe('WorkshopSessionService — widget configs', () => {
       .toBe('ta-1');
   });
 
+  it('preserves a pre-turn Gesture retry token from prior Workshop chats', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+
+    const state = parseWorkshopSessionStateV1(session.exportCommittedState());
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(state, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+
+    const retryToken = restored.getWidgetConfig('wc-1');
+    expect(retryToken).toEqual(expect.objectContaining({ widgetId: 'gesture-playground' }));
+    expect(retryToken).not.toHaveProperty('committedTurnId');
+    expect(retryToken).not.toHaveProperty('artifactId');
+  });
+
   it('round-trips a current Lexical Gravity grammar through V1 session state', () => {
     session.setSessionScope('open');
     session.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });

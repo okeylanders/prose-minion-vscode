@@ -275,6 +275,7 @@ workshop/
 ├── participants.ts          # Persona/tool ids and participant IPC
 ├── widgets.ts               # Explicit family unions and generic widget IPC
 ├── standingDirectives.ts    # Standing family snapshot/summary/change
+├── creativeVariations.ts    # Creative authoring, workup, overlap, and selection grammar
 ├── gesturePlayground.ts     # Gesture draft, generation, and commit contracts
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
 ├── recovery.ts              # Rejected response repair-contract registry

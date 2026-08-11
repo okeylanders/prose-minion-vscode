@@ -73,6 +73,8 @@ export interface PromptBudgets {
    * menu accepted by fail-closed parsers, and what a commit may carry. The
    * exploration cloud stays in the re-openable config but is excluded from
    * the rail — only selections and the writer's note influence the turn.
+   * Creative Variations adds bounded passage/context inputs, typed card and
+   * risk fields, the complete provider envelope, and the compact artifact.
    */
   readonly workshopWidgets: Readonly<{
     gestureTargetPhraseCharacters: number;
@@ -96,6 +98,26 @@ export interface PromptBudgets {
     gestureOptionsPerGroup: number;
     gestureOptionCharacters: number;
     gestureSelectionsPerCommit: number;
+    creativeSubjectCharacters: number;
+    creativeSubjectPreviewCharacters: number;
+    creativeProvenancePathCharacters: number;
+    creativeContextCharacters: number;
+    creativeSourceReferences: number;
+    creativeSourceReferenceCharacters: number;
+    creativeMustSurviveCharacters: number;
+    creativeMustNotChangeCharacters: number;
+    creativeAimCharacters: number;
+    creativeNoteCharacters: number;
+    creativeWorkupIdCharacters: number;
+    creativeApproachCharacters: number;
+    creativeDirectionCharacters: number;
+    creativeProseCharacters: number;
+    creativeTradeoffCharacters: number;
+    creativeFlagsPerCard: number;
+    creativeFlagNoteCharacters: number;
+    creativeOutputTokens: number;
+    creativeResponseCharacters: number;
+    creativeArtifactCharacters: number;
     lexicalLensNameCharacters: number;
     lexicalLensSlugCharacters: number;
     lexicalLensVariantCharacters: number;
@@ -208,6 +230,26 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     gestureOptionsPerGroup: 10,
     gestureOptionCharacters: 220,
     gestureSelectionsPerCommit: 8,
+    creativeSubjectCharacters: 20_000,
+    creativeSubjectPreviewCharacters: 160,
+    creativeProvenancePathCharacters: 500,
+    creativeContextCharacters: 20_000,
+    creativeSourceReferences: 8,
+    creativeSourceReferenceCharacters: 500,
+    creativeMustSurviveCharacters: 2_000,
+    creativeMustNotChangeCharacters: 2_000,
+    creativeAimCharacters: 1_000,
+    creativeNoteCharacters: 500,
+    creativeWorkupIdCharacters: 64,
+    creativeApproachCharacters: 160,
+    creativeDirectionCharacters: 600,
+    creativeProseCharacters: 20_000,
+    creativeTradeoffCharacters: 400,
+    creativeFlagsPerCard: 8,
+    creativeFlagNoteCharacters: 400,
+    creativeOutputTokens: 30_000,
+    creativeResponseCharacters: 160_000,
+    creativeArtifactCharacters: 20_000,
     lexicalLensNameCharacters: 80,
     lexicalLensSlugCharacters: 64,
     lexicalLensVariantCharacters: 120,

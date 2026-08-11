@@ -18,6 +18,7 @@
 export * from './participants';
 export * from './settings';
 export * from './context';
+export * from './creativeVariations';
 export * from './gesturePlayground';
 export * from './lexicalGravity';
 export * from './standingDirectives';

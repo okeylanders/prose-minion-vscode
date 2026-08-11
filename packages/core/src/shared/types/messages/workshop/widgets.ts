@@ -1,6 +1,7 @@
 /** Conversation Widget family contracts and exact supported unions. */
 
 import { MessageEnvelope, MessageType } from '../base';
+import { WorkshopCreativeVariationsDraft } from './creativeVariations';
 import {
   WorkshopGesturePlaygroundCommitPayload,
   WorkshopGesturePlaygroundDraft,
@@ -69,10 +70,17 @@ export interface WorkshopLexicalGravityWidgetConfigSnapshot
   draft: WorkshopLexicalGravityDraft;
 }
 
+export interface WorkshopCreativeVariationsWidgetConfigSnapshot
+  extends WorkshopWidgetConfigSnapshotBase {
+  widgetId: 'creative-variations';
+  draft: WorkshopCreativeVariationsDraft;
+}
+
 /** Earned persisted union: each widget owns its exact authoring-state codec. */
 export type WorkshopWidgetConfigSnapshot =
   | WorkshopGesturePlaygroundWidgetConfigSnapshot
-  | WorkshopLexicalGravityWidgetConfigSnapshot;
+  | WorkshopLexicalGravityWidgetConfigSnapshot
+  | WorkshopCreativeVariationsWidgetConfigSnapshot;
 
 /**
  * Bounded config identity carried in ordinary session snapshots. The full
@@ -96,9 +104,16 @@ export type WorkshopLexicalGravityWidgetConfigSummary =
     metaphorPull: boolean;
   };
 
+export type WorkshopCreativeVariationsWidgetConfigSummary =
+  Omit<WorkshopCreativeVariationsWidgetConfigSnapshot, 'draft'> & {
+    subjectPreview: string;
+    selectionCount: number;
+  };
+
 export type WorkshopWidgetConfigSummary =
   | WorkshopGesturePlaygroundWidgetConfigSummary
-  | WorkshopLexicalGravityWidgetConfigSummary;
+  | WorkshopLexicalGravityWidgetConfigSummary
+  | WorkshopCreativeVariationsWidgetConfigSummary;
 
 /**
  * Display-safe widget-commit decoration on a normal user message turn —

@@ -10,7 +10,11 @@ import {
   isWorkshopPublishableCapabilityEvidence,
   workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
-import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
+import {
+  workshopWidgetArtifactKind,
+  workshopWidgetDescriptor,
+  type WorkshopWidgetRail
+} from '@shared/constants/workshopWidgets';
 import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
@@ -226,6 +230,9 @@ export function validateWorkshopSessionStateV1(
   // `ta-N`, widget artifact ids share the thread-artifact counter, and commit
   // linkage must reference real turns and configs.
   const widgetConfigIds = new Set<string>();
+  const widgetConfigsById = new Map(
+    (state.widgetConfigs ?? []).map((config) => [config.id, config])
+  );
   let greatestWidgetConfigNumber = 0;
   for (const config of state.widgetConfigs ?? []) {
     if (widgetConfigIds.has(config.id)) {
@@ -265,6 +272,29 @@ export function validateWorkshopSessionStateV1(
   if (greatestWidgetConfigNumber > (state.counters.widgetConfig ?? 0)) {
     throw new Error('Persisted Workshop widget-config counter trails an existing id');
   }
+  for (const config of state.widgetConfigs ?? []) {
+    if (config.clonedFromConfigId !== undefined) {
+      const source = widgetConfigsById.get(config.clonedFromConfigId);
+      if (!source) {
+        throw new Error(
+          `Persisted Workshop widget config ${config.id} clones an unknown config`
+        );
+      }
+      if (source.widgetId !== config.widgetId) {
+        throw new Error(
+          `Persisted Workshop widget config ${config.id} clones a different widget`
+        );
+      }
+      const sourceNumber = numericIdSuffix(source.id, /^wc-(\d+)$/, 'widget config');
+      const cloneNumber = numericIdSuffix(config.id, /^wc-(\d+)$/, 'widget config');
+      if (sourceNumber >= cloneNumber) {
+        throw new Error(
+          `Persisted Workshop widget config ${config.id} does not clone an earlier config`
+        );
+      }
+    }
+    assertWidgetConfigCommitLinkage(config, state, workshopWidgetDescriptor(config.widgetId)?.rail);
+  }
   for (const turn of state.turns) {
     if (!turn.widgetCommit) {
       continue;
@@ -281,8 +311,22 @@ export function validateWorkshopSessionStateV1(
         'standing directive'
       );
     }
-    if (!widgetConfigIds.has(turn.widgetCommit.widgetConfigId)) {
+    const config = widgetConfigsById.get(turn.widgetCommit.widgetConfigId);
+    if (!config) {
       throw new Error(`Persisted Workshop turn ${turn.id} references an unknown widget config`);
+    }
+    if (config.widgetId !== turn.widgetCommit.widgetId) {
+      throw new Error(`Persisted Workshop turn ${turn.id} references the wrong widget config`);
+    }
+    if (
+      turn.widgetCommit.rail === 'thread-artifact'
+      && (
+        config.committedTurnId !== turn.id
+        || config.artifactId !== turn.widgetCommit.artifactId
+        || config.directiveId !== undefined
+      )
+    ) {
+      throw new Error(`Persisted Workshop thread widget ${turn.id} has invalid config linkage`);
     }
     const standingChange = turn.standingDirectiveChange;
     if (turn.widgetCommit.rail === 'standing') {
@@ -462,6 +506,69 @@ export function validateWorkshopSessionStateV1(
   ) {
     throw new Error('Persisted Workshop chat target references a non-live guest');
   }
+}
+
+function assertWidgetConfigCommitLinkage(
+  config: NonNullable<WorkshopSessionStateV1['widgetConfigs']>[number],
+  state: WorkshopSessionStateV1,
+  rail: WorkshopWidgetRail | undefined
+): void {
+  const linkageCount = [
+    config.committedTurnId,
+    config.artifactId,
+    config.directiveId
+  ].filter((value) => value !== undefined).length;
+  if (linkageCount === 0) {
+    return;
+  }
+
+  if (rail === 'standing') {
+    const directive = (state.standingDirectives ?? []).find(
+      (candidate) => candidate.id === config.directiveId
+    );
+    if (
+      linkageCount !== 2
+      || config.committedTurnId === undefined
+      || config.directiveId === undefined
+      || !directive
+      || directive.widgetConfigId !== config.id
+      || directive.widgetId !== config.widgetId
+      || directive.revision !== config.revision
+    ) {
+      throw new Error(
+        `Persisted Workshop standing config ${config.id} has invalid config linkage`
+      );
+    }
+    return;
+  }
+
+  const turn = state.turns.find((candidate) => candidate.id === config.committedTurnId);
+  if (!turn?.widgetCommit || turn.widgetCommit.widgetConfigId !== config.id) {
+    throw new Error(
+      `Persisted Workshop widget config ${config.id} has incomplete commit linkage`
+    );
+  }
+  if (turn.widgetCommit.widgetId !== config.widgetId) {
+    throw new Error(
+      `Persisted Workshop widget config ${config.id} links to a different widget`
+    );
+  }
+
+  if (rail === 'oneshot') {
+    if (
+      linkageCount !== 2
+      || config.artifactId === undefined
+      || turn.widgetCommit.rail !== 'thread-artifact'
+      || turn.widgetCommit.artifactId !== config.artifactId
+    ) {
+      throw new Error(
+        `Persisted Workshop one-shot config ${config.id} has invalid artifact linkage`
+      );
+    }
+    return;
+  }
+
+  throw new Error(`Persisted Workshop widget config ${config.id} has no catalog rail`);
 }
 
 function numericIdSuffix(id: string, pattern: RegExp, label: string): number {

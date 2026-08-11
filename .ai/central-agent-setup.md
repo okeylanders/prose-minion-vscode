@@ -104,6 +104,7 @@ packages/core/src/
                 ├── participants.ts
                 ├── widgets.ts
                 ├── standingDirectives.ts
+                ├── creativeVariations.ts
                 ├── gesturePlayground.ts
                 ├── lexicalGravity.ts
                 ├── recovery.ts
