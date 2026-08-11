@@ -20,6 +20,9 @@ import {
   WorkshopGesturePlaygroundHandler
 } from '@handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler';
 import {
+  WorkshopCreativeVariationsHandler
+} from '@handlers/domain/workshop/widgets/creativeVariations/WorkshopCreativeVariationsHandler';
+import {
   WorkshopLexicalGravityHandler
 } from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
 import {
@@ -28,6 +31,9 @@ import {
 import {
   WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
 } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
+import {
+  createCreativeVariationsWorkupIdFactory
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
 import type {
   WorkshopMutationRouteOwner,
   WorkshopMutationRouteRegistrar,
@@ -41,6 +47,7 @@ import { MessageType } from '@messages';
 export class WorkshopSliceComposition {
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
   private readonly gesturePlaygroundHandler: WorkshopGesturePlaygroundHandler;
+  private readonly creativeVariationsHandler: WorkshopCreativeVariationsHandler;
   private readonly widgetHostHandler: WorkshopWidgetHostHandler;
   private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
@@ -118,6 +125,14 @@ export class WorkshopSliceComposition {
       postMessage,
       outputChannel
     );
+    this.creativeVariationsHandler = new WorkshopCreativeVariationsHandler(
+      session,
+      widgetRuntime.creativeVariations,
+      createCreativeVariationsWorkupIdFactory(),
+      WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
+      postMessage,
+      outputChannel
+    );
     const oneShotCommitCoordinator = new WorkshopOneShotWidgetCommitCoordinator(
       session,
       outputChannel,
@@ -184,6 +199,7 @@ export class WorkshopSliceComposition {
       this.createMutationRegistrar(router, 'WorkshopSessionMessageHandler')
     );
     this.gesturePlaygroundHandler.registerRoutes(router);
+    this.creativeVariationsHandler.registerRoutes(router);
     this.widgetHostHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopWidgetHostHandler')
@@ -214,6 +230,7 @@ export class WorkshopSliceComposition {
     // Preserve the lifecycle phases: feature work, room listeners, session
     // work, active room run, context work, then the final persistence flush.
     this.gesturePlaygroundHandler.dispose();
+    this.creativeVariationsHandler.dispose();
     this.lexicalGravityHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();

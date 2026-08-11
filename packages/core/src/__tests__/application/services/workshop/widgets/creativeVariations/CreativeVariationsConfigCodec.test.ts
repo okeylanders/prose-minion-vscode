@@ -15,11 +15,15 @@ import {
 import {
   createCreativeVariationsWorkupIdFactory
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
+import {
+  computeCreativeVariationsTextualOverlap
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 
 const WORKUP_ID = 'cvw-00000000-0000-4000-8000-000000000001';
 const advisoryId = `${WORKUP_ID}:card-1:flag-1`;
 
-const draft = (): WorkshopCreativeVariationsDraft => ({
+const draft = (): WorkshopCreativeVariationsDraft => {
+  const value: WorkshopCreativeVariationsDraft = ({
   subject: {
     text: 'Mara folded the letter before she answered.',
     provenance: {
@@ -91,12 +95,8 @@ const draft = (): WorkshopCreativeVariationsDraft => ({
     ],
     overlap: {
       algorithmVersion: CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION,
-      pairs: [
-        { leftPosition: 1, rightPosition: 2, prose: 10, direction: 20, maximum: 20 },
-        { leftPosition: 1, rightPosition: 3, prose: 30, direction: 25, maximum: 30 },
-        { leftPosition: 2, rightPosition: 3, prose: 30, direction: 40, maximum: 40 }
-      ],
-      maximumPair: { leftPosition: 2, rightPosition: 3, score: 40 }
+      pairs: [],
+      maximumPair: { leftPosition: 1, rightPosition: 2, score: 0 }
     }
   },
   selections: [{
@@ -105,7 +105,13 @@ const draft = (): WorkshopCreativeVariationsDraft => ({
     acceptedAdvisoryRiskIds: [advisoryId]
   }],
   note: 'Keep the restraint, but let the paper do less symbolic work.'
-});
+  });
+  value.workup!.overlap = computeCreativeVariationsTextualOverlap(
+    value.subject.text,
+    value.workup!.cards
+  );
+  return value;
+};
 
 const assertValid = (value: WorkshopCreativeVariationsDraft): void => {
   assertCreativeVariationsDraftShape(value, 'draft');
@@ -267,6 +273,8 @@ describe('CreativeVariationsConfigCodec', () => {
         value.workup!.cards.push({
           ...value.workup!.cards[2],
           position: 4,
+          direction: 'Move the reply into an action the brother cannot miss.',
+          prose: 'Mara tucked the letter into his coat pocket and walked to the door.',
           tradeoff: { ...value.workup!.cards[2].tradeoff },
           invariantFlags: []
         });
@@ -278,28 +286,28 @@ describe('CreativeVariationsConfigCodec', () => {
       mutate: (value: WorkshopCreativeVariationsDraft) => {
         value.workup!.overlap.pairs[1].rightPosition = 2;
       },
-      message: /canonical pair 1-3/
+      message: /recomputed textual-overlap-v1 evidence for pair 1-3/
     },
     {
       label: 'unbounded overlap score',
       mutate: (value: WorkshopCreativeVariationsDraft) => {
         value.workup!.overlap.pairs[0].prose = 101;
       },
-      message: /integer from 0 through 100/
+      message: /recomputed textual-overlap-v1 evidence/
     },
     {
       label: 'dishonest pair maximum',
       mutate: (value: WorkshopCreativeVariationsDraft) => {
         value.workup!.overlap.pairs[0].maximum = 10;
       },
-      message: /maximum of prose and direction overlap/
+      message: /recomputed textual-overlap-v1 evidence/
     },
     {
       label: 'dishonest set maximum',
       mutate: (value: WorkshopCreativeVariationsDraft) => {
         value.workup!.overlap.maximumPair.score = 30;
       },
-      message: /first pair at the set maximum/
+      message: /first recomputed pair at the set maximum/
     },
     {
       label: 'selection outside current workup',
@@ -350,6 +358,7 @@ describe('CreativeVariationsConfigCodec', () => {
 
   it('defensively clones every nested authoring record and emits a bounded summary', () => {
     const source = draft();
+    const originalMaximum = source.workup!.overlap.pairs[0].maximum;
     const clone = cloneCreativeVariationsDraft(source);
 
     clone.subject.text = 'mutated';
@@ -363,7 +372,7 @@ describe('CreativeVariationsConfigCodec', () => {
     expect(source.surroundingContext.sourceReferences).toHaveLength(2);
     expect(source.workup!.cards[0].tradeoff.gain).not.toBe('mutated');
     expect(source.workup!.cards[0].invariantFlags[0].note).not.toBe('mutated');
-    expect(source.workup!.overlap.pairs[0].maximum).toBe(20);
+    expect(source.workup!.overlap.pairs[0].maximum).toBe(originalMaximum);
     expect(source.selections[0].acceptedAdvisoryRiskIds).toEqual([advisoryId]);
     expect(summarizeCreativeVariationsDraft(source)).toEqual({
       subjectPreview: source.subject.text,

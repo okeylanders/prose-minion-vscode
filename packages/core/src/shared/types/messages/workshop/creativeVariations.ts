@@ -1,5 +1,7 @@
 /** Creative Variations Explorer feature contracts. */
 
+import type { CancelRequestPayload } from '../streaming';
+import { MessageType, type MessageEnvelope } from '../base';
 import type { WorkshopWidgetSourceReference } from './context';
 
 export const CREATIVE_VARIATIONS_GENERATION_PROTOCOL_VERSION = 1 as const;
@@ -122,4 +124,65 @@ export interface WorkshopCreativeVariationsDraft {
   workup: WorkshopCreativeVariationsWorkup | null;
   selections: WorkshopCreativeVariationsSelection[];
   note: string;
+}
+
+/** Complete transient authoring input for one full-set generation attempt. */
+export interface WorkshopCreativeVariationsGeneratePayload {
+  widgetId: 'creative-variations';
+  /** Webview-minted correlation token; never reused for a regenerate. */
+  token: string;
+  subject: WorkshopCreativeVariationsSubject;
+  surroundingContext: WorkshopCreativeVariationsSurroundingContext;
+  invariants: WorkshopCreativeVariationsInvariants;
+  intent: WorkshopCreativeVariationsIntent;
+  requestedCount: WorkshopCreativeVariationsRequestedCount;
+}
+
+export interface WorkshopCreativeVariationsGenerateMessage
+  extends MessageEnvelope<WorkshopCreativeVariationsGeneratePayload> {
+  type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE;
+}
+
+export interface CancelCreativeVariationsGenerateRequestMessage
+  extends MessageEnvelope<CancelRequestPayload> {
+  type: MessageType.CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST;
+}
+
+export interface WorkshopCreativeVariationsGenerationProgressPayload {
+  widgetId: 'creative-variations';
+  token: string;
+  /** Host-minted for this attempt; cancelled and failed ids are never reused. */
+  workupId: string;
+  phase: 'started' | 'streaming' | 'completed' | 'cancelled';
+  stage: 'requesting' | 'variations' | 'validating';
+  outputCharacters: number;
+  estimatedOutputTokens: number;
+  completionTokens?: number;
+  outputTokenLimit: number;
+}
+
+export interface WorkshopCreativeVariationsGenerationProgressMessage
+  extends MessageEnvelope<WorkshopCreativeVariationsGenerationProgressPayload> {
+  type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS;
+}
+
+interface WorkshopCreativeVariationsResultBasePayload {
+  widgetId: 'creative-variations';
+  token: string;
+  workupId: string;
+}
+
+export type WorkshopCreativeVariationsResultPayload =
+  | (WorkshopCreativeVariationsResultBasePayload & {
+      ok: true;
+      workup: WorkshopCreativeVariationsWorkup;
+    })
+  | (WorkshopCreativeVariationsResultBasePayload & {
+      ok: false;
+      error: string;
+    });
+
+export interface WorkshopCreativeVariationsResultMessage
+  extends MessageEnvelope<WorkshopCreativeVariationsResultPayload> {
+  type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT;
 }

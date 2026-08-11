@@ -177,6 +177,10 @@ import {
   CancelGesturePlaygroundGenerateRequestMessage,
   WorkshopGesturePlaygroundGenerationProgressMessage,
   WorkshopGesturePlaygroundMenuResultMessage,
+  WorkshopCreativeVariationsGenerateMessage,
+  CancelCreativeVariationsGenerateRequestMessage,
+  WorkshopCreativeVariationsGenerationProgressMessage,
+  WorkshopCreativeVariationsResultMessage,
   WorkshopRequestLexicalGravityLensesMessage,
   WorkshopLexicalGravityLensesDataMessage,
   WorkshopPreviewLexicalGravityMessage,
@@ -277,6 +281,8 @@ export type WebviewToExtensionMessage =
   | WorkshopDeleteSessionMessage
   | WorkshopGesturePlaygroundGenerateMessage
   | CancelGesturePlaygroundGenerateRequestMessage
+  | WorkshopCreativeVariationsGenerateMessage
+  | CancelCreativeVariationsGenerateRequestMessage
   | WorkshopRequestLexicalGravityLensesMessage
   | WorkshopPreviewLexicalGravityMessage
   | WorkshopBuildLexicalGravityLensMessage
@@ -328,6 +334,8 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextAttachmentContentMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
+  | WorkshopCreativeVariationsGenerationProgressMessage
+  | WorkshopCreativeVariationsResultMessage
   | WorkshopLexicalGravityLensesDataMessage
   | WorkshopLexicalGravityPreviewResultMessage
   | WorkshopLexicalGravityLensCandidatesMessage

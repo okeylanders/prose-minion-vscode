@@ -2,13 +2,16 @@
 
 import type {
   WorkshopCreativeVariationsDraft,
-  WorkshopCreativeVariationsPairOverlap,
   WorkshopCreativeVariationsSelection,
   WorkshopCreativeVariationsWorkup
 } from '@messages';
 import { shapeError } from '@/application/services/workshop/persistedValidation';
-
-const WORKUP_ID_PATTERN = /^cvw-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+import {
+  computeCreativeVariationsTextualOverlap
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
+import {
+  isCreativeVariationsWorkupId
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
 
 export function assertCreativeVariationsDraftIntegrity(
   draft: WorkshopCreativeVariationsDraft,
@@ -74,7 +77,7 @@ function assertWorkupIntegrity(
   workup: WorkshopCreativeVariationsWorkup,
   path: string
 ): void {
-  if (!WORKUP_ID_PATTERN.test(workup.workupId)) {
+  if (!isCreativeVariationsWorkupId(workup.workupId)) {
     shapeError(`${path}.workup.workupId`, 'a host-minted cvw-<UUID> id');
   }
   if (workup.cards.length !== draft.requestedCount) {
@@ -115,63 +118,54 @@ function assertWorkupIntegrity(
     }
   }
 
-  assertOverlapIntegrity(workup, path);
+  assertOverlapIntegrity(draft, workup, path);
   assertSelectionsIntegrity(draft, workup, path);
 }
 
 function assertOverlapIntegrity(
+  draft: WorkshopCreativeVariationsDraft,
   workup: WorkshopCreativeVariationsWorkup,
   path: string
 ): void {
-  const expectedPairs: Array<[number, number]> = [];
-  for (let left = 1; left < workup.cards.length; left += 1) {
-    for (let right = left + 1; right <= workup.cards.length; right += 1) {
-      expectedPairs.push([left, right]);
-    }
+  let expected: WorkshopCreativeVariationsWorkup['overlap'];
+  try {
+    expected = computeCreativeVariationsTextualOverlap(draft.subject.text, workup.cards);
+  } catch (error) {
+    shapeError(
+      `${path}.workup.cards`,
+      error instanceof Error ? error.message : 'valid textual overlap inputs'
+    );
   }
-  if (workup.overlap.pairs.length !== expectedPairs.length) {
-    shapeError(`${path}.workup.overlap.pairs`, `all ${expectedPairs.length} unordered pairs`);
+  if (workup.overlap.pairs.length !== expected.pairs.length) {
+    shapeError(`${path}.workup.overlap.pairs`, `all ${expected.pairs.length} unordered pairs`);
   }
 
   for (const [index, pair] of workup.overlap.pairs.entries()) {
-    const expected = expectedPairs[index];
-    if (pair.leftPosition !== expected[0] || pair.rightPosition !== expected[1]) {
+    const expectedPair = expected.pairs[index];
+    if (
+      pair.leftPosition !== expectedPair.leftPosition
+      || pair.rightPosition !== expectedPair.rightPosition
+      || pair.prose !== expectedPair.prose
+      || pair.direction !== expectedPair.direction
+      || pair.maximum !== expectedPair.maximum
+    ) {
       shapeError(
         `${path}.workup.overlap.pairs[${index}]`,
-        `canonical pair ${expected[0]}-${expected[1]}`
-      );
-    }
-    assertOverlapScore(pair.prose, `${path}.workup.overlap.pairs[${index}].prose`);
-    assertOverlapScore(pair.direction, `${path}.workup.overlap.pairs[${index}].direction`);
-    assertOverlapScore(pair.maximum, `${path}.workup.overlap.pairs[${index}].maximum`);
-    if (pair.maximum !== Math.max(pair.prose, pair.direction)) {
-      shapeError(
-        `${path}.workup.overlap.pairs[${index}].maximum`,
-        'the maximum of prose and direction overlap'
+        `recomputed textual-overlap-v1 evidence for pair ${expectedPair.leftPosition}-${expectedPair.rightPosition}`
       );
     }
   }
 
-  const maximumPair = firstMaximumPair(workup.overlap.pairs);
   if (
-    workup.overlap.maximumPair.leftPosition !== maximumPair.leftPosition
-    || workup.overlap.maximumPair.rightPosition !== maximumPair.rightPosition
-    || workup.overlap.maximumPair.score !== maximumPair.maximum
+    workup.overlap.maximumPair.leftPosition !== expected.maximumPair.leftPosition
+    || workup.overlap.maximumPair.rightPosition !== expected.maximumPair.rightPosition
+    || workup.overlap.maximumPair.score !== expected.maximumPair.score
   ) {
-    shapeError(`${path}.workup.overlap.maximumPair`, 'the first pair at the set maximum');
+    shapeError(
+      `${path}.workup.overlap.maximumPair`,
+      'the first recomputed pair at the set maximum'
+    );
   }
-}
-
-function assertOverlapScore(value: number, path: string): void {
-  if (!Number.isSafeInteger(value) || value < 0 || value > 100) {
-    shapeError(path, 'an integer from 0 through 100');
-  }
-}
-
-function firstMaximumPair(
-  pairs: WorkshopCreativeVariationsPairOverlap[]
-): WorkshopCreativeVariationsPairOverlap {
-  return pairs.reduce((maximum, pair) => pair.maximum > maximum.maximum ? pair : maximum);
 }
 
 function assertSelectionsIntegrity(

@@ -56,7 +56,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_COMMIT_WIDGET)).toBe(true);
-    expect(router.handlerCount).toBe(48);
+    expect(router.hasHandler(MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE)).toBe(true);
+    expect(router.hasHandler(MessageType.CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST)).toBe(true);
+    expect(router.handlerCount).toBe(50);
   });
 
   it('keeps a failed widget send as a complete retryable user turn plus artifact', async () => {

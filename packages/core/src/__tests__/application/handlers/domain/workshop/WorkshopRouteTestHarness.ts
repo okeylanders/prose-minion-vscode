@@ -48,6 +48,9 @@ const widgetRuntime = (
   gesturePlayground: WorkshopWidgetRuntime['gesturePlayground']
 ): WorkshopWidgetRuntime => ({
   gesturePlayground,
+  creativeVariations: {
+    generate: jest.fn()
+  },
   standingDirectives: {
     apply: jest.fn(),
     remove: jest.fn()
