@@ -98,6 +98,7 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  OpenAssistantSettingsMessage,
   RequestStartupNoticeMessage,
   StartupNoticeDataMessage,
   DismissStartupNoticeMessage,
@@ -168,6 +169,7 @@ import {
   WorkshopRevealSessionMessage,
   WorkshopDeleteSessionMessage,
   WorkshopTurnMessage,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopSessionStateMessage,
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
@@ -234,6 +236,7 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | OpenWorkshopMessage
+  | OpenAssistantSettingsMessage
   | FastGenerateDictionaryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
@@ -324,6 +327,7 @@ export type ExtensionToWebviewMessage =
   | StreamChunkMessage
   | StreamCompleteMessage
   | WorkshopTurnMessage
+  | WorkshopComposerDraftRestoredMessage
   | WorkshopSessionStateMessage
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage

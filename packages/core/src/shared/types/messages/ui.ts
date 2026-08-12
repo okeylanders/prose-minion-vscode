@@ -107,6 +107,11 @@ export interface OpenWorkshopMessage extends MessageEnvelope<Record<string, neve
   type: MessageType.OPEN_WORKSHOP;
 }
 
+/** Ask the host shell to reveal the existing Prose Minion settings overlay. */
+export interface OpenAssistantSettingsMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.OPEN_ASSISTANT_SETTINGS;
+}
+
 // Webview diagnostics → extension output channel
 export interface WebviewErrorPayload {
   message: string;

@@ -48,6 +48,7 @@ import {
   WorkshopExcerptSource,
   WorkshopMessageAttachmentSnapshot,
   WorkshopChatTarget,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
   WorkshopSelectableSessionScope,
@@ -178,6 +179,8 @@ export interface WorkshopRoomState {
   streamingInitialLatencyMs?: number;
   streamingChunksPerSecond: number;
   currentRequestId: string | null;
+  /** One-shot composer seed for starters and transient-send recovery. */
+  composerDraftSeed?: { text: string; token: number };
 }
 
 export interface WorkshopRoomActions {
@@ -209,6 +212,7 @@ export interface WorkshopRoomActions {
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
+  seedComposerDraft: (text: string) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
   dismissGuest: (personaId: WorkshopPersonaId) => void;
@@ -224,6 +228,7 @@ export interface WorkshopRoomActions {
   clearError: () => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
   handleTurn: (message: WorkshopTurnMessage) => void;
+  handleComposerDraftRestored: (message: WorkshopComposerDraftRestoredMessage) => void;
   handleStreamStarted: (message: StreamStartedMessage) => void;
   handleStreamChunk: (message: StreamChunkMessage) => void;
   handleStreamComplete: (message: StreamCompleteMessage) => void;
@@ -305,6 +310,11 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [statusMessage, setStatusMessage] = React.useState('');
   const [tickerMessage, setTickerMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [composerDraftSeed, setComposerDraftSeed] = React.useState<{
+    text: string;
+    token: number;
+  }>();
+  const composerDraftTokenRef = React.useRef(0);
 
   // The single live-run tracker: state drives rendering, the ref mirror lets
   // handlers compare without stale closures (StrictMode double-invokes state
@@ -478,6 +488,11 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     [post]
   );
 
+  const seedComposerDraft = React.useCallback((text: string) => {
+    composerDraftTokenRef.current += 1;
+    setComposerDraftSeed({ text, token: composerDraftTokenRef.current });
+  }, []);
+
   const selectPersona = React.useCallback(
     (personaId: WorkshopPersonaId) => {
       setErrorMessage('');
@@ -645,6 +660,13 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     setTurns((prev) => (prev.some((t) => t.id === turn.id) ? prev : [...prev, turn]));
   }, []);
 
+  const handleComposerDraftRestored = React.useCallback(
+    (message: WorkshopComposerDraftRestoredMessage) => {
+      seedComposerDraft(message.payload.text);
+    },
+    [seedComposerDraft]
+  );
+
   const handleStreamStarted = React.useCallback(
     (message: StreamStartedMessage) => {
       const { domain, requestId } = message.payload;
@@ -782,6 +804,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     streamingInitialLatencyMs: streaming.initialLatencyMs,
     streamingChunksPerSecond: streaming.chunksPerSecond,
     currentRequestId,
+    composerDraftSeed,
     // Actions
     pinExcerpt,
     pinFromFile,
@@ -811,6 +834,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     runTool,
     quickAction,
     sendMessage,
+    seedComposerDraft,
     selectPersona,
     inviteGuest,
     dismissGuest,
@@ -822,6 +846,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     clearError,
     handleSessionState,
     handleTurn,
+    handleComposerDraftRestored,
     handleStreamStarted,
     handleStreamChunk,
     handleStreamComplete,

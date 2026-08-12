@@ -209,7 +209,7 @@ export const WorkshopApp: React.FC = () => {
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
   const startupNotice = useStartupNotice();
-  const [hasSavedKey, setHasSavedKey] = React.useState(false);
+  const [hasSavedKey, setHasSavedKey] = React.useState<boolean | null>(null);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
@@ -219,7 +219,7 @@ export const WorkshopApp: React.FC = () => {
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
-  const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
+  const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey === true });
 
   const showToast = React.useCallback((next: WorkshopToastState) => {
     setToast(next);
@@ -257,6 +257,15 @@ export const WorkshopApp: React.FC = () => {
   const handleApiKeyStatus = React.useCallback((message: ApiKeyStatusMessage) => {
     setHasSavedKey(!!message.payload?.hasSavedKey);
   }, []);
+
+  const openAssistantSettings = React.useCallback(() => {
+    vscode.postMessage({
+      type: MessageType.OPEN_ASSISTANT_SETTINGS,
+      source: 'webview.workshop',
+      payload: {},
+      timestamp: Date.now()
+    });
+  }, [vscode]);
 
   const handleStatusMessage = React.useCallback(
     (message: StatusMessage) => {
@@ -596,11 +605,9 @@ export const WorkshopApp: React.FC = () => {
     [announceGate]
   );
 
-  // Open-chat starters prefill the composer; the writer still presses send.
-  const [draftSeed, setDraftSeed] = React.useState<{ text: string; token: number }>();
-  const seedComposerDraft = React.useCallback((text: string) => {
-    setDraftSeed({ text, token: Date.now() });
-  }, []);
+  // Open-chat starters and rolled-back transient sends use the room hook's
+  // one-shot seed; the composer remains the owner of the editable draft.
+  const seedComposerDraft = workshop.seedComposerDraft;
   const askHostToConfigureWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
     setWidgetsModalOpen(false);
     workshop.setChatTarget({ kind: 'host' });
@@ -884,6 +891,20 @@ export const WorkshopApp: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {hasSavedKey === false && (
+        <div className="pm-ws-provider-paused" role="status">
+          <Icon name="alert" size={14} />
+          <span>
+            <strong>AI replies are paused.</strong>{' '}
+            Add an OpenRouter API key to continue. Your Workshop sessions and local context remain
+            available.
+          </span>
+          <button type="button" onClick={openAssistantSettings}>
+            <Icon name="gear" size={13} /> Add API key
+          </button>
+        </div>
+      )}
 
       {workshop.degradedConversationKeys.length > 0 && (
         <div className="pm-ws-degraded-memory" role="status">
@@ -1238,7 +1259,7 @@ export const WorkshopApp: React.FC = () => {
               scope={workshop.scope}
               hasExcerpt={hasExcerpt}
               roomHasMemory={workshop.roomHasMemory}
-              draftSeed={draftSeed}
+              draftSeed={workshop.composerDraftSeed}
               onAddExcerpt={addExcerptByPaste}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}

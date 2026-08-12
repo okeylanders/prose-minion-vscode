@@ -8,6 +8,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   workshopRoom: {
     handleSessionState: jest.fn(),
     handleTurn: jest.fn(),
+    handleComposerDraftRestored: jest.fn(),
     handleContextCatalog: jest.fn(),
     handleContextAttachmentContent: jest.fn(),
     handleContextSearchResults: jest.fn(),
@@ -97,5 +98,20 @@ describe('buildWorkshopAppMessageRoutes', () => {
     routes[MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE]!(message as never);
 
     expect(deps.workshopSessions.handleSessionRecoveryNotice).toHaveBeenCalledWith(message);
+  });
+
+  it('routes rolled-back writer text to the room composer recovery handler', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const message = {
+      type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: { text: 'Try me again.' }
+    } as const;
+
+    routes[MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]!(message as never);
+
+    expect(deps.workshopRoom.handleComposerDraftRestored).toHaveBeenCalledWith(message);
   });
 });

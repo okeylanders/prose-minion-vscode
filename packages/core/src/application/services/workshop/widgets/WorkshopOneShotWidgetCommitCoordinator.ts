@@ -28,7 +28,7 @@ export type WorkshopOneShotWidgetRoomSend = (
     /** The writer's staged composer attachments belong to their unfinished message. */
     includeMessageAttachments: false;
     widgetArtifact: WorkshopOneShotWidgetRoomArtifact;
-    /** Acceptance is separate from participant settlement so the sheet closes promptly. */
+    /** Records provisional room acceptance; the coordinator reports final acceptance. */
     onRoomAccepted: (userTurnId: string) => void;
   }
 ) => Promise<{ committed: boolean }>;
@@ -95,18 +95,23 @@ export class WorkshopOneShotWidgetCommitCoordinator {
             acceptedTurnId = turnId;
             this.options.markDirty('widget commit accepted');
             this.options.postSessionState();
-            onAccepted({ widgetConfigId: config.id, turnId });
             this.outputChannel.appendLine(
-              `[WorkshopOneShotWidgetCommitCoordinator] Commit accepted ` +
+              `[WorkshopOneShotWidgetCommitCoordinator] Commit provisionally accepted ` +
               `(${prepared.widgetId}, ${config.id} on turn ${turnId})`
             );
           }
         }
       );
 
-      if (!acceptedTurnId) {
+      const acceptedConfig = this.session.getWidgetConfig(config.id);
+      if (
+        !acceptedTurnId
+        || acceptedConfig?.committedTurnId !== acceptedTurnId
+        || acceptedConfig.artifactId !== artifactId
+      ) {
         return { status: 'not-accepted', widgetConfigId: config.id };
       }
+      onAccepted({ widgetConfigId: config.id, turnId: acceptedTurnId });
       if (!outcome.committed) {
         this.outputChannel.appendLine(
           `[WorkshopOneShotWidgetCommitCoordinator] ${config.id} remained committed ` +

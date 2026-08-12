@@ -153,6 +153,31 @@ export class WorkshopWidgetConfigLedger {
     config.directiveId = linkage.directiveId;
   }
 
+  /** Clear only the exact provisional thread commit being rolled back. */
+  rollbackThreadCommit(
+    configId: string,
+    linkage: { turnId: string; artifactId: string }
+  ): void {
+    const config = this.configs.find((candidate) => candidate.id === configId);
+    if (!config) {
+      throw new Error(`Unknown widget config ${configId}`);
+    }
+    if (config.committedTurnId === undefined && config.artifactId === undefined) {
+      return;
+    }
+    if (
+      config.committedTurnId !== linkage.turnId
+      || config.artifactId !== linkage.artifactId
+      || config.directiveId !== undefined
+    ) {
+      throw new Error(
+        `Widget config ${configId} is not committed through ${linkage.turnId}/${linkage.artifactId}`
+      );
+    }
+    config.committedTurnId = undefined;
+    config.artifactId = undefined;
+  }
+
   summariesFor(configIds: ReadonlySet<string>): WorkshopWidgetConfigSummary[] {
     return this.configs
       .filter((config) => configIds.has(config.id))

@@ -70,6 +70,8 @@ export interface WorkshopActiveRun {
   behaviorTransition?: WorkshopConversationBehaviorTransition;
   /** Provisional evidence finalized only if this participant reply commits. */
   capabilityTurnIds?: string[];
+  /** Visible writer turn provisionally appended for this message run. */
+  writerTurnId?: string;
   /** Writer-origin rows captured from the exact fresh-guest join envelope. */
   guestJoinWriterSources?: ContextSourceEntry[];
 }

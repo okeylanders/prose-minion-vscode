@@ -19,6 +19,7 @@
 
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
@@ -93,6 +94,7 @@ import {
   LabeledContextBudgetSnapshot,
   WorkshopTurn,
   WorkshopMessageAttachmentSnapshot,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopTurnMessage,
   WorkshopTurnWidgetCommit,
 } from '@messages';
@@ -643,10 +645,22 @@ export class WorkshopRoomHandler {
         this.postSessionState();
       } catch (error) {
         const details = error instanceof Error ? error.message : String(error);
-        this.session.abandonRun(requestId);
+        if (error instanceof AgentRunUnavailableError) {
+          const rolledBack = this.session.rollbackMessageRun(requestId);
+          if (rolledBack) {
+            this.sessionPersistence.markDirty('unavailable guest invitation rolled back');
+            this.outputChannel.appendLine(
+              `[WorkshopRoomHandler] Rolled back unavailable guest invitation turn ${rolledBack.id}`
+            );
+          }
+        } else {
+          this.session.abandonRun(requestId);
+        }
         this.sendStreamComplete(requestId, '', true);
         if (error instanceof Error && error.name === 'AbortError') {
           this.sendStatus(`${workshopPersonaLabel(personaId)} invitation cancelled`);
+        } else if (error instanceof AgentRunUnavailableError) {
+          this.sendError('workshop.invite_guest', error.message, error.providerDetails);
         } else {
           this.sendError('workshop.invite_guest', `Failed to invite ${workshopPersonaLabel(personaId)}`, details);
         }
@@ -1205,7 +1219,20 @@ export class WorkshopRoomHandler {
       return { committed: assistantTurn !== undefined };
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
-      this.session.abandonRun(requestId);
+      if (error instanceof AgentRunUnavailableError) {
+        const rolledBack = this.session.rollbackMessageRun(requestId);
+        if (rolledBack) {
+          this.sessionPersistence.markDirty('unavailable message rolled back');
+          this.outputChannel.appendLine(
+            `[WorkshopRoomHandler] Rolled back unavailable writer turn ${rolledBack.id}`
+          );
+          if (executeOptions?.includeMessageAttachments) {
+            this.postComposerDraftRestored(rolledBack.content);
+          }
+        }
+      } else {
+        this.session.abandonRun(requestId);
+      }
       if (pendingHostUpdates) {
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Pending host update retained after failed delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}): ${details}`
@@ -1228,6 +1255,8 @@ export class WorkshopRoomHandler {
         );
       } else if (error instanceof Error && error.name === 'AbortError') {
         this.sendStatus(`${label} cancelled`);
+      } else if (error instanceof AgentRunUnavailableError) {
+        this.sendError('workshop.send_message', error.message, error.providerDetails);
       } else {
         this.sendError('workshop.send_message', `Failed to message ${label}`, details);
       }
@@ -1372,6 +1401,16 @@ export class WorkshopRoomHandler {
       type: MessageType.WORKSHOP_TURN,
       source: 'extension.workshop',
       payload: { turn },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  private postComposerDraftRestored(text: string): void {
+    const message: WorkshopComposerDraftRestoredMessage = {
+      type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+      source: 'extension.workshop',
+      payload: { text },
       timestamp: Date.now()
     };
     void this.postMessage(message);

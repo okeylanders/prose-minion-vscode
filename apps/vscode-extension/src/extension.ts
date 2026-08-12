@@ -369,7 +369,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.extensionUri,
     coreServices,
     outputChannel,
-    platform
+    platform,
+    {
+      openAssistantSettings: () => {
+        void vscode.commands.executeCommand('prose-minion.openSettingsOverlay');
+      }
+    }
   );
   context.subscriptions.push(
     workshopPanelProvider,

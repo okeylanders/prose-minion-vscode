@@ -1599,11 +1599,56 @@ export class WorkshopSessionService {
     return this.todoLedger.collectOpen(this.getExcerptVersion());
   }
 
-  /** Cancel, preempt, or fail only the active request; keep visible turns. */
+  /** Cancel or preempt only the active request; keep its visible writer turn. */
   abandonRun(requestId: string): void {
     if (this.activeRun?.requestId === requestId) {
       this.activeRun = undefined;
     }
+  }
+
+  /**
+   * Roll a transiently unavailable message back to its pre-send room state.
+   *
+   * The writer turn and capability evidence were provisional until a
+   * participant reply committed. Composer attachments remain pending for a
+   * retry; turn-bound artifact bodies and widget linkage leave with the turn.
+   */
+  rollbackMessageRun(requestId: string): WorkshopTurn | undefined {
+    const active = this.activeRun;
+    if (
+      active?.requestId !== requestId
+      || active.kind !== 'message'
+      || !active.writerTurnId
+    ) {
+      return undefined;
+    }
+
+    const writerTurn = this.turnLedger.find(active.writerTurnId);
+    if (!writerTurn || writerTurn.role !== 'user') {
+      throw new Error(`Cannot roll back missing Workshop writer turn ${active.writerTurnId}`);
+    }
+
+    const widgetCommit = writerTurn.widgetCommit?.rail === 'thread-artifact'
+      ? writerTurn.widgetCommit
+      : undefined;
+    if (widgetCommit) {
+      this.widgetConfigLedger.rollbackThreadCommit(widgetCommit.widgetConfigId, {
+        turnId: writerTurn.id,
+        artifactId: widgetCommit.artifactId
+      });
+      this.removeWriterSourceArtifact(widgetCommit.artifactId);
+    }
+
+    const rollbackTurnIds = new Set([
+      writerTurn.id,
+      ...(active.capabilityTurnIds ?? [])
+    ]);
+    this.turnLedger.removeByIds(rollbackTurnIds);
+    this.threadArtifacts = this.threadArtifacts.filter(
+      (artifact) => !rollbackTurnIds.has(artifact.turnId)
+    );
+    this.activeRun = undefined;
+    return writerTurn;
   }
 
   /** Clear every retained participant after an assistant-resource generation loss. */
@@ -2019,10 +2064,23 @@ export class WorkshopSessionService {
       toolId,
       guestPersonaId,
       reportTurnId: target === 'tool' ? reportTurnId : undefined,
+      writerTurnId: turn.id,
       excerptVersion: this.getExcerptVersion(),
       ...behaviorMetadata
     };
     return cloneTurn(turn);
+  }
+
+  private removeWriterSourceArtifact(artifactId: string): void {
+    const withoutArtifact = (entries: readonly ContextSourceEntry[]) =>
+      entries.filter((entry) => entry.artifactId !== artifactId);
+    this.hostWriterSources = withoutArtifact(this.hostWriterSources);
+    for (const toolId of Object.keys(this.toolWriterSources) as WorkshopToolId[]) {
+      this.toolWriterSources[toolId] = withoutArtifact(this.toolWriterSources[toolId] ?? []);
+    }
+    for (const [personaId, entries] of this.guestWriterSources) {
+      this.guestWriterSources.set(personaId, withoutArtifact(entries));
+    }
   }
 
   /** One replace-and-cursor policy for writer- and persona-requested reports. */

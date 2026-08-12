@@ -49,6 +49,7 @@ describe('UIHandler', () => {
         MessageType.OPEN_RESOURCE,
         MessageType.REQUEST_SELECTION,
         MessageType.OPEN_WORKSHOP,
+        MessageType.OPEN_ASSISTANT_SETTINGS,
         MessageType.REQUEST_STARTUP_NOTICE,
         MessageType.DISMISS_STARTUP_NOTICE
       ];
@@ -60,7 +61,7 @@ describe('UIHandler', () => {
 
     it('should register at least 4 routes', () => {
       handler.registerRoutes(router);
-      expect(router.handlerCount).toBe(9);
+      expect(router.handlerCount).toBe(10);
     });
   });
 
@@ -241,6 +242,52 @@ describe('UIHandler', () => {
           })
         })
       );
+    });
+  });
+
+  describe('open_assistant_settings', () => {
+    it('delegates to the injected host settings action', async () => {
+      const openAssistantSettings = jest.fn();
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext(),
+        createFakeGlobalState(),
+        { openAssistantSettings }
+      );
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.OPEN_ASSISTANT_SETTINGS,
+        source: 'webview.workshop',
+        payload: {},
+        timestamp: 0
+      } as any);
+
+      expect(openAssistantSettings).toHaveBeenCalledTimes(1);
+      expect(postMessage).not.toHaveBeenCalled();
+    });
+
+    it('reports a ui.settings error when the host action is unavailable', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.OPEN_ASSISTANT_SETTINGS,
+        source: 'webview.workshop',
+        payload: {},
+        timestamp: 0
+      } as any);
+
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.ERROR,
+        payload: expect.objectContaining({
+          source: 'ui.settings',
+          message: 'Prose Minion settings are not available from this surface.'
+        })
+      }));
     });
   });
 

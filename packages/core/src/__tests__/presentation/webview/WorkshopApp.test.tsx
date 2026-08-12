@@ -72,9 +72,12 @@ const readySession = (): WorkshopSessionStateMessage => ({
 });
 
 describe('WorkshopApp', () => {
+  let vscode: ReturnType<typeof createMockVSCode>;
+
   beforeEach(() => {
     jest.useFakeTimers();
-    (useVSCodeApi as jest.Mock).mockReturnValue(createMockVSCode());
+    vscode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
   });
 
   afterEach(() => {
@@ -121,5 +124,60 @@ describe('WorkshopApp', () => {
     const alert = screen.getByRole('alert');
     expect(alert.textContent).toContain('current.json could not be restored');
     expect(alert.textContent).toContain('turn counter must be a non-negative safe integer');
+  });
+
+  it('shows the persistent offline notice and opens the existing settings overlay', () => {
+    render(<WorkshopApp />);
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.API_KEY_STATUS,
+          source: 'extension.configuration',
+          payload: { hasSavedKey: false },
+          timestamp: 1
+        }
+      }));
+    });
+
+    expect(screen.getByText('AI replies are paused.')).not.toBeNull();
+    expect(screen.getByText(/Your Workshop sessions and local context remain/)).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Add API key/i }));
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.OPEN_ASSISTANT_SETTINGS,
+      source: 'webview.workshop',
+      payload: {}
+    }));
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.API_KEY_STATUS,
+          source: 'extension.configuration',
+          payload: { hasSavedKey: true },
+          timestamp: 2
+        }
+      }));
+    });
+    expect(screen.queryByText('AI replies are paused.')).toBeNull();
+  });
+
+  it('returns a transiently failed writer message to the composer', () => {
+    render(<WorkshopApp />);
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: readySession() }));
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+          source: 'extension.workshop',
+          payload: { text: 'Keep this draft safe.' },
+          timestamp: 1
+        }
+      }));
+    });
+
+    expect((screen.getByRole('textbox') as HTMLTextAreaElement).value)
+      .toBe('Keep this draft safe.');
   });
 });

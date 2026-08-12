@@ -25,6 +25,7 @@ import {
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 
 // Generate unique request IDs
 let requestIdCounter = 0;
@@ -255,6 +256,9 @@ export class AnalysisHandler {
       if (error instanceof Error && error.name === 'AbortError') {
         this.sendStreamComplete(requestId, '', true);
         this.sendStatus('Dialogue analysis cancelled');
+      } else if (error instanceof AgentRunUnavailableError) {
+        this.sendStreamComplete(requestId, '', true);
+        this.sendError('analysis.dialogue', error.message, error.providerDetails);
       } else {
         this.sendError('analysis.dialogue', 'Failed to analyze dialogue', msg);
       }
@@ -315,6 +319,9 @@ export class AnalysisHandler {
       if (error instanceof Error && error.name === 'AbortError') {
         this.sendStreamComplete(requestId, '', true);
         this.sendStatus('Prose analysis cancelled');
+      } else if (error instanceof AgentRunUnavailableError) {
+        this.sendStreamComplete(requestId, '', true);
+        this.sendError('analysis.prose', error.message, error.providerDetails);
       } else {
         this.sendError('analysis.prose', 'Failed to analyze prose', msg);
       }
@@ -390,6 +397,9 @@ export class AnalysisHandler {
       if (error instanceof Error && error.name === 'AbortError') {
         this.sendStreamComplete(requestId, '', true);
         this.sendStatus('Analysis cancelled');
+      } else if (error instanceof AgentRunUnavailableError) {
+        this.sendStreamComplete(requestId, '', true);
+        this.sendError('analysis.writing_tools', error.message, error.providerDetails);
       } else {
         this.sendError('analysis.writing_tools', 'Failed to analyze with writing tools', msg);
       }

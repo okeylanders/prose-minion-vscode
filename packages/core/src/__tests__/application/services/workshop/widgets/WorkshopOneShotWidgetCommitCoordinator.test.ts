@@ -7,6 +7,7 @@ import type {
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import type { WorkshopGesturePlaygroundDraft } from '@messages';
+import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 
 const menu = Array.from({ length: 4 }, (_, index) => ({
   heading: `Route ${index + 1}`,
@@ -51,7 +52,20 @@ const build = (sendRoomMessage?: jest.MockedFunction<WorkshopOneShotWidgetRoomSe
     _displayText,
     options
   ) => {
-    const turn = session.beginPersonaMessage('req-live', 'visible');
+    const artifact = options.widgetArtifact;
+    const turn = session.beginPersonaMessage('req-live', 'visible', undefined, {
+      widgetId: artifact.widgetId,
+      widgetConfigId: artifact.widgetConfigId,
+      rail: 'thread-artifact',
+      artifactId: artifact.id,
+      selectionCount: artifact.selectionCount
+    });
+    session.recordRoomThreadArtifacts(turn.id, [{
+      id: artifact.id,
+      kind: workshopWidgetArtifactKind(artifact.widgetId),
+      name: artifact.label,
+      content: artifact.content
+    }]);
     options.onRoomAccepted(turn.id);
     session.completeRun('req-live', 'reply');
     return { committed: true };
@@ -149,10 +163,7 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
       artifactId: 'ta-1'
     });
     expect(harness.postSessionState).toHaveBeenCalledTimes(1);
-    expect(onAccepted).toHaveBeenCalledWith({
-      widgetConfigId: 'wc-1',
-      turnId: 'turn-deferred'
-    });
+    expect(onAccepted).not.toHaveBeenCalled();
     expect(harness.session.collectWriterSources({ kind: 'host' })).toEqual([
       expect.objectContaining({
         kind: 'message-attachment',
@@ -165,6 +176,10 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
     settleSend();
     await expect(pending).resolves.toEqual({
       status: 'accepted',
+      widgetConfigId: 'wc-1',
+      turnId: 'turn-deferred'
+    });
+    expect(onAccepted).toHaveBeenCalledWith({
       widgetConfigId: 'wc-1',
       turnId: 'turn-deferred'
     });
@@ -226,6 +241,50 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
       committedTurnId: 'turn-accepted',
       artifactId: 'ta-1'
     });
+  });
+
+  it('returns a widget draft to uncommitted state when transient rollback removes its turn', async () => {
+    let harness!: ReturnType<typeof build>;
+    const sendRoomMessage = jest.fn().mockImplementation(async (
+      _text,
+      _displayText,
+      options
+    ) => {
+      const artifact = options.widgetArtifact;
+      const turn = harness.session.beginPersonaMessage('req-unavailable', 'visible', undefined, {
+        widgetId: artifact.widgetId,
+        widgetConfigId: artifact.widgetConfigId,
+        rail: 'thread-artifact',
+        artifactId: artifact.id,
+        selectionCount: artifact.selectionCount
+      });
+      harness.session.recordRoomThreadArtifacts(turn.id, [{
+        id: artifact.id,
+        kind: workshopWidgetArtifactKind(artifact.widgetId),
+        name: artifact.label,
+        content: artifact.content
+      }]);
+      options.onRoomAccepted(turn.id);
+      harness.session.rollbackMessageRun('req-unavailable');
+      return { committed: false };
+    });
+    harness = build(sendRoomMessage);
+    const onAccepted = jest.fn();
+
+    const outcome = await harness.coordinator.commit(
+      prepared(),
+      { kind: 'host' },
+      onAccepted
+    );
+
+    expect(outcome).toEqual({ status: 'not-accepted', widgetConfigId: 'wc-1' });
+    expect(harness.session.getWidgetConfig('wc-1')).toEqual(expect.objectContaining({
+      committedTurnId: undefined,
+      artifactId: undefined
+    }));
+    expect(harness.session.getSnapshot().turns).toEqual([]);
+    expect(harness.session.collectWriterSources({ kind: 'host' })).toEqual([]);
+    expect(onAccepted).not.toHaveBeenCalled();
   });
 
   it('records artifact delivery for the exact persona guest target', async () => {

@@ -659,6 +659,17 @@ export interface WorkshopTurnMessage extends MessageEnvelope<WorkshopTurnPayload
   type: MessageType.WORKSHOP_TURN;
 }
 
+/**
+ * Re-seeds the composer after the host rolled back a transiently unavailable
+ * writer turn. This is presentation recovery only; the text is not retained
+ * in Workshop history until a later send succeeds.
+ */
+export interface WorkshopComposerDraftRestoredMessage extends MessageEnvelope<{
+  text: string;
+}> {
+  type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED;
+}
+
 export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */

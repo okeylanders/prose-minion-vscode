@@ -67,6 +67,7 @@ export type MessageTransport = (
  */
 export interface WorkshopUiActions {
   openWorkshop?: () => void;
+  openAssistantSettings?: () => void;
 }
 
 /** Per-MessageHandler replay cache. Never share this across webview lifetimes. */

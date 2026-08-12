@@ -25,6 +25,7 @@ import {
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { LogSink } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { workshopWriterPreferredAddress } from '@/utils/workshopWriterProfile';
@@ -318,6 +319,8 @@ export class RunWorkshopToolSidePass {
             ? `${personaLabel} synthesis cancelled; ${toolLabel}'s report remains available.`
             : `${toolLabel} cancelled`
         );
+      } else if (error instanceof AgentRunUnavailableError) {
+        events.error(error.message, error.providerDetails);
       } else {
         events.error(
           reportAdopted

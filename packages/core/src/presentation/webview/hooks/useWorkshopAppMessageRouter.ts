@@ -78,6 +78,8 @@ export function buildWorkshopAppMessageRoutes(
   return {
     [MessageType.WORKSHOP_SESSION_STATE]: workshopRoom.handleSessionState,
     [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
+    [MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]:
+      workshopRoom.handleComposerDraftRestored,
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshopSessions.handleSessionsData,
     [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshopSessions.handleSessionActionResult,
     [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshopSessions.handleSessionSaveStatus,
