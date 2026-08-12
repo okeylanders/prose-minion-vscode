@@ -1,0 +1,547 @@
+# MR Review v2 — Sprint 03: Creative Variations Slices 2–3 and the mid-sprint AI-unavailable safety fix
+
+**Author:** Okey Landers · **Branch:** `sprint/conversation-widgets-03-creative-variations` → `epic/conversation-widgets`
+**Range:** `450dfaf9` … `e28af0d6` · **Head:** `e28af0d6` · **Reviewed:** 2026-08-12 (America/Chicago) · **Mode:** Full (local, three-scope)
+
+## Resolution ledger
+
+Status legend: **Open** = act before merge · **Deferred** = accepted follow-up with reason · **Addressed** = fixed · **Partially addressed** = fixed with remainder · **N/A** = praise, superseded, or not actionable.
+
+| ID | Sev | Scope | Finding | Reviewers | Discovery | Signal | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| F-01 | 🔴 Blocking | AI-unavailable | Rollback removes capability turns the to-do ledger still references; autosave then fails permanently | Blake, Sam | 1 independent · 1 runway-prompted | — | **Open** |
+| F-02 | 🟠 High | AI-unavailable | A mid-stream provider error discards fully streamed content that cancellation would retain | Sam | 1 independent | — | **Open** |
+| F-03 | 🟠 High | AI-unavailable | Guest-invitation rollback destroys the writer's typed opening with no restore path | Marcus, Blake, Oliver | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
+| F-04 | 🟠 High | Slice 3 | `textual-overlap-v1`'s subject discount has a cliff at residual size 1; near-identical takes score 0% | Sam | 1 runway-prompted | — | **Open** |
+| F-05 | 🟠 High | AI-unavailable | The "AI replies are paused" banner cannot clear on the Workshop surface | Cal, Oliver | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
+| F-06 | 🟠 High | Slice 3 | The response codec's per-field caps are never declared to the model | Bria | 1 independent | — | **Open** |
+| F-07 | 🟡 Standard | Slice 3 | Output-budget incoherence, an unreachable guard, and a retry instruction that reproduces the failure | Tim | 1 runway-prompted | — | **Open** |
+| F-08 | 🟡 Standard | Slice 3 | The presentation fixture's overlap evidence is fabricated and fails the contract its docblock claims | Cal | 1 independent | — | **Open** |
+| F-09 | 🟡 Standard | Slice 2 | Durable-state validity depends on the product catalog while the record already carries the fact | Marcus | 1 independent | — | **Open** |
+| F-10 | 🟡 Standard | AI-unavailable | Unparsed provider error bodies reach the Output channel and webview verbatim and unbounded | Patricia | 1 independent | — | **Open** |
+| F-11 | 🟡 Standard | AI-unavailable | `token_limit_exceeded` is classified as insufficient credits | Bria, Sam, Cal | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
+| F-12 | 🟡 Standard | Slice 2 | Overlap recompute rebuilds gram sets inside the pair loop, on a path that runs twice per autosave | Tim | 1 runway-prompted | — | **Open** |
+| F-13 | 🟡 Standard | Slice 3 | The honesty caption claims the model sees "nothing else" while surrounding context travels | Bria | 1 independent | — | **Open** |
+| F-14 | 🟡 Standard | AI-unavailable | `includeMessageAttachments` is read for a meaning it does not claim | Parker | 1 independent | — | **Open** |
+| F-15 | 🟡 Standard | AI-unavailable | `authentication`/401 is the one unavailability reason no test pins | Cal | 1 runway-prompted | — | **Open** |
+| F-16 | 🟡 Standard | AI-unavailable | A commit blocked by unavailability says "try again" while the reason lands behind the open sheet | Oliver | 1 runway-prompted | — | **Open** |
+| F-17 | 🟡 Standard | Cross-scope | Feature-owned derivation rules lack single owners (source-reference key, request draft, flag id) | Marcus, Parker | 1 independent · 1 runway-prompted | — | **Open** |
+| F-18 | 🔵 Nit | Slice 3 | The exported sentinel constant is retyped by hand in the handler | Stan | 1 independent | — | **Open** |
+| F-19 | 🔵 Nit | Slice 2 | The integrity file sits off the recorded target tree with no recorded reason | Stan | 1 runway-prompted | — | **Open** |
+| F-20 | 🔵 Nit | Slice 3 | The rejected-response recovery store has no retention bound | Patricia | 1 runway-prompted | — | **Open** |
+| P-1 | 💚 Praise | AI-unavailable | `rollbackThreadCommit` validates exact linkage before mutating; rollback is idempotent and never partial | Sam | 1 independent | — | N/A — preserve |
+| P-2 | 💚 Praise | AI-unavailable | The coordinator re-reads the ledger for settled acceptance and moved the vocabulary with the meaning | Parker | 1 runway-prompted | — | N/A — preserve |
+| P-3 | 💚 Praise | Cross-scope | The feature-family reproduction criterion is met exactly, including where a slice has not landed | Stan | 1 independent | — | N/A — preserve |
+| P-4 | 💚 Praise | AI-unavailable | The durable assistant engine adds no interval leak and no retry amplification | Tim | 1 runway-prompted | — | N/A — preserve |
+
+## Review coverage
+
+- **Read fully:** the Creative Variations slice (`creativeVariations.ts` contracts, `promptBudgets.ts`, `CreativeVariationsConfigCodec`, `CreativeVariationsConfigIntegrity`, `CreativeVariationsDistinctness`, `CreativeVariationsWorkupId`, `CreativeVariationsResponseCodec`, `CreativeVariationsService`, `WorkshopCreativeVariationsHandler`, the prompt bundle, `CreativeVariationCard`, `CreativeVariationsComparison`, `WorkshopCreativeVariationsModal`); the AI-unavailable fix (`AgentRunEngine`, `OpenRouterClient`, `AIResourceManager`, `AssistantToolService`, `WorkshopSessionService` rollback path, `WorkshopTurnLedger`, `WorkshopWidgetConfigLedger`, `WorkshopOneShotWidgetCommitCoordinator`, `WorkshopRoomHandler` catch sites, `WorkshopApp`, `useWorkshopRoom`, `UIHandler`); `WorkshopSessionStateV1Integrity`, `WorkshopWidgetPersistenceLifecycle`, `WorkshopWidgetHostHandler`, `WorkshopOneShotWidgetCommitOperations`, `WorkshopWidgetAvailabilityPolicy`, `persistedValidation`, `WorkshopSliceComposition`.
+- **Diff reviewed:** all 104 changed files across `450dfaf9...e28af0d6`; per-commit diffs for `d14ab79`, `72ee6b6`, `1633a3e`, `e28af0d`.
+- **Governing evidence read:** Sprint 03 plan, the 2026-08-10 implementation runway, ADR 2026-07-22 (conversation widgets), ADR 2026-08-12 (offline-capable agent run engine), ADR 2026-07-30 (session codec evolution), ADR 2026-08-03 (feature family), the Slice 3 handoff memo, the Slice 1 review artifact, and `AGENTS.md`.
+- **Sampled:** `creativeVariations.css` (1,210 lines — read for class/contract agreement, not line by line); the Gesture Playground and Lexical Gravity sibling slices (read for convention comparison).
+- **Not reviewed:** `06557616` (Slice 1 remediation — already reviewed, excluded by the stated boundary except for regressions); `29b57125` (docs only).
+- **Executed:** 39 affected test suites / 641 tests — all pass. `npm run typecheck` — clean across core, webview, and adapter. `npm run lint` — 0 errors, 955 warnings. Three throwaway probe tests were run and removed; the working tree is unchanged.
+- **Unavailable:** `Prose Minion.zip`, `workshop-ai-service-conversation-ownership.md`, and local stashes do not exist in this cloud clone, so nothing local was touched.
+
+---
+
+# Part I — Orientation
+
+*A compressed runway. The full architecture runway already exists at [`docs/architecture/2026-08-10-creative-variations-implementation-runway.md`](../architecture/2026-08-10-creative-variations-implementation-runway.md); this section states only what the review needs to be legible on its own.*
+
+## What the change is for
+
+Creative Variations Explorer is the second one-shot Conversation Widget. A writer supplies a passage, declares what must survive and what must not change, names one custom creative aim at a verbalized sampling distance, and asks for three to five takes. One bounded model call returns typed cards; the writer compares, selects, chooses per-card carry mode, accepts advisory risks, and commits to exactly one room turn. It never mutates the editor.
+
+Three scopes land in this range, and they are genuinely independent:
+
+**Slice 2 (`d14ab795`)** establishes durable truth: the exact persisted draft contract, the `creative*` budget table, a four-operation codec joining the closed lifecycle registry, and a semantic-integrity arm that re-derives what the model was never allowed to supply.
+
+**Slice 3 (`72ee6b63` presentation, `1633a3ed` runtime)** stages bounded probabilistic generation behind deterministic validation: a sentinel-framed strict response codec, one cancellable provider call with rejected-response recovery, `textual-overlap-v1`, and a dormant route gated by the production catalog policy. The presentation components are intentionally unmounted — that is the declared Slice 3 boundary, not a defect.
+
+**The AI-unavailable fix (`e28af0d6`)** is a mid-sprint safety change with its own ADR. It severs the accidental coupling between the assistant engine's lifetime and its provider client's lifetime, so a keyless Workshop hydrates and a transient provider failure rolls the provisional writer turn back out instead of stranding it.
+
+## The invariants the implementation must hold
+
+1. The model mints nothing. Workup ids are host-minted `cvw-<UUIDv4>`; flag ids are host-derived; the response carries no identifiers.
+2. Persistence recomputes rather than trusts. Overlap evidence is recalculated at the integrity boundary; a stored score is never authority.
+3. Writer authority is not forgeable. A flag must reference a field the writer actually filled; `hard-conflict` is valid only against `must not change`; a hard-conflict card can never be selected.
+4. Exact duplicates reject the whole workup; high non-identical overlap warns without ranking, hiding, or removing.
+5. Generic widget infrastructure knows ids and dispatch, never Creative Variations meaning.
+6. Provider availability never gates persisted session hydration, and no transient provider failure destroys sessions, retained conversations, or local context.
+7. A failed explicit composer send must leave history — but its text must come back to the writer.
+
+## Where the review concentrated
+
+Invariants 1, 2, 3, 5 and 6-as-hydration hold up under sustained attack, and the report says so in Part II. The findings cluster at three seams:
+
+- **The rollback set** (F-01, F-02, F-03). Rollback enumerates what it *touches*; it does not enumerate what *references what it removes*, and it treats already-billed, already-displayed capability evidence as provisional.
+- **The distinctness readout** (F-04, F-08). The algorithm's subject-discount fallback has a discontinuity precisely at the case the feature exists to expose, and the presentation fixture teaches a shape the durable contract rejects.
+- **What the writer can see and do next** (F-05, F-06, F-07, F-11, F-13, F-16). Several new writer-facing signals are accurate at the moment they are emitted and wrong shortly afterward, or point at a remedy that cannot work.
+
+---
+
+# Part II — The Review
+
+## Executive Briefing
+
+**Verdict:** Needs rework — one Blocking data-durability defect and two High content-loss defects live in the AI-unavailable fix, which is the one scope in this range that ships to writers today.
+
+- 🔴 **F-01 · Rollback orphans to-dos and permanently breaks autosave** — a transient 429 during a host turn, on a session where the writer promoted a finding to a task, leaves a task pointing at a deleted turn; every subsequent write fails integrity and `writtenRevision` never advances. The room keeps working while nothing persists. Reproduced end-to-end. Fix before merge.
+- 🟠 **F-02 · A mid-stream provider error deletes a fully streamed reply** — pressing Stop one second earlier keeps everything, because `AbortError` routes to `abandonRun`. Pre-change, the same frame was ignored and the partial answer survived.
+- 🟠 **F-03 · Guest-invitation rollback destroys the writer's typed opening** `🧭 Corroborated Runway` — the composer arm restores text; the invite arm does not, and the invite modal re-seeds to boilerplate. Pre-change the turn stayed visible and copyable.
+- 🟠 **F-04 · The distinctness readout reports 0% on near-identical takes** — three takes that are the subject plus one differing word each score 0 on every pair, while a verbatim copy scores 92. The warning fails exactly on collapsed alternatives. Reproduced.
+- 🟠 **F-05 · The "AI replies are paused" banner cannot clear** `🧭 Corroborated Runway` — the CTA sends the writer to the sidebar to fix it, and the Workshop panel never learns they did.
+
+F-06 (undeclared field caps) is also High but sits behind `live: false`, so it blocks Slice 4 rather than this merge.
+
+## Report Card
+
+| Domain | Grade | Rationale |
+| --- | --- | --- |
+| Architecture — Marcus | B | Ownership split between host, coordinator, feature codecs, and closed registries is honest and reproduces cleanly; a validator reaching into the product catalog and three authors for one identity rule are the exceptions. |
+| Critical Correctness — Blake | D | The durable contracts and generation runtime withstood sustained attack; the rollback set does not, and its failure is silent non-persistence. |
+| Edge Cases — Sam | C | Duplicate detection, cancellation, supersession, and shape/integrity layering are tight; the overlap discount and the streamed-content path both break at boundaries nobody enumerated. |
+| Code Quality — Parker | B+ | Comments explain *why* at a rare standard and the coordinator's vocabulary moved with its meaning; one flag is read for a claim it does not make, and one rule is retyped where its two siblings got named homes. |
+| Tests — Cal | B | Persistence, handler, transport, and room paths cross real boundaries rather than testing mocks; two places the test authors both sides, and one untested error class is the one most likely to occur. |
+| Codebase Fit — Stan | A− | One arm per closed registry, zero sibling-slice edits, deliberate absence where a slice has not landed. Two documentation-shaped nits, no architectural drift. |
+| Performance — Tim | B | No leak, no retry amplification, one bounded provider call; a quadratic gram rebuild lands on a doubled autosave path, and the output budgets are not mutually reachable. |
+| Security — Patricia | A− | The model cannot forge ids, flags, or consent, and the defense is layered rather than single-point. One unbounded third-party string crosses into diagnostics. |
+| Observability — Oliver | C+ | Creative Variations logs carry token and workup id on every line including cancellation reason; the writer-facing half of the availability fix is where the signals go wrong. |
+| Domain Logic — Bria | B− | Locked decisions are implemented faithfully, including the ones easiest to fudge; two writer-facing promises say more than the code delivers. |
+
+## Findings
+
+### F-01 · 🔴 Blocking — `rollbackMessageRun` removes capability turns that the to-do ledger still references
+
+**Raised by:** Blake, Sam
+**Discovery:** 1 independent · 1 runway-prompted
+**Confidence:** High — reproduced end-to-end
+**Evidence:** `packages/core/src/application/services/workshop/WorkshopSessionService.ts:1642` — `const rollbackTurnIds = new Set([ writerTurn.id, ...(active.capabilityTurnIds ?? []) ]);`
+**Affected contract:** Persisted `WorkshopSessionStateV1` referential integrity; rolling-checkpoint durability
+
+`capabilityTurnIds` is documented as "provisional evidence finalized only if this participant reply commits." It is not purely provisional. A capability turn with `artifact: 'tool_report'` is appended, posted to the webview, marked dirty, and — critically — is a legal to-do source while the run is still in flight. `WORKSHOP_TODO_ACTION` is registered through `createMutationRegistrar`, which blocks only while `sessionPersistence.isSessionOperationPending()`; an active AI run is not a gate.
+
+Reproduced against the real aggregate:
+
+```
+CAPABILITY TURN: turn-2-assistant-… artifact: tool_report
+TODO source.turnId: turn-2-assistant-…
+ROLLED BACK writer turn: turn-1-user-…
+TURNS AFTER ROLLBACK: []
+TODOS AFTER ROLLBACK: [ 'turn-2-assistant-…' ]
+VALIDATION THREW: Persisted Workshop task todo-1-… references an unknown turn
+```
+
+The consequence is durability, not display. `WorkshopSessionStateV1Integrity.ts:405` throws, so `validateSessionForWrite` throws, so the autosave `catch` logs "Autosave failed", emits `status: 'error'`, and does **not** advance `writtenRevision`. Every later `markDirty` retries the same write and fails identically. The room keeps working in memory while nothing reaches disk; a reload drops back to the last good checkpoint. `saveNamed` fails the same way.
+
+Sam reached the same line from the other side: a 502 on the final SSE frame erases a resource report the persona spent thirty seconds producing and the writer already watched land — where pressing Stop one second earlier would have kept all of it, because `AbortError` routes to `abandonRun`, which keeps every turn.
+
+`removeByIds` and `rollbackMessageRun` are introduced by `e28af0d`. The to-do→turn invariant is pre-existing; this is the first code that can violate it. The two rollback tests cover attachments and supersession only; no test constructs `capabilityTurnIds`.
+
+**Recommendation:** Exclude `capabilityTurnIds` from `rollbackTurnIds` — that evidence represents work the provider already performed and billed, and it is the option that also resolves Sam's manifestation. If they must be removed, make the removal transitive: add a `todoLedger.removeBySourceTurnIds` sibling to `turnLedger.removeByIds` and call it before the turns leave. Either way, pin it with a test that promotes a to-do from a capability turn and then rolls back.
+
+### F-02 · 🟠 High — A mid-stream provider error discards fully streamed content that cancellation retains
+
+**Raised by:** Sam
+**Discovery:** 1 independent
+**Confidence:** High
+**Evidence:** `packages/core/src/infrastructure/api/orchestration/AgentRunEngine.ts:772` — `catch (error) { if (this.isAbortError(error)) { cancelled = true; } else { throw error; } }`; `packages/core/src/infrastructure/api/providers/OpenRouterClient.ts:300` — `if (parsed.error) { throw this.toApiError(parsed.error); }`
+**Affected contract:** Run-completion semantics; "failed pending messages are never committed to retained history" (ADR 2026-08-12)
+
+`OpenRouterClient` now detects an `error` payload inside the SSE body and throws. `executeTurn`'s catch rethrows any non-abort error, discarding the `content` accumulated so far. The sibling branch is the tell: `AgentRunEngine.test.ts:675` proves that an *abort* after a streamed token returns `{content:'Partial', cancelled:true}`. Same shape of interruption, opposite retention.
+
+Downstream, the discarded turn becomes an `AgentRunUnavailableError`, which routes to `rollbackMessageRun` rather than `abandonRun` — so the reply the writer watched stream is deleted along with the run's capability turns. Before this range the same frame matched no branch and was ignored; the run ended normally with its partial content.
+
+Searched the evidence pack for a test that streams tokens and *then* raises a classifiable provider error — not found. Every unavailable-path test rejects the provider call outright, and the mid-stream client test uses `delta:{content:''}`.
+
+**Recommendation:** Split "unavailable before anything was produced" from "unavailable after content streamed." When `content.length > 0`, return the accumulated turn with a truncation marker instead of rethrowing, mirroring the abort branch, so `completeWorkshopRun` commits it and rollback never runs.
+
+### F-03 · 🟠 High — Guest-invitation rollback destroys the writer's typed opening `🧭 Corroborated Runway`
+
+**Raised by:** Marcus, Blake, Oliver
+**Discovery:** 1 independent · 2 runway-prompted
+**Confidence:** High
+**Evidence:** `packages/core/src/application/handlers/domain/workshop/WorkshopRoomHandler.ts:649` — `const rolledBack = this.session.rollbackMessageRun(requestId);` (guest arm, no restore) vs. `:1229` — `if (executeOptions?.includeMessageAttachments) { this.postComposerDraftRestored(rolledBack.content); }`
+**Affected contract:** Writer-authored content is never destroyed without recovery
+
+`beginPersonaGuestJoin` routes through `beginMessage`, so the invitation run is `kind: 'message'` with a `writerTurnId` and rollback fires. The turn's `content` is the writer's own `openingMessage` — the invite modal explicitly invites personalization (`title="This is the boilerplate opening — click to personalize it"`).
+
+After rollback the text exists nowhere: not in the thread (removed and persisted as removed), not in the composer (no restore on this branch), not in the modal (`WorkshopInviteGuestModal.tsx:68` re-seeds `defaultWorkshopGuestOpening()` on every `open`), not in the Output channel (the log records `rolledBack.id`, not its content), not in the checkpoint.
+
+This is a recoverability regression introduced here. At `450dfaf9` this catch called `abandonRun`, whose contract is "keep its visible writer turn" — the invitation stayed in the thread and the writer could select and copy their paragraph back out. The new branch is strictly better for session integrity and strictly worse for the writer holding the only copy.
+
+Searched the evidence pack for a guest-invitation `AgentRunUnavailableError` test — not found.
+
+**Recommendation:** Either keep `abandonRun` for the guest-join arm — the invitation turn is the writer's only copy — or extend the restore channel so a re-opened invite modal re-seeds from the rolled-back content instead of resetting to the template. Dropping a guest opening into the host composer is the wrong shape; the composer targets the host.
+
+### F-04 · 🟠 High — `textual-overlap-v1`'s subject discount has a cliff at residual size 1
+
+**Raised by:** Sam
+**Discovery:** 1 runway-prompted
+**Confidence:** High — reproduced
+**Evidence:** `packages/core/src/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness.ts:63` — `const prose = leftResidual.size === 0 || rightResidual.size === 0 ? jaccardPercent(leftProse, rightProse) : jaccardPercent(leftResidual, rightResidual);`
+**Affected contract:** `textual-overlap-v1` as "deterministic evidence of surface reuse"; the ≥80 high-overlap warning; Sprint 03's "Distinctness is earned on screen"
+
+The guard treats an *empty* residual as the degenerate case. Residual size 1 with disjoint members is strictly more misleading: the pair shares nearly all of its surface, and the denominator has been shrunk to the two words that differ. Reproduced against the real module:
+
+```
+subject: "She stood at the window and counted the ships until the light failed."
+cards:   subject + ", again." / ", always." / ", still."
+→ pairs 1-2, 1-3, 2-3 all prose 0 · maximumPair {1,2, score 0}
+
+same subject, card 1 a verbatim copy instead
+→ pair 1-2 prose 92 · maximumPair {1,2, score 92}
+```
+
+Adding one distinguishing trigram moves the reported overlap from 92 to 0. The readout is most confident two takes differ exactly when they are almost the same — the collapsed-alternatives case the feature exists to diagnose. Because `assertOverlapIntegrity` recomputes rather than trusts the checkpoint, the wrong number is stable and durable rather than self-correcting.
+
+Searched the evidence pack for a test exercising a non-empty residual smaller than the shared subject span — not found; the existing tests cover residual size 0 and residuals that happen to overlap.
+
+**Recommendation:** Make the discount a floor rather than a cliff — keep the subject grams in the union denominator while removing them only from the intersection, so shrinking the residual can never *raise* apparent distinctness. Runway §2.5.8 requires a new `algorithmVersion` for any change here, which is cheap now (`CheckpointNormalization = never`, nothing has shipped) and expensive after Slice 7. Freeze the chosen rule with a residual-size-1 test.
+
+### F-05 · 🟠 High — The "AI replies are paused" banner cannot clear on the Workshop surface `🧭 Corroborated Runway`
+
+**Raised by:** Cal, Oliver
+**Discovery:** 2 runway-prompted
+**Confidence:** High
+**Evidence:** `packages/core/src/presentation/webview/hooks/useWorkshopAppMessageRouter.ts:118` — the route map ends at `[MessageType.API_KEY_STATUS]: handleApiKeyStatus,` with no `CLEAR_TRANSIENT_API_KEY_WARNING` entry, unlike `useAppMessageRouter.ts:171`
+**Affected contract:** The writer-visible availability signal must track actual provider availability
+
+The writer sees the banner, clicks **Add API key**, the sidebar focuses (`extension.ts:478`), they paste the key, VS Code confirms it saved. They tab back to Workshop. The banner is still there, and it stays for the life of the panel.
+
+Three paths were checked and none reaches this surface. `ConfigurationHandler.handleUpdateApiKey` posts `API_KEY_STATUS` through its own surface's `postMessage`, and the save happened in the sidebar. The Workshop panel's `MessageHandler` *does* receive `CLEAR_TRANSIENT_API_KEY_WARNING` on the secret change, but the Workshop router has no route for it and `useMessageRouter` drops unrouted messages without logging. `WorkshopApp` requests key status once on mount, and `flushCachedResults` replays status/analysis/metrics/search/context/dictionary/error/tokenUsage/workshopSession — not key status — while `retainContextWhenHidden: true` means hide-and-reveal does not remount.
+
+Meanwhile `AIResourceManager.refreshConfiguration` did reattach the provider, so sends now work. The banner is not merely stale; it asserts the opposite of the truth on the one surface where the writer is working, with a CTA that reads as broken. `useAccountBalance({ apiKeyConfigured: hasSavedKey === true })` stays disabled alongside it.
+
+`WorkshopApp.test.tsx:157` asserts the banner clears on `API_KEY_STATUS { hasSavedKey: true }` — a message this surface has no production path to receive after startup. The test documents the intent, not the behavior.
+
+**Recommendation:** Add `[MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]: () => setHasSavedKey(true)` to `buildWorkshopAppMessageRoutes` — the extension only sends it when a key is actually present. Then pin it with a `MessageHandler`-level test asserting the secret-change path posts a status the surface can act on; that test fails today, which is the point.
+
+### F-06 · 🟠 High — The response codec's per-field caps are never declared to the model
+
+**Raised by:** Bria
+**Discovery:** 1 independent
+**Confidence:** High
+**Evidence:** `packages/core/resources/system-prompts/creative-variations/00-creative-variations.md:16` — `Every approach, direction, prose, gain, and cost is nonblank.` vs. `CreativeVariationsResponseCodec.ts:117` — `boundedStringAt(card.approach, …, budget.creativeApproachCharacters, false);`
+**Affected contract:** Sprint 03 "Result shape is typed and bounded"; runway §2.12 (caps calibrated in Slices 2–3)
+
+The bounds landed — `creativeApproachCharacters: 160`, `creativeDirectionCharacters: 600`, `creativeTradeoffCharacters: 400`, `creativeFlagNoteCharacters: 400`. The prompt bundle shipping in the same commit states nonblankness, exact keys, exact count, and contiguous positions, and no ceiling at all. `buildUserMessage` sends only the task JSON, so the model never learns the numbers from any surface.
+
+Enforcement is whole-workup: one 161-character `approach` throws out of `decodeCard`, and the service routes it through `rejectResponse`. The writer pays for up to 30,000 output tokens across three to five cards, loses all of them over one over-long label, and is invited to retry a call whose only failure cause the retry does not change. `approach` at 160 characters is the live edge — the prompt asks for a "named approach" and the example ships a 19-character one, but nothing tells the model where the wall is.
+
+Both siblings declare their ceilings. `lexical-gravity/00-build-lens.md:63` opens `Stay inside these validator ceilings; counts include spaces:` and lists every cap; `gesture-dictionary/00-gesture-dictionary.md:339` states `fewer and **under 220 characters**`. Creative Variations is the only widget prompt that enforces caps without declaring them.
+
+Currently unreachable in production (`live: false`), so this blocks Slice 4 rather than this merge.
+
+**Recommendation:** Add a ceilings block to `00-creative-variations.md` mirroring the Lexical Gravity form, sourced from the same `PROMPT_BUDGETS.workshopWidgets` values. If the numbers are meant to stay hidden, record who accepted the paid-retry cost.
+
+### F-07 · 🟡 Standard — Output-budget incoherence, an unreachable guard, and a retry instruction that reproduces the failure
+
+**Raised by:** Tim
+**Discovery:** 1 runway-prompted
+**Confidence:** High
+**Evidence:** `packages/core/src/infrastructure/api/services/widgets/creativeVariations/CreativeVariationsService.ts:216` — ``throw new Error(`The model returned unusable Creative Variations (${rejection}). ` + `${recoveryLocationNotice(receipt)} Try Generate again.`)``
+**Affected contract:** `PROMPT_BUDGETS.workshopWidgets` mutual reachability; one-call-per-generate spend
+
+The codec permits ~25,400 characters per card, so a 5-card response may reach 127,320 characters. Against `creativeOutputTokens: 30_000` that is 36,377 tokens at 3.5 chars/token (21% over), 31,830 at 4.0 (6% over), 28,293 at 4.5 (6% under). The two caps are not mutually reachable with margin. The corollary holds at every plausible ratio: **`creativeResponseCharacters: 160_000` can never fire** — 30,000 tokens emits at most ~135k characters, so the guard sits behind a ceiling that forecloses it.
+
+The prompt gives no length target for `prose` — searched both files for `word|sentence|length|character|budget|short|long|paragraph`; the only hit is "content shortened only for this example." A model rendering five faithful variations of a 3,300-word passage hits `finishReason === 'length'`, and the writer pays 30,000 completion tokens for an error whose closing advice is "Try Generate again" — the one instruction guaranteed to reproduce the failure.
+
+**Recommendation:** Give the prompt a per-card prose target expressed relative to the subject, and make the `finishReason === 'length'` rejection say something actionable (reduce the passage or the card count). Then reconcile `creativeResponseCharacters` to something the token ceiling can reach, or delete a guard that cannot fire.
+
+### F-08 · 🟡 Standard — The presentation fixture's overlap evidence is fabricated and fails the contract its docblock claims
+
+**Raised by:** Cal
+**Discovery:** 1 independent
+**Confidence:** High — reproduced
+**Evidence:** `packages/core/src/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures.ts:82` — `{ leftPosition: 2, rightPosition: 3, prose: 86, direction: 41, maximum: 86 }` under a docblock claiming *"so the components are exercised against what the codec would actually let through."*
+**Affected contract:** `textual-overlap-v1` — integrity recomputes rather than trusting checkpoint numbers
+
+Verified directly: the fixture passes `assertCreativeVariationsDraftShape`, but the real algorithm returns `prose: 0, direction: 0, maximum: 0` for all three pairs, and `assertCreativeVariationsDraftIntegrity` throws `draft.workup.overlap.pairs[0] must be recomputed textual-overlap-v1 evidence for pair 1-2`. The declared 22/18/86 are numbers the algorithm never produces for these cards.
+
+`maximumPair.score = 86` is the sole driver of the high-overlap banner, and the modal test asserts `'High textual overlap between Take 2 and Take 3 (86%).'` The threshold branch itself *is* proven — the test flips the prop to 90 and asserts absence — so this is not a coverage hole. It is a fixture that fails to cross the boundary its own docblock claims, and nothing anywhere connects real overlap output to the banner.
+
+**Recommendation:** Derive the fixture's overlap by calling `computeCreativeVariationsTextualOverlap`, then edit one card's prose until the real algorithm crosses 80. Add one line to `creativeVariationsPresentationBoundaries.test.ts` asserting `assertCreativeVariationsDraftIntegrity(generatedDraft, …)` does not throw. That makes the docblock true instead of aspirational — and note that F-04's fix will change these numbers, so land them together.
+
+### F-09 · 🟡 Standard — Durable-state validity depends on the product catalog while the record already carries the fact
+
+**Raised by:** Marcus
+**Discovery:** 1 independent
+**Confidence:** High
+**Evidence:** `packages/core/src/application/services/workshop/WorkshopSessionStateV1Integrity.ts:296` — `assertWidgetConfigCommitLinkage(config, state, workshopWidgetDescriptor(config.widgetId)?.rail);` and `:571` — `throw new Error(\`Persisted Workshop widget config ${config.id} has no catalog rail\`);`
+**Affected contract:** Persisted session hydration
+
+Two registries govern one persisted record. The shape gate admits a config only if its id is in the *lifecycle* registry; the integrity gate then decides which linkage shape is legal by reading `rail` off the *catalog* descriptor — a product artifact that also owns labels, blurbs, roadmap tags, and `live`.
+
+The catalog is the file people edit when a widget's story changes. Retire an id, or move a widget from `oneshot` to `standing`, and every archived session holding a committed config of that widget throws on hydration — before checkpoint normalization runs, so that seam cannot compensate. The mismatch is not in the data; it is between the data and the current build's catalog, which is the hazard the same commit annotates one file over ("a staged build must not write a session that the shipped codec cannot reopen").
+
+The record does not need the catalog for this: `turn.widgetCommit.rail` is already persisted, and `:311` validates against it.
+
+**Recommendation:** Derive the expected linkage shape from `turn.widgetCommit.rail`. If the catalog must stay the authority, add the missing witness — every `persistedWorkshopWidgetLifecycleIds()` entry has a descriptor whose rail the validator handles — so a catalog edit fails a test rather than an archive.
+
+### F-10 · 🟡 Standard — Unparsed provider error bodies reach the Output channel and webview verbatim and unbounded
+
+**Raised by:** Patricia
+**Discovery:** 1 independent
+**Confidence:** High
+**Evidence:** `packages/core/src/infrastructure/api/providers/OpenRouterClient.ts:383,393` — `const body = await response.text();` … `payload ?? { message: body },`
+**Affected contract:** What crosses from the network into diagnostics and the webview
+
+When the error body is not JSON with an `.error` member — plain text, an HTML gateway page — the fallback makes the **entire raw HTTP response body** the error message, with no length bound and no marking that it is third-party text. `toUnavailableError` carries it forward as `providerDetails`, and all six new consumers forward it verbatim. `MessageHandler.sendError` then posts it to the webview *and* writes it to the Output channel in one line.
+
+Attacker control is whoever writes that body: the provider, or any TLS-terminating intermediary — a corporate inspection proxy or captive portal is the ordinary case. This is not XSS: React escapes the text and the webview CSP is `default-src 'none'`. And the API key never reaches an error path; it lives only in the `Authorization` header.
+
+What remains is containment. Unbounded third-party text is rendered as though it were Prose Minion's own diagnostic, in a channel this codebase's own comment describes as something that "gets pasted into public bug reports" — which is why full rejected bodies there are gated behind `proseMinion.debugLogging`. The sibling `ConversationNotFoundError` branch six lines above makes the opposite choice explicitly: it withholds internals and says so.
+
+**Recommendation:** Bound and label the fallback at the producer. In `readApiError`, when no structured payload parsed, truncate the body and mark it unstructured. That fixes all six call sites at once and leaves structured OpenRouter messages untouched.
+
+### F-11 · 🟡 Standard — `token_limit_exceeded` is classified as insufficient credits `🧭 Corroborated Runway`
+
+**Raised by:** Bria, Sam, Cal
+**Discovery:** 1 independent · 2 runway-prompted
+**Confidence:** Medium — depends on which OpenRouter condition emits this `error_type`
+**Evidence:** `packages/core/src/infrastructure/api/orchestration/AgentRunEngine.ts:836` — `if (status === 402 || errorType === 'payment_required' || errorType === 'token_limit_exceeded') { return new AgentRunUnavailableError('insufficient-credits', message); }`
+**Affected contract:** ADR 2026-08-12 — provider failures typed as transient run failures
+
+Every other arm of this mapping is anchored to a status code or a name that matches its reason. This one is not: a `token_limit_exceeded` on a non-402 status produces "The OpenRouter account or API key has insufficient credits. Add credits and try again." — a specific factual claim about billing state, made from an error whose name describes request size.
+
+The consequence is not only copy. `AgentRunUnavailableError` is the family the room treats as retryable: it rolls the writer turn out of history and returns the text for a retry. That is right for a rate limit and wrong for a request the model is too small to hold — the writer resends unchanged, fails identically, and is told each time to add credits. Creative Variations is a plausible trigger at 20,000-character subjects plus 20,000 characters of context plus `maxTokens: 30_000`.
+
+Searched the evidence pack for `token_limit_exceeded` — found only at this line. No test, no ADR clause, no sprint line; the parametrised mapping test covers `payment_required`/`rate_limit_exceeded`/`provider_overloaded` and skips it.
+
+**Recommendation:** Confirm which OpenRouter condition emits this `error_type`. If it is size-shaped, give it its own permanent, non-retryable reason ("request too large — shorten the passage or choose a larger model"). If it is credit-shaped, add it to the parametrised test and name it in the ADR.
+
+### F-12 · 🟡 Standard — Overlap recompute rebuilds gram sets inside the pair loop, on a path that runs twice per autosave
+
+**Raised by:** Tim
+**Discovery:** 1 runway-prompted
+**Confidence:** High
+**Evidence:** `packages/core/src/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness.ts:59` — `const leftProse = gramSet(leftCard.proseTokens, 3);` inside the pair loop
+**Affected contract:** `textual-overlap-v1` recompute-don't-trust; the closed lifecycle registry
+
+At the 20,000-character cap, prose is ~3,651 tokens and ~3,558 distinct trigrams per card. At five cards the function makes **20 prose-sized `gramSet()` builds where 5 suffice** and 20 `difference()` allocations where 5 suffice. Measured: 55 ms per call at maximum; 6 ms at a realistic 2,500-character passage. Hoisting to one pass over `normalized` produces identical scores in 22 ms.
+
+The amplification is the real cost. `assertOverlapIntegrity` runs per config inside `validateWorkshopSessionStateV1`, which runs on every autosave — and a named-session autosave validates the same state **twice** (`writeCurrent` then `updateNamed`, both routing through `validateSessionForWrite`), with session open validating twice more. There are 31 `markDirty` call sites, and `WorkshopWidgetConfigLedger` accumulates configs with no cap. So the cost is `2 × K × 55 ms` per committed mutation: K=3 → 332 ms, K=10 → 1.1 s of synchronous extension-host CPU on every task toggle. At realistic sizes, 37 ms / 123 ms.
+
+Both sibling lifecycle arms are cheap — set membership over bounded strings, field comparison over a bounded lens. Creative Variations is the first arm to make `validateWorkshopSessionStateV1` a compute pass rather than a check pass. K=0 today because the catalog is dormant; the bill arrives whole at Slice 7.
+
+**Recommendation:** Hoist `gramSet` and `difference` into the existing `normalized.map`. Separately, decide before Slice 7 whether the write path needs full semantic recompute at all — `skipWidgetDraftIntegrity` already encodes the read/write trust distinction.
+
+### F-13 · 🟡 Standard — The honesty caption claims the model sees "nothing else" while surrounding context travels
+
+**Raised by:** Bria
+**Discovery:** 1 independent
+**Confidence:** High
+**Evidence:** `WorkshopCreativeVariationsModal.tsx:405` — `'The generation sees this text and your declared constraints and nothing else — it cannot check continuity against the pages around it, and it will not claim to.'`
+**Affected contract:** Sprint 03 deliverable 2 — "honest surrounding-context/provenance labeling"
+
+The caption and the `pasted · no surrounding passage` pill are conditioned solely on `provenance.kind === 'pasted'`. But the same sheet renders a **Surrounding context** textarea and a **Source material** fieldset, and both travel: the handler resolves each reference to live excerpt text or attachment content, and `buildUserMessage` puts `writerText` and every `resolvedSources[].content` into the request. A writer who pastes a passage, types the paragraph before it, and ticks "Active excerpt" is told the model sees none of it.
+
+The trail is explicit. The design comp conditioned the identical sentence on a different antecedent — *"No excerpt is on the desk, so the generation sees this text and your invariants and nothing else"* — and the comp has no surrounding-context field and no source-material fieldset. The mapping doc lists the caption under **Kept from the comp** with no disposition for the two new inputs, so the antecedent was rebound to subject provenance while the consequent stayed absolute.
+
+The class is styled `pm-ws-cvx-honest`. This is the widget's trust device making a checkable factual claim that the service contradicts. Presentation is dormant, but Slice 4 mounts this copy as-is and the modal test already pins the pill text.
+
+**Recommendation:** Condition both strings on whether context actually travels, not on subject provenance.
+
+### F-14 · 🟡 Standard — `includeMessageAttachments` is read for a meaning it does not claim
+
+**Raised by:** Parker
+**Discovery:** 1 independent
+**Confidence:** High
+**Evidence:** `WorkshopRoomHandler.ts:1229` — `if (executeOptions?.includeMessageAttachments) { this.postComposerDraftRestored(rolledBack.content); }`
+**Affected contract:** "`postComposerDraftRestored` is composer-only"
+
+Behavior is correct today, and all three call sites were verified: composer sets `true`, the widget-commit path is type-pinned to `false`, the tool quick action passes no options. Draft restoration fires for exactly the send whose text belongs in the composer.
+
+The cost is that the flag is read for a meaning it never claims. Its own docblock states the meaning it *does* claim — "Explicit composer sends ship the staged message attachments; deterministic quick actions never consume them" — a statement about attachment consumption. Line 1229 reads it as a statement about text ownership. The rollback path is precisely where those come apart: the aggregate documents the split deliberately ("Composer attachments remain pending for a retry; turn-bound artifact bodies and widget linkage leave with the turn"), then uses the attachment flag to decide the text question. A future composer affordance that sends without consuming staged pills would set `false` on a genuinely composer-originated send and silently drop the writer's text.
+
+**Recommendation:** Name the real predicate — `restoreDraftOnRollback?: boolean`, or truer to the domain, `origin: 'composer' | 'quick-action' | 'widget-commit'` — and branch on that. Same behavior, one fewer inference for the next reader. This is also the seam F-03's fix will want.
+
+### F-15 · 🟡 Standard — `authentication`/401 is the one unavailability reason no test pins
+
+**Raised by:** Cal
+**Discovery:** 1 runway-prompted
+**Confidence:** High
+**Evidence:** `packages/core/src/__tests__/application/services/AgentRunEngine.test.ts:179` — the mapping table is exactly `[402 → 'insufficient-credits'], [429 → 'rate-limited'], [503 → 'provider-unavailable']`
+**Affected contract:** `toUnavailableError` maps provider failures so the room rolls back instead of stranding the turn
+
+`AgentRunEngine.ts:830` is the first branch in the chain and the only one with no test. Searched the engine, client, and Workshop handler suites for `401` or `'authentication'` — not found.
+
+A revoked or mistyped key is the single most likely real trigger after "no key at all," and it is the one status nothing pins. If 401 fell through to the final `return error`, `WorkshopRoomHandler.ts:1222` would not match, the `else` would call `abandonRun` instead of `rollbackMessageRun`, and the writer's message would stay in history with no reply and no draft restoration — precisely the loss this fix exists to prevent.
+
+**Recommendation:** Add one row — `[new OpenRouterApiError('unauthorized', 401, 'authentication'), 'authentication']` — to the existing `it.each`. The harness already exists.
+
+### F-16 · 🟡 Standard — A commit blocked by unavailability says "try again" while the reason lands behind the open sheet
+
+**Raised by:** Oliver
+**Discovery:** 1 runway-prompted
+**Confidence:** High
+**Evidence:** `packages/core/src/application/handlers/domain/workshop/widgets/WorkshopWidgetHostHandler.ts:162` — `message: 'The room did not accept the commit. Your draft is still open — try again.'`
+**Affected contract:** A refusal should point at its cause
+
+The mechanics are sound, and the coordinator's new re-read is why. On `AgentRunUnavailableError`, rollback unwinds the thread commit, the post-send re-read sees the cleared linkage, and the outcome correctly downgrades to `not-accepted` — the sheet stays open and the draft survives.
+
+What the writer sees is the problem. The *reason* ("insufficient credits… add credits and try again") goes to `sendError('workshop.send_message', …)`, which lands in the room's error region underneath the open widget sheet. The *instruction* ("The room did not accept the commit… try again") renders inline in the sheet the writer is looking at. On a 402 or 429 the new banner does not help either, because `hasSavedKey` is `true`. They press Commit again. Same result.
+
+Rule G note: the copy is inherited unchanged from `450dfaf9`. What is new is that provider unavailability now routes *into* it — before this commit, `onRoomAccepted` fired and the commit reported `accepted`.
+
+**Recommendation:** Let the coordinator carry the refusal reason out with the outcome (`{ status: 'not-accepted'; widgetConfigId; reason?: string }`) and have the host prefer it over the generic string. The widget host forwards a string it does not interpret, so it stays free of feature or provider vocabulary.
+
+### F-17 · 🟡 Standard — Feature-owned derivation rules lack single owners
+
+**Raised by:** Marcus, Parker
+**Discovery:** 1 independent · 1 runway-prompted
+**Confidence:** High
+**Evidence:** identical key derivations at `CreativeVariationsConfigIntegrity.ts:64`, `WorkshopCreativeVariationsHandler.ts:253`, `CreativeVariationsService.ts:225` — `: \`context-attachment:${reference.attachmentId}\`;`; and the flag-id template at `CreativeVariationsResponseCodec.ts:155` vs. `CreativeVariationsConfigIntegrity.ts:96`
+**Affected contract:** One concept, one owner
+
+Three modules independently answer "what identifies a source reference, and when are two the same?" — and each re-implements the no-duplicates rule. The transient request-draft is built twice, in the handler and the service, with the same literal path string. And the flag-id formula is written twice.
+
+This is duplicated knowledge, not duplicated text. `WorkshopWidgetSourceReference` is an extensible union; all three copies use a two-branch ternary whose `else` assumes `context-attachment`. Add a third kind and each site silently produces `context-attachment:undefined`, so distinct references collide as duplicates in three different guards.
+
+The flag-id case is the sharper one because the file demonstrates the better pattern one function below the worse one: `assertOverlapIntegrity` verifies overlap by *calling the function that minted it*, forty lines from where the flag-id rule is verified by retyping the template. The same change already gave workup-id identity its own module and the overlap formula its own module — both from the same runway paragraph. Nothing asserts that what the codec mints is what integrity will accept; each layer's test hardcodes the literal independently, so a partial edit surfaces not as a failing test but as previously-valid drafts refusing to hydrate.
+
+To be fair: validating twice is defensible — the handler validates pre-spend, the service guards its own port. It is the *derivation* that wants one owner.
+
+**Recommendation:** Export `creativeVariationsSourceReferenceKey(reference)` and `creativeVariationsFlagId(workupId, position, ordinal)` beside the existing workup-id factory, and one `creativeVariationsGenerationDraft(request)` from the codec. Both call sites keep their assertions; neither keeps its own copy of the rule.
+
+### F-18 · 🔵 Nit — The exported sentinel constant is retyped by hand in the handler
+
+**Raised by:** Stan
+**Discovery:** 1 independent
+**Confidence:** High
+**Evidence:** `WorkshopCreativeVariationsHandler.ts:184` — `if (markerCandidate.includes('===CREATIVE_VARIATIONS_V1===')) {` vs. `CreativeVariationsResponseCodec.ts:27` — `export const CREATIVE_VARIATIONS_RESPONSE_START = '===CREATIVE_VARIATIONS_V1===';`
+**Affected contract:** The versioned sentinel-framed response boundary
+
+The Gesture sibling retypes its literal because it *has to* — `GesturePlaygroundService` declares its sentinels module-private. Creative Variations changed that fact by exporting both, and then didn't spend it: the only importer is the codec's own test. The handler already imports across that boundary, so the seam is open.
+
+The protocol is explicitly versioned. When `_V2` lands, the codec constant and both prompt files move together; the handler's `includes()` keeps matching a string nothing emits, `progress.stage` never leaves `'requesting'`, and the writer watches a streaming widget that claims it is still asking. The handler test feeds the same hardcoded literal, so it stays green on both sides of the bump.
+
+**Recommendation:** Import the constant in the handler and its test. One line each.
+
+### F-19 · 🔵 Nit — The integrity file sits off the recorded target tree with no recorded reason
+
+**Raised by:** Stan
+**Discovery:** 1 runway-prompted
+**Confidence:** High
+**Evidence:** `CreativeVariationsConfigCodec.ts:23` — `export {\n  assertCreativeVariationsDraftIntegrity\n} from '…/CreativeVariationsConfigIntegrity';`
+**Affected contract:** ADR 2026-08-03 §7 — the destination tree is the default, deviations must be recorded
+
+Both siblings define integrity inside the codec. Creative Variations puts it in a separate file and re-exports it. The *public* surface is sibling-identical — all four consumers import through the codec, nobody reaches past it — and the split is not forced by a cycle. It is a defensible choice: the Lexical Gravity codec is over a thousand lines and the project's own anti-pattern checklist flags files past 500.
+
+What is missing is the record. The runway's target tree lists only `CreativeVariationsConfigCodec.ts` and assigns it "semantic integrity" as one owner; ADR 2026-08-03 §7 requires a recorded reason for deviation. The repo asked this exact question in the PR-111 review ("is a `LexicalGravityConfigIntegrity.ts` the intended next step?"). It is now answered in code for one widget and unanswered for two — the configuration most likely to make the fourth widget's author flip a coin.
+
+**Recommendation:** One line in the sprint completion notes or the handoff memo stating why Creative Variations splits integrity, and whether the siblings are expected to follow. `CreativeVariationsWorkupId.ts` is also absent from the target tree and can share the sentence.
+
+### F-20 · 🔵 Nit — The rejected-response recovery store has no retention bound
+
+**Raised by:** Patricia
+**Discovery:** 1 runway-prompted
+**Confidence:** High
+**Evidence:** `CreativeVariationsService.ts:101` — `if (result.finishReason === 'length') { return this.rejectResponse(request, content, result, …`
+**Affected contract:** What manuscript-derived text lands on disk and for how long
+
+Creative Variations routes a materially larger and more sensitive body through the shared quarantine store than the existing arm does: up to five cards × 20,000 characters of prose *variations of the writer's manuscript passage*. The `finishReason === 'length'` branch fires on an ordinary long generation, so accumulation is routine rather than exceptional.
+
+The inherited controls are good and worth stating: the store writes `*\n!.gitignore\n` into the recovery root so nothing reaches git, the presenter names the exact path with Open and Reveal actions, and the *prompt* never reaches disk — only `rawResponse` and a `requestSummary` carrying no manuscript text. That split is right.
+
+The gap is retention: no pruning, no file cap, no TTL, and the `.gitignore` write is best-effort with its failure logged and swallowed. Git exclusion is the only exclusion; a zipped workspace or synced folder carries these files along.
+
+**Recommendation:** Not blocking, and it belongs to the inherited store rather than this slice. Give `model-responses` a retention bound. The decision worth making now is simply whether "keep forever" was intended.
+
+### Praise
+
+**P-1 · `rollbackThreadCommit` validates exact linkage before mutating** (Sam) — every check runs before the first assignment, so a mismatched rollback throws with nothing mutated; and because `rollbackMessageRun` calls it *first*, a throw leaves the turn ledger, thread artifacts, and `activeRun` untouched too. No half-rolled-back state exists to reason about. The early return makes it idempotent, which matters because the coordinator and the rollback can legitimately observe the same cleared linkage. Refusing when `directiveId !== undefined` means the thread rail can never quietly clear a standing-rail commit.
+
+**P-2 · The coordinator re-reads the ledger for settled acceptance, and the vocabulary moved with the meaning** (Parker) — rollback made `onRoomAccepted` conditional; a cheaper fix would have kept trusting `acceptedTurnId` and added a comment. Instead the coordinator asks the ledger what actually happened and compares turn id, committed turn, and artifact id before promoting the outcome, moving `onAccepted` after the check. Then it renamed what it saw: the callback docblock says "Records provisional room acceptance; the coordinator reports final acceptance," and the log line became "Commit provisionally accepted." Nothing forced either edit — no test reads log copy — but a maintainer debugging a rollback at 2am now reads a line that does not lie. **The transferable rule: a callback records the provisional fact; the owner re-reads the ledger for the settled one — and both facts get their own word.**
+
+**P-3 · The feature-family reproduction criterion is met exactly** (Stan) — zero files under `gesturePlayground/` or `lexicalGravity/` are touched by the three feature commits. One arm in the lifecycle registry, four cases in config operations, a draft-union entry, a boundary descriptor — and deliberately *no* arm in one-shot commit operations or recommendation operations, whose slices have not landed. `WorkshopSessionStateV1Shape` needed no edit at all because an earlier commit derived it from the registry, so the parallel-list contradiction PR-111 predicted simply didn't fire. An engineer adding the fourth widget should copy this slice.
+
+**P-4 · The durable assistant engine adds no leak and no amplification** (Tim) — steady-state interval count is unchanged at five, and the rebuild does one *fewer* engine and `ConversationManager` allocation than before; full teardown still disposes the durable one. `requireProvider()` throws before `startConversation`, so an unavailable provider costs zero conversation allocations and leaves no orphan. `retryAfterSeconds` composes a sentence and schedules nothing — the correct shape for a metered provider.
+
+## What the Panel Changed About the Runway
+
+**Affirmed.** The model cannot forge identity or consent, and the defense is layered rather than single-point: ids are minted host-side *and* independently re-derived at the persistence boundary, so a forged id fails even if it never passed through the codec. Overlap is recomputed rather than trusted. `hard-conflict` is confined to `must-not-change` in both places, and a hard-conflict card cannot be selected at all. The generate payload has no `workup` or `selections` member, so the webview cannot post a pre-built workup. Both the write and read paths run full integrity without the `skipWidgetDraftIntegrity` escape. No generic module learned Creative Variations vocabulary — the widget host, one-shot operations, coordinator, config ledger, and catalog hold ids, labels, and dispatch entries only. And the tests cross real boundaries far more often than they mock: real ledgers and aggregates through a full hydration round trip, a real availability policy and `AbortSignal` in the handler, a stubbed `fetch` letting production code parse a real 402 envelope, and a live route harness proving prior committed turns survive while only the failed one leaves.
+
+**Refined.** The `must survive` / `must not change` asymmetry in the integrity arm is real but safe by construction, not by luck — shape requires `mustSurvive` nonblank and runs before integrity at both callers, so no shape-valid draft can carry a `must-survive` flag against a blank field. It deserves a one-line comment so the next reader does not "fix" it into a redundancy. The duplication concern was narrower and differently placed than framed: position contiguity is checked against genuinely different truths at the two trust boundaries, and the flag-field guards are deliberate restatements — only the flag-id *formula* is a single structured fact retyped. The 862-line modal is not a God Component; its direct sibling is 868 lines and it re-derives no rules.
+
+**Rejected.** Two framings did not survive. The two rollback catch sites are not parallel — only the composer arm has a restore channel (F-03). And the rollback trace enumerated what rollback *touches* but not what *references what it removes*; the to-do ledger is the referencing owner it missed, and that omission is the Blocking finding.
+
+**Still unknown.** Which OpenRouter condition actually emits `token_limit_exceeded` (F-11) — a provider-semantics question the ADR's decision owner should answer rather than one the mapping should settle silently. And whether the `80` high-overlap threshold was genuinely calibrated in Slice 3 as the runway required, or carried forward from the prototype: two-sided synthetic fixtures exist, but F-04 means the number is currently guarding a score that misreports the case it exists to catch.
+
+---
+
+# Part III — Lessons & Horizon
+
+## Sensei's Lessons
+
+### Lesson — Undo is defined over the reference graph, not the creation list
+
+**Illuminated by:** F-01 (Blake, Sam), P-1 (Sam), and the panel's refinement of the runway's rollback trace
+
+A creation list is a receipt: it records what was made, never who borrowed it afterward. Any id that survives long enough to be persisted somewhere else converts rollback from an erasure into a graph traversal, and the interval between minting and rolling back is precisely the window in which other subsystems get to learn names. `rollbackThreadCommit` already holds the right shape at single-edge scope — verify the linkage, touch only what is exactly yours, return early when there is nothing left to undo — and the lesson is that the same shape is owed at run scope, where the borrowers are other records rather than other fields.
+
+**Carry forward:** Before writing a rollback, build two lists side by side — what this run created, and what may now point at it — and treat every name in the second list as a blocker until it is cleared, repaired, or deliberately orphaned.
+
+### Lesson — An unlucky failure should never cost more than a deliberate stop
+
+**Illuminated by:** F-02 (Sam), F-03 (Marcus, Blake, Oliver), F-01's second manifestation (Blake), F-16 (Oliver), F-15 (Cal)
+
+A person can choose to cancel; nobody chooses to fail. When the cancel path is built first and built with care — keep the streamed content, keep the turn visible, restore the typed draft — every terminal branch added later inherits an obligation no one wrote down: land the user somewhere no worse than the exit they could have taken themselves. The ordering that matters is not success-then-everything-else but success ≥ cancel ≥ failure, measured in what the person still holds afterward, and F-15 supplies the corollary: an unpinned reason is a branch free to drift quietly toward the stingiest row.
+
+**Carry forward:** When adding a terminal branch to a run, tabulate what the user retains on each branch that already exists, and hold the new one until it is not the meanest row in the table.
+
+### Lesson — A rejection rule owes the producer a warning up front and a different road back
+
+**Illuminated by:** F-06 (Bria), F-07 (Tim), F-11 (Bria, Sam, Cal), F-13 (Bria)
+
+A ceiling that lives only in the validator asks a generator to hit a target it was never shown, and the bill arrives after the spend rather than before it. The second half of that debt is the return path: "try again" against an unchanged ceiling, or a retryable rollback offered for a size-shaped failure, is a loop wearing the costume of a remedy. F-13 is the same debt written in prose rather than in tokens — whatever is stated to the other party is part of the contract, whether it is a character cap or a sentence promising that nothing else travels.
+
+**Carry forward:** For every rejection a codec can emit, ask two things — was this limit stated where the producer could act on it, and does the suggested next attempt differ in any way from the one that just failed?
+
+### Lesson — A test that writes both the question and the answer key proves only that it agrees with itself
+
+**Illuminated by:** F-08 (Cal), F-05 (Cal, Oliver), F-04 (Sam)
+
+A hand-written fixture and a hand-posted message are the same instrument: each supplies the stimulus and the expectation, so the assertion holds whether or not any production path could ever produce it. The deeper cost is not a weak test but a blindfold — a surface fed synthetic numbers never exercises the real algorithm in the one place a human would have watched it behave. F-04 is what waits behind that blindfold: a similarity measure that subtracts a shared component is least trustworthy exactly as the residual empties out, which is usually the degenerate case such a measure was built to catch.
+
+**Carry forward:** Derive fixtures by calling the producer and freezing its output, and route a test's stimulus through the same door production uses — if no such door exists, that absence is itself the result.
+
+### Lesson — Every derived truth needs one owner, and durable records must own theirs outright
+
+**Illuminated by:** F-09 (Marcus), F-17 (Marcus, Parker), F-18 (Stan), F-14 (Parker), F-19 (Stan)
+
+One file here demonstrates both habits within forty lines: overlap is verified by calling the minting function, while a flag-id template is retyped by hand. Duplication is rarely a decision — it is usually a moment when the callable owner sat one import further away than the keyboard, and the copy costs nothing at all until the day the original moves. The variant that ages worst is a durable record borrowing its validity from a file that changes for product reasons, since a record already persisting `rail` needs nothing from a catalog that also owns blurbs and `live`. Names carry the same duty — a flag documented as attachment consumption but read as text ownership has one word serving two owners — and when a layout departs from its siblings, the recorded reason is what keeps the deviation an argument rather than an accident.
+
+**Carry forward:** The second time you type a derivation rule, stop and ask what would have to be true for the first one to be importable — and for anything persisted, check that its validity can be recomputed from the record alone.
+
+*Nearly every lesson above is the same shape seen from a different angle: rigor applied thoroughly inside a boundary, meeting the quieter question of who was standing just outside it.*
+
+## Horizon Watchlist
+
+These are not merge blockers. They are pressures the panel saw and chose not to convert into findings.
+
+- **Slice 7 is when the dormant costs arrive.** F-06, F-07, F-12, and F-13 are all currently unreachable behind `live: false`. They land together the day the catalog flips, and F-12's recompute cost scales with configs a room accumulates over its lifetime, not with anything visible during development.
+- **`textual-overlap-v1` is versioned for a reason, and the window to use that is now.** `CheckpointNormalization = never` because nothing has shipped. Any change to the algorithm after Slice 7 requires a real `algorithmVersion` bump and a migration story; before it, the version bump is free.
+- **`AIResourceBundle.generation` has outlived its meaning.** It still increments per rebuild for the assistant scope while the engine instance is now stable, and no production code reads it — a number that used to mean "engine epoch."
+- **`retryAfterSeconds` survives only as message text.** It renders for `rate-limited`, is ignored by `provider-unavailable`'s copy despite being passed, and is absent entirely on the streaming mid-body error path. Nothing consumes it programmatically.
+- **The fourth widget will need the integrity-file question answered** (F-19), and Show vs. Tell is the reproduction fixture that will ask it.
+- **The recovery store's retention** (F-20) belongs to the shared store, and a third widget writing large manuscript-derived bodies into it is the moment the question stops being theoretical.
+
+## The Closer
+
+⭐⭐⭐ **Three stars.** The kitchen's discipline is genuinely impressive — the host-minted ids, the recompute-don't-trust integrity, and the coordinator that re-reads the ledger instead of believing its own waiter are the work of people who expected the model to lie to them and built accordingly. I ordered the distinctness readout and it told me three nearly identical takes were completely different, then charged me for a rollback that quietly took the tasks I'd written down off the table. Come back after they fix the rollback set and teach the overlap function what "almost the same" looks like; the room is right, the recipe is right, and the plating is one pass from excellent.
+
+## Final Assessment
+
+Needs rework, narrowly and specifically. The Creative Variations durable contracts and generation runtime are the strongest part of this range — Slice 2's persistence spine and Slice 3's provider boundary withstood ten reviewers looking for a way to make a malformed, duplicate, cancelled, or stale workup settle into durable state, and did not yield one. F-04 is the exception, and it is a genuine defect in the feature's central promise rather than a boundary miss.
+
+The blocking work is in the AI-unavailable fix, which is the one scope here that reaches writers today. F-01 must be fixed before merge: a transient 429 on a session with a promoted task silently stops that session from ever saving again. F-02 and F-03 are the same family — rollback is correct about what it removes and incomplete about what that costs the writer — and both should land with it. F-05 is cheap and worth doing in the same pass, because it is the difference between a fix that works and a fix the writer can see working.
+
+Everything else is follow-up. Slices 4–7 remain correctly absent; the catalog is correctly `live: false`; the editor is never mutated; and the feature-family reproduction criterion is met exactly, which is the property that makes the next widget cheap.
+
+---
+
+*Reviewed by Marcus 🏛️ · Blake 🔥 · Sam 🔍 · Parker 📖 · Cal 🧪 · Stan 🗂️ · Tim ⚡ · Patricia 🛡️ · Oliver 🌙 · Bria 🎯 · Sensei 🎓*
