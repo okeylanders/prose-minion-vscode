@@ -50,7 +50,7 @@ describe('workshopWidgets registry', () => {
     const creative = workshopWidgetDescriptor('creative-variations');
     expect(creative).toMatchObject({
       live: true,
-      lifecycleNote: 'play and copy now · thread commit arrives in Slice 5'
+      lifecycleNote: 'play first · commit adds one turn'
     });
     expect(creative?.blurb).toContain('under any invariants you declare');
   });

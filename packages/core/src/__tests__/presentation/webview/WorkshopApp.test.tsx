@@ -185,7 +185,7 @@ describe('WorkshopApp', () => {
       .toBe('Keep this draft safe.');
   });
 
-  it('mounts the Creative authoring flow with correlated generation and host clipboard copy', () => {
+  it('mounts Creative generation, commit, thread chip reopen, and clone recommit', () => {
     render(<WorkshopApp />);
     act(() => {
       window.dispatchEvent(new MessageEvent('message', { data: readySession() }));
@@ -216,7 +216,7 @@ describe('WorkshopApp', () => {
     })).not.toBeNull();
     const commit = screen.getByRole('button', { name: 'Commit to thread' });
     expect((commit as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/Commit to the Workshop thread is not available/)).not.toBeNull();
+    expect(screen.getByText('Generate a workup before committing.')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Use editor selection' }));
     expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
@@ -232,7 +232,7 @@ describe('WorkshopApp', () => {
           timestamp: 2,
           payload: {
             target: 'workshop_creative_variations_subject',
-            content: 'The selected passage.',
+            content: generatedDraft.subject.text,
             sourceUri: 'file:///private/draft.md',
             relativePath: 'draft.md',
             startLine: 4,
@@ -243,7 +243,7 @@ describe('WorkshopApp', () => {
     });
     expect((screen.getByRole('textbox', {
       name: /Selected passage/
-    }) as HTMLTextAreaElement).value).toBe('The selected passage.');
+    }) as HTMLTextAreaElement).value).toBe(generatedDraft.subject.text);
     expect(screen.getByText('from excerpt · draft.md · L4–5')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /Generate the workup/ }));
@@ -300,16 +300,137 @@ describe('WorkshopApp', () => {
     }));
 
     fireEvent.click(screen.getByRole('button', {
-      name: /Browse widget model options. Current model: Claude Sonnet 5/
+      name: 'Select Take 1 — Baseline — the competent fix'
     }));
-    fireEvent.click(screen.getByRole('button', { name: /GPT-5.4/ }));
-    expect(screen.queryByText('3 returned · none ranked')).toBeNull();
-    expect(screen.getByText(
-      'Generated workup cleared because the widget model changed.'
-    ).getAttribute('role')).toBe('status');
+    const eligibleCommit = screen.getByRole('button', { name: 'Commit to thread' });
+    expect((eligibleCommit as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole('progressbar', { name: 'Commit payload budget' }))
+      .not.toBeNull();
+    fireEvent.click(eligibleCommit);
+
+    const firstCommit = vscode.postMessage.mock.calls
+      .map(([message]) => message)
+      .find((message) => message.type === MessageType.WORKSHOP_COMMIT_WIDGET);
+    expect(firstCommit).toEqual(expect.objectContaining({
+      source: 'webview.workshop.creative-variations',
+      payload: expect.objectContaining({
+        widgetId: 'creative-variations',
+        requestToken: expect.any(String),
+        draft: expect.objectContaining({
+          intent: expect.objectContaining({ aim: '' }),
+          workup: mountedWorkup,
+          selections: [{
+            position: 1,
+            carryMode: 'direction',
+            acceptedAdvisoryRiskIds: []
+          }]
+        })
+      })
+    }));
+    expect(screen.getByRole('button', { name: 'Committing…' })).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Creative Variations' }));
+    expect(screen.getByRole('dialog', { name: 'Creative Variations Explorer' }))
+      .not.toBeNull();
+
+    const creativeTurn: WorkshopTurn = {
+      id: 'turn-creative-1',
+      role: 'user',
+      kind: 'message',
+      participant: 'writer',
+      artifact: 'persona_message',
+      content: 'I’m committing 1 selected Creative Variations take to the room.',
+      timestamp: 5,
+      excerptVersion: 0,
+      widgetCommit: {
+        widgetId: 'creative-variations',
+        widgetConfigId: 'wc-1',
+        rail: 'thread-artifact',
+        artifactId: 'ta-1',
+        selectionCount: 1
+      }
+    };
+    const committedSession = readySession();
+    committedSession.payload.session.turns = [existingTurn, creativeTurn];
+    committedSession.payload.session.totalTurns = 2;
+    committedSession.payload.session.widgetConfigs = [{
+      id: 'wc-1',
+      widgetId: 'creative-variations',
+      revision: 2,
+      createdAt: 4,
+      committedTurnId: creativeTurn.id,
+      artifactId: 'ta-1',
+      subjectPreview: generatedDraft.subject.text,
+      selectionCount: 1
+    }];
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: committedSession }));
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+          source: 'extension.workshop.widget',
+          timestamp: 6,
+          payload: {
+            action: 'commit',
+            requestToken: firstCommit.payload.requestToken,
+            widgetId: 'creative-variations',
+            ok: true,
+            widgetConfigId: 'wc-1',
+            turnId: creativeTurn.id
+          }
+        }
+      }));
+    });
+
+    expect(screen.queryByRole('dialog', { name: 'Creative Variations Explorer' }))
+      .toBeNull();
+    const chip = screen.getByRole('button', { name: /Creative Variations Explorer/ });
+    expect(chip.textContent).toContain('1 variation · re-open');
+    fireEvent.click(chip);
     expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
-      type: MessageType.SET_MODEL_SELECTION,
-      payload: { scope: 'widget', modelId: 'openai/gpt-5.4' }
+      type: MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG,
+      payload: { configId: 'wc-1' }
     }));
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA,
+          source: 'extension.workshop.widget',
+          timestamp: 7,
+          payload: {
+            configId: 'wc-1',
+            config: {
+              id: 'wc-1',
+              widgetId: 'creative-variations',
+              revision: 2,
+              createdAt: 4,
+              committedTurnId: creativeTurn.id,
+              artifactId: 'ta-1',
+              draft: firstCommit.payload.draft
+            }
+          }
+        }
+      }));
+    });
+
+    expect(screen.getByText(/Re-opened from a committed turn/)).not.toBeNull();
+    expect((screen.getByRole(
+      'textbox',
+      { name: /Creative aim optional/ }
+    ) as HTMLTextAreaElement).value).toBe('');
+    const cloneCommit = screen.getByRole('button', { name: 'Commit as new turn' });
+    expect((cloneCommit as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(cloneCommit);
+
+    const commits = vscode.postMessage.mock.calls
+      .map(([message]) => message)
+      .filter((message) => message.type === MessageType.WORKSHOP_COMMIT_WIDGET);
+    expect(commits).toHaveLength(2);
+    expect(commits[1].payload).toMatchObject({
+      widgetId: 'creative-variations',
+      clonedFromConfigId: 'wc-1',
+      draft: firstCommit.payload.draft
+    });
+    expect(commits[1].payload.requestToken).not.toBe(firstCommit.payload.requestToken);
   });
 });

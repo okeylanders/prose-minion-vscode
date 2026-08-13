@@ -6,16 +6,21 @@ import {
   useCreativeVariationsAuthoring,
   type UseCreativeVariationsAuthoringOptions
 } from '@hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring';
+import {
+  buildCreativeVariationsArtifact
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsArtifact';
 import { MessageType, type SelectionDataMessage } from '@messages';
 import {
   ADVISORY_RISK_ID,
   generatedDraft
 } from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
 
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
 const options = (
   overrides: Partial<UseCreativeVariationsAuthoringOptions> = {}
 ): UseCreativeVariationsAuthoringOptions => ({
-  open: true,
+  opening: { kind: 'new' },
   activeExcerpt: null,
   contextAttachments: [],
   widgetModelId: 'anthropic/claude-sonnet-5',
@@ -24,7 +29,27 @@ const options = (
   requestSubjectSelection: jest.fn(),
   generate: jest.fn(() => 'cv-token-1'),
   cancelGeneration: jest.fn(),
+  roomRunActive: false,
+  commitPending: false,
+  commitOutcome: null,
+  commit: jest.fn(),
+  clearCommitResult: jest.fn(),
+  onCommitAccepted: jest.fn(),
   ...overrides
+});
+
+const cloneOpening = (
+  draft = generatedDraft,
+  id = 'wc-original'
+): NonNullable<UseCreativeVariationsAuthoringOptions['opening']> => ({
+  kind: 'clone',
+  config: {
+    id,
+    widgetId: 'creative-variations',
+    revision: 1,
+    createdAt: 1,
+    draft: clone(draft)
+  }
 });
 
 const selectionData = (
@@ -102,6 +127,10 @@ describe('useCreativeVariationsAuthoring', () => {
       kind: 'generating',
       detail: 'Requesting variations'
     });
+    expect(result.current.commitBlockers).toEqual([
+      'generation-in-flight',
+      'no-workup'
+    ]);
   });
 
   it('ignores an identical repeated subject selection after a workup settles', () => {
@@ -336,13 +365,143 @@ describe('useCreativeVariationsAuthoring', () => {
     };
     rerender();
 
-    props.open = false;
+    props.opening = null;
     rerender();
-    props.open = true;
+    props.opening = { kind: 'new' };
     rerender();
 
     expect(result.current.draft).toEqual(createCreativeVariationsAuthoringDraft());
     expect(result.current.generation).toEqual({ kind: 'idle' });
     expect(result.current.invalidationNotice).toBeNull();
+  });
+
+  it('reopens the exact authored clone with idle transient presentation state', () => {
+    const reopenedDraft = {
+      ...clone(generatedDraft),
+      intent: { ...generatedDraft.intent, aim: '' },
+      selections: [{
+        position: 2,
+        carryMode: 'full-prose' as const,
+        acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID]
+      }],
+      note: 'Keep the silence.'
+    };
+    const props = options({
+      opening: cloneOpening(reopenedDraft),
+      generationProgress: {
+        widgetId: 'creative-variations',
+        token: 'stale-generate',
+        workupId: generatedDraft.workup!.workupId,
+        phase: 'streaming',
+        stage: 'variations',
+        outputCharacters: 10,
+        estimatedOutputTokens: 3,
+        outputTokenLimit: 45_000
+      },
+      commitOutcome: { ok: false, message: 'Stale commit failure.' }
+    });
+    const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    expect(result.current.draft).toEqual(reopenedDraft);
+    expect(result.current.draft.intent.aim).toBe('');
+    expect(result.current.generation).toEqual({ kind: 'idle' });
+    expect(result.current.commitError).toBeNull();
+    expect(result.current.invalidationNotice).toBeNull();
+    expect(props.clearCommitResult).toHaveBeenCalled();
+  });
+
+  it('commits an eligible clone under its source config without mutating the draft', () => {
+    const reopenedDraft = {
+      ...clone(generatedDraft),
+      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+    };
+    const props = options({ opening: cloneOpening(reopenedDraft, 'wc-7') });
+    const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    expect(result.current.commitBlockers).toEqual([]);
+    act(() => result.current.commitDraft());
+
+    expect(props.commit).toHaveBeenCalledWith(reopenedDraft, 'wc-7');
+    expect(result.current.draft).toEqual(reopenedDraft);
+  });
+
+  it('locks duplicate commit and destructive authoring changes while commit is pending', () => {
+    const reopenedDraft = {
+      ...clone(generatedDraft),
+      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }],
+      note: 'Exact note.'
+    };
+    const props = options({
+      opening: cloneOpening(reopenedDraft),
+      commitPending: true
+    });
+    const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    act(() => {
+      result.current.changeAim('Do not apply.');
+      result.current.changeNote('Do not apply.');
+      result.current.toggleCardSelection(1);
+      result.current.generateWorkup();
+      result.current.commitDraft();
+    });
+
+    expect(result.current.draft).toEqual(reopenedDraft);
+    expect(result.current.commitBlockers).toContain('commit-in-flight');
+    expect(props.generate).not.toHaveBeenCalled();
+    expect(props.commit).not.toHaveBeenCalled();
+  });
+
+  it('preserves the exact authored clone on host refusal and closes only on acceptance', () => {
+    const reopenedDraft = {
+      ...clone(generatedDraft),
+      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }],
+      note: 'Keep all of this.'
+    };
+    const props = options({ opening: cloneOpening(reopenedDraft) });
+    const { result, rerender } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    props.commitOutcome = { ok: false, message: 'The room refused this attempt.' };
+    rerender();
+    expect(result.current.draft).toEqual(reopenedDraft);
+    expect(result.current.commitError).toBe('The room refused this attempt.');
+    expect(props.onCommitAccepted).not.toHaveBeenCalled();
+
+    props.commitOutcome = { ok: true };
+    rerender();
+    expect(props.onCommitAccepted).toHaveBeenCalledTimes(1);
+    expect(props.clearCommitResult).toHaveBeenCalled();
+  });
+
+  it('reports real generation, room, hard-conflict, advisory-risk, and budget blockers', () => {
+    const overBudgetDraft = {
+      ...clone(generatedDraft),
+      workup: {
+        ...clone(generatedDraft.workup!),
+        cards: generatedDraft.workup!.cards.map((card) => card.position === 1
+          ? { ...clone(card), prose: 'x'.repeat(20_000) }
+          : clone(card))
+      },
+      selections: [
+        { position: 1, carryMode: 'full-prose' as const, acceptedAdvisoryRiskIds: [] },
+        { position: 2, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] },
+        { position: 3, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }
+      ]
+    };
+    const props = options({
+      opening: cloneOpening(overBudgetDraft),
+      roomRunActive: true
+    });
+    const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    expect(result.current.commitBlockers).toEqual([
+      'room-run-active',
+      'hard-conflict-selection',
+      'unaccepted-advisory-risk',
+      'over-artifact-budget'
+    ]);
+    expect(result.current.artifactUsage).toEqual({
+      characters: buildCreativeVariationsArtifact(overBudgetDraft).length,
+      budget: 20_000
+    });
   });
 });

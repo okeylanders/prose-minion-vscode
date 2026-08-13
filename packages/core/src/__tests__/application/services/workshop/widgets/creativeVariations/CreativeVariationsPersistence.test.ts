@@ -16,6 +16,10 @@ import {
 import {
   WORKSHOP_WIDGET_CONFIG_OPERATIONS
 } from '@/application/services/workshop/widgets/WorkshopWidgetConfigOperations';
+import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
+import {
+  generatedDraft
+} from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
 
 const creativeDraft = (): WorkshopCreativeVariationsDraft => ({
   subject: {
@@ -88,6 +92,67 @@ describe('Creative Variations persistence integration', () => {
     expect(() => parseWorkshopSessionStateV1(state)).toThrow(
       /links to a different widget/
     );
+  });
+
+  it('exports and hydrates a committed ready draft with exact blank aim and linkage', () => {
+    let clock = 0;
+    const session = new WorkshopSessionService(() => ++clock);
+    session.setSessionScope('open');
+    const exactDraft: WorkshopCreativeVariationsDraft = {
+      ...JSON.parse(JSON.stringify(generatedDraft)) as WorkshopCreativeVariationsDraft,
+      intent: { ...generatedDraft.intent, aim: '' },
+      selections: [{ position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }],
+      note: 'Preserve this authored note.'
+    };
+    const config = session.createWidgetConfig({
+      widgetId: 'creative-variations',
+      draft: exactDraft
+    });
+    const artifactId = session.mintWidgetArtifactId();
+    const turn = session.beginPersonaMessage('req-creative', 'Commit one take.', undefined, {
+      widgetId: 'creative-variations',
+      widgetConfigId: config.id,
+      rail: 'thread-artifact',
+      artifactId,
+      selectionCount: 1
+    });
+    session.recordRoomThreadArtifacts(turn.id, [{
+      id: artifactId,
+      kind: workshopWidgetArtifactKind('creative-variations'),
+      name: 'Creative Variations Explorer',
+      content: 'Creative Variations — selected takes\nTake 1 — direction:\nA quieter move.'
+    }]);
+    session.recordWidgetCommit(config.id, { turnId: turn.id, artifactId });
+    session.completeRun('req-creative', 'Accepted.');
+
+    const exported = session.exportCommittedState();
+    const parsed = parseWorkshopSessionStateV1(exported);
+    const restored = new WorkshopSessionService(() => 100);
+    restored.hydrateCommittedState(parsed, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+    const restoredConfig = creativeConfig(restored.getWidgetConfig('wc-1'));
+
+    expect(restoredConfig.draft).toEqual(exactDraft);
+    expect(restoredConfig.draft.intent.aim).toBe('');
+    expect(restoredConfig).toMatchObject({
+      committedTurnId: turn.id,
+      artifactId: 'ta-1'
+    });
+    expect(restored.exportCommittedState().threadArtifacts).toEqual([
+      expect.objectContaining({
+        id: 'ta-1',
+        turnId: turn.id,
+        kind: 'widget:creative-variations'
+      })
+    ]);
+    const summaries = restored.getSnapshot().widgetConfigs;
+    expect(summaries).toEqual([
+      expect.objectContaining({
+        widgetId: 'creative-variations',
+        selectionCount: 1
+      })
+    ]);
+    expect(JSON.stringify(summaries)).not.toContain('Baseline — the competent fix');
+    expect(JSON.stringify(summaries).length).toBeLessThan(1_000);
   });
 
   it('rejects a config whose artifact linkage diverges from its committed turn', () => {

@@ -356,9 +356,25 @@ describe('WorkshopCreativeVariationsModal', () => {
     expect(
       screen.getByText(/2 takes · 1 as direction · 1 as full prose/)
     ).toBeTruthy();
+    expect(screen.getByText(/2 declared invariants ride with them/)).toBeTruthy();
     const meter = screen.getByRole('progressbar', { name: 'Commit payload budget' });
     expect(meter.getAttribute('aria-valuenow')).toBe('640');
     expect(meter.getAttribute('aria-valuemax')).toBe('20000');
+  });
+
+  it('does not claim an inferred invariant when both authored fields are blank', () => {
+    renderModal({
+      draft: {
+        ...generatedDraft,
+        invariants: { mustSurvive: '', mustNotChange: '' },
+        selections: [{ position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }]
+      },
+      artifactUsage: { characters: 100, budget: 20_000 },
+      commitBlockers: []
+    });
+
+    expect(screen.getByText(/blank invariant fields add no constraint/)).toBeTruthy();
+    expect(document.body.textContent).not.toContain('both declared constraint fields');
   });
 
   it('disables commit with the controller-supplied blocker as an accessible reason', () => {
@@ -382,20 +398,26 @@ describe('WorkshopCreativeVariationsModal', () => {
     expect(props.onCommit).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps Slice 5 commit honestly unavailable with an accessible reason', () => {
+  it('keeps the sheet mounted and destructive controls locked while commit is pending', () => {
     const { props } = renderModal({
       draft: generatedDraft,
-      commitBlockers: [],
-      commitAvailable: false
+      commitPending: true,
+      commitBlockers: ['commit-in-flight']
     });
-    const commit = screen.getByRole('button', { name: 'Commit to thread' });
+    const commit = screen.getByRole('button', { name: 'Committing…' });
     expect((commit as HTMLButtonElement).disabled).toBe(true);
-    const reason = screen.getByText(
-      'Commit to the Workshop thread is not available in this build yet.'
-    );
-    expect(commit.getAttribute('aria-describedby')).toBe(reason.id);
-    fireEvent.click(commit);
+    expect(commit.getAttribute('aria-describedby')).toBeNull();
+    expect((screen.getByRole('textbox', {
+      name: /Selected passage/
+    }) as HTMLTextAreaElement).disabled).toBe(true);
+    expect((screen.getByRole('textbox', {
+      name: /Note to the room optional/
+    }) as HTMLTextAreaElement).disabled).toBe(true);
+    const close = screen.getByRole('button', { name: 'Close Creative Variations' });
+    expect((close as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(close);
     expect(props.onCommit).not.toHaveBeenCalled();
+    expect(props.onClose).not.toHaveBeenCalled();
   });
 
   it('uses the widget model selector quartet', () => {

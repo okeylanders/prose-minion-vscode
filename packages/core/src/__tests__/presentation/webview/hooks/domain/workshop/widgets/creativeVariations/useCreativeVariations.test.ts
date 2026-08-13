@@ -225,4 +225,114 @@ describe('useCreativeVariations', () => {
     }));
     expect(result.current.generationResult).toBeNull();
   });
+
+  it('mints a fresh commit token per settled attempt and prevents duplicate submission', () => {
+    const { result } = renderHook(() => useCreativeVariations());
+    let first: string | undefined;
+    let duplicate: string | undefined;
+    act(() => {
+      first = result.current.commit({ widgetId: 'creative-variations', draft });
+      duplicate = result.current.commit({ widgetId: 'creative-variations', draft });
+    });
+
+    expect(first).toEqual(expect.any(String));
+    expect(duplicate).toBeUndefined();
+    expect(result.current.commitPending).toBe(true);
+    expect(vscode.postMessage).toHaveBeenCalledTimes(1);
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_COMMIT_WIDGET,
+      payload: {
+        widgetId: 'creative-variations',
+        requestToken: first,
+        draft
+      }
+    }));
+
+    act(() => result.current.handleCommitResult({
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      timestamp: 1,
+      payload: {
+        action: 'commit',
+        requestToken: first!,
+        widgetId: 'creative-variations',
+        ok: false,
+        message: 'Try again.'
+      }
+    }));
+    let second: string | undefined;
+    act(() => {
+      second = result.current.commit({
+        widgetId: 'creative-variations',
+        draft,
+        clonedFromConfigId: 'wc-1'
+      });
+    });
+
+    expect(second).toEqual(expect.any(String));
+    expect(second).not.toBe(first);
+    expect(vscode.postMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('ignores stale-token and wrong-widget commit results, then accepts the exact result', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { result } = renderHook(() => useCreativeVariations());
+    let token = '';
+    act(() => {
+      token = result.current.commit({ widgetId: 'creative-variations', draft })!;
+    });
+
+    act(() => result.current.handleCommitResult({
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      timestamp: 1,
+      payload: {
+        action: 'commit',
+        requestToken: `${token}-stale`,
+        widgetId: 'creative-variations',
+        ok: false,
+        message: 'Stale.'
+      }
+    }));
+    act(() => result.current.handleCommitResult({
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      timestamp: 2,
+      payload: {
+        action: 'commit',
+        requestToken: token,
+        widgetId: 'gesture-playground',
+        ok: true,
+        widgetConfigId: 'wc-wrong',
+        turnId: 'turn-wrong'
+      }
+    }));
+
+    expect(result.current.commitPending).toBe(true);
+    expect(result.current.commitResult).toBeNull();
+
+    act(() => result.current.handleCommitResult({
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      timestamp: 3,
+      payload: {
+        action: 'commit',
+        requestToken: token,
+        widgetId: 'creative-variations',
+        ok: true,
+        widgetConfigId: 'wc-2',
+        turnId: 'turn-2'
+      }
+    }));
+
+    expect(result.current.commitPending).toBe(false);
+    expect(result.current.commitResult).toEqual(expect.objectContaining({
+      ok: true,
+      widgetConfigId: 'wc-2',
+      turnId: 'turn-2'
+    }));
+    act(() => result.current.clearCommitResult());
+    expect(result.current.commitResult).toBeNull();
+    warn.mockRestore();
+  });
 });

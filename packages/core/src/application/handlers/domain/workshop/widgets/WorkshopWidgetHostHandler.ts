@@ -7,10 +7,12 @@ import type {
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
-  prepareWorkshopOneShotWidgetCommit
+  prepareWorkshopOneShotWidgetCommit,
+  type WorkshopOneShotWidgetId
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 import type {
-  WorkshopOneShotWidgetCommitCoordinator
+  WorkshopOneShotWidgetCommitCoordinator,
+  WorkshopOneShotWidgetCommitOutcome
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
 import type {
   WorkshopWidgetAvailabilityPolicy
@@ -28,12 +30,16 @@ import {
 export interface WorkshopWidgetHostHandlerOptions {
   /** Backend race guard; the webview also disables commit while a room run owns the slot. */
   isRoomRunActive: () => boolean;
+  /** Named generation owners report only whether their one-shot rail is busy. */
+  isWidgetGenerationActive: (widgetId: WorkshopOneShotWidgetId) => boolean;
 }
 
 type WorkshopWidgetCommitRefusalReason =
   | 'widget-unavailable'
   | 'unsupported-one-shot-widget'
   | 'invalid-draft'
+  | 'generation-in-flight'
+  | 'commit-in-flight'
   | 'tool-target'
   | 'room-run-active';
 
@@ -41,6 +47,8 @@ const DEFAULT_TOOL_TARGET_REFUSAL_MESSAGE =
   'Switch to a persona target before committing a widget.';
 
 export class WorkshopWidgetHostHandler {
+  private commitInProgress = false;
+
   constructor(
     private readonly session: WorkshopSessionService,
     private readonly oneShotCommitCoordinator: WorkshopOneShotWidgetCommitCoordinator,
@@ -107,6 +115,24 @@ export class WorkshopWidgetHostHandler {
       );
       return;
     }
+    if (this.options.isWidgetGenerationActive(widgetId)) {
+      this.refuseCommit(
+        requestToken,
+        widgetId,
+        'generation-in-flight',
+        'Wait for the current widget generation to finish before committing.'
+      );
+      return;
+    }
+    if (this.commitInProgress) {
+      this.refuseCommit(
+        requestToken,
+        widgetId,
+        'commit-in-flight',
+        'Wait for the current widget commit to finish before committing again.'
+      );
+      return;
+    }
 
     const preparation = prepareWorkshopOneShotWidgetCommit(message.payload);
     if (!preparation.ok) {
@@ -140,18 +166,24 @@ export class WorkshopWidgetHostHandler {
       return;
     }
 
-    const outcome = await this.oneShotCommitCoordinator.commit(
-      preparation.commit,
-      target,
-      ({ widgetConfigId, turnId }) => this.postActionResult({
-        action: 'commit',
-        requestToken,
-        widgetId,
-        ok: true,
-        widgetConfigId,
-        turnId
-      })
-    );
+    this.commitInProgress = true;
+    let outcome: WorkshopOneShotWidgetCommitOutcome;
+    try {
+      outcome = await this.oneShotCommitCoordinator.commit(
+        preparation.commit,
+        target,
+        ({ widgetConfigId, turnId }) => this.postActionResult({
+          action: 'commit',
+          requestToken,
+          widgetId,
+          ok: true,
+          widgetConfigId,
+          turnId
+        })
+      );
+    } finally {
+      this.commitInProgress = false;
+    }
     if (outcome.status === 'not-accepted') {
       this.postActionResult({
         action: 'commit',

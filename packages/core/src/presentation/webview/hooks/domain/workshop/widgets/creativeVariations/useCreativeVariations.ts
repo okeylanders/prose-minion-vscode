@@ -4,12 +4,21 @@ import * as React from 'react';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
+  createWorkshopWidgetActionRequestToken
+} from '@hooks/domain/workshop/createWorkshopWidgetActionRequestToken';
+import {
+  reportWorkshopWidgetActionCorrelationIssue
+} from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
+import {
   MessageType,
+  type WorkshopCreativeVariationsCommitPayload,
   type WorkshopCreativeVariationsDraft,
   type WorkshopCreativeVariationsGenerationProgressMessage,
   type WorkshopCreativeVariationsGenerationProgressPayload,
   type WorkshopCreativeVariationsResultMessage,
-  type WorkshopCreativeVariationsResultPayload
+  type WorkshopCreativeVariationsResultPayload,
+  type WorkshopWidgetActionResultMessage,
+  type WorkshopWidgetActionResultPayload
 } from '@messages';
 interface ActiveCreativeVariationsAttempt {
   token: string;
@@ -25,12 +34,24 @@ const createCreativeVariationsRequestToken = (): string =>
 export interface CreativeVariationsState {
   generationProgress: WorkshopCreativeVariationsGenerationProgressPayload | null;
   generationResult: WorkshopCreativeVariationsResultPayload | null;
+  commitPending: boolean;
+  commitResult: CreativeVariationsCommitResult | null;
 }
+
+export type CreativeVariationsCommitResult = Extract<
+  WorkshopWidgetActionResultPayload,
+  { action: 'commit'; widgetId: 'creative-variations' }
+>;
 
 export interface CreativeVariationsActions {
   requestSubjectSelection: () => void;
   generate: (draft: WorkshopCreativeVariationsDraft) => string;
   cancelGeneration: (token?: string) => void;
+  commit: (
+    payload: Omit<WorkshopCreativeVariationsCommitPayload, 'requestToken'>
+  ) => string | undefined;
+  handleCommitResult: (message: WorkshopWidgetActionResultMessage) => void;
+  clearCommitResult: () => void;
   handleGenerationProgress: (
     message: WorkshopCreativeVariationsGenerationProgressMessage
   ) => void;
@@ -49,10 +70,14 @@ export type UseCreativeVariationsReturn = CreativeVariationsState &
 export function useCreativeVariations(): UseCreativeVariationsReturn {
   const vscode = useVSCodeApi();
   const activeAttemptRef = React.useRef<ActiveCreativeVariationsAttempt>();
+  const activeCommitTokenRef = React.useRef<string>();
   const [generationProgress, setGenerationProgress] =
     React.useState<WorkshopCreativeVariationsGenerationProgressPayload | null>(null);
   const [generationResult, setGenerationResult] =
     React.useState<WorkshopCreativeVariationsResultPayload | null>(null);
+  const [commitPending, setCommitPending] = React.useState(false);
+  const [commitResult, setCommitResult] =
+    React.useState<CreativeVariationsCommitResult | null>(null);
 
   const post = React.useCallback((type: MessageType, payload: object) => {
     vscode.postMessage({
@@ -105,6 +130,54 @@ export function useCreativeVariations(): UseCreativeVariationsReturn {
     setGenerationResult(null);
   }, [vscode]);
 
+  const commit = React.useCallback((
+    payload: Omit<WorkshopCreativeVariationsCommitPayload, 'requestToken'>
+  ): string | undefined => {
+    if (activeCommitTokenRef.current !== undefined) {
+      return undefined;
+    }
+    const requestToken = createWorkshopWidgetActionRequestToken('commit');
+    activeCommitTokenRef.current = requestToken;
+    setCommitPending(true);
+    setCommitResult(null);
+    post(MessageType.WORKSHOP_COMMIT_WIDGET, { ...payload, requestToken });
+    return requestToken;
+  }, [post]);
+
+  const handleCommitResult = React.useCallback((
+    message: WorkshopWidgetActionResultMessage
+  ) => {
+    if (message.payload.action !== 'commit') {
+      return;
+    }
+    const expectedToken = activeCommitTokenRef.current;
+    if (message.payload.widgetId !== 'creative-variations') {
+      if (message.payload.requestToken === expectedToken) {
+        reportWorkshopWidgetActionCorrelationIssue(
+          'useCreativeVariations',
+          message,
+          'expected widget creative-variations'
+        );
+      }
+      return;
+    }
+    if (message.payload.requestToken !== expectedToken) {
+      reportWorkshopWidgetActionCorrelationIssue(
+        'useCreativeVariations',
+        message,
+        'no current commit request owns this token'
+      );
+      return;
+    }
+    activeCommitTokenRef.current = undefined;
+    setCommitPending(false);
+    setCommitResult(message.payload);
+  }, []);
+
+  const clearCommitResult = React.useCallback(() => {
+    setCommitResult(null);
+  }, []);
+
   const handleGenerationProgress = React.useCallback(
     (message: WorkshopCreativeVariationsGenerationProgressMessage) => {
       const active = activeAttemptRef.current;
@@ -150,9 +223,14 @@ export function useCreativeVariations(): UseCreativeVariationsReturn {
   return {
     generationProgress,
     generationResult,
+    commitPending,
+    commitResult,
     requestSubjectSelection,
     generate,
     cancelGeneration,
+    commit,
+    handleCommitResult,
+    clearCommitResult,
     handleGenerationProgress,
     handleGenerationResult,
     persistedState: {}

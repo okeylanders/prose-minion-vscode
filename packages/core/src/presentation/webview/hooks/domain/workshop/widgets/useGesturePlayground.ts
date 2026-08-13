@@ -11,7 +11,7 @@ import {
 } from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
 import {
   MessageType,
-  WorkshopCommitWidgetPayload,
+  WorkshopGesturePlaygroundCommitPayload,
   WorkshopGesturePlaygroundGeneratePayload,
   WorkshopGesturePlaygroundGenerationProgressMessage,
   WorkshopGesturePlaygroundGenerationProgressPayload,
@@ -30,7 +30,7 @@ export interface GesturePlaygroundState {
 export interface GesturePlaygroundActions {
   generateWidgetMenu: (payload: WorkshopGesturePlaygroundGeneratePayload) => void;
   cancelWidgetGenerate: (requestId: string) => void;
-  commitWidget: (payload: Omit<WorkshopCommitWidgetPayload, 'requestToken'>) => void;
+  commitWidget: (payload: Omit<WorkshopGesturePlaygroundCommitPayload, 'requestToken'>) => void;
   handleWidgetMenuResult: (message: WorkshopGesturePlaygroundMenuResultMessage) => void;
   handleWidgetGenerationProgress: (
     message: WorkshopGesturePlaygroundGenerationProgressMessage
@@ -84,7 +84,7 @@ export function useGesturePlayground(): UseGesturePlaygroundReturn {
   }, [vscode]);
 
   const commitWidget = React.useCallback((
-    payload: Omit<WorkshopCommitWidgetPayload, 'requestToken'>
+    payload: Omit<WorkshopGesturePlaygroundCommitPayload, 'requestToken'>
   ) => {
     const requestToken = createWorkshopWidgetActionRequestToken('commit');
     latestCommitRequestTokenRef.current = requestToken;

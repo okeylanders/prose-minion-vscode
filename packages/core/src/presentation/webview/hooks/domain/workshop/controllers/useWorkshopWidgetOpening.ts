@@ -3,6 +3,7 @@
 import * as React from 'react';
 import {
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
+  WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
@@ -24,8 +25,9 @@ export type WorkshopLexicalGravityOpening =
   | { kind: 'seed'; seed: WorkshopLexicalGravityRecommendationSeed; personaLabel: string }
   | { kind: 'edit'; config: WorkshopLexicalGravityWidgetConfigSnapshot };
 
-/** Slice 4 opens only a fresh workup; persisted clone/reopen arrives in Slice 5. */
-export type WorkshopCreativeVariationsOpening = { kind: 'new' };
+export type WorkshopCreativeVariationsOpening =
+  | { kind: 'new' }
+  | { kind: 'clone'; config: WorkshopCreativeVariationsWidgetConfigSnapshot };
 
 export interface WorkshopWidgetOpeningHost {
   widgetConfigData: WorkshopWidgetConfigSnapshot | null;
@@ -168,6 +170,8 @@ export function useWorkshopWidgetOpening({
       const receivedWidgetId = String(config.widgetId);
       if (config.widgetId === 'gesture-playground') {
         setGesturePlaygroundOpening({ kind: 'clone', config });
+      } else if (config.widgetId === 'creative-variations') {
+        setCreativeVariationsOpening({ kind: 'clone', config });
       } else if (config.widgetId === 'lexical-gravity') {
         const active = standingDirectives.some(
           (directive) => directive.widgetConfigId === config.id

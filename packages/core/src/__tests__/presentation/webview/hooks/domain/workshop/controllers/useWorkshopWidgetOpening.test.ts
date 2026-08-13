@@ -6,6 +6,7 @@ import {
   WorkshopWidgetOpeningHost
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import {
+  WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary
@@ -13,6 +14,9 @@ import {
 import {
   builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
+import {
+  generatedDraft
+} from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
 
 const gestureConfig: WorkshopGesturePlaygroundWidgetConfigSnapshot = {
   id: 'wc-gesture',
@@ -48,6 +52,15 @@ const lexicalConfig: WorkshopLexicalGravityWidgetConfigSnapshot = {
     metaphorPull: true,
     resolvedLens: lens
   }
+};
+
+const creativeConfig: WorkshopCreativeVariationsWidgetConfigSnapshot = {
+  id: 'wc-creative',
+  widgetId: 'creative-variations',
+  revision: 1,
+  createdAt: 3,
+  clonedFromConfigId: 'wc-creative-original',
+  draft: generatedDraft
 };
 
 const activeLexical: WorkshopStandingDirectiveSummary = {
@@ -175,6 +188,40 @@ describe('useWorkshopWidgetOpening', () => {
     expect(result.current.pendingWidgetConfigId).toBeNull();
     expect(result.current.gesturePlaygroundOpening).toBeNull();
     expect(result.current.lexicalGravityOpening).toBeNull();
+  });
+
+  it('keeps a fresh Creative opening distinct from an exact clone opening', () => {
+    let host = emptyHost();
+    const { result, rerender } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError: jest.fn(),
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
+    }));
+
+    act(() => result.current.launchWidget('creative-variations'));
+    expect(result.current.creativeVariationsOpening).toEqual({ kind: 'new' });
+    act(() => result.current.closeCreativeVariations());
+
+    act(() => result.current.openWidgetConfig(creativeConfig.id));
+    expect(host.requestWidgetConfig).toHaveBeenCalledWith(creativeConfig.id);
+    host = {
+      ...host,
+      widgetConfigData: creativeConfig,
+      widgetConfigResponseId: creativeConfig.id
+    };
+    rerender();
+
+    expect(result.current.creativeVariationsOpening).toEqual({
+      kind: 'clone',
+      config: creativeConfig
+    });
+    expect(result.current.creativeVariationsOpening?.kind === 'clone'
+      ? result.current.creativeVariationsOpening.config.draft
+      : null).toEqual(generatedDraft);
+    expect(result.current.pendingWidgetConfigId).toBeNull();
   });
 
   it('reports and settles an unsupported widget config instead of failing silently', () => {

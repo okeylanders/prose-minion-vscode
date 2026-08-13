@@ -455,6 +455,7 @@ describe('WorkshopTurnBubble variation cards', () => {
   });
 
   it('derives a one-shot chip label and selected-unit noun from its widget id', () => {
+    const onOpenWidgetConfig = jest.fn();
     render(
       <WorkshopTurnBubble
         turn={{
@@ -479,7 +480,7 @@ describe('WorkshopTurnBubble variation cards', () => {
         onTalkDirectly={jest.fn()}
         onCopy={jest.fn()}
         onSave={jest.fn()}
-        onOpenWidgetConfig={jest.fn()}
+        onOpenWidgetConfig={onOpenWidgetConfig}
       />
     );
 
@@ -487,6 +488,8 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(chip.textContent).toContain('3 variations · re-open');
     expect(chip.textContent).not.toContain('Gesture Playground');
     expect(chip.textContent).not.toContain('directions');
+    fireEvent.click(chip);
+    expect(onOpenWidgetConfig).toHaveBeenCalledWith('wc-8');
   });
 
   it('forwards the complete rich persona seed when its widget chip is opened', () => {

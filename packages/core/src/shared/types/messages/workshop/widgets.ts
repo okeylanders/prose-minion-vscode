@@ -1,7 +1,10 @@
 /** Conversation Widget family contracts and exact supported unions. */
 
 import { MessageEnvelope, MessageType } from '../base';
-import { WorkshopCreativeVariationsDraft } from './creativeVariations';
+import {
+  WorkshopCreativeVariationsCommitPayload,
+  WorkshopCreativeVariationsDraft
+} from './creativeVariations';
 import {
   WorkshopGesturePlaygroundCommitPayload,
   WorkshopGesturePlaygroundDraft,
@@ -164,7 +167,9 @@ export interface WorkshopWidgetConfigDataMessage extends MessageEnvelope<{
 }
 
 /** Family rail contract; each supported one-shot widget contributes one exact arm. */
-export type WorkshopCommitWidgetPayload = WorkshopGesturePlaygroundCommitPayload;
+export type WorkshopCommitWidgetPayload =
+  | WorkshopGesturePlaygroundCommitPayload
+  | WorkshopCreativeVariationsCommitPayload;
 
 export interface WorkshopCommitWidgetMessage extends MessageEnvelope<WorkshopCommitWidgetPayload> {
   type: MessageType.WORKSHOP_COMMIT_WIDGET;
@@ -184,6 +189,10 @@ export type WorkshopWidgetActionResultPayload =
   | (WorkshopWidgetActionResultBase & {
       action: 'commit';
       widgetId: 'gesture-playground';
+    })
+  | (WorkshopWidgetActionResultBase & {
+      action: 'commit';
+      widgetId: 'creative-variations';
     })
   | (WorkshopWidgetActionResultBase & {
       action: 'apply-standing';

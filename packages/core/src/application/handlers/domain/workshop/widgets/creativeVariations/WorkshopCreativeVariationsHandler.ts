@@ -84,6 +84,10 @@ export class WorkshopCreativeVariationsHandler {
     this.activeGeneration = undefined;
   }
 
+  isGenerationActive(): boolean {
+    return this.activeGeneration !== undefined;
+  }
+
   async handleGenerate(message: WorkshopCreativeVariationsGenerateMessage): Promise<void> {
     const { widgetId, token } = message.payload;
     const workupId = this.createWorkupId();

@@ -239,6 +239,10 @@ export const WorkshopApp: React.FC = () => {
     setToast(next);
   }, []);
   const standingDirectives = useWorkshopStandingDirectives(showToast);
+  const clearCreativeVariationsTransientState = React.useCallback(() => {
+    creativeVariations.cancelGeneration();
+    creativeVariations.clearCommitResult();
+  }, [creativeVariations.cancelGeneration, creativeVariations.clearCommitResult]);
   const handleWidgetOpeningError = React.useCallback(
     (message: string) => showToast({ message, icon: 'x', tone: 'error' }),
     [showToast]
@@ -249,10 +253,10 @@ export const WorkshopApp: React.FC = () => {
     onError: handleWidgetOpeningError,
     onCloseGesturePlayground: gesturePlayground.consumeWidgetActionResult,
     onCloseLexicalGravity: lexicalGravity.clearTransientResults,
-    onCloseCreativeVariations: creativeVariations.cancelGeneration
+    onCloseCreativeVariations: clearCreativeVariationsTransientState
   });
   const creativeVariationsAuthoring = useCreativeVariationsAuthoring({
-    open: widgetOpening.creativeVariationsOpening !== null,
+    opening: widgetOpening.creativeVariationsOpening,
     activeExcerpt: workshop.excerpt,
     contextAttachments: workshop.contextAttachments,
     widgetModelId:
@@ -261,7 +265,19 @@ export const WorkshopApp: React.FC = () => {
     generationResult: creativeVariations.generationResult,
     requestSubjectSelection: creativeVariations.requestSubjectSelection,
     generate: creativeVariations.generate,
-    cancelGeneration: creativeVariations.cancelGeneration
+    cancelGeneration: creativeVariations.cancelGeneration,
+    roomRunActive: workshop.isRunning,
+    commitPending: creativeVariations.commitPending,
+    commitOutcome: creativeVariations.commitResult,
+    commit: (draft, clonedFromConfigId) => {
+      creativeVariations.commit({
+        widgetId: 'creative-variations',
+        draft,
+        clonedFromConfigId
+      });
+    },
+    clearCommitResult: creativeVariations.clearCommitResult,
+    onCommitAccepted: widgetOpening.closeCreativeVariations
   });
 
   React.useEffect(() => {
@@ -1374,15 +1390,19 @@ export const WorkshopApp: React.FC = () => {
       {widgetOpening.creativeVariationsOpening && (
         <WorkshopCreativeVariationsModal
           open
-          banner={{ kind: 'none' }}
+          banner={
+            widgetOpening.creativeVariationsOpening.kind === 'clone'
+              ? { kind: 'clone' }
+              : { kind: 'none' }
+          }
           draft={creativeVariationsAuthoring.draft}
           generation={creativeVariationsAuthoring.generation}
           invalidationNotice={creativeVariationsAuthoring.invalidationNotice}
-          commitPending={false}
-          commitError={null}
+          commitPending={creativeVariations.commitPending}
+          commitError={creativeVariationsAuthoring.commitError}
           commitBlockers={creativeVariationsAuthoring.commitBlockers}
-          commitAvailable={false}
-          artifactUsage={null}
+          commitAvailable
+          artifactUsage={creativeVariationsAuthoring.artifactUsage}
           highOverlapThreshold={CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE}
           availableSources={creativeVariationsAuthoring.availableSources}
           onUseSelection={creativeVariationsAuthoring.requestSubjectSelection}
@@ -1401,6 +1421,7 @@ export const WorkshopApp: React.FC = () => {
           onToggleAdvisoryRisk={creativeVariationsAuthoring.toggleAdvisoryRisk}
           onNoteChange={creativeVariationsAuthoring.changeNote}
           onCopyVariation={copyCreativeVariation}
+          onCommit={creativeVariationsAuthoring.commitDraft}
           widgetModelOptions={modelsSettings.modelOptions}
           selectedWidgetModel={
             modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel

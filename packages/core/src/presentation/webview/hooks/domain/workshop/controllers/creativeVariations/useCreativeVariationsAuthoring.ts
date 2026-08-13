@@ -21,16 +21,24 @@ import type {
 import {
   creativeVariationsSourceReferenceKey
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
+import {
+  buildCreativeVariationsArtifact
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsArtifact';
+import type {
+  WorkshopCreativeVariationsOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
+import type {
+  WorkshopCreativeVariationsArtifactUsage,
+  WorkshopCreativeVariationsCommitBlocker
+} from '@components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal';
 
-/** Slice 4 can produce only this subset of the modal's eventual commit blockers. */
-export type CreativeVariationsCommitBlocker =
-  | 'generation-in-flight'
-  | 'no-workup'
-  | 'no-selection'
-  | 'unaccepted-advisory-risk';
+export interface CreativeVariationsCommitOutcome {
+  ok: boolean;
+  message?: string;
+}
 
 export interface UseCreativeVariationsAuthoringOptions {
-  open: boolean;
+  opening: WorkshopCreativeVariationsOpening | null;
   activeExcerpt: WorkshopExcerptSnapshot | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   /** Host-owned effective widget model; changes invalidate dependent transient work. */
@@ -40,13 +48,21 @@ export interface UseCreativeVariationsAuthoringOptions {
   requestSubjectSelection: () => void;
   generate: (draft: WorkshopCreativeVariationsDraft) => string;
   cancelGeneration: (token?: string) => void;
+  roomRunActive: boolean;
+  commitPending: boolean;
+  commitOutcome: CreativeVariationsCommitOutcome | null;
+  commit: (draft: WorkshopCreativeVariationsDraft, clonedFromConfigId?: string) => void;
+  clearCommitResult: () => void;
+  onCommitAccepted: () => void;
 }
 
 export interface CreativeVariationsAuthoringState {
   draft: WorkshopCreativeVariationsDraft;
   generation: WorkshopCreativeVariationsGenerationPhase;
   invalidationNotice: string | null;
-  commitBlockers: readonly CreativeVariationsCommitBlocker[];
+  commitError: string | null;
+  commitBlockers: readonly WorkshopCreativeVariationsCommitBlocker[];
+  artifactUsage: WorkshopCreativeVariationsArtifactUsage | null;
   availableSources: readonly WorkshopCreativeVariationsAvailableSource[];
 }
 
@@ -67,6 +83,7 @@ export interface CreativeVariationsAuthoringActions {
   changeCarryMode: (position: number, mode: WorkshopCreativeVariationsCarryMode) => void;
   toggleAdvisoryRisk: (position: number, riskId: string) => void;
   changeNote: (note: string) => void;
+  commitDraft: () => void;
 }
 
 export interface CreativeVariationsAuthoringPersistence {
@@ -144,7 +161,7 @@ function sameSubject(
 }
 
 export function useCreativeVariationsAuthoring({
-  open,
+  opening,
   activeExcerpt,
   contextAttachments,
   widgetModelId,
@@ -152,8 +169,15 @@ export function useCreativeVariationsAuthoring({
   generationResult,
   requestSubjectSelection,
   generate,
-  cancelGeneration
+  cancelGeneration,
+  roomRunActive,
+  commitPending,
+  commitOutcome,
+  commit,
+  clearCommitResult,
+  onCommitAccepted
 }: UseCreativeVariationsAuthoringOptions): UseCreativeVariationsAuthoringReturn {
+  const open = opening !== null;
   const [draft, setDraftState] = React.useState<WorkshopCreativeVariationsDraft>(
     createCreativeVariationsAuthoringDraft
   );
@@ -170,19 +194,48 @@ export function useCreativeVariationsAuthoring({
     kind: 'idle'
   });
   const [invalidationNotice, setInvalidationNotice] = React.useState<string | null>(null);
+  const [commitError, setCommitError] = React.useState<string | null>(null);
   const activeTokenRef = React.useRef<string>();
+  const ignoredOpeningCommitOutcomeRef = React.useRef<CreativeVariationsCommitOutcome | null>();
   const wasOpenRef = React.useRef(false);
   const previousWidgetModelIdRef = React.useRef(widgetModelId);
 
   React.useEffect(() => {
     if (open && !wasOpenRef.current) {
       activeTokenRef.current = undefined;
-      setDraft(createCreativeVariationsAuthoringDraft());
+      ignoredOpeningCommitOutcomeRef.current = commitOutcome;
+      setDraft(
+        opening?.kind === 'clone'
+          ? opening.config.draft
+          : createCreativeVariationsAuthoringDraft()
+      );
       setGeneration({ kind: 'idle' });
       setInvalidationNotice(null);
+      setCommitError(null);
+      clearCommitResult();
     }
     wasOpenRef.current = open;
-  }, [open, setDraft]);
+  }, [clearCommitResult, commitOutcome, open, opening, setDraft]);
+
+  React.useEffect(() => {
+    if (!open || !commitOutcome) {
+      return;
+    }
+    if (ignoredOpeningCommitOutcomeRef.current === commitOutcome) {
+      ignoredOpeningCommitOutcomeRef.current = null;
+      return;
+    }
+    clearCommitResult();
+    if (commitOutcome.ok) {
+      setCommitError(null);
+      onCommitAccepted();
+      return;
+    }
+    setCommitError(
+      commitOutcome.message
+        ?? 'Creative Variations did not reach the room. Your exact draft is still open.'
+    );
+  }, [clearCommitResult, commitOutcome, onCommitAccepted, open]);
 
   React.useEffect(() => {
     const token = activeTokenRef.current;
@@ -232,6 +285,9 @@ export function useCreativeVariationsAuthoring({
     label: CreativeVariationsInputLabel,
     update: (current: WorkshopCreativeVariationsDraft) => WorkshopCreativeVariationsDraft
   ) => {
+    if (commitPending) {
+      return;
+    }
     const current = draftRef.current;
     const next = update(current);
     if (next === current) {
@@ -245,7 +301,13 @@ export function useCreativeVariationsAuthoring({
     if (notice) {
       setInvalidationNotice(notice);
     }
-  }, [cancelActiveGeneration, setDraft]);
+  }, [cancelActiveGeneration, commitPending, setDraft]);
+
+  const requestCurrentSubjectSelection = React.useCallback(() => {
+    if (!commitPending) {
+      requestSubjectSelection();
+    }
+  }, [commitPending, requestSubjectSelection]);
 
   const handleSubjectSelection = React.useCallback((message: SelectionDataMessage) => {
     /* Normal delivery is target-routed; retain the check for direct hook consumers. */
@@ -356,7 +418,7 @@ export function useCreativeVariationsAuthoring({
   React.useEffect(() => {
     const previousWidgetModelId = previousWidgetModelIdRef.current;
     previousWidgetModelIdRef.current = widgetModelId;
-    if (!open || previousWidgetModelId === widgetModelId) {
+    if (!open || commitPending || previousWidgetModelId === widgetModelId) {
       return;
     }
     const current = draftRef.current;
@@ -372,21 +434,27 @@ export function useCreativeVariationsAuthoring({
     setInvalidationNotice(
       changedWorkNotice('widget model', hadActiveGeneration, hadSettledWork)
     );
-  }, [cancelActiveGeneration, open, setDraft, widgetModelId]);
+  }, [cancelActiveGeneration, commitPending, open, setDraft, widgetModelId]);
 
   const generateWorkup = React.useCallback(() => {
+    if (commitPending) {
+      return;
+    }
     cancelActiveGeneration();
     setDraft((current) => ({ ...current, workup: null, selections: [] }));
     setInvalidationNotice(null);
     activeTokenRef.current = generate(draftRef.current);
     setGeneration({ kind: 'generating', detail: 'Requesting variations' });
-  }, [cancelActiveGeneration, generate, setDraft]);
+  }, [cancelActiveGeneration, commitPending, generate, setDraft]);
 
   const cancelGenerate = React.useCallback(() => {
     cancelActiveGeneration();
   }, [cancelActiveGeneration]);
 
   const toggleCardSelection = React.useCallback((position: number) => {
+    if (commitPending) {
+      return;
+    }
     setDraft((current) => {
       const card = current.workup?.cards.find((candidate) => candidate.position === position);
       if (!card || card.invariantFlags.some((flag) => flag.kind === 'hard-conflict')) {
@@ -403,21 +471,27 @@ export function useCreativeVariationsAuthoring({
             ].sort((left, right) => left.position - right.position)
       };
     });
-  }, []);
+  }, [commitPending]);
 
   const changeCarryMode = React.useCallback((
     position: number,
     carryMode: WorkshopCreativeVariationsCarryMode
   ) => {
+    if (commitPending) {
+      return;
+    }
     setDraft((current) => ({
       ...current,
       selections: current.selections.map((selection) => selection.position === position
         ? { ...selection, carryMode }
         : selection)
     }));
-  }, []);
+  }, [commitPending]);
 
   const toggleAdvisoryRisk = React.useCallback((position: number, riskId: string) => {
+    if (commitPending) {
+      return;
+    }
     setDraft((current) => {
       const card = current.workup?.cards.find((candidate) => candidate.position === position);
       const validRisk = card?.invariantFlags.some(
@@ -442,11 +516,13 @@ export function useCreativeVariationsAuthoring({
         })
       };
     });
-  }, []);
+  }, [commitPending]);
 
   const changeNote = React.useCallback((note: string) => {
-    setDraft((current) => ({ ...current, note }));
-  }, []);
+    if (!commitPending) {
+      setDraft((current) => ({ ...current, note }));
+    }
+  }, [commitPending, setDraft]);
 
   const availableSources = React.useMemo<WorkshopCreativeVariationsAvailableSource[]>(() => [
     ...(activeExcerpt
@@ -468,10 +544,30 @@ export function useCreativeVariationsAuthoring({
     }))
   ], [activeExcerpt, contextAttachments]);
 
-  const commitBlockers = React.useMemo<CreativeVariationsCommitBlocker[]>(() => {
-    const blockers: CreativeVariationsCommitBlocker[] = [];
+  const artifactUsage = React.useMemo<WorkshopCreativeVariationsArtifactUsage | null>(() => {
+    if (draft.selections.length === 0) {
+      return null;
+    }
+    try {
+      return {
+        characters: buildCreativeVariationsArtifact(draft).length,
+        budget: PROMPT_BUDGETS.workshopWidgets.creativeArtifactCharacters
+      };
+    } catch {
+      return null;
+    }
+  }, [draft]);
+
+  const commitBlockers = React.useMemo<WorkshopCreativeVariationsCommitBlocker[]>(() => {
+    const blockers: WorkshopCreativeVariationsCommitBlocker[] = [];
     if (generation.kind === 'generating') {
       blockers.push('generation-in-flight');
+    }
+    if (commitPending) {
+      blockers.push('commit-in-flight');
+    }
+    if (roomRunActive) {
+      blockers.push('room-run-active');
     }
     if (!draft.workup) {
       blockers.push('no-workup');
@@ -480,6 +576,14 @@ export function useCreativeVariationsAuthoring({
     if (draft.selections.length === 0) {
       blockers.push('no-selection');
       return blockers;
+    }
+    const hasHardConflict = draft.selections.some((selection) =>
+      draft.workup?.cards
+        .find((candidate) => candidate.position === selection.position)
+        ?.invariantFlags.some((flag) => flag.kind === 'hard-conflict')
+    );
+    if (hasHardConflict) {
+      blockers.push('hard-conflict-selection');
     }
     const hasUnacceptedRisk = draft.selections.some((selection) => {
       const card = draft.workup?.cards.find(
@@ -493,16 +597,40 @@ export function useCreativeVariationsAuthoring({
     if (hasUnacceptedRisk) {
       blockers.push('unaccepted-advisory-risk');
     }
+    if (artifactUsage && artifactUsage.characters > artifactUsage.budget) {
+      blockers.push('over-artifact-budget');
+    }
     return blockers;
-  }, [draft.selections, draft.workup, generation.kind]);
+  }, [
+    artifactUsage,
+    commitPending,
+    draft.selections,
+    draft.workup,
+    generation.kind,
+    roomRunActive
+  ]);
+
+  const commitDraft = React.useCallback(() => {
+    if (commitBlockers.length > 0 || commitPending) {
+      return;
+    }
+    setCommitError(null);
+    clearCommitResult();
+    commit(
+      draftRef.current,
+      opening?.kind === 'clone' ? opening.config.id : undefined
+    );
+  }, [clearCommitResult, commit, commitBlockers.length, commitPending, opening]);
 
   return {
     draft,
     generation,
     invalidationNotice,
+    commitError,
     commitBlockers,
+    artifactUsage,
     availableSources,
-    requestSubjectSelection,
+    requestSubjectSelection: requestCurrentSubjectSelection,
     handleSubjectSelection,
     changeSubjectText,
     changeSurroundingContext,
@@ -518,6 +646,7 @@ export function useCreativeVariationsAuthoring({
     changeCarryMode,
     toggleAdvisoryRisk,
     changeNote,
+    commitDraft,
     persistedState: {}
   };
 }

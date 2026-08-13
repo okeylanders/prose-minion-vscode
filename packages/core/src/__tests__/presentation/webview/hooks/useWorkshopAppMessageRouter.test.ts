@@ -37,7 +37,8 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   } as never,
   creativeVariations: {
     handleGenerationProgress: jest.fn(),
-    handleGenerationResult: jest.fn()
+    handleGenerationResult: jest.fn(),
+    handleCommitResult: jest.fn()
   } as never,
   creativeVariationsAuthoring: {
     handleSubjectSelection: jest.fn()
@@ -84,6 +85,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     expect(deps.widgetHost.handleWidgetConfigData).toHaveBeenCalledWith(configMessage);
     expect(deps.gesturePlayground.handleWidgetActionResult).toHaveBeenCalledWith(actionMessage);
+    expect(deps.creativeVariations.handleCommitResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.lexicalGravity.handleActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
   });

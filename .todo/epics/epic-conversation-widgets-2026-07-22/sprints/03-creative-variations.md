@@ -1,6 +1,6 @@
 # Sprint 03: Creative Variations Explorer
 
-**Status**: In progress — Slice 4 review remediated and ready for re-review; live for integrated hands-on testing
+**Status**: In progress — Slice 5 ready for review; live for integrated hands-on testing
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-03-creative-variations` -> PR into `epic/conversation-widgets`
 **Depends on**: Sprint 02D merged into `epic/conversation-widgets`; the widget host, session-owned config ledger, one-shot thread-artifact rail, and clone-and-recommit lifecycle are all proven
@@ -115,12 +115,12 @@ surface.
 | 6 | Add persona recommendation/prefill while keeping report-prefill deferred. |
 | 7 | Complete architecture witnesses, run the final production-policy route matrix and full verification, then update current-state docs. |
 
-### Slice 4 remediation evidence — 2026-08-13
+### Slice 4 accepted baseline — 2026-08-13
 
-The Slice 4 review at `1f04653a` has been remediated in the worktree and is
-**ready for re-review**. It is not reviewed or complete. The production catalog
-entry remains live for integrated hands-on testing; room commit remains visibly
-and accessibly unavailable until Slice 5.
+The Slice 4 review at `1f04653a` and its remediation are the accepted
+implementation baseline for Slice 5. The production catalog entry remains live
+for integrated hands-on testing. The commit-unavailable posture recorded below
+was the deliberate Slice 4 boundary and is superseded by Slice 5.
 
 - `useCreativeVariations` owns the webview request token, generate/cancel wire,
   host workup-id latch, and stale progress/result rejection. It reuses
@@ -141,10 +141,10 @@ and accessibly unavailable until Slice 5.
   routes Creative Variations progress/results. Changing the host-owned widget
   model invalidates the dependent transient workup. The overlap warning uses
   the named score constant (`80`).
-- The controlled modal exposes an explicit `commitAvailable` boundary. Slice 4
-  passes `false`, renders an associated unavailable explanation, and supplies
-  no commit callback; no unrelated room-run or commit-in-flight state is
-  impersonated.
+- At the Slice 4 gate, the controlled modal exposed an explicit
+  `commitAvailable` boundary, passed `false`, rendered an associated unavailable
+  explanation, and supplied no commit callback. Slice 5 replaces that posture
+  with the real correlated commit lifecycle.
 
 Verification at this review gate:
 
@@ -162,6 +162,61 @@ The current CLI environment cannot launch the integrated VS Code extension
 surface, so no screenshot was substituted from a fixture. The mounted Workshop
 integration test now launches Creative Variations through the same live catalog
 policy as an F5 extension session.
+
+### Slice 5 implementation evidence — 2026-08-13
+
+Slice 5 is **ready for review**. It is not reviewed or complete, and the
+worktree remains uncommitted and unpushed.
+
+- The exact Creative commit arm carries the authored draft, a fresh webview
+  token, and optional clone provenance. `useCreativeVariations` owns request
+  correlation; stale and wrong-widget results cannot settle the active attempt.
+- `CreativeVariationsArtifact` is the sole deterministic artifact projection
+  used by the host compiler and the modal usage meter. It carries only selected
+  directions or explicitly promoted prose, nonblank declared invariants,
+  accepted selected advisory risks, and the optional note.
+- `CreativeVariationsOneShotCommit` owns Creative semantic eligibility and the
+  exact artifact-budget check. The closed one-shot operation registry adapts
+  that feature result into the existing feature-neutral coordinator, which
+  creates the retry config, artifact, writer turn, acceptance linkage, and
+  published session state.
+- The host independently rejects unavailable/tool targets, active room runs,
+  active generation, duplicate commit work, malformed drafts, ineligible
+  selections, and over-budget artifacts before room mutation. A durable retry
+  config may remain after a pre-acceptance delivery failure, while a participant
+  reply failure after acceptance does not roll back the committed turn.
+- `useCreativeVariationsAuthoring` remains a transport-free controller with an
+  empty persistence contract. It locks close and destructive authoring while a
+  commit is pending, preserves exact authored state on refusal, and closes only
+  after host acceptance. Blank authored aims stay blank in the durable config.
+- The existing thread-artifact chip fetches the full `wc-N` config. Clone opening
+  restores durable authoring truth with idle transient state; recommit records
+  `clonedFromConfigId` and mints a new config, artifact, and room turn without
+  editing the historical records.
+- The live catalog now mounts the real commit button, pending/error presentation,
+  exact usage meter, and accessible first blocker. Persona preparation remains
+  unavailable until Slice 6, and no editor-write path was introduced.
+
+Verification at this review gate:
+
+- focused Slice 5 contract/compiler, transport/controller, host/coordinator,
+  persistence/reopen, mounted Workshop, and architecture set: 15 suites and
+  177 tests passed;
+- full Jest: 207 suites, 2,242 tests, and 2 snapshots passed;
+- all core, webview, and extension TypeScript configurations passed;
+- ESLint: 0 errors and 960 repository warnings;
+- production resource staging, both webpack bundles, and the bundle sentinel
+  passed; webpack retained its three advisory webview-size warnings;
+- the exact root F5 prelaunch command (`npm run watch`) compiled both
+  development bundles successfully;
+- `git diff --check` passed.
+
+VS Code accepted the Extension Development Host launch command, but display
+capture/automation was unavailable in the current execution environment. No
+fixture-only screenshot is represented as integrated UI evidence. The mounted
+Workshop integration test exercises the live catalog, fixture-backed generation,
+selection, commit acceptance, visible thread chip, exact reopen, and clone
+recommit flow without a paid provider call.
 
 ## Out of scope
 

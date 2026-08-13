@@ -122,6 +122,7 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: (message) => {
       dispatchWorkshopWidgetActionResult(message, {
         handleGestureActionResult: gesturePlayground.handleWidgetActionResult,
+        handleCreativeVariationsActionResult: creativeVariations.handleCommitResult,
         handleLexicalActionResult: lexicalGravity.handleActionResult,
         handleStandingDirectiveActionResult: standingDirectives.handleActionResult
       });

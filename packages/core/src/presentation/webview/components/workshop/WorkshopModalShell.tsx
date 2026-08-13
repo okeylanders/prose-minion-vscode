@@ -77,7 +77,7 @@ interface ShellContextValue {
 const WorkshopModalShellContext = React.createContext<ShellContextValue | null>(null);
 
 /** The shell-managed close button — place it in the caller's header row. */
-const WorkshopModalCloseButton: React.FC = () => {
+const WorkshopModalCloseButton: React.FC<{ disabled?: boolean }> = ({ disabled = false }) => {
   const shell = React.useContext(WorkshopModalShellContext);
   if (!shell) {
     return null;
@@ -87,6 +87,7 @@ const WorkshopModalCloseButton: React.FC = () => {
       ref={shell.closeButtonRef}
       className="pm-ws-modal-close"
       type="button"
+      disabled={disabled}
       onClick={shell.onClose}
       aria-label={shell.closeLabel}
     >

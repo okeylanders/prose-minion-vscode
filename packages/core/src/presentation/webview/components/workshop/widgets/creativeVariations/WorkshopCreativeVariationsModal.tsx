@@ -64,6 +64,7 @@ export type WorkshopCreativeVariationsCommitBlocker =
   | 'room-run-active'
   | 'no-workup'
   | 'no-selection'
+  | 'hard-conflict-selection'
   | 'unaccepted-advisory-risk'
   | 'over-artifact-budget';
 
@@ -87,7 +88,7 @@ export interface WorkshopCreativeVariationsModalProps {
   commitPending: boolean;
   commitError: string | null;
   commitBlockers: readonly WorkshopCreativeVariationsCommitBlocker[];
-  /** False until Slice 5 installs the host commit route for this feature. */
+  /** Narrow host capability boundary; a false value must remain visibly honest. */
   commitAvailable: boolean;
   /** Host/controller-computed commit-payload projection; null before any selection. */
   artifactUsage: WorkshopCreativeVariationsArtifactUsage | null;
@@ -158,6 +159,7 @@ const COMMIT_BLOCKER_COPY: Record<WorkshopCreativeVariationsCommitBlocker, strin
   'room-run-active': 'The room is mid-turn — commit when the current run settles.',
   'no-workup': 'Generate a workup before committing.',
   'no-selection': 'Select at least one take to commit.',
+  'hard-conflict-selection': 'Unselect every take with a hard conflict before committing.',
   'unaccepted-advisory-risk':
     'Accept every advisory risk on your selected takes, or unselect those takes.',
   'over-artifact-budget':
@@ -275,6 +277,10 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
     (selection) => selection.carryMode === 'direction'
   ).length;
   const proseCount = selectedCount - directionCount;
+  const declaredInvariantCount = [
+    draft.invariants.mustSurvive,
+    draft.invariants.mustNotChange
+  ].filter((value) => value.trim().length > 0).length;
 
   const activeBlocker = commitBlockers.length > 0 ? commitBlockers[0] : null;
   const commitUnavailableReason = !commitAvailable
@@ -369,7 +375,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
               </span>
             </div>
           )}
-          <WorkshopModalShell.CloseButton />
+          <WorkshopModalShell.CloseButton disabled={commitPending} />
         </header>
 
         <div className="pm-ws-cvx-body">
@@ -767,6 +773,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                   type="text"
                   value={draft.note}
                   maxLength={BUDGET.creativeNoteCharacters}
+                  disabled={interactionLocked}
                   placeholder="e.g. the props version, but keep her line where it is"
                   onChange={(event) => onNoteChange(event.target.value)}
                 />
@@ -798,7 +805,11 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                     {selectedCount} take{selectedCount === 1 ? '' : 's'}
                     {directionCount > 0 ? ` · ${directionCount} as direction` : ''}
                     {proseCount > 0 ? ` · ${proseCount} as full prose` : ''}
-                    {' '}· both declared constraint fields ride with them
+                    {declaredInvariantCount > 0
+                      ? ` · ${declaredInvariantCount} declared invariant${
+                        declaredInvariantCount === 1 ? '' : 's'
+                      } ride${declaredInvariantCount === 1 ? 's' : ''} with them`
+                      : ' · blank invariant fields add no constraint'}
                   </p>
                 )}
                 {artifactUsage && (

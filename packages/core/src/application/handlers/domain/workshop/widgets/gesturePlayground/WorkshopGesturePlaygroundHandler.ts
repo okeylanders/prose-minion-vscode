@@ -77,6 +77,10 @@ export class WorkshopGesturePlaygroundHandler {
     this.activeGeneration = undefined;
   }
 
+  isGenerationActive(): boolean {
+    return this.activeGeneration !== undefined;
+  }
+
   async handleGenerate(message: WorkshopGesturePlaygroundGenerateMessage): Promise<void> {
     const {
       widgetId,

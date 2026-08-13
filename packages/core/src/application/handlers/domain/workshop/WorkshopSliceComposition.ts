@@ -28,6 +28,9 @@ import {
 import {
   WorkshopOneShotWidgetCommitCoordinator
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
+import type {
+  WorkshopOneShotWidgetId
+} from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 import {
   WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
 } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
@@ -142,13 +145,20 @@ export class WorkshopSliceComposition {
         markDirty
       }
     );
+    const oneShotGenerationActivity = {
+      'gesture-playground': () => this.gesturePlaygroundHandler.isGenerationActive(),
+      'creative-variations': () => this.creativeVariationsHandler.isGenerationActive()
+    } satisfies Record<WorkshopOneShotWidgetId, () => boolean>;
     this.widgetHostHandler = new WorkshopWidgetHostHandler(
       session,
       oneShotCommitCoordinator,
       WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
       postMessage,
       outputChannel,
-      { isRoomRunActive: host.isRoomRunActive }
+      {
+        isRoomRunActive: host.isRoomRunActive,
+        isWidgetGenerationActive: (widgetId) => oneShotGenerationActivity[widgetId]()
+      }
     );
     this.lexicalGravityHandler = new WorkshopLexicalGravityHandler(
       widgetRuntime.lexicalGravity.model,

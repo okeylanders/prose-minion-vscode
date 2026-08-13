@@ -86,7 +86,7 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Playgrounds',
         tag: 'Sprint 03',
-        lifecycleNote: 'play and copy now · thread commit arrives in Slice 5',
+        lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'Three to five genuinely different takes on a passage under any invariants you declare — measured for distinctness, compared side by side.',
         live: true

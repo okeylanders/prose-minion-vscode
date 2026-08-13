@@ -10,6 +10,9 @@ import type {
 import {
   prepareGesturePlaygroundOneShotCommit
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundOneShotCommit';
+import {
+  prepareCreativeVariationsOneShotCommit
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsOneShotCommit';
 
 export type WorkshopOneShotWidgetId = WorkshopCommitWidgetPayload['widgetId'];
 export type WorkshopOneShotWidgetConfigInput = Extract<
@@ -58,6 +61,10 @@ const WORKSHOP_ONE_SHOT_WIDGET_COMMIT_OPERATIONS = {
   'gesture-playground': {
     widgetId: 'gesture-playground',
     prepare: prepareGesturePlaygroundOneShotCommit
+  },
+  'creative-variations': {
+    widgetId: 'creative-variations',
+    prepare: prepareCreativeVariationsOneShotCommit
   }
 } satisfies WorkshopOneShotWidgetCommitOperationRegistry;
 

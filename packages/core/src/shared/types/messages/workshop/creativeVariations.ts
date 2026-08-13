@@ -126,6 +126,20 @@ export interface WorkshopCreativeVariationsDraft {
   note: string;
 }
 
+/**
+ * Exact one-shot commit arm. The authored Draft crosses unchanged so the host
+ * can validate and persist the writer's truth (including a blank aim) before
+ * the feature compiler projects the compact room artifact.
+ */
+export interface WorkshopCreativeVariationsCommitPayload {
+  widgetId: 'creative-variations';
+  /** Fresh webview-minted correlation token for this commit attempt. */
+  requestToken: string;
+  draft: WorkshopCreativeVariationsDraft;
+  /** Present only when recommitting a historical config as a fresh turn. */
+  clonedFromConfigId?: string;
+}
+
 /** Complete transient authoring input for one full-set generation attempt. */
 export interface WorkshopCreativeVariationsGeneratePayload {
   widgetId: 'creative-variations';
