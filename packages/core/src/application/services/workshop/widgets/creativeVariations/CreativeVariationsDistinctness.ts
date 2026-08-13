@@ -8,6 +8,7 @@ import {
 
 /** Presentation calibration: scores at or above 80 warrant the high-overlap warning. */
 export const CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE = 80;
+const SUBJECT_OVERLAP_FLOOR_RATIO = 0.95;
 
 const TOKEN_PATTERN = /[\p{L}\p{N}]+/gu;
 const APOSTROPHE_VARIANTS = /[\u2018\u2019\u02bc]/g;
@@ -38,7 +39,15 @@ export function computeCreativeVariationsTextualOverlap(
     position: card.position,
     proseTokens: requireTokens(card.prose, `card ${card.position} prose`),
     directionTokens: requireTokens(card.direction, `card ${card.position} direction`)
-  }));
+  })).map((card) => {
+    const proseGrams = gramSet(card.proseTokens, 3);
+    return {
+      ...card,
+      proseGrams,
+      proseResidualGrams: difference(proseGrams, subjectProseGrams),
+      directionGrams: gramSet(card.directionTokens, 2)
+    };
+  });
 
   for (let left = 0; left < normalized.length; left += 1) {
     for (let right = left + 1; right < normalized.length; right += 1) {
@@ -56,16 +65,23 @@ export function computeCreativeVariationsTextualOverlap(
     for (let right = left + 1; right < normalized.length; right += 1) {
       const leftCard = normalized[left];
       const rightCard = normalized[right];
-      const leftProse = gramSet(leftCard.proseTokens, 3);
-      const rightProse = gramSet(rightCard.proseTokens, 3);
-      const leftResidual = difference(leftProse, subjectProseGrams);
-      const rightResidual = difference(rightProse, subjectProseGrams);
-      const prose = leftResidual.size === 0 || rightResidual.size === 0
-        ? jaccardPercent(leftProse, rightProse)
-        : jaccardPercent(leftResidual, rightResidual);
+      const fullProse = jaccardPercent(leftCard.proseGrams, rightCard.proseGrams);
+      const residualProse = jaccardPercent(
+        leftCard.proseResidualGrams,
+        rightCard.proseResidualGrams
+      );
+      // Subject removal can discount expected shared language, but it cannot
+      // erase overwhelming whole-card reuse. The floor removes the residual-
+      // size cliff: one or two disjoint trailing grams no longer turn a pair
+      // from near-identical to 0%, while genuinely expanded takes still earn
+      // their score primarily from residual overlap.
+      const prose = Math.max(
+        residualProse,
+        Math.round(fullProse * SUBJECT_OVERLAP_FLOOR_RATIO)
+      );
       const direction = jaccardPercent(
-        gramSet(leftCard.directionTokens, 2),
-        gramSet(rightCard.directionTokens, 2)
+        leftCard.directionGrams,
+        rightCard.directionGrams
       );
       pairs.push({
         leftPosition: leftCard.position,

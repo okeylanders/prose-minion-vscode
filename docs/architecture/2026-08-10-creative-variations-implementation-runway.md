@@ -176,7 +176,7 @@ packages/core/
 flowchart LR
     UI[Creative modal + authoring controller<br/>writer choices] -->|generate intent| CH[Creative handler<br/>async route owner]
     CH -->|bounded request| CS[Creative service + response codec<br/>provider boundary]
-    CS -->|typed cards| CD[Creative distinctness<br/>textual-overlap v1]
+    CS -->|typed cards| CD[Creative distinctness<br/>textual-overlap v2]
     CD -->|validated workup| UI
 
     UI -->|WORKSHOP_COMMIT_WIDGET| HOST[Widget host<br/>family route owner]
@@ -375,9 +375,9 @@ mints a fresh workup id. The note is commit metadata and does not invalidate the
 workup. These rules prevent positional choices from silently transferring to new
 model output.
 
-### 2.5 Textual-overlap v1
+### 2.5 Textual-overlap v2
 
-`textual-overlap-v1` is deterministic evidence of surface reuse, not a semantic
+`textual-overlap-v2` is deterministic evidence of surface reuse, not a semantic
 similarity claim:
 
 1. Normalize with JavaScript `normalize('NFKC').toLowerCase()`. Replace
@@ -391,8 +391,11 @@ similarity claim:
    tokens. Any prose or direction whose normalized token array is empty is
    invalid at the response boundary.
 4. For prose, build `gramSet(tokens, 3)` and remove members also present in the
-   source subject's three-token set. If either card's residual set is empty, use
-   both cards' unadjusted prose sets for that pair.
+   source subject's three-token set. Compare both the residual sets and the
+   unadjusted sets; the settled score is the greater of residual Jaccard and
+   95% of unadjusted Jaccard (rounded). That floor discounts expected source
+   language without letting one disjoint trailing trigram make near-identical
+   takes score zero.
 5. For portable directions, compare `gramSet(tokens, 2)` without source removal.
 6. Jaccard is `intersection.size / union.size`; persist
    `Math.round(100 * ratio)` as an integer `0..100`. For every unordered pair,
@@ -401,7 +404,7 @@ similarity claim:
    and freezes the high-overlap warning threshold; `80` is only the initial
    prototype-derived fixture. Cards remain visible and unranked.
 8. A changed algorithm requires a new version. Integrity recomputes persisted
-   v1 scores rather than trusting checkpoint numbers.
+   versioned scores rather than trusting checkpoint numbers.
 
 This detects copied phrasing and repeated declared moves while discounting
 source language every valid variation may need to preserve. It cannot prove two
@@ -451,7 +454,7 @@ Markdown variation parser is introduced.
 | F4 | HIGH | Workshop selection routing has no Creative target or fan-out. | `ui.ts:20-26`; `useWorkshopAppMessageRouter.ts:86` | exact target + dispatcher + provenance conversion | Slice 4 intake |
 | F5 | HIGH | The prototype cannot serve as runtime behavior: it fakes scores and omits exact state/constraint projection. | ZIP `pm-cvx.js:147-217,231-245` | strict contracts and real controller/service | live flip |
 | F6 | HIGH | Wild reports are too irregular and incomplete to parse into cards. | 260 free sections; malformed `chapter-2.12/engagement-check-1.md:326` | sentinel JSON response codec | generation |
-| F7 | MODERATE | “Similarity” overstates deterministic lexical evidence and averages can hide a duplicate pair. | Sprint requirement; prototype set average | textual-overlap v1 full matrix + max pair | presentation copy |
+| F7 | MODERATE | “Similarity” overstates deterministic lexical evidence and averages can hide a duplicate pair. | Sprint requirement; prototype set average | textual-overlap v2 full matrix + max pair | presentation copy |
 | F8 | MODERATE | The committed chip currently contains Gesture-specific presentation copy. | `WorkshopTurnBubble.tsx:302-315,507-524` | catalog-derived label/icon and neutral selection summary | Creative reopen UX |
 | F9 | MODERATE | Registry roadmap tags and older architecture prose are stale after resequencing/refactor. | `workshopWidgets.ts:82-91,160-179`; `docs/ARCHITECTURE.md:151-155` | update only when implementation makes target current | Slice 7 |
 
@@ -696,7 +699,7 @@ only after the ownership move exists.
 | Advisory risk | Model-declared additive uncertainty that may commit only after the writer explicitly accepts it. | proposed Creative variant |
 | Hard conflict | A model-declared typed flag against the writer's nonblank `must not change` field; visible for comparison but its card is commit-ineligible. Deterministic code validates the flag contract, not the prose's semantics. | proposed Creative variant |
 | Workup id | Fresh host-minted `cvw-<UUID>` for one full-generation attempt; it namespaces derived card/flag identities and is never supplied by the model. | proposed Creative contract |
-| Textual overlap | Versioned deterministic surface-reuse score; it does not claim semantic equivalence. | proposed `textual-overlap-v1` |
+| Textual overlap | Versioned deterministic surface-reuse score; it does not claim semantic equivalence. | `textual-overlap-v2` |
 | Thread artifact | One-turn host-minted payload delivered with a writer turn and never edited in history. | current one-shot rail |
 | Durable retry config | A persisted `wc-N` authoring draft created before room acceptance and retained if acceptance fails. | current behavior; clarifies “atomic” |
 | Clone-and-recommit | Reopening a historical one-shot config as a new draft and committing fresh config/artifact/turn identities. | current invariant |

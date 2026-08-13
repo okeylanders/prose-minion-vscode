@@ -43,7 +43,7 @@ describe('CreativeVariationsResponseCodec', () => {
     expect(workup.cards).toHaveLength(3);
     expect(workup.cards[0].invariantFlags[0].id)
       .toBe(`${WORKUP_ID}:card-1:flag-1`);
-    expect(workup.overlap.algorithmVersion).toBe('textual-overlap-v1');
+    expect(workup.overlap.algorithmVersion).toBe('textual-overlap-v2');
     expect(workup.overlap.pairs).toHaveLength(3);
   });
 
@@ -101,7 +101,9 @@ describe('CreativeVariationsResponseCodec', () => {
     expect(() => decodeCreativeVariationsResponse(
       'x'.repeat(PROMPT_BUDGETS.workshopWidgets.creativeResponseCharacters + 1),
       context
-    )).toThrow(/response exceeds 160000 characters/);
+    )).toThrow(
+      `response exceeds ${PROMPT_BUDGETS.workshopWidgets.creativeResponseCharacters} characters`
+    );
   });
 
   it.each([

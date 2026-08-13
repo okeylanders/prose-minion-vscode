@@ -46,7 +46,9 @@ const statefulFileSystem = () => {
     writeFile,
     rename,
     delete: deleteFile,
-    readDirectory: async () => [],
+    readDirectory: async (directoryPath) => [...files.keys()]
+      .filter((filePath) => path.dirname(filePath) === directoryPath)
+      .map((filePath) => [path.basename(filePath), FileType.File]),
     stat: async (filePath) => {
       const bytes = files.get(filePath);
       if (!bytes) {
@@ -307,6 +309,43 @@ describe('RejectedModelResponseRecoveryStore', () => {
     expect(appendLine).toHaveBeenCalledWith(expect.stringContaining(
       'providerResponseId=gen-lost-123'
     ));
+  });
+
+  it('retains only the newest twenty rejected response bodies and their sidecars', async () => {
+    const state = statefulFileSystem();
+    const appendLine = jest.fn();
+    let second = 0;
+    const store = new RejectedModelResponseRecoveryStore(
+      state.fileSystem,
+      createFakeWorkspace(),
+      '/extension/recovery',
+      { appendLine } as never,
+      () => new Date(Date.UTC(2026, 7, 8, 5, 48, second++))
+    );
+    const receipts = [];
+
+    for (let index = 0; index < 21; index += 1) {
+      receipts.push(await store.capture({
+        toolName: 'creative-variations',
+        requestSummary: `Generate workup ${index}`,
+        rawResponse: `rejected body ${index}`,
+        rejection: 'invalid response'
+      }));
+    }
+
+    const responseFiles = [...state.files.keys()].filter(
+      (filePath) => filePath.endsWith('.response.txt')
+    );
+    const metadataFiles = [...state.files.keys()].filter(
+      (filePath) => filePath.endsWith('.metadata.json')
+    );
+    expect(responseFiles).toHaveLength(20);
+    expect(metadataFiles).toHaveLength(20);
+    expect(state.files.has(receipts[0]!.filePath)).toBe(false);
+    expect(state.files.has(receipts.at(-1)!.filePath)).toBe(true);
+    expect(appendLine).toHaveBeenCalledWith(
+      '[RejectedModelResponseRecovery] Pruned 1 expired response entry; retaining 20.'
+    );
   });
 
   it('models filesystem rename collisions instead of silently replacing a recovery file', async () => {

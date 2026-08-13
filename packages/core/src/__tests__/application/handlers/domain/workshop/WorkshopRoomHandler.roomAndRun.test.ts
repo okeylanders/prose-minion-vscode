@@ -1291,6 +1291,29 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       );
     });
 
+    it('retains a personalized guest opening when provider unavailability blocks the invitation', async () => {
+      await chooseOpen();
+      service.startWorkshopGuestConversation.mockRejectedValueOnce(
+        new AgentRunUnavailableError('provider-unavailable', 'provider disconnected')
+      );
+      const opening = 'Margot, read the distance in this particular silence.';
+
+      await router.route(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'margot', openingMessage: opening }
+      ) as any);
+
+      expect(session.getSnapshot().turns).toEqual([
+        expect.objectContaining({ content: opening, participant: 'writer' })
+      ]);
+      expect(session.getSnapshot().activeRequestId).toBeUndefined();
+      expect(persistence.markDirty)
+        .toHaveBeenCalledWith('unavailable guest invitation retained');
+      expect(posted(MessageType.ERROR).at(-1).payload.message)
+        .toContain('temporarily unavailable');
+      expect(posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toEqual([]);
+    });
+
     it('does not call a session marker conversational catch-up', async () => {
       await chooseOpen();
       session.recordSessionMarker('start', 'Session started now.');

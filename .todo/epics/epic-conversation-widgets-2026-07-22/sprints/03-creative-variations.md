@@ -105,7 +105,7 @@ same route matrix through the production availability policy before release.
 | 0 | Freeze the approved product and architecture contract; record baseline witnesses. |
 | 1 | Extract the shared one-shot commit route and transaction without changing Gesture behavior. |
 | 2 | Add Creative Variations contracts, budgets, codec, persistence lifecycle, and integrity. |
-| 3 | Add prompt bundle, strict response codec, cancellation/correlation, and textual-overlap v1. |
+| 3 | Add prompt bundle, strict response codec, cancellation/correlation, and textual-overlap v2. |
 | 4 | Add selection/paste intake, authoring controller, cards, comparison, and accessible presentation. |
 | 5 | Add compact commit, chip reopen, and clone-and-recommit. |
 | 6 | Add persona recommendation/prefill while keeping report-prefill deferred. |

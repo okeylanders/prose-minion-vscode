@@ -258,6 +258,10 @@ export const WorkshopApp: React.FC = () => {
     setHasSavedKey(!!message.payload?.hasSavedKey);
   }, []);
 
+  const handleApiKeyConfigured = React.useCallback(() => {
+    setHasSavedKey(true);
+  }, []);
+
   const openAssistantSettings = React.useCallback(() => {
     vscode.postMessage({
       type: MessageType.OPEN_ASSISTANT_SETTINGS,
@@ -322,6 +326,7 @@ export const WorkshopApp: React.FC = () => {
     accountBalance,
     startupNotice,
     handleApiKeyStatus,
+    handleApiKeyConfigured,
     handleStatusMessage,
     handleErrorMessage,
     handleCopyResultSuccess,

@@ -91,6 +91,33 @@ describe('OpenRouterClient model hot-swap', () => {
     }
   });
 
+  it('bounds and labels unstructured provider error bodies at the network boundary', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      headers: { get: jest.fn(() => null) },
+      text: jest.fn().mockResolvedValue(`<html>${'gateway failure '.repeat(200)}</html>`)
+    }) as unknown as typeof fetch;
+
+    try {
+      const promise = new OpenRouterClient('key').createChatCompletion([
+        { role: 'user', content: 'Hello' }
+      ]);
+      await expect(promise).rejects.toEqual(
+        expect.objectContaining<Partial<OpenRouterApiError>>({ status: 502 })
+      );
+      await promise.catch((error: OpenRouterApiError) => {
+        expect(error.message).toContain('Unstructured provider response:');
+        expect(error.message).toContain('…');
+        expect(error.message.length).toBeLessThan(1_100);
+        expect(error.message).not.toContain('\n');
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('keeps the model captured when an in-flight request was dispatched', async () => {
     const originalFetch = global.fetch;
     let resolveFetch!: (response: Response) => void;

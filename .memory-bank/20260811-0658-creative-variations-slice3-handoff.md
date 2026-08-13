@@ -55,7 +55,7 @@ Sprint 03.
 - `CreativeVariationsService` performs one quality-first `widget`-scope call,
   validates all input before spend, rejects truncated or malformed completed
   responses, and stores paid rejected bodies through the shared recovery seam.
-- `CreativeVariationsDistinctness` implements `textual-overlap-v1`: NFKC and
+- `CreativeVariationsDistinctness` implements `textual-overlap-v2`: NFKC and
   Unicode token normalization, exact normalized-prose duplicate rejection,
   source-trigram discount with the specified fallback, direction bigrams,
   rounded Jaccard percentages, every canonical unordered pair, and deterministic
@@ -71,6 +71,12 @@ Sprint 03.
   `CoreServices`, and is routed by `WorkshopSliceComposition`. Production still
   reads the catalog entry as `live: false`; focused tests enable exactly
   `creative-variations` through the fixed availability policy.
+
+The feature intentionally keeps semantic integrity, host-minted workup
+identity, and shared derivation helpers in focused sibling modules instead of
+growing `CreativeVariationsConfigCodec.ts` into a mixed-responsibility file.
+Future widgets may make the same split when their integrity surface earns it;
+the split is not a mandatory family layout rule.
 
 ## Presentation state already present
 

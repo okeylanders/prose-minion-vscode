@@ -19,7 +19,7 @@ const card = (
   invariantFlags: []
 });
 
-describe('textual-overlap-v1', () => {
+describe('textual-overlap-v2', () => {
   it('normalizes NFKC, apostrophe variants, dash punctuation, case, and tokens exactly', () => {
     expect(tokenizeCreativeVariationText('ＦＯＸ’S—Turn 42')).toEqual([
       'fox',
@@ -36,15 +36,15 @@ describe('textual-overlap-v1', () => {
     ]);
 
     expect(overlap).toEqual({
-      algorithmVersion: 'textual-overlap-v1',
+      algorithmVersion: 'textual-overlap-v2',
       pairs: [{
         leftPosition: 1,
         rightPosition: 2,
-        prose: 50,
+        prose: 64,
         direction: 33,
-        maximum: 50
+        maximum: 64
       }],
-      maximumPair: { leftPosition: 1, rightPosition: 2, score: 50 }
+      maximumPair: { leftPosition: 1, rightPosition: 2, score: 64 }
     });
   });
 
@@ -53,7 +53,19 @@ describe('textual-overlap-v1', () => {
       card(1, 'the rain hit glass', 'hold the silence'),
       card(2, 'the rain hit glass now', 'break the silence')
     ]);
-    expect(overlap.pairs[0].prose).toBe(67);
+    expect(overlap.pairs[0].prose).toBe(64);
+  });
+
+  it('falls back when one distinguishing trigram would make near-identical takes score zero', () => {
+    const subject = 'She stood at the window and counted the ships until the light failed';
+    const overlap = computeCreativeVariationsTextualOverlap(subject, [
+      card(1, `${subject}, again.`, 'repeat the vigil once'),
+      card(2, `${subject}, always.`, 'make the vigil habitual')
+    ]);
+
+    expect(overlap.pairs[0].prose).toBeGreaterThanOrEqual(
+      CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE
+    );
   });
 
   it('emits every canonical unordered pair and keeps the first maximum on ties', () => {

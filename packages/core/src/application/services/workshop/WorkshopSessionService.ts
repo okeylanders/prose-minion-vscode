@@ -1609,9 +1609,11 @@ export class WorkshopSessionService {
   /**
    * Roll a transiently unavailable message back to its pre-send room state.
    *
-   * The writer turn and capability evidence were provisional until a
-   * participant reply committed. Composer attachments remain pending for a
-   * retry; turn-bound artifact bodies and widget linkage leave with the turn.
+   * The writer turn is provisional until a participant reply commits.
+   * Capability evidence is not: it may already be visible, billed, and the
+   * source of a durable to-do, so rollback retains it. Composer attachments
+   * remain pending for a retry; writer-turn-bound artifact bodies and widget
+   * linkage leave with the writer turn.
    */
   rollbackMessageRun(requestId: string): WorkshopTurn | undefined {
     const active = this.activeRun;
@@ -1639,10 +1641,7 @@ export class WorkshopSessionService {
       this.removeWriterSourceArtifact(widgetCommit.artifactId);
     }
 
-    const rollbackTurnIds = new Set([
-      writerTurn.id,
-      ...(active.capabilityTurnIds ?? [])
-    ]);
+    const rollbackTurnIds = new Set([writerTurn.id]);
     this.turnLedger.removeByIds(rollbackTurnIds);
     this.threadArtifacts = this.threadArtifacts.filter(
       (artifact) => !rollbackTurnIds.has(artifact.turnId)

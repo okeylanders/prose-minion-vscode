@@ -9,6 +9,9 @@ import {
   computeCreativeVariationsTextualOverlap
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 import {
+  CREATIVE_VARIATIONS_RESPONSE_START
+} from '@services/widgets/creativeVariations/CreativeVariationsResponseCodec';
+import {
   MessageType,
   type WorkshopCreativeVariationsGenerateMessage,
   type WorkshopCreativeVariationsWorkup
@@ -173,7 +176,7 @@ describe('WorkshopCreativeVariationsHandler', () => {
 
   it('reports streaming stage and terminal usage without leaking raw chunks', async () => {
     const generate = jest.fn().mockImplementation(async (request) => {
-      request.onToken(`===CREATIVE_VARIATIONS_V1===${'x'.repeat(1_000)}`);
+      request.onToken(`${CREATIVE_VARIATIONS_RESPONSE_START}${'x'.repeat(1_000)}`);
       return {
         cancelled: false,
         workup: workup(request.workupId),

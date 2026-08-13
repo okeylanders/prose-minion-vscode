@@ -23,6 +23,9 @@ import {
 import {
   isCreativeVariationsWorkupId
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
+import {
+  creativeVariationsFlagId
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
 export const CREATIVE_VARIATIONS_RESPONSE_START = '===CREATIVE_VARIATIONS_V1===';
 export const CREATIVE_VARIATIONS_RESPONSE_END = '===END_CREATIVE_VARIATIONS_V1===';
@@ -152,7 +155,11 @@ function decodeCard(
       shapeError(`${flagPath}.kind`, 'hard-conflict only against must-not-change');
     }
     invariantFlags.push({
-      id: `${context.workupId}:card-${expectedPosition}:flag-${invariantFlags.length + 1}`,
+      id: creativeVariationsFlagId(
+        context.workupId,
+        expectedPosition,
+        invariantFlags.length + 1
+      ),
       invariantField,
       kind,
       note: flag.note as string

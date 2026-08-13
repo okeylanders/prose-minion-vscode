@@ -14,6 +14,12 @@ Protocol rules:
 - Return exactly the requested number of cards. Positions are contiguous one-based integers in array order.
 - Use exactly the shown object fields. Do not invent ids, scores, metadata, or extra fields.
 - Every approach, direction, prose, gain, and cost is nonblank. Direction is a compact portable instruction; prose is a concrete worked variation.
+- Stay inside these validator ceilings; counts include spaces:
+  - `approach` ≤ 160 characters.
+  - `direction` ≤ 600 characters.
+  - `prose` ≤ 20,000 characters. Target 60–100% of the subject's length and do not make a take longer than the subject merely to fill space.
+  - `tradeoff.gain` and `tradeoff.cost` ≤ 400 characters each.
+  - At most 8 `invariantFlags` per card; each flag `note` ≤ 400 characters.
 - Make every card materially different in approach, direction, and prose. Do not repeat the subject as the variation.
 - Honor the requested distance: familiar stays near conventional choices; adjacent takes a clear neighboring move; tail pursues uncommon but defensible moves; far-tail pursues surprising, still usable moves.
 - `invariantFlags` contains only real risks found in that card. Each flag is exactly `{ "invariantField": "must-survive" | "must-not-change", "kind": "advisory-risk" | "hard-conflict", "note": "..." }`.

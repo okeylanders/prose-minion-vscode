@@ -27,11 +27,13 @@ export type WorkshopOneShotWidgetRoomSend = (
   executeOptions: {
     /** The writer's staged composer attachments belong to their unfinished message. */
     includeMessageAttachments: false;
+    /** Widget commit copy belongs to the widget sheet, never the room composer. */
+    restoreDraftOnRollback: false;
     widgetArtifact: WorkshopOneShotWidgetRoomArtifact;
     /** Records provisional room acceptance; the coordinator reports final acceptance. */
     onRoomAccepted: (userTurnId: string) => void;
   }
-) => Promise<{ committed: boolean }>;
+) => Promise<{ committed: boolean; refusalReason?: string }>;
 
 export interface WorkshopOneShotWidgetCommitCoordinatorOptions {
   sendRoomMessage: WorkshopOneShotWidgetRoomSend;
@@ -41,7 +43,7 @@ export interface WorkshopOneShotWidgetCommitCoordinatorOptions {
 
 export type WorkshopOneShotWidgetCommitOutcome =
   | { status: 'accepted'; widgetConfigId: string; turnId: string }
-  | { status: 'not-accepted'; widgetConfigId: string }
+  | { status: 'not-accepted'; widgetConfigId: string; reason?: string }
   | { status: 'failed'; widgetConfigId?: string };
 
 export class WorkshopOneShotWidgetCommitCoordinator {
@@ -78,6 +80,7 @@ export class WorkshopOneShotWidgetCommitCoordinator {
         prepared.displayText,
         {
           includeMessageAttachments: false,
+          restoreDraftOnRollback: false,
           widgetArtifact: {
             ...prepared.artifact,
             id: artifactId,
@@ -109,7 +112,11 @@ export class WorkshopOneShotWidgetCommitCoordinator {
         || acceptedConfig?.committedTurnId !== acceptedTurnId
         || acceptedConfig.artifactId !== artifactId
       ) {
-        return { status: 'not-accepted', widgetConfigId: config.id };
+        return {
+          status: 'not-accepted',
+          widgetConfigId: config.id,
+          ...(outcome.refusalReason ? { reason: outcome.refusalReason } : {})
+        };
       }
       onAccepted({ widgetConfigId: config.id, turnId: acceptedTurnId });
       if (!outcome.committed) {

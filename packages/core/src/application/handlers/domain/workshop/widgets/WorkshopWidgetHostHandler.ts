@@ -159,7 +159,8 @@ export class WorkshopWidgetHostHandler {
         widgetId,
         ok: false,
         widgetConfigId: outcome.widgetConfigId,
-        message: 'The room did not accept the commit. Your draft is still open — try again.'
+        message: outcome.reason
+          ?? 'The room did not accept the commit. Your draft is still open — try again.'
       });
     } else if (outcome.status === 'failed') {
       this.postActionResult({

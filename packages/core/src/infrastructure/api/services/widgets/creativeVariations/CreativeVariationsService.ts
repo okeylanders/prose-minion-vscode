@@ -32,6 +32,10 @@ import {
 import {
   isCreativeVariationsWorkupId
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
+import {
+  creativeVariationsGenerationDraft,
+  creativeVariationsSourceReferenceKey
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
 export interface CreativeVariationsSourceMaterial {
   reference: WorkshopWidgetSourceReference;
@@ -103,7 +107,8 @@ export class CreativeVariationsService {
         request,
         content,
         result,
-        `response reached the ${BUDGET.creativeOutputTokens.toLocaleString('en-US')}-token output ceiling`
+        `response reached the ${BUDGET.creativeOutputTokens.toLocaleString('en-US')}-token output ceiling`,
+        'Shorten the passage or request fewer cards before generating again.'
       );
     }
     try {
@@ -127,16 +132,7 @@ export class CreativeVariationsService {
     if (!isCreativeVariationsWorkupId(request.workupId)) {
       throw new Error('Creative Variations workup id must be a host-minted cvw-<UUID> id');
     }
-    const draft = {
-      subject: request.subject,
-      surroundingContext: request.surroundingContext,
-      invariants: request.invariants,
-      intent: request.intent,
-      requestedCount: request.requestedCount,
-      workup: null,
-      selections: [],
-      note: ''
-    };
+    const draft = creativeVariationsGenerationDraft(request);
     assertCreativeVariationsDraftShape(draft, 'Creative Variations request');
     assertCreativeVariationsDraftIntegrity(draft, 'Creative Variations request');
     if (request.sourceMaterials.length !== request.surroundingContext.sourceReferences.length) {
@@ -144,7 +140,7 @@ export class CreativeVariationsService {
     }
     const keys = new Set<string>();
     for (const source of request.sourceMaterials) {
-      const key = this.referenceKey(source.reference);
+      const key = creativeVariationsSourceReferenceKey(source.reference);
       if (keys.has(key)) {
         throw new Error(`Duplicate source material reference: ${key}`);
       }
@@ -156,9 +152,13 @@ export class CreativeVariationsService {
       }
     }
     const expectedKeys = request.surroundingContext.sourceReferences.map(
-      (reference) => this.referenceKey(reference)
+      (reference) => creativeVariationsSourceReferenceKey(reference)
     );
-    if (expectedKeys.some((key, index) => this.referenceKey(request.sourceMaterials[index].reference) !== key)) {
+    if (expectedKeys.some(
+      (key, index) => creativeVariationsSourceReferenceKey(
+        request.sourceMaterials[index].reference
+      ) !== key
+    )) {
       throw new Error('Resolved source material must preserve requested reference order');
     }
     const totalContextCharacters = request.surroundingContext.writerText.length
@@ -172,7 +172,7 @@ export class CreativeVariationsService {
 
   private buildUserMessage(request: CreativeVariationsGenerationRequest): string {
     const sources = request.sourceMaterials.map((source) => ({
-      reference: this.referenceKey(source.reference),
+      reference: creativeVariationsSourceReferenceKey(source.reference),
       label: source.label,
       content: source.content
     }));
@@ -197,7 +197,8 @@ export class CreativeVariationsService {
     request: CreativeVariationsGenerationRequest,
     content: string,
     result: ExecutionResult,
-    rejection: string
+    rejection: string,
+    nextStep = 'Try Generate again.'
   ): Promise<never> {
     this.outputChannel?.appendLine(
       `[CreativeVariationsService] Rejected response: ${rejection}`
@@ -215,14 +216,8 @@ export class CreativeVariationsService {
     );
     throw new Error(
       `The model returned unusable Creative Variations (${rejection}). `
-      + `${recoveryLocationNotice(receipt)} Try Generate again.`
+      + `${recoveryLocationNotice(receipt)} ${nextStep}`
     );
-  }
-
-  private referenceKey(reference: WorkshopWidgetSourceReference): string {
-    return reference.kind === 'active-excerpt'
-      ? 'active-excerpt'
-      : `context-attachment:${reference.attachmentId}`;
   }
 
   private errorMessage(error: unknown): string {

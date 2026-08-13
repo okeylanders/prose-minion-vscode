@@ -11,9 +11,7 @@ import {
   workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
 import {
-  workshopWidgetArtifactKind,
-  workshopWidgetDescriptor,
-  type WorkshopWidgetRail
+  workshopWidgetArtifactKind
 } from '@shared/constants/workshopWidgets';
 import type {
   WorkshopSessionStateV1
@@ -293,7 +291,7 @@ export function validateWorkshopSessionStateV1(
         );
       }
     }
-    assertWidgetConfigCommitLinkage(config, state, workshopWidgetDescriptor(config.widgetId)?.rail);
+    assertWidgetConfigCommitLinkage(config, state);
   }
   for (const turn of state.turns) {
     if (!turn.widgetCommit) {
@@ -510,8 +508,7 @@ export function validateWorkshopSessionStateV1(
 
 function assertWidgetConfigCommitLinkage(
   config: NonNullable<WorkshopSessionStateV1['widgetConfigs']>[number],
-  state: WorkshopSessionStateV1,
-  rail: WorkshopWidgetRail | undefined
+  state: WorkshopSessionStateV1
 ): void {
   const linkageCount = [
     config.committedTurnId,
@@ -522,7 +519,13 @@ function assertWidgetConfigCommitLinkage(
     return;
   }
 
-  if (rail === 'standing') {
+  // Durable validity comes from the persisted commit record, not the current
+  // product catalog: retiring or regrouping a widget cannot invalidate an
+  // otherwise self-describing archived session.
+  if (config.directiveId !== undefined) {
+    const turnExists = state.turns.some(
+      (candidate) => candidate.id === config.committedTurnId
+    );
     const directive = (state.standingDirectives ?? []).find(
       (candidate) => candidate.id === config.directiveId
     );
@@ -530,6 +533,7 @@ function assertWidgetConfigCommitLinkage(
       linkageCount !== 2
       || config.committedTurnId === undefined
       || config.directiveId === undefined
+      || !turnExists
       || !directive
       || directive.widgetConfigId !== config.id
       || directive.widgetId !== config.widgetId
@@ -554,7 +558,7 @@ function assertWidgetConfigCommitLinkage(
     );
   }
 
-  if (rail === 'oneshot') {
+  if (turn.widgetCommit.rail === 'thread-artifact') {
     if (
       linkageCount !== 2
       || config.artifactId === undefined
@@ -568,7 +572,9 @@ function assertWidgetConfigCommitLinkage(
     return;
   }
 
-  throw new Error(`Persisted Workshop widget config ${config.id} has no catalog rail`);
+  throw new Error(
+    `Persisted Workshop widget config ${config.id} has invalid standing linkage`
+  );
 }
 
 function numericIdSuffix(id: string, pattern: RegExp, label: string): number {

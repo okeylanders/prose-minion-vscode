@@ -47,6 +47,7 @@ export interface WorkshopAppMessageRouterDeps {
   accountBalance: UseAccountBalanceReturn;
   startupNotice: UseStartupNoticeReturn;
   handleApiKeyStatus: (message: ApiKeyStatusMessage) => void;
+  handleApiKeyConfigured: () => void;
   handleStatusMessage: (message: StatusMessage) => void;
   handleErrorMessage: (message: ErrorMessage) => void;
   handleCopyResultSuccess: (message: CopyResultSuccessMessage) => void;
@@ -69,6 +70,7 @@ export function buildWorkshopAppMessageRoutes(
     accountBalance,
     startupNotice,
     handleApiKeyStatus,
+    handleApiKeyConfigured,
     handleStatusMessage,
     handleErrorMessage,
     handleCopyResultSuccess,
@@ -116,6 +118,7 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
     [MessageType.STARTUP_NOTICE_DATA]: startupNotice.handleStartupNoticeData,
     [MessageType.API_KEY_STATUS]: handleApiKeyStatus,
+    [MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]: handleApiKeyConfigured,
     [MessageType.COPY_RESULT_SUCCESS]: handleCopyResultSuccess,
     [MessageType.SAVE_RESULT_SUCCESS]: handleSaveResultSuccess
   };

@@ -105,6 +105,7 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
       'Here are the directions I want.',
       expect.objectContaining({
         includeMessageAttachments: false,
+        restoreDraftOnRollback: false,
         widgetArtifact: expect.objectContaining({
           id: 'ta-2',
           widgetId: 'gesture-playground',
@@ -199,6 +200,26 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
     expect(harness.session.getWidgetConfig('wc-1')).toBeDefined();
     expect(harness.session.getWidgetConfig('wc-1')?.committedTurnId).toBeUndefined();
     expect(harness.session.getWidgetConfig('wc-1')?.artifactId).toBeUndefined();
+  });
+
+  it('carries a room refusal reason back to the still-open widget sheet', async () => {
+    const sendRoomMessage = jest.fn().mockResolvedValue({
+      committed: false,
+      refusalReason: 'OpenRouter is rate limiting requests. Wait a moment and try again.'
+    });
+    const harness = build(sendRoomMessage);
+
+    const outcome = await harness.coordinator.commit(
+      prepared(),
+      { kind: 'host' },
+      jest.fn()
+    );
+
+    expect(outcome).toEqual({
+      status: 'not-accepted',
+      widgetConfigId: 'wc-1',
+      reason: 'OpenRouter is rate limiting requests. Wait a moment and try again.'
+    });
   });
 
   it('keeps the durable config when the room send throws before acceptance', async () => {

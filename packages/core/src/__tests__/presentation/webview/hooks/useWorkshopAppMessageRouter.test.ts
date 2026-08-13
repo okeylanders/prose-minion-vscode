@@ -42,6 +42,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   accountBalance: { handleAccountBalanceData: jest.fn() } as never,
   startupNotice: { handleStartupNoticeData: jest.fn() } as never,
   handleApiKeyStatus: jest.fn(),
+  handleApiKeyConfigured: jest.fn(),
   handleStatusMessage: jest.fn(),
   handleErrorMessage: jest.fn(),
   handleCopyResultSuccess: jest.fn(),
@@ -113,5 +114,20 @@ describe('buildWorkshopAppMessageRoutes', () => {
     routes[MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]!(message as never);
 
     expect(deps.workshopRoom.handleComposerDraftRestored).toHaveBeenCalledWith(message);
+  });
+
+  it('routes successful key self-heal to the Workshop availability owner', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const message = {
+      type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+      source: 'extension.handler',
+      timestamp: 1,
+      payload: {}
+    } as const;
+
+    routes[MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]!(message as never);
+
+    expect(deps.handleApiKeyConfigured).toHaveBeenCalledTimes(1);
   });
 });

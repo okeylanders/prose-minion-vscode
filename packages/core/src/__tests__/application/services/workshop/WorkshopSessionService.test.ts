@@ -144,6 +144,52 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(new WorkshopRoomDeliveryService(service).prepare({ kind: 'host' }).turns).toEqual([]);
   });
 
+  it('retains capability evidence and to-dos that already reference it when a message rolls back', () => {
+    pin();
+    const writerTurn = service.beginPersonaMessage(
+      'offline-capability-run',
+      'Check continuity before answering.'
+    );
+    const capabilityTurn = service.recordCapabilityArtifact({
+      requestId: 'offline-capability-run',
+      excerptVersion: 1,
+      toolId: 'continuity',
+      details: {
+        operation: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Continuity',
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' },
+        metadata: { toolId: 'continuity' }
+      },
+      result: {
+        capability: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Continuity',
+        content: 'The cup changes hands twice.'
+      },
+      actionableFindings: [{
+        key: 'finding-1',
+        ordinal: 1,
+        text: 'Keep the cup with Mara until the final beat.'
+      }]
+    })!.turn;
+    const todo = service.addTodoFromFinding(capabilityTurn.id, 'finding-1');
+
+    expect(service.rollbackMessageRun('offline-capability-run')).toEqual(writerTurn);
+
+    expect(service.getSnapshot().turns).toEqual([
+      expect.objectContaining({ id: capabilityTurn.id, artifact: 'tool_report' })
+    ]);
+    expect(service.getSnapshot().todos).toEqual([
+      expect.objectContaining({
+        id: todo.id,
+        source: expect.objectContaining({ turnId: capabilityTurn.id })
+      })
+    ]);
+    expect(() => service.exportCommittedState()).not.toThrow();
+  });
+
   it('does not roll back a superseded run or its visible writer turn', () => {
     service.setSessionScope('open');
     const turn = service.beginPersonaMessage('first-run', 'Keep this turn.');

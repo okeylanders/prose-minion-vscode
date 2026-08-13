@@ -12,7 +12,8 @@ import {
   AgentCapability,
   CapabilityArtifact,
   CapabilityDeliveredSource,
-  CapabilityFulfillment
+  CapabilityFulfillment,
+  isAgentRunIncomplete
 } from '@orchestration/AgentRunContracts';
 import { isContextPathGroup } from '@shared/types/context';
 import { DictionaryService } from '@services/dictionary/DictionaryService';
@@ -485,10 +486,10 @@ export class WorkshopPersonaCapability implements AgentCapability<
     const failed = isApiKeyNotConfiguredWarning(lookup.content) || lookup.content.startsWith('Error:');
     return {
       capability: request.capability,
-      status: failed ? 'failed' : lookup.finishReason === 'length' ? 'partial' : 'success',
+      status: failed ? 'failed' : isAgentRunIncomplete(lookup.finishReason) ? 'partial' : 'success',
       requestSummary: this.requestSummary(request),
       content: lookup.content,
-      metadata: { truncated: lookup.finishReason === 'length' },
+      metadata: { truncated: isAgentRunIncomplete(lookup.finishReason) },
       usage: lookup.usage,
       error: failed ? lookup.content : undefined
     };
@@ -574,12 +575,12 @@ export class WorkshopPersonaCapability implements AgentCapability<
     }
     return {
       capability: request.capability,
-      status: failed ? 'failed' : analysis.finishReason === 'length' ? 'partial' : 'success',
+      status: failed ? 'failed' : isAgentRunIncomplete(analysis.finishReason) ? 'partial' : 'success',
       requestSummary: this.requestSummary(request),
       content: analysis.content,
       metadata: {
         toolId: request.toolId,
-        truncated: analysis.finishReason === 'length',
+        truncated: isAgentRunIncomplete(analysis.finishReason),
         retainedSidecar: false,
         runDoor: 'persona',
         analysisInputs: inputs.provenance

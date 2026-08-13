@@ -9,9 +9,14 @@ import { shapeError } from '@/application/services/workshop/persistedValidation'
 import {
   computeCreativeVariationsTextualOverlap
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
+import { CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION } from '@messages';
 import {
   isCreativeVariationsWorkupId
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
+import {
+  creativeVariationsFlagId,
+  creativeVariationsSourceReferenceKey
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
 export function assertCreativeVariationsDraftIntegrity(
   draft: WorkshopCreativeVariationsDraft,
@@ -59,9 +64,7 @@ function assertSourceReferenceIntegrity(
 ): void {
   const keys = new Set<string>();
   for (const reference of draft.surroundingContext.sourceReferences) {
-    const key = reference.kind === 'active-excerpt'
-      ? 'active-excerpt'
-      : `context-attachment:${reference.attachmentId}`;
+    const key = creativeVariationsSourceReferenceKey(reference);
     if (keys.has(key)) {
       shapeError(
         `${path}.surroundingContext.sourceReferences`,
@@ -93,7 +96,11 @@ function assertWorkupIntegrity(
       );
     }
     for (const [flagIndex, flag] of card.invariantFlags.entries()) {
-      const expectedId = `${workup.workupId}:card-${card.position}:flag-${flagIndex + 1}`;
+      const expectedId = creativeVariationsFlagId(
+        workup.workupId,
+        card.position,
+        flagIndex + 1
+      );
       if (flag.id !== expectedId) {
         shapeError(
           `${path}.workup.cards[${index}].invariantFlags[${flagIndex}].id`,
@@ -151,7 +158,7 @@ function assertOverlapIntegrity(
     ) {
       shapeError(
         `${path}.workup.overlap.pairs[${index}]`,
-        `recomputed textual-overlap-v1 evidence for pair ${expectedPair.leftPosition}-${expectedPair.rightPosition}`
+        `recomputed ${CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION} evidence for pair ${expectedPair.leftPosition}-${expectedPair.rightPosition}`
       );
     }
   }

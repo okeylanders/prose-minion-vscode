@@ -8,6 +8,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  assertCreativeVariationsDraftIntegrity
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import { generatedDraft } from './creativeVariationsFixtures';
 
 const componentDirectory = path.resolve(
   __dirname,
@@ -64,5 +68,12 @@ describe('creativeVariations presentation boundaries', () => {
         expect(source).not.toMatch(/@hooks|@handlers|@services|infrastructure/);
       });
     }
+  });
+
+  it('uses a generated presentation fixture accepted by durable integrity', () => {
+    expect(() => assertCreativeVariationsDraftIntegrity(
+      generatedDraft,
+      'Creative Variations presentation fixture'
+    )).not.toThrow();
   });
 });

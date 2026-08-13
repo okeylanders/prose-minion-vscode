@@ -129,8 +129,8 @@ describe('prompt budgets', () => {
       creativeTradeoffCharacters: 400,
       creativeFlagsPerCard: 8,
       creativeFlagNoteCharacters: 400,
-      creativeOutputTokens: 30_000,
-      creativeResponseCharacters: 160_000,
+      creativeOutputTokens: 45_000,
+      creativeResponseCharacters: 140_000,
       creativeArtifactCharacters: 20_000,
       lexicalLensNameCharacters: 80,
       lexicalLensSlugCharacters: 64,
@@ -217,6 +217,32 @@ describe('prompt budgets', () => {
     ]) {
       expect(previewPrompt).toContain(fragment);
     }
+  });
+
+  it('declares every Creative Variations response ceiling to the model', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(
+        SRC_ROOT,
+        '..',
+        'resources',
+        'system-prompts',
+        'creative-variations',
+        '00-creative-variations.md'
+      ),
+      'utf8'
+    );
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    for (const fragment of [
+      `\`approach\` ≤ ${budget.creativeApproachCharacters} characters`,
+      `\`direction\` ≤ ${budget.creativeDirectionCharacters} characters`,
+      `\`prose\` ≤ ${budget.creativeProseCharacters.toLocaleString('en-US')} characters`,
+      `\`tradeoff.gain\` and \`tradeoff.cost\` ≤ ${budget.creativeTradeoffCharacters} characters each`,
+      `At most ${budget.creativeFlagsPerCard} \`invariantFlags\` per card`,
+      `flag \`note\` ≤ ${budget.creativeFlagNoteCharacters} characters`
+    ]) {
+      expect(prompt).toContain(fragment);
+    }
+    expect(prompt).toContain("Target 60–100% of the subject's length");
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

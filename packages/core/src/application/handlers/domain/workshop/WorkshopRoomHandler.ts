@@ -475,7 +475,10 @@ export class WorkshopRoomHandler {
       this.postSessionState();
     }
 
-    await this.executeMessage(text, text, undefined, { includeMessageAttachments: true });
+    await this.executeMessage(text, text, undefined, {
+      includeMessageAttachments: true,
+      restoreDraftOnRollback: true
+    });
   }
 
   async handleSelectPersona(message: WorkshopSelectPersonaMessage): Promise<void> {
@@ -645,16 +648,12 @@ export class WorkshopRoomHandler {
         this.postSessionState();
       } catch (error) {
         const details = error instanceof Error ? error.message : String(error);
+        this.session.abandonRun(requestId);
         if (error instanceof AgentRunUnavailableError) {
-          const rolledBack = this.session.rollbackMessageRun(requestId);
-          if (rolledBack) {
-            this.sessionPersistence.markDirty('unavailable guest invitation rolled back');
-            this.outputChannel.appendLine(
-              `[WorkshopRoomHandler] Rolled back unavailable guest invitation turn ${rolledBack.id}`
-            );
-          }
-        } else {
-          this.session.abandonRun(requestId);
+          // A personalized invitation is authored in a dedicated sheet and
+          // has no draft-restoration channel. Keep its visible turn so the
+          // writer retains the only copy after a provider refusal.
+          this.sessionPersistence.markDirty('unavailable guest invitation retained');
         }
         this.sendStreamComplete(requestId, '', true);
         if (error instanceof Error && error.name === 'AbortError') {
@@ -906,6 +905,8 @@ export class WorkshopRoomHandler {
        * deterministic quick actions never consume them (Phase 6B).
        */
       includeMessageAttachments?: boolean;
+      /** Restore writer-owned composer text if transient rollback removes its turn. */
+      restoreDraftOnRollback?: boolean;
       /**
        * Atomic widget commit (ADR 2026-07-22): a host-built one-shot artifact
        * that rides THIS send without ever entering the pending list, plus the
@@ -920,7 +921,7 @@ export class WorkshopRoomHandler {
        */
       onRoomAccepted?: (userTurnId: string) => void;
     }
-  ): Promise<{ committed: boolean }> {
+  ): Promise<{ committed: boolean; refusalReason?: string }> {
     const personaId = this.session.getSelectedPersonaId();
     const targetPlan = this.resolveMessageTarget(
       targetOverride ?? this.session.getChatTarget(),
@@ -1226,7 +1227,7 @@ export class WorkshopRoomHandler {
           this.outputChannel.appendLine(
             `[WorkshopRoomHandler] Rolled back unavailable writer turn ${rolledBack.id}`
           );
-          if (executeOptions?.includeMessageAttachments) {
+          if (executeOptions?.restoreDraftOnRollback) {
             this.postComposerDraftRestored(rolledBack.content);
           }
         }
@@ -1261,7 +1262,12 @@ export class WorkshopRoomHandler {
         this.sendError('workshop.send_message', `Failed to message ${label}`, details);
       }
       this.postSessionState();
-      return { committed: false };
+      return {
+        committed: false,
+        ...(error instanceof AgentRunUnavailableError
+          ? { refusalReason: error.message }
+          : {})
+      };
     } finally {
       this.settleActiveRun(requestId);
     }

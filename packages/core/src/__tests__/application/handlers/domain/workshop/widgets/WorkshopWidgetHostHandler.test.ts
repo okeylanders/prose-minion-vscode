@@ -51,7 +51,7 @@ describe('WorkshopWidgetHostHandler', () => {
     roomRunActive?: boolean;
     commitOutcome?:
       | { status: 'accepted'; widgetConfigId: string; turnId: string }
-      | { status: 'not-accepted'; widgetConfigId: string }
+      | { status: 'not-accepted'; widgetConfigId: string; reason?: string }
       | { status: 'failed'; widgetConfigId?: string };
   } = {}) => {
     let clock = 0;
@@ -268,6 +268,19 @@ describe('WorkshopWidgetHostHandler', () => {
         widgetConfigId: commitOutcome.widgetConfigId,
         message: expect.stringMatching(expectedMessage)
       })
+    }));
+  });
+
+  it('shows a specific room refusal reason instead of the generic retry loop', async () => {
+    const reason = 'OpenRouter is rate limiting requests. Wait a moment and try again.';
+    const { handler, postMessage } = createHandler({
+      commitOutcome: { status: 'not-accepted', widgetConfigId: 'wc-2', reason }
+    });
+
+    await handler.handleCommit(commitMessage());
+
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ ok: false, message: reason })
     }));
   });
 });

@@ -28,6 +28,13 @@ import {
   assertCreativeVariationsDraftIntegrity,
   assertCreativeVariationsDraftShape
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
+  creativeVariationsGenerationDraft,
+  creativeVariationsSourceReferenceKey
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
+import {
+  CREATIVE_VARIATIONS_RESPONSE_START
+} from '@services/widgets/creativeVariations/CreativeVariationsResponseCodec';
 
 type CreativeGenerationStage =
   WorkshopCreativeVariationsGenerationProgressMessage['payload']['stage'];
@@ -107,16 +114,7 @@ export class WorkshopCreativeVariationsHandler {
     this.postProgress(progress, 'started');
 
     try {
-      const transientDraft = {
-        subject: message.payload.subject,
-        surroundingContext: message.payload.surroundingContext,
-        invariants: message.payload.invariants,
-        intent: message.payload.intent,
-        requestedCount: message.payload.requestedCount,
-        workup: null,
-        selections: [],
-        note: ''
-      };
+      const transientDraft = creativeVariationsGenerationDraft(message.payload);
       assertCreativeVariationsDraftShape(transientDraft, 'Creative Variations request');
       assertCreativeVariationsDraftIntegrity(transientDraft, 'Creative Variations request');
       const request: CreativeVariationsGenerationRequest = {
@@ -181,7 +179,7 @@ export class WorkshopCreativeVariationsHandler {
     }
     progress.outputCharacters += chunk.length;
     const markerCandidate = `${progress.markerBuffer}${chunk}`;
-    if (markerCandidate.includes('===CREATIVE_VARIATIONS_V1===')) {
+    if (markerCandidate.includes(CREATIVE_VARIATIONS_RESPONSE_START)) {
       progress.stage = 'variations';
     }
     progress.markerBuffer = markerCandidate.slice(-128);
@@ -248,9 +246,7 @@ export class WorkshopCreativeVariationsHandler {
   ): CreativeVariationsSourceMaterial[] {
     const seen = new Set<string>();
     return references.map((reference) => {
-      const key = reference.kind === 'active-excerpt'
-        ? 'active-excerpt'
-        : `context-attachment:${reference.attachmentId}`;
+      const key = creativeVariationsSourceReferenceKey(reference);
       if (seen.has(key)) {
         throw new Error(`Duplicate source material reference: ${key}`);
       }

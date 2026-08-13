@@ -12,7 +12,8 @@ import {
   ADVISORY_RISK_ID,
   baseDraft,
   emptyDraft,
-  generatedDraft
+  generatedDraft,
+  workup
 } from './creativeVariationsFixtures';
 
 const widgetModels: ModelOption[] = [
@@ -91,6 +92,23 @@ describe('WorkshopCreativeVariationsModal', () => {
     });
     expect(screen.getByText('pasted · no surrounding passage')).toBeTruthy();
     expect(screen.getByText(/cannot check continuity against the pages around it/)).toBeTruthy();
+  });
+
+  it('states when separately supplied context travels with a pasted subject', () => {
+    renderModal({
+      draft: {
+        ...baseDraft,
+        subject: { text: 'Pasted paragraph.', provenance: { kind: 'pasted' } },
+        surroundingContext: {
+          writerText: 'The paragraph before this one.',
+          sourceReferences: []
+        }
+      }
+    });
+
+    expect(screen.getByText('pasted · context supplied separately')).toBeTruthy();
+    expect(screen.getByText(/sees this passage.*surrounding context/i)).toBeTruthy();
+    expect(screen.queryByText(/declared constraints and nothing else/)).toBeNull();
   });
 
   it('shows display-safe excerpt provenance with line bounds', () => {
@@ -200,12 +218,15 @@ describe('WorkshopCreativeVariationsModal', () => {
     expect(
       screen.getByText(/Cannot commit — the model declared a hard conflict/)
     ).toBeTruthy();
-    expect(screen.getByText(/Two mugs on the counter/)).toBeTruthy();
+    expect(screen.getByText(/watching\. Still\.$/)).toBeTruthy();
   });
 
   it('reports textual overlap as evidence — maximum pair, never a ranking', () => {
     renderModal({ draft: generatedDraft });
-    expect(screen.getByText('maximum pair: Take 2 ↔ Take 3 · 86%')).toBeTruthy();
+    const maximum = workup.overlap.maximumPair;
+    expect(screen.getByText(
+      `maximum pair: Take ${maximum.leftPosition} ↔ Take ${maximum.rightPosition} · ${maximum.score}%`
+    )).toBeTruthy();
     expect(
       screen.getByText('deterministic surface reuse · not a meaning or quality score')
     ).toBeTruthy();
@@ -214,7 +235,10 @@ describe('WorkshopCreativeVariationsModal', () => {
   it('warns on high overlap without hiding or removing takes', () => {
     renderModal({ draft: generatedDraft, highOverlapThreshold: 80 });
     const warning = screen.getByRole('status');
-    expect(warning.textContent).toContain('High textual overlap between Take 2 and Take 3 (86%).');
+    const maximum = workup.overlap.maximumPair;
+    expect(warning.textContent).toContain(
+      `High textual overlap between Take ${maximum.leftPosition} and Take ${maximum.rightPosition} (${maximum.score}%).`
+    );
     expect(warning.textContent).toContain('Nothing is ranked, hidden, or removed');
     // Every card is still on screen.
     expect(screen.getByText('Absence as furniture')).toBeTruthy();
@@ -222,14 +246,23 @@ describe('WorkshopCreativeVariationsModal', () => {
   });
 
   it('does not warn when the maximum pair sits under the threshold', () => {
-    renderModal({ draft: generatedDraft, highOverlapThreshold: 90 });
+    renderModal({
+      draft: generatedDraft,
+      highOverlapThreshold: workup.overlap.maximumPair.score + 1
+    });
     expect(screen.queryByText(/High textual overlap/)).toBeNull();
   });
 
   it('lists the full pair matrix behind a disclosure', () => {
     renderModal({ draft: generatedDraft });
     fireEvent.click(screen.getByText('All pairs'));
-    expect(screen.getByRole('row', { name: /Take 1 ↔ Take 2 22% 14% 22%/ })).toBeTruthy();
+    const firstPair = workup.overlap.pairs[0];
+    expect(screen.getByRole('row', {
+      name: new RegExp(
+        `Take ${firstPair.leftPosition} ↔ Take ${firstPair.rightPosition} `
+        + `${firstPair.prose}% ${firstPair.direction}% ${firstPair.maximum}%`
+      )
+    })).toBeTruthy();
   });
 
   it('opens and dismisses the side-by-side comparison from ephemeral compare marks', () => {

@@ -68,7 +68,7 @@ export interface WorkshopActiveRun {
   /** Behavior captured when a persona run begins; settings cannot change mid-run. */
   behavior?: WorkshopConversationBehavior;
   behaviorTransition?: WorkshopConversationBehaviorTransition;
-  /** Provisional evidence finalized only if this participant reply commits. */
+  /** Completed evidence to publish with a reply if it commits; otherwise retained standalone. */
   capabilityTurnIds?: string[];
   /** Visible writer turn provisionally appended for this message run. */
   writerTurnId?: string;

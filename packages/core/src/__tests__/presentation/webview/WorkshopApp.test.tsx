@@ -153,9 +153,9 @@ describe('WorkshopApp', () => {
     act(() => {
       window.dispatchEvent(new MessageEvent('message', {
         data: {
-          type: MessageType.API_KEY_STATUS,
-          source: 'extension.configuration',
-          payload: { hasSavedKey: true },
+          type: MessageType.CLEAR_TRANSIENT_API_KEY_WARNING,
+          source: 'extension.handler',
+          payload: {},
           timestamp: 2
         }
       }));

@@ -31,6 +31,7 @@ import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
 import { boundedLogText } from '@/utils/boundedLogText';
+import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -171,7 +172,7 @@ function widgetRecommendationRejectionNotice(
  */
 export function completeWorkshopRun(input: WorkshopRunCompletionInput): WorkshopTurn | undefined {
   const { session, requestId, label, result, copy, events } = input;
-  const truncated = result.finishReason === 'length';
+  const truncated = isAgentRunIncomplete(result.finishReason);
 
   if (input.aborted) {
     input.log(`Run cancelled: ${requestId} (${label}, ${result.content.length} chars discarded)`);

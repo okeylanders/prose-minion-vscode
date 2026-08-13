@@ -12,6 +12,7 @@ import {
 import { isHttpUrl, type UrlCitation } from '@messages';
 
 const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
+const UNSTRUCTURED_ERROR_BODY_CHARACTERS = 1_000;
 
 export interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
@@ -386,14 +387,26 @@ export class OpenRouterClient {
       const parsed = JSON.parse(body) as { error?: OpenRouterErrorPayload };
       payload = parsed.error;
     } catch {
-      // Plain-text provider errors remain useful diagnostics.
+      // Plain-text/HTML gateway bodies are third-party diagnostics. Keep a
+      // bounded, one-line excerpt so they cannot flood the Output channel or
+      // masquerade as Prose Minion-authored copy in the webview.
     }
     const retryAfter = Number(response.headers?.get('Retry-After'));
     return this.toApiError(
-      payload ?? { message: body },
+      payload ?? { message: this.unstructuredErrorBody(body) },
       response.status,
       Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
     );
+  }
+
+  private unstructuredErrorBody(body: string): string {
+    const normalized = body.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return 'Unstructured provider response contained no readable text.';
+    }
+    const truncated = normalized.length > UNSTRUCTURED_ERROR_BODY_CHARACTERS;
+    const excerpt = normalized.slice(0, UNSTRUCTURED_ERROR_BODY_CHARACTERS);
+    return `Unstructured provider response: ${excerpt}${truncated ? '…' : ''}`;
   }
 
   private toApiError(

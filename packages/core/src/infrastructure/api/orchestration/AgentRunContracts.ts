@@ -178,3 +178,11 @@ export interface ExecutionResult {
   readonly conversationId?: string;
   readonly citations?: UrlCitation[];
 }
+
+/** A provider ended a stream after user-visible prose had already arrived. */
+export const AGENT_RUN_INTERRUPTED_FINISH_REASON = 'provider-interrupted' as const;
+
+/** Presentation surfaces mark both token-ceiling and provider-interrupted replies as incomplete. */
+export function isAgentRunIncomplete(finishReason?: string): boolean {
+  return finishReason === 'length' || finishReason === AGENT_RUN_INTERRUPTED_FINISH_REASON;
+}

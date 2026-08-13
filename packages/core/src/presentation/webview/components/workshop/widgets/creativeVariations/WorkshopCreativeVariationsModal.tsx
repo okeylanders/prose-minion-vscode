@@ -214,6 +214,9 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
 
   const pasted = draft.subject.provenance.kind === 'pasted';
   const provenance = draft.subject.provenance;
+  const surroundingContextTravels =
+    draft.surroundingContext.writerText.trim().length > 0
+    || draft.surroundingContext.sourceReferences.length > 0;
 
   const generateReasons: string[] = [];
   if (draft.subject.text.trim().length === 0) {
@@ -371,7 +374,9 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                   {pasted ? 'Pasted passage' : 'Selected passage'}
                   {pasted ? (
                     <em className="pm-ws-cvx-src pm-ws-cvx-src-pasted">
-                      pasted · no surrounding passage
+                      {surroundingContextTravels
+                        ? 'pasted · context supplied separately'
+                        : 'pasted · no surrounding passage'}
                     </em>
                   ) : (
                     <em className="pm-ws-cvx-src">
@@ -401,9 +406,11 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                   onChange={(event) => onSubjectTextChange(event.target.value)}
                 />
                 <p className="pm-ws-cvx-honest">
-                  {pasted
-                    ? 'The generation sees this text and your declared constraints and nothing else — it cannot check continuity against the pages around it, and it will not claim to.'
-                    : 'This passage came from your excerpt, so its origin travels with the draft. Editing the text here keeps your words; the generation still sees only what is on this sheet.'}
+                  {surroundingContextTravels
+                    ? 'The generation sees this passage, your declared constraints, and the surrounding context or source material selected on this sheet. It cannot check continuity beyond what you supplied.'
+                    : pasted
+                      ? 'The generation sees this text and your declared constraints and nothing else — it cannot check continuity against the pages around it, and it will not claim to.'
+                      : 'This passage came from your excerpt, so its origin travels with the draft. Editing the text here keeps your words; the generation still sees only what is on this sheet.'}
                 </p>
               </div>
 

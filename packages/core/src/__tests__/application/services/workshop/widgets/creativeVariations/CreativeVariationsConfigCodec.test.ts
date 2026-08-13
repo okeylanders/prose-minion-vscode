@@ -286,21 +286,21 @@ describe('CreativeVariationsConfigCodec', () => {
       mutate: (value: WorkshopCreativeVariationsDraft) => {
         value.workup!.overlap.pairs[1].rightPosition = 2;
       },
-      message: /recomputed textual-overlap-v1 evidence for pair 1-3/
+      message: /recomputed textual-overlap-v2 evidence for pair 1-3/
     },
     {
       label: 'unbounded overlap score',
       mutate: (value: WorkshopCreativeVariationsDraft) => {
         value.workup!.overlap.pairs[0].prose = 101;
       },
-      message: /recomputed textual-overlap-v1 evidence/
+      message: /recomputed textual-overlap-v2 evidence/
     },
     {
       label: 'dishonest pair maximum',
       mutate: (value: WorkshopCreativeVariationsDraft) => {
         value.workup!.overlap.pairs[0].maximum = 10;
       },
-      message: /recomputed textual-overlap-v1 evidence/
+      message: /recomputed textual-overlap-v2 evidence/
     },
     {
       label: 'dishonest set maximum',

@@ -7,15 +7,19 @@
 
 import {
   CREATIVE_VARIATIONS_GENERATION_PROTOCOL_VERSION,
-  CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION,
   WorkshopCreativeVariationCard,
   WorkshopCreativeVariationsDraft,
   WorkshopCreativeVariationsWorkup
 } from '@messages';
+import {
+  computeCreativeVariationsTextualOverlap
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 
 export const WORKUP_ID = 'cvw-1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
 export const ADVISORY_RISK_ID = `${WORKUP_ID}:card-2:flag-1`;
 export const HARD_CONFLICT_ID = `${WORKUP_ID}:card-3:flag-1`;
+const baseDraftSubject =
+  'He set the mug down where her hand could reach it without asking. She smiled.';
 
 export const cardOne: WorkshopCreativeVariationCard = {
   position: 1,
@@ -53,9 +57,9 @@ export const cardTwo: WorkshopCreativeVariationCard = {
 export const cardThree: WorkshopCreativeVariationCard = {
   position: 3,
   approach: 'Absence as furniture',
-  direction: 'make the loss structural — an object nobody has moved since',
+  direction: 'stage the distrust as a pause and an untouched mug, still',
   prose:
-    'Two mugs on the counter, one of them dry since March. Neither of them had ever pushed the chair back in.',
+    'She let it sit long enough that he heard the kettle. She was not going to touch it while he was watching. Still.',
   tradeoff: {
     gain: 'the loss pays again every time the kitchen appears',
     cost: 'a fact you did not have'
@@ -74,20 +78,15 @@ export const workup: WorkshopCreativeVariationsWorkup = {
   workupId: WORKUP_ID,
   generationProtocolVersion: CREATIVE_VARIATIONS_GENERATION_PROTOCOL_VERSION,
   cards: [cardOne, cardTwo, cardThree],
-  overlap: {
-    algorithmVersion: CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION,
-    pairs: [
-      { leftPosition: 1, rightPosition: 2, prose: 22, direction: 14, maximum: 22 },
-      { leftPosition: 1, rightPosition: 3, prose: 18, direction: 10, maximum: 18 },
-      { leftPosition: 2, rightPosition: 3, prose: 86, direction: 41, maximum: 86 }
-    ],
-    maximumPair: { leftPosition: 2, rightPosition: 3, score: 86 }
-  }
+  overlap: computeCreativeVariationsTextualOverlap(
+    baseDraftSubject,
+    [cardOne, cardTwo, cardThree]
+  )
 };
 
 export const baseDraft: WorkshopCreativeVariationsDraft = {
   subject: {
-    text: 'He set the mug down where her hand could reach it without asking. She smiled.',
+    text: baseDraftSubject,
     provenance: {
       kind: 'excerpt',
       relativePath: 'Drafts/chapter-five.md',

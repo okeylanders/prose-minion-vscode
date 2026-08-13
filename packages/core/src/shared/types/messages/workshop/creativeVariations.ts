@@ -5,7 +5,7 @@ import { MessageType, type MessageEnvelope } from '../base';
 import type { WorkshopWidgetSourceReference } from './context';
 
 export const CREATIVE_VARIATIONS_GENERATION_PROTOCOL_VERSION = 1 as const;
-export const CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION = 'textual-overlap-v1' as const;
+export const CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION = 'textual-overlap-v2' as const;
 
 export type WorkshopCreativeVariationsDistance =
   | 'familiar'

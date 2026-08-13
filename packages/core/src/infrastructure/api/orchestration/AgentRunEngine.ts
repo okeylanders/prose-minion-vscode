@@ -16,6 +16,7 @@ import {
 } from './ConversationManager';
 import {
   AgentCapabilityRejection,
+  AGENT_RUN_INTERRUPTED_FINISH_REASON,
   AgentRunOptions,
   AnyAgentCapability,
   CapabilityArtifact,
@@ -41,6 +42,7 @@ export type AgentRunUnavailableReason =
   | 'missing-credentials'
   | 'authentication'
   | 'insufficient-credits'
+  | 'token-budget-exceeded'
   | 'rate-limited'
   | 'provider-unavailable';
 
@@ -66,6 +68,8 @@ export class AgentRunUnavailableError extends Error {
         return 'OpenRouter rejected the saved API key. Update it and try again.';
       case 'insufficient-credits':
         return 'The OpenRouter account or API key has insufficient credits. Add credits and try again.';
+      case 'token-budget-exceeded':
+        return 'OpenRouter stopped the request at its token budget. Shorten the request or adjust the API key limit before trying again.';
       case 'rate-limited':
         return retryAfterSeconds
           ? `OpenRouter is rate limiting requests. Try again in about ${retryAfterSeconds} seconds.`
@@ -772,6 +776,16 @@ export class AgentRunEngine {
     } catch (error) {
       if (this.isAbortError(error)) {
         cancelled = true;
+      } else if (
+        error instanceof OpenRouterApiError
+        && this.hasVisibleStreamedContent(content, classification, visibilityGuard)
+      ) {
+        finishReason = AGENT_RUN_INTERRUPTED_FINISH_REASON;
+        this.outputChannel?.appendLine(
+          `[AgentRunEngine] Provider interrupted a stream after visible content `
+          + `(status=${error.status ?? 'unknown'}, type=${error.errorType ?? 'unknown'}); `
+          + 'retaining the incomplete response.'
+        );
       } else {
         throw error;
       }
@@ -832,10 +846,12 @@ export class AgentRunEngine {
     }
     if (
       status === 402 ||
-      errorType === 'payment_required' ||
-      errorType === 'token_limit_exceeded'
+      errorType === 'payment_required'
     ) {
       return new AgentRunUnavailableError('insufficient-credits', message);
+    }
+    if (errorType === 'token_limit_exceeded') {
+      return new AgentRunUnavailableError('token-budget-exceeded', message);
     }
     if (status === 429 || errorType === 'rate_limit_exceeded') {
       return new AgentRunUnavailableError('rate-limited', message, retryAfterSeconds);
@@ -860,7 +876,23 @@ export class AgentRunEngine {
     const cleaned = (streamedVisibleContent ?? this.stripAllToolCalls(content, capability))
       .replace(/\n{3,}/g, '\n\n')
       .trim();
-    return `${cleaned}${finishReason === 'length' ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.' : ''}`;
+    if (finishReason === 'length') {
+      return `${cleaned}\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.`;
+    }
+    if (finishReason === AGENT_RUN_INTERRUPTED_FINISH_REASON) {
+      return `${cleaned}\n\n---\n\n⚠️ The provider interrupted this response. The answer above was retained and may be incomplete.`;
+    }
+    return cleaned;
+  }
+
+  private hasVisibleStreamedContent(
+    content: string,
+    classification: 'undecided' | 'text' | 'candidate',
+    visibilityGuard?: ToolCallStreamVisibilityGuard
+  ): boolean {
+    return visibilityGuard
+      ? visibilityGuard.content.trim().length > 0
+      : classification === 'text' && content.trim().length > 0;
   }
 
   private stripAllToolCalls(content: string, capability?: AnyAgentCapability): string {
