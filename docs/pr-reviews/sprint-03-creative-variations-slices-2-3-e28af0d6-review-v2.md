@@ -9,30 +9,46 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 
 | ID | Sev | Scope | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🔴 Blocking | AI-unavailable | Rollback removes capability turns the to-do ledger still references; autosave then fails permanently | Blake, Sam | 1 independent · 1 runway-prompted | — | **Open** |
-| F-02 | 🟠 High | AI-unavailable | A mid-stream provider error discards fully streamed content that cancellation would retain | Sam | 1 independent | — | **Open** |
-| F-03 | 🟠 High | AI-unavailable | Guest-invitation rollback destroys the writer's typed opening with no restore path | Marcus, Blake, Oliver | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-04 | 🟠 High | Slice 3 | `textual-overlap-v1`'s subject discount has a cliff at residual size 1; near-identical takes score 0% | Sam | 1 runway-prompted | — | **Open** |
-| F-05 | 🟠 High | AI-unavailable | The "AI replies are paused" banner cannot clear on the Workshop surface | Cal, Oliver | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-06 | 🟠 High | Slice 3 | The response codec's per-field caps are never declared to the model | Bria | 1 independent | — | **Open** |
-| F-07 | 🟡 Standard | Slice 3 | Output-budget incoherence, an unreachable guard, and a retry instruction that reproduces the failure | Tim | 1 runway-prompted | — | **Open** |
-| F-08 | 🟡 Standard | Slice 3 | The presentation fixture's overlap evidence is fabricated and fails the contract its docblock claims | Cal | 1 independent | — | **Open** |
-| F-09 | 🟡 Standard | Slice 2 | Durable-state validity depends on the product catalog while the record already carries the fact | Marcus | 1 independent | — | **Open** |
-| F-10 | 🟡 Standard | AI-unavailable | Unparsed provider error bodies reach the Output channel and webview verbatim and unbounded | Patricia | 1 independent | — | **Open** |
-| F-11 | 🟡 Standard | AI-unavailable | `token_limit_exceeded` is classified as insufficient credits | Bria, Sam, Cal | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-12 | 🟡 Standard | Slice 2 | Overlap recompute rebuilds gram sets inside the pair loop, on a path that runs twice per autosave | Tim | 1 runway-prompted | — | **Open** |
-| F-13 | 🟡 Standard | Slice 3 | The honesty caption claims the model sees "nothing else" while surrounding context travels | Bria | 1 independent | — | **Open** |
-| F-14 | 🟡 Standard | AI-unavailable | `includeMessageAttachments` is read for a meaning it does not claim | Parker | 1 independent | — | **Open** |
-| F-15 | 🟡 Standard | AI-unavailable | `authentication`/401 is the one unavailability reason no test pins | Cal | 1 runway-prompted | — | **Open** |
-| F-16 | 🟡 Standard | AI-unavailable | A commit blocked by unavailability says "try again" while the reason lands behind the open sheet | Oliver | 1 runway-prompted | — | **Open** |
-| F-17 | 🟡 Standard | Cross-scope | Feature-owned derivation rules lack single owners (source-reference key, request draft, flag id) | Marcus, Parker | 1 independent · 1 runway-prompted | — | **Open** |
-| F-18 | 🔵 Nit | Slice 3 | The exported sentinel constant is retyped by hand in the handler | Stan | 1 independent | — | **Open** |
-| F-19 | 🔵 Nit | Slice 2 | The integrity file sits off the recorded target tree with no recorded reason | Stan | 1 runway-prompted | — | **Open** |
-| F-20 | 🔵 Nit | Slice 3 | The rejected-response recovery store has no retention bound | Patricia | 1 runway-prompted | — | **Open** |
+| F-01 | 🔴 Blocking | AI-unavailable | Rollback removes capability turns the to-do ledger still references; autosave then fails permanently | Blake, Sam | 1 independent · 1 runway-prompted | — | **Addressed** — `capabilityTurnIds` excluded from `rollbackTurnIds`; the record's docblock now states why capability evidence is not provisional |
+| F-02 | 🟠 High | AI-unavailable | A mid-stream provider error discards fully streamed content that cancellation would retain | Sam | 1 independent | — | **Addressed** — visible streamed content is retained under a new `provider-interrupted` finish reason, gated on `hasVisibleStreamedContent` so interrupted protocol markup still cannot leak |
+| F-03 | 🟠 High | AI-unavailable | Guest-invitation rollback destroys the writer's typed opening with no restore path | Marcus, Blake, Oliver | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** — the guest arm keeps `abandonRun`, so the invitation turn stays visible as the writer's only copy |
+| F-04 | 🟠 High | Slice 3 | `textual-overlap-v1`'s subject discount has a cliff at residual size 1; near-identical takes score 0% | Sam | 1 runway-prompted | — | **Addressed** — the cliff is now a floor, `max(residual, round(full × 0.95))`, and the algorithm version is bumped to `textual-overlap-v2` |
+| F-05 | 🟠 High | AI-unavailable | The "AI replies are paused" banner cannot clear on the Workshop surface | Cal, Oliver | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** — the Workshop router gained a `CLEAR_TRANSIENT_API_KEY_WARNING` arm that clears the banner |
+| F-06 | 🟠 High | Slice 3 | The response codec's per-field caps are never declared to the model | Bria | 1 independent | — | **Addressed** — the prompt declares every ceiling in the Lexical Gravity form, and an architecture test pins the prompt against `PROMPT_BUDGETS` so the two cannot drift |
+| F-07 | 🟡 Standard | Slice 3 | Output-budget incoherence, an unreachable guard, and a retry instruction that reproduces the failure | Tim | 1 runway-prompted | — | **Addressed** — output tokens 30k → 45k and response characters 160k → 140k, making both mutually reachable; the prompt now carries a subject-relative prose target |
+| F-08 | 🟡 Standard | Slice 3 | The presentation fixture's overlap evidence is fabricated and fails the contract its docblock claims | Cal | 1 independent | — | **Addressed** — the fixture's overlap is generated by the real algorithm and guarded by a durable-integrity assertion |
+| F-09 | 🟡 Standard | Slice 2 | Durable-state validity depends on the product catalog while the record already carries the fact | Marcus | 1 independent | — | **Addressed** — the catalog dependency is removed; linkage shape now comes from the persisted record, and the standing path gained a `turnExists` check it previously lacked |
+| F-10 | 🟡 Standard | AI-unavailable | Unparsed provider error bodies reach the Output channel and webview verbatim and unbounded | Patricia | 1 independent | — | **Addressed** — unstructured bodies are truncated and labelled at the producer, fixing all six forwarding sites at once |
+| F-11 | 🟡 Standard | AI-unavailable | `token_limit_exceeded` is classified as insufficient credits | Bria, Sam, Cal | 1 independent · 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** — split into its own `token-budget-exceeded` reason with size-shaped copy, and pinned in the mapping table |
+| F-12 | 🟡 Standard | Slice 2 | Overlap recompute rebuilds gram sets inside the pair loop, on a path that runs twice per autosave | Tim | 1 runway-prompted | — | **Addressed** — prose, residual, and direction gram sets are built once per card in the same change as F-04 |
+| F-13 | 🟡 Standard | Slice 3 | The honesty caption claims the model sees "nothing else" while surrounding context travels | Bria | 1 independent | — | **Addressed** — the caption is conditioned on whether context actually travels, not on subject provenance |
+| F-14 | 🟡 Standard | AI-unavailable | `includeMessageAttachments` is read for a meaning it does not claim | Parker | 1 independent | — | **Addressed** — `restoreDraftOnRollback` names the real predicate and is type-pinned `false` on the widget-commit path |
+| F-15 | 🟡 Standard | AI-unavailable | `authentication`/401 is the one unavailability reason no test pins | Cal | 1 runway-prompted | — | **Addressed** — a 401 row was added to the parametrised mapping table |
+| F-16 | 🟡 Standard | AI-unavailable | A commit blocked by unavailability says "try again" while the reason lands behind the open sheet | Oliver | 1 runway-prompted | — | **Addressed** — `refusalReason` is threaded from the room through the coordinator to the widget sheet, with the generic copy retained as fallback |
+| F-17 | 🟡 Standard | Cross-scope | Feature-owned derivation rules lack single owners (source-reference key, request draft, flag id) | Marcus, Parker | 1 independent · 1 runway-prompted | — | **Addressed** — `CreativeVariationsDerivations.ts` owns the request draft, the reference key, and the flag-id formula |
+| F-18 | 🔵 Nit | Slice 3 | The exported sentinel constant is retyped by hand in the handler | Stan | 1 independent | — | **Addressed** — the handler imports `CREATIVE_VARIATIONS_RESPONSE_START` |
+| F-19 | 🔵 Nit | Slice 2 | The integrity file sits off the recorded target tree with no recorded reason | Stan | 1 runway-prompted | — | **Addressed** — the deviation and its rationale are recorded, covering the integrity, workup-id, and derivation modules |
+| F-20 | 🔵 Nit | Slice 3 | The rejected-response recovery store has no retention bound | Patricia | 1 runway-prompted | — | **Addressed** — the store retains only the newest twenty rejected bodies and their sidecars |
 | P-1 | 💚 Praise | AI-unavailable | `rollbackThreadCommit` validates exact linkage before mutating; rollback is idempotent and never partial | Sam | 1 independent | — | N/A — preserve |
 | P-2 | 💚 Praise | AI-unavailable | The coordinator re-reads the ledger for settled acceptance and moved the vocabulary with the meaning | Parker | 1 runway-prompted | — | N/A — preserve |
 | P-3 | 💚 Praise | Cross-scope | The feature-family reproduction criterion is met exactly, including where a slice has not landed | Stan | 1 independent | — | N/A — preserve |
 | P-4 | 💚 Praise | AI-unavailable | The durable assistant engine adds no interval leak and no retry amplification | Tim | 1 runway-prompted | — | N/A — preserve |
+
+### Remediation receipt — 2026-08-12
+
+All twenty actionable findings are addressed by `62f6623` ("Address creative variations review findings"). Nothing is deferred.
+
+**Verification at `19a22ed`:** full Jest — **204 suites / 2,178 tests / 2 snapshots, all passing** (up from 2,142 tests at the Slice 3 tip). TypeScript — core, webview, and VS Code adapter all clean. ESLint — 0 errors. Thirteen new behavior-named tests cover the findings directly, including "retains capability evidence and to-dos that already reference it when a message rolls back" (F-01), "falls back when one distinguishing trigram would make near-identical takes score zero" (F-04), and "routes successful key self-heal to the Workshop availability owner" (F-05).
+
+**Independently re-reproduced against the fixed tree:**
+
+- **F-01** — the original Blocking reproduction now ends `VALIDATION: OK`. The capability turn survives rollback, the to-do's `source.turnId` still resolves, and the autosave path no longer throws.
+- **F-04** — three takes differing from the subject by one trailing word each now score **81** (crossing the ≥80 warning) where they scored **0** before; a verbatim copy scores 87; genuinely different takes still score 0, so the floor introduces no false positives.
+- **F-07** — a maximal 5-card permitted response (126,200 characters) now fits the 45,000-token ceiling at 3.5, 4.0, and 4.5 characters per token, and the 140,000-character guard is reachable rather than foreclosed.
+
+**Three fixes went beyond the recommendation.** F-09 deleted the catalog dependency outright rather than adding the offered witness, and added a `turnExists` check on the standing path that this review did not find. F-02 gated retention on genuinely visible content and minted a distinct `provider-interrupted` finish reason instead of overloading `length`. F-06 added an architecture test pinning the prompt against `PROMPT_BUDGETS`, converting a one-time correction into a standing invariant.
+
+The Horizon Watchlist below is unchanged and remains non-blocking, with one item now closed early: `textual-overlap-v2` was bumped while `CheckpointNormalization = never` made it free.
 
 ## Review coverage
 
