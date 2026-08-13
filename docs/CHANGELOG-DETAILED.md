@@ -5,6 +5,37 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — OpenRouter model catalog refresh
+
+### Added
+
+- Added `meta/muse-spark-1.2` without removing Muse Spark 1.1; the two
+  checkpoints remain separately selectable for their different creative and
+  agentic profiles.
+- Added `x-ai/grok-4.6` without removing Grok 4.5.
+- Added the production/GA `deepseek/deepseek-v4-pro-0813` checkpoint alongside
+  the original V4 Pro listing.
+- Added `openai/gpt-oss-120b:nitro` and `google/gemini-3.7-flash` to both the
+  Recommended Models and Category Search catalogs.
+
+### Changed
+
+- Changed the Category Search default from Claude Sonnet 5 to
+  `openai/gpt-oss-120b:nitro` across the extension manifest, host fallback,
+  and webview default.
+- Dynamic OpenRouter routing variants now inherit live model-browser metadata
+  from their base model ID, so Nitro selections retain truthful pricing,
+  context, and release information.
+- Extended the Category Search architecture witness to keep the contributed
+  manifest default synchronized with the shared default and curated registry.
+
+### Compatibility
+
+- Existing saved selections remain unchanged; the new default applies when no
+  Category Search selection has been stored.
+- Assistant, dictionary, context, and Conversation Widget defaults are
+  unchanged.
+
 ## [2.1.1] - 2026-08-03 — Curated model catalog refresh
 
 ### Overview
