@@ -3,7 +3,7 @@ import { MessageType, ModelScope, ModelOption } from '@shared/types';
 import { SettingsDataMessage, ModelDataMessage } from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
-import { CATEGORY_MODELS } from '@providers/OpenRouterModels';
+import { CATEGORY_MODELS, DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 
 /**
  * Models Settings
@@ -113,7 +113,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
     assistantModel: 'anthropic/claude-sonnet-5',
     dictionaryModel: 'anthropic/claude-haiku-4.5',
     contextModel: 'openai/gpt-5.4',
-    categoryModel: 'anthropic/claude-sonnet-5',
+    categoryModel: DEFAULT_CATEGORY_MODEL,
     widgetModel: 'anthropic/claude-sonnet-5',
 
     // Agent Behavior

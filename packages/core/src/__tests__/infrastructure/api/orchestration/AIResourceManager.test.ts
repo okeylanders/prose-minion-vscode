@@ -1,4 +1,5 @@
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 
 describe('AIResourceManager lifecycle', () => {
   it('creates one observable generation until an explicit configuration rebuild', async () => {
@@ -52,6 +53,7 @@ describe('AIResourceManager lifecycle', () => {
     expect(manager.getResolvedModel('context')).toBe('google/gemini-3.1-pro-preview');
     expect(manager.getEngine('context')?.getModel()).toBe('google/gemini-3.1-pro-preview');
     expect(manager.getEngine('assistant')?.getModel()).toBe('anthropic/claude-sonnet-5');
+    expect(manager.getEngine('category')?.getModel()).toBe(DEFAULT_CATEGORY_MODEL);
     manager.dispose();
   });
 

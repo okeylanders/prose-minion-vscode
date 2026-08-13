@@ -19,6 +19,7 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
 import { TokenUsage } from '@shared/types';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
+import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 import { AgentRunEngine, StatusCallback, TokenUsageCallback } from './AgentRunEngine';
 import { ConversationManager } from './ConversationManager';
 import { ModelScope } from '@shared/types';
@@ -268,7 +269,7 @@ export class AIResourceManager {
         ?? fallbackModel,
       category: modelConfig?.categoryModel
         ?? this.settings.get<string>('proseMinion', 'categoryModel')
-        ?? fallbackModel,
+        ?? DEFAULT_CATEGORY_MODEL,
       widget: modelConfig?.widgetModel
         ?? this.settings.get<string>('proseMinion', 'widgetModel')
         ?? DEFAULT_WIDGET_MODEL

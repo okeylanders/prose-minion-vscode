@@ -2,6 +2,22 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- **OpenRouter catalog refresh**: Added Muse Spark 1.2 alongside 1.1, Grok 4.6
+  alongside 4.5, DeepSeek V4 Pro 0813, GPT-OSS 120B Nitro, and Gemini 3.7
+  Flash to the Recommended Models catalog.
+- **Category Search choices**: Added Muse Spark 1.2, GPT-OSS 120B Nitro, and
+  Gemini 3.7 Flash to the Category Search catalog.
+
+### Changed
+
+- **Faster Category Search default**: Changed the Category Search default to
+  `openai/gpt-oss-120b:nitro`, which selects the model's highest-throughput
+  available OpenRouter provider.
+
 ## [2.1.1] - 2026-08-03
 
 ### Added
