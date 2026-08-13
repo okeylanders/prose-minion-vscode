@@ -12,6 +12,9 @@ import {
   CREATIVE_VARIATIONS_RESPONSE_START
 } from '@services/widgets/creativeVariations/CreativeVariationsResponseCodec';
 import {
+  CREATIVE_VARIATIONS_RANDOM_AIM
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
+import {
   MessageType,
   type WorkshopCreativeVariationsGenerateMessage,
   type WorkshopCreativeVariationsWorkup
@@ -121,6 +124,20 @@ describe('WorkshopCreativeVariationsHandler', () => {
         ok: true,
         workup: expect.objectContaining({ workupId: ids[0] })
       }));
+  });
+
+  it('accepts passage-only input and applies the generation defaults before service handoff', async () => {
+    const { handler, generate } = build();
+
+    await handler.handleGenerate(message({
+      invariants: { mustSurvive: '', mustNotChange: '' },
+      intent: { kind: 'custom-aim', aim: '', distance: 'tail' }
+    }));
+
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({
+      invariants: { mustSurvive: '', mustNotChange: '' },
+      intent: { kind: 'custom-aim', aim: CREATIVE_VARIATIONS_RANDOM_AIM, distance: 'tail' }
+    }));
   });
 
   it('resolves selected sources from current host-owned session truth', async () => {

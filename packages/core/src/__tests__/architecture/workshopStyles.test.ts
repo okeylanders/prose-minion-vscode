@@ -17,6 +17,7 @@ const WORKSHOP_STYLE_IMPORTS = [
   './styles/workshop/session.css',
   './components/workshop/widgets/gesturePlayground/gesturePlayground.css',
   './components/workshop/widgets/lexicalGravity/lexicalGravity.css',
+  './components/workshop/widgets/creativeVariations/creativeVariations.css',
   './components/workshop/standingDirectiveRail.css'
 ] as const;
 

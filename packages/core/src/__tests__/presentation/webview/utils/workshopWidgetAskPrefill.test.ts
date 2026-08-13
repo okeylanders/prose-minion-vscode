@@ -2,7 +2,6 @@ import {
   buildWorkshopWidgetAskPrefill,
   canBuildWorkshopWidgetAskPrefill
 } from '@utils/workshopWidgetAskPrefill';
-import { WORKSHOP_WIDGET_CATALOG } from '@shared/constants/workshopWidgets';
 
 describe('buildWorkshopWidgetAskPrefill', () => {
   it('asks the Host for a grounded Gesture Playground recommendation seed', () => {
@@ -19,17 +18,12 @@ describe('buildWorkshopWidgetAskPrefill', () => {
     expect(prefill).toContain('offer it for me to review and open');
   });
 
-  it('requires every live registry widget to provide a non-generic Host prefill', () => {
-    const liveWidgets = WORKSHOP_WIDGET_CATALOG
-      .flatMap((group) => group.items)
-      .filter((widget) => widget.live);
-
-    for (const widget of liveWidgets) {
-      expect(canBuildWorkshopWidgetAskPrefill(widget.id)).toBe(true);
-      expect(buildWorkshopWidgetAskPrefill(widget.id, 'Jill')).toContain(widget.label);
-    }
+  it('reports Host-prefill capability independently from launch availability', () => {
+    expect(canBuildWorkshopWidgetAskPrefill('gesture-playground')).toBe(true);
+    expect(canBuildWorkshopWidgetAskPrefill('lexical-gravity')).toBe(true);
+    expect(canBuildWorkshopWidgetAskPrefill('creative-variations')).toBe(false);
     expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(false);
-    expect(() => buildWorkshopWidgetAskPrefill('show-vs-tell', 'Jill'))
+    expect(() => buildWorkshopWidgetAskPrefill('creative-variations', 'Jill'))
       .toThrow('has no Host-preparation prompt');
   });
 });

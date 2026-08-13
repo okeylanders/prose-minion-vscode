@@ -36,10 +36,11 @@ describe('workshopWidgets registry', () => {
     }
   });
 
-  it('marks the Sprint 01 and Sprint 02B widgets live', () => {
+  it('marks the implemented widgets live for integrated testing', () => {
     expect(allWidgets.filter((widget) => widget.live).map((widget) => widget.id))
-      .toEqual(['gesture-playground', 'lexical-gravity']);
+      .toEqual(['gesture-playground', 'creative-variations', 'lexical-gravity']);
     expect(isLiveWorkshopWidgetId('gesture-playground')).toBe(true);
+    expect(isLiveWorkshopWidgetId('creative-variations')).toBe(true);
     expect(isLiveWorkshopWidgetId('lexical-gravity')).toBe(true);
     expect(isLiveWorkshopWidgetId('not-a-widget')).toBe(false);
     expect(isLiveWorkshopWidgetId(undefined)).toBe(false);

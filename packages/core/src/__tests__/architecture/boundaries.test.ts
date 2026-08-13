@@ -484,7 +484,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/WorkshopApp.tsx',
     reason: 'Workshop presentation composition root',
-    allowedToken: /(?:GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|closeGesturePlayground|closeLexicalGravity|copyGestureDictionary|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityOpening|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE|CreativeVariationsDistinctness|GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopCreativeVariationsModal|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|copyCreativeVariation|copyGestureDictionary|creative-variations|creative_variations|creativeVariations|creativeVariationsAuthoring|creativeVariationsOpening|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useCreativeVariations|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
   },
   {
     file: 'presentation/webview/components/SettingsOverlay.tsx',
@@ -504,7 +504,12 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
     reason: 'closed widget-opening presentation controller',
-    allowedToken: /(?:WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeGesturePlayground|closeLexicalGravity|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseGesturePlayground|onCloseLexicalGravity|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+    allowedToken: /(?:WorkshopCreativeVariationsOpening|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+  },
+  {
+    file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts',
+    reason: 'closed Workshop selection-target presentation dispatch',
+    allowedToken: /(?:handleCreativeVariationsSubject|workshop_creative_variations_subject)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopWidgetActionResult.ts',
@@ -519,7 +524,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
     reason: 'Workshop webview route-composition table',
-    allowedToken: /(?:UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
   },
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
@@ -555,6 +560,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     file: 'shared/types/messages/index.ts',
     reason: 'message union composition barrel',
     allowedToken: /.*(?:CreativeVariations|GesturePlayground|LexicalGravity).*/
+  },
+  {
+    file: 'shared/types/messages/ui.ts',
+    reason: 'closed host selection-target wire union',
+    allowedToken: /workshop_creative_variations_subject/
   },
   {
     file: 'shared/types/messages/streaming.ts',
@@ -647,8 +657,16 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
     reason: 'already contains the exhaustive prose-controller icon entry'
   },
   {
+    file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts',
+    reason: 'Prose Controller reads the active Workshop passage and needs no editor-selection intake target'
+  },
+  {
     file: 'shared/constants/resultToolNames.ts',
     reason: 'maps saved analysis tools; standing-widget preview is not a saved tool result'
+  },
+  {
+    file: 'shared/types/messages/ui.ts',
+    reason: 'Prose Controller introduces no dedicated editor-selection target'
   },
   {
     file: 'shared/constants/workshopWidgets.ts',
@@ -683,6 +701,10 @@ const WORKSHOP_FEATURE_HOOKS = [
   path.join(
     SRC_ROOT,
     'presentation/webview/hooks/domain/workshop/widgets/useLexicalGravity.ts'
+  ),
+  path.join(
+    SRC_ROOT,
+    'presentation/webview/hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations.ts'
   )
 ];
 const WORKSHOP_WIDGET_HOST_HOOK = path.join(

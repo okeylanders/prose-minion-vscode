@@ -107,10 +107,10 @@ function assertWorkupIntegrity(
           `host-derived id ${expectedId}`
         );
       }
-      if (
-        flag.invariantField === 'must-not-change'
-        && draft.invariants.mustNotChange.trim().length === 0
-      ) {
+      const declaredInvariant = flag.invariantField === 'must-survive'
+        ? draft.invariants.mustSurvive
+        : draft.invariants.mustNotChange;
+      if (declaredInvariant.trim().length === 0) {
         shapeError(
           `${path}.workup.cards[${index}].invariantFlags[${flagIndex}].invariantField`,
           'a writer-declared nonblank invariant field'

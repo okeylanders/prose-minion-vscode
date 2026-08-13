@@ -67,8 +67,7 @@ export function assertCreativeVariationsDraftShape(value: unknown, path: string)
   boundedStringAt(
     invariants.mustSurvive,
     `${path}.invariants.mustSurvive`,
-    budget.creativeMustSurviveCharacters,
-    false
+    budget.creativeMustSurviveCharacters
   );
   boundedStringAt(
     invariants.mustNotChange,
@@ -81,8 +80,7 @@ export function assertCreativeVariationsDraftShape(value: unknown, path: string)
   boundedStringAt(
     intent.aim,
     `${path}.intent.aim`,
-    budget.creativeAimCharacters,
-    false
+    budget.creativeAimCharacters
   );
   enumAt(intent.distance, `${path}.intent.distance`, [
     'familiar',

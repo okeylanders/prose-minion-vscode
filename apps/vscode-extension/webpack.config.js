@@ -9,6 +9,14 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 // transpiles core as first-party.
 const CORE_SRC = path.resolve(__dirname, '../../packages/core/src');
 const BASE_TSCONFIG = path.resolve(__dirname, '../../tsconfig.base.json');
+const DEVELOPMENT_WATCH_OPTIONS = {
+  // Native Watchpack watchers exhaust macOS' per-process descriptor limit in
+  // this workspace. Poll the first-party tree instead; node_modules remains
+  // immutable during an F5 session and does not need watching.
+  aggregateTimeout: 200,
+  ignored: /node_modules/,
+  poll: 500
+};
 
 const extensionConfig = {
   target: 'node',
@@ -121,6 +129,9 @@ module.exports = (env, argv) => {
     // breakpoints bind under F5.
     extensionConfig.devtool = false;
     webviewConfig.devtool = false;
+  } else if (argv && argv.mode === 'development') {
+    extensionConfig.watchOptions = DEVELOPMENT_WATCH_OPTIONS;
+    webviewConfig.watchOptions = DEVELOPMENT_WATCH_OPTIONS;
   }
   return [extensionConfig, webviewConfig];
 };

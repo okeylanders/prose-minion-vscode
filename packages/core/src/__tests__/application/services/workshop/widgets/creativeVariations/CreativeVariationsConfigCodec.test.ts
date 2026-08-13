@@ -145,6 +145,17 @@ describe('CreativeVariationsConfigCodec', () => {
     expect(() => assertValid(value)).toThrow(/empty when no generated workup exists/);
   });
 
+  it('accepts blank optional invariants and creative aim before generation', () => {
+    const value = draft();
+    value.invariants.mustSurvive = '';
+    value.invariants.mustNotChange = '';
+    value.intent.aim = '   ';
+    value.workup = null;
+    value.selections = [];
+
+    expect(() => assertValid(value)).not.toThrow();
+  });
+
   it.each([
     {
       label: 'unknown draft field',
@@ -152,13 +163,6 @@ describe('CreativeVariationsConfigCodec', () => {
         (value as unknown as Record<string, unknown>).transientPanel = 'comparison';
       },
       message: /unknown field transientPanel/
-    },
-    {
-      label: 'blank required invariant',
-      mutate: (value: WorkshopCreativeVariationsDraft) => {
-        value.invariants.mustSurvive = '   ';
-      },
-      message: /mustSurvive.*non-empty string/
     },
     {
       label: 'unknown distance',
@@ -251,6 +255,13 @@ describe('CreativeVariationsConfigCodec', () => {
           kind: 'advisory-risk',
           note: 'The boundary might move.'
         }];
+      },
+      message: /writer-declared nonblank invariant field/
+    },
+    {
+      label: 'must-survive flag against a blank writer field',
+      mutate: (value: WorkshopCreativeVariationsDraft) => {
+        value.invariants.mustSurvive = '';
       },
       message: /writer-declared nonblank invariant field/
     },

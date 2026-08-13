@@ -56,6 +56,9 @@ import {
 import {
   WorkshopLexicalGravityModal
 } from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal';
+import {
+  WorkshopCreativeVariationsModal
+} from '@components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal';
 import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopStandingDirectiveRail';
 import {
   stripWorkshopWidgetRecommendationControl
@@ -116,6 +119,12 @@ import {
 } from '@hooks/domain/workshop/widgets/useGesturePlayground';
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
 import {
+  useCreativeVariations
+} from '@hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations';
+import {
+  useCreativeVariationsAuthoring
+} from '@hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring';
+import {
   useWorkshopStandingDirectives
 } from '@hooks/domain/workshop/useWorkshopStandingDirectives';
 import {
@@ -132,6 +141,9 @@ import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
+import {
+  CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 // CSS import order is rendered behavior under style-loader. Feature files own
 // their rules; this composition point owns the preserved cascade order.
 import './styles/workshop/tokens.css';
@@ -140,6 +152,7 @@ import './styles/workshop/context.css';
 import './styles/workshop/session.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
+import './components/workshop/widgets/creativeVariations/creativeVariations.css';
 import './components/workshop/standingDirectiveRail.css';
 import './components/workshop/schematic/schematic.css';
 
@@ -205,6 +218,7 @@ export const WorkshopApp: React.FC = () => {
   const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
   const lexicalGravity = useLexicalGravity();
+  const creativeVariations = useCreativeVariations();
   const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
@@ -234,7 +248,20 @@ export const WorkshopApp: React.FC = () => {
     standingDirectives: workshop.standingDirectives,
     onError: handleWidgetOpeningError,
     onCloseGesturePlayground: gesturePlayground.consumeWidgetActionResult,
-    onCloseLexicalGravity: lexicalGravity.clearTransientResults
+    onCloseLexicalGravity: lexicalGravity.clearTransientResults,
+    onCloseCreativeVariations: creativeVariations.cancelGeneration
+  });
+  const creativeVariationsAuthoring = useCreativeVariationsAuthoring({
+    open: widgetOpening.creativeVariationsOpening !== null,
+    activeExcerpt: workshop.excerpt,
+    contextAttachments: workshop.contextAttachments,
+    widgetModelId:
+      modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel,
+    generationProgress: creativeVariations.generationProgress,
+    generationResult: creativeVariations.generationResult,
+    requestSubjectSelection: creativeVariations.requestSubjectSelection,
+    generate: creativeVariations.generate,
+    cancelGeneration: creativeVariations.cancelGeneration
   });
 
   React.useEffect(() => {
@@ -319,6 +346,8 @@ export const WorkshopApp: React.FC = () => {
     widgetHost,
     gesturePlayground,
     lexicalGravity,
+    creativeVariations,
+    creativeVariationsAuthoring,
     standingDirectives,
     excerptVerify,
     modelsSettings,
@@ -339,6 +368,8 @@ export const WorkshopApp: React.FC = () => {
     ...widgetHost.persistedState,
     ...gesturePlayground.persistedState,
     ...lexicalGravity.persistedState,
+    ...creativeVariations.persistedState,
+    ...creativeVariationsAuthoring.persistedState,
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
@@ -726,6 +757,21 @@ export const WorkshopApp: React.FC = () => {
       timestamp: Date.now()
     });
   }, [vscode]);
+
+  const copyCreativeVariation = React.useCallback((position: number) => {
+    const card = creativeVariationsAuthoring.draft.workup?.cards.find(
+      (candidate) => candidate.position === position
+    );
+    if (!card) {
+      return;
+    }
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      source: 'webview.workshop.creative-variations',
+      payload: { toolName: 'creative_variations', content: card.prose },
+      timestamp: Date.now()
+    });
+  }, [creativeVariationsAuthoring.draft.workup, vscode]);
 
   const saveGestureDictionary = React.useCallback((content: string) => {
     vscode.postMessage({
@@ -1331,6 +1377,45 @@ export const WorkshopApp: React.FC = () => {
         onLaunchWidget={launchWidget}
         onAskAgentToConfigure={askHostToConfigureWidget}
       />
+      {widgetOpening.creativeVariationsOpening && (
+        <WorkshopCreativeVariationsModal
+          open
+          banner={{ kind: 'none' }}
+          draft={creativeVariationsAuthoring.draft}
+          generation={creativeVariationsAuthoring.generation}
+          commitPending={false}
+          commitError={null}
+          commitBlockers={creativeVariationsAuthoring.commitBlockers}
+          commitAvailable={false}
+          artifactUsage={null}
+          highOverlapThreshold={CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE}
+          availableSources={creativeVariationsAuthoring.availableSources}
+          onUseSelection={creativeVariationsAuthoring.requestSubjectSelection}
+          onSubjectTextChange={creativeVariationsAuthoring.changeSubjectText}
+          onSurroundingContextChange={creativeVariationsAuthoring.changeSurroundingContext}
+          onToggleSourceReference={creativeVariationsAuthoring.toggleSourceReference}
+          onMustSurviveChange={creativeVariationsAuthoring.changeMustSurvive}
+          onMustNotChangeChange={creativeVariationsAuthoring.changeMustNotChange}
+          onAimChange={creativeVariationsAuthoring.changeAim}
+          onDistanceChange={creativeVariationsAuthoring.changeDistance}
+          onRequestedCountChange={creativeVariationsAuthoring.changeRequestedCount}
+          onGenerate={creativeVariationsAuthoring.generateWorkup}
+          onCancelGenerate={creativeVariationsAuthoring.cancelGenerate}
+          onToggleCardSelection={creativeVariationsAuthoring.toggleCardSelection}
+          onCarryModeChange={creativeVariationsAuthoring.changeCarryMode}
+          onToggleAdvisoryRisk={creativeVariationsAuthoring.toggleAdvisoryRisk}
+          onNoteChange={creativeVariationsAuthoring.changeNote}
+          onCopyVariation={copyCreativeVariation}
+          widgetModelOptions={modelsSettings.modelOptions}
+          selectedWidgetModel={
+            modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel
+          }
+          onWidgetModelChange={(modelId) =>
+            modelsSettings.setModelSelection('widget', modelId)}
+          onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
+          onClose={widgetOpening.closeCreativeVariations}
+        />
+      )}
       {/* Gesture Playground (ADR 2026-07-22): the Draft remains mounted until
           the host acknowledges that its writer turn and artifact are room
           truth. The participant response continues after the sheet closes. */}

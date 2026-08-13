@@ -61,7 +61,7 @@ and [Workshop Feature Family ADR](../adr/2026-08-03-workshop-feature-family-and-
 
 | ID | Decision | Accepted contract |
 |---|---|---|
-| D1 | First-release aim | One required `custom-aim` intent plus verbalized `Familiar`, `Adjacent`, `Tail`, or `Far tail`; default `Tail`. No bound frame or analysis preset menu. |
+| D1 | First-release aim | One optional `custom-aim` intent plus verbalized `Familiar`, `Adjacent`, `Tail`, or `Far tail`; blank projects as `Generate at random.` and distance defaults to `Tail`. No bound frame or analysis preset menu. |
 | D2 | Commit selection | At least one card. Carry is per selected card, defaults to direction, and requires explicit promotion to full prose. |
 | D3 | Risk authority | Advisory risks require per-risk acceptance. A card carrying a model-declared `hard-conflict` flag against `must not change` remains visible but cannot commit. Regeneration replaces risk identities and clears acceptance. |
 
@@ -282,7 +282,7 @@ catalog entry and reruns the route matrix through the production policy.
 ### 2.1 Working definition and real job
 
 Creative Variations is a local, writer-controlled comparison studio. It owns a
-single custom creative aim, declared invariants, one bounded generated workup,
+optional custom creative aim, optional declared invariants, one bounded generated workup,
 the writer's card/risk/carry choices, and the compact artifact wording those
 choices create. It does not own report analysis, editor mutation, standing
 prose behavior, persona behavior, cross-run variation history, or Show vs.
@@ -293,7 +293,7 @@ Tell's continuum.
 | Topic | [Declared] | [Observed] | [Inferred] | [Unknown] |
 |---|---|---|---|---|
 | One-shot lifecycle | Sprint 03 follows Gesture and clone-and-recommit | Config ledger, thread-artifact rail, chip fetch, and retry behavior exist | Reuse the rail; do not create another lifecycle | — |
-| Open aim | Required custom aim plus approved verbalized distance | ZIP contains the four-distance control; wild reports contain analysis-owned axes | Distance is creative pressure, not an analysis preset | Final placeholder/example copy |
+| Open aim | Optional custom aim with explicit random fallback plus approved verbalized distance | ZIP contains the four-distance control; wild reports contain analysis-owned axes | Distance is creative pressure, not an analysis preset | Final placeholder/example copy |
 | Result shape | 3–5 exact typed cards | Wild Markdown cardinality and shape drift; prototype uses fixtures | Provider boundary must reject partial/unknown/malformed results | Exact field character caps, calibrated in Slice 2 |
 | Distinctness | Pairwise deterministic diagnosis; no ranking/removal | No current algorithm; prototype averages fixture numbers | Name it textual overlap and preserve the full pair matrix | Warning threshold fixture calibration in Slice 3 |
 | Risk authority | Advisory acceptance; model-declared `must not change` hard conflicts cannot commit | Prototype conflates accepted risk with canon and prose carry | Persist exact v1 flags and host-derived ids defined below | — |
@@ -322,8 +322,8 @@ Tell's continuum.
 WorkshopCreativeVariationsDraft
 ├── subject { text, display-safe provenance }
 ├── surroundingContext { writerText, sourceReferences }
-├── invariants { mustSurvive: required nonblank, mustNotChange: optional }
-├── intent { kind: custom-aim, aim, distance }
+├── invariants { mustSurvive: optional, mustNotChange: optional }
+├── intent { kind: custom-aim, aim: optional author input / explicit random request fallback, distance }
 ├── requestedCount: 3 | 4 | 5
 ├── workup: null | {
 │   ├── workupId + generationProtocolVersion: 1
@@ -511,7 +511,7 @@ editor apply are not unknowns in this sprint; they are explicitly absent.
 
 | Artifact pair | Contradiction | Resolution |
 |---|---|---|
-| Concept ↔ Sprint | Concept allowed zero selections and optional creative pressure | Slice 0 changes the promoted concept to one-or-more and required custom aim |
+| Concept ↔ Sprint | Concept allowed zero selections and optional creative pressure | Sprint requires one-or-more only at commit; authoring pressure remains optional and blank generation uses the explicit random fallback |
 | “Atomic” prose ↔ current behavior | Some comments imply config + turn + artifact “or nothing”; current accepted tests retain an uncommitted config | Define atomic unit as turn + artifact; config is a durable retry token |
 | Sprint duplicate rule ↔ no-discard rule | “Duplicate cannot settle” could also reject merely similar cards | Exact normalized duplicate rejects; high non-identical overlap warns and remains |
 | Prototype ↔ Sprint | Prototype defaults to prose and omits `must not change` from commit projection | Contract defaults per card to direction and projects both declared invariant fields |

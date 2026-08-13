@@ -119,13 +119,13 @@ export class WorkshopCreativeVariationsHandler {
       assertCreativeVariationsDraftIntegrity(transientDraft, 'Creative Variations request');
       const request: CreativeVariationsGenerationRequest = {
         workupId,
-        subject: message.payload.subject,
-        surroundingContext: message.payload.surroundingContext,
-        invariants: message.payload.invariants,
-        intent: message.payload.intent,
-        requestedCount: message.payload.requestedCount,
+        subject: transientDraft.subject,
+        surroundingContext: transientDraft.surroundingContext,
+        invariants: transientDraft.invariants,
+        intent: transientDraft.intent,
+        requestedCount: transientDraft.requestedCount,
         sourceMaterials: this.resolveSourceMaterials(
-          message.payload.surroundingContext.sourceReferences
+          transientDraft.surroundingContext.sourceReferences
         ),
         onToken,
         signal: controller.signal

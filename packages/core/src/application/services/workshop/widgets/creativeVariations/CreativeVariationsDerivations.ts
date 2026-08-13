@@ -10,14 +10,21 @@ type CreativeVariationsGenerationDraftInput = Pick<
   'subject' | 'surroundingContext' | 'invariants' | 'intent' | 'requestedCount'
 >;
 
+export const CREATIVE_VARIATIONS_RANDOM_AIM = 'Generate at random.';
+
 export function creativeVariationsGenerationDraft(
   input: CreativeVariationsGenerationDraftInput
 ): WorkshopCreativeVariationsDraft {
   return {
     subject: input.subject,
     surroundingContext: input.surroundingContext,
-    invariants: input.invariants,
-    intent: input.intent,
+    invariants: { ...input.invariants },
+    intent: {
+      ...input.intent,
+      aim: input.intent.aim.trim().length > 0
+        ? input.intent.aim
+        : CREATIVE_VARIATIONS_RANDOM_AIM
+    },
     requestedCount: input.requestedCount,
     workup: null,
     selections: [],

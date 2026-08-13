@@ -10,6 +10,12 @@ import {
   WorkshopTurn
 } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
+import {
+  generatedDraft
+} from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
+import {
+  CREATIVE_VARIATIONS_RANDOM_AIM
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
 jest.mock('../../../presentation/webview/hooks/useVSCodeApi');
 jest.mock('../../../presentation/webview/styles/workshop/tokens.css', () => ({}));
@@ -18,6 +24,7 @@ jest.mock('../../../presentation/webview/styles/workshop/context.css', () => ({}
 jest.mock('../../../presentation/webview/styles/workshop/session.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/gesturePlayground/gesturePlayground.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/lexicalGravity/lexicalGravity.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/widgets/creativeVariations/creativeVariations.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/standingDirectiveRail.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/schematic/schematic.css', () => ({}));
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
@@ -179,5 +186,122 @@ describe('WorkshopApp', () => {
 
     expect((screen.getByRole('textbox') as HTMLTextAreaElement).value)
       .toBe('Keep this draft safe.');
+  });
+
+  it('mounts the Creative authoring flow with correlated generation and host clipboard copy', () => {
+    render(<WorkshopApp />);
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: readySession() }));
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.MODEL_DATA,
+          source: 'extension.configuration',
+          timestamp: 1,
+          payload: {
+            options: [
+              { id: 'anthropic/claude-sonnet-5', label: 'Claude Sonnet 5' },
+              { id: 'openai/gpt-5.4', label: 'GPT-5.4' }
+            ],
+            selections: { widget: 'anthropic/claude-sonnet-5' }
+          }
+        }
+      }));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Widgets' }));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: /Creative Variations Explorer/ })[0]
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open widget' }));
+
+    expect(screen.getByRole('dialog', {
+      name: 'Creative Variations Explorer'
+    })).not.toBeNull();
+    const commit = screen.getByRole('button', { name: 'Commit to thread' });
+    expect((commit as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/Commit to the Workshop thread is not available/)).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use editor selection' }));
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.REQUEST_SELECTION,
+      payload: { target: 'workshop_creative_variations_subject' }
+    }));
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.SELECTION_DATA,
+          source: 'extension.ui',
+          timestamp: 2,
+          payload: {
+            target: 'workshop_creative_variations_subject',
+            content: 'The selected passage.',
+            sourceUri: 'file:///private/draft.md',
+            relativePath: 'draft.md',
+            startLine: 4,
+            endLine: 5
+          }
+        }
+      }));
+    });
+    expect((screen.getByRole('textbox', {
+      name: /Selected passage/
+    }) as HTMLTextAreaElement).value).toBe('The selected passage.');
+    expect(screen.getByText('from excerpt · draft.md · L4–5')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Generate the workup/ }));
+
+    const generateMessage = vscode.postMessage.mock.calls
+      .map(([message]) => message)
+      .find((message) =>
+        message.type === MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE);
+    expect(generateMessage).toBeDefined();
+    expect(generateMessage.payload.invariants).toEqual({
+      mustSurvive: '',
+      mustNotChange: ''
+    });
+    expect(generateMessage.payload.intent).toEqual({
+      kind: 'custom-aim',
+      aim: CREATIVE_VARIATIONS_RANDOM_AIM,
+      distance: 'tail'
+    });
+
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT,
+          source: 'extension.workshop',
+          timestamp: 3,
+          payload: {
+            widgetId: 'creative-variations',
+            token: generateMessage.payload.token,
+            workupId: generatedDraft.workup!.workupId,
+            ok: true,
+            workup: generatedDraft.workup!
+          }
+        }
+      }));
+    });
+
+    expect(screen.getByText('3 returned · none ranked')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Take 1 prose' }));
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.COPY_RESULT,
+      source: 'webview.workshop.creative-variations',
+      payload: {
+        toolName: 'creative_variations',
+        content: generatedDraft.workup!.cards[0].prose
+      }
+    }));
+
+    fireEvent.click(screen.getByRole('button', {
+      name: /Browse widget model options. Current model: Claude Sonnet 5/
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /GPT-5.4/ }));
+    expect(screen.queryByText('3 returned · none ranked')).toBeNull();
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.SET_MODEL_SELECTION,
+      payload: { scope: 'widget', modelId: 'openai/gpt-5.4' }
+    }));
   });
 });

@@ -84,11 +84,11 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         rail: 'oneshot',
         railLabel: 'one-shot',
         group: 'Playgrounds',
-        tag: 'concept',
+        tag: 'Sprint 03',
         lifecycleNote: ONE_SHOT_LIFECYCLE,
         blurb:
           'Three to five genuinely different takes on a passage under invariants you declare — measured for distinctness, compared side by side.',
-        live: false
+        live: true
       }
     ]
   },
@@ -274,7 +274,7 @@ export function isWorkshopWidgetId(value: unknown): value is WorkshopWidgetId {
   return typeof value === 'string' && WIDGETS_BY_ID.has(value as WorkshopWidgetId);
 }
 
-/** True when the widget may launch, commit, or be persona-recommended. */
+/** True when the widget may launch and use its already-implemented host routes. */
 export function isLiveWorkshopWidgetId(value: unknown): value is WorkshopWidgetId {
   return isWorkshopWidgetId(value) && WIDGETS_BY_ID.get(value)!.live === true;
 }

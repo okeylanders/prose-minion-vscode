@@ -16,7 +16,7 @@ describe('Workshop widget model catalog', () => {
     expect(recommendedIds).toEqual(expect.arrayContaining(NEW_MODEL_IDS));
   });
 
-  it('passes the full recommended model options to both widget pickers', () => {
+  it('passes the full recommended model options to every widget picker', () => {
     const workshopAppPath = path.resolve(
       __dirname,
       '..',
@@ -30,6 +30,6 @@ describe('Workshop widget model catalog', () => {
       /widgetModelOptions=\{\s*modelsSettings\.modelOptions\s*\}/g
     );
 
-    expect(fullCatalogBindings).toHaveLength(2);
+    expect(fullCatalogBindings).toHaveLength(3);
   });
 });

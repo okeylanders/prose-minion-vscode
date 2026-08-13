@@ -17,7 +17,8 @@ import {
 } from './creativeVariationsFixtures';
 
 const widgetModels: ModelOption[] = [
-  { id: 'anthropic/claude-sonnet-5', label: 'Claude Sonnet 5', provider: 'Anthropic' }
+  { id: 'anthropic/claude-sonnet-5', label: 'Claude Sonnet 5', provider: 'Anthropic' },
+  { id: 'openai/gpt-5.4', label: 'GPT-5.4', provider: 'OpenAI' }
 ];
 
 const renderModal = (
@@ -31,6 +32,7 @@ const renderModal = (
     commitPending: false,
     commitError: null,
     commitBlockers: ['no-workup'] as const,
+    commitAvailable: true,
     artifactUsage: null,
     highOverlapThreshold: 80,
     availableSources: [],
@@ -65,20 +67,35 @@ const renderModal = (
 describe('WorkshopCreativeVariationsModal', () => {
   afterEach(cleanup);
 
-  it('disables generation with written reasons while required fields are blank', () => {
+  it('mounts as a labelled modal and gives focus to its close affordance', () => {
+    renderModal();
+    const dialog = screen.getByRole('dialog', { name: 'Creative Variations Explorer' });
+    const close = screen.getByRole('button', { name: 'Close Creative Variations' });
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(document.activeElement).toBe(close);
+  });
+
+  it('disables generation with a written reason while the passage is blank', () => {
     renderModal({ draft: emptyDraft });
     const generate = screen.getByRole('button', { name: /Generate the workup/ });
     expect((generate as HTMLButtonElement).disabled).toBe(true);
-    const reasons = screen.getByText(/“Must survive” is required/);
-    expect(reasons.textContent).toContain('Add the passage to vary.');
-    expect(reasons.textContent).toContain('The creative aim is required');
+    const reasons = screen.getByText('Add the passage to vary.');
     expect(generate.getAttribute('aria-describedby')).toBe(reasons.id);
   });
 
-  it('enables generation once subject, must-survive, and aim are nonblank', () => {
-    const { props } = renderModal();
+  it('enables generation with only a passage and marks constraints and aim optional', () => {
+    const { props } = renderModal({
+      draft: {
+        ...emptyDraft,
+        subject: { text: 'The only required input.', provenance: { kind: 'pasted' } }
+      }
+    });
     const generate = screen.getByRole('button', { name: /Generate the workup/ });
     expect((generate as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole('textbox', { name: /Must survive every take optional/ }))
+      .toBeTruthy();
+    expect(screen.getByRole('textbox', { name: /Creative aim optional/ }))
+      .toBeTruthy();
     fireEvent.click(generate);
     expect(props.onGenerate).toHaveBeenCalledTimes(1);
   });
@@ -152,6 +169,13 @@ describe('WorkshopCreativeVariationsModal', () => {
     expect(screen.getByRole('status').textContent).toContain('Generating the workup');
     fireEvent.click(screen.getByRole('button', { name: 'Cancel generation' }));
     expect(props.onCancelGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts the active generation before a modal close settles', () => {
+    const { props } = renderModal({ generation: { kind: 'generating' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(props.onCancelGenerate).toHaveBeenCalledTimes(1);
+    expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 
   it('renders generation failure as an alert', () => {
@@ -324,6 +348,32 @@ describe('WorkshopCreativeVariationsModal', () => {
     expect((commit as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(commit);
     expect(props.onCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Slice 5 commit honestly unavailable with an accessible reason', () => {
+    const { props } = renderModal({
+      draft: generatedDraft,
+      commitBlockers: [],
+      commitAvailable: false
+    });
+    const commit = screen.getByRole('button', { name: 'Commit to thread' });
+    expect((commit as HTMLButtonElement).disabled).toBe(true);
+    const reason = screen.getByText(
+      'Commit to the Workshop thread is not available in this build yet.'
+    );
+    expect(commit.getAttribute('aria-describedby')).toBe(reason.id);
+    fireEvent.click(commit);
+    expect(props.onCommit).not.toHaveBeenCalled();
+  });
+
+  it('uses the widget model selector quartet', () => {
+    const { props } = renderModal();
+    fireEvent.click(screen.getByRole('button', {
+      name: /Browse widget model options. Current model: Claude Sonnet 5/
+    }));
+    expect(props.onOpenWidgetModelBrowser).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /GPT-5.4/ }));
+    expect(props.onWidgetModelChange).toHaveBeenCalledWith('openai/gpt-5.4');
   });
 
   it('labels the clone posture and relabels commit as a new turn', () => {

@@ -27,11 +27,20 @@ import type {
   UseLexicalGravityReturn
 } from '@hooks/domain/workshop/widgets/useLexicalGravity';
 import type {
+  UseCreativeVariationsReturn
+} from '@hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations';
+import type {
+  UseCreativeVariationsAuthoringReturn
+} from '@hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring';
+import type {
   UseWorkshopStandingDirectivesReturn
 } from '@hooks/domain/workshop/useWorkshopStandingDirectives';
 import {
   dispatchWorkshopWidgetActionResult
 } from '@hooks/domain/workshop/dispatchWorkshopWidgetActionResult';
+import {
+  dispatchWorkshopSelectionData
+} from '@hooks/domain/workshop/dispatchWorkshopSelectionData';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 
 export interface WorkshopAppMessageRouterDeps {
@@ -40,6 +49,8 @@ export interface WorkshopAppMessageRouterDeps {
   widgetHost: UseWorkshopWidgetHostReturn;
   gesturePlayground: UseGesturePlaygroundReturn;
   lexicalGravity: UseLexicalGravityReturn;
+  creativeVariations: UseCreativeVariationsReturn;
+  creativeVariationsAuthoring: UseCreativeVariationsAuthoringReturn;
   standingDirectives: UseWorkshopStandingDirectivesReturn;
   excerptVerify: UseWorkshopExcerptVerifyReturn;
   modelsSettings: UseModelsSettingsReturn;
@@ -63,6 +74,8 @@ export function buildWorkshopAppMessageRoutes(
     widgetHost,
     gesturePlayground,
     lexicalGravity,
+    creativeVariations,
+    creativeVariationsAuthoring,
     standingDirectives,
     excerptVerify,
     modelsSettings,
@@ -87,7 +100,13 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshopSessions.handleSessionSaveStatus,
     [MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE]:
       workshopSessions.handleSessionRecoveryNotice,
-    [MessageType.SELECTION_DATA]: excerptVerify.handleSelectionData,
+    [MessageType.SELECTION_DATA]: (message) => {
+      dispatchWorkshopSelectionData(message, {
+        handleExcerptVerification: excerptVerify.handleSelectionData,
+        handleCreativeVariationsSubject:
+          creativeVariationsAuthoring.handleSubjectSelection
+      });
+    },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
     [MessageType.WORKSHOP_CONTEXT_ATTACHMENT_CONTENT]: workshopRoom.handleContextAttachmentContent,
     [MessageType.WORKSHOP_CONTEXT_SEARCH_RESULTS]: workshopRoom.handleContextSearchResults,
@@ -96,6 +115,10 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_WIDGET_CONFIG_DATA]: widgetHost.handleWidgetConfigData,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS]:
       gesturePlayground.handleWidgetGenerationProgress,
+    [MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS]:
+      creativeVariations.handleGenerationProgress,
+    [MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT]:
+      creativeVariations.handleGenerationResult,
     [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: (message) => {
       dispatchWorkshopWidgetActionResult(message, {
         handleGestureActionResult: gesturePlayground.handleWidgetActionResult,

@@ -1,6 +1,6 @@
 # Sprint 03: Creative Variations Explorer
 
-**Status**: In progress — Slice 3 ready for review; presentation components remain dormant until Slice 4 wiring
+**Status**: In progress — Slice 4 ready for review and live for integrated hands-on testing
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-03-creative-variations` -> PR into `epic/conversation-widgets`
 **Depends on**: Sprint 02D merged into `epic/conversation-widgets`; the widget host, session-owned config ledger, one-shot thread-artifact rail, and clone-and-recommit lifecycle are all proven
@@ -29,11 +29,12 @@ will be its deliberately specialized sibling.
 - **Declared invariants are two distinct fields.** `must survive` names the
   facts, character state, emotional truth, or effect each take must carry;
   `must not change` names hard boundaries such as POV, tense, plot outcome, or
-  exact dialogue. `must survive` is required and nonblank; `must not change` may
-  be blank. The model does not silently infer either.
-- **The first release starts with one open aim.** It offers one required custom
+  exact dialogue. Both fields are optional; a blank field means no constraint
+  of that kind, and the model does not silently infer one.
+- **The first release starts with one open aim.** It offers an optional custom
   aim plus one verbalized sampling distance: `Familiar`, `Adjacent`,
-  `Tail`, or `Far tail`. New drafts default to `Tail`. This is creative pressure,
+  `Tail`, or `Far tail`. A blank aim is projected into the generation request
+  as `Generate at random.` New drafts default to `Tail`. This is creative pressure,
   not an analysis-type preset menu. The bound four-menu frame, partial
   regeneration, and report-prefill handoffs are later slices. The first slice
   keeps the core comparison promise rather than shipping a control museum.
@@ -73,8 +74,9 @@ will be its deliberately specialized sibling.
 1. Feature-owned persisted draft codec, hydration normalization, current-shape,
    and semantic-integrity arm in the closed widget lifecycle.
 2. Selection/paste intake with honest surrounding-context/provenance labeling,
-   two invariant fields, required custom aim, verbalized distance
-   defaulting to `Tail`, and a three-to-five count.
+   two optional invariant fields, an optional custom aim with an explicit
+   random fallback, verbalized distance defaulting to `Tail`, and a
+   three-to-five count. The subject passage is the only required authoring input.
 3. One cancellable model call with a closed result schema, visible progress and
    failure state, exact-duplicate rejection, plus versioned deterministic
    pairwise textual-overlap calculation and high-overlap warnings.
@@ -93,12 +95,12 @@ will be its deliberately specialized sibling.
 ## Implementation slices and review gates
 
 All slices land on `sprint/conversation-widgets-03-creative-variations` and stop
-at the stated boundary for commit-by-commit review before the next slice begins.
-The catalog stays `live: false` through Slice 6. Dormant generation, commit, and
-recommendation contributions are exercised through one injected availability
-policy whose production implementation reads the catalog and whose test
-implementation enables exact ids. Slice 7 flips the catalog, then reruns the
-same route matrix through the production availability policy before release.
+at the stated behavior boundary for review before the next slice begins. On
+2026-08-13 Okey authorized enabling the catalog entry in Slice 4 so each
+integrated user-facing slice can be tested in the real app as it lands. The
+production-backed availability policy is now the test path too; there is no
+test-only liveness shim. Later slices add their behavior without re-gating the
+surface.
 
 | Slice | Review boundary |
 |---|---|
@@ -109,7 +111,53 @@ same route matrix through the production availability policy before release.
 | 4 | Add selection/paste intake, authoring controller, cards, comparison, and accessible presentation. |
 | 5 | Add compact commit, chip reopen, and clone-and-recommit. |
 | 6 | Add persona recommendation/prefill while keeping report-prefill deferred. |
-| 7 | Complete architecture witnesses, flip the catalog entry live, run the production-policy route matrix and full verification, then update current-state docs. |
+| 7 | Complete architecture witnesses, run the final production-policy route matrix and full verification, then update current-state docs. |
+
+### Slice 4 review evidence — 2026-08-13
+
+Slice 4 is implemented in the worktree and is **ready for review**. It is not
+reviewed or complete. The production catalog entry is live for integrated
+hands-on testing; room commit remains visibly and accessibly unavailable until
+Slice 5.
+
+- `useCreativeVariations` owns the webview request token, generate/cancel wire,
+  host workup-id latch, and stale progress/result rejection. It reuses
+  `creativeVariationsGenerationDraft`; it does not reproduce the derivation.
+  That derivation makes the passage the sole required input: a blank aim becomes
+  `Generate at random.` for the request, while blank invariant fields remain
+  empty and therefore declare no preservation constraints.
+- `useCreativeVariationsAuthoring` owns transient draft, intake, invalidation,
+  generation presentation state, selections, carry modes, and accepted risks.
+  Its persistence contract is explicitly empty and it has no transport
+  vocabulary.
+- `dispatchWorkshopSelectionData` is the closed Workshop-side fan-out for the
+  existing selection wire. Editor-derived provenance keeps only display-safe
+  path/range fields while the text remains exact; clipboard and edited text are
+  marked pasted.
+- `WorkshopApp` composes the transport and controller, mounts the controlled
+  modal, supplies the clipboard effect and widget model-selector quartet, and
+  routes Creative Variations progress/results. Changing the host-owned widget
+  model invalidates the dependent transient workup. The overlap warning uses
+  the named score constant (`80`).
+- The controlled modal exposes an explicit `commitAvailable` boundary. Slice 4
+  passes `false`, renders an associated unavailable explanation, and supplies
+  no commit callback; no unrelated room-run or commit-in-flight state is
+  impersonated.
+
+Verification at this review gate:
+
+- focused Slice 4 integration and boundary set: 15 suites, 158 tests passed;
+- full Jest: 206 suites, 2,201 tests, and 2 snapshots passed;
+- all core, webview, and extension TypeScript configurations passed;
+- ESLint: 0 errors, 955 repository warnings;
+- production build, resource staging, webpack compilation, and bundle sentinel
+  passed; webpack retained its three advisory webview-size warnings;
+- `git diff --check` passed.
+
+The current CLI environment cannot launch the integrated VS Code extension
+surface, so no screenshot was substituted from a fixture. The mounted Workshop
+integration test now launches Creative Variations through the same live catalog
+policy as an F5 extension session.
 
 ## Out of scope
 

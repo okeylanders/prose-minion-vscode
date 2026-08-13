@@ -3,6 +3,9 @@ import {
   CreativeVariationsService,
   type CreativeVariationsGenerationRequest
 } from '@services/widgets/creativeVariations/CreativeVariationsService';
+import {
+  CREATIVE_VARIATIONS_RANDOM_AIM
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
 const response = (): string => [
   '===CREATIVE_VARIATIONS_V1===',
@@ -92,6 +95,20 @@ describe('CreativeVariationsService', () => {
     const { service, capture } = build({ cancelled: true } as never);
     await expect(service.generate(request())).resolves.toEqual({ cancelled: true });
     expect(capture).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a blank aim for direct host callers and keeps blank invariants empty', async () => {
+    const { service, runInitial } = build();
+    const minimal = request();
+    minimal.invariants = { mustSurvive: '', mustNotChange: '' };
+    minimal.intent = { ...minimal.intent, aim: '' };
+
+    await service.generate(minimal);
+
+    const userMessage = runInitial.mock.calls[0][0].userMessage as string;
+    expect(userMessage).toContain(`"aim": "${CREATIVE_VARIATIONS_RANDOM_AIM}"`);
+    expect(userMessage).toContain('"mustSurvive": ""');
+    expect(userMessage).toContain('"mustNotChange": ""');
   });
 
   it('rejects malformed input before acquiring an engine or spending tokens', async () => {

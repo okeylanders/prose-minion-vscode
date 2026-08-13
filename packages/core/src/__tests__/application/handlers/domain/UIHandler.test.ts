@@ -197,6 +197,79 @@ describe('UIHandler', () => {
     });
   });
 
+  describe('Creative Variations subject intake', () => {
+    const request = {
+      type: MessageType.REQUEST_SELECTION,
+      source: 'webview.workshop.creative-variations',
+      payload: { target: 'workshop_creative_variations_subject' },
+      timestamp: 1
+    } as const;
+
+    it('returns editor selection text with display and verification source fields', async () => {
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService(),
+        createFakeEditorContext({
+          getActiveSelection: () => ({
+            text: 'Selected passage.',
+            uriString: 'file:///private/draft.md',
+            fsPath: '/private/draft.md',
+            relativePath: 'draft.md',
+            startLine: 8,
+            endLine: 9,
+            isEmpty: false
+          })
+        }),
+        createFakeGlobalState()
+      );
+      handler.registerRoutes(router);
+
+      await router.route(request as any);
+
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SELECTION_DATA,
+        payload: {
+          target: 'workshop_creative_variations_subject',
+          content: 'Selected passage.',
+          sourceUri: 'file:///private/draft.md',
+          relativePath: 'draft.md',
+          startLine: 8,
+          endLine: 9
+        }
+      }));
+    });
+
+    it('returns clipboard fallback text without pretending it has editor provenance', async () => {
+      handler = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService({ readClipboard: async () => ' Clipboard passage. ' }),
+        createFakeEditorContext(),
+        createFakeGlobalState()
+      );
+      handler.registerRoutes(router);
+
+      await router.route(request as any);
+
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SELECTION_DATA,
+        payload: {
+          target: 'workshop_creative_variations_subject',
+          content: 'Clipboard passage.',
+          sourceUri: undefined,
+          relativePath: undefined,
+          startLine: undefined,
+          endLine: undefined
+        }
+      }));
+    });
+  });
+
   describe('open_workshop', () => {
     it('delegates to the injected Workshop UI action', async () => {
       const openWorkshop = jest.fn();

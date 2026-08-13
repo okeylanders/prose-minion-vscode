@@ -77,12 +77,14 @@ describe('useWorkshopWidgetOpening', () => {
   it('owns fresh, recommendation, and close transitions', () => {
     const host = emptyHost();
     const onCloseGesturePlayground = jest.fn();
+    const onCloseCreativeVariations = jest.fn();
     const { result } = renderHook(() => useWorkshopWidgetOpening({
       host,
       standingDirectives: [],
       onError: jest.fn(),
       onCloseGesturePlayground,
-      onCloseLexicalGravity: jest.fn()
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations
     }));
 
     act(() => result.current.launchWidget('gesture-playground'));
@@ -102,6 +104,12 @@ describe('useWorkshopWidgetOpening', () => {
     expect(result.current.gesturePlaygroundOpening).toBeNull();
     expect(host.clearWidgetConfigData).toHaveBeenCalledTimes(1);
     expect(onCloseGesturePlayground).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.launchWidget('creative-variations'));
+    expect(result.current.creativeVariationsOpening).toEqual({ kind: 'new' });
+    act(() => result.current.closeCreativeVariations());
+    expect(result.current.creativeVariationsOpening).toBeNull();
+    expect(onCloseCreativeVariations).toHaveBeenCalledTimes(1);
   });
 
   it('reopens only the exact requested config and preserves active Lexical edit identity', () => {
@@ -111,7 +119,8 @@ describe('useWorkshopWidgetOpening', () => {
       standingDirectives: [activeLexical],
       onError: jest.fn(),
       onCloseGesturePlayground: jest.fn(),
-      onCloseLexicalGravity: jest.fn()
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
     }));
 
     act(() => result.current.launchWidget('lexical-gravity'));
@@ -148,7 +157,8 @@ describe('useWorkshopWidgetOpening', () => {
       standingDirectives: [],
       onError,
       onCloseGesturePlayground: jest.fn(),
-      onCloseLexicalGravity: jest.fn()
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig('wc-missing'));
@@ -176,7 +186,8 @@ describe('useWorkshopWidgetOpening', () => {
       standingDirectives: [],
       onError,
       onCloseGesturePlayground: jest.fn(),
-      onCloseLexicalGravity: jest.fn()
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig('wc-prose'));

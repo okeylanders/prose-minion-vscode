@@ -35,6 +35,13 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleCandidates: jest.fn(),
     handleLensesSaved: jest.fn()
   } as never,
+  creativeVariations: {
+    handleGenerationProgress: jest.fn(),
+    handleGenerationResult: jest.fn()
+  } as never,
+  creativeVariationsAuthoring: {
+    handleSubjectSelection: jest.fn()
+  } as never,
   standingDirectives: { handleActionResult: jest.fn() } as never,
   excerptVerify: { handleSelectionData: jest.fn() } as never,
   modelsSettings: { handleModelData: jest.fn(), handleSettingsData: jest.fn() } as never,
@@ -129,5 +136,46 @@ describe('buildWorkshopAppMessageRoutes', () => {
     routes[MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]!(message as never);
 
     expect(deps.handleApiKeyConfigured).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes Creative generation and exact subject intake to their named owners', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const selection = {
+      type: MessageType.SELECTION_DATA,
+      source: 'extension.ui',
+      timestamp: 1,
+      payload: {
+        target: 'workshop_creative_variations_subject',
+        content: 'Selected passage.',
+        sourceUri: 'file:///draft.md',
+        relativePath: 'draft.md'
+      }
+    } as const;
+    const progress = {
+      type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS,
+      source: 'extension.workshop',
+      timestamp: 2,
+      payload: {
+        widgetId: 'creative-variations',
+        token: 'cv-1',
+        workupId: 'cvw-1',
+        phase: 'started',
+        stage: 'requesting',
+        outputCharacters: 0,
+        estimatedOutputTokens: 0,
+        outputTokenLimit: 45_000
+      }
+    } as const;
+
+    routes[MessageType.SELECTION_DATA]!(selection as never);
+    routes[MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS]!(
+      progress as never
+    );
+
+    expect(deps.creativeVariationsAuthoring.handleSubjectSelection)
+      .toHaveBeenCalledWith(selection.payload);
+    expect(deps.excerptVerify.handleSelectionData).not.toHaveBeenCalled();
+    expect(deps.creativeVariations.handleGenerationProgress).toHaveBeenCalledWith(progress);
   });
 });

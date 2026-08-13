@@ -2,9 +2,9 @@
  * WorkshopCreativeVariationsModal — the Creative Variations Explorer's
  * pre-commit surface (Sprint 03; design Spread 07; ADR 2026-07-22 family).
  *
- * A comparison studio, not a rewrite button: the writer declares what must
- * survive and what must not change, aims one custom intent at a verbalized
- * sampling distance, generates one bounded workup, compares takes, and
+ * A comparison studio, not a rewrite button: the writer may declare what must
+ * survive and what must not change, optionally aims a custom intent at a
+ * verbalized sampling distance, generates one bounded workup, compares takes, and
  * commits only chosen directions (or explicitly promoted prose) to one room
  * turn. Nothing here writes to the editor.
  *
@@ -36,6 +36,9 @@ import { ModelSelector } from '@components/shared/ModelSelector';
 import { WorkshopModalShell } from '@components/workshop/WorkshopModalShell';
 import { CreativeVariationCard } from './CreativeVariationCard';
 import { CreativeVariationsComparison } from './CreativeVariationsComparison';
+import {
+  creativeVariationsSourceReferenceKey
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
@@ -83,6 +86,8 @@ export interface WorkshopCreativeVariationsModalProps {
   commitPending: boolean;
   commitError: string | null;
   commitBlockers: readonly WorkshopCreativeVariationsCommitBlocker[];
+  /** False until Slice 5 installs the host commit route for this feature. */
+  commitAvailable: boolean;
   /** Host/controller-computed commit-payload projection; null before any selection. */
   artifactUsage: WorkshopCreativeVariationsArtifactUsage | null;
   /** Slice 3 calibration constant; a maximum pair at/over this warns. */
@@ -104,7 +109,7 @@ export interface WorkshopCreativeVariationsModalProps {
   onToggleAdvisoryRisk: (position: number, riskId: string) => void;
   onNoteChange: (note: string) => void;
   onCopyVariation: (position: number) => void;
-  onCommit: () => void;
+  onCommit?: () => void;
   widgetModelOptions: ModelOption[];
   selectedWidgetModel: string;
   onWidgetModelChange: (modelId: string) => void;
@@ -158,11 +163,6 @@ const COMMIT_BLOCKER_COPY: Record<WorkshopCreativeVariationsCommitBlocker, strin
     'The commit payload is over its ceiling — carry more takes as direction, or trim the note.'
 };
 
-const sourceReferenceKey = (reference: WorkshopWidgetSourceReference): string =>
-  reference.kind === 'active-excerpt'
-    ? reference.kind
-    : `${reference.kind}:${reference.attachmentId}`;
-
 export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariationsModalProps> = ({
   open,
   banner,
@@ -171,6 +171,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   commitPending,
   commitError,
   commitBlockers,
+  commitAvailable,
   artifactUsage,
   highOverlapThreshold,
   availableSources,
@@ -222,12 +223,6 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   if (draft.subject.text.trim().length === 0) {
     generateReasons.push('Add the passage to vary.');
   }
-  if (draft.invariants.mustSurvive.trim().length === 0) {
-    generateReasons.push('“Must survive” is required — name what every take must deliver.');
-  }
-  if (draft.intent.aim.trim().length === 0) {
-    generateReasons.push('The creative aim is required — say what you are asking the takes to do.');
-  }
   const generateDisabled = interactionLocked || generateReasons.length > 0;
 
   const selectionByPosition = React.useMemo(() => {
@@ -268,7 +263,12 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   const proseCount = selectedCount - directionCount;
 
   const activeBlocker = commitBlockers.length > 0 ? commitBlockers[0] : null;
-  const commitDisabled = activeBlocker !== null;
+  const commitUnavailableReason = !commitAvailable
+    ? 'Commit to the Workshop thread is not available in this build yet.'
+    : null;
+  const commitDisabled = commitUnavailableReason !== null
+    || activeBlocker !== null
+    || onCommit === undefined;
 
   const close = React.useCallback(() => {
     /* The model browser overlays this sheet and owns the first Escape. */
@@ -291,11 +291,12 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   );
 
   const availableSourceKeys = React.useMemo(
-    () => new Set(availableSources.map(({ reference }) => sourceReferenceKey(reference))),
+    () => new Set(availableSources.map(({ reference }) =>
+      creativeVariationsSourceReferenceKey(reference))),
     [availableSources]
   );
   const unavailableSelectedSources = draft.surroundingContext.sourceReferences.filter(
-    (reference) => !availableSourceKeys.has(sourceReferenceKey(reference))
+    (reference) => !availableSourceKeys.has(creativeVariationsSourceReferenceKey(reference))
   );
 
   const generationProgressPanel = (
@@ -407,9 +408,9 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                 />
                 <p className="pm-ws-cvx-honest">
                   {surroundingContextTravels
-                    ? 'The generation sees this passage, your declared constraints, and the surrounding context or source material selected on this sheet. It cannot check continuity beyond what you supplied.'
+                    ? 'The generation sees this passage, any constraints you declare, and the surrounding context or source material selected on this sheet. It cannot check continuity beyond what you supplied.'
                     : pasted
-                      ? 'The generation sees this text and your declared constraints and nothing else — it cannot check continuity against the pages around it, and it will not claim to.'
+                      ? 'The generation sees this text and any constraints you declare, and nothing else — it cannot check continuity against the pages around it, and it will not claim to.'
                       : 'This passage came from your excerpt, so its origin travels with the draft. Editing the text here keeps your words; the generation still sees only what is on this sheet.'}
                 </p>
               </div>
@@ -434,9 +435,9 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                 </legend>
                 <div className="pm-ws-cvx-source-list">
                   {availableSources.map(({ reference, label, detail }) => {
-                    const key = sourceReferenceKey(reference);
+                    const key = creativeVariationsSourceReferenceKey(reference);
                     const selected = draft.surroundingContext.sourceReferences.some(
-                      (candidate) => sourceReferenceKey(candidate) === key
+                      (candidate) => creativeVariationsSourceReferenceKey(candidate) === key
                     );
                     const atLimit =
                       draft.surroundingContext.sourceReferences.length
@@ -459,7 +460,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                   {unavailableSelectedSources.map((reference) => (
                     <label
                       className="pm-ws-cvx-source pm-ws-cvx-source-unavailable"
-                      key={sourceReferenceKey(reference)}
+                      key={creativeVariationsSourceReferenceKey(reference)}
                     >
                       <input
                         type="checkbox"
@@ -490,14 +491,14 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
             <div className="pm-ws-cvx-grid-side">
               <label className="pm-ws-cvx-field">
                 <span className="pm-ws-cvx-flabel">
-                  Must survive every take <i>required</i>
+                  Must survive every take <i>optional</i>
                 </span>
                 <textarea
                   value={draft.invariants.mustSurvive}
                   maxLength={BUDGET.creativeMustSurviveCharacters}
                   disabled={interactionLocked}
                   rows={4}
-                  placeholder="The facts, character state, or effect every take must still deliver."
+                  placeholder="Optional — leave blank when nothing needs to stay fixed."
                   onChange={(event) => onMustSurviveChange(event.target.value)}
                 />
               </label>
@@ -519,14 +520,14 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
 
           <label className="pm-ws-cvx-field">
             <span className="pm-ws-cvx-flabel">
-              Creative aim <i>required</i>
+              Creative aim <i>optional</i>
             </span>
             <textarea
               value={draft.intent.aim}
               maxLength={BUDGET.creativeAimCharacters}
               disabled={interactionLocked}
               rows={2}
-              placeholder="e.g. let the room carry the grief — objects and staging instead of stated feeling"
+              placeholder="Generate at random when blank — or name a specific creative pressure."
               onChange={(event) => onAimChange(event.target.value)}
             />
           </label>
@@ -834,7 +835,11 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
               <span className="pm-ws-cvx-foot-count">· {selectedCount} selected</span>
             )}
           </div>
-          {activeBlocker && activeBlocker !== 'commit-in-flight' && (
+          {commitUnavailableReason ? (
+            <span className="pm-ws-cvx-commit-reason" id="pm-ws-cvx-commit-reason">
+              {commitUnavailableReason}
+            </span>
+          ) : activeBlocker && activeBlocker !== 'commit-in-flight' && (
             <span className="pm-ws-cvx-commit-reason" id="pm-ws-cvx-commit-reason">
               {COMMIT_BLOCKER_COPY[activeBlocker]}
             </span>
@@ -852,7 +857,8 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
             className="pm-ws-cvx-commit"
             disabled={commitDisabled}
             aria-describedby={
-              activeBlocker && activeBlocker !== 'commit-in-flight'
+              commitUnavailableReason
+              || (activeBlocker && activeBlocker !== 'commit-in-flight')
                 ? 'pm-ws-cvx-commit-reason'
                 : undefined
             }
