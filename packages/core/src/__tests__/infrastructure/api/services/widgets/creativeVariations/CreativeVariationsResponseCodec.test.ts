@@ -57,6 +57,23 @@ describe('CreativeVariationsResponseCodec', () => {
   });
 
   it.each([
+    ['must-survive', { mustSurvive: '', mustNotChange: 'Keep the POV.' }],
+    ['must-not-change', { mustSurvive: 'Keep the refusal.', mustNotChange: '' }]
+  ])('rejects a %s flag against a blank writer invariant', (invariantField, invariants) => {
+    const values = cards();
+    values[0].invariantFlags = [{
+      invariantField,
+      kind: 'advisory-risk',
+      note: 'The model invented authority for a blank field.'
+    }];
+
+    expect(() => decodeCreativeVariationsResponse(
+      framed({ version: 1, cards: values }),
+      { ...context, invariants }
+    )).toThrow(/writer-declared nonblank invariant field/);
+  });
+
+  it.each([
     ['opening sentinel', `preface\n${framed()}`, /opening sentinel.*first line/i],
     ['closing sentinel', `${framed()}\nafter`, /closing sentinel.*final line/i],
     ['unknown root field', framed({ version: 1, cards: cards(), score: 2 }), /unknown field score/],

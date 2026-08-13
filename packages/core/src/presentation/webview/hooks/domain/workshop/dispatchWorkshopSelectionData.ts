@@ -1,10 +1,10 @@
-/** Closed fan-out for Workshop consumers of the shared selection wire. */
+/** Authoritative target routing for Workshop consumers of the shared selection wire. */
 
 import type { SelectionDataMessage } from '@messages';
 
 export interface WorkshopSelectionDataConsumers {
   handleExcerptVerification: (message: SelectionDataMessage) => void;
-  handleCreativeVariationsSubject: (payload: SelectionDataMessage['payload']) => void;
+  handleCreativeVariationsSubject: (message: SelectionDataMessage) => void;
 }
 
 export function dispatchWorkshopSelectionData(
@@ -16,7 +16,7 @@ export function dispatchWorkshopSelectionData(
       consumers.handleExcerptVerification(message);
       return;
     case 'workshop_creative_variations_subject':
-      consumers.handleCreativeVariationsSubject(message.payload);
+      consumers.handleCreativeVariationsSubject(message);
       return;
     default:
       return;

@@ -2,6 +2,7 @@ import {
   buildWorkshopWidgetAskPrefill,
   canBuildWorkshopWidgetAskPrefill
 } from '@utils/workshopWidgetAskPrefill';
+import { WORKSHOP_WIDGET_CATALOG } from '@shared/constants/workshopWidgets';
 
 describe('buildWorkshopWidgetAskPrefill', () => {
   it('asks the Host for a grounded Gesture Playground recommendation seed', () => {
@@ -25,5 +26,15 @@ describe('buildWorkshopWidgetAskPrefill', () => {
     expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(false);
     expect(() => buildWorkshopWidgetAskPrefill('creative-variations', 'Jill'))
       .toThrow('has no Host-preparation prompt');
+  });
+
+  it('keeps every launchable widget either Host-preparable or explicitly deferred', () => {
+    const liveWidgetsWithoutHostPrefill = WORKSHOP_WIDGET_CATALOG
+      .flatMap((group) => group.items)
+      .filter((widget) => widget.live)
+      .filter((widget) => !canBuildWorkshopWidgetAskPrefill(widget.id))
+      .map((widget) => widget.id);
+
+    expect(liveWidgetsWithoutHostPrefill).toEqual(['creative-variations']);
   });
 });

@@ -1,7 +1,7 @@
 # Architecture Change Runway — Creative Variations Explorer
 
 **Date:** 2026-08-10
-**Status:** Approved for implementation; Slice 0 ready for review
+**Status:** Approved for implementation; Slice 4 review remediated and ready for re-review
 **Decision owner:** Okey
 **Prepared by:** Ada
 **Scope:** Sprint 03 one-shot commit ownership, Creative Variations feature slice,
@@ -39,7 +39,7 @@ and [Workshop Feature Family ADR](../adr/2026-08-03-workshop-feature-family-and-
 | One-shot commit ownership | `WorkshopGesturePlaygroundHandler` registers `WORKSHOP_COMMIT_WIDGET` and types the room effect | `WorkshopWidgetHostHandler` owns the family route; `WorkshopOneShotWidgetCommitCoordinator` owns the transaction; named feature contributors validate and render | The second one-shot proves the shared rail mechanic | STRONG |
 | Availability | Handlers and recommendation operations read catalog liveness directly | One injected policy, catalog-backed in production and exact-id enabled in route tests | Dormant contributions must exercise real routes before the final live flip | STRONG |
 | Creative feature slice | Catalog-only id and planning documents | Named contracts, handler, services/codecs, prompt bundle, hook/controller, components, styles, and tests | Sprint 03 is the active feature slice | STRONG |
-| Selection intake | Workshop `SELECTION_DATA` fan-out serves excerpt verification only | Exact Creative subject target, closed dispatcher, and display-safe provenance conversion | Selected editor text is a primary product input | STRONG |
+| Selection intake | Workshop `SELECTION_DATA` routing serves excerpt verification only | Exact Creative subject target, closed dispatcher, and display-safe provenance conversion | Selected editor text is a primary product input | STRONG |
 | Generation boundary | Human-readable tool reports and an illustrative ZIP prototype | One sentinel-framed, exact-key, bounded JSON result plus rejected-response recovery | Wild outputs contain truncation and format drift | STRONG |
 | Comparison authority | Prototype fixture scores and prose-first carry | Versioned deterministic textual overlap; writer-owned per-card direction/prose carry and risk acceptance | The implementation must make the design claims true | STRONG |
 | Future analysis handoff | Creative-variation prose embedded in many analysis reports | Deferred typed, analysis-owned intent/preset handoff; no Markdown inference | Fourteen report families vary along different dimensions | STRONG |
@@ -136,10 +136,11 @@ packages/core/
     │   └── CreativeVariationsService.ts                            [+]
     ├── presentation/webview/
     │   ├── hooks/domain/workshop/
-    │   │   ├── dispatchWorkshopSelectionData.ts                    [+] exact target fan-out
+    │   │   ├── dispatchWorkshopSelectionData.ts                    [+] exact target routing
+    │   │   ├── controllers/creativeVariations/
+    │   │   │   └── useCreativeVariationsAuthoring.ts               [+] transport-free local state machine
     │   │   └── widgets/creativeVariations/
-    │   │       ├── useCreativeVariations.ts                        [+] IPC/correlation
-    │   │       └── useCreativeVariationsAuthoring.ts               [+] local state machine
+    │   │       └── useCreativeVariations.ts                        [+] IPC/correlation
     │   └── components/workshop/widgets/creativeVariations/
     │       ├── WorkshopCreativeVariationsModal.tsx                 [+]
     │       ├── CreativeVariationCard.tsx                           [+]
@@ -162,7 +163,7 @@ packages/core/
 | `WorkshopCreativeVariationsHandler` | Absent | Generate/cancel/result routes, availability, and correlation | Family config ledger, provenance interpretation, or editor writes | Sprint 03 deliverables 2–3 |
 | Creative service/codec | Absent | One provider call; exact response protocol; raw rejection recovery | Report Markdown parsing or session mutation | `GesturePlaygroundService.ts:85-149,332-576` precedent |
 | Creative authoring controller | Absent | Input invalidation, workup selection, comparison, carry, risk acceptance, commit eligibility | VS Code transport or durable storage | presentation-controller rule in project guide |
-| Workshop selection dispatcher | Workshop routes all `SELECTION_DATA` to excerpt verification | Closed target fan-out for excerpt verification and Creative subject intake | Provenance interpretation or feature state | `useWorkshopAppMessageRouter.ts:86` |
+| Workshop selection dispatcher | Workshop routes all `SELECTION_DATA` to excerpt verification | Closed exact-target routing for excerpt verification and Creative subject intake | Provenance interpretation or feature state | `useWorkshopAppMessageRouter.ts:86` |
 | Creative config codec | Absent | Checkpoint shape, normalization, current shape, semantic integrity, clone/summary | Generic lifecycle dispatch | Widget State Ownership ADR; Sprint 02D pipeline |
 
 ### 1.4 Structural view
@@ -208,7 +209,7 @@ sequenceDiagram
 
 Only `relativePath` and optional 1-based line bounds persist for an editor
 selection; `sourceUri` is deliberately discarded. Clipboard fallback persists as
-`{ kind: 'pasted' }`. The dispatcher owns target fan-out, while the Creative
+`{ kind: 'pasted' }`. The dispatcher owns exact target delivery, while the Creative
 authoring controller owns that feature-specific provenance conversion.
 
 #### Generate and supersede
@@ -451,7 +452,7 @@ Markdown variation parser is introduced.
 | F1 | HIGH | The family commit route and room-send effect are still Gesture-owned. | `WorkshopGesturePlaygroundHandler.ts:42-66,103-128`; `WorkshopRouteContracts.ts:117` | Slice 1 host/coordinator extraction | Creative wiring |
 | F2 | HIGH | A Creative config must join four closed persistence operations and stronger cross-record pairing. | `WorkshopWidgetPersistenceLifecycle.ts:23-86`; Sprint 02D | Slice 2 codec/lifecycle/integrity arm | commit/reopen |
 | F3 | HIGH | Direct catalog checks prevent safe route-level staging while Creative remains non-live. | `WorkshopGesturePlaygroundHandler.ts:146,346`; `WorkshopWidgetRecommendationOperations.ts:64,126` | injected catalog-backed availability policy | Slices 3, 5, 6 |
-| F4 | HIGH | Workshop selection routing has no Creative target or fan-out. | `ui.ts:20-26`; `useWorkshopAppMessageRouter.ts:86` | exact target + dispatcher + provenance conversion | Slice 4 intake |
+| F4 | HIGH | Workshop selection routing has no Creative target or delivery arm. | `ui.ts:20-26`; `useWorkshopAppMessageRouter.ts:86` | exact target + dispatcher + provenance conversion | Slice 4 intake |
 | F5 | HIGH | The prototype cannot serve as runtime behavior: it fakes scores and omits exact state/constraint projection. | ZIP `pm-cvx.js:147-217,231-245` | strict contracts and real controller/service | live flip |
 | F6 | HIGH | Wild reports are too irregular and incomplete to parse into cards. | 260 free sections; malformed `chapter-2.12/engagement-check-1.md:326` | sentinel JSON response codec | generation |
 | F7 | MODERATE | “Similarity” overstates deterministic lexical evidence and averages can hide a duplicate pair. | Sprint requirement; prototype set average | textual-overlap v2 full matrix + max pair | presentation copy |
@@ -517,7 +518,7 @@ editor apply are not unknowns in this sprint; they are explicitly absent.
 | Prototype ↔ Sprint | Prototype defaults to prose and omits `must not change` from commit projection | Contract defaults per card to direction and projects both declared invariant fields |
 | Tree ↔ future family | A generic variation layer looked attractive | Only the already-proven one-shot transaction becomes generic; Creative semantics remain named |
 | Dormant catalog entry ↔ route tests | Production liveness correctly blocks Creative through Slice 6 | Inject one availability policy, keep production catalog-backed, and use exact-id test policy until the Slice 7 flip |
-| Selection promise ↔ current router | Current Workshop fan-out recognizes excerpt verification only | Add one exact `SelectionTarget`, dispatcher arm, and display-safe Creative provenance conversion in Slice 4 |
+| Selection promise ↔ current router | Current Workshop routing recognizes excerpt verification only | Add one exact `SelectionTarget`, dispatcher arm, and display-safe Creative provenance conversion in Slice 4 |
 | Workup protocol ↔ session schema | A nested `schemaVersion` would create a second migration clock | Persist `generationProtocolVersion: 1`; only the Workshop session schema controls migration |
 | Commit compiler placement | Initial tree put Gesture and Creative equivalents in different layers | Mirror both under feature-owned application services; handlers retain IPC only |
 

@@ -7,7 +7,7 @@ import {
   CREATIVE_VARIATIONS_RANDOM_AIM
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
-const response = (): string => [
+const response = (invariantFlags: object[] = []): string => [
   '===CREATIVE_VARIATIONS_V1===',
   JSON.stringify({
     version: 1,
@@ -17,7 +17,7 @@ const response = (): string => [
       direction: `Take the scene through distinct direction ${position}.`,
       prose: `Mara makes distinct choice ${position} before she answers her brother.`,
       tradeoff: { gain: `Gain ${position}`, cost: `Cost ${position}` },
-      invariantFlags: []
+      invariantFlags: position === 1 ? invariantFlags : []
     }))
   }),
   '===END_CREATIVE_VARIATIONS_V1==='
@@ -109,6 +109,44 @@ describe('CreativeVariationsService', () => {
     expect(userMessage).toContain(`"aim": "${CREATIVE_VARIATIONS_RANDOM_AIM}"`);
     expect(userMessage).toContain('"mustSurvive": ""');
     expect(userMessage).toContain('"mustNotChange": ""');
+  });
+
+  it('keeps display provenance while excluding editor paths from the provider prompt', async () => {
+    const { service, runInitial } = build();
+    const withEditorPath = request();
+    withEditorPath.subject.provenance = {
+      kind: 'excerpt',
+      relativePath: '/Users/writer/private-draft.md',
+      startLine: 4,
+      endLine: 5
+    };
+
+    await service.generate(withEditorPath);
+
+    const userMessage = runInitial.mock.calls[0][0].userMessage as string;
+    expect(userMessage).toContain('"kind": "excerpt"');
+    expect(userMessage).not.toContain('/Users/writer/private-draft.md');
+    expect(userMessage).not.toContain('startLine');
+  });
+
+  it('gives an actionable next step when the model flags a blank invariant', async () => {
+    const flagged = response([{
+      invariantField: 'must-survive',
+      kind: 'advisory-risk',
+      note: 'The response invented this constraint.'
+    }]);
+    const { service } = build({
+      cancelled: false,
+      content: flagged,
+      rawContent: flagged,
+      finishReason: 'stop'
+    } as never);
+    const minimal = request();
+    minimal.invariants.mustSurvive = '';
+
+    await expect(service.generate(minimal)).rejects.toThrow(
+      /flagged a constraint you left blank.*if this repeats, try another model/i
+    );
   });
 
   it('rejects malformed input before acquiring an engine or spending tokens', async () => {

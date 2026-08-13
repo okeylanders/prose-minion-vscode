@@ -24,12 +24,13 @@ the next room turn.
 
 - selected text from the excerpt/editor, or pasted text;
 - surrounding passage context when available;
-- one nonblank `must survive` field for facts, character state, emotional truth,
-  or reader effect every take must preserve;
+- one optional `must survive` field for facts, character state, emotional truth,
+  or reader effect every take must preserve; blank means no declared constraint;
 - one `must not change` field for optional hard boundaries such as POV, tense,
   plot outcome, or exact dialogue; the model never invents either field;
-- one required custom aim plus a verbalized sampling distance: `Familiar`,
-  `Adjacent`, `Tail`, or `Far tail`; new drafts default to `Tail`;
+- one optional custom aim plus a verbalized sampling distance: `Familiar`,
+  `Adjacent`, `Tail`, or `Far tail`; a blank aim generates at random and new
+  drafts default to `Tail`;
 - requested count, bounded to three to five alternatives.
 
 Open-chat use is allowed for pasted material, but the widget must label the

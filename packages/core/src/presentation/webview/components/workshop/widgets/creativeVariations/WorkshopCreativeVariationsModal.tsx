@@ -83,6 +83,7 @@ export interface WorkshopCreativeVariationsModalProps {
   banner: WorkshopCreativeVariationsBanner;
   draft: WorkshopCreativeVariationsDraft;
   generation: WorkshopCreativeVariationsGenerationPhase;
+  invalidationNotice: string | null;
   commitPending: boolean;
   commitError: string | null;
   commitBlockers: readonly WorkshopCreativeVariationsCommitBlocker[];
@@ -108,7 +109,7 @@ export interface WorkshopCreativeVariationsModalProps {
   onCarryModeChange: (position: number, mode: WorkshopCreativeVariationsCarryMode) => void;
   onToggleAdvisoryRisk: (position: number, riskId: string) => void;
   onNoteChange: (note: string) => void;
-  onCopyVariation: (position: number) => void;
+  onCopyVariation: (prose: string) => void;
   onCommit?: () => void;
   widgetModelOptions: ModelOption[];
   selectedWidgetModel: string;
@@ -168,6 +169,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   banner,
   draft,
   generation,
+  invalidationNotice,
   commitPending,
   commitError,
   commitBlockers,
@@ -219,9 +221,21 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
     draft.surroundingContext.writerText.trim().length > 0
     || draft.surroundingContext.sourceReferences.length > 0;
 
+  const availableSourceKeys = React.useMemo(
+    () => new Set(availableSources.map(({ reference }) =>
+      creativeVariationsSourceReferenceKey(reference))),
+    [availableSources]
+  );
+  const unavailableSelectedSources = draft.surroundingContext.sourceReferences.filter(
+    (reference) => !availableSourceKeys.has(creativeVariationsSourceReferenceKey(reference))
+  );
+
   const generateReasons: string[] = [];
   if (draft.subject.text.trim().length === 0) {
     generateReasons.push('Add the passage to vary.');
+  }
+  if (unavailableSelectedSources.length > 0) {
+    generateReasons.push('Remove unavailable source material before generating again.');
   }
   const generateDisabled = interactionLocked || generateReasons.length > 0;
 
@@ -288,15 +302,6 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
       }
     },
     [selectedWidgetModel, onWidgetModelChange]
-  );
-
-  const availableSourceKeys = React.useMemo(
-    () => new Set(availableSources.map(({ reference }) =>
-      creativeVariationsSourceReferenceKey(reference))),
-    [availableSources]
-  );
-  const unavailableSelectedSources = draft.surroundingContext.sourceReferences.filter(
-    (reference) => !availableSourceKeys.has(creativeVariationsSourceReferenceKey(reference))
   );
 
   const generationProgressPanel = (
@@ -624,6 +629,12 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
             <div className="pm-ws-cvx-error" role="alert">
               {commitError}
             </div>
+          )}
+
+          {!workup && !generating && invalidationNotice && (
+            <p className="pm-ws-cvx-empty" role="status">
+              {invalidationNotice}
+            </p>
           )}
 
           {!workup && !generating && (

@@ -21,7 +21,8 @@ import { WorkshopStandingWidgetCommit } from './standingDirectives';
  * shared/constants/workshopWidgets.ts; handlers validate against it and the
  * thread-artifact `kind` is derived from it (`widget:<id>`), so the id IS the
  * frame identity. Ids for unshipped widgets exist so the browser can show an
- * honest roadmap; only `live` ids may launch, commit, or be recommended.
+ * honest roadmap. `live` admits the authoring surface and implemented host
+ * routes; commit and recommendation use their own narrower capability unions.
  */
 export type WorkshopWidgetId =
   | 'gesture-playground'

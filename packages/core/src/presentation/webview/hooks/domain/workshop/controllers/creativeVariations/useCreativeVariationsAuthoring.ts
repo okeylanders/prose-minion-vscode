@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import type {
-  SelectionDataPayload,
+  SelectionDataMessage,
   WorkshopContextAttachmentSnapshot,
   WorkshopCreativeVariationsCarryMode,
   WorkshopCreativeVariationsDistance,
@@ -14,26 +14,20 @@ import type {
   WorkshopWidgetSourceReference
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import type {
+  WorkshopCreativeVariationsAvailableSource,
+  WorkshopCreativeVariationsGenerationPhase
+} from '@components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal';
 import {
   creativeVariationsSourceReferenceKey
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
-export type CreativeVariationsGenerationPhase =
-  | { kind: 'idle' }
-  | { kind: 'generating'; detail?: string }
-  | { kind: 'failed'; message: string };
-
+/** Slice 4 can produce only this subset of the modal's eventual commit blockers. */
 export type CreativeVariationsCommitBlocker =
   | 'generation-in-flight'
   | 'no-workup'
   | 'no-selection'
   | 'unaccepted-advisory-risk';
-
-export interface CreativeVariationsAvailableSource {
-  reference: WorkshopWidgetSourceReference;
-  label: string;
-  detail: string;
-}
 
 export interface UseCreativeVariationsAuthoringOptions {
   open: boolean;
@@ -50,14 +44,15 @@ export interface UseCreativeVariationsAuthoringOptions {
 
 export interface CreativeVariationsAuthoringState {
   draft: WorkshopCreativeVariationsDraft;
-  generation: CreativeVariationsGenerationPhase;
+  generation: WorkshopCreativeVariationsGenerationPhase;
+  invalidationNotice: string | null;
   commitBlockers: readonly CreativeVariationsCommitBlocker[];
-  availableSources: readonly CreativeVariationsAvailableSource[];
+  availableSources: readonly WorkshopCreativeVariationsAvailableSource[];
 }
 
 export interface CreativeVariationsAuthoringActions {
   requestSubjectSelection: () => void;
-  handleSubjectSelection: (payload: SelectionDataPayload) => void;
+  handleSubjectSelection: (message: SelectionDataMessage) => void;
   changeSubjectText: (text: string) => void;
   changeSurroundingContext: (text: string) => void;
   toggleSourceReference: (reference: WorkshopWidgetSourceReference) => void;
@@ -109,6 +104,45 @@ function generationDetail(
   }
 }
 
+type CreativeVariationsInputLabel =
+  | 'passage'
+  | 'surrounding context'
+  | 'source material'
+  | '“Must survive” constraint'
+  | '“Must not change” constraint'
+  | 'creative aim'
+  | 'sampling distance'
+  | 'take count'
+  | 'widget model';
+
+function changedWorkNotice(
+  label: CreativeVariationsInputLabel,
+  hadActiveGeneration: boolean,
+  hadSettledWork: boolean
+): string | null {
+  if (hadSettledWork) {
+    return `Generated workup cleared because the ${label} changed.`;
+  }
+  return hadActiveGeneration
+    ? `Generation cancelled because the ${label} changed.`
+    : null;
+}
+
+function sameSubject(
+  left: WorkshopCreativeVariationsDraft['subject'],
+  right: WorkshopCreativeVariationsDraft['subject']
+): boolean {
+  if (left.text !== right.text || left.provenance.kind !== right.provenance.kind) {
+    return false;
+  }
+  if (left.provenance.kind === 'pasted' || right.provenance.kind === 'pasted') {
+    return true;
+  }
+  return left.provenance.relativePath === right.provenance.relativePath
+    && left.provenance.startLine === right.provenance.startLine
+    && left.provenance.endLine === right.provenance.endLine;
+}
+
 export function useCreativeVariationsAuthoring({
   open,
   activeExcerpt,
@@ -120,12 +154,22 @@ export function useCreativeVariationsAuthoring({
   generate,
   cancelGeneration
 }: UseCreativeVariationsAuthoringOptions): UseCreativeVariationsAuthoringReturn {
-  const [draft, setDraft] = React.useState<WorkshopCreativeVariationsDraft>(
+  const [draft, setDraftState] = React.useState<WorkshopCreativeVariationsDraft>(
     createCreativeVariationsAuthoringDraft
   );
-  const [generation, setGeneration] = React.useState<CreativeVariationsGenerationPhase>({
+  const draftRef = React.useRef(draft);
+  const setDraft = React.useCallback((
+    update: WorkshopCreativeVariationsDraft
+      | ((current: WorkshopCreativeVariationsDraft) => WorkshopCreativeVariationsDraft)
+  ) => {
+    const next = typeof update === 'function' ? update(draftRef.current) : update;
+    draftRef.current = next;
+    setDraftState(next);
+  }, []);
+  const [generation, setGeneration] = React.useState<WorkshopCreativeVariationsGenerationPhase>({
     kind: 'idle'
   });
+  const [invalidationNotice, setInvalidationNotice] = React.useState<string | null>(null);
   const activeTokenRef = React.useRef<string>();
   const wasOpenRef = React.useRef(false);
   const previousWidgetModelIdRef = React.useRef(widgetModelId);
@@ -135,9 +179,10 @@ export function useCreativeVariationsAuthoring({
       activeTokenRef.current = undefined;
       setDraft(createCreativeVariationsAuthoringDraft());
       setGeneration({ kind: 'idle' });
+      setInvalidationNotice(null);
     }
     wasOpenRef.current = open;
-  }, [open]);
+  }, [open, setDraft]);
 
   React.useEffect(() => {
     const token = activeTokenRef.current;
@@ -168,10 +213,11 @@ export function useCreativeVariationsAuthoring({
         selections: []
       }));
       setGeneration({ kind: 'idle' });
+      setInvalidationNotice(null);
     } else {
       setGeneration({ kind: 'failed', message: generationResult.error });
     }
-  }, [generationResult, open]);
+  }, [generationResult, open, setDraft]);
 
   const cancelActiveGeneration = React.useCallback(() => {
     const token = activeTokenRef.current;
@@ -183,21 +229,31 @@ export function useCreativeVariationsAuthoring({
   }, [cancelGeneration]);
 
   const updateAuthoringInput = React.useCallback((
+    label: CreativeVariationsInputLabel,
     update: (current: WorkshopCreativeVariationsDraft) => WorkshopCreativeVariationsDraft
   ) => {
-    cancelActiveGeneration();
-    setDraft((current) => {
-      const next = update(current);
-      return next === current
-        ? current
-        : { ...next, workup: null, selections: [] };
-    });
-  }, [cancelActiveGeneration]);
-
-  const handleSubjectSelection = React.useCallback((payload: SelectionDataPayload) => {
-    if (payload.target !== 'workshop_creative_variations_subject') {
+    const current = draftRef.current;
+    const next = update(current);
+    if (next === current) {
       return;
     }
+    const hadActiveGeneration = activeTokenRef.current !== undefined;
+    const hadSettledWork = current.workup !== null || current.selections.length > 0;
+    cancelActiveGeneration();
+    setDraft({ ...next, workup: null, selections: [] });
+    const notice = changedWorkNotice(label, hadActiveGeneration, hadSettledWork);
+    if (notice) {
+      setInvalidationNotice(notice);
+    }
+  }, [cancelActiveGeneration, setDraft]);
+
+  const handleSubjectSelection = React.useCallback((message: SelectionDataMessage) => {
+    /* Normal delivery is target-routed; retain the check for direct hook consumers. */
+    if (!open || activeTokenRef.current !== undefined
+      || message.payload.target !== 'workshop_creative_variations_subject') {
+      return;
+    }
+    const payload = message.payload;
     const provenance = payload.sourceUri && payload.relativePath
       ? {
           kind: 'excerpt' as const,
@@ -206,14 +262,14 @@ export function useCreativeVariationsAuthoring({
           ...(payload.endLine !== undefined ? { endLine: payload.endLine } : {})
         }
       : { kind: 'pasted' as const };
-    updateAuthoringInput((current) => ({
-      ...current,
-      subject: { text: payload.content, provenance }
-    }));
-  }, [updateAuthoringInput]);
+    const subject = { text: payload.content, provenance };
+    updateAuthoringInput('passage', (current) => sameSubject(subject, current.subject)
+      ? current
+      : { ...current, subject });
+  }, [open, updateAuthoringInput]);
 
   const changeSubjectText = React.useCallback((text: string) => {
-    updateAuthoringInput((current) => {
+    updateAuthoringInput('passage', (current) => {
       if (text === current.subject.text) {
         return current;
       }
@@ -230,7 +286,7 @@ export function useCreativeVariationsAuthoring({
   }, [updateAuthoringInput]);
 
   const changeSurroundingContext = React.useCallback((writerText: string) => {
-    updateAuthoringInput((current) => writerText === current.surroundingContext.writerText
+    updateAuthoringInput('surrounding context', (current) => writerText === current.surroundingContext.writerText
       ? current
       : {
           ...current,
@@ -239,7 +295,7 @@ export function useCreativeVariationsAuthoring({
   }, [updateAuthoringInput]);
 
   const toggleSourceReference = React.useCallback((reference: WorkshopWidgetSourceReference) => {
-    updateAuthoringInput((current) => {
+    updateAuthoringInput('source material', (current) => {
       const key = creativeVariationsSourceReferenceKey(reference);
       const selected = current.surroundingContext.sourceReferences.some(
         (candidate) => creativeVariationsSourceReferenceKey(candidate) === key
@@ -266,25 +322,25 @@ export function useCreativeVariationsAuthoring({
   }, [updateAuthoringInput]);
 
   const changeMustSurvive = React.useCallback((mustSurvive: string) => {
-    updateAuthoringInput((current) => mustSurvive === current.invariants.mustSurvive
+    updateAuthoringInput('“Must survive” constraint', (current) => mustSurvive === current.invariants.mustSurvive
       ? current
       : { ...current, invariants: { ...current.invariants, mustSurvive } });
   }, [updateAuthoringInput]);
 
   const changeMustNotChange = React.useCallback((mustNotChange: string) => {
-    updateAuthoringInput((current) => mustNotChange === current.invariants.mustNotChange
+    updateAuthoringInput('“Must not change” constraint', (current) => mustNotChange === current.invariants.mustNotChange
       ? current
       : { ...current, invariants: { ...current.invariants, mustNotChange } });
   }, [updateAuthoringInput]);
 
   const changeAim = React.useCallback((aim: string) => {
-    updateAuthoringInput((current) => aim === current.intent.aim
+    updateAuthoringInput('creative aim', (current) => aim === current.intent.aim
       ? current
       : { ...current, intent: { ...current.intent, aim } });
   }, [updateAuthoringInput]);
 
   const changeDistance = React.useCallback((distance: WorkshopCreativeVariationsDistance) => {
-    updateAuthoringInput((current) => distance === current.intent.distance
+    updateAuthoringInput('sampling distance', (current) => distance === current.intent.distance
       ? current
       : { ...current, intent: { ...current.intent, distance } });
   }, [updateAuthoringInput]);
@@ -292,7 +348,7 @@ export function useCreativeVariationsAuthoring({
   const changeRequestedCount = React.useCallback((
     requestedCount: WorkshopCreativeVariationsRequestedCount
   ) => {
-    updateAuthoringInput((current) => requestedCount === current.requestedCount
+    updateAuthoringInput('take count', (current) => requestedCount === current.requestedCount
       ? current
       : { ...current, requestedCount });
   }, [updateAuthoringInput]);
@@ -303,17 +359,28 @@ export function useCreativeVariationsAuthoring({
     if (!open || previousWidgetModelId === widgetModelId) {
       return;
     }
-    updateAuthoringInput((current) => current.workup || current.selections.length > 0
-      ? { ...current }
-      : current);
-  }, [open, updateAuthoringInput, widgetModelId]);
+    const current = draftRef.current;
+    const hadActiveGeneration = activeTokenRef.current !== undefined;
+    const hadSettledWork = current.workup !== null || current.selections.length > 0;
+    if (!hadActiveGeneration && !hadSettledWork) {
+      return;
+    }
+    cancelActiveGeneration();
+    if (hadSettledWork) {
+      setDraft({ ...current, workup: null, selections: [] });
+    }
+    setInvalidationNotice(
+      changedWorkNotice('widget model', hadActiveGeneration, hadSettledWork)
+    );
+  }, [cancelActiveGeneration, open, setDraft, widgetModelId]);
 
   const generateWorkup = React.useCallback(() => {
     cancelActiveGeneration();
     setDraft((current) => ({ ...current, workup: null, selections: [] }));
-    activeTokenRef.current = generate(draft);
+    setInvalidationNotice(null);
+    activeTokenRef.current = generate(draftRef.current);
     setGeneration({ kind: 'generating', detail: 'Requesting variations' });
-  }, [cancelActiveGeneration, draft, generate]);
+  }, [cancelActiveGeneration, generate, setDraft]);
 
   const cancelGenerate = React.useCallback(() => {
     cancelActiveGeneration();
@@ -381,7 +448,7 @@ export function useCreativeVariationsAuthoring({
     setDraft((current) => ({ ...current, note }));
   }, []);
 
-  const availableSources = React.useMemo<CreativeVariationsAvailableSource[]>(() => [
+  const availableSources = React.useMemo<WorkshopCreativeVariationsAvailableSource[]>(() => [
     ...(activeExcerpt
       ? [{
           reference: { kind: 'active-excerpt' } as const,
@@ -432,6 +499,7 @@ export function useCreativeVariationsAuthoring({
   return {
     draft,
     generation,
+    invalidationNotice,
     commitBlockers,
     availableSources,
     requestSubjectSelection,

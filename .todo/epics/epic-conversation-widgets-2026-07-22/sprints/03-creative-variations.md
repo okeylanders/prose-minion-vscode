@@ -1,6 +1,6 @@
 # Sprint 03: Creative Variations Explorer
 
-**Status**: In progress — Slice 4 ready for review and live for integrated hands-on testing
+**Status**: In progress — Slice 4 review remediated and ready for re-review; live for integrated hands-on testing
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-03-creative-variations` -> PR into `epic/conversation-widgets`
 **Depends on**: Sprint 02D merged into `epic/conversation-widgets`; the widget host, session-owned config ledger, one-shot thread-artifact rail, and clone-and-recommit lifecycle are all proven
@@ -9,8 +9,8 @@
 
 ## Goal
 
-Give the writer a comparison studio for a selected or pasted passage: declare
-what must survive and what must not change, generate three to five genuinely
+Give the writer a comparison studio for a selected or pasted passage: optionally
+declare what must survive and what must not change, generate three to five genuinely
 different takes, compare the useful ones, and commit only the chosen direction
 or explicitly selected prose to one room turn. It is not an automatic rewrite
 button and it never mutates the editor.
@@ -48,7 +48,9 @@ will be its deliberately specialized sibling.
   Every flag must reference a nonblank writer field; `hard-conflict` is valid
   only against `must not change`. This makes the writer-control boundary
   enforceable without claiming deterministic code can discover a semantic
-  conflict the model did not declare.
+  conflict the model did not declare. Response validation is atomic: one flag
+  against a blank field invalidates the whole closed workup rather than silently
+  salvaging a partial model response; the rejection copy names that condition.
 - **Distinctness is earned on screen.** A deterministic post-generation readout
   reports pairwise textual overlap. An exact normalized prose duplicate rejects
   the whole workup; high non-identical overlap remains visible as a warning. The
@@ -113,12 +115,12 @@ surface.
 | 6 | Add persona recommendation/prefill while keeping report-prefill deferred. |
 | 7 | Complete architecture witnesses, run the final production-policy route matrix and full verification, then update current-state docs. |
 
-### Slice 4 review evidence — 2026-08-13
+### Slice 4 remediation evidence — 2026-08-13
 
-Slice 4 is implemented in the worktree and is **ready for review**. It is not
-reviewed or complete. The production catalog entry is live for integrated
-hands-on testing; room commit remains visibly and accessibly unavailable until
-Slice 5.
+The Slice 4 review at `1f04653a` has been remediated in the worktree and is
+**ready for re-review**. It is not reviewed or complete. The production catalog
+entry remains live for integrated hands-on testing; room commit remains visibly
+and accessibly unavailable until Slice 5.
 
 - `useCreativeVariations` owns the webview request token, generate/cancel wire,
   host workup-id latch, and stale progress/result rejection. It reuses
@@ -130,7 +132,7 @@ Slice 5.
   generation presentation state, selections, carry modes, and accepted risks.
   Its persistence contract is explicitly empty and it has no transport
   vocabulary.
-- `dispatchWorkshopSelectionData` is the closed Workshop-side fan-out for the
+- `dispatchWorkshopSelectionData` is the closed Workshop-side exact target router for the
   existing selection wire. Editor-derived provenance keeps only display-safe
   path/range fields while the text remains exact; clipboard and edited text are
   marked pasted.
@@ -146,12 +148,14 @@ Slice 5.
 
 Verification at this review gate:
 
-- focused Slice 4 integration and boundary set: 15 suites, 158 tests passed;
-- full Jest: 206 suites, 2,201 tests, and 2 snapshots passed;
+- focused Slice 4 remediation and boundary set: 18 suites, 202 tests passed;
+- full Jest: 206 suites, 2,215 tests, and 2 snapshots passed;
 - all core, webview, and extension TypeScript configurations passed;
 - ESLint: 0 errors, 955 repository warnings;
 - production build, resource staging, webpack compilation, and bundle sentinel
   passed; webpack retained its three advisory webview-size warnings;
+- the F5 development watch compiled both bundles successfully with polling
+  limited to macOS by default and available elsewhere by explicit override;
 - `git diff --check` passed.
 
 The current CLI environment cannot launch the integrated VS Code extension

@@ -33,7 +33,7 @@ export interface CreativeVariationCardProps {
   onCarryModeChange: (position: number, mode: WorkshopCreativeVariationsCarryMode) => void;
   onToggleAdvisoryRisk: (position: number, riskId: string) => void;
   onToggleCompare: (position: number) => void;
-  onCopyProse: (position: number) => void;
+  onCopyProse: (prose: string) => void;
 }
 
 const invariantFieldLabel = (
@@ -187,7 +187,7 @@ export const CreativeVariationCard: React.FC<CreativeVariationCardProps> = ({
             type="button"
             className="pm-ws-cvx-card-action"
             aria-label={`Copy Take ${card.position} prose`}
-            onClick={() => onCopyProse(card.position)}
+            onClick={() => onCopyProse(card.prose)}
           >
             <Icon name="copy" size={11} /> Copy
           </button>

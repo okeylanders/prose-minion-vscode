@@ -102,7 +102,7 @@ describe('CreativeVariationCard', () => {
   it('keeps copy and compare available on a hard-conflict card', () => {
     const { props } = renderCard({ card: cardThree });
     fireEvent.click(screen.getByRole('button', { name: 'Copy Take 3 prose' }));
-    expect(props.onCopyProse).toHaveBeenCalledWith(3);
+    expect(props.onCopyProse).toHaveBeenCalledWith(cardThree.prose);
     const compare = screen.getByRole('button', { name: 'Compare Take 3 side by side' });
     expect(compare.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(compare);

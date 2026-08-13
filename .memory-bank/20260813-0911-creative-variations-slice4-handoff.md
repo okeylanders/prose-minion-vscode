@@ -3,8 +3,8 @@
 **Recorded**: 2026-08-13 09:11 CDT
 **Branch**: `sprint/conversation-widgets-03-creative-variations`
 **Reviewed baseline**: `8bbb5aeb71338faef340a61599ebcd3b2e04b061`
-**Current gate**: Slice 4 ready for review — not reviewed, not complete
-**Publication**: uncommitted and unpushed
+**Current gate**: Slice 4 review remediated and ready for re-review — not reviewed, not complete
+**Publication**: review baseline committed and pushed; remediation uncommitted and unpushed
 
 ## Review boundary
 
@@ -31,25 +31,40 @@ The behavior boundary remains deliberately closed:
 2. `useCreativeVariationsAuthoring` owns the transient draft and semantic UI
    actions. It exposes `{}` persistence and receives transport effects as
    callbacks; it does not import `useVSCodeApi`, `MessageType`, or `postMessage`.
+   It lives under `controllers/creativeVariations/`, rather than the runway's
+   original `widgets/creativeVariations/` sketch, so the existing controller
+   boundary test mechanically enforces that transport-free contract.
 3. Selection intake posts the existing `REQUEST_SELECTION` wire with the exact
    Creative Variations target. `UIHandler` returns editor origin fields only for
    a live editor selection; clipboard fallback carries no source claim.
-   `dispatchWorkshopSelectionData` sends that payload to the authoring
-   controller. The controller stores only display-safe relative path/range
-   provenance, and any subsequent text edit changes it to `{ kind: 'pasted' }`.
-4. Generate asks `creativeVariationsGenerationDraft` for the request projection,
-   which keeps blank invariants empty and maps a blank custom aim to
-   `Generate at random.` The subject passage is therefore the only required
-   authoring input. The transport mints a fresh webview token and posts
+   `dispatchWorkshopSelectionData` sends the full targeted envelope to the
+   authoring controller. The controller independently verifies the target,
+   ignores replies while closed or generating, stores only display-safe relative
+   path/range provenance, and treats an exact repeat as a no-op. Any subsequent
+   text edit changes editor-derived provenance to `{ kind: 'pasted' }`.
+4. Generate posts the authored draft unchanged so a blank aim remains
+   distinguishable on the wire. The host handler owns the generation request
+   projection through `creativeVariationsGenerationDraft`; the service repeats
+   it only as its independent provider-boundary guard. The projection keeps
+   blank invariants empty and maps a blank custom aim to `Generate at random.`
+   Provider task data includes subject text and provenance kind, never the
+   display path or line range. The subject passage is therefore the only
+   required authoring input. The
+   transport mints a fresh webview token and posts
    `WORKSHOP_CREATIVE_VARIATIONS_GENERATE`. The host mints the workup id; the
    transport latches it from the first correlated callback and rejects stale or
    mismatched progress/results.
 5. Input changes cancel the active token and atomically clear the settled
    workup plus selections, carry modes, accepted risks, and previous workup id.
-   A failed attempt preserves authoring input. Cancel and modal close emit the
-   matching domain cancellation message; late callbacks cannot settle.
+   A polite status message names why generated work disappeared. Value-identical
+   changes do nothing. A diagnosed unavailable source blocks Generate until it
+   is removed. A failed attempt preserves authoring input. Cancel and modal
+   close emit the matching domain cancellation message only for an active
+   attempt, while always clearing local transport state; late callbacks cannot
+   settle.
 6. `WorkshopApp` routes progress/result envelopes, renders the controlled modal,
-   passes the named overlap threshold (`80`), supplies per-card `COPY_RESULT`,
+   passes the named overlap threshold (`80`), supplies per-card prose to the
+   host-owned `COPY_RESULT` effect without learning the card schema,
    and threads the widget model options/current selection/change/browser-open
    quartet. A model change updates host-owned configuration and asks the
    transient controller to invalidate its dependent settled work. Slice 4
@@ -97,23 +112,58 @@ Evidence:
 
 - `.todo/epics/epic-conversation-widgets-2026-07-22/sprints/03-creative-variations.md`
 - `.memory-bank/20260813-0911-creative-variations-slice4-handoff.md`
+- `docs/pr-reviews/sprint-03-creative-variations-slice-4-1f04653-review-v2.md`
+
+Post-review remediation changed these 29 tracked files:
+
+- `.memory-bank/20260813-0911-creative-variations-slice4-handoff.md`
+- `.todo/epics/epic-conversation-widgets-2026-07-22/concepts/creative-variations-playground.md`
+- `.todo/epics/epic-conversation-widgets-2026-07-22/sprints/03-creative-variations.md`
+- `apps/vscode-extension/webpack.config.js`
+- `docs/adr/2026-07-22-conversation-widgets.md`
+- `docs/architecture/2026-08-10-creative-variations-implementation-runway.md`
+- `docs/pr-reviews/sprint-03-creative-variations-slice-4-1f04653-review-v2.md`
+- `packages/core/resources/system-prompts/creative-variations/00-creative-variations.md`
+- `packages/core/resources/system-prompts/creative-variations/01-creative-variations-example.md`
+- `packages/core/src/infrastructure/api/services/widgets/creativeVariations/CreativeVariationsService.ts`
+- `packages/core/src/presentation/webview/WorkshopApp.tsx`
+- `packages/core/src/presentation/webview/components/workshop/widgets/creativeVariations/CreativeVariationCard.tsx`
+- `packages/core/src/presentation/webview/components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal.tsx`
+- `packages/core/src/presentation/webview/hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring.ts`
+- `packages/core/src/presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts`
+- `packages/core/src/presentation/webview/hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations.ts`
+- `packages/core/src/shared/constants/workshopWidgets.ts`
+- `packages/core/src/shared/types/messages/workshop/widgets.ts`
+- `packages/core/src/__tests__/infrastructure/api/services/widgets/creativeVariations/CreativeVariationsResponseCodec.test.ts`
+- `packages/core/src/__tests__/infrastructure/api/services/widgets/creativeVariations/CreativeVariationsService.test.ts`
+- `packages/core/src/__tests__/presentation/webview/WorkshopApp.test.tsx`
+- `packages/core/src/__tests__/presentation/webview/components/workshop/WorkshopWidgetsModal.test.tsx`
+- `packages/core/src/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/CreativeVariationCard.test.tsx`
+- `packages/core/src/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal.test.tsx`
+- `packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring.test.ts`
+- `packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations.test.ts`
+- `packages/core/src/__tests__/presentation/webview/hooks/useWorkshopAppMessageRouter.test.ts`
+- `packages/core/src/__tests__/presentation/webview/utils/workshopWidgetAskPrefill.test.ts`
+- `packages/core/src/__tests__/shared/constants/workshopWidgets.test.ts`
 
 The protected untracked files `Prose Minion.zip` and
 `workshop-ai-service-conversation-ownership.md` were not touched, stashed, or
 deleted.
 
-## Verification receipt
+## Post-review verification receipt
 
-- Focused Slice 4 set: **15 suites, 158 tests passed**.
-- Full Jest: **206 suites, 2,201 tests, 2 snapshots passed** in 17.054 seconds.
+- Focused Slice 4 remediation set: **18 suites, 202 tests passed**.
+- Full Jest: **206 suites, 2,215 tests, 2 snapshots passed** in 15.887 seconds.
 - `npm run typecheck`: core, webview, and extension configurations passed.
 - ESLint: **0 errors, 955 warnings** (253 fixable warnings; no fixes applied).
 - `npm run build`: resource staging passed; extension and webview webpack
   compilations passed; bundle sentinel reported all 3 required Tailwind
   utilities. Webpack emitted its 3 advisory webview-size warnings.
-- The exact F5 prelaunch command (`npm run watch` from the extension app)
+- The exact root F5 prelaunch command (`npm run watch`)
   compiled both development bundles without the prior macOS `EMFILE` watcher
-  failure; development watch now uses bounded polling and ignores `node_modules`.
+  failure; development watch uses bounded polling on macOS, preserves native
+  watchers on Linux/Windows unless `PM_WATCH_POLL` is explicitly set, and
+  ignores `node_modules` everywhere.
 - `git diff --check`: passed.
 
 No screenshots were captured because this CLI environment cannot launch the

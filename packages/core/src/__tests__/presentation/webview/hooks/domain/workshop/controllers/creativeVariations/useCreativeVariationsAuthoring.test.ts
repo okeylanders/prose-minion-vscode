@@ -2,9 +2,11 @@
 
 import { act, renderHook } from '@testing-library/react';
 import {
+  createCreativeVariationsAuthoringDraft,
   useCreativeVariationsAuthoring,
   type UseCreativeVariationsAuthoringOptions
 } from '@hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring';
+import { MessageType, type SelectionDataMessage } from '@messages';
 import {
   ADVISORY_RISK_ID,
   generatedDraft
@@ -25,6 +27,15 @@ const options = (
   ...overrides
 });
 
+const selectionData = (
+  payload: Omit<SelectionDataMessage['payload'], 'target'>
+): SelectionDataMessage => ({
+  type: MessageType.SELECTION_DATA,
+  source: 'extension.ui',
+  timestamp: 1,
+  payload: { target: 'workshop_creative_variations_subject', ...payload }
+});
+
 describe('useCreativeVariationsAuthoring', () => {
   afterEach(() => jest.clearAllMocks());
 
@@ -32,14 +43,13 @@ describe('useCreativeVariationsAuthoring', () => {
     const props = options();
     const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
 
-    act(() => result.current.handleSubjectSelection({
-      target: 'workshop_creative_variations_subject',
+    act(() => result.current.handleSubjectSelection(selectionData({
       content: 'Selected passage.',
       sourceUri: 'file:///private/work/draft.md',
       relativePath: 'chapters/draft.md',
       startLine: 12,
       endLine: 14
-    }));
+    })));
 
     expect(result.current.draft.subject).toEqual({
       text: 'Selected passage.',
@@ -63,10 +73,9 @@ describe('useCreativeVariationsAuthoring', () => {
     const props = options();
     const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
 
-    act(() => result.current.handleSubjectSelection({
-      target: 'workshop_creative_variations_subject',
+    act(() => result.current.handleSubjectSelection(selectionData({
       content: 'Clipboard passage.'
-    }));
+    })));
 
     expect(result.current.draft.subject).toEqual({
       text: 'Clipboard passage.',
@@ -93,6 +102,64 @@ describe('useCreativeVariationsAuthoring', () => {
       kind: 'generating',
       detail: 'Requesting variations'
     });
+  });
+
+  it('ignores an identical repeated subject selection after a workup settles', () => {
+    const props = options();
+    const { result, rerender } = renderHook(() => useCreativeVariationsAuthoring(props));
+    const selection = selectionData({
+      content: 'Selected passage.',
+      sourceUri: 'file:///private/work/draft.md',
+      relativePath: 'chapters/draft.md',
+      startLine: 12,
+      endLine: 14
+    });
+    act(() => result.current.handleSubjectSelection(selection));
+    act(() => result.current.generateWorkup());
+    props.generationResult = {
+      widgetId: 'creative-variations',
+      token: 'cv-token-1',
+      workupId: generatedDraft.workup!.workupId,
+      ok: true,
+      workup: generatedDraft.workup!
+    };
+    rerender();
+    jest.clearAllMocks();
+
+    act(() => result.current.handleSubjectSelection(selection));
+
+    expect(result.current.draft.workup).toEqual(generatedDraft.workup);
+    expect(props.cancelGeneration).not.toHaveBeenCalled();
+    expect(result.current.invalidationNotice).toBeNull();
+  });
+
+  it('declines a late subject-selection response while generation is active', () => {
+    const props = options();
+    const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
+    act(() => result.current.changeSubjectText('The generating passage.'));
+    act(() => result.current.generateWorkup());
+    jest.clearAllMocks();
+
+    act(() => result.current.handleSubjectSelection(selectionData({
+      content: 'A late host reply.'
+    })));
+
+    expect(result.current.draft.subject.text).toBe('The generating passage.');
+    expect(result.current.generation.kind).toBe('generating');
+    expect(props.cancelGeneration).not.toHaveBeenCalled();
+  });
+
+  it('does not cancel generation for a value-identical input update', () => {
+    const props = options();
+    const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
+    act(() => result.current.changeSubjectText('The generating passage.'));
+    act(() => result.current.generateWorkup());
+    jest.clearAllMocks();
+
+    act(() => result.current.changeSubjectText('The generating passage.'));
+
+    expect(result.current.generation.kind).toBe('generating');
+    expect(props.cancelGeneration).not.toHaveBeenCalled();
   });
 
   it('projects progress and settles only the controller-owned attempt', () => {
@@ -173,6 +240,9 @@ describe('useCreativeVariationsAuthoring', () => {
     expect(result.current.draft.workup).toBeNull();
     expect(result.current.draft.selections).toEqual([]);
     expect(result.current.draft.note).toBe('Keep this note.');
+    expect(result.current.invalidationNotice).toBe(
+      'Generated workup cleared because the creative aim changed.'
+    );
   });
 
   it('invalidates settled work when a host-owned generation input changes', () => {
@@ -194,6 +264,9 @@ describe('useCreativeVariationsAuthoring', () => {
 
     expect(result.current.draft.workup).toBeNull();
     expect(result.current.draft.selections).toEqual([]);
+    expect(result.current.invalidationNotice).toBe(
+      'Generated workup cleared because the widget model changed.'
+    );
   });
 
   it('cancels the matching request and refuses a late result after close-style cancellation', () => {
@@ -244,5 +317,32 @@ describe('useCreativeVariationsAuthoring', () => {
       workup: null,
       selections: []
     });
+  });
+
+  it('resets every transient value when a fresh sheet reopens', () => {
+    const props = options();
+    const { result, rerender } = renderHook(() => useCreativeVariationsAuthoring(props));
+    act(() => {
+      result.current.changeSubjectText('A passage that belongs to the first sheet.');
+      result.current.changeAim('An aim that must not reopen.');
+      result.current.generateWorkup();
+    });
+    props.generationResult = {
+      widgetId: 'creative-variations',
+      token: 'cv-token-1',
+      workupId: generatedDraft.workup!.workupId,
+      ok: true,
+      workup: generatedDraft.workup!
+    };
+    rerender();
+
+    props.open = false;
+    rerender();
+    props.open = true;
+    rerender();
+
+    expect(result.current.draft).toEqual(createCreativeVariationsAuthoringDraft());
+    expect(result.current.generation).toEqual({ kind: 'idle' });
+    expect(result.current.invalidationNotice).toBeNull();
   });
 });

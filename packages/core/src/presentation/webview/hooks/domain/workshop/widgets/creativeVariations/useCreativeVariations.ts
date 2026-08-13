@@ -11,10 +11,6 @@ import {
   type WorkshopCreativeVariationsResultMessage,
   type WorkshopCreativeVariationsResultPayload
 } from '@messages';
-import {
-  creativeVariationsGenerationDraft
-} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
-
 interface ActiveCreativeVariationsAttempt {
   token: string;
   /** Minted by the host and latched from the first correlated callback. */
@@ -75,34 +71,35 @@ export function useCreativeVariations(): UseCreativeVariationsReturn {
 
   const generate = React.useCallback((draft: WorkshopCreativeVariationsDraft): string => {
     const token = createCreativeVariationsRequestToken();
-    const requestDraft = creativeVariationsGenerationDraft(draft);
     activeAttemptRef.current = { token };
     setGenerationProgress(null);
     setGenerationResult(null);
     post(MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE, {
       widgetId: 'creative-variations',
       token,
-      subject: requestDraft.subject,
-      surroundingContext: requestDraft.surroundingContext,
-      invariants: requestDraft.invariants,
-      intent: requestDraft.intent,
-      requestedCount: requestDraft.requestedCount
+      subject: draft.subject,
+      surroundingContext: draft.surroundingContext,
+      invariants: draft.invariants,
+      intent: draft.intent,
+      requestedCount: draft.requestedCount
     });
     return token;
   }, [post]);
 
   const cancelGeneration = React.useCallback((token?: string) => {
     const active = activeAttemptRef.current;
-    if (!active || (token !== undefined && token !== active.token)) {
+    if (active && token !== undefined && token !== active.token) {
       return;
     }
-    vscode.postMessage(
-      createCancelRequestMessage(
-        'workshop-creative-variations',
-        active.token,
-        'webview.workshop.creative-variations'
-      )
-    );
+    if (active) {
+      vscode.postMessage(
+        createCancelRequestMessage(
+          'workshop-creative-variations',
+          active.token,
+          'webview.workshop.creative-variations'
+        )
+      );
+    }
     activeAttemptRef.current = undefined;
     setGenerationProgress(null);
     setGenerationResult(null);

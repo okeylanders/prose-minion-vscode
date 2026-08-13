@@ -1,15 +1,16 @@
 /**
  * The Conversation Widgets registry — the single deterministic source for
  * widget ids ↔ labels ↔ rails ↔ availability (ADR 2026-07-22, decision 14).
- * The webview browser renders from it, WorkshopGesturePlaygroundHandler validates
- * commits against it, and the thread-artifact frame's `kind` attribute is
- * derived from it — so none of the three can drift, and the LLM never names
- * buttons. Icons are presentation-only and stay in the webview layer
+ * The webview browser renders from it, host availability validates against it,
+ * and the thread-artifact frame's `kind` attribute is derived from it — so
+ * those identities cannot drift, and the LLM never names buttons. Commit and
+ * recommendation capability remain narrower feature-owned registries. Icons
+ * are presentation-only and stay in the webview layer
  * (workshopWidgetIcons pattern, mirroring workshopTools.ts).
  *
- * Unshipped widgets stay listed and `live: false`: the browser is a roadmap,
- * not a lie (design Spread 00). The persona-recommendation parser rejects
- * ids that are not live, so comp-only widgets can never render dead chips.
+ * Widgets without a usable authoring surface stay listed and `live: false`:
+ * the browser is a roadmap, not a lie (design Spread 00). A live authoring
+ * surface may still have later lifecycle capabilities explicitly unavailable.
  */
 
 import type { WorkshopWidgetId } from '@messages';
@@ -36,7 +37,7 @@ export interface WorkshopWidgetDescriptor {
   /** How the widget joins the room and how long its committed state remains. */
   readonly lifecycleNote: string;
   readonly blurb: string;
-  /** Only live widgets may launch, commit, or be persona-recommended. */
+  /** The authoring surface may launch and its implemented host routes may run. */
   readonly live: boolean;
 }
 
@@ -85,9 +86,9 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         railLabel: 'one-shot',
         group: 'Playgrounds',
         tag: 'Sprint 03',
-        lifecycleNote: ONE_SHOT_LIFECYCLE,
+        lifecycleNote: 'play and copy now · thread commit arrives in Slice 5',
         blurb:
-          'Three to five genuinely different takes on a passage under invariants you declare — measured for distinctness, compared side by side.',
+          'Three to five genuinely different takes on a passage under any invariants you declare — measured for distinctness, compared side by side.',
         live: true
       }
     ]

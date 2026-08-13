@@ -14,27 +14,77 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | Blank invariants are the default, and one model flag voids the entire paid workup | Blake, Sam, Bria, Tim, Oliver | 5 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-02 | 🟠 High | `handleSubjectSelection` is the only intake path without the guards its siblings have | Sam, Blake | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-03 | 🟠 High | A settled workup is destroyed with no statement that it happened or why | Oliver | 1 runway-prompted | — | **Open** |
-| F-04 | 🟡 Standard | Blank-invariant guard untested; mounted integration test settles a workup the codec would reject | Cal | 1 runway-prompted | — | **Open** |
-| F-05 | 🟡 Standard | The derived check built to fire on a `live` flip was replaced by a hardcoded list, at the flip | Stan, Cal | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-06 | 🟡 Standard | The registry still describes the pre-flip world, to writers and to engineers | Bria, Stan | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-07 | 🟡 Standard | Three appliers of the request projection, no declared owner; the webview's reaches the wire | Marcus | 1 runway-prompted | — | **Open** |
-| F-08 | 🟡 Standard | Generate ignores a dead source reference the sheet has already diagnosed | Sam | 1 runway-prompted | — | **Open** |
-| F-09 | 🟡 Standard | Editor-derived path rides into the outbound provider prompt with no display-safety guard | Patricia | 1 runway-prompted | — | **Open** |
-| F-10 | 🟡 Standard | `updateAuthoringInput` acts before it decides, and signals the decision through object identity | Tim, Parker | 1 independent · 1 runway-prompted | — | **Open** |
-| F-11 | 🟡 Standard | The composition root learned the card model to implement one copy button | Marcus | 1 independent | — | **Open** |
-| F-12 | 🟡 Standard | The close contract is a conditional cancel where both siblings use an unconditional clear | Marcus | 1 runway-prompted | — | **Open** |
-| F-13 | 🟡 Standard | Two names for one concept, twice over, with nothing holding them together | Parker | 1 runway-prompted | — | **Open** |
-| F-14 | 🟡 Standard | The fresh-sheet contract has no witness: no test ever transitions `open` | Cal | 1 runway-prompted | — | **Open** |
-| F-15 | 🟡 Standard | The authoring controller sits off the recorded target tree with no recorded reason | Stan | 1 runway-prompted | — | **Open** |
-| F-16 | 🟡 Standard | Dev-watch polling taxes Linux and Windows to fix a macOS descriptor limit | Tim | 1 runway-prompted | — | **Open** |
-| F-17 | 🟡 Standard | The sprint's named Design source still declares the rule this commit retired | Bria | 1 runway-prompted | — | **Open** |
-| F-18 | 🔵 Nit | The new dispatcher borrows its sibling's word for the opposite contract | Parker | 1 runway-prompted | — | **Open** |
+| F-01 | 🟠 High | Blank invariants are the default, and one model flag voids the entire paid workup | Blake, Sam, Bria, Tim, Oliver | 5 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-02 | 🟠 High | `handleSubjectSelection` is the only intake path without the guards its siblings have | Sam, Blake | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-03 | 🟠 High | A settled workup is destroyed with no statement that it happened or why | Oliver | 1 runway-prompted | — | **Addressed** |
+| F-04 | 🟡 Standard | Blank-invariant guard untested; mounted integration test settles a workup the codec would reject | Cal | 1 runway-prompted | — | **Addressed** |
+| F-05 | 🟡 Standard | The derived check built to fire on a `live` flip was replaced by a hardcoded list, at the flip | Stan, Cal | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-06 | 🟡 Standard | The registry still describes the pre-flip world, to writers and to engineers | Bria, Stan | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-07 | 🟡 Standard | Three appliers of the request projection, no declared owner; the webview's reaches the wire | Marcus | 1 runway-prompted | — | **Addressed** |
+| F-08 | 🟡 Standard | Generate ignores a dead source reference the sheet has already diagnosed | Sam | 1 runway-prompted | — | **Addressed** |
+| F-09 | 🟡 Standard | Editor-derived path rides into the outbound provider prompt with no display-safety guard | Patricia | 1 runway-prompted | — | **Addressed** |
+| F-10 | 🟡 Standard | `updateAuthoringInput` acts before it decides, and signals the decision through object identity | Tim, Parker | 1 independent · 1 runway-prompted | — | **Addressed** |
+| F-11 | 🟡 Standard | The composition root learned the card model to implement one copy button | Marcus | 1 independent | — | **Addressed** |
+| F-12 | 🟡 Standard | The close contract is a conditional cancel where both siblings use an unconditional clear | Marcus | 1 runway-prompted | — | **Addressed** |
+| F-13 | 🟡 Standard | Two names for one concept, twice over, with nothing holding them together | Parker | 1 runway-prompted | — | **Addressed** |
+| F-14 | 🟡 Standard | The fresh-sheet contract has no witness: no test ever transitions `open` | Cal | 1 runway-prompted | — | **Addressed** |
+| F-15 | 🟡 Standard | The authoring controller sits off the recorded target tree with no recorded reason | Stan | 1 runway-prompted | — | **Addressed** |
+| F-16 | 🟡 Standard | Dev-watch polling taxes Linux and Windows to fix a macOS descriptor limit | Tim | 1 runway-prompted | — | **Addressed** |
+| F-17 | 🟡 Standard | The sprint's named Design source still declares the rule this commit retired | Bria | 1 runway-prompted | — | **Addressed** |
+| F-18 | 🔵 Nit | The new dispatcher borrows its sibling's word for the opposite contract | Parker | 1 runway-prompted | — | **Addressed** |
 | P-1 | 💚 Praise | A dead source reference fails before the provider is touched | Blake | 1 independent | — | N/A — preserve |
 | P-2 | 💚 Praise | The optionality loosening shipped with its matching model-authority guard, at both layers | Patricia | 1 independent | — | N/A — preserve |
 | P-3 | 💚 Praise | Structural unavailability outranks situational, in the control's own accessible description | Oliver | 1 independent | — | N/A — preserve |
+
+### Remediation receipt — 2026-08-13
+
+All 18 findings were addressed in the post-review worktree. This records the
+implementer's disposition for re-review; it does not change the review's
+historical verdict or declare Slice 4 reviewed.
+
+- **F-01 / F-04:** The prompt now defines blank invariant fields as absent and
+  forbids flags against them; the example declares its nonblank precondition;
+  rejection copy tells the writer when a blank-field flag caused the failure.
+  Codec tests cover both invariant fields, and the mounted test now settles a
+  flag-free workup compatible with its blank inputs. Response atomicity remains
+  deliberate: one invalid flag rejects the whole closed workup.
+- **F-02 / F-10 / F-14:** Selection intake now receives the full targeted
+  envelope, ignores closed-sheet and in-flight replies, and treats an exact
+  subject/provenance repeat as a no-op. All authoring updaters decide before
+  cancellation or invalidation, use a synchronous draft reference for batched
+  edits, and have close-to-reopen coverage.
+- **F-03:** Input and model changes that clear work now retain a named reason in
+  controller state and expose it through a polite `role="status"` region after
+  the cards disappear.
+- **F-05 / F-06:** Host-prefill fitness is derived from every live catalog id
+  with Creative Variations as the exact witnessed no-prefill exception. The
+  live browser behavior, catalog lifecycle copy, message-contract commentary,
+  and governing ADR now distinguish launchability from the narrower commit and
+  recommendation registries.
+- **F-07 / F-09:** The webview sends the authored draft unchanged. The host
+  handler is the declared generation-projection owner; the service repeats the
+  derivation only as a provider-boundary defense. Provider task data now carries
+  subject text and provenance kind but no workspace-relative path or line range.
+- **F-08:** A diagnosed unavailable source is a first-class Generate blocker
+  with an accessible removal instruction.
+- **F-11 / F-12 / F-13:** Per-card copy passes prose upward rather than teaching
+  `WorkshopApp` the card schema; transport cancellation always clears transient
+  state even after settlement; the controller imports the modal's shared
+  availability and generation-phase vocabulary instead of cloning it.
+- **F-15 / F-17 / F-18:** The runway tree and handoff record the feature-scoped
+  controller placement; the concept and sprint agree that constraints and aim
+  are optional; the selection helper and responsibility ledger now describe
+  exact target routing rather than fan-out, with defense-in-depth target guards.
+- **F-16:** Development watch polling is now macOS-only by default, with a
+  positive `PM_WATCH_POLL` override for other platforms; `node_modules` remains
+  ignored everywhere.
+
+Post-review verification: focused remediation set **18 suites / 202 tests**;
+full Jest **206 suites / 2,215 tests / 2 snapshots**; all TypeScript
+configurations; ESLint **0 errors / 955 baseline warnings**; production build,
+resource staging, webpack bundles, bundle sentinels, and the exact F5 watch
+command; `git diff --check`. All passed. The worktree remains ready for
+re-review, not reviewed or complete.
 
 ## Review coverage
 

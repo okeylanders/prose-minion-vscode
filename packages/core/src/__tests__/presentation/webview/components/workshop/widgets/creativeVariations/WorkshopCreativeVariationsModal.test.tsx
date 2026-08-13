@@ -29,6 +29,7 @@ const renderModal = (
     banner: { kind: 'none' } as const,
     draft: baseDraft,
     generation: { kind: 'idle' } as const,
+    invalidationNotice: null,
     commitPending: false,
     commitError: null,
     commitBlockers: ['no-workup'] as const,
@@ -98,6 +99,26 @@ describe('WorkshopCreativeVariationsModal', () => {
       .toBeTruthy();
     fireEvent.click(generate);
     expect(props.onGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks generation while a selected source is no longer available', () => {
+    renderModal({
+      draft: {
+        ...baseDraft,
+        surroundingContext: {
+          writerText: '',
+          sourceReferences: [{ kind: 'active-excerpt' }]
+        }
+      }
+    });
+
+    const generate = screen.getByRole('button', { name: /Generate the workup/ });
+    expect((generate as HTMLButtonElement).disabled).toBe(true);
+    const reasons = document.getElementById('pm-ws-cvx-gen-reasons');
+    expect(reasons?.textContent).toContain(
+      'Remove unavailable source material before generating again.'
+    );
+    expect(generate.getAttribute('aria-describedby')).toBe(reasons?.id);
   });
 
   it('shows the pasted-provenance label and honest no-context copy for pasted subjects', () => {
@@ -204,6 +225,15 @@ describe('WorkshopCreativeVariationsModal', () => {
     ).toBeTruthy();
   });
 
+  it('announces why a settled workup was cleared', () => {
+    renderModal({
+      invalidationNotice: 'Generated workup cleared because the creative aim changed.'
+    });
+    expect(screen.getByRole('status').textContent).toBe(
+      'Generated workup cleared because the creative aim changed.'
+    );
+  });
+
   it('shows carry controls on a selected card and promotes to full prose explicitly', () => {
     const { props } = renderModal({
       draft: {
@@ -306,7 +336,9 @@ describe('WorkshopCreativeVariationsModal', () => {
   it('copies a full variation through the semantic callback', () => {
     const { props } = renderModal({ draft: generatedDraft });
     fireEvent.click(screen.getByRole('button', { name: 'Copy Take 1 prose' }));
-    expect(props.onCopyVariation).toHaveBeenCalledWith(1);
+    expect(props.onCopyVariation).toHaveBeenCalledWith(
+      generatedDraft.workup!.cards[0].prose
+    );
   });
 
   it('projects the compact payload with carry counts and the budget meter', () => {

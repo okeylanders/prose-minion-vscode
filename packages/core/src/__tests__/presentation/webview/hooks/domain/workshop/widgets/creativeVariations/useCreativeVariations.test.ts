@@ -9,9 +9,6 @@ import {
   type WorkshopCreativeVariationsDraft,
   type WorkshopCreativeVariationsWorkup
 } from '@messages';
-import {
-  CREATIVE_VARIATIONS_RANDOM_AIM
-} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('@hooks/useVSCodeApi');
@@ -73,7 +70,7 @@ describe('useCreativeVariations', () => {
     }));
   });
 
-  it('projects blank optional inputs to a random aim and no preservation constraint', () => {
+  it('keeps authored blank optional inputs distinguishable on the wire', () => {
     const { result } = renderHook(() => useCreativeVariations());
 
     act(() => {
@@ -88,9 +85,37 @@ describe('useCreativeVariations', () => {
       type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE,
       payload: expect.objectContaining({
         invariants: { mustSurvive: '', mustNotChange: '' },
-        intent: expect.objectContaining({ aim: CREATIVE_VARIATIONS_RANDOM_AIM })
+        intent: expect.objectContaining({ aim: '   ' })
       })
     }));
+  });
+
+  it('clears settled transient results even when no request remains to cancel', () => {
+    const { result } = renderHook(() => useCreativeVariations());
+    let token = '';
+    act(() => {
+      token = result.current.generate(draft);
+    });
+    act(() => result.current.handleGenerationResult({
+      type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: {
+        widgetId: 'creative-variations',
+        token,
+        workupId: 'cvw-settled',
+        ok: true,
+        workup: workup('cvw-settled')
+      }
+    }));
+    expect(result.current.generationResult).not.toBeNull();
+    jest.clearAllMocks();
+
+    act(() => result.current.cancelGeneration());
+
+    expect(result.current.generationResult).toBeNull();
+    expect(result.current.generationProgress).toBeNull();
+    expect(vscode.postMessage).not.toHaveBeenCalled();
   });
 
   it('latches the host workup id and ignores stale progress and results', () => {

@@ -125,7 +125,11 @@ export class CreativeVariationsService {
         truncated: false
       };
     } catch (error) {
-      return this.rejectResponse(request, content, result, this.errorMessage(error));
+      const rejection = this.errorMessage(error);
+      const nextStep = rejection.includes('writer-declared nonblank invariant field')
+        ? 'The response flagged a constraint you left blank, so it was discarded. Generate again; if this repeats, try another model.'
+        : undefined;
+      return this.rejectResponse(request, content, result, rejection, nextStep);
     }
   }
 
@@ -184,7 +188,10 @@ export class CreativeVariationsService {
       content: source.content
     }));
     const task = {
-      subject: draft.subject,
+      subject: {
+        text: draft.subject.text,
+        provenance: { kind: draft.subject.provenance.kind }
+      },
       surroundingContext: {
         writerText: draft.surroundingContext.writerText,
         resolvedSources: sources
@@ -205,7 +212,7 @@ export class CreativeVariationsService {
     content: string,
     result: ExecutionResult,
     rejection: string,
-    nextStep = 'Try Generate again.'
+    nextStep?: string
   ): Promise<never> {
     this.outputChannel?.appendLine(
       `[CreativeVariationsService] Rejected response: ${rejection}`
@@ -223,7 +230,7 @@ export class CreativeVariationsService {
     );
     throw new Error(
       `The model returned unusable Creative Variations (${rejection}). `
-      + `${recoveryLocationNotice(receipt)} ${nextStep}`
+      + `${recoveryLocationNotice(receipt)} ${nextStep ?? 'Try Generate again.'}`
     );
   }
 

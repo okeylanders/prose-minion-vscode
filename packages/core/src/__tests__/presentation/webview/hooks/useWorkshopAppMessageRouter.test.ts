@@ -174,7 +174,7 @@ describe('buildWorkshopAppMessageRoutes', () => {
     );
 
     expect(deps.creativeVariationsAuthoring.handleSubjectSelection)
-      .toHaveBeenCalledWith(selection.payload);
+      .toHaveBeenCalledWith(selection);
     expect(deps.excerptVerify.handleSelectionData).not.toHaveBeenCalled();
     expect(deps.creativeVariations.handleGenerationProgress).toHaveBeenCalledWith(progress);
   });

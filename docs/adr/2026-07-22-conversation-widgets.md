@@ -455,7 +455,9 @@ presentation-side. The canonical id equals the design's frame identity —
 `gesture-playground` — and the frame kind is derived mechanically as
 `widget:<id>`, so the registry check on the frame builder means something.
 The persona-recommendation parser rejects `widgetId`s that are not `live`
-in the registry, so comp-only widgets can never render dead chips.
+in the registry, and the feature-owned recommendation registry remains the
+narrower authority for which live authoring surfaces can emit recommendation
+chips. Catalog liveness alone does not imply commit or recommendation support.
 
 ## Consequences
 

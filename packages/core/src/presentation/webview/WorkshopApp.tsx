@@ -758,20 +758,14 @@ export const WorkshopApp: React.FC = () => {
     });
   }, [vscode]);
 
-  const copyCreativeVariation = React.useCallback((position: number) => {
-    const card = creativeVariationsAuthoring.draft.workup?.cards.find(
-      (candidate) => candidate.position === position
-    );
-    if (!card) {
-      return;
-    }
+  const copyCreativeVariation = React.useCallback((content: string) => {
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
       source: 'webview.workshop.creative-variations',
-      payload: { toolName: 'creative_variations', content: card.prose },
+      payload: { toolName: 'creative_variations', content },
       timestamp: Date.now()
     });
-  }, [creativeVariationsAuthoring.draft.workup, vscode]);
+  }, [vscode]);
 
   const saveGestureDictionary = React.useCallback((content: string) => {
     vscode.postMessage({
@@ -1383,6 +1377,7 @@ export const WorkshopApp: React.FC = () => {
           banner={{ kind: 'none' }}
           draft={creativeVariationsAuthoring.draft}
           generation={creativeVariationsAuthoring.generation}
+          invalidationNotice={creativeVariationsAuthoring.invalidationNotice}
           commitPending={false}
           commitError={null}
           commitBlockers={creativeVariationsAuthoring.commitBlockers}

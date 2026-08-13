@@ -13,9 +13,6 @@ import { createMockVSCode } from '@/__tests__/mocks/vscode';
 import {
   generatedDraft
 } from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
-import {
-  CREATIVE_VARIATIONS_RANDOM_AIM
-} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDerivations';
 
 jest.mock('../../../presentation/webview/hooks/useVSCodeApi');
 jest.mock('../../../presentation/webview/styles/workshop/tokens.css', () => ({}));
@@ -262,9 +259,17 @@ describe('WorkshopApp', () => {
     });
     expect(generateMessage.payload.intent).toEqual({
       kind: 'custom-aim',
-      aim: CREATIVE_VARIATIONS_RANDOM_AIM,
+      aim: '',
       distance: 'tail'
     });
+
+    const mountedWorkup = {
+      ...generatedDraft.workup!,
+      cards: generatedDraft.workup!.cards.map((card) => ({
+        ...card,
+        invariantFlags: []
+      }))
+    };
 
     act(() => {
       window.dispatchEvent(new MessageEvent('message', {
@@ -275,9 +280,9 @@ describe('WorkshopApp', () => {
           payload: {
             widgetId: 'creative-variations',
             token: generateMessage.payload.token,
-            workupId: generatedDraft.workup!.workupId,
+            workupId: mountedWorkup.workupId,
             ok: true,
-            workup: generatedDraft.workup!
+            workup: mountedWorkup
           }
         }
       }));
@@ -290,7 +295,7 @@ describe('WorkshopApp', () => {
       source: 'webview.workshop.creative-variations',
       payload: {
         toolName: 'creative_variations',
-        content: generatedDraft.workup!.cards[0].prose
+        content: mountedWorkup.cards[0].prose
       }
     }));
 
@@ -299,6 +304,9 @@ describe('WorkshopApp', () => {
     }));
     fireEvent.click(screen.getByRole('button', { name: /GPT-5.4/ }));
     expect(screen.queryByText('3 returned · none ranked')).toBeNull();
+    expect(screen.getByText(
+      'Generated workup cleared because the widget model changed.'
+    ).getAttribute('role')).toBe('status');
     expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       type: MessageType.SET_MODEL_SELECTION,
       payload: { scope: 'widget', modelId: 'openai/gpt-5.4' }

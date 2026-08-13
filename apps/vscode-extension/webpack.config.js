@@ -9,13 +9,21 @@ const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 // transpiles core as first-party.
 const CORE_SRC = path.resolve(__dirname, '../../packages/core/src');
 const BASE_TSCONFIG = path.resolve(__dirname, '../../tsconfig.base.json');
+const watchPollOverride = Number(process.env.PM_WATCH_POLL);
+const usePollingWatch = process.platform === 'darwin'
+  || (Number.isSafeInteger(watchPollOverride) && watchPollOverride > 0);
 const DEVELOPMENT_WATCH_OPTIONS = {
-  // Native Watchpack watchers exhaust macOS' per-process descriptor limit in
-  // this workspace. Poll the first-party tree instead; node_modules remains
-  // immutable during an F5 session and does not need watching.
-  aggregateTimeout: 200,
+  // Dependencies stay immutable during an F5 session on every platform.
   ignored: /node_modules/,
-  poll: 500
+  // Native Watchpack watchers exhaust macOS' per-process descriptor limit in
+  // this workspace. Preserve native Linux/Windows watchers unless an explicit
+  // positive PM_WATCH_POLL interval requests the macOS-safe polling posture.
+  ...(usePollingWatch
+    ? {
+        aggregateTimeout: 200,
+        poll: watchPollOverride > 0 ? watchPollOverride : 500
+      }
+    : {})
 };
 
 const extensionConfig = {

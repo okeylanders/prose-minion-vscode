@@ -46,6 +46,15 @@ describe('workshopWidgets registry', () => {
     expect(isLiveWorkshopWidgetId(undefined)).toBe(false);
   });
 
+  it('describes Creative Variations current lifecycle without promising Slice 5', () => {
+    const creative = workshopWidgetDescriptor('creative-variations');
+    expect(creative).toMatchObject({
+      live: true,
+      lifecycleNote: 'play and copy now · thread commit arrives in Slice 5'
+    });
+    expect(creative?.blurb).toContain('under any invariants you declare');
+  });
+
   it('derives frame kinds mechanically and round-trips them', () => {
     for (const widget of allWidgets) {
       const kind = workshopWidgetArtifactKind(widget.id);
