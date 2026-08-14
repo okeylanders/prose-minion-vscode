@@ -30,10 +30,12 @@ const options = (
   generate: jest.fn(() => 'cv-token-1'),
   cancelGeneration: jest.fn(),
   roomRunActive: false,
+  toolTargetActive: false,
   commitPending: false,
   commitOutcome: null,
   commit: jest.fn(),
   clearCommitResult: jest.fn(),
+  resetCommitState: jest.fn(),
   onCommitAccepted: jest.fn(),
   ...overrides
 });
@@ -407,7 +409,7 @@ describe('useCreativeVariationsAuthoring', () => {
     expect(result.current.generation).toEqual({ kind: 'idle' });
     expect(result.current.commitError).toBeNull();
     expect(result.current.invalidationNotice).toBeNull();
-    expect(props.clearCommitResult).toHaveBeenCalled();
+    expect(props.resetCommitState).toHaveBeenCalled();
   });
 
   it('commits an eligible clone under its source config without mutating the draft', () => {
@@ -423,6 +425,21 @@ describe('useCreativeVariationsAuthoring', () => {
 
     expect(props.commit).toHaveBeenCalledWith(reopenedDraft, 'wc-7');
     expect(result.current.draft).toEqual(reopenedDraft);
+  });
+
+  it('binds clone lineage to the draft seed rather than a later opening response', () => {
+    const reopenedDraft = {
+      ...clone(generatedDraft),
+      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+    };
+    const props = options({ opening: cloneOpening(reopenedDraft, 'wc-7') });
+    const { result, rerender } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    props.opening = cloneOpening(reopenedDraft, 'wc-99');
+    rerender();
+    act(() => result.current.commitDraft());
+
+    expect(props.commit).toHaveBeenCalledWith(reopenedDraft, 'wc-7');
   });
 
   it('locks duplicate commit and destructive authoring changes while commit is pending', () => {
@@ -472,6 +489,59 @@ describe('useCreativeVariationsAuthoring', () => {
     expect(props.clearCommitResult).toHaveBeenCalled();
   });
 
+  it('defers model invalidation until a pending commit settles', () => {
+    const reopenedDraft = {
+      ...clone(generatedDraft),
+      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+    };
+    const props = options({
+      opening: cloneOpening(reopenedDraft),
+      commitPending: true
+    });
+    const { result, rerender } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    props.widgetModelId = 'openai/gpt-5.4';
+    rerender();
+    expect(result.current.draft.workup).toEqual(reopenedDraft.workup);
+
+    props.commitPending = false;
+    rerender();
+    expect(result.current.draft.workup).toBeNull();
+    expect(result.current.draft.selections).toEqual([]);
+    expect(result.current.invalidationNotice).toBe(
+      'Generated workup cleared because the widget model changed.'
+    );
+  });
+
+  it('uses exact advisory-set equality and blocks an unbuildable selected take', () => {
+    const duplicateRiskDraft = {
+      ...clone(generatedDraft),
+      selections: [{
+        position: 2,
+        carryMode: 'direction' as const,
+        acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID, ADVISORY_RISK_ID]
+      }]
+    };
+    const duplicate = options({ opening: cloneOpening(duplicateRiskDraft) });
+    const duplicateHook = renderHook(() => useCreativeVariationsAuthoring(duplicate));
+    expect(duplicateHook.result.current.commitBlockers).toContain('unaccepted-advisory-risk');
+
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const staleSelectionDraft = {
+      ...clone(generatedDraft),
+      selections: [{ position: 99, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+    };
+    const stale = options({ opening: cloneOpening(staleSelectionDraft) });
+    const staleHook = renderHook(() => useCreativeVariationsAuthoring(stale));
+    expect(staleHook.result.current.artifactUsage).toBeNull();
+    expect(staleHook.result.current.commitBlockers).toContain('artifact-compilation-failed');
+    expect(warn).toHaveBeenCalledWith(
+      '[CreativeVariations] Could not compile artifact usage',
+      expect.any(Error)
+    );
+    warn.mockRestore();
+  });
+
   it('reports real generation, room, hard-conflict, advisory-risk, and budget blockers', () => {
     const overBudgetDraft = {
       ...clone(generatedDraft),
@@ -489,12 +559,14 @@ describe('useCreativeVariationsAuthoring', () => {
     };
     const props = options({
       opening: cloneOpening(overBudgetDraft),
-      roomRunActive: true
+      roomRunActive: true,
+      toolTargetActive: true
     });
     const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
 
     expect(result.current.commitBlockers).toEqual([
       'room-run-active',
+      'tool-target',
       'hard-conflict-selection',
       'unaccepted-advisory-risk',
       'over-artifact-budget'

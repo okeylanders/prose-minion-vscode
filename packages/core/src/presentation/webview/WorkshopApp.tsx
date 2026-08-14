@@ -241,8 +241,8 @@ export const WorkshopApp: React.FC = () => {
   const standingDirectives = useWorkshopStandingDirectives(showToast);
   const clearCreativeVariationsTransientState = React.useCallback(() => {
     creativeVariations.cancelGeneration();
-    creativeVariations.clearCommitResult();
-  }, [creativeVariations.cancelGeneration, creativeVariations.clearCommitResult]);
+    creativeVariations.resetCommitState();
+  }, [creativeVariations.cancelGeneration, creativeVariations.resetCommitState]);
   const handleWidgetOpeningError = React.useCallback(
     (message: string) => showToast({ message, icon: 'x', tone: 'error' }),
     [showToast]
@@ -267,6 +267,7 @@ export const WorkshopApp: React.FC = () => {
     generate: creativeVariations.generate,
     cancelGeneration: creativeVariations.cancelGeneration,
     roomRunActive: workshop.isRunning,
+    toolTargetActive: workshop.chatTarget.kind === 'tool',
     commitPending: creativeVariations.commitPending,
     commitOutcome: creativeVariations.commitResult,
     commit: (draft, clonedFromConfigId) => {
@@ -277,6 +278,7 @@ export const WorkshopApp: React.FC = () => {
       });
     },
     clearCommitResult: creativeVariations.clearCommitResult,
+    resetCommitState: creativeVariations.resetCommitState,
     onCommitAccepted: widgetOpening.closeCreativeVariations
   });
 
@@ -1401,7 +1403,6 @@ export const WorkshopApp: React.FC = () => {
           commitPending={creativeVariations.commitPending}
           commitError={creativeVariationsAuthoring.commitError}
           commitBlockers={creativeVariationsAuthoring.commitBlockers}
-          commitAvailable
           artifactUsage={creativeVariationsAuthoring.artifactUsage}
           highOverlapThreshold={CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE}
           availableSources={creativeVariationsAuthoring.availableSources}

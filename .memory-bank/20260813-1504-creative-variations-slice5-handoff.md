@@ -4,7 +4,9 @@
 **Branch**: `sprint/conversation-widgets-03-creative-variations`
 **Required ancestor**: `b6fa5b07bc35ae4b574de649092c9e795852b3c1`
 **Starting HEAD**: `47d3281f6513a5ba349814d0f6accd0967fc41eb`
-**Current gate**: Slice 5 ready for review — not reviewed, not complete
+**Reviewed implementation**: `4210cdc530deb59212fa9c21cb5880335339d140`
+**Review receipt HEAD**: `8eabf6db` (`docs(review): add Creative Variations Slice 5 mr-review-v2 receipt`)
+**Current gate**: Slice 5 review remediated and ready for re-review — not complete
 **Publication**: uncommitted and unpushed
 **Abstraction register**: `imagine`
 
@@ -26,6 +28,12 @@ The `imagine` register shaped the code around the recognized one-shot feature
 family: one named Creative compiler and artifact projection behind the existing
 closed operation registry. It did not produce a generic variation framework or
 teach the coordinator Creative vocabulary.
+
+The Slice 5 review recorded 13 findings requiring remediation, three accepted
+deferrals, and one N/A convention finding. The remediation addresses every
+finding marked Open. F-09, F-12, and F-16 remain deferred exactly as reviewed;
+F-17 remains N/A. The review's historical finding narratives are superseded by
+its updated resolution ledger where they describe pre-remediation behavior.
 
 ## Ownership and message flow
 
@@ -121,11 +129,35 @@ Evidence:
 - `.todo/epics/epic-conversation-widgets-2026-07-22/sprints/03-creative-variations.md`
 - `.memory-bank/20260813-1504-creative-variations-slice5-handoff.md`
 
+Review remediation delta:
+
+- `packages/core/src/application/handlers/domain/workshop/widgets/WorkshopWidgetHostHandler.ts`
+- `packages/core/src/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator.ts`
+- `packages/core/src/application/services/workshop/widgets/creativeVariations/CreativeVariationsCommitEligibility.ts`
+- `packages/core/src/application/services/workshop/widgets/creativeVariations/CreativeVariationsOneShotCommit.ts`
+- `packages/core/src/presentation/webview/WorkshopApp.tsx`
+- `packages/core/src/presentation/webview/components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal.tsx`
+- `packages/core/src/presentation/webview/hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring.ts`
+- `packages/core/src/presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts`
+- `packages/core/src/presentation/webview/hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations.ts`
+- `packages/core/src/__tests__/application/handlers/domain/workshop/WorkshopRoomHandler.seams.test.ts`
+- `packages/core/src/__tests__/application/handlers/domain/workshop/widgets/WorkshopWidgetHostHandler.test.ts`
+- `packages/core/src/__tests__/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator.test.ts`
+- `packages/core/src/__tests__/application/services/workshop/widgets/creativeVariations/CreativeVariationsOneShotCommit.test.ts`
+- `packages/core/src/__tests__/presentation/webview/WorkshopApp.test.tsx`
+- `packages/core/src/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal.test.tsx`
+- `packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring.test.ts`
+- `packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.test.ts`
+- `packages/core/src/__tests__/presentation/webview/hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations.test.ts`
+- `docs/pr-reviews/sprint-03-creative-variations-slice-5-4210cdc5-review-v2.md`
+- `.todo/epics/epic-conversation-widgets-2026-07-22/sprints/03-creative-variations.md`
+- `.memory-bank/20260813-1504-creative-variations-slice5-handoff.md`
+
 The protected untracked files `Prose Minion.zip` and
 `workshop-ai-service-conversation-ownership.md` were not touched, stashed,
 staged, or deleted.
 
-## Verification receipt
+## Original Slice 5 verification receipt
 
 - Focused Slice 5 set: **15 suites, 177 tests passed**.
 - Full Jest: **207 suites, 2,242 tests, 2 snapshots passed** in 15.342 seconds.
@@ -138,6 +170,29 @@ staged, or deleted.
   compiled both development bundles successfully. The watcher was then stopped
   intentionally after the successful compilation.
 - `git diff --check`: passed.
+
+## Review remediation receipt
+
+- Focused remediation plus architecture: **10 suites, 159 tests passed**.
+- Full Jest: **207 suites, 2,256 tests, 2 snapshots passed** in 17.272 seconds.
+- `npm run typecheck`: core, webview, and extension configurations passed.
+- ESLint: **0 errors, 952 warnings** (repository warnings; no fixes applied).
+- `npm run build`: resource staging passed; production extension and webview
+  bundles passed; the bundle sentinel found all 3 required Tailwind utilities.
+  Webpack retained its 3 advisory webview-size warnings.
+- The exact root F5 prelaunch command (`npm run watch`) staged resources and
+  compiled both development bundles successfully. The watcher was then stopped
+  intentionally after the successful compilation.
+- `git diff --check`: passed.
+
+The remediation makes the commit host route total, adds a manual recovery seam
+for a missing acknowledgement, shares exact selection eligibility across both
+boundaries, validates clone provenance before mutation, defers model
+invalidation honestly, exposes target/compiler blockers, restores mounted model
+invalidation coverage, removes the dead commit capability prop, and closes the
+rollback diagnostic story. The locked room-copy decision carries a bounded
+subject preview in the writer turn while leaving the compact artifact grammar
+unchanged.
 
 ## Integrated UI evidence
 

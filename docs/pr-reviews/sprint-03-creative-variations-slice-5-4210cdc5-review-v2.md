@@ -6,6 +6,8 @@
 
 **Verdict: Nearly there.** No Blocking findings. The slice proves its structural claim — the feature-neutral one-shot coordinator took a second, richer feature with zero diff lines. Three High findings: one new host gate crashes where it used to refuse, the webview cannot recover from a commit that never answers, and the room-facing artifact never names the passage it is about.
 
+**Remediation status (2026-08-13): Ready for re-review.** Every finding marked Open below is addressed in the uncommitted remediation worktree. F-09, F-12, and F-16 retain the review's explicit deferrals; F-17 remains N/A. The original finding narratives are preserved as historical review evidence, and this ledger is the current status receipt.
+
 Jump to [Executive Briefing](#executive-briefing) · [Findings](#findings) · [Focus-area verdicts](#focus-area-verdicts-against-the-review-brief) · [Sensei's Lessons](#senseis-lessons)
 
 ## Resolution ledger
@@ -14,21 +16,21 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | A new gate indexes a partial map with a wire-controlled widget id, above the guard that makes it total | Marcus, Blake, Sam, Patricia, Stan, Oliver | 6 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-02 | 🟠 High | A commit that receives no action result is terminal for the whole webview | Blake, Oliver | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-03 | 🟠 High | The committed room turn carries the writer's choice but never its subject | Bria | 1 runway-prompted | — | **Open** — needs copy-owner decision |
-| F-04 | 🟡 Standard | A widget-model change during a pending commit is swallowed permanently, not deferred | Sam, Cal | 2 independent | 🎯 Consensus | **Open** |
-| F-05 | 🟡 Standard | Clone lineage is read at commit time, not seed time | Sam | 1 runway-prompted | — | **Open** |
-| F-06 | 🟡 Standard | `clonedFromConfigId` crosses the bus unvalidated into state the host's own reader rejects | Patricia | 1 independent | — | **Open** |
-| F-07 | 🟡 Standard | Eligibility rule 7 has no commit-path test, and it binds identifiers rather than authored text | Cal | 1 runway-prompted | — | **Open** |
-| F-08 | 🟡 Standard | The mounted test rewrite dropped the only proof that the model picker reaches invalidation | Cal | 1 independent | — | **Open** |
+| F-01 | 🟠 High | A new gate indexes a partial map with a wire-controlled widget id, above the guard that makes it total | Marcus, Blake, Sam, Patricia, Stan, Oliver | 6 runway-prompted | 🧭 Corroborated Runway | **Addressed** — total one-shot support guard precedes the partial generation map |
+| F-02 | 🟠 High | A commit that receives no action result is terminal for the whole webview | Blake, Oliver | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** — route totality, awaited/logged result delivery, and open-time transport reset |
+| F-03 | 🟠 High | The committed room turn carries the writer's choice but never its subject | Bria | 1 runway-prompted | — | **Addressed** — locked decision: bounded subject preview in the writer turn; artifact grammar unchanged |
+| F-04 | 🟡 Standard | A widget-model change during a pending commit is swallowed permanently, not deferred | Sam, Cal | 2 independent | 🎯 Consensus | **Addressed** — ref advancement is deferred with invalidation until pending clears |
+| F-05 | 🟡 Standard | Clone lineage is read at commit time, not seed time | Sam | 1 runway-prompted | — | **Addressed** — provenance is captured atomically with clone seeding; late reopen cannot overwrite an open sheet |
+| F-06 | 🟡 Standard | `clonedFromConfigId` crosses the bus unvalidated into state the host's own reader rejects | Patricia | 1 independent | — | **Addressed** — shape, existence, and same-widget validation precede mutation in the coordinator |
+| F-07 | 🟡 Standard | Eligibility rule 7 has no commit-path test, and it binds identifiers rather than authored text | Cal | 1 runway-prompted | — | **Addressed** — forged host-derived flag id now fails on the real commit path; the documented integrity claim is ids/shape, not a content hash |
+| F-08 | 🟡 Standard | The mounted test rewrite dropped the only proof that the model picker reaches invalidation | Cal | 1 independent | — | **Addressed** — mounted picker-to-message-to-invalidation proof restored |
 | F-09 | 🟡 Standard | Every autosave re-derives the overlap matrix for every persisted Creative config | Tim | 1 independent | — | **Deferred** — growth curve, not an outage; one-flag fix with existing precedent |
-| F-10 | 🟡 Standard | One eligibility rule, three expressions, and the weakest one is what the writer sees | Parker | 1 independent | — | **Open** |
-| F-11 | 🟡 Standard | `commitAvailable`'s doc comment lost its checkability, and its dead branch outranks every real blocker | Parker | 1 runway-prompted | — | **Open** |
+| F-10 | 🟡 Standard | One eligibility rule, three expressions, and the weakest one is what the writer sees | Parker | 1 independent | — | **Addressed** — one feature-owned issue derivation now feeds both host messages and webview blocker codes |
+| F-11 | 🟡 Standard | `commitAvailable`'s doc comment lost its checkability, and its dead branch outranks every real blocker | Parker | 1 runway-prompted | — | **Addressed** — dead prop, branch, copy, and precedence removed |
 | F-12 | 🟡 Standard | The commit freeze is restated nine times and never named | Parker | 1 independent | — | **Deferred** — land before Slice 6 adds the `seed` arm |
-| F-13 | 🟡 Standard | A tool target blocks commit at the host but never in the sheet | Bria | 1 runway-prompted | — | **Open** |
-| F-14 | 🟡 Standard | `artifactUsage`'s swallowed catch conflates "nothing to measure" with "would not compile" | Oliver | 1 runway-prompted | — | **Open** |
-| F-15 | 🟡 Standard | After an offline rollback, the channel's last word is "provisionally accepted" | Oliver | 1 independent | — | **Open** |
+| F-13 | 🟡 Standard | A tool target blocks commit at the host but never in the sheet | Bria | 1 runway-prompted | — | **Addressed** — target state now supplies an accessible webview blocker |
+| F-14 | 🟡 Standard | `artifactUsage`'s swallowed catch conflates "nothing to measure" with "would not compile" | Oliver | 1 runway-prompted | — | **Addressed** — projection failures log and block commit with dedicated copy |
+| F-15 | 🟡 Standard | After an offline rollback, the channel's last word is "provisionally accepted" | Oliver | 1 independent | — | **Addressed** — corrective not-accepted log names the retained retry config and absent linkage |
 | F-16 | 🟡 Standard | The new feature compiler re-verifies its own arm; its sibling does not | Stan | 1 independent | — | **Deferred** — resolve one way before Sprint 05 templates off it |
 | F-17 | 🔵 Nit | The blocker union lives in the modal's props file, and the controller imports it upward | Marcus (premise corrected by Stan) | 1 runway-prompted | — | **N/A** — complying with the accepted Slice 4 remediation convention |
 | P-1 | 💚 Praise | The verification read-back is load-bearing, not ceremony | Blake | 1 runway-prompted | — | N/A — preserve |
@@ -38,6 +40,41 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 | P-5 | 💚 Praise | Widening the payload union came with a same-commit sibling sweep (`Omit<Union, K>` collapse) | Stan | 1 runway-prompted | — | N/A — preserve |
 | P-6 | 💚 Praise | The expensive O(n²) derivation is never imported into the webview | Tim | 1 independent | — | N/A — preserve |
 | P-7 | 💚 Praise | The "What commits" line counts instead of asserting | Bria | 1 independent | — | N/A — preserve |
+
+### Remediation receipt — 2026-08-13
+
+- The host route is now total across unsupported live widget ids and unexpected
+  pre-transaction failures. Normal action results are awaited; rejected result
+  delivery is logged without falsely reporting an accepted room commit as
+  failed. Reopening the sheet resets stale transport state so a lost
+  acknowledgement has a manual recovery path.
+- Creative eligibility has one named feature-owned derivation shared by the
+  host compiler and the webview. It enforces selected-card membership, hard
+  conflicts, and exact advisory-risk-set equality. Tool targets and artifact
+  compilation failures now produce honest accessible blockers.
+- Clone provenance is captured at the same transition that seeds the draft and
+  is validated at the coordinator boundary before durable mutation. Unknown,
+  malformed, and cross-widget sources refuse cleanly; late config responses
+  cannot relabel or overwrite an already-open Creative sheet.
+- The locked room-copy decision is to put the existing bounded subject preview
+  in the writer turn sentence. The compact artifact still excludes the passage,
+  provenance, discarded cloud, and every other field outside its declared
+  projection.
+- Model changes received during commit remain pending and invalidate the
+  settled workup once the commit attempt ends. The mounted Workshop test again
+  proves the picker emits the widget-scoped model selection and clears the
+  workup before continuing through commit/reopen.
+- Corrective coordinator diagnostics now close the provisional-acceptance story
+  after rollback. Integrity's documented claim remains deliberately narrow:
+  host-derived ids, cardinality, and overlap shape, not a cryptographic binding
+  of model-authored text.
+
+Remediation verification: focused remediation plus architecture set **10
+suites / 159 tests**; full Jest **207 suites / 2,256 tests / 2 snapshots**; all
+three TypeScript configurations; ESLint **0 errors / 952 warnings**; production
+resource staging, both bundles, and bundle sentinel; exact `npm run watch` F5
+prelaunch build; and `git diff --check`. The worktree remains uncommitted and
+unpushed for re-review.
 
 ## Review coverage
 

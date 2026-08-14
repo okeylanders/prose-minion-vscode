@@ -147,6 +147,10 @@ describe('CreativeVariations one-shot commit', () => {
         draft: WorkshopCreativeVariationsDraft;
       };
       expect(stored.draft.intent.aim).toBe('');
+      expect(result.commit.roomText).toContain(
+        'for “He set the mug down where her hand could reach it without asking. She smiled.”'
+      );
+      expect(result.commit.artifact.content).not.toContain(generatedDraft.subject.text);
     }
   });
 
@@ -178,6 +182,22 @@ describe('CreativeVariations one-shot commit', () => {
   ])('rejects %s', (_label, draft, message) => {
     expect(prepareCreativeVariationsOneShotCommit(payload(draft)))
       .toEqual({ ok: false, reason: 'invalid-draft', message: expect.stringMatching(message) });
+  });
+
+  it('keeps host-derived identity integrity load-bearing on the commit path', () => {
+    const draft = selectedDraft([{
+      position: 2,
+      carryMode: 'direction',
+      acceptedAdvisoryRiskIds: ['forged-risk-id']
+    }]);
+    draft.workup!.cards[1].invariantFlags[0].id = 'forged-risk-id';
+
+    expect(prepareCreativeVariationsOneShotCommit(payload(draft))).toEqual({
+      ok: false,
+      reason: 'invalid-draft',
+      message:
+        'The Creative Variations workup no longer matches its authored inputs. Regenerate it before committing.'
+    });
   });
 
   it('accepts the exact artifact limit and rejects one character over it', () => {

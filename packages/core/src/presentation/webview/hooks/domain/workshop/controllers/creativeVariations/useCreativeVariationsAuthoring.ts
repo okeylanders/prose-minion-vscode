@@ -24,6 +24,9 @@ import {
 import {
   buildCreativeVariationsArtifact
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsArtifact';
+import {
+  creativeVariationsSelectionCommitIssues
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsCommitEligibility';
 import type {
   WorkshopCreativeVariationsOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
@@ -49,10 +52,12 @@ export interface UseCreativeVariationsAuthoringOptions {
   generate: (draft: WorkshopCreativeVariationsDraft) => string;
   cancelGeneration: (token?: string) => void;
   roomRunActive: boolean;
+  toolTargetActive: boolean;
   commitPending: boolean;
   commitOutcome: CreativeVariationsCommitOutcome | null;
   commit: (draft: WorkshopCreativeVariationsDraft, clonedFromConfigId?: string) => void;
   clearCommitResult: () => void;
+  resetCommitState: () => void;
   onCommitAccepted: () => void;
 }
 
@@ -171,10 +176,12 @@ export function useCreativeVariationsAuthoring({
   generate,
   cancelGeneration,
   roomRunActive,
+  toolTargetActive,
   commitPending,
   commitOutcome,
   commit,
   clearCommitResult,
+  resetCommitState,
   onCommitAccepted
 }: UseCreativeVariationsAuthoringOptions): UseCreativeVariationsAuthoringReturn {
   const open = opening !== null;
@@ -198,11 +205,16 @@ export function useCreativeVariationsAuthoring({
   const activeTokenRef = React.useRef<string>();
   const ignoredOpeningCommitOutcomeRef = React.useRef<CreativeVariationsCommitOutcome | null>();
   const wasOpenRef = React.useRef(false);
+  const seededCloneConfigIdRef = React.useRef<string>();
   const previousWidgetModelIdRef = React.useRef(widgetModelId);
 
   React.useEffect(() => {
     if (open && !wasOpenRef.current) {
       activeTokenRef.current = undefined;
+      seededCloneConfigIdRef.current = opening?.kind === 'clone'
+        ? opening.config.id
+        : undefined;
+      previousWidgetModelIdRef.current = widgetModelId;
       ignoredOpeningCommitOutcomeRef.current = commitOutcome;
       setDraft(
         opening?.kind === 'clone'
@@ -212,10 +224,12 @@ export function useCreativeVariationsAuthoring({
       setGeneration({ kind: 'idle' });
       setInvalidationNotice(null);
       setCommitError(null);
-      clearCommitResult();
+      resetCommitState();
+    } else if (!open && wasOpenRef.current) {
+      seededCloneConfigIdRef.current = undefined;
     }
     wasOpenRef.current = open;
-  }, [clearCommitResult, commitOutcome, open, opening, setDraft]);
+  }, [commitOutcome, open, opening, resetCommitState, setDraft, widgetModelId]);
 
   React.useEffect(() => {
     if (!open || !commitOutcome) {
@@ -417,10 +431,14 @@ export function useCreativeVariationsAuthoring({
 
   React.useEffect(() => {
     const previousWidgetModelId = previousWidgetModelIdRef.current;
-    previousWidgetModelIdRef.current = widgetModelId;
-    if (!open || commitPending || previousWidgetModelId === widgetModelId) {
+    if (!open) {
+      previousWidgetModelIdRef.current = widgetModelId;
       return;
     }
+    if (commitPending || previousWidgetModelId === widgetModelId) {
+      return;
+    }
+    previousWidgetModelIdRef.current = widgetModelId;
     const current = draftRef.current;
     const hadActiveGeneration = activeTokenRef.current !== undefined;
     const hadSettledWork = current.workup !== null || current.selections.length > 0;
@@ -544,19 +562,35 @@ export function useCreativeVariationsAuthoring({
     }))
   ], [activeExcerpt, contextAttachments]);
 
-  const artifactUsage = React.useMemo<WorkshopCreativeVariationsArtifactUsage | null>(() => {
+  const artifactProjection = React.useMemo<{
+    usage: WorkshopCreativeVariationsArtifactUsage | null;
+    error: unknown | null;
+  }>(() => {
     if (draft.selections.length === 0) {
-      return null;
+      return { usage: null, error: null };
     }
     try {
       return {
-        characters: buildCreativeVariationsArtifact(draft).length,
-        budget: PROMPT_BUDGETS.workshopWidgets.creativeArtifactCharacters
+        usage: {
+          characters: buildCreativeVariationsArtifact(draft).length,
+          budget: PROMPT_BUDGETS.workshopWidgets.creativeArtifactCharacters
+        },
+        error: null
       };
-    } catch {
-      return null;
+    } catch (error) {
+      return { usage: null, error };
     }
   }, [draft]);
+  const artifactUsage = artifactProjection.usage;
+
+  React.useEffect(() => {
+    if (artifactProjection.error !== null) {
+      console.warn(
+        '[CreativeVariations] Could not compile artifact usage',
+        artifactProjection.error
+      );
+    }
+  }, [artifactProjection.error]);
 
   const commitBlockers = React.useMemo<WorkshopCreativeVariationsCommitBlocker[]>(() => {
     const blockers: WorkshopCreativeVariationsCommitBlocker[] = [];
@@ -569,6 +603,9 @@ export function useCreativeVariationsAuthoring({
     if (roomRunActive) {
       blockers.push('room-run-active');
     }
+    if (toolTargetActive) {
+      blockers.push('tool-target');
+    }
     if (!draft.workup) {
       blockers.push('no-workup');
       return blockers;
@@ -577,25 +614,18 @@ export function useCreativeVariationsAuthoring({
       blockers.push('no-selection');
       return blockers;
     }
-    const hasHardConflict = draft.selections.some((selection) =>
-      draft.workup?.cards
-        .find((candidate) => candidate.position === selection.position)
-        ?.invariantFlags.some((flag) => flag.kind === 'hard-conflict')
-    );
-    if (hasHardConflict) {
-      blockers.push('hard-conflict-selection');
+    const selectionIssues = creativeVariationsSelectionCommitIssues(draft);
+    for (const selectionIssue of selectionIssues) {
+      const blocker =
+        selectionIssue.code === 'selection-not-in-workup'
+          ? 'artifact-compilation-failed'
+          : selectionIssue.code;
+      if (!blockers.includes(blocker)) {
+        blockers.push(blocker);
+      }
     }
-    const hasUnacceptedRisk = draft.selections.some((selection) => {
-      const card = draft.workup?.cards.find(
-        (candidate) => candidate.position === selection.position
-      );
-      return card?.invariantFlags.some(
-        (flag) => flag.kind === 'advisory-risk'
-          && !selection.acceptedAdvisoryRiskIds.includes(flag.id)
-      );
-    });
-    if (hasUnacceptedRisk) {
-      blockers.push('unaccepted-advisory-risk');
+    if (artifactProjection.error !== null && !blockers.includes('artifact-compilation-failed')) {
+      blockers.push('artifact-compilation-failed');
     }
     if (artifactUsage && artifactUsage.characters > artifactUsage.budget) {
       blockers.push('over-artifact-budget');
@@ -603,24 +633,26 @@ export function useCreativeVariationsAuthoring({
     return blockers;
   }, [
     artifactUsage,
+    artifactProjection.error,
     commitPending,
     draft.selections,
     draft.workup,
     generation.kind,
-    roomRunActive
+    roomRunActive,
+    toolTargetActive
   ]);
 
   const commitDraft = React.useCallback(() => {
-    if (commitBlockers.length > 0 || commitPending) {
+    if (commitBlockers.length > 0) {
       return;
     }
     setCommitError(null);
     clearCommitResult();
     commit(
       draftRef.current,
-      opening?.kind === 'clone' ? opening.config.id : undefined
+      seededCloneConfigIdRef.current
     );
-  }, [clearCommitResult, commit, commitBlockers.length, commitPending, opening]);
+  }, [clearCommitResult, commit, commitBlockers.length]);
 
   return {
     draft,

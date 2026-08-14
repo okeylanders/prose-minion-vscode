@@ -1,6 +1,6 @@
 # Sprint 03: Creative Variations Explorer
 
-**Status**: In progress — Slice 5 ready for review; live for integrated hands-on testing
+**Status**: In progress — Slice 5 review remediated and ready for re-review; live for integrated hands-on testing
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-03-creative-variations` -> PR into `epic/conversation-widgets`
 **Depends on**: Sprint 02D merged into `epic/conversation-widgets`; the widget host, session-owned config ledger, one-shot thread-artifact rail, and clone-and-recommit lifecycle are all proven
@@ -64,7 +64,9 @@ will be its deliberately specialized sibling.
   mode. A card carrying a model-declared `hard-conflict` flag against `must not
   change` is commit-ineligible. Every whole-workup regeneration has a fresh
   host-minted workup id and atomically clears selections, carry modes, and risk
-  acceptances before the new cards settle.
+  acceptances before the new cards settle. The writer turn carries the existing
+  bounded display-safe subject preview so a direction has a referent; the source
+  passage itself remains excluded from the compact artifact.
 - **Exact reopen preserves authoring truth, not transient chrome.** The persisted
   draft contains inputs, display-safe provenance, generated workup, selections,
   each selected card's carry mode, accepted advisory-risk ids, and the writer
@@ -217,6 +219,53 @@ fixture-only screenshot is represented as integrated UI evidence. The mounted
 Workshop integration test exercises the live catalog, fixture-backed generation,
 selection, commit acceptance, visible thread chip, exact reopen, and clone
 recommit flow without a paid provider call.
+
+### Slice 5 review remediation evidence — 2026-08-13
+
+Slice 5 is **ready for re-review**. It is not reviewed or complete, and the
+remediation worktree remains uncommitted and unpushed.
+
+- The host now rejects live widget ids lacking one-shot operations before
+  consulting the partial generation-activity map. Unexpected commit-route
+  failures produce a correlated retryable result, result posts are awaited and
+  logged on rejection, and opening the Creative sheet resets stale transport
+  state after a lost acknowledgement.
+- A named Creative eligibility service supplies both host refusal messages and
+  webview blocker codes. Exact advisory-risk set equality, selected-card
+  membership, hard-conflict exclusion, tool-target refusal, and artifact
+  compilation failure are represented consistently at both boundaries.
+- The controller captures clone provenance when it seeds the draft, defers
+  model invalidation across a pending commit, and refuses late clone responses
+  while another Creative sheet is already open. The coordinator validates clone
+  id shape, existence, and widget ownership before any durable mutation.
+- The room-facing writer turn includes the bounded subject preview recorded in
+  the Locked decision above. The deterministic artifact projection remains
+  unchanged and compact.
+- The dead `commitAvailable` posture is removed. Corrective rollback logging now
+  names the retained retry config and verifies that turn/artifact linkage is
+  absent.
+- Commit-path and mounted regressions cover unsupported live arms, unexpected
+  failures, lost-result reset, clone provenance and validation, forged workup
+  identity, pending model invalidation, exact risk equality, artifact compiler
+  failure, tool-target accessibility, and the picker-to-invalidation loop.
+
+Verification at this re-review gate:
+
+- focused remediation plus architecture: 10 suites and 159 tests passed;
+- full Jest: 207 suites, 2,256 tests, and 2 snapshots passed;
+- all core, webview, and extension TypeScript configurations passed;
+- ESLint: 0 errors and 952 repository warnings;
+- production resource staging, both webpack bundles, and the bundle sentinel
+  passed; webpack retained its three advisory webview-size warnings;
+- the exact root F5 prelaunch command (`npm run watch`) compiled both
+  development bundles successfully and was stopped intentionally afterward;
+- `git diff --check` passed.
+
+Review F-09 (autosave overlap re-derivation), F-12 (named commit-freeze seam),
+and F-16 (compiler arm-guard symmetry) retain their accepted deferrals. F-17
+remains N/A under the accepted Slice 4 blocker-union convention. Human F5
+visual inspection and screenshots remain outstanding because display capture is
+unavailable in this environment; no fixture-only substitute is claimed.
 
 ## Out of scope
 

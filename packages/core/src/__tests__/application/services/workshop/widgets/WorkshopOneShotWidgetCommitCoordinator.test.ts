@@ -200,6 +200,59 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
     expect(harness.session.getWidgetConfig('wc-1')).toBeDefined();
     expect(harness.session.getWidgetConfig('wc-1')?.committedTurnId).toBeUndefined();
     expect(harness.session.getWidgetConfig('wc-1')?.artifactId).toBeUndefined();
+    expect(harness.appendLine).toHaveBeenCalledWith(
+      '[WorkshopOneShotWidgetCommitCoordinator] Commit not accepted '
+      + '(gesture-playground, wc-1 before room acceptance); '
+      + 'verified turn/artifact linkage is absent and the durable retry config remains'
+    );
+  });
+
+  it.each([
+    ['not-a-config', /source widget configuration id is invalid/],
+    ['wc-99', /source widget configuration is no longer available/]
+  ])('rejects invalid clone provenance %s before durable creation', async (
+    clonedFromConfigId,
+    expectedReason
+  ) => {
+    const harness = build();
+
+    const outcome = await harness.coordinator.commit(
+      prepared({ clonedFromConfigId }),
+      { kind: 'host' },
+      jest.fn()
+    );
+
+    expect(outcome).toEqual({
+      status: 'failed',
+      reason: expect.stringMatching(expectedReason)
+    });
+    expect(harness.session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(harness.sendRoomMessage).not.toHaveBeenCalled();
+  });
+
+  it('rejects clone provenance that crosses widget arms before durable creation', async () => {
+    const harness = build();
+    harness.session.createWidgetConfig({ widgetId: 'gesture-playground', draft });
+
+    const outcome = await harness.coordinator.commit(
+      prepared({
+        widgetId: 'creative-variations',
+        widgetConfigInput: {
+          widgetId: 'creative-variations',
+          draft: {} as never
+        },
+        clonedFromConfigId: 'wc-1'
+      }),
+      { kind: 'host' },
+      jest.fn()
+    );
+
+    expect(outcome).toEqual({
+      status: 'failed',
+      reason: 'The source widget configuration belongs to a different widget.'
+    });
+    expect(harness.session.getWidgetConfig('wc-2')).toBeUndefined();
+    expect(harness.sendRoomMessage).not.toHaveBeenCalled();
   });
 
   it('carries a room refusal reason back to the still-open widget sheet', async () => {
@@ -306,6 +359,12 @@ describe('WorkshopOneShotWidgetCommitCoordinator', () => {
     expect(harness.session.getSnapshot().turns).toEqual([]);
     expect(harness.session.collectWriterSources({ kind: 'host' })).toEqual([]);
     expect(onAccepted).not.toHaveBeenCalled();
+    expect(harness.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[WorkshopOneShotWidgetCommitCoordinator] Commit not accepted '
+        + '(gesture-playground, wc-1 after provisional turn turn-1-user-'
+      )
+    );
   });
 
   it('records artifact delivery for the exact persona guest target', async () => {

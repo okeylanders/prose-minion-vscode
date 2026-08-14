@@ -52,6 +52,8 @@ export interface CreativeVariationsActions {
   ) => string | undefined;
   handleCommitResult: (message: WorkshopWidgetActionResultMessage) => void;
   clearCommitResult: () => void;
+  /** Recover a newly opened sheet from an acknowledgement lost with an older surface. */
+  resetCommitState: () => void;
   handleGenerationProgress: (
     message: WorkshopCreativeVariationsGenerationProgressMessage
   ) => void;
@@ -178,6 +180,12 @@ export function useCreativeVariations(): UseCreativeVariationsReturn {
     setCommitResult(null);
   }, []);
 
+  const resetCommitState = React.useCallback(() => {
+    activeCommitTokenRef.current = undefined;
+    setCommitPending(false);
+    setCommitResult(null);
+  }, []);
+
   const handleGenerationProgress = React.useCallback(
     (message: WorkshopCreativeVariationsGenerationProgressMessage) => {
       const active = activeAttemptRef.current;
@@ -231,6 +239,7 @@ export function useCreativeVariations(): UseCreativeVariationsReturn {
     commit,
     handleCommitResult,
     clearCommitResult,
+    resetCommitState,
     handleGenerationProgress,
     handleGenerationResult,
     persistedState: {}

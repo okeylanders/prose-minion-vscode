@@ -44,7 +44,7 @@ export interface WorkshopOneShotWidgetCommitCoordinatorOptions {
 export type WorkshopOneShotWidgetCommitOutcome =
   | { status: 'accepted'; widgetConfigId: string; turnId: string }
   | { status: 'not-accepted'; widgetConfigId: string; reason?: string }
-  | { status: 'failed'; widgetConfigId?: string };
+  | { status: 'failed'; widgetConfigId?: string; reason?: string };
 
 export class WorkshopOneShotWidgetCommitCoordinator {
   constructor(
@@ -61,6 +61,14 @@ export class WorkshopOneShotWidgetCommitCoordinator {
     let acceptedTurnId: string | undefined;
     let widgetConfigId: string | undefined;
     try {
+      const invalidCloneSource = this.validateCloneSource(prepared);
+      if (invalidCloneSource) {
+        this.outputChannel.appendLine(
+          `[WorkshopOneShotWidgetCommitCoordinator] Commit refused ` +
+          `(${prepared.widgetId}, invalid clone source): ${invalidCloneSource}`
+        );
+        return { status: 'failed', reason: invalidCloneSource };
+      }
       const config = this.session.createWidgetConfig({
         ...prepared.widgetConfigInput,
         clonedFromConfigId: prepared.clonedFromConfigId
@@ -112,6 +120,12 @@ export class WorkshopOneShotWidgetCommitCoordinator {
         || acceptedConfig?.committedTurnId !== acceptedTurnId
         || acceptedConfig.artifactId !== artifactId
       ) {
+        this.outputChannel.appendLine(
+          `[WorkshopOneShotWidgetCommitCoordinator] Commit not accepted ` +
+          `(${prepared.widgetId}, ${config.id}` +
+          `${acceptedTurnId ? ` after provisional turn ${acceptedTurnId}` : ' before room acceptance'}); ` +
+          'verified turn/artifact linkage is absent and the durable retry config remains'
+        );
         return {
           status: 'not-accepted',
           widgetConfigId: config.id,
@@ -145,5 +159,27 @@ export class WorkshopOneShotWidgetCommitCoordinator {
       }
       return { status: 'failed', widgetConfigId };
     }
+  }
+
+  private validateCloneSource(
+    prepared: WorkshopOneShotWidgetCommitPlan
+  ): string | undefined {
+    const clonedFromConfigId = prepared.clonedFromConfigId;
+    if (clonedFromConfigId === undefined) {
+      return undefined;
+    }
+    if (!/^wc-[1-9]\d*$/.test(clonedFromConfigId)) {
+      return 'The source widget configuration id is invalid. Reopen the original chip and try again.';
+    }
+    const source = this.session.getWidgetConfig(clonedFromConfigId);
+    if (!source) {
+      return 'The source widget configuration is no longer available. Reopen an existing chip and try again.';
+    }
+    // The ledger owns monotonic wc-N allocation. An existing source therefore
+    // necessarily predates the fresh id that this transaction will mint.
+    if (source.widgetId !== prepared.widgetId) {
+      return 'The source widget configuration belongs to a different widget.';
+    }
+    return undefined;
   }
 }

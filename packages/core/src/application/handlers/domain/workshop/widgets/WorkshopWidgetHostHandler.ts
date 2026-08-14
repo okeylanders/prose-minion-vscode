@@ -8,6 +8,7 @@ import type {
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import {
   prepareWorkshopOneShotWidgetCommit,
+  supportsWorkshopOneShotWidgetCommit,
   type WorkshopOneShotWidgetId
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
 import type {
@@ -41,7 +42,8 @@ type WorkshopWidgetCommitRefusalReason =
   | 'generation-in-flight'
   | 'commit-in-flight'
   | 'tool-target'
-  | 'room-run-active';
+  | 'room-run-active'
+  | 'route-failed';
 
 const DEFAULT_TOOL_TARGET_REFUSAL_MESSAGE =
   'Switch to a persona target before committing a widget.';
@@ -70,13 +72,15 @@ export class WorkshopWidgetHostHandler {
       MessageType.WORKSHOP_COMMIT_WIDGET,
       this.handleCommit.bind(this),
       undefined,
-      (reason, message: WorkshopCommitWidgetMessage) => this.postActionResult({
-        action: 'commit',
-        requestToken: message.payload.requestToken,
-        widgetId: message.payload.widgetId,
-        ok: false,
-        message: reason
-      })
+      (reason, message: WorkshopCommitWidgetMessage) => {
+        void this.postActionResult({
+          action: 'commit',
+          requestToken: message.payload.requestToken,
+          widgetId: message.payload.widgetId,
+          ok: false,
+          message: reason
+        }).catch((error: unknown) => this.logActionResultFailure(error));
+      }
     );
   }
 
@@ -106,103 +110,138 @@ export class WorkshopWidgetHostHandler {
 
   async handleCommit(message: WorkshopCommitWidgetMessage): Promise<void> {
     const { widgetId, requestToken } = message.payload;
-    if (!this.availability.isAvailable(widgetId)) {
-      this.refuseCommit(
-        requestToken,
-        widgetId,
-        'widget-unavailable',
-        'That widget is not available yet.'
-      );
-      return;
-    }
-    if (this.options.isWidgetGenerationActive(widgetId)) {
-      this.refuseCommit(
-        requestToken,
-        widgetId,
-        'generation-in-flight',
-        'Wait for the current widget generation to finish before committing.'
-      );
-      return;
-    }
-    if (this.commitInProgress) {
-      this.refuseCommit(
-        requestToken,
-        widgetId,
-        'commit-in-flight',
-        'Wait for the current widget commit to finish before committing again.'
-      );
-      return;
-    }
-
-    const preparation = prepareWorkshopOneShotWidgetCommit(message.payload);
-    if (!preparation.ok) {
-      this.refuseCommit(
-        requestToken,
-        widgetId,
-        preparation.reason,
-        preparation.message
-      );
-      return;
-    }
-
-    const target = this.session.getChatTarget();
-    if (target.kind === 'tool') {
-      this.refuseCommit(
-        requestToken,
-        widgetId,
-        'tool-target',
-        preparation.commit.toolTargetRefusalMessage
-          ?? DEFAULT_TOOL_TARGET_REFUSAL_MESSAGE
-      );
-      return;
-    }
-    if (this.options.isRoomRunActive()) {
-      this.refuseCommit(
-        requestToken,
-        widgetId,
-        'room-run-active',
-        'Wait for the current Workshop response to finish before committing another widget.'
-      );
-      return;
-    }
-
-    this.commitInProgress = true;
-    let outcome: WorkshopOneShotWidgetCommitOutcome;
     try {
-      outcome = await this.oneShotCommitCoordinator.commit(
-        preparation.commit,
-        target,
-        ({ widgetConfigId, turnId }) => this.postActionResult({
+      if (!this.availability.isAvailable(widgetId)) {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          'widget-unavailable',
+          'That widget is not available yet.'
+        );
+        return;
+      }
+      if (!supportsWorkshopOneShotWidgetCommit(widgetId)) {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          'unsupported-one-shot-widget',
+          'That widget does not support one-shot commits.'
+        );
+        return;
+      }
+      if (this.options.isWidgetGenerationActive(widgetId)) {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          'generation-in-flight',
+          'Wait for the current widget generation to finish before committing.'
+        );
+        return;
+      }
+      if (this.commitInProgress) {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          'commit-in-flight',
+          'Wait for the current widget commit to finish before committing again.'
+        );
+        return;
+      }
+
+      const preparation = prepareWorkshopOneShotWidgetCommit(message.payload);
+      if (!preparation.ok) {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          preparation.reason,
+          preparation.message
+        );
+        return;
+      }
+
+      const target = this.session.getChatTarget();
+      if (target.kind === 'tool') {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          'tool-target',
+          preparation.commit.toolTargetRefusalMessage
+            ?? DEFAULT_TOOL_TARGET_REFUSAL_MESSAGE
+        );
+        return;
+      }
+      if (this.options.isRoomRunActive()) {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          'room-run-active',
+          'Wait for the current Workshop response to finish before committing another widget.'
+        );
+        return;
+      }
+
+      this.commitInProgress = true;
+      let outcome: WorkshopOneShotWidgetCommitOutcome;
+      try {
+        outcome = await this.oneShotCommitCoordinator.commit(
+          preparation.commit,
+          target,
+          () => undefined
+        );
+      } finally {
+        this.commitInProgress = false;
+      }
+      if (outcome.status === 'accepted') {
+        try {
+          await this.postActionResult({
+            action: 'commit',
+            requestToken,
+            widgetId,
+            ok: true,
+            widgetConfigId: outcome.widgetConfigId,
+            turnId: outcome.turnId
+          });
+        } catch (error) {
+          this.logActionResultFailure(error);
+        }
+        return;
+      }
+      if (outcome.status === 'not-accepted') {
+        await this.postActionResult({
           action: 'commit',
           requestToken,
           widgetId,
-          ok: true,
-          widgetConfigId,
-          turnId
-        })
+          ok: false,
+          widgetConfigId: outcome.widgetConfigId,
+          message: outcome.reason
+            ?? 'The room did not accept the commit. Your draft is still open — try again.'
+        });
+      } else if (outcome.status === 'failed') {
+        await this.postActionResult({
+          action: 'commit',
+          requestToken,
+          widgetId,
+          ok: false,
+          widgetConfigId: outcome.widgetConfigId,
+          message: outcome.reason
+            ?? 'The commit failed before the room accepted it. Your draft is still open — try again.'
+        });
+      }
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(
+        `[WorkshopWidgetHostHandler] Commit route failed before acknowledgement: ${details}`
       );
-    } finally {
-      this.commitInProgress = false;
-    }
-    if (outcome.status === 'not-accepted') {
-      this.postActionResult({
-        action: 'commit',
-        requestToken,
-        widgetId,
-        ok: false,
-        widgetConfigId: outcome.widgetConfigId,
-        message: outcome.reason
-          ?? 'The room did not accept the commit. Your draft is still open — try again.'
-      });
-    } else if (outcome.status === 'failed') {
-      this.postActionResult({
-        action: 'commit',
-        requestToken,
-        widgetId,
-        ok: false,
-        widgetConfigId: outcome.widgetConfigId,
-        message: 'The commit failed before the room accepted it. Your draft is still open — try again.'
-      });
+      try {
+        await this.refuseCommit(
+          requestToken,
+          widgetId,
+          'route-failed',
+          'The commit could not be processed. Your draft is still open — try again.'
+        );
+      } catch (postError) {
+        this.logActionResultFailure(postError);
+      }
     }
   }
 
@@ -211,7 +250,7 @@ export class WorkshopWidgetHostHandler {
     widgetId: WorkshopCommitWidgetMessage['payload']['widgetId'],
     reason: WorkshopWidgetCommitRefusalReason,
     message: string
-  ): void {
+  ): Promise<void> {
     const boundedToken = typeof requestToken === 'string'
       ? requestToken.slice(0, 160)
       : '<invalid>';
@@ -219,7 +258,7 @@ export class WorkshopWidgetHostHandler {
       `[WorkshopWidgetHostHandler] Commit refused `
       + `(reason=${reason}, requestToken=${JSON.stringify(boundedToken)})`
     );
-    this.postActionResult({
+    return this.postActionResult({
       action: 'commit',
       requestToken,
       widgetId,
@@ -228,13 +267,20 @@ export class WorkshopWidgetHostHandler {
     });
   }
 
-  private postActionResult(payload: WorkshopWidgetActionResultPayload): void {
+  private async postActionResult(payload: WorkshopWidgetActionResultPayload): Promise<void> {
     const result: WorkshopWidgetActionResultMessage = {
       type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
       source: 'extension.workshop.widget',
       payload,
       timestamp: Date.now()
     };
-    void this.postMessage(result);
+    await this.postMessage(result);
+  }
+
+  private logActionResultFailure(error: unknown): void {
+    const details = error instanceof Error ? error.message : String(error);
+    this.outputChannel.appendLine(
+      `[WorkshopWidgetHostHandler] Failed to post widget action result: ${details}`
+    );
   }
 }

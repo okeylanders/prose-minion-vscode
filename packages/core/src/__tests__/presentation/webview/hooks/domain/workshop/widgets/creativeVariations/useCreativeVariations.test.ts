@@ -335,4 +335,23 @@ describe('useCreativeVariations', () => {
     expect(result.current.commitResult).toBeNull();
     warn.mockRestore();
   });
+
+  it('resets a lost commit acknowledgement before a new sheet starts', () => {
+    const { result } = renderHook(() => useCreativeVariations());
+    act(() => {
+      result.current.commit({ widgetId: 'creative-variations', draft });
+    });
+    expect(result.current.commitPending).toBe(true);
+
+    act(() => result.current.resetCommitState());
+
+    expect(result.current.commitPending).toBe(false);
+    expect(result.current.commitResult).toBeNull();
+    let retry: string | undefined;
+    act(() => {
+      retry = result.current.commit({ widgetId: 'creative-variations', draft });
+    });
+    expect(retry).toEqual(expect.any(String));
+    expect(vscode.postMessage).toHaveBeenCalledTimes(2);
+  });
 });

@@ -33,7 +33,6 @@ const renderModal = (
     commitPending: false,
     commitError: null,
     commitBlockers: ['no-workup'] as const,
-    commitAvailable: true,
     artifactUsage: null,
     highOverlapThreshold: 80,
     availableSources: [],
@@ -387,6 +386,19 @@ describe('WorkshopCreativeVariationsModal', () => {
     const reason = screen.getByText(
       'Accept every advisory risk on your selected takes, or unselect those takes.'
     );
+    expect(commit.getAttribute('aria-describedby')).toBe(reason.id);
+  });
+
+  it('explains the tool-target authority boundary before commit', () => {
+    renderModal({
+      draft: generatedDraft,
+      commitBlockers: ['tool-target']
+    });
+    const commit = screen.getByRole('button', { name: 'Commit to thread' });
+    const reason = screen.getByText(
+      'Switch to a persona target — tool sidecars do not take creative directions.'
+    );
+    expect((commit as HTMLButtonElement).disabled).toBe(true);
     expect(commit.getAttribute('aria-describedby')).toBe(reason.id);
   });
 

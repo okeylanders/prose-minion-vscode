@@ -171,7 +171,13 @@ export function useWorkshopWidgetOpening({
       if (config.widgetId === 'gesture-playground') {
         setGesturePlaygroundOpening({ kind: 'clone', config });
       } else if (config.widgetId === 'creative-variations') {
-        setCreativeVariationsOpening({ kind: 'clone', config });
+        if (creativeVariationsOpening) {
+          onError(
+            'Close the current widget sheet before reopening a committed configuration.'
+          );
+        } else {
+          setCreativeVariationsOpening({ kind: 'clone', config });
+        }
       } else if (config.widgetId === 'lexical-gravity') {
         const active = standingDirectives.some(
           (directive) => directive.widgetConfigId === config.id
@@ -199,6 +205,7 @@ export function useWorkshopWidgetOpening({
     host.widgetConfigData,
     host.widgetConfigError,
     host.widgetConfigResponseId,
+    creativeVariationsOpening,
     onError,
     pendingWidgetConfigId,
     standingDirectives

@@ -300,6 +300,44 @@ describe('WorkshopApp', () => {
     }));
 
     fireEvent.click(screen.getByRole('button', {
+      name: /Browse widget model options. Current model: Claude Sonnet 5/
+    }));
+    fireEvent.click(screen.getByRole('button', { name: /GPT-5.4/ }));
+    expect(screen.queryByText('3 returned · none ranked')).toBeNull();
+    expect(screen.getByText(
+      'Generated workup cleared because the widget model changed.'
+    ).getAttribute('role')).toBe('status');
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.SET_MODEL_SELECTION,
+      payload: { scope: 'widget', modelId: 'openai/gpt-5.4' }
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Generate the workup/ }));
+    const regenerateMessage = vscode.postMessage.mock.calls
+      .map(([message]) => message)
+      .filter((message) =>
+        message.type === MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE)
+      .at(-1);
+    expect(regenerateMessage.payload.token).not.toBe(generateMessage.payload.token);
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: {
+          type: MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT,
+          source: 'extension.workshop',
+          timestamp: 4,
+          payload: {
+            widgetId: 'creative-variations',
+            token: regenerateMessage.payload.token,
+            workupId: mountedWorkup.workupId,
+            ok: true,
+            workup: mountedWorkup
+          }
+        }
+      }));
+    });
+    expect(screen.getByText('3 returned · none ranked')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', {
       name: 'Select Take 1 — Baseline — the competent fix'
     }));
     const eligibleCommit = screen.getByRole('button', { name: 'Commit to thread' });
@@ -338,7 +376,10 @@ describe('WorkshopApp', () => {
       kind: 'message',
       participant: 'writer',
       artifact: 'persona_message',
-      content: 'I’m committing 1 selected Creative Variations take to the room.',
+      content:
+        'I’m committing 1 selected Creative Variations take for '
+        + '“He set the mug down where her hand could reach it without asking. She smiled.” '
+        + 'to the room.',
       timestamp: 5,
       excerptVersion: 0,
       widgetCommit: {

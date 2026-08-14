@@ -10,11 +10,15 @@ import {
   assertCreativeVariationsDraftIntegrity
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigIntegrity';
 import {
-  assertCreativeVariationsDraftShape
+  assertCreativeVariationsDraftShape,
+  summarizeCreativeVariationsDraft
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
 import {
   buildCreativeVariationsArtifact
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsArtifact';
+import {
+  creativeVariationsSelectionCommitIssues
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsCommitEligibility';
 import type {
   WorkshopOneShotWidgetCommitPreparationResult
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations';
@@ -37,9 +41,12 @@ export function prepareCreativeVariationsOneShotCommit(
 
   const artifact = buildCreativeVariationsArtifact(payload.draft);
   const selectionCount = payload.draft.selections.length;
+  const subjectPreview = summarizeCreativeVariationsDraft(payload.draft)
+    .subjectPreview.replace(/\s+/g, ' ')
+    .trim();
   const displayText = `I’m committing ${selectionCount} selected Creative Variations ${
     selectionCount === 1 ? 'take' : 'takes'
-  } to the room.`;
+  } for “${subjectPreview}” to the room.`;
 
   return {
     ok: true,
@@ -76,29 +83,13 @@ function validateCreativeVariationsCommitDraft(
     return 'Select at least one take before committing.';
   }
 
-  for (const selection of draft.selections) {
-    const card = draft.workup.cards.find(
-      (candidate) => candidate.position === selection.position
-    );
-    if (!card) {
-      return 'A selected take is not part of the settled workup.';
-    }
-    if (card.invariantFlags.some((flag) => flag.kind === 'hard-conflict')) {
-      return `Take ${selection.position} has a hard conflict and cannot be committed.`;
-    }
-    const acceptedIds = new Set(selection.acceptedAdvisoryRiskIds);
-    const advisoryIds = card.invariantFlags
-      .filter((flag) => flag.kind === 'advisory-risk')
-      .map((flag) => flag.id);
-    if (
-      acceptedIds.size !== selection.acceptedAdvisoryRiskIds.length
-      || acceptedIds.size !== advisoryIds.length
-      || advisoryIds.some((id) => !acceptedIds.has(id))
-    ) {
-      return `Accept every advisory risk on Take ${selection.position} before committing.`;
-    }
+  const selectionIssue = creativeVariationsSelectionCommitIssues(draft)[0];
+  if (selectionIssue) {
+    return selectionIssue.message;
   }
 
+  // This binds host-derived ids, cardinality, and overlap shape. Generated text
+  // remains immutable through the authoring UI; it is not cryptographically bound.
   try {
     assertCreativeVariationsDraftIntegrity(draft, 'Creative Variations commit draft');
   } catch {

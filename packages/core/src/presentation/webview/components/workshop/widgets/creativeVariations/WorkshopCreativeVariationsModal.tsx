@@ -62,10 +62,12 @@ export type WorkshopCreativeVariationsCommitBlocker =
   | 'generation-in-flight'
   | 'commit-in-flight'
   | 'room-run-active'
+  | 'tool-target'
   | 'no-workup'
   | 'no-selection'
   | 'hard-conflict-selection'
   | 'unaccepted-advisory-risk'
+  | 'artifact-compilation-failed'
   | 'over-artifact-budget';
 
 export interface WorkshopCreativeVariationsAvailableSource {
@@ -88,8 +90,6 @@ export interface WorkshopCreativeVariationsModalProps {
   commitPending: boolean;
   commitError: string | null;
   commitBlockers: readonly WorkshopCreativeVariationsCommitBlocker[];
-  /** Narrow host capability boundary; a false value must remain visibly honest. */
-  commitAvailable: boolean;
   /** Host/controller-computed commit-payload projection; null before any selection. */
   artifactUsage: WorkshopCreativeVariationsArtifactUsage | null;
   /** Slice 3 calibration constant; a maximum pair at/over this warns. */
@@ -153,18 +153,23 @@ const DISTANCES: Array<{
 
 const COUNTS: WorkshopCreativeVariationsRequestedCount[] = [3, 4, 5];
 
+/* eslint-disable @typescript-eslint/naming-convention -- Blocker ids are stable domain literals. */
 const COMMIT_BLOCKER_COPY: Record<WorkshopCreativeVariationsCommitBlocker, string> = {
   'generation-in-flight': 'Generation is still running.',
   'commit-in-flight': 'Committing…',
   'room-run-active': 'The room is mid-turn — commit when the current run settles.',
+  'tool-target': 'Switch to a persona target — tool sidecars do not take creative directions.',
   'no-workup': 'Generate a workup before committing.',
   'no-selection': 'Select at least one take to commit.',
   'hard-conflict-selection': 'Unselect every take with a hard conflict before committing.',
   'unaccepted-advisory-risk':
     'Accept every advisory risk on your selected takes, or unselect those takes.',
+  'artifact-compilation-failed':
+    'The selected takes no longer match this workup. Reopen or regenerate before committing.',
   'over-artifact-budget':
     'The commit payload is over its ceiling — carry more takes as direction, or trim the note.'
 };
+/* eslint-enable @typescript-eslint/naming-convention */
 
 export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariationsModalProps> = ({
   open,
@@ -175,7 +180,6 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   commitPending,
   commitError,
   commitBlockers,
-  commitAvailable,
   artifactUsage,
   highOverlapThreshold,
   availableSources,
@@ -283,11 +287,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   ].filter((value) => value.trim().length > 0).length;
 
   const activeBlocker = commitBlockers.length > 0 ? commitBlockers[0] : null;
-  const commitUnavailableReason = !commitAvailable
-    ? 'Commit to the Workshop thread is not available in this build yet.'
-    : null;
-  const commitDisabled = commitUnavailableReason !== null
-    || activeBlocker !== null
+  const commitDisabled = activeBlocker !== null
     || onCommit === undefined;
 
   const close = React.useCallback(() => {
@@ -857,11 +857,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
               <span className="pm-ws-cvx-foot-count">· {selectedCount} selected</span>
             )}
           </div>
-          {commitUnavailableReason ? (
-            <span className="pm-ws-cvx-commit-reason" id="pm-ws-cvx-commit-reason">
-              {commitUnavailableReason}
-            </span>
-          ) : activeBlocker && activeBlocker !== 'commit-in-flight' && (
+          {activeBlocker && activeBlocker !== 'commit-in-flight' && (
             <span className="pm-ws-cvx-commit-reason" id="pm-ws-cvx-commit-reason">
               {COMMIT_BLOCKER_COPY[activeBlocker]}
             </span>
@@ -879,8 +875,7 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
             className="pm-ws-cvx-commit"
             disabled={commitDisabled}
             aria-describedby={
-              commitUnavailableReason
-              || (activeBlocker && activeBlocker !== 'commit-in-flight')
+              activeBlocker && activeBlocker !== 'commit-in-flight'
                 ? 'pm-ws-cvx-commit-reason'
                 : undefined
             }

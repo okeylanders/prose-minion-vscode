@@ -120,12 +120,15 @@ describe('WorkshopWidgetHostHandler', () => {
     commitOutcome?:
       | { status: 'accepted'; widgetConfigId: string; turnId: string }
       | { status: 'not-accepted'; widgetConfigId: string; reason?: string }
-      | { status: 'failed'; widgetConfigId?: string };
+      | { status: 'failed'; widgetConfigId?: string; reason?: string };
+    generationActivity?: jest.Mock;
   } = {}) => {
     let clock = 0;
     const session = new WorkshopSessionService(() => ++clock);
     const postMessage = jest.fn().mockResolvedValue(undefined);
     const appendLine = jest.fn();
+    const generationActivity = options.generationActivity
+      ?? jest.fn(() => options.generationActive ?? false);
     const commit = jest.fn().mockImplementation(async (
       _prepared,
       _target,
@@ -149,10 +152,10 @@ describe('WorkshopWidgetHostHandler', () => {
       { appendLine, show: jest.fn(), clear: jest.fn() },
       {
         isRoomRunActive: () => options.roomRunActive ?? false,
-        isWidgetGenerationActive: () => options.generationActive ?? false
+        isWidgetGenerationActive: generationActivity
       }
     );
-    return { session, postMessage, appendLine, commit, handler };
+    return { session, postMessage, appendLine, commit, generationActivity, handler };
   };
 
   it('fetches the full authoring config only through the on-demand route', async () => {
@@ -410,12 +413,19 @@ describe('WorkshopWidgetHostHandler', () => {
   });
 
   it('refuses an available non-one-shot widget inside the closed dispatch', async () => {
-    const unsupported = createHandler({ availableWidgetIds: ['prose-controller'] });
+    const generationActivity = jest.fn(() => {
+      throw new Error('A non-one-shot id reached the partial generation adapter.');
+    });
+    const unsupported = createHandler({
+      availableWidgetIds: ['lexical-gravity'],
+      generationActivity
+    });
 
     await unsupported.handler.handleCommit(commitMessage({
-      widgetId: 'prose-controller'
+      widgetId: 'lexical-gravity'
     } as never));
 
+    expect(generationActivity).not.toHaveBeenCalled();
     expect(unsupported.commit).not.toHaveBeenCalled();
     expect(unsupported.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       payload: expect.objectContaining({
@@ -426,6 +436,49 @@ describe('WorkshopWidgetHostHandler', () => {
     expect(unsupported.appendLine).toHaveBeenCalledWith(
       '[WorkshopWidgetHostHandler] Commit refused '
       + '(reason=unsupported-one-shot-widget, requestToken="commit-1")'
+    );
+  });
+
+  it('turns an unexpected pre-transaction exception into one retryable action result', async () => {
+    const host = createHandler({
+      availableWidgetIds: ['creative-variations'],
+      generationActivity: jest.fn(() => {
+        throw new Error('generation gate exploded');
+      })
+    });
+
+    await host.handler.handleCommit(creativeCommitMessage());
+
+    expect(host.commit).not.toHaveBeenCalled();
+    expect(host.postMessage).toHaveBeenCalledTimes(1);
+    expect(host.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        action: 'commit',
+        requestToken: 'creative-commit-1',
+        widgetId: 'creative-variations',
+        ok: false,
+        message: 'The commit could not be processed. Your draft is still open — try again.'
+      })
+    }));
+    expect(host.appendLine).toHaveBeenCalledWith(
+      '[WorkshopWidgetHostHandler] Commit route failed before acknowledgement: '
+      + 'generation gate exploded'
+    );
+  });
+
+  it('awaits and logs a rejected accepted-commit acknowledgement without lying about the commit', async () => {
+    const host = createHandler();
+    host.postMessage.mockRejectedValueOnce(new Error('webview unavailable'));
+
+    await host.handler.handleCommit(commitMessage());
+
+    expect(host.commit).toHaveBeenCalledTimes(1);
+    expect(host.postMessage).toHaveBeenCalledTimes(1);
+    expect(host.appendLine).toHaveBeenCalledWith(
+      '[WorkshopWidgetHostHandler] Failed to post widget action result: webview unavailable'
+    );
+    expect(host.appendLine).not.toHaveBeenCalledWith(
+      expect.stringContaining('reason=route-failed')
     );
   });
 

@@ -10,6 +10,9 @@ import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
 import {
   generatedDraft
 } from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
+import {
+  parseWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
 
 describe('WorkshopRoomHandler routing — cross-owner seams', () => {
   let session: WorkshopRouteTestHarness['session'];
@@ -64,6 +67,25 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE)).toBe(true);
     expect(router.hasHandler(MessageType.CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST)).toBe(true);
     expect(router.handlerCount).toBe(50);
+  });
+
+  it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {
+    await expect(router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'lexical-gravity',
+      requestToken: 'commit-wrong-rail',
+      draft: {}
+    }) as any)).resolves.toBeUndefined();
+
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      payload: {
+        action: 'commit',
+        requestToken: 'commit-wrong-rail',
+        widgetId: 'lexical-gravity',
+        ok: false,
+        message: 'That widget does not support one-shot commits.'
+      }
+    });
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
   });
 
   it('keeps a failed widget send as a complete retryable user turn plus artifact', async () => {
@@ -163,6 +185,9 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       artifactId: 'ta-1',
       selectionCount: 1
     });
+    expect(originalTurn?.content).toContain(
+      'for “He set the mug down where her hand could reach it without asking. She smiled.”'
+    );
 
     await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
       widgetId: 'creative-variations',
@@ -216,6 +241,37 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
           })
         })
       ]));
+  });
+
+  it('rejects unknown Creative clone provenance before mutation and exports valid state', async () => {
+    session.setSessionScope('open');
+    const exactDraft = {
+      ...JSON.parse(JSON.stringify(generatedDraft)),
+      selections: [{
+        position: 1,
+        carryMode: 'direction' as const,
+        acceptedAdvisoryRiskIds: []
+      }]
+    };
+
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'creative-variations',
+      requestToken: 'creative-invalid-clone',
+      draft: exactDraft,
+      clonedFromConfigId: 'wc-999'
+    }) as any);
+
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      payload: {
+        action: 'commit',
+        requestToken: 'creative-invalid-clone',
+        widgetId: 'creative-variations',
+        ok: false,
+        message: expect.stringMatching(/source widget configuration is no longer available/i)
+      }
+    });
+    expect(() => parseWorkshopSessionStateV1(session.exportCommittedState())).not.toThrow();
   });
 
   it('guards routed room mutations while a shared session operation is pending', async () => {

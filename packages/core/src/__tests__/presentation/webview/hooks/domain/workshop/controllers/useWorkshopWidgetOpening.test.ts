@@ -224,6 +224,36 @@ describe('useWorkshopWidgetOpening', () => {
     expect(result.current.pendingWidgetConfigId).toBeNull();
   });
 
+  it('does not replace an already-seeded Creative sheet with a late clone response', () => {
+    let host = emptyHost();
+    const onError = jest.fn();
+    const { result, rerender } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError,
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
+    }));
+
+    act(() => result.current.openWidgetConfig(creativeConfig.id));
+    act(() => result.current.launchWidget('creative-variations'));
+    expect(result.current.creativeVariationsOpening).toEqual({ kind: 'new' });
+
+    host = {
+      ...host,
+      widgetConfigData: creativeConfig,
+      widgetConfigResponseId: creativeConfig.id
+    };
+    rerender();
+
+    expect(result.current.creativeVariationsOpening).toEqual({ kind: 'new' });
+    expect(result.current.pendingWidgetConfigId).toBeNull();
+    expect(onError).toHaveBeenCalledWith(
+        'Close the current widget sheet before reopening a committed configuration.'
+    );
+  });
+
   it('reports and settles an unsupported widget config instead of failing silently', () => {
     let host = emptyHost();
     const onError = jest.fn();
