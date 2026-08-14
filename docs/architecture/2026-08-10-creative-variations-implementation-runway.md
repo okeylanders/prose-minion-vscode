@@ -37,7 +37,7 @@ and [Workshop Feature Family ADR](../adr/2026-08-03-workshop-feature-family-and-
 | Move | Before | After | Why now | Confidence |
 |---|---|---|---|---|
 | One-shot commit ownership | `WorkshopGesturePlaygroundHandler` registers `WORKSHOP_COMMIT_WIDGET` and types the room effect | `WorkshopWidgetHostHandler` owns the family route; `WorkshopOneShotWidgetCommitCoordinator` owns the transaction; named feature contributors validate and render | The second one-shot proves the shared rail mechanic | STRONG |
-| Availability | Handlers and recommendation operations read catalog liveness directly | One injected policy, catalog-backed in production and exact-id enabled in route tests | Dormant contributions must exercise real routes before the final live flip | STRONG |
+| Availability | Handlers and recommendation operations read catalog liveness directly | One injected policy, catalog-backed in production and exact-id enabled in route tests | Creative Variations is already live; the same boundary keeps future widgets closed and lets route tests exercise exact ids | STRONG |
 | Creative feature slice | Catalog-only id and planning documents | Named contracts, handler, services/codecs, prompt bundle, hook/controller, components, styles, and tests | Sprint 03 is the active feature slice | STRONG |
 | Selection intake | Workshop `SELECTION_DATA` routing serves excerpt verification only | Exact Creative subject target, closed dispatcher, and display-safe provenance conversion | Selected editor text is a primary product input | STRONG |
 | Generation boundary | Human-readable tool reports and an illustrative ZIP prototype | One sentinel-framed, exact-key, bounded JSON result plus rejected-response recovery | Wild outputs contain truncation and format drift | STRONG |
@@ -49,7 +49,7 @@ and [Workshop Feature Family ADR](../adr/2026-08-03-workshop-feature-family-and-
 | Affected boundary | Why affected | Highest failure mode | Risk |
 |---|---|---|---|
 | Family commit route | Its current owner and type are feature-specific | Creative dispatch is routed through Gesture or duplicate registration fails composition | HIGH |
-| Availability gate | Catalog correctly keeps Creative dormant until complete | Lower-level tests pass while live route rejects generation/commit/recommendation | HIGH |
+| Availability policy | Catalog-backed availability is the single route boundary | Lower-level tests pass while a live route bypasses or contradicts the production policy | HIGH |
 | Selection intake | The Workshop router has one current selection consumer | Creative never receives text or persists a host URI as provenance | HIGH |
 | Persisted widget config | Creative stores inputs, results, selections, carry, and accepted risks | A malformed or mismatched config hydrates and changes what the writer appears to have accepted | HIGH |
 | Async model run | Generate is cancellable and supersedable | A stale result settles after inputs or request ownership changed | HIGH |
@@ -156,7 +156,7 @@ packages/core/
 | Owner | Responsibility before | Responsibility after | Must not absorb | Evidence |
 |---|---|---|---|---|
 | `WorkshopWidgetHostHandler` | Fetch config by id | Fetch config; own the single family commit route and action refusal | Feature validation or writer-facing artifact prose | `WorkshopWidgetHostHandler.ts:13-49`; Feature Family ADR §3 |
-| `WorkshopWidgetAvailabilityPolicy` | Liveness read directly from catalog at several call sites | One injected policy; production delegates to catalog, tests enable exact dormant ids | Feature semantics or a production bypass | current handler/recommendation liveness checks |
+| `WorkshopWidgetAvailabilityPolicy` | Liveness read directly from catalog at several call sites | One injected policy; production delegates to catalog, while focused tests may enable exact non-live ids | Feature semantics or a production bypass | current handler/recommendation liveness checks |
 | `WorkshopOneShotWidgetCommitOperations` | Absent | Closed dispatch from exact widget id/draft arm to its feature compiler | Dynamic plugin discovery or feature semantics | Feature Family ADR §3 and §4 |
 | `WorkshopOneShotWidgetCommitCoordinator` | Gesture handler performs transaction inline | Create durable retry config, mint artifact, send room turn, link accepted identities, publish state | `gesture`, `invariant`, `tradeoff`, `prose`, or feature failure copy | `WorkshopGesturePlaygroundHandler.ts:338-473` |
 | Named feature commit compiler | Gesture validation/rendering is in its handler; Creative absent | Mirrored application-service owners validate an exact feature draft and produce a mechanical prepared commit | Room state, counters, persistence ordering | `WorkshopGesturePlaygroundHandler.ts:475+`; proposed Creative sibling |
@@ -260,9 +260,12 @@ precedes it deliberately and may survive refusal as the durable retry token.
 
 Every generate, commit, and recommendation entry checks the injected availability
 policy before model spend or mutation. Production composition binds that policy
-to the catalog's `live` bit. Focused route tests may bind an exact dormant-id
-allowlist; there is no environment flag or production bypass. Slice 7 flips the
-catalog entry and reruns the route matrix through the production policy.
+to the catalog's `live` bit. Creative Variations is already `live: true`, so its
+real routes are available in production and in integrated tests. Focused route
+tests may still bind an exact non-live-id allowlist when exercising future
+widgets; there is no environment flag or production bypass. Slice 7 reruns the
+Creative route matrix through the production policy rather than flipping its
+catalog entry.
 
 ### 1.6 Blast-radius summary
 
@@ -308,7 +311,7 @@ Tell's continuum.
 | Exactly one `WORKSHOP_COMMIT_WIDGET` route | Gesture handler | Widget host | Yes, pure ownership move | composition rejects duplicate registration or the wrong compiler handles the id | route-ledger and router duplicate tests |
 | Durable retry config may precede room acceptance | Gesture handler + session | Generic coordinator + session | Ownership only | writer loses recoverable draft or history contains an orphan turn | coordinator failure tests |
 | Exact widget id ↔ draft pairing | message union + codecs | expanded exact union | Add Creative arm | sibling draft crosses route | compiler/type fixture |
-| Catalog liveness gates every route | direct catalog checks | injected availability policy, catalog-backed in production | Consolidate | dormant code spends or mutates; tests cannot exercise real routes safely | policy and post-flip route matrix |
+| Catalog-backed availability governs every route | direct catalog checks | injected availability policy, catalog-backed in production | Consolidate | a route bypasses the shipped availability truth or tests bypass real route wiring | policy and production-policy route matrix |
 | Generation never mutates session | Gesture precedent | Creative handler/service | New feature | cancelled exploration dirties durable room | session snapshot equality test |
 | Invalid/partial result never renders | absent for Creative | response codec | New | incomplete prose looks writer-selectable | strict codec matrix |
 | Current request alone settles | Gesture token correlation | Creative handler + hook | New feature | stale model result replaces newer inputs | cancellation/supersession tests |
@@ -451,9 +454,9 @@ Markdown variation parser is introduced.
 |---|---|---|---|---|---|
 | F1 | HIGH | The family commit route and room-send effect are still Gesture-owned. | `WorkshopGesturePlaygroundHandler.ts:42-66,103-128`; `WorkshopRouteContracts.ts:117` | Slice 1 host/coordinator extraction | Creative wiring |
 | F2 | HIGH | A Creative config must join four closed persistence operations and stronger cross-record pairing. | `WorkshopWidgetPersistenceLifecycle.ts:23-86`; Sprint 02D | Slice 2 codec/lifecycle/integrity arm | commit/reopen |
-| F3 | HIGH | Direct catalog checks prevent safe route-level staging while Creative remains non-live. | `WorkshopGesturePlaygroundHandler.ts:146,346`; `WorkshopWidgetRecommendationOperations.ts:64,126` | injected catalog-backed availability policy | Slices 3, 5, 6 |
+| F3 | HIGH | Direct catalog checks made safe route-level staging difficult while Creative was being developed. | `WorkshopGesturePlaygroundHandler.ts:146,346`; `WorkshopWidgetRecommendationOperations.ts:64,126` | injected catalog-backed availability policy | Slices 3, 5, 6 |
 | F4 | HIGH | Workshop selection routing has no Creative target or delivery arm. | `ui.ts:20-26`; `useWorkshopAppMessageRouter.ts:86` | exact target + dispatcher + provenance conversion | Slice 4 intake |
-| F5 | HIGH | The prototype cannot serve as runtime behavior: it fakes scores and omits exact state/constraint projection. | ZIP `pm-cvx.js:147-217,231-245` | strict contracts and real controller/service | live flip |
+| F5 | HIGH | The prototype cannot serve as runtime behavior: it fakes scores and omits exact state/constraint projection. | ZIP `pm-cvx.js:147-217,231-245` | strict contracts and real controller/service | live-route verification |
 | F6 | HIGH | Wild reports are too irregular and incomplete to parse into cards. | 260 free sections; malformed `chapter-2.12/engagement-check-1.md:326` | sentinel JSON response codec | generation |
 | F7 | MODERATE | “Similarity” overstates deterministic lexical evidence and averages can hide a duplicate pair. | Sprint requirement; prototype set average | textual-overlap v2 full matrix + max pair | presentation copy |
 | F8 | MODERATE | The committed chip currently contains Gesture-specific presentation copy. | `WorkshopTurnBubble.tsx:302-315,507-524` | catalog-derived label/icon and neutral selection summary | Creative reopen UX |
@@ -471,15 +474,17 @@ They are reused rather than re-litigated.
 |---|---|---|---|---|
 | 0 | Freeze accepted behavior, owners, flows, and witnesses | sprint/concept/epic + this runway and characterization tests | focused green baseline, Markdown links, `git diff --check`; no production behavior | revert contract-and-characterization slice |
 | 1 | Correct family one-shot ownership without behavior change | Widget host, availability policy, operations, coordinator, mirrored Gesture compiler, composition | existing Gesture handler/service/session tests + policy/route/negative-space witnesses | revert pure extraction |
-| 2 | Establish Creative exact contracts and durable grammar | messages, budgets, workup-id factory, config codec, lifecycle, session integrity | codec boundary matrix, lifecycle compiler, cross-record fixtures | catalog remains non-live; remove new union arms |
-| 3 | Stage bounded probabilistic generation behind deterministic validation | dormant handler route, prompt bundle, service/response codec, overlap | availability-enabled route tests; malformed/recovery, one-over, cancellation, stale, pair matrix | no Creative commit contribution yet |
-| 4 | Add writer-owned intake, authoring, and comparison | selection target/dispatcher, provenance conversion, transport hook, controller, modal/cards/comparison/CSS | dispatch/provenance/hook/component/a11y tests; no editor-write witness | catalog remains non-live |
-| 5 | Stage one-shot commit and exact clone lifecycle | dormant Creative compiler/artifact, host dispatch, chip/opening | availability-enabled artifact/budget/retry/accept/reopen/clone route tests | remove Creative commit arm; configs still fail closed |
-| 6 | Stage writer-controlled persona recommendation/prefill | dormant recommendation codec/registry, prompt frame, opening controller | availability-enabled parser/budget/permission/correlation route tests | remove one recommendation arm |
-| 7 | Prove the family and enable it | architecture fixtures, registry/docs, production availability policy | flip live, rerun real-route matrix, then full test/typecheck/lint/build/diff | flip `live` back to false |
+| 2 | Establish Creative exact contracts and durable grammar | messages, budgets, workup-id factory, config codec, lifecycle, session integrity | codec boundary matrix, lifecycle compiler, cross-record fixtures | keep any incomplete route closed; remove new union arms if needed |
+| 3 | Stage bounded probabilistic generation behind deterministic validation | Creative handler route, prompt bundle, service/response codec, overlap | production-policy route tests; malformed/recovery, one-over, cancellation, stale, pair matrix | no Creative commit contribution yet |
+| 4 | Add writer-owned intake, authoring, and comparison | selection target/dispatcher, provenance conversion, transport hook, controller, modal/cards/comparison/CSS | dispatch/provenance/hook/component/a11y tests; no editor-write witness | commit remains unavailable until Slice 5 |
+| 5 | Stage one-shot commit and exact clone lifecycle | Creative compiler/artifact, host dispatch, chip/opening | production-policy artifact/budget/retry/accept/reopen/clone route tests | remove Creative commit arm; persisted configs fail closed |
+| 6 | Stage writer-controlled persona recommendation/prefill | Creative recommendation codec/registry, prompt frame, opening controller | production-policy parser/budget/permission/correlation route tests | remove one recommendation arm |
+| 7 | Prove the live family and close out the sprint | architecture fixtures, registry/docs, production availability policy | rerun the live production-policy route matrix, then full test/typecheck/lint/build/diff | disable the affected catalog entry or revert the Slice 7 hardening |
 
 Every slice uses the same Sprint 03 branch and stops for commit-by-commit review.
-Production availability remains false until Slice 7.
+Creative Variations is already live; Slice 7 proves the shipped route through
+the production policy and closes the architecture/documentation loop. Other
+catalog entries may remain non-live until their own implementation is complete.
 
 ### 2.11 Coordination map
 
@@ -517,7 +522,7 @@ editor apply are not unknowns in this sprint; they are explicitly absent.
 | Sprint duplicate rule ↔ no-discard rule | “Duplicate cannot settle” could also reject merely similar cards | Exact normalized duplicate rejects; high non-identical overlap warns and remains |
 | Prototype ↔ Sprint | Prototype defaults to prose and omits `must not change` from commit projection | Contract defaults per card to direction and projects both declared invariant fields |
 | Tree ↔ future family | A generic variation layer looked attractive | Only the already-proven one-shot transaction becomes generic; Creative semantics remain named |
-| Dormant catalog entry ↔ route tests | Production liveness correctly blocks Creative through Slice 6 | Inject one availability policy, keep production catalog-backed, and use exact-id test policy until the Slice 7 flip |
+| Live catalog entry ↔ route tests | Creative Variations must exercise the same production route policy used by the shipped app | Keep production catalog-backed; use exact-id policy only for isolated future/non-live widget routes |
 | Selection promise ↔ current router | Current Workshop routing recognizes excerpt verification only | Add one exact `SelectionTarget`, dispatcher arm, and display-safe Creative provenance conversion in Slice 4 |
 | Workup protocol ↔ session schema | A nested `schemaVersion` would create a second migration clock | Persist `generationProtocolVersion: 1`; only the Workshop session schema controls migration |
 | Commit compiler placement | Initial tree put Gesture and Creative equivalents in different layers | Mirror both under feature-owned application services; handlers retain IPC only |
@@ -527,7 +532,7 @@ editor apply are not unknowns in this sprint; they are explicitly absent.
 | Failure story | Cause | Prevention / witness |
 |---|---|---|
 | Creative commit invokes Gesture validation | Family route moved without exact closed dispatch | compiler pairing test and route ledger |
-| Dormant Creative code passes unit tests but fails its real route | Lower-level tests bypass the production liveness gate | injected exact-id policy in route tests; post-flip production-policy matrix |
+| Creative code passes unit tests but fails its real route | Lower-level tests bypass the production composition and availability policy | production-policy route matrix; exact-id policy only for isolated future/non-live widget tests |
 | Editor URI leaks into persisted authoring truth | Selection payload is copied wholesale | dispatcher target test and provenance conversion that drops `sourceUri` |
 | Old generation overwrites cards after an edit | token ownership cleared only on a second request, not every input mutation | authoring-controller invalidation and stale-result tests |
 | Reopened chip shows accepted risks that no longer exist | loose ids or parallel state arrays | card-local stable ids; codec referential-integrity test |
@@ -650,7 +655,7 @@ responsive details; none changes the owner map or persisted variant.
 | Rule | Automated witness |
 |---|---|
 | One family commit route, owned by Widget Host | Workshop route ledger + router duplicate-registration test |
-| Dormant code and production use the same route gates | availability-policy suite + post-flip production-policy matrix |
+| Live code and production use the same route gates | availability-policy suite + production-policy route matrix |
 | Generic coordinator contains no feature vocabulary/copy | architecture token/import negative-space scan |
 | Every implemented persisted feature joins architecture checks | lifecycle-id ↔ feature-descriptor inventory test |
 | Existing features never import one another | descriptor-driven pairwise feature-isolation scan |
@@ -685,7 +690,7 @@ only after the ownership move exists.
 | Term | Local meaning | Status / evidence |
 |---|---|---|
 | Closed dispatch | An exhaustive switch/registry over exact supported widget ids; adding a feature adds one reviewed arm rather than runtime discovery. | current architecture; expanded here |
-| Availability policy | Injected `isAvailable(widgetId)` boundary; production reads catalog liveness, while focused tests may enable an exact dormant id through the same routes. | proposed family mechanic |
+| Availability policy | Injected `isAvailable(widgetId)` boundary; production reads catalog liveness, while focused tests may enable an exact non-live id through the same routes. | current family mechanic |
 | Feature compiler | A feature-owned validator/renderer that converts an exact draft into a feature-neutral prepared one-shot commit. It is not a source-code compiler. | proposed; locally divergent term |
 | Generation protocol version | Version of the strict provider-response grammar and overlap algorithm inputs; not a checkpoint migration clock. | proposed Creative contract |
 | One-shot commit coordinator | Mechanical application service owning retry-config, artifact, room-acceptance, and linkage ordering for thread-artifact widgets. | proposed |
