@@ -156,16 +156,50 @@ describe('CreativeVariationsConfigCodec', () => {
     expect(() => assertValid(value)).not.toThrow();
   });
 
-  it('round-trips persona-prefill provenance without borrowing editor identity', () => {
+  it('round-trips persona custody and writer-edit state without borrowing editor identity', () => {
     const value = draft();
-    value.subject.provenance = { kind: 'persona-prefill' };
+    value.subject.provenance = {
+      kind: 'persona-prefill',
+      personaId: 'margot',
+      editedByWriter: true
+    };
     value.workup = null;
     value.selections = [];
 
     expect(() => assertValid(value)).not.toThrow();
     const cloned = cloneCreativeVariationsDraft(value);
-    expect(cloned.subject.provenance).toEqual({ kind: 'persona-prefill' });
+    expect(cloned.subject.provenance).toEqual({
+      kind: 'persona-prefill',
+      personaId: 'margot',
+      editedByWriter: true
+    });
     expect(cloned.subject.provenance).not.toHaveProperty('relativePath');
+  });
+
+  it.each([
+    {
+      label: 'missing persona identity',
+      provenance: { kind: 'persona-prefill', editedByWriter: false },
+      message: /personaId/
+    },
+    {
+      label: 'unknown persona identity',
+      provenance: {
+        kind: 'persona-prefill',
+        personaId: 'the-model',
+        editedByWriter: false
+      },
+      message: /known Workshop persona id/
+    },
+    {
+      label: 'missing writer-edit state',
+      provenance: { kind: 'persona-prefill', personaId: 'jill' },
+      message: /editedByWriter/
+    }
+  ])('rejects persona-prefill provenance with $label', ({ provenance, message }) => {
+    const value = draft();
+    value.subject.provenance = provenance as never;
+    expect(() => assertValid(value)).toThrow(message);
   });
 
   it.each([

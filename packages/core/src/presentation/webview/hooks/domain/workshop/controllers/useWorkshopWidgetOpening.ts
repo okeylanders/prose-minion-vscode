@@ -8,6 +8,7 @@ import {
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
+  WorkshopPersonaId,
   WorkshopStandingDirectiveSummary,
   WorkshopTurn,
   WorkshopWidgetConfigSnapshot,
@@ -31,6 +32,7 @@ export type WorkshopCreativeVariationsOpening =
   | {
       kind: 'seed';
       seed: WorkshopCreativeVariationsRecommendationSeed;
+      personaId: WorkshopPersonaId;
       personaLabel: string;
     }
   | { kind: 'clone'; config: WorkshopCreativeVariationsWidgetConfigSnapshot };
@@ -64,7 +66,8 @@ export interface WorkshopWidgetOpeningActions {
   launchWidget: (widgetId: WorkshopWidgetId) => void;
   openWidgetRecommendation: (
     recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
-    personaLabel?: string
+    personaLabel?: string,
+    personaId?: WorkshopPersonaId
   ) => void;
   closeGesturePlayground: () => void;
   closeLexicalGravity: () => void;
@@ -125,33 +128,56 @@ export function useWorkshopWidgetOpening({
   const openWidgetRecommendation = React.useCallback(
     (
       recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
-      personaLabel?: string
+      personaLabel?: string,
+      personaId?: WorkshopPersonaId
     ) => {
-      if (recommendation.widgetId === 'gesture-playground') {
-        setGesturePlaygroundOpening({
-          kind: 'seed',
-          seed: recommendation.seed ?? {},
-          personaLabel: personaLabel ?? 'the persona'
-        });
-      } else if (recommendation.widgetId === 'lexical-gravity') {
-        setLexicalGravityOpening({
-          kind: 'seed',
-          seed: recommendation.seed ?? {},
-          personaLabel: personaLabel ?? 'the persona'
-        });
-      } else if (recommendation.widgetId === 'creative-variations') {
-        if (creativeVariationsOpening) {
-          onError('Close the current Creative Variations sheet before opening a prefill.');
+      const receivedWidgetId = recommendation.widgetId;
+      switch (recommendation.widgetId) {
+        case 'gesture-playground':
+          setGesturePlaygroundOpening({
+            kind: 'seed',
+            seed: recommendation.seed ?? {},
+            personaLabel: personaLabel ?? 'the persona'
+          });
           return;
+        case 'lexical-gravity':
+          setLexicalGravityOpening({
+            kind: 'seed',
+            seed: recommendation.seed ?? {},
+            personaLabel: personaLabel ?? 'the persona'
+          });
+          return;
+        case 'creative-variations':
+          if (pendingWidgetConfigId) {
+            onError('Wait for the requested widget configuration before opening a prefill.');
+            return;
+          }
+          if (creativeVariationsOpening) {
+            onError('Close the current Creative Variations sheet before opening a prefill.');
+            return;
+          }
+          if (!personaId) {
+            onError('That Creative Variations prefill has no persona identity and cannot open.');
+            return;
+          }
+          setCreativeVariationsOpening({
+            kind: 'seed',
+            seed: recommendation.seed ?? {},
+            personaId,
+            personaLabel: personaLabel ?? 'the persona'
+          });
+          return;
+        default: {
+          const exhaustive: never = recommendation;
+          console.warn(
+            `[Workshop] ${receivedWidgetId} recommendation can't be opened in this version.`
+          );
+          onError(`${receivedWidgetId} recommendation can't be opened in this version.`);
+          return exhaustive;
         }
-        setCreativeVariationsOpening({
-          kind: 'seed',
-          seed: recommendation.seed ?? {},
-          personaLabel: personaLabel ?? 'the persona'
-        });
       }
     },
-    [creativeVariationsOpening, onError]
+    [creativeVariationsOpening, onError, pendingWidgetConfigId]
   );
 
   const closeGesturePlayground = React.useCallback(() => {

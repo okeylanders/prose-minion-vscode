@@ -119,6 +119,7 @@ export interface PromptBudgets {
     creativeResponseCharacters: number;
     creativeArtifactCharacters: number;
     creativeRecommendationFrameAllowanceCharacters: number;
+    lexicalRecommendationFrameCharacters: number;
     lexicalLensNameCharacters: number;
     lexicalLensSlugCharacters: number;
     lexicalLensVariantCharacters: number;
@@ -252,6 +253,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     creativeResponseCharacters: 140_000,
     creativeArtifactCharacters: 20_000,
     creativeRecommendationFrameAllowanceCharacters: 2_500,
+    lexicalRecommendationFrameCharacters: 1_000,
     lexicalLensNameCharacters: 80,
     lexicalLensSlugCharacters: 64,
     lexicalLensVariantCharacters: 120,

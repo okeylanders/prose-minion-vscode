@@ -10,7 +10,6 @@ import {
   WorkshopWidgetId,
   WorkshopWidgetRecommendation
 } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
   type WorkshopWidgetAvailabilityPolicy
@@ -105,26 +104,10 @@ export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION =
     WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
   );
 
-const WIDGET_BUDGET = PROMPT_BUDGETS.workshopWidgets;
-
-/** Existing family-wide safety ceiling for the complete recommendation tail. */
+/** Coarse pre-id envelope derived from every compiler-enforced registry entry. */
 export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
-  Math.max(
-    WIDGET_BUDGET.gestureTargetPhraseCharacters
-      + WIDGET_BUDGET.gestureWriterInstructionsCharacters
-      + WIDGET_BUDGET.gestureContextCharacters
-      + WIDGET_BUDGET.gestureCharacterNotesCharacters
-      + WIDGET_BUDGET.gestureSourceReferenceCharacters
-      + WIDGET_BUDGET.gestureRecommendationFrameAllowanceCharacters,
-    WIDGET_BUDGET.creativeSubjectCharacters
-      + WIDGET_BUDGET.creativeContextCharacters
-      + WIDGET_BUDGET.creativeSourceReferences
-        * WIDGET_BUDGET.creativeSourceReferenceCharacters
-      + WIDGET_BUDGET.creativeMustSurviveCharacters
-      + WIDGET_BUDGET.creativeMustNotChangeCharacters
-      + WIDGET_BUDGET.creativeAimCharacters
-      + WIDGET_BUDGET.creativeRecommendationFrameAllowanceCharacters
-  );
+  Math.max(...Object.values(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES)
+    .map(({ frameCharacters }) => frameCharacters));
 
 /**
  * Parse one exact `### Try a widget` section carrying a versioned multiline
@@ -165,7 +148,20 @@ export function inspectWorkshopWidgetRecommendation(
   ) {
     return { outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' };
   }
-  return WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES[widgetId].inspect(sectionLines);
+  const entry = WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES[widgetId];
+  if (sectionCharacters > entry.frameCharacters) {
+    return {
+      outcome: 'rejected',
+      rejection: 'frame_too_long',
+      widgetId,
+      actualCharacters: sectionCharacters,
+      maximumCharacters: entry.frameCharacters
+    };
+  }
+  const inspected = entry.inspect(sectionLines);
+  return inspected.outcome === 'rejected'
+    ? { ...inspected, widgetId }
+    : inspected;
 }
 
 function isRecommendationWidgetId(value: string): value is RecommendationWidgetId {

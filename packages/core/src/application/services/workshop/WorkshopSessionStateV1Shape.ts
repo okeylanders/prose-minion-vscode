@@ -120,7 +120,11 @@ function assertWorkshopSessionShape(
   assertRevisions(state.revisions);
   assertCounters(state.counters);
   assertWriterSources(state.writerSources);
-  arrayOf(state.turns, 'Workshop session state.turns', assertTurn);
+  arrayOf(
+    state.turns,
+    'Workshop session state.turns',
+    (turn, path) => assertTurn(turn, path, checkpoint)
+  );
   assertParticipants(state.participants);
   if (state.selectedToolId !== undefined && !isWorkshopToolId(state.selectedToolId)) {
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
@@ -453,7 +457,7 @@ function assertContextSource(value: unknown, path: string): void {
   optionalStringAt(source.artifactId, `${path}.artifactId`);
 }
 
-function assertTurn(value: unknown, path: string): void {
+function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   const turn = exactObject(
     value,
     path,
@@ -557,7 +561,7 @@ function assertTurn(value: unknown, path: string): void {
     assertTurnWidgetCommit(turn.widgetCommit, `${path}.widgetCommit`);
   }
   if (turn.widgetRecommendation !== undefined) {
-    if (turn.participant !== 'host' && turn.participant !== 'guest') {
+    if (!checkpoint && turn.participant !== 'host' && turn.participant !== 'guest') {
       shapeError(`${path}.widgetRecommendation`, 'a host or guest persona recommendation');
     }
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);

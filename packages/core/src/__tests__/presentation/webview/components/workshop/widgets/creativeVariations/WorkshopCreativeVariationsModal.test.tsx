@@ -162,16 +162,47 @@ describe('WorkshopCreativeVariationsModal', () => {
         ...baseDraft,
         subject: {
           text: 'A persona-prepared passage.',
-          provenance: { kind: 'persona-prefill' }
+          provenance: {
+            kind: 'persona-prefill',
+            personaId: 'jill',
+            editedByWriter: false
+          }
         }
       }
     });
 
     expect(screen.getByText('Recommended and prefilled by Jill.')).toBeTruthy();
     expect(screen.getByText('Persona-prefilled passage')).toBeTruthy();
-    expect(screen.getByText(/persona prefill/)).toBeTruthy();
+    expect(screen.getByText(/Jill prefill/)).toBeTruthy();
     expect(screen.queryByText('Pasted passage')).toBeNull();
     expect(screen.getByText(/Generation sees only this exact text/)).toBeTruthy();
+  });
+
+  it('keeps persona custody copy visible when context travels and marks writer edits', () => {
+    renderModal({
+      banner: { kind: 'seed', personaLabel: 'Margot' },
+      draft: {
+        ...baseDraft,
+        subject: {
+          text: 'A writer-edited persona prefill.',
+          provenance: {
+            kind: 'persona-prefill',
+            personaId: 'margot',
+            editedByWriter: true
+          }
+        },
+        surroundingContext: {
+          writerText: 'The prior paragraph travels too.',
+          sourceReferences: []
+        }
+      }
+    });
+
+    expect(screen.getByText('Persona-prefilled passage · edited by you')).toBeTruthy();
+    expect(screen.getByText(/Margot prefill · edited by you · context supplied separately/))
+      .toBeTruthy();
+    expect(screen.getByText(/Margot filled this in for you, and you edited it/)).toBeTruthy();
+    expect(screen.queryByText(/material available in the room/)).toBeNull();
   });
 
   it('requests editor selection through the semantic callback', () => {

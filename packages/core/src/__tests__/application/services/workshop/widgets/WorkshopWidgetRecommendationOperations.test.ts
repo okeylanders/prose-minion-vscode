@@ -15,6 +15,7 @@ import {
   sanitizeWorkshopWidgetRecommendationForRetention,
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 
 interface RecommendationFrameFields {
   widgetId?: string;
@@ -67,6 +68,32 @@ function creativeRecommendationFrame(): string {
   ].join('\n');
 }
 
+function maximalCreativeSourceReferences(): string {
+  return Array.from({ length: 8 }, (_, index) => {
+    const targetLength = index === 7 ? 500 : 499;
+    const prefix = `context-attachment:ctx-${index + 1}`;
+    return prefix + '9'.repeat(targetLength - prefix.length);
+  }).join('\n');
+}
+
+function maximalCreativeRecommendationFrame(): string {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  return [
+    '### Try a widget',
+    '<workshop-widget-recommendation version="1">',
+    '<widget-id>', 'creative-variations', '</widget-id>',
+    '<subject-passage>', 's'.repeat(budget.creativeSubjectCharacters), '</subject-passage>',
+    '<surrounding-context>', 'c'.repeat(budget.creativeContextCharacters), '</surrounding-context>',
+    '<source-references>', maximalCreativeSourceReferences(), '</source-references>',
+    '<must-survive>', 'i'.repeat(budget.creativeMustSurviveCharacters), '</must-survive>',
+    '<must-not-change>', 'b'.repeat(budget.creativeMustNotChangeCharacters), '</must-not-change>',
+    '<creative-aim>', 'a'.repeat(budget.creativeAimCharacters), '</creative-aim>',
+    '<sampling-distance>', 'far-tail', '</sampling-distance>',
+    '<take-count>', '5', '</take-count>',
+    '</workshop-widget-recommendation>'
+  ].join('\n');
+}
+
 const inspectWithCatalog = (content: string) =>
   inspectWorkshopWidgetRecommendation(
     content,
@@ -106,6 +133,10 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
     expect(new Set(entries.map(({ catalogOrder }) => catalogOrder)).size).toBe(entries.length);
     expect(new Set(entries.map(({ instructionOrder }) => instructionOrder)).size).toBe(
       entries.length
+    );
+    expect(entries.every(({ frameCharacters }) => frameCharacters > 0)).toBe(true);
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(
+      Math.max(...entries.map(({ frameCharacters }) => frameCharacters))
     );
     expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.indexOf(
       WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['lexical-gravity'].instruction
@@ -161,13 +192,21 @@ describe('inspectWorkshopWidgetRecommendation', () => {
   it('requires the exact frame to be the final response content', () => {
     expect(
       inspectWithCatalog(`${recommendationFrame()}\n\n### Epilogue\nMore prose.`)
-    ).toEqual({ outcome: 'rejected', rejection: 'invalid_frame' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'invalid_frame',
+      widgetId: 'gesture-playground'
+    });
     expect(
       inspectWithCatalog(
         '### Try a widget\nA prefatory line inside the control section.\n'
         + recommendationFrame().split('\n').slice(1).join('\n')
       )
-    ).toEqual({ outcome: 'rejected', rejection: 'invalid_frame' });
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'invalid_frame',
+      widgetId: 'gesture-playground'
+    });
   });
 
   it('rejects duplicate headings wholesale', () => {
@@ -203,6 +242,36 @@ describe('inspectWorkshopWidgetRecommendation', () => {
       actualCharacters: expect.any(Number),
       maximumCharacters: WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS
     });
+  });
+
+  it('rechecks the exact feature ceiling after extracting a known widget id', () => {
+    const gestureCeiling = WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES[
+      'gesture-playground'
+    ].frameCharacters;
+    expect(
+      inspectWithCatalog(recommendationFrame({
+        writerInstructions: 'x'.repeat(gestureCeiling)
+      }))
+    ).toEqual({
+      outcome: 'rejected',
+      rejection: 'frame_too_long',
+      widgetId: 'gesture-playground',
+      actualCharacters: expect.any(Number),
+      maximumCharacters: gestureCeiling
+    });
+  });
+
+  it('fits every Creative field at its declared maximum inside its registry ceiling', () => {
+    const content = maximalCreativeRecommendationFrame();
+    const sectionCharacters = content.split('\n').slice(1).join('\n').length;
+    expect(sectionCharacters).toBeLessThanOrEqual(
+      WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['creative-variations'].frameCharacters
+    );
+    expect(maximalCreativeSourceReferences()).toHaveLength(
+      PROMPT_BUDGETS.workshopWidgets.creativeSourceReferences
+      * PROMPT_BUDGETS.workshopWidgets.creativeSourceReferenceCharacters
+    );
+    expect(inspectWithCatalog(content).outcome).toBe('accepted');
   });
 });
 

@@ -26,6 +26,7 @@ export type WorkshopSessionCheckpointNormalization =
   | 'restored-undelivered-withdrawal'
   | 'defaulted-capability-principal'
   | 'defaulted-proactive-assistance'
+  | 'discarded-nonpersona-widget-recommendation'
   | WorkshopWidgetCheckpointNormalization
   | 'headed-missing-room-offsets';
 
@@ -70,8 +71,21 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   // and keeps ownership recoverable now that guests invoke too (ADR §2).
   let defaultedPrincipal = false;
   let defaultedProactiveAssistance = false;
+  let discardedNonpersonaWidgetRecommendation = false;
   const turns = state.turns.map((turn) => {
     let normalizedTurn = turn;
+    if (
+      turn.widgetRecommendation !== undefined
+      && turn.participant !== 'host'
+      && turn.participant !== 'guest'
+    ) {
+      const {
+        widgetRecommendation: _discardedRecommendation,
+        ...turnWithoutRecommendation
+      } = normalizedTurn;
+      normalizedTurn = turnWithoutRecommendation;
+      discardedNonpersonaWidgetRecommendation = true;
+    }
     const behavior = turn.behavior;
     if (behavior && behavior.proactiveAssistance === undefined) {
       defaultedProactiveAssistance = true;
@@ -97,6 +111,9 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   }
   if (defaultedProactiveAssistance) {
     normalizations.push('defaulted-proactive-assistance');
+  }
+  if (discardedNonpersonaWidgetRecommendation) {
+    normalizations.push('discarded-nonpersona-widget-recommendation');
   }
 
   const widgetConfigs = state.widgetConfigs?.map((config) => {

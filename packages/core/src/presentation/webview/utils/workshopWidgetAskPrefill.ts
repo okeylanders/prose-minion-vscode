@@ -10,8 +10,9 @@ const ASK_PREFILL_BUILDERS: Partial<Record<WorkshopWidgetId, WorkshopWidgetAskPr
     `Hey ${hostLabel}! Please prepare ${widgetLabel} for the passage we’re discussing. Choose a useful starting lens, weight, reach, and metaphor setting, then offer it for me to review and open.`,
   'creative-variations': (hostLabel, widgetLabel) =>
     `Hey ${hostLabel}! Please prepare ${widgetLabel} for the passage we’re discussing. `
-    + 'Seed the exact subject passage, useful context and source references, grounded constraints, '
-    + 'a creative aim, sampling distance, and take count, then offer it for me to review and open. '
+    + 'Seed the exact subject passage, useful context and source references, any constraints I have '
+    + 'actually stated, sampling distance, and take count. Leave the invariant and creative-aim '
+    + 'fields empty when I have not stated them, then offer the setup for me to review and open. '
     + 'Do not generate, select, accept, or commit any takes.'
 };
 

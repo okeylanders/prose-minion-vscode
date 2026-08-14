@@ -1,6 +1,6 @@
 # Sprint 03: Creative Variations Explorer
 
-**Status**: In progress — Slice 6 implemented and ready for review; live for integrated hands-on testing
+**Status**: In progress — Slice 6 review findings remediated and ready for re-review; live for integrated hands-on testing
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-03-creative-variations` -> PR into `epic/conversation-widgets`
 **Depends on**: Sprint 02D merged into `epic/conversation-widgets`; the widget host, session-owned config ledger, one-shot thread-artifact rail, and clone-and-recommit lifecycle are all proven
@@ -270,8 +270,9 @@ unavailable in this environment; no fixture-only substitute is claimed.
 
 ### Slice 6 implementation evidence — 2026-08-13
 
-Slice 6 is **ready for review**. It is not reviewed or complete, and the Slice 6
-worktree remains uncommitted and unpushed.
+Slice 6 landed as `333e28e5`. Its review findings are remediated in the current
+worktree and ready for re-review; the remediation remains uncommitted and
+unpushed.
 
 - Creative Variations contributes one named, strict recommendation codec to the
   closed family registry. Its complete final control frame carries the exact
@@ -287,18 +288,21 @@ worktree remains uncommitted and unpushed.
   the current session before attaching the chip.
 - Only Host and Guest turns may persist a recommendation. A direct tool run may
   return a syntactically valid frame, but the control tail is stripped and no
-  tool-owned chip is attached. Persisted-state validation independently rejects
-  a forged tool recommendation.
+  tool-owned chip is attached. Strict current-state validation rejects forged
+  ownership; checkpoint import locally normalizes away only the offending
+  recommendation so the rest of the session remains recoverable.
 - The recommendation seed is input-only. It has no provenance, generated
   workup, selection, risk acceptance, note, or commit authority. Opening the
-  exact correlated chip mints display-safe `persona-prefill` provenance in the
-  writer-owned controller, copies source references defensively, leaves
+  exact correlated chip mints display-safe `persona-prefill` custody with the
+  canonical persona id and an unedited state in the writer-owned controller,
+  copies source references defensively, leaves
   generation idle, and preserves blank optional fields as honest no-constraint
   or random-aim semantics.
 - The Creative modal labels persona-prepared input honestly. Editing the subject
-  converts provenance to `pasted`; committing and reopening otherwise preserve
-  the exact display-safe origin. An already-open Creative sheet refuses a late
-  prefill instead of silently overwriting current authoring work.
+  preserves persona custody and records that the writer edited it; committing
+  and reopening preserve both facts. An already-open or pending-reopen Creative
+  sheet refuses a late prefill instead of silently overwriting the writer's
+  earlier request or current authoring work.
 - The generic turn chip now derives label and icon from the widget registries and
   uses an exhaustive feature-local meta switch. The Widgets browser also enables
   its explicit Host-preparation door for Creative, seeding an editable request
@@ -322,6 +326,40 @@ The mounted Workshop test proves exact older-turn/persona correlation, click to
 prefill, preservation of all seed values, visible persona attribution, and the
 absence of automatic generate or commit messages. No paid provider call or
 fixture-only screenshot is represented as integrated UI evidence.
+
+### Slice 6 review remediation evidence — 2026-08-14
+
+All fourteen review findings in
+`docs/pr-reviews/sprint-03-creative-variations-slice-6-333e28e5-review-v2.md`
+are addressed in the current worktree.
+
+- Every recommendation registry entry now owns an exact response-frame ceiling.
+  The coarse pre-id envelope is derived from those entries, and the selected
+  feature is rechecked after id extraction. A maximum-field Creative frame and
+  a smaller-feature rejection witness pin the relationship. The recurring
+  recommendation instruction is pinned at 7,823 characters, completing the
+  2026-07-31 prompt-assembly tech debt.
+- Persona provenance is explicitly custody rather than guessed source origin:
+  canonical `personaId` plus one-way `editedByWriter`. It never decays into the
+  false `pasted` label, and display provenance no longer enters provider JSON.
+- Host ask copy, persona/context honesty copy, widget-named rejection notices,
+  exhaustive dispatch, pending-reopen correlation, bare-vocabulary architecture
+  guards, source-reference units, and the frame-only ownership-refusal path all
+  have direct regression witnesses.
+- Corrupt checkpoint ownership now degrades locally: checkpoint validation
+  keeps validating the seed, normalization discards only the non-persona-owned
+  recommendation and records the action, then strict current-state validation
+  runs unchanged.
+
+Remediation verification:
+
+- targeted remediation: 13 suites / 256 tests passed;
+- full Jest: 208 suites / 2,293 tests / 2 snapshots passed;
+- all core, webview, and extension TypeScript configurations passed;
+- ESLint: 0 errors and 956 repository warnings;
+- production resource staging, both webpack bundles, and the bundle sentinel
+  passed; webpack retained its three advisory webview-size warnings;
+- `git diff --check` passed.
 
 ## Out of scope
 

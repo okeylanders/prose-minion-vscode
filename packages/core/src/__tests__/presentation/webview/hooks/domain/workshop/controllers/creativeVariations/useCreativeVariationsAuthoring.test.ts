@@ -70,6 +70,7 @@ describe('useCreativeVariationsAuthoring', () => {
     const props = options({
       opening: {
         kind: 'seed',
+        personaId: 'jill',
         personaLabel: 'Jill',
         seed: {
           subjectText: 'She turned the mug until the chip faced the wall.',
@@ -88,7 +89,11 @@ describe('useCreativeVariationsAuthoring', () => {
     expect(result.current.draft).toEqual({
       subject: {
         text: 'She turned the mug until the chip faced the wall.',
-        provenance: { kind: 'persona-prefill' }
+        provenance: {
+          kind: 'persona-prefill',
+          personaId: 'jill',
+          editedByWriter: false
+        }
       },
       surroundingContext: {
         writerText: 'Nate waited across the table.',
@@ -108,7 +113,11 @@ describe('useCreativeVariationsAuthoring', () => {
     expect(props.commit).not.toHaveBeenCalled();
 
     act(() => result.current.changeSubjectText('Writer-edited passage.'));
-    expect(result.current.draft.subject.provenance).toEqual({ kind: 'pasted' });
+    expect(result.current.draft.subject.provenance).toEqual({
+      kind: 'persona-prefill',
+      personaId: 'jill',
+      editedByWriter: true
+    });
   });
 
   it('keeps editor provenance only for the exact source-derived text', () => {

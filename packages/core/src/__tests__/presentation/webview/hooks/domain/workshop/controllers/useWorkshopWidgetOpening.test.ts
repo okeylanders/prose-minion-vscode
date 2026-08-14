@@ -132,7 +132,7 @@ describe('useWorkshopWidgetOpening', () => {
         distance: 'tail',
         requestedCount: 4
       }
-    }, 'Jill'));
+    }, 'Jill', 'jill'));
     expect(result.current.creativeVariationsOpening).toEqual({
       kind: 'seed',
       seed: {
@@ -141,6 +141,7 @@ describe('useWorkshopWidgetOpening', () => {
         distance: 'tail',
         requestedCount: 4
       },
+      personaId: 'jill',
       personaLabel: 'Jill'
     });
   });
@@ -290,11 +291,59 @@ describe('useWorkshopWidgetOpening', () => {
     act(() => result.current.openWidgetRecommendation({
       widgetId: 'creative-variations',
       seed: { subjectText: 'A later recommendation.' }
-    }, 'Margot'));
+    }, 'Margot', 'margot'));
 
     expect(result.current.creativeVariationsOpening).toEqual({ kind: 'new' });
     expect(onError).toHaveBeenCalledWith(
       'Close the current Creative Variations sheet before opening a prefill.'
+    );
+  });
+
+  it('keeps the writer-requested config reopen ahead of a later persona prefill click', () => {
+    const host = emptyHost();
+    const onError = jest.fn();
+    const { result } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError,
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
+    }));
+
+    act(() => result.current.openWidgetConfig(creativeConfig.id));
+    act(() => result.current.openWidgetRecommendation({
+      widgetId: 'creative-variations',
+      seed: { subjectText: 'A later recommendation.' }
+    }, 'Margot', 'margot'));
+
+    expect(result.current.pendingWidgetConfigId).toBe(creativeConfig.id);
+    expect(result.current.creativeVariationsOpening).toBeNull();
+    expect(onError).toHaveBeenCalledWith(
+      'Wait for the requested widget configuration before opening a prefill.'
+    );
+  });
+
+  it('refuses a Creative prefill whose producing persona identity is missing', () => {
+    const host = emptyHost();
+    const onError = jest.fn();
+    const { result } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError,
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
+    }));
+
+    act(() => result.current.openWidgetRecommendation({
+      widgetId: 'creative-variations',
+      seed: { subjectText: 'Unowned recommendation.' }
+    }, 'the persona'));
+
+    expect(result.current.creativeVariationsOpening).toBeNull();
+    expect(onError).toHaveBeenCalledWith(
+      'That Creative Variations prefill has no persona identity and cannot open.'
     );
   });
 
@@ -331,6 +380,32 @@ describe('useWorkshopWidgetOpening', () => {
     );
     expect(result.current.pendingWidgetConfigId).toBeNull();
     expect(host.clearWidgetConfigData).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('reports an unsupported recommendation instead of failing silently', () => {
+    const host = emptyHost();
+    const onError = jest.fn();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { result } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError,
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
+    }));
+
+    act(() => result.current.openWidgetRecommendation({
+      widgetId: 'prose-controller'
+    } as never, 'Jill', 'jill'));
+
+    expect(onError).toHaveBeenCalledWith(
+      "prose-controller recommendation can't be opened in this version."
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "[Workshop] prose-controller recommendation can't be opened in this version."
+    );
     warn.mockRestore();
   });
 });

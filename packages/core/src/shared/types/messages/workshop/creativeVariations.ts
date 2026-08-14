@@ -3,6 +3,7 @@
 import type { CancelRequestPayload } from '../streaming';
 import { MessageType, type MessageEnvelope } from '../base';
 import type { WorkshopWidgetSourceReference } from './context';
+import type { WorkshopPersonaId } from './participants';
 
 export const CREATIVE_VARIATIONS_GENERATION_PROTOCOL_VERSION = 1 as const;
 export const CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION = 'textual-overlap-v2' as const;
@@ -13,10 +14,16 @@ export type WorkshopCreativeVariationsDistance =
   | 'tail'
   | 'far-tail';
 
-/** Display-safe origin for the exact subject the writer is varying. */
+/** Display-safe intake/custody record for the exact subject the writer is varying. */
 export type WorkshopCreativeVariationsSubjectProvenance =
   | { kind: 'pasted' }
-  | { kind: 'persona-prefill' }
+  | {
+      kind: 'persona-prefill';
+      /** Canonical persona custody, preserved when the committed sheet reopens. */
+      personaId: WorkshopPersonaId;
+      /** One-way audit fact: the writer changed the persona-prepared text. */
+      editedByWriter: boolean;
+    }
   | {
       kind: 'excerpt';
       relativePath: string;

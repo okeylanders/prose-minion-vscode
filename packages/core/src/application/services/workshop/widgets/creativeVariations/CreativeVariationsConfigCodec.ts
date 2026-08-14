@@ -7,8 +7,10 @@ import {
   WorkshopWidgetSourceReference
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
 import {
   arrayOf,
+  booleanAt,
   boundedArrayAt,
   boundedStringAt,
   enumAt,
@@ -107,8 +109,20 @@ function assertSubjectShape(value: unknown, path: string): void {
   boundedStringAt(subject.text, `${path}.text`, budget.creativeSubjectCharacters, false);
 
   const provenance = objectAt(subject.provenance, `${path}.provenance`);
-  if (provenance.kind === 'pasted' || provenance.kind === 'persona-prefill') {
+  if (provenance.kind === 'pasted') {
     exactKeys(provenance, `${path}.provenance`, ['kind']);
+    return;
+  }
+  if (provenance.kind === 'persona-prefill') {
+    exactKeys(
+      provenance,
+      `${path}.provenance`,
+      ['kind', 'personaId', 'editedByWriter']
+    );
+    if (!isWorkshopPersonaId(provenance.personaId)) {
+      shapeError(`${path}.provenance.personaId`, 'known Workshop persona id');
+    }
+    booleanAt(provenance.editedByWriter, `${path}.provenance.editedByWriter`);
     return;
   }
   if (provenance.kind === 'excerpt') {

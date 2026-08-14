@@ -111,7 +111,7 @@ describe('CreativeVariationsService', () => {
     expect(userMessage).toContain('"mustNotChange": ""');
   });
 
-  it('keeps display provenance while excluding editor paths from the provider prompt', async () => {
+  it('excludes display provenance and editor paths from the provider prompt', async () => {
     const { service, runInitial } = build();
     const withEditorPath = request();
     withEditorPath.subject.provenance = {
@@ -124,7 +124,8 @@ describe('CreativeVariationsService', () => {
     await service.generate(withEditorPath);
 
     const userMessage = runInitial.mock.calls[0][0].userMessage as string;
-    expect(userMessage).toContain('"kind": "excerpt"');
+    expect(userMessage).not.toContain('"provenance"');
+    expect(userMessage).not.toContain('"kind": "excerpt"');
     expect(userMessage).not.toContain('/Users/writer/private-draft.md');
     expect(userMessage).not.toContain('startLine');
   });

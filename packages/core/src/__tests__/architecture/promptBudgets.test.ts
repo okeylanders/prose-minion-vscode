@@ -133,6 +133,7 @@ describe('prompt budgets', () => {
       creativeResponseCharacters: 140_000,
       creativeArtifactCharacters: 20_000,
       creativeRecommendationFrameAllowanceCharacters: 2_500,
+      lexicalRecommendationFrameCharacters: 1_000,
       lexicalLensNameCharacters: 80,
       lexicalLensSlugCharacters: 64,
       lexicalLensVariantCharacters: 120,
@@ -178,6 +179,10 @@ describe('prompt budgets', () => {
       lexicalDirectiveCharacters: 16_000
     });
     expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(51_500);
+  });
+
+  it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(7_823);
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {

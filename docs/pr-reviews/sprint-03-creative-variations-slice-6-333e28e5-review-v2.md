@@ -17,26 +17,68 @@ superseded, or not actionable.
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | Prompt-size pin deleted, not re-pinned, in the commit that grew it 62% | Cal, Stan, Blake, Tim | 4 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-02 | 🟠 High | Provenance decay writes a false "Pasted passage" claim into the durable record | Bria | 1 runway-prompted | — | **Open** |
-| F-03 | 🟡 Standard | Frame ceiling is a hand-maintained twin of a compiler-enforced registry; neither relationship nor fit is tested | Marcus, Cal | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-04 | 🟡 Standard | Widgets-browser ask copy solicits the constraints the frame instruction forbids inferring | Bria, Patricia | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-05 | 🟡 Standard | Two dispatches fail open where four fail closed | Marcus, Oliver | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-06 | 🟡 Standard | Rejection log and writer notice never name the widget | Oliver | 1 independent | — | **Open** |
-| F-07 | 🟡 Standard | Boundary descriptor blind to Creative's un-namespaced vocabulary | Marcus | 1 runway-prompted | — | **Open** |
-| F-08 | 🟡 Standard | `creativeSourceReferenceCharacters` names a bound it does not impose | Stan, Parker | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-09 | 🟡 Standard | Persona honesty paragraph is unreachable whenever context travels | Parker, Cal | 2 runway-prompted | 🧭 Corroborated Runway | **Open** |
-| F-10 | 🟡 Standard | Persona chip can win a race against a reopen the writer asked for first | Sam | 1 independent | — | **Open** |
-| F-11 | 🟡 Standard | Decode-time ownership check escalates one bad field into total session loss | Patricia | 1 independent | — | **Open** |
-| F-12 | 🟡 Standard | Architecture allowlist grants three tokens the file no longer contains | Stan | 1 runway-prompted | — | **Open** |
-| F-13 | 🔵 Nit | Blank-bubble fallback cannot see ownership refusal | Sam | 1 independent | — | **Open** |
-| F-14 | 🔵 Nit | Modal asserts a provenance fact the host never verifies | Patricia | 1 independent | — | **Open** |
+| F-01 | 🟠 High | Prompt-size pin deleted, not re-pinned, in the commit that grew it 62% | Cal, Stan, Blake, Tim | 4 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-02 | 🟠 High | Provenance decay writes a false "Pasted passage" claim into the durable record | Bria | 1 runway-prompted | — | **Addressed** |
+| F-03 | 🟡 Standard | Frame ceiling is a hand-maintained twin of a compiler-enforced registry; neither relationship nor fit is tested | Marcus, Cal | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-04 | 🟡 Standard | Widgets-browser ask copy solicits the constraints the frame instruction forbids inferring | Bria, Patricia | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-05 | 🟡 Standard | Two dispatches fail open where four fail closed | Marcus, Oliver | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-06 | 🟡 Standard | Rejection log and writer notice never name the widget | Oliver | 1 independent | — | **Addressed** |
+| F-07 | 🟡 Standard | Boundary descriptor blind to Creative's un-namespaced vocabulary | Marcus | 1 runway-prompted | — | **Addressed** |
+| F-08 | 🟡 Standard | `creativeSourceReferenceCharacters` names a bound it does not impose | Stan, Parker | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-09 | 🟡 Standard | Persona honesty paragraph is unreachable whenever context travels | Parker, Cal | 2 runway-prompted | 🧭 Corroborated Runway | **Addressed** |
+| F-10 | 🟡 Standard | Persona chip can win a race against a reopen the writer asked for first | Sam | 1 independent | — | **Addressed** |
+| F-11 | 🟡 Standard | Decode-time ownership check escalates one bad field into total session loss | Patricia | 1 independent | — | **Addressed** |
+| F-12 | 🟡 Standard | Architecture allowlist grants three tokens the file no longer contains | Stan | 1 runway-prompted | — | **Addressed** |
+| F-13 | 🔵 Nit | Blank-bubble fallback cannot see ownership refusal | Sam | 1 independent | — | **Addressed** |
+| F-14 | 🔵 Nit | Modal asserts a provenance fact the host never verifies | Patricia | 1 independent | — | **Addressed** |
 | P-01 | 🟢 Praise | Catalog-derived chip presentation with a return-type-enforced exhaustive switch | Parker, Sam, Marcus | 3 independent | 🎯🎯 Strong Consensus | **N/A — preserve** |
 | P-02 | 🟢 Praise | Persona ownership minted and gated from a single object literal | Blake, Patricia | 2 independent | 🎯 Consensus | **N/A — preserve** |
 | P-03 | 🟢 Praise | Two-tier required/bounded split encodes the "blank is meaningful" locked decision | Bria | 1 runway-prompted | — | **N/A — preserve** |
 | P-04 | 🟢 Praise | Compile-forced totality of writer-facing rejection copy | Oliver | 1 runway-prompted | — | **N/A — preserve** |
 | P-05 | 🟢 Praise | Reserved-delimiter fitness test derives expectations from registry entries | Marcus, Patricia | 2 independent | 🎯 Consensus | **N/A — preserve** |
 | P-06 | 🟢 Praise | Raised ceiling is zero-cost — measured at 2.25 ms worst case | Tim | 1 runway-prompted | — | **N/A — preserve** |
+
+## Resolution notes — 2026-08-14
+
+These statuses describe the remediation worktree after reviewed commit
+`333e28e5`; the finding narratives above remain the historical review of that
+commit.
+
+- **F-01, F-03, F-08:** each recommendation registry entry now owns its exact
+  frame ceiling. The generic pre-id envelope is derived from the registry and
+  the selected feature is rechecked after id extraction. Tests prove a
+  maximum-field Creative frame fits, a smaller Gesture ceiling rejects inside
+  the coarse envelope, and the complete Creative source-reference field is
+  bounded in the same unit declared to the model. The assembled prompt is
+  pinned at **7,823 characters**. The originating 2026-07-31 tech-debt item is
+  marked complete.
+- **F-02, F-09, F-14:** `persona-prefill` is now a durable custody record with
+  canonical `personaId` and one-way `editedByWriter`; edits no longer become the
+  false claim `pasted`. Provider prompts omit display provenance entirely. The
+  modal gives persona custody precedence even when context travels and makes no
+  unverified claim that the passage came from room material.
+- **F-04:** the Host-preparation ask now requests only constraints the writer
+  actually stated and explicitly leaves invariant/aim fields blank otherwise.
+- **F-05, F-06, F-13:** opening and source-reference dispatches are exhaustive;
+  known-widget rejection notices and bounded logs name the exact widget; a
+  frame-only response gets nonblank display copy even when session ownership
+  later refuses the recommendation, and the log records
+  `participant_not_persona`.
+- **F-07, F-12:** the architecture scanner now recognizes Creative's bare
+  fields, reasons, and frame tags at generic seams. The three stale hardcoded
+  display-name permissions were removed from `WorkshopTurnBubble`.
+- **F-10:** a pending committed-config reopen now wins over a later Creative
+  persona-chip click, with an explicit writer-facing refusal.
+- **F-11:** checkpoint shape validation still validates the recommendation but
+  permits local recovery. Normalization drops only a non-persona-owned
+  recommendation, records `discarded-nonpersona-widget-recommendation`, and the
+  strict current-state assertion remains unchanged after normalization.
+
+Verification: targeted remediation **13 suites / 256 tests**; full Jest **208
+suites / 2,293 tests / 2 snapshots**; core, webview, and extension TypeScript;
+ESLint **0 errors / 956 existing warnings**; production resource staging, both
+webpack bundles, and bundle sentinel; `git diff --check`. Webpack retained its
+three advisory size warnings.
 
 ## Review coverage
 

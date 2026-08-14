@@ -70,6 +70,14 @@ export type GesturePlaygroundRecommendationInspection =
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
+export const GESTURE_PLAYGROUND_RECOMMENDATION_FRAME_CHARACTERS =
+  BUDGET.gestureTargetPhraseCharacters
+  + BUDGET.gestureWriterInstructionsCharacters
+  + BUDGET.gestureContextCharacters
+  + BUDGET.gestureCharacterNotesCharacters
+  + BUDGET.gestureSourceReferenceCharacters
+  + BUDGET.gestureRecommendationFrameAllowanceCharacters;
+
 export const GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION = [
   'Gesture Playground frame:',
   'This is a quality-first handoff, not a token-saving exercise. Do not be thrifty, terse, or generically minimal in the prefill fields. Supply enough grounded material that the dictionary model can understand the dramatic problem without reconstructing it from scraps. Source references save duplicate transcription; they are not permission to thin out the creative direction or character thinking:',
@@ -248,5 +256,6 @@ export const GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY:
     instructionOrder: 1,
     instruction: GESTURE_PLAYGROUND_RECOMMENDATION_INSTRUCTION,
     reservedMarkers: GESTURE_PLAYGROUND_RECOMMENDATION_MARKERS,
+    frameCharacters: GESTURE_PLAYGROUND_RECOMMENDATION_FRAME_CHARACTERS,
     inspect: inspectGesturePlaygroundRecommendation
   });

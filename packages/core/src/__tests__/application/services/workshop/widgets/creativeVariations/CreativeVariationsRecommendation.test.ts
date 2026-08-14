@@ -46,6 +46,8 @@ function recommendationSection(
 
 describe('CreativeVariationsRecommendation', () => {
   it('owns an input-only prompt frame and keeps writer authority explicit', () => {
+    const sourceReferencesCharacters = PROMPT_BUDGETS.workshopWidgets.creativeSourceReferences
+      * PROMPT_BUDGETS.workshopWidgets.creativeSourceReferenceCharacters;
     expect(CREATIVE_VARIATIONS_RECOMMENDATION_INSTRUCTION).toContain(
       'Prepare inputs only: never generate the workup, choose a take, accept a risk, or commit'
     );
@@ -54,6 +56,10 @@ describe('CreativeVariationsRecommendation', () => {
     );
     expect(CREATIVE_VARIATIONS_RECOMMENDATION_INSTRUCTION).toContain(
       `at most ${PROMPT_BUDGETS.workshopWidgets.creativeSubjectCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(CREATIVE_VARIATIONS_RECOMMENDATION_INSTRUCTION).toContain(
+      `${PROMPT_BUDGETS.workshopWidgets.creativeSourceReferences} references and `
+      + `${sourceReferencesCharacters.toLocaleString('en-US')} characters`
     );
   });
 
@@ -142,6 +148,29 @@ describe('CreativeVariationsRecommendation', () => {
       outcome: 'rejected',
       rejection: 'field_too_long',
       field,
+      actualCharacters: maximum + 1,
+      maximumCharacters: maximum
+    });
+  });
+
+  it('bounds the complete source-reference field in the same unit the prompt declares', () => {
+    const maximum = PROMPT_BUDGETS.workshopWidgets.creativeSourceReferences
+      * PROMPT_BUDGETS.workshopWidgets.creativeSourceReferenceCharacters;
+    const atBound = Array.from({ length: 8 }, (_, index) => {
+      const targetLength = index === 7 ? 500 : 499;
+      const prefix = `context-attachment:ctx-${index + 1}`;
+      return prefix + '9'.repeat(targetLength - prefix.length);
+    }).join('\n');
+
+    expect(inspectCreativeVariationsRecommendation(recommendationSection({
+      sourceReferences: atBound
+    })).outcome).toBe('accepted');
+    expect(inspectCreativeVariationsRecommendation(recommendationSection({
+      sourceReferences: `${atBound}9`
+    }))).toEqual({
+      outcome: 'rejected',
+      rejection: 'field_too_long',
+      field: 'sourceReferences',
       actualCharacters: maximum + 1,
       maximumCharacters: maximum
     });

@@ -189,8 +189,7 @@ export class CreativeVariationsService {
     }));
     const task = {
       subject: {
-        text: draft.subject.text,
-        provenance: { kind: draft.subject.provenance.kind }
+        text: draft.subject.text
       },
       surroundingContext: {
         writerText: draft.surroundingContext.writerText,

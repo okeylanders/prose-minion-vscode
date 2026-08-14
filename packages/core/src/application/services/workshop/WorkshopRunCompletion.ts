@@ -17,7 +17,8 @@ import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
   WorkshopTurn,
-  WorkshopWidgetRecommendation
+  WorkshopWidgetRecommendation,
+  WorkshopWidgetSourceReference
 } from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
 import {
@@ -32,6 +33,7 @@ import {
 } from '@/utils/workshopWidgetRecommendationProtocol';
 import { boundedLogText } from '@/utils/boundedLogText';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
+import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -144,7 +146,9 @@ function widgetRecommendationRejectionNotice(
   label: string,
   inspection: Extract<WorkshopWidgetRecommendationInspection, { outcome: 'rejected' }>
 ): { message: string; details: string } {
-  const message = `${label}'s widget recommendation could not be prepared.`;
+  const message = inspection.widgetId
+    ? `${label}'s ${workshopWidgetLabel(inspection.widgetId)} setup could not be prepared.`
+    : `${label}'s widget recommendation could not be prepared.`;
   if (inspection.rejection === 'field_too_long') {
     return {
       message,
@@ -229,30 +233,37 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     : undefined;
   const recommendationRejected = widgetRecommendation.outcome === 'rejected'
     || unavailableWidgetSource !== undefined;
-  if (widgetRecommendation.outcome !== 'absent') {
+  const recommendationWidgetId = widgetRecommendation.outcome === 'accepted'
+    ? widgetRecommendation.recommendation.widgetId
+    : widgetRecommendation.outcome === 'rejected'
+      ? widgetRecommendation.widgetId
+      : undefined;
+  if (recommendationRejected) {
     const rejectionReason = unavailableWidgetSource
       ? `unavailable_source_reference:${unavailableWidgetSource}`
       : widgetRecommendation.outcome === 'rejected'
         ? widgetRecommendationRejectionReason(widgetRecommendation)
         : undefined;
     input.log(
-      `Widget recommendation ${unavailableWidgetSource ? 'rejected' : widgetRecommendation.outcome} `
-      + `(${label}${
+      'Widget recommendation rejected '
+      + `(${label}${recommendationWidgetId ? `; widget=${recommendationWidgetId}` : ''}${
         rejectionReason ? `; reason=${rejectionReason}` : ''
       })`
     );
-    if (recommendationRejected) {
-      input.log(
-        `Rejected widget recommendation response (${label}; ${result.content.length} characters):\n`
-        + boundedLogText(result.content)
-      );
-    }
+    input.log(
+      `Rejected widget recommendation response (${label}`
+      + `${recommendationWidgetId ? `; widget=${recommendationWidgetId}` : ''}; `
+      + `${result.content.length} characters):\n${boundedLogText(result.content)}`
+    );
   }
   const strippedDisplayContent = widgetRecommendation.outcome !== 'absent'
     ? stripWorkshopWidgetRecommendationControl(result.content)
     : result.content;
-  const displayContent = recommendationRejected && strippedDisplayContent.trim().length === 0
-    ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
+  const displayContent = widgetRecommendation.outcome !== 'absent'
+    && strippedDisplayContent.trim().length === 0
+    ? recommendationRejected
+      ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
+      : `${label} returned a widget setup without an accompanying note.`
     : strippedDisplayContent;
   const turn = session.completeRun(
     requestId,
@@ -277,12 +288,23 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     return undefined;
   }
 
+  if (widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource) {
+    const attached = turn.widgetRecommendation !== undefined;
+    input.log(
+      `Widget recommendation ${attached ? 'accepted' : 'rejected'} `
+      + `(${label}; widget=${widgetRecommendation.recommendation.widgetId}`
+      + `${attached ? '' : '; reason=participant_not_persona'})`
+    );
+  }
+
   if (widgetRecommendation.outcome === 'rejected') {
     const notice = widgetRecommendationRejectionNotice(label, widgetRecommendation);
     events.widgetRecommendationRejected(notice.message, notice.details);
-  } else if (unavailableWidgetSource) {
+  } else if (unavailableWidgetSource && widgetRecommendation.outcome === 'accepted') {
     const notice = {
-      message: `${label}'s widget recommendation could not be prepared.`,
+      message: `${label}'s ${workshopWidgetLabel(
+        widgetRecommendation.recommendation.widgetId
+      )} setup could not be prepared.`,
       details: `It referenced context that is no longer available (${unavailableWidgetSource}). Ask ${label} to try again.`
     };
     events.widgetRecommendationRejected(notice.message, notice.details);
@@ -303,10 +325,18 @@ function unavailableWidgetSourceReference(
   session: WorkshopSessionService,
   recommendation: WorkshopWidgetRecommendation
 ): string | undefined {
-  const references = recommendation.widgetId === 'gesture-playground'
-    || recommendation.widgetId === 'creative-variations'
-    ? recommendation.seed?.sourceReferences ?? []
-    : [];
+  let references: readonly WorkshopWidgetSourceReference[];
+  switch (recommendation.widgetId) {
+    case 'gesture-playground':
+    case 'creative-variations':
+      references = recommendation.seed?.sourceReferences ?? [];
+      break;
+    case 'lexical-gravity':
+      references = [];
+      break;
+    default:
+      return assertNeverWidgetRecommendation(recommendation);
+  }
   for (const reference of references) {
     if (reference.kind === 'active-excerpt') {
       if (!session.getExcerpt()) {
@@ -319,4 +349,8 @@ function unavailableWidgetSourceReference(
     }
   }
   return undefined;
+}
+
+function assertNeverWidgetRecommendation(value: never): never {
+  throw new Error(`Unhandled Workshop widget recommendation: ${JSON.stringify(value)}`);
 }

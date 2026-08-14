@@ -9,8 +9,12 @@ import {
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
+  assertCurrentWorkshopSessionStateV1,
   parseWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  normalizeWorkshopSessionCheckpointForHydration
+} from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
 import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
   WorkshopCreativeVariationsRecommendationSeed,
@@ -436,7 +440,7 @@ describe('WorkshopSessionService — widget configs', () => {
     expect(creativeSeed(recommendation)).not.toHaveProperty('selections');
   });
 
-  it('rejects Creative recommendation corruption and non-persona ownership at ingress', () => {
+  it('rejects Creative corruption and locally normalizes non-persona ownership', () => {
     session.setSessionScope('open');
     session.beginPersonaMessage('req-1', 'Prepare the comparison.');
     session.completeRun(
@@ -463,8 +467,16 @@ describe('WorkshopSessionService — widget configs', () => {
     const forgedOwner = session.exportCommittedState();
     const recommendationTurn = forgedOwner.turns.find((turn) => turn.widgetRecommendation)!;
     recommendationTurn.participant = 'tool';
-    expect(() => parseWorkshopSessionStateV1(forgedOwner))
+    const checkpoint = parseWorkshopSessionStateV1(forgedOwner);
+    expect(() => assertCurrentWorkshopSessionStateV1(checkpoint))
       .toThrow(/host or guest persona recommendation/);
+    const normalized = normalizeWorkshopSessionCheckpointForHydration(checkpoint);
+    expect(normalized.normalizations).toContain(
+      'discarded-nonpersona-widget-recommendation'
+    );
+    expect(normalized.state.turns.find((turn) => turn.id === recommendationTurn.id))
+      .not.toHaveProperty('widgetRecommendation');
+    expect(() => assertCurrentWorkshopSessionStateV1(normalized.state)).not.toThrow();
   });
 
   it.each([

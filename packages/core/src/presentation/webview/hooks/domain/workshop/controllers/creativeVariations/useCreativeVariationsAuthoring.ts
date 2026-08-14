@@ -120,7 +120,11 @@ function createCreativeVariationsRecommendationDraft(
   return {
     subject: {
       text: seed.subjectText ?? '',
-      provenance: { kind: 'persona-prefill' }
+      provenance: {
+        kind: 'persona-prefill',
+        personaId: opening.personaId,
+        editedByWriter: false
+      }
     },
     surroundingContext: {
       writerText: seed.contextText ?? '',
@@ -186,8 +190,18 @@ function sameSubject(
   if (left.text !== right.text || left.provenance.kind !== right.provenance.kind) {
     return false;
   }
-  if (left.provenance.kind !== 'excerpt' || right.provenance.kind !== 'excerpt') {
+  if (left.provenance.kind === 'pasted' && right.provenance.kind === 'pasted') {
     return true;
+  }
+  if (
+    left.provenance.kind === 'persona-prefill'
+    && right.provenance.kind === 'persona-prefill'
+  ) {
+    return left.provenance.personaId === right.provenance.personaId
+      && left.provenance.editedByWriter === right.provenance.editedByWriter;
+  }
+  if (left.provenance.kind !== 'excerpt' || right.provenance.kind !== 'excerpt') {
+    return false;
   }
   return left.provenance.relativePath === right.provenance.relativePath
     && left.provenance.startLine === right.provenance.startLine
@@ -384,9 +398,11 @@ export function useCreativeVariationsAuthoring({
         ...current,
         subject: {
           text,
-          provenance: current.subject.provenance.kind !== 'pasted'
+          provenance: current.subject.provenance.kind === 'excerpt'
             ? { kind: 'pasted' }
-            : current.subject.provenance
+            : current.subject.provenance.kind === 'persona-prefill'
+              ? { ...current.subject.provenance, editedByWriter: true }
+              : current.subject.provenance
         }
       };
     });

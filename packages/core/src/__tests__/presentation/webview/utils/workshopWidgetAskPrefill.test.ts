@@ -22,7 +22,8 @@ describe('buildWorkshopWidgetAskPrefill', () => {
   it('asks the Host for an input-only Creative Variations seed', () => {
     const prefill = buildWorkshopWidgetAskPrefill('creative-variations', 'Jill');
     expect(prefill).toContain('exact subject passage');
-    expect(prefill).toContain('grounded constraints');
+    expect(prefill).toContain('any constraints I have actually stated');
+    expect(prefill).toContain('fields empty when I have not stated them');
     expect(prefill).toContain('sampling distance, and take count');
     expect(prefill).toContain('Do not generate, select, accept, or commit any takes.');
   });

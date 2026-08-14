@@ -245,7 +245,9 @@ describe('completeWorkshopRun', () => {
       false
     );
     expect(log).toHaveBeenCalledWith('Actionable findings accepted: 1 items (Jill)');
-    expect(log).toHaveBeenCalledWith('Widget recommendation accepted (Jill)');
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation accepted (Jill; widget=gesture-playground)'
+    );
   });
 
   it('gives an invited guest the same rich recommendation contract', () => {
@@ -339,10 +341,11 @@ describe('completeWorkshopRun', () => {
 
     expect(turn.widgetRecommendation).toBeUndefined();
     expect(log).toHaveBeenCalledWith(
-      'Widget recommendation rejected (Jill; reason=unavailable_source_reference:context-attachment:ctx-999)'
+      'Widget recommendation rejected (Jill; widget=creative-variations; '
+      + 'reason=unavailable_source_reference:context-attachment:ctx-999)'
     );
     expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
-      "Jill's widget recommendation could not be prepared.",
+      "Jill's Creative Variations Explorer setup could not be prepared.",
       expect.stringContaining('context-attachment:ctx-999')
     );
   });
@@ -360,6 +363,11 @@ describe('completeWorkshopRun', () => {
 
     expect(turn.participant).toBe('tool');
     expect(turn.widgetRecommendation).toBeUndefined();
+    expect(turn.content).toBe('Jill returned a widget setup without an accompanying note.');
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected '
+      + '(Jill; widget=creative-variations; reason=participant_not_persona)'
+    );
   });
 
   it('rejects a well-formed source id the current session did not mint', () => {
@@ -380,7 +388,8 @@ describe('completeWorkshopRun', () => {
     expect(turn.content).toBe(visibleContent);
     expect(turn.widgetRecommendation).toBeUndefined();
     expect(log).toHaveBeenCalledWith(
-      'Widget recommendation rejected (Jill; reason=unavailable_source_reference:context-attachment:ctx-999)'
+      'Widget recommendation rejected (Jill; widget=gesture-playground; '
+      + 'reason=unavailable_source_reference:context-attachment:ctx-999)'
     );
   });
 
@@ -410,13 +419,15 @@ describe('completeWorkshopRun', () => {
       false
     );
     expect(log).toHaveBeenCalledWith(
-      'Widget recommendation rejected (Jill; reason=invalid_frame)'
+      'Widget recommendation rejected (Jill; widget=gesture-playground; reason=invalid_frame)'
     );
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining('Rejected widget recommendation response (Jill;')
+      expect.stringContaining(
+        'Rejected widget recommendation response (Jill; widget=gesture-playground;'
+      )
     );
     expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
-      "Jill's widget recommendation could not be prepared.",
+      "Jill's Gesture Playground setup could not be prepared.",
       'The generated setup was incomplete or invalid. Ask Jill to try again.'
     );
   });
@@ -439,10 +450,11 @@ describe('completeWorkshopRun', () => {
     expect(turn.widgetRecommendation).toBeUndefined();
     expect(log).toHaveBeenCalledWith(
       'Widget recommendation rejected '
-      + `(Jill; reason=field_too_long:writerInstructions:${maximum + 1}/${maximum})`
+      + `(Jill; widget=gesture-playground; `
+      + `reason=field_too_long:writerInstructions:${maximum + 1}/${maximum})`
     );
     expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
-      "Jill's widget recommendation could not be prepared.",
+      "Jill's Gesture Playground setup could not be prepared.",
       `Writer instructions used ${(maximum + 1).toLocaleString('en-US')} characters; `
       + `the limit is ${maximum.toLocaleString('en-US')}. Ask Jill to try again.`
     );

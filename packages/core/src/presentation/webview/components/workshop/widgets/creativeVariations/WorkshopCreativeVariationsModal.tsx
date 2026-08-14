@@ -30,6 +30,7 @@ import {
   WorkshopWidgetSourceReference
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { ModelOption, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
 import { ModelSelector } from '@components/shared/ModelSelector';
@@ -224,6 +225,9 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   const provenance = draft.subject.provenance;
   const pasted = provenance.kind === 'pasted';
   const personaPrefill = provenance.kind === 'persona-prefill';
+  const prefillPersonaLabel = personaPrefill
+    ? workshopPersonaLabel(provenance.personaId)
+    : null;
   const surroundingContextTravels =
     draft.surroundingContext.writerText.trim().length > 0
     || draft.surroundingContext.sourceReferences.length > 0;
@@ -385,15 +389,19 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
               <div className="pm-ws-cvx-field">
                 <span className="pm-ws-cvx-flabel" id="pm-ws-cvx-subject-label">
                   {personaPrefill
-                    ? 'Persona-prefilled passage'
+                    ? provenance.editedByWriter
+                      ? 'Persona-prefilled passage · edited by you'
+                      : 'Persona-prefilled passage'
                     : pasted
                       ? 'Pasted passage'
                       : 'Selected passage'}
                   {personaPrefill ? (
                     <em className="pm-ws-cvx-src pm-ws-cvx-src-pasted">
+                      {prefillPersonaLabel} prefill
+                      {provenance.editedByWriter ? ' · edited by you' : ''}
                       {surroundingContextTravels
-                        ? 'persona prefill · context supplied separately'
-                        : 'persona prefill · no surrounding passage'}
+                        ? ' · context supplied separately'
+                        : ' · no surrounding passage'}
                     </em>
                   ) : pasted ? (
                     <em className="pm-ws-cvx-src pm-ws-cvx-src-pasted">
@@ -429,10 +437,10 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                   onChange={(event) => onSubjectTextChange(event.target.value)}
                 />
                 <p className="pm-ws-cvx-honest">
-                  {surroundingContextTravels
-                    ? 'The generation sees this passage, any constraints you declare, and the surrounding context or source material selected on this sheet. It cannot check continuity beyond what you supplied.'
-                    : personaPrefill
-                      ? 'The persona prepared this passage from material available in the room. Generation sees only this exact text plus the constraints, context, and source material shown on this sheet; it cannot verify anything beyond them.'
+                  {personaPrefill
+                    ? `${prefillPersonaLabel} filled this in for you${provenance.editedByWriter ? ', and you edited it' : ''}. Read it before you generate. Generation sees only this exact text plus the constraints, context, and source material shown on this sheet; it cannot verify anything beyond them.`
+                    : surroundingContextTravels
+                      ? 'The generation sees this passage, any constraints you declare, and the surrounding context or source material selected on this sheet. It cannot check continuity beyond what you supplied.'
                     : pasted
                       ? 'The generation sees this text and any constraints you declare, and nothing else — it cannot check continuity against the pages around it, and it will not claim to.'
                       : 'This passage came from your excerpt, so its origin travels with the draft. Editing the text here keeps your words; the generation still sees only what is on this sheet.'}

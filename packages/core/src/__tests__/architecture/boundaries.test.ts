@@ -341,7 +341,9 @@ const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] 
       String.raw`\b[A-Za-z0-9_]*(?:(?:CreativeVariations|creativeVariations)[A-Z])[A-Za-z0-9_]*\b`,
       String.raw`\b[A-Z0-9_]*CREATIVE_VARIATIONS_[A-Z0-9_]+\b`,
       String.raw`\b[a-z0-9_-]*creative[_-]variations[a-z0-9_-]*\b`,
-      String.raw`\bCreative\s+Variations\b`
+      String.raw`\bCreative\s+Variations\b`,
+      String.raw`\b(?:subjectText|mustSurvive|mustNotChange|requestedCount|invalid_distance|invalid_requested_count|subject-passage|must-survive|must-not-change|creative-aim|sampling-distance|take-count)\b`,
+      String.raw`(?:(?<=\.)\b(?:aim|distance)\b|\b(?:aim|distance)\b(?=\s*:))`
     ],
     minimumSourceFiles: 3
   }
@@ -439,7 +441,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
     reason: 'recommendation source-availability boundary',
-    allowedToken: /(?:gesture-playground|creative-variations|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionRecords.ts',
@@ -494,7 +496,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/components/workshop/WorkshopTurnBubble.tsx',
     reason: 'closed widget-recommendation presentation dispatch',
-    allowedToken: /(?:Gesture Playground|Lexical Gravity|Creative Variations|gesture-playground|lexical-gravity|creative-variations|lensSlug)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|lensSlug|subjectText)/
   },
   {
     file: 'presentation/webview/components/workshop/workshopWidgetIcons.ts',
@@ -529,7 +531,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
     reason: 'closed writer-ask prefill registry',
-    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity)/
+    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|creative-aim|sampling-distance|take-count|aim|distance)/
   },
   {
     file: 'shared/constants/promptBudgets.ts',
@@ -589,7 +591,12 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'utils/workshopPromptFrames.ts',
     reason: 'leaf neutralizer reserves feature-declared recommendation delimiters',
-    allowedToken: /(?:lens-slug|metaphor-pull)/
+    allowedToken: /(?:lens-slug|metaphor-pull|subject-passage|must-survive|must-not-change|creative-aim|sampling-distance|take-count)/
+  },
+  {
+    file: 'infrastructure/api/orchestration/capabilities/WorkshopToolContextCapability.ts',
+    reason: 'catalog-neighbor algorithm owns an unrelated distance coordinate',
+    allowedToken: /distance/
   }
 ] as const;
 
@@ -691,6 +698,10 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
     file: 'utils/workshopPromptFrames.ts',
     reason: 'already neutralizes the family-generic prose-directive envelope'
+  },
+  {
+    file: 'infrastructure/api/orchestration/capabilities/WorkshopToolContextCapability.ts',
+    reason: 'catalog-neighbor distance is unrelated to widget feature dispatch'
   }
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
@@ -1124,6 +1135,9 @@ describe('architectural boundaries', () => {
       'const LENS_SLUGS = new Set();',
       'const WEIGHT_STEP = 5;',
       "const reasons = ['invalid_weight', 'invalid_reach'];",
+      'const seed = { subjectText, aim: seed.aim, distance: seed.distance, requestedCount };',
+      "const creativeReason = 'invalid_requested_count';",
+      "const tag = '<subject-passage>';",
       'const metric = calculateLexicalDensityPercent(source);'
     ].join('\n'));
 
@@ -1134,7 +1148,15 @@ describe('architectural boundaries', () => {
       'LENS_SLUGS',
       'WEIGHT_STEP',
       'invalid_weight',
-      'invalid_reach'
+      'invalid_reach',
+      'subjectText',
+      'aim',
+      'aim',
+      'distance',
+      'distance',
+      'requestedCount',
+      'invalid_requested_count',
+      'subject-passage'
     ]);
     expect(matchesApprovedFeatureToken('gesturePlayground', /gesturePlayground/)).toBe(true);
     expect(matchesApprovedFeatureToken('gesturePlaygroundExtra', /gesturePlayground/)).toBe(false);

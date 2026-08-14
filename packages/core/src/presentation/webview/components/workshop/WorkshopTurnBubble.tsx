@@ -14,7 +14,7 @@
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
-import { WorkshopToolId, WorkshopTurn } from '@messages';
+import { WorkshopPersonaId, WorkshopToolId, WorkshopTurn } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
 import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
@@ -45,7 +45,8 @@ interface WorkshopTurnBubbleProps {
   /** Persona recommend chip: opens the widget seeded from the parsed prefill. */
   onOpenWidgetRecommendation?: (
     recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
-    personaLabel?: string
+    personaLabel?: string,
+    personaId?: WorkshopPersonaId
   ) => void;
 }
 
@@ -539,7 +540,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             type="button"
             className="pm-ws-widget-reco"
             title={`Opens ${workshopWidgetLabel(turn.widgetRecommendation.widgetId)} prefilled — everything stays editable, nothing runs until you say so`}
-            onClick={() => onOpenWidgetRecommendation(turn.widgetRecommendation!, turn.personaLabel)}
+            onClick={() => onOpenWidgetRecommendation(
+              turn.widgetRecommendation!,
+              turn.personaLabel,
+              turn.personaId
+            )}
           >
             <Icon name={WORKSHOP_WIDGET_ICONS[turn.widgetRecommendation.widgetId]} size={13} />{' '}
             {workshopWidgetLabel(turn.widgetRecommendation.widgetId)}{' '}

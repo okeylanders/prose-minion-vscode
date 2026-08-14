@@ -530,7 +530,7 @@ describe('WorkshopTurnBubble variation cards', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Gesture Playground/ }));
-    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Jill');
+    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Jill', 'jill');
   });
 
   it('correlates a Creative Variations prefill to the exact persona turn chip', () => {
@@ -570,7 +570,11 @@ describe('WorkshopTurnBubble variation cards', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Creative Variations Explorer/ }));
-    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Margot');
+    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(
+      recommendation,
+      'Margot',
+      'margot'
+    );
   });
 
   it('labels logical-turn traffic as processed across provider calls', () => {
