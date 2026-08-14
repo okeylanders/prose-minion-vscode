@@ -1,6 +1,6 @@
 # Sprint 03: Creative Variations Explorer
 
-**Status**: In progress — Slice 5 review remediated and ready for re-review; live for integrated hands-on testing
+**Status**: In progress — Slice 6 implemented and ready for review; live for integrated hands-on testing
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-03-creative-variations` -> PR into `epic/conversation-widgets`
 **Depends on**: Sprint 02D merged into `epic/conversation-widgets`; the widget host, session-owned config ledger, one-shot thread-artifact rail, and clone-and-recommit lifecycle are all proven
@@ -222,8 +222,9 @@ recommit flow without a paid provider call.
 
 ### Slice 5 review remediation evidence — 2026-08-13
 
-Slice 5 is **ready for re-review**. It is not reviewed or complete, and the
-remediation worktree remains uncommitted and unpushed.
+Slice 5 is **complete**. The accepted implementation landed at `4210cdc5`, its
+review remediation at `5bb4eb09`, and the runway/live-availability alignment at
+the Slice 6 starting baseline `41f5b717`.
 
 - The host now rejects live widget ids lacking one-shot operations before
   consulting the partial generation-activity map. Unexpected commit-route
@@ -266,6 +267,61 @@ and F-16 (compiler arm-guard symmetry) retain their accepted deferrals. F-17
 remains N/A under the accepted Slice 4 blocker-union convention. Human F5
 visual inspection and screenshots remain outstanding because display capture is
 unavailable in this environment; no fixture-only substitute is claimed.
+
+### Slice 6 implementation evidence — 2026-08-13
+
+Slice 6 is **ready for review**. It is not reviewed or complete, and the Slice 6
+worktree remains uncommitted and unpushed.
+
+- Creative Variations contributes one named, strict recommendation codec to the
+  closed family registry. Its complete final control frame carries the exact
+  subject passage, optional exact surrounding context, live source references,
+  both invariant fields, optional aim, sampling distance, and take count.
+  Missing, duplicated, malformed, unavailable, or over-budget data rejects the
+  whole recommendation; prompt delimiters embedded in writer material are
+  neutralized before model assembly.
+- The production catalog-backed availability policy decides whether Creative
+  appears in the persona prompt and whether its returned frame may dispatch.
+  The parser never treats an unavailable id as a recommendation, and run
+  completion validates every referenced excerpt or context attachment against
+  the current session before attaching the chip.
+- Only Host and Guest turns may persist a recommendation. A direct tool run may
+  return a syntactically valid frame, but the control tail is stripped and no
+  tool-owned chip is attached. Persisted-state validation independently rejects
+  a forged tool recommendation.
+- The recommendation seed is input-only. It has no provenance, generated
+  workup, selection, risk acceptance, note, or commit authority. Opening the
+  exact correlated chip mints display-safe `persona-prefill` provenance in the
+  writer-owned controller, copies source references defensively, leaves
+  generation idle, and preserves blank optional fields as honest no-constraint
+  or random-aim semantics.
+- The Creative modal labels persona-prepared input honestly. Editing the subject
+  converts provenance to `pasted`; committing and reopening otherwise preserve
+  the exact display-safe origin. An already-open Creative sheet refuses a late
+  prefill instead of silently overwriting current authoring work.
+- The generic turn chip now derives label and icon from the widget registries and
+  uses an exhaustive feature-local meta switch. The Widgets browser also enables
+  its explicit Host-preparation door for Creative, seeding an editable request
+  that expressly forbids generation, selection, acceptance, or commit.
+- Analysis/report-prefill contracts and report prompts remain untouched. That
+  handoff still requires analysis-owner agreement and remains deferred.
+
+Verification at this review gate:
+
+- staged focused gates passed: 10 suites / 192 tests for the principal Slice 6
+  paths, 7 suites / 153 tests for mounted/persistence/prompt/architecture
+  integration, and 3 suites / 36 tests for the catalog Host-prefill seam;
+- full Jest: 208 suites, 2,282 tests, and 2 snapshots passed;
+- all core, webview, and extension TypeScript configurations passed;
+- ESLint: 0 errors and 956 repository warnings;
+- production resource staging, both webpack bundles, and the bundle sentinel
+  passed; webpack retained its three advisory webview-size warnings;
+- `git diff --check` passed.
+
+The mounted Workshop test proves exact older-turn/persona correlation, click to
+prefill, preservation of all seed values, visible persona attribution, and the
+absence of automatic generate or commit messages. No paid provider call or
+fixture-only screenshot is represented as integrated UI evidence.
 
 ## Out of scope
 

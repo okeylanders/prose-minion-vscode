@@ -185,6 +185,66 @@ describe('WorkshopApp', () => {
       .toBe('Keep this draft safe.');
   });
 
+  it('opens the exact Creative persona prefill without generating or committing for the writer', () => {
+    render(<WorkshopApp />);
+    const session = readySession();
+    const recommendationTurn: WorkshopTurn = {
+      id: 'turn-recommendation',
+      role: 'assistant',
+      kind: 'message',
+      participant: 'host',
+      artifact: 'persona_message',
+      personaId: 'jill',
+      personaLabel: 'Jill',
+      content: 'Let us put unlike possibilities beside each other.',
+      timestamp: 2,
+      excerptVersion: 0,
+      widgetRecommendation: {
+        widgetId: 'creative-variations',
+        seed: {
+          subjectText: 'She turned the mug until the chip faced the wall.',
+          contextText: 'Nate waited across the table.',
+          sourceReferences: [],
+          mustSurvive: 'The refusal remains implicit.',
+          mustNotChange: 'Keep close third person.',
+          aim: 'Move the refusal into physical behavior.',
+          distance: 'far-tail',
+          requestedCount: 5
+        }
+      }
+    };
+    session.payload.session.turns = [existingTurn, recommendationTurn];
+    session.payload.session.totalTurns = 2;
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: session }));
+    });
+    jest.clearAllMocks();
+
+    fireEvent.click(screen.getByRole('button', {
+      name: /Creative Variations Explorer prefilled · passage ready/
+    }));
+
+    expect(screen.getByText('Recommended and prefilled by Jill.')).not.toBeNull();
+    expect((screen.getByRole('textbox', {
+      name: /Persona-prefilled passage/
+    }) as HTMLTextAreaElement).value).toBe(
+      'She turned the mug until the chip faced the wall.'
+    );
+    expect((screen.getByRole('textbox', {
+      name: /Must survive every take optional/
+    }) as HTMLTextAreaElement).value).toBe('The refusal remains implicit.');
+    expect(screen.getByRole('button', { name: /Far tail/ }).getAttribute('aria-pressed'))
+      .toBe('true');
+    expect(screen.getByRole('button', { name: '5' }).getAttribute('aria-pressed'))
+      .toBe('true');
+    expect(vscode.postMessage.mock.calls.map(([message]) => message.type)).not.toContain(
+      MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE
+    );
+    expect(vscode.postMessage.mock.calls.map(([message]) => message.type)).not.toContain(
+      MessageType.WORKSHOP_COMMIT_WIDGET
+    );
+  });
+
   it('mounts Creative generation, commit, thread chip reopen, and clone recommit', () => {
     render(<WorkshopApp />);
     act(() => {

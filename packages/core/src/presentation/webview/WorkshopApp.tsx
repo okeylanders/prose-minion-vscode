@@ -1395,7 +1395,12 @@ export const WorkshopApp: React.FC = () => {
           banner={
             widgetOpening.creativeVariationsOpening.kind === 'clone'
               ? { kind: 'clone' }
-              : { kind: 'none' }
+              : widgetOpening.creativeVariationsOpening.kind === 'seed'
+                ? {
+                    kind: 'seed',
+                    personaLabel: widgetOpening.creativeVariationsOpening.personaLabel
+                  }
+                : { kind: 'none' }
           }
           draft={creativeVariationsAuthoring.draft}
           generation={creativeVariationsAuthoring.generation}

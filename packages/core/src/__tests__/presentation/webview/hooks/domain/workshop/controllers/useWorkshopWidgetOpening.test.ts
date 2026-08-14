@@ -123,6 +123,26 @@ describe('useWorkshopWidgetOpening', () => {
     act(() => result.current.closeCreativeVariations());
     expect(result.current.creativeVariationsOpening).toBeNull();
     expect(onCloseCreativeVariations).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.openWidgetRecommendation({
+      widgetId: 'creative-variations',
+      seed: {
+        subjectText: 'The mug turned once beneath her thumb.',
+        mustSurvive: 'The refusal stays implicit.',
+        distance: 'tail',
+        requestedCount: 4
+      }
+    }, 'Jill'));
+    expect(result.current.creativeVariationsOpening).toEqual({
+      kind: 'seed',
+      seed: {
+        subjectText: 'The mug turned once beneath her thumb.',
+        mustSurvive: 'The refusal stays implicit.',
+        distance: 'tail',
+        requestedCount: 4
+      },
+      personaLabel: 'Jill'
+    });
   });
 
   it('reopens only the exact requested config and preserves active Lexical edit identity', () => {
@@ -251,6 +271,30 @@ describe('useWorkshopWidgetOpening', () => {
     expect(result.current.pendingWidgetConfigId).toBeNull();
     expect(onError).toHaveBeenCalledWith(
         'Close the current widget sheet before reopening a committed configuration.'
+    );
+  });
+
+  it('keeps an open Creative draft when another persona prefill is clicked', () => {
+    const host = emptyHost();
+    const onError = jest.fn();
+    const { result } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError,
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
+    }));
+
+    act(() => result.current.launchWidget('creative-variations'));
+    act(() => result.current.openWidgetRecommendation({
+      widgetId: 'creative-variations',
+      seed: { subjectText: 'A later recommendation.' }
+    }, 'Margot'));
+
+    expect(result.current.creativeVariationsOpening).toEqual({ kind: 'new' });
+    expect(onError).toHaveBeenCalledWith(
+      'Close the current Creative Variations sheet before opening a prefill.'
     );
   });
 

@@ -155,6 +155,25 @@ describe('WorkshopCreativeVariationsModal', () => {
     ).toBeTruthy();
   });
 
+  it('labels persona-prefilled provenance without claiming the writer pasted it', () => {
+    renderModal({
+      banner: { kind: 'seed', personaLabel: 'Jill' },
+      draft: {
+        ...baseDraft,
+        subject: {
+          text: 'A persona-prepared passage.',
+          provenance: { kind: 'persona-prefill' }
+        }
+      }
+    });
+
+    expect(screen.getByText('Recommended and prefilled by Jill.')).toBeTruthy();
+    expect(screen.getByText('Persona-prefilled passage')).toBeTruthy();
+    expect(screen.getByText(/persona prefill/)).toBeTruthy();
+    expect(screen.queryByText('Pasted passage')).toBeNull();
+    expect(screen.getByText(/Generation sees only this exact text/)).toBeTruthy();
+  });
+
   it('requests editor selection through the semantic callback', () => {
     const { props } = renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Use editor selection' }));

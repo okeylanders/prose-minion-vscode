@@ -16,6 +16,7 @@ export type WorkshopCreativeVariationsDistance =
 /** Display-safe origin for the exact subject the writer is varying. */
 export type WorkshopCreativeVariationsSubjectProvenance =
   | { kind: 'pasted' }
+  | { kind: 'persona-prefill' }
   | {
       kind: 'excerpt';
       relativePath: string;
@@ -124,6 +125,23 @@ export interface WorkshopCreativeVariationsDraft {
   workup: WorkshopCreativeVariationsWorkup | null;
   selections: WorkshopCreativeVariationsSelection[];
   note: string;
+}
+
+/**
+ * Input-only persona handoff. The persona may prepare deterministic scaffold,
+ * but cannot claim provenance or supply generated/selected/committed state.
+ * Empty optional prose fields preserve the writer's explicit no-constraint and
+ * random-aim semantics.
+ */
+export interface WorkshopCreativeVariationsRecommendationSeed {
+  subjectText?: string;
+  contextText?: string;
+  sourceReferences?: WorkshopWidgetSourceReference[];
+  mustSurvive?: string;
+  mustNotChange?: string;
+  aim?: string;
+  distance?: WorkshopCreativeVariationsDistance;
+  requestedCount?: WorkshopCreativeVariationsRequestedCount;
 }
 
 /**

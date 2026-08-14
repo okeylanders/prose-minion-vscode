@@ -224,6 +224,18 @@ export function cloneWidgetRecommendation(
         widgetId: recommendation.widgetId,
         seed: recommendation.seed ? { ...recommendation.seed } : undefined
       };
+    case 'creative-variations':
+      return {
+        widgetId: recommendation.widgetId,
+        seed: recommendation.seed
+          ? {
+              ...recommendation.seed,
+              sourceReferences: recommendation.seed.sourceReferences?.map(
+                (reference) => ({ ...reference })
+              )
+            }
+          : undefined
+      };
     default:
       return assertNever(recommendation);
   }

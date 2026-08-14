@@ -19,12 +19,20 @@ describe('buildWorkshopWidgetAskPrefill', () => {
     expect(prefill).toContain('offer it for me to review and open');
   });
 
+  it('asks the Host for an input-only Creative Variations seed', () => {
+    const prefill = buildWorkshopWidgetAskPrefill('creative-variations', 'Jill');
+    expect(prefill).toContain('exact subject passage');
+    expect(prefill).toContain('grounded constraints');
+    expect(prefill).toContain('sampling distance, and take count');
+    expect(prefill).toContain('Do not generate, select, accept, or commit any takes.');
+  });
+
   it('reports Host-prefill capability independently from launch availability', () => {
     expect(canBuildWorkshopWidgetAskPrefill('gesture-playground')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('lexical-gravity')).toBe(true);
-    expect(canBuildWorkshopWidgetAskPrefill('creative-variations')).toBe(false);
+    expect(canBuildWorkshopWidgetAskPrefill('creative-variations')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(false);
-    expect(() => buildWorkshopWidgetAskPrefill('creative-variations', 'Jill'))
+    expect(() => buildWorkshopWidgetAskPrefill('show-vs-tell', 'Jill'))
       .toThrow('has no Host-preparation prompt');
   });
 
@@ -35,6 +43,6 @@ describe('buildWorkshopWidgetAskPrefill', () => {
       .filter((widget) => !canBuildWorkshopWidgetAskPrefill(widget.id))
       .map((widget) => widget.id);
 
-    expect(liveWidgetsWithoutHostPrefill).toEqual(['creative-variations']);
+    expect(liveWidgetsWithoutHostPrefill).toEqual([]);
   });
 });

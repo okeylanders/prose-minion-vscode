@@ -100,6 +100,12 @@ const WIDGET_FIELD_LABELS = Object.freeze({
   contextText: 'Surrounding context',
   sourceReferences: 'Source references',
   characterNotes: 'Character notes',
+  subjectText: 'Subject passage',
+  mustSurvive: 'Must survive',
+  mustNotChange: 'Must not change',
+  aim: 'Creative aim',
+  distance: 'Sampling distance',
+  requestedCount: 'Take count',
   lensSlug: 'Lens',
   weight: 'Weight',
   reach: 'Reach',
@@ -110,6 +116,8 @@ const INVALID_WIDGET_FIELD_COPY = Object.freeze({
   empty: 'was empty',
   target_missing_from_context: 'did not contain the exact target phrase',
   invalid_source_references: 'contained unavailable or malformed source references',
+  invalid_distance: 'was outside the allowed sampling distances',
+  invalid_requested_count: 'was not three, four, or five',
   unsupported_lens: 'named a lens that personas are not allowed to seed',
   invalid_weight: 'was outside the allowed weight steps',
   invalid_reach: 'was outside the allowed reach values',
@@ -295,10 +303,10 @@ function unavailableWidgetSourceReference(
   session: WorkshopSessionService,
   recommendation: WorkshopWidgetRecommendation
 ): string | undefined {
-  if (recommendation.widgetId !== 'gesture-playground') {
-    return undefined;
-  }
-  const references = recommendation.seed?.sourceReferences ?? [];
+  const references = recommendation.widgetId === 'gesture-playground'
+    || recommendation.widgetId === 'creative-variations'
+    ? recommendation.seed?.sourceReferences ?? []
+    : [];
   for (const reference of references) {
     if (reference.kind === 'active-excerpt') {
       if (!session.getExcerpt()) {

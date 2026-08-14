@@ -434,17 +434,17 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
     reason: 'closed persisted union validator',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity)ConfigCodec|assert(?:GesturePlayground|LexicalGravity)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity)/
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations)ConfigCodec|assert(?:GesturePlayground|LexicalGravity|CreativeVariations)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations)/
   },
   {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
     reason: 'recommendation source-availability boundary',
-    allowedToken: /(?:gesture-playground|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references)/
+    allowedToken: /(?:gesture-playground|creative-variations|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionRecords.ts',
     reason: 'closed recommendation-clone dispatch',
-    allowedToken: /(?:gesture-playground|lexical-gravity)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations)/
   },
   {
     file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',
@@ -469,7 +469,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
     reason: 'closed widget-recommendation registry and prompt composer',
-    allowedToken: /(?:GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY|LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
+    allowedToken: /(?:(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY|CREATIVE_VARIATIONS)_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity|CreativeVariations)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
   },
   {
     file: 'shared/types/messages/workshop/recovery.ts',
@@ -494,7 +494,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/components/workshop/WorkshopTurnBubble.tsx',
     reason: 'closed widget-recommendation presentation dispatch',
-    allowedToken: /(?:Gesture Playground|Lexical Gravity|gesture-playground|lensSlug)/
+    allowedToken: /(?:Gesture Playground|Lexical Gravity|Creative Variations|gesture-playground|lexical-gravity|creative-variations|lensSlug)/
   },
   {
     file: 'presentation/webview/components/workshop/workshopWidgetIcons.ts',
@@ -504,7 +504,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
     reason: 'closed widget-opening presentation controller',
-    allowedToken: /(?:WorkshopCreativeVariations(?:Opening|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+    allowedToken: /(?:Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts',
@@ -529,7 +529,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
     reason: 'closed writer-ask prefill registry',
-    allowedToken: /(?:gesture-playground|lexical-gravity)/
+    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity)/
   },
   {
     file: 'shared/constants/promptBudgets.ts',
@@ -584,7 +584,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/types/messages/workshop/widgets.ts',
     reason: 'explicit widget-family config, recommendation, and result union owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|metaphorPull)/
+    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|metaphorPull)/
   },
   {
     file: 'utils/workshopPromptFrames.ts',

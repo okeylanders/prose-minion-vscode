@@ -113,6 +113,35 @@ export function createCreativeVariationsAuthoringDraft(): WorkshopCreativeVariat
   };
 }
 
+function createCreativeVariationsRecommendationDraft(
+  opening: Extract<WorkshopCreativeVariationsOpening, { kind: 'seed' }>
+): WorkshopCreativeVariationsDraft {
+  const seed = opening.seed;
+  return {
+    subject: {
+      text: seed.subjectText ?? '',
+      provenance: { kind: 'persona-prefill' }
+    },
+    surroundingContext: {
+      writerText: seed.contextText ?? '',
+      sourceReferences: seed.sourceReferences?.map((reference) => ({ ...reference })) ?? []
+    },
+    invariants: {
+      mustSurvive: seed.mustSurvive ?? '',
+      mustNotChange: seed.mustNotChange ?? ''
+    },
+    intent: {
+      kind: 'custom-aim',
+      aim: seed.aim ?? '',
+      distance: seed.distance ?? 'tail'
+    },
+    requestedCount: seed.requestedCount ?? 3,
+    workup: null,
+    selections: [],
+    note: ''
+  };
+}
+
 function generationDetail(
   progress: WorkshopCreativeVariationsGenerationProgressPayload
 ): string {
@@ -157,7 +186,7 @@ function sameSubject(
   if (left.text !== right.text || left.provenance.kind !== right.provenance.kind) {
     return false;
   }
-  if (left.provenance.kind === 'pasted' || right.provenance.kind === 'pasted') {
+  if (left.provenance.kind !== 'excerpt' || right.provenance.kind !== 'excerpt') {
     return true;
   }
   return left.provenance.relativePath === right.provenance.relativePath
@@ -219,6 +248,8 @@ export function useCreativeVariationsAuthoring({
       setDraft(
         opening?.kind === 'clone'
           ? opening.config.draft
+          : opening?.kind === 'seed'
+            ? createCreativeVariationsRecommendationDraft(opening)
           : createCreativeVariationsAuthoringDraft()
       );
       setGeneration({ kind: 'idle' });
@@ -353,7 +384,7 @@ export function useCreativeVariationsAuthoring({
         ...current,
         subject: {
           text,
-          provenance: current.subject.provenance.kind === 'excerpt'
+          provenance: current.subject.provenance.kind !== 'pasted'
             ? { kind: 'pasted' }
             : current.subject.provenance
         }

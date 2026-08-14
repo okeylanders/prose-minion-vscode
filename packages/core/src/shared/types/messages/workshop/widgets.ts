@@ -3,7 +3,8 @@
 import { MessageEnvelope, MessageType } from '../base';
 import {
   WorkshopCreativeVariationsCommitPayload,
-  WorkshopCreativeVariationsDraft
+  WorkshopCreativeVariationsDraft,
+  WorkshopCreativeVariationsRecommendationSeed
 } from './creativeVariations';
 import {
   WorkshopGesturePlaygroundCommitPayload,
@@ -152,6 +153,10 @@ export type WorkshopWidgetRecommendation =
   | {
       widgetId: 'lexical-gravity';
       seed?: WorkshopLexicalGravityRecommendationSeed;
+    }
+  | {
+      widgetId: 'creative-variations';
+      seed?: WorkshopCreativeVariationsRecommendationSeed;
     };
 
 export interface WorkshopRequestWidgetConfigMessage extends MessageEnvelope<{ configId: string }> {

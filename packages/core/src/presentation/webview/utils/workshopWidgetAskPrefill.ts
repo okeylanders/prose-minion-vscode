@@ -7,7 +7,12 @@ const ASK_PREFILL_BUILDERS: Partial<Record<WorkshopWidgetId, WorkshopWidgetAskPr
   'gesture-playground': (hostLabel, widgetLabel) =>
     `Hey ${hostLabel}! Please prepare ${widgetLabel} for the beat we’re discussing. Seed it with the exact target phrase, useful surrounding context, and grounded character notes, then offer it for me to review and open.`,
   'lexical-gravity': (hostLabel, widgetLabel) =>
-    `Hey ${hostLabel}! Please prepare ${widgetLabel} for the passage we’re discussing. Choose a useful starting lens, weight, reach, and metaphor setting, then offer it for me to review and open.`
+    `Hey ${hostLabel}! Please prepare ${widgetLabel} for the passage we’re discussing. Choose a useful starting lens, weight, reach, and metaphor setting, then offer it for me to review and open.`,
+  'creative-variations': (hostLabel, widgetLabel) =>
+    `Hey ${hostLabel}! Please prepare ${widgetLabel} for the passage we’re discussing. `
+    + 'Seed the exact subject passage, useful context and source references, grounded constraints, '
+    + 'a creative aim, sampling distance, and take count, then offer it for me to review and open. '
+    + 'Do not generate, select, accept, or commit any takes.'
 };
 
 export function canBuildWorkshopWidgetAskPrefill(widgetId: unknown): widgetId is WorkshopWidgetId {

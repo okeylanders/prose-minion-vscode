@@ -221,8 +221,9 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   const generating = generation.kind === 'generating';
   const interactionLocked = generating || commitPending;
 
-  const pasted = draft.subject.provenance.kind === 'pasted';
   const provenance = draft.subject.provenance;
+  const pasted = provenance.kind === 'pasted';
+  const personaPrefill = provenance.kind === 'persona-prefill';
   const surroundingContextTravels =
     draft.surroundingContext.writerText.trim().length > 0
     || draft.surroundingContext.sourceReferences.length > 0;
@@ -383,8 +384,18 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
             <div className="pm-ws-cvx-grid-main">
               <div className="pm-ws-cvx-field">
                 <span className="pm-ws-cvx-flabel" id="pm-ws-cvx-subject-label">
-                  {pasted ? 'Pasted passage' : 'Selected passage'}
-                  {pasted ? (
+                  {personaPrefill
+                    ? 'Persona-prefilled passage'
+                    : pasted
+                      ? 'Pasted passage'
+                      : 'Selected passage'}
+                  {personaPrefill ? (
+                    <em className="pm-ws-cvx-src pm-ws-cvx-src-pasted">
+                      {surroundingContextTravels
+                        ? 'persona prefill · context supplied separately'
+                        : 'persona prefill · no surrounding passage'}
+                    </em>
+                  ) : pasted ? (
                     <em className="pm-ws-cvx-src pm-ws-cvx-src-pasted">
                       {surroundingContextTravels
                         ? 'pasted · context supplied separately'
@@ -420,6 +431,8 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                 <p className="pm-ws-cvx-honest">
                   {surroundingContextTravels
                     ? 'The generation sees this passage, any constraints you declare, and the surrounding context or source material selected on this sheet. It cannot check continuity beyond what you supplied.'
+                    : personaPrefill
+                      ? 'The persona prepared this passage from material available in the room. Generation sees only this exact text plus the constraints, context, and source material shown on this sheet; it cannot verify anything beyond them.'
                     : pasted
                       ? 'The generation sees this text and any constraints you declare, and nothing else — it cannot check continuity against the pages around it, and it will not claim to.'
                       : 'This passage came from your excerpt, so its origin travels with the draft. Editing the text here keeps your words; the generation still sees only what is on this sheet.'}

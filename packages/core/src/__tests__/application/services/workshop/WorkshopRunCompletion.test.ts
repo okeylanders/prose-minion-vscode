@@ -61,6 +61,32 @@ describe('completeWorkshopRun', () => {
     '</workshop-widget-recommendation>'
   ].join('\n');
 
+  const creativeRecommendationFrame = (overrides: {
+    subjectText?: string;
+    contextText?: string;
+    sourceReferences?: string;
+    mustSurvive?: string;
+    mustNotChange?: string;
+    aim?: string;
+    distance?: string;
+    requestedCount?: string;
+  } = {}): string => [
+    '### Try a widget',
+    '<workshop-widget-recommendation version="1">',
+    '<widget-id>', 'creative-variations', '</widget-id>',
+    '<subject-passage>',
+    overrides.subjectText ?? 'She turned the mug until the chip faced the wall.',
+    '</subject-passage>',
+    '<surrounding-context>', overrides.contextText ?? '', '</surrounding-context>',
+    '<source-references>', overrides.sourceReferences ?? 'none', '</source-references>',
+    '<must-survive>', overrides.mustSurvive ?? '', '</must-survive>',
+    '<must-not-change>', overrides.mustNotChange ?? '', '</must-not-change>',
+    '<creative-aim>', overrides.aim ?? '', '</creative-aim>',
+    '<sampling-distance>', overrides.distance ?? 'tail', '</sampling-distance>',
+    '<take-count>', overrides.requestedCount ?? '3', '</take-count>',
+    '</workshop-widget-recommendation>'
+  ].join('\n');
+
   const settle = (input: {
     requestId: string;
     result: AnalysisResult;
@@ -262,6 +288,78 @@ describe('completeWorkshopRun', () => {
         }
       }
     });
+  });
+
+  it('attaches a Creative prefill from a persona and validates its live sources', () => {
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Scene notes',
+      words: 4,
+      content: 'The mug is chipped.'
+    });
+    session.beginPersonaMessage('req-1', 'Prepare unlike versions of this beat.');
+    const turn = settle({
+      requestId: 'req-1',
+      result: result([
+        'Let us put unlike possibilities beside each other.',
+        '',
+        creativeRecommendationFrame({
+          sourceReferences: 'active-excerpt\ncontext-attachment:ctx-1',
+          mustSurvive: 'The refusal remains implicit.',
+          mustNotChange: 'Keep the chipped mug.',
+          requestedCount: '4'
+        })
+      ].join('\n'), { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.widgetRecommendation).toEqual({
+      widgetId: 'creative-variations',
+      seed: expect.objectContaining({
+        subjectText: 'She turned the mug until the chip faced the wall.',
+        sourceReferences: [
+          { kind: 'active-excerpt' },
+          { kind: 'context-attachment', attachmentId: 'ctx-1' }
+        ],
+        distance: 'tail',
+        requestedCount: 4
+      })
+    });
+    expect(turn.content).toBe('Let us put unlike possibilities beside each other.');
+  });
+
+  it('rejects a Creative prefill whose source address is no longer available', () => {
+    session.beginPersonaMessage('req-1', 'Prepare unlike versions of this beat.');
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(creativeRecommendationFrame({
+        sourceReferences: 'context-attachment:ctx-999'
+      }), { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected (Jill; reason=unavailable_source_reference:context-attachment:ctx-999)'
+    );
+    expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
+      "Jill's widget recommendation could not be prepared.",
+      expect.stringContaining('context-attachment:ctx-999')
+    );
+  });
+
+  it('keeps widget recommendations persona-only on a direct tool completion', () => {
+    session.beginToolRun('prose', 'tool-1');
+    session.completeToolReport('tool-1', 'Initial report.', 'tool-conv');
+    session.beginDirectToolMessage('prose', 'req-1', 'Prepare the widget.');
+
+    const turn = settle({
+      requestId: 'req-1',
+      createsRetainedConversation: false,
+      result: result(creativeRecommendationFrame(), { conversationId: 'tool-conv' })
+    })!;
+
+    expect(turn.participant).toBe('tool');
+    expect(turn.widgetRecommendation).toBeUndefined();
   });
 
   it('rejects a well-formed source id the current session did not mint', () => {

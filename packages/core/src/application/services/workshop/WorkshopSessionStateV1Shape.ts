@@ -45,6 +45,9 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
+  assertCreativeVariationsRecommendationSeedShape
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
   assertGesturePlaygroundRecommendationSeedShape
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
@@ -554,6 +557,9 @@ function assertTurn(value: unknown, path: string): void {
     assertTurnWidgetCommit(turn.widgetCommit, `${path}.widgetCommit`);
   }
   if (turn.widgetRecommendation !== undefined) {
+    if (turn.participant !== 'host' && turn.participant !== 'guest') {
+      shapeError(`${path}.widgetRecommendation`, 'a host or guest persona recommendation');
+    }
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
   }
   if (turn.standingDirectiveChange !== undefined) {
@@ -620,6 +626,10 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   }
   if (recommendation.widgetId === 'lexical-gravity') {
     assertLexicalGravityRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
+  }
+  if (recommendation.widgetId === 'creative-variations') {
+    assertCreativeVariationsRecommendationSeedShape(recommendation.seed, `${path}.seed`);
     return;
   }
   shapeError(`${path}.widgetId`, 'a widget with a recommendation codec');

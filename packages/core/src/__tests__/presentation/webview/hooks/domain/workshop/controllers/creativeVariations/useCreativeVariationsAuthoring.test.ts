@@ -66,6 +66,51 @@ const selectionData = (
 describe('useCreativeVariationsAuthoring', () => {
   afterEach(() => jest.clearAllMocks());
 
+  it('seeds only editable authoring inputs from a persona recommendation', () => {
+    const props = options({
+      opening: {
+        kind: 'seed',
+        personaLabel: 'Jill',
+        seed: {
+          subjectText: 'She turned the mug until the chip faced the wall.',
+          contextText: 'Nate waited across the table.',
+          sourceReferences: [{ kind: 'active-excerpt' }],
+          mustSurvive: 'The refusal remains implicit.',
+          mustNotChange: 'Keep close third person.',
+          aim: '',
+          distance: 'far-tail',
+          requestedCount: 5
+        }
+      }
+    });
+    const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
+
+    expect(result.current.draft).toEqual({
+      subject: {
+        text: 'She turned the mug until the chip faced the wall.',
+        provenance: { kind: 'persona-prefill' }
+      },
+      surroundingContext: {
+        writerText: 'Nate waited across the table.',
+        sourceReferences: [{ kind: 'active-excerpt' }]
+      },
+      invariants: {
+        mustSurvive: 'The refusal remains implicit.',
+        mustNotChange: 'Keep close third person.'
+      },
+      intent: { kind: 'custom-aim', aim: '', distance: 'far-tail' },
+      requestedCount: 5,
+      workup: null,
+      selections: [],
+      note: ''
+    });
+    expect(props.generate).not.toHaveBeenCalled();
+    expect(props.commit).not.toHaveBeenCalled();
+
+    act(() => result.current.changeSubjectText('Writer-edited passage.'));
+    expect(result.current.draft.subject.provenance).toEqual({ kind: 'pasted' });
+  });
+
   it('keeps editor provenance only for the exact source-derived text', () => {
     const props = options();
     const { result } = renderHook(() => useCreativeVariationsAuthoring(props));

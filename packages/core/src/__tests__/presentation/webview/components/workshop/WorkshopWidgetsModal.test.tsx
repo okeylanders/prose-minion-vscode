@@ -63,7 +63,7 @@ describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
     expect(onAskAgentToConfigure).toHaveBeenCalledWith('lexical-gravity');
   });
 
-  it('opens Creative Variations while honestly withholding Host preparation', () => {
+  it('launches or requests Host preparation for Creative Variations', () => {
     const { onLaunchWidget, onAskAgentToConfigure } = renderModal();
     fireEvent.click(
       screen.getAllByRole('button', { name: /Creative Variations Explorer/ })[0]
@@ -74,13 +74,12 @@ describe('WorkshopWidgetsModal (live registry, ADR 2026-07-22)', () => {
       name: 'Ask agent to configure, then open'
     }) as HTMLButtonElement;
     expect(launch.disabled).toBe(false);
-    expect(ask.disabled).toBe(true);
-    expect(ask.title).toBe('This widget does not yet support Host preparation.');
+    expect(ask.disabled).toBe(false);
 
     fireEvent.click(launch);
     fireEvent.click(ask);
     expect(onLaunchWidget).toHaveBeenCalledWith('creative-variations');
-    expect(onAskAgentToConfigure).not.toHaveBeenCalled();
+    expect(onAskAgentToConfigure).toHaveBeenCalledWith('creative-variations');
   });
 
   it('closes via Cancel without launching anything', () => {

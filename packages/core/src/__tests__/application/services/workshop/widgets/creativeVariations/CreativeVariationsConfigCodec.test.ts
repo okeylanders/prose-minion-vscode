@@ -156,6 +156,18 @@ describe('CreativeVariationsConfigCodec', () => {
     expect(() => assertValid(value)).not.toThrow();
   });
 
+  it('round-trips persona-prefill provenance without borrowing editor identity', () => {
+    const value = draft();
+    value.subject.provenance = { kind: 'persona-prefill' };
+    value.workup = null;
+    value.selections = [];
+
+    expect(() => assertValid(value)).not.toThrow();
+    const cloned = cloneCreativeVariationsDraft(value);
+    expect(cloned.subject.provenance).toEqual({ kind: 'persona-prefill' });
+    expect(cloned.subject.provenance).not.toHaveProperty('relativePath');
+  });
+
   it.each([
     {
       label: 'unknown draft field',

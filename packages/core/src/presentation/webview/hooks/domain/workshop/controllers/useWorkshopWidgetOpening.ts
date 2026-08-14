@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopCreativeVariationsWidgetConfigSnapshot,
+  WorkshopCreativeVariationsRecommendationSeed,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
@@ -27,6 +28,11 @@ export type WorkshopLexicalGravityOpening =
 
 export type WorkshopCreativeVariationsOpening =
   | { kind: 'new' }
+  | {
+      kind: 'seed';
+      seed: WorkshopCreativeVariationsRecommendationSeed;
+      personaLabel: string;
+    }
   | { kind: 'clone'; config: WorkshopCreativeVariationsWidgetConfigSnapshot };
 
 export interface WorkshopWidgetOpeningHost {
@@ -133,9 +139,19 @@ export function useWorkshopWidgetOpening({
           seed: recommendation.seed ?? {},
           personaLabel: personaLabel ?? 'the persona'
         });
+      } else if (recommendation.widgetId === 'creative-variations') {
+        if (creativeVariationsOpening) {
+          onError('Close the current Creative Variations sheet before opening a prefill.');
+          return;
+        }
+        setCreativeVariationsOpening({
+          kind: 'seed',
+          seed: recommendation.seed ?? {},
+          personaLabel: personaLabel ?? 'the persona'
+        });
       }
     },
-    []
+    [creativeVariationsOpening, onError]
   );
 
   const closeGesturePlayground = React.useCallback(() => {

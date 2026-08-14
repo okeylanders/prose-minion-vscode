@@ -17,6 +17,7 @@ import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import { WorkshopToolId, WorkshopTurn } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
+import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import {
   workshopWidgetLabel,
@@ -61,6 +62,25 @@ interface ParsedVariations {
 
 const VARIATION_HEADING = /^#{2,4}\s*Variation\s+(\d+)(?:\s*[-:]\s*(.+))?\s*$/gim;
 export const WORKSHOP_TURN_ID_ATTRIBUTE = 'data-turn-id';
+
+function widgetRecommendationMeta(
+  recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>
+): string {
+  switch (recommendation.widgetId) {
+    case 'gesture-playground':
+      return recommendation.seed?.targetPhrase
+        ? `prefilled · “${recommendation.seed.targetPhrase}”`
+        : 'recommended';
+    case 'lexical-gravity':
+      return recommendation.seed?.lensSlug
+        ? `prefilled · ${recommendation.seed.lensSlug}`
+        : 'recommended';
+    case 'creative-variations':
+      return recommendation.seed?.subjectText
+        ? 'prefilled · passage ready'
+        : 'recommended';
+  }
+}
 
 const citationLabel = (citation: { url: string; title?: string }): string => {
   const title = citation.title?.trim();
@@ -518,19 +538,13 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           <button
             type="button"
             className="pm-ws-widget-reco"
-            title={`Opens ${turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'Gesture Playground' : 'Lexical Gravity'} prefilled — everything stays editable, nothing runs until you say so`}
+            title={`Opens ${workshopWidgetLabel(turn.widgetRecommendation.widgetId)} prefilled — everything stays editable, nothing runs until you say so`}
             onClick={() => onOpenWidgetRecommendation(turn.widgetRecommendation!, turn.personaLabel)}
           >
-            <Icon name={turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'hand' : 'orbit'} size={13} />{' '}
-            {turn.widgetRecommendation.widgetId === 'gesture-playground' ? 'Gesture Playground' : 'Lexical Gravity'}{' '}
+            <Icon name={WORKSHOP_WIDGET_ICONS[turn.widgetRecommendation.widgetId]} size={13} />{' '}
+            {workshopWidgetLabel(turn.widgetRecommendation.widgetId)}{' '}
             <span className="pm-ws-widget-chip-meta">
-              {turn.widgetRecommendation.widgetId === 'gesture-playground'
-                ? turn.widgetRecommendation.seed?.targetPhrase
-                  ? `prefilled · “${turn.widgetRecommendation.seed.targetPhrase}”`
-                  : 'recommended'
-                : turn.widgetRecommendation.seed?.lensSlug
-                  ? `prefilled · ${turn.widgetRecommendation.seed.lensSlug}`
-                  : 'recommended'}
+              {widgetRecommendationMeta(turn.widgetRecommendation)}
             </span>
           </button>
         )}

@@ -16,6 +16,11 @@ import {
   type WorkshopWidgetAvailabilityPolicy
 } from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import {
+  CreativeVariationsRecommendationField,
+  CreativeVariationsRecommendationInvalidFieldReason,
+  CREATIVE_VARIATIONS_WIDGET_RECOMMENDATION_ENTRY
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsRecommendation';
+import {
   GesturePlaygroundRecommendationField,
   GesturePlaygroundRecommendationInvalidFieldReason,
   GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY
@@ -33,10 +38,12 @@ import {
 } from '@/utils/workshopWidgetRecommendationProtocol';
 
 export type WorkshopWidgetRecommendationField =
+  | CreativeVariationsRecommendationField
   | GesturePlaygroundRecommendationField
   | LexicalGravityRecommendationField;
 
 export type WorkshopWidgetRecommendationInvalidFieldReason =
+  | CreativeVariationsRecommendationInvalidFieldReason
   | GesturePlaygroundRecommendationInvalidFieldReason
   | LexicalGravityRecommendationInvalidFieldReason;
 
@@ -59,7 +66,8 @@ type RecommendationWidgetId = WorkshopWidgetRecommendation['widgetId'];
  */
 export const WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES = Object.freeze({
   'gesture-playground': GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY,
-  'lexical-gravity': LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
+  'lexical-gravity': LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY,
+  'creative-variations': CREATIVE_VARIATIONS_WIDGET_RECOMMENDATION_ENTRY
 }) satisfies Readonly<
   Record<RecommendationWidgetId, WorkshopWidgetRecommendationEntry>
 >;
@@ -101,12 +109,22 @@ const WIDGET_BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
 /** Existing family-wide safety ceiling for the complete recommendation tail. */
 export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
-  WIDGET_BUDGET.gestureTargetPhraseCharacters
-  + WIDGET_BUDGET.gestureWriterInstructionsCharacters
-  + WIDGET_BUDGET.gestureContextCharacters
-  + WIDGET_BUDGET.gestureCharacterNotesCharacters
-  + WIDGET_BUDGET.gestureSourceReferenceCharacters
-  + WIDGET_BUDGET.gestureRecommendationFrameAllowanceCharacters;
+  Math.max(
+    WIDGET_BUDGET.gestureTargetPhraseCharacters
+      + WIDGET_BUDGET.gestureWriterInstructionsCharacters
+      + WIDGET_BUDGET.gestureContextCharacters
+      + WIDGET_BUDGET.gestureCharacterNotesCharacters
+      + WIDGET_BUDGET.gestureSourceReferenceCharacters
+      + WIDGET_BUDGET.gestureRecommendationFrameAllowanceCharacters,
+    WIDGET_BUDGET.creativeSubjectCharacters
+      + WIDGET_BUDGET.creativeContextCharacters
+      + WIDGET_BUDGET.creativeSourceReferences
+        * WIDGET_BUDGET.creativeSourceReferenceCharacters
+      + WIDGET_BUDGET.creativeMustSurviveCharacters
+      + WIDGET_BUDGET.creativeMustNotChangeCharacters
+      + WIDGET_BUDGET.creativeAimCharacters
+      + WIDGET_BUDGET.creativeRecommendationFrameAllowanceCharacters
+  );
 
 /**
  * Parse one exact `### Try a widget` section carrying a versioned multiline

@@ -3,7 +3,8 @@
 import {
   CREATIVE_VARIATIONS_GENERATION_PROTOCOL_VERSION,
   CREATIVE_VARIATIONS_OVERLAP_ALGORITHM_VERSION,
-  WorkshopCreativeVariationsDraft
+  WorkshopCreativeVariationsDraft,
+  WorkshopWidgetSourceReference
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -15,6 +16,8 @@ import {
   exactObject,
   numberAt,
   objectAt,
+  optionalBoundedStringAt,
+  optionalNumberAt,
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import type {
@@ -104,7 +107,7 @@ function assertSubjectShape(value: unknown, path: string): void {
   boundedStringAt(subject.text, `${path}.text`, budget.creativeSubjectCharacters, false);
 
   const provenance = objectAt(subject.provenance, `${path}.provenance`);
-  if (provenance.kind === 'pasted') {
+  if (provenance.kind === 'pasted' || provenance.kind === 'persona-prefill') {
     exactKeys(provenance, `${path}.provenance`, ['kind']);
     return;
   }
@@ -129,7 +132,7 @@ function assertSubjectShape(value: unknown, path: string): void {
     }
     return;
   }
-  shapeError(`${path}.provenance.kind`, 'pasted | excerpt');
+  shapeError(`${path}.provenance.kind`, 'pasted | persona-prefill | excerpt');
 }
 
 function assertSurroundingContextShape(value: unknown, path: string): void {
@@ -140,14 +143,25 @@ function assertSurroundingContextShape(value: unknown, path: string): void {
     `${path}.writerText`,
     budget.creativeContextCharacters
   );
-  boundedArrayAt(
+  assertCreativeVariationsSourceReferencesShape(
     context.sourceReferences,
-    `${path}.sourceReferences`,
+    `${path}.sourceReferences`
+  );
+}
+
+export function assertCreativeVariationsSourceReferencesShape(
+  value: unknown,
+  path: string
+): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  boundedArrayAt(
+    value,
+    path,
     0,
     budget.creativeSourceReferences,
     'source references'
   );
-  arrayOf(context.sourceReferences, `${path}.sourceReferences`, (referenceValue, referencePath) => {
+  arrayOf(value, path, (referenceValue, referencePath) => {
     const reference = objectAt(referenceValue, referencePath);
     if (reference.kind === 'active-excerpt') {
       exactKeys(reference, referencePath, ['kind']);
@@ -168,6 +182,88 @@ function assertSurroundingContextShape(value: unknown, path: string): void {
     }
     shapeError(`${referencePath}.kind`, 'active-excerpt | context-attachment');
   });
+}
+
+function assertCreativeVariationsSourceReferencesIntegrity(
+  references: readonly WorkshopWidgetSourceReference[],
+  path: string
+): void {
+  const keys = new Set<string>();
+  for (const reference of references) {
+    const key = reference.kind === 'active-excerpt'
+      ? reference.kind
+      : `${reference.kind}:${reference.attachmentId}`;
+    if (keys.has(key)) {
+      shapeError(path, 'source references without duplicates');
+    }
+    keys.add(key);
+  }
+}
+
+export function assertCreativeVariationsRecommendationSeedShape(
+  value: unknown,
+  path: string
+): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  const seed = exactObject(value, path, [], [
+    'subjectText',
+    'contextText',
+    'sourceReferences',
+    'mustSurvive',
+    'mustNotChange',
+    'aim',
+    'distance',
+    'requestedCount'
+  ]);
+  optionalBoundedStringAt(
+    seed.subjectText,
+    `${path}.subjectText`,
+    budget.creativeSubjectCharacters,
+    false
+  );
+  optionalBoundedStringAt(
+    seed.contextText,
+    `${path}.contextText`,
+    budget.creativeContextCharacters
+  );
+  optionalBoundedStringAt(
+    seed.mustSurvive,
+    `${path}.mustSurvive`,
+    budget.creativeMustSurviveCharacters
+  );
+  optionalBoundedStringAt(
+    seed.mustNotChange,
+    `${path}.mustNotChange`,
+    budget.creativeMustNotChangeCharacters
+  );
+  optionalBoundedStringAt(seed.aim, `${path}.aim`, budget.creativeAimCharacters);
+  if (seed.distance !== undefined) {
+    enumAt(seed.distance, `${path}.distance`, [
+      'familiar',
+      'adjacent',
+      'tail',
+      'far-tail'
+    ]);
+  }
+  optionalNumberAt(seed.requestedCount, `${path}.requestedCount`);
+  if (
+    seed.requestedCount !== undefined
+    && seed.requestedCount !== 3
+    && seed.requestedCount !== 4
+    && seed.requestedCount !== 5
+  ) {
+    shapeError(`${path}.requestedCount`, '3 | 4 | 5');
+  }
+  if (seed.sourceReferences !== undefined) {
+    assertCreativeVariationsSourceReferencesShape(
+      seed.sourceReferences,
+      `${path}.sourceReferences`
+    );
+    assertCreativeVariationsSourceReferencesIntegrity(
+      seed.sourceReferences as WorkshopWidgetSourceReference[],
+      `${path}.sourceReferences`
+    );
+  }
 }
 
 function assertRequestedCount(value: unknown, path: string): void {

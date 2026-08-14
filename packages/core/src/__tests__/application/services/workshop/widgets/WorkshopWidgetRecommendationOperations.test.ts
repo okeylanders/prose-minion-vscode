@@ -50,6 +50,23 @@ function recommendationFrame(fields: RecommendationFrameFields = {}): string {
   ].join('\n');
 }
 
+function creativeRecommendationFrame(): string {
+  return [
+    '### Try a widget',
+    '<workshop-widget-recommendation version="1">',
+    '<widget-id>', 'creative-variations', '</widget-id>',
+    '<subject-passage>', 'She turned the mug until the chip faced the wall.', '</subject-passage>',
+    '<surrounding-context>', '', '</surrounding-context>',
+    '<source-references>', 'none', '</source-references>',
+    '<must-survive>', '', '</must-survive>',
+    '<must-not-change>', '', '</must-not-change>',
+    '<creative-aim>', '', '</creative-aim>',
+    '<sampling-distance>', 'tail', '</sampling-distance>',
+    '<take-count>', '3', '</take-count>',
+    '</workshop-widget-recommendation>'
+  ].join('\n');
+}
+
 const inspectWithCatalog = (content: string) =>
   inspectWorkshopWidgetRecommendation(
     content,
@@ -83,7 +100,8 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
     const entries = Object.values(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES);
     expect(entries.map(({ widgetId }) => widgetId)).toEqual([
       'gesture-playground',
-      'lexical-gravity'
+      'lexical-gravity',
+      'creative-variations'
     ]);
     expect(new Set(entries.map(({ catalogOrder }) => catalogOrder)).size).toBe(entries.length);
     expect(new Set(entries.map(({ instructionOrder }) => instructionOrder)).size).toBe(
@@ -93,6 +111,11 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
       WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['lexical-gravity'].instruction
     )).toBeLessThan(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.indexOf(
       WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['gesture-playground'].instruction
+    ));
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.indexOf(
+      WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['gesture-playground'].instruction
+    )).toBeLessThan(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.indexOf(
+      WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES['creative-variations'].instruction
     ));
   });
 
@@ -118,6 +141,21 @@ describe('inspectWorkshopWidgetRecommendation', () => {
     expect(
       inspectWithCatalog(recommendationFrame().replace(/\n/g, '\r\n')).outcome
     ).toBe('accepted');
+  });
+
+  it('dispatches Creative Variations through the production catalog policy', () => {
+    expect(inspectWithCatalog(creativeRecommendationFrame())).toEqual({
+      outcome: 'accepted',
+      recommendation: {
+        widgetId: 'creative-variations',
+        seed: expect.objectContaining({
+          subjectText: 'She turned the mug until the chip faced the wall.',
+          sourceReferences: [],
+          distance: 'tail',
+          requestedCount: 3
+        })
+      }
+    });
   });
 
   it('requires the exact frame to be the final response content', () => {
