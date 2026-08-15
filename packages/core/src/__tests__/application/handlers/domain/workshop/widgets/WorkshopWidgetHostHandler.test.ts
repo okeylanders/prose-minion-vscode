@@ -61,7 +61,7 @@ const commitMessage = (
 const creativeDraft: WorkshopCreativeVariationsDraft = {
   ...JSON.parse(JSON.stringify(generatedDraft)) as WorkshopCreativeVariationsDraft,
   intent: { ...generatedDraft.intent, aim: '' },
-  selections: [{ position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }]
+  selections: [{ position: 1, carryMode: 'direction' }]
 };
 
 const creativeCommitMessage = (
@@ -84,7 +84,7 @@ const creativeCommitMessage = (
 const creativeDraftAtArtifactLength = (characters: number): WorkshopCreativeVariationsDraft => {
   const draft: WorkshopCreativeVariationsDraft = {
     ...JSON.parse(JSON.stringify(creativeDraft)) as WorkshopCreativeVariationsDraft,
-    selections: [{ position: 1, carryMode: 'full-prose', acceptedAdvisoryRiskIds: [] }]
+    selections: [{ position: 1, carryMode: 'full-prose' }]
   };
   const cardsAtOne = draft.workup!.cards.map((card) => card.position === 1
     ? { ...card, prose: 'x' }

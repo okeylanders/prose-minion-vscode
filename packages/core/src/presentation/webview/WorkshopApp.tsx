@@ -1424,7 +1424,6 @@ export const WorkshopApp: React.FC = () => {
           onCancelGenerate={creativeVariationsAuthoring.cancelGenerate}
           onToggleCardSelection={creativeVariationsAuthoring.toggleCardSelection}
           onCarryModeChange={creativeVariationsAuthoring.changeCarryMode}
-          onToggleAdvisoryRisk={creativeVariationsAuthoring.toggleAdvisoryRisk}
           onNoteChange={creativeVariationsAuthoring.changeNote}
           onCopyVariation={copyCreativeVariation}
           onCommit={creativeVariationsAuthoring.commitDraft}

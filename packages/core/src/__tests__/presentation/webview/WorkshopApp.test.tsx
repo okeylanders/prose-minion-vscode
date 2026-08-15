@@ -420,7 +420,6 @@ describe('WorkshopApp', () => {
           selections: [{
             position: 1,
             carryMode: 'direction',
-            acceptedAdvisoryRiskIds: []
           }]
         })
       })

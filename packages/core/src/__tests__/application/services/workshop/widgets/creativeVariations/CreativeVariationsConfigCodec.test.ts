@@ -101,8 +101,7 @@ const draft = (): WorkshopCreativeVariationsDraft => {
   },
   selections: [{
     position: 1,
-    carryMode: 'direction',
-    acceptedAdvisoryRiskIds: [advisoryId]
+    carryMode: 'direction'
   }],
   note: 'Keep the restraint, but let the paper do less symbolic work.'
   });
@@ -139,8 +138,7 @@ describe('CreativeVariationsConfigCodec', () => {
 
     value.selections = [{
       position: 1,
-      carryMode: 'direction',
-      acceptedAdvisoryRiskIds: []
+      carryMode: 'direction'
     }];
     expect(() => assertValid(value)).toThrow(/empty when no generated workup exists/);
   });
@@ -373,44 +371,27 @@ describe('CreativeVariationsConfigCodec', () => {
       },
       message: /card in the current workup/
     },
-    {
-      label: 'missing advisory acceptance',
-      mutate: (value: WorkshopCreativeVariationsDraft) => {
-        value.selections[0].acceptedAdvisoryRiskIds = [];
-      },
-      message: /exactly every advisory risk/
-    },
-    {
-      label: 'sibling-card risk acceptance',
-      mutate: (value: WorkshopCreativeVariationsDraft) => {
-        value.selections[0].acceptedAdvisoryRiskIds = [
-          `${WORKUP_ID}:card-2:flag-1`
-        ];
-      },
-      message: /exactly every advisory risk/
-    },
-    {
-      label: 'selected hard-conflict card',
-      mutate: (value: WorkshopCreativeVariationsDraft) => {
-        value.workup!.cards[1].invariantFlags = [{
-          id: `${WORKUP_ID}:card-2:flag-1`,
-          invariantField: 'must-not-change',
-          kind: 'hard-conflict',
-          note: 'The POV would change.'
-        }];
-        value.selections = [{
-          position: 2,
-          carryMode: 'direction',
-          acceptedAdvisoryRiskIds: []
-        }];
-      },
-      message: /card without a hard conflict/
-    }
   ])('rejects $label at semantic integrity', ({ mutate, message }) => {
     const value = draft();
     mutate(value);
     assertCreativeVariationsDraftShape(value, 'draft');
     expect(() => assertCreativeVariationsDraftIntegrity(value, 'draft')).toThrow(message);
+  });
+
+  it('treats model-declared advisory and hard-conflict flags as context, not vetoes', () => {
+    const value = draft();
+    value.workup!.cards[1].invariantFlags = [{
+      id: `${WORKUP_ID}:card-2:flag-1`,
+      invariantField: 'must-not-change',
+      kind: 'hard-conflict',
+      note: 'The POV would change.'
+    }];
+    value.selections = [
+      { position: 1, carryMode: 'direction' },
+      { position: 2, carryMode: 'full-prose' }
+    ];
+
+    expect(() => assertValid(value)).not.toThrow();
   });
 
   it('defensively clones every nested authoring record and emits a bounded summary', () => {
@@ -423,14 +404,14 @@ describe('CreativeVariationsConfigCodec', () => {
     clone.workup!.cards[0].tradeoff.gain = 'mutated';
     clone.workup!.cards[0].invariantFlags[0].note = 'mutated';
     clone.workup!.overlap.pairs[0].maximum = 99;
-    clone.selections[0].acceptedAdvisoryRiskIds.length = 0;
+    clone.selections[0].carryMode = 'full-prose';
 
     expect(source.subject.text).not.toBe('mutated');
     expect(source.surroundingContext.sourceReferences).toHaveLength(2);
     expect(source.workup!.cards[0].tradeoff.gain).not.toBe('mutated');
     expect(source.workup!.cards[0].invariantFlags[0].note).not.toBe('mutated');
     expect(source.workup!.overlap.pairs[0].maximum).toBe(originalMaximum);
-    expect(source.selections[0].acceptedAdvisoryRiskIds).toEqual([advisoryId]);
+    expect(source.selections[0].carryMode).toBe('direction');
     expect(summarizeCreativeVariationsDraft(source)).toEqual({
       subjectPreview: source.subject.text,
       selectionCount: 1

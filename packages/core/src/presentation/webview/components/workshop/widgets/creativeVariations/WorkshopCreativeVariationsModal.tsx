@@ -66,8 +66,6 @@ export type WorkshopCreativeVariationsCommitBlocker =
   | 'tool-target'
   | 'no-workup'
   | 'no-selection'
-  | 'hard-conflict-selection'
-  | 'unaccepted-advisory-risk'
   | 'artifact-compilation-failed'
   | 'over-artifact-budget';
 
@@ -109,7 +107,6 @@ export interface WorkshopCreativeVariationsModalProps {
   onCancelGenerate: () => void;
   onToggleCardSelection: (position: number) => void;
   onCarryModeChange: (position: number, mode: WorkshopCreativeVariationsCarryMode) => void;
-  onToggleAdvisoryRisk: (position: number, riskId: string) => void;
   onNoteChange: (note: string) => void;
   onCopyVariation: (prose: string) => void;
   onCommit?: () => void;
@@ -162,9 +159,6 @@ const COMMIT_BLOCKER_COPY: Record<WorkshopCreativeVariationsCommitBlocker, strin
   'tool-target': 'Switch to a persona target — tool sidecars do not take creative directions.',
   'no-workup': 'Generate a workup before committing.',
   'no-selection': 'Select at least one take to commit.',
-  'hard-conflict-selection': 'Unselect every take with a hard conflict before committing.',
-  'unaccepted-advisory-risk':
-    'Accept every advisory risk on your selected takes, or unselect those takes.',
   'artifact-compilation-failed':
     'The selected takes no longer match this workup. Reopen or regenerate before committing.',
   'over-artifact-budget':
@@ -197,7 +191,6 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   onCancelGenerate,
   onToggleCardSelection,
   onCarryModeChange,
-  onToggleAdvisoryRisk,
   onNoteChange,
   onCopyVariation,
   onCommit,
@@ -251,11 +244,10 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
   const generateDisabled = interactionLocked || generateReasons.length > 0;
 
   const selectionByPosition = React.useMemo(() => {
-    const map = new Map<number, { carryMode: WorkshopCreativeVariationsCarryMode; acceptedAdvisoryRiskIds: string[] }>();
+    const map = new Map<number, { carryMode: WorkshopCreativeVariationsCarryMode }>();
     draft.selections.forEach((selection) => {
       map.set(selection.position, {
-        carryMode: selection.carryMode,
-        acceptedAdvisoryRiskIds: selection.acceptedAdvisoryRiskIds
+        carryMode: selection.carryMode
       });
     });
     return map;
@@ -749,12 +741,10 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
                       card={card}
                       selected={selection !== undefined}
                       carryMode={selection?.carryMode ?? 'direction'}
-                      acceptedAdvisoryRiskIds={selection?.acceptedAdvisoryRiskIds ?? []}
                       comparing={comparedPositions.includes(card.position)}
                       interactionLocked={interactionLocked}
                       onToggleSelection={onToggleCardSelection}
                       onCarryModeChange={onCarryModeChange}
-                      onToggleAdvisoryRisk={onToggleAdvisoryRisk}
                       onToggleCompare={toggleCompare}
                       onCopyProse={onCopyVariation}
                     />

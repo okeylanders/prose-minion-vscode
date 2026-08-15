@@ -1,7 +1,7 @@
 # Architecture Change Runway — Creative Variations Explorer
 
 **Date:** 2026-08-10
-**Status:** Approved for implementation; Slice 4 review remediated and ready for re-review
+**Status:** Implemented and verified; Sprint 03 complete
 **Decision owner:** Okey
 **Prepared by:** Ada
 **Scope:** Sprint 03 one-shot commit ownership, Creative Variations feature slice,
@@ -41,7 +41,7 @@ and [Workshop Feature Family ADR](../adr/2026-08-03-workshop-feature-family-and-
 | Creative feature slice | Catalog-only id and planning documents | Named contracts, handler, services/codecs, prompt bundle, hook/controller, components, styles, and tests | Sprint 03 is the active feature slice | STRONG |
 | Selection intake | Workshop `SELECTION_DATA` routing serves excerpt verification only | Exact Creative subject target, closed dispatcher, and display-safe provenance conversion | Selected editor text is a primary product input | STRONG |
 | Generation boundary | Human-readable tool reports and an illustrative ZIP prototype | One sentinel-framed, exact-key, bounded JSON result plus rejected-response recovery | Wild outputs contain truncation and format drift | STRONG |
-| Comparison authority | Prototype fixture scores and prose-first carry | Versioned deterministic textual overlap; writer-owned per-card direction/prose carry and risk acceptance | The implementation must make the design claims true | STRONG |
+| Comparison authority | Prototype fixture scores and prose-first carry | Versioned deterministic textual overlap; writer-owned per-card direction/prose carry and final authority over model warnings | The implementation must make the design claims true | STRONG |
 | Future analysis handoff | Creative-variation prose embedded in many analysis reports | Deferred typed, analysis-owned intent/preset handoff; no Markdown inference | Fourteen report families vary along different dimensions | STRONG |
 
 ### Scope and highest risks
@@ -51,7 +51,7 @@ and [Workshop Feature Family ADR](../adr/2026-08-03-workshop-feature-family-and-
 | Family commit route | Its current owner and type are feature-specific | Creative dispatch is routed through Gesture or duplicate registration fails composition | HIGH |
 | Availability policy | Catalog-backed availability is the single route boundary | Lower-level tests pass while a live route bypasses or contradicts the production policy | HIGH |
 | Selection intake | The Workshop router has one current selection consumer | Creative never receives text or persists a host URI as provenance | HIGH |
-| Persisted widget config | Creative stores inputs, results, selections, carry, and accepted risks | A malformed or mismatched config hydrates and changes what the writer appears to have accepted | HIGH |
+| Persisted widget config | Creative stores inputs, results, selections, and carry | A malformed or mismatched config hydrates and changes what the writer selected | HIGH |
 | Async model run | Generate is cancellable and supersedable | A stale result settles after inputs or request ownership changed | HIGH |
 | Invariant authority | Model-produced prose can add facts or cross a hard constraint | Unaccepted risk or explicit conflict reaches the room as writer-owned context | HIGH |
 | Distinctness readout | Deterministic lexical evidence is narrower than semantic sameness | UI overclaims meaning or an average hides one collapsed pair | MODERATE |
@@ -63,7 +63,7 @@ and [Workshop Feature Family ADR](../adr/2026-08-03-workshop-feature-family-and-
 |---|---|---|
 | D1 | First-release aim | One optional `custom-aim` intent plus verbalized `Familiar`, `Adjacent`, `Tail`, or `Far tail`; blank projects as `Generate at random.` and distance defaults to `Tail`. No bound frame or analysis preset menu. |
 | D2 | Commit selection | At least one card. Carry is per selected card, defaults to direction, and requires explicit promotion to full prose. |
-| D3 | Risk authority | Advisory risks require per-risk acceptance. A card carrying a model-declared `hard-conflict` flag against `must not change` remains visible but cannot commit. Regeneration replaces risk identities and clears acceptance. |
+| D3 | Risk authority | **Amended 2026-08-15 after hands-on use:** model-declared advisory and hard-conflict flags are visible context, not commit authority. Every returned card remains writer-selectable and committable; warnings on selected cards ride the artifact. Regeneration replaces warning identities and clears selections. |
 
 ### Gate
 
@@ -162,7 +162,7 @@ packages/core/
 | Named feature commit compiler | Gesture validation/rendering is in its handler; Creative absent | Mirrored application-service owners validate an exact feature draft and produce a mechanical prepared commit | Room state, counters, persistence ordering | `WorkshopGesturePlaygroundHandler.ts:475+`; proposed Creative sibling |
 | `WorkshopCreativeVariationsHandler` | Absent | Generate/cancel/result routes, availability, and correlation | Family config ledger, provenance interpretation, or editor writes | Sprint 03 deliverables 2–3 |
 | Creative service/codec | Absent | One provider call; exact response protocol; raw rejection recovery | Report Markdown parsing or session mutation | `GesturePlaygroundService.ts:85-149,332-576` precedent |
-| Creative authoring controller | Absent | Input invalidation, workup selection, comparison, carry, risk acceptance, commit eligibility | VS Code transport or durable storage | presentation-controller rule in project guide |
+| Creative authoring controller | Absent | Input invalidation, workup selection, comparison, carry, commit eligibility | VS Code transport or durable storage | presentation-controller rule in project guide |
 | Workshop selection dispatcher | Workshop routes all `SELECTION_DATA` to excerpt verification | Closed exact-target routing for excerpt verification and Creative subject intake | Provenance interpretation or feature state | `useWorkshopAppMessageRouter.ts:86` |
 | Creative config codec | Absent | Checkpoint shape, normalization, current shape, semantic integrity, clone/summary | Generic lifecycle dispatch | Widget State Ownership ADR; Sprint 02D pipeline |
 
@@ -285,9 +285,9 @@ catalog entry.
 
 ### 2.1 Working definition and real job
 
-Creative Variations is a local, writer-controlled comparison studio. It owns a
+Creative Variations is a local, writer-controlled comparison studio. It owns an
 optional custom creative aim, optional declared invariants, one bounded generated workup,
-the writer's card/risk/carry choices, and the compact artifact wording those
+the writer's card/carry choices, and the compact artifact wording those
 choices create. It does not own report analysis, editor mutation, standing
 prose behavior, persona behavior, cross-run variation history, or Show vs.
 Tell's continuum.
@@ -300,7 +300,7 @@ Tell's continuum.
 | Open aim | Optional custom aim with explicit random fallback plus approved verbalized distance | ZIP contains the four-distance control; wild reports contain analysis-owned axes | Distance is creative pressure, not an analysis preset | Final placeholder/example copy |
 | Result shape | 3–5 exact typed cards | Wild Markdown cardinality and shape drift; prototype uses fixtures | Provider boundary must reject partial/unknown/malformed results | Exact field character caps, calibrated in Slice 2 |
 | Distinctness | Pairwise deterministic diagnosis; no ranking/removal | No current algorithm; prototype averages fixture numbers | Name it textual overlap and preserve the full pair matrix | Warning threshold fixture calibration in Slice 3 |
-| Risk authority | Advisory acceptance; model-declared `must not change` hard conflicts cannot commit | Prototype conflates accepted risk with canon and prose carry | Persist exact v1 flags and host-derived ids defined below | — |
+| Risk authority | Writer decides which returned cards commit; model warnings remain visible context | Prototype conflates warning strength with commit authority | Persist exact v1 flags and host-derived ids, but no redundant acceptance state | — |
 | Reopen | Exact authoring truth | Current widget config lifecycle supports exact feature codecs | Persist semantic state, not focus/scroll/expanded panels | — |
 | Analysis handoff | Report-prefill is deferred | Fourteen report families vary along distinct dimensions | Future presets must be emitted by each analysis owner | Future prompt-owner agreement |
 
@@ -339,13 +339,13 @@ WorkshopCreativeVariationsDraft
 │   │       └── { id, invariantField, advisory-risk | hard-conflict, note }
 │   └── overlap { algorithmVersion, every unordered pair, maximumPair }
 │   }
-├── selections[] { position, direction | full-prose, acceptedAdvisoryRiskIds[] }
+├── selections[] { position, direction | full-prose }
 └── note
 ```
 
 Parallel arrays and maps are rejected: one selection record owns its card
-position, carry mode, and accepted risks, making impossible pairings easier for
-the codec to reject. The Workshop session schema remains the sole persistence
+position and carry mode, making impossible pairings easier for the codec to
+reject. The Workshop session schema remains the sole persistence
 migration clock; `generationProtocolVersion` identifies only the provider-result
 grammar and never authorizes independent widget checkpoint migration.
 
@@ -366,15 +366,15 @@ unknown response keys reject the whole response before ids or overlap are derive
 Every flag must reference a writer field whose trimmed value is nonblank;
 otherwise the response codec rejects the workup rather than letting the model
 invent an invariant. `hard-conflict` is additionally valid only for
-`must-not-change`. V1 has no additional risk-category taxonomy. On commit, every
-selected card must reference exactly all of its advisory-risk ids—no missing,
-extra, duplicate, or sibling-card ids—and no selected card may contain a hard
-conflict. Response-codec and persisted-integrity suites both exercise the blank-
-field rejection.
+`must-not-change`. V1 has no additional risk-category taxonomy. Flags remain
+model-declared evidence: every returned card may be selected and committed, and
+all flags on selected cards ride the artifact so the room receives the warning
+without gaining veto authority. Response-codec and persisted-integrity suites
+both exercise the blank-field rejection.
 
 Changing subject, surrounding context, either invariant, aim, distance, or count
 invalidates the current workup and clears selections, carry modes, and risk
-acceptances. Starting whole-workup regeneration does the same before spend, then
+identities. Starting whole-workup regeneration does the same before spend, then
 mints a fresh workup id. The note is commit metadata and does not invalidate the
 workup. These rules prevent positional choices from silently transferring to new
 model output.
@@ -535,8 +535,8 @@ editor apply are not unknowns in this sprint; they are explicitly absent.
 | Creative code passes unit tests but fails its real route | Lower-level tests bypass the production composition and availability policy | production-policy route matrix; exact-id policy only for isolated future/non-live widget tests |
 | Editor URI leaks into persisted authoring truth | Selection payload is copied wholesale | dispatcher target test and provenance conversion that drops `sourceUri` |
 | Old generation overwrites cards after an edit | token ownership cleared only on a second request, not every input mutation | authoring-controller invalidation and stale-result tests |
-| Reopened chip shows accepted risks that no longer exist | loose ids or parallel state arrays | card-local stable ids; codec referential-integrity test |
-| Writer commits a conflict by acknowledging it as “risk” | one undifferentiated flag type | closed advisory vs hard-conflict union; host validation repeats UI rule |
+| Reopened chip shows warnings that no longer belong to its workup | loose ids or parallel state arrays | card-local stable ids; codec referential-integrity test |
+| Model-declared warning silently becomes commit authority | warning strength is treated as a veto | every returned card stays selectable; selected-card warnings ride the artifact |
 | One duplicate pair hides behind a healthy average | set score averages all cards | persist/display full matrix and maximum pair |
 | Future Show vs. Tell imports Creative card semantics | premature universal variation component | pairwise feature-isolation and reproduction tests |
 | Provider returns useful but malformed prose and evidence disappears | parser only throws/logs | rejected-response recovery store plus user-facing recovery notice |
@@ -703,7 +703,7 @@ only after the ownership move exists.
 |---|---|---|
 | Authoring truth | Durable inputs and writer decisions needed to reopen the same editable widget state; excludes focus, scroll, and expanded panels. | approved Sprint 03 contract |
 | Advisory risk | Model-declared additive uncertainty that may commit only after the writer explicitly accepts it. | proposed Creative variant |
-| Hard conflict | A model-declared typed flag against the writer's nonblank `must not change` field; visible for comparison but its card is commit-ineligible. Deterministic code validates the flag contract, not the prose's semantics. | proposed Creative variant |
+| Hard conflict | A model-declared strong warning against the writer's nonblank `must not change` field. It remains visible and rides the artifact when selected, but never blocks writer selection or commit. Deterministic code validates the flag contract, not the prose's semantics. | Creative variant |
 | Workup id | Fresh host-minted `cvw-<UUID>` for one full-generation attempt; it namespaces derived card/flag identities and is never supplied by the model. | proposed Creative contract |
 | Textual overlap | Versioned deterministic surface-reuse score; it does not claim semantic equivalence. | `textual-overlap-v2` |
 | Thread artifact | One-turn host-minted payload delivered with a writer turn and never edited in history. | current one-shot rail |

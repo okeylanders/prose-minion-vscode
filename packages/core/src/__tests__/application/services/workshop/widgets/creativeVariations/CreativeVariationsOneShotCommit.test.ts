@@ -13,7 +13,6 @@ import type {
   WorkshopCreativeVariationsDraft
 } from '@messages';
 import {
-  ADVISORY_RISK_ID,
   generatedDraft
 } from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
 
@@ -39,7 +38,7 @@ const payload = (
 describe('CreativeVariations one-shot commit', () => {
   it('compiles the direction-only artifact exactly', () => {
     const artifact = buildCreativeVariationsArtifact(selectedDraft([
-      { position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }
+      { position: 1, carryMode: 'direction' }
     ]));
 
     expect(artifact).toBe(
@@ -54,7 +53,7 @@ describe('CreativeVariations one-shot commit', () => {
 
   it('compiles the full-prose artifact exactly after explicit promotion', () => {
     const artifact = buildCreativeVariationsArtifact(selectedDraft([
-      { position: 1, carryMode: 'full-prose', acceptedAdvisoryRiskIds: [] }
+      { position: 1, carryMode: 'full-prose' }
     ]));
 
     expect(artifact).toBe(
@@ -67,14 +66,10 @@ describe('CreativeVariations one-shot commit', () => {
     );
   });
 
-  it('compiles mixed carry modes, accepted risks, and the writer note without the cloud', () => {
+  it('compiles mixed carry modes, model warnings, and the writer note without the cloud', () => {
     const draft = selectedDraft([
-      { position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] },
-      {
-        position: 2,
-        carryMode: 'full-prose',
-        acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID]
-      }
+      { position: 1, carryMode: 'direction' },
+      { position: 2, carryMode: 'full-prose' }
     ], { note: 'Let Jill challenge the second take first.' });
 
     const artifact = buildCreativeVariationsArtifact(draft);
@@ -88,8 +83,8 @@ describe('CreativeVariations one-shot commit', () => {
       + 'Writer-declared invariants\n'
       + 'Must survive: The distrust is old and funeral-rooted. The mug is offered, never handed.\n'
       + 'Must not change: Her last line stays “Somebody had to.”\n\n'
-      + 'Accepted advisory risks\n'
-      + 'Take 2: adds a fact — the chair\n\n'
+      + 'Model-declared invariant warnings\n'
+      + 'Take 2 — advisory warning for Must survive: adds a fact — the chair\n\n'
       + 'Writer note\n'
       + 'Let Jill challenge the second take first.'
     );
@@ -102,7 +97,7 @@ describe('CreativeVariations one-shot commit', () => {
 
   it('does not invent either invariant section when the writer left both blank', () => {
     const draft = selectedDraft([
-      { position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }
+      { position: 1, carryMode: 'direction' }
     ], {
       invariants: { mustSurvive: '', mustNotChange: '' },
       workup: {
@@ -123,7 +118,7 @@ describe('CreativeVariations one-shot commit', () => {
 
   it('prepares the exact authored draft and clone identity for the shared coordinator', () => {
     const draft = selectedDraft([
-      { position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }
+      { position: 1, carryMode: 'direction' }
     ], {
       intent: { ...generatedDraft.intent, aim: '' }
     });
@@ -168,27 +163,29 @@ describe('CreativeVariations one-shot commit', () => {
     });
   });
 
-  it.each([
-    [
-      'an unaccepted advisory risk',
-      selectedDraft([{ position: 2, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }]),
-      /Accept every advisory risk/
-    ],
-    [
-      'a selected hard-conflict card',
-      selectedDraft([{ position: 3, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }]),
-      /hard conflict/
-    ]
-  ])('rejects %s', (_label, draft, message) => {
-    expect(prepareCreativeVariationsOneShotCommit(payload(draft)))
-      .toEqual({ ok: false, reason: 'invalid-draft', message: expect.stringMatching(message) });
+  it('lets the writer commit advisory and hard-conflict-labelled cards', () => {
+    const draft = selectedDraft([
+      { position: 2, carryMode: 'direction' },
+      { position: 3, carryMode: 'full-prose' }
+    ]);
+
+    const result = prepareCreativeVariationsOneShotCommit(payload(draft));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.commit.artifact.content).toContain(
+        'Take 2 — advisory warning for Must survive: adds a fact — the chair'
+      );
+      expect(result.commit.artifact.content).toContain(
+        'Take 3 — strong warning for Must not change: moves her closing line'
+      );
+    }
   });
 
   it('keeps host-derived identity integrity load-bearing on the commit path', () => {
     const draft = selectedDraft([{
       position: 2,
-      carryMode: 'direction',
-      acceptedAdvisoryRiskIds: ['forged-risk-id']
+      carryMode: 'direction'
     }]);
     draft.workup!.cards[1].invariantFlags[0].id = 'forged-risk-id';
 
@@ -203,7 +200,7 @@ describe('CreativeVariations one-shot commit', () => {
   it('accepts the exact artifact limit and rejects one character over it', () => {
     const withProseLength = (proseLength: number): WorkshopCreativeVariationsDraft => {
       const draft = selectedDraft([
-        { position: 1, carryMode: 'full-prose', acceptedAdvisoryRiskIds: [] }
+        { position: 1, carryMode: 'full-prose' }
       ]);
       const cards = draft.workup!.cards.map((card) => card.position === 1
         ? { ...card, prose: 'x'.repeat(proseLength) }

@@ -1,6 +1,6 @@
 # Sprint 03: Creative Variations Explorer
 
-**Status**: In progress — Slice 6 review findings remediated and ready for re-review; live for integrated hands-on testing
+**Status**: Complete — Slice 7 closure and writer-authority correction verified; live for integrated hands-on testing
 **Priority**: High
 **Branch**: `sprint/conversation-widgets-03-creative-variations` -> PR into `epic/conversation-widgets`
 **Depends on**: Sprint 02D merged into `epic/conversation-widgets`; the widget host, session-owned config ledger, one-shot thread-artifact rail, and clone-and-recommit lifecycle are all proven
@@ -59,19 +59,18 @@ will be its deliberately specialized sibling.
 - **Commit is compact.** The discarded generation cloud never reaches the room.
   Commit requires at least one selected card. Each selected card carries
   direction by default; full prose is an explicit per-card promotion and shares
-  the same bounded artifact budget. Advisory risks require explicit per-risk
-  acceptance before that card may commit and ride the artifact in either carry
-  mode. A card carrying a model-declared `hard-conflict` flag against `must not
-  change` is commit-ineligible. Every whole-workup regeneration has a fresh
-  host-minted workup id and atomically clears selections, carry modes, and risk
-  acceptances before the new cards settle. The writer turn carries the existing
+  the same bounded artifact budget. Model-declared advisory and hard-conflict
+  flags remain visible and ride the artifact for selected cards, but neither
+  kind owns commit authority: every returned card remains writer-selectable and
+  committable. Every whole-workup regeneration has a fresh host-minted workup
+  id and atomically clears selections and carry modes before the new cards
+  settle. The writer turn carries the existing
   bounded display-safe subject preview so a direction has a referent; the source
   passage itself remains excluded from the compact artifact.
 - **Exact reopen preserves authoring truth, not transient chrome.** The persisted
   draft contains inputs, display-safe provenance, generated workup, selections,
-  each selected card's carry mode, accepted advisory-risk ids, and the writer
-  note. Focus, scroll position, open comparison panels, and similar presentation
-  state remain ephemeral.
+  each selected card's carry mode, and the writer note. Focus, scroll position,
+  open comparison panels, and similar presentation state remain ephemeral.
 
 ## Scope / deliverables
 
@@ -85,16 +84,16 @@ will be its deliberately specialized sibling.
    failure state, exact-duplicate rejection, plus versioned deterministic
    pairwise textual-overlap calculation and high-overlap warnings.
 4. Structured variation cards, multi-select, side-by-side comparison, explicit
-   per-card carry mode, advisory-risk acceptance, hard-conflict blocking,
-   bounded artifact rendering, atomic commit, and chip re-open.
+   per-card carry mode, visible model-declared invariant warnings, writer-owned
+   selection authority, bounded artifact rendering, atomic commit, and chip re-open.
 5. A narrow shared variation-workup mechanical seam only if it can serve Sprint
    05 without knowing Creative Variations vocabulary. Feature prompts, invariant
    semantics, flags, and card interpretation remain feature-owned.
 6. Tests for invalid/oversized responses, cancellation and stale-result
-   correlation, exact duplicates versus high overlap, advisory-risk acceptance,
-   blank-invariant flag rejection, hard-conflict blocking, compact mixed-mode
-   commit payloads, the exact durable reopen boundary, clone behavior, and no
-   editor mutation.
+   correlation, exact duplicates versus high overlap, passive advisory and hard
+   warning presentation, blank-invariant flag rejection, writer-authority commit,
+   compact mixed-mode payloads, the exact durable reopen boundary, clone
+   behavior, and no editor mutation.
 
 ## Implementation slices and review gates
 
@@ -131,9 +130,8 @@ was the deliberate Slice 4 boundary and is superseded by Slice 5.
   `Generate at random.` for the request, while blank invariant fields remain
   empty and therefore declare no preservation constraints.
 - `useCreativeVariationsAuthoring` owns transient draft, intake, invalidation,
-  generation presentation state, selections, carry modes, and accepted risks.
-  Its persistence contract is explicitly empty and it has no transport
-  vocabulary.
+  generation presentation state, selections, and carry modes. Its persistence
+  contract is explicitly empty and it has no transport vocabulary.
 - `dispatchWorkshopSelectionData` is the closed Workshop-side exact target router for the
   existing selection wire. Editor-derived provenance keeps only display-safe
   path/range fields while the text remains exact; clipboard and edited text are
@@ -176,7 +174,7 @@ worktree remains uncommitted and unpushed.
 - `CreativeVariationsArtifact` is the sole deterministic artifact projection
   used by the host compiler and the modal usage meter. It carries only selected
   directions or explicitly promoted prose, nonblank declared invariants,
-  accepted selected advisory risks, and the optional note.
+  model-declared warnings on selected cards, and the optional note.
 - `CreativeVariationsOneShotCommit` owns Creative semantic eligibility and the
   exact artifact-budget check. The closed one-shot operation registry adapts
   that feature result into the existing feature-neutral coordinator, which
@@ -232,9 +230,9 @@ the Slice 6 starting baseline `41f5b717`.
   logged on rejection, and opening the Creative sheet resets stale transport
   state after a lost acknowledgement.
 - A named Creative eligibility service supplies both host refusal messages and
-  webview blocker codes. Exact advisory-risk set equality, selected-card
-  membership, hard-conflict exclusion, tool-target refusal, and artifact
-  compilation failure are represented consistently at both boundaries.
+  webview blocker codes. Selected-card membership, tool-target refusal, and
+  artifact compilation failure are represented consistently at both boundaries;
+  model-declared warning strength does not grant the model commit authority.
 - The controller captures clone provenance when it seeds the draft, defers
   model invalidation across a pending commit, and refuses late clone responses
   while another Creative sheet is already open. The coordinator validates clone
@@ -270,9 +268,8 @@ unavailable in this environment; no fixture-only substitute is claimed.
 
 ### Slice 6 implementation evidence — 2026-08-13
 
-Slice 6 landed as `333e28e5`. Its review findings are remediated in the current
-worktree and ready for re-review; the remediation remains uncommitted and
-unpushed.
+Slice 6 landed as `333e28e5`. Its review findings were remediated in
+`0e4cd290`, with the context-limit adjustment in `c9432788`.
 
 - Creative Variations contributes one named, strict recommendation codec to the
   closed family registry. Its complete final control frame carries the exact
@@ -292,7 +289,7 @@ unpushed.
   ownership; checkpoint import locally normalizes away only the offending
   recommendation so the rest of the session remains recoverable.
 - The recommendation seed is input-only. It has no provenance, generated
-  workup, selection, risk acceptance, note, or commit authority. Opening the
+  workup, selection, warning decision, note, or commit authority. Opening the
   exact correlated chip mints display-safe `persona-prefill` custody with the
   canonical persona id and an unedited state in the writer-owned controller,
   copies source references defensively, leaves
@@ -331,7 +328,8 @@ fixture-only screenshot is represented as integrated UI evidence.
 
 All fourteen review findings in
 `docs/pr-reviews/sprint-03-creative-variations-slice-6-333e28e5-review-v2.md`
-are addressed in the current worktree.
+were addressed in `0e4cd290`; the prompt documentation and context-limit
+follow-ups landed in `7a7accfb` and `c9432788`.
 
 - Every recommendation registry entry now owns an exact response-frame ceiling.
   The coarse pre-id envelope is derived from those entries, and the selected
@@ -361,6 +359,130 @@ Remediation verification:
   passed; webpack retained its three advisory webview-size warnings;
 - `git diff --check` passed.
 
+### Slice 6 acceptance — 2026-08-15
+
+Slice 6 is **complete and accepted** following the CC re-review of the
+remediation. The review verdict was that all fourteen findings were genuinely
+addressed, with no blocking issue. CC independently reproduced the clean
+install verification: 208 Jest suites, 2,293 tests, 2 snapshots, all three
+TypeScript projects, ESLint with 0 errors and 956 existing warnings, and the
+production build/bundle checks.
+
+One non-blocking Slice 7 cleanup was identified: remove the four unused
+vocabulary alternatives (`aim`, `distance`, `sampling-distance`, and
+`take-count`) from the Creative Variations allowlist in
+`packages/core/src/__tests__/architecture/boundaries.test.ts`. The review
+verified that removing them leaves the relevant suite green; the allowlist
+currently grants permissions for tokens the scanned source does not contain.
+
+The review also recorded two documentation follow-ups for Slice 7: update
+stale language claiming the remediation is uncommitted/unpushed, and preserve
+the accepted notes about the optional guest `personaId` seam and the
+unshipped-config decode boundary. Neither blocks Slice 7.
+
+- `WorkshopTurn.personaId` remains optional on the broad heterogeneous turn
+  contract. Production Guest turns still carry their canonical persona id, and
+  the Creative opening controller fails closed when a recommendation arrives
+  without the producing persona identity.
+- Creative Variations widget configs remain unshipped. The strict
+  `persona-prefill` provenance shape therefore stays at the accepted decode
+  boundary with `CreativeVariationsCheckpointNormalization = never`; Slice 7
+  adds no compatibility normalization or migration arm.
+
+### Slice 7 closure and evidence — 2026-08-15
+
+Sprint 03 is **complete**. Slice 7 changed no product behavior: it tightened the
+architecture contract, completed the production-policy witnesses, reconciled
+current-state documentation, and ran the full closure gate.
+
+- The Creative allowlist for `workshopWidgetAskPrefill.ts` now permits only the
+  vocabulary actually present in that generic source. The unused `aim`,
+  `distance`, `sampling-distance`, and `take-count` alternatives are removed;
+  `creative-aim` remains because the source genuinely contains it.
+- A focused architecture witness pins both shipped recommendation/generation
+  owners to `WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY` and rejects the fixed
+  test policy from those production owners.
+- The production-composed route suite now proves Creative generation through
+  the live catalog with exact token/workup correlation and proves a dormant
+  widget refuses through the same catalog policy. No test-only availability
+  shim participates in that matrix.
+- Current architecture and Slice 6 handoff documents now name the Widget Host
+  commit owner, one-shot coordinator, Creative route owner, accepted Slice 6
+  commits, optional Guest-persona seam, and unshipped-config decode boundary.
+
+Production-backed route matrix:
+
+| Path | Closure evidence |
+|---|---|
+| Live catalog policy | Architecture witness plus `WorkshopRoomHandler.seams.test.ts` generation and commit routes use the production-composed catalog policy. |
+| Host | `WorkshopRunCompletion.test.ts` attaches the exact Creative seed to the accepted Host turn and validates current source addresses. |
+| Guest | The same suite now attaches Creative prefill to the exact invited Guest turn and asserts canonical `personaId`. |
+| Tool turn | The direct-tool completion strips the frame, attaches no recommendation, and records `participant_not_persona`. |
+| Unavailable widget/source | The production route refuses dormant `show-vs-tell`; run completion also refuses a Creative source address absent from current session truth. |
+| Malformed frame | `CreativeVariationsRecommendation.test.ts` covers the strict frame grammar and `WorkshopRunCompletion.test.ts` proves whole-control rejection leaves no chip. |
+| Correlation | Production generation echoes the exact request token and host-minted workup id; turn-chip/opening tests preserve exact turn and persona correlation. |
+| Prefill | Ask-prefill, mounted Workshop, turn-chip, and opening-controller suites cover input-only seeding and overwrite refusal. |
+| Writer authority | Mounted and modal tests prove opening a prefill emits no automatic generate or commit, while host commit tests independently revalidate eligibility before mutation. |
+
+Final verification:
+
+- focused Slice 7 architecture/route/persistence/presentation matrix: **17
+  suites, 308 tests passed**;
+- full Jest: **208 suites, 2,298 tests, and 2 snapshots passed**;
+- `npm run typecheck`: core, webview, and extension TypeScript projects passed;
+- `npm run lint`: **0 errors and 956 existing warnings**;
+- `npm run build`: clean production resource staging, the extension and webview
+  webpack bundles, and the three-utility bundle sentinel passed; webpack kept
+  its three accepted webview-size advisories;
+- exact root F5 prelaunch command `npm run watch`: resource staging and both
+  development bundles compiled successfully; the watcher was stopped
+  intentionally after both compilers reported success;
+- `git diff --check`: passed.
+
+No live billable provider call or fixture-only screenshot is claimed. Human F5
+visual inspection remains an optional hands-on check, not a substitute for the
+production-backed mounted and route evidence above.
+
+Accepted remaining review dispositions are unchanged: Slice 5 F-09 (autosave
+overlap re-derivation), F-12 (named commit-freeze seam), and F-16 (compiler
+arm-guard symmetry) remain deferred; F-17 remains N/A under the accepted Slice
+4 blocker-union convention. Bound-frame menus, partial regeneration,
+report-prefill, automatic editor mutation, and standing directives remain out
+of scope.
+
+### Post-closure writer-authority correction — 2026-08-15
+
+Hands-on review exposed the accepted D3 risk gate as unnecessary consent
+ceremony: every advisory id had to be accepted, so the toggle offered no choice
+except “click everything” or abandon the selected take. A model-declared hard
+conflict also disabled selection even though deterministic code validates only
+the flag grammar, not the prose's semantics. D3 is amended accordingly: the
+model may warn, but it is not the bouncer.
+
+- `WorkshopCreativeVariationsSelection` now owns only card position and carry
+  mode. The redundant `acceptedAdvisoryRiskIds` state, controller action,
+  persisted-shape arm, and exact-set eligibility rule are removed.
+- Advisory flags render as passive warnings. A hard-conflict label renders as a
+  stronger warning that explicitly names writer authority; every returned card
+  remains selectable and committable.
+- The host still revalidates selected-card membership, generated-workup
+  integrity, and the artifact budget. Warning strength grants no commit veto.
+- Every model-declared invariant warning on a selected card rides the compact
+  artifact automatically, so the room receives the evidence without requiring
+  a performative acceptance click.
+
+Correction verification:
+
+- focused writer-authority matrix: **9 suites, 155 tests passed**;
+- full Jest: **208 suites, 2,294 tests, and 2 snapshots passed**;
+- core, webview, and extension TypeScript projects passed;
+- ESLint: **0 errors and 956 existing warnings**;
+- clean production resource staging, both webpack bundles, and the bundle
+  sentinel passed; webpack retained its three accepted size advisories;
+- root F5 `npm run watch`: resource staging and both development compilers
+  succeeded before the watcher was intentionally stopped;
+- `git diff --check`: passed.
+
 ## Out of scope
 
 - Bound-frame menus, partial regeneration, history across multiple workups, and
@@ -375,9 +497,9 @@ Remediation verification:
 - A writer can compare several meaningfully different takes under visible,
   declared constraints and commit one or more chosen cards. New selections carry
   direction; only individually promoted cards carry full prose.
-- Every advisory risk on a selected card is explicitly accepted before commit;
-  any model-declared `hard-conflict` flag against `must not change` keeps that
-  card ineligible.
+- Advisory and hard-conflict labels remain visible on their cards and ride the
+  artifact when selected, but every returned card remains writer-selectable and
+  committable; model output never owns the final creative decision.
 - A malformed, duplicate, oversized, cancelled, or stale workup cannot settle
   into the current authoring state or create a room turn. High non-identical
   overlap warns without ranking, removal, or implicit regeneration.

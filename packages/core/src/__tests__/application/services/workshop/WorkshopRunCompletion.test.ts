@@ -330,6 +330,49 @@ describe('completeWorkshopRun', () => {
     expect(turn.content).toBe('Let us put unlike possibilities beside each other.');
   });
 
+  it('attaches a Creative prefill to the exact invited Guest persona turn', () => {
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
+    session.beginPersonaGuestMessage(
+      'margot',
+      'req-1',
+      'Prepare unlike versions of this beat.'
+    );
+
+    const turn = completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Margot',
+      result: result([
+        'Let us widen the possibilities without choosing one for you.',
+        '',
+        creativeRecommendationFrame({
+          mustSurvive: 'The refusal remains implicit.',
+          mustNotChange: 'Keep the chipped mug.',
+          distance: 'far-tail',
+          requestedCount: '5'
+        })
+      ].join('\n'), { conversationId: 'margot-conv' }),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy('Margot'),
+      discardConversation,
+      log,
+      events
+    })!;
+
+    expect(turn).toMatchObject({
+      participant: 'guest',
+      personaId: 'margot',
+      widgetRecommendation: {
+        widgetId: 'creative-variations',
+        seed: expect.objectContaining({
+          distance: 'far-tail',
+          requestedCount: 5
+        })
+      }
+    });
+  });
+
   it('rejects a Creative prefill whose source address is no longer available', () => {
     session.beginPersonaMessage('req-1', 'Prepare unlike versions of this beat.');
     const turn = settle({

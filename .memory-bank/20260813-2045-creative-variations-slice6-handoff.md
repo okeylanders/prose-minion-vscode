@@ -3,8 +3,9 @@
 **Recorded**: 2026-08-13 20:45 CDT
 **Branch**: `sprint/conversation-widgets-03-creative-variations`
 **Starting / required ancestor**: `41f5b717` (`docs: align Creative Variations runway with live availability`)
-**Current gate**: Slice 6 review findings remediated and ready for re-review
-**Publication**: implementation commit `333e28e5` pushed; remediation uncommitted and unpushed
+**Current gate**: Slice 6 accepted; Slice 7 closure and writer-authority correction verified; Sprint 03 complete
+**Publication**: implementation `333e28e5`, remediation `0e4cd290`, prompt-doc
+alignment `7a7accfb`, and context-limit adjustment `c9432788` are committed and pushed
 **Abstraction register**: `imagine`, bounded by the approved implementation runway
 
 ## Result
@@ -50,7 +51,7 @@ variation framework or move Creative vocabulary into family mechanics.
 6. `useCreativeVariationsAuthoring` mints `persona-prefill` custody with the
    canonical persona id and unedited state, seeds exact inputs, defaults only
    omitted distance/count values, and initializes no workup, selections,
-   accepted risks, or note. Editing the subject preserves custody and records
+   or note. Editing the subject preserves custody and records
    `editedByWriter`.
 7. `WorkshopApp`, `WorkshopCreativeVariationsModal`, and `WorkshopTurnBubble`
    provide the attribution banner, honest provenance copy, and catalog-derived
@@ -66,7 +67,7 @@ The recommendation seed may contain only authoring inputs:
 - one closed distance and a count of 3, 4, or 5.
 
 It cannot contain provenance, a workup, cards, overlap evidence, selections,
-carry modes, accepted risk ids, a writer note, or any committed identity. The
+carry modes, a writer note, or any committed identity. The
 controller, not the persona, assigns display-safe prefill custody. The canonical
 persona id and whether the writer edited the prefill survive exact commit and
 reopen; neither state claims a file or room-material origin.
@@ -87,8 +88,8 @@ reopen; neither state claims a file or room-material origin.
 
 ## Review remediation addendum — 2026-08-14
 
-The v2 review of `333e28e5` raised fourteen findings; all are addressed in the
-current remediation worktree. The material changes are:
+The v2 review of `333e28e5` raised fourteen findings; all were addressed in
+`0e4cd290` and accepted on re-review. The material changes are:
 
 - exact per-widget registry ceilings plus a 7,823-character assembled-prompt
   pin, completing the 2026-07-31 recommendation prompt-assembly tech debt;
@@ -124,17 +125,25 @@ exact persona turn, opening/pending-reopen overwrite refusal, input-only draft
 creation, custody edits/reopen, mounted chip-to-prefill behavior, and absence of
 automatic generate/commit messages.
 
-## Review boundary and remaining work
+## Accepted seams and remaining work
 
-- Stop here for Slice 6 re-review. Do not commit or push the remediation without
-  explicit publication authorization.
-- Slice 7 owns the final architecture witnesses, production-policy route matrix,
-  current-state documentation, and final sprint closeout.
+- Slice 7 completed the final architecture witnesses, production-policy route
+  matrix, current-state documentation, and sprint closeout on 2026-08-15.
+- A post-closure hands-on correction removed advisory acceptance and
+  hard-conflict commit vetoes. Model-declared invariant flags remain visible and
+  ride selected-card artifacts, while every returned card remains under writer
+  selection and commit authority.
+- The optional `personaId` on the broad Guest turn contract remains an accepted
+  seam. Production Guest turns carry their canonical id, while Creative prefill
+  opening refuses a recommendation whose producing persona id is absent.
+- Creative Variations configs remain unshipped. The strict provenance-shape
+  change therefore stays at the accepted decode boundary with
+  `CreativeVariationsCheckpointNormalization = never`; no compatibility
+  normalization or migration arm is added.
 - Report-prefill, partial/card regeneration, bound frames, cross-workup history,
   and editor apply remain out of scope.
 - Human F5 visual inspection may still validate normal/narrow layout and the
   chip/banner interaction; no fixture-only screenshot is claimed here.
 
-Protected pre-existing untracked artifacts were not touched, staged, moved, or
-deleted: `.todo/tech-debt/2026-08-13-fresh-host-time-frame-dropped.md`,
-`Prose Minion.zip`, and `docs/architecture/2026-08-13-workshop-prompt-assembly/`.
+The protected pre-existing `Prose Minion.zip` artifact remains untouched,
+unstaged, unmoved, and undeleted.

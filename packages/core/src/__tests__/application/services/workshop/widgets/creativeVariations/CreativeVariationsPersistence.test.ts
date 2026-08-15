@@ -101,7 +101,7 @@ describe('Creative Variations persistence integration', () => {
     const exactDraft: WorkshopCreativeVariationsDraft = {
       ...JSON.parse(JSON.stringify(generatedDraft)) as WorkshopCreativeVariationsDraft,
       intent: { ...generatedDraft.intent, aim: '' },
-      selections: [{ position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }],
+      selections: [{ position: 1, carryMode: 'direction' }],
       note: 'Preserve this authored note.'
     };
     const config = session.createWidgetConfig({

@@ -531,7 +531,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
     reason: 'closed writer-ask prefill registry',
-    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|creative-aim|sampling-distance|take-count|aim|distance)/
+    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|creative-aim)/
   },
   {
     file: 'shared/constants/promptBudgets.ts',
@@ -993,6 +993,34 @@ describe('architectural boundaries', () => {
       .toHaveLength(16);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
+  });
+
+  it('keeps shipped Workshop widget routes on the catalog availability policy', () => {
+    const productionAvailabilityOwners = [
+      path.join(
+        SRC_ROOT,
+        'application',
+        'handlers',
+        'domain',
+        'workshop',
+        'WorkshopSliceComposition.ts'
+      ),
+      path.join(
+        SRC_ROOT,
+        'application',
+        'services',
+        'workshop',
+        'WorkshopRunCompletion.ts'
+      )
+    ];
+    const sources = productionAvailabilityOwners.map((file) => fs.readFileSync(file, 'utf8'));
+
+    expect(sources.every((source) =>
+      source.includes('WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY')
+    )).toBe(true);
+    expect(sources.some((source) =>
+      source.includes('fixedWorkshopWidgetAvailabilityPolicy')
+    )).toBe(false);
   });
 
   it('only WorkshopRoomHandler constructs the Workshop session-state envelope', () => {

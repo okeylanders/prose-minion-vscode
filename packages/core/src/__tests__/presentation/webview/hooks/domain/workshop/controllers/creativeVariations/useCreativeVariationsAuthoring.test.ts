@@ -11,7 +11,6 @@ import {
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsArtifact';
 import { MessageType, type SelectionDataMessage } from '@messages';
 import {
-  ADVISORY_RISK_ID,
   generatedDraft
 } from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
 
@@ -312,13 +311,11 @@ describe('useCreativeVariationsAuthoring', () => {
     act(() => {
       result.current.toggleCardSelection(2);
       result.current.changeCarryMode(2, 'full-prose');
-      result.current.toggleAdvisoryRisk(2, ADVISORY_RISK_ID);
       result.current.changeNote('Keep this note.');
     });
     expect(result.current.draft.selections).toEqual([{
       position: 2,
-      carryMode: 'full-prose',
-      acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID]
+      carryMode: 'full-prose'
     }]);
 
     act(() => result.current.changeAim('A materially different aim.'));
@@ -437,8 +434,7 @@ describe('useCreativeVariationsAuthoring', () => {
       intent: { ...generatedDraft.intent, aim: '' },
       selections: [{
         position: 2,
-        carryMode: 'full-prose' as const,
-        acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID]
+        carryMode: 'full-prose' as const
       }],
       note: 'Keep the silence.'
     };
@@ -469,7 +465,7 @@ describe('useCreativeVariationsAuthoring', () => {
   it('commits an eligible clone under its source config without mutating the draft', () => {
     const reopenedDraft = {
       ...clone(generatedDraft),
-      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+      selections: [{ position: 1, carryMode: 'direction' as const }]
     };
     const props = options({ opening: cloneOpening(reopenedDraft, 'wc-7') });
     const { result } = renderHook(() => useCreativeVariationsAuthoring(props));
@@ -484,7 +480,7 @@ describe('useCreativeVariationsAuthoring', () => {
   it('binds clone lineage to the draft seed rather than a later opening response', () => {
     const reopenedDraft = {
       ...clone(generatedDraft),
-      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+      selections: [{ position: 1, carryMode: 'direction' as const }]
     };
     const props = options({ opening: cloneOpening(reopenedDraft, 'wc-7') });
     const { result, rerender } = renderHook(() => useCreativeVariationsAuthoring(props));
@@ -499,7 +495,7 @@ describe('useCreativeVariationsAuthoring', () => {
   it('locks duplicate commit and destructive authoring changes while commit is pending', () => {
     const reopenedDraft = {
       ...clone(generatedDraft),
-      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }],
+      selections: [{ position: 1, carryMode: 'direction' as const }],
       note: 'Exact note.'
     };
     const props = options({
@@ -525,7 +521,7 @@ describe('useCreativeVariationsAuthoring', () => {
   it('preserves the exact authored clone on host refusal and closes only on acceptance', () => {
     const reopenedDraft = {
       ...clone(generatedDraft),
-      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }],
+      selections: [{ position: 1, carryMode: 'direction' as const }],
       note: 'Keep all of this.'
     };
     const props = options({ opening: cloneOpening(reopenedDraft) });
@@ -546,7 +542,7 @@ describe('useCreativeVariationsAuthoring', () => {
   it('defers model invalidation until a pending commit settles', () => {
     const reopenedDraft = {
       ...clone(generatedDraft),
-      selections: [{ position: 1, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+      selections: [{ position: 1, carryMode: 'direction' as const }]
     };
     const props = options({
       opening: cloneOpening(reopenedDraft),
@@ -567,23 +563,23 @@ describe('useCreativeVariationsAuthoring', () => {
     );
   });
 
-  it('uses exact advisory-set equality and blocks an unbuildable selected take', () => {
-    const duplicateRiskDraft = {
+  it('allows flagged takes and blocks only an unbuildable selected take', () => {
+    const flaggedDraft = {
       ...clone(generatedDraft),
-      selections: [{
-        position: 2,
-        carryMode: 'direction' as const,
-        acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID, ADVISORY_RISK_ID]
-      }]
+      selections: [
+        { position: 2, carryMode: 'direction' as const },
+        { position: 3, carryMode: 'full-prose' as const }
+      ]
     };
-    const duplicate = options({ opening: cloneOpening(duplicateRiskDraft) });
-    const duplicateHook = renderHook(() => useCreativeVariationsAuthoring(duplicate));
-    expect(duplicateHook.result.current.commitBlockers).toContain('unaccepted-advisory-risk');
+    const flagged = options({ opening: cloneOpening(flaggedDraft) });
+    const flaggedHook = renderHook(() => useCreativeVariationsAuthoring(flagged));
+    expect(flaggedHook.result.current.commitBlockers).toEqual([]);
+    expect(flaggedHook.result.current.artifactUsage).not.toBeNull();
 
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     const staleSelectionDraft = {
       ...clone(generatedDraft),
-      selections: [{ position: 99, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }]
+      selections: [{ position: 99, carryMode: 'direction' as const }]
     };
     const stale = options({ opening: cloneOpening(staleSelectionDraft) });
     const staleHook = renderHook(() => useCreativeVariationsAuthoring(stale));
@@ -596,7 +592,7 @@ describe('useCreativeVariationsAuthoring', () => {
     warn.mockRestore();
   });
 
-  it('reports real generation, room, hard-conflict, advisory-risk, and budget blockers', () => {
+  it('reports real room, target, and budget blockers without treating model flags as vetoes', () => {
     const overBudgetDraft = {
       ...clone(generatedDraft),
       workup: {
@@ -606,9 +602,9 @@ describe('useCreativeVariationsAuthoring', () => {
           : clone(card))
       },
       selections: [
-        { position: 1, carryMode: 'full-prose' as const, acceptedAdvisoryRiskIds: [] },
-        { position: 2, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] },
-        { position: 3, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }
+        { position: 1, carryMode: 'full-prose' as const },
+        { position: 2, carryMode: 'direction' as const },
+        { position: 3, carryMode: 'direction' as const }
       ]
     };
     const props = options({
@@ -621,8 +617,6 @@ describe('useCreativeVariationsAuthoring', () => {
     expect(result.current.commitBlockers).toEqual([
       'room-run-active',
       'tool-target',
-      'hard-conflict-selection',
-      'unaccepted-advisory-risk',
       'over-artifact-budget'
     ]);
     expect(result.current.artifactUsage).toEqual({

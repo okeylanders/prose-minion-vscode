@@ -2,7 +2,6 @@
 
 import type {
   WorkshopCreativeVariationsDraft,
-  WorkshopCreativeVariationsSelection,
   WorkshopCreativeVariationsWorkup
 } from '@messages';
 import { shapeError } from '@/application/services/workshop/persistedValidation';
@@ -195,32 +194,5 @@ function assertSelectionsIntegrity(
     if (!card || card.position !== selection.position) {
       shapeError(`${selectionPath}.position`, 'a card in the current workup');
     }
-    assertSelectionRiskIntegrity(selection, card.invariantFlags, selectionPath);
-  }
-}
-
-function assertSelectionRiskIntegrity(
-  selection: WorkshopCreativeVariationsSelection,
-  flags: WorkshopCreativeVariationsWorkup['cards'][number]['invariantFlags'],
-  path: string
-): void {
-  if (flags.some((flag) => flag.kind === 'hard-conflict')) {
-    shapeError(path, 'a card without a hard conflict');
-  }
-  const advisoryIds = flags
-    .filter((flag) => flag.kind === 'advisory-risk')
-    .map((flag) => flag.id);
-  const acceptedIds = new Set(selection.acceptedAdvisoryRiskIds);
-  if (acceptedIds.size !== selection.acceptedAdvisoryRiskIds.length) {
-    shapeError(`${path}.acceptedAdvisoryRiskIds`, 'accepted risks without duplicates');
-  }
-  if (
-    acceptedIds.size !== advisoryIds.length
-    || advisoryIds.some((id) => !acceptedIds.has(id))
-  ) {
-    shapeError(
-      `${path}.acceptedAdvisoryRiskIds`,
-      'exactly every advisory risk declared by the selected card'
-    );
   }
 }

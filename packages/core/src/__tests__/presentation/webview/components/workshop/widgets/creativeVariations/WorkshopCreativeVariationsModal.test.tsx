@@ -9,7 +9,6 @@ import {
 } from '@components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal';
 import { ModelOption } from '@shared/types';
 import {
-  ADVISORY_RISK_ID,
   baseDraft,
   emptyDraft,
   generatedDraft,
@@ -49,7 +48,6 @@ const renderModal = (
     onCancelGenerate: jest.fn(),
     onToggleCardSelection: jest.fn(),
     onCarryModeChange: jest.fn(),
-    onToggleAdvisoryRisk: jest.fn(),
     onNoteChange: jest.fn(),
     onCopyVariation: jest.fn(),
     onCommit: jest.fn(),
@@ -293,7 +291,7 @@ describe('WorkshopCreativeVariationsModal', () => {
     const { props } = renderModal({
       draft: {
         ...generatedDraft,
-        selections: [{ position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }]
+        selections: [{ position: 1, carryMode: 'direction' }]
       }
     });
     const carry = screen.getByRole('group', { name: 'Carry mode for Take 1' });
@@ -303,30 +301,30 @@ describe('WorkshopCreativeVariationsModal', () => {
     expect(props.onCarryModeChange).toHaveBeenCalledWith(1, 'full-prose');
   });
 
-  it('raises per-risk acceptance for advisory flags on a selected card', () => {
-    const { props } = renderModal({
+  it('keeps advisory flags visible without asking the writer for acceptance', () => {
+    renderModal({
       draft: {
         ...generatedDraft,
-        selections: [{ position: 2, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }]
+        selections: [{ position: 2, carryMode: 'direction' }]
       }
     });
-    const accept = screen.getByRole('button', {
-      name: /Accept advisory risk on Take 2: adds a fact — the chair/
-    });
-    expect(accept.getAttribute('aria-pressed')).toBe('false');
-    fireEvent.click(accept);
-    expect(props.onToggleAdvisoryRisk).toHaveBeenCalledWith(2, ADVISORY_RISK_ID);
+    expect(screen.getByText(/Advisory for Must survive: adds a fact — the chair/))
+      .toBeTruthy();
+    expect(screen.queryByRole('button', { name: /accept advisory risk/i })).toBeNull();
   });
 
-  it('keeps a hard-conflict card visible but not selectable, with a written reason', () => {
-    renderModal({ draft: generatedDraft });
+  it('keeps a hard-conflict-labelled card visible and writer-selectable', () => {
+    const { props } = renderModal({ draft: generatedDraft });
     const select = screen.getByRole('button', {
       name: 'Select Take 3 — Absence as furniture'
     });
-    expect((select as HTMLButtonElement).disabled).toBe(true);
+    expect((select as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(select);
+    expect(props.onToggleCardSelection).toHaveBeenCalledWith(3);
     expect(
-      screen.getByText(/Cannot commit — the model declared a hard conflict/)
+      screen.getByText(/Strong warning — the model declared a hard conflict/)
     ).toBeTruthy();
+    expect(screen.getByText(/You remain the authority/)).toBeTruthy();
     expect(screen.getByText(/watching\. Still\.$/)).toBeTruthy();
   });
 
@@ -401,8 +399,8 @@ describe('WorkshopCreativeVariationsModal', () => {
       draft: {
         ...generatedDraft,
         selections: [
-          { position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] },
-          { position: 2, carryMode: 'full-prose', acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID] }
+          { position: 1, carryMode: 'direction' },
+          { position: 2, carryMode: 'full-prose' }
         ]
       },
       artifactUsage: { characters: 640, budget: 20_000 },
@@ -422,7 +420,7 @@ describe('WorkshopCreativeVariationsModal', () => {
       draft: {
         ...generatedDraft,
         invariants: { mustSurvive: '', mustNotChange: '' },
-        selections: [{ position: 1, carryMode: 'direction', acceptedAdvisoryRiskIds: [] }]
+        selections: [{ position: 1, carryMode: 'direction' }]
       },
       artifactUsage: { characters: 100, budget: 20_000 },
       commitBlockers: []
@@ -435,12 +433,12 @@ describe('WorkshopCreativeVariationsModal', () => {
   it('disables commit with the controller-supplied blocker as an accessible reason', () => {
     renderModal({
       draft: generatedDraft,
-      commitBlockers: ['unaccepted-advisory-risk']
+      commitBlockers: ['artifact-compilation-failed']
     });
     const commit = screen.getByRole('button', { name: 'Commit to thread' });
     expect((commit as HTMLButtonElement).disabled).toBe(true);
     const reason = screen.getByText(
-      'Accept every advisory risk on your selected takes, or unselect those takes.'
+      'The selected takes no longer match this workup. Reopen or regenerate before committing.'
     );
     expect(commit.getAttribute('aria-describedby')).toBe(reason.id);
   });

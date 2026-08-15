@@ -58,7 +58,7 @@ packages/core/src/
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
-│           └── workshop/                  # 9 route owners + shared contracts
+│           └── workshop/                  # Room owner + 9 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -69,6 +69,7 @@ packages/core/src/
 │               ├── WorkshopTodoHandler.ts
 │               └── widgets/
 │                   ├── WorkshopWidgetHostHandler.ts
+│                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
 │                   ├── gesturePlayground/WorkshopGesturePlaygroundHandler.ts
 │                   └── lexicalGravity/WorkshopLexicalGravityHandler.ts
 ├── domain/            # Domain layer (business logic)
@@ -155,8 +156,9 @@ Patterns and conventions:
 - Persistence: Each hook exposes `persistedState`; App composes them into `usePersistence` to sync `vscode.setState`.
 - Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
   retired `useWorkshop` facade. Generic widget mechanics use explicit closed
-  registries; Gesture Playground and Lexical Gravity keep feature-specific
-  contracts, handlers, codecs, prompts, and presentation hooks in named slices.
+  registries; Gesture Playground, Creative Variations, and Lexical Gravity keep
+  feature-specific contracts, handlers, codecs, prompts, and presentation hooks
+  in named slices.
 - Message enums: Use `STATUS` for status messages, `MODEL_DATA`/`REQUEST_MODEL_DATA` for model options, and `SET_MODEL_SELECTION` for user selection. Avoid ad-hoc enums like `STATUS_MESSAGE`, `MODEL_OPTIONS_DATA`, or `SET_MODEL`.
 - UI settings: Toggle UI prefs (e.g., token widget) via `UPDATE_SETTING` with nested keys like `ui.showTokenWidget`.
 - Metrics: Provide `setPathText` and `clearSubtoolResult` so subtools can refresh independently.

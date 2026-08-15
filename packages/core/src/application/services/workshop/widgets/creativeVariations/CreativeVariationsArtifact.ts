@@ -25,7 +25,8 @@ const selectedCard = (
 /**
  * The sole artifact formula used by host commit and webview budget display.
  * It deliberately excludes the source passage, unselected cards, tradeoffs,
- * overlap evidence, provenance, and every unaccepted risk.
+ * overlap evidence, and provenance. Model-declared invariant warnings remain
+ * attached to selected takes as context; they never own writer commit authority.
  */
 export function buildCreativeVariationsArtifact(
   draft: WorkshopCreativeVariationsDraft
@@ -55,15 +56,21 @@ export function buildCreativeVariationsArtifact(
     sections.push(section('Writer-declared invariants', invariants));
   }
 
-  const acceptedRisks = draft.selections.flatMap((selection) => {
+  const invariantWarnings = draft.selections.flatMap((selection) => {
     const card = selectedCard(draft, selection);
-    const acceptedIds = new Set(selection.acceptedAdvisoryRiskIds);
     return card.invariantFlags
-      .filter((flag) => flag.kind === 'advisory-risk' && acceptedIds.has(flag.id))
-      .map((flag) => `Take ${selection.position}: ${flag.note.trim()}`);
+      .map((flag) => {
+        const strength = flag.kind === 'hard-conflict'
+          ? 'strong warning'
+          : 'advisory warning';
+        const invariant = flag.invariantField === 'must-survive'
+          ? 'Must survive'
+          : 'Must not change';
+        return `Take ${selection.position} — ${strength} for ${invariant}: ${flag.note.trim()}`;
+      });
   });
-  if (acceptedRisks.length > 0) {
-    sections.push(section('Accepted advisory risks', acceptedRisks));
+  if (invariantWarnings.length > 0) {
+    sections.push(section('Model-declared invariant warnings', invariantWarnings));
   }
 
   if (draft.note.trim().length > 0) {

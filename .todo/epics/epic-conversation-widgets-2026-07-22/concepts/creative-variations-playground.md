@@ -52,18 +52,17 @@ typed, bounded response schema before presentation.
 
 - The writer selects one or more cards and may add a note. Each selected card
   carries direction by default; full prose requires an explicit per-card choice.
-- Advisory risks require explicit per-risk acceptance before their card may
-  commit. A card carrying a model-declared `hard-conflict` flag against `must
-  not change` remains visible but is commit-ineligible. Whole-workup regeneration
-  replaces the workup and risk ids and clears selections, carry modes, and risk
-  acceptances.
+- Model-declared advisory and hard-conflict flags remain visible context, not
+  commit authority. Every returned card remains writer-selectable and
+  committable; choosing it is the writer's decision. Whole-workup regeneration
+  replaces the workup and warning ids and clears selections and carry modes.
 - Commit creates a one-shot thread artifact containing only the selected
-  carry content, essential constraints, accepted advisory risks, and writer note
-  — never the whole discarded generation cloud.
+  carry content, essential constraints, model-declared warnings on selected
+  cards, and writer note — never the whole discarded generation cloud.
 - A presentation-only chip reopens the exact saved authoring truth: inputs,
   display-safe provenance, generated workup, selections, per-card carry modes,
-  accepted advisory risks, and note. Focus, scroll, and expanded panels remain
-  ephemeral. Revisiting clones and recommits; it never rewrites an earlier turn.
+  and note. Focus, scroll, and expanded panels remain ephemeral. Revisiting
+  clones and recommits; it never rewrites an earlier turn.
 - Copying a full variation is available from the widget. Applying it back to a
   source document remains behind the separately tracked **Workshop Apply to
   Draft** safety design.

@@ -14,8 +14,8 @@ export const WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY: WorkshopWidgetAvailabi
   });
 
 /**
- * Fixed policy for route matrices that must exercise exact dormant ids before
- * the final catalog flip. It never changes the production catalog.
+ * Fixed policy for isolated route tests that must exercise an exact
+ * availability set. It never changes or replaces the production catalog.
  */
 export function fixedWorkshopWidgetAvailabilityPolicy(
   availableWidgetIds: readonly WorkshopWidgetId[]

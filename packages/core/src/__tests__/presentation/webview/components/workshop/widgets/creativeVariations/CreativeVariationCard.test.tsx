@@ -8,7 +8,6 @@ import {
   CreativeVariationCard
 } from '@components/workshop/widgets/creativeVariations/CreativeVariationCard';
 import {
-  ADVISORY_RISK_ID,
   cardOne,
   cardThree,
   cardTwo
@@ -21,12 +20,10 @@ const renderCard = (
     card: cardOne,
     selected: false,
     carryMode: 'direction' as const,
-    acceptedAdvisoryRiskIds: [] as string[],
     comparing: false,
     interactionLocked: false,
     onToggleSelection: jest.fn(),
     onCarryModeChange: jest.fn(),
-    onToggleAdvisoryRisk: jest.fn(),
     onToggleCompare: jest.fn(),
     onCopyProse: jest.fn(),
     ...overrides
@@ -61,42 +58,32 @@ describe('CreativeVariationCard', () => {
     expect(props.onCarryModeChange).toHaveBeenCalledWith(1, 'full-prose');
   });
 
-  it('shows an advisory risk as a static labelled pill while unselected', () => {
+  it('shows an advisory as passive evidence whether or not the card is selected', () => {
     renderCard({ card: cardTwo });
     expect(
-      screen.getByText(/Risk to Must survive: adds a fact — the chair/)
+      screen.getByText(/Advisory for Must survive: adds a fact — the chair/)
     ).toBeTruthy();
     expect(
       screen.queryByRole('button', { name: /Accept advisory risk/ })
     ).toBeNull();
+    cleanup();
+    renderCard({ card: cardTwo, selected: true });
+    expect(screen.getByText(/Advisory for Must survive/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /advisory risk/i })).toBeNull();
   });
 
-  it('reflects withdrawn and accepted advisory-risk states on a selected card', () => {
-    const { props } = renderCard({
-      card: cardTwo,
-      selected: true,
-      acceptedAdvisoryRiskIds: [ADVISORY_RISK_ID]
-    });
-    const accepted = screen.getByRole('button', {
-      name: /Withdraw acceptance of advisory risk on Take 2/
-    });
-    expect(accepted.getAttribute('aria-pressed')).toBe('true');
-    expect(accepted.textContent).toContain('Accepted — rides with this take');
-    fireEvent.click(accepted);
-    expect(props.onToggleAdvisoryRisk).toHaveBeenCalledWith(2, ADVISORY_RISK_ID);
-  });
-
-  it('disables selection on a hard-conflict card and names the flagged boundary', () => {
+  it('keeps a model-declared hard-conflict card selectable and names writer authority', () => {
     const { props } = renderCard({ card: cardThree });
     const select = screen.getByRole('button', {
       name: 'Select Take 3 — Absence as furniture'
     });
-    expect((select as HTMLButtonElement).disabled).toBe(true);
+    expect((select as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(select);
-    expect(props.onToggleSelection).not.toHaveBeenCalled();
+    expect(props.onToggleSelection).toHaveBeenCalledWith(3);
     expect(
       screen.getByText(/Hard conflict with Must not change: moves her closing line/)
     ).toBeTruthy();
+    expect(screen.getByText(/You remain the authority/)).toBeTruthy();
   });
 
   it('keeps copy and compare available on a hard-conflict card', () => {

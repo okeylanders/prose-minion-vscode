@@ -416,27 +416,10 @@ function assertSelectionShape(value: unknown, path: string): void {
   const selection = exactObject(
     value,
     path,
-    ['position', 'carryMode', 'acceptedAdvisoryRiskIds']
+    ['position', 'carryMode']
   );
   numberAt(selection.position, `${path}.position`);
   enumAt(selection.carryMode, `${path}.carryMode`, ['direction', 'full-prose']);
-  boundedArrayAt(
-    selection.acceptedAdvisoryRiskIds,
-    `${path}.acceptedAdvisoryRiskIds`,
-    0,
-    PROMPT_BUDGETS.workshopWidgets.creativeFlagsPerCard,
-    'accepted advisory risks'
-  );
-  arrayOf(
-    selection.acceptedAdvisoryRiskIds,
-    `${path}.acceptedAdvisoryRiskIds`,
-    (id, idPath) => boundedStringAt(
-      id,
-      idPath,
-      PROMPT_BUDGETS.workshopWidgets.creativeWorkupIdCharacters + 40,
-      false
-    )
-  );
 }
 
 export function cloneCreativeVariationsDraft(
@@ -477,8 +460,7 @@ export function cloneCreativeVariationsDraft(
         },
     selections: draft.selections.map((selection) => ({
       position: selection.position,
-      carryMode: selection.carryMode,
-      acceptedAdvisoryRiskIds: [...selection.acceptedAdvisoryRiskIds]
+      carryMode: selection.carryMode
     })),
     note: draft.note
   };

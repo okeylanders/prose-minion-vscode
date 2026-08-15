@@ -116,7 +116,6 @@ export type WorkshopCreativeVariationsCarryMode = 'direction' | 'full-prose';
 export interface WorkshopCreativeVariationsSelection {
   position: number;
   carryMode: WorkshopCreativeVariationsCarryMode;
-  acceptedAdvisoryRiskIds: string[];
 }
 
 /**

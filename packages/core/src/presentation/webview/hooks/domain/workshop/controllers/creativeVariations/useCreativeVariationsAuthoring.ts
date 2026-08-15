@@ -86,7 +86,6 @@ export interface CreativeVariationsAuthoringActions {
   cancelGenerate: () => void;
   toggleCardSelection: (position: number) => void;
   changeCarryMode: (position: number, mode: WorkshopCreativeVariationsCarryMode) => void;
-  toggleAdvisoryRisk: (position: number, riskId: string) => void;
   changeNote: (note: string) => void;
   commitDraft: () => void;
 }
@@ -522,7 +521,7 @@ export function useCreativeVariationsAuthoring({
     }
     setDraft((current) => {
       const card = current.workup?.cards.find((candidate) => candidate.position === position);
-      if (!card || card.invariantFlags.some((flag) => flag.kind === 'hard-conflict')) {
+      if (!card) {
         return current;
       }
       const selected = current.selections.some((selection) => selection.position === position);
@@ -532,7 +531,7 @@ export function useCreativeVariationsAuthoring({
           ? current.selections.filter((selection) => selection.position !== position)
           : [
               ...current.selections,
-              { position, carryMode: 'direction' as const, acceptedAdvisoryRiskIds: [] }
+              { position, carryMode: 'direction' as const }
             ].sort((left, right) => left.position - right.position)
       };
     });
@@ -551,36 +550,6 @@ export function useCreativeVariationsAuthoring({
         ? { ...selection, carryMode }
         : selection)
     }));
-  }, [commitPending]);
-
-  const toggleAdvisoryRisk = React.useCallback((position: number, riskId: string) => {
-    if (commitPending) {
-      return;
-    }
-    setDraft((current) => {
-      const card = current.workup?.cards.find((candidate) => candidate.position === position);
-      const validRisk = card?.invariantFlags.some(
-        (flag) => flag.id === riskId && flag.kind === 'advisory-risk'
-      );
-      if (!validRisk) {
-        return current;
-      }
-      return {
-        ...current,
-        selections: current.selections.map((selection) => {
-          if (selection.position !== position) {
-            return selection;
-          }
-          const accepted = selection.acceptedAdvisoryRiskIds.includes(riskId);
-          return {
-            ...selection,
-            acceptedAdvisoryRiskIds: accepted
-              ? selection.acceptedAdvisoryRiskIds.filter((candidate) => candidate !== riskId)
-              : [...selection.acceptedAdvisoryRiskIds, riskId]
-          };
-        })
-      };
-    });
   }, [commitPending]);
 
   const changeNote = React.useCallback((note: string) => {
@@ -723,7 +692,6 @@ export function useCreativeVariationsAuthoring({
     cancelGenerate,
     toggleCardSelection,
     changeCarryMode,
-    toggleAdvisoryRisk,
     changeNote,
     commitDraft,
     persistedState: {}

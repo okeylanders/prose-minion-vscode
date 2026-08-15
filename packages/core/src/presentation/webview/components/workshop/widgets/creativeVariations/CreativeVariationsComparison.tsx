@@ -4,8 +4,9 @@
  *
  * Purely presentational: it renders the compared takes under the pinned
  * declared invariants and raises a dismiss callback. Which takes are compared
- * is ephemeral chrome owned by the modal — comparison never persists, and a
- * hard-conflict take may be compared even though it can never commit.
+ * is ephemeral chrome owned by the modal — comparison never persists. Every
+ * returned take remains writer-selectable regardless of its model-declared
+ * warning strength.
  */
 
 import * as React from 'react';

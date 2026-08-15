@@ -3,13 +3,11 @@
  * workup (Sprint 03; design Spread 07).
  *
  * Controlled presentation only: the card renders contract state and raises
- * semantic callbacks. Selection, carry, and risk-acceptance truth live in the
- * authoring controller; commit rules live in the host.
+ * semantic callbacks. Selection and carry truth live in the authoring
+ * controller; commit rules live in the host.
  *
- * A card carrying a model-declared hard conflict against "Must not change"
- * stays fully visible — and comparable — but its select affordance is
- * disabled with a written reason, mirroring the persisted-integrity rule that
- * a selection may never reference a hard-conflict card.
+ * Model-declared invariant flags are visible evidence, never writer-authority
+ * gates. Every returned card remains selectable and committable.
  */
 
 import * as React from 'react';
@@ -25,13 +23,11 @@ export interface CreativeVariationCardProps {
   selected: boolean;
   /** Meaningful only while selected; the contract default is `direction`. */
   carryMode: WorkshopCreativeVariationsCarryMode;
-  acceptedAdvisoryRiskIds: readonly string[];
   /** Ephemeral compare mark — presentation chrome, never persisted. */
   comparing: boolean;
   interactionLocked: boolean;
   onToggleSelection: (position: number) => void;
   onCarryModeChange: (position: number, mode: WorkshopCreativeVariationsCarryMode) => void;
-  onToggleAdvisoryRisk: (position: number, riskId: string) => void;
   onToggleCompare: (position: number) => void;
   onCopyProse: (prose: string) => void;
 }
@@ -49,12 +45,10 @@ export const CreativeVariationCard: React.FC<CreativeVariationCardProps> = ({
   card,
   selected,
   carryMode,
-  acceptedAdvisoryRiskIds,
   comparing,
   interactionLocked,
   onToggleSelection,
   onCarryModeChange,
-  onToggleAdvisoryRisk,
   onToggleCompare,
   onCopyProse
 }) => {
@@ -80,7 +74,7 @@ export const CreativeVariationCard: React.FC<CreativeVariationCardProps> = ({
           aria-pressed={selected}
           aria-label={`Select Take ${card.position} — ${card.approach}`}
           aria-describedby={hardConflict ? conflictNoteId : undefined}
-          disabled={interactionLocked || hardConflict}
+          disabled={interactionLocked}
           onClick={() => onToggleSelection(card.position)}
         >
           <span className="pm-ws-cvx-card-bx" aria-hidden="true">
@@ -109,8 +103,8 @@ export const CreativeVariationCard: React.FC<CreativeVariationCardProps> = ({
       {hardConflict && (
         <p className="pm-ws-cvx-card-conflict-note" id={conflictNoteId}>
           <Icon name="alert" size={12} />
-          Cannot commit — the model declared a hard conflict with “Must not change”.
-          The take stays visible for comparison.
+          Strong warning — the model declared a hard conflict with “Must not change”.
+          You remain the authority: this take can still be selected and committed.
         </p>
       )}
 
@@ -124,35 +118,14 @@ export const CreativeVariationCard: React.FC<CreativeVariationCardProps> = ({
               </span>
             </li>
           ))}
-          {advisoryFlags.map((flag) => {
-            const accepted = acceptedAdvisoryRiskIds.includes(flag.id);
-            return (
-              <li key={flag.id}>
-                {selected ? (
-                  <button
-                    type="button"
-                    className={`pm-ws-cvx-flag pm-ws-cvx-flag-risk${accepted ? ' pm-ws-cvx-flag-accepted' : ''}`}
-                    aria-pressed={accepted}
-                    aria-label={
-                      `${accepted ? 'Withdraw acceptance of' : 'Accept'} advisory risk on Take ${card.position}: ${flag.note}`
-                    }
-                    disabled={interactionLocked}
-                    onClick={() => onToggleAdvisoryRisk(card.position, flag.id)}
-                  >
-                    <Icon name={accepted ? 'check' : 'alert'} size={9} />
-                    {accepted
-                      ? `Accepted — rides with this take · ${flag.note}`
-                      : `Accept risk to ${invariantFieldLabel(flag)}: ${flag.note}`}
-                  </button>
-                ) : (
-                  <span className="pm-ws-cvx-flag pm-ws-cvx-flag-risk">
-                    <Icon name="alert" size={9} />
-                    Risk to {invariantFieldLabel(flag)}: {flag.note}
-                  </span>
-                )}
-              </li>
-            );
-          })}
+          {advisoryFlags.map((flag) => (
+            <li key={flag.id}>
+              <span className="pm-ws-cvx-flag pm-ws-cvx-flag-risk">
+                <Icon name="alert" size={9} />
+                Advisory for {invariantFieldLabel(flag)}: {flag.note}
+              </span>
+            </li>
+          ))}
         </ul>
       )}
 

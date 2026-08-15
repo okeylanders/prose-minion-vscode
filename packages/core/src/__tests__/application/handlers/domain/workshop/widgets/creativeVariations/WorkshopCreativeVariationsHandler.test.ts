@@ -91,7 +91,7 @@ const build = (options: { generate?: jest.Mock; available?: boolean } = {}) => {
 };
 
 describe('WorkshopCreativeVariationsHandler', () => {
-  it('keeps the dormant production route unavailable without model spend', async () => {
+  it('refuses generation when the injected policy marks the route unavailable', async () => {
     const { handler, generate, posted } = build({ available: false });
     await handler.handleGenerate(message());
     expect(generate).not.toHaveBeenCalled();

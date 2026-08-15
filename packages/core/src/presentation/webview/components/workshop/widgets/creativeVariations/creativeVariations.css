@@ -821,18 +821,6 @@
   background: rgba(226, 178, 74, 0.09);
   border: 1px solid rgba(226, 178, 74, 0.4);
 }
-[data-pm-surface="workshop"] button.pm-ws-cvx-flag-risk {
-  cursor: pointer;
-  font-family: var(--pm-mono);
-}
-[data-pm-surface="workshop"] button.pm-ws-cvx-flag-risk:hover:not(:disabled) {
-  background: rgba(226, 178, 74, 0.16);
-}
-[data-pm-surface="workshop"] .pm-ws-cvx-flag-accepted {
-  color: var(--pm-green);
-  border-color: rgba(111, 201, 138, 0.4);
-  background: rgba(111, 201, 138, 0.09);
-}
 [data-pm-surface="workshop"] .pm-ws-cvx-flag-conflict {
   color: var(--pm-red);
   border: 1px solid rgba(239, 125, 102, 0.42);

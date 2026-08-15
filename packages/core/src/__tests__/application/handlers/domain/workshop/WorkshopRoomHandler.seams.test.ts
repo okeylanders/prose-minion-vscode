@@ -13,6 +13,9 @@ import {
 import {
   parseWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  computeCreativeVariationsTextualOverlap
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 
 describe('WorkshopRoomHandler routing — cross-owner seams', () => {
   let session: WorkshopRouteTestHarness['session'];
@@ -88,6 +91,77 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(session.getWidgetConfig('wc-1')).toBeUndefined();
   });
 
+  it('routes Creative generation through the real live catalog policy with exact correlation', async () => {
+    creativeVariationsGenerate.mockImplementationOnce(async ({ workupId }) => {
+      const cards = generatedDraft.workup!.cards.map((card) => ({
+        ...card,
+        invariantFlags: []
+      }));
+      return {
+        cancelled: false,
+        workup: {
+          workupId,
+          generationProtocolVersion: generatedDraft.workup!.generationProtocolVersion,
+          cards,
+          overlap: computeCreativeVariationsTextualOverlap(
+            generatedDraft.subject.text,
+            cards
+          )
+        },
+        truncated: false
+      };
+    });
+
+    await router.route(message(MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE, {
+      widgetId: 'creative-variations',
+      token: 'creative-live-route',
+      subject: generatedDraft.subject,
+      surroundingContext: generatedDraft.surroundingContext,
+      invariants: generatedDraft.invariants,
+      intent: generatedDraft.intent,
+      requestedCount: generatedDraft.requestedCount
+    }) as any);
+
+    expect(creativeVariationsGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      workupId: expect.stringMatching(/^cvw-/),
+      requestedCount: 3,
+      signal: expect.any(AbortSignal)
+    }));
+    const result = posted(MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT).at(-1);
+    expect(result).toBeDefined();
+    expect(result).toMatchObject({
+      payload: {
+        widgetId: 'creative-variations',
+        token: 'creative-live-route',
+        ok: true,
+        workup: expect.objectContaining({
+          workupId: result!.payload.workupId
+        })
+      }
+    });
+    expect(result!.payload.workupId).toMatch(/^cvw-/);
+  });
+
+  it('refuses a dormant widget through the real production catalog policy', async () => {
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'show-vs-tell',
+      requestToken: 'commit-dormant-widget',
+      draft: {}
+    }) as any);
+
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      payload: {
+        action: 'commit',
+        requestToken: 'commit-dormant-widget',
+        widgetId: 'show-vs-tell',
+        ok: false,
+        message: 'That widget is not available yet.'
+      }
+    });
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(creativeVariationsGenerate).not.toHaveBeenCalled();
+  });
+
   it('keeps a failed widget send as a complete retryable user turn plus artifact', async () => {
     session.setSessionScope('open');
     service.startWorkshopPersonaConversation.mockRejectedValueOnce(
@@ -153,7 +227,6 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       selections: [{
         position: 1,
         carryMode: 'direction' as const,
-        acceptedAdvisoryRiskIds: []
       }],
       note: 'Ask whether the quieter direction earns its silence.'
     };
@@ -250,7 +323,6 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       selections: [{
         position: 1,
         carryMode: 'direction' as const,
-        acceptedAdvisoryRiskIds: []
       }]
     };
 

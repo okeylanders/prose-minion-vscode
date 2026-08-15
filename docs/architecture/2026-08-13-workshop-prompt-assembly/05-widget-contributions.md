@@ -83,11 +83,12 @@ generated Gesture Dictionary as shared reference
 
 **Creative Variations artifact** — selected takes (full prose or direction,
 per-take carry mode), writer-declared invariants (must survive / must not
-change), accepted advisory risks, writer note. It deliberately **excludes**
-the source passage, unselected cards, tradeoffs, overlap evidence, and every
-unaccepted risk
+change), model-declared invariant warnings on selected cards, writer note. It
+deliberately **excludes** the source passage, unselected cards and their
+warnings, tradeoffs, and overlap evidence
 ([CreativeVariationsArtifact.ts](../../../packages/core/src/application/services/workshop/widgets/creativeVariations/CreativeVariationsArtifact.ts)).
-Commit pre-flight blocks hard conflicts and unaccepted advisory risks.
+Commit pre-flight validates selection membership, artifact shape, and budget;
+model-declared warning strength never overrides writer commit authority.
 
 ## Standing rail (Lexical Gravity)
 
