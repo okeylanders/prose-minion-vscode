@@ -235,7 +235,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     creativeSubjectCharacters: 20_000,
     creativeSubjectPreviewCharacters: 160,
     creativeProvenancePathCharacters: 500,
-    creativeContextCharacters: 20_000,
+    creativeContextCharacters: 250_000,
     creativeSourceReferences: 8,
     creativeSourceReferenceCharacters: 500,
     creativeMustSurviveCharacters: 2_000,

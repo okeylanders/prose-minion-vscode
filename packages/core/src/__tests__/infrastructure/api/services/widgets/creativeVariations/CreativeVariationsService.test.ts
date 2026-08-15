@@ -167,7 +167,7 @@ describe('CreativeVariationsService', () => {
     expect(getEngine).not.toHaveBeenCalled();
   });
 
-  it('bounds writer context and resolved source bodies as one prompt allowance', async () => {
+  it('bounds writer context and resolved source bodies as one character allowance', async () => {
     const { service, getEngine } = build();
     const invalid = request();
     invalid.surroundingContext.writerText = 'x'.repeat(

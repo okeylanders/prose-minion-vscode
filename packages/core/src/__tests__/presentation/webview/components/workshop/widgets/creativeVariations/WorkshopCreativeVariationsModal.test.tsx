@@ -100,6 +100,12 @@ describe('WorkshopCreativeVariationsModal', () => {
     expect(props.onGenerate).toHaveBeenCalledTimes(1);
   });
 
+  it('enforces the shared surrounding-context character allowance', () => {
+    renderModal();
+    const context = screen.getByRole('textbox', { name: /Surrounding context optional/ });
+    expect(context.getAttribute('maxLength')).toBe('250000');
+  });
+
   it('blocks generation while a selected source is no longer available', () => {
     renderModal({
       draft: {
