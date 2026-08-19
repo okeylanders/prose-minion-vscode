@@ -483,6 +483,39 @@ Correction verification:
   succeeded before the watcher was intentionally stopped;
 - `git diff --check`: passed.
 
+### Post-review recommendation-budget correction — 2026-08-19
+
+Claude Ada's three-commit review found one prompt-budget ownership error in
+`c9432788`: `creativeContextCharacters` governed both the writer's surrounding-
+context input and the amount of prose a persona recommendation could copy into
+an uncommitted prefill. Raising the writer ceiling from 20,000 to 250,000
+characters therefore also raised the agent-emission ceiling by 12.5 times.
+
+- `creativeContextCharacters` remains 250,000 characters for the writer-facing
+  modal, persisted config codec, and generation service.
+- `creativeRecommendationContextCharacters` now independently caps persona-
+  authored recommendation context at 20,000 characters. The recommendation
+  instruction, strict parser, registry frame math, and maximal-frame witness all
+  use that narrower budget.
+- The Creative recommendation frame ceiling is restored from 281,500 to 51,500
+  characters, and the assembled instruction pin is restored from 7,824 to
+  7,823 characters. These are deliberate contract values, not incidental test
+  updates.
+
+Correction verification:
+
+- focused recommendation and architecture witnesses: **3 suites, 39 tests
+  passed**;
+- full Jest: **208 suites, 2,294 tests, and 2 snapshots passed**;
+- `npm run typecheck`: core, webview, and extension TypeScript projects passed;
+- `npm run lint`: **0 errors and 956 existing warnings**;
+- `npm run build`: production resources staged, both webpack bundles compiled,
+  and the three-utility bundle sentinel passed; webpack retained its three
+  accepted webview-size advisories;
+- exact root F5 prelaunch command `npm run watch`: resources staged and both
+  development bundles compiled successfully before intentional shutdown;
+- `git diff --check`: passed.
+
 ## Out of scope
 
 - Bound-frame menus, partial regeneration, history across multiple workups, and

@@ -58,6 +58,12 @@ describe('CreativeVariationsRecommendation', () => {
       `at most ${PROMPT_BUDGETS.workshopWidgets.creativeSubjectCharacters.toLocaleString('en-US')} characters`
     );
     expect(CREATIVE_VARIATIONS_RECOMMENDATION_INSTRUCTION).toContain(
+      `within ${PROMPT_BUDGETS.workshopWidgets.creativeRecommendationContextCharacters.toLocaleString('en-US')} characters`
+    );
+    expect(PROMPT_BUDGETS.workshopWidgets.creativeContextCharacters).toBeGreaterThan(
+      PROMPT_BUDGETS.workshopWidgets.creativeRecommendationContextCharacters
+    );
+    expect(CREATIVE_VARIATIONS_RECOMMENDATION_INSTRUCTION).toContain(
       `${PROMPT_BUDGETS.workshopWidgets.creativeSourceReferences} references and `
       + `${sourceReferencesCharacters.toLocaleString('en-US')} characters`
     );
@@ -133,7 +139,7 @@ describe('CreativeVariationsRecommendation', () => {
 
   it.each([
     ['subjectText', 'creativeSubjectCharacters'],
-    ['contextText', 'creativeContextCharacters'],
+    ['contextText', 'creativeRecommendationContextCharacters'],
     ['mustSurvive', 'creativeMustSurviveCharacters'],
     ['mustNotChange', 'creativeMustNotChangeCharacters'],
     ['aim', 'creativeAimCharacters']

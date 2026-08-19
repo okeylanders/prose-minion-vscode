@@ -101,7 +101,10 @@ export interface PromptBudgets {
     creativeSubjectCharacters: number;
     creativeSubjectPreviewCharacters: number;
     creativeProvenancePathCharacters: number;
+    /** Maximum surrounding context the writer may author or paste into the widget. */
     creativeContextCharacters: number;
+    /** Maximum surrounding prose a persona may copy into a recommendation prefill. */
+    creativeRecommendationContextCharacters: number;
     creativeSourceReferences: number;
     creativeSourceReferenceCharacters: number;
     creativeMustSurviveCharacters: number;
@@ -236,6 +239,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     creativeSubjectPreviewCharacters: 160,
     creativeProvenancePathCharacters: 500,
     creativeContextCharacters: 250_000,
+    creativeRecommendationContextCharacters: 20_000,
     creativeSourceReferences: 8,
     creativeSourceReferenceCharacters: 500,
     creativeMustSurviveCharacters: 2_000,

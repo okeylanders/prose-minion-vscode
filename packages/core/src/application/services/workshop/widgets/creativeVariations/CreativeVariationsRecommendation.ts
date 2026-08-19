@@ -89,7 +89,7 @@ export type CreativeVariationsRecommendationInspection =
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 export const CREATIVE_VARIATIONS_RECOMMENDATION_FRAME_CHARACTERS =
   BUDGET.creativeSubjectCharacters
-  + BUDGET.creativeContextCharacters
+  + BUDGET.creativeRecommendationContextCharacters
   + BUDGET.creativeSourceReferences * BUDGET.creativeSourceReferenceCharacters
   + BUDGET.creativeMustSurviveCharacters
   + BUDGET.creativeMustNotChangeCharacters
@@ -107,7 +107,7 @@ export const CREATIVE_VARIATIONS_RECOMMENDATION_INSTRUCTION = [
   'Creative Variations Explorer frame:',
   'Use this when a passage would benefit from three to five genuinely different takes under writer-editable constraints. Prepare inputs only: never generate the workup, choose a take, accept a risk, or commit for the writer.',
   `- \`subject-passage\`: copy the exact passage to vary from material the writer supplied. Never paraphrase or invent it. This is the only required authoring input and may contain at most ${BUDGET.creativeSubjectCharacters.toLocaleString('en-US')} characters.`,
-  `- \`surrounding-context\`: optionally copy useful consecutive prose before or after the subject, without summary or invention, within ${BUDGET.creativeContextCharacters.toLocaleString('en-US')} characters. Leave the field empty when none should travel.`,
+  `- \`surrounding-context\`: optionally copy useful consecutive prose before or after the subject, without summary or invention, within ${BUDGET.creativeRecommendationContextCharacters.toLocaleString('en-US')} characters. Leave the field empty when none should travel.`,
   `- \`source-references\`: use \`active-excerpt\` and/or exact \`context-attachment:ctx-N\` identifiers shown in the supplied Workshop material when generation should read those sources. Use \`none\` when no source should ride. Never invent an identifier; the complete field may contain at most ${BUDGET.creativeSourceReferences} references and ${(BUDGET.creativeSourceReferences * BUDGET.creativeSourceReferenceCharacters).toLocaleString('en-US')} characters.`,
   `- \`must-survive\`: optionally name supplied facts, character state, emotional truth, or effect every take must preserve, within ${BUDGET.creativeMustSurviveCharacters.toLocaleString('en-US')} characters. Do not infer a constraint merely because it seems prudent; leave the field empty when the writer declared none.`,
   `- \`must-not-change\`: optionally name hard boundaries such as POV, tense, plot outcome, or exact dialogue, within ${BUDGET.creativeMustNotChangeCharacters.toLocaleString('en-US')} characters. Keep this distinct from must-survive and leave it empty when the writer declared none.`,
@@ -191,7 +191,11 @@ export function inspectCreativeVariationsRecommendation(
     maximum: number;
   }> = [
     { field: 'subjectText', value: subjectText, maximum: BUDGET.creativeSubjectCharacters },
-    { field: 'contextText', value: contextText, maximum: BUDGET.creativeContextCharacters },
+    {
+      field: 'contextText',
+      value: contextText,
+      maximum: BUDGET.creativeRecommendationContextCharacters
+    },
     {
       field: 'sourceReferences',
       value: sourceReferenceText,
