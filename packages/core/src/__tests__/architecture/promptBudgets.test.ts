@@ -112,6 +112,29 @@ describe('prompt budgets', () => {
       gestureOptionsPerGroup: 10,
       gestureOptionCharacters: 220,
       gestureSelectionsPerCommit: 8,
+      creativeSubjectCharacters: 20_000,
+      creativeSubjectPreviewCharacters: 160,
+      creativeProvenancePathCharacters: 500,
+      creativeContextCharacters: 250_000,
+      creativeRecommendationContextCharacters: 20_000,
+      creativeSourceReferences: 8,
+      creativeSourceReferenceCharacters: 500,
+      creativeMustSurviveCharacters: 2_000,
+      creativeMustNotChangeCharacters: 2_000,
+      creativeAimCharacters: 1_000,
+      creativeNoteCharacters: 500,
+      creativeWorkupIdCharacters: 64,
+      creativeApproachCharacters: 160,
+      creativeDirectionCharacters: 600,
+      creativeProseCharacters: 20_000,
+      creativeTradeoffCharacters: 400,
+      creativeFlagsPerCard: 8,
+      creativeFlagNoteCharacters: 400,
+      creativeOutputTokens: 45_000,
+      creativeResponseCharacters: 140_000,
+      creativeArtifactCharacters: 20_000,
+      creativeRecommendationFrameAllowanceCharacters: 2_500,
+      lexicalRecommendationFrameCharacters: 1_000,
       lexicalLensNameCharacters: 80,
       lexicalLensSlugCharacters: 64,
       lexicalLensVariantCharacters: 120,
@@ -156,8 +179,11 @@ describe('prompt budgets', () => {
       lexicalPreviewOutputTokens: 5_000,
       lexicalDirectiveCharacters: 16_000
     });
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(15_300);
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(4_811);
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(51_500);
+  });
+
+  it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(7_823);
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {
@@ -197,6 +223,32 @@ describe('prompt budgets', () => {
     ]) {
       expect(previewPrompt).toContain(fragment);
     }
+  });
+
+  it('declares every Creative Variations response ceiling to the model', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(
+        SRC_ROOT,
+        '..',
+        'resources',
+        'system-prompts',
+        'creative-variations',
+        '00-creative-variations.md'
+      ),
+      'utf8'
+    );
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    for (const fragment of [
+      `\`approach\` ≤ ${budget.creativeApproachCharacters} characters`,
+      `\`direction\` ≤ ${budget.creativeDirectionCharacters} characters`,
+      `\`prose\` ≤ ${budget.creativeProseCharacters.toLocaleString('en-US')} characters`,
+      `\`tradeoff.gain\` and \`tradeoff.cost\` ≤ ${budget.creativeTradeoffCharacters} characters each`,
+      `At most ${budget.creativeFlagsPerCard} \`invariantFlags\` per card`,
+      `flag \`note\` ≤ ${budget.creativeFlagNoteCharacters} characters`
+    ]) {
+      expect(prompt).toContain(fragment);
+    }
+    expect(prompt).toContain("Target 60–100% of the subject's length");
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

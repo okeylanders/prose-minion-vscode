@@ -111,6 +111,7 @@ export { LexicalGravityModelService } from '@services/widgets/LexicalGravityMode
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 export { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
+export { CreativeVariationsService } from '@services/widgets/creativeVariations/CreativeVariationsService';
 export {
   buildGestureDirective
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundDirective';

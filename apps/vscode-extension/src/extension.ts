@@ -48,6 +48,7 @@ import {
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
   GesturePlaygroundService,
+  CreativeVariationsService,
   LexicalGravityModelService,
   LexicalGravityLensRepository,
   RejectedModelResponseRecoveryStore,
@@ -283,6 +284,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     rejectedModelResponseRecoveryPresenter,
     outputChannel
   );
+  const creativeVariationsService = new CreativeVariationsService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    rejectedModelResponseRecovery,
+    rejectedModelResponseRecoveryPresenter,
+    outputChannel
+  );
   const lexicalGravityModelService = new LexicalGravityModelService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
@@ -320,6 +328,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionTimeService,
     workshopSessionPersistenceCoordinator,
     gesturePlaygroundService,
+    creativeVariationsService,
     lexicalGravityModelService,
     lexicalGravityLensRepository,
     workshopStandingDirectiveService
@@ -360,7 +369,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.extensionUri,
     coreServices,
     outputChannel,
-    platform
+    platform,
+    {
+      openAssistantSettings: () => {
+        void vscode.commands.executeCommand('prose-minion.openSettingsOverlay');
+      }
+    }
   );
   context.subscriptions.push(
     workshopPanelProvider,

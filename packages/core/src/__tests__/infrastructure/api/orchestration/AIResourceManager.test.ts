@@ -1,7 +1,8 @@
 import { AIResourceManager } from '@orchestration/AIResourceManager';
+import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 
 describe('AIResourceManager lifecycle', () => {
-  it('creates one observable generation until an explicit configuration rebuild', async () => {
+  it('keeps the assistant engine stable across explicit configuration rebuilds', async () => {
     const manager = new AIResourceManager(
       { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
       { getApiKey: jest.fn().mockResolvedValue('key') } as never,
@@ -16,7 +17,29 @@ describe('AIResourceManager lifecycle', () => {
 
     await manager.refreshConfiguration();
     expect(manager.getGeneration('assistant')).toBe(2);
-    expect(manager.getEngine('assistant')).not.toBe(first);
+    expect(manager.getEngine('assistant')).toBe(first);
+    manager.dispose();
+  });
+
+  it('keeps one offline assistant engine and attaches its provider when a key appears', async () => {
+    const getApiKey = jest.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce('key');
+    const manager = new AIResourceManager(
+      { getGuideRegistry: jest.fn(), getGuideLoader: jest.fn() } as never,
+      { getApiKey } as never,
+      { get: jest.fn((_section, _key, fallback) => fallback) } as never,
+      { createProvider: jest.fn() } as never
+    );
+
+    await manager.ensureInitialized();
+    const offline = manager.getEngine('assistant');
+    expect(offline).toBeDefined();
+    expect(offline?.isProviderAvailable()).toBe(false);
+
+    await manager.refreshConfiguration();
+    expect(manager.getEngine('assistant')).toBe(offline);
+    expect(offline?.isProviderAvailable()).toBe(true);
     manager.dispose();
   });
 
@@ -52,6 +75,7 @@ describe('AIResourceManager lifecycle', () => {
     expect(manager.getResolvedModel('context')).toBe('google/gemini-3.1-pro-preview');
     expect(manager.getEngine('context')?.getModel()).toBe('google/gemini-3.1-pro-preview');
     expect(manager.getEngine('assistant')?.getModel()).toBe('anthropic/claude-sonnet-5');
+    expect(manager.getEngine('category')?.getModel()).toBe(DEFAULT_CATEGORY_MODEL);
     manager.dispose();
   });
 

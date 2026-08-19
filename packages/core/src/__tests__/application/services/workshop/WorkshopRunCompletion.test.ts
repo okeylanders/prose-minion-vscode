@@ -61,6 +61,32 @@ describe('completeWorkshopRun', () => {
     '</workshop-widget-recommendation>'
   ].join('\n');
 
+  const creativeRecommendationFrame = (overrides: {
+    subjectText?: string;
+    contextText?: string;
+    sourceReferences?: string;
+    mustSurvive?: string;
+    mustNotChange?: string;
+    aim?: string;
+    distance?: string;
+    requestedCount?: string;
+  } = {}): string => [
+    '### Try a widget',
+    '<workshop-widget-recommendation version="1">',
+    '<widget-id>', 'creative-variations', '</widget-id>',
+    '<subject-passage>',
+    overrides.subjectText ?? 'She turned the mug until the chip faced the wall.',
+    '</subject-passage>',
+    '<surrounding-context>', overrides.contextText ?? '', '</surrounding-context>',
+    '<source-references>', overrides.sourceReferences ?? 'none', '</source-references>',
+    '<must-survive>', overrides.mustSurvive ?? '', '</must-survive>',
+    '<must-not-change>', overrides.mustNotChange ?? '', '</must-not-change>',
+    '<creative-aim>', overrides.aim ?? '', '</creative-aim>',
+    '<sampling-distance>', overrides.distance ?? 'tail', '</sampling-distance>',
+    '<take-count>', overrides.requestedCount ?? '3', '</take-count>',
+    '</workshop-widget-recommendation>'
+  ].join('\n');
+
   const settle = (input: {
     requestId: string;
     result: AnalysisResult;
@@ -219,7 +245,9 @@ describe('completeWorkshopRun', () => {
       false
     );
     expect(log).toHaveBeenCalledWith('Actionable findings accepted: 1 items (Jill)');
-    expect(log).toHaveBeenCalledWith('Widget recommendation accepted (Jill)');
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation accepted (Jill; widget=gesture-playground)'
+    );
   });
 
   it('gives an invited guest the same rich recommendation contract', () => {
@@ -264,6 +292,127 @@ describe('completeWorkshopRun', () => {
     });
   });
 
+  it('attaches a Creative prefill from a persona and validates its live sources', () => {
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: 'Scene notes',
+      words: 4,
+      content: 'The mug is chipped.'
+    });
+    session.beginPersonaMessage('req-1', 'Prepare unlike versions of this beat.');
+    const turn = settle({
+      requestId: 'req-1',
+      result: result([
+        'Let us put unlike possibilities beside each other.',
+        '',
+        creativeRecommendationFrame({
+          sourceReferences: 'active-excerpt\ncontext-attachment:ctx-1',
+          mustSurvive: 'The refusal remains implicit.',
+          mustNotChange: 'Keep the chipped mug.',
+          requestedCount: '4'
+        })
+      ].join('\n'), { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.widgetRecommendation).toEqual({
+      widgetId: 'creative-variations',
+      seed: expect.objectContaining({
+        subjectText: 'She turned the mug until the chip faced the wall.',
+        sourceReferences: [
+          { kind: 'active-excerpt' },
+          { kind: 'context-attachment', attachmentId: 'ctx-1' }
+        ],
+        distance: 'tail',
+        requestedCount: 4
+      })
+    });
+    expect(turn.content).toBe('Let us put unlike possibilities beside each other.');
+  });
+
+  it('attaches a Creative prefill to the exact invited Guest persona turn', () => {
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
+    session.beginPersonaGuestMessage(
+      'margot',
+      'req-1',
+      'Prepare unlike versions of this beat.'
+    );
+
+    const turn = completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Margot',
+      result: result([
+        'Let us widen the possibilities without choosing one for you.',
+        '',
+        creativeRecommendationFrame({
+          mustSurvive: 'The refusal remains implicit.',
+          mustNotChange: 'Keep the chipped mug.',
+          distance: 'far-tail',
+          requestedCount: '5'
+        })
+      ].join('\n'), { conversationId: 'margot-conv' }),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy('Margot'),
+      discardConversation,
+      log,
+      events
+    })!;
+
+    expect(turn).toMatchObject({
+      participant: 'guest',
+      personaId: 'margot',
+      widgetRecommendation: {
+        widgetId: 'creative-variations',
+        seed: expect.objectContaining({
+          distance: 'far-tail',
+          requestedCount: 5
+        })
+      }
+    });
+  });
+
+  it('rejects a Creative prefill whose source address is no longer available', () => {
+    session.beginPersonaMessage('req-1', 'Prepare unlike versions of this beat.');
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(creativeRecommendationFrame({
+        sourceReferences: 'context-attachment:ctx-999'
+      }), { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected (Jill; widget=creative-variations; '
+      + 'reason=unavailable_source_reference:context-attachment:ctx-999)'
+    );
+    expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
+      "Jill's Creative Variations Explorer setup could not be prepared.",
+      expect.stringContaining('context-attachment:ctx-999')
+    );
+  });
+
+  it('keeps widget recommendations persona-only on a direct tool completion', () => {
+    session.beginToolRun('prose', 'tool-1');
+    session.completeToolReport('tool-1', 'Initial report.', 'tool-conv');
+    session.beginDirectToolMessage('prose', 'req-1', 'Prepare the widget.');
+
+    const turn = settle({
+      requestId: 'req-1',
+      createsRetainedConversation: false,
+      result: result(creativeRecommendationFrame(), { conversationId: 'tool-conv' })
+    })!;
+
+    expect(turn.participant).toBe('tool');
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(turn.content).toBe('Jill returned a widget setup without an accompanying note.');
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected '
+      + '(Jill; widget=creative-variations; reason=participant_not_persona)'
+    );
+  });
+
   it('rejects a well-formed source id the current session did not mint', () => {
     session.beginPersonaMessage('req-1', 'Find a stronger embodied reaction.');
     const visibleContent = 'The reaction needs a more specific pressure.';
@@ -282,7 +431,8 @@ describe('completeWorkshopRun', () => {
     expect(turn.content).toBe(visibleContent);
     expect(turn.widgetRecommendation).toBeUndefined();
     expect(log).toHaveBeenCalledWith(
-      'Widget recommendation rejected (Jill; reason=unavailable_source_reference:context-attachment:ctx-999)'
+      'Widget recommendation rejected (Jill; widget=gesture-playground; '
+      + 'reason=unavailable_source_reference:context-attachment:ctx-999)'
     );
   });
 
@@ -312,13 +462,15 @@ describe('completeWorkshopRun', () => {
       false
     );
     expect(log).toHaveBeenCalledWith(
-      'Widget recommendation rejected (Jill; reason=invalid_frame)'
+      'Widget recommendation rejected (Jill; widget=gesture-playground; reason=invalid_frame)'
     );
     expect(log).toHaveBeenCalledWith(
-      expect.stringContaining('Rejected widget recommendation response (Jill;')
+      expect.stringContaining(
+        'Rejected widget recommendation response (Jill; widget=gesture-playground;'
+      )
     );
     expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
-      "Jill's widget recommendation could not be prepared.",
+      "Jill's Gesture Playground setup could not be prepared.",
       'The generated setup was incomplete or invalid. Ask Jill to try again.'
     );
   });
@@ -341,10 +493,11 @@ describe('completeWorkshopRun', () => {
     expect(turn.widgetRecommendation).toBeUndefined();
     expect(log).toHaveBeenCalledWith(
       'Widget recommendation rejected '
-      + `(Jill; reason=field_too_long:writerInstructions:${maximum + 1}/${maximum})`
+      + `(Jill; widget=gesture-playground; `
+      + `reason=field_too_long:writerInstructions:${maximum + 1}/${maximum})`
     );
     expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
-      "Jill's widget recommendation could not be prepared.",
+      "Jill's Gesture Playground setup could not be prepared.",
       `Writer instructions used ${(maximum + 1).toLocaleString('en-US')} characters; `
       + `the limit is ${maximum.toLocaleString('en-US')}. Ask Jill to try again.`
     );

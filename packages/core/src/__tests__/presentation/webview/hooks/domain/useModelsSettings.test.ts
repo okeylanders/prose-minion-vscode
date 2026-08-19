@@ -45,7 +45,7 @@ describe('useModelsSettings', () => {
         assistantModel: 'anthropic/claude-sonnet-5',
         dictionaryModel: 'anthropic/claude-haiku-4.5',
         contextModel: 'openai/gpt-5.4',
-        categoryModel: 'anthropic/claude-sonnet-5',
+        categoryModel: 'openai/gpt-oss-120b:nitro',
         widgetModel: 'anthropic/claude-sonnet-5',
         includeCraftGuides: true,
         temperature: 0.7,
@@ -84,7 +84,7 @@ describe('useModelsSettings', () => {
         assistantModel: 'anthropic/claude-3-5-sonnet',  // From persisted
         dictionaryModel: 'anthropic/claude-haiku-4.5',  // Default
         contextModel: 'openai/gpt-5.4',                 // Default
-        categoryModel: 'anthropic/claude-sonnet-5',     // Default
+        categoryModel: 'openai/gpt-oss-120b:nitro',     // Default
         widgetModel: 'anthropic/claude-sonnet-5',       // Default
         includeCraftGuides: true,                       // Default
         temperature: 0.9,                               // From persisted
@@ -100,7 +100,7 @@ describe('useModelsSettings', () => {
 
       expect(result.current.persistedState).toHaveProperty('modelsSettings');
       expect(result.current.persistedState.modelsSettings.assistantModel).toBe('anthropic/claude-sonnet-5');
-      expect(result.current.persistedState.modelsSettings.categoryModel).toBe('anthropic/claude-sonnet-5');
+      expect(result.current.persistedState.modelsSettings.categoryModel).toBe('openai/gpt-oss-120b:nitro');
       expect(result.current.persistedState.modelsSettings.widgetModel).toBe('anthropic/claude-sonnet-5');
     });
 

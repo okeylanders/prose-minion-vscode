@@ -1,10 +1,14 @@
-import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import {
+  AgentRunEngine,
+  AgentRunUnavailableError
+} from '@orchestration/AgentRunEngine';
 import { AgentCapability } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequestGate';
 import { ResourceReadRequest } from '@orchestration/ResourceReadXmlCodec';
 import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
+import { OpenRouterApiError } from '@providers/OpenRouterClient';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -101,6 +105,104 @@ describe('AgentRunEngine', () => {
   });
 
   afterEach(() => engine.dispose());
+
+  it('hydrates while offline, rejects a send without mutation, then continues after provider attachment', async () => {
+    const offlineConversations = new ConversationManager();
+    const offlineEngine = new AgentRunEngine(
+      undefined,
+      offlineConversations,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'model/a'
+    );
+    const [imported] = offlineEngine.importConversationsBetweenRuns([{
+      entry: {
+        key: 'host',
+        toolName: 'workshop_persona_jill',
+        messages: [
+          { role: 'user', content: 'Earlier question' },
+          { role: 'assistant', content: 'Earlier answer' }
+        ],
+        lastActivity: 1,
+        contextSources: [],
+        nextArtifactNumber: 1
+      },
+      systemMessage: 'Current Jill prompt'
+    }]);
+    if (imported.status !== 'imported') {
+      throw new Error(imported.reason);
+    }
+    const before = offlineConversations.getMessages(imported.conversationId);
+
+    await expect(offlineEngine.continueConversation({
+      conversationId: imported.conversationId,
+      userMessage: 'Are you there?',
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources
+    })).rejects.toMatchObject({
+      name: 'AgentRunUnavailableError',
+      reason: 'missing-credentials'
+    });
+    expect(offlineConversations.getMessages(imported.conversationId)).toEqual(before);
+
+    const attachedClient = {
+      getModel: jest.fn(() => 'model/a'),
+      setModel: jest.fn(),
+      createChatCompletion: jest.fn().mockResolvedValue({ content: 'I am back.' }),
+      createStreamingChatCompletion: jest.fn()
+    };
+    offlineEngine.attachProvider(attachedClient as never, 'model/a');
+    await offlineEngine.continueConversation({
+      conversationId: imported.conversationId,
+      userMessage: 'Are you there?',
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources
+    });
+
+    expect(attachedClient.createChatCompletion).toHaveBeenCalledWith(
+      [
+        { role: 'system', content: 'Current Jill prompt' },
+        { role: 'user', content: 'Earlier question' },
+        { role: 'assistant', content: 'Earlier answer' },
+        { role: 'user', content: 'Are you there?' }
+      ],
+      expect.any(Object)
+    );
+    expect(offlineConversations.getMessages(imported.conversationId).at(-1)).toEqual({
+      role: 'assistant',
+      content: 'I am back.'
+    });
+    offlineEngine.dispose();
+  });
+
+  it.each([
+    [new OpenRouterApiError('unauthorized', 401, 'authentication'), 'authentication'],
+    [new OpenRouterApiError('payment required', 402, 'payment_required'), 'insufficient-credits'],
+    [new OpenRouterApiError('token cap reached', 400, 'token_limit_exceeded'), 'token-budget-exceeded'],
+    [new OpenRouterApiError('slow down', 429, 'rate_limit_exceeded', 12), 'rate-limited'],
+    [new OpenRouterApiError('provider down', 503, 'provider_overloaded'), 'provider-unavailable']
+  ])('keeps retained history clean when the provider cannot answer', async (providerError, reason) => {
+    client.createChatCompletion.mockResolvedValueOnce({ content: 'Initial answer' });
+    const initial = await engine.runInitial({
+      toolName: 'host',
+      systemMessage: 'System',
+      userMessage: 'Initial question',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: personaCapability()
+    });
+    const before = conversations.getMessages(initial.conversationId!);
+    client.createChatCompletion.mockRejectedValueOnce(providerError);
+
+    await expect(engine.continueConversation({
+      conversationId: initial.conversationId!,
+      userMessage: 'Failed follow-up',
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources
+    })).rejects.toEqual(expect.objectContaining<Partial<AgentRunUnavailableError>>({
+      reason: reason as AgentRunUnavailableError['reason']
+    }));
+
+    expect(conversations.getMessages(initial.conversationId!)).toEqual(before);
+  });
 
   it('passes a bounded reasoning effort through a capability-less run', async () => {
     client.createChatCompletion.mockResolvedValue({ content: 'Rewritten passage.' });
@@ -588,6 +690,55 @@ describe('AgentRunEngine', () => {
 
     expect(result).toMatchObject({ content: 'Partial', cancelled: true, conversationId: undefined });
     expect(conversations.getActiveConversationCount()).toBe(0);
+  });
+
+  it('retains visible partial content when a typed provider error interrupts the stream', async () => {
+    client.createStreamingChatCompletion.mockReturnValue((async function* () {
+      yield { token: 'A complete visible thought.', done: false };
+      throw new OpenRouterApiError(
+        'provider disconnected',
+        502,
+        'provider_unavailable'
+      );
+    })());
+    const visible: string[] = [];
+
+    const result = await engine.runInitial({
+      toolName: 'host',
+      systemMessage: 'System',
+      userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost,
+      capability: personaCapability(),
+      options: { onToken: token => visible.push(token) }
+    });
+
+    expect(result).toMatchObject({
+      finishReason: 'provider-interrupted',
+      cancelled: false,
+      conversationId: expect.any(String)
+    });
+    expect(result.content).toContain('A complete visible thought.');
+    expect(result.content).toContain('provider interrupted this response');
+    expect(visible.join('')).toBe('A complete visible thought.');
+    expect(conversations.getMessages(result.conversationId!).at(-1)?.content)
+      .toContain('provider interrupted this response');
+  });
+
+  it('still classifies an in-stream provider error when no visible prose arrived', async () => {
+    client.createStreamingChatCompletion.mockReturnValue((async function* () {
+      throw new OpenRouterApiError('slow down', 429, 'rate_limit_exceeded');
+    })());
+
+    await expect(engine.runInitial({
+      toolName: 'host',
+      systemMessage: 'System',
+      userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.assistantWithoutResources,
+      options: { onToken: jest.fn() }
+    })).rejects.toMatchObject({
+      name: 'AgentRunUnavailableError',
+      reason: 'rate-limited'
+    });
   });
 
   it('does not invent telemetry or retain history when transport fails before completion', async () => {

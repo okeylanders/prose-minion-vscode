@@ -9,7 +9,11 @@ describe('WorkshopWidgetPersistenceLifecycle architecture', () => {
   it('publishes the compiler-checked persisted-widget set', () => {
     const ids = persistedWorkshopWidgetLifecycleIds();
 
-    expect(ids.length).toBeGreaterThan(0);
+    expect(ids).toEqual([
+      'gesture-playground',
+      'lexical-gravity',
+      'creative-variations'
+    ]);
     expect(ids.every(isPersistedWorkshopWidgetId)).toBe(true);
   });
 

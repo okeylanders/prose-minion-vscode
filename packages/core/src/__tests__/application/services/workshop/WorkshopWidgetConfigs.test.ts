@@ -9,10 +9,15 @@ import {
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
+  assertCurrentWorkshopSessionStateV1,
   parseWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
+  normalizeWorkshopSessionCheckpointForHydration
+} from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
+import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  WorkshopCreativeVariationsRecommendationSeed,
   WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundRecommendationSeed,
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
@@ -46,6 +51,15 @@ const gestureSeed = (
 ): WorkshopGesturePlaygroundRecommendationSeed => {
   if (recommendation?.widgetId !== 'gesture-playground' || !recommendation.seed) {
     throw new Error('Expected Gesture Playground recommendation seed');
+  }
+  return recommendation.seed;
+};
+
+const creativeSeed = (
+  recommendation: WorkshopWidgetRecommendation | undefined
+): WorkshopCreativeVariationsRecommendationSeed => {
+  if (recommendation?.widgetId !== 'creative-variations' || !recommendation.seed) {
+    throw new Error('Expected Creative Variations recommendation seed');
   }
   return recommendation.seed;
 };
@@ -123,6 +137,23 @@ const richRecommendation = (): WorkshopWidgetRecommendation => ({
       { kind: 'active-excerpt' },
       { kind: 'context-attachment', attachmentId: 'ctx-2' }
     ]
+  }
+});
+
+const creativeRecommendation = (): WorkshopWidgetRecommendation => ({
+  widgetId: 'creative-variations',
+  seed: {
+    subjectText: 'Mara turned the mug until the chipped handle faced the wall.',
+    contextText: 'Nate waited across the table without repeating the invitation.',
+    sourceReferences: [
+      { kind: 'active-excerpt' },
+      { kind: 'context-attachment', attachmentId: 'ctx-2' }
+    ],
+    mustSurvive: 'Mara refuses without saying no.',
+    mustNotChange: 'Keep close third person and the chipped mug.',
+    aim: '',
+    distance: 'tail',
+    requestedCount: 4
   }
 });
 
@@ -238,6 +269,19 @@ describe('WorkshopSessionService — widget configs', () => {
       restoredTurns.find((candidate) => candidate.id === turn.id)?.widgetCommit
     ).artifactId)
       .toBe('ta-1');
+  });
+
+  it('preserves a pre-turn Gesture retry token from prior Workshop chats', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+
+    const state = parseWorkshopSessionStateV1(session.exportCommittedState());
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(state, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+
+    const retryToken = restored.getWidgetConfig('wc-1');
+    expect(retryToken).toEqual(expect.objectContaining({ widgetId: 'gesture-playground' }));
+    expect(retryToken).not.toHaveProperty('committedTurnId');
+    expect(retryToken).not.toHaveProperty('artifactId');
   });
 
   it('round-trips a current Lexical Gravity grammar through V1 session state', () => {
@@ -365,6 +409,74 @@ describe('WorkshopSessionService — widget configs', () => {
       restored.getSnapshot().turns.find((candidate) => candidate.id === turn.id)
         ?.widgetRecommendation
     ).toEqual(richRecommendation());
+  });
+
+  it('round-trips an input-only Creative prefill through V1 state', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Put unlike versions beside each other.');
+    const turn = session.completeRun(
+      'req-1',
+      'I prepared the passage and the boundaries.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      creativeRecommendation()
+    )!;
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(
+      session.exportCommittedState(),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    const recommendation = restored.getSnapshot().turns.find(
+      (candidate) => candidate.id === turn.id
+    )?.widgetRecommendation;
+    expect(recommendation).toEqual(creativeRecommendation());
+    expect(creativeSeed(recommendation)).not.toHaveProperty('workup');
+    expect(creativeSeed(recommendation)).not.toHaveProperty('selections');
+  });
+
+  it('rejects Creative corruption and locally normalizes non-persona ownership', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Prepare the comparison.');
+    session.completeRun(
+      'req-1',
+      'Prepared.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      creativeRecommendation()
+    );
+
+    const overlong = session.exportCommittedState();
+    const overlongRecommendation = overlong.turns.find(
+      (turn) => turn.widgetRecommendation
+    )!.widgetRecommendation;
+    creativeSeed(overlongRecommendation).subjectText = 'x'.repeat(
+      PROMPT_BUDGETS.workshopWidgets.creativeSubjectCharacters + 1
+    );
+    expect(() => parseWorkshopSessionStateV1(overlong))
+      .toThrow(/seed\.subjectText.*at most/);
+
+    const forgedOwner = session.exportCommittedState();
+    const recommendationTurn = forgedOwner.turns.find((turn) => turn.widgetRecommendation)!;
+    recommendationTurn.participant = 'tool';
+    const checkpoint = parseWorkshopSessionStateV1(forgedOwner);
+    expect(() => assertCurrentWorkshopSessionStateV1(checkpoint))
+      .toThrow(/host or guest persona recommendation/);
+    const normalized = normalizeWorkshopSessionCheckpointForHydration(checkpoint);
+    expect(normalized.normalizations).toContain(
+      'discarded-nonpersona-widget-recommendation'
+    );
+    expect(normalized.state.turns.find((turn) => turn.id === recommendationTurn.id))
+      .not.toHaveProperty('widgetRecommendation');
+    expect(() => assertCurrentWorkshopSessionStateV1(normalized.state)).not.toThrow();
   });
 
   it.each([

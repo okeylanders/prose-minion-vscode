@@ -10,6 +10,7 @@ import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType, WebviewToExtensionMessage } from '@/shared/types/messages';
 import { AssistantToolService } from '@/infrastructure/api/services/analysis/AssistantToolService';
 import { createFakeSettings } from '../../../mocks/platform';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 
 // Test helper: Create test message
 function createTestMessage(type: MessageType, payload: any = {}): WebviewToExtensionMessage {
@@ -175,6 +176,36 @@ describe('AnalysisHandler', () => {
   });
 
   describe('Error Handling', () => {
+    it('ends the stream without publishing a result for a transient provider failure', async () => {
+      mockService.analyzeDialogue.mockRejectedValueOnce(
+        new AgentRunUnavailableError(
+          'rate-limited',
+          'OpenRouter API error 429: Rate limit exceeded',
+          15
+        )
+      );
+      handler.registerRoutes(router);
+
+      await router.route(createTestMessage(MessageType.ANALYZE_DIALOGUE, {
+        text: 'Some dialogue',
+        focus: 'both'
+      }));
+
+      const sent = mockPostMessage.mock.calls.map(([entry]) => entry);
+      expect(sent).toContainEqual(expect.objectContaining({
+        type: MessageType.STREAM_COMPLETE,
+        payload: expect.objectContaining({ cancelled: true, content: '' })
+      }));
+      expect(sent).toContainEqual(expect.objectContaining({
+        type: MessageType.ERROR,
+        payload: expect.objectContaining({
+          message: expect.stringContaining('rate limiting'),
+          details: expect.stringContaining('429')
+        })
+      }));
+      expect(sent.some((entry) => entry.type === MessageType.ANALYSIS_RESULT)).toBe(false);
+    });
+
     it('should handle service errors gracefully', async () => {
       mockService.analyzeDialogue.mockRejectedValue(new Error('Service failure'));
 

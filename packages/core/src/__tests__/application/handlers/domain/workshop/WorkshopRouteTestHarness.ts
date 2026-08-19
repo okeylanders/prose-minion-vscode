@@ -45,9 +45,13 @@ export const message = (type: MessageType, payload: unknown) => ({
 });
 
 const widgetRuntime = (
-  gesturePlayground: WorkshopWidgetRuntime['gesturePlayground']
+  gesturePlayground: WorkshopWidgetRuntime['gesturePlayground'],
+  creativeVariationsGenerate: jest.Mock
 ): WorkshopWidgetRuntime => ({
   gesturePlayground,
+  creativeVariations: {
+    generate: creativeVariationsGenerate
+  },
   standingDirectives: {
     apply: jest.fn(),
     remove: jest.fn()
@@ -106,6 +110,7 @@ export interface WorkshopRouteTestHarness {
   storeContext: (key: string, promptTokens: number, completionTokens?: number) => void;
   pin: () => Promise<void>;
   runProse: () => Promise<void>;
+  creativeVariationsGenerate: jest.Mock;
 }
 
 export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
@@ -156,6 +161,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       requestedResources: ['Characters/raven.md']
     })
   };
+  const creativeVariationsGenerate = jest.fn();
   const shell = createFakeShellService({
     revealFileInOS: jest.fn().mockResolvedValue(undefined),
     openFileInEditor: jest.fn().mockResolvedValue(undefined)
@@ -289,7 +295,10 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       timezone: 'America/Chicago'
     }),
     persistence,
-    widgetRuntime({ generateMenu: jest.fn(), generateMore: jest.fn() }),
+    widgetRuntime(
+      { generateMenu: jest.fn(), generateMore: jest.fn() },
+      creativeVariationsGenerate
+    ),
     log
   );
   const router = new MessageRouter();
@@ -351,6 +360,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     posted,
     storeContext,
     pin,
-    runProse
+    runProse,
+    creativeVariationsGenerate
   };
 };

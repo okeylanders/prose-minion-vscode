@@ -56,6 +56,9 @@ import {
 import {
   WorkshopLexicalGravityModal
 } from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal';
+import {
+  WorkshopCreativeVariationsModal
+} from '@components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal';
 import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopStandingDirectiveRail';
 import {
   stripWorkshopWidgetRecommendationControl
@@ -116,6 +119,12 @@ import {
 } from '@hooks/domain/workshop/widgets/useGesturePlayground';
 import { useLexicalGravity } from '@hooks/domain/workshop/widgets/useLexicalGravity';
 import {
+  useCreativeVariations
+} from '@hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations';
+import {
+  useCreativeVariationsAuthoring
+} from '@hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring';
+import {
   useWorkshopStandingDirectives
 } from '@hooks/domain/workshop/useWorkshopStandingDirectives';
 import {
@@ -132,6 +141,9 @@ import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll
 import { useModelsSettings } from './hooks/domain/useModelsSettings';
 import { useTokenTracking } from './hooks/domain/useTokenTracking';
 import { useAccountBalance } from './hooks/domain/useAccountBalance';
+import {
+  CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 // CSS import order is rendered behavior under style-loader. Feature files own
 // their rules; this composition point owns the preserved cascade order.
 import './styles/workshop/tokens.css';
@@ -140,6 +152,7 @@ import './styles/workshop/context.css';
 import './styles/workshop/session.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
+import './components/workshop/widgets/creativeVariations/creativeVariations.css';
 import './components/workshop/standingDirectiveRail.css';
 import './components/workshop/schematic/schematic.css';
 
@@ -205,11 +218,12 @@ export const WorkshopApp: React.FC = () => {
   const widgetHost = useWorkshopWidgetHost();
   const gesturePlayground = useGesturePlayground();
   const lexicalGravity = useLexicalGravity();
+  const creativeVariations = useCreativeVariations();
   const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
   const startupNotice = useStartupNotice();
-  const [hasSavedKey, setHasSavedKey] = React.useState(false);
+  const [hasSavedKey, setHasSavedKey] = React.useState<boolean | null>(null);
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
@@ -219,12 +233,16 @@ export const WorkshopApp: React.FC = () => {
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
-  const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey });
+  const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey === true });
 
   const showToast = React.useCallback((next: WorkshopToastState) => {
     setToast(next);
   }, []);
   const standingDirectives = useWorkshopStandingDirectives(showToast);
+  const clearCreativeVariationsTransientState = React.useCallback(() => {
+    creativeVariations.cancelGeneration();
+    creativeVariations.resetCommitState();
+  }, [creativeVariations.cancelGeneration, creativeVariations.resetCommitState]);
   const handleWidgetOpeningError = React.useCallback(
     (message: string) => showToast({ message, icon: 'x', tone: 'error' }),
     [showToast]
@@ -234,7 +252,34 @@ export const WorkshopApp: React.FC = () => {
     standingDirectives: workshop.standingDirectives,
     onError: handleWidgetOpeningError,
     onCloseGesturePlayground: gesturePlayground.consumeWidgetActionResult,
-    onCloseLexicalGravity: lexicalGravity.clearTransientResults
+    onCloseLexicalGravity: lexicalGravity.clearTransientResults,
+    onCloseCreativeVariations: clearCreativeVariationsTransientState
+  });
+  const creativeVariationsAuthoring = useCreativeVariationsAuthoring({
+    opening: widgetOpening.creativeVariationsOpening,
+    activeExcerpt: workshop.excerpt,
+    contextAttachments: workshop.contextAttachments,
+    widgetModelId:
+      modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel,
+    generationProgress: creativeVariations.generationProgress,
+    generationResult: creativeVariations.generationResult,
+    requestSubjectSelection: creativeVariations.requestSubjectSelection,
+    generate: creativeVariations.generate,
+    cancelGeneration: creativeVariations.cancelGeneration,
+    roomRunActive: workshop.isRunning,
+    toolTargetActive: workshop.chatTarget.kind === 'tool',
+    commitPending: creativeVariations.commitPending,
+    commitOutcome: creativeVariations.commitResult,
+    commit: (draft, clonedFromConfigId) => {
+      creativeVariations.commit({
+        widgetId: 'creative-variations',
+        draft,
+        clonedFromConfigId
+      });
+    },
+    clearCommitResult: creativeVariations.clearCommitResult,
+    resetCommitState: creativeVariations.resetCommitState,
+    onCommitAccepted: widgetOpening.closeCreativeVariations
   });
 
   React.useEffect(() => {
@@ -257,6 +302,19 @@ export const WorkshopApp: React.FC = () => {
   const handleApiKeyStatus = React.useCallback((message: ApiKeyStatusMessage) => {
     setHasSavedKey(!!message.payload?.hasSavedKey);
   }, []);
+
+  const handleApiKeyConfigured = React.useCallback(() => {
+    setHasSavedKey(true);
+  }, []);
+
+  const openAssistantSettings = React.useCallback(() => {
+    vscode.postMessage({
+      type: MessageType.OPEN_ASSISTANT_SETTINGS,
+      source: 'webview.workshop',
+      payload: {},
+      timestamp: Date.now()
+    });
+  }, [vscode]);
 
   const handleStatusMessage = React.useCallback(
     (message: StatusMessage) => {
@@ -306,6 +364,8 @@ export const WorkshopApp: React.FC = () => {
     widgetHost,
     gesturePlayground,
     lexicalGravity,
+    creativeVariations,
+    creativeVariationsAuthoring,
     standingDirectives,
     excerptVerify,
     modelsSettings,
@@ -313,6 +373,7 @@ export const WorkshopApp: React.FC = () => {
     accountBalance,
     startupNotice,
     handleApiKeyStatus,
+    handleApiKeyConfigured,
     handleStatusMessage,
     handleErrorMessage,
     handleCopyResultSuccess,
@@ -325,6 +386,8 @@ export const WorkshopApp: React.FC = () => {
     ...widgetHost.persistedState,
     ...gesturePlayground.persistedState,
     ...lexicalGravity.persistedState,
+    ...creativeVariations.persistedState,
+    ...creativeVariationsAuthoring.persistedState,
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
@@ -596,11 +659,9 @@ export const WorkshopApp: React.FC = () => {
     [announceGate]
   );
 
-  // Open-chat starters prefill the composer; the writer still presses send.
-  const [draftSeed, setDraftSeed] = React.useState<{ text: string; token: number }>();
-  const seedComposerDraft = React.useCallback((text: string) => {
-    setDraftSeed({ text, token: Date.now() });
-  }, []);
+  // Open-chat starters and rolled-back transient sends use the room hook's
+  // one-shot seed; the composer remains the owner of the editable draft.
+  const seedComposerDraft = workshop.seedComposerDraft;
   const askHostToConfigureWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
     setWidgetsModalOpen(false);
     workshop.setChatTarget({ kind: 'host' });
@@ -711,6 +772,15 @@ export const WorkshopApp: React.FC = () => {
       type: MessageType.COPY_RESULT,
       source: 'webview.workshop.gesture-playground',
       payload: { toolName: GESTURE_DICTIONARY_RESULT_TOOL_NAME, content },
+      timestamp: Date.now()
+    });
+  }, [vscode]);
+
+  const copyCreativeVariation = React.useCallback((content: string) => {
+    vscode.postMessage({
+      type: MessageType.COPY_RESULT,
+      source: 'webview.workshop.creative-variations',
+      payload: { toolName: 'creative_variations', content },
       timestamp: Date.now()
     });
   }, [vscode]);
@@ -884,6 +954,20 @@ export const WorkshopApp: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {hasSavedKey === false && (
+        <div className="pm-ws-provider-paused" role="status">
+          <Icon name="alert" size={14} />
+          <span>
+            <strong>AI replies are paused.</strong>{' '}
+            Add an OpenRouter API key to continue. Your Workshop sessions and local context remain
+            available.
+          </span>
+          <button type="button" onClick={openAssistantSettings}>
+            <Icon name="gear" size={13} /> Add API key
+          </button>
+        </div>
+      )}
 
       {workshop.degradedConversationKeys.length > 0 && (
         <div className="pm-ws-degraded-memory" role="status">
@@ -1238,7 +1322,7 @@ export const WorkshopApp: React.FC = () => {
               scope={workshop.scope}
               hasExcerpt={hasExcerpt}
               roomHasMemory={workshop.roomHasMemory}
-              draftSeed={draftSeed}
+              draftSeed={workshop.composerDraftSeed}
               onAddExcerpt={addExcerptByPaste}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
@@ -1305,6 +1389,54 @@ export const WorkshopApp: React.FC = () => {
         onLaunchWidget={launchWidget}
         onAskAgentToConfigure={askHostToConfigureWidget}
       />
+      {widgetOpening.creativeVariationsOpening && (
+        <WorkshopCreativeVariationsModal
+          open
+          banner={
+            widgetOpening.creativeVariationsOpening.kind === 'clone'
+              ? { kind: 'clone' }
+              : widgetOpening.creativeVariationsOpening.kind === 'seed'
+                ? {
+                    kind: 'seed',
+                    personaLabel: widgetOpening.creativeVariationsOpening.personaLabel
+                  }
+                : { kind: 'none' }
+          }
+          draft={creativeVariationsAuthoring.draft}
+          generation={creativeVariationsAuthoring.generation}
+          invalidationNotice={creativeVariationsAuthoring.invalidationNotice}
+          commitPending={creativeVariations.commitPending}
+          commitError={creativeVariationsAuthoring.commitError}
+          commitBlockers={creativeVariationsAuthoring.commitBlockers}
+          artifactUsage={creativeVariationsAuthoring.artifactUsage}
+          highOverlapThreshold={CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE}
+          availableSources={creativeVariationsAuthoring.availableSources}
+          onUseSelection={creativeVariationsAuthoring.requestSubjectSelection}
+          onSubjectTextChange={creativeVariationsAuthoring.changeSubjectText}
+          onSurroundingContextChange={creativeVariationsAuthoring.changeSurroundingContext}
+          onToggleSourceReference={creativeVariationsAuthoring.toggleSourceReference}
+          onMustSurviveChange={creativeVariationsAuthoring.changeMustSurvive}
+          onMustNotChangeChange={creativeVariationsAuthoring.changeMustNotChange}
+          onAimChange={creativeVariationsAuthoring.changeAim}
+          onDistanceChange={creativeVariationsAuthoring.changeDistance}
+          onRequestedCountChange={creativeVariationsAuthoring.changeRequestedCount}
+          onGenerate={creativeVariationsAuthoring.generateWorkup}
+          onCancelGenerate={creativeVariationsAuthoring.cancelGenerate}
+          onToggleCardSelection={creativeVariationsAuthoring.toggleCardSelection}
+          onCarryModeChange={creativeVariationsAuthoring.changeCarryMode}
+          onNoteChange={creativeVariationsAuthoring.changeNote}
+          onCopyVariation={copyCreativeVariation}
+          onCommit={creativeVariationsAuthoring.commitDraft}
+          widgetModelOptions={modelsSettings.modelOptions}
+          selectedWidgetModel={
+            modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel
+          }
+          onWidgetModelChange={(modelId) =>
+            modelsSettings.setModelSelection('widget', modelId)}
+          onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
+          onClose={widgetOpening.closeCreativeVariations}
+        />
+      )}
       {/* Gesture Playground (ADR 2026-07-22): the Draft remains mounted until
           the host acknowledges that its writer turn and artifact are room
           truth. The participant response continues after the sheet closes. */}

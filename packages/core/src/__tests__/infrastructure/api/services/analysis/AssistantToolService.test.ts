@@ -1,6 +1,9 @@
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
 import type { AIResourceManager } from '@orchestration/AIResourceManager';
-import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import {
+  AgentRunEngine,
+  AgentRunUnavailableError
+} from '@orchestration/AgentRunEngine';
 import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
 import { API_KEY_NOT_CONFIGURED_HEADING, DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
@@ -88,6 +91,24 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     await service.continueConversation('conv-2', 'again');
     expect(next.continueConversation).toHaveBeenCalled();
     expect(first.continueConversation).not.toHaveBeenCalled();
+  });
+
+  it('preserves transient run failures for the handler instead of recording an analysis result', async () => {
+    const engine = makeEngine('offline');
+    engine.runInitial.mockRejectedValueOnce(
+      new AgentRunUnavailableError('insufficient-credits', 'OpenRouter API error 402')
+    );
+    const service = build(managerFor(() => engine));
+    await flush();
+
+    await expect(service.analyzeProse(
+      'The moon rose.',
+      'Night.',
+      'file:///prose.md'
+    )).rejects.toMatchObject({
+      name: 'AgentRunUnavailableError',
+      reason: 'insufficient-credits'
+    });
   });
 
   it('uses the explicit Workshop host policy and preserves bounded persona input', async () => {

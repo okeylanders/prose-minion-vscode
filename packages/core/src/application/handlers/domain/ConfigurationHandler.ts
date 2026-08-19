@@ -32,7 +32,13 @@ import {
   SecretsPort
 } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
-import { CATEGORY_MODELS, CuratedOpenRouterModel, OpenRouterModel, OpenRouterModels } from '@providers/OpenRouterModels';
+import {
+  CATEGORY_MODELS,
+  CuratedOpenRouterModel,
+  DEFAULT_CATEGORY_MODEL,
+  OpenRouterModel,
+  OpenRouterModels
+} from '@providers/OpenRouterModels';
 import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 export class ConfigurationHandler {
@@ -319,7 +325,10 @@ export class ConfigurationHandler {
       const seen = new Set(modelOptions.map(option => option.id));
       Object.values(selections).forEach(modelId => {
         if (modelId && !seen.has(modelId)) {
-          modelOptions.push(this.buildCustomModelOption(modelId, liveModelsById.get(modelId)));
+          modelOptions.push(this.buildCustomModelOption(
+            modelId,
+            this.getLiveModel(modelId, liveModelsById)
+          ));
           seen.add(modelId);
         }
       });
@@ -353,7 +362,25 @@ export class ConfigurationHandler {
     curatedModels: CuratedOpenRouterModel[],
     liveModelsById: Map<string, OpenRouterModel>
   ): ModelOption[] {
-    return curatedModels.map(model => this.buildModelOption(model, liveModelsById.get(model.id)));
+    return curatedModels.map(model => this.buildModelOption(
+      model,
+      this.getLiveModel(model.id, liveModelsById)
+    ));
+  }
+
+  private getLiveModel(
+    modelId: string,
+    liveModelsById: Map<string, OpenRouterModel>
+  ): OpenRouterModel | undefined {
+    const exact = liveModelsById.get(modelId);
+    if (exact) {
+      return exact;
+    }
+
+    // OpenRouter's dynamic routing suffixes alter provider selection rather
+    // than model identity, so their catalog metadata lives under the base ID.
+    const baseModelId = modelId.replace(/:(?:nitro|floor|exacto)$/, '');
+    return baseModelId === modelId ? undefined : liveModelsById.get(baseModelId);
   }
 
   private buildModelOption(curated: CuratedOpenRouterModel, live?: OpenRouterModel): ModelOption {
@@ -423,7 +450,7 @@ export class ConfigurationHandler {
       assistant: this.settings.get<string>('proseMinion', 'assistantModel') || fallback,
       dictionary: this.settings.get<string>('proseMinion', 'dictionaryModel') || fallback,
       context: this.settings.get<string>('proseMinion', 'contextModel') || fallback,
-      category: this.settings.get<string>('proseMinion', 'categoryModel') || fallback,
+      category: this.settings.get<string>('proseMinion', 'categoryModel') || DEFAULT_CATEGORY_MODEL,
       widget: this.settings.get<string>('proseMinion', 'widgetModel') || DEFAULT_WIDGET_MODEL
     };
 

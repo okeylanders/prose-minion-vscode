@@ -48,6 +48,7 @@ export enum MessageType {
   TAB_CHANGED = 'tab_changed',
   SELECTION_UPDATED = 'selection_updated',
   OPEN_WORKSHOP = 'open_workshop',
+  OPEN_ASSISTANT_SETTINGS = 'open_assistant_settings',
   REQUEST_STARTUP_NOTICE = 'request_startup_notice',
   STARTUP_NOTICE_DATA = 'startup_notice_data',
   DISMISS_STARTUP_NOTICE = 'dismiss_startup_notice',
@@ -150,6 +151,7 @@ export enum MessageType {
   WORKSHOP_REVEAL_SESSION = 'workshop_reveal_session',
   WORKSHOP_DELETE_SESSION = 'workshop_delete_session',
   WORKSHOP_TURN = 'workshop_turn',
+  WORKSHOP_COMPOSER_DRAFT_RESTORED = 'workshop_composer_draft_restored',
   WORKSHOP_SESSION_STATE = 'workshop_session_state',
   WORKSHOP_SESSIONS_DATA = 'workshop_sessions_data',
   WORKSHOP_SESSION_ACTION_RESULT = 'workshop_session_action_result',
@@ -160,6 +162,9 @@ export enum MessageType {
   WORKSHOP_GESTURE_PLAYGROUND_GENERATE = 'workshop_gesture_playground_generate',
   WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS = 'workshop_gesture_playground_generation_progress',
   WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT = 'workshop_gesture_playground_menu_result',
+  WORKSHOP_CREATIVE_VARIATIONS_GENERATE = 'workshop_creative_variations_generate',
+  WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS = 'workshop_creative_variations_generation_progress',
+  WORKSHOP_CREATIVE_VARIATIONS_RESULT = 'workshop_creative_variations_result',
   WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES = 'workshop_request_lexical_gravity_lenses',
   WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA = 'workshop_lexical_gravity_lenses_data',
   WORKSHOP_PREVIEW_LEXICAL_GRAVITY = 'workshop_preview_lexical_gravity',
@@ -174,7 +179,8 @@ export enum MessageType {
   WORKSHOP_APPLY_STANDING_WIDGET = 'workshop_apply_standing_widget',
   WORKSHOP_REMOVE_STANDING_WIDGET = 'workshop_remove_standing_widget',
   WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',
-  CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST = 'cancel_gesture_playground_generate_request'
+  CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST = 'cancel_gesture_playground_generate_request',
+  CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST = 'cancel_creative_variations_generate_request'
 }
 
 export interface BaseMessage {

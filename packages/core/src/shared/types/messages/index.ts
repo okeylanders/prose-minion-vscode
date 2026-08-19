@@ -98,6 +98,7 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  OpenAssistantSettingsMessage,
   RequestStartupNoticeMessage,
   StartupNoticeDataMessage,
   DismissStartupNoticeMessage,
@@ -168,6 +169,7 @@ import {
   WorkshopRevealSessionMessage,
   WorkshopDeleteSessionMessage,
   WorkshopTurnMessage,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopSessionStateMessage,
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
@@ -177,6 +179,10 @@ import {
   CancelGesturePlaygroundGenerateRequestMessage,
   WorkshopGesturePlaygroundGenerationProgressMessage,
   WorkshopGesturePlaygroundMenuResultMessage,
+  WorkshopCreativeVariationsGenerateMessage,
+  CancelCreativeVariationsGenerateRequestMessage,
+  WorkshopCreativeVariationsGenerationProgressMessage,
+  WorkshopCreativeVariationsResultMessage,
   WorkshopRequestLexicalGravityLensesMessage,
   WorkshopLexicalGravityLensesDataMessage,
   WorkshopPreviewLexicalGravityMessage,
@@ -230,6 +236,7 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | OpenWorkshopMessage
+  | OpenAssistantSettingsMessage
   | FastGenerateDictionaryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
@@ -277,6 +284,8 @@ export type WebviewToExtensionMessage =
   | WorkshopDeleteSessionMessage
   | WorkshopGesturePlaygroundGenerateMessage
   | CancelGesturePlaygroundGenerateRequestMessage
+  | WorkshopCreativeVariationsGenerateMessage
+  | CancelCreativeVariationsGenerateRequestMessage
   | WorkshopRequestLexicalGravityLensesMessage
   | WorkshopPreviewLexicalGravityMessage
   | WorkshopBuildLexicalGravityLensMessage
@@ -318,6 +327,7 @@ export type ExtensionToWebviewMessage =
   | StreamChunkMessage
   | StreamCompleteMessage
   | WorkshopTurnMessage
+  | WorkshopComposerDraftRestoredMessage
   | WorkshopSessionStateMessage
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage
@@ -328,6 +338,8 @@ export type ExtensionToWebviewMessage =
   | WorkshopContextAttachmentContentMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
+  | WorkshopCreativeVariationsGenerationProgressMessage
+  | WorkshopCreativeVariationsResultMessage
   | WorkshopLexicalGravityLensesDataMessage
   | WorkshopLexicalGravityPreviewResultMessage
   | WorkshopLexicalGravityLensCandidatesMessage

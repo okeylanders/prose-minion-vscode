@@ -8,7 +8,7 @@ the Workshop Architecture Refactor completed Phases 0-7. Sprint 01 merged
 02D merged through [PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111)
 on 2026-08-08, establishing the persistence grammar/integrity family boundary
 before Creative Variations or any other persisted widget begins. Sprint 03
-Creative Variations is next, followed by Prose Controller, Show vs. Tell, and
+Creative Variations is active, followed by Prose Controller, Show vs. Tell, and
 the later Lexical Gravity model-selected stack.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
@@ -38,7 +38,8 @@ and its superseded sprint file was removed. Sprint 02D merged through
 [PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111),
 implementing the accepted F-07/F-09 foundation with an exhaustive
 four-operation lifecycle registry and post-normalization widget integrity.
-Sprint 03 Creative Variations is the next unstarted implementation slice;
+Sprint 03 Creative Variations is the active implementation slice; its Slice 0
+freezes the approved behavior and architecture contract before production code.
 Sprints 04–06 continue the declared feature sequence.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;

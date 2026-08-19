@@ -17,6 +17,7 @@ const PROJECT_RECOVERY_DIRECTORY = path.join('prose-minion', 'recovery');
 const RESPONSE_DIRECTORY = 'model-responses';
 const RECOVERY_GITIGNORE = '*\n!.gitignore\n';
 const RESPONSE_FILE_EXTENSION = '.response.txt';
+const RETAINED_RESPONSE_FILES = 20;
 const OPEN_ACTION = 'Open Recovery File';
 const REVEAL_ACTION = 'Reveal in Finder';
 
@@ -168,10 +169,63 @@ export class RejectedModelResponseRecoveryStore implements RejectedModelResponse
         `[RejectedModelResponseRecovery] Response survived, but its metadata sidecar did not${this.trace(response)}: ${this.errorMessage(error)}`
       );
     }
+    await this.pruneExpiredResponses(storageDirectory, path.basename(filePath), response);
     this.log?.appendLine(
       `[RejectedModelResponseRecovery] Saved complete ${response.toolName} response${this.trace(response)} to ${filePath}`
     );
     return { filePath, metadataPath: savedMetadataPath, toolName: response.toolName, storageScope };
+  }
+
+  private async pruneExpiredResponses(
+    storageDirectory: string,
+    currentResponseFile: string,
+    response: RejectedModelResponse
+  ): Promise<void> {
+    let entries: Array<[string, unknown]>;
+    try {
+      entries = await this.fileSystem.readDirectory(storageDirectory);
+    } catch (error) {
+      this.log?.appendLine(
+        `[RejectedModelResponseRecovery] Could not inspect recovery retention${this.trace(response)}: ${this.errorMessage(error)}`
+      );
+      return;
+    }
+
+    const responseFiles = entries
+      .map(([name]) => name)
+      .filter((name) => name.endsWith(RESPONSE_FILE_EXTENSION));
+    const retained = new Set([
+      currentResponseFile,
+      ...responseFiles
+        .filter((name) => name !== currentResponseFile)
+        .sort((left, right) => right.localeCompare(left))
+        .slice(0, RETAINED_RESPONSE_FILES - 1)
+    ]);
+    const entryNames = new Set(entries.map(([name]) => name));
+    let pruned = 0;
+    for (const responseFile of responseFiles) {
+      if (retained.has(responseFile)) {
+        continue;
+      }
+      const baseName = responseFile.slice(0, -RESPONSE_FILE_EXTENSION.length);
+      const relatedFiles = [responseFile, `${baseName}.metadata.json`]
+        .filter((name) => entryNames.has(name));
+      for (const name of relatedFiles) {
+        try {
+          await this.fileSystem.delete(path.join(storageDirectory, name));
+        } catch (error) {
+          this.log?.appendLine(
+            `[RejectedModelResponseRecovery] Could not prune recovery file ${name}${this.trace(response)}: ${this.errorMessage(error)}`
+          );
+        }
+      }
+      pruned += 1;
+    }
+    if (pruned > 0) {
+      this.log?.appendLine(
+        `[RejectedModelResponseRecovery] Pruned ${pruned} expired response entr${pruned === 1 ? 'y' : 'ies'}; retaining ${RETAINED_RESPONSE_FILES}.`
+      );
+    }
   }
 
   private async writeAtomically(

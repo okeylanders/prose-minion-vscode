@@ -2,6 +2,7 @@ import { WorkshopWidgetActionResultMessage } from '@messages';
 
 export interface WorkshopWidgetActionResultConsumers {
   handleGestureActionResult: (message: WorkshopWidgetActionResultMessage) => void;
+  handleCreativeVariationsActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   handleLexicalActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   handleStandingDirectiveActionResult: (message: WorkshopWidgetActionResultMessage) => void;
 }
@@ -16,6 +17,7 @@ export function dispatchWorkshopWidgetActionResult(
   consumers: WorkshopWidgetActionResultConsumers
 ): void {
   consumers.handleGestureActionResult(message);
+  consumers.handleCreativeVariationsActionResult(message);
   consumers.handleLexicalActionResult(message);
   consumers.handleStandingDirectiveActionResult(message);
 }

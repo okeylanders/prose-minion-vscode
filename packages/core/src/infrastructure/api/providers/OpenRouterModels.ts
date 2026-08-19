@@ -37,9 +37,12 @@ export interface CuratedOpenRouterModel {
  * Updated as of 2026
  * Grouped by provider family and version progression
  */
+export const DEFAULT_CATEGORY_MODEL = 'openai/gpt-oss-120b:nitro';
+
 /**
- * Curated list of models for Category Search
- * Non-thinking models only for predictable token usage
+ * Curated list of models for Category Search.
+ * Includes both direct and reasoning models that have proven useful for
+ * semantic matching; the selected model owns its own reasoning behavior.
  */
 export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
   {
@@ -49,10 +52,16 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Meta\'s multimodal reasoning model with 1M context; increasingly strong for nuanced category matching and context-heavy editorial search'
   },
   {
+    id: 'meta/muse-spark-1.2',
+    name: 'Muse Spark 1.2',
+    family: 'Muse',
+    description: 'Meta\'s newer 1M-context multimodal Muse checkpoint, with stronger coding and agentic execution while 1.1 remains available for its distinct editorial voice'
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     family: 'Claude Sonnet',
-    description: 'Default for category search'
+    description: 'High-quality category matching with strong instruction following and nuanced prose judgment'
   },
   {
     id: 'anthropic/claude-sonnet-4.6',
@@ -121,6 +130,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Premium GPT-5.5 variant for high-accuracy category matching on difficult/ambiguous inputs'
   },
   {
+    id: 'openai/gpt-oss-120b:nitro',
+    name: 'GPT-OSS 120B Nitro',
+    family: 'GPT-OSS',
+    description: 'Default for Category Search; OpenAI\'s open-weight reasoner routed to the highest-throughput available provider for extremely fast semantic matching'
+  },
+  {
     id: 'google/gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
     family: 'Gemini 2.5',
@@ -161,6 +176,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'Gemini 3.6 Flash',
     family: 'Gemini 3.6',
     description: 'Newest Gemini fast tier — quick, low-cost matching with long context for large category lists'
+  },
+  {
+    id: 'google/gemini-3.7-flash',
+    name: 'Gemini 3.7 Flash',
+    family: 'Gemini 3.7',
+    description: 'Google\'s newest 1M-context Flash model for responsive multimodal reasoning and reliable multi-step category matching'
   },
   {
     id: 'deepseek/deepseek-v4-flash',
@@ -303,6 +324,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Meta\'s multimodal reasoning model with 1M context. A strong fit for manuscript-scale critique, mixed-media context, and exploratory editorial work.'
   },
   {
+    id: 'meta/muse-spark-1.2',
+    name: 'Muse Spark 1.2',
+    family: 'Muse',
+    description: 'Meta\'s newer 1M-context multimodal Muse checkpoint. Stronger coding and agentic execution, retained alongside 1.1 so writers can choose between their distinct voices.'
+  },
+  {
     id: 'anthropic/claude-opus-4.1',
     name: 'Claude Opus 4.1',
     family: 'Claude Opus',
@@ -423,6 +450,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Large MoE model with 1M context. Strong value option for deep structural critique, long manuscript context, and reasoning-heavy writing tasks.'
   },
   {
+    id: 'deepseek/deepseek-v4-pro-0813',
+    name: 'DeepSeek V4 Pro 0813',
+    family: 'DeepSeek V4',
+    description: 'Production/GA V4 Pro checkpoint with 1M context and 384K maximum output. Substantially improved for tool use, agents, and production workflows while retaining the V4 Pro foundation.'
+  },
+  {
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
     family: 'DeepSeek V4',
@@ -501,6 +534,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Google\'s fast, inexpensive workhorse. Quick answers, long context, low cost — best for rapid line checks, summaries, and dictionary-style lookups.'
   },
   {
+    id: 'google/gemini-3.7-flash',
+    name: 'Gemini 3.7 Flash',
+    family: 'Gemini 3.7',
+    description: 'Google\'s newest Flash model. Fast multimodal reasoning with 1M context for responsive critique, large-document analysis, and multi-step writing workflows.'
+  },
+  {
     id: 'z-ai/glm-4.5',
     name: 'GLM 4.5',
     family: 'GLM 4',
@@ -547,6 +586,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-4.1',
     family: 'GPT-4',
     description: 'Highly reliable legacy frontier model. Consistent instruction following for specific formatting needs.'
+  },
+  {
+    id: 'openai/gpt-oss-120b:nitro',
+    name: 'GPT-OSS 120B Nitro',
+    family: 'GPT-OSS',
+    description: 'OpenAI\'s open-weight 120B reasoner with 131K context, routed to OpenRouter\'s highest-throughput provider. Exceptionally fast for category search, utility analysis, and iterative prose work.'
   },
   {
     id: 'openai/gpt-5.1',
@@ -685,6 +730,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Grok 4.5',
     family: 'Grok 4',
     description: 'xAI\'s newest Grok flagship with 500K context. Strong option for complex reasoning, knowledge work, and research-informed editorial tasks.'
+  },
+  {
+    id: 'x-ai/grok-4.6',
+    name: 'Grok 4.6',
+    family: 'Grok 4',
+    description: 'xAI\'s latest Grok flagship with 500K context and stronger frontier reasoning for difficult structural critique, research, and knowledge-heavy editorial work.'
   },
   {
     id: 'moonshotai/kimi-k2-0905',

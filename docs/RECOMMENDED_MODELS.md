@@ -18,6 +18,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/meta/muse-spark-1.1
   - Meta: https://ai.meta.com/
 
+### Meta Muse Spark 1.2 — Agentic Multimodal Muse
+
+- **Best For:** Multimodal manuscript work that also benefits from stronger coding, tooling, and agentic execution
+- **Description:** Meta's newer 1M-context Muse checkpoint. It remains alongside 1.1 so writers can choose between their distinct creative voices and execution profiles
+- **Links:**
+  - OpenRouter: https://openrouter.ai/meta/muse-spark-1.2
+  - Meta: https://ai.meta.com/
+
 ### Claude Sonnet 5 — New Sonnet Flagship
 
 - **Best For:** Default high-quality prose analysis, long-context critique, and mixed writing + tooling workflows
@@ -126,6 +134,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/deepseek/deepseek-r1
   - DeepSeek: https://www.deepseek.com/
 
+### DeepSeek V4 Pro 0813 — Production Agentic Checkpoint
+
+- **Best For:** Tool-heavy editorial workflows, large-context structural analysis, and production agent runs
+- **Description:** The production/GA V4 Pro checkpoint keeps the 1M context and 384K maximum output while substantially improving agents, tool use, and production execution over the April preview
+- **Links:**
+  - OpenRouter: https://openrouter.ai/deepseek/deepseek-v4-pro-0813
+  - DeepSeek: https://www.deepseek.com/
+
 ### xAI Grok 4.3 — Deep Reasoning
 
 - **Best For:** Massive context with strong reasoning
@@ -140,6 +156,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** xAI's newest Grok flagship with 500K context and frontier performance across coding, knowledge work, and STEM
 - **Links:**
   - OpenRouter: https://openrouter.ai/x-ai/grok-4.5
+  - xAI: https://x.ai/
+
+### xAI Grok 4.6 — Latest Frontier Reasoning
+
+- **Best For:** Difficult structural critique, research, and knowledge-heavy editorial work
+- **Description:** xAI's latest Grok flagship retains 500K context while extending the family's frontier reasoning profile. Grok 4.5 remains available as a distinct checkpoint
+- **Links:**
+  - OpenRouter: https://openrouter.ai/x-ai/grok-4.6
   - xAI: https://x.ai/
 
 ### Mistral Medium 3.5 — Literary Analysis
@@ -298,6 +322,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 
 **Best for:** Category Search, quick checks, and batch processing
 
+### OpenAI GPT-OSS 120B Nitro — Category Search Default
+
+- **Best For:** Extremely fast semantic matching, category search, utility analysis, and iterative prose work
+- **Description:** OpenAI's open-weight 120B reasoner with 131K context. The `:nitro` route continuously prefers OpenRouter's highest-throughput available provider
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-oss-120b:nitro
+  - OpenAI: https://openai.com/open-models/
+
 ### Claude Haiku 4.5 — Quick Checks
 
 - **Best For:** Anthropic's fastest efficient model
@@ -320,6 +352,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** Google's fast, inexpensive workhorse — quick answers, long context, low cost
 - **Links:**
   - OpenRouter: https://openrouter.ai/google/gemini-3.6-flash
+  - Google DeepMind: https://deepmind.google/technologies/gemini/
+
+### Gemini 3.7 Flash — New Multimodal Workhorse
+
+- **Best For:** Responsive critique, multimodal context, large-document analysis, and multi-step writing workflows
+- **Description:** Google's newest Flash model combines mandatory reasoning, multimodal input, and a 1M-token context window at a low operating cost
+- **Links:**
+  - OpenRouter: https://openrouter.ai/google/gemini-3.7-flash
   - Google DeepMind: https://deepmind.google/technologies/gemini/
 
 ### Claude Opus 4.8 Fast — Premium Iteration

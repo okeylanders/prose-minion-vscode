@@ -134,6 +134,36 @@ describe('ConfigurationHandler', () => {
       expect(option.family).toBe('Claude Opus');
     });
 
+    it('joins dynamic routing variants to metadata from their base model', async () => {
+      const variantId = 'openai/gpt-oss-120b:nitro';
+      const baseId = 'openai/gpt-oss-120b';
+      jest.spyOn(OpenRouterModels, 'getRecommendedModels').mockReturnValue([{
+        id: variantId,
+        name: 'GPT-OSS 120B Nitro',
+        family: 'GPT-OSS',
+        description: 'fast routed variant'
+      }] as any);
+      jest.spyOn(OpenRouterModels, 'fetchModels').mockResolvedValue([{
+        id: baseId,
+        name: 'OpenAI: gpt-oss-120b',
+        created: 1754414231,
+        pricing: { prompt: '0.00000003', completion: '0.00000017' },
+        context_length: 131072
+      }]);
+
+      const { handler: h, postMessage } = buildHandler({
+        ...allCuratedSettings,
+        categoryModel: variantId
+      });
+      await h.sendModelData();
+
+      const option = getPayload(postMessage).options.find(o => o.id === variantId)!;
+      expect(option.pricingAvailable).toBe(true);
+      expect(option.liveDataAvailable).toBe(true);
+      expect(option.contextLength).toBe(131072);
+      expect(option.pricing).toEqual({ prompt: '0.00000003', completion: '0.00000017' });
+    });
+
     it('suppresses pricing and logs a degraded WARN when the catalog is all fallback', async () => {
       const fallback: OpenRouterModel[] = [{
         id: CURATED_ID,

@@ -25,6 +25,8 @@ import {
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { LogSink } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { workshopToolLabel } from '@shared/constants/workshopTools';
 import { workshopWriterPreferredAddress } from '@/utils/workshopWriterProfile';
@@ -113,7 +115,7 @@ export class RunWorkshopToolSidePass {
         onToken: (token: string) => events.streamChunk(toolRequestId, token),
         retainConversation: true
       });
-      const truncated = result.finishReason === 'length';
+      const truncated = isAgentRunIncomplete(result.finishReason);
 
       if (controller.signal.aborted) {
         this.outputChannel.appendLine(
@@ -318,6 +320,8 @@ export class RunWorkshopToolSidePass {
             ? `${personaLabel} synthesis cancelled; ${toolLabel}'s report remains available.`
             : `${toolLabel} cancelled`
         );
+      } else if (error instanceof AgentRunUnavailableError) {
+        events.error(error.message, error.providerDetails);
       } else {
         events.error(
           reportAdopted

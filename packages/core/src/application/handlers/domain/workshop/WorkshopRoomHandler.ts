@@ -19,6 +19,7 @@
 
 import { LogSink, ShellService } from '@/platform';
 import { AssistantToolService } from '@services/analysis/AssistantToolService';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 import { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
@@ -35,6 +36,9 @@ import {
 } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
+import type {
+  WorkshopOneShotWidgetRoomArtifact
+} from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
 import {
   buildWorkshopContextAttachmentsFrame,
   buildWorkshopExcerptSourceFrame,
@@ -90,9 +94,9 @@ import {
   LabeledContextBudgetSnapshot,
   WorkshopTurn,
   WorkshopMessageAttachmentSnapshot,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopTurnMessage,
   WorkshopTurnWidgetCommit,
-  WorkshopWidgetId,
 } from '@messages';
 import { WorkshopCapabilityPrincipal } from '@shared/types/workshopCapabilities';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
@@ -471,7 +475,10 @@ export class WorkshopRoomHandler {
       this.postSessionState();
     }
 
-    await this.executeMessage(text, text, undefined, { includeMessageAttachments: true });
+    await this.executeMessage(text, text, undefined, {
+      includeMessageAttachments: true,
+      restoreDraftOnRollback: true
+    });
   }
 
   async handleSelectPersona(message: WorkshopSelectPersonaMessage): Promise<void> {
@@ -642,9 +649,17 @@ export class WorkshopRoomHandler {
       } catch (error) {
         const details = error instanceof Error ? error.message : String(error);
         this.session.abandonRun(requestId);
+        if (error instanceof AgentRunUnavailableError) {
+          // A personalized invitation is authored in a dedicated sheet and
+          // has no draft-restoration channel. Keep its visible turn so the
+          // writer retains the only copy after a provider refusal.
+          this.sessionPersistence.markDirty('unavailable guest invitation retained');
+        }
         this.sendStreamComplete(requestId, '', true);
         if (error instanceof Error && error.name === 'AbortError') {
           this.sendStatus(`${workshopPersonaLabel(personaId)} invitation cancelled`);
+        } else if (error instanceof AgentRunUnavailableError) {
+          this.sendError('workshop.invite_guest', error.message, error.providerDetails);
         } else {
           this.sendError('workshop.invite_guest', `Failed to invite ${workshopPersonaLabel(personaId)}`, details);
         }
@@ -890,6 +905,8 @@ export class WorkshopRoomHandler {
        * deterministic quick actions never consume them (Phase 6B).
        */
       includeMessageAttachments?: boolean;
+      /** Restore writer-owned composer text if transient rollback removes its turn. */
+      restoreDraftOnRollback?: boolean;
       /**
        * Atomic widget commit (ADR 2026-07-22): a host-built one-shot artifact
        * that rides THIS send without ever entering the pending list, plus the
@@ -897,21 +914,14 @@ export class WorkshopRoomHandler {
        * commit route sets this, and it never sets includeMessageAttachments —
        * the writer's staged pills belong to the message they were typing.
        */
-      widgetArtifact?: {
-        id: string;
-        widgetId: WorkshopWidgetId;
-        widgetConfigId: string;
-        label: string;
-        content: string;
-        selectionCount: number;
-      };
+      widgetArtifact?: WorkshopOneShotWidgetRoomArtifact;
       /**
        * Widget commits close their authoring sheet once the room owns the
        * writer turn and artifact, not after the participant finishes replying.
        */
       onRoomAccepted?: (userTurnId: string) => void;
     }
-  ): Promise<{ committed: boolean; userTurnId?: string }> {
+  ): Promise<{ committed: boolean; refusalReason?: string }> {
     const personaId = this.session.getSelectedPersonaId();
     const targetPlan = this.resolveMessageTarget(
       targetOverride ?? this.session.getChatTarget(),
@@ -1207,10 +1217,23 @@ export class WorkshopRoomHandler {
         this.sessionPersistence.markDirty(targetPlan.completionReason);
       }
       this.postSessionState();
-      return { committed: assistantTurn !== undefined, userTurnId: userTurn.id };
+      return { committed: assistantTurn !== undefined };
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
-      this.session.abandonRun(requestId);
+      if (error instanceof AgentRunUnavailableError) {
+        const rolledBack = this.session.rollbackMessageRun(requestId);
+        if (rolledBack) {
+          this.sessionPersistence.markDirty('unavailable message rolled back');
+          this.outputChannel.appendLine(
+            `[WorkshopRoomHandler] Rolled back unavailable writer turn ${rolledBack.id}`
+          );
+          if (executeOptions?.restoreDraftOnRollback) {
+            this.postComposerDraftRestored(rolledBack.content);
+          }
+        }
+      } else {
+        this.session.abandonRun(requestId);
+      }
       if (pendingHostUpdates) {
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Pending host update retained after failed delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}): ${details}`
@@ -1233,11 +1256,18 @@ export class WorkshopRoomHandler {
         );
       } else if (error instanceof Error && error.name === 'AbortError') {
         this.sendStatus(`${label} cancelled`);
+      } else if (error instanceof AgentRunUnavailableError) {
+        this.sendError('workshop.send_message', error.message, error.providerDetails);
       } else {
         this.sendError('workshop.send_message', `Failed to message ${label}`, details);
       }
       this.postSessionState();
-      return { committed: false, userTurnId: userTurn.id };
+      return {
+        committed: false,
+        ...(error instanceof AgentRunUnavailableError
+          ? { refusalReason: error.message }
+          : {})
+      };
     } finally {
       this.settleActiveRun(requestId);
     }
@@ -1377,6 +1407,16 @@ export class WorkshopRoomHandler {
       type: MessageType.WORKSHOP_TURN,
       source: 'extension.workshop',
       payload: { turn },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  private postComposerDraftRestored(text: string): void {
+    const message: WorkshopComposerDraftRestoredMessage = {
+      type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+      source: 'extension.workshop',
+      payload: { text },
       timestamp: Date.now()
     };
     void this.postMessage(message);

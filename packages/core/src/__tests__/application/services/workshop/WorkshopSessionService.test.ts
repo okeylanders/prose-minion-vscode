@@ -111,6 +111,98 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
     expect(JSON.stringify(service.getSnapshot())).not.toContain('conversationId');
   });
 
+  it('rolls an unavailable message and its turn-bound artifacts back while retaining staged attachments', () => {
+    service.setSessionScope('open');
+    const attachment = service.addMessageAttachment({
+      label: 'notes.md',
+      words: 2,
+      content: 'private notes'
+    });
+    if (!attachment.ok) {
+      throw new Error(attachment.reason);
+    }
+    const turn = service.beginPersonaMessage(
+      'offline-run',
+      'Are you there?',
+      [attachment.attachment]
+    );
+    service.recordRoomThreadArtifacts(turn.id, [{
+      id: attachment.attachment.id,
+      name: attachment.attachment.label,
+      content: attachment.attachment.content
+    }]);
+
+    expect(service.rollbackMessageRun('offline-run')).toEqual(turn);
+
+    expect(service.getSnapshot().turns).toEqual([]);
+    expect(service.getSnapshot().activeRequestId).toBeUndefined();
+    expect(service.getSnapshot().pendingMessageAttachments).toEqual([
+      expect.objectContaining({ id: attachment.attachment.id })
+    ]);
+    expect(service.getRoomThreadArtifactsForTurn(turn.id)).toEqual([]);
+    expect(service.exportCommittedState().turns).toEqual([]);
+    expect(new WorkshopRoomDeliveryService(service).prepare({ kind: 'host' }).turns).toEqual([]);
+  });
+
+  it('retains capability evidence and to-dos that already reference it when a message rolls back', () => {
+    pin();
+    const writerTurn = service.beginPersonaMessage(
+      'offline-capability-run',
+      'Check continuity before answering.'
+    );
+    const capabilityTurn = service.recordCapabilityArtifact({
+      requestId: 'offline-capability-run',
+      excerptVersion: 1,
+      toolId: 'continuity',
+      details: {
+        operation: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Continuity',
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' },
+        metadata: { toolId: 'continuity' }
+      },
+      result: {
+        capability: 'analysis.run',
+        status: 'success',
+        requestSummary: 'Continuity',
+        content: 'The cup changes hands twice.'
+      },
+      actionableFindings: [{
+        key: 'finding-1',
+        ordinal: 1,
+        text: 'Keep the cup with Mara until the final beat.'
+      }]
+    })!.turn;
+    const todo = service.addTodoFromFinding(capabilityTurn.id, 'finding-1');
+
+    expect(service.rollbackMessageRun('offline-capability-run')).toEqual(writerTurn);
+
+    expect(service.getSnapshot().turns).toEqual([
+      expect.objectContaining({ id: capabilityTurn.id, artifact: 'tool_report' })
+    ]);
+    expect(service.getSnapshot().todos).toEqual([
+      expect.objectContaining({
+        id: todo.id,
+        source: expect.objectContaining({ turnId: capabilityTurn.id })
+      })
+    ]);
+    expect(() => service.exportCommittedState()).not.toThrow();
+  });
+
+  it('does not roll back a superseded run or its visible writer turn', () => {
+    service.setSessionScope('open');
+    const turn = service.beginPersonaMessage('first-run', 'Keep this turn.');
+    service.abandonRun('first-run');
+    service.beginPersonaMessage('current-run', 'Current turn.');
+
+    expect(service.rollbackMessageRun('first-run')).toBeUndefined();
+    expect(service.getSnapshot().turns).toEqual([
+      expect.objectContaining({ id: turn.id }),
+      expect.objectContaining({ content: 'Current turn.' })
+    ]);
+  });
+
   it('owns a defensive room behavior object and stamps persona turns, not tool turns', () => {
     expect(service.getConversationBehavior()).toEqual({
       interactionMode: 'balanced',

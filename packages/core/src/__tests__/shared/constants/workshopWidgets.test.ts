@@ -36,13 +36,23 @@ describe('workshopWidgets registry', () => {
     }
   });
 
-  it('marks the Sprint 01 and Sprint 02B widgets live', () => {
+  it('marks the implemented widgets live for integrated testing', () => {
     expect(allWidgets.filter((widget) => widget.live).map((widget) => widget.id))
-      .toEqual(['gesture-playground', 'lexical-gravity']);
+      .toEqual(['gesture-playground', 'creative-variations', 'lexical-gravity']);
     expect(isLiveWorkshopWidgetId('gesture-playground')).toBe(true);
+    expect(isLiveWorkshopWidgetId('creative-variations')).toBe(true);
     expect(isLiveWorkshopWidgetId('lexical-gravity')).toBe(true);
     expect(isLiveWorkshopWidgetId('not-a-widget')).toBe(false);
     expect(isLiveWorkshopWidgetId(undefined)).toBe(false);
+  });
+
+  it('describes Creative Variations current lifecycle without promising Slice 5', () => {
+    const creative = workshopWidgetDescriptor('creative-variations');
+    expect(creative).toMatchObject({
+      live: true,
+      lifecycleNote: 'play first · commit adds one turn'
+    });
+    expect(creative?.blurb).toContain('under any invariants you declare');
   });
 
   it('derives frame kinds mechanically and round-trips them', () => {

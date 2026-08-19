@@ -1,7 +1,10 @@
 import {
   WorkshopApplyStandingWidgetPayload,
   WorkshopCommitWidgetPayload,
+  WorkshopCreativeVariationsCommitPayload,
+  WorkshopCreativeVariationsDraft,
   WorkshopGesturePlaygroundGeneratePayload,
+  WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundGenerationProgressPayload,
   WorkshopGesturePlaygroundMenuResultPayload,
   WorkshopLexicalGravityDraft,
@@ -58,6 +61,17 @@ describe('Workshop widget contract exactness', () => {
       // @ts-expect-error A Lexical draft cannot travel under the Gesture commit arm.
       draft: {} as WorkshopLexicalGravityDraft
     };
+    const creativeCommit: WorkshopCreativeVariationsCommitPayload = {
+      widgetId: 'creative-variations',
+      requestToken: 'creative-commit-1',
+      draft: {} as WorkshopCreativeVariationsDraft
+    };
+    // @ts-expect-error A Gesture draft cannot travel under the Creative commit arm.
+    const invalidCreativeCommit: WorkshopCommitWidgetPayload = {
+      widgetId: 'creative-variations',
+      requestToken: 'creative-commit-2',
+      draft: {} as WorkshopGesturePlaygroundDraft
+    };
     const invalidApply: WorkshopApplyStandingWidgetPayload = {
       requestToken: 'apply-1',
       // @ts-expect-error A standing draft cannot claim the one-shot Gesture rail.
@@ -87,5 +101,7 @@ describe('Workshop widget contract exactness', () => {
     void invalidCommit;
     void invalidApply;
     void invalidAction;
+    void creativeCommit;
+    void invalidCreativeCommit;
   });
 });

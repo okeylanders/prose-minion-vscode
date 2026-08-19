@@ -57,6 +57,7 @@ export type ErrorSource =
   | 'ui.resource'
   | 'ui.selection'
   | 'ui.workshop'
+  | 'ui.settings'
   | 'ui.startup_notice'
 
   // File operations

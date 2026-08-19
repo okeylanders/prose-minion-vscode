@@ -17,7 +17,8 @@ import {
   isApiKeyNotConfiguredWarning,
   TokenUsage,
   WorkshopTurn,
-  WorkshopWidgetRecommendation
+  WorkshopWidgetRecommendation,
+  WorkshopWidgetSourceReference
 } from '@messages';
 import { inspectWorkshopActionableFindings } from './WorkshopActionableFindings';
 import {
@@ -25,9 +26,14 @@ import {
   WorkshopWidgetRecommendationInspection
 } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
 import {
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
+import {
   stripWorkshopWidgetRecommendationControl
 } from '@/utils/workshopWidgetRecommendationProtocol';
 import { boundedLogText } from '@/utils/boundedLogText';
+import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
+import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -96,6 +102,12 @@ const WIDGET_FIELD_LABELS = Object.freeze({
   contextText: 'Surrounding context',
   sourceReferences: 'Source references',
   characterNotes: 'Character notes',
+  subjectText: 'Subject passage',
+  mustSurvive: 'Must survive',
+  mustNotChange: 'Must not change',
+  aim: 'Creative aim',
+  distance: 'Sampling distance',
+  requestedCount: 'Take count',
   lensSlug: 'Lens',
   weight: 'Weight',
   reach: 'Reach',
@@ -106,6 +118,8 @@ const INVALID_WIDGET_FIELD_COPY = Object.freeze({
   empty: 'was empty',
   target_missing_from_context: 'did not contain the exact target phrase',
   invalid_source_references: 'contained unavailable or malformed source references',
+  invalid_distance: 'was outside the allowed sampling distances',
+  invalid_requested_count: 'was not three, four, or five',
   unsupported_lens: 'named a lens that personas are not allowed to seed',
   invalid_weight: 'was outside the allowed weight steps',
   invalid_reach: 'was outside the allowed reach values',
@@ -132,7 +146,9 @@ function widgetRecommendationRejectionNotice(
   label: string,
   inspection: Extract<WorkshopWidgetRecommendationInspection, { outcome: 'rejected' }>
 ): { message: string; details: string } {
-  const message = `${label}'s widget recommendation could not be prepared.`;
+  const message = inspection.widgetId
+    ? `${label}'s ${workshopWidgetLabel(inspection.widgetId)} setup could not be prepared.`
+    : `${label}'s widget recommendation could not be prepared.`;
   if (inspection.rejection === 'field_too_long') {
     return {
       message,
@@ -168,7 +184,7 @@ function widgetRecommendationRejectionNotice(
  */
 export function completeWorkshopRun(input: WorkshopRunCompletionInput): WorkshopTurn | undefined {
   const { session, requestId, label, result, copy, events } = input;
-  const truncated = result.finishReason === 'length';
+  const truncated = isAgentRunIncomplete(result.finishReason);
 
   if (input.aborted) {
     input.log(`Run cancelled: ${requestId} (${label}, ${result.content.length} chars discarded)`);
@@ -208,36 +224,46 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
       `Actionable findings ${actionableFindings.outcome}: ${actionableFindings.findings.length} items (${label}${actionableFindings.outcome === 'rejected' ? `; reason=${actionableFindings.rejection}` : ''})`
     );
   }
-  const widgetRecommendation = inspectWorkshopWidgetRecommendation(result.content);
+  const widgetRecommendation = inspectWorkshopWidgetRecommendation(
+    result.content,
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  );
   const unavailableWidgetSource = widgetRecommendation.outcome === 'accepted'
     ? unavailableWidgetSourceReference(session, widgetRecommendation.recommendation)
     : undefined;
   const recommendationRejected = widgetRecommendation.outcome === 'rejected'
     || unavailableWidgetSource !== undefined;
-  if (widgetRecommendation.outcome !== 'absent') {
+  const recommendationWidgetId = widgetRecommendation.outcome === 'accepted'
+    ? widgetRecommendation.recommendation.widgetId
+    : widgetRecommendation.outcome === 'rejected'
+      ? widgetRecommendation.widgetId
+      : undefined;
+  if (recommendationRejected) {
     const rejectionReason = unavailableWidgetSource
       ? `unavailable_source_reference:${unavailableWidgetSource}`
       : widgetRecommendation.outcome === 'rejected'
         ? widgetRecommendationRejectionReason(widgetRecommendation)
         : undefined;
     input.log(
-      `Widget recommendation ${unavailableWidgetSource ? 'rejected' : widgetRecommendation.outcome} `
-      + `(${label}${
+      'Widget recommendation rejected '
+      + `(${label}${recommendationWidgetId ? `; widget=${recommendationWidgetId}` : ''}${
         rejectionReason ? `; reason=${rejectionReason}` : ''
       })`
     );
-    if (recommendationRejected) {
-      input.log(
-        `Rejected widget recommendation response (${label}; ${result.content.length} characters):\n`
-        + boundedLogText(result.content)
-      );
-    }
+    input.log(
+      `Rejected widget recommendation response (${label}`
+      + `${recommendationWidgetId ? `; widget=${recommendationWidgetId}` : ''}; `
+      + `${result.content.length} characters):\n${boundedLogText(result.content)}`
+    );
   }
   const strippedDisplayContent = widgetRecommendation.outcome !== 'absent'
     ? stripWorkshopWidgetRecommendationControl(result.content)
     : result.content;
-  const displayContent = recommendationRejected && strippedDisplayContent.trim().length === 0
-    ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
+  const displayContent = widgetRecommendation.outcome !== 'absent'
+    && strippedDisplayContent.trim().length === 0
+    ? recommendationRejected
+      ? `${label}'s widget setup could not be displayed on that pass. Ask ${label} to try again.`
+      : `${label} returned a widget setup without an accompanying note.`
     : strippedDisplayContent;
   const turn = session.completeRun(
     requestId,
@@ -262,12 +288,23 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     return undefined;
   }
 
+  if (widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource) {
+    const attached = turn.widgetRecommendation !== undefined;
+    input.log(
+      `Widget recommendation ${attached ? 'accepted' : 'rejected'} `
+      + `(${label}; widget=${widgetRecommendation.recommendation.widgetId}`
+      + `${attached ? '' : '; reason=participant_not_persona'})`
+    );
+  }
+
   if (widgetRecommendation.outcome === 'rejected') {
     const notice = widgetRecommendationRejectionNotice(label, widgetRecommendation);
     events.widgetRecommendationRejected(notice.message, notice.details);
-  } else if (unavailableWidgetSource) {
+  } else if (unavailableWidgetSource && widgetRecommendation.outcome === 'accepted') {
     const notice = {
-      message: `${label}'s widget recommendation could not be prepared.`,
+      message: `${label}'s ${workshopWidgetLabel(
+        widgetRecommendation.recommendation.widgetId
+      )} setup could not be prepared.`,
       details: `It referenced context that is no longer available (${unavailableWidgetSource}). Ask ${label} to try again.`
     };
     events.widgetRecommendationRejected(notice.message, notice.details);
@@ -288,10 +325,18 @@ function unavailableWidgetSourceReference(
   session: WorkshopSessionService,
   recommendation: WorkshopWidgetRecommendation
 ): string | undefined {
-  if (recommendation.widgetId !== 'gesture-playground') {
-    return undefined;
+  let references: readonly WorkshopWidgetSourceReference[];
+  switch (recommendation.widgetId) {
+    case 'gesture-playground':
+    case 'creative-variations':
+      references = recommendation.seed?.sourceReferences ?? [];
+      break;
+    case 'lexical-gravity':
+      references = [];
+      break;
+    default:
+      return assertNeverWidgetRecommendation(recommendation);
   }
-  const references = recommendation.seed?.sourceReferences ?? [];
   for (const reference of references) {
     if (reference.kind === 'active-excerpt') {
       if (!session.getExcerpt()) {
@@ -304,4 +349,8 @@ function unavailableWidgetSourceReference(
     }
   }
   return undefined;
+}
+
+function assertNeverWidgetRecommendation(value: never): never {
+  throw new Error(`Unhandled Workshop widget recommendation: ${JSON.stringify(value)}`);
 }

@@ -19,6 +19,7 @@ import { LogSink, SettingsStore } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
 import { TokenUsage } from '@shared/types';
 import { OpenRouterClient } from '@providers/OpenRouterClient';
+import { DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 import { AgentRunEngine, StatusCallback, TokenUsageCallback } from './AgentRunEngine';
 import { ConversationManager } from './ConversationManager';
 import { ModelScope } from '@shared/types';
@@ -65,6 +66,8 @@ export const DEFAULT_WIDGET_MODEL = 'anthropic/claude-sonnet-5';
 
 export class AIResourceManager {
   private aiResources: Partial<Record<ModelScope, AIResourceBundle>> = {};
+  /** Assistant conversations and their engine survive provider/key outages. */
+  private assistantEngine?: AgentRunEngine;
   private resolvedModels: Partial<Record<ModelScope, string>> = {};
   private generation = 0;
   private initialized = false;
@@ -205,28 +208,49 @@ export class AIResourceManager {
       }
     }
 
-    // Dispose existing resources before creating new ones
-    this.disposeResources();
+    // Non-conversational scopes remain disposable. The assistant engine owns
+    // retained conversations, so only its provider attachment is replaced.
+    this.disposeDisposableResources();
     this.generation += 1;
+
+    const selections = this.resolveModelSelections(modelConfig);
+    const assistantModel = selections.assistant;
+    const assistantEngine = this.getOrCreateAssistantEngine(assistantModel);
+    assistantEngine.setModel(assistantModel);
 
     // Check if API key is configured
     if (!OpenRouterClient.isConfigured(apiKey)) {
-      this.outputChannel?.appendLine('[AIResourceManager] OpenRouter API key not configured. AI tools disabled.');
-      this.resolvedModels = {};
+      assistantEngine.detachProvider();
+      this.aiResources = {
+        assistant: {
+          model: assistantModel,
+          generation: this.generation,
+          engine: assistantEngine
+        }
+      };
+      this.resolvedModels = selections;
+      this.outputChannel?.appendLine(
+        '[AIResourceManager] OpenRouter API key not configured. Assistant engine remains available offline; inference is disabled.'
+      );
       this.initialized = true;
       return;
     }
 
-    // Resolve model selections with fallbacks
-    const selections = this.resolveModelSelections(modelConfig);
-    const assistantModel = selections.assistant;
     const dictionaryModel = selections.dictionary;
     const contextModel = selections.context;
     const categoryModel = selections.category;
     const widgetModel = selections.widget;
 
     // Create AI resources for each scope
-    const assistantResources = this.createResourceBundle(apiKey!, 'assistant', assistantModel);
+    assistantEngine.attachProvider(
+      new OpenRouterClient(apiKey!, assistantModel, this.outputChannel),
+      assistantModel
+    );
+    const assistantResources: AIResourceBundle = {
+      model: assistantModel,
+      generation: this.generation,
+      engine: assistantEngine
+    };
     const dictionaryResources = this.createResourceBundle(apiKey!, 'dictionary', dictionaryModel);
     const contextResources = this.createResourceBundle(apiKey!, 'context', contextModel);
     const categoryResources = this.createResourceBundle(apiKey!, 'category', categoryModel);
@@ -268,7 +292,7 @@ export class AIResourceManager {
         ?? fallbackModel,
       category: modelConfig?.categoryModel
         ?? this.settings.get<string>('proseMinion', 'categoryModel')
-        ?? fallbackModel,
+        ?? DEFAULT_CATEGORY_MODEL,
       widget: modelConfig?.widgetModel
         ?? this.settings.get<string>('proseMinion', 'widgetModel')
         ?? DEFAULT_WIDGET_MODEL
@@ -386,9 +410,9 @@ export class AIResourceManager {
    * This disposes all AgentRunEngines and clears the resource map.
    */
   disposeResources(): void {
-    Object.values(this.aiResources).forEach(resource => {
-      resource?.engine.dispose();
-    });
+    this.disposeDisposableResources();
+    this.assistantEngine?.dispose();
+    this.assistantEngine = undefined;
     this.aiResources = {};
   }
 
@@ -448,5 +472,30 @@ export class AIResourceManager {
       );
       return undefined;
     }
+  }
+
+  private getOrCreateAssistantEngine(model: string): AgentRunEngine {
+    if (!this.assistantEngine) {
+      this.assistantEngine = new AgentRunEngine(
+        undefined,
+        new ConversationManager(this.outputChannel),
+        this.statusCallback,
+        this.outputChannel,
+        this.tokenUsageFanout,
+        this.settings,
+        model
+      );
+    }
+    return this.assistantEngine;
+  }
+
+  private disposeDisposableResources(): void {
+    for (const [scope, resource] of Object.entries(this.aiResources)) {
+      if (scope !== 'assistant') {
+        resource?.engine.dispose();
+      }
+    }
+    this.assistantEngine?.detachProvider();
+    this.aiResources = {};
   }
 }

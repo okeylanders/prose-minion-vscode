@@ -1,6 +1,7 @@
 /** Lexical Gravity prompt copy and strict recommendation-field parser. */
 
 import { WorkshopWidgetRecommendation } from '@messages';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   isLexicalGravityReach,
   isLexicalGravityWeight,
@@ -75,6 +76,10 @@ const BUILT_IN_LENS_SLUGS = new Set([
   'botany',
   'architecture'
 ]);
+
+/** Compact closed-value frame; allowance covers markers and numeric fields. */
+export const LEXICAL_GRAVITY_RECOMMENDATION_FRAME_CHARACTERS =
+  PROMPT_BUDGETS.workshopWidgets.lexicalRecommendationFrameCharacters;
 
 export const LEXICAL_GRAVITY_RECOMMENDATION_INSTRUCTION = [
   `For Lexical Gravity, propose but never install. Choose one starter lens slug from photography, music, mathematics, weather, botany, architecture; weight must be ${LEXICAL_GRAVITY_WEIGHT.minimum}–${LEXICAL_GRAVITY_WEIGHT.maximum} in steps of ${LEXICAL_GRAVITY_WEIGHT.step}; reach is ${LEXICAL_GRAVITY_REACH.values.join(', ')}; metaphor-pull is true or false. The writer can change every value before explicitly installing it.`,
@@ -196,5 +201,6 @@ export const LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY:
     instructionOrder: 0,
     instruction: LEXICAL_GRAVITY_RECOMMENDATION_INSTRUCTION,
     reservedMarkers: LEXICAL_GRAVITY_RECOMMENDATION_MARKERS,
+    frameCharacters: LEXICAL_GRAVITY_RECOMMENDATION_FRAME_CHARACTERS,
     inspect: inspectLexicalGravityRecommendation
   });

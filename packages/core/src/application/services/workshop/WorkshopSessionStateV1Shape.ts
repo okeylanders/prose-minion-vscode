@@ -45,6 +45,9 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
+  assertCreativeVariationsRecommendationSeedShape
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
   assertGesturePlaygroundRecommendationSeedShape
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
@@ -117,7 +120,11 @@ function assertWorkshopSessionShape(
   assertRevisions(state.revisions);
   assertCounters(state.counters);
   assertWriterSources(state.writerSources);
-  arrayOf(state.turns, 'Workshop session state.turns', assertTurn);
+  arrayOf(
+    state.turns,
+    'Workshop session state.turns',
+    (turn, path) => assertTurn(turn, path, checkpoint)
+  );
   assertParticipants(state.participants);
   if (state.selectedToolId !== undefined && !isWorkshopToolId(state.selectedToolId)) {
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
@@ -450,7 +457,7 @@ function assertContextSource(value: unknown, path: string): void {
   optionalStringAt(source.artifactId, `${path}.artifactId`);
 }
 
-function assertTurn(value: unknown, path: string): void {
+function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   const turn = exactObject(
     value,
     path,
@@ -554,6 +561,9 @@ function assertTurn(value: unknown, path: string): void {
     assertTurnWidgetCommit(turn.widgetCommit, `${path}.widgetCommit`);
   }
   if (turn.widgetRecommendation !== undefined) {
+    if (!checkpoint && turn.participant !== 'host' && turn.participant !== 'guest') {
+      shapeError(`${path}.widgetRecommendation`, 'a host or guest persona recommendation');
+    }
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
   }
   if (turn.standingDirectiveChange !== undefined) {
@@ -608,6 +618,8 @@ function assertStandingDirectiveChange(value: unknown, path: string): void {
 
 function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   const recommendation = exactObject(value, path, ['widgetId'], ['seed']);
+  // Persisted recommendations are deliberately catalog-bound, not route-policy-bound:
+  // a staged build must not write a session that the shipped codec cannot reopen.
   if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
     shapeError(`${path}.widgetId`, 'live Conversation Widget id');
   }
@@ -618,6 +630,10 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   }
   if (recommendation.widgetId === 'lexical-gravity') {
     assertLexicalGravityRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
+  }
+  if (recommendation.widgetId === 'creative-variations') {
+    assertCreativeVariationsRecommendationSeedShape(recommendation.seed, `${path}.seed`);
     return;
   }
   shapeError(`${path}.widgetId`, 'a widget with a recommendation codec');

@@ -12,6 +12,7 @@ import {
 import { isHttpUrl, type UrlCitation } from '@messages';
 
 const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
+const UNSTRUCTURED_ERROR_BODY_CHARACTERS = 1_000;
 
 export interface OpenRouterMessage {
   role: 'system' | 'user' | 'assistant';
@@ -63,6 +64,27 @@ export interface OpenRouterResponse {
     }
   };
   openrouter_metadata?: unknown;
+}
+
+interface OpenRouterErrorPayload {
+  code?: unknown;
+  message?: unknown;
+  metadata?: {
+    error_type?: unknown;
+  };
+}
+
+/** A structured provider failure that callers can classify without parsing copy. */
+export class OpenRouterApiError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    readonly errorType?: string,
+    readonly retryAfterSeconds?: number
+  ) {
+    super(message);
+    this.name = 'OpenRouterApiError';
+  }
 }
 
 /** Normalize only the material context-compression fact; discard all raw router metadata. */
@@ -125,33 +147,25 @@ export class OpenRouterClient {
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
-        'X-Title': 'Prose Minion VS Code Extension',
-        'X-OpenRouter-Metadata': 'enabled'
-      },
-      signal: options?.signal,
-      body: JSON.stringify({
-        model: requestedModel,
-        messages,
-        temperature: options?.temperature ?? 0.7,
-        max_tokens: requestedMaxOutputTokens,
-        usage: { include: true },
-        ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
-        ...(options?.tools ? { tools: options.tools } : {})
-      })
-    });
+    const response = await this.fetchCompletion({
+      model: requestedModel,
+      messages,
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: requestedMaxOutputTokens,
+      usage: { include: true },
+      ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
+      ...(options?.tools ? { tools: options.tools } : {})
+    }, options?.signal);
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+      throw await this.readApiError(response);
     }
 
-    const data = (await response.json()) as OpenRouterResponse;
+    const data = (await response.json()) as OpenRouterResponse & { error?: OpenRouterErrorPayload };
+
+    if (data.error) {
+      throw this.toApiError(data.error);
+    }
 
     if (!data.choices || data.choices.length === 0) {
       throw new Error('No response from OpenRouter API');
@@ -213,31 +227,19 @@ export class OpenRouterClient {
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
-        'X-Title': 'Prose Minion VS Code Extension',
-        'X-OpenRouter-Metadata': 'enabled'
-      },
-      signal: options?.signal,
-      body: JSON.stringify({
-        model: requestedModel,
-        messages,
-        stream: true,
-        temperature: options?.temperature ?? 0.7,
-        max_tokens: requestedMaxOutputTokens,
-        stream_options: { include_usage: true },
-        ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
-        ...(options?.tools ? { tools: options.tools } : {})
-      })
-    });
+    const response = await this.fetchCompletion({
+      model: requestedModel,
+      messages,
+      stream: true,
+      temperature: options?.temperature ?? 0.7,
+      max_tokens: requestedMaxOutputTokens,
+      stream_options: { include_usage: true },
+      ...(options?.reasoning ? { reasoning: options.reasoning } : {}),
+      ...(options?.tools ? { tools: options.tools } : {})
+    }, options?.signal);
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+      throw await this.readApiError(response);
     }
 
     if (!response.body) {
@@ -296,6 +298,9 @@ export class OpenRouterClient {
 
           try {
             const parsed = JSON.parse(data);
+            if (parsed.error) {
+              throw this.toApiError(parsed.error);
+            }
             if (typeof parsed.id === 'string' && parsed.id) {
               responseId = parsed.id;
             }
@@ -320,6 +325,9 @@ export class OpenRouterClient {
             }
 
           } catch (error) {
+            if (error instanceof OpenRouterApiError) {
+              throw error;
+            }
             // Log for debugging but don't fail the stream
             this.outputChannel?.appendLine(
               `[OpenRouterClient] Skipped malformed JSON chunk: ${error instanceof Error ? error.message : String(error)}`
@@ -344,6 +352,82 @@ export class OpenRouterClient {
    */
   static isConfigured(apiKey?: string): boolean {
     return Boolean(apiKey && apiKey.trim().length > 0);
+  }
+
+  private async fetchCompletion(body: Record<string, unknown>, signal?: AbortSignal): Promise<Response> {
+    try {
+      return await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+          'HTTP-Referer': 'https://github.com/okeylanders/prose-minion-vscode',
+          'X-Title': 'Prose Minion VS Code Extension',
+          'X-OpenRouter-Metadata': 'enabled'
+        },
+        signal,
+        body: JSON.stringify(body)
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw error;
+      }
+      throw new OpenRouterApiError(
+        `OpenRouter request could not reach the provider: ${error instanceof Error ? error.message : String(error)}`,
+        undefined,
+        'network'
+      );
+    }
+  }
+
+  private async readApiError(response: Response): Promise<OpenRouterApiError> {
+    const body = await response.text();
+    let payload: OpenRouterErrorPayload | undefined;
+    try {
+      const parsed = JSON.parse(body) as { error?: OpenRouterErrorPayload };
+      payload = parsed.error;
+    } catch {
+      // Plain-text/HTML gateway bodies are third-party diagnostics. Keep a
+      // bounded, one-line excerpt so they cannot flood the Output channel or
+      // masquerade as Prose Minion-authored copy in the webview.
+    }
+    const retryAfter = Number(response.headers?.get('Retry-After'));
+    return this.toApiError(
+      payload ?? { message: this.unstructuredErrorBody(body) },
+      response.status,
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
+    );
+  }
+
+  private unstructuredErrorBody(body: string): string {
+    const normalized = body.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return 'Unstructured provider response contained no readable text.';
+    }
+    const truncated = normalized.length > UNSTRUCTURED_ERROR_BODY_CHARACTERS;
+    const excerpt = normalized.slice(0, UNSTRUCTURED_ERROR_BODY_CHARACTERS);
+    return `Unstructured provider response: ${excerpt}${truncated ? '…' : ''}`;
+  }
+
+  private toApiError(
+    payload: OpenRouterErrorPayload,
+    fallbackStatus?: number,
+    retryAfterSeconds?: number
+  ): OpenRouterApiError {
+    const payloadStatus = typeof payload.code === 'number' ? payload.code : undefined;
+    const status = fallbackStatus && fallbackStatus !== 200 ? fallbackStatus : payloadStatus;
+    const message = typeof payload.message === 'string' && payload.message.trim()
+      ? payload.message.trim()
+      : 'OpenRouter could not complete the request.';
+    const errorType = typeof payload.metadata?.error_type === 'string'
+      ? payload.metadata.error_type
+      : undefined;
+    return new OpenRouterApiError(
+      `OpenRouter API error${status ? ` ${status}` : ''}: ${message}`,
+      status,
+      errorType,
+      retryAfterSeconds
+    );
   }
 
   private toTokenUsage(raw: any): TokenUsage | undefined {

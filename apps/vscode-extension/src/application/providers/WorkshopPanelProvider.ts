@@ -28,6 +28,7 @@ import {
   Platform,
   SURFACE_WORKSHOP,
   WorkshopExcerptSource,
+  WorkshopUiActions,
   WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
 } from '@prose-minion/core';
@@ -44,7 +45,8 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     private readonly extensionUri: vscode.Uri,
     private readonly coreServices: CoreServices,
     private readonly outputChannel: vscode.OutputChannel,
-    private readonly platform: Platform
+    private readonly platform: Platform,
+    private readonly uiActions: WorkshopUiActions = {}
   ) {}
 
   /**
@@ -110,7 +112,8 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       this.coreServices,
       (message) => panel.webview.postMessage(message),
       this.platform,
-      this.outputChannel
+      this.outputChannel,
+      this.uiActions
     );
 
     // Config-change watcher lives in the shell (keeps MessageHandler

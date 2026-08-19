@@ -82,6 +82,22 @@ export class WorkshopTurnLedger {
     return cloneTurn(this.turns[index]);
   }
 
+  /** Remove an aggregate-approved set of provisional turns without reusing ids. */
+  removeByIds(ids: ReadonlySet<string>): WorkshopTurn[] {
+    if (ids.size === 0) {
+      return [];
+    }
+    const removed: WorkshopTurn[] = [];
+    this.turns = this.turns.filter((turn) => {
+      if (!ids.has(turn.id)) {
+        return true;
+      }
+      removed.push(cloneTurn(turn));
+      return false;
+    });
+    return removed;
+  }
+
   exportState(): WorkshopTurnLedgerState {
     return {
       counter: this.counter,

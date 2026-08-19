@@ -2,6 +2,11 @@
 
 import { MessageEnvelope, MessageType } from '../base';
 import {
+  WorkshopCreativeVariationsCommitPayload,
+  WorkshopCreativeVariationsDraft,
+  WorkshopCreativeVariationsRecommendationSeed
+} from './creativeVariations';
+import {
   WorkshopGesturePlaygroundCommitPayload,
   WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundRecommendationSeed
@@ -20,7 +25,8 @@ import { WorkshopStandingWidgetCommit } from './standingDirectives';
  * shared/constants/workshopWidgets.ts; handlers validate against it and the
  * thread-artifact `kind` is derived from it (`widget:<id>`), so the id IS the
  * frame identity. Ids for unshipped widgets exist so the browser can show an
- * honest roadmap; only `live` ids may launch, commit, or be recommended.
+ * honest roadmap. `live` admits the authoring surface and implemented host
+ * routes; commit and recommendation use their own narrower capability unions.
  */
 export type WorkshopWidgetId =
   | 'gesture-playground'
@@ -69,10 +75,17 @@ export interface WorkshopLexicalGravityWidgetConfigSnapshot
   draft: WorkshopLexicalGravityDraft;
 }
 
+export interface WorkshopCreativeVariationsWidgetConfigSnapshot
+  extends WorkshopWidgetConfigSnapshotBase {
+  widgetId: 'creative-variations';
+  draft: WorkshopCreativeVariationsDraft;
+}
+
 /** Earned persisted union: each widget owns its exact authoring-state codec. */
 export type WorkshopWidgetConfigSnapshot =
   | WorkshopGesturePlaygroundWidgetConfigSnapshot
-  | WorkshopLexicalGravityWidgetConfigSnapshot;
+  | WorkshopLexicalGravityWidgetConfigSnapshot
+  | WorkshopCreativeVariationsWidgetConfigSnapshot;
 
 /**
  * Bounded config identity carried in ordinary session snapshots. The full
@@ -96,9 +109,16 @@ export type WorkshopLexicalGravityWidgetConfigSummary =
     metaphorPull: boolean;
   };
 
+export type WorkshopCreativeVariationsWidgetConfigSummary =
+  Omit<WorkshopCreativeVariationsWidgetConfigSnapshot, 'draft'> & {
+    subjectPreview: string;
+    selectionCount: number;
+  };
+
 export type WorkshopWidgetConfigSummary =
   | WorkshopGesturePlaygroundWidgetConfigSummary
-  | WorkshopLexicalGravityWidgetConfigSummary;
+  | WorkshopLexicalGravityWidgetConfigSummary
+  | WorkshopCreativeVariationsWidgetConfigSummary;
 
 /**
  * Display-safe widget-commit decoration on a normal user message turn —
@@ -112,6 +132,7 @@ export interface WorkshopThreadArtifactWidgetCommit {
   widgetConfigId: string;
   rail: 'thread-artifact';
   artifactId: string;
+  /** Feature-neutral telemetry; presentation derives its noun from widgetId. */
   selectionCount: number;
 }
 
@@ -132,6 +153,10 @@ export type WorkshopWidgetRecommendation =
   | {
       widgetId: 'lexical-gravity';
       seed?: WorkshopLexicalGravityRecommendationSeed;
+    }
+  | {
+      widgetId: 'creative-variations';
+      seed?: WorkshopCreativeVariationsRecommendationSeed;
     };
 
 export interface WorkshopRequestWidgetConfigMessage extends MessageEnvelope<{ configId: string }> {
@@ -147,7 +172,9 @@ export interface WorkshopWidgetConfigDataMessage extends MessageEnvelope<{
 }
 
 /** Family rail contract; each supported one-shot widget contributes one exact arm. */
-export type WorkshopCommitWidgetPayload = WorkshopGesturePlaygroundCommitPayload;
+export type WorkshopCommitWidgetPayload =
+  | WorkshopGesturePlaygroundCommitPayload
+  | WorkshopCreativeVariationsCommitPayload;
 
 export interface WorkshopCommitWidgetMessage extends MessageEnvelope<WorkshopCommitWidgetPayload> {
   type: MessageType.WORKSHOP_COMMIT_WIDGET;
@@ -167,6 +194,10 @@ export type WorkshopWidgetActionResultPayload =
   | (WorkshopWidgetActionResultBase & {
       action: 'commit';
       widgetId: 'gesture-playground';
+    })
+  | (WorkshopWidgetActionResultBase & {
+      action: 'commit';
+      widgetId: 'creative-variations';
     })
   | (WorkshopWidgetActionResultBase & {
       action: 'apply-standing';
