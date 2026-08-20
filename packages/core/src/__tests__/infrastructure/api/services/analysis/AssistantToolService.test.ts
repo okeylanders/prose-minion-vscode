@@ -134,6 +134,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
         proactiveAssistance: true
       },
       writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE,
+      timeFrame: '<workshop-time-context reason="session-start">Fresh host time.</workshop-time-context>',
       activationFrame: '<workshop-behavior-activation mode="balanced" expression="amplified">mode and signature floor</workshop-behavior-activation>',
       contextAttachmentsFrame: [
         '<context-attachments count="1">',
@@ -178,6 +179,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(systemMessage).toContain('<surrounding-context>');
     expect(systemMessage).toContain('<source-references>');
     const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
+    expect(userMessage.startsWith(
+      '<workshop-time-context reason="session-start">Fresh host time.</workshop-time-context>\n'
+    )).toBe(true);
     expect(userMessage).toContain(
       '<pinned-excerpt>\nWidget reference: active-excerpt'
     );
@@ -186,6 +190,33 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       .toBeLessThan(userMessage.indexOf('<workshop-behavior-activation'));
     expect(userMessage.indexOf('<workshop-behavior-activation'))
       .toBeLessThan(userMessage.indexOf('<writer-message>'));
+  });
+
+  it('puts the trusted time frame first in a fresh open-conversation envelope', async () => {
+    const engine = makeEngine('open-host');
+    const service = build(managerFor(() => engine));
+    await flush();
+
+    await service.startWorkshopPersonaConversation({
+      personaId: 'jill',
+      message: 'Help me plan the next scene.',
+      behavior: {
+        interactionMode: 'conversational',
+        expressionLevel: 'full',
+        relationalDepth: 'attuned',
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
+      },
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE,
+      timeFrame: '<workshop-time-context reason="session-start">Fresh host time.</workshop-time-context>'
+    }, { capability: workshopCapability });
+
+    const userMessage = engine.runInitial.mock.calls[0][0].userMessage;
+    expect(userMessage.startsWith(
+      '<workshop-time-context reason="session-start">Fresh host time.</workshop-time-context>\n'
+    )).toBe(true);
+    expect(userMessage).toContain('<workshop-open-conversation');
+    expect(userMessage).not.toContain('<pinned-excerpt>');
   });
 
   it('starts a guest with the no-capability policy and the handler-owned room envelope', async () => {

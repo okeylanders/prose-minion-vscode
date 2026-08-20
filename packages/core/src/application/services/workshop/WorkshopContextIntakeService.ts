@@ -61,6 +61,19 @@ export type WorkshopConfiguredSourceMatch =
   | { kind: 'uri-unreadable'; source: WorkshopExcerptSource; details: string }
   | { kind: 'catalog-unreadable'; source: WorkshopExcerptSource; details: string };
 
+export type WorkshopExcerptRereadAuthorization =
+  | {
+      kind: 'authorized';
+      fsPath: string;
+      source: Extract<WorkshopExcerptSource, { kind: 'file' }>;
+    }
+  | { kind: 'refused'; message: string; details?: string };
+
+interface WorkshopConfiguredSourceResolution {
+  match: WorkshopConfiguredSourceMatch;
+  pathMatch?: 'exact' | 'case-folded';
+}
+
 export type WorkshopConfiguredResourceLoadResult =
   | { kind: 'loaded'; resource: WorkshopBoundedConfiguredResource }
   | { kind: 'missing' }
@@ -70,6 +83,16 @@ export type WorkshopConfiguredResourceLoadResult =
 
 const isAbsolutePath = (filePath: string): boolean =>
   filePath.startsWith('/') || /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
+
+const isPathWithinRoot = (root: string, candidate: string): boolean => {
+  const resolvedRoot = path.resolve(root);
+  const resolvedCandidate = path.resolve(candidate);
+  if (resolvedCandidate === resolvedRoot) {
+    return true;
+  }
+  const relative = path.relative(resolvedRoot, resolvedCandidate);
+  return relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative);
+};
 
 const baseName = (filePath: string): string =>
   filePath.split(/[\\/]/).filter(Boolean).pop() ?? filePath;
@@ -337,9 +360,71 @@ export class WorkshopContextIntakeService {
     return false;
   }
 
+  /**
+   * Re-derive authority for a persisted file source before any direct disk
+   * read. An explicit picker may initially admit an external file, but a later
+   * webview replay is trusted only when the current host proves the path is in
+   * an open workspace or exactly names a fresh configured-catalog resource.
+   */
+  async authorizeExcerptReread(
+    source: Extract<WorkshopExcerptSource, { kind: 'file' }>
+  ): Promise<WorkshopExcerptRereadAuthorization> {
+    let fsPath: string;
+    try {
+      fsPath = path.normalize(fileURLToPath(source.sourceUri));
+    } catch (error) {
+      return {
+        kind: 'refused',
+        message: 'The excerpt’s source location is no longer readable.',
+        details: error instanceof Error ? error.message : String(error)
+      };
+    }
+
+    const resolution = await this.resolveConfiguredSource(source);
+    const workspaceRoot = this.workspace.workspaceFolders()
+      .find((folder) => isPathWithinRoot(folder.path, fsPath));
+    if (workspaceRoot) {
+      const refusal = await this.validateWorkspaceRereadPath(workspaceRoot.path, fsPath, source);
+      if (refusal) {
+        return refusal;
+      }
+      return {
+        kind: 'authorized',
+        fsPath,
+        source: resolution.match.source as Extract<WorkshopExcerptSource, { kind: 'file' }>
+      };
+    }
+
+    // Windows paths are case-insensitive by platform convention. On every
+    // other host, only the exact catalog path can authorize an external read.
+    if (
+      resolution.match.kind === 'matched' &&
+      (resolution.pathMatch === 'exact' ||
+        (process.platform === 'win32' && resolution.pathMatch === 'case-folded'))
+    ) {
+      return {
+        kind: 'authorized',
+        fsPath,
+        source: resolution.match.source as Extract<WorkshopExcerptSource, { kind: 'file' }>
+      };
+    }
+
+    return {
+      kind: 'refused',
+      message: 'That excerpt source is outside the approved workspace and configured-resource boundaries.',
+      details: source.relativePath
+    };
+  }
+
   async matchConfiguredSource(source: WorkshopExcerptSource): Promise<WorkshopConfiguredSourceMatch> {
+    return (await this.resolveConfiguredSource(source)).match;
+  }
+
+  private async resolveConfiguredSource(
+    source: WorkshopExcerptSource
+  ): Promise<WorkshopConfiguredSourceResolution> {
     if (source.kind === 'manual') {
-      return { kind: 'manual', source };
+      return { match: { kind: 'manual', source } };
     }
     const unstamped: Extract<WorkshopExcerptSource, { kind: 'editor-selection' | 'file' }> =
       source.kind === 'file'
@@ -357,9 +442,11 @@ export class WorkshopContextIntakeService {
       fsPath = path.normalize(fileURLToPath(source.sourceUri));
     } catch (error) {
       return {
-        kind: 'uri-unreadable',
-        source: unstamped,
-        details: error instanceof Error ? error.message : String(error)
+        match: {
+          kind: 'uri-unreadable',
+          source: unstamped,
+          details: error instanceof Error ? error.message : String(error)
+        }
       };
     }
     let summaries: ContextResourceSummary[];
@@ -367,9 +454,11 @@ export class WorkshopContextIntakeService {
       summaries = (await this.openCatalog()).entries();
     } catch (error) {
       return {
-        kind: 'catalog-unreadable',
-        source: unstamped,
-        details: error instanceof Error ? error.message : String(error)
+        match: {
+          kind: 'catalog-unreadable',
+          source: unstamped,
+          details: error instanceof Error ? error.message : String(error)
+        }
       };
     }
     const exact = summaries.filter((summary) => path.normalize(summary.absolutePath) === fsPath);
@@ -379,20 +468,54 @@ export class WorkshopContextIntakeService {
           (summary) => path.normalize(summary.absolutePath).toLowerCase() === fsPath.toLowerCase()
         );
     if (matches.length === 0) {
-      return { kind: 'unmatched', source: unstamped };
+      return { match: { kind: 'unmatched', source: unstamped } };
     }
     if (matches.length > 1) {
-      return { kind: 'ambiguous', source: unstamped, matchCount: matches.length };
+      return {
+        match: { kind: 'ambiguous', source: unstamped, matchCount: matches.length }
+      };
     }
     const summary = matches[0];
     const configuredResource = { group: summary.group, path: summary.path };
     return {
-      kind: 'matched',
-      configuredResource,
-      source: {
-        ...unstamped,
-        configuredResource
+      pathMatch: exact.length > 0 ? 'exact' : 'case-folded',
+      match: {
+        kind: 'matched',
+        configuredResource,
+        source: {
+          ...unstamped,
+          configuredResource
+        }
       }
     };
+  }
+
+  private async validateWorkspaceRereadPath(
+    root: string,
+    candidate: string,
+    source: Extract<WorkshopExcerptSource, { kind: 'file' }>
+  ): Promise<Extract<WorkshopExcerptRereadAuthorization, { kind: 'refused' }> | undefined> {
+    const relativePath = path.relative(root, candidate);
+    let currentPath = root;
+    for (const segment of relativePath.split(path.sep).filter(Boolean)) {
+      currentPath = path.join(currentPath, segment);
+      try {
+        const stat = await this.fileSystem.stat(currentPath);
+        if ((stat.type & FileType.SymbolicLink) !== 0) {
+          return {
+            kind: 'refused',
+            message: 'The excerpt source cannot be re-read through a symbolic link.',
+            details: source.relativePath
+          };
+        }
+      } catch (error) {
+        return {
+          kind: 'refused',
+          message: 'Could not verify the excerpt source before re-reading it.',
+          details: `${source.relativePath}: ${error instanceof Error ? error.message : String(error)}`
+        };
+      }
+    }
+    return undefined;
   }
 }

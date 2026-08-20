@@ -38,7 +38,7 @@ import {
   isWorkshopSelectableSessionScope,
   workshopExcerptSourcePath
 } from '@messages';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
 
 type WorkshopExcerptScopeEffects = Pick<
   WorkshopRoomEffects,
@@ -240,21 +240,22 @@ export class WorkshopExcerptScopeHandler {
     }
     const source = excerpt.source;
 
-    let fsPath: string;
-    try {
-      fsPath = fileURLToPath(source.sourceUri);
-    } catch (error) {
+    const authorization = await this.contextIntakeService.authorizeExcerptReread(source);
+    if (authorization.kind === 'refused') {
       this.outputChannel.appendLine(
-        `[WorkshopExcerptScopeHandler] Excerpt source URI could not be converted to a file path: ${error instanceof Error ? error.message : String(error)}`
+        `[WorkshopExcerptScopeHandler] Excerpt re-read refused: ${authorization.message}`
       );
-      this.effects.reportError(
-        'The excerpt’s source location is no longer readable.',
-        source.relativePath
-      );
+      this.effects.reportError(authorization.message, authorization.details);
+      return;
+    }
+    if (this.rejectExcerptMutationWhileRunning()) {
       return;
     }
 
-    const loaded = await this.loadExcerptFromDisk(fsPath, source.relativePath);
+    const loaded = await this.loadExcerptFromDisk(
+      authorization.fsPath,
+      authorization.source.relativePath
+    );
     if (!loaded) {
       return;
     }
@@ -275,14 +276,9 @@ export class WorkshopExcerptScopeHandler {
       return;
     }
 
-    const resolvedSource = await this.withConfiguredResource(source);
-    if (this.rejectExcerptMutationWhileRunning()) {
-      return;
-    }
-
     if (!this.tryReplaceExcerpt({
       text: loaded.text,
-      source: resolvedSource,
+      source: authorization.source,
       truncation: loaded.truncation,
       sourceFingerprint: loaded.sourceFingerprint
     })) {

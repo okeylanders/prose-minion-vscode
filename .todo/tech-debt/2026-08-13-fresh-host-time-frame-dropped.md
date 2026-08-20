@@ -1,6 +1,6 @@
 # Fresh-host time-context frame is dropped but committed as delivered
 
-- **Status**: Open
+- **Status**: Addressed on `release/v2.2.0` — awaiting review and commit
 - **Priority**: Medium
 - **Discovered**: 2026-08-13, during the Workshop prompt-assembly documentation sweep
   ([docs/architecture/2026-08-13-workshop-prompt-assembly/](../../docs/architecture/2026-08-13-workshop-prompt-assembly/README.md))
@@ -46,6 +46,14 @@ first in both initial-envelope builders (mirroring
 for the fresh-host path. Either way, add a regression test asserting the
 fresh-host envelope contains `<workshop-time-context reason="session-start">`
 (or that no notice is committed).
+
+## Resolution candidate — 2026-08-20
+
+`WorkshopPersonaConversationInput` now owns the optional trusted `timeFrame`,
+and both fresh-host envelope builders render it first. Direct service tests pin
+the provider-bound message for excerpt-backed and open-conversation starts, so
+the existing room-route tests no longer stop at proving only that the unused
+input property was passed.
 
 ## Related files
 

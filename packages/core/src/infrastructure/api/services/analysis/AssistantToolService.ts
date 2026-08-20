@@ -148,6 +148,8 @@ export interface WorkshopPersonaConversationInput {
   interactionFrame?: string;
   activationFrame?: string;
   transitionFrame?: string;
+  /** Trusted host-authored temporal context for this first retained turn. */
+  timeFrame?: string;
 }
 
 /** One retained persona conversation to re-prompt on a system-level behavior change. */
@@ -981,9 +983,12 @@ export class AssistantToolService {
     ].filter((line): line is string => !!line);
 
     return [
-      // Transition and interaction frames lead so retained history is read
-      // under the current contract. The behavior activation sits adjacent to
-      // the writer message so quoted context cannot dilute it.
+      input.timeFrame,
+      input.timeFrame ? '' : undefined,
+      // Temporal context leads, followed by transition and interaction frames,
+      // so retained history is read under the current contract. The behavior
+      // activation sits adjacent to the writer message so quoted context
+      // cannot dilute it.
       input.transitionFrame,
       input.interactionFrame,
       input.transitionFrame || input.interactionFrame ? '' : undefined,
@@ -1021,6 +1026,8 @@ export class AssistantToolService {
     input: WorkshopPersonaConversationInput
   ): string {
     return [
+      input.timeFrame,
+      input.timeFrame ? '' : undefined,
       input.transitionFrame,
       input.interactionFrame,
       input.transitionFrame || input.interactionFrame ? '' : undefined,
