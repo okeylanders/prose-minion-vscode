@@ -66,6 +66,20 @@ describe('useWorkshopRoom', () => {
     }));
   });
 
+  it('acknowledges a dismissed error to the host cache', () => {
+    const { result } = renderHook(() => useWorkshopRoom());
+    const vscode = useVSCodeApi() as ReturnType<typeof createMockVSCode>;
+    vscode.postMessage.mockClear();
+
+    act(() => result.current.clearError());
+
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_DISMISS_ERROR,
+      source: 'webview.workshop',
+      payload: {}
+    }));
+  });
+
   it('turns each restored transient send into a fresh composer seed', () => {
     const { result } = renderHook(() => useWorkshopRoom());
     const restored = (text: string) => ({

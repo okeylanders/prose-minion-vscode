@@ -594,6 +594,11 @@ export interface WorkshopRequestSessionMessage extends MessageEnvelope<Record<st
   type: MessageType.WORKSHOP_REQUEST_SESSION;
 }
 
+/** Acknowledge the visible room error so the host does not replay it on reveal. */
+export interface WorkshopDismissErrorMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_DISMISS_ERROR;
+}
+
 /**
  * Save the coherent current session. Without `sessionId` this creates a named
  * checkpoint; with it, the host updates that exact checkpoint after verifying

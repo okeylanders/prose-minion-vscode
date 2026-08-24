@@ -580,7 +580,10 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     post(MessageType.WORKSHOP_REQUEST_SESSION, {});
   }, [post]);
 
-  const clearError = React.useCallback(() => setErrorMessage(''), []);
+  const clearError = React.useCallback(() => {
+    setErrorMessage('');
+    post(MessageType.WORKSHOP_DISMISS_ERROR, {});
+  }, [post]);
 
   // Rehydration: ask the host for the session once on mount. A reload lands
   // here too — the reply rebuilds the whole thread (ADR reload-safety).

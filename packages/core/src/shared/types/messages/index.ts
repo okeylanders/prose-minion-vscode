@@ -161,6 +161,7 @@ import {
   WorkshopRepinExcerptMessage,
   WorkshopResetSessionMessage,
   WorkshopRequestSessionMessage,
+  WorkshopDismissErrorMessage,
   WorkshopSaveSessionMessage,
   WorkshopListSessionsMessage,
   WorkshopOpenSessionMessage,
@@ -275,6 +276,7 @@ export type WebviewToExtensionMessage =
   | WorkshopRepinExcerptMessage
   | WorkshopResetSessionMessage
   | WorkshopRequestSessionMessage
+  | WorkshopDismissErrorMessage
   | WorkshopSaveSessionMessage
   | WorkshopListSessionsMessage
   | WorkshopOpenSessionMessage
