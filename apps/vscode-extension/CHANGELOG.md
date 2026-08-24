@@ -4,8 +4,26 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-08-24
+
 ### Added
 
+- **Conversation Widgets**: Workshop now includes three interactive writing
+  surfaces that let you explore and shape an idea before committing it to the
+  room:
+  - **Gesture Playground** develops a gesture into a scene-aware lexical and
+    embodied field, then lets you keep and commit the directions that land.
+  - **Lexical Gravity** applies an editable, passage-scoped interpretive lens
+    that remains active until you remove it.
+  - **Creative Variations** generates three to five distinct takes under your
+    declared invariants, supports side-by-side comparison, and commits only
+    your selected direction or prose.
+- **Durable widget work**: Committed widgets leave re-openable transcript chips.
+  One-shot widgets clone into a new turn instead of rewriting history, while
+  standing Lexical Gravity directives can be edited or removed between runs.
+- **Widget recovery**: Workshop restores supported older Gesture Playground and
+  Lexical Gravity drafts through feature-owned recovery rules, while malformed
+  or unknown widget data still fails closed before session hydration.
 - **OpenRouter catalog refresh**: Added Muse Spark 1.2 alongside 1.1, Grok 4.6
   alongside 4.5, DeepSeek V4 Pro 0813, GPT-OSS 120B Nitro, and Gemini 3.7
   Flash to the Recommended Models catalog.
@@ -14,9 +32,42 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Changed
 
+- **Workshop architecture hardening**: Split room orchestration, session state,
+  presentation workflows, and each widget family into named owners with
+  executable architecture boundaries. This keeps the extension host in charge
+  of session truth, persistence, and model-facing frames as Workshop grows.
+- **Safer widget persistence**: A closed lifecycle registry now requires every
+  persisted widget type to own checkpoint recognition, normalization, current
+  validation, and semantic integrity checks.
 - **Faster Category Search default**: Changed the Category Search default to
   `openai/gpt-oss-120b:nitro`, which selects the model's highest-throughput
   available OpenRouter provider.
+
+### Fixed
+
+- Fresh Workshop host conversations now include their session-start time
+  context in the first model request before marking that notice delivered.
+- Persisted excerpt re-read paths are re-authorized against the current
+  workspace or configured-resource catalog before disk access. Forged catalog
+  claims, traversal, non-file URIs, and symbolic-link paths fail closed.
+- Rejected structured widget responses can be recovered without discarding the
+  healthy Workshop session, and an unavailable AI provider no longer causes
+  otherwise valid session state to be lost.
+
+### Security
+
+- Updated DOMPurify to a patched release used by the shipped Markdown-rendering
+  boundary.
+- Updated vulnerable transitive packages used by release publication, linting,
+  testing, and bundling. Full and production-only npm audits report zero known
+  vulnerabilities after the non-breaking remediation.
+
+### Compatibility
+
+- No migration or editor-content changes are required. Supported development
+  widget checkpoints are normalized at the Workshop hydration boundary.
+- Existing saved model selections remain unchanged; the new Category Search
+  default applies only when no selection has been stored.
 
 ## [2.1.1] - 2026-08-03
 

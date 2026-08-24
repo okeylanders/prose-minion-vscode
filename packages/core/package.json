@@ -1,6 +1,6 @@
 {
   "name": "@prose-minion/core",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "private": true,
   "description": "Prose Minion shared core: presentation (webview React), application handlers, domain, infrastructure (AI services, metrics, dictionary, publishing standards, word-frequency/NLP, resources), shared contracts, and the vscode-free platform ports. Consumed by apps/* shells via the public barrel src/index.ts. Never imports vscode or electron.",
   "license": "SEE LICENSE IN ../../apps/vscode-extension/LICENSE",
@@ -11,7 +11,7 @@
     "**/*.css"
   ],
   "dependencies": {
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.14",
     "marked": "^16.4.1",
     "p-limit": "^7.2.0",
     "react": "^18.3.1",
