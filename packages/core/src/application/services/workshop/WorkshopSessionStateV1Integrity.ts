@@ -523,21 +523,43 @@ function assertWidgetConfigCommitLinkage(
   // product catalog: retiring or regrouping a widget cannot invalidate an
   // otherwise self-describing archived session.
   if (config.directiveId !== undefined) {
-    const turnExists = state.turns.some(
+    const turn = state.turns.find(
       (candidate) => candidate.id === config.committedTurnId
     );
+    const commit = turn?.widgetCommit;
+    const change = turn?.standingDirectiveChange;
     const directive = (state.standingDirectives ?? []).find(
       (candidate) => candidate.id === config.directiveId
     );
+    const coherentStandingTurn =
+      turn?.artifact === 'standing_directive_change'
+      && commit?.rail === 'standing'
+      && commit.widgetConfigId === config.id
+      && commit.widgetId === config.widgetId
+      && commit.directiveId === config.directiveId
+      && commit.revision === config.revision
+      && change?.widgetConfigId === config.id
+      && change.widgetId === config.widgetId
+      && change.directiveId === config.directiveId
+      && change.revision === config.revision;
+    const activeLinkage =
+      turn !== undefined
+      && directive !== undefined
+      && directive.widgetConfigId === config.id
+      && directive.widgetId === config.widgetId
+      && directive.revision === config.revision;
+    // Removing a standing directive deliberately leaves its authoring config
+    // addressable through the terminal audit marker while removing the active
+    // ledger entry. That is a closed lifecycle arm, not a dangling link.
+    const removedLinkage =
+      directive === undefined
+      && coherentStandingTurn
+      && change?.action === 'removed';
     if (
       linkageCount !== 2
       || config.committedTurnId === undefined
       || config.directiveId === undefined
-      || !turnExists
-      || !directive
-      || directive.widgetConfigId !== config.id
-      || directive.widgetId !== config.widgetId
-      || directive.revision !== config.revision
+      || (!activeLinkage && !removedLinkage)
     ) {
       throw new Error(
         `Persisted Workshop standing config ${config.id} has invalid config linkage`

@@ -39,6 +39,13 @@ import {
 import {
   clonePersistedJson
 } from '@/application/services/workshop/persistedJson';
+import {
+  migrateWorkshopPersistedSessionV1ToV2,
+  WORKSHOP_PERSISTED_SESSION_V1_TO_V2_MIGRATION,
+  WorkshopPersistedSessionMigration
+} from '@/application/services/workshop/WorkshopPersistedSessionV1ToV2Migration';
+
+export const CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION = 2 as const;
 
 export interface WorkshopPersistedSummaryV1 {
   hostPersonaId: WorkshopPersonaId;
@@ -56,8 +63,7 @@ export interface WorkshopPersistedSummaryV1 {
   preview?: string;
 }
 
-export interface WorkshopPersistedSessionV1 {
-  schemaVersion: 1;
+interface WorkshopPersistedSessionData {
   sessionId: string;
   title: string;
   createdAt: string;
@@ -70,8 +76,21 @@ export interface WorkshopPersistedSessionV1 {
   conversations: ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[];
 }
 
+/** Released by v2.1.1 and retained only as migration input. */
+export interface WorkshopPersistedSessionV1
+  extends WorkshopPersistedSessionData {
+  schemaVersion: 1;
+}
+
+/** Current durable Workshop session envelope written by v2.2.0. */
+export interface WorkshopPersistedSessionV2
+  extends WorkshopPersistedSessionData {
+  schemaVersion: 2;
+}
+
 export interface WorkshopPersistedSessionCheckpointDecodeResult {
-  session: WorkshopPersistedSessionV1;
+  session: WorkshopPersistedSessionV2;
+  migrations: WorkshopPersistedSessionMigration[];
   normalizations: WorkshopSessionCheckpointNormalization[];
   recoveryNotices: WorkshopWidgetRecoveryNotice[];
 }
@@ -126,25 +145,35 @@ function parseSummary(value: unknown): WorkshopPersistedSummaryV1 {
 export function decodeWorkshopPersistedSessionCheckpoint(
   value: unknown
 ): WorkshopPersistedSessionCheckpointDecodeResult {
-  assertWorkshopPersistedSessionEnvelope(value);
-  const checkpoint = parseWorkshopSessionStateV1(value.workshop);
+  assertSupportedWorkshopPersistedSessionEnvelope(value);
+  const migrations: WorkshopPersistedSessionMigration[] = [];
+  const current = value.schemaVersion === 1
+    ? migrateWorkshopPersistedSessionV1ToV2(value)
+    : value;
+  if (value.schemaVersion === 1) {
+    migrations.push(WORKSHOP_PERSISTED_SESSION_V1_TO_V2_MIGRATION);
+  }
+  assertCurrentWorkshopPersistedSessionEnvelope(current);
+  const checkpoint = parseWorkshopSessionStateV1(current.workshop);
   const recovery = normalizeWorkshopSessionCheckpointForHydration(checkpoint);
   assertCurrentWorkshopSessionStateV1(recovery.state);
+  assertWorkshopPersistedSessionStateV2(recovery.state);
   validateWorkshopSessionStateV1(recovery.state);
   return {
+    migrations,
     normalizations: recovery.normalizations,
     recoveryNotices: recovery.notices,
-    session: decodeWorkshopPersistedSessionEnvelope(value, recovery.state)
+    session: decodeWorkshopPersistedSessionEnvelope(current, recovery.state)
   };
 }
 
-function assertWorkshopPersistedSessionEnvelope(
+function assertSupportedWorkshopPersistedSessionEnvelope(
   value: unknown
 ): asserts value is Record<string, unknown> {
   if (!isRecord(value)) {
     throw new Error('Workshop session file must contain a JSON object.');
   }
-  if (value.schemaVersion !== 1) {
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2) {
     throw new Error(`Unsupported Workshop session schema: ${String(value.schemaVersion)}`);
   }
   exactKeys(
@@ -180,12 +209,21 @@ function assertWorkshopPersistedSessionEnvelope(
   }
 }
 
+function assertCurrentWorkshopPersistedSessionEnvelope(
+  value: unknown
+): asserts value is Record<string, unknown> {
+  assertSupportedWorkshopPersistedSessionEnvelope(value);
+  if (value.schemaVersion !== CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION) {
+    throw new Error(`Unsupported Workshop session schema: ${String(value.schemaVersion)}`);
+  }
+}
+
 function decodeWorkshopPersistedSessionEnvelope(
   value: Record<string, unknown>,
   workshop: WorkshopSessionStateV1
-): WorkshopPersistedSessionV1 {
+): WorkshopPersistedSessionV2 {
   return {
-    schemaVersion: 1,
+    schemaVersion: CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION,
     sessionId: value.sessionId as string,
     title: value.title as string,
     createdAt: normalizeTimestamp(value.createdAt as string),
@@ -202,10 +240,25 @@ function decodeWorkshopPersistedSessionEnvelope(
 }
 
 /** Strict current-state parser used by writes and already-canonical callers. */
-export function parseWorkshopPersistedSession(value: unknown): WorkshopPersistedSessionV1 {
-  assertWorkshopPersistedSessionEnvelope(value);
+export function parseWorkshopPersistedSession(value: unknown): WorkshopPersistedSessionV2 {
+  assertCurrentWorkshopPersistedSessionEnvelope(value);
   const workshop = parseWorkshopSessionStateV1(value.workshop);
   assertCurrentWorkshopSessionStateV1(workshop);
+  assertWorkshopPersistedSessionStateV2(workshop);
   validateWorkshopSessionStateV1(workshop);
   return decodeWorkshopPersistedSessionEnvelope(value, workshop);
+}
+
+function assertWorkshopPersistedSessionStateV2(
+  state: WorkshopSessionStateV1
+): void {
+  if (
+    state.counters.widgetConfig === undefined
+    || state.counters.standingDirective === undefined
+    || state.widgetConfigs === undefined
+    || state.standingDirectives === undefined
+    || state.threadArtifacts === undefined
+  ) {
+    throw new Error('Workshop session schema V2 is missing persisted widget state.');
+  }
 }

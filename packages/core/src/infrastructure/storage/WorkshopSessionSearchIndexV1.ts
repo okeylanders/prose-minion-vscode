@@ -6,7 +6,7 @@
  */
 
 import {
-  WorkshopPersistedSessionV1,
+  WorkshopPersistedSessionV2,
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { WorkshopPersonaId, WorkshopSessionScope, isWorkshopSessionScope } from '@messages';
@@ -29,8 +29,8 @@ export interface WorkshopStoredSessionSummary {
   savedAt?: string;
   startedAt: string;
   timezone: string;
-  hostPersonaId: WorkshopPersistedSessionV1['summary']['hostPersonaId'];
-  participantPersonaIds: WorkshopPersistedSessionV1['summary']['participantPersonaIds'];
+  hostPersonaId: WorkshopPersistedSessionV2['summary']['hostPersonaId'];
+  participantPersonaIds: WorkshopPersistedSessionV2['summary']['participantPersonaIds'];
   turnCount: number;
   excerptWordCount: number;
   /** The session's scope (Sprint 13A); absent on rows written before it existed. */
@@ -56,14 +56,14 @@ export interface WorkshopSessionSearchIndexV1 {
 }
 
 export function workshopStoredSessionSummary(
-  session: WorkshopPersistedSessionV1,
+  session: WorkshopPersistedSessionV2,
   fileName: string
 ): WorkshopStoredSessionSummary {
   return workshopStoredSummaryFromSearchIndex(buildWorkshopSessionSearchIndexV1(session, fileName));
 }
 
 export function buildWorkshopSessionSearchIndexV1(
-  session: WorkshopPersistedSessionV1,
+  session: WorkshopPersistedSessionV2,
   fileName: string
 ): WorkshopSessionSearchIndexV1 {
   return {

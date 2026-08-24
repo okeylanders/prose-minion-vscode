@@ -5,7 +5,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
-  WorkshopPersistedSessionV1
+  WorkshopPersistedSessionV2
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import {
   builtInLexicalGravityLens
@@ -32,7 +32,7 @@ const deferred = <T = void>() => {
 };
 
 const summary = (
-  session: WorkshopPersistedSessionV1,
+  session: WorkshopPersistedSessionV2,
   fileName = 'saved.json'
 ): WorkshopStoredSessionSummary => ({
   sessionId: session.sessionId,
@@ -55,8 +55,8 @@ const summary = (
 describe('WorkshopSessionPersistenceCoordinator', () => {
   let now: Date;
   let nextId: number;
-  let current: WorkshopPersistedSessionV1 | undefined;
-  let named: WorkshopPersistedSessionV1[];
+  let current: WorkshopPersistedSessionV2 | undefined;
+  let named: WorkshopPersistedSessionV2[];
   let session: WorkshopSessionService;
   let time: WorkshopSessionTimeService;
   let assistant: jest.Mocked<AssistantToolService>;
@@ -85,7 +85,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     id: string,
     title: string,
     excerpt: string
-  ): WorkshopPersistedSessionV1 => {
+  ): WorkshopPersistedSessionV2 => {
     const source = new WorkshopSessionService(() => now.getTime());
     source.setExcerpt({ text: excerpt, source: { kind: 'manual' } });
     source.recordSessionMarker('start', 'Session started before restart.');
@@ -94,7 +94,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       timezone: 'America/Chicago'
     });
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       sessionId: id,
       title,
       createdAt: now.toISOString(),
@@ -145,17 +145,17 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       readCurrentWithRecovery: jest.fn(async () => {
         const restored = await store.readCurrent();
         return restored
-          ? { session: restored, normalizations: [], recoveryNotices: [] }
+          ? { session: restored, migrations: [], normalizations: [], recoveryNotices: [] }
           : undefined;
       }),
-      writeCurrent: jest.fn(async (next: WorkshopPersistedSessionV1) => {
-        current = JSON.parse(JSON.stringify(next)) as WorkshopPersistedSessionV1;
+      writeCurrent: jest.fn(async (next: WorkshopPersistedSessionV2) => {
+        current = JSON.parse(JSON.stringify(next)) as WorkshopPersistedSessionV2;
       }),
-      saveNamed: jest.fn(async (next: WorkshopPersistedSessionV1) => {
+      saveNamed: jest.fn(async (next: WorkshopPersistedSessionV2) => {
         named.push(next);
         return summary(next);
       }),
-      updateNamed: jest.fn(async (id: string, next: WorkshopPersistedSessionV1) => {
+      updateNamed: jest.fn(async (id: string, next: WorkshopPersistedSessionV2) => {
         const index = named.findIndex((entry) => entry.sessionId === id);
         if (index < 0) {
           throw new Error(`Named Workshop session ${id} was not found.`);
@@ -175,7 +175,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       readNamedWithRecovery: jest.fn(async (id: string) => {
         const restored = await store.readNamed(id);
         return restored
-          ? { session: restored, normalizations: [], recoveryNotices: [] }
+          ? { session: restored, migrations: [], normalizations: [], recoveryNotices: [] }
           : undefined;
       }),
       renameNamed: jest.fn(),
@@ -200,6 +200,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(current?.workshop.excerpt?.text).toBe('A complete pinned excerpt.');
     expect(current?.workshop.turns.at(-1)?.artifact).toBe('session_start');
     expect(current?.summary.excerptWordCount).toBe(4);
+    expect(current?.schemaVersion).toBe(2);
     expect(JSON.stringify(current)).not.toContain('SECRET PROFILE');
     expect(store.writeCurrent).toHaveBeenCalled();
   });
@@ -213,7 +214,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       timezone: 'America/Chicago'
     });
     current = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       sessionId: 'persisted-id',
       title: 'Restored room',
       createdAt: now.toISOString(),
@@ -245,6 +246,23 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(session.getScope()).toBe('open');
   });
 
+  it('logs a released schema migration separately from checkpoint normalization', async () => {
+    current = persistedSession('migrated-room', 'Migrated room', 'The restored manuscript.');
+    store.readCurrentWithRecovery.mockResolvedValue({
+      session: current,
+      migrations: ['v1-to-v2'],
+      normalizations: [],
+      recoveryNotices: []
+    });
+    const coordinator = createCoordinator();
+
+    await coordinator.initialize();
+
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Released session schema migrated (migrations=v1-to-v2)')
+    );
+  });
+
   it('logs when hydration normalizes a legacy open session carrying an excerpt', async () => {
     current = persistedSession('legacy-hybrid', 'Legacy hybrid', 'The restored manuscript.');
     current.workshop.scope = 'open';
@@ -260,7 +278,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
 
   it('resumes the exact associated named checkpoint when current and named share an identity', async () => {
     current = persistedSession('named-current', 'Living room', 'The restored manuscript.');
-    named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV1);
+    named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV2);
     const statuses: string[] = [];
     const coordinator = createCoordinator();
     coordinator.addSessionSaveStatusListener(({ status }) => {
@@ -281,7 +299,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
   it('preflights a malformed aggregate before importing any provider history', async () => {
     const valid = new WorkshopSessionService(() => now.getTime()).exportCommittedState();
     current = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       sessionId: 'bad-product',
       title: 'Bad product state',
       createdAt: now.toISOString(),
@@ -800,7 +818,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     store.writeCurrent.mockImplementationOnce(async (next) => {
       writeStarted.resolve();
       await allowWrite.promise;
-      current = JSON.parse(JSON.stringify(next)) as WorkshopPersistedSessionV1;
+      current = JSON.parse(JSON.stringify(next)) as WorkshopPersistedSessionV2;
     });
 
     const opening = coordinator.openNamed('other-room');
@@ -873,7 +891,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
   });
 
   it('waits for initialization before beginning a session mutation', async () => {
-    const initialRead = deferred<WorkshopPersistedSessionV1 | undefined>();
+    const initialRead = deferred<WorkshopPersistedSessionV2 | undefined>();
     store.readCurrent.mockImplementationOnce(() => initialRead.promise);
     const coordinator = createCoordinator();
 

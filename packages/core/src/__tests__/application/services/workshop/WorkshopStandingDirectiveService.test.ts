@@ -185,6 +185,37 @@ describe('WorkshopStandingDirectiveService', () => {
     expect(session.getStandingDirectives()).toEqual([]);
     expect(session.getWidgetConfig(installed.config.id)).toBeDefined();
     expect(replaceStandingDirectiveFrames).toHaveBeenLastCalledWith([]);
+
+    const state = session.exportCommittedState();
+    expect(() => parseWorkshopSessionStateV1(state)).not.toThrow();
+    const restored = new WorkshopSessionService(() => 1_000);
+    restored.hydrateCommittedState(
+      state,
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+    expect(restored.getStandingDirectives()).toEqual([]);
+    expect(restored.getWidgetConfig(installed.config.id)).toEqual(
+      expect.objectContaining({
+        committedTurnId: removal.turn?.id,
+        directiveId: removal.directiveId
+      })
+    );
+  });
+
+  it('rejects a retired standing config without an exact terminal removal marker', async () => {
+    const session = new WorkshopSessionService(() => 100);
+    const service = new WorkshopStandingDirectiveService(
+      session,
+      { replaceStandingDirectiveFrames: jest.fn().mockResolvedValue(undefined) } as never
+    );
+    await applyLexicalGravity(service, draft());
+    const removal = await service.remove('lexical-gravity');
+    const state = session.exportCommittedState();
+    const removalTurn = state.turns.find((turn) => turn.id === removal.turn?.id)!;
+    removalTurn.standingDirectiveChange!.action = 'installed';
+
+    expect(() => parseWorkshopSessionStateV1(state)).toThrow(/invalid config linkage/);
   });
 
   it('refuses install while a Workshop response is active', async () => {

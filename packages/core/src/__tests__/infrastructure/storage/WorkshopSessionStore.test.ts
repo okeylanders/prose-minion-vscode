@@ -7,7 +7,7 @@ import {
 } from '@/infrastructure/storage/WorkshopSessionStore';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
-  WorkshopPersistedSessionV1
+  WorkshopPersistedSessionV2
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -101,8 +101,8 @@ const workspace = (folders: string[]): Workspace => ({
 const session = (
   sessionId: string,
   title: string,
-  overrides: Partial<WorkshopPersistedSessionV1> = {}
-): WorkshopPersistedSessionV1 => {
+  overrides: Partial<WorkshopPersistedSessionV2> = {}
+): WorkshopPersistedSessionV2 => {
   const workshop = new WorkshopSessionService(() => Date.parse('2026-07-23T10:00:00.000Z'));
   workshop.setExcerpt({
     text: 'The silver anemone opened at dawn.',
@@ -122,7 +122,7 @@ const session = (
   });
   temporal.touch(new Date('2026-07-23T10:00:00.000Z'));
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sessionId,
     title,
     createdAt: '2026-07-23T09:00:00.000Z',
@@ -192,6 +192,8 @@ describe('WorkshopSessionStore', () => {
     const canonical = decodeWorkshopPersistedSessionCheckpoint(
       JSON.parse(JSON.stringify(current))
     ).session;
+    expect(fileSystem.json(path.join(sessionsDirectory, 'current.json')))
+      .toMatchObject({ schemaVersion: 2 });
     await expect(store.readCurrent()).resolves.toEqual(canonical);
   });
 
@@ -312,7 +314,7 @@ describe('WorkshopSessionStore', () => {
       }
       const candidate = session(`depth-${absoluteDepth}`, `Depth ${absoluteDepth}`, {
         conversations: [nestedConversation] as unknown as
-          WorkshopPersistedSessionV1['conversations']
+          WorkshopPersistedSessionV2['conversations']
       });
       const store = createStore();
 
@@ -526,7 +528,7 @@ describe('WorkshopSessionStore', () => {
     const store = createStore();
     const saved = await store.saveNamed(session('legacy-room', 'Legacy room'));
     const filePath = await store.resolveRevealPath('legacy-room');
-    const checkpoint = fileSystem.json(filePath) as WorkshopPersistedSessionV1;
+    const checkpoint = fileSystem.json(filePath) as WorkshopPersistedSessionV2;
     const { logic: _logic, ...legacyLens } = builtInLexicalGravityLens('music')!;
     checkpoint.workshop.counters.widgetConfig = 1;
     checkpoint.workshop.widgetConfigs = [{

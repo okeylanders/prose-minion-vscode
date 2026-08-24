@@ -27,8 +27,9 @@ import {
   workshopGuestConversationKey
 } from '@/application/services/workshop/WorkshopSessionTimeService';
 import {
+  CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION,
   WorkshopPersistedSessionCheckpointDecodeResult,
-  WorkshopPersistedSessionV1,
+  WorkshopPersistedSessionV2,
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import type {
@@ -481,7 +482,7 @@ export class WorkshopSessionPersistenceCoordinator {
         );
       }
       const now = normalizedIso(this.now());
-      const duplicate: WorkshopPersistedSessionV1 = {
+      const duplicate: WorkshopPersistedSessionV2 = {
         ...source.session,
         sessionId: this.idFactory(),
         title: this.requireTitle(requestedTitle ?? `${source.session.title} copy`),
@@ -568,7 +569,7 @@ export class WorkshopSessionPersistenceCoordinator {
     };
   }
 
-  private async capture(identity: LiveSessionIdentity): Promise<WorkshopPersistedSessionV1> {
+  private async capture(identity: LiveSessionIdentity): Promise<WorkshopPersistedSessionV2> {
     // Assistant generation setup may await. It must settle before either half
     // of the coherent snapshot is read.
     await this.ensureAssistantReady?.();
@@ -579,7 +580,7 @@ export class WorkshopSessionPersistenceCoordinator {
       : [];
     const temporal = this.time.exportState();
     return {
-      schemaVersion: 1,
+      schemaVersion: CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION,
       sessionId: identity.sessionId,
       title: identity.title,
       createdAt: identity.createdAt,
@@ -633,12 +634,12 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   private async hydrate(
-    persisted: WorkshopPersistedSessionV1,
+    persisted: WorkshopPersistedSessionV2,
     retirePreviousConversations = true,
     scheduleResumeAutosave = true,
     checkpointRecovery?: Pick<
       WorkshopPersistedSessionCheckpointDecodeResult,
-      'normalizations' | 'recoveryNotices'
+      'migrations' | 'normalizations' | 'recoveryNotices'
     >
   ): Promise<WorkshopHydrationTransaction> {
     // Structural preflight happens before ConversationManager can mint ids.
@@ -685,6 +686,7 @@ export class WorkshopSessionPersistenceCoordinator {
         bindings as WorkshopRuntimeConversationBindings,
         this.session.getConversationBehavior()
       );
+      this.logSchemaMigrations(checkpointRecovery?.migrations ?? []);
       this.logCheckpointNormalizations(unique([
         ...(checkpointRecovery?.normalizations ?? []),
         ...hydration.normalizations
@@ -957,6 +959,18 @@ export class WorkshopSessionPersistenceCoordinator {
     this.outputChannel.appendLine(
       `[WorkshopSessionPersistence] Development checkpoint normalized ` +
       `(normalizations=${normalizations.join(', ')})`
+    );
+  }
+
+  private logSchemaMigrations(
+    migrations: WorkshopPersistedSessionCheckpointDecodeResult['migrations']
+  ): void {
+    if (migrations.length === 0) {
+      return;
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopSessionPersistence] Released session schema migrated ` +
+      `(migrations=${migrations.join(', ')})`
     );
   }
 

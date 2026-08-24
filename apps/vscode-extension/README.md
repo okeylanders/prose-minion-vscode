@@ -28,7 +28,7 @@
 
 - **Play before you commit** — Workshop now ships Gesture Playground, Lexical Gravity, and Creative Variations as interactive surfaces with explicit writer-owned commit points.
 - **Return to the work** — committed widgets leave re-openable transcript chips; one-shot explorations clone into new turns, while standing Lexical Gravity directives remain editable between runs.
-- **Safer sessions** — feature-owned checkpoint recovery preserves supported older widget drafts, and stricter integrity checks reject malformed state before it can replace a healthy room.
+- **Safer sessions** — released pre-widget Workshop files migrate automatically to the new session schema, feature-owned recovery preserves supported older widget drafts, and stricter integrity checks reject malformed state before it can replace a healthy room.
 - **A sturdier Workshop** — room orchestration, persistence, presentation workflows, and widget families now have named ownership boundaries backed by architecture tests.
 - **Fresh model choices** — Muse Spark 1.2, Grok 4.6, DeepSeek V4 Pro 0813, GPT-OSS 120B Nitro, and Gemini 3.7 Flash join the curated catalog; existing saved model selections remain unchanged.
 

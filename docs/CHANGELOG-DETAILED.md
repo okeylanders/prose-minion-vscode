@@ -51,6 +51,10 @@ catalog concepts are still roadmap entries and are not enabled in this release.
 
 ### Added — persistence and recovery
 
+- The full Workshop session envelope advances from schema V1 to V2. An
+  explicit adjacent migration initializes the persisted widget collections and
+  counters absent from released pre-widget sessions; current writes emit V2
+  only, while the unchanged regenerable browser search index remains V1.
 - Widget authoring configs are session-owned, persisted under stable IDs, and
   committed atomically with their visible turn and model-facing artifact or
   standing directive.
@@ -117,6 +121,10 @@ catalog concepts are still roadmap entries and are not enabled in this release.
   stripped and re-derived.
 - Session state is preserved when the AI runtime is unavailable, and structured
   widget response failures no longer discard otherwise healthy Workshop data.
+- Removing a standing directive now persists an exact terminal removal linkage
+  instead of producing a checkpoint rejected by the aggregate's own integrity
+  validator. Install-remove-export-hydrate regression coverage preserves the
+  retired config history while keeping the active directive rail empty.
 - Widget action correlation, stale/cancelled result rejection, atomic one-shot
   acceptance, artifact budgets, and feature-specific semantic integrity are
   enforced at host-owned boundaries.
@@ -135,12 +143,13 @@ catalog concepts are still roadmap entries and are not enabled in this release.
 
 ### Release validation
 
-- Full Jest and coverage runs: **208 suites / 2,301 tests / 2 snapshots**
+- Full Jest run: **208 suites / 2,310 tests / 2 snapshots** passed. The earlier
+  release coverage run remains the coverage baseline for this branch.
   passed.
 - Coverage: **82.28% statements**, **82.25% functions**, **71.34% branches**,
   and **82.57% lines**.
 - Core, webview, and extension TypeScript projects passed.
-- Repository ESLint completed with **0 errors** and the existing 956-warning
+- Repository ESLint completed with **0 errors** and the existing 957-warning
   baseline.
 - Production extension and webview bundles compiled; resource staging and the
   bundle sentinel passed. Webpack reported only its three known webview-size
@@ -152,10 +161,14 @@ catalog concepts are still roadmap entries and are not enabled in this release.
 
 ### Compatibility
 
-- No editor mutation or user migration is required.
+- No editor mutation or manual user migration is required. Released V1
+  pre-widget Workshop files migrate automatically to the V2 envelope during
+  read, and the next successful save writes V2.
 - Recognized pre-release widget checkpoint omissions are normalized only at the
   feature-owned hydration boundary; current persisted state must satisfy the
-  complete v1 session contract.
+  complete V2 session contract. Invalid local beta widget linkage remains
+  fail-closed for deliberate manual repair rather than being generalized into
+  the public migration.
 - Existing saved model selections remain unchanged. The Category Search default
   changes only when no value has been stored; assistant, dictionary, context,
   and Conversation Widget defaults are unchanged.

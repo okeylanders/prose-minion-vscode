@@ -84,6 +84,7 @@ export {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 export type {
   WorkshopPersistedSessionV1,
+  WorkshopPersistedSessionV2,
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
 export { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';

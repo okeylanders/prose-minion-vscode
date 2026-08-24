@@ -1,11 +1,12 @@
 import {
+  decodeWorkshopPersistedSessionCheckpoint,
   parseWorkshopPersistedSession,
-  WorkshopPersistedSessionV1
+  WorkshopPersistedSessionV2
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 
-const persistedSession = (): WorkshopPersistedSessionV1 => {
+const persistedSession = (): WorkshopPersistedSessionV2 => {
   const workshop = new WorkshopSessionService(() => 1_000);
   workshop.setExcerpt({
     text: 'A defensive copy of the room.',
@@ -16,7 +17,7 @@ const persistedSession = (): WorkshopPersistedSessionV1 => {
     timezone: 'America/Chicago'
   });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     sessionId: 'session-1',
     title: 'The room',
     createdAt: '2026-07-23T09:00:00Z',
@@ -43,6 +44,48 @@ const persistedSession = (): WorkshopPersistedSessionV1 => {
 };
 
 describe('parseWorkshopPersistedSession', () => {
+  it('migrates the frozen released V1 pre-widget fixture to current V2 defaults', () => {
+    const releasedV1 = require('../../../fixtures/workshop-session-v1-released.json') as unknown;
+
+    const decoded = decodeWorkshopPersistedSessionCheckpoint(releasedV1);
+
+    expect(decoded.migrations).toEqual(['v1-to-v2']);
+    // Public schema migration and pre-release/current-checkpoint normalization
+    // remain separately observable even when both apply during one read.
+    expect(decoded.normalizations).toEqual(['inferred-missing-scope']);
+    expect(decoded.session).toMatchObject({
+      schemaVersion: 2,
+      sessionId: 'released-v1-session',
+      workshop: {
+        counters: {
+          widgetConfig: 0,
+          standingDirective: 0
+        },
+        widgetConfigs: [],
+        standingDirectives: [],
+        threadArtifacts: []
+      }
+    });
+    expect((releasedV1 as { schemaVersion: number }).schemaVersion).toBe(1);
+    expect((releasedV1 as { workshop: Record<string, unknown> }).workshop)
+      .not.toHaveProperty('widgetConfigs');
+  });
+
+  it('accepts only V2 at the strict current writer boundary', () => {
+    const current = persistedSession();
+    expect(parseWorkshopPersistedSession(current).schemaVersion).toBe(2);
+
+    expect(() => parseWorkshopPersistedSession({ ...current, schemaVersion: 1 }))
+      .toThrow('Unsupported Workshop session schema: 1');
+  });
+
+  it.each([0, 3])('rejects unsupported schema version %s', (schemaVersion) => {
+    expect(() => decodeWorkshopPersistedSessionCheckpoint({
+      ...persistedSession(),
+      schemaVersion
+    })).toThrow(`Unsupported Workshop session schema: ${schemaVersion}`);
+  });
+
   it('deep-validates and returns a normalized defensive clone', () => {
     const source = persistedSession();
     const parsed = parseWorkshopPersistedSession(source);
@@ -100,7 +143,7 @@ describe('parseWorkshopPersistedSession', () => {
     );
   });
 
-  it('accepts zero and missing pre-widget counters', () => {
+  it('accepts zero counters but rejects missing widget state from a claimed V2 file', () => {
     const zero = persistedSession();
     zero.workshop.counters.widgetConfig = 0;
     zero.workshop.counters.standingDirective = 0;
@@ -109,7 +152,11 @@ describe('parseWorkshopPersistedSession', () => {
     const missing = persistedSession();
     delete missing.workshop.counters.widgetConfig;
     delete missing.workshop.counters.standingDirective;
-    expect(() => parseWorkshopPersistedSession(missing)).not.toThrow();
+    delete missing.workshop.widgetConfigs;
+    delete missing.workshop.standingDirectives;
+    delete missing.workshop.threadArtifacts;
+    expect(() => parseWorkshopPersistedSession(missing))
+      .toThrow('Workshop session schema V2 is missing persisted widget state.');
   });
 
   it('preserves malformed conversation entries for participant-local degradation', () => {

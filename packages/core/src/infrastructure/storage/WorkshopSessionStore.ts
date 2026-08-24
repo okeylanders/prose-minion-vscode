@@ -4,7 +4,7 @@
  * This class deliberately owns only filesystem concerns: paths, tolerant reads,
  * bounded summaries/search, and atomic file replacement. It does not hydrate a
  * Workshop aggregate, import conversations, invoke a shell, or interpret IPC.
- * The application coordinator supplies complete `WorkshopPersistedSessionV1`
+ * The application coordinator supplies complete `WorkshopPersistedSessionV2`
  * snapshots and owns those higher-level transactions.
  */
 
@@ -12,7 +12,7 @@ import * as path from 'path';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionCheckpointDecodeResult,
-  WorkshopPersistedSessionV1,
+  WorkshopPersistedSessionV2,
   parseWorkshopPersistedSession
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { FileSystem, FileType, LogSink, Workspace } from '@/platform';
@@ -136,7 +136,7 @@ export interface WorkshopSessionListResult {
  * enough to list/reveal/manage a long session without parsing its transcript.
  */
 interface BrowserFullRead {
-  session?: WorkshopPersistedSessionV1;
+  session?: WorkshopPersistedSessionV2;
   /** The browser chose not to parse this valid-looking large file. */
   limited: boolean;
 }
@@ -144,7 +144,8 @@ interface BrowserFullRead {
 interface StoredNamedSession {
   filePath: string;
   fileName: string;
-  session: WorkshopPersistedSessionV1;
+  session: WorkshopPersistedSessionV2;
+  migrations: WorkshopPersistedSessionCheckpointDecodeResult['migrations'];
   normalizations: WorkshopPersistedSessionCheckpointDecodeResult['normalizations'];
   recoveryNotices: WorkshopPersistedSessionCheckpointDecodeResult['recoveryNotices'];
 }
@@ -195,7 +196,7 @@ export class WorkshopSessionStore {
     };
   }
 
-  async readCurrent(): Promise<WorkshopPersistedSessionV1 | undefined> {
+  async readCurrent(): Promise<WorkshopPersistedSessionV2 | undefined> {
     return (await this.readCurrentWithRecovery())?.session;
   }
 
@@ -206,7 +207,7 @@ export class WorkshopSessionStore {
     return this.readSessionFileExact(paths.currentPath, 'current.json');
   }
 
-  async writeCurrent(session: WorkshopPersistedSessionV1): Promise<void> {
+  async writeCurrent(session: WorkshopPersistedSessionV2): Promise<void> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
     await this.writeSnapshotWithSearchIndex(
@@ -219,7 +220,7 @@ export class WorkshopSessionStore {
   }
 
   /** Allocate a named file with immutable identity/path. The caller supplies a fresh id. */
-  async saveNamed(session: WorkshopPersistedSessionV1): Promise<WorkshopStoredSessionSummary> {
+  async saveNamed(session: WorkshopPersistedSessionV2): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
     if (await this.findNamedSession(decoded.sessionId, paths, { ignoreUnreadable: true })) {
@@ -246,7 +247,7 @@ export class WorkshopSessionStore {
   /** Replace one named checkpoint in place without changing its durable identity or path. */
   async updateNamed(
     sessionId: string,
-    session: WorkshopPersistedSessionV1
+    session: WorkshopPersistedSessionV2
   ): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
     const found = await this.requireNamedSessionPath(sessionId, paths);
@@ -271,7 +272,7 @@ export class WorkshopSessionStore {
   }
 
   /** Load a named checkpoint by durable identity; a caller-supplied path is never accepted. */
-  async readNamed(sessionId: string): Promise<WorkshopPersistedSessionV1 | undefined> {
+  async readNamed(sessionId: string): Promise<WorkshopPersistedSessionV2 | undefined> {
     return (await this.readNamedWithRecovery(sessionId))?.session;
   }
 
@@ -283,6 +284,7 @@ export class WorkshopSessionStore {
     return found
       ? {
           session: found.session,
+          migrations: found.migrations,
           normalizations: found.normalizations,
           recoveryNotices: found.recoveryNotices
         }
@@ -312,7 +314,7 @@ export class WorkshopSessionStore {
     if (!nextTitle) {
       throw new Error('Workshop session title cannot be blank.');
     }
-    const updated: WorkshopPersistedSessionV1 = {
+    const updated: WorkshopPersistedSessionV2 = {
       ...found.session,
       title: nextTitle,
       updatedAt: this.now().toISOString()
@@ -335,7 +337,7 @@ export class WorkshopSessionStore {
    */
   async duplicateNamed(
     sourceSessionId: string,
-    duplicate: WorkshopPersistedSessionV1
+    duplicate: WorkshopPersistedSessionV2
   ): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
     const source = await this.requireNamedSession(sourceSessionId, paths);
@@ -762,7 +764,7 @@ export class WorkshopSessionStore {
   private async writeSearchIndex(
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
     fullFileName: string,
-    session: WorkshopPersistedSessionV1
+    session: WorkshopPersistedSessionV2
   ): Promise<void> {
     const searchIndex = buildWorkshopSessionSearchIndexV1(session, fullFileName);
     // Re-validate the exact compact contract before it reaches disk; a search index
@@ -812,7 +814,7 @@ export class WorkshopSessionStore {
     paths: Extract<WorkshopSessionStoreAvailability, { available: true }>,
     targetPath: string,
     fileName: string,
-    session: WorkshopPersistedSessionV1,
+    session: WorkshopPersistedSessionV2,
     overwrite: boolean
   ): Promise<void> {
     await this.ensureStorageDirectory(paths);
@@ -853,7 +855,7 @@ export class WorkshopSessionStore {
 
   private async writeAtomically(
     targetPath: string,
-    session: WorkshopPersistedSessionV1,
+    session: WorkshopPersistedSessionV2,
     overwrite: boolean
   ): Promise<void> {
     await this.writeJsonAtomically(
@@ -867,7 +869,7 @@ export class WorkshopSessionStore {
 
   private async writeJsonAtomically(
     targetPath: string,
-    value: WorkshopPersistedSessionV1 | WorkshopSessionSearchIndexV1,
+    value: WorkshopPersistedSessionV2 | WorkshopSessionSearchIndexV1,
     overwrite: boolean,
     maximumBytes: number,
     description: string
@@ -916,8 +918,8 @@ export class WorkshopSessionStore {
   }
 
   private validateSessionForWrite(
-    session: WorkshopPersistedSessionV1
-  ): WorkshopPersistedSessionV1 {
+    session: WorkshopPersistedSessionV2
+  ): WorkshopPersistedSessionV2 {
     return parseWorkshopPersistedSession(session);
   }
 
@@ -982,7 +984,7 @@ function summaryMatches(summary: WorkshopStoredSessionSummary, query: string): b
 }
 
 function fullSessionMatches(
-  session: WorkshopPersistedSessionV1,
+  session: WorkshopPersistedSessionV2,
   query: string,
   maximumCharacters: number
 ): { matches: boolean; truncated: boolean } {

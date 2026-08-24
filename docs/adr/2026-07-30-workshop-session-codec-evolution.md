@@ -1,6 +1,6 @@
 # ADR 2026-07-30: Workshop Session Codec Evolution
 
-**Status:** Accepted; clarified 2026-08-07 for feature-owned widget recovery
+**Status:** Accepted; implemented for schema V2 on 2026-08-24
 **Date:** 2026-07-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence and the Session Browser](2026-07-14-workshop-session-persistence.md)
 **Scope:** Workshop session checkpoint codec
@@ -60,6 +60,28 @@ Before a Marketplace release that changes session persistence:
    migration unless the prior released format actually needs that repair.
 
 No version bump occurs for a release that leaves the persisted contract intact.
+
+### V2 implementation (v2.2.0)
+
+The first Conversation Widgets release advances the full Workshop session
+envelope from V1 to V2. `WorkshopPersistedSessionV1ToV2Migration` is the one
+adjacent public migration: it initializes the absent widget-config counter,
+standing-directive counter, widget config collection, standing directive
+collection, and thread-artifact collection from released pre-widget V1 files.
+It preserves already-present fields and does not repair feature-specific beta
+widget semantics.
+
+The codec accepts V1 and V2 for checkpoint reads, reports formal migrations
+separately from development normalizations, validates the resulting current
+shape, and returns V2. The strict write boundary accepts and emits V2 only.
+The compact `WorkshopSessionSearchIndexV1` remains version 1 because that
+regenerable browser index has not changed its own contract.
+
+Compatibility is witnessed by
+`packages/core/src/__tests__/fixtures/workshop-session-v1-released.json`, a
+frozen pre-widget released-shape fixture. Local beta checkpoints with invalid
+feature linkage remain fail-closed and require a separate, explicit repair;
+they are not part of the public V1-to-V2 migration.
 
 ## Consequences
 

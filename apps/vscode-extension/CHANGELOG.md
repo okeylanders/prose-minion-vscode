@@ -47,6 +47,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 - Fresh Workshop host conversations now include their session-start time
   context in the first model request before marking that notice delivered.
+- Removing a standing Lexical Gravity directive now leaves a valid terminal
+  audit marker, so the saved Workshop session can be reopened after removal.
 - Persisted excerpt re-read paths are re-authorized against the current
   workspace or configured-resource catalog before disk access. Forged catalog
   claims, traversal, non-file URIs, and symbolic-link paths fail closed.
@@ -64,8 +66,12 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Compatibility
 
-- No migration or editor-content changes are required. Supported development
-  widget checkpoints are normalized at the Workshop hydration boundary.
+- No manual migration or editor-content changes are required. Released
+  pre-widget Workshop session files upgrade automatically from schema v1 to
+  v2 when opened; new checkpoints write v2 only.
+- Supported development widget checkpoints are normalized at the Workshop
+  hydration boundary. Malformed local beta widget state still fails closed and
+  is not silently repaired by the public v1-to-v2 migration.
 - Existing saved model selections remain unchanged; the new Category Search
   default applies only when no selection has been stored.
 
