@@ -10,8 +10,15 @@ import {
   WorkshopWidgetId,
   WorkshopWidgetRecommendation
 } from '@messages';
-import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { isLiveWorkshopWidgetId } from '@shared/constants/workshopWidgets';
+import {
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
+  type WorkshopWidgetAvailabilityPolicy
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
+import {
+  CreativeVariationsRecommendationField,
+  CreativeVariationsRecommendationInvalidFieldReason,
+  CREATIVE_VARIATIONS_WIDGET_RECOMMENDATION_ENTRY
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsRecommendation';
 import {
   GesturePlaygroundRecommendationField,
   GesturePlaygroundRecommendationInvalidFieldReason,
@@ -30,10 +37,12 @@ import {
 } from '@/utils/workshopWidgetRecommendationProtocol';
 
 export type WorkshopWidgetRecommendationField =
+  | CreativeVariationsRecommendationField
   | GesturePlaygroundRecommendationField
   | LexicalGravityRecommendationField;
 
 export type WorkshopWidgetRecommendationInvalidFieldReason =
+  | CreativeVariationsRecommendationInvalidFieldReason
   | GesturePlaygroundRecommendationInvalidFieldReason
   | LexicalGravityRecommendationInvalidFieldReason;
 
@@ -56,41 +65,49 @@ type RecommendationWidgetId = WorkshopWidgetRecommendation['widgetId'];
  */
 export const WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES = Object.freeze({
   'gesture-playground': GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY,
-  'lexical-gravity': LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
+  'lexical-gravity': LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY,
+  'creative-variations': CREATIVE_VARIATIONS_WIDGET_RECOMMENDATION_ENTRY
 }) satisfies Readonly<
   Record<RecommendationWidgetId, WorkshopWidgetRecommendationEntry>
 >;
 
-const LIVE_RECOMMENDATION_ENTRIES = Object.values(
-  WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES
-).filter(({ widgetId }) => isLiveWorkshopWidgetId(widgetId));
+function availableRecommendationEntries(
+  availability: WorkshopWidgetAvailabilityPolicy
+): WorkshopWidgetRecommendationEntry[] {
+  return Object.values(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES)
+    .filter(({ widgetId }) => availability.isAvailable(widgetId));
+}
 
-export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION = [
-  '<workshop-widget-recommendation-contract>',
-  `The writer has the following interactive widgets you may recommend: ${[
-    ...LIVE_RECOMMENDATION_ENTRIES
-  ]
-    .sort((left, right) => left.catalogOrder - right.catalogOrder)
-    .map(({ catalogSummary }) => catalogSummary)
-    .join('; ')}.`,
-  'Each response is independent: recommend at most one widget in this response, and only when it would genuinely help. A recommendation or uncommitted chip from an earlier turn never counts against this response and never suppresses a fresh recommendation. When the writer explicitly asks you to prepare or configure a live widget, emit a fresh, complete frame if the supplied material supports its required fields; do not merely acknowledge the request. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
-  'Use the reserved heading and every tag in the selected frame exactly once, alone on their lines. Do not repeat the heading or use any reserved tag inside a field.',
-  ...[...LIVE_RECOMMENDATION_ENTRIES]
-    .sort((left, right) => left.instructionOrder - right.instructionOrder)
-    .map(({ instruction }) => instruction),
-  '</workshop-widget-recommendation-contract>'
-].join('\n');
+export function buildWorkshopWidgetRecommendationInstruction(
+  availability: WorkshopWidgetAvailabilityPolicy
+): string {
+  const availableEntries = availableRecommendationEntries(availability);
+  return [
+    '<workshop-widget-recommendation-contract>',
+    `The writer has the following interactive widgets you may recommend: ${[
+      ...availableEntries
+    ]
+      .sort((left, right) => left.catalogOrder - right.catalogOrder)
+      .map(({ catalogSummary }) => catalogSummary)
+      .join('; ')}.`,
+    'Each response is independent: recommend at most one widget in this response, and only when it would genuinely help. A recommendation or uncommitted chip from an earlier turn never counts against this response and never suppresses a fresh recommendation. When the writer explicitly asks you to prepare or configure a live widget, emit a fresh, complete frame if the supplied material supports its required fields; do not merely acknowledge the request. End your response with exactly one of the multiline control frames below. If you also emit `### Next steps`, put that section before `### Try a widget`; the widget frame must be the final content in the response.',
+    'Use the reserved heading and every tag in the selected frame exactly once, alone on their lines. Do not repeat the heading or use any reserved tag inside a field.',
+    ...[...availableEntries]
+      .sort((left, right) => left.instructionOrder - right.instructionOrder)
+      .map(({ instruction }) => instruction),
+    '</workshop-widget-recommendation-contract>'
+  ].join('\n');
+}
 
-const WIDGET_BUDGET = PROMPT_BUDGETS.workshopWidgets;
+export const WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION =
+  buildWorkshopWidgetRecommendationInstruction(
+    WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+  );
 
-/** Existing family-wide safety ceiling for the complete recommendation tail. */
+/** Coarse pre-id envelope derived from every compiler-enforced registry entry. */
 export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
-  WIDGET_BUDGET.gestureTargetPhraseCharacters
-  + WIDGET_BUDGET.gestureWriterInstructionsCharacters
-  + WIDGET_BUDGET.gestureContextCharacters
-  + WIDGET_BUDGET.gestureCharacterNotesCharacters
-  + WIDGET_BUDGET.gestureSourceReferenceCharacters
-  + WIDGET_BUDGET.gestureRecommendationFrameAllowanceCharacters;
+  Math.max(...Object.values(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES)
+    .map(({ frameCharacters }) => frameCharacters));
 
 /**
  * Parse one exact `### Try a widget` section carrying a versioned multiline
@@ -98,7 +115,8 @@ export const WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS =
  * incomplete, duplicated, unavailable, or over-budget controls reject whole.
  */
 export function inspectWorkshopWidgetRecommendation(
-  content: string
+  content: string,
+  availability: WorkshopWidgetAvailabilityPolicy
 ): WorkshopWidgetRecommendationInspection {
   const lines = content.replace(/\r\n?/g, '\n').split('\n');
   const headingIndexes = lines.flatMap((line, index) =>
@@ -123,12 +141,29 @@ export function inspectWorkshopWidgetRecommendation(
   }
 
   const widgetId = extractWorkshopWidgetRecommendationId(sectionLines);
-  if (!widgetId || !isLiveWorkshopWidgetId(widgetId) || !isRecommendationWidgetId(widgetId)) {
+  if (
+    !widgetId
+    || !isRecommendationWidgetId(widgetId)
+    || !availability.isAvailable(widgetId)
+  ) {
     return { outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' };
   }
-  return WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES[widgetId].inspect(sectionLines);
+  const entry = WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES[widgetId];
+  if (sectionCharacters > entry.frameCharacters) {
+    return {
+      outcome: 'rejected',
+      rejection: 'frame_too_long',
+      widgetId,
+      actualCharacters: sectionCharacters,
+      maximumCharacters: entry.frameCharacters
+    };
+  }
+  const inspected = entry.inspect(sectionLines);
+  return inspected.outcome === 'rejected'
+    ? { ...inspected, widgetId }
+    : inspected;
 }
 
-function isRecommendationWidgetId(value: WorkshopWidgetId): value is RecommendationWidgetId {
+function isRecommendationWidgetId(value: string): value is RecommendationWidgetId {
   return Object.prototype.hasOwnProperty.call(WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES, value);
 }

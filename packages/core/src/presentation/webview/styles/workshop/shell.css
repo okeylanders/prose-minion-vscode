@@ -3049,6 +3049,7 @@
 }
 
 [data-pm-surface="workshop"] .pm-ws-degraded-memory,
+[data-pm-surface="workshop"] .pm-ws-provider-paused,
 [data-pm-surface="workshop"] .pm-ws-sessions-unavailable,
 [data-pm-surface="workshop"] .pm-ws-sessions-truncated {
   display: flex;
@@ -3067,6 +3068,37 @@
   margin: 0;
   border-radius: 0;
   border-width: 0 0 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-provider-paused {
+  align-items: center;
+  margin: 0;
+  border-radius: 0;
+  border-width: 0 0 1px;
+}
+[data-pm-surface="workshop"] .pm-ws-provider-paused > span {
+  flex: 1;
+}
+[data-pm-surface="workshop"] .pm-ws-provider-paused strong {
+  color: var(--pm-text);
+}
+[data-pm-surface="workshop"] .pm-ws-provider-paused button {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 58%, var(--pm-border));
+  border-radius: var(--pm-r-pill);
+  background: color-mix(in srgb, var(--pm-amber) 13%, var(--pm-surface-2));
+  color: var(--pm-text);
+  font: 600 11px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-provider-paused button:hover,
+[data-pm-surface="workshop"] .pm-ws-provider-paused button:focus-visible {
+  border-color: var(--pm-amber);
+  outline: 0;
+  background: color-mix(in srgb, var(--pm-amber) 20%, var(--pm-surface-2));
 }
 [data-pm-surface="workshop"] .pm-ws-sessions-unavailable,
 [data-pm-surface="workshop"] .pm-ws-sessions-truncated {

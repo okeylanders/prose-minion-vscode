@@ -14,6 +14,7 @@ import {
   createWorkshopRouteTestHarness
 } from './WorkshopRouteTestHarness';
 import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 
 interface WorkshopDisposableSliceComposition {
   gesturePlaygroundHandler: { dispose: () => void };
@@ -1124,6 +1125,72 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
     expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/API key/);
   });
 
+  it('rolls a first writer message back when the offline host cannot answer', async () => {
+    await pin();
+    const turnsBeforeSend = session.getSnapshot().turns;
+    service.startWorkshopPersonaConversation.mockRejectedValueOnce(
+      new AgentRunUnavailableError('missing-credentials')
+    );
+
+    await router.route(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'This should not enter room history.' }
+    ) as any);
+
+    expect(session.getSnapshot().turns).toEqual(turnsBeforeSend);
+    expect(session.getHostConversationId()).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.turns)
+      .toEqual(turnsBeforeSend);
+    expect(posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toEqual([
+      expect.objectContaining({
+        payload: { text: 'This should not enter room history.' }
+      })
+    ]);
+    expect(posted(MessageType.ERROR).at(-1).payload.message)
+      .toContain('Add your OpenRouter API key');
+  });
+
+  it('keeps a retained host bound when insufficient credit rejects a follow-up', async () => {
+    await pin();
+    await router.route(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Start the retained conversation.' }
+    ) as any);
+    expect(session.getHostConversationId()).toBe('host-conv');
+    const turnsBeforeFailedSend = session.getSnapshot().turns;
+    service.discardConversation.mockClear();
+    persistence.markDirty.mockClear();
+    service.continueConversation.mockRejectedValueOnce(
+      new AgentRunUnavailableError(
+        'insufficient-credits',
+        'OpenRouter API error 402: Insufficient credits'
+      )
+    );
+
+    await router.route(message(
+      MessageType.WORKSHOP_SEND_MESSAGE,
+      { text: 'Try this again after I add credit.' }
+    ) as any);
+
+    expect(session.getHostConversationId()).toBe('host-conv');
+    expect(session.getSnapshot().turns).toEqual(turnsBeforeFailedSend);
+    expect(session.getSnapshot().turns).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ content: 'Try this again after I add credit.' })
+      ])
+    );
+    expect(posted(MessageType.WORKSHOP_SESSION_STATE).at(-1).payload.session.turns)
+      .toEqual(turnsBeforeFailedSend);
+    expect(service.discardConversation).not.toHaveBeenCalledWith('host-conv');
+    expect(persistence.markDirty).toHaveBeenCalledWith('unavailable message rolled back');
+    expect(posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED).at(-1).payload)
+      .toEqual({ text: 'Try this again after I add credit.' });
+    expect(posted(MessageType.ERROR).at(-1).payload).toMatchObject({
+      message: expect.stringContaining('insufficient credits'),
+      details: expect.stringContaining('402')
+    });
+  });
+
   describe('Open Chat (Sprint 13A)', () => {
     const chooseOpen = () => router.route(
       message(MessageType.WORKSHOP_SET_SESSION_SCOPE, { scope: 'open' }) as any
@@ -1222,6 +1289,29 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
           capability: expect.objectContaining({ catalog: 'workshopPersona' })
         })
       );
+    });
+
+    it('retains a personalized guest opening when provider unavailability blocks the invitation', async () => {
+      await chooseOpen();
+      service.startWorkshopGuestConversation.mockRejectedValueOnce(
+        new AgentRunUnavailableError('provider-unavailable', 'provider disconnected')
+      );
+      const opening = 'Margot, read the distance in this particular silence.';
+
+      await router.route(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'margot', openingMessage: opening }
+      ) as any);
+
+      expect(session.getSnapshot().turns).toEqual([
+        expect.objectContaining({ content: opening, participant: 'writer' })
+      ]);
+      expect(session.getSnapshot().activeRequestId).toBeUndefined();
+      expect(persistence.markDirty)
+        .toHaveBeenCalledWith('unavailable guest invitation retained');
+      expect(posted(MessageType.ERROR).at(-1).payload.message)
+        .toContain('temporarily unavailable');
+      expect(posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toEqual([]);
     });
 
     it('does not call a session marker conversational catch-up', async () => {

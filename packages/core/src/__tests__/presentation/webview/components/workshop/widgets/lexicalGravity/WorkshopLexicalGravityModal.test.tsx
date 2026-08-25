@@ -3,7 +3,7 @@
  */
 
 import * as React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import {
   WorkshopLexicalGravityModal
 } from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal';
@@ -25,6 +25,16 @@ const models: ModelOption[] = [{
   provider: 'Google'
 }];
 
+const previewFixture = (configKey: string, sourceText: string, text: string) => ({
+  version: 2 as const,
+  configKey,
+  sourceText,
+  semanticPositions: [],
+  selectedDynamicId: null,
+  openEntailment: null,
+  text
+});
+
 const renderModal = (
   opening: WorkshopLexicalGravityOpening = { kind: 'new' },
   overrides: Partial<React.ComponentProps<typeof WorkshopLexicalGravityModal>> = {}
@@ -33,6 +43,7 @@ const renderModal = (
     open: true,
     opening,
     lenses: builtInLexicalGravityLenses(),
+    incompatibleResources: [],
     storagePath: 'prose-minion/lenses',
     previewResult: null,
     lensCandidates: null,
@@ -59,7 +70,7 @@ const renderModal = (
 describe('WorkshopLexicalGravityModal', () => {
   afterEach(cleanup);
 
-  it('ports the approved four-value surface and keeps deterministic play model-free', () => {
+  it('ports the approved control surface and keeps deterministic play model-free', () => {
     const { props } = renderModal();
 
     expect(screen.getByText(/passage-scoped directive/)).toBeTruthy();
@@ -93,7 +104,7 @@ describe('WorkshopLexicalGravityModal', () => {
     expect(screen.getByText(/<prose-directive id="pd-preview"/)).toBeTruthy();
   });
 
-  it('spends only on explicit preview and applies the exact edited four-value draft', () => {
+  it('spends only on explicit preview and applies the exact edited draft', () => {
     const { props, view } = renderModal();
     fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
     fireEvent.click(screen.getByRole('button', { name: /Music/ }));
@@ -118,11 +129,11 @@ describe('WorkshopLexicalGravityModal', () => {
       previewResult={{
         token,
         ok: true,
-        preview: {
-          configKey: 'music|40|3|1',
-          sourceText: builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample,
-          text: 'A *resonant* preview.'
-        }
+        preview: previewFixture(
+          'music|interpret|40|3|1',
+          builtInLexicalGravityLenses().find(({ slug }) => slug === 'music')!.sample,
+          'A *resonant* preview.'
+        )
       }}
     />);
 
@@ -175,11 +186,11 @@ describe('WorkshopLexicalGravityModal', () => {
       previewResult={{
         token: firstToken,
         ok: true,
-        preview: {
-          configKey: 'photography|60|2|0',
-          sourceText: generatedSource,
-          text: 'The generated after prose.'
-        }
+        preview: previewFixture(
+          'photography|interpret|blend|60|2|0',
+          generatedSource,
+          'The generated after prose.'
+        )
       }}
     />);
 
@@ -226,15 +237,17 @@ describe('WorkshopLexicalGravityModal', () => {
         createdAt: 1,
         draft: {
           lensSlug: lens.slug,
+          applicationMode: 'interpret',
+          evidenceMode: 'blend',
           weight: 60,
           reach: 2,
           metaphorPull: false,
           resolvedLens: lens,
-          preview: {
-            configKey: 'photography|60|2|0',
+          preview: previewFixture(
+            'photography|interpret|blend|60|2|0',
             sourceText,
-            text: 'The old model framed the rain.'
-          }
+            'The old model framed the rain.'
+          )
         }
       }
     });
@@ -408,6 +421,8 @@ describe('WorkshopLexicalGravityModal', () => {
         createdAt: 1,
         draft: {
           lensSlug: lens.slug,
+          applicationMode: 'interpret',
+          evidenceMode: 'blend',
           weight: 60,
           reach: 2,
           metaphorPull: false,
@@ -440,6 +455,277 @@ describe('WorkshopLexicalGravityModal', () => {
     />);
 
     expect(screen.getByText(/already a built-in lens/)).toBeTruthy();
+  });
+
+  it('renders the backend-owned Lens Logic grammar for the selected lens', () => {
+    const { view } = renderModal();
+    const logicBox = () => within(view.container.querySelector('.pm-ws-lg-logicbox') as HTMLElement);
+
+    expect(logicBox().getByText(/Perception is selective record-making/)).toBeTruthy();
+    expect(logicBox().getByText('Foregrounds')).toBeTruthy();
+    expect(logicBox().getByText('what an observer selects from a larger field')).toBeTruthy();
+    expect(screen.getByText(/interpretive grammar stays active either way/)).toBeTruthy();
+
+    fireEvent.click(logicBox().getByRole('tab', { name: 'Axes' }));
+    expect(logicBox().getByText('Visibility')).toBeTruthy();
+    expect(logicBox().getByText('concealed')).toBeTruthy();
+    expect(logicBox().getByText('exposed')).toBeTruthy();
+
+    fireEvent.click(logicBox().getByRole('tab', { name: 'Roles' }));
+    expect(logicBox().getByText('Observer')).toBeTruthy();
+    expect(logicBox().getByText(/perceiver whose position and choices/)).toBeTruthy();
+
+    fireEvent.click(logicBox().getByRole('tab', { name: 'Dynamics' }));
+    expect(logicBox().getByText('Fix the record')).toBeTruthy();
+    expect(logicBox().getByText(/part of how the relationship will be interpreted later/))
+      .toBeTruthy();
+    expect(logicBox().getByText(/repair answerable to remembered injury/)).toBeTruthy();
+
+    fireEvent.click(logicBox().getByRole('tab', { name: 'Guardrails' }));
+    expect(logicBox().getByText(/Do not treat the observer as neutral/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Music/ }));
+    expect(logicBox().getByText(/Meaning unfolds in time/)).toBeTruthy();
+  });
+
+  it('explains a preview through positions, the selected dynamic, and its open entailment', () => {
+    const { props, view } = renderModal();
+    const lens = builtInLexicalGravityLenses()[0];
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    const token = (props.onPreview as jest.Mock).mock.calls[0][0] as string;
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      previewResult={{
+        token,
+        ok: true,
+        preview: {
+          version: 2,
+          configKey: 'photography|interpret|blend|60|2|0',
+          sourceText: lens.sample,
+          semanticPositions: [{
+            element: 'Nate',
+            roleId: 'observer',
+            axisId: null,
+            axisPosition: null,
+            significance: 'the editor of the exchange'
+          }, {
+            element: 'her silence',
+            roleId: 'record',
+            axisId: 'record-state',
+            axisPosition: 'fixed record',
+            significance: 'converts a fleeting injury into a record'
+          }],
+          selectedDynamicId: 'fix-record',
+          openEntailment: 'Later repair must answer that knowledge.',
+          text: 'The silence fixed the image.'
+        }
+      }}
+    />);
+
+    expect(screen.getByText('What the lens noticed')).toBeTruthy();
+    expect(screen.getByText('Nate')).toBeTruthy();
+    expect(screen.getByText('Observer')).toBeTruthy();
+    expect(screen.getByText('Record state · fixed record')).toBeTruthy();
+    expect(screen.getByText('Fix the record')).toBeTruthy();
+    expect(screen.getByText(/Later repair must answer that knowledge/)).toBeTruthy();
+    expect(screen.getByText(/The silence fixed the image/)).toBeTruthy();
+    expect(screen.queryByText(/No honest semantic mapping/)).toBeNull();
+  });
+
+  it('shows positioning without a dynamic when no state change was honest', () => {
+    const { props, view } = renderModal();
+    const lens = builtInLexicalGravityLenses()[0];
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    const token = (props.onPreview as jest.Mock).mock.calls[0][0] as string;
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      previewResult={{
+        token,
+        ok: true,
+        preview: {
+          version: 2,
+          configKey: 'photography|interpret|blend|60|2|0',
+          sourceText: lens.sample,
+          semanticPositions: [{
+            element: 'the window reflection',
+            roleId: 'frame',
+            axisId: null,
+            axisPosition: null,
+            significance: 'bounds what he lets himself see'
+          }],
+          selectedDynamicId: null,
+          openEntailment: null,
+          text: 'A lightly pulled rewrite.'
+        }
+      }}
+    />);
+
+    expect(screen.getByText('the window reflection')).toBeTruthy();
+    expect(screen.getByText(/none — positioning only/)).toBeTruthy();
+    expect(screen.queryByText('open entailment')).toBeNull();
+  });
+
+  it('presents an honest no-op preview as a valid result, not an error', () => {
+    const { props, view } = renderModal();
+    const lens = builtInLexicalGravityLenses()[0];
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    const token = (props.onPreview as jest.Mock).mock.calls[0][0] as string;
+
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      previewResult={{
+        token,
+        ok: true,
+        preview: previewFixture(
+          'photography|interpret|blend|60|2|0',
+          lens.sample,
+          'Unchanged in spirit.'
+        )
+      }}
+    />);
+
+    expect(screen.getByText(/No honest semantic mapping/)).toBeTruthy();
+    expect(screen.getByText(/Unchanged in spirit/)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps application gear independent from Tell/Blend/Show', () => {
+    const { props, view } = renderModal();
+    const lexical = screen.getByRole('button', { name: 'Lexical' });
+    const interpret = screen.getByRole('button', { name: 'Interpret' });
+    const recompose = screen.getByRole('button', { name: 'Recompose' });
+    const blend = screen.getByRole('button', { name: 'Blend' });
+    const show = screen.getByRole('button', { name: 'Show' });
+    expect(lexical.getAttribute('aria-pressed')).toBe('false');
+    expect(interpret.getAttribute('aria-pressed')).toBe('true');
+    expect(recompose.getAttribute('aria-pressed')).toBe('false');
+    expect(blend.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(recompose);
+    fireEvent.click(show);
+    expect(recompose.getAttribute('aria-pressed')).toBe('true');
+    expect(show.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText(/rebuild beat order, attention, revelation, and syntax/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the Effect' }));
+    expect(props.onPreview).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ applicationMode: 'recompose', evidenceMode: 'show' }),
+      expect.any(String)
+    );
+    const token = (props.onPreview as jest.Mock).mock.calls[0][0] as string;
+    const lens = builtInLexicalGravityLenses()[0];
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      previewResult={{
+        token,
+        ok: true,
+        preview: previewFixture(
+          'photography|recompose|show|60|2|0',
+          lens.sample,
+          'The passage was recomposed.'
+        )
+      }}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: 'Install on passage' }));
+    expect(props.onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ applicationMode: 'recompose', evidenceMode: 'show' }),
+      undefined
+    );
+  });
+
+  it('reopens a recovered v1 field honestly and gates semantic gears', () => {
+    const lens = builtInLexicalGravityLenses()[0];
+    const { logic: _logic, ...wordField } = lens;
+    renderModal({
+      kind: 'edit',
+      config: {
+        id: 'wc-1',
+        widgetId: 'lexical-gravity',
+        revision: 1,
+        createdAt: 1,
+        draft: {
+          lensSlug: lens.slug,
+          applicationMode: 'lexical',
+          evidenceMode: 'blend',
+          weight: 60,
+          reach: 2,
+          metaphorPull: false,
+          resolvedLens: { ...wordField, version: 1 }
+        }
+      }
+    });
+
+    expect(screen.getByText(/Lens Logic is unavailable/)).toBeTruthy();
+    expect(screen.getByText(/Lens Logic stays inactive either way/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Lexical' }).getAttribute('aria-pressed'))
+      .toBe('true');
+    expect((screen.getByRole('button', { name: 'Interpret' }) as HTMLButtonElement).disabled)
+      .toBe(true);
+    expect((screen.getByRole('button', { name: 'Recompose' }) as HTMLButtonElement).disabled)
+      .toBe(true);
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
+    expect(screen.getByTitle(lens.name).getAttribute('class'))
+      .not.toContain('is-selected');
+  });
+
+  it('reports v1 resources and carries an explicit overwrite target through Build lens', () => {
+    const { props } = renderModal({ kind: 'new' }, {
+      incompatibleResources: [{
+        resourceName: 'kinetic-biomechanics.json',
+        foundVersion: 1,
+        rebuildQuery: 'kinetic biomechanics',
+        message: 'Saved Lexical Gravity lens kinetic-biomechanics.json uses version 1. '
+          + 'Rebuild it as a version 2 interpretive grammar and choose one take to '
+          + 'overwrite this file in place.'
+      }]
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
+    expect(screen.getByRole('button', { name: /Photography/ })).toBeTruthy();
+    const card = screen.getByTitle('kinetic-biomechanics.json');
+    expect(card.textContent).toContain('v1');
+    expect(card.textContent).toContain('kinetic biomechanics');
+    expect(screen.queryByText(/uses version 1/)).toBeNull();
+
+    fireEvent.click(card);
+    expect(screen.getByText(/uses version 1/)).toBeTruthy();
+    expect(screen.getByText(/overwrite this file in place/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rebuild and overwrite' }));
+    expect(screen.getByRole('tab', { name: 'Create New' }).getAttribute('aria-selected'))
+      .toBe('true');
+    expect((screen.getByPlaceholderText('Try “code vs. prose”…') as HTMLInputElement).value)
+      .toBe('kinetic biomechanics');
+    expect(screen.getByText(/old file remains intact unless the replacement succeeds/))
+      .toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Build replacements' }));
+    expect(props.onBuildLens).toHaveBeenCalledWith(
+      expect.any(String),
+      'kinetic biomechanics',
+      'kinetic-biomechanics.json'
+    );
+  });
+
+  it('surfaces an unreadable project lens without offering a destructive rebuild', () => {
+    renderModal({ kind: 'new' }, {
+      incompatibleResources: [{
+        resourceName: 'broken.json',
+        foundVersion: null,
+        rebuildQuery: 'broken',
+        message: 'Saved Lexical Gravity lens broken.json could not be loaded.'
+      }]
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: /Library/ }));
+    const card = screen.getByTitle('broken.json');
+    expect(card.textContent).toContain('unreadable');
+    expect(card.textContent).toContain('project file could not be loaded');
+    fireEvent.click(card);
+    expect(screen.getByText(/broken.json could not be loaded/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Rebuild and overwrite' })).toBeNull();
   });
 
   it('shows lens-build failures immediately beside the Build lens action', () => {

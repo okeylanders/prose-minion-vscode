@@ -24,11 +24,13 @@
 
 ---
 
-## What's new in v2.1.1 — Curated model catalog refresh
+## What's new in v2.2.0 — Conversation Widgets
 
-- **Meta Muse Spark 1.1** — a 1M-context multimodal option for manuscript-scale critique, mixed-media context, and exploratory editorial work; it is also available for Category Search.
-- **Qwen3.8 Max** — a new 1M-context recommendation for complex manuscript analysis, visual context, and long-horizon editorial planning.
-- **Your current setup stays put** — existing model defaults and saved selections are unchanged. Workshop beta remains available for sustained, persona-hosted manuscript work.
+- **Play before you commit** — Workshop now ships Gesture Playground, Lexical Gravity, and Creative Variations as interactive surfaces with explicit writer-owned commit points.
+- **Return to the work** — committed widgets leave re-openable transcript chips; one-shot explorations clone into new turns, while standing Lexical Gravity directives remain editable between runs.
+- **Safer sessions** — released pre-widget Workshop files migrate automatically to the new session schema, feature-owned recovery preserves supported older widget drafts, and stricter integrity checks reject malformed state before it can replace a healthy room.
+- **A sturdier Workshop** — room orchestration, persistence, presentation workflows, and widget families now have named ownership boundaries backed by architecture tests.
+- **Fresh model choices** — Muse Spark 1.2, Grok 4.6, DeepSeek V4 Pro 0813, GPT-OSS 120B Nitro, and Gemini 3.7 Flash join the curated catalog; existing saved model selections remain unchanged.
 
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)
 

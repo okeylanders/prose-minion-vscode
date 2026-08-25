@@ -45,7 +45,14 @@ styles, scripts, and assets — no build step.
   **02B-A interaction copy/layout pass 2026-07-31** (`pm-gravity.*` now puts
   Build New Lens before the existing library, keeps generated previews above
   Preview the Effect, and uses Apply/lifecycle language; `pm-widgets.js` uses
-  neutral lifecycle notes instead of payment metaphors).
+  neutral lifecycle notes instead of payment metaphors);
+  **Conversation Widgets Spread 07 pulled 2026-08-10** (Sprint 03 design
+  source of truth: new files
+  `Prose Minion - Creative Variations Explorer.html`, `pm-cvx.css`,
+  `pm-cvx.js`. The page also links `pm-svt.css` (Spread 04's stylesheet, not
+  yet pulled); that link is dead here but harmless — `pm-svt.css` defines only
+  `svt-*` classes and Show-vs-Tell-scoped modal overrides, none of which the
+  Creative Variations page renders).
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
@@ -66,6 +73,7 @@ styles, scripts, and assets — no build step.
 | `Prose Minion - Conversation Widgets.html` | **Interactive prototype** — Conversation Widgets **Spread 00, the widget system**: the composer's third affordance (**Widgets** beside Tools), the full lifecycle live (menu → play → commit → chip → clone-and-recommit, using Gesture Playground as the stand-in), the categorized widget browser with per-widget **rail badges** (one-shot / standing / resource) and honest disabled state, and the rails card (lifetime selects the rail; re-launch semantics per rail). Also indexes every drawn widget spread. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `icons.js`. | **Approved — Conversation Widgets epic source of truth (system)** |
 | `Prose Minion - Gesture Playground.html` | **Historical interactive prototype** — Conversation Widgets **Spread 01, Gesture Playground** (Sprint 01): lifecycle and visual posture for the pre-commit surface, committed one-shot `<thread-artifact kind="widget:gesture-playground">` frame, presentation-only chip, and persona **recommend + prefill** path. The shipped generation contract has since been amended to `{targetPhrase, writerInstructions, contextText, characterNotes}` → one quality-first composite Gesture Dictionary + menu call; see the Conversation Widgets ADR. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.css` + `icons.js`. | **Approved visual reference — runtime contract superseded by ADR** |
 | `Prose Minion - Lexical Gravity.html` | **Interactive prototype** — Conversation Widgets **Spread 02, Lexical Gravity** (Sprint 02B): the first **standing** widget, where commit installs a passage-scoped `<prose-directive family="lexical-gravity">` that every persona and mode honors uniformly, consulted only when prose is written. Four sections: the live standing lifecycle (install → amber active strip → **edit-in-place** → `shifted X → Y` marker → one-click kill); the four-value pre-commit panel (lens · weight · reach · metaphor pull) with deterministic word-field / gradient / substitution / cliché tabs and an explicit `Preview the Effect` model seam; the lens library (`Build lens` drafts several takes, the writer selects one or more, and all selected lenses persist as individual `prose-minion/lenses/<name>.json` project resources in one action); and the reserved-frame + invariants card. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.*` + `icons.js`. | **Approved — Sprint 02B source of truth** |
+| `Prose Minion - Creative Variations Explorer.html` | **Interactive prototype** — Conversation Widgets **Spread 07, Creative Variations Explorer** (Sprint 03): the reusable passage-variation comparison studio on the one-shot rail. Six sections: the live lifecycle (recommend → aim → generate → compare → keep → commit → chip → clone-and-recommit); the seed + two declared invariant fields (`Must survive` / `Must not change`) with honest pasted-vs-selected provenance labeling; two ways to aim the sampling (open four-distance dial `Familiar · Adjacent · Tail · Far tail`, or a bound four-menu frame); the measured workup (cards with named approach, prose, gains/costs tradeoff, invariant flags, per-card `distinct` scores, set-distinctness strip, collapsed-pair failure state with pair regeneration); the scale ladder + report-handoff card; and the commit spread (thread-artifact frame, payload ceiling meter, presentation-only chip). **Prototype-only behaviors (fixture scores, set averages, bound frame, partial regeneration, prose-default carry) are design evidence, not runtime contract — Sprint 03 + the implementation runway govern behavior.** Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.css` + `pm-cvx.*` + `icons.js` (plus a dead `pm-svt.css` link — see Source note). | **Approved visual reference — Sprint 03; runtime contract per sprint + runway** |
 | `Prose Minion - Notice Modal.html` | **Spec sheet + interactive prototype** for the first-run Workshop notice, redesigned wide and with pictures. Three parts: the published copy of all six notices beside annotated screenshots of the control each one points at; the full **How to configure your project** walkthrough referenced by notice 2 (three steps, a well-aligned example project beside the settings pane, and the field → glob mapping table); and a clickable prototype of the widened notice widget (media well left, copy right, docked footer). Loads `pm-mock.css` + `uploads/`. The shipped notice itself is `pm-wk-notify.js` + the notice block of `pm-wk-pins.css`. | **Implemented 2026-07-27** — `WorkshopNoticeModal` + `WorkshopConfigureGuide`; notice version `v3` |
 
 ## Support files
@@ -219,7 +227,7 @@ these back.
 
 ## Present on remote, not pulled yet (this epic, later sprints)
 
-The Conversation Widgets epic started 2026-07-29; Spreads 00 + 01 + 02 are
+The Conversation Widgets epic started 2026-07-29; Spreads 00 + 01 + 02 + 07 are
 pulled above. The remote project has since grown **one page per widget**
 (Spread 00 indexes them all). Still deliberately left out of this snapshot until
 their sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
@@ -231,8 +239,6 @@ their sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
 - `Prose Minion - Learner Storytelling Craft.html` /
   `Prose Minion - Learner English.html` + `pm-learner.*` / `pm-english.*` —
   Spreads 05 / 06 (concept springs, shared Learner shell).
-- `Prose Minion - Creative Variations Explorer.html` + `pm-cvx.*` — Spread 07
-  (concept spring).
 - `Prose Minion - Topic Relationship Explorer.html` + `pm-trx.*` /
   `Prose Minion - Genre Relationship Explorer.html` + `pm-grx.*` — Explorer
   concept springs.
@@ -243,7 +249,9 @@ their sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
 
 **Expected consequence:** each spread's header and footer link to its
 neighbours, so the pulled spreads carry dead links to the pages above — 6 from
-Spread 00 (it indexes every widget), 2 each from Spreads 01 and 02. That is the
+Spread 00 (it indexes every widget), 2 each from Spreads 01 and 02, and 6 from
+Spread 07 (its kicker walks the whole spring: Spreads 03–06 + 08, plus the
+`pm-svt.css` stylesheet link noted in Source). That is the
 staged-pull policy working, not a bad pull; the links resolve as each spread
 lands. Everything a pulled spread actually *renders* (stylesheets, scripts,
 images) is present.

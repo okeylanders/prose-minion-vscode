@@ -84,6 +84,7 @@ export {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 export type {
   WorkshopPersistedSessionV1,
+  WorkshopPersistedSessionV2,
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
 export { RunWorkshopToolSidePass } from '@/application/services/workshop/RunWorkshopToolSidePass';
@@ -94,11 +95,24 @@ export { WorkshopAnalysisSidePass } from '@/application/services/workshop/Worksh
 export { WorkshopPersonaCapabilityFactory } from '@/application/services/workshop/WorkshopPersonaCapability';
 export { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
+export {
+  RejectedModelResponseRecoveryStore,
+  RejectedModelResponseRecoveryShellPresenter,
+  persistRejectedWidgetResponse,
+  recoveryLocationNotice
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+export type {
+  RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryPresenter,
+  RejectedModelResponseRecoveryReceipt
+} from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
+export type { RecoverableWidgetToolName } from '@messages';
 export { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 export { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 export { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
+export { CreativeVariationsService } from '@services/widgets/creativeVariations/CreativeVariationsService';
 export {
   buildGestureDirective
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundDirective';

@@ -85,6 +85,21 @@ describe('app-shell provider assembly', () => {
     expect(providerSource).not.toContain('extension.command.workshop_selection');
   });
 
+  it('routes the Workshop API-key CTA through the existing settings-overlay command', () => {
+    const providerSource = fs.readFileSync(
+      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
+      'utf8'
+    );
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+
+    expect(providerSource).toMatch(
+      /new MessageHandler\([\s\S]*?this\.outputChannel,\s*this\.uiActions\s*\)/
+    );
+    expect(extensionSource).toMatch(
+      /openAssistantSettings:[\s\S]*?executeCommand\('prose-minion\.openSettingsOverlay'\)/
+    );
+  });
+
   it('registers one Workshop panel serializer that reuses the normal attachment path', () => {
     const providerSource = fs.readFileSync(
       path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),

@@ -20,8 +20,8 @@ behavior.
 
 Lexical Gravity lets the writer bias the passage's prose toward an interpretive
 lens / world-view — "write this toward a Photography lens" — and hands the room a
-compact directive at commit time. This sprint ships **single-lens** only;
-blending is Sprint 04.
+compact directive at commit time. This sprint ships **one active Lexical Gravity
+directive** only; the later model-selected stack is Sprint 06.
 
 ## Resolved Foundation from Sprint 02A
 
@@ -45,9 +45,9 @@ ownership questions this sprint now builds on:
 - No standing-directive coordinator was prebuilt. It arrives here with Lexical
   Gravity as its first concrete producer.
 
-The optional Sprint 02C scope/context IPC extraction is intentionally **not** a
-dependency of this feature. Decide whether to take that pure-move cleanup only
-after 02B review, before Prose Controller.
+The scope/context IPC extraction is intentionally **not** a dependency of this
+feature. That responsibility later moved into the mandatory Workshop
+Architecture Refactor and is no longer a Conversation Widgets sprint.
 
 ## Design / ADR Reconciliation
 
@@ -190,9 +190,10 @@ maps to Sprint 02B after the sequencing split.
 
 ## Out of Scope
 
-- Lens **blending** / multi-lens dominance (Sprint 04).
+- A model-selected Lexical Gravity stack (Sprint 06).
 - Prose Controller knobs (Sprint 03).
-- The optional Workshop scope/context IPC extraction (Sprint 02C).
+- Workshop scope/context IPC extraction, subsequently completed by the
+  Workshop Architecture Refactor.
 
 ## Completion Criteria
 

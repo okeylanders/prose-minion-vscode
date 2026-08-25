@@ -45,16 +45,35 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
-  assertGesturePlaygroundDraftShape,
+  assertCreativeVariationsRecommendationSeedShape
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
+import {
   assertGesturePlaygroundRecommendationSeedShape
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
-  assertLexicalGravityDraftShape,
   assertLexicalGravityRecommendationSeedShape
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
+import {
+  assertWorkshopWidgetCheckpointDraftShape,
+  assertWorkshopWidgetCurrentDraftShape,
+  isPersistedWorkshopWidgetId
+} from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
 
 export function assertWorkshopSessionStateShape(
   value: unknown
+): asserts value is WorkshopSessionStateV1 {
+  assertWorkshopSessionShape(value, false);
+}
+
+export function assertWorkshopSessionCheckpointShape(
+  value: unknown
+): asserts value is WorkshopSessionStateV1 {
+  assertWorkshopSessionShape(value, true);
+}
+
+function assertWorkshopSessionShape(
+  value: unknown,
+  checkpoint: boolean
 ): asserts value is WorkshopSessionStateV1 {
   const state = exactObject(
     value,
@@ -101,14 +120,22 @@ export function assertWorkshopSessionStateShape(
   assertRevisions(state.revisions);
   assertCounters(state.counters);
   assertWriterSources(state.writerSources);
-  arrayOf(state.turns, 'Workshop session state.turns', assertTurn);
+  arrayOf(
+    state.turns,
+    'Workshop session state.turns',
+    (turn, path) => assertTurn(turn, path, checkpoint)
+  );
   assertParticipants(state.participants);
   if (state.selectedToolId !== undefined && !isWorkshopToolId(state.selectedToolId)) {
     shapeError('Workshop session state.selectedToolId', 'known Workshop tool id');
   }
   arrayOf(state.todos, 'Workshop session state.todos', assertStoredTodo);
   if (state.widgetConfigs !== undefined) {
-    arrayOf(state.widgetConfigs, 'Workshop session state.widgetConfigs', assertWidgetConfig);
+    arrayOf(
+      state.widgetConfigs,
+      'Workshop session state.widgetConfigs',
+      (config, path) => assertWidgetConfig(config, path, checkpoint)
+    );
   }
   if (state.standingDirectives !== undefined) {
     arrayOf(
@@ -328,7 +355,7 @@ function assertCounters(value: unknown): void {
   );
 }
 
-function assertWidgetConfig(value: unknown, path: string): void {
+function assertWidgetConfig(value: unknown, path: string, checkpoint: boolean): void {
   const config = exactObject(
     value,
     path,
@@ -345,15 +372,14 @@ function assertWidgetConfig(value: unknown, path: string): void {
   optionalStringAt(config.committedTurnId, `${path}.committedTurnId`);
   optionalStringAt(config.artifactId, `${path}.artifactId`);
   optionalStringAt(config.directiveId, `${path}.directiveId`);
-  if (config.widgetId === 'gesture-playground') {
-    assertGesturePlaygroundDraftShape(config.draft, `${path}.draft`);
-    return;
+  if (!isPersistedWorkshopWidgetId(config.widgetId)) {
+    shapeError(`${path}.widgetId`, 'a widget with a persisted config codec');
   }
-  if (config.widgetId === 'lexical-gravity') {
-    assertLexicalGravityDraftShape(config.draft, `${path}.draft`);
-    return;
+  if (checkpoint) {
+    assertWorkshopWidgetCheckpointDraftShape(config.widgetId, config.draft, `${path}.draft`);
+  } else {
+    assertWorkshopWidgetCurrentDraftShape(config.widgetId, config.draft, `${path}.draft`);
   }
-  shapeError(`${path}.widgetId`, 'a widget with a persisted config codec');
 }
 
 function assertStandingDirective(value: unknown, path: string): void {
@@ -431,7 +457,7 @@ function assertContextSource(value: unknown, path: string): void {
   optionalStringAt(source.artifactId, `${path}.artifactId`);
 }
 
-function assertTurn(value: unknown, path: string): void {
+function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   const turn = exactObject(
     value,
     path,
@@ -535,6 +561,9 @@ function assertTurn(value: unknown, path: string): void {
     assertTurnWidgetCommit(turn.widgetCommit, `${path}.widgetCommit`);
   }
   if (turn.widgetRecommendation !== undefined) {
+    if (!checkpoint && turn.participant !== 'host' && turn.participant !== 'guest') {
+      shapeError(`${path}.widgetRecommendation`, 'a host or guest persona recommendation');
+    }
     assertTurnWidgetRecommendation(turn.widgetRecommendation, `${path}.widgetRecommendation`);
   }
   if (turn.standingDirectiveChange !== undefined) {
@@ -589,6 +618,8 @@ function assertStandingDirectiveChange(value: unknown, path: string): void {
 
 function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   const recommendation = exactObject(value, path, ['widgetId'], ['seed']);
+  // Persisted recommendations are deliberately catalog-bound, not route-policy-bound:
+  // a staged build must not write a session that the shipped codec cannot reopen.
   if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
     shapeError(`${path}.widgetId`, 'live Conversation Widget id');
   }
@@ -599,6 +630,10 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   }
   if (recommendation.widgetId === 'lexical-gravity') {
     assertLexicalGravityRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
+  }
+  if (recommendation.widgetId === 'creative-variations') {
+    assertCreativeVariationsRecommendationSeedShape(recommendation.seed, `${path}.seed`);
     return;
   }
   shapeError(`${path}.widgetId`, 'a widget with a recommendation codec');

@@ -27,6 +27,7 @@ import {
   validateWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1Integrity';
 import {
+  assertWorkshopSessionCheckpointShape,
   assertWorkshopSessionStateShape
 } from '@/application/services/workshop/WorkshopSessionStateV1Shape';
 import {
@@ -153,19 +154,28 @@ export interface WorkshopSessionStateV1 {
 }
 
 /**
- * Decode the host-private aggregate at the raw JSON boundary. Structural
- * validation is exact-key and recursive; semantic/referential validation then
- * runs on a defensive clone. Conversation import may safely happen only after
- * this preflight succeeds.
+ * Decode the host-private aggregate at the raw JSON boundary. Exact checkpoint
+ * structure and compatibility-safe aggregate invariants run on a defensive
+ * clone. Widget-local semantics intentionally wait until callers normalize,
+ * assert current shape, and run strict integrity; this return value alone is
+ * not hydration- or import-ready.
  */
 export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStateV1 {
-  assertWorkshopSessionStateShape(value);
+  assertWorkshopSessionCheckpointShape(value);
   const decoded = clonePersistedJson(value, 'workshop');
   // Compatibility states are accepted only at the raw checkpoint boundary.
   // Hydration runs the named V1 migration and validates its output again
   // against current invariants before replacing the live aggregate.
   validateWorkshopSessionStateV1(decoded, {
-    allowLegacyOpenSessionWithExcerpt: true
+    allowLegacyOpenSessionWithExcerpt: true,
+    skipWidgetDraftIntegrity: true
   });
   return decoded;
+}
+
+/** Strict current-state witness used after checkpoint normalization. */
+export function assertCurrentWorkshopSessionStateV1(
+  value: unknown
+): asserts value is WorkshopSessionStateV1 {
+  assertWorkshopSessionStateShape(value);
 }

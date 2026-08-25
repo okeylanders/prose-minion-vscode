@@ -10,6 +10,7 @@ import { WorkshopGesturePlaygroundDraft } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   arrayOf,
+  boundedArrayAt,
   booleanAt,
   boundedStringAt,
   exactKeys,
@@ -19,19 +20,35 @@ import {
   shapeError,
   stringAt
 } from '@/application/services/workshop/persistedValidation';
+import type {
+  WorkshopWidgetDraftRecoveryResult
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 
 export interface GesturePlaygroundDraftSummary {
   targetPhrase: string;
   selectionCount: number;
 }
 
-export interface GesturePlaygroundDraftHydrationDefaults {
-  draft: WorkshopGesturePlaygroundDraft;
-  defaultedDictionarySharing: boolean;
-  defaultedSourceReferences: boolean;
+export type GesturePlaygroundCheckpointNormalization =
+  | 'defaulted-widget-dictionary-sharing'
+  | 'defaulted-widget-source-references';
+
+export function assertGesturePlaygroundDraftCheckpointShape(
+  value: unknown,
+  path: string
+): void {
+  assertGesturePlaygroundDraftShapeInternal(value, path, true);
 }
 
 export function assertGesturePlaygroundDraftShape(value: unknown, path: string): void {
+  assertGesturePlaygroundDraftShapeInternal(value, path, false);
+}
+
+function assertGesturePlaygroundDraftShapeInternal(
+  value: unknown,
+  path: string,
+  allowCheckpointDefaults: boolean
+): void {
   const budget = PROMPT_BUDGETS.workshopWidgets;
   const draft = exactObject(
     value,
@@ -44,12 +61,14 @@ export function assertGesturePlaygroundDraftShape(value: unknown, path: string):
       'dictionaryMarkdown',
       'menu',
       'selections',
-      'note'
+      'note',
+      ...(allowCheckpointDefaults
+        ? []
+        : ['includeDictionaryInCommit', 'sourceReferences'])
     ],
-    // Both fields joined the evolving development checkpoint after the first
-    // Gesture drafts. Hydration supplies safe defaults before current
-    // integrity is enforced.
-    ['includeDictionaryInCommit', 'sourceReferences']
+    allowCheckpointDefaults
+      ? ['includeDictionaryInCommit', 'sourceReferences']
+      : []
   );
   boundedStringAt(
     draft.targetPhrase,
@@ -87,38 +106,24 @@ export function assertGesturePlaygroundDraftShape(value: unknown, path: string):
   if (draft.includeDictionaryInCommit !== undefined) {
     booleanAt(draft.includeDictionaryInCommit, `${path}.includeDictionaryInCommit`);
   }
-  if (
-    !Array.isArray(draft.selections)
-    || draft.selections.length === 0
-    || draft.selections.length > budget.gestureSelectionsPerCommit
-  ) {
-    shapeError(
-      `${path}.selections`,
-      `an array of 1–${budget.gestureSelectionsPerCommit} strings`
-    );
-  }
-  const selections = draft.selections as unknown[];
-  const seenSelections = new Set<string>();
-  arrayOf(selections, `${path}.selections`, (selection, selectionPath) => {
+  boundedArrayAt(
+    draft.selections,
+    `${path}.selections`,
+    1,
+    budget.gestureSelectionsPerCommit,
+    'directions'
+  );
+  arrayOf(draft.selections, `${path}.selections`, (selection, selectionPath) => {
     boundedStringAt(selection, selectionPath, budget.gestureOptionCharacters, false);
-    const text = selection as string;
-    if (seenSelections.has(text)) {
-      shapeError(`${path}.selections`, 'an array without duplicate directions');
-    }
-    seenSelections.add(text);
   });
   boundedStringAt(draft.note, `${path}.note`, budget.gestureNoteCharacters);
-  if (
-    !Array.isArray(draft.menu)
-    || draft.menu.length < budget.gestureMenuGroupsMinimum
-    || draft.menu.length > budget.gestureMenuGroups
-  ) {
-    shapeError(
-      `${path}.menu`,
-      `an array of ${budget.gestureMenuGroupsMinimum}–${budget.gestureMenuGroups} groups`
-    );
-  }
-  const menuOptions = new Set<string>();
+  boundedArrayAt(
+    draft.menu,
+    `${path}.menu`,
+    budget.gestureMenuGroupsMinimum,
+    budget.gestureMenuGroups,
+    'groups'
+  );
   arrayOf(draft.menu, `${path}.menu`, (groupValue, groupPath) => {
     const group = exactObject(groupValue, groupPath, ['heading', 'options']);
     boundedStringAt(
@@ -127,28 +132,17 @@ export function assertGesturePlaygroundDraftShape(value: unknown, path: string):
       budget.gestureOptionCharacters,
       false
     );
-    if (
-      !Array.isArray(group.options)
-      || group.options.length < budget.gestureOptionsPerGroupMinimum
-      || group.options.length > budget.gestureOptionsPerGroup
-    ) {
-      shapeError(
-        `${groupPath}.options`,
-        `an array of ${budget.gestureOptionsPerGroupMinimum}–${budget.gestureOptionsPerGroup} strings`
-      );
-    }
+    boundedArrayAt(
+      group.options,
+      `${groupPath}.options`,
+      budget.gestureOptionsPerGroupMinimum,
+      budget.gestureOptionsPerGroup,
+      'options'
+    );
     arrayOf(group.options, `${groupPath}.options`, (option, optionPath) => {
       boundedStringAt(option, optionPath, budget.gestureOptionCharacters, false);
-      const text = option as string;
-      if (menuOptions.has(text)) {
-        shapeError(`${path}.menu`, 'groups without duplicate options');
-      }
-      menuOptions.add(text);
     });
   });
-  if ([...seenSelections].some((selection) => !menuOptions.has(selection))) {
-    shapeError(`${path}.selections`, 'directions drawn from the generated menu');
-  }
 }
 
 export function assertGesturePlaygroundSourceReferencesShape(
@@ -156,11 +150,7 @@ export function assertGesturePlaygroundSourceReferencesShape(
   path: string
 ): void {
   const budget = PROMPT_BUDGETS.workshopWidgets;
-  if (!Array.isArray(value) || value.length > budget.gestureSourceReferences) {
-    shapeError(path, `an array of at most ${budget.gestureSourceReferences} source references`);
-  }
-  const seen = new Set<string>();
-  let serializedCharacters = 0;
+  boundedArrayAt(value, path, 0, budget.gestureSourceReferences, 'source references');
   arrayOf(value, path, (referenceValue, referencePath) => {
     const reference = objectAt(referenceValue, referencePath);
     if (reference.kind === 'active-excerpt') {
@@ -174,21 +164,63 @@ export function assertGesturePlaygroundSourceReferencesShape(
     } else {
       shapeError(`${referencePath}.kind`, 'active-excerpt or context-attachment');
     }
+  });
+}
+
+function assertGesturePlaygroundSourceReferencesIntegrity(
+  references: WorkshopGesturePlaygroundDraft['sourceReferences'],
+  path: string
+): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  const sourceReferences = new Set<string>();
+  let serializedCharacters = 0;
+  for (const reference of references) {
     const key = reference.kind === 'active-excerpt'
       ? 'active-excerpt'
-      : `context-attachment:${String(reference.attachmentId)}`;
-    serializedCharacters += key.length + (seen.size > 0 ? 1 : 0);
+      : `context-attachment:${reference.attachmentId}`;
+    serializedCharacters += key.length + (sourceReferences.size > 0 ? 1 : 0);
     if (serializedCharacters > budget.gestureSourceReferenceCharacters) {
       shapeError(
         path,
         `source references within ${budget.gestureSourceReferenceCharacters} characters`
       );
     }
-    if (seen.has(key)) {
+    if (sourceReferences.has(key)) {
       shapeError(path, 'source references without duplicates');
     }
-    seen.add(key);
-  });
+    sourceReferences.add(key);
+  }
+}
+
+export function assertGesturePlaygroundDraftIntegrity(
+  draft: WorkshopGesturePlaygroundDraft,
+  path: string
+): void {
+  const selections = new Set<string>();
+  for (const selection of draft.selections) {
+    if (selections.has(selection)) {
+      shapeError(`${path}.selections`, 'an array without duplicate directions');
+    }
+    selections.add(selection);
+  }
+
+  const menuOptions = new Set<string>();
+  for (const group of draft.menu) {
+    for (const option of group.options) {
+      if (menuOptions.has(option)) {
+        shapeError(`${path}.menu`, 'groups without duplicate options');
+      }
+      menuOptions.add(option);
+    }
+  }
+  if ([...selections].some((selection) => !menuOptions.has(selection))) {
+    shapeError(`${path}.selections`, 'directions drawn from the generated menu');
+  }
+
+  assertGesturePlaygroundSourceReferencesIntegrity(
+    draft.sourceReferences,
+    `${path}.sourceReferences`
+  );
 }
 
 export function assertGesturePlaygroundRecommendationSeedShape(
@@ -237,6 +269,10 @@ export function assertGesturePlaygroundRecommendationSeedShape(
       seed.sourceReferences,
       `${path}.sourceReferences`
     );
+    assertGesturePlaygroundSourceReferencesIntegrity(
+      seed.sourceReferences as WorkshopGesturePlaygroundDraft['sourceReferences'],
+      `${path}.sourceReferences`
+    );
   }
 }
 
@@ -267,20 +303,31 @@ export function summarizeGesturePlaygroundDraft(
 }
 
 export function normalizeGesturePlaygroundDraftForHydration(
-  draft: WorkshopGesturePlaygroundDraft
-): GesturePlaygroundDraftHydrationDefaults {
+  value: unknown
+): WorkshopWidgetDraftRecoveryResult<
+  WorkshopGesturePlaygroundDraft,
+  GesturePlaygroundCheckpointNormalization
+> {
+  assertGesturePlaygroundDraftCheckpointShape(value, 'Gesture Playground checkpoint draft');
+  const draft = value as WorkshopGesturePlaygroundDraft;
   const defaultedDictionarySharing = typeof draft.includeDictionaryInCommit !== 'boolean';
   const defaultedSourceReferences = !Array.isArray(draft.sourceReferences);
-  if (!defaultedDictionarySharing && !defaultedSourceReferences) {
-    return { draft, defaultedDictionarySharing, defaultedSourceReferences };
+  const normalizations: GesturePlaygroundCheckpointNormalization[] = [];
+  if (defaultedDictionarySharing) {
+    normalizations.push('defaulted-widget-dictionary-sharing');
   }
+  if (defaultedSourceReferences) {
+    normalizations.push('defaulted-widget-source-references');
+  }
+  const normalized = {
+    ...draft,
+    ...(defaultedDictionarySharing ? { includeDictionaryInCommit: false } : {}),
+    ...(defaultedSourceReferences ? { sourceReferences: [] } : {})
+  } as WorkshopGesturePlaygroundDraft;
+  assertGesturePlaygroundDraftShape(normalized, 'Recovered Gesture Playground draft');
   return {
-    draft: {
-      ...draft,
-      ...(defaultedDictionarySharing ? { includeDictionaryInCommit: false } : {}),
-      ...(defaultedSourceReferences ? { sourceReferences: [] } : {})
-    },
-    defaultedDictionarySharing,
-    defaultedSourceReferences
+    draft: cloneGesturePlaygroundDraft(normalized),
+    normalizations,
+    notices: []
   };
 }

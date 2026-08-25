@@ -66,6 +66,43 @@ describe('useWorkshopRoom', () => {
     }));
   });
 
+  it('acknowledges a dismissed error to the host cache', () => {
+    const { result } = renderHook(() => useWorkshopRoom());
+    const vscode = useVSCodeApi() as ReturnType<typeof createMockVSCode>;
+    vscode.postMessage.mockClear();
+
+    act(() => result.current.clearError());
+
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_DISMISS_ERROR,
+      source: 'webview.workshop',
+      payload: {}
+    }));
+  });
+
+  it('turns each restored transient send into a fresh composer seed', () => {
+    const { result } = renderHook(() => useWorkshopRoom());
+    const restored = (text: string) => ({
+      type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+      source: 'extension.workshop',
+      payload: { text },
+      timestamp: 1
+    } as const);
+
+    act(() => result.current.handleComposerDraftRestored(restored('Try me again.')));
+    const firstToken = result.current.composerDraftSeed?.token;
+    expect(result.current.composerDraftSeed).toEqual({
+      text: 'Try me again.',
+      token: firstToken
+    });
+
+    act(() => result.current.handleComposerDraftRestored(restored('Try me again.')));
+    expect(result.current.composerDraftSeed).toEqual({
+      text: 'Try me again.',
+      token: (firstToken ?? 0) + 1
+    });
+  });
+
   it('exposes the narrow optimistic-replacement port without owning session actions', () => {
     const priorTurns = [{
       id: 'turn-1',

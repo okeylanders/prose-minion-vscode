@@ -46,7 +46,7 @@ names, and feature behavior spread through broad owners.
 ### 1. Workshop feature work is frozen through architecture closure
 
 No new Workshop feature behavior, including Lexical Gravity v2 Lens Logic,
-Prose Controller, or lens blending, begins until Phases 0-7 of the Workshop
+Prose Controller, or Lexical Gravity's model-selected lens stack, begins until Phases 0-7 of the Workshop
 Architecture Refactor epic complete and the feature-resume gate is explicitly
 closed.
 

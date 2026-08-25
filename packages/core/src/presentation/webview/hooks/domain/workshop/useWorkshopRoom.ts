@@ -48,6 +48,7 @@ import {
   WorkshopExcerptSource,
   WorkshopMessageAttachmentSnapshot,
   WorkshopChatTarget,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopPersonaId,
   WorkshopPersonaGuestSnapshot,
   WorkshopSelectableSessionScope,
@@ -94,6 +95,7 @@ export interface WorkshopRoomState {
   persistenceAvailable: boolean;
   persistenceUnavailableReason?: 'no-workspace' | 'multi-root';
   currentCheckpointProtected: boolean;
+  currentCheckpointError?: string;
   /** Affected logical persona keys when a persisted archive used T2 recovery. */
   degradedConversationKeys: string[];
   degradedConversations: WorkshopConversationDegradation[];
@@ -177,6 +179,8 @@ export interface WorkshopRoomState {
   streamingInitialLatencyMs?: number;
   streamingChunksPerSecond: number;
   currentRequestId: string | null;
+  /** One-shot composer seed for starters and transient-send recovery. */
+  composerDraftSeed?: { text: string; token: number };
 }
 
 export interface WorkshopRoomActions {
@@ -208,6 +212,7 @@ export interface WorkshopRoomActions {
   runTool: (toolId: WorkshopToolId) => void;
   quickAction: (toolId: WorkshopToolId, reportTurnId: string, label: string) => void;
   sendMessage: (text: string) => void;
+  seedComposerDraft: (text: string) => void;
   selectPersona: (personaId: WorkshopPersonaId) => void;
   inviteGuest: (personaId: WorkshopPersonaId, openingMessage: string) => void;
   dismissGuest: (personaId: WorkshopPersonaId) => void;
@@ -223,6 +228,7 @@ export interface WorkshopRoomActions {
   clearError: () => void;
   handleSessionState: (message: WorkshopSessionStateMessage) => void;
   handleTurn: (message: WorkshopTurnMessage) => void;
+  handleComposerDraftRestored: (message: WorkshopComposerDraftRestoredMessage) => void;
   handleStreamStarted: (message: StreamStartedMessage) => void;
   handleStreamChunk: (message: StreamChunkMessage) => void;
   handleStreamComplete: (message: StreamCompleteMessage) => void;
@@ -265,6 +271,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     'no-workspace' | 'multi-root' | undefined
   >();
   const [currentCheckpointProtected, setCurrentCheckpointProtected] = React.useState(false);
+  const [currentCheckpointError, setCurrentCheckpointError] = React.useState<string>();
   const [degradedConversationKeys, setDegradedConversationKeys] = React.useState<string[]>([]);
   const [degradedConversations, setDegradedConversations] =
     React.useState<WorkshopConversationDegradation[]>([]);
@@ -303,6 +310,11 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [statusMessage, setStatusMessage] = React.useState('');
   const [tickerMessage, setTickerMessage] = React.useState('');
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [composerDraftSeed, setComposerDraftSeed] = React.useState<{
+    text: string;
+    token: number;
+  }>();
+  const composerDraftTokenRef = React.useRef(0);
 
   // The single live-run tracker: state drives rendering, the ref mirror lets
   // handlers compare without stale closures (StrictMode double-invokes state
@@ -476,6 +488,11 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     [post]
   );
 
+  const seedComposerDraft = React.useCallback((text: string) => {
+    composerDraftTokenRef.current += 1;
+    setComposerDraftSeed({ text, token: composerDraftTokenRef.current });
+  }, []);
+
   const selectPersona = React.useCallback(
     (personaId: WorkshopPersonaId) => {
       setErrorMessage('');
@@ -563,7 +580,10 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     post(MessageType.WORKSHOP_REQUEST_SESSION, {});
   }, [post]);
 
-  const clearError = React.useCallback(() => setErrorMessage(''), []);
+  const clearError = React.useCallback(() => {
+    setErrorMessage('');
+    post(MessageType.WORKSHOP_DISMISS_ERROR, {});
+  }, [post]);
 
   // Rehydration: ask the host for the session once on mount. A reload lands
   // here too — the reply rebuilds the whole thread (ADR reload-safety).
@@ -582,6 +602,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setCurrentCheckpointProtected(
         message.payload.persistence.currentCheckpointProtected === true
       );
+      setCurrentCheckpointError(message.payload.persistence.currentCheckpointError);
       setDegradedConversationKeys([...message.payload.persistence.degradedConversationKeys]);
       setDegradedConversations(
         (message.payload.persistence.degradedConversations ?? []).map((entry) => ({ ...entry }))
@@ -641,6 +662,13 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     const { turn } = message.payload;
     setTurns((prev) => (prev.some((t) => t.id === turn.id) ? prev : [...prev, turn]));
   }, []);
+
+  const handleComposerDraftRestored = React.useCallback(
+    (message: WorkshopComposerDraftRestoredMessage) => {
+      seedComposerDraft(message.payload.text);
+    },
+    [seedComposerDraft]
+  );
 
   const handleStreamStarted = React.useCallback(
     (message: StreamStartedMessage) => {
@@ -736,6 +764,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     persistenceAvailable,
     persistenceUnavailableReason,
     currentCheckpointProtected,
+    currentCheckpointError,
     degradedConversationKeys,
     degradedConversations,
     excerpt,
@@ -778,6 +807,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     streamingInitialLatencyMs: streaming.initialLatencyMs,
     streamingChunksPerSecond: streaming.chunksPerSecond,
     currentRequestId,
+    composerDraftSeed,
     // Actions
     pinExcerpt,
     pinFromFile,
@@ -807,6 +837,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     runTool,
     quickAction,
     sendMessage,
+    seedComposerDraft,
     selectPersona,
     inviteGuest,
     dismissGuest,
@@ -818,6 +849,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     clearError,
     handleSessionState,
     handleTurn,
+    handleComposerDraftRestored,
     handleStreamStarted,
     handleStreamChunk,
     handleStreamComplete,

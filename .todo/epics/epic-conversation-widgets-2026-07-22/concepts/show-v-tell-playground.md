@@ -1,7 +1,7 @@
 # Concept Spring: Show vs. Tell Playground
 
-**Status**: Concept spring
-**Priority candidate**: Medium
+**Status**: Promoted to [Sprint 05 — Show vs. Tell](../sprints/05-show-vs-tell.md)
+**Priority**: Medium
 **Classification**: Conversation Widget
 **Likely rail**: One-shot thread artifact
 
@@ -66,6 +66,29 @@ editor text.
 
 The same craft vocabulary should be shared, but the lifetimes stay different.
 
+## Relationship to Lexical Gravity Application Gears
+
+Show/tell is orthogonal to Lexical Gravity's application gear:
+
+| Lexical Gravity gear | What it permits | Independent evidence choice |
+|---|---|---|
+| `lexical` | Surface vocabulary, reach, substitutions, and metaphor pull only | Direct explanation or embodied evidence |
+| `interpret` | Local semantic sharpening without restructuring the beat | Direct explanation or embodied evidence |
+| `recompose` | Reorder existing attention, beats, syntax, rhythm, or paragraph shape around an interpretation | Direct explanation or embodied evidence |
+
+`recompose` must not become a synonym for Tell. A recomposed passage can enact
+the interpretation through observable behavior, image, spatial relation,
+sequence, withheld response, or consequence without inserting interpretive
+commentary. Conversely, direct Tell may be the honest compact choice even when
+the passage structure remains unchanged.
+
+The playground owns the local experiment: *how much reader inference should
+this selected beat require?* Lexical Gravity owns an independent Tell/Blend/Show
+value for how **its own** lexical or interpretive pressure lands. Prose
+Controller may own a broader narrative-handling value. They share vocabulary,
+not state: LG and Prose Controller may intentionally pull in different
+directions, while the local playground remains a one-shot comparison surface.
+
 ## Persona interaction
 
 A persona may recommend or prefill the playground when it spots a productive
@@ -87,3 +110,5 @@ out of scope.
   turning a local playground into a full rewrite tool?
 - Which continuum vocabulary should be shared with Prose Controller so the two
   surfaces teach one coherent model?
+- Which acceptance fixture best proves that Lexical Gravity Recompose can move
+  structure toward embodied showing rather than explanatory interpretation?

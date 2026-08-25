@@ -9,18 +9,31 @@ import {
   WorkshopSessionService
 } from '@/application/services/workshop/WorkshopSessionService';
 import {
+  assertCurrentWorkshopSessionStateV1,
   parseWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
+  normalizeWorkshopSessionCheckpointForHydration
+} from '@/application/services/workshop/WorkshopSessionCheckpointNormalization';
+import {
   DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  WorkshopCreativeVariationsRecommendationSeed,
   WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundRecommendationSeed,
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
+  WorkshopLexicalGravityDraft,
+  WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopThreadArtifactWidgetCommit,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetRecommendation
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  builtInLexicalGravityLens
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
+import {
+  lexicalGravityConfigKey
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
 
 const oversizedContextAttachmentId = `ctx-${'9'.repeat(500)}`;
 
@@ -41,6 +54,34 @@ const gestureSeed = (
   }
   return recommendation.seed;
 };
+
+const creativeSeed = (
+  recommendation: WorkshopWidgetRecommendation | undefined
+): WorkshopCreativeVariationsRecommendationSeed => {
+  if (recommendation?.widgetId !== 'creative-variations' || !recommendation.seed) {
+    throw new Error('Expected Creative Variations recommendation seed');
+  }
+  return recommendation.seed;
+};
+
+const lexicalConfig = (
+  config: WorkshopWidgetConfigSnapshot | undefined
+): WorkshopLexicalGravityWidgetConfigSnapshot => {
+  if (config?.widgetId !== 'lexical-gravity') {
+    throw new Error('Expected Lexical Gravity config');
+  }
+  return config;
+};
+
+const lexicalDraft = (): WorkshopLexicalGravityDraft => ({
+  lensSlug: 'photography',
+  applicationMode: 'interpret',
+  evidenceMode: 'blend',
+  weight: 60,
+  reach: 2,
+  metaphorPull: false,
+  resolvedLens: builtInLexicalGravityLens('photography')!
+});
 
 const threadArtifactCommit = (
   commit: import('@messages').WorkshopTurnWidgetCommit | undefined
@@ -96,6 +137,23 @@ const richRecommendation = (): WorkshopWidgetRecommendation => ({
       { kind: 'active-excerpt' },
       { kind: 'context-attachment', attachmentId: 'ctx-2' }
     ]
+  }
+});
+
+const creativeRecommendation = (): WorkshopWidgetRecommendation => ({
+  widgetId: 'creative-variations',
+  seed: {
+    subjectText: 'Mara turned the mug until the chipped handle faced the wall.',
+    contextText: 'Nate waited across the table without repeating the invitation.',
+    sourceReferences: [
+      { kind: 'active-excerpt' },
+      { kind: 'context-attachment', attachmentId: 'ctx-2' }
+    ],
+    mustSurvive: 'Mara refuses without saying no.',
+    mustNotChange: 'Keep close third person and the chipped mug.',
+    aim: '',
+    distance: 'tail',
+    requestedCount: 4
   }
 });
 
@@ -213,6 +271,91 @@ describe('WorkshopSessionService — widget configs', () => {
       .toBe('ta-1');
   });
 
+  it('preserves a pre-turn Gesture retry token from prior Workshop chats', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+
+    const state = parseWorkshopSessionStateV1(session.exportCommittedState());
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(state, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+
+    const retryToken = restored.getWidgetConfig('wc-1');
+    expect(retryToken).toEqual(expect.objectContaining({ widgetId: 'gesture-playground' }));
+    expect(retryToken).not.toHaveProperty('committedTurnId');
+    expect(retryToken).not.toHaveProperty('artifactId');
+  });
+
+  it('round-trips a current Lexical Gravity grammar through V1 session state', () => {
+    session.setSessionScope('open');
+    session.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
+    const state = parseWorkshopSessionStateV1(session.exportCommittedState());
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(state, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+
+    expect(lexicalConfig(restored.getWidgetConfig('wc-1')).draft).toEqual(lexicalDraft());
+  });
+
+  it('rejects widget semantic corruption after normalization and before live mutation', () => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const before = session.exportCommittedState();
+
+    const incoming = new WorkshopSessionService(() => 10_000);
+    incoming.setSessionScope('open');
+    incoming.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
+    const state = incoming.exportCommittedState();
+    const persistedDraft = lexicalConfig(state.widgetConfigs![0]).draft;
+    persistedDraft.preview = {
+      version: 2,
+      configKey: lexicalGravityConfigKey(persistedDraft),
+      sourceText: 'The room waited.',
+      semanticPositions: [{
+        element: 'the room',
+        roleId: 'unknown-role',
+        axisId: null,
+        axisPosition: null,
+        significance: 'The room holds the pressure.'
+      }],
+      selectedDynamicId: null,
+      openEntailment: null,
+      text: 'The room waited.'
+    };
+
+    const decoded = parseWorkshopSessionStateV1(state);
+    expect(() => session.hydrateCommittedState(
+      decoded,
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    )).toThrow(/roleId.*selected lens/);
+    expect(session.exportCommittedState()).toEqual(before);
+  });
+
+  it('recovers an exact pre-v2 Lexical Gravity word field without inventing grammar', () => {
+    session.setSessionScope('open');
+    session.createWidgetConfig({ widgetId: 'lexical-gravity', draft: lexicalDraft() });
+    const state = session.exportCommittedState();
+    const persistedDraft = state.widgetConfigs![0].draft as unknown as Record<string, unknown>;
+    delete persistedDraft.applicationMode;
+    delete persistedDraft.evidenceMode;
+    const persistedLens = persistedDraft.resolvedLens as Record<string, unknown>;
+    persistedLens.version = 1;
+    delete persistedLens.logic;
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    const result = restored.hydrateCommittedState(
+      parseWorkshopSessionStateV1(state),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    expect(result.normalizations).toContain('recovered-widget-lexical-gravity-v1');
+    expect(result.recoveryNotices).toHaveLength(1);
+    expect(lexicalConfig(restored.getWidgetConfig('wc-1')).draft).toMatchObject({
+      applicationMode: 'lexical',
+      evidenceMode: 'blend',
+      resolvedLens: { version: 1 }
+    });
+  });
+
   it('does not partially hydrate the committed aggregate when ledger preparation fails', () => {
     session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
     const before = session.exportCommittedState();
@@ -266,6 +409,74 @@ describe('WorkshopSessionService — widget configs', () => {
       restored.getSnapshot().turns.find((candidate) => candidate.id === turn.id)
         ?.widgetRecommendation
     ).toEqual(richRecommendation());
+  });
+
+  it('round-trips an input-only Creative prefill through V1 state', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Put unlike versions beside each other.');
+    const turn = session.completeRun(
+      'req-1',
+      'I prepared the passage and the boundaries.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      creativeRecommendation()
+    )!;
+
+    const restored = new WorkshopSessionService(() => 10_000);
+    restored.hydrateCommittedState(
+      session.exportCommittedState(),
+      {},
+      DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+    );
+
+    const recommendation = restored.getSnapshot().turns.find(
+      (candidate) => candidate.id === turn.id
+    )?.widgetRecommendation;
+    expect(recommendation).toEqual(creativeRecommendation());
+    expect(creativeSeed(recommendation)).not.toHaveProperty('workup');
+    expect(creativeSeed(recommendation)).not.toHaveProperty('selections');
+  });
+
+  it('rejects Creative corruption and locally normalizes non-persona ownership', () => {
+    session.setSessionScope('open');
+    session.beginPersonaMessage('req-1', 'Prepare the comparison.');
+    session.completeRun(
+      'req-1',
+      'Prepared.',
+      undefined,
+      false,
+      'host-conv',
+      [],
+      undefined,
+      creativeRecommendation()
+    );
+
+    const overlong = session.exportCommittedState();
+    const overlongRecommendation = overlong.turns.find(
+      (turn) => turn.widgetRecommendation
+    )!.widgetRecommendation;
+    creativeSeed(overlongRecommendation).subjectText = 'x'.repeat(
+      PROMPT_BUDGETS.workshopWidgets.creativeSubjectCharacters + 1
+    );
+    expect(() => parseWorkshopSessionStateV1(overlong))
+      .toThrow(/seed\.subjectText.*at most/);
+
+    const forgedOwner = session.exportCommittedState();
+    const recommendationTurn = forgedOwner.turns.find((turn) => turn.widgetRecommendation)!;
+    recommendationTurn.participant = 'tool';
+    const checkpoint = parseWorkshopSessionStateV1(forgedOwner);
+    expect(() => assertCurrentWorkshopSessionStateV1(checkpoint))
+      .toThrow(/host or guest persona recommendation/);
+    const normalized = normalizeWorkshopSessionCheckpointForHydration(checkpoint);
+    expect(normalized.normalizations).toContain(
+      'discarded-nonpersona-widget-recommendation'
+    );
+    expect(normalized.state.turns.find((turn) => turn.id === recommendationTurn.id))
+      .not.toHaveProperty('widgetRecommendation');
+    expect(() => assertCurrentWorkshopSessionStateV1(normalized.state)).not.toThrow();
   });
 
   it.each([
@@ -353,7 +564,15 @@ describe('WorkshopSessionService — widget configs', () => {
         }];
       },
       message: /a ctx-<n> attachment id/
-    },
+    }
+  ])('rejects $label during checkpoint-shape parsing', ({ mutate, message }) => {
+    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+    const state = session.exportCommittedState();
+    mutate(state);
+    expect(() => parseWorkshopSessionStateV1(state)).toThrow(message);
+  });
+
+  it.each([
     {
       label: 'duplicate source references',
       mutate: (state: ReturnType<WorkshopSessionService['exportCommittedState']>) => {
@@ -374,12 +593,23 @@ describe('WorkshopSessionService — widget configs', () => {
       },
       message: /source references within 500 characters/
     }
-  ])('rejects $label at persistence ingress', ({ mutate, message }) => {
-    session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
-    const state = session.exportCommittedState();
-    mutate(state);
-    expect(() => parseWorkshopSessionStateV1(state)).toThrow(message);
-  });
+  ])(
+    'rejects $label during post-normalization integrity without mutating the live session',
+    ({ mutate, message }) => {
+      session.createWidgetConfig({ widgetId: 'gesture-playground', draft: draft() });
+      const before = session.exportCommittedState();
+      const incoming = session.exportCommittedState();
+      mutate(incoming);
+      const decoded = parseWorkshopSessionStateV1(incoming);
+
+      expect(() => session.hydrateCommittedState(
+        decoded,
+        {},
+        DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+      )).toThrow(message);
+      expect(session.exportCommittedState()).toEqual(before);
+    }
+  );
 
   it('rejects malformed recommendation source references at persistence ingress', () => {
     session.setSessionScope('open');

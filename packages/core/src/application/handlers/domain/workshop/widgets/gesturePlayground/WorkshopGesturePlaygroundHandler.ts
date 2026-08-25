@@ -2,13 +2,8 @@
  * Conversation Widgets IPC slice for Workshop (ADR 2026-07-22, Sprint 01).
  *
  * WorkshopRoomHandler owns the room and run orchestration. This per-webview
- * collaborator owns only the widget routes: the pre-commit GENERATE call
- * (touches no session state, freely cancellable) and the atomic COMMIT route
- * (persist config → mint artifact → ship through the injected room-send seam
- * → stamp linkage). It is constructed inside WorkshopSliceComposition with
- * closures over the room owner's private seams — the
- * WorkshopSessionMessageHandler mold — so the application composition root
- * stays ignorant of Workshop internals.
+ * collaborator owns only Gesture Playground's pre-commit GENERATE calls. The
+ * family-generic Widget Host owns the one-shot COMMIT route and transaction.
  */
 
 import { MessageRouter } from '@handlers/MessageRouter';
@@ -18,58 +13,23 @@ import {
   GesturePlaygroundService,
   GestureSourceMaterial
 } from '@services/widgets/GesturePlaygroundService';
+import type {
+  WorkshopWidgetAvailabilityPolicy
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
 import {
-  buildGestureDirective
-} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundDirective';
+  gesturePlaygroundSourceReferencesValidationError
+} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundSourceReferences';
 import { LogSink } from '@/platform';
 import {
   MessageType,
   CancelGesturePlaygroundGenerateRequestMessage,
-  WorkshopCommitWidgetMessage,
   WorkshopGesturePlaygroundGenerateMessage,
   WorkshopGesturePlaygroundGenerationProgressMessage,
   WorkshopGesturePlaygroundMenuResultMessage,
-  WorkshopGesturePlaygroundDraft,
   WorkshopGesturePlaygroundMenuGroup,
-  WorkshopWidgetActionResultMessage,
-  WorkshopWidgetActionResultPayload,
   WorkshopWidgetSourceReference
 } from '@messages';
-import { isLiveWorkshopWidgetId, workshopWidgetLabel } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WorkshopMutationRouteRegistrar } from '@handlers/domain/workshop/WorkshopRouteContracts';
-
-export interface WorkshopGesturePlaygroundHandlerOptions {
-  /**
-   * The one room-send seam (WorkshopRoomHandler.executeMessage). Acceptance is a
-   * separate milestone from the participant reply: `onRoomAccepted` fires
-   * once the writer turn and artifact are room truth, so the authoring sheet
-   * never waits on model latency or loses its Draft on a preflight rejection.
-   * `includeMessageAttachments` stays false on this path — the writer's
-   * staged pills belong to the message they were typing.
-   */
-  sendRoomMessage: (
-    text: string,
-    displayText: string,
-    executeOptions: {
-      includeMessageAttachments: false;
-      widgetArtifact: {
-        id: string;
-        widgetId: 'gesture-playground';
-        widgetConfigId: string;
-        label: string;
-        content: string;
-        selectionCount: number;
-      };
-      onRoomAccepted: (userTurnId: string) => void;
-    }
-  ) => Promise<{ committed: boolean; userTurnId?: string }>;
-  postSessionState: () => void;
-  markDirty: (reason: string) => void;
-  reportError: (message: string, details?: string) => void;
-  /** Backend race guard; the webview also disables commit while a room run owns the slot. */
-  isRoomRunActive: () => boolean;
-}
 
 type GestureGenerationStage =
   WorkshopGesturePlaygroundGenerationProgressMessage['payload']['stage'];
@@ -95,15 +55,12 @@ export class WorkshopGesturePlaygroundHandler {
   constructor(
     private readonly session: WorkshopSessionService,
     private readonly gestureService: WorkshopGesturePlaygroundServicePort,
+    private readonly availability: WorkshopWidgetAvailabilityPolicy,
     private readonly postMessage: MessageTransport,
-    private readonly outputChannel: LogSink,
-    private readonly options: WorkshopGesturePlaygroundHandlerOptions
+    private readonly outputChannel: LogSink
   ) {}
 
-  registerRoutes(
-    router: MessageRouter,
-    registerMutation: WorkshopMutationRouteRegistrar
-  ): void {
+  registerRoutes(router: MessageRouter): void {
     // Generate is a pre-commit preview: no session state, no mutation gate.
     router.register(
       MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATE,
@@ -113,23 +70,15 @@ export class WorkshopGesturePlaygroundHandler {
       MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST,
       this.handleCancelGenerate.bind(this)
     );
-    registerMutation(
-      MessageType.WORKSHOP_COMMIT_WIDGET,
-      this.handleCommit.bind(this),
-      undefined,
-      (reason, message: WorkshopCommitWidgetMessage) => this.postActionResult({
-        action: 'commit',
-        requestToken: message.payload.requestToken,
-        widgetId: 'gesture-playground',
-        ok: false,
-        message: reason
-      })
-    );
   }
 
   dispose(): void {
     this.activeGeneration?.controller.abort();
     this.activeGeneration = undefined;
+  }
+
+  isGenerationActive(): boolean {
+    return this.activeGeneration !== undefined;
   }
 
   async handleGenerate(message: WorkshopGesturePlaygroundGenerateMessage): Promise<void> {
@@ -143,7 +92,7 @@ export class WorkshopGesturePlaygroundHandler {
       sourceReferences,
       mode
     } = message.payload;
-    if (widgetId !== 'gesture-playground' || !isLiveWorkshopWidgetId(widgetId)) {
+    if (widgetId !== 'gesture-playground' || !this.availability.isAvailable(widgetId)) {
       this.postMenuResult({
         widgetId,
         token,
@@ -335,248 +284,6 @@ export class WorkshopGesturePlaygroundHandler {
     }
   }
 
-  /**
-   * The two-phase commit: validate → stage config/artifact → let the room
-   * atomically publish the writer turn and artifact → acknowledge the sheet.
-   * The participant reply is deliberately later and independent: its failure
-   * belongs to the Workshop run surface and cannot revoke an accepted widget.
-   */
-  async handleCommit(message: WorkshopCommitWidgetMessage): Promise<void> {
-    const { widgetId, requestToken, draft, clonedFromConfigId } = message.payload;
-    if (widgetId !== 'gesture-playground' || !isLiveWorkshopWidgetId(widgetId)) {
-      this.postActionResult({
-        action: 'commit',
-        requestToken,
-        widgetId,
-        ok: false,
-        message: 'That widget is not available yet.'
-      });
-      return;
-    }
-    const invalid = this.validateGestureDraft(draft);
-    if (invalid) {
-      this.postActionResult({
-        action: 'commit',
-        requestToken,
-        widgetId,
-        ok: false,
-        message: invalid
-      });
-      return;
-    }
-    const target = this.session.getChatTarget();
-    if (target.kind === 'tool') {
-      this.postActionResult({
-        action: 'commit',
-        requestToken,
-        widgetId,
-        ok: false,
-        message: 'Switch to a persona target before committing a widget — tool sidecars do not take gesture directions.'
-      });
-      return;
-    }
-    if (this.options.isRoomRunActive()) {
-      this.postActionResult({
-        action: 'commit',
-        requestToken,
-        widgetId,
-        ok: false,
-        message: 'Wait for the current Workshop response to finish before committing another widget.'
-      });
-      return;
-    }
-
-    let accepted = false;
-    let configId: string | undefined;
-    try {
-      const config = this.session.createWidgetConfig({ widgetId, draft, clonedFromConfigId });
-      configId = config.id;
-      const artifactId = this.session.mintWidgetArtifactId();
-      const label = workshopWidgetLabel(widgetId);
-      const directive = buildGestureDirective(draft);
-      const selectionCount = draft.selections.length;
-      const displayText = `For “${draft.targetPhrase.trim()}” — here are the gesture directions I want${
-        draft.note.trim().length > 0 ? ` — ${draft.note.trim()}` : ''
-      }${draft.includeDictionaryInCommit ? ', with the full Gesture Dictionary shared as reference' : ''}.`;
-
-      this.outputChannel.appendLine(
-        `[WorkshopGesturePlaygroundHandler] Widget commit staged (${config.id} → ${artifactId}, ${selectionCount} selections${clonedFromConfigId ? `, cloned from ${clonedFromConfigId}` : ''})`
-      );
-      this.options.markDirty('widget config created');
-
-      const outcome = await this.options.sendRoomMessage(displayText, displayText, {
-        includeMessageAttachments: false,
-        widgetArtifact: {
-          id: artifactId,
-          widgetId,
-          widgetConfigId: config.id,
-          label,
-          content: directive,
-          selectionCount
-        },
-        onRoomAccepted: (userTurnId) => {
-          this.session.recordWidgetCommit(config.id, { turnId: userTurnId, artifactId });
-          this.session.recordWidgetArtifactDelivery(
-            artifactId,
-            label,
-            directive.length,
-            target
-          );
-          accepted = true;
-          this.options.markDirty('widget commit accepted');
-          this.options.postSessionState();
-          this.postActionResult({
-            action: 'commit',
-            requestToken,
-            widgetId,
-            ok: true,
-            widgetConfigId: config.id,
-            turnId: userTurnId
-          });
-          this.outputChannel.appendLine(
-            `[WorkshopGesturePlaygroundHandler] Widget commit accepted (${config.id} on turn ${userTurnId})`
-          );
-        }
-      });
-      if (!accepted) {
-        this.postActionResult({
-          action: 'commit',
-          requestToken,
-          widgetId,
-          ok: false,
-          widgetConfigId: config.id,
-          message: 'The room did not accept the commit. Your draft is still open — try again.'
-        });
-        return;
-      }
-      if (!outcome.committed) {
-        this.outputChannel.appendLine(
-          `[WorkshopGesturePlaygroundHandler] Widget ${config.id} remained committed after the participant response failed`
-        );
-      }
-    } catch (error) {
-      const details = error instanceof Error ? error.message : String(error);
-      if (!accepted) {
-        this.postActionResult({
-          action: 'commit',
-          requestToken,
-          widgetId,
-          ok: false,
-          widgetConfigId: configId,
-          message: 'The commit failed before the room accepted it. Your draft is still open — try again.'
-        });
-      }
-      this.outputChannel.appendLine(
-        `[WorkshopGesturePlaygroundHandler] Widget commit failed (${configId ?? 'before-config'}): ${details}`
-      );
-    }
-  }
-
-  /** Deterministic pre-flight — the same bounds the generate service enforces. */
-  private validateGestureDraft(draft: WorkshopGesturePlaygroundDraft): string | undefined {
-    const budget = PROMPT_BUDGETS.workshopWidgets;
-    if (typeof draft.includeDictionaryInCommit !== 'boolean') {
-      return 'Choose whether the full Gesture Dictionary should be shared with the room.';
-    }
-    if (draft.targetPhrase.trim().length === 0) {
-      return 'Gesture Playground needs a target phrase.';
-    }
-    if (draft.targetPhrase.length > budget.gestureTargetPhraseCharacters) {
-      return `The target phrase exceeds ${budget.gestureTargetPhraseCharacters} characters.`;
-    }
-    if (draft.writerInstructions.length > budget.gestureWriterInstructionsCharacters) {
-      return `The writer instructions exceed ${budget.gestureWriterInstructionsCharacters} characters.`;
-    }
-    if (draft.contextText.length > budget.gestureContextCharacters) {
-      return `The context exceeds ${budget.gestureContextCharacters} characters.`;
-    }
-    if (draft.characterNotes.length > budget.gestureCharacterNotesCharacters) {
-      return `The character notes exceed ${budget.gestureCharacterNotesCharacters} characters.`;
-    }
-    const invalidSources = this.validateSourceReferences(draft.sourceReferences);
-    if (invalidSources) {
-      return invalidSources;
-    }
-    if (draft.dictionaryMarkdown.trim().length === 0) {
-      return 'Generate a Gesture Dictionary and alternatives before committing.';
-    }
-    if (draft.dictionaryMarkdown.length > budget.gestureDictionaryCharacters) {
-      return `The Gesture Dictionary exceeds ${budget.gestureDictionaryCharacters} characters.`;
-    }
-    if (!draft.menu) {
-      return 'Generate a valid alternatives menu before committing.';
-    }
-    const invalidMenu = this.validateGestureMenu(draft.menu);
-    if (invalidMenu) {
-      return invalidMenu;
-    }
-    if (draft.selections.length === 0) {
-      return 'Keep at least one direction before committing.';
-    }
-    if (draft.selections.length > budget.gestureSelectionsPerCommit) {
-      return `A commit carries at most ${budget.gestureSelectionsPerCommit} directions.`;
-    }
-    if (draft.selections.some((selection) =>
-      selection.trim().length === 0 || selection.length > budget.gestureOptionCharacters
-    )) {
-      return 'One of the kept directions is empty or too long.';
-    }
-    if (new Set(draft.selections.map((selection) => selection.trim())).size !== draft.selections.length) {
-      return 'The kept directions contain a duplicate.';
-    }
-    const menuOptions = new Set(draft.menu.flatMap((group) => group.options));
-    if (draft.selections.some((selection) => !menuOptions.has(selection))) {
-      return 'One of the kept directions is not part of the generated menu.';
-    }
-    if (draft.note.length > budget.gestureNoteCharacters) {
-      return `The note exceeds ${budget.gestureNoteCharacters} characters.`;
-    }
-    return undefined;
-  }
-
-  private validateGestureMenu(
-    menu: readonly WorkshopGesturePlaygroundMenuGroup[]
-  ): string | undefined {
-    const budget = PROMPT_BUDGETS.workshopWidgets;
-    if (
-      menu.length < budget.gestureMenuGroupsMinimum
-      || menu.length > budget.gestureMenuGroups
-    ) {
-      return `The alternatives menu must carry ${budget.gestureMenuGroupsMinimum}–${budget.gestureMenuGroups} groups.`;
-    }
-
-    const seenOptions = new Set<string>();
-    for (const [groupIndex, group] of menu.entries()) {
-      if (
-        group.heading.trim().length === 0
-        || group.heading !== group.heading.trim()
-        || group.heading.length > budget.gestureOptionCharacters
-      ) {
-        return `Alternatives group ${groupIndex + 1} has an invalid heading.`;
-      }
-      if (
-        group.options.length < budget.gestureOptionsPerGroupMinimum
-        || group.options.length > budget.gestureOptionsPerGroup
-      ) {
-        return `Alternatives group ${groupIndex + 1} must carry ${budget.gestureOptionsPerGroupMinimum}–${budget.gestureOptionsPerGroup} options.`;
-      }
-      for (const option of group.options) {
-        if (
-          option.trim().length === 0
-          || option !== option.trim()
-          || option.length > budget.gestureOptionCharacters
-        ) {
-          return `Alternatives group ${groupIndex + 1} contains an invalid option.`;
-        }
-        if (seenOptions.has(option)) {
-          return 'The alternatives menu contains a duplicate option.';
-        }
-        seenOptions.add(option);
-      }
-    }
-    return undefined;
-  }
-
   private mergeGestureMenus(
     current: readonly WorkshopGesturePlaygroundMenuGroup[],
     additions: readonly WorkshopGesturePlaygroundMenuGroup[]
@@ -646,7 +353,7 @@ export class WorkshopGesturePlaygroundHandler {
   private resolveSourceMaterials(
     references: WorkshopWidgetSourceReference[]
   ): GestureSourceMaterial[] {
-    const invalid = this.validateSourceReferences(references);
+    const invalid = gesturePlaygroundSourceReferencesValidationError(references);
     if (invalid) {
       throw new Error(invalid);
     }
@@ -678,66 +385,8 @@ export class WorkshopGesturePlaygroundHandler {
     });
   }
 
-  private validateSourceReferences(
-    value: unknown
-  ): string | undefined {
-    const budget = PROMPT_BUDGETS.workshopWidgets;
-    const maximum = budget.gestureSourceReferences;
-    if (!Array.isArray(value) || value.length > maximum) {
-      return `Source material must carry at most ${maximum} references.`;
-    }
-    const seen = new Set<string>();
-    let serializedCharacters = 0;
-    for (const referenceValue of value) {
-      if (
-        typeof referenceValue !== 'object'
-        || referenceValue === null
-        || Array.isArray(referenceValue)
-      ) {
-        return 'One of the source material references is invalid.';
-      }
-      const reference = referenceValue as Record<string, unknown>;
-      let key: string;
-      if (reference.kind === 'active-excerpt') {
-        if (Object.keys(reference).length !== 1) {
-          return 'The active excerpt source reference is invalid.';
-        }
-        key = 'active-excerpt';
-      } else if (reference.kind === 'context-attachment') {
-        if (
-          Object.keys(reference).length !== 2
-          || typeof reference.attachmentId !== 'string'
-          || !/^ctx-[1-9]\d*$/.test(reference.attachmentId)
-        ) {
-          return 'One of the context source references is invalid.';
-        }
-        key = `context-attachment:${reference.attachmentId}`;
-      } else {
-        return 'One of the source material references is invalid.';
-      }
-      serializedCharacters += key.length + (seen.size > 0 ? 1 : 0);
-      if (serializedCharacters > budget.gestureSourceReferenceCharacters) {
-        return `Source material references exceed ${budget.gestureSourceReferenceCharacters} characters.`;
-      }
-      if (seen.has(key)) {
-        return 'The source material references contain a duplicate.';
-      }
-      seen.add(key);
-    }
-    return undefined;
-  }
-
   private estimateVisibleTokens(outputCharacters: number): number {
     return Math.ceil(outputCharacters / 4);
   }
 
-  private postActionResult(payload: WorkshopWidgetActionResultPayload): void {
-    const result: WorkshopWidgetActionResultMessage = {
-      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
-      source: 'extension.workshop.widget',
-      payload,
-      timestamp: Date.now()
-    };
-    void this.postMessage(result);
-  }
 }

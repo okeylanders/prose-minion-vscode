@@ -37,6 +37,7 @@ describe('WorkshopExcerptScopeHandler', () => {
     loadFile: jest.Mock;
     reportConfiguredResourceLoadFailure: jest.Mock;
     matchConfiguredSource: jest.Mock;
+    authorizeExcerptReread: jest.Mock;
   };
   let log: { appendLine: jest.Mock };
   let effects: {
@@ -80,7 +81,12 @@ describe('WorkshopExcerptScopeHandler', () => {
         source.kind === 'manual'
           ? { kind: 'manual', source }
           : { kind: 'unmatched', source }
-      ))
+      )),
+      authorizeExcerptReread: jest.fn(async (source) => ({
+        kind: 'authorized',
+        fsPath: '/workspace/chapters/04.md',
+        source
+      }))
     };
     log = { appendLine: jest.fn() };
     effects = {
@@ -289,5 +295,42 @@ describe('WorkshopExcerptScopeHandler', () => {
     expect(intake.matchConfiguredSource).not.toHaveBeenCalled();
     expect(session.replaceExcerpt).not.toHaveBeenCalled();
     expect(effects.markDirty).not.toHaveBeenCalled();
+  });
+
+  it('re-checks the run gate after re-read authorization before touching the file', async () => {
+    const source = {
+      kind: 'file' as const,
+      sourceUri: 'file:///workspace/chapters/04.md',
+      relativePath: 'chapters/04.md'
+    };
+    session.getExcerpt.mockReturnValue({
+      text: 'The same passage.',
+      version: 4,
+      source,
+      sourceFingerprint: 'same-fingerprint',
+      pinnedAt: 1
+    });
+    const authorizing = deferred<{
+      kind: 'authorized';
+      fsPath: string;
+      source: typeof source;
+    }>();
+    intake.authorizeExcerptReread.mockReturnValueOnce(authorizing.promise);
+
+    const routed = router.route(message(MessageType.WORKSHOP_REREAD_EXCERPT, {}) as never);
+    await Promise.resolve();
+    expect(intake.authorizeExcerptReread).toHaveBeenCalledWith(source);
+
+    runRefusal = 'A tool started while the source was being authorized.';
+    authorizing.resolve({
+      kind: 'authorized',
+      fsPath: '/workspace/chapters/04.md',
+      source
+    });
+    await routed;
+
+    expect(effects.reportError).toHaveBeenCalledWith(runRefusal);
+    expect(intake.loadFile).not.toHaveBeenCalled();
+    expect(session.replaceExcerpt).not.toHaveBeenCalled();
   });
 });

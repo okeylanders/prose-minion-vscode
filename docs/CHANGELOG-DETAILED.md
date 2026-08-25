@@ -5,9 +5,91 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — OpenRouter model catalog refresh
+## [Unreleased]
 
-### Added
+## [2.2.0] - 2026-08-24 — Conversation Widgets and Workshop hardening
+
+### Overview
+
+This minor release turns the Conversation Widgets browser from a roadmap into
+three usable Workshop surfaces: Gesture Playground, Lexical Gravity, and
+Creative Variations. It also lands the architecture and persistence runway
+needed for those features to share one safe room without sharing their domain
+semantics.
+
+The release line includes the reviewed Workshop architecture series
+(PRs #101–#109), widget persistence integrity (PR #111), and Creative
+Variations (PR #112). Prose Controller, Show vs. Tell, and the remaining
+catalog concepts are still roadmap entries and are not enabled in this release.
+
+### Added — Conversation Widgets
+
+- **Gesture Playground** performs one bounded generation call over the selected
+  gesture and optional scene context, returns a writer-facing semantic field
+  and alternatives, and commits only the writer's selected directions. Its
+  transcript chip reopens the exact persisted authoring state; subsequent work
+  clones and recommits rather than editing a historical turn.
+- **Lexical Gravity** adds a standing prose influence with deterministic
+  built-in lenses, editable weight and reach, model-assisted preview/build
+  seams, project lens resources, and explicit apply/remove behavior between
+  runs. The room receives a compact directive rather than the authoring UI's
+  full scaffolding.
+- **Creative Variations** accepts a selected or pasted passage, optional
+  `must survive` and `must not change` invariants, an optional aim, a sampling
+  distance, and a three-to-five result count. A closed response codec validates
+  every card before rendering; deterministic overlap diagnostics reject exact
+  duplicates and surface highly similar alternatives without choosing for the
+  writer.
+- **Writer-owned variation commit** keeps selection authority in the UI.
+  Selected cards can carry only their direction or explicitly promoted prose;
+  unselected generation content never enters retained room history. Reopen and
+  clone-and-recommit mint new config, artifact, and turn identities without
+  rewriting the original exchange.
+- **Persona preparation** allows Workshop personas to recommend or prefill the
+  live widgets through bounded typed operations. Generation, selection, and
+  commit remain writer actions for Creative Variations.
+
+### Added — persistence and recovery
+
+- The full Workshop session envelope advances from schema V1 to V2. An
+  explicit adjacent migration initializes the persisted widget collections and
+  counters absent from released pre-widget sessions; current writes emit V2
+  only, while the unchanged regenerable browser search index remains V1.
+- Widget authoring configs are session-owned, persisted under stable IDs, and
+  committed atomically with their visible turn and model-facing artifact or
+  standing directive.
+- `WorkshopWidgetPersistenceLifecycle` is the exhaustive closed registry for
+  checkpoint recognition, development normalization, current-shape validation,
+  and semantic integrity. Every persisted widget union arm must provide all
+  four operations.
+- Feature-owned recovery admits only recognized historical omissions in
+  Gesture Playground and Lexical Gravity drafts. Unknown widget IDs,
+  near-miss shapes, invalid cross-references, and corrupt semantic state fail
+  before live aggregate mutation.
+- Rejected model responses remain inspectable and recoverable without replacing
+  a healthy room or silently treating rejected output as a valid widget.
+
+### Changed — Workshop architecture
+
+- Completed the seven-phase Workshop architecture refactor and lifted the
+  feature freeze. Gesture Playground, Lexical Gravity, and Creative Variations
+  now use symmetric named slices across contracts, handlers, services,
+  presentation hooks, components, prompts, styles, and tests.
+- `WorkshopRoomHandler` remains the room/run orchestrator and composes cohesive
+  route owners. It no longer absorbs excerpt, context, session, standing
+  directive, todo, or widget-family behavior.
+- `WorkshopSessionService` remains the sole whole-session mutation facade while
+  passage scope, participant roster, turn ledger, todo ledger, standing
+  directives, widget configs, and persistence coordination have named internal
+  owners.
+- Presentation responsibilities now live in separate room, session, widget-host,
+  modal-controller, and feature hooks. Generic controllers stay transport-free;
+  feature-specific contracts remain in their named slices.
+- Architecture witnesses enforce host-agnostic core imports, the sole VS Code
+  composition root, closed widget dispatch, session ownership, prompt budgets,
+  persistence lifecycle completeness, and source/test/documentation symmetry.
+
+### Changed — model catalog
 
 - Added `meta/muse-spark-1.2` without removing Muse Spark 1.1; the two
   checkpoints remain separately selectable for their different creative and
@@ -17,9 +99,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the original V4 Pro listing.
 - Added `openai/gpt-oss-120b:nitro` and `google/gemini-3.7-flash` to both the
   Recommended Models and Category Search catalogs.
-
-### Changed
-
 - Changed the Category Search default from Claude Sonnet 5 to
   `openai/gpt-oss-120b:nitro` across the extension manifest, host fallback,
   and webview default.
@@ -29,12 +108,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended the Category Search architecture witness to keep the contributed
   manifest default synchronized with the shared default and curated registry.
 
+### Fixed and hardened
+
+- The first fresh-host turn now places its trusted session-start time frame at
+  the beginning of the actual provider-bound message before the room marks the
+  notice delivered. Regression tests cover excerpt-backed and open-conversation
+  starts at the service boundary.
+- Persisted file-backed excerpts are authorized again before direct disk reads.
+  Workspace paths must remain contained and avoid symbolic-link segments;
+  external paths must exactly match the freshly opened configured-resource
+  catalog under host-platform case rules. Webview-supplied catalog claims are
+  stripped and re-derived.
+- Session state is preserved when the AI runtime is unavailable, and structured
+  widget response failures no longer discard otherwise healthy Workshop data.
+- Removing a standing directive now persists an exact terminal removal linkage
+  instead of producing a checkpoint rejected by the aggregate's own integrity
+  validator. Install-remove-export-hydrate regression coverage preserves the
+  retired config history while keeping the active directive rail empty.
+- Widget action correlation, stale/cancelled result rejection, atomic one-shot
+  acceptance, artifact budgets, and feature-specific semantic integrity are
+  enforced at host-owned boundaries.
+
+### Dependency security
+
+- A normal `npm audit fix` (without `--force`) updated nine lockfile resolutions
+  within existing dependency ranges.
+- Shipped dependency: DOMPurify `3.4.12 → 3.4.14` closes the reported moderate
+  sanitizer advisory.
+- Development and publication graph: patched `brace-expansion`, `fast-uri`,
+  `js-yaml`, `nanoid`, and `undici` releases clear the five high advisories in
+  lint, test, bundle, and VSCE packaging paths.
+- Full and `--omit=dev` audits both report zero known vulnerabilities after the
+  remediation.
+
+### Release validation
+
+- Full Jest run: **208 suites / 2,310 tests / 2 snapshots** passed. The earlier
+  release coverage run remains the coverage baseline for this branch.
+- Coverage: **82.28% statements**, **82.25% functions**, **71.34% branches**,
+  and **82.57% lines**.
+- Core, webview, and extension TypeScript projects passed.
+- Repository ESLint completed with **0 errors** and the existing 957-warning
+  baseline.
+- Production extension and webview bundles compiled; resource staging and the
+  bundle sentinel passed. Webpack reported only its three known webview-size
+  advisories.
+- `npm audit` and `npm audit --omit=dev` both reported zero vulnerabilities.
+- VSCE packaged `prose-minion-2.2.0.vsix`: 194 files, 11.25 MiB.
+- `git diff --check` passed. Integrated Extension Development Host testing
+  remains the manual approval gate before merging to `main`.
+
 ### Compatibility
 
-- Existing saved selections remain unchanged; the new default applies when no
-  Category Search selection has been stored.
-- Assistant, dictionary, context, and Conversation Widget defaults are
-  unchanged.
+- No editor mutation or manual user migration is required. Released V1
+  pre-widget Workshop files migrate automatically to the V2 envelope during
+  read, and the next successful save writes V2.
+- Recognized pre-release widget checkpoint omissions are normalized only at the
+  feature-owned hydration boundary; current persisted state must satisfy the
+  complete V2 session contract. Invalid local beta widget linkage remains
+  fail-closed for deliberate manual repair rather than being generalized into
+  the public migration.
+- Existing saved model selections remain unchanged. The Category Search default
+  changes only when no value has been stored; assistant, dictionary, context,
+  and Conversation Widget defaults are unchanged.
+
+### Important references
+
+- Conversation Widgets ADR: `docs/adr/2026-07-22-conversation-widgets.md`
+- Widget state ownership ADR: `docs/adr/2026-07-31-workshop-widget-state-ownership.md`
+- Lexical Gravity grammar ADR: `docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md`
+- Workshop family boundaries ADR: `docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md`
+- Rejected response recovery ADR: `docs/adr/2026-08-08-rejected-model-response-recovery.md`
+- Integration PRs: #96–#112
 
 ## [2.1.1] - 2026-08-03 — Curated model catalog refresh
 

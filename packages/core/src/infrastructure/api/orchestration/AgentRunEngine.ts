@@ -1,5 +1,9 @@
 import { LogSink, SettingsStore } from '@/platform';
-import { OpenRouterClient, OpenRouterMessage } from '@providers/OpenRouterClient';
+import {
+  OpenRouterApiError,
+  OpenRouterClient,
+  OpenRouterMessage
+} from '@providers/OpenRouterClient';
 import type { UrlCitation } from '@messages';
 import {
   ConversationArchiveEntryV1,
@@ -12,6 +16,7 @@ import {
 } from './ConversationManager';
 import {
   AgentCapabilityRejection,
+  AGENT_RUN_INTERRUPTED_FINISH_REASON,
   AgentRunOptions,
   AnyAgentCapability,
   CapabilityArtifact,
@@ -33,6 +38,48 @@ import {
 export type StatusCallback = (message: string, tickerMessage?: string) => void;
 export type TokenUsageCallback = (usage: TokenUsage) => void;
 
+export type AgentRunUnavailableReason =
+  | 'missing-credentials'
+  | 'authentication'
+  | 'insufficient-credits'
+  | 'token-budget-exceeded'
+  | 'rate-limited'
+  | 'provider-unavailable';
+
+/** A retryable/configurable inability to answer, never a conversation turn. */
+export class AgentRunUnavailableError extends Error {
+  constructor(
+    readonly reason: AgentRunUnavailableReason,
+    readonly providerDetails?: string,
+    readonly retryAfterSeconds?: number
+  ) {
+    super(AgentRunUnavailableError.messageFor(reason, retryAfterSeconds));
+    this.name = 'AgentRunUnavailableError';
+  }
+
+  private static messageFor(
+    reason: AgentRunUnavailableReason,
+    retryAfterSeconds?: number
+  ): string {
+    switch (reason) {
+      case 'missing-credentials':
+        return 'The AI agent is unavailable. Add your OpenRouter API key to continue.';
+      case 'authentication':
+        return 'OpenRouter rejected the saved API key. Update it and try again.';
+      case 'insufficient-credits':
+        return 'The OpenRouter account or API key has insufficient credits. Add credits and try again.';
+      case 'token-budget-exceeded':
+        return 'OpenRouter stopped the request at its token budget. Shorten the request or adjust the API key limit before trying again.';
+      case 'rate-limited':
+        return retryAfterSeconds
+          ? `OpenRouter is rate limiting requests. Try again in about ${retryAfterSeconds} seconds.`
+          : 'OpenRouter is rate limiting requests. Wait a moment and try again.';
+      case 'provider-unavailable':
+        return 'The selected AI provider is temporarily unavailable. Try again shortly.';
+    }
+  }
+}
+
 interface TerminationContext {
   readonly signal?: AbortSignal;
   dispose(): void;
@@ -40,6 +87,7 @@ interface TerminationContext {
 
 interface TurnResult {
   readonly content: string;
+  readonly providerResponseId?: string;
   /** Sanitized content emitted incrementally for a capability-enabled turn. */
   readonly visibleContent?: string;
   readonly finishReason?: string;
@@ -154,6 +202,8 @@ class ToolCallStreamVisibilityGuard {
  */
 export class AgentRunEngine {
   private readonly conversationCleanupInterval: NodeJS.Timeout;
+  private openRouterClient?: OpenRouterClient;
+  private model: string;
   /**
    * Conversation ids with an in-flight run, marked for the entire span in
    * which a run reads or commits history (ADR 2026-07-20). The between-run
@@ -163,13 +213,18 @@ export class AgentRunEngine {
   private readonly activeConversationIds = new Set<string>();
 
   constructor(
-    private readonly openRouterClient: OpenRouterClient,
+    openRouterClient: OpenRouterClient | undefined,
     private readonly conversationManager: ConversationManager,
     private statusCallback?: StatusCallback,
     private readonly outputChannel?: LogSink,
     private tokenUsageCallback?: TokenUsageCallback,
-    private readonly settings?: SettingsStore
+    private readonly settings?: SettingsStore,
+    initialModel?: string
   ) {
+    this.openRouterClient = openRouterClient;
+    this.model = initialModel ?? (
+      typeof openRouterClient?.getModel === 'function' ? openRouterClient.getModel() : ''
+    );
     this.conversationCleanupInterval = setInterval(() => {
       this.conversationManager.clearOldConversations(300000);
     }, 300000);
@@ -177,14 +232,36 @@ export class AgentRunEngine {
 
   /** Swap the transport model without disturbing retained conversation state. */
   setModel(model: string): void {
-    this.openRouterClient.setModel(model);
+    const normalized = model.trim();
+    if (!normalized) {
+      throw new Error('OpenRouter model id cannot be empty');
+    }
+    this.openRouterClient?.setModel(normalized);
+    this.model = normalized;
   }
 
   getModel(): string {
-    return this.openRouterClient.getModel();
+    return this.model;
+  }
+
+  /** Attach or replace transport without replacing conversations or run identity. */
+  attachProvider(openRouterClient: OpenRouterClient, model: string): void {
+    openRouterClient.setModel(model);
+    this.openRouterClient = openRouterClient;
+    this.model = model;
+  }
+
+  /** Enter offline mode. Existing conversations remain fully available locally. */
+  detachProvider(): void {
+    this.openRouterClient = undefined;
+  }
+
+  isProviderAvailable(): boolean {
+    return this.openRouterClient !== undefined;
   }
 
   async runInitial(request: InitialRunRequest): Promise<ExecutionResult> {
+    const provider = this.requireProvider();
     const capability = this.validateCapability(request);
     const conversationId = this.conversationManager.startConversation(request.toolName, request.systemMessage);
     // Active from creation: the first turn is already committed to reading
@@ -209,7 +286,8 @@ export class AgentRunEngine {
         firstUserMessage,
         request.policy,
         capability,
-        request.options ?? {}
+        request.options ?? {},
+        provider
       );
       retained = retainedRequested && !result.cancelled;
       if (retained) {
@@ -229,6 +307,7 @@ export class AgentRunEngine {
     if (!this.conversationManager.hasConversation(request.conversationId)) {
       throw new ConversationNotFoundError(request.conversationId);
     }
+    const provider = this.requireProvider();
     const capability = this.validateCapability(request);
     // Active before the first history read; released in the finally so that
     // cancellation and transport failure cannot leak the mark (ADR 2026-07-20).
@@ -242,7 +321,8 @@ export class AgentRunEngine {
         userMessage,
         request.policy,
         capability,
-        request.options ?? {}
+        request.options ?? {},
+        provider
       );
       if (!result.cancelled) {
         this.outputChannel?.appendLine(`[AgentRunEngine] Continued conversation ${request.conversationId}.`);
@@ -263,7 +343,8 @@ export class AgentRunEngine {
     userMessage: string,
     policy: RunPolicy,
     capability: AnyAgentCapability | undefined,
-    options: AgentRunOptions
+    options: AgentRunOptions,
+    provider: OpenRouterClient
   ): Promise<ExecutionResult> {
     const termination = this.createTerminationContext(options);
     const runOptions = { ...options, signal: termination.signal ?? options.signal };
@@ -294,7 +375,7 @@ export class AgentRunEngine {
         { role: 'assistant', content: previous.content },
         { role: 'user', content: instruction }
       );
-      const next = await this.executeTurn(currentMessages(), runOptions, capability);
+      const next = await this.executeTurn(currentMessages(), runOptions, capability, provider);
       recordObservation(next.observation);
       totalUsage = this.addUsage(totalUsage, next.usage);
       runCitations = this.mergeUrlCitations(runCitations, next.citations);
@@ -327,7 +408,7 @@ export class AgentRunEngine {
     };
 
     try {
-      let last = await this.executeTurn(currentMessages(), runOptions, capability);
+      let last = await this.executeTurn(currentMessages(), runOptions, capability, provider);
       recordObservation(last.observation);
       totalUsage = this.addUsage(totalUsage, last.usage);
       runCitations = this.mergeUrlCitations(runCitations, last.citations);
@@ -466,9 +547,13 @@ export class AgentRunEngine {
         artifacts,
         usage: totalUsage,
         finishReason: last.finishReason,
+        providerResponseId: last.providerResponseId,
+        modelId: latestObservation?.modelId,
         citations: runCitations,
         cancelled
       };
+    } catch (error) {
+      throw this.toUnavailableError(error);
     } finally {
       termination.dispose();
     }
@@ -604,11 +689,12 @@ export class AgentRunEngine {
   private async executeTurn(
     messages: OpenRouterMessage[],
     options: AgentRunOptions,
-    capability?: AnyAgentCapability
+    capability: AnyAgentCapability | undefined,
+    provider: OpenRouterClient
   ): Promise<TurnResult> {
     if (!options.onToken) {
       try {
-        const response = await this.openRouterClient.createChatCompletion(messages, {
+        const response = await provider.createChatCompletion(messages, {
           temperature: options.temperature,
           maxTokens: options.maxTokens,
           signal: options.signal,
@@ -620,6 +706,7 @@ export class AgentRunEngine {
         this.logCapabilityInspection(capability, inspection, response.content);
         return {
           content: response.content,
+          providerResponseId: response.id,
           finishReason: response.finishReason,
           usage: response.usage,
           observation: response.observation,
@@ -640,13 +727,14 @@ export class AgentRunEngine {
     let usage: TokenUsage | undefined;
     let finishReason: string | undefined;
     let observation: InferenceRequestObservation | undefined;
+    let providerResponseId: string | undefined;
     let citations: UrlCitation[] | undefined;
     let cancelled = false;
     let classification: 'undecided' | 'text' | 'candidate' = 'undecided';
     const visibilityGuard = capability ? new ToolCallStreamVisibilityGuard() : undefined;
 
     try {
-      for await (const chunk of this.openRouterClient.createStreamingChatCompletion(messages, {
+      for await (const chunk of provider.createStreamingChatCompletion(messages, {
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         signal: options.signal,
@@ -654,6 +742,7 @@ export class AgentRunEngine {
         reasoning: options.reasoning
       })) {
         if (chunk.done) {
+          providerResponseId = chunk.id ?? providerResponseId;
           usage = chunk.usage ?? usage;
           finishReason = chunk.finishReason ?? finishReason;
           observation = chunk.observation ?? observation;
@@ -687,6 +776,16 @@ export class AgentRunEngine {
     } catch (error) {
       if (this.isAbortError(error)) {
         cancelled = true;
+      } else if (
+        error instanceof OpenRouterApiError
+        && this.hasVisibleStreamedContent(content, classification, visibilityGuard)
+      ) {
+        finishReason = AGENT_RUN_INTERRUPTED_FINISH_REASON;
+        this.outputChannel?.appendLine(
+          `[AgentRunEngine] Provider interrupted a stream after visible content `
+          + `(status=${error.status ?? 'unknown'}, type=${error.errorType ?? 'unknown'}); `
+          + 'retaining the incomplete response.'
+        );
       } else {
         throw error;
       }
@@ -718,6 +817,7 @@ export class AgentRunEngine {
     }
     return {
       content,
+      providerResponseId,
       visibleContent: visibilityGuard?.content,
       finishReason,
       usage,
@@ -729,6 +829,44 @@ export class AgentRunEngine {
     };
   }
 
+  private requireProvider(): OpenRouterClient {
+    if (!this.openRouterClient) {
+      throw new AgentRunUnavailableError('missing-credentials');
+    }
+    return this.openRouterClient;
+  }
+
+  private toUnavailableError(error: unknown): unknown {
+    if (!(error instanceof OpenRouterApiError)) {
+      return error;
+    }
+    const { status, errorType, message, retryAfterSeconds } = error;
+    if (status === 401 || errorType === 'authentication') {
+      return new AgentRunUnavailableError('authentication', message);
+    }
+    if (
+      status === 402 ||
+      errorType === 'payment_required'
+    ) {
+      return new AgentRunUnavailableError('insufficient-credits', message);
+    }
+    if (errorType === 'token_limit_exceeded') {
+      return new AgentRunUnavailableError('token-budget-exceeded', message);
+    }
+    if (status === 429 || errorType === 'rate_limit_exceeded') {
+      return new AgentRunUnavailableError('rate-limited', message, retryAfterSeconds);
+    }
+    if (
+      status === 408 ||
+      (status !== undefined && status >= 500) ||
+      ['network', 'provider_overloaded', 'provider_unavailable', 'timeout', 'server', 'unmapped']
+        .includes(errorType ?? '')
+    ) {
+      return new AgentRunUnavailableError('provider-unavailable', message, retryAfterSeconds);
+    }
+    return error;
+  }
+
   private toVisibleContent(
     content: string,
     finishReason?: string,
@@ -738,7 +876,23 @@ export class AgentRunEngine {
     const cleaned = (streamedVisibleContent ?? this.stripAllToolCalls(content, capability))
       .replace(/\n{3,}/g, '\n\n')
       .trim();
-    return `${cleaned}${finishReason === 'length' ? '\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.' : ''}`;
+    if (finishReason === 'length') {
+      return `${cleaned}\n\n---\n\n⚠️ Response truncated. Increase Max Tokens in settings.`;
+    }
+    if (finishReason === AGENT_RUN_INTERRUPTED_FINISH_REASON) {
+      return `${cleaned}\n\n---\n\n⚠️ The provider interrupted this response. The answer above was retained and may be incomplete.`;
+    }
+    return cleaned;
+  }
+
+  private hasVisibleStreamedContent(
+    content: string,
+    classification: 'undecided' | 'text' | 'candidate',
+    visibilityGuard?: ToolCallStreamVisibilityGuard
+  ): boolean {
+    return visibilityGuard
+      ? visibilityGuard.content.trim().length > 0
+      : classification === 'text' && content.trim().length > 0;
   }
 
   private stripAllToolCalls(content: string, capability?: AnyAgentCapability): string {

@@ -73,6 +73,8 @@ export interface PromptBudgets {
    * menu accepted by fail-closed parsers, and what a commit may carry. The
    * exploration cloud stays in the re-openable config but is excluded from
    * the rail — only selections and the writer's note influence the turn.
+   * Creative Variations adds bounded passage/context inputs, typed card and
+   * risk fields, the complete provider envelope, and the compact artifact.
    */
   readonly workshopWidgets: Readonly<{
     gestureTargetPhraseCharacters: number;
@@ -96,10 +98,55 @@ export interface PromptBudgets {
     gestureOptionsPerGroup: number;
     gestureOptionCharacters: number;
     gestureSelectionsPerCommit: number;
+    creativeSubjectCharacters: number;
+    creativeSubjectPreviewCharacters: number;
+    creativeProvenancePathCharacters: number;
+    /** Maximum surrounding context the writer may author or paste into the widget. */
+    creativeContextCharacters: number;
+    /** Maximum surrounding prose a persona may copy into a recommendation prefill. */
+    creativeRecommendationContextCharacters: number;
+    creativeSourceReferences: number;
+    creativeSourceReferenceCharacters: number;
+    creativeMustSurviveCharacters: number;
+    creativeMustNotChangeCharacters: number;
+    creativeAimCharacters: number;
+    creativeNoteCharacters: number;
+    creativeWorkupIdCharacters: number;
+    creativeApproachCharacters: number;
+    creativeDirectionCharacters: number;
+    creativeProseCharacters: number;
+    creativeTradeoffCharacters: number;
+    creativeFlagsPerCard: number;
+    creativeFlagNoteCharacters: number;
+    creativeOutputTokens: number;
+    creativeResponseCharacters: number;
+    creativeArtifactCharacters: number;
+    creativeRecommendationFrameAllowanceCharacters: number;
+    lexicalRecommendationFrameCharacters: number;
     lexicalLensNameCharacters: number;
     lexicalLensSlugCharacters: number;
     lexicalLensVariantCharacters: number;
     lexicalLensDescriptionCharacters: number;
+    lexicalLogicPremiseCharacters: number;
+    lexicalAttentionItemsMinimum: number;
+    lexicalAttentionItems: number;
+    lexicalAttentionItemCharacters: number;
+    lexicalLogicAxesMinimum: number;
+    lexicalLogicAxes: number;
+    lexicalLogicIdCharacters: number;
+    lexicalLogicNameCharacters: number;
+    lexicalAxisPoleCharacters: number;
+    lexicalLogicRolesMinimum: number;
+    lexicalLogicRoles: number;
+    lexicalRoleDescriptionCharacters: number;
+    lexicalLogicDynamicsMinimum: number;
+    lexicalLogicDynamics: number;
+    lexicalDynamicMovementCharacters: number;
+    lexicalDynamicEntailmentCharacters: number;
+    lexicalDynamicAffordanceCharacters: number;
+    lexicalLogicGuardrailsMinimum: number;
+    lexicalLogicGuardrails: number;
+    lexicalGuardrailCharacters: number;
     lexicalTermCharacters: number;
     lexicalTermsPerBucket: number;
     lexicalGradientTerms: number;
@@ -109,7 +156,14 @@ export interface PromptBudgets {
     lexicalBuildQueryCharacters: number;
     lexicalBuildCandidates: number;
     lexicalBuildOutputTokens: number;
+    lexicalBuildResponseCharacters: number;
     lexicalPreviewCharacters: number;
+    lexicalPreviewResponseCharacters: number;
+    lexicalPreviewPositions: number;
+    lexicalPreviewElementCharacters: number;
+    lexicalPreviewAxisPositionCharacters: number;
+    lexicalPreviewSignificanceCharacters: number;
+    lexicalPreviewEntailmentCharacters: number;
     lexicalPreviewOutputTokens: number;
     lexicalDirectiveCharacters: number;
   }>;
@@ -181,10 +235,53 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     gestureOptionsPerGroup: 10,
     gestureOptionCharacters: 220,
     gestureSelectionsPerCommit: 8,
+    creativeSubjectCharacters: 20_000,
+    creativeSubjectPreviewCharacters: 160,
+    creativeProvenancePathCharacters: 500,
+    creativeContextCharacters: 250_000,
+    creativeRecommendationContextCharacters: 20_000,
+    creativeSourceReferences: 8,
+    creativeSourceReferenceCharacters: 500,
+    creativeMustSurviveCharacters: 2_000,
+    creativeMustNotChangeCharacters: 2_000,
+    creativeAimCharacters: 1_000,
+    creativeNoteCharacters: 500,
+    creativeWorkupIdCharacters: 64,
+    creativeApproachCharacters: 160,
+    creativeDirectionCharacters: 600,
+    creativeProseCharacters: 20_000,
+    creativeTradeoffCharacters: 400,
+    creativeFlagsPerCard: 8,
+    creativeFlagNoteCharacters: 400,
+    creativeOutputTokens: 45_000,
+    creativeResponseCharacters: 140_000,
+    creativeArtifactCharacters: 20_000,
+    creativeRecommendationFrameAllowanceCharacters: 2_500,
+    lexicalRecommendationFrameCharacters: 1_000,
     lexicalLensNameCharacters: 80,
     lexicalLensSlugCharacters: 64,
     lexicalLensVariantCharacters: 120,
     lexicalLensDescriptionCharacters: 320,
+    lexicalLogicPremiseCharacters: 400,
+    lexicalAttentionItemsMinimum: 2,
+    lexicalAttentionItems: 4,
+    lexicalAttentionItemCharacters: 180,
+    lexicalLogicAxesMinimum: 2,
+    lexicalLogicAxes: 4,
+    lexicalLogicIdCharacters: 64,
+    lexicalLogicNameCharacters: 80,
+    lexicalAxisPoleCharacters: 100,
+    lexicalLogicRolesMinimum: 2,
+    lexicalLogicRoles: 4,
+    lexicalRoleDescriptionCharacters: 240,
+    lexicalLogicDynamicsMinimum: 2,
+    lexicalLogicDynamics: 4,
+    lexicalDynamicMovementCharacters: 200,
+    lexicalDynamicEntailmentCharacters: 360,
+    lexicalDynamicAffordanceCharacters: 360,
+    lexicalLogicGuardrailsMinimum: 2,
+    lexicalLogicGuardrails: 4,
+    lexicalGuardrailCharacters: 240,
     lexicalTermCharacters: 80,
     lexicalTermsPerBucket: 12,
     lexicalGradientTerms: 12,
@@ -193,9 +290,16 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     lexicalSampleCharacters: 800,
     lexicalBuildQueryCharacters: 100,
     lexicalBuildCandidates: 3,
-    lexicalBuildOutputTokens: 8_000,
+    lexicalBuildOutputTokens: 24_000,
+    lexicalBuildResponseCharacters: 200_000,
     lexicalPreviewCharacters: 1_200,
-    lexicalPreviewOutputTokens: 3_600,
-    lexicalDirectiveCharacters: 3_000
+    lexicalPreviewResponseCharacters: 12_000,
+    lexicalPreviewPositions: 6,
+    lexicalPreviewElementCharacters: 160,
+    lexicalPreviewAxisPositionCharacters: 160,
+    lexicalPreviewSignificanceCharacters: 320,
+    lexicalPreviewEntailmentCharacters: 500,
+    lexicalPreviewOutputTokens: 5_000,
+    lexicalDirectiveCharacters: 16_000
   }
 };

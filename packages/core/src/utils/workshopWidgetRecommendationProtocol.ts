@@ -20,6 +20,8 @@ export type WorkshopWidgetRecommendationRejection =
 interface WorkshopWidgetRecommendationRejectedBase {
   outcome: 'rejected';
   recommendation?: undefined;
+  /** Known only after the generic parser has extracted and admitted the id. */
+  widgetId?: WorkshopWidgetRecommendation['widgetId'];
 }
 
 export type WorkshopWidgetRecommendationInspection<
@@ -73,6 +75,8 @@ export interface WorkshopWidgetRecommendationEntry<
   readonly instruction: string;
   /** Every reserved delimiter required by this feature's exact frame grammar. */
   readonly reservedMarkers: readonly string[];
+  /** Exact feature-owned ceiling, rechecked after the widget id is known. */
+  readonly frameCharacters: number;
   inspect(
     sectionLines: readonly string[]
   ): WorkshopWidgetRecommendationInspection<Recommendation, Field, InvalidFieldReason>;

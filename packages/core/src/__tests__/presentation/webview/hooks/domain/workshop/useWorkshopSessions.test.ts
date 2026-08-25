@@ -3,7 +3,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { useWorkshopSessions } from '@hooks/domain/workshop/useWorkshopSessions';
 import { WorkshopRoomReplacementPort } from '@hooks/domain/workshop/useWorkshopRoom';
-import { MessageType, WorkshopSessionActionResultMessage } from '@messages';
+import {
+  MessageType,
+  WorkshopSessionActionResultMessage,
+  WorkshopSessionRecoveryNoticeMessage
+} from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('@hooks/useVSCodeApi');
@@ -66,5 +70,39 @@ describe('useWorkshopSessions', () => {
 
     expect(replacement.restoreReplacement).toHaveBeenCalledWith(snapshot);
     expect(result.current.sessionActionPending).toBeUndefined();
+  });
+
+  it('queues recovery notices in order, deduplicates them, and consumes one at a time', () => {
+    const replacement: WorkshopRoomReplacementPort = {
+      beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0, errorMessage: '' })),
+      restoreReplacement: jest.fn()
+    };
+    const { result } = renderHook(() => useWorkshopSessions(replacement));
+    const notice = (
+      code: string,
+      configId: string
+    ): WorkshopSessionRecoveryNoticeMessage => ({
+      type: MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: {
+        code,
+        configId,
+        widgetId: 'lexical-gravity',
+        message: `Recovered ${configId}`
+      }
+    });
+
+    act(() => {
+      result.current.handleSessionRecoveryNotice(notice('v1', 'wc-1'));
+      result.current.handleSessionRecoveryNotice(notice('v1', 'wc-1'));
+      result.current.handleSessionRecoveryNotice(notice('v1', 'wc-2'));
+    });
+
+    expect(result.current.recoveryNotices.map(({ configId }) => configId))
+      .toEqual(['wc-1', 'wc-2']);
+    act(() => result.current.consumeRecoveryNotice());
+    expect(result.current.recoveryNotices.map(({ configId }) => configId))
+      .toEqual(['wc-2']);
   });
 });

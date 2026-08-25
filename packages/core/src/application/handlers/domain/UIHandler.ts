@@ -58,6 +58,10 @@ export class UIHandler {
     router.register(MessageType.REQUEST_SELECTION, this.handleSelectionRequest.bind(this));
     router.register(MessageType.WEBVIEW_ERROR, this.handleWebviewError.bind(this));
     router.register(MessageType.OPEN_WORKSHOP, this.handleOpenWorkshop.bind(this));
+    router.register(
+      MessageType.OPEN_ASSISTANT_SETTINGS,
+      this.handleOpenAssistantSettings.bind(this)
+    );
     router.register(MessageType.REQUEST_STARTUP_NOTICE, this.handleStartupNoticeRequest.bind(this));
     router.register(MessageType.DISMISS_STARTUP_NOTICE, this.handleStartupNoticeDismiss.bind(this));
     router.register(MessageType.TAB_CHANGED, async () => {}); // No-op handler for tab changes
@@ -306,6 +310,14 @@ export class UIHandler {
       return;
     }
     this.workshopUiActions.openWorkshop();
+  }
+
+  async handleOpenAssistantSettings(): Promise<void> {
+    if (!this.workshopUiActions.openAssistantSettings) {
+      this.sendError('ui.settings', 'Prose Minion settings are not available from this surface.');
+      return;
+    }
+    this.workshopUiActions.openAssistantSettings();
   }
 
   async handleSelectionRequest(message: RequestSelectionMessage): Promise<void> {

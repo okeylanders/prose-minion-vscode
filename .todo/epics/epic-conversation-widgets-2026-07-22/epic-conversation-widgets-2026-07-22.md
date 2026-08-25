@@ -1,12 +1,15 @@
 # Epic: Conversation Widgets
 
 **Created**: 2026-07-22
-**Status**: Ready to resume after the Workshop Architecture Refactor merges to
-`main`; Okey lifted the Workshop feature freeze on 2026-08-06. Sprint 01
-merged 2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed;
-Sprint 02B-B and all later behavior were paused for the Workshop Architecture
-Refactor Phases 0-7; that gate is now satisfied, with the architecture epic's
-final integration into `main` as the new base.
+**Status**: Active. Okey lifted the Workshop feature freeze on 2026-08-06 after
+the Workshop Architecture Refactor completed Phases 0-7. Sprint 01 merged
+2026-07-30; Sprints 02A and 02B merged 2026-07-31; Sprint 02B-A landed; Sprint
+02B-B is complete, including widget codec recovery and F5 acceptance. Sprint
+02D merged through [PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111)
+on 2026-08-08, establishing the persistence grammar/integrity family boundary
+before Creative Variations or any other persisted widget begins. Sprint 03
+Creative Variations is active, followed by Prose Controller, Show vs. Tell, and
+the later Lexical Gravity model-selected stack.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
@@ -21,18 +24,27 @@ local persisted codec, hydration regained a structural prepare/install boundary,
 and shared shape grammar consolidated into `persistedValidation`. Sprint 02B
 merged through [PR #98](https://github.com/okeylanders/prose-minion-vscode/pull/98):
 single-lens Lexical Gravity, the standing prose-directive rail, project lens
-resources, and writer-owned edit/kill lifecycle. Sprint 02B-A is the active
-follow-up: agent-prepared widget handoff, default-on proactive assistance, and
-Lexical Gravity/browser UX polish. Sprint 02B-B follows by replacing the
-word-field-only lens codec with an interpretive grammar before any other widget
-behavior sprint proceeds, but it is now paused behind the responsibility
-refactor. The old optional Sprint 02C is superseded by mandatory handler work in
-the [Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md).
-Sprints 03 and 04 have not started.
+resources, and writer-owned edit/kill lifecycle. Sprint 02B-A landed through
+[PR #99](https://github.com/okeylanders/prose-minion-vscode/pull/99):
+agent-prepared widget handoff, default-on proactive assistance, and Lexical
+Gravity/browser UX polish. Sprint 02B-B replaces the word-field-only
+lens codec with an interpretive grammar before later widget behavior proceeds;
+its [Widget Codec Recovery Mode](sprints/02b-b-widget-codec-recovery-mode.md)
+exit plan now salvages recognized v1 session snapshots instead of rejecting the
+whole room. The old optional Sprint 02C scope/context extraction was completed
+under the mandatory
+[Workshop Architecture Refactor](../epic-workshop-architecture-refactor-2026-08-03/epic-workshop-architecture-refactor.md)
+and its superseded sprint file was removed. Sprint 02D merged through
+[PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111),
+implementing the accepted F-07/F-09 foundation with an exhaustive
+four-operation lifecycle registry and post-normalization widget integrity.
+Sprint 03 Creative Variations is the active implementation slice; its Slice 0
+freezes the approved behavior and architecture contract before production code.
+Sprints 04–06 continue the declared feature sequence.
 **ADRs**: [2026-07-22 — Conversation Widgets](../../../docs/adr/2026-07-22-conversation-widgets.md) — **Accepted 2026-07-29**;
 [2026-07-31 — Workshop Widget State Ownership](../../../docs/adr/2026-07-31-workshop-widget-state-ownership.md) — **Accepted 2026-07-31**;
-[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Proposed**;
-[2026-08-03 — Workshop Feature Family and Module Boundaries](../../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) — **Accepted; blocks feature work through refactor Phase 7**
+[2026-08-01 — Lexical Gravity Interpretive Grammar](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md) — **Accepted**; implementation in PR #110 with interactive F5 acceptance verified;
+[2026-08-03 — Workshop Feature Family and Module Boundaries](../../../docs/adr/2026-08-03-workshop-feature-family-and-module-boundaries.md) — **Accepted; Phase 7 completed and feature gate lifted**
 **Integration branch**: `epic/conversation-widgets`
 
 ## Goal
@@ -99,12 +111,13 @@ These are the walls. Everything else is decoration that can move.
      The persona already responded to the old artifact; rewriting that turn
      desyncs the transcript from what the model saw. The old chip stays as a
      historical marker; clicking it seeds a *new* commit at the head.
-   - **Standing widgets → edit-in-place the live directive.** There is one active
-     directive per shaping family on the passage; editing it swaps the standing
-     frame **between runs** and emits a "shifted from X to Y" marker — the same
-     event class and cache cost as a mode/expression change via
-   `replaceWorkshopConversationBehavior`. Pre-commit changes remain local;
-   Apply swaps the live frame between runs.
+   - **Standing widgets → edit their own live directive.** A standing directive
+     has a stable id and changes only **between runs**, emitting a "shifted from
+     X to Y" marker — the same event class and cache cost as a mode/expression
+     change via `replaceWorkshopConversationBehavior`. Prose Controller has one
+     active directive; Sprint 06 allows several independent Lexical Gravity
+     directives, each edited or removed by its own id. Pre-commit changes remain
+     local; Apply swaps only the targeted live frame between runs.
 
 5. **Config, not just output, is session-owned and persisted by stable id.**
    The chip re-hydrates the exact authoring UI, not a dead summary. VS Code
@@ -172,22 +185,26 @@ with a second widget before adding v2 richness.
 | 2A | [Widget state architecture](sprints/02a-widget-state-architecture.md) | none (refactor) | Session ownership stays singular while widget config lifecycle and persisted field rules gain focused seams before the second widget. |
 | 2B | [Lexical Gravity + standing prose-directive rail](sprints/02b-lexical-gravity-standing-rail.md) | standing context | The durable rail exists, built with its first real widget: four-value single-lens config, deterministic lexical-field scaffold, explicit preview/build model seams, project lens library, edit-in-place + shift marker, amber active strip + one-click kill. |
 | 2B-A | [Agent-prepared widgets + UX polish](sprints/02b-a-agent-prepared-widgets-and-polish.md) | host handoff + standing UI | A selected live widget can become an editable request to the current Host; personas gain a writer-controlled, default-on proactive-assistance permission; the browser and Lexical Gravity surface match the refined design and use lifecycle language instead of payment metaphors. |
-| 2B-B | [Lexical Gravity interpretive grammar](sprints/02b-b-lexical-gravity-interpretive-grammar.md) | standing context + lens resources | The lens codec represents attention, semantic positions, dynamics, and entailments before lexical realization; Preview makes the mapping inspectable. This gates later widget behavior sprints. |
-| 2C | [Workshop scope/context IPC extraction](sprints/02c-workshop-scope-context-ipc-extraction.md) | none (optional refactor) | If the seam remains a pure move after 02B, eight cohesive scope/context routes leave `WorkshopHandler` before Prose Controller adds pressure. It blocks nothing. |
-| 3 | [Prose Controller](sprints/03-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
-| 4 | [Lexical Gravity: lens blending](sprints/04-lexical-gravity-lens-blending.md) | standing context | Multi-lens blending with explicit **dominance** weighting (never an unweighted average). |
+| 2B-B | [Lexical Gravity interpretive grammar](sprints/02b-b-lexical-gravity-interpretive-grammar.md) | standing context + lens resources | The lens codec represents attention, semantic positions, dynamics, and entailments before lexical realization; independent Lexical/Interpret/Recompose and Tell/Blend/Show axes determine how that reading acts and becomes legible. Preview makes the mapping inspectable. This gates later widget behavior sprints. |
+| 2B-B exit | [Widget Codec Recovery Mode](sprints/02b-b-widget-codec-recovery-mode.md) | checkpoint hydration | Gesture and Lexical codecs own their checkpoint normalizations; recognized prior drafts recover through those feature routines, Lexical Gravity v1 retains its original lexical-only standing behavior, and material recovery is reported once to the writer. |
+| 2D | [Widget persistence grammar and integrity](sprints/02d-widget-persistence-grammar-and-integrity.md) | none (persistence foundation) | Persisted widget codecs gain distinct checkpoint-shape, normalization, current-shape, and semantic-integrity operations; shared JSON primitives stop multiplying before the next persisted widget. |
+| 3 | [Creative Variations Explorer](sprints/03-creative-variations.md) | thread-artifact | A typed, bounded comparison studio proves the reusable one-shot variation family: declared invariants, distinct alternatives, writer selection, compact commit, and reopen/clone. |
+| 4 | [Prose Controller](sprints/04-prose-controller.md) | standing context | The standing rail generalizes across an interactive craft-textbook controller for diction, syntax, rhythm, density, narrative handling, figurative texture, and punctuation. |
+| 5 | [Show vs. Tell Playground](sprints/05-show-vs-tell.md) | thread-artifact | The variation family gains a specialized, teachable beat-level continuum that shares vocabulary with Prose Controller without sharing state. |
+| 6 | [Lexical Gravity: model-selected lens stack](sprints/06-lexical-gravity-stack-model-choice.md) | standing context | Independent Lexical Gravity directives stack; the prose model selects zero or one lens that honestly fits the local beat, never a weighted blend. |
 
 Each implemented feature sprint lands as its own PR into
-`epic/conversation-widgets`. Feature sequencing is frozen until the Workshop
-Architecture Refactor Phase 7 explicitly lifts the gate. Sprint 02C is
-superseded by that refactor; Sprint 02B-B becomes the next behavior sprint only
-after closure. Final step after Sprint 04
+`epic/conversation-widgets`. The Workshop Architecture Refactor Phase 7 lifted
+the feature gate. Sprint 02B-B and its recovery exit are complete; Sprint 02D
+merged into `epic/conversation-widgets` through
+[PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111).
+Sprint 03 begins from that completed foundation. Final step after Sprint 06
 (or the agreed cut line): one PR
 `epic/conversation-widgets →` the workshop integration line.
 
 ## The prose-shaping family
 
-Lexical Gravity (Sprints 02B and 04) and Prose Controller (Sprint 03) form a
+Lexical Gravity (Sprints 02B and 06) and Prose Controller (Sprint 04) form a
 complementary pair of passage-scoped prose directives that share the standing
 rail but answer different questions:
 
@@ -216,8 +233,6 @@ here does **not** commit it to this epic's delivery sequence.
 | [Project Scratch Pad](concepts/project-scratch-pad.md) | Resource-backed widget | Project JSON resource; each append also leaves a visible thread event. |
 | [Learner: English](concepts/learner-english.md) | Learning surface using the widget host | Exploration is free; selected lessons/questions may commit as one-shot artifacts. |
 | [Learner: Art of the Craft](concepts/learner-art-of-the-craft.md) | Learning surface using the widget host | Same Learner shell with a storytelling-craft curriculum pack. |
-| [Show vs. Tell Playground](concepts/show-v-tell-playground.md) | Conversation Widget | One-shot thread artifact; clone-and-recommit. |
-| [Creative Variations Playground](concepts/creative-variations-playground.md) | Conversation Widget | One-shot thread artifact; structured alternatives, writer selection, and clone-and-recommit. |
 | [Topic Relationship Explorer](concepts/topic-relationship-explorer.md) | Conversation Widget (Learner-leaning) | One-shot thread artifact; ordered `topic-dossier` with span-verified contacts and grounding tags. |
 | [Genre Relationship Explorer](concepts/genre-relationship-explorer.md) | Conversation Widget (chapter-scale) | One-shot thread artifact, **plus** an optional standing-influence pin nested inside the same commit. |
 | [Writer's Dictionary](concepts/writers-dictionary.md) | Conversation Widget — **report widget** | The run *is* the commit; fifteen typed blocks ride one turn, uncapped. Never stands. |
@@ -240,9 +255,13 @@ Gesture Dictionary followed by a strictly validated JSON menu — not a
 widget-shaped idea awaiting promotion. It is listed here so the folder has no
 orphans.
 
-**Prose Controller is not a concept spring.** It remains committed Sprint 03
-work, but its plan now specifies an "Art of the Craft"-style control surface
-with deeper, teachable style levers rather than a thin bank of sliders.
+**Creative Variations, Prose Controller, and Show vs. Tell are no longer concept
+springs.** They are committed [Sprint 03](sprints/03-creative-variations.md),
+[Sprint 04](sprints/04-prose-controller.md), and
+[Sprint 05](sprints/05-show-vs-tell.md) work. Creative Variations proves the
+general one-shot variation family; Prose Controller is its standing,
+"Art of the Craft" complement; Show vs. Tell is the deliberately specialized
+local sibling.
 
 ## Related / deferred (not committed widget sprints)
 

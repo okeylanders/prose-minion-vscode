@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "sessionId": "released-v1-session",
+  "title": "Released pre-widget room",
+  "createdAt": "2026-08-02T14:00:00.000Z",
+  "updatedAt": "2026-08-02T14:05:00.000Z",
+  "temporal": {
+    "schemaVersion": 1,
+    "startedAt": "2026-08-02T14:00:00.000Z",
+    "timezone": "America/Chicago",
+    "lastActivityAt": "2026-08-02T14:05:00.000Z",
+    "personaNotices": []
+  },
+  "summary": {
+    "hostPersonaId": "jill",
+    "participantPersonaIds": [
+      "jill"
+    ],
+    "turnCount": 0,
+    "excerptWordCount": 0,
+    "preview": "A pre-widget Workshop checkpoint."
+  },
+  "workshop": {
+    "contextAttachments": [],
+    "pendingMessageAttachments": [],
+    "revisions": {
+      "excerpt": 0,
+      "replacementCount": 0,
+      "context": 0
+    },
+    "counters": {
+      "attachment": 0,
+      "threadArtifact": 0,
+      "turn": 0,
+      "todo": 0
+    },
+    "writerSources": {
+      "host": [],
+      "tools": {},
+      "guests": []
+    },
+    "turns": [],
+    "participants": {
+      "host": {
+        "personaId": "jill"
+      },
+      "toolSidecars": [],
+      "personaGuests": [],
+      "chatTarget": {
+        "kind": "host"
+      }
+    },
+    "todos": []
+  },
+  "conversations": []
+}

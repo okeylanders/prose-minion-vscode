@@ -195,6 +195,7 @@ function createTestAssembly(): TestAssembly {
       getDegradedConversationKeys: jest.fn().mockReturnValue([]),
       getDegradedConversations: jest.fn().mockReturnValue([]),
       isCurrentCheckpointProtected: jest.fn().mockReturnValue(false),
+      getCurrentCheckpointError: jest.fn().mockReturnValue(undefined),
       isSessionOperationPending: jest.fn().mockReturnValue(false),
       addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
       waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
@@ -391,6 +392,68 @@ describe('MessageHandler assembly', () => {
     second.flushCachedResults();
 
     expect(secondPost).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: MessageType.ERROR })
+    );
+  });
+
+  it('does not replay a Workshop error after the webview dismisses it', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    await handler.handleMessage({
+      type: MessageType.WORKSHOP_RUN_TOOL,
+      source: 'webview.workshop',
+      payload: { toolId: 'prose' },
+      timestamp: Date.now()
+    });
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: MessageType.ERROR })
+    );
+
+    await handler.handleMessage({
+      type: MessageType.WORKSHOP_DISMISS_ERROR,
+      source: 'webview.workshop',
+      payload: {},
+      timestamp: Date.now()
+    });
+    postMessage.mockClear();
+
+    handler.flushCachedResults();
+
+    expect(postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: MessageType.ERROR })
+    );
+  });
+
+  it('does not replay a Workshop error after newer Workshop state succeeds', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    await handler.handleMessage({
+      type: MessageType.WORKSHOP_RUN_TOOL,
+      source: 'webview.workshop',
+      payload: { toolId: 'prose' },
+      timestamp: Date.now()
+    });
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: MessageType.ERROR })
+    );
+
+    await handler.handleMessage({
+      type: MessageType.WORKSHOP_SET_EXCERPT,
+      source: 'webview.workshop',
+      payload: { text: 'A corrected line.' },
+      timestamp: Date.now()
+    });
+    postMessage.mockClear();
+
+    handler.flushCachedResults();
+
+    expect(postMessage).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: MessageType.ERROR })
     );
   });

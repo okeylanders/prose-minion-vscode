@@ -150,7 +150,9 @@ Frontend hooks mirror backend handlers by domain:
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
 | `useWorkshopRoom` | `WorkshopRoomHandler` | Room/thread/context state and retained host orchestration |
 | `useWorkshopSessions` | `WorkshopSessionMessageHandler` | Named-session lifecycle and browser actions |
-| `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation, correlation, and one-shot commit |
+| `useWorkshopWidgetHost` | `WorkshopWidgetHostHandler` | Config lookup and the family-generic one-shot commit route |
+| `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation and correlation |
+| `useCreativeVariations` | `WorkshopCreativeVariationsHandler` | Creative generation and correlation; the authoring controller owns writer choices |
 | `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows |
 | `useWorkshopStandingDirectives` | `WorkshopStandingDirectiveHandler` | Generic standing apply/remove lifecycle |
 
@@ -257,10 +259,15 @@ Workshop is internally sliced under `application/handlers/domain/workshop/`.
 `WorkshopRoomHandler` owns the nine room/run routes, one active-run slot, and
 the sole Workshop session-state envelope. `WorkshopSliceComposition` constructs
 and registers the context, excerpt/scope, session, todo, standing-directive,
-widget-host, Gesture Playground, and Lexical Gravity route owners behind the
-shared session-operation mutation gate. `WorkshopSessionService` remains the
-whole-session mutation boundary; extracted ledgers and state machines stay
-behind that facade.
+widget-host, Gesture Playground, Creative Variations, and Lexical Gravity route
+owners behind the shared session-operation mutation gate.
+`WorkshopWidgetHostHandler` owns the single family commit route, while
+`WorkshopOneShotWidgetCommitCoordinator` owns retry-config, turn/artifact
+acceptance, and linkage mechanics; named feature compilers retain feature
+validation and artifact wording. Production generation, commit, and persona
+recommendation paths share the catalog-backed availability policy.
+`WorkshopSessionService` remains the whole-session mutation boundary; extracted
+ledgers and state machines stay behind that facade.
 
 The final filename-first dependency map and five-facade audit live in
 [Workshop Responsibility and Dependency Map](architecture/2026-08-06-workshop-responsibility-map.md).
@@ -275,8 +282,10 @@ workshop/
 ├── participants.ts          # Persona/tool ids and participant IPC
 ├── widgets.ts               # Explicit family unions and generic widget IPC
 ├── standingDirectives.ts    # Standing family snapshot/summary/change
+├── creativeVariations.ts    # Creative authoring, workup, overlap, and selection grammar
 ├── gesturePlayground.ts     # Gesture draft, generation, and commit contracts
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
+├── recovery.ts              # Rejected response repair-contract registry
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
 

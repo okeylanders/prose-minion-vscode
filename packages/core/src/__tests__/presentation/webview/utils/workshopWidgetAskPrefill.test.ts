@@ -19,17 +19,31 @@ describe('buildWorkshopWidgetAskPrefill', () => {
     expect(prefill).toContain('offer it for me to review and open');
   });
 
-  it('requires every live registry widget to provide a non-generic Host prefill', () => {
-    const liveWidgets = WORKSHOP_WIDGET_CATALOG
-      .flatMap((group) => group.items)
-      .filter((widget) => widget.live);
+  it('asks the Host for an input-only Creative Variations seed', () => {
+    const prefill = buildWorkshopWidgetAskPrefill('creative-variations', 'Jill');
+    expect(prefill).toContain('exact subject passage');
+    expect(prefill).toContain('any constraints I have actually stated');
+    expect(prefill).toContain('fields empty when I have not stated them');
+    expect(prefill).toContain('sampling distance, and take count');
+    expect(prefill).toContain('Do not generate, select, accept, or commit any takes.');
+  });
 
-    for (const widget of liveWidgets) {
-      expect(canBuildWorkshopWidgetAskPrefill(widget.id)).toBe(true);
-      expect(buildWorkshopWidgetAskPrefill(widget.id, 'Jill')).toContain(widget.label);
-    }
+  it('reports Host-prefill capability independently from launch availability', () => {
+    expect(canBuildWorkshopWidgetAskPrefill('gesture-playground')).toBe(true);
+    expect(canBuildWorkshopWidgetAskPrefill('lexical-gravity')).toBe(true);
+    expect(canBuildWorkshopWidgetAskPrefill('creative-variations')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(false);
     expect(() => buildWorkshopWidgetAskPrefill('show-vs-tell', 'Jill'))
       .toThrow('has no Host-preparation prompt');
+  });
+
+  it('keeps every launchable widget either Host-preparable or explicitly deferred', () => {
+    const liveWidgetsWithoutHostPrefill = WORKSHOP_WIDGET_CATALOG
+      .flatMap((group) => group.items)
+      .filter((widget) => widget.live)
+      .filter((widget) => !canBuildWorkshopWidgetAskPrefill(widget.id))
+      .map((widget) => widget.id);
+
+    expect(liveWidgetsWithoutHostPrefill).toEqual([]);
   });
 });

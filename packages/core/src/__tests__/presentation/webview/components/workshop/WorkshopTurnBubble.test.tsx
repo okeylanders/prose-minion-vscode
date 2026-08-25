@@ -417,6 +417,81 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.queryByRole('button', { name: /rewrite/i })).toBeNull();
   });
 
+  it('reopens a committed one-shot widget from its writer-turn chip', () => {
+    const onOpenWidgetConfig = jest.fn();
+
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          id: 'widget-turn',
+          role: 'user',
+          kind: 'message',
+          participant: 'writer',
+          artifact: 'persona_message',
+          content: 'Try these directions.',
+          timestamp: 1,
+          excerptVersion: 1,
+          widgetCommit: {
+            widgetId: 'gesture-playground',
+            widgetConfigId: 'wc-7',
+            rail: 'thread-artifact',
+            artifactId: 'ta-8',
+            selectionCount: 2
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+        onOpenWidgetConfig={onOpenWidgetConfig}
+      />
+    );
+
+    const chip = screen.getByRole('button', { name: /Gesture Playground/ });
+    expect(chip.textContent).toContain('2 directions · re-open');
+    fireEvent.click(chip);
+    expect(onOpenWidgetConfig).toHaveBeenCalledWith('wc-7');
+  });
+
+  it('derives a one-shot chip label and selected-unit noun from its widget id', () => {
+    const onOpenWidgetConfig = jest.fn();
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          id: 'creative-widget-turn',
+          role: 'user',
+          kind: 'message',
+          participant: 'writer',
+          artifact: 'persona_message',
+          content: 'Try these variations.',
+          timestamp: 1,
+          excerptVersion: 1,
+          widgetCommit: {
+            widgetId: 'creative-variations',
+            widgetConfigId: 'wc-8',
+            rail: 'thread-artifact',
+            artifactId: 'ta-9',
+            selectionCount: 3
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+        onOpenWidgetConfig={onOpenWidgetConfig}
+      />
+    );
+
+    const chip = screen.getByRole('button', { name: /Creative Variations Explorer/ });
+    expect(chip.textContent).toContain('3 variations · re-open');
+    expect(chip.textContent).not.toContain('Gesture Playground');
+    expect(chip.textContent).not.toContain('directions');
+    fireEvent.click(chip);
+    expect(onOpenWidgetConfig).toHaveBeenCalledWith('wc-8');
+  });
+
   it('forwards the complete rich persona seed when its widget chip is opened', () => {
     const onOpenWidgetRecommendation = jest.fn();
     const recommendation = {
@@ -455,7 +530,51 @@ describe('WorkshopTurnBubble variation cards', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Gesture Playground/ }));
-    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Jill');
+    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Jill', 'jill');
+  });
+
+  it('correlates a Creative Variations prefill to the exact persona turn chip', () => {
+    const onOpenWidgetRecommendation = jest.fn();
+    const recommendation = {
+      widgetId: 'creative-variations' as const,
+      seed: {
+        subjectText: 'She rotated the mug until the chip faced the wall.',
+        mustSurvive: 'The refusal remains implicit.',
+        mustNotChange: 'Keep the mug and close third person.',
+        aim: 'Move the refusal into physical behavior.',
+        distance: 'tail' as const,
+        requestedCount: 4 as const
+      }
+    };
+
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('Let us get unlike possibilities on the table.'),
+          kind: 'message',
+          participant: 'guest',
+          artifact: 'persona_message',
+          toolId: undefined,
+          toolLabel: undefined,
+          personaId: 'margot',
+          personaLabel: 'Margot',
+          widgetRecommendation: recommendation
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+        onOpenWidgetRecommendation={onOpenWidgetRecommendation}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Creative Variations Explorer/ }));
+    expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(
+      recommendation,
+      'Margot',
+      'margot'
+    );
   });
 
   it('labels logical-turn traffic as processed across provider calls', () => {

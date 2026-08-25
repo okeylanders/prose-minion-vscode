@@ -44,6 +44,9 @@ import type {
 import type {
   WorkshopThreadArtifact
 } from '@/application/services/workshop/WorkshopThreadArtifactFrame';
+import type {
+  WorkshopWidgetRecoveryNotice
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 
 export type WorkshopActivePhase =
   | 'tool_report'
@@ -65,8 +68,10 @@ export interface WorkshopActiveRun {
   /** Behavior captured when a persona run begins; settings cannot change mid-run. */
   behavior?: WorkshopConversationBehavior;
   behaviorTransition?: WorkshopConversationBehaviorTransition;
-  /** Provisional evidence finalized only if this participant reply commits. */
+  /** Completed evidence to publish with a reply if it commits; otherwise retained standalone. */
   capabilityTurnIds?: string[];
+  /** Visible writer turn provisionally appended for this message run. */
+  writerTurnId?: string;
   /** Writer-origin rows captured from the exact fresh-guest join envelope. */
   guestJoinWriterSources?: ContextSourceEntry[];
 }
@@ -181,6 +186,7 @@ export interface WorkshopSessionHydrationResult {
   discardedConversationIds: string[];
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   normalizations: WorkshopSessionCheckpointNormalization[];
+  recoveryNotices: WorkshopWidgetRecoveryNotice[];
 }
 
 export function cloneToolWriterSources(
@@ -217,6 +223,18 @@ export function cloneWidgetRecommendation(
       return {
         widgetId: recommendation.widgetId,
         seed: recommendation.seed ? { ...recommendation.seed } : undefined
+      };
+    case 'creative-variations':
+      return {
+        widgetId: recommendation.widgetId,
+        seed: recommendation.seed
+          ? {
+              ...recommendation.seed,
+              sourceReferences: recommendation.seed.sourceReferences?.map(
+                (reference) => ({ ...reference })
+              )
+            }
+          : undefined
       };
     default:
       return assertNever(recommendation);

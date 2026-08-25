@@ -32,6 +32,7 @@ import {
 import {
   WorkshopTurnWidgetCommit,
   WorkshopWidgetConfigSummary,
+  WorkshopWidgetId,
   WorkshopWidgetRecommendation
 } from './widgets';
 
@@ -593,6 +594,11 @@ export interface WorkshopRequestSessionMessage extends MessageEnvelope<Record<st
   type: MessageType.WORKSHOP_REQUEST_SESSION;
 }
 
+/** Acknowledge the visible room error so the host does not replay it on reveal. */
+export interface WorkshopDismissErrorMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_DISMISS_ERROR;
+}
+
 /**
  * Save the coherent current session. Without `sessionId` this creates a named
  * checkpoint; with it, the host updates that exact checkpoint after verifying
@@ -658,6 +664,17 @@ export interface WorkshopTurnMessage extends MessageEnvelope<WorkshopTurnPayload
   type: MessageType.WORKSHOP_TURN;
 }
 
+/**
+ * Re-seeds the composer after the host rolled back a transiently unavailable
+ * writer turn. This is presentation recovery only; the text is not retained
+ * in Workshop history until a later send succeeds.
+ */
+export interface WorkshopComposerDraftRestoredMessage extends MessageEnvelope<{
+  text: string;
+}> {
+  type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED;
+}
+
 export interface WorkshopSessionStatePayload {
   session: WorkshopSessionSnapshot;
   /** Global writer setting, deliberately outside the serializable session aggregate. */
@@ -667,8 +684,10 @@ export interface WorkshopSessionStatePayload {
   persistence: {
     available: boolean;
     unavailableReason?: 'no-workspace' | 'multi-root';
-    /** True when an unreadable current.json is protected from automatic overwrite. */
+    /** True when a current.json that failed restoration is protected from automatic overwrite. */
     currentCheckpointProtected?: boolean;
+    /** Display-safe restoration diagnostic for the protected rolling checkpoint. */
+    currentCheckpointError?: string;
     /** Non-empty only when product state survived but retained memory did not. */
     degradedConversationKeys: string[];
     /** Display-safe explanation for each participant whose retained memory degraded. */
@@ -755,4 +774,14 @@ export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
   error?: string;
 }> {
   type: MessageType.WORKSHOP_SESSION_SAVE_STATUS;
+}
+
+/** Consume-once, feature-authored notice after successful checkpoint recovery. */
+export interface WorkshopSessionRecoveryNoticeMessage extends MessageEnvelope<{
+  code: string;
+  widgetId: WorkshopWidgetId;
+  configId: string;
+  message: string;
+}> {
+  type: MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE;
 }

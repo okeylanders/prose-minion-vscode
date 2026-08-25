@@ -98,6 +98,7 @@ import {
   OpenSettingsMessage,
   OpenSettingsToggleMessage,
   OpenWorkshopMessage,
+  OpenAssistantSettingsMessage,
   RequestStartupNoticeMessage,
   StartupNoticeDataMessage,
   DismissStartupNoticeMessage,
@@ -160,6 +161,7 @@ import {
   WorkshopRepinExcerptMessage,
   WorkshopResetSessionMessage,
   WorkshopRequestSessionMessage,
+  WorkshopDismissErrorMessage,
   WorkshopSaveSessionMessage,
   WorkshopListSessionsMessage,
   WorkshopOpenSessionMessage,
@@ -168,14 +170,20 @@ import {
   WorkshopRevealSessionMessage,
   WorkshopDeleteSessionMessage,
   WorkshopTurnMessage,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopSessionStateMessage,
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
   WorkshopSessionSaveStatusMessage,
+  WorkshopSessionRecoveryNoticeMessage,
   WorkshopGesturePlaygroundGenerateMessage,
   CancelGesturePlaygroundGenerateRequestMessage,
   WorkshopGesturePlaygroundGenerationProgressMessage,
   WorkshopGesturePlaygroundMenuResultMessage,
+  WorkshopCreativeVariationsGenerateMessage,
+  CancelCreativeVariationsGenerateRequestMessage,
+  WorkshopCreativeVariationsGenerationProgressMessage,
+  WorkshopCreativeVariationsResultMessage,
   WorkshopRequestLexicalGravityLensesMessage,
   WorkshopLexicalGravityLensesDataMessage,
   WorkshopPreviewLexicalGravityMessage,
@@ -229,6 +237,7 @@ export type WebviewToExtensionMessage =
   | DeleteApiKeyMessage
   | WebviewErrorMessage
   | OpenWorkshopMessage
+  | OpenAssistantSettingsMessage
   | FastGenerateDictionaryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
@@ -267,6 +276,7 @@ export type WebviewToExtensionMessage =
   | WorkshopRepinExcerptMessage
   | WorkshopResetSessionMessage
   | WorkshopRequestSessionMessage
+  | WorkshopDismissErrorMessage
   | WorkshopSaveSessionMessage
   | WorkshopListSessionsMessage
   | WorkshopOpenSessionMessage
@@ -276,6 +286,8 @@ export type WebviewToExtensionMessage =
   | WorkshopDeleteSessionMessage
   | WorkshopGesturePlaygroundGenerateMessage
   | CancelGesturePlaygroundGenerateRequestMessage
+  | WorkshopCreativeVariationsGenerateMessage
+  | CancelCreativeVariationsGenerateRequestMessage
   | WorkshopRequestLexicalGravityLensesMessage
   | WorkshopPreviewLexicalGravityMessage
   | WorkshopBuildLexicalGravityLensMessage
@@ -317,15 +329,19 @@ export type ExtensionToWebviewMessage =
   | StreamChunkMessage
   | StreamCompleteMessage
   | WorkshopTurnMessage
+  | WorkshopComposerDraftRestoredMessage
   | WorkshopSessionStateMessage
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage
   | WorkshopSessionSaveStatusMessage
+  | WorkshopSessionRecoveryNoticeMessage
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage
   | WorkshopContextAttachmentContentMessage
   | WorkshopGesturePlaygroundGenerationProgressMessage
   | WorkshopGesturePlaygroundMenuResultMessage
+  | WorkshopCreativeVariationsGenerationProgressMessage
+  | WorkshopCreativeVariationsResultMessage
   | WorkshopLexicalGravityLensesDataMessage
   | WorkshopLexicalGravityPreviewResultMessage
   | WorkshopLexicalGravityLensCandidatesMessage

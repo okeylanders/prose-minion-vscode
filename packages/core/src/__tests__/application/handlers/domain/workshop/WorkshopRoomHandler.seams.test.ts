@@ -7,6 +7,15 @@ import {
   createWorkshopRouteTestHarness
 } from './WorkshopRouteTestHarness';
 import type { WorkshopRouteTestHarness } from './WorkshopRouteTestHarness';
+import {
+  generatedDraft
+} from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
+import {
+  parseWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
+import {
+  computeCreativeVariationsTextualOverlap
+} from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 
 describe('WorkshopRoomHandler routing — cross-owner seams', () => {
   let session: WorkshopRouteTestHarness['session'];
@@ -18,6 +27,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
   let posted: WorkshopRouteTestHarness['posted'];
   let pin: WorkshopRouteTestHarness['pin'];
   let runProse: WorkshopRouteTestHarness['runProse'];
+  let creativeVariationsGenerate: WorkshopRouteTestHarness['creativeVariationsGenerate'];
 
   beforeEach(() => {
     ({
@@ -29,7 +39,8 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       persistence,
       posted,
       pin,
-      runProse
+      runProse,
+      creativeVariationsGenerate
     } = createWorkshopRouteTestHarness());
   });
 
@@ -56,7 +67,99 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_COMMIT_WIDGET)).toBe(true);
-    expect(router.handlerCount).toBe(48);
+    expect(router.hasHandler(MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE)).toBe(true);
+    expect(router.hasHandler(MessageType.CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST)).toBe(true);
+    expect(router.handlerCount).toBe(50);
+  });
+
+  it('refuses a live non-one-shot wire id through the real closed generation adapter', async () => {
+    await expect(router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'lexical-gravity',
+      requestToken: 'commit-wrong-rail',
+      draft: {}
+    }) as any)).resolves.toBeUndefined();
+
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      payload: {
+        action: 'commit',
+        requestToken: 'commit-wrong-rail',
+        widgetId: 'lexical-gravity',
+        ok: false,
+        message: 'That widget does not support one-shot commits.'
+      }
+    });
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+  });
+
+  it('routes Creative generation through the real live catalog policy with exact correlation', async () => {
+    creativeVariationsGenerate.mockImplementationOnce(async ({ workupId }) => {
+      const cards = generatedDraft.workup!.cards.map((card) => ({
+        ...card,
+        invariantFlags: []
+      }));
+      return {
+        cancelled: false,
+        workup: {
+          workupId,
+          generationProtocolVersion: generatedDraft.workup!.generationProtocolVersion,
+          cards,
+          overlap: computeCreativeVariationsTextualOverlap(
+            generatedDraft.subject.text,
+            cards
+          )
+        },
+        truncated: false
+      };
+    });
+
+    await router.route(message(MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE, {
+      widgetId: 'creative-variations',
+      token: 'creative-live-route',
+      subject: generatedDraft.subject,
+      surroundingContext: generatedDraft.surroundingContext,
+      invariants: generatedDraft.invariants,
+      intent: generatedDraft.intent,
+      requestedCount: generatedDraft.requestedCount
+    }) as any);
+
+    expect(creativeVariationsGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      workupId: expect.stringMatching(/^cvw-/),
+      requestedCount: 3,
+      signal: expect.any(AbortSignal)
+    }));
+    const result = posted(MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT).at(-1);
+    expect(result).toBeDefined();
+    expect(result).toMatchObject({
+      payload: {
+        widgetId: 'creative-variations',
+        token: 'creative-live-route',
+        ok: true,
+        workup: expect.objectContaining({
+          workupId: result!.payload.workupId
+        })
+      }
+    });
+    expect(result!.payload.workupId).toMatch(/^cvw-/);
+  });
+
+  it('refuses a dormant widget through the real production catalog policy', async () => {
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'show-vs-tell',
+      requestToken: 'commit-dormant-widget',
+      draft: {}
+    }) as any);
+
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      payload: {
+        action: 'commit',
+        requestToken: 'commit-dormant-widget',
+        widgetId: 'show-vs-tell',
+        ok: false,
+        message: 'That widget is not available yet.'
+      }
+    });
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(creativeVariationsGenerate).not.toHaveBeenCalled();
   });
 
   it('keeps a failed widget send as a complete retryable user turn plus artifact', async () => {
@@ -71,6 +174,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
     await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
       widgetId: 'gesture-playground',
+      requestToken: 'commit-retry',
       draft: {
         targetPhrase: 'she smiled',
         writerInstructions: '',
@@ -102,6 +206,144 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       })
     ]));
     expect(session.getWidgetConfig('wc-1')).toBeDefined();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      source: 'extension.workshop.widget',
+      payload: {
+        action: 'commit',
+        requestToken: 'commit-retry',
+        widgetId: 'gesture-playground',
+        ok: true,
+        widgetConfigId: 'wc-1',
+        turnId: writerTurn?.id
+      }
+    });
+  });
+
+  it('commits and clone-recommits Creative through fresh linked records without regeneration', async () => {
+    session.setSessionScope('open');
+    const exactDraft = {
+      ...JSON.parse(JSON.stringify(generatedDraft)),
+      intent: { ...generatedDraft.intent, aim: '' },
+      selections: [{
+        position: 1,
+        carryMode: 'direction' as const,
+      }],
+      note: 'Ask whether the quieter direction earns its silence.'
+    };
+
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'creative-variations',
+      requestToken: 'creative-original',
+      draft: exactDraft
+    }) as any);
+
+    const original = session.getWidgetConfig('wc-1');
+    const originalState = JSON.parse(JSON.stringify(original));
+    const originalTurn = session.exportCommittedState().turns.find(
+      (turn) => turn.widgetCommit?.widgetConfigId === 'wc-1'
+    );
+    expect(original).toMatchObject({
+      widgetId: 'creative-variations',
+      draft: expect.objectContaining({
+        intent: expect.objectContaining({ aim: '' }),
+        workup: generatedDraft.workup,
+        selections: exactDraft.selections
+      }),
+      artifactId: 'ta-1',
+      committedTurnId: originalTurn?.id
+    });
+    expect(originalTurn?.widgetCommit).toMatchObject({
+      widgetId: 'creative-variations',
+      widgetConfigId: 'wc-1',
+      artifactId: 'ta-1',
+      selectionCount: 1
+    });
+    expect(originalTurn?.content).toContain(
+      'for “He set the mug down where her hand could reach it without asking. She smiled.”'
+    );
+
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'creative-variations',
+      requestToken: 'creative-clone',
+      draft: exactDraft,
+      clonedFromConfigId: 'wc-1'
+    }) as any);
+
+    const committed = session.exportCommittedState();
+    const cloned = session.getWidgetConfig('wc-2');
+    const cloneTurn = committed.turns.find(
+      (turn) => turn.widgetCommit?.widgetConfigId === 'wc-2'
+    );
+    expect(cloned).toMatchObject({
+      widgetId: 'creative-variations',
+      clonedFromConfigId: 'wc-1',
+      artifactId: 'ta-2',
+      committedTurnId: cloneTurn?.id
+    });
+    expect(cloneTurn?.id).not.toBe(originalTurn?.id);
+    expect(session.getWidgetConfig('wc-1')).toEqual(originalState);
+    expect(committed.threadArtifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'ta-1',
+        turnId: originalTurn?.id,
+        kind: 'widget:creative-variations'
+      }),
+      expect.objectContaining({
+        id: 'ta-2',
+        turnId: cloneTurn?.id,
+        kind: 'widget:creative-variations'
+      })
+    ]));
+    expect(creativeVariationsGenerate).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).slice(-2))
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            requestToken: 'creative-original',
+            widgetId: 'creative-variations',
+            ok: true,
+            widgetConfigId: 'wc-1'
+          })
+        }),
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            requestToken: 'creative-clone',
+            widgetId: 'creative-variations',
+            ok: true,
+            widgetConfigId: 'wc-2'
+          })
+        })
+      ]));
+  });
+
+  it('rejects unknown Creative clone provenance before mutation and exports valid state', async () => {
+    session.setSessionScope('open');
+    const exactDraft = {
+      ...JSON.parse(JSON.stringify(generatedDraft)),
+      selections: [{
+        position: 1,
+        carryMode: 'direction' as const,
+      }]
+    };
+
+    await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
+      widgetId: 'creative-variations',
+      requestToken: 'creative-invalid-clone',
+      draft: exactDraft,
+      clonedFromConfigId: 'wc-999'
+    }) as any);
+
+    expect(session.getWidgetConfig('wc-1')).toBeUndefined();
+    expect(posted(MessageType.WORKSHOP_WIDGET_ACTION_RESULT).at(-1)).toMatchObject({
+      payload: {
+        action: 'commit',
+        requestToken: 'creative-invalid-clone',
+        widgetId: 'creative-variations',
+        ok: false,
+        message: expect.stringMatching(/source widget configuration is no longer available/i)
+      }
+    });
+    expect(() => parseWorkshopSessionStateV1(session.exportCommittedState())).not.toThrow();
   });
 
   it('guards routed room mutations while a shared session operation is pending', async () => {
@@ -126,6 +368,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
 
     await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
       widgetId: 'gesture-playground',
+      requestToken: 'commit-blocked',
       draft: {
         targetPhrase: 'she smiled',
         writerInstructions: '',
@@ -148,6 +391,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       source: 'extension.workshop.widget',
       payload: {
         action: 'commit',
+        requestToken: 'commit-blocked',
         widgetId: 'gesture-playground',
         ok: false,
         message: expect.stringMatching(/session save or replacement/i)

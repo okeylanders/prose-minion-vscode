@@ -36,7 +36,8 @@ Playground's persisted draft rules into focused collaborators.
 - A standing-directive coordinator without a concrete producer.
 - A generic widget plugin/runtime framework.
 - Independent widget schema versions or storage.
-- The unrelated Workshop scope/context IPC extraction (optional Sprint 02C).
+- The unrelated Workshop scope/context IPC extraction, later completed by the
+  mandatory Workshop Architecture Refactor.
 - Any change to widget commit, retry-token, artifact-delivery, or session codec
   compatibility behavior.
 

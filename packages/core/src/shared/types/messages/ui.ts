@@ -22,6 +22,7 @@ export type SelectionTarget =
   | 'assistant_context'
   | 'assistant_excerpt_verify'  // For Ctrl+V paste verification - compares, doesn't overwrite
   | 'workshop_excerpt_verify'   // Workshop panel's own verify lane (Sprint 12) - same compare-only contract
+  | 'workshop_creative_variations_subject'
   | 'dictionary_word'
   | 'dictionary_context';
 
@@ -105,6 +106,11 @@ export interface OpenSettingsToggleMessage extends MessageEnvelope<Record<string
 
 export interface OpenWorkshopMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.OPEN_WORKSHOP;
+}
+
+/** Ask the host shell to reveal the existing Prose Minion settings overlay. */
+export interface OpenAssistantSettingsMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.OPEN_ASSISTANT_SETTINGS;
 }
 
 // Webview diagnostics → extension output channel

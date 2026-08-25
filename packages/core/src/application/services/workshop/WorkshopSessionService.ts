@@ -60,6 +60,7 @@ import {
   workshopTurnAudience
 } from '@/application/services/workshop/WorkshopRoomAudience';
 import {
+  assertCurrentWorkshopSessionStateV1,
   WorkshopConversationLogicalKey,
   WorkshopRuntimeConversationBindings,
   WorkshopSessionStateV1
@@ -1598,11 +1599,55 @@ export class WorkshopSessionService {
     return this.todoLedger.collectOpen(this.getExcerptVersion());
   }
 
-  /** Cancel, preempt, or fail only the active request; keep visible turns. */
+  /** Cancel or preempt only the active request; keep its visible writer turn. */
   abandonRun(requestId: string): void {
     if (this.activeRun?.requestId === requestId) {
       this.activeRun = undefined;
     }
+  }
+
+  /**
+   * Roll a transiently unavailable message back to its pre-send room state.
+   *
+   * The writer turn is provisional until a participant reply commits.
+   * Capability evidence is not: it may already be visible, billed, and the
+   * source of a durable to-do, so rollback retains it. Composer attachments
+   * remain pending for a retry; writer-turn-bound artifact bodies and widget
+   * linkage leave with the writer turn.
+   */
+  rollbackMessageRun(requestId: string): WorkshopTurn | undefined {
+    const active = this.activeRun;
+    if (
+      active?.requestId !== requestId
+      || active.kind !== 'message'
+      || !active.writerTurnId
+    ) {
+      return undefined;
+    }
+
+    const writerTurn = this.turnLedger.find(active.writerTurnId);
+    if (!writerTurn || writerTurn.role !== 'user') {
+      throw new Error(`Cannot roll back missing Workshop writer turn ${active.writerTurnId}`);
+    }
+
+    const widgetCommit = writerTurn.widgetCommit?.rail === 'thread-artifact'
+      ? writerTurn.widgetCommit
+      : undefined;
+    if (widgetCommit) {
+      this.widgetConfigLedger.rollbackThreadCommit(widgetCommit.widgetConfigId, {
+        turnId: writerTurn.id,
+        artifactId: widgetCommit.artifactId
+      });
+      this.removeWriterSourceArtifact(widgetCommit.artifactId);
+    }
+
+    const rollbackTurnIds = new Set([writerTurn.id]);
+    this.turnLedger.removeByIds(rollbackTurnIds);
+    this.threadArtifacts = this.threadArtifacts.filter(
+      (artifact) => !rollbackTurnIds.has(artifact.turnId)
+    );
+    this.activeRun = undefined;
+    return writerTurn;
   }
 
   /** Clear every retained participant after an assistant-resource generation loss. */
@@ -1761,12 +1806,14 @@ export class WorkshopSessionService {
     currentBehavior: WorkshopConversationBehavior
   ): WorkshopSessionHydrationResult {
     validateWorkshopSessionStateV1(state, {
-      allowLegacyOpenSessionWithExcerpt: true
+      allowLegacyOpenSessionWithExcerpt: true,
+      skipWidgetDraftIntegrity: true
     });
     const normalization = normalizeWorkshopSessionCheckpointForHydration(state);
     const normalized = normalization.state;
     // The compatibility exception terminates at the migration boundary. From
     // this point on, the current invariant is absolute.
+    assertCurrentWorkshopSessionStateV1(normalized);
     validateWorkshopSessionStateV1(normalized);
 
     const passageState = this.passageScope.prepareState({
@@ -1904,7 +1951,8 @@ export class WorkshopSessionService {
     return {
       discardedConversationIds,
       degradedConversationKeys,
-      normalizations: normalization.normalizations
+      normalizations: normalization.normalizations,
+      recoveryNotices: normalization.notices
     };
   }
 
@@ -2015,10 +2063,23 @@ export class WorkshopSessionService {
       toolId,
       guestPersonaId,
       reportTurnId: target === 'tool' ? reportTurnId : undefined,
+      writerTurnId: turn.id,
       excerptVersion: this.getExcerptVersion(),
       ...behaviorMetadata
     };
     return cloneTurn(turn);
+  }
+
+  private removeWriterSourceArtifact(artifactId: string): void {
+    const withoutArtifact = (entries: readonly ContextSourceEntry[]) =>
+      entries.filter((entry) => entry.artifactId !== artifactId);
+    this.hostWriterSources = withoutArtifact(this.hostWriterSources);
+    for (const toolId of Object.keys(this.toolWriterSources) as WorkshopToolId[]) {
+      this.toolWriterSources[toolId] = withoutArtifact(this.toolWriterSources[toolId] ?? []);
+    }
+    for (const [personaId, entries] of this.guestWriterSources) {
+      this.guestWriterSources.set(personaId, withoutArtifact(entries));
+    }
   }
 
   /** One replace-and-cursor policy for writer- and persona-requested reports. */

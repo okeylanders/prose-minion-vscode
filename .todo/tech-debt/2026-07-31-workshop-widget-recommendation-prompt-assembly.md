@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-07-31
 **Reviewed**: 2026-07-31
-**Status**: In progress — feature registry landed in Workshop Architecture Refactor Phase 6; per-widget response ceilings remain
+**Status**: Complete — registry-owned prompt fragments, per-widget response ceilings, and exact prompt-size pin landed
 **Priority**: Medium
 **Estimated Effort**: Small-Medium
 **Origin**: PR #98 review finding F-19
@@ -41,7 +41,28 @@ would be a false optimization.
   parsed widget id is the only remaining completion item and stays required
   before a third live widget.
 
-## Recommendation
+## Completion (2026-08-14)
+
+Creative Variations became the third live recommendation member and closed the
+remaining work instead of extending the old shared ceiling:
+
+- every compiler-required recommendation registry entry now owns an exact
+  `frameCharacters` ceiling beside its prompt fragment and parser;
+- the generic parser derives its coarse pre-id envelope from those entries,
+  then rechecks the selected feature's smaller ceiling after extracting and
+  admitting the widget id;
+- a maximal legal Creative frame is proven to fit, while a Gesture frame that
+  fits the coarse envelope but exceeds Gesture's own ceiling is rejected;
+- the recurring assembled instruction is pinned at 7,823 characters, so later
+  prompt growth must be an explicit test change; and
+- prompt membership remains derived from the live availability policy and the
+  closed registry.
+
+The completion preserves the required explicit-request behavior: availability,
+not the proactive-assistance switch, controls whether a live widget grammar is
+present.
+
+## Recommendation (completed)
 
 - Give each live widget a local recommendation-instruction fragment beside its
   recommendation codec/seed grammar.

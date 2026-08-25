@@ -10,8 +10,12 @@ import type {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
-  normalizeGesturePlaygroundDraftForHydration
-} from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
+  normalizeWorkshopWidgetConfigForHydration,
+  WorkshopWidgetCheckpointNormalization
+} from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
+import type {
+  WorkshopWidgetRecoveryNotice
+} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 
 export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
@@ -22,19 +26,21 @@ export type WorkshopSessionCheckpointNormalization =
   | 'restored-undelivered-withdrawal'
   | 'defaulted-capability-principal'
   | 'defaulted-proactive-assistance'
-  | 'defaulted-widget-dictionary-sharing'
-  | 'defaulted-widget-source-references'
+  | 'discarded-nonpersona-widget-recommendation'
+  | WorkshopWidgetCheckpointNormalization
   | 'headed-missing-room-offsets';
 
 export interface WorkshopSessionCheckpointNormalizationResult {
   state: WorkshopSessionStateV1;
   normalizations: WorkshopSessionCheckpointNormalization[];
+  notices: WorkshopWidgetRecoveryNotice[];
 }
 
 export function normalizeWorkshopSessionCheckpointForHydration(
   state: WorkshopSessionStateV1
 ): WorkshopSessionCheckpointNormalizationResult {
   const normalizations: WorkshopSessionCheckpointNormalization[] = [];
+  const notices: WorkshopWidgetRecoveryNotice[] = [];
   const withdrawalNeverShipped =
     state.revisions.pendingExcerptWithdrawal === true
     && state.shelvedExcerpt !== undefined;
@@ -65,8 +71,21 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   // and keeps ownership recoverable now that guests invoke too (ADR §2).
   let defaultedPrincipal = false;
   let defaultedProactiveAssistance = false;
+  let discardedNonpersonaWidgetRecommendation = false;
   const turns = state.turns.map((turn) => {
     let normalizedTurn = turn;
+    if (
+      turn.widgetRecommendation !== undefined
+      && turn.participant !== 'host'
+      && turn.participant !== 'guest'
+    ) {
+      const {
+        widgetRecommendation: _discardedRecommendation,
+        ...turnWithoutRecommendation
+      } = normalizedTurn;
+      normalizedTurn = turnWithoutRecommendation;
+      discardedNonpersonaWidgetRecommendation = true;
+    }
     const behavior = turn.behavior;
     if (behavior && behavior.proactiveAssistance === undefined) {
       defaultedProactiveAssistance = true;
@@ -93,33 +112,16 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   if (defaultedProactiveAssistance) {
     normalizations.push('defaulted-proactive-assistance');
   }
+  if (discardedNonpersonaWidgetRecommendation) {
+    normalizations.push('discarded-nonpersona-widget-recommendation');
+  }
 
-  let defaultedWidgetDictionarySharing = false;
-  let defaultedWidgetSourceReferences = false;
   const widgetConfigs = state.widgetConfigs?.map((config) => {
-    if (config.widgetId !== 'gesture-playground') {
-      return config;
-    }
-    const normalizedDraft = normalizeGesturePlaygroundDraftForHydration(config.draft);
-    if (
-      !normalizedDraft.defaultedDictionarySharing
-      && !normalizedDraft.defaultedSourceReferences
-    ) {
-      return config;
-    }
-    defaultedWidgetDictionarySharing ||= normalizedDraft.defaultedDictionarySharing;
-    defaultedWidgetSourceReferences ||= normalizedDraft.defaultedSourceReferences;
-    return {
-      ...config,
-      draft: normalizedDraft.draft
-    };
+    const recovery = normalizeWorkshopWidgetConfigForHydration(config);
+    normalizations.push(...recovery.normalizations);
+    notices.push(...recovery.notices);
+    return recovery.config;
   });
-  if (defaultedWidgetDictionarySharing) {
-    normalizations.push('defaulted-widget-dictionary-sharing');
-  }
-  if (defaultedWidgetSourceReferences) {
-    normalizations.push('defaulted-widget-source-references');
-  }
 
   const ledgerHead = turns.at(-1)?.id;
   const discardedLegacyDeliveryCursors =
@@ -199,6 +201,7 @@ export function normalizeWorkshopSessionCheckpointForHydration(
       revisions,
       participants
     },
-    normalizations
+    normalizations: [...new Set(normalizations)],
+    notices
   };
 }

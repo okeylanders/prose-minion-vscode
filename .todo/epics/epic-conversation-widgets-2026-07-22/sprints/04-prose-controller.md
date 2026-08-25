@@ -1,11 +1,10 @@
-# Sprint 03: Prose Controller
+# Sprint 04: Prose Controller
 
-**Status**: Paused — Workshop Architecture Refactor Phase 7 must lift the feature freeze
+**Status**: Planned — follows Sprint 03 Creative Variations and the mandatory Sprint 02D foundation
 **Priority**: Medium
-**Branch**: `sprint/conversation-widgets-03-prose-controller` -> PR into `epic/conversation-widgets`
+**Branch**: `sprint/conversation-widgets-04-prose-controller` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 8-12 days
-**Depends on**: Sprint 02B-B merged into `epic/conversation-widgets` and Workshop Architecture Refactor Phase 7 complete; the standing rail itself arrived in Sprint 02B
-**Superseded predecessor**: Sprint 02C moved into the mandatory Workshop Architecture Refactor
+**Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md) completing its one-shot variation-family proof; Sprint 02B-B (including codec recovery) and [Sprint 02D — Widget Persistence Grammar and Integrity](02d-widget-persistence-grammar-and-integrity.md) merged into `epic/conversation-widgets`; Workshop Architecture Refactor Phase 7 is complete and the standing rail itself arrived in Sprint 02B
 **ADR**: [2026-07-22 — Conversation Widgets](../../../../docs/adr/2026-07-22-conversation-widgets.md)
 
 ## Goal
@@ -39,12 +38,15 @@ switch, both consulted at prose-generation time.
   from surface realization and keeps their persisted codecs exact and
   inspectable. Prose Controller begins only after that contract is settled so it
   does not copy the earlier word-field-only assumption into its craft chapters.
-- Sprint 02B leaves the family-neutral apply/remove IPC routes registered by
-  `WorkshopLexicalGravityHandler`, because `MessageRouter` permits one owner per
-  message type. Sprint 03 begins by moving those two routes into a shared
-  standing-directive handler/dispatcher, then adds Prose Controller as a family
-  member. This is a scheduled ownership move, not a second route registration
-  or a fork of the Lexical handler.
+- Sprint 02D supplies the copyable persistence lifecycle: checkpoint shape,
+  feature-owned recovery/defaults, current shape, and semantic integrity.
+  Prose Controller puts chapter contradictions and compiled-directive validity
+  in its own integrity pass and uses the shared mechanical JSON primitives; it
+  does not add a third validation dialect.
+- The family-neutral apply/remove routes now belong to
+  `WorkshopStandingDirectiveHandler`. Sprint 04 adds Prose Controller's exact
+  operation and persisted-config arms to that shared, closed dispatcher; it does
+  not register a duplicate route or fork Lexical Gravity's handler.
 - The measure tools already compute deterministic prose metrics (POS via wink,
   sentence stats, punctuation counts, style flags). These are the natural
   deterministic scaffold for Prose Controller's live preview — reuse them; do not
@@ -122,8 +124,16 @@ switch, both consulted at prose-generation time.
   mutation.
 - **Show/tell has two honest lifetimes.** Narrative handling supplies a broad
   standing scene/summary/evidence bias. The separate
-  [Show vs. Tell Playground](../concepts/show-v-tell-playground.md) is a local,
+  [Show vs. Tell Playground](05-show-v-tell.md) is a local,
   one-shot experiment for a selected beat. They share vocabulary, not state.
+- **Show/tell is not Lexical Gravity application gear.** Lexical/Interpret/
+  Recompose chooses whether the semantic field stays superficial, sharpens the
+  existing arrangement, or may reorganize it. LG now owns a separate evidence
+  mode for how its own pressure lands; Prose Controller owns its broader
+  narrative-handling bias, and the local playground owns a selected-beat
+  experiment. LG and Prose Controller may intentionally disagree—the standing
+  directive coexistence/precedence contract preserves both pressures for the
+  model to reconcile. Recompose must not silently mean Tell.
 - **Reuse Sprint 02B rail wholesale.** The controller uses the shared
   `<prose-directive family="prose-controller" id="pd-N">` envelope with a
   host-minted closed family; the coordinator, between-runs discipline, chip,

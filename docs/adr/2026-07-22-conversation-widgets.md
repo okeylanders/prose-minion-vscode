@@ -3,7 +3,9 @@
 - **Status**: Accepted — 2026-07-29; Gesture Dictionary generation and
   source-reference/streaming amendments accepted 2026-07-29; Lexical Gravity
   Spread 02 frame/lens-library amendments accepted 2026-07-31; multi-select
-  generated-lens save amendment accepted 2026-07-31
+  generated-lens save amendment accepted 2026-07-31; widget checkpoint
+  recovery and persistence-lifecycle sequencing amended 2026-08-07; Sprint
+  03–06 resequencing and Lexical Gravity stack selection amended 2026-08-10
 - **Decision owner**: Okey
 - **Planning source**: epic and sprint plans drafted 2026-07-22
   ([epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md));
@@ -11,9 +13,13 @@
   design spreads (Spread 00 · the widget system, Spread 01 · Gesture
   Playground) and an architecture pass over the shipped Workshop code.
 - **Delivery**: [Conversation Widgets epic](../../.todo/epics/epic-conversation-widgets-2026-07-22/epic-conversation-widgets-2026-07-22.md),
-  Sprints 01, 02A–02B, optional 02C, and 03–04. Sprint 01 (widget host +
-  Gesture Playground) proves the one-shot rail; Sprint 02A formalizes widget
-  state ownership; Sprint 02B builds the standing rail with Lexical Gravity.
+  Sprints 01, 02A–02B-B, 02D, and 03–06. Sprint 01 (widget host + Gesture
+  Playground) proves the one-shot rail; Sprint 02A formalizes widget state
+  ownership; Sprint 02B builds the standing rail with Lexical Gravity; Sprint
+  02B-B must recover recognized prior widget checkpoints before exit; Sprint
+  02D establishes the copyable widget persistence lifecycle before Sprint 03.
+  The former optional Sprint 02C was superseded by the completed Workshop
+  Architecture Refactor and removed.
 - **Context**: The Workshop has two kinds of thing: **tools** (deterministic
   one-shot analyzers, stateless, identical in every mode) and **plain
   messages** (freeform persona turns). This ADR adds the third: the
@@ -236,20 +242,26 @@ its aggregate word cap. `<workshop-session-attunement>` is the *shape*
 precedent, not the home. Spread 02 resolves the concrete Lexical Gravity
 envelope as `<prose-directive family="lexical-gravity" id="pd-N">`; future
 standing families reuse that envelope with a host-minted closed `family`
-(`prose-controller` for Sprint 03) and host-minted `id`. The delimiter is
+(`prose-controller` for Sprint 04) and host-minted `id`. The delimiter is
 registered with the reserved-frame neutralizer in the same change.
 
-### 11. Directive families coexist; precedence is stated, not silently resolved
+### 11. Directive families coexist; precedence and lens-stack selection are stated, not silently resolved
 
-*(Resolves epic open question 2, binding on Sprints 03–04.)* Lexical
-Gravity (*what words*) and the Prose Controller (*how the passage is made*)
-are distinct families — one active directive each, separate chips, separate
-kill switches. Their frames state the division of labor to the model
-explicitly: on direct conflict, the Prose Controller governs sentence
-mechanics and punctuation; Lexical Gravity governs word choice and
-metaphor pull. Dominance weighting (Sprint 04) applies *within* the Gravity
-family only — never an unweighted average, and never a cross-family
-arbitration the writer didn't state.
+*(Amended 2026-08-10; binding on Sprints 04 and 06.)* Lexical Gravity
+(*what words*) and the Prose Controller (*how the passage is made*) are
+distinct families with separate chips and kill switches. Their frames state the
+division of labor to the model explicitly: on direct conflict, the Prose
+Controller governs sentence mechanics and punctuation; Lexical Gravity governs
+word choice and metaphor pull.
+
+Prose Controller retains one active directive. Sprint 06 lets a writer keep a
+bounded stack of independent Lexical Gravity directives, each with its own
+config, preview, edit path, and removal control. The prose-time frame presents
+the stack as alternatives and instructs the model to select **zero or one** lens
+whose interpretive grammar genuinely fits the local beat. It does not average
+lenses, sum their local weights, infer a dominance order from stack order, or
+combine their logic just because several are active. The cap is set only after
+worst-case prompt-budget measurement in Sprint 06.
 
 ### 12. Personas may propose standing state, never install it
 
@@ -443,7 +455,9 @@ presentation-side. The canonical id equals the design's frame identity —
 `gesture-playground` — and the frame kind is derived mechanically as
 `widget:<id>`, so the registry check on the frame builder means something.
 The persona-recommendation parser rejects `widgetId`s that are not `live`
-in the registry, so comp-only widgets can never render dead chips.
+in the registry, and the feature-owned recommendation registry remains the
+narrower authority for which live authoring surfaces can emit recommendation
+chips. Catalog liveness alone does not imply commit or recommendation support.
 
 ## Consequences
 

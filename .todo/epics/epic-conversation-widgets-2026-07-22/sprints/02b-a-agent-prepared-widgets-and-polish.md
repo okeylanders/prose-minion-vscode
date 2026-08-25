@@ -5,7 +5,7 @@
 **Branch**: `sprint/conversation-widgets-02b-a-assists-and-polish` -> PR into `epic/conversation-widgets`
 **Estimated Effort**: 1-2 days
 **Depends on**: Sprint 02B / PR #98 merged into `epic/conversation-widgets`
-**Blocks**: Nothing; land before the optional Sprint 02C decision
+**Blocks**: Nothing; the later scope/context extraction moved to the mandatory Workshop Architecture Refactor
 **Design**: [Widget browser](../../../../docs/design/Prose%20Minion%20-%20Conversation%20Widgets.html) and [Lexical Gravity](../../../../docs/design/Prose%20Minion%20-%20Lexical%20Gravity.html)
 
 ## Goal
@@ -45,8 +45,9 @@ The writer still owns every send, widget open, and commit.
   dispatched, the modal closes immediately. The host still persists its durable
   config before sending the room turn; a later send failure is surfaced by the
   Workshop toast instead of trapping the writer in a waiting sheet.
-- **02C stays pure.** Scope/context IPC extraction is not mixed into this UX and
-  prompt-behavior PR.
+- **Architecture work stays separate.** Scope/context IPC extraction is not
+  mixed into this UX and prompt-behavior PR; the later Workshop Architecture
+  Refactor owns that boundary.
 
 ## Scope / Deliverables
 

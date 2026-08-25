@@ -112,10 +112,53 @@ describe('prompt budgets', () => {
       gestureOptionsPerGroup: 10,
       gestureOptionCharacters: 220,
       gestureSelectionsPerCommit: 8,
+      creativeSubjectCharacters: 20_000,
+      creativeSubjectPreviewCharacters: 160,
+      creativeProvenancePathCharacters: 500,
+      creativeContextCharacters: 250_000,
+      creativeRecommendationContextCharacters: 20_000,
+      creativeSourceReferences: 8,
+      creativeSourceReferenceCharacters: 500,
+      creativeMustSurviveCharacters: 2_000,
+      creativeMustNotChangeCharacters: 2_000,
+      creativeAimCharacters: 1_000,
+      creativeNoteCharacters: 500,
+      creativeWorkupIdCharacters: 64,
+      creativeApproachCharacters: 160,
+      creativeDirectionCharacters: 600,
+      creativeProseCharacters: 20_000,
+      creativeTradeoffCharacters: 400,
+      creativeFlagsPerCard: 8,
+      creativeFlagNoteCharacters: 400,
+      creativeOutputTokens: 45_000,
+      creativeResponseCharacters: 140_000,
+      creativeArtifactCharacters: 20_000,
+      creativeRecommendationFrameAllowanceCharacters: 2_500,
+      lexicalRecommendationFrameCharacters: 1_000,
       lexicalLensNameCharacters: 80,
       lexicalLensSlugCharacters: 64,
       lexicalLensVariantCharacters: 120,
       lexicalLensDescriptionCharacters: 320,
+      lexicalLogicPremiseCharacters: 400,
+      lexicalAttentionItemsMinimum: 2,
+      lexicalAttentionItems: 4,
+      lexicalAttentionItemCharacters: 180,
+      lexicalLogicAxesMinimum: 2,
+      lexicalLogicAxes: 4,
+      lexicalLogicIdCharacters: 64,
+      lexicalLogicNameCharacters: 80,
+      lexicalAxisPoleCharacters: 100,
+      lexicalLogicRolesMinimum: 2,
+      lexicalLogicRoles: 4,
+      lexicalRoleDescriptionCharacters: 240,
+      lexicalLogicDynamicsMinimum: 2,
+      lexicalLogicDynamics: 4,
+      lexicalDynamicMovementCharacters: 200,
+      lexicalDynamicEntailmentCharacters: 360,
+      lexicalDynamicAffordanceCharacters: 360,
+      lexicalLogicGuardrailsMinimum: 2,
+      lexicalLogicGuardrails: 4,
+      lexicalGuardrailCharacters: 240,
       lexicalTermCharacters: 80,
       lexicalTermsPerBucket: 12,
       lexicalGradientTerms: 12,
@@ -124,13 +167,88 @@ describe('prompt budgets', () => {
       lexicalSampleCharacters: 800,
       lexicalBuildQueryCharacters: 100,
       lexicalBuildCandidates: 3,
-      lexicalBuildOutputTokens: 8_000,
+      lexicalBuildOutputTokens: 24_000,
+      lexicalBuildResponseCharacters: 200_000,
       lexicalPreviewCharacters: 1_200,
-      lexicalPreviewOutputTokens: 3_600,
-      lexicalDirectiveCharacters: 3_000
+      lexicalPreviewResponseCharacters: 12_000,
+      lexicalPreviewPositions: 6,
+      lexicalPreviewElementCharacters: 160,
+      lexicalPreviewAxisPositionCharacters: 160,
+      lexicalPreviewSignificanceCharacters: 320,
+      lexicalPreviewEntailmentCharacters: 500,
+      lexicalPreviewOutputTokens: 5_000,
+      lexicalDirectiveCharacters: 16_000
     });
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(15_300);
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(4_811);
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(51_500);
+  });
+
+  it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(7_823);
+  });
+
+  it('keeps Lexical Gravity Preview as two explicit application gears', () => {
+    const buildPrompt = fs.readFileSync(
+      path.resolve(
+        SRC_ROOT,
+        '..',
+        'resources',
+        'system-prompts',
+        'lexical-gravity',
+        '00-build-lens.md'
+      ),
+      'utf8'
+    );
+    const previewPrompt = fs.readFileSync(
+      path.resolve(SRC_ROOT, '..', 'resources', 'system-prompts', 'lexical-gravity', '01-preview.md'),
+      'utf8'
+    );
+
+    expect(previewPrompt).toContain('`interpret`: keep the source\'s beat order');
+    expect(previewPrompt).toContain('`recompose`: use the semantic positions');
+    expect(previewPrompt).toContain('do not preserve the source sentence-by-sentence');
+    expect(previewPrompt).not.toContain('and sentence count');
+
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    for (const fragment of [
+      `premise ≤ ${budget.lexicalLogicPremiseCharacters} characters`,
+      `role description ≤ ${budget.lexicalRoleDescriptionCharacters} characters`,
+      `sample ≤ ${budget.lexicalSampleCharacters} characters`
+    ]) {
+      expect(buildPrompt).toContain(fragment);
+    }
+    for (const fragment of [
+      `0–${budget.lexicalPreviewPositions} semantic positions`,
+      `element ≤ ${budget.lexicalPreviewElementCharacters} characters`,
+      `text ≤ ${budget.lexicalPreviewCharacters} characters`
+    ]) {
+      expect(previewPrompt).toContain(fragment);
+    }
+  });
+
+  it('declares every Creative Variations response ceiling to the model', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(
+        SRC_ROOT,
+        '..',
+        'resources',
+        'system-prompts',
+        'creative-variations',
+        '00-creative-variations.md'
+      ),
+      'utf8'
+    );
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    for (const fragment of [
+      `\`approach\` ≤ ${budget.creativeApproachCharacters} characters`,
+      `\`direction\` ≤ ${budget.creativeDirectionCharacters} characters`,
+      `\`prose\` ≤ ${budget.creativeProseCharacters.toLocaleString('en-US')} characters`,
+      `\`tradeoff.gain\` and \`tradeoff.cost\` ≤ ${budget.creativeTradeoffCharacters} characters each`,
+      `At most ${budget.creativeFlagsPerCard} \`invariantFlags\` per card`,
+      `flag \`note\` ≤ ${budget.creativeFlagNoteCharacters} characters`
+    ]) {
+      expect(prompt).toContain(fragment);
+    }
+    expect(prompt).toContain("Target 60–100% of the subject's length");
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

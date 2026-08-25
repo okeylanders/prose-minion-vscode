@@ -5,7 +5,8 @@ import {
   WorkshopToolId,
   WorkshopToolSidecarSnapshot,
   WorkshopTodoItem,
-  WorkshopTurn
+  WorkshopTurn,
+  WorkshopPersonaId
 } from '@messages';
 import { WorkshopTurnBubble } from './WorkshopTurnBubble';
 
@@ -24,7 +25,8 @@ interface WorkshopThreadProps {
   onOpenWidgetConfig?: (widgetConfigId: string) => void;
   onOpenWidgetRecommendation?: (
     recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
-    personaLabel?: string
+    personaLabel?: string,
+    personaId?: WorkshopPersonaId
   ) => void;
 }
 

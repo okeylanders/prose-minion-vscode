@@ -118,6 +118,7 @@ export function createFakeWorkspace(overrides: Partial<Workspace> = {}): Workspa
 export function createFakeShellService(overrides: Partial<ShellService> = {}): ShellService {
   return {
     showInformationMessage: async () => undefined,
+    showWarningMessage: async () => undefined,
     showModalInformationMessage: async () => undefined,
     copyToClipboard: async () => undefined,
     readClipboard: async () => '',

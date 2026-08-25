@@ -15,6 +15,7 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
   let log: WorkshopRouteTestHarness['log'];
   let shell: WorkshopRouteTestHarness['shell'];
   let fileSystem: WorkshopRouteTestHarness['fileSystem'];
+  let workspace: WorkshopRouteTestHarness['workspace'];
   let router: WorkshopRouteTestHarness['router'];
   let resourceFiles: WorkshopRouteTestHarness['resourceFiles'];
   let resourceProviderFactory: WorkshopRouteTestHarness['resourceProviderFactory'];
@@ -28,6 +29,7 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
       log,
       shell,
       fileSystem,
+      workspace,
       router,
       resourceFiles,
       resourceProviderFactory,
@@ -56,7 +58,8 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
 
   describe('re-read from file (Sprint 12)', () => {
     const seedFileExcerpt = async (content: string) => {
-      shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/chapter.md', uri: 'file:///chapter.md' });
+      workspace.workspaceFolders = () => [{ path: '/ws', name: 'novel' }];
+      shell.pickFile = jest.fn().mockResolvedValue({ fsPath: '/ws/chapter.md', uri: 'file:///ws/chapter.md' });
       fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: content.length });
       fileSystem.readFile = jest.fn().mockResolvedValue(new TextEncoder().encode(content));
       await router.route(message(MessageType.WORKSHOP_PICK_EXCERPT_FILE, {}) as any);
@@ -96,7 +99,7 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
       expect(session.getExcerpt()).toMatchObject({
         version: 2,
         text: 'The sea forgets the shore entirely.',
-        source: { kind: 'file', sourceUri: 'file:///chapter.md', relativePath: 'External file: chapter.md' }
+        source: { kind: 'file', sourceUri: 'file:///ws/chapter.md', relativePath: 'External file: chapter.md' }
       });
     });
 
@@ -120,6 +123,139 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
         version: 2,
         text: pinnedText,
         truncation: { pinnedWords: excerptWordCap, totalWords: excerptWordCap + 1 }
+      });
+    });
+
+    it('refuses a normalized traversal outside the workspace despite a forged catalog claim', async () => {
+      workspace.workspaceFolders = () => [{ path: '/ws', name: 'novel' }];
+      const readFile = jest.fn();
+      fileSystem.readFile = readFile;
+      session.setExcerpt({
+        text: 'Persisted safe text.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///ws/chapters/../../private/secret.md',
+          relativePath: '../private/secret.md',
+          configuredResource: { group: 'characters', path: 'Characters/raven.md' }
+        }
+      });
+
+      await reread();
+
+      expect(readFile).not.toHaveBeenCalled();
+      expect(session.getExcerpt()).toMatchObject({ version: 1, text: 'Persisted safe text.' });
+      expect(posted(MessageType.ERROR).at(-1).payload.message)
+        .toMatch(/outside the approved workspace/i);
+    });
+
+    it('refuses a non-file source URI before opening or reading it', async () => {
+      const readFile = jest.fn();
+      fileSystem.readFile = readFile;
+      resourceProviderFactory.createProvider.mockClear();
+      session.setExcerpt({
+        text: 'Persisted safe text.',
+        source: {
+          kind: 'file',
+          sourceUri: 'https://example.com/private.md',
+          relativePath: 'private.md'
+        }
+      });
+
+      await reread();
+
+      expect(resourceProviderFactory.createProvider).not.toHaveBeenCalled();
+      expect(readFile).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1).payload.message)
+        .toMatch(/source location is no longer readable/i);
+    });
+
+    it('refuses a workspace path with a symbolic-link ancestor before reading', async () => {
+      workspace.workspaceFolders = () => [{ path: '/ws', name: 'novel' }];
+      const readFile = jest.fn();
+      fileSystem.stat = jest.fn().mockImplementation(async (filePath: string) => ({
+        type: filePath === '/ws/linked' ? FileType.SymbolicLink : FileType.File,
+        size: 10
+      }));
+      fileSystem.readFile = readFile;
+      session.setExcerpt({
+        text: 'Persisted safe text.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///ws/linked/secret.md',
+          relativePath: 'linked/secret.md'
+        }
+      });
+
+      await reread();
+
+      expect(readFile).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1).payload.message)
+        .toMatch(/symbolic link/i);
+    });
+
+    it('applies the host platform case policy to an external catalog match', async () => {
+      resourceFiles.push({
+        group: 'general',
+        path: 'Shared/Approved.md',
+        label: 'approved',
+        sizeBytes: 24,
+        absolutePath: '/shared/Approved.md',
+        content: 'Fresh configured content.'
+      });
+      const bytes = new TextEncoder().encode('Fresh configured content.');
+      const readFile = jest.fn().mockResolvedValue(bytes);
+      fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: bytes.length });
+      fileSystem.readFile = readFile;
+      session.setExcerpt({
+        text: 'Earlier configured content.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///shared/approved.md',
+          relativePath: 'Shared/approved.md'
+        }
+      });
+
+      await reread();
+
+      if (process.platform === 'win32') {
+        expect(readFile).toHaveBeenCalledWith('/shared/approved.md');
+      } else {
+        expect(readFile).not.toHaveBeenCalled();
+        expect(posted(MessageType.ERROR).at(-1).payload.message)
+          .toMatch(/outside the approved workspace/i);
+      }
+    });
+
+    it('allows an exact fresh configured-catalog source outside the workspace', async () => {
+      resourceFiles.push({
+        group: 'general',
+        path: 'Shared/approved.md',
+        label: 'approved',
+        sizeBytes: 24,
+        absolutePath: '/shared/approved.md',
+        content: 'Fresh configured content.'
+      });
+      const bytes = new TextEncoder().encode('Fresh configured content.');
+      fileSystem.stat = jest.fn().mockResolvedValue({ type: FileType.File, size: bytes.length });
+      fileSystem.readFile = jest.fn().mockResolvedValue(bytes);
+      session.setExcerpt({
+        text: 'Earlier configured content.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///shared/approved.md',
+          relativePath: 'Shared/approved.md'
+        }
+      });
+
+      await reread();
+
+      expect(fileSystem.readFile).toHaveBeenCalledWith('/shared/approved.md');
+      expect(session.getExcerpt()).toMatchObject({
+        version: 2,
+        text: 'Fresh configured content.',
+        source: {
+          configuredResource: { group: 'general', path: 'Shared/approved.md' }
+        }
       });
     });
   });

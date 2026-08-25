@@ -1,5 +1,6 @@
 import {
   normalizeContextCompression,
+  OpenRouterApiError,
   OpenRouterClient
 } from '@providers/OpenRouterClient';
 
@@ -35,6 +36,88 @@ describe('OpenRouter context-compression metadata', () => {
 });
 
 describe('OpenRouterClient model hot-swap', () => {
+  it('preserves structured insufficient-credit failures', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 402,
+      headers: { get: jest.fn(() => null) },
+      text: jest.fn().mockResolvedValue(JSON.stringify({
+        error: {
+          code: 402,
+          message: 'Insufficient credits',
+          metadata: { error_type: 'payment_required' }
+        }
+      }))
+    }) as unknown as typeof fetch;
+
+    try {
+      await expect(new OpenRouterClient('key').createChatCompletion([
+        { role: 'user', content: 'Hello' }
+      ])).rejects.toEqual(expect.objectContaining<Partial<OpenRouterApiError>>({
+        status: 402,
+        errorType: 'payment_required'
+      }));
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('surfaces a typed mid-stream provider error instead of treating it as empty prose', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue(streamingResponse({
+      error: {
+        code: 429,
+        message: 'Rate limit exceeded',
+        metadata: { error_type: 'rate_limit_exceeded' }
+      },
+      choices: [{ delta: { content: '' }, finish_reason: 'error' }]
+    })) as unknown as typeof fetch;
+
+    try {
+      const consume = async () => {
+        for await (const _chunk of new OpenRouterClient('key').createStreamingChatCompletion([
+          { role: 'user', content: 'Hello' }
+        ])) {
+          // Consume the stream so the terminal error is observed.
+        }
+      };
+      await expect(consume()).rejects.toEqual(expect.objectContaining<Partial<OpenRouterApiError>>({
+        status: 429,
+        errorType: 'rate_limit_exceeded'
+      }));
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('bounds and labels unstructured provider error bodies at the network boundary', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      headers: { get: jest.fn(() => null) },
+      text: jest.fn().mockResolvedValue(`<html>${'gateway failure '.repeat(200)}</html>`)
+    }) as unknown as typeof fetch;
+
+    try {
+      const promise = new OpenRouterClient('key').createChatCompletion([
+        { role: 'user', content: 'Hello' }
+      ]);
+      await expect(promise).rejects.toEqual(
+        expect.objectContaining<Partial<OpenRouterApiError>>({ status: 502 })
+      );
+      await promise.catch((error: OpenRouterApiError) => {
+        expect(error.message).toContain('Unstructured provider response:');
+        expect(error.message).toContain('…');
+        expect(error.message.length).toBeLessThan(1_100);
+        expect(error.message).not.toContain('\n');
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('keeps the model captured when an in-flight request was dispatched', async () => {
     const originalFetch = global.fetch;
     let resolveFetch!: (response: Response) => void;
@@ -231,7 +314,7 @@ describe('OpenRouterClient model hot-swap', () => {
   it('emits streaming terminal usage and metadata exactly once when they arrive after finish reason', async () => {
     const originalFetch = global.fetch;
     const fetchMock = jest.fn().mockResolvedValue(streamingResponse(
-      { model: 'model/resolved', choices: [{ delta: { content: 'Hi' }, finish_reason: null }] },
+      { id: 'gen-stream-123', model: 'model/resolved', choices: [{ delta: { content: 'Hi' }, finish_reason: null }] },
       { model: 'model/resolved', choices: [{ delta: {}, finish_reason: 'stop' }] },
       {
         choices: [],
@@ -254,6 +337,7 @@ describe('OpenRouterClient model hot-swap', () => {
       expect(chunks.filter(chunk => chunk.done)).toHaveLength(1);
       expect(chunks.at(-1)).toMatchObject({
         done: true,
+        id: 'gen-stream-123',
         finishReason: 'stop',
         usage: { promptTokens: 12, completionTokens: 2, totalTokens: 14 },
         observation: {

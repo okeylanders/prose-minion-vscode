@@ -32,7 +32,10 @@ import {
   WorkshopToolId,
   WritingToolsFocus
 } from '@messages';
-import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import {
+  AgentRunEngine,
+  AgentRunUnavailableError
+} from '@orchestration/AgentRunEngine';
 import {
   AnyAgentCapability,
   StreamingTokenCallback
@@ -145,6 +148,8 @@ export interface WorkshopPersonaConversationInput {
   interactionFrame?: string;
   activationFrame?: string;
   transitionFrame?: string;
+  /** Trusted host-authored temporal context for this first retained turn. */
+  timeFrame?: string;
 }
 
 /** One retained persona conversation to re-prompt on a system-level behavior change. */
@@ -200,16 +205,7 @@ export class AssistantToolService {
   private dialogueAssistant?: DialogueMicrobeatAssistant;
   private proseAssistant?: ProseAssistant;
   private writingToolsAssistant?: WritingToolsAssistant;
-  /**
-   * The engine generation the assistants above were built from —
-   * captured in initializeAssistants alongside them. Conversations retained
-   * by a tool run live in THIS instance's ConversationManager, so the
-   * continuation path must use the same capture, never a live
-   * `getEngine('assistant')` lookup during a run. AIResourceManager owns all
-   * rebuilds, so sibling service startup cannot replace the generation whose
-   * ConversationManager holds the retained conversation.
-   * conversation ("Conversation … not found" on the first follow-up).
-   */
+  /** The stable assistant engine; provider availability may change beneath it. */
   private assistantEngine?: AgentRunEngine;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
 
@@ -305,6 +301,10 @@ export class AssistantToolService {
     await this.initializeAssistants();
   }
 
+  private currentAssistantEngine(): AgentRunEngine | undefined {
+    return this.assistantEngine ?? this.aiResourceManager.getEngine('assistant');
+  }
+
   /**
    * Analyze dialogue with AI assistant
    *
@@ -375,6 +375,7 @@ export class AssistantToolService {
         }
       );
     } catch (error) {
+      if (error instanceof AgentRunUnavailableError) throw error;
       // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'dialogue_analysis',
@@ -449,6 +450,7 @@ export class AssistantToolService {
         }
       );
     } catch (error) {
+      if (error instanceof AgentRunUnavailableError) throw error;
       // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         `writing_tools_${focus}`,
@@ -520,6 +522,7 @@ export class AssistantToolService {
         }
       );
     } catch (error) {
+      if (error instanceof AgentRunUnavailableError) throw error;
       // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'prose_analysis',
@@ -538,7 +541,7 @@ export class AssistantToolService {
     input: WorkshopPersonaConversationInput,
     streamingOptions: WorkshopHostStreamingOptions
   ): Promise<AnalysisResult> {
-    const engine = this.assistantEngine;
+    const engine = this.currentAssistantEngine();
     if (!engine) {
       return AnalysisResultFactory.createAnalysisResult(
         'workshop_persona',
@@ -604,7 +607,7 @@ export class AssistantToolService {
     input: WorkshopGuestConversationInput,
     streamingOptions: AnalysisStreamingOptions = {}
   ): Promise<AnalysisResult> {
-    const engine = this.assistantEngine;
+    const engine = this.currentAssistantEngine();
     if (!engine) {
       return AnalysisResultFactory.createAnalysisResult(
         'workshop_guest',
@@ -672,9 +675,7 @@ export class AssistantToolService {
     userMessage: string,
     streamingOptions?: AnalysisStreamingOptions
   ): Promise<AnalysisResult> {
-    // The CAPTURED generation, not a live lookup — the conversation lives in
-    // the manager of the orchestrator that ran the tool (see field docs).
-    const engine = this.assistantEngine;
+    const engine = this.currentAssistantEngine();
     if (!engine) {
       return AnalysisResultFactory.createAnalysisResult(
         'workshop_follow_up',
@@ -747,7 +748,7 @@ export class AssistantToolService {
     if (targets.length === 0) {
       return;
     }
-    const engine = this.assistantEngine;
+    const engine = this.currentAssistantEngine();
     if (!engine) {
       throw new Error(
         'Assistant engine unavailable; cannot replace Workshop persona system messages.'
@@ -775,7 +776,7 @@ export class AssistantToolService {
   exportWorkshopConversationArchive<K extends string>(
     targets: readonly WorkshopConversationExportTarget<K>[]
   ): ConversationArchiveEntryV1<K>[] {
-    const engine = this.assistantEngine;
+    const engine = this.currentAssistantEngine();
     if (!engine) {
       throw new Error('Assistant engine unavailable; cannot export Workshop conversations.');
     }
@@ -801,7 +802,7 @@ export class AssistantToolService {
     targets: readonly WorkshopConversationImportTarget<K>[],
     options: WorkshopConversationImportOptions
   ): Promise<ConversationImportOutcome<K>[]> {
-    const engine = this.assistantEngine;
+    const engine = this.currentAssistantEngine();
     if (!engine) {
       return targets.map(({ entry }) => ({
         key: entry.key,
@@ -936,16 +937,16 @@ export class AssistantToolService {
    * gone or the id is unknown — disposal must be safe from any teardown path.
    */
   discardConversation(conversationId: string): void {
-    this.assistantEngine?.discardConversation(conversationId);
+    this.currentAssistantEngine()?.discardConversation(conversationId);
   }
 
   getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
-    return this.assistantEngine?.getConversationContextBudget(conversationId);
+    return this.currentAssistantEngine()?.getConversationContextBudget(conversationId);
   }
 
   /** Agent-fetched manifest rows for a retained conversation (Phase 7). */
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
-    return this.assistantEngine?.getConversationContextSources(conversationId) ?? [];
+    return this.currentAssistantEngine()?.getConversationContextSources(conversationId) ?? [];
   }
 
   /**
@@ -982,9 +983,12 @@ export class AssistantToolService {
     ].filter((line): line is string => !!line);
 
     return [
-      // Transition and interaction frames lead so retained history is read
-      // under the current contract. The behavior activation sits adjacent to
-      // the writer message so quoted context cannot dilute it.
+      input.timeFrame,
+      input.timeFrame ? '' : undefined,
+      // Temporal context leads, followed by transition and interaction frames,
+      // so retained history is read under the current contract. The behavior
+      // activation sits adjacent to the writer message so quoted context
+      // cannot dilute it.
       input.transitionFrame,
       input.interactionFrame,
       input.transitionFrame || input.interactionFrame ? '' : undefined,
@@ -1022,6 +1026,8 @@ export class AssistantToolService {
     input: WorkshopPersonaConversationInput
   ): string {
     return [
+      input.timeFrame,
+      input.timeFrame ? '' : undefined,
       input.transitionFrame,
       input.interactionFrame,
       input.transitionFrame || input.interactionFrame ? '' : undefined,

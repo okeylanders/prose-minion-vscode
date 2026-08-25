@@ -181,6 +181,7 @@ export class MessageHandler {
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
       gesturePlaygroundService,
+      creativeVariationsService,
       lexicalGravityModelService,
       lexicalGravityLensRepository,
       workshopStandingDirectiveService
@@ -316,6 +317,7 @@ export class MessageHandler {
       workshopSessionPersistenceCoordinator,
       {
         gesturePlayground: gesturePlaygroundService,
+        creativeVariations: creativeVariationsService,
         standingDirectives: workshopStandingDirectiveService,
         lexicalGravity: {
           model: lexicalGravityModelService,
@@ -354,6 +356,9 @@ export class MessageHandler {
     this.fileOperationsHandler.registerRoutes(this.router);
     this.accountBalanceHandler.registerRoutes(this.router);
     this.workshopHandler.registerRoutes(this.router);
+    this.router.register(MessageType.WORKSHOP_DISMISS_ERROR, async () => {
+      this.resultCache.error = undefined;
+    });
 
     this.flushCachedResults();
   }
@@ -807,6 +812,7 @@ export class MessageHandler {
         break;
       case MessageType.WORKSHOP_SESSION_STATE:
         this.resultCache.workshopSession = { ...message as WorkshopSessionStateMessage };
+        this.clearCachedWorkshopError();
         break;
       case MessageType.ERROR:
         const error = message as ErrorMessage;
@@ -837,6 +843,13 @@ export class MessageHandler {
       this.outputChannel.appendLine(
         `[MessageHandler] ✗ Failed to post ${message.type}: ${messageText}`
       );
+    }
+  }
+
+  private clearCachedWorkshopError(): void {
+    const source = this.resultCache.error?.payload.source;
+    if (typeof source === 'string' && source.startsWith('workshop')) {
+      this.resultCache.error = undefined;
     }
   }
 
