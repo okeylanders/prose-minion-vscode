@@ -145,7 +145,6 @@ catalog concepts are still roadmap entries and are not enabled in this release.
 
 - Full Jest run: **208 suites / 2,310 tests / 2 snapshots** passed. The earlier
   release coverage run remains the coverage baseline for this branch.
-  passed.
 - Coverage: **82.28% statements**, **82.25% functions**, **71.34% branches**,
   and **82.57% lines**.
 - Core, webview, and extension TypeScript projects passed.
