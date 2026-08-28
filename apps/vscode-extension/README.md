@@ -31,6 +31,13 @@
 - **Less catalog drift** — retired OpenRouter IDs have been removed, so newly saved selections point to models the provider still serves.
 - **Your choices stay yours** — existing saved model selections and the Category Search default are unchanged.
 
+### Also in v2.2.0 — Conversation Widgets
+
+- **Play before you commit** — Workshop ships Gesture Playground, Lexical Gravity, and Creative Variations as interactive surfaces with explicit writer-owned commit points.
+- **Return to the work** — committed widgets leave re-openable transcript chips; one-shot explorations clone into new turns, while standing Lexical Gravity directives remain editable between runs.
+- **Safer sessions** — released pre-widget Workshop files migrate automatically to the new session schema, feature-owned recovery preserves supported older widget drafts, and stricter integrity checks reject malformed state before it can replace a healthy room.
+- **A sturdier Workshop** — room orchestration, persistence, presentation workflows, and widget families have named ownership boundaries backed by architecture tests.
+
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)
 
 ---
