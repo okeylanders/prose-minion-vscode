@@ -4,6 +4,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-08-28
+
 ### Added
 
 - **Curated model choices**: Added GLM 5.3, GLM 5.3 Flash, DeepSeek V4 Flash

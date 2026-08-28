@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-08-28 — Curated OpenRouter catalog refresh
+
+### Overview
+
+This patch refreshes the curated OpenRouter choices used by the Assistant,
+Dictionary, Context, Workshop, and Category Search selectors. It preserves all
+saved settings and the `openai/gpt-oss-120b:nitro` Category Search default.
+
+### Added — Current high-value models
+
+- **GLM 5.3 Flash** is available in both Recommended Models and Category Search:
+  a 1.31M-context multimodal model with tool and structured-output support at a
+  low token price.
+- **DeepSeek V4 Flash 0731** and **Qwen3.8 Flash** join both selectors as
+  current long-context, lower-cost choices.
+- **GLM 5.3** joins Recommended Models as Z.AI's current premium reasoning
+  option.
+
+### Removed — Retired provider IDs
+
+The live OpenRouter catalog no longer serves these curated IDs, so they have
+been removed rather than displayed as unavailable choices:
+
+- `deepcogito/cogito-v2.1-671b`
+- `inclusionai/ling-2.6-flash`, `inclusionai/ling-2.6-1t`, and
+  `inclusionai/ring-2.6-1t`
+- `openai/gpt-5.1-chat` and `openai/gpt-5.3-chat`
+- `thedrummer/rocinante-12b`
+
+### Verification
+
+- Compared the 97-entry Recommended Models and 42-entry Category Search
+  catalog against OpenRouter's live 387-model response on 2026-08-28.
+- Kept `openai/gpt-oss-120b:nitro`: `:nitro` is a provider-routing suffix over
+  the live `openai/gpt-oss-120b` base model.
+- The Category Search manifest enum remains guarded for exact parity with the
+  shared `CATEGORY_MODELS` registry.
+
 ## [2.2.0] - 2026-08-24 — Conversation Widgets and Workshop hardening
 
 ### Overview
