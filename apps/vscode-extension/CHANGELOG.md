@@ -4,6 +4,17 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+### Added
+
+- **Curated model choices**: Added GLM 5.3, GLM 5.3 Flash, DeepSeek V4 Flash
+  0731, and Qwen3.8 Flash. The three Flash models are also available for
+  Category Search.
+
+### Removed
+
+- Retired OpenRouter model IDs that are no longer served, including the older
+  Cogito, Ling, Ring, GPT Chat, and Rocinante entries.
+
 ## [2.2.0] - 2026-08-24
 
 ### Added

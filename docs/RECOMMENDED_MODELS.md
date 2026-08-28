@@ -96,14 +96,6 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/sao10k/l3.3-euryale-70b
   - HuggingFace: https://huggingface.co/Sao10K
 
-### TheDrummer: Rocinante 12B — Fluid Narrative
-
-- **Best For:** Engaging narrative voice and varied vocabulary
-- **Description:** A specialized storyteller model designed for engaging narrative flow
-- **Links:**
-  - OpenRouter: https://openrouter.ai/thedrummer/rocinante-12b
-  - HuggingFace: https://huggingface.co/TheDrummer
-
 ### Nous Hermes 4 405B — Mature Themes
 
 - **Best For:** Handling mature themes without moralizing
@@ -140,6 +132,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** The production/GA V4 Pro checkpoint keeps the 1M context and 384K maximum output while substantially improving agents, tool use, and production execution over the April preview
 - **Links:**
   - OpenRouter: https://openrouter.ai/deepseek/deepseek-v4-pro-0813
+  - DeepSeek: https://www.deepseek.com/
+
+### DeepSeek V4 Flash 0731 — Fast Long-Context Value
+
+- **Best For:** Responsive manuscript analysis, structured rewrites, and economical utility passes
+- **Description:** The updated 1.31M-context Flash checkpoint combines tool and structured-output support with unusually low token pricing.
+- **Links:**
+  - OpenRouter: https://openrouter.ai/deepseek/deepseek-v4-flash-0731
   - DeepSeek: https://www.deepseek.com/
 
 ### xAI Grok 4.3 — Deep Reasoning
@@ -190,6 +190,22 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/z-ai/glm-5.2
   - Z.AI: https://z.ai/
 
+### GLM 5.3 — Premium Reasoning
+
+- **Best For:** Complex manuscript analysis and extended editorial planning
+- **Description:** Z.AI's newest 1M-context reasoning model is a premium GLM option for difficult, multi-step work.
+- **Links:**
+  - OpenRouter: https://openrouter.ai/z-ai/glm-5.3
+  - Z.AI: https://z.ai/
+
+### GLM 5.3 Flash — Fast Multimodal Value
+
+- **Best For:** Responsive critique, large-context analysis, and utility rewrites
+- **Description:** A 1.31M-context multimodal GLM with structured-output support and notably low token pricing.
+- **Links:**
+  - OpenRouter: https://openrouter.ai/z-ai/glm-5.3-flash
+  - Z.AI: https://z.ai/
+
 ### Moonshot Kimi K2 — Plot Logic
 
 - **Best For:** Deep-dives into plot holes and character motivations
@@ -226,22 +242,6 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** Capable of mastering diverse tones and styles, from punchy thrillers to literary fiction
 - **Links:**
   - OpenRouter: https://openrouter.ai/openai/gpt-5.1
-  - OpenAI: https://openai.com/
-
-### OpenAI GPT-5.1 Chat — Brainstorming
-
-- **Best For:** Highly conversational and fluid
-- **Description:** Excellent for dialogue workshops, brainstorming, and writing that flows naturally
-- **Links:**
-  - OpenRouter: https://openrouter.ai/openai/gpt-5.1-chat
-  - OpenAI: https://openai.com/
-
-### OpenAI GPT-5.3 Chat — Everyday Writing Flow
-
-- **Best For:** Smoother day-to-day ideation and editing conversations
-- **Description:** Latest OpenAI chat model on OpenRouter with stronger everyday helpfulness and cleaner conversational responses
-- **Links:**
-  - OpenRouter: https://openrouter.ai/openai/gpt-5.3-chat
   - OpenAI: https://openai.com/
 
 ### OpenAI GPT-5.4 — Frontier Generalist
@@ -298,6 +298,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Description:** Qwen's newest multimodal reasoning model with 1M context and strong general-purpose reasoning
 - **Links:**
   - OpenRouter: https://openrouter.ai/qwen/qwen3.8-max
+  - Qwen: https://qwenlm.github.io/
+
+### Qwen3.8 Flash — Fast Multimodal Workhorse
+
+- **Best For:** Responsive critique, visual context, and cost-conscious long-document analysis
+- **Description:** A fast 1M-context multimodal sibling to Qwen3.8 Max for high-value editorial and utility work.
+- **Links:**
+  - OpenRouter: https://openrouter.ai/qwen/qwen3.8-flash
   - Qwen: https://qwenlm.github.io/
 
 ### Qwen3.7 Plus — High-Value Long Context

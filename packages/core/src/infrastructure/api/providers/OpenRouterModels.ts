@@ -190,22 +190,16 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Low-cost 1M-context model for fast category matching over larger inputs'
   },
   {
+    id: 'deepseek/deepseek-v4-flash-0731',
+    name: 'DeepSeek V4 Flash 0731',
+    family: 'DeepSeek V4',
+    description: 'Updated 1.31M-context Flash checkpoint with strong tool use and structured-output support for fast, inexpensive category matching'
+  },
+  {
     id: 'stepfun/step-3.7-flash',
     name: 'Step 3.7 Flash',
     family: 'Step',
     description: 'Fast multimodal StepFun model with strong throughput for category matching, quick rewrites, and utility analysis'
-  },
-  {
-    id: 'inclusionai/ling-2.6-flash',
-    name: 'Ling 2.6 Flash',
-    family: 'Ling',
-    description: 'Very low-cost text model for high-volume utility classification and simple category searches'
-  },
-  {
-    id: 'inclusionai/ring-2.6-1t',
-    name: 'Ring 2.6 1T',
-    family: 'Ring',
-    description: 'Efficient large-scale thinking model for structured reasoning and long category lists'
   },
   {
     id: 'qwen/qwen3.6-flash',
@@ -220,6 +214,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Flagship Qwen3.7 model with 1M context and strong agentic instruction following'
   },
   {
+    id: 'qwen/qwen3.8-flash',
+    name: 'Qwen3.8 Flash',
+    family: 'Qwen3.8',
+    description: 'Fast 1M-context multimodal model for responsive category matching and inexpensive utility analysis'
+  },
+  {
     id: 'mistralai/mistral-small-2603',
     name: 'Mistral Small 4',
     family: 'Mistral Small',
@@ -232,12 +232,6 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Mid-premium Mistral model for more complex category matching and structured prose analysis'
   },
   {
-    id: 'openai/gpt-5.1-chat',
-    name: 'GPT-5.1 Chat',
-    family: 'GPT-5.1',
-    description: 'OpenAI conversational model'
-  },
-  {
     id: 'openai/gpt-5.2',
     name: 'GPT-5.2',
     family: 'GPT-5.2',
@@ -248,12 +242,6 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-5.2 Pro',
     family: 'GPT-5.2',
     description: '$$$ OpenAI\'s most advanced model (~6x Opus price) for complex agentic tasks'
-  },
-  {
-    id: 'openai/gpt-5.3-chat',
-    name: 'GPT-5.3 Chat',
-    family: 'GPT-5.3',
-    description: 'Latest conversational release focused on smoother, more directly helpful everyday chat'
   },
   {
     id: 'openai/gpt-5.4',
@@ -272,12 +260,6 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT Chat Latest',
     family: 'GPT Chat',
     description: 'OpenAI stable chat alias that tracks the latest Instant chat model for conversational utility work'
-  },
-  {
-    id: 'deepcogito/cogito-v2.1-671b',
-    name: 'Cogito v2.1 671B',
-    family: 'Cogito',
-    description: 'One of the strongest open models globally, matching frontier closed models'
   },
   {
     id: 'mistralai/mistral-large-2512',
@@ -308,6 +290,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'GLM 5.2',
     family: 'GLM 5',
     description: 'Z.AI\'s GLM 5.2 flagship with 1M context and stronger long-horizon reasoning for structured category matching'
+  },
+  {
+    id: 'z-ai/glm-5.3-flash',
+    name: 'GLM 5.3 Flash',
+    family: 'GLM 5',
+    description: 'Fast 1.31M-context multimodal model with structured-output support for responsive, low-cost category matching'
   },
 ];
 
@@ -414,12 +402,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'The same Opus 5 brain tuned to answer noticeably faster, at double the price. For iterating live on a scene when tempo matters as much as the notes.'
   },
   {
-    id: 'deepcogito/cogito-v2.1-671b',
-    name: 'Cogito v2.1 671B',
-    family: 'Cogito',
-    description: 'One of the strongest open MoE models globally. Trained via self-play RL for state-of-the-art instruction following, coding, longer queries, and creative writing.'
-  },
-  {
     id: 'deepseek/deepseek-r1',
     name: 'DeepSeek R1',
     family: 'DeepSeek R1',
@@ -462,28 +444,16 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Efficiency-focused 1M-context model. Good for fast dictionary work, rewrites, and budget long-context analysis.'
   },
   {
+    id: 'deepseek/deepseek-v4-flash-0731',
+    name: 'DeepSeek V4 Flash 0731',
+    family: 'DeepSeek V4',
+    description: 'Updated 1.31M-context Flash checkpoint with excellent value for fast, structured long-context analysis and utility rewriting.'
+  },
+  {
     id: 'stepfun/step-3.7-flash',
     name: 'Step 3.7 Flash',
     family: 'Step',
     description: 'StepFun\'s latest Flash model with 256K context. Fast, inexpensive option for quick critique, dictionary alternatives, and utility rewriting.'
-  },
-  {
-    id: 'inclusionai/ling-2.6-flash',
-    name: 'Ling 2.6 Flash',
-    family: 'Ling',
-    description: 'Tiny-cost inclusionAI text model for high-volume utility work, quick classification, and lightweight prose checks.'
-  },
-  {
-    id: 'inclusionai/ling-2.6-1t',
-    name: 'Ling 2.6 1T',
-    family: 'Ling',
-    description: 'Large inclusionAI text model with efficient pricing. Useful for long-context reasoning and structured manuscript analysis on a budget.'
-  },
-  {
-    id: 'inclusionai/ring-2.6-1t',
-    name: 'Ring 2.6 1T',
-    family: 'Ring',
-    description: '1T-parameter-scale thinking model with efficient active parameters. Good for agentic critique, coding-adjacent workflows, and structured long-form reasoning.'
   },
   {
     id: 'google/gemini-2.5-flash',
@@ -582,6 +552,18 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Z.AI\'s latest flagship (1M context). Builds on GLM 5.1 with stronger long-horizon reasoning for manuscript-scale critique and reliable multi-step prose generation.'
   },
   {
+    id: 'z-ai/glm-5.3',
+    name: 'GLM 5.3',
+    family: 'GLM 5',
+    description: 'Z.AI\'s newest 1M-context reasoning model. A premium GLM option for complex manuscript analysis and extended editorial planning.'
+  },
+  {
+    id: 'z-ai/glm-5.3-flash',
+    name: 'GLM 5.3 Flash',
+    family: 'GLM 5',
+    description: 'Fast 1.31M-context multimodal model with structured outputs. Excellent value for responsive critique, large-context analysis, and utility rewrites.'
+  },
+  {
     id: 'openai/gpt-4.1',
     name: 'GPT-4.1',
     family: 'GPT-4',
@@ -598,12 +580,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-5.1',
     family: 'GPT-5.1',
     description: 'The adaptable virtuoso. Capable of mastering diverse tones and styles, from punchy thrillers to literary fiction.'
-  },
-  {
-    id: 'openai/gpt-5.1-chat',
-    name: 'GPT-5.1 Chat',
-    family: 'GPT-5.1',
-    description: 'Highly conversational and fluid. Excellent for dialogue workshops, brainstorming, and writing that flows naturally.'
   },
   {
     id: 'openai/gpt-5.1-codex',
@@ -634,12 +610,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-5.2 Pro',
     family: 'GPT-5.2',
     description: '$$$ OpenAI\'s most advanced model (~6x Opus price). Major improvements in agentic coding and long context over GPT-5 Pro. Optimized for step-by-step reasoning, reduced hallucination/sycophancy, and accuracy in high-stakes use cases.'
-  },
-  {
-    id: 'openai/gpt-5.3-chat',
-    name: 'GPT-5.3 Chat',
-    family: 'GPT-5.3',
-    description: 'Newest ChatGPT-style conversational model with improved everyday helpfulness, smoother responses, and fewer unnecessary refusals.'
   },
   {
     id: 'openai/gpt-5.3-codex',
@@ -774,6 +744,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Qwen\'s flagship multimodal reasoner with 1M context. Strong for complex manuscript analysis, visual context, and long-horizon editorial planning.'
   },
   {
+    id: 'qwen/qwen3.8-flash',
+    name: 'Qwen3.8 Flash',
+    family: 'Qwen3.8',
+    description: 'Fast 1M-context multimodal model. A high-value option for responsive critique, large-document analysis, and utility rewriting.'
+  },
+  {
     id: 'mistralai/mistral-large-2512',
     name: 'Mistral Large 2512',
     family: 'Mistral Large',
@@ -886,12 +862,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Aion 3.0',
     family: 'Aion',
     description: 'Premium multi-model storytelling system built on the GLM family. Uses collaborative generation for stronger narrative structure, tension, and conflict.'
-  },
-  {
-    id: 'thedrummer/rocinante-12b',
-    name: 'TheDrummer: Rocinante 12B',
-    family: 'TheDrummer',
-    description: 'Storytelling specialist. Engaging narrative voice and varied vocabulary.'
   },
   {
     id: 'thedrummer/cydonia-24b-v4.1',
