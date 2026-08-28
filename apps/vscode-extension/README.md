@@ -24,13 +24,19 @@
 
 ---
 
-## What's new in v2.2.0 — Conversation Widgets
+## What's new in v2.2.1 — Fresh model catalog
 
-- **Play before you commit** — Workshop now ships Gesture Playground, Lexical Gravity, and Creative Variations as interactive surfaces with explicit writer-owned commit points.
+- **GLM 5.3 Flash is here** — a fast, multimodal 1.31M-context option for responsive critique, large-context analysis, and utility rewrites.
+- **More strong value choices** — GLM 5.3, DeepSeek V4 Flash 0731, and Qwen3.8 Flash join the curated model browser; the three Flash models are also selectable for Category Search.
+- **Less catalog drift** — retired OpenRouter IDs have been removed, so newly saved selections point to models the provider still serves.
+- **Your choices stay yours** — existing saved model selections and the Category Search default are unchanged.
+
+### Also in v2.2.0 — Conversation Widgets
+
+- **Play before you commit** — Workshop ships Gesture Playground, Lexical Gravity, and Creative Variations as interactive surfaces with explicit writer-owned commit points.
 - **Return to the work** — committed widgets leave re-openable transcript chips; one-shot explorations clone into new turns, while standing Lexical Gravity directives remain editable between runs.
 - **Safer sessions** — released pre-widget Workshop files migrate automatically to the new session schema, feature-owned recovery preserves supported older widget drafts, and stricter integrity checks reject malformed state before it can replace a healthy room.
-- **A sturdier Workshop** — room orchestration, persistence, presentation workflows, and widget families now have named ownership boundaries backed by architecture tests.
-- **Fresh model choices** — Muse Spark 1.2, Grok 4.6, DeepSeek V4 Pro 0813, GPT-OSS 120B Nitro, and Gemini 3.7 Flash join the curated catalog; existing saved model selections remain unchanged.
+- **A sturdier Workshop** — room orchestration, persistence, presentation workflows, and widget families have named ownership boundaries backed by architecture tests.
 
 Full history → [CHANGELOG.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/apps/vscode-extension/CHANGELOG.md)
 
