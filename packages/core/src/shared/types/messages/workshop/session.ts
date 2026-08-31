@@ -190,7 +190,13 @@ export type WorkshopExcerptSource =
     }
   | {
       kind: 'file';
+      /** Absolute locator for the host that last authorized this source. */
       sourceUri: string;
+      /**
+       * Display path and cross-host recovery hint. It proposes a moved
+       * workspace target but never authorizes one without current-host
+       * containment and symlink validation.
+       */
       relativePath: string;
       configuredResource?: WorkshopConfiguredResourceRef;
     };

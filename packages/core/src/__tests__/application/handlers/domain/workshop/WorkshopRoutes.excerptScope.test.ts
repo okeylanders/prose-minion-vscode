@@ -126,6 +126,112 @@ describe('Workshop composed routing — excerpt and scope owner', () => {
       });
     });
 
+    it('reconnects a moved workspace excerpt and repairs its persisted source URI', async () => {
+      workspace.workspaceFolders = () => [{ path: '/new/novel', name: 'novel' }];
+      const bytes = new TextEncoder().encode('The moved draft changed.');
+      fileSystem.stat = jest.fn().mockResolvedValue({
+        type: FileType.File,
+        size: bytes.length
+      });
+      fileSystem.readFile = jest.fn().mockResolvedValue(bytes);
+      session.setExcerpt({
+        text: 'The old draft.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///old/novel/Drafts/chapter-5.9.md',
+          relativePath: 'Drafts/chapter-5.9.md'
+        }
+      });
+
+      await reread();
+
+      expect(fileSystem.readFile).toHaveBeenCalledWith('/new/novel/Drafts/chapter-5.9.md');
+      expect(session.getExcerpt()).toMatchObject({
+        version: 2,
+        text: 'The moved draft changed.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///new/novel/Drafts/chapter-5.9.md',
+          relativePath: 'Drafts/chapter-5.9.md'
+        }
+      });
+    });
+
+    it('repairs moved provenance without inventing a revision when content is unchanged', async () => {
+      workspace.workspaceFolders = () => [{ path: '/new/novel', name: 'novel' }];
+      const content = 'The same draft.';
+      const bytes = new TextEncoder().encode(content);
+      fileSystem.stat = jest.fn().mockResolvedValue({
+        type: FileType.File,
+        size: bytes.length
+      });
+      fileSystem.readFile = jest.fn().mockResolvedValue(bytes);
+      session.setExcerpt({
+        text: content,
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///old/novel/Drafts/chapter-5.9.md',
+          relativePath: 'Drafts/chapter-5.9.md'
+        }
+      });
+      const turnsBefore = session.getSnapshot().turns.length;
+
+      await reread();
+
+      expect(session.getExcerpt()).toMatchObject({
+        version: 1,
+        source: { sourceUri: 'file:///new/novel/Drafts/chapter-5.9.md' }
+      });
+      expect(session.getSnapshot().turns).toHaveLength(turnsBefore);
+      expect(posted(MessageType.STATUS).at(-1).payload.message).toMatch(/unchanged/i);
+    });
+
+    it('refuses portable recovery when multiple workspace roots are open', async () => {
+      workspace.workspaceFolders = () => [
+        { path: '/new/novel', name: 'novel' },
+        { path: '/new/notes', name: 'notes' }
+      ];
+      const readFile = jest.fn();
+      fileSystem.readFile = readFile;
+      session.setExcerpt({
+        text: 'Persisted safe text.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///old/novel/Drafts/chapter-5.9.md',
+          relativePath: 'Drafts/chapter-5.9.md'
+        }
+      });
+
+      await reread();
+
+      expect(readFile).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1).payload.message)
+        .toMatch(/more than one workspace folder/i);
+    });
+
+    it('applies symlink checks to a recovered workspace-relative path', async () => {
+      workspace.workspaceFolders = () => [{ path: '/new/novel', name: 'novel' }];
+      const readFile = jest.fn();
+      fileSystem.stat = jest.fn().mockImplementation(async (filePath: string) => ({
+        type: filePath === '/new/novel/Drafts' ? FileType.SymbolicLink : FileType.File,
+        size: 10
+      }));
+      fileSystem.readFile = readFile;
+      session.setExcerpt({
+        text: 'Persisted safe text.',
+        source: {
+          kind: 'file',
+          sourceUri: 'file:///old/novel/Drafts/chapter-5.9.md',
+          relativePath: 'Drafts/chapter-5.9.md'
+        }
+      });
+
+      await reread();
+
+      expect(readFile).not.toHaveBeenCalled();
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/symbolic link/i);
+    });
+
     it('refuses a normalized traversal outside the workspace despite a forged catalog claim', async () => {
       workspace.workspaceFolders = () => [{ path: '/ws', name: 'novel' }];
       const readFile = jest.fn();

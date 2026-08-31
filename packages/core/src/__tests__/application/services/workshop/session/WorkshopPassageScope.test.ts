@@ -107,6 +107,43 @@ describe('WorkshopPassageScope', () => {
     });
   });
 
+  it('refreshes current file provenance without minting a passage revision', () => {
+    const pinned = pin();
+
+    expect(passage.refreshExcerptFileSource(pinned.version, {
+      kind: 'file',
+      sourceUri: 'file:///moved/chapters/one.md',
+      relativePath: 'chapters/one.md'
+    })).toBe(true);
+
+    expect(passage.getExcerpt()).toMatchObject({
+      version: 1,
+      pinnedAt: pinned.pinnedAt,
+      sourceFingerprint: 'fingerprint-one',
+      source: {
+        kind: 'file',
+        sourceUri: 'file:///moved/chapters/one.md',
+        relativePath: 'chapters/one.md'
+      }
+    });
+    expect(passage.getReplacementCount()).toBe(0);
+    expect(passage.getExcerptVersion()).toBe(1);
+  });
+
+  it('refuses to refresh stale or non-file passage provenance', () => {
+    const pinned = pin();
+    const movedSource = {
+      kind: 'file' as const,
+      sourceUri: 'file:///moved/chapters/one.md',
+      relativePath: 'chapters/one.md'
+    };
+
+    expect(passage.refreshExcerptFileSource(pinned.version + 1, movedSource)).toBe(false);
+    passage.replaceExcerpt({ text: 'Typed revision.', source: { kind: 'manual' } }, false);
+    expect(passage.refreshExcerptFileSource(2, movedSource)).toBe(false);
+    expect(passage.getExcerpt()?.source).toEqual({ kind: 'manual' });
+  });
+
   it('refuses to add a passage to a locked open conversation', () => {
     passage.setSessionScope('open', false);
 

@@ -168,6 +168,36 @@ export class WorkshopPassageScope {
   }
 
   /**
+   * Refresh host-private file provenance after a moved workspace source is
+   * re-authorized. This is not a passage revision: the text, fingerprint,
+   * version, timestamp, delivery state, and participant memory are unchanged.
+   * The expected version prevents an awaited re-read from rebinding a newer
+   * passage that won a race.
+   */
+  refreshExcerptFileSource(
+    expectedVersion: number,
+    source: Extract<WorkshopExcerptSource, { kind: 'file' }>
+  ): boolean {
+    if (
+      !this.excerpt
+      || this.excerpt.version !== expectedVersion
+      || this.excerpt.source.kind !== 'file'
+    ) {
+      return false;
+    }
+    if (
+      this.excerpt.source.sourceUri === source.sourceUri
+      && this.excerpt.source.relativePath === source.relativePath
+      && this.excerpt.source.configuredResource?.group === source.configuredResource?.group
+      && this.excerpt.source.configuredResource?.path === source.configuredResource?.path
+    ) {
+      return false;
+    }
+    this.excerpt.source = cloneExcerptSource(source);
+    return true;
+  }
+
+  /**
    * Replace only passage state. The aggregate uses the returned facts to
    * retire sidecars/manifests and append the visible revision boundary.
    */

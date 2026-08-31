@@ -357,6 +357,14 @@ export class WorkshopSessionService {
     return this.passageScope.setExcerpt(input);
   }
 
+  /** Repair file provenance without creating a writer-visible passage revision. */
+  refreshExcerptFileSource(
+    expectedVersion: number,
+    source: Extract<WorkshopExcerpt['source'], { kind: 'file' }>
+  ): boolean {
+    return this.passageScope.refreshExcerptFileSource(expectedVersion, source);
+  }
+
   /** Replace working text, preserve host memory, and retire stale tool sidecars. */
   replaceExcerpt(input: WorkshopExcerptInput): WorkshopExcerptReplacement {
     const passageReplacement = this.passageScope.replaceExcerpt(
