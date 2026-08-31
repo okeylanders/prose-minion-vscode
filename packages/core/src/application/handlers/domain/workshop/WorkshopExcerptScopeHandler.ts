@@ -269,6 +269,17 @@ export class WorkshopExcerptScopeHandler {
       : loaded.text === excerpt.text &&
         loaded.truncation?.totalWords === excerpt.truncation?.totalWords;
     if (unchanged) {
+      const provenanceRefreshed = this.session.refreshExcerptFileSource(
+        excerpt.version,
+        authorization.source
+      );
+      if (provenanceRefreshed) {
+        this.outputChannel.appendLine(
+          `[WorkshopExcerptScopeHandler] Excerpt source reconnected (${source.relativePath})`
+        );
+        this.effects.markDirty('file excerpt source reconnected');
+        this.effects.postSessionState();
+      }
       this.outputChannel.appendLine(
         `[WorkshopExcerptScopeHandler] Excerpt re-read: unchanged on disk (${source.relativePath})`
       );

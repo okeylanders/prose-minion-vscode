@@ -8,7 +8,7 @@ import { FileSystem, FileType, Workspace } from '@/platform';
 import { WorkshopConfiguredResourceRef, WorkshopExcerptSource } from '@messages';
 import { countWords, trimToWordLimit } from '@/utils/textUtils';
 import { createHash } from 'crypto';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import * as path from 'path';
 
 export interface WorkshopConfiguredResourceBounds {
@@ -96,6 +96,21 @@ const isPathWithinRoot = (root: string, candidate: string): boolean => {
 
 const baseName = (filePath: string): string =>
   filePath.split(/[\\/]/).filter(Boolean).pop() ?? filePath;
+
+const workspaceRelativeSegments = (displayPath: string): string[] | undefined => {
+  if (
+    displayPath.length === 0
+    || displayPath.startsWith('External file: ')
+    || displayPath.includes('\0')
+    || isAbsolutePath(displayPath)
+  ) {
+    return undefined;
+  }
+  const segments = displayPath.split(/[\\/]/);
+  return segments.some((segment) => segment.length === 0 || segment === '.' || segment === '..')
+    ? undefined
+    : segments;
+};
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) {
@@ -409,10 +424,64 @@ export class WorkshopContextIntakeService {
       };
     }
 
+    const workspaceRecovery = await this.recoverWorkspaceExcerptSource(source);
+    if (workspaceRecovery) {
+      return workspaceRecovery;
+    }
+
     return {
       kind: 'refused',
       message: 'That excerpt source is outside the approved workspace and configured-resource boundaries.',
       details: source.relativePath
+    };
+  }
+
+  /**
+   * Recover a workspace file after its persisted absolute URI became stale
+   * (for example, when a saved session is opened on another computer).
+   * `relativePath` proposes the target but never authorizes it: recovery is
+   * available only with one open root, lexical containment, and the same
+   * no-symbolic-link filesystem proof used by an unchanged absolute URI.
+   */
+  private async recoverWorkspaceExcerptSource(
+    source: Extract<WorkshopExcerptSource, { kind: 'file' }>
+  ): Promise<WorkshopExcerptRereadAuthorization | undefined> {
+    const segments = workspaceRelativeSegments(source.relativePath);
+    if (!segments) {
+      return undefined;
+    }
+    const workspaceFolders = this.workspace.workspaceFolders();
+    if (workspaceFolders.length === 0) {
+      return undefined;
+    }
+    if (workspaceFolders.length > 1) {
+      return {
+        kind: 'refused',
+        message: 'The excerpt source cannot be safely reconnected while more than one workspace folder is open.',
+        details: source.relativePath
+      };
+    }
+
+    const root = workspaceFolders[0].path;
+    const candidate = path.resolve(root, ...segments);
+    if (!isPathWithinRoot(root, candidate)) {
+      return undefined;
+    }
+    const refusal = await this.validateWorkspaceRereadPath(root, candidate, source);
+    if (refusal) {
+      return refusal;
+    }
+
+    const reboundSource: Extract<WorkshopExcerptSource, { kind: 'file' }> = {
+      kind: 'file',
+      sourceUri: pathToFileURL(candidate).toString(),
+      relativePath: source.relativePath
+    };
+    const reboundResolution = await this.resolveConfiguredSource(reboundSource);
+    return {
+      kind: 'authorized',
+      fsPath: candidate,
+      source: reboundResolution.match.source as Extract<WorkshopExcerptSource, { kind: 'file' }>
     };
   }
 

@@ -25,6 +25,7 @@ describe('WorkshopExcerptScopeHandler', () => {
   let runRefusal: string | undefined;
   let session: {
     replaceExcerpt: jest.Mock;
+    refreshExcerptFileSource: jest.Mock;
     collectPendingHostUpdates: jest.Mock;
     getExcerpt: jest.Mock;
     setSessionScope: jest.Mock;
@@ -64,6 +65,7 @@ describe('WorkshopExcerptScopeHandler', () => {
         retiredSidecarCount: 0,
         replacementCount: 0
       }),
+      refreshExcerptFileSource: jest.fn().mockReturnValue(false),
       collectPendingHostUpdates: jest.fn(),
       getExcerpt: jest.fn(),
       setSessionScope: jest.fn(),
@@ -293,6 +295,11 @@ describe('WorkshopExcerptScopeHandler', () => {
       'Excerpt unchanged on disk · chapters/04.md'
     );
     expect(intake.matchConfiguredSource).not.toHaveBeenCalled();
+    expect(session.refreshExcerptFileSource).toHaveBeenCalledWith(4, {
+      kind: 'file',
+      sourceUri: 'file:///workspace/chapters/04.md',
+      relativePath: 'chapters/04.md'
+    });
     expect(session.replaceExcerpt).not.toHaveBeenCalled();
     expect(effects.markDirty).not.toHaveBeenCalled();
   });
