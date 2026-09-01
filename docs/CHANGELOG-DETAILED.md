@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### OpenRouter catalog refresh — 2026-09-01
+## [2.2.2] - 2026-09-01 — Portable excerpts and current model choices
+
+### Overview
+
+This patch reconnects persisted Workshop excerpts after a project moves to a
+new machine or filesystem location, while preserving the host-side confinement
+and provenance checks introduced in v2.2.0. It also refreshes the curated
+OpenRouter catalog with Claude Fable 5.1 and Mercury 2.5 Preview without
+changing any saved selections or defaults.
+
+### Added — current OpenRouter choices
 
 - Added `anthropic/claude-fable-5.1` to the shared Recommended Models catalog,
   while retaining Fable 5 as a distinct writer-selectable generation.
@@ -15,13 +25,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Search. The shared catalog makes it available to Assistant, Dictionary,
   Context, and Workshop selectors; it remains opt-in and does not change any
   defaults.
+
+### Fixed — portable Workshop excerpt rereads
+
+- Persisted file-backed passages now use their normalized workspace-relative
+  source hint to recover when the host-private absolute source URI becomes
+  stale.
+- When a project moves, the host may reconnect that hint only under one open
+  workspace root, after lexical containment and per-segment symbolic-link
+  checks. External, ambiguous, malformed, and traversal targets still fail
+  closed.
+- A successful relocation repairs host-private provenance without emitting a
+  false passage revision when the reread content is unchanged.
+- The implementation and security decision are documented in
+  `docs/architecture/2026-08-31-workshop-portable-excerpt-reread-runway.md` and
+  covered across passage-scope, service, handler, and routed-message tests.
+
+### Removed — retired provider IDs
+
 - Removed `arcee-ai/virtuoso-large` after its model and endpoint routes returned
   unavailable, and removed `anthropic/claude-opus-4.7-fast`,
   `anthropic/claude-opus-4.8-fast`, and `anthropic/claude-opus-5-fast` after
   OpenRouter retired the dedicated fast-model path in favor of request-level
   fast tiers on base models.
+
+### Verification
+
 - Re-synchronized `proseMinion.categoryModel.enum` with `CATEGORY_MODELS` and
   added architecture coverage for both the new and retired shared model IDs.
+- Full Jest validation passed 208 suites, 2,317 tests, and 2 snapshots. Coverage
+  completed at 82.39% statements, 82.68% lines, 82.33% functions, and 71.62%
+  branches.
+- All three TypeScript targets passed, the production extension/webview build
+  and bundle sentinel check passed, and lint completed with zero errors (957
+  established warnings).
+- The public-registry production dependency audit reported zero vulnerabilities.
+  The full lockfile audit reported one high and one low advisory in build-only
+  Browserslist/PostCSS tooling; these process repository-controlled build input
+  and are accepted for this patch rather than widening it with dependency churn.
+- Light release review found no critical or release-blocking issues.
 
 ## [2.2.1] - 2026-08-28 — Curated OpenRouter catalog refresh
 
