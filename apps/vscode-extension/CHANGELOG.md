@@ -4,6 +4,19 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+### Added
+
+- **Current model choices**: Added Claude Fable 5.1 to the shared Recommended
+  Models catalog and retained Fable 5 for its distinct editorial voice. Added
+  Mercury 2.5 Preview to Recommended Models and Category Search as an opt-in,
+  high-throughput choice for Dictionary and other utility work.
+
+### Removed
+
+- Removed the unavailable `arcee-ai/virtuoso-large` model and the deprecated
+  dedicated Claude Opus Fast IDs. OpenRouter now exposes supported fast mode
+  through a request tier on the corresponding base model instead.
+
 ## [2.2.1] - 2026-08-28
 
 ### Added

@@ -100,18 +100,6 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s newest Opus model with 1M context, stronger agentic reasoning, and premium long-form analysis quality'
   },
   {
-    id: 'anthropic/claude-opus-4.8-fast',
-    name: 'Claude Opus 4.8 Fast',
-    family: 'Claude Opus',
-    description: 'Higher-throughput Opus 4.8 variant for interactive category search and rapid high-quality utility passes'
-  },
-  {
-    id: 'anthropic/claude-opus-4.7-fast',
-    name: 'Claude Opus 4.7 Fast',
-    family: 'Claude Opus',
-    description: 'Lower-latency variant of Opus 4.7 for category search and high-throughput utility tasks'
-  },
-  {
     id: 'openai/gpt-5.4-mini',
     name: 'GPT-5.4 Mini',
     family: 'GPT-5.4',
@@ -134,6 +122,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-OSS 120B Nitro',
     family: 'GPT-OSS',
     description: 'Default for Category Search; OpenAI\'s open-weight reasoner routed to the highest-throughput available provider for extremely fast semantic matching'
+  },
+  {
+    id: 'inception/mercury-2.5-preview',
+    name: 'Mercury 2.5 Preview',
+    family: 'Inception Mercury',
+    description: 'Extremely fast, low-cost diffusion reasoning model with 260K context for responsive dictionary lookups, category matching, and utility analysis'
   },
   {
     id: 'google/gemini-2.5-flash',
@@ -354,6 +348,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s Mythos-class model for autonomous knowledge work and coding. 1M context with reasoning support for deep prose analysis, manuscript-scale critique, and complex revision planning.'
   },
   {
+    id: 'anthropic/claude-fable-5.1',
+    name: 'Claude Fable 5.1',
+    family: 'Claude Fable',
+    description: 'Anthropic\'s upgraded Fable model with 1M context, more concise planning, and stronger long-running knowledge work. Retained alongside Fable 5 so writers can compare their editorial voices.'
+  },
+  {
     id: 'anthropic/claude-opus-4.5',
     name: 'Claude Opus 4.5',
     family: 'Claude Opus',
@@ -372,22 +372,10 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s latest Opus model for long-running reasoning, sustained context, and premium prose analysis workflows.'
   },
   {
-    id: 'anthropic/claude-opus-4.7-fast',
-    name: 'Claude Opus 4.7 Fast',
-    family: 'Claude Opus',
-    description: 'Fast-tier Opus 4.7. Premium prose reasoning with reduced latency for interactive editing and rapid critique loops.'
-  },
-  {
     id: 'anthropic/claude-opus-4.8',
     name: 'Claude Opus 4.8',
     family: 'Claude Opus',
     description: 'Anthropic\'s newest Opus model. 1M context, improved agentic reasoning, and premium long-form prose analysis for difficult scenes and manuscript-scale critique.'
-  },
-  {
-    id: 'anthropic/claude-opus-4.8-fast',
-    name: 'Claude Opus 4.8 Fast',
-    family: 'Claude Opus',
-    description: 'Higher-throughput Opus 4.8. Same model family and context window with faster output for iterative chapter passes and rapid critique loops.'
   },
   {
     id: 'anthropic/claude-opus-5',
@@ -396,10 +384,10 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s most capable model. Careful, sustained work on a long manuscript — deep revision passes, structural analysis, and feedback that holds together across a whole chapter. Slower and pricier, strongest judgment.'
   },
   {
-    id: 'anthropic/claude-opus-5-fast',
-    name: 'Claude Opus 5 Fast',
-    family: 'Claude Opus',
-    description: 'The same Opus 5 brain tuned to answer noticeably faster, at double the price. For iterating live on a scene when tempo matters as much as the notes.'
+    id: 'inception/mercury-2.5-preview',
+    name: 'Mercury 2.5 Preview',
+    family: 'Inception Mercury',
+    description: 'Extremely fast diffusion reasoning model with 260K context and very low token cost. A strong fit for dictionary alternatives, category matching, quick critiques, and other latency-sensitive utility work.'
   },
   {
     id: 'deepseek/deepseek-r1',
@@ -874,12 +862,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'TheDrummer: Skyfall 36B v2',
     family: 'TheDrummer',
     description: 'Larger TheDrummer model. Premium creative-writing tier for distinctive voice and longer-form fiction.'
-  },
-  {
-    id: 'arcee-ai/virtuoso-large',
-    name: 'Virtuoso Large',
-    family: 'Arcee',
-    description: 'Cross-domain reasoning. Good balance of creative writing and enterprise-grade analysis.'
   },
   {
     id: 'arcee-ai/trinity-large-thinking',

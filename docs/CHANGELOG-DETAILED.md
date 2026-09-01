@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### OpenRouter catalog refresh — 2026-09-01
+
+- Added `anthropic/claude-fable-5.1` to the shared Recommended Models catalog,
+  while retaining Fable 5 as a distinct writer-selectable generation.
+- Added `inception/mercury-2.5-preview` to Recommended Models and Category
+  Search. The shared catalog makes it available to Assistant, Dictionary,
+  Context, and Workshop selectors; it remains opt-in and does not change any
+  defaults.
+- Removed `arcee-ai/virtuoso-large` after its model and endpoint routes returned
+  unavailable, and removed `anthropic/claude-opus-4.7-fast`,
+  `anthropic/claude-opus-4.8-fast`, and `anthropic/claude-opus-5-fast` after
+  OpenRouter retired the dedicated fast-model path in favor of request-level
+  fast tiers on base models.
+- Re-synchronized `proseMinion.categoryModel.enum` with `CATEGORY_MODELS` and
+  added architecture coverage for both the new and retired shared model IDs.
+
 ## [2.2.1] - 2026-08-28 — Curated OpenRouter catalog refresh
 
 ### Overview

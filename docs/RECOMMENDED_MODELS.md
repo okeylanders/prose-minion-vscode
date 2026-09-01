@@ -34,6 +34,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-5
   - Anthropic: https://www.anthropic.com
 
+### Claude Fable 5.1 — Long-Running Editorial Work
+
+- **Best For:** Manuscript-scale critique, complex revision planning, and sustained knowledge work
+- **Description:** Anthropic's upgraded 1M-context Fable model is more concise than Fable 5 and stronger across long-running workflows; Fable 5 remains selectable for writers who prefer its voice
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-fable-5.1
+  - Anthropic: https://www.anthropic.com
+
 ### Claude Sonnet 4.5 — The Gold Standard
 
 - **Best For:** Top-tier powerhouse for all creative tasks
@@ -338,6 +346,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/openai/gpt-oss-120b:nitro
   - OpenAI: https://openai.com/open-models/
 
+### Mercury 2.5 Preview — Diffusion-Speed Utility Work
+
+- **Best For:** Dictionary alternatives, Category Search, rapid critiques, and other latency-sensitive utility work
+- **Description:** Inception's 260K-context diffusion reasoning model is exceptionally fast and inexpensive. It remains an opt-in preview choice rather than a default
+- **Links:**
+  - OpenRouter: https://openrouter.ai/inception/mercury-2.5-preview
+  - Inception: https://www.inceptionlabs.ai/
+
 ### Claude Haiku 4.5 — Quick Checks
 
 - **Best For:** Anthropic's fastest efficient model
@@ -369,22 +385,6 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/google/gemini-3.7-flash
   - Google DeepMind: https://deepmind.google/technologies/gemini/
-
-### Claude Opus 4.8 Fast — Premium Iteration
-
-- **Best For:** Iterative chapter passes and rapid critique loops
-- **Description:** Higher-throughput Opus 4.8 variant with the same 1M context family for faster editorial feedback
-- **Links:**
-  - OpenRouter: https://openrouter.ai/anthropic/claude-opus-4.8-fast
-  - Anthropic: https://www.anthropic.com
-
-### Claude Opus 5 Fast — Live Iteration
-
-- **Best For:** Iterating live on a scene when tempo matters as much as the notes
-- **Description:** The same Opus 5 brain tuned to answer noticeably faster, at double the price
-- **Links:**
-  - OpenRouter: https://openrouter.ai/anthropic/claude-opus-5-fast
-  - Anthropic: https://www.anthropic.com
 
 ### Step 3.7 Flash — Utility Drafting
 
