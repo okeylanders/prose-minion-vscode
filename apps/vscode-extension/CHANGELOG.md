@@ -4,12 +4,21 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-09-01
+
 ### Added
 
 - **Current model choices**: Added Claude Fable 5.1 to the shared Recommended
   Models catalog and retained Fable 5 for its distinct editorial voice. Added
   Mercury 2.5 Preview to Recommended Models and Category Search as an opt-in,
   high-throughput choice for Dictionary and other utility work.
+
+### Fixed
+
+- **Portable Workshop excerpts**: File-backed passages can reconnect after a
+  project moves to another computer or filesystem location. Recovery still
+  enforces workspace containment, rejects traversal and symbolic-link escapes,
+  and does not create a false passage revision when the content is unchanged.
 
 ### Removed
 

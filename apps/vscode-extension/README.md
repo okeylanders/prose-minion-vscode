@@ -24,7 +24,14 @@
 
 ---
 
-## What's new in v2.2.1 — Fresh model catalog
+## What's new in v2.2.2 — Portable excerpts and faster models
+
+- **Projects can move without losing their excerpts** — Workshop can securely reconnect a persisted file-backed passage after the project moves to another computer or filesystem location, without weakening workspace, traversal, or symbolic-link protections.
+- **Mercury 2.5 Preview is ready for the quick work** — the exceptionally fast, inexpensive diffusion model is now selectable for Dictionary, Assistant, Context, Workshop, and Category Search.
+- **Claude Fable 5.1 joins the room** — Anthropic's stronger, more concise Fable generation is available alongside Fable 5, so you can choose the editorial voice that fits the work.
+- **The shelves stay tidy** — one unavailable model and three retired dedicated Opus Fast IDs have been removed; existing defaults and saved selections are unchanged.
+
+### Also in v2.2.1 — Fresh model catalog
 
 - **GLM 5.3 Flash is here** — a fast, multimodal 1.31M-context option for responsive critique, large-context analysis, and utility rewrites.
 - **More strong value choices** — GLM 5.3, DeepSeek V4 Flash 0731, and Qwen3.8 Flash join the curated model browser; the three Flash models are also selectable for Category Search.
