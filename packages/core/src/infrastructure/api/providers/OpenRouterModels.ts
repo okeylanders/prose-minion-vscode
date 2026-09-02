@@ -178,6 +178,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Google\'s newest 1M-context Flash model for responsive multimodal reasoning and reliable multi-step category matching'
   },
   {
+    id: 'google/gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    family: 'Gemini 3.8',
+    description: 'Google\'s most intelligent 1M-context Flash model for responsive multimodal reasoning and complex multi-step category matching'
+  },
+  {
     id: 'deepseek/deepseek-v4-flash',
     name: 'DeepSeek V4 Flash',
     family: 'DeepSeek V4',
@@ -496,6 +502,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Gemini 3.7 Flash',
     family: 'Gemini 3.7',
     description: 'Google\'s newest Flash model. Fast multimodal reasoning with 1M context for responsive critique, large-document analysis, and multi-step writing workflows.'
+  },
+  {
+    id: 'google/gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    family: 'Gemini 3.8',
+    description: 'Google\'s most intelligent Flash model with 1M context and 65K output. Responsive multimodal reasoning for long-document critique, dictionary alternatives, and multi-step writing workflows.'
   },
   {
     id: 'z-ai/glm-4.5',

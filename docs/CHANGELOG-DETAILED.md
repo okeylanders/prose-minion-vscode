@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.2.3] - 2026-09-02 — Fail-closed Workshop checkpoint conflicts
+## [2.2.3] - 2026-09-02 — Safer Workshop checkpoints and Gemini 3.8 Flash
 
 ### Overview
 
@@ -16,7 +16,21 @@ checkpoint from silently overwriting one another after a writer switches
 computers. Because wall clocks and synthetic resume turns cannot prove causal
 ordering across machines, initialization now preserves both copies whenever
 their durable states differ. The writer can explicitly open the named session
-to choose and promote it.
+to choose and promote it. The release also adds Google's newly served Gemini
+3.8 Flash model to the shared model browser and Category Search.
+
+### Added — Gemini 3.8 Flash
+
+- Added the direct OpenRouter ID `google/gemini-3.8-flash` to
+  `RECOMMENDED_MODELS` and `CATEGORY_MODELS`; the lower-cost asynchronous
+  `:batch` route remains intentionally excluded from interactive selectors.
+- The shared catalog makes it available to Assistant, Dictionary, Context,
+  Workshop, and all Conversation Widget selectors. The Category Search
+  manifest enum is synchronized with the same ID.
+- Live OpenRouter evidence on 2026-09-02 reported a 1,048,576-token context
+  window, up to 65,536 output tokens, multimodal input, text output, reasoning,
+  structured-output, and tool support. The model remains opt-in; no existing
+  default or saved selection changes.
 
 ### Fixed — cross-machine conflict preservation
 
@@ -40,13 +54,19 @@ to choose and promote it.
 ### Compatibility
 
 - No session-schema migration is required.
-- No settings, message contracts, or provider integrations changed.
+- No settings or message contracts changed. The only provider-facing change is
+  the opt-in curated Gemini 3.8 Flash catalog entry.
 - Existing `current.json`-only recovery is unchanged. Matching named sessions
   retain automatic dual autosave; only divergent same-identity copies require
   an explicit selection.
 
 ### Verification
 
+- Queried OpenRouter's live catalog and endpoint inventory on 2026-09-02. The
+  direct `google/gemini-3.8-flash` route was present with active Google and
+  Google AI Studio endpoints; no paid inference call was made.
+- The Category Search manifest parity and shared Workshop/widget picker guards
+  passed 5 focused assertions with the new direct ID.
 - Added a coordinator regression test that simulates stale local state made
   superficially newer by a resume write, verifies the portable named copy is
   not overwritten, explicitly opens that named session to promote it, and
@@ -65,6 +85,8 @@ to choose and promote it.
   The release branch replaced it with fail-closed state comparison, added the
   cross-machine, malformed-marker, and second-restart regression coverage above,
   and passed final code and documentation re-review with no release blockers.
+- Focused review of the late catalog addition found no stale defaults, duplicate
+  IDs, batch-route leakage, or model/manifest/documentation parity gaps.
 
 ## [2.2.2] - 2026-09-01 — Portable excerpts and current model choices
 

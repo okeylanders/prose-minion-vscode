@@ -24,11 +24,12 @@
 
 ---
 
-## What's new in v2.2.3 — Divergent Workshop sessions stay safe
+## What's new in v2.2.3 — Safer Workshop sessions + Gemini 3.8 Flash
 
 - **No silent cross-machine overwrite** — when a portable named Workshop session disagrees with the machine-local recovery copy, Prose Minion preserves both instead of guessing from timestamps and overwriting one.
 - **You choose the room that wins** — open the named session explicitly from the Workshop session browser to promote it after a sync conflict.
 - **Normal autosave stays seamless** — matching current and named checkpoints remain associated and continue through the existing ordered save path.
+- **Gemini 3.8 Flash joins every shared picker** — Google's new 1M-context Flash model is available for Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search without changing any defaults.
 
 ### Also in v2.2.2 — Portable excerpts and faster models
 

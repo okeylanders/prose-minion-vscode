@@ -6,6 +6,14 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [2.2.3] - 2026-09-02
 
+### Added
+
+- **Gemini 3.8 Flash**: Added `google/gemini-3.8-flash` to the shared
+  Recommended Models and Category Search catalogs. It is available to
+  Assistant, Dictionary, Context, Workshop, and Conversation Widget selectors
+  as an opt-in 1M-context model; existing defaults and saved choices are
+  unchanged.
+
 ### Fixed
 
 - **Cross-machine Workshop checkpoint conflicts**: When a machine-local

@@ -8,7 +8,8 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'meta/muse-spark-1.1',
   'qwen/qwen3.8-max',
   'anthropic/claude-fable-5.1',
-  'inception/mercury-2.5-preview'
+  'inception/mercury-2.5-preview',
+  'google/gemini-3.8-flash'
 ] as const;
 
 const RETIRED_MODEL_IDS = [
