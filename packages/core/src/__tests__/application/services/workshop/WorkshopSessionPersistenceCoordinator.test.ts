@@ -296,6 +296,29 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(statuses).toEqual(['saving', 'saved']);
   });
 
+  it('prefers a newer named checkpoint over stale current.json from another machine', async () => {
+    current = persistedSession('shared-room', 'Shared room', 'The stale local excerpt.');
+    current.updatedAt = '2026-07-23T13:00:00.000Z';
+    current.temporal.lastActivityAt = current.updatedAt;
+
+    const portable = persistedSession('shared-room', 'Shared room', 'The newer portable excerpt.');
+    portable.updatedAt = '2026-07-23T14:00:00.000Z';
+    portable.temporal.lastActivityAt = portable.updatedAt;
+    portable.savedAt = portable.updatedAt;
+    named.push(portable);
+
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+
+    expect(session.getExcerpt()?.text).toBe('The newer portable excerpt.');
+    expect(current?.workshop.excerpt?.text).toBe('The newer portable excerpt.');
+    expect(named[0].workshop.excerpt?.text).toBe('The newer portable excerpt.');
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('Named checkpoint superseded stale current.json')
+    );
+  });
+
   it('preflights a malformed aggregate before importing any provider history', async () => {
     const valid = new WorkshopSessionService(() => now.getTime()).exportCommittedState();
     current = {

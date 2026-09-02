@@ -120,6 +120,27 @@ const normalizedIso = (date: Date): string => date.toISOString();
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
 
+/**
+ * `current.json` is a machine-local recovery cache. A named session is the
+ * portable checkpoint, so when both describe the same session identity the
+ * newer named copy must win. This commonly occurs after switching machines,
+ * because `current.json` is intentionally gitignored.
+ */
+function isNamedCheckpointNewer(
+  named: WorkshopPersistedSessionV2,
+  current: WorkshopPersistedSessionV2
+): boolean {
+  const namedUpdatedAt = Date.parse(named.updatedAt);
+  const currentUpdatedAt = Date.parse(current.updatedAt);
+  if (namedUpdatedAt !== currentUpdatedAt) {
+    return namedUpdatedAt > currentUpdatedAt;
+  }
+
+  // A turn counter is a reliable same-lineage tiebreaker when a save and a
+  // rolling checkpoint share the same millisecond timestamp.
+  return named.workshop.counters.turn > current.workshop.counters.turn;
+}
+
 export class WorkshopSessionPersistenceCoordinator {
   private readonly now: () => Date;
   private readonly idFactory: () => string;
@@ -240,9 +261,19 @@ export class WorkshopSessionPersistenceCoordinator {
       try {
         const current = await this.readCurrentCheckpoint();
         if (current) {
+          let checkpoint = current;
           try {
-            if (await this.store.readNamed(current.session.sessionId)) {
-              this.activeNamedSessionId = current.session.sessionId;
+            const named = await this.store.readNamedWithRecovery(current.session.sessionId);
+            if (named) {
+              if (isNamedCheckpointNewer(named.session, current.session)) {
+                checkpoint = named;
+                this.outputChannel.appendLine(
+                  `[WorkshopSessionPersistence] Named checkpoint superseded stale current.json ` +
+                  `(id=${named.session.sessionId}, currentUpdatedAt=${current.session.updatedAt}, ` +
+                  `namedUpdatedAt=${named.session.updatedAt})`
+                );
+              }
+              this.activeNamedSessionId = checkpoint.session.sessionId;
             }
           } catch (error) {
             this.outputChannel.appendLine(
@@ -250,7 +281,7 @@ export class WorkshopSessionPersistenceCoordinator {
               `(id=${current.session.sessionId}): ${this.errorMessage(error)}`
             );
           }
-          result = await this.hydrate(current.session, true, true, current);
+          result = await this.hydrate(checkpoint.session, true, true, checkpoint);
         } else {
           this.recordStartMarker();
           this.markDirty('initial session');
