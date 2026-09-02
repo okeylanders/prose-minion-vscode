@@ -296,12 +296,40 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(statuses).toEqual(['saving', 'saved']);
   });
 
-  it('prefers a newer named checkpoint over stale current.json from another machine', async () => {
+  it('does not ignore a noncanonical turn merely labeled as a resume marker', async () => {
+    current = persistedSession('named-current', 'Living room', 'The restored manuscript.');
+    const edited = JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV2;
+    edited.workshop.turns.push({
+      ...edited.workshop.turns[0],
+      id: 'turn-2-assistant-1784815200000',
+      role: 'assistant',
+      artifact: 'session_resume',
+      content: 'Writer-authored content disguised as a resume marker.'
+    });
+    edited.workshop.counters.turn += 1;
+    edited.summary.turnCount += 1;
+    named.push(decodeWorkshopPersistedSessionCheckpoint(edited).session);
+    const coordinator = createCoordinator();
+
+    await coordinator.initialize();
+    await coordinator.flush();
+
+    expect(store.updateNamed).not.toHaveBeenCalled();
+    expect(named[0].workshop.turns.at(-1)?.content)
+      .toBe('Writer-authored content disguised as a resume marker.');
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('automatic named autosave association skipped to preserve both copies')
+    );
+  });
+
+  it('preserves a divergent named checkpoint instead of overwriting it from stale current.json', async () => {
     current = persistedSession('shared-room', 'Shared room', 'The stale local excerpt.');
-    current.updatedAt = '2026-07-23T13:00:00.000Z';
+    current.updatedAt = '2026-07-23T15:00:00.000Z';
     current.temporal.lastActivityAt = current.updatedAt;
 
-    const portable = persistedSession('shared-room', 'Shared room', 'The newer portable excerpt.');
+    const portable = decodeWorkshopPersistedSessionCheckpoint(
+      persistedSession('shared-room', 'Shared room', 'The newer portable excerpt.')
+    ).session;
     portable.updatedAt = '2026-07-23T14:00:00.000Z';
     portable.temporal.lastActivityAt = portable.updatedAt;
     portable.savedAt = portable.updatedAt;
@@ -311,11 +339,37 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.initialize();
     await coordinator.flush();
 
+    expect(session.getExcerpt()?.text).toBe('The stale local excerpt.');
+    expect(current?.workshop.excerpt?.text).toBe('The stale local excerpt.');
+    expect(named[0].workshop.excerpt?.text).toBe('The newer portable excerpt.');
+    expect(store.updateNamed).not.toHaveBeenCalled();
+    expect(log.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('automatic named autosave association skipped to preserve both copies')
+    );
+
+    await coordinator.openNamed('shared-room');
+
     expect(session.getExcerpt()?.text).toBe('The newer portable excerpt.');
     expect(current?.workshop.excerpt?.text).toBe('The newer portable excerpt.');
-    expect(named[0].workshop.excerpt?.text).toBe('The newer portable excerpt.');
-    expect(log.appendLine).toHaveBeenCalledWith(
-      expect.stringContaining('Named checkpoint superseded stale current.json')
+
+    session = new WorkshopSessionService(() => now.getTime());
+    time = new WorkshopSessionTimeService({
+      now: () => now,
+      timezone: 'America/Chicago'
+    });
+    store.updateNamed.mockClear();
+    (log.appendLine as jest.Mock).mockClear();
+    const restarted = createCoordinator();
+
+    await restarted.initialize();
+    await restarted.flush();
+
+    expect(store.updateNamed).toHaveBeenCalledWith(
+      'shared-room',
+      expect.objectContaining({ sessionId: 'shared-room' })
+    );
+    expect(log.appendLine).not.toHaveBeenCalledWith(
+      expect.stringContaining('Named checkpoint diverged from current.json')
     );
   });
 
@@ -434,6 +488,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     current = checkpoint;
     named.push(checkpoint);
     store.readCurrentWithRecovery.mockResolvedValue(recovered);
+    store.readNamedWithRecovery.mockResolvedValue(recovered);
     const coordinator = createCoordinator();
 
     const hydration = await coordinator.initialize();

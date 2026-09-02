@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-09-02 — Fail-closed Workshop checkpoint conflicts
+
+### Overview
+
+This patch prevents machine-local Workshop recovery state and a portable named
+checkpoint from silently overwriting one another after a writer switches
+computers. Because wall clocks and synthetic resume turns cannot prove causal
+ordering across machines, initialization now preserves both copies whenever
+their durable states differ. The writer can explicitly open the named session
+to choose and promote it.
+
+### Fixed — cross-machine conflict preservation
+
+- Workshop initialization now reads the named checkpoint associated with the
+  session id in `current.json` through the store's recovery-aware path.
+- A normal associated autosave writes equivalent current and named snapshots.
+  Comparison ignores named-file `savedAt` plus machine-local activity time and
+  synthetic resume markers; these do not represent writer-authored divergence.
+  Equivalent copies remain associated through the ordered dual-write path.
+- Any other state difference has ambiguous causality. Workshop hydrates the
+  local recovery copy but does not associate or update the divergent named
+  file, preserving both durable choices.
+- Opening the named session explicitly remains the authority gesture: it
+  hydrates that checkpoint and promotes it to `current.json` through the
+  existing transactional open path.
+- Conflict detection is identity-bound. Checkpoints with different session ids
+  are never merged or compared.
+- The Output channel records the protected conflict and both timestamps, then
+  instructs the writer to open the named session explicitly.
+
+### Compatibility
+
+- No session-schema migration is required.
+- No settings, message contracts, or provider integrations changed.
+- Existing `current.json`-only recovery is unchanged. Matching named sessions
+  retain automatic dual autosave; only divergent same-identity copies require
+  an explicit selection.
+
+### Verification
+
+- Added a coordinator regression test that simulates stale local state made
+  superficially newer by a resume write, verifies the portable named copy is
+  not overwritten, explicitly opens that named session to promote it, and
+  verifies a second restart restores normal named autosave association.
+- Full Jest validation passed 208 suites, 2,319 tests, and 2 snapshots. Coverage
+  completed at 82.44% statements, 82.73% lines, 82.41% functions, and 71.78%
+  branches.
+- All three TypeScript targets passed, the production extension/webview build
+  and bundle sentinel check passed, and lint completed with zero errors (957
+  established warnings).
+- The public-registry production dependency audit reported zero vulnerabilities.
+  The full lockfile audit retained one high and one low advisory in build-only
+  Browserslist/PostCSS tooling; these process repository-controlled build input
+  and remain accepted rather than widening this patch with dependency churn.
+- Light release review caught the unsafe wall-clock ordering in the merged fix.
+  The release branch replaced it with fail-closed state comparison, added the
+  cross-machine, malformed-marker, and second-restart regression coverage above,
+  and passed final code and documentation re-review with no release blockers.
+
 ## [2.2.2] - 2026-09-01 — Portable excerpts and current model choices
 
 ### Overview

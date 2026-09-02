@@ -120,25 +120,102 @@ const normalizedIso = (date: Date): string => date.toISOString();
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
 
+const CANONICAL_SESSION_MARKER_KEYS = [
+  'artifact',
+  'content',
+  'excerptVersion',
+  'id',
+  'kind',
+  'participant',
+  'role',
+  'timestamp'
+];
+
+function isCanonicalResumeMarker(
+  turn: WorkshopSessionStateV1['turns'][number]
+): boolean {
+  const keys = Object.keys(turn).sort();
+  return turn.role === 'system' &&
+    turn.kind === 'divider' &&
+    turn.participant === 'session' &&
+    turn.artifact === 'session_resume' &&
+    turn.content.startsWith('Session resumed ') &&
+    keys.length === CANONICAL_SESSION_MARKER_KEYS.length &&
+    keys.every((key, index) => key === CANONICAL_SESSION_MARKER_KEYS[index]);
+}
+
+function comparableCheckpointState(session: WorkshopPersistedSessionV2): unknown {
+  const {
+    savedAt: _savedAt,
+    updatedAt: _updatedAt,
+    temporal,
+    summary: _summary,
+    workshop,
+    ...stableEnvelope
+  } = session;
+  const { lastActivityAt: _lastActivityAt, ...stableTemporal } = temporal;
+  const resumeTurnCount = workshop.turns.filter(isCanonicalResumeMarker).length;
+  const stableTurns = workshop.turns.filter((turn) => !isCanonicalResumeMarker(turn));
+  return {
+    ...stableEnvelope,
+    temporal: stableTemporal,
+    workshop: {
+      ...workshop,
+      counters: {
+        ...workshop.counters,
+        turn: Math.max(0, workshop.counters.turn - resumeTurnCount)
+      },
+      turns: stableTurns
+    }
+  };
+}
+
+function hasEquivalentJsonValue(left: unknown, right: unknown): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => hasEquivalentJsonValue(value, right[index]));
+  }
+  if (
+    left === null || right === null ||
+    typeof left !== 'object' || typeof right !== 'object'
+  ) {
+    return false;
+  }
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord)
+    .filter((key) => leftRecord[key] !== undefined)
+    .sort();
+  const rightKeys = Object.keys(rightRecord)
+    .filter((key) => rightRecord[key] !== undefined)
+    .sort();
+  return leftKeys.length === rightKeys.length &&
+    leftKeys.every((key, index) =>
+      key === rightKeys[index] &&
+      hasEquivalentJsonValue(leftRecord[key], rightRecord[key])
+    );
+}
+
 /**
- * `current.json` is a machine-local recovery cache. A named session is the
- * portable checkpoint, so when both describe the same session identity the
- * newer named copy must win. This commonly occurs after switching machines,
- * because `current.json` is intentionally gitignored.
+ * A successful associated autosave writes the same snapshot to `current.json`
+ * and the named checkpoint. The summary is derived browser metadata, while
+ * named-file `savedAt` plus local resume timestamps/markers are expected
+ * per-copy differences; anything else has ambiguous causality and must detach
+ * automatic named autosave.
  */
-function isNamedCheckpointNewer(
+function hasEquivalentCheckpointState(
   named: WorkshopPersistedSessionV2,
   current: WorkshopPersistedSessionV2
 ): boolean {
-  const namedUpdatedAt = Date.parse(named.updatedAt);
-  const currentUpdatedAt = Date.parse(current.updatedAt);
-  if (namedUpdatedAt !== currentUpdatedAt) {
-    return namedUpdatedAt > currentUpdatedAt;
-  }
-
-  // A turn counter is a reliable same-lineage tiebreaker when a save and a
-  // rolling checkpoint share the same millisecond timestamp.
-  return named.workshop.counters.turn > current.workshop.counters.turn;
+  return hasEquivalentJsonValue(
+    comparableCheckpointState(named),
+    comparableCheckpointState(current)
+  );
 }
 
 export class WorkshopSessionPersistenceCoordinator {
@@ -261,19 +338,20 @@ export class WorkshopSessionPersistenceCoordinator {
       try {
         const current = await this.readCurrentCheckpoint();
         if (current) {
-          let checkpoint = current;
           try {
             const named = await this.store.readNamedWithRecovery(current.session.sessionId);
             if (named) {
-              if (isNamedCheckpointNewer(named.session, current.session)) {
-                checkpoint = named;
+              if (hasEquivalentCheckpointState(named.session, current.session)) {
+                this.activeNamedSessionId = current.session.sessionId;
+              } else {
                 this.outputChannel.appendLine(
-                  `[WorkshopSessionPersistence] Named checkpoint superseded stale current.json ` +
+                  `[WorkshopSessionPersistence] Named checkpoint diverged from current.json; ` +
+                  `automatic named autosave association skipped to preserve both copies ` +
                   `(id=${named.session.sessionId}, currentUpdatedAt=${current.session.updatedAt}, ` +
-                  `namedUpdatedAt=${named.session.updatedAt})`
+                  `namedUpdatedAt=${named.session.updatedAt}). Open the named session explicitly ` +
+                  `to choose and promote it.`
                 );
               }
-              this.activeNamedSessionId = checkpoint.session.sessionId;
             }
           } catch (error) {
             this.outputChannel.appendLine(
@@ -281,7 +359,7 @@ export class WorkshopSessionPersistenceCoordinator {
               `(id=${current.session.sessionId}): ${this.errorMessage(error)}`
             );
           }
-          result = await this.hydrate(checkpoint.session, true, true, checkpoint);
+          result = await this.hydrate(current.session, true, true, current);
         } else {
           this.recordStartMarker();
           this.markDirty('initial session');

@@ -195,6 +195,18 @@ promotes its hydrated state to `current.json`. New Session replaces
 the active named file also returns the live room to current-only autosave.
 Stale conversation histories cannot resurrect.
 
+On initialization, `current.json` remains the ordinary machine-local recovery
+entry point. When it identifies an associated named checkpoint, the coordinator
+confirms that both contain the same durable state apart from named-file
+`savedAt` metadata, machine-local activity time, and synthetic resume markers
+before restoring automatic dual autosave. Any other difference has ambiguous
+cross-machine causality: wall clocks and resume turns are not treated as a
+lineage clock. Workshop therefore hydrates the local recovery copy while
+leaving the divergent named checkpoint detached and untouched. Opening the
+named checkpoint is the explicit authority gesture that promotes it to
+`current.json`; the next restart recognizes the resume-only delta and restores
+the association.
+
 ### 7. The browser adopts the approved interaction set
 
 The shared modal shell presents:

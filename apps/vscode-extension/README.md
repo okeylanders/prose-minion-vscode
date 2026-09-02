@@ -24,7 +24,13 @@
 
 ---
 
-## What's new in v2.2.2 — Portable excerpts and faster models
+## What's new in v2.2.3 — Divergent Workshop sessions stay safe
+
+- **No silent cross-machine overwrite** — when a portable named Workshop session disagrees with the machine-local recovery copy, Prose Minion preserves both instead of guessing from timestamps and overwriting one.
+- **You choose the room that wins** — open the named session explicitly from the Workshop session browser to promote it after a sync conflict.
+- **Normal autosave stays seamless** — matching current and named checkpoints remain associated and continue through the existing ordered save path.
+
+### Also in v2.2.2 — Portable excerpts and faster models
 
 - **Projects can move without losing their excerpts** — Workshop can securely reconnect a persisted file-backed passage after the project moves to another computer or filesystem location, without weakening workspace, traversal, or symbolic-link protections.
 - **Mercury 2.5 Preview is ready for the quick work** — the exceptionally fast, inexpensive diffusion model is now selectable for Dictionary, Assistant, Context, Workshop, and Category Search.
