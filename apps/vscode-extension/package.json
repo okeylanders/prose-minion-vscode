@@ -2,7 +2,7 @@
   "name": "prose-minion",
   "displayName": "Prose Minion: Writing Toolkit",
   "description": "AI prose analysis and writing assistant for fiction authors. Dialogue suggestions, context-aware dictionary, comprehensive prose metrics, style flags, word frequency, and manuscript search. Metrics/search work offline—no API key needed.",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "license": "SEE LICENSE IN LICENSE",
   "publisher": "OkeyLanders",
   "repository": {
@@ -233,6 +233,7 @@
             "google/gemini-3.5-flash",
             "google/gemini-3.6-flash",
             "google/gemini-3.7-flash",
+            "google/gemini-3.8-flash",
             "google/gemini-2.5-flash",
             "google/gemini-2.5-pro",
             "deepseek/deepseek-v4-flash",

@@ -4,6 +4,24 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+## [2.2.3] - 2026-09-02
+
+### Added
+
+- **Gemini 3.8 Flash**: Added `google/gemini-3.8-flash` to the shared
+  Recommended Models and Category Search catalogs. It is available to
+  Assistant, Dictionary, Context, Workshop, and Conversation Widget selectors
+  as an opt-in 1M-context model; existing defaults and saved choices are
+  unchanged.
+
+### Fixed
+
+- **Cross-machine Workshop checkpoint conflicts**: When a machine-local
+  `current.json` and its portable named checkpoint share an identity but carry
+  different state, Workshop now preserves both and stops automatic named-file
+  autosave. Opening the named session explicitly promotes it, avoiding a
+  timestamp guess that could silently overwrite newer work.
+
 ## [2.2.2] - 2026-09-01
 
 ### Added

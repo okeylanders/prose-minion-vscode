@@ -386,6 +386,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/google/gemini-3.7-flash
   - Google DeepMind: https://deepmind.google/technologies/gemini/
 
+### Gemini 3.8 Flash — Intelligent Flash Workhorse
+
+- **Best For:** Responsive critique, dictionary alternatives, multimodal context, long-document analysis, and complex multi-step writing workflows
+- **Description:** Google's most intelligent Flash model combines multimodal input, reasoning and tool support, a 1,048,576-token context window, and up to 65,536 output tokens
+- **Links:**
+  - OpenRouter: https://openrouter.ai/google/gemini-3.8-flash
+  - Google DeepMind: https://deepmind.google/technologies/gemini/
+
 ### Step 3.7 Flash — Utility Drafting
 
 - **Best For:** Quick critiques, category searches, dictionary alternatives, and utility rewrites
