@@ -412,7 +412,7 @@
             },
             "bio": {
               "type": "string",
-              "maxLength": 1000,
+              "maxLength": 20000,
               "description": "Short writer-authored context for Workshop personas. Stored globally; do not include sensitive information."
             }
           },
