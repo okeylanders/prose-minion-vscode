@@ -2,7 +2,7 @@
 
 **Created:** 2026-09-03
 
-**Status:** Draft — architecture and product decisions require review before implementation
+**Status:** Active — Gate 00 complete; Sprint 01 ready
 
 **Priority:** High
 
@@ -10,7 +10,7 @@
 
 **Architecture runway:** [Workshop Multimodal Composer Architecture Change Runway](architecture-change-runway.md)
 
-**Decision seed:** [ADR Seed — Durable Multimodal Workshop Messages](adr-seed-durable-multimodal-workshop-messages.md)
+**Decision:** [ADR — Durable Multimodal Workshop Messages](../../../docs/adr/2026-09-03-durable-multimodal-workshop-messages.md)
 
 ## Problem
 

@@ -1,8 +1,10 @@
-# ADR Seed: Durable Multimodal Workshop Messages
+# ADR: Durable Multimodal Workshop Messages
 
 **Date:** 2026-09-03
 
-**Status:** Proposed — promote to `docs/adr/` only after Gate 00 acceptance
+**Status:** Accepted
+
+**Accepted:** 2026-09-03
 
 **Decision owner:** Okey
 
@@ -168,18 +170,24 @@ Rejected. The manager is described as provider-neutral durable conversation
 ownership; importing provider wire shapes would make that boundary untrue and
 force Workshop persistence to track OpenRouter implementation details.
 
-## Proposed product decisions for Gate 00
+## Accepted product decisions
 
 | Decision | Recommendation |
 |---|---|
 | Long-paste threshold | 2,000 characters in one `text/plain` paste event |
 | Existing selected text during long paste | Leave the draft unchanged; the paste is an attachment action |
 | Attachment-only send | Permit it; show generated transcript copy, send no invented text part |
-| Item/size limits | 3 items, 60 MiB binary aggregate; per-kind limits from the epic |
+| Repeated identical pasted text | Treat each paste as a distinct writer action; do not digest-deduplicate |
+| Item/size limits | 3 items; 10 MiB image, 20 MiB audio, 50 MiB video, and 60 MiB binary aggregate per message |
+| Initial formats | PNG/JPEG/WebP/GIF; WAV/MP3/AIFF/AAC/OGG/FLAC/M4A; MP4/MPEG/MOV/WebM |
 | Unknown capability | Fail closed and retain the staged items |
 | Media previews | Type icon and metadata only in v1; no raw-byte webview previews |
 | URL inputs | Defer; local file picker only |
 | Damaged committed asset | Visible degraded attachment; block only a request that needs it |
+
+Changing any accepted limit or format is a policy revision, not an architecture
+change, provided one canonical limits owner and the same fail-closed validation
+boundaries remain intact.
 
 ## Follow-up decisions outside this epic
 

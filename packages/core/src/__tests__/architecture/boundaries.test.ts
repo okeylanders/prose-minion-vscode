@@ -818,6 +818,53 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
+const WORKSHOP_MESSAGE_CONTRACT_ROOT = path.join(
+  SRC_ROOT,
+  'shared',
+  'types',
+  'messages',
+  'workshop'
+);
+const WORKSHOP_APPLICATION_SERVICE_ROOT = path.join(
+  SRC_ROOT,
+  'application',
+  'services',
+  'workshop'
+);
+const WORKSHOP_CONVERSATION_MANAGER = path.join(
+  SRC_ROOT,
+  'infrastructure',
+  'api',
+  'orchestration',
+  'ConversationManager.ts'
+);
+const MODEL_MESSAGE_CONTRACT = path.join(
+  SRC_ROOT,
+  'application',
+  'services',
+  'model',
+  'ModelMessage.ts'
+);
+const OPENROUTER_MULTIMODAL_ADAPTER_OWNER =
+  'infrastructure/api/providers/OpenRouterMultimodalMessageAdapter.ts';
+const WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER =
+  'infrastructure/storage/WorkshopMediaAssetRepository.ts';
+const RAW_MEDIA_CONTRACT_SHAPE = new RegExp(
+  [
+    String.raw`\b(?:bytes|base64|dataUrl)\s*\??\s*:`,
+    String.raw`:\s*(?:Buffer|Uint8Array|ArrayBuffer|Blob)\b`,
+    String.raw`['"]data:[a-z]+\/[a-z0-9.+-]+;base64,`
+  ].join('|'),
+  'i'
+);
+const OPENROUTER_MULTIMODAL_WIRE_TOKEN = /\b(?:image_url|input_audio|video_url)\b/;
+const WORKSHOP_ASSET_PATH_CONSTRUCTION = new RegExp(
+  [
+    String.raw`prose-minion[\\/]sessions[\\/]assets`,
+    String.raw`['"]prose-minion['"][\s\S]{0,160}['"]sessions['"][\s\S]{0,160}['"]assets['"]`
+  ].join('|')
+);
+
 // WorkshopSessionService is in the net (PR #67 review #14): it is the
 // composition-root-owned reload-safety aggregate — a handler `new`-ing its
 // own copy would silently fork the session per webview.
@@ -838,6 +885,33 @@ function collectSourceFiles(dir: string, acc: string[] = []): string[] {
     }
   }
   return acc;
+}
+
+interface SourceInspectionFixture {
+  readonly file: string;
+  readonly source: string;
+}
+
+function unexpectedTokenOwners(
+  fixtures: readonly SourceInspectionFixture[],
+  token: RegExp,
+  allowedOwners: readonly string[] = []
+): string[] {
+  return fixtures
+    .filter(({ file, source }) => !allowedOwners.includes(file) && token.test(source))
+    .map(({ file }) => file);
+}
+
+function workshopDurableContractFiles(): string[] {
+  const workshopStateContracts = collectSourceFiles(WORKSHOP_APPLICATION_SERVICE_ROOT)
+    .filter((file) => /Workshop(?:PersistedSession|SessionState|SessionRecords|ThreadArtifactFrame)/
+      .test(path.basename(file)));
+  return [
+    ...collectSourceFiles(WORKSHOP_MESSAGE_CONTRACT_ROOT),
+    ...workshopStateContracts,
+    WORKSHOP_CONVERSATION_MANAGER,
+    ...(fs.existsSync(MODEL_MESSAGE_CONTRACT) ? [MODEL_MESSAGE_CONTRACT] : [])
+  ];
 }
 
 function importsFeature(source: string, featureReference: RegExp): boolean {
@@ -908,6 +982,66 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('keeps raw media representations out of Workshop IPC and durable contracts', () => {
+    expect(unexpectedTokenOwners([
+      { file: 'messages/workshop/bad.ts', source: 'interface Bad { base64: string }' },
+      { file: 'WorkshopSessionStateBad.ts', source: 'interface Bad { bytes: Uint8Array }' },
+      { file: 'ModelMessageBad.ts', source: "const body = 'data:image/png;base64,AAAA'" }
+    ], RAW_MEDIA_CONTRACT_SHAPE)).toEqual([
+      'messages/workshop/bad.ts',
+      'WorkshopSessionStateBad.ts',
+      'ModelMessageBad.ts'
+    ]);
+
+    const contracts = workshopDurableContractFiles().map((file) => ({
+      file: path.relative(SRC_ROOT, file),
+      source: fs.readFileSync(file, 'utf8')
+    }));
+    expect(unexpectedTokenOwners(contracts, RAW_MEDIA_CONTRACT_SHAPE)).toEqual([]);
+  });
+
+  it('keeps OpenRouter multimodal wire names inside the OpenRouter adapter', () => {
+    expect(unexpectedTokenOwners([
+      { file: 'application/services/model/ModelMessage.ts', source: "type: 'image_url'" },
+      { file: OPENROUTER_MULTIMODAL_ADAPTER_OWNER, source: "type: 'input_audio'" }
+    ], OPENROUTER_MULTIMODAL_WIRE_TOKEN, [OPENROUTER_MULTIMODAL_ADAPTER_OWNER]))
+      .toEqual(['application/services/model/ModelMessage.ts']);
+
+    const sources = collectSourceFiles(SRC_ROOT).map((file) => ({
+      file: path.relative(SRC_ROOT, file),
+      source: fs.readFileSync(file, 'utf8')
+    }));
+    expect(unexpectedTokenOwners(
+      sources,
+      OPENROUTER_MULTIMODAL_WIRE_TOKEN,
+      [OPENROUTER_MULTIMODAL_ADAPTER_OWNER]
+    )).toEqual([]);
+  });
+
+  it('keeps Workshop media asset path construction inside its repository', () => {
+    expect(unexpectedTokenOwners([
+      {
+        file: 'application/handlers/domain/workshop/WorkshopRoomHandler.ts',
+        source: "path.join('prose-minion', 'sessions', 'assets', sessionId)"
+      },
+      {
+        file: WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER,
+        source: "path.join('prose-minion', 'sessions', 'assets', sessionId)"
+      }
+    ], WORKSHOP_ASSET_PATH_CONSTRUCTION, [WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER]))
+      .toEqual(['application/handlers/domain/workshop/WorkshopRoomHandler.ts']);
+
+    const sources = collectSourceFiles(SRC_ROOT).map((file) => ({
+      file: path.relative(SRC_ROOT, file),
+      source: fs.readFileSync(file, 'utf8')
+    }));
+    expect(unexpectedTokenOwners(
+      sources,
+      WORKSHOP_ASSET_PATH_CONSTRUCTION,
+      [WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER]
+    )).toEqual([]);
   });
 
   it('application handlers do not construct infrastructure services', () => {

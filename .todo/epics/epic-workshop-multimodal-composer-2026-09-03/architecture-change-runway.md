@@ -1,13 +1,13 @@
 # Workshop Multimodal Composer Architecture Change Runway
 
 **Date:** 2026-09-03
-**Status:** Ready for review
+**Status:** Gate 00 complete; implementation gate open
 **Decision owner:** Okey
 **Prepared by:** Ada Forge
 **Scope:** Workshop one-shot attachments, composer paste behavior, retained conversation content, session persistence, and OpenRouter Chat Completions input
 **Branch / issue / epic:** [Workshop Multimodal Composer epic](epic-workshop-multimodal-composer.md)
 **Audience and reading budget:** Decision owner and implementer; 2-minute map, 10-minute reviewer packet
-**Implementation gate:** Conditional — accept the Gate 00 product decisions and ADR first
+**Implementation gate:** Open — Gate 00 accepted the ADR and recorded green fitness evidence
 
 ## 0. Change Card — 30 seconds
 
@@ -39,21 +39,23 @@
 | Model catalog -> dispatch | Modality support is mutable external evidence | Paid request reaches an incompatible model | HIGH |
 | Room delivery -> participants | Existing artifacts are room-wide and offset-driven | Media leaks to a private tool or reaches a guest twice | HIGH |
 
-### Human decisions required
+### Accepted Gate 00 decisions
 
-| Decision | Options | Recommendation | Needed by |
+| Decision | Options considered | Accepted decision | Status |
 |---|---|---|---|
-| Long-paste threshold | Character, word, line, or explicit-only | One paste event >= 2,000 characters | Before Sprint 01 |
-| Attachment-only send | Require prompt text or permit media/text artifact alone | Permit, with honest generated transcript label and no fabricated model instruction | Before Sprint 01 |
-| Initial media limits | Conservative local caps or defer to provider failures | 10 MiB image, 20 MiB audio, 50 MiB video, 60 MiB/message | Before Sprint 03 |
-| Damaged committed asset | Fail entire session, silently omit, or scoped degradation | Visible scoped degradation; block only requests that require it | Before Sprint 03 |
-| Preview depth | Icons only, thumbnails/playback, or host editor open | Icons/metadata only in this epic | Before Sprint 03 |
+| Long-paste threshold | Character, word, line, or explicit-only | One paste event >= 2,000 characters | Accepted |
+| Attachment-only send | Require prompt text or permit media/text artifact alone | Permit, with honest generated transcript label and no fabricated model instruction | Accepted |
+| Initial media limits | Conservative local caps or defer to provider failures | 10 MiB image, 20 MiB audio, 50 MiB video, 60 MiB/message | Accepted |
+| Damaged committed asset | Fail entire session, silently omit, or scoped degradation | Visible scoped degradation; block only requests that require it | Accepted |
+| Preview depth | Icons only, thumbnails/playback, or host editor open | Icons/metadata only in this epic | Accepted |
 
 ### Gate
 
-**State:** `READY FOR REVIEW`
-**Blockers:** Accept or revise the five product decisions above and promote the
-[ADR seed](adr-seed-durable-multimodal-workshop-messages.md).
+**State:** `OPEN`
+**Blockers:** None. The
+[ADR](../../../docs/adr/2026-09-03-durable-multimodal-workshop-messages.md) is
+accepted, current behavior is characterized, and the structural fitness
+witnesses are green.
 
 ## 1. Architecture Delta Map — 2 minutes
 
@@ -146,8 +148,8 @@ File names are proposed ownership names, not current code.
 | `WorkshopContextHandler.ts` | Feature handler | Resolves text resources/files and stages text | Keeps standing/configured text context; delegates composer-specific paste/media | Composer lifecycle leaves a context-heavy handler | Current name becomes misleading if media grows here | [Observed] `WorkshopContextHandler.ts:490-548`, `:780-808` |
 | `WorkshopSessionService.ts` | Aggregate facade | Owns pending/shipped text artifacts and ids | Preserves mutation boundary, delegates typed ledger | Implementation responsibility extracted, authority unchanged | Facade earns its breadth by whole-session atomicity | [Observed] `WorkshopSessionService.ts:568-610`, `:617-769` |
 | `ConversationManager.ts` | Conversation repository | Stores OpenRouter string messages and archive v1 | Stores provider-neutral text/media refs and archive v2 | Removes provider import; clone/validation deepen | Current provider import contradicts provider-neutral comment | [Observed] `ConversationManager.ts:6-8`, `:61-79`, `:534-563` |
-| `OpenRouterMultimodalMessageAdapter.ts` | Adapter | Absent | Late-resolves refs and owns exact OpenRouter multipart DTOs | New single provider translation boundary | Adapter pattern; costs one mapping layer | [Proposed] ADR seed §Decision |
-| `WorkshopMediaAssetRepository.ts` | Repository | Absent | Session-scoped binary ingest/read/copy/delete with proof | New durable byte authority | Repository + content-address evidence; costs lifecycle coordination | [Proposed] ADR seed §Decision |
+| `OpenRouterMultimodalMessageAdapter.ts` | Adapter | Absent | Late-resolves refs and owns exact OpenRouter multipart DTOs | New single provider translation boundary | Adapter pattern; costs one mapping layer | [Proposed] accepted ADR §Decision |
+| `WorkshopMediaAssetRepository.ts` | Repository | Absent | Session-scoped binary ingest/read/copy/delete with proof | New durable byte authority | Repository + content-address evidence; costs lifecycle coordination | [Proposed] accepted ADR §Decision |
 | `OpenRouterModels.ts` | External catalog adapter | Keeps pricing/context but drops architecture | Retains normalized input modalities as capability evidence | Adds provider metadata used by host policy | Current lossy mapping creates blind dispatch | [Observed] `OpenRouterModels.ts:8-22`; `ConfigurationHandler.ts:386-402` |
 
 ### 1.4 Structural view
@@ -476,15 +478,15 @@ precision; neither reverses the durable-reference architecture.
 
 | Gate condition | Pass / fail | Evidence |
 |---|---|---|
-| No unaccepted critical unknowns | FAIL pending Gate 00 | Five human decisions in Change Card |
+| No unaccepted critical unknowns | PASS | Accepted ADR product decisions |
 | Contract consumers/migration/tests identified | PASS | Delta map, F1-F7, Sprint 01 plan |
-| Persistence failure and rescue defined | PASS | ADR seed, Sprint 03/Sprint 04 plans, prospective failures |
+| Persistence failure and rescue defined | PASS | Accepted ADR, Sprint 03/Sprint 04 plans, prospective failures |
 | Runtime flows owned and testable | PASS | Sequence diagram and quality scenarios |
 | Negative-space and reproduction tests pass | PASS | §§2.4 and 3.3 |
 | Tree/responsibilities/contracts/slices agree | PASS after self-review | §3.1 resolutions incorporated |
 | Human decisions and coordination assigned | PASS | §§0 and 2.11 |
 
-**Final gate:** `CONDITIONAL` — open after Gate 00 accepts the ADR and UX/limit decisions.
+**Final gate:** `OPEN` — Gate 00 recorded green characterization and fitness evidence.
 
 ## 4. Evidence Appendix — details on demand
 
@@ -622,7 +624,7 @@ precision; neither reverses the durable-reference architecture.
 | Legacy sessions migrate | Released v1 + representative v2 fixtures | Decoder cannot produce canonical v3 |
 | Streaming/non-streaming map identically | Same neutral fixture through both request builders | Multipart request shapes diverge |
 
-### 4.5 ADR seed
+### 4.5 Accepted ADR
 
 **Context:** Existing one-shot artifacts and retained conversations are string
 based; OpenRouter multimodal inputs require multipart content and local base64;
@@ -633,8 +635,10 @@ cloud URL upload/media platform.
 history, late OpenRouter materialization, and dispatch-time capability gate.
 **Consequences:** Explicit session/archive migration and multi-file lifecycle in
 exchange for bounded JSON, preserved room semantics, and honest boundaries.
-**Unresolved questions:** Gate 00 product decisions and endpoint-level capability
-precision. See the standalone [ADR seed](adr-seed-durable-multimodal-workshop-messages.md).
+**Unresolved questions:** Endpoint-level capability precision remains an
+implementation-time evidence question; it does not reverse the durable-reference
+decision. See the accepted
+[ADR](../../../docs/adr/2026-09-03-durable-multimodal-workshop-messages.md).
 
 ## 5. Reader Terms Appendix — fast reference
 
