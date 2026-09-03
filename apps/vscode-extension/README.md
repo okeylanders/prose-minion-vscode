@@ -24,7 +24,11 @@
 
 ---
 
-## What's new in v2.2.3 — Safer Workshop sessions + Gemini 3.8 Flash
+## What's new in v2.2.4 — Muse Spark 1.3
+
+- **Muse Spark 1.3 joins every shared picker** — Meta's latest 1M-context multimodal Muse model is now available for Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search. Muse 1.1 and 1.2 remain available, and no defaults change.
+
+### Also in v2.2.3 — Safer Workshop sessions + Gemini 3.8 Flash
 
 - **No silent cross-machine overwrite** — when a portable named Workshop session disagrees with the machine-local recovery copy, Prose Minion preserves both instead of guessing from timestamps and overwriting one.
 - **You choose the room that wins** — open the named session explicitly from the Workshop session browser to promote it after a sync conflict.

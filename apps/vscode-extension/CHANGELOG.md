@@ -4,6 +4,16 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+## [2.2.4] - 2026-09-03
+
+### Added
+
+- **Muse Spark 1.3**: Added `meta/muse-spark-1.3` to the shared Recommended
+  Models and Category Search catalogs. It is available to Assistant,
+  Dictionary, Context, Workshop, and Conversation Widget selectors as an
+  opt-in 1M-context multimodal model; Muse 1.1, Muse 1.2, existing defaults,
+  and saved choices are unchanged.
+
 ## [2.2.3] - 2026-09-02
 
 ### Added

@@ -58,6 +58,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Meta\'s newer 1M-context multimodal Muse checkpoint, with stronger coding and agentic execution while 1.1 remains available for its distinct editorial voice'
   },
   {
+    id: 'meta/muse-spark-1.3',
+    name: 'Muse Spark 1.3',
+    family: 'Muse',
+    description: 'Meta\'s latest 1M-context multimodal Muse checkpoint for long-running agentic workflows and context-heavy editorial search'
+  },
+  {
     id: 'anthropic/claude-sonnet-4.5',
     name: 'Claude Sonnet 4.5',
     family: 'Claude Sonnet',
@@ -316,6 +322,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Muse Spark 1.2',
     family: 'Muse',
     description: 'Meta\'s newer 1M-context multimodal Muse checkpoint. Stronger coding and agentic execution, retained alongside 1.1 so writers can choose between their distinct voices.'
+  },
+  {
+    id: 'meta/muse-spark-1.3',
+    name: 'Muse Spark 1.3',
+    family: 'Muse',
+    description: 'Meta\'s latest 1M-context multimodal Muse checkpoint. A strong fit for sustained manuscript work, complex revision planning, and long-running agentic editorial workflows.'
   },
   {
     id: 'anthropic/claude-opus-4.1',

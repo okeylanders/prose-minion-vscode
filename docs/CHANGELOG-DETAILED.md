@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.4] - 2026-09-03 — Muse Spark 1.3 across shared model pickers
+
+### Overview
+
+This patch adds Meta's latest Muse Spark 1.3 generation to every shared model
+picker and Category Search while retaining Muse 1.1 and 1.2 for writers who
+prefer their distinct creative and editorial profiles.
+
+### Added — Muse Spark 1.3
+
+- Added the live OpenRouter ID `meta/muse-spark-1.3` to `RECOMMENDED_MODELS`
+  and `CATEGORY_MODELS`.
+- The shared catalog makes it available to Assistant, Dictionary, Context,
+  Workshop, and all Conversation Widget selectors. The Category Search
+  manifest enum is synchronized with the same ID.
+- Live OpenRouter evidence on 2026-09-03 reported a 1,048,576-token context
+  window, multimodal text/image/video/file/audio input, and text output. The
+  model remains opt-in; no existing default or saved selection changes.
+
+### Compatibility
+
+- Muse Spark 1.1 and 1.2 remain selectable.
+- No settings or message contracts changed.
+
 ## [2.2.3] - 2026-09-02 — Safer Workshop checkpoints and Gemini 3.8 Flash
 
 ### Overview

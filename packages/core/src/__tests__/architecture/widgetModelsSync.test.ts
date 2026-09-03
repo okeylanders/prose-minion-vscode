@@ -6,6 +6,7 @@ import { RECOMMENDED_MODELS } from '@providers/OpenRouterModels';
 
 const EXPECTED_SHARED_MODEL_IDS = [
   'meta/muse-spark-1.1',
+  'meta/muse-spark-1.3',
   'qwen/qwen3.8-max',
   'anthropic/claude-fable-5.1',
   'inception/mercury-2.5-preview',

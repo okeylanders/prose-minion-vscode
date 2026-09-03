@@ -26,6 +26,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/meta/muse-spark-1.2
   - Meta: https://ai.meta.com/
 
+### Meta Muse Spark 1.3 — Long-Running Editorial Work
+
+- **Best For:** Sustained manuscript work, complex revision planning, and context-heavy editorial workflows
+- **Description:** Meta's latest multimodal reasoning Muse checkpoint accepts text, images, video, audio, and PDFs with a 1M-token context window; it remains opt-in alongside Muse 1.1 and 1.2 so writers can choose the generation that fits the work
+- **Links:**
+  - OpenRouter: https://openrouter.ai/meta/muse-spark-1.3
+  - Meta: https://ai.meta.com/
+
 ### Claude Sonnet 5 — New Sonnet Flagship
 
 - **Best For:** Default high-quality prose analysis, long-context critique, and mixed writing + tooling workflows
