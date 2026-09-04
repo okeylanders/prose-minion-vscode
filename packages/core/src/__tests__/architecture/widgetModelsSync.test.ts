@@ -10,7 +10,8 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'qwen/qwen3.8-max',
   'anthropic/claude-fable-5.1',
   'inception/mercury-2.5-preview',
-  'google/gemini-3.8-flash'
+  'google/gemini-3.8-flash',
+  'openai/gpt-6-astra'
 ] as const;
 
 const RETIRED_MODEL_IDS = [

@@ -226,6 +226,7 @@
             "openai/gpt-5.4-mini",
             "openai/gpt-5.4-nano",
             "openai/gpt-5.5-pro",
+            "openai/gpt-6-astra",
             "openai/gpt-oss-120b:nitro",
             "inception/mercury-2.5-preview",
             "google/gemini-3.1-pro-preview",

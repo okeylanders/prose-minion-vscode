@@ -124,6 +124,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Premium GPT-5.5 variant for high-accuracy category matching on difficult/ambiguous inputs'
   },
   {
+    id: 'openai/gpt-6-astra',
+    name: 'GPT-6 Astra',
+    family: 'GPT-6',
+    description: 'OpenAI frontier reasoning model with 1.05M context and structured-output support for complex category matching'
+  },
+  {
     id: 'openai/gpt-oss-120b:nitro',
     name: 'GPT-OSS 120B Nitro',
     family: 'GPT-OSS',
@@ -682,6 +688,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-5.6 Sol',
     family: 'GPT-5.6',
     description: 'Flagship GPT-5.6 tier with 1M context. Premium option for difficult structural critique, complex reasoning, and multi-step revision planning.'
+  },
+  {
+    id: 'openai/gpt-6-astra',
+    name: 'GPT-6 Astra',
+    family: 'GPT-6',
+    description: 'OpenAI frontier reasoning model with 1.05M context and structured-output support. Available for prose analysis, revision planning, and context-heavy Workshop conversations.'
   },
   {
     id: 'openai/gpt-chat-latest',

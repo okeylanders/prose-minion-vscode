@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `openai/gpt-6-astra` to every shared model picker and Category Search,
+  including the VS Code settings enum. Existing defaults are unchanged.
+
+### Changed
+
+- Polished Workshop context and excerpt cards with a right-aligned amber
+  attachment count, centered slim refresh buttons, and an amber source filename
+  centered directly above the excerpt preview.
+
 ## [2.2.4] - 2026-09-03 — Muse Spark 1.3 across shared model pickers
 
 ### Overview

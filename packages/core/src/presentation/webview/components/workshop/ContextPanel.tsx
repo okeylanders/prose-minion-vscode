@@ -84,26 +84,28 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   return (
     <div className="pm-ws-block" id={WORKSHOP_CONTEXT_PANEL_ID}>
       <div className="pm-ws-block-head">
-        <div className="pm-ws-eyebrow">
-          <Icon name="cards" size={12} /> Context
+        <div className="pm-ws-ctx-title-row">
+          <div className="pm-ws-eyebrow">
+            <Icon name="cards" size={12} /> Context
+          </div>
+          {hasAttachments ? (
+            <span className="pm-ws-ctx-count">
+              {attachments.length} attachment{attachments.length === 1 ? '' : 's'}
+            </span>
+          ) : null}
         </div>
-        {hasAttachments ? (
-          <span className="pm-ws-ctx-count">
-            {attachments.length} attachment{attachments.length === 1 ? '' : 's'}
-          </span>
-        ) : null}
-        {attachments.some((attachment) => attachment.kind === 'file') ? (
-          <button
-            className="pm-ws-ctx-refresh"
-            type="button"
-            title="Re-read changed file attachments from disk"
-            onClick={onRefreshFiles}
-            disabled={isRunning}
-          >
-            <Icon name="refresh" size={11} /> Refresh changed files
-          </button>
-        ) : null}
       </div>
+      {attachments.some((attachment) => attachment.kind === 'file') ? (
+        <button
+          className="pm-ws-file-refresh pm-ws-ctx-refresh"
+          type="button"
+          title="Re-read changed file attachments from disk"
+          onClick={onRefreshFiles}
+          disabled={isRunning}
+        >
+          <Icon name="refresh" size={11} /> Refresh changed files
+        </button>
+      ) : null}
 
       {hasAttachments ? (
         <div className="pm-ws-ctx-pills">

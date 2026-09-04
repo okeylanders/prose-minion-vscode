@@ -75,9 +75,15 @@ describe('ContextPanel', () => {
   });
 
   it('offers one header refresh action when file context is attached', () => {
-    const { props } = renderPanel({ attachments: [attachment()] });
+    const { container, props } = renderPanel({ attachments: [attachment()] });
 
-    fireEvent.click(screen.getByRole('button', { name: /refresh changed files/i }));
+    const titleRow = container.querySelector('.pm-ws-ctx-title-row');
+    const refresh = screen.getByRole('button', { name: /refresh changed files/i });
+    expect(titleRow?.querySelector('.pm-ws-eyebrow')?.textContent).toContain('Context');
+    expect(titleRow?.querySelector('.pm-ws-ctx-count')?.textContent).toContain('1 attachment');
+    expect(titleRow?.contains(refresh)).toBe(false);
+
+    fireEvent.click(refresh);
     expect(props.onRefreshFiles).toHaveBeenCalledTimes(1);
   });
 
