@@ -1,6 +1,7 @@
 # Workshop Multimodal Composer Architecture Change Runway
 
 **Date:** 2026-09-03
+**Revised:** 2026-09-04
 **Status:** Gate 00 complete; implementation gate open
 **Decision owner:** Okey
 **Prepared by:** Ada Forge
@@ -17,41 +18,46 @@
 > durable conversation history, change the attachment, model-message, asset,
 > capability, and persistence contracts together, while preserving host
 > authority, commit-on-success, room delivery, and retry invariants, so that long
-> paste and local image/audio/video inputs behave like one coherent composer
+> paste and local image/audio/video/PDF inputs behave like one coherent composer
 > feature.
 
 ### Architecture moves
 
 | Move | Before | After | Why now | Confidence |
 |---|---|---|---|---|
-| 1 | `WorkshopMessageAttachment` is an implicit text file with `content: string` | One discriminated composer-artifact family uses the existing `ta-N` lifecycle | Long paste and media are variants of the established one-shot concept | STRONG |
-| 2 | Provider and conversation messages require `content: string` | Provider-neutral ordered content parts are stored; one adapter materializes OpenRouter DTOs | Media must survive follow-up turns without coupling orchestration to OpenRouter | STRONG |
+| 1 | `WorkshopMessageAttachment` is an implicit text file with `content: string` | One discriminated composer-artifact family uses the existing `ta-N` lifecycle | Long paste and binary attachments are variants of the established one-shot concept | STRONG |
+| 2 | Provider and conversation messages require `content: string` | Provider-neutral ordered content parts are stored; one adapter materializes OpenRouter DTOs | Binary assets must survive follow-up turns without coupling orchestration to OpenRouter | STRONG |
 | 3 | Session JSON contains all attachment bodies | Text stays in JSON; binary bytes live in a session-scoped asset repository and JSON stores verified refs | Base64 would exceed current bounds and widen sensitive-data exposure | STRONG |
 | 4 | Model catalog discards input modalities | Live `input_modalities` becomes a tri-state host capability gate | Support varies by model/provider and must be checked before spend | STRONG |
+| 5 | File picker is the only intake surface | Picker and D&D converge on one host intake service; only pathless drops use bounded transient byte IPC | Browser `File` objects do not reliably expose filesystem URIs | STRONG |
 
 ### Scope and highest risks
 
 | Affected boundary | Why affected | Highest failure mode | Risk |
 |---|---|---|---|
-| Composer -> IPC -> host aggregate | Paste and files create new attachment variants | Ghost/duplicated pill or lost draft during async staging | HIGH |
-| Aggregate -> session files/assets | Media cannot live safely in bounded JSON | Orphaned bytes, dangling refs, or cross-session deletion | CRITICAL |
-| Conversation -> provider | History changes from strings to multipart refs | Later turn silently loses the original media | HIGH |
+| Composer -> IPC -> host aggregate | Paste, picker, and dropped files create new attachment variants | Ghost/duplicated pill, oversized IPC, or lost draft during async staging | HIGH |
+| Aggregate -> session files/assets | Binary attachments cannot live safely in bounded JSON | Orphaned bytes, dangling refs, or cross-session deletion | CRITICAL |
+| Conversation -> provider | History changes from strings to multipart refs | Later turn silently loses the original attachment | HIGH |
 | Model catalog -> dispatch | Modality support is mutable external evidence | Paid request reaches an incompatible model | HIGH |
-| Room delivery -> participants | Existing artifacts are room-wide and offset-driven | Media leaks to a private tool or reaches a guest twice | HIGH |
+| Room delivery -> participants | Existing artifacts are room-wide and offset-driven | Binary content leaks to a private tool or reaches a guest twice | HIGH |
 
 ### Accepted Gate 00 decisions
 
 | Decision | Options considered | Accepted decision | Status |
 |---|---|---|---|
 | Long-paste threshold | Character, word, line, or explicit-only | One paste event >= 2,000 characters | Accepted |
-| Attachment-only send | Require prompt text or permit media/text artifact alone | Permit, with honest generated transcript label and no fabricated model instruction | Accepted |
-| Initial media limits | Conservative local caps or defer to provider failures | 10 MiB image, 20 MiB audio, 50 MiB video, 60 MiB/message | Accepted |
+| Attachment-only send | Require prompt text or permit a binary/text artifact alone | Permit, with honest generated transcript label and no fabricated model instruction | Accepted |
+| Initial binary limits | Conservative local caps or defer to provider failures | 10 MiB image, 20 MiB audio, 50 MiB video, 20 MiB PDF, 60 MiB/message | Accepted |
+| Intake surface | Picker only, URI drops, or all local-file drops | Picker plus URI-bearing and pathless local D&D; bounded `ArrayBuffer` only for pathless drops | Accepted |
+| PDF delivery | Universal parser fallback or native-file models only | Native `file` capability only; explicitly force OpenRouter's native PDF engine | Accepted |
+| Mixed-capability failure | Send supported subset or reject atomically | Reject complete send; preserve exact typed draft and every staged attachment id | Accepted |
 | Damaged committed asset | Fail entire session, silently omit, or scoped degradation | Visible scoped degradation; block only requests that require it | Accepted |
 | Preview depth | Icons only, thumbnails/playback, or host editor open | Icons/metadata only in this epic | Accepted |
 
 ### Gate
 
-**State:** `OPEN`
+**Gate 00 state:** `CLEARED`
+**Implementation gate:** `OPEN`
 **Blockers:** None. The
 [ADR](../../../docs/adr/2026-09-03-durable-multimodal-workshop-messages.md) is
 accepted, current behavior is characterized, and the structural fitness
@@ -103,12 +109,13 @@ packages/core/src/
 ├── shared/
 │   ├── types/messages/workshop/
 │   │   ├── [~] context.ts
-│   │   └── [+] composerAttachments.ts
+│   │   ├── [+] composerAttachments.ts
+│   │   └── [+] attachmentIntake.ts                  # transient URI/ArrayBuffer D&D contract
 │   └── types/messages/configuration.ts               # [~] input modalities
 ├── application/
 │   ├── handlers/domain/workshop/
 │   │   ├── [~] WorkshopContextHandler.ts             # existing text resources only
-│   │   ├── [+] WorkshopComposerAttachmentHandler.ts  # paste/media intent owner
+│   │   ├── [+] WorkshopComposerAttachmentHandler.ts  # paste/picker/drop intent owner
 │   │   └── [~] WorkshopRoomHandler.ts                # orchestrates typed send
 │   └── services/
 │       ├── workshop/
@@ -131,7 +138,7 @@ packages/core/src/
     │   └── [~] OpenRouterModels.ts
     └── storage/
         ├── [~] WorkshopSessionStore.ts
-        └── [+] WorkshopMediaAssetRepository.ts
+        └── [+] WorkshopAttachmentAssetRepository.ts
 
 apps/vscode-extension/src/
 └── [=] extension.ts                                  # only composition root
@@ -143,13 +150,13 @@ File names are proposed ownership names, not current code.
 
 | Module / file | Role stereotype | Primary responsibility before | Responsibility after | Ownership delta | Pattern / smell | Evidence |
 |---|---|---|---|---|---|---|
-| `WorkshopComposer.tsx` | View | Local draft, controls, text attachment pills | Draft/paste event and composition; delegates attachment tray/sheet state | Loses list rendering; gains threshold event only | Presentational component; current breadth is manageable but media states would crowd it | [Observed] `WorkshopComposer.tsx:119-156`, `:211-250` |
-| `useWorkshopRoom.ts` | Presentation transport hook | Mirrors aggregate; posts string/file intents | Posts correlated typed attachment intents and receives metadata/results | Contract widens, remains host-truth mirror | Existing tripartite hook contract | [Observed] `useWorkshopRoom.ts:118-123`, `:423-435`, `:483-489` |
-| `WorkshopContextHandler.ts` | Feature handler | Resolves text resources/files and stages text | Keeps standing/configured text context; delegates composer-specific paste/media | Composer lifecycle leaves a context-heavy handler | Current name becomes misleading if media grows here | [Observed] `WorkshopContextHandler.ts:490-548`, `:780-808` |
+| `WorkshopComposer.tsx` | View | Local draft, controls, text attachment pills | Draft/paste/drop event and composition; delegates attachment tray/sheet state | Gains threshold and bounded drop events | Presentational component; current breadth is manageable but binary states would crowd it | [Observed] `WorkshopComposer.tsx:119-156`, `:211-250` |
+| `useWorkshopRoom.ts` | Presentation transport hook | Mirrors aggregate; posts string/file intents | Posts correlated typed picker/drop attachment intents and receives metadata/results | Contract widens, remains host-truth mirror | Existing tripartite hook contract | [Observed] `useWorkshopRoom.ts:118-123`, `:423-435`, `:483-489` |
+| `WorkshopContextHandler.ts` | Feature handler | Resolves text resources/files and stages text | Keeps standing/configured text context; delegates composer-specific paste/binary intake | Composer lifecycle leaves a context-heavy handler | Current name becomes misleading if binary intake grows here | [Observed] `WorkshopContextHandler.ts:490-548`, `:780-808` |
 | `WorkshopSessionService.ts` | Aggregate facade | Owns pending/shipped text artifacts and ids | Preserves mutation boundary, delegates typed ledger | Implementation responsibility extracted, authority unchanged | Facade earns its breadth by whole-session atomicity | [Observed] `WorkshopSessionService.ts:568-610`, `:617-769` |
-| `ConversationManager.ts` | Conversation repository | Stores OpenRouter string messages and archive v1 | Stores provider-neutral text/media refs and archive v2 | Removes provider import; clone/validation deepen | Current provider import contradicts provider-neutral comment | [Observed] `ConversationManager.ts:6-8`, `:61-79`, `:534-563` |
+| `ConversationManager.ts` | Conversation repository | Stores OpenRouter string messages and archive v1 | Stores provider-neutral text/asset refs and archive v2 | Removes provider import; clone/validation deepen | Current provider import contradicts provider-neutral comment | [Observed] `ConversationManager.ts:6-8`, `:61-79`, `:534-563` |
 | `OpenRouterMultimodalMessageAdapter.ts` | Adapter | Absent | Late-resolves refs and owns exact OpenRouter multipart DTOs | New single provider translation boundary | Adapter pattern; costs one mapping layer | [Proposed] accepted ADR §Decision |
-| `WorkshopMediaAssetRepository.ts` | Repository | Absent | Session-scoped binary ingest/read/copy/delete with proof | New durable byte authority | Repository + content-address evidence; costs lifecycle coordination | [Proposed] accepted ADR §Decision |
+| `WorkshopAttachmentAssetRepository.ts` | Repository | Absent | Session-scoped binary ingest/read/copy/delete with proof | New durable byte authority | Repository + content-address evidence; costs lifecycle coordination | [Proposed] accepted ADR §Decision |
 | `OpenRouterModels.ts` | External catalog adapter | Keeps pricing/context but drops architecture | Retains normalized input modalities as capability evidence | Adds provider metadata used by host policy | Current lossy mapping creates blind dispatch | [Observed] `OpenRouterModels.ts:8-22`; `ConfigurationHandler.ts:386-402` |
 
 ### 1.4 Structural view
@@ -162,8 +169,8 @@ provider-neutral parts, and OpenRouter wire DTOs?
 
 ```mermaid
 flowchart LR
-    UI[Attachment tray\nmetadata-only view] -->|typed intent| H[Composer attachment handler\nhost validation]
-    H -->|bounded bytes| AR[Media asset repository\nsession byte authority]
+    UI[Attachment tray/drop zone\nmetadata plus transient File] -->|URI or bounded dropped bytes| H[Composer attachment handler\nhost validation]
+    H -->|validated bytes| AR[Attachment asset repository\nsession byte authority]
     H -->|typed record| S[Workshop session facade\naggregate mutation]
     S -->|ordered refs| R[Room/run orchestrator\ntarget delivery]
     R -->|provider-neutral parts| CM[Conversation manager\ndurable message history]
@@ -217,7 +224,7 @@ capability check and never becomes presentation or persisted JSON state.
 | Runtime | Paste/intake/send/materialize | Streaming, retries, model switching | Send consumes items that never reached the model | Handler + engine transaction tests | HIGH |
 | Contract | IPC, snapshots, message/archive types, OpenRouter request | Every assistant tool using the engine | Text-only tools regress | Exact compile/wire compatibility tests | HIGH |
 | Data/state | Session v3, archive v2, binary asset tree | Browser/search/duplicate/delete/restore | Dangling ref or wrong-session deletion | Codec, integrity, failure-injection tests | CRITICAL |
-| Operations/security | Local media at rest and base64 in memory | Logs/errors/debugging | Sensitive content escapes or unbounded allocation | Leak canary + bound/containment tests | HIGH |
+| Operations/security | Local binary assets at rest, dropped bytes in transient IPC, and base64 in dispatch memory | Logs/errors/debugging | Sensitive content escapes or unbounded allocation | Leak canary + intake-owner + bound/containment tests | HIGH |
 | Tests/docs | Fixtures across layers | Release/package size | False confidence from mocked bytes only | Synthetic formats + opt-in smoke | MODERATE |
 | Coordination/evolution | Ordered sprints touch shared Workshop files | Concurrent Workshop epics | Merge drift in persistence/room owner | Integration branch + lock map | HIGH |
 
@@ -237,12 +244,14 @@ uploads, or OpenRouter wire syntax.
 
 | Topic | [Declared] | [Observed] | [Inferred] | [Unknown] |
 |---|---|---|---|---|
-| One-shot scope | Attachment belongs to one room turn and reaches each participant once | Comments and ledger implement `ta-N`, pending, room refs, and offset delivery | Media should extend the rail rather than create another | Whether future artifact surgery will release binary assets |
+| One-shot scope | Attachment belongs to one room turn and reaches each participant once | Comments and ledger implement `ta-N`, pending, room refs, and offset delivery | Binary attachments should extend the rail rather than create another | Whether future artifact surgery will release binary assets |
 | Draft ownership | Unsent draft is local; staged attachments are host state | Draft is React state; snapshot hydrates pending attachments | A long-paste pill becomes durable host state by deliberate user action | Whether users expect long-paste content to survive reload (recommend yes) |
-| Send eligibility | Current UI/handler require non-empty text | `canSend` and handler both reject empty text | Media-only is an expected multimodal behavior | Exact preferred transcript label |
-| Provider input | OpenRouter accepts ordered multipart inputs | Official docs specify `image_url`, `input_audio`, and `video_url`; current client accepts strings only | One adapter can cover streaming and non-streaming request construction | Universal provider size/format limits do not exist |
+| Send eligibility | Current UI/handler require non-empty text | `canSend` and handler both reject empty text | Attachment-only is an expected multimodal behavior | Exact preferred transcript label |
+| Provider input | OpenRouter accepts ordered multipart inputs | Official docs specify `image_url`, `input_audio`, `video_url`, and PDF `file.file_data`; current client accepts strings only | One adapter can cover streaming and non-streaming request construction | Universal provider size/format limits do not exist |
 | Capability | Model response exposes input modalities | Repository model interface drops `architecture`; model option carries no modalities | A tri-state gate avoids false claims from offline fallback | Endpoint-level support can still be narrower than model-level metadata |
-| Persistence | Sessions are bounded, inspectable workspace JSON | Exact reads cap at 25 MiB; pending and committed text bodies live in JSON | Binary must be external to the JSON envelope | Long-term portable bundle UX is outside scope |
+| Persistence | Sessions are bounded, inspectable workspace JSON | Exact reads cap at 25 MiB; pending and committed text bodies live in JSON | Binary must be external to the JSON envelope | Long-term portable bundle UX is explicitly deferred |
+| Drag-and-drop | Accepted local files should stage like picker selections | URI-bearing Explorer drops and pathless browser `File` drops expose different data | One intake service accepts transient URI or bounded bytes and revalidates both host-side | OS/web/remote-host behavior requires matrix testing |
+| PDF | Local PDFs should be first-class document attachments | OpenRouter supports native file input or parser fallback with different cost/annotation behavior | Require live native `file` evidence and force the native engine in v1 | Universal parsing is deferred |
 
 ### 2.3 Contracts and invariants
 
@@ -251,9 +260,9 @@ uploads, or OpenRouter wire syntax.
 | `ta-N` is monotonic and stable | `WorkshopSessionService` | Same facade + attachment ledger | Widen kinds only | Ref collision or wrong artifact delivery | Counter/integrity tests |
 | Pending consumes on successful assistant turn only | `WorkshopRoomHandler` + session | Same owners | No | Data loss on cancel/failure | Existing seam tests extended to all kinds |
 | Quick actions do not consume composer items | `WorkshopRoomHandler` | Same | No | Wrong turn receives private material | Route transaction tests |
-| Room artifacts deliver once per participant | Room delivery + artifact ledger | Same, with media refs | Representation only | Duplicate cost/privacy leak | Offset/catch-up tests |
-| Direct tool stays private | Room audience + session | Same | No | Media leaks into room | Audience/integrity tests |
-| Webview gets display-safe metadata | Message snapshots | Typed snapshot projector | Widen metadata | Raw bytes/path exposure | Type/serialization leak witness |
+| Room artifacts deliver once per participant | Room delivery + artifact ledger | Same, with asset refs | Representation only | Duplicate cost/privacy leak | Offset/catch-up tests |
+| Direct tool stays private | Room audience + session | Same | No | Binary attachment leaks into room | Audience/integrity tests |
+| Webview gets display-safe metadata | Message snapshots | Typed snapshot projector plus one transient intake route | Bounded exception for pathless drop bytes | Durable raw bytes/path exposure | Type/serialization leak witness |
 | Conversation atomicity | `AgentRunEngine` + manager | Same with deep-cloned parts | Widen content | Partial multipart turn in history | Cancellation/failure tests |
 | Old sessions remain readable | v1/v2 decoders | v1/v2 decoders + v2->v3 migrator | Yes | Released user data bricks | Released fixture migration test |
 | Stored bytes match immutable identity | Absent | Asset repository | New | Path points to changed/tampered content | Digest/length/kind verification |
@@ -261,15 +270,15 @@ uploads, or OpenRouter wire syntax.
 
 #### Payload ownership by artifact kind
 
-| Durable/request location | Text composer attachment | Media composer attachment | Committed widget pill |
+| Durable/request location | Text composer attachment | Binary composer attachment | Committed widget pill |
 |---|---|---|---|
 | Pending composer state | Inline bounded string | Immutable asset reference | Not used |
 | Committed room thread artifact | Inline bounded string | Immutable asset reference | Inline bounded string plus outer `kind: widget:<registry-id>` |
-| Retained participant conversation | Rendered text frame inside the archived user-message string | Provider-neutral media part containing the same asset reference | Rendered text frame inside the archived user-message string |
+| Retained participant conversation | Rendered text frame inside the archived user-message string | Provider-neutral asset part containing the same asset reference | Rendered text frame inside the archived user-message string |
 | OpenRouter request | Text | Ephemeral base64 provider part | Text |
 
 Room text currently duplicates the prompt-bearing string between the artifact
-ledger and the addressed participant's archived message. Media preserves those
+ledger and the addressed participant's archived message. Binary attachments preserve those
 two ownership facts by repeating only the immutable reference; the asset
 repository remains the sole byte owner. Direct-tool attachments skip the room
 artifact row and remain private to the tool conversation.
@@ -278,15 +287,15 @@ Widgets share the committed thread-artifact and delivery rail, but not the
 composer staging transaction: a widget bypasses pending attachments and commits
 its writer turn plus artifact synchronously before inference. The existing
 outer `WorkshopThreadArtifact.kind` therefore remains widget classification;
-the new text/media discriminator belongs in the artifact payload.
+the new text/asset discriminator belongs in the artifact payload.
 
 ### 2.4 Negative space
 
 | Generic owner | May know | Must not know | Next-feature edit surface | Verdict |
 |---|---|---|---|---|
-| Composer view | Attachment kind, label, bounded display metadata, pending/degraded state | Raw bytes, base64, absolute/source/storage paths, OpenRouter fields | Add renderer for a new accepted kind | Narrow and honest |
+| Composer view | Attachment kind, label, bounded display metadata, pending/degraded state, and a transient dropped browser `File` | Base64, durable bytes, absolute/source/storage paths, OpenRouter fields | Add renderer for a new accepted kind | Bounded intake exception remains explicit |
 | Session aggregate | Artifact lifecycle, ids, refs, participant delivery | Byte encoding, provider DTOs, VS Code URI objects | Add kind-specific record/integrity rule | Preserve facade authority |
-| Conversation manager | Provider-neutral message parts and durable asset refs | OpenRouter `image_url`/`input_audio`/`video_url`, file paths | New provider-neutral part only when semantics differ | Remove current provider-type leak |
+| Conversation manager | Provider-neutral message parts and durable asset refs | OpenRouter `image_url`/`input_audio`/`video_url`/`file_data`, file paths | New provider-neutral part only when semantics differ | Remove current provider-type leak |
 | Asset repository | Session identity, storage key, bytes, digest, format | Chat target, prompt ordering, model id, React state | Add validator/storage mapping for new binary kind | Single byte authority |
 | OpenRouter adapter | Provider-neutral parts, verified byte reader, provider wire format | Workshop turns, pills, session files, VS Code | Add mapping for an accepted provider-neutral part | Correct adapter boundary |
 | Model capability catalog | Live normalized modalities and evidence freshness | Composer UI layout, asset bytes, provider request DTO | Add normalized modality/policy evidence | Fail closed, do not infer |
@@ -297,26 +306,27 @@ the new text/media discriminator belongs in the artifact payload.
 |---|---|---|---|---|---|---|---|
 | Structural | Five new focused owners and changes to shared contracts | Composition root and barrels | Cycles or second composition root | `boundaries.test.ts`, route-owner witness | [Declared] repo architecture; [Proposed] target tree | STRONG | MODERATE |
 | Runtime | Async stage, send, read, encode, commit | Streaming/correction turns | Race, repeated large allocation, early consume | Failure injection; streaming/nonstream DTO parity | [Observed] current send transaction at `WorkshopRoomHandler.ts:995-1013`, `:1196-1213` | STRONG | HIGH |
-| Contract | Multipart model message | All assistant services | Text-only callers forced into media concerns | Compatibility helpers + compile suite | [Observed] string types in `OpenRouterClient.ts:17-28`, `AgentRunEngine.ts:341-369` | STRONG | HIGH |
+| Contract | Multipart model message | All assistant services | Text-only callers forced into binary concerns | Compatibility helpers + compile suite | [Observed] string types in `OpenRouterClient.ts:17-28`, `AgentRunEngine.ts:341-369` | STRONG | HIGH |
 | Data / persistence | Schema v3, archive v2, asset dirs | Browser/index/duplicate/delete | Bricked legacy file, orphan, dangling ref | Released fixtures; lifecycle matrix | [Observed] exact grammar `WorkshopSessionStateV1Shape.ts:269-286`; 25 MiB cap `WorkshopSessionStore.ts:46-60` | STRONG | CRITICAL |
-| Operational / security | Local sensitive media and transient base64 | Logs/errors/memory | Exfiltration, hostile path, OOM | Canary scan; containment/digest/bounds | [Observed] byte-level FileSystem port `FileSystem.ts:47-68` | MODERATE | HIGH |
+| Operational / security | Local sensitive assets, transient dropped bytes, and dispatch-only base64 | IPC/logs/errors/memory | Exfiltration, hostile path, OOM | Intake-owner scan; canary scan; containment/digest/bounds | [Observed] byte-level FileSystem port `FileSystem.ts:47-68` | MODERATE | HIGH |
 | Verification | New binary fixtures and wire assertions | Package/CI time | Mocks prove shape but real provider differs | Official-schema fixtures + opt-in live smoke | [Observed] provider-specific limitations in official docs | STRONG | MODERATE |
 | Historical / coordination | Extends July artifact/persistence decisions | Context compaction and prompt-cache work | Parallel schema/history edits conflict | Integration branch; merge order | [Observed] ADR 2026-07-18 §§artifact taxonomy/engineering caveats | STRONG | HIGH |
-| Evolution | Provider-neutral parts enable future provider | More kinds could tempt open plugin design | Premature generic media platform | Closed union + reproduction test | [Proposed] no URL/PDF/generation | MODERATE | LOW |
+| Evolution | Provider-neutral parts enable future provider | More kinds could tempt open plugin design | Premature generic attachment platform | Closed union + reproduction test | [Proposed] no URL/universal PDF parsing/generation | MODERATE | LOW |
 
 ### 2.6 Quality scenarios
 
 | Type | Source | Stimulus | Environment | Artifact | Expected response | Response measure |
 |---|---|---|---|---|---|---|
-| Change | Product engineer | Add PDF input later | Existing multimodal release | Closed attachment union + provider adapter | Add a PDF record/validator/mapping without editing image/audio/video implementations | No provider-specific change outside adapter; existing kind tests unchanged |
+| Change | Product engineer | Add universal parsed-PDF input later | Existing native-PDF release | Closed document kind + provider adapter | Add parser policy/annotation ownership without editing image/audio/video implementations | No provider-specific change outside adapter; existing kind tests unchanged |
 | Failure | Writer | Sends image while catalog is offline | Staged asset, unknown capability | Host capability gate | Refuse before fetch; retain draft and `ta-N` pill | Provider mock called zero times; same ids in snapshot |
+| UX | Writer | Drops a Finder file without a URI | Hydrated idle composer | Transient intake route | Bound before read, transfer `ArrayBuffer`, host revalidate, then show authoritative pill | No base64/durable IPC bytes; identical result to picker intake |
 | Runtime | Late guest | Joins after a room video turn | Restored named session | Turn offsets + asset ref | Guest receives the video once, then retained history references it | One asset materialization for join request; offset advances only after commit |
 | Security | Crafted checkpoint | Asset key traverses outside session dir | Hydration/read | Asset repository | Reject/degrade before filesystem read | No read outside canonical asset root |
 | Recovery | Workspace file missing | Committed audio asset was removed manually | Session open | Integrity/degradation projection | Open session, mark only that artifact unavailable, explain remedy | Other text turns usable; no silent omission |
 | UX | Writer | Pastes 2,500 characters into a short draft | Hydrated idle composer | Paste transaction | Existing draft remains; one pending pill appears | One host-minted id; send waits for acknowledgement |
 
 **Sensitivity points:** file size caps, base64 peak memory, capability freshness,
-and whether a media ref stays live for all participant histories.
+and whether an asset ref stays live for all participant histories.
 **Tradeoff points:** portable single-file sessions vs. bounded external assets;
 fail-closed certainty vs. custom-model convenience; icons-only privacy vs. rich
 preview.
@@ -347,11 +357,11 @@ and accidental sensitive-data propagation.
 
 | ID | Severity | Finding | Evidence | Smallest fix | Blocks |
 |---|---|---|---|---|---|
-| F1 | CRITICAL | Persisting media in existing JSON would violate bounded session storage and make durable deletion/reference behavior unsafe | `WorkshopSessionStore.ts:46-60`; `WorkshopSessionStateV1.ts:62-69` | Add session-scoped asset repository and schema-v3 refs | enable |
-| F2 | HIGH | String-only conversation archives cannot preserve media for follow-up or participant catch-up | `ConversationManager.ts:61-79`, `:534-563`; ADR 2026-07-18:18-21 | Introduce provider-neutral multipart history/archive v2 | enable |
+| F1 | CRITICAL | Persisting binary assets in existing JSON would violate bounded session storage and make durable deletion/reference behavior unsafe | `WorkshopSessionStore.ts:46-60`; `WorkshopSessionStateV1.ts:62-69` | Add session-scoped asset repository and schema-v3 refs | enable |
+| F2 | HIGH | String-only conversation archives cannot preserve binary assets for follow-up or participant catch-up | `ConversationManager.ts:61-79`, `:534-563`; ADR 2026-07-18:18-21 | Introduce provider-neutral multipart history/archive v2 | enable |
 | F3 | HIGH | Current model metadata cannot prove modality support before a paid request | `OpenRouterModels.ts:8-22`; `ConfigurationHandler.ts:386-402`; OpenRouter Models API | Retain normalized input modalities and require tri-state preflight | enable |
-| F4 | HIGH | Media added only to the initial target would break established room-wide, once-per-participant artifact semantics | `context.ts:15-20`; `WorkshopSessionService.ts:678-725` | Extend delivery payloads/offset tests to media refs | enable |
-| F5 | MEDIUM | Adding paste/media routes to `WorkshopContextHandler` would make its context ownership increasingly false | `WorkshopContextHandler.ts:490-548`, `:780-808` | Extract a composer-attachment handler and ledger | merge |
+| F4 | HIGH | Binary attachments added only to the initial target would break established room-wide, once-per-participant artifact semantics | `context.ts:15-20`; `WorkshopSessionService.ts:678-725` | Extend delivery payloads/offset tests to asset refs | enable |
+| F5 | MEDIUM | Adding paste/binary routes to `WorkshopContextHandler` would make its context ownership increasingly false | `WorkshopContextHandler.ts:490-548`, `:780-808` | Extract a composer-attachment handler and ledger | merge |
 | F6 | MEDIUM | Existing text-required send gates prevent attachment-only multimodal turns | `WorkshopComposer.tsx:124-133`; `WorkshopRoomHandler.ts:457-481` | Gate on text-or-attachment and separate display copy from model text | enable |
 | F7 | MEDIUM | Provider format/size support remains narrower and mutable even after model-level gating | OpenRouter audio/video docs | Keep conservative app allowlist, preserve retry on provider rejection, document uncertainty | release |
 
@@ -359,7 +369,7 @@ and accidental sensitive-data propagation.
 
 - The existing `ta-N` rail survived the challenge: it already owns one-shot
   staging, stable identity, retry, display refs, room publication, and direct-tool
-  privacy. Media changes representation, not lifecycle.
+  privacy. Binary attachments change representation, not lifecycle.
 - `WorkshopSessionService` survived as aggregate facade because send, turn,
   artifact, manifest, offset, and checkpoint facts still require one atomic
   mutation boundary. The new ledger is an internal collaborator, not a rival
@@ -368,7 +378,7 @@ and accidental sensitive-data propagation.
   state only because the writer explicitly performs an attachment-producing
   paste gesture and receives a visible pill.
 - The existing `FileSystem`/`Workspace` ports survived. They already provide
-  bounded byte I/O primitives and workspace identity; no media-specific host port
+  bounded byte I/O primitives and workspace identity; no attachment-specific host port
   is needed.
 
 ### 2.10 Implementation slices
@@ -378,9 +388,9 @@ and accidental sensitive-data propagation.
 | Gate 00 | Characterize/decide | ADR, epic, architecture tests, fixtures | None | Current behavior + violating-fixture witnesses | None | Revert docs/tests |
 | Sprint 01 | Establish typed state | messages, aggregate records/ledger, model messages, codecs/migration | Session v3 + archive v2; no UX | Released fixtures, shape/integrity/clone tests | Gate 00 | Revert before release; retain decoder after release |
 | Sprint 02 | Deliver text UX value | composer, tray, sheet controller, paste routes | Long paste, edit, attachment-only | Component/hook/route/aggregate/accessibility tests | Sprint 01 | Disable interception/route |
-| Sprint 03 | Establish byte authority | asset repository, storage/coordinator, media handler/picker | Media stage/persist/lifecycle and finished pill UX; no dispatch | Failure injection + containment/copy/delete/accessibility | Sprint 01 | Hide picker/refuse intake |
-| Sprint 04 | Deliver and recover media | model catalog, engine/manager, OpenRouter adapter/client, room delivery/audience/manifest/recovery | Capability-gated multipart dispatch, once-per-participant replay, and degradation | Exact DTO, zero-fetch, host/guest/tool/restore, and failure matrices | Sprint 03 | Close media gate; retain read-only degradation |
-| Release Gate 05 | Qualify | docs/tests/package and integrated manual evidence | Ship eligibility only | Full CI, manual UI, optional approved smoke | Sprints 02-04 | Media kill gate; retain long paste independently |
+| Sprint 03 | Establish byte authority | asset repository, storage/coordinator, picker/drop intake handler | Binary stage/persist/lifecycle and finished pill UX; no dispatch | URI/byte intake, failure injection, containment/copy/delete/accessibility | Sprint 01 | Hide picker/drop and refuse intake |
+| Sprint 04 | Deliver and recover assets | model catalog, engine/manager, OpenRouter adapter/client, room delivery/audience/manifest/recovery | Capability-gated multipart dispatch, native PDF policy, once-per-participant replay, and degradation | Exact DTO, zero-fetch, host/guest/tool/restore, and failure matrices | Sprint 03 | Close binary gate; retain read-only degradation |
+| Release Gate 05 | Qualify | docs/tests/package and integrated manual evidence | Ship eligibility only | Full CI, manual UI, optional approved smoke | Sprints 02-04 | Binary kill gate; retain long paste independently |
 
 ### 2.11 Coordination map
 
@@ -388,7 +398,7 @@ and accidental sensitive-data propagation.
 |---|---|---|---|---|
 | Contracts/persistence | message types, state/shape/integrity, migration, conversation archive | `WorkshopSessionService`, persisted envelope | 1 | Sprint 01 implementer |
 | Paste UX | composer/tray/controller/routes | attachment snapshot + session mutation API | 2 | Sprint 02 implementer |
-| Asset lifecycle | repository/store/coordinator/media handler | session identity, duplicate/delete | 3 | Sprint 03 implementer |
+| Asset lifecycle | repository/store/coordinator/picker-drop handler | session identity, duplicate/delete | 3 | Sprint 03 implementer |
 | Provider/capability | models/config, engine/manager, adapter/client | `ModelMessage`, send entry points | 4a | Sprint 04 implementer |
 | Room/recovery | room handler/delivery/audience/manifest | artifact ledger, asset reader | 4b | Sprint 04 implementer |
 | Qualification | docs/tests/package | all above frozen | 5 | Release gate owner |
@@ -398,15 +408,17 @@ they share persistence and conversation-history lock points. Sprint 04 may use
 separate transport and room/recovery commits or PRs, but the capability gate
 stays closed until both halves meet the sprint exit criteria.
 
-### 2.12 Unknowns that can reverse the decision
+### 2.12 Resolved decisions and bounded implementation unknowns
 
-| Unknown | Why it matters | How to resolve | Owner | Decision impact |
-|---|---|---|---|---|
-| Is single-file portable session export a near-term requirement? | External assets make raw JSON alone incomplete | Product decision and separate bundle UX runway | Okey | If required now, add export bundle before Sprint 03 |
-| Must media support remote URLs in v1? | URL ownership/security/provider routing differs from local assets | Product decision; current request says attaching files, so defer | Okey | If yes, add a separate validated URL source union |
-| Should identical pasted text deduplicate? | Current source-based duplicate rule does not cover pasted content | Gate 00 UX decision; recommend distinct actions | Okey | Local Sprint 02 behavior only |
-| Are model-level modalities sufficient for selected provider routes? | Endpoint routing can be narrower | During Sprint 04, inspect model endpoint metadata and rejection behavior without paid inference where possible | Implementer | Could require endpoint-aware evidence or more conservative unknown |
-| What is acceptable extension-host peak memory for video? | Base64 materialization can create multiple copies | Sprint 03 fixture plus release-gate measurement; lower cap if needed | Implementer | May revise limits, not architecture |
+| Topic | Resolution / next evidence | Owner | Gate impact |
+|---|---|---|---|
+| Single-file portable export | Sidecar assets are accepted; portable JSON-plus-assets bundles are deferred | Okey | Resolved |
+| Remote URL attachments | Deferred; local picker and local D&D are in scope | Okey | Resolved |
+| Identical pasted text | Each paste is a distinct writer action | Okey | Resolved |
+| PDF support | PDF is a `document` asset, 20 MiB maximum, native `file` models only; no parser/OCR fallback | Okey | Resolved |
+| Mixed unsupported attachments | Reject atomically and preserve the exact typed draft plus every staged attachment | Okey | Resolved |
+| Endpoint evidence narrower than model evidence | Inspect endpoint metadata in Sprint 04; ambiguous evidence remains `unknown` and fails closed | Implementer | Does not reverse architecture |
+| Extension-host peak memory for video and pathless D&D | Measure transient transfer and base64 materialization in Sprint 03/release gate; lower caps if needed | Implementer | May revise policy, not architecture |
 
 ## 3. Self-review and Re-plan Verdict
 
@@ -434,12 +446,13 @@ Assume the implementation merged and failed six months later.
 
 ### 3.3 Reproduction test
 
-**Plausible next feature / variant:** PDF input through OpenRouter.
-**Files it adds:** PDF attachment validator/record and OpenRouter PDF mapping
+**Plausible next feature / variant:** Parsed PDF input for models without native
+file capability.
+**Files it adds:** OpenRouter PDF parser policy and provider-annotation mapping
 tests.
-**Shared files it must edit:** closed attachment/content-part unions, central
-limits/format table, capability normalization, provider adapter registration.
-**Existing feature files it must edit:** no image/audio/video validators,
+**Shared files it must edit:** provider capability policy and the provider
+adapter's ephemeral response-annotation handling.
+**Existing feature files it must edit:** no binary validators,
 renderers, or tests.
 **Verdict:** Pass. The design is extensible through a closed, explicit union
 without becoming a dynamic plugin framework.
@@ -450,7 +463,7 @@ without becoming a dynamic plugin framework.
 
 **Initial plan:**
 
-1. Add media kinds to the current attachment record and picker.
+1. Add binary kinds to the current attachment record and picker.
 2. Convert files to OpenRouter parts during send.
 3. Add long-paste interception and polish persistence afterward.
 
@@ -459,20 +472,21 @@ without becoming a dynamic plugin framework.
 1. Lock semantics and witness current invariants.
 2. Establish typed provider-neutral content and explicit persistence migration.
 3. Ship long paste as the first usable slice.
-4. Add session-scoped media storage before exposing media intake.
+4. Add session-scoped binary storage plus picker/D&D intake before dispatch.
 5. Enable capability-gated OpenRouter transport and complete room
    replay/degradation under one closed feature gate.
 6. Run the release qualification gate.
 
-**What changed and why:** Persistence moved ahead of media UI/transport, and
+**What changed and why:** Persistence moved ahead of binary UI/transport, and
 conversation history now stores durable refs. A request-only implementation
 would work once and then fail the Workshop's defining retained-room behavior.
 **Evidence that caused the change:** The local conversation manager re-sends the
 whole stored array (ADR 2026-07-18:18-21), attachment bodies are persisted and
 delivered by offsets (`WorkshopSessionService.ts:617-725`), and current session
 files enforce bounded exact reads (`WorkshopSessionStore.ts:46-60`).
-**Remaining uncertainty:** Product limits/labels and endpoint-level modality
-precision; neither reverses the durable-reference architecture.
+**Remaining uncertainty:** Endpoint-level modality precision and measured peak
+memory; both fail closed or revise policy without reversing the durable-reference
+architecture.
 
 ### 3.5 Implementation gate
 
@@ -486,7 +500,8 @@ precision; neither reverses the durable-reference architecture.
 | Tree/responsibilities/contracts/slices agree | PASS after self-review | §3.1 resolutions incorporated |
 | Human decisions and coordination assigned | PASS | §§0 and 2.11 |
 
-**Final gate:** `OPEN` — Gate 00 recorded green characterization and fitness evidence.
+**Gate 00:** `CLEARED` — decisions were explicitly ratified on 2026-09-04 and
+the characterization/fitness evidence is green. **Implementation gate:** `OPEN`.
 
 ## 4. Evidence Appendix — details on demand
 
@@ -523,7 +538,7 @@ precision; neither reverses the durable-reference architecture.
   record/get room artifacts, export/hydrate.
 - **Important dependencies and consumers:** Workshop handlers, delivery,
   persistence coordinator.
-- **State / contract / migration effects:** Typed attachments and media refs;
+- **State / contract / migration effects:** Typed attachments and asset refs;
   `ta-N` unchanged.
 - **Verification:** Aggregate, integrity, room-delivery, persistence tests.
 - **LOC before / estimated after:** Large facade / expected net reduction in
@@ -531,7 +546,7 @@ precision; neither reverses the durable-reference architecture.
 - **Evidence / confidence:** [Observed] `WorkshopSessionService.ts:568-769`;
   STRONG.
 
-#### `packages/core/src/infrastructure/storage/WorkshopMediaAssetRepository.ts` — `[+]`
+#### `packages/core/src/infrastructure/storage/WorkshopAttachmentAssetRepository.ts` — `[+]`
 
 - **Layer / role:** Infrastructure repository behind host-neutral ports.
 - **Primary responsibility:** Session-scoped immutable binary storage and
@@ -591,11 +606,12 @@ precision; neither reverses the durable-reference architecture.
 | File | Method | Current job | Proposed job | State / contract effects | Test |
 |---|---|---|---|---|---|
 | `WorkshopComposer.tsx` | `sendDraft` | Requires non-empty text and clears local draft | Submit text-or-acknowledged-attachments; clear text only after intent | UX/send eligibility | Component + app recovery |
+| `WorkshopComposer.tsx` | drop handler | Absent | Classify URI-bearing vs. pathless local files; pre-bound pathless bytes and post one transient intake intent | Bounded D&D IPC only | Explorer/OS/URL/directory matrix |
 | `WorkshopContextHandler.ts` | `handleAttachMessageFile` | Pick/read/bound text file | Remain text-file path or delegate by selected kind | Existing behavior preserved | Current route tests |
 | `WorkshopSessionService.ts` | `addMessageAttachment` | Source-dedup + item cap + `ta-N` | Validate common/kind rules through ledger | Typed pending state | Aggregate boundary table |
 | `WorkshopRoomHandler.ts` | `executeMessage` | Build text frames/string model message | Preflight kinds, build ordered neutral parts, commit same refs | Dispatch and atomicity | Host/guest/tool failure matrix |
 | `ConversationManager.ts` | `assertArchivedMessageShape` | Reject non-string content | Validate closed text/ref content grammar | Archive v2 | Codec/round-trip tests |
-| `OpenRouterClient.ts` | `createChatCompletion` | Serialize string messages | Consume adapter-built provider DTOs | Wire only | Existing + exact multipart requests |
+| `OpenRouterClient.ts` | `createChatCompletion` | Serialize string messages | Consume adapter-built provider DTOs, including native-engine PDF policy | Wire only | Existing + exact multipart requests |
 | `WorkshopSessionStore.ts` | `duplicateNamed`/`deleteNamed` | Mutate JSON/index files | Coordinate with session asset lifecycle via application owner | Multi-file lifecycle | Injected failures |
 
 ### 4.3 Genealogy and precedent
@@ -605,20 +621,21 @@ precision; neither reverses the durable-reference architecture.
 | ADR 2026-07-18, lines 47-64 | Established `ta-N`, staged host state, one-send scope, commit-on-success, and text frame storage | Preserve lifecycle; change representation deliberately | STRONG |
 | ADR 2026-07-18, lines 93-104 | Distinguished storage shape from provider wire shape and required atomic between-turn mutation | Provider-neutral refs and late adapter mapping fit the existing doctrine | STRONG |
 | ADR 2026-07-14, session persistence | Made workspace JSON authoritative, bounded, and transactionally coordinated with conversations | Binary assets must participate in the persistence transaction without entering JSON | STRONG |
-| Commit `c0c273e9` | Repaired one-shot artifacts to be room-wide | Initial-target-only media delivery would repeat a known semantic mistake | STRONG |
-| Current FileSystem port | Already provides byte read/write/stat/rename/delete behind host abstraction | Reuse ports; no `vscode` media service in core | STRONG |
+| Commit `c0c273e9` | Repaired one-shot artifacts to be room-wide | Initial-target-only binary delivery would repeat a known semantic mistake | STRONG |
+| Current FileSystem port | Already provides byte read/write/stat/rename/delete behind host abstraction | Reuse ports; no `vscode` binary service in core | STRONG |
 
 ### 4.4 Fitness witnesses
 
 | Rule | Automated witness | Failure message / signal |
 |---|---|---|
 | Core never imports VS Code | Existing architecture boundary scan expanded to new files | `packages/core multimodal owner imports vscode` |
-| IPC/session JSON never carries media bytes/base64/data URLs | Type scan plus recognizable canary serialized through snapshot/archive | `raw media escaped host byte boundary` |
+| IPC/session JSON never carries base64/data URLs | Type scan plus recognizable canary serialized through snapshot/archive | `encoded binary escaped provider boundary` |
+| Raw dropped bytes exist only in bounded transient intake | Allowlisted contract-owner scan plus declared/actual size tests | `raw bytes escaped Workshop attachment intake` |
 | Only OpenRouter adapter emits provider part names | Restricted import/token scan outside provider package | `provider multimodal DTO leaked into orchestration` |
-| Capability unknown/unsupported makes zero fetches | Handler/engine test with provider spy | `media dispatch occurred without supported verdict` |
+| Capability unknown/unsupported makes zero fetches | Handler/engine test with provider spy | `binary dispatch occurred without supported verdict` |
 | Asset paths remain session-contained | Hostile ref/session ids against fake FileSystem | `Workshop asset path escaped session root` |
-| Asset identity matches bytes | Tamper digest/length/kind fixtures | `Workshop media asset integrity mismatch` |
-| Rollback retains all kinds and ids | Cancel/error matrix over text/image/audio/video | Pending ids differ before/after failed turn |
+| Asset identity matches bytes | Tamper digest/length/kind fixtures | `Workshop attachment asset integrity mismatch` |
+| Rollback retains draft, all kinds, and ids | Cancel/error matrix over text/image/audio/video/PDF | Draft or pending ids differ before/after failed turn |
 | Quick actions consume none | Existing invariant parameterized over kinds | Attachment disappeared after deterministic action |
 | Room delivery once; tools private | Host/guest/late-join/direct-tool matrix | Duplicate delivery or private artifact in room ledger |
 | Legacy sessions migrate | Released v1 + representative v2 fixtures | Decoder cannot produce canonical v3 |
@@ -646,7 +663,7 @@ decision. See the accepted
 
 | Term | Local meaning in this change | Why the reader needs it | Status / evidence |
 |---|---|---|---|
-| Provider-neutral model message | A role plus text or ordered semantic content parts whose media entries hold asset refs, never OpenRouter fields | Separates conversation meaning from one API's JSON | proposed |
+| Provider-neutral model message | A role plus text or ordered semantic content parts whose binary entries hold asset refs, never OpenRouter fields | Separates conversation meaning from one API's JSON | proposed |
 | OpenRouter message adapter | The only mapper from provider-neutral parts and verified bytes to OpenRouter multipart DTOs | Defines where base64 and provider names may exist | proposed |
 | Late materialization | Reading and base64-encoding an asset only while building the outbound request | Prevents bytes from spreading through session/UI/history | proposed |
 | Asset repository | Session-scoped durable byte owner with containment/digest/bound checks | JSON cannot safely carry video-sized payloads | proposed |
@@ -658,10 +675,10 @@ decision. See the accepted
 
 | Term | Local meaning in this change | Why the reader needs it | Status / evidence |
 |---|---|---|---|
-| Composer attachment | Writer material staged for the next explicit send: pasted text, text file/resource, image, audio, or video | Umbrella product concept for the epic | proposed name over current message attachment |
+| Composer attachment | Writer material staged for the next explicit send: pasted text, text file/resource, image, audio, video, or PDF document | Umbrella product concept for the epic | proposed name over current message attachment |
 | Thread artifact | A one-shot artifact belonging to one room turn and addressable by `ta-N` | Existing room delivery and persistence lifecycle being extended | current; `context.ts:15-20` |
-| Standing context | Re-shipped session context managed outside the next-message tray | Prevents media/paste work from changing the wrong rail | current |
-| Room delivery | Offset-based catch-up that sends a room turn and its artifacts once to each host/guest | Media must preserve multi-participant continuity | current |
+| Standing context | Re-shipped session context managed outside the next-message tray | Prevents binary/paste work from changing the wrong rail | current |
+| Room delivery | Offset-based catch-up that sends a room turn and its artifacts once to each host/guest | Binary attachments must preserve multi-participant continuity | current |
 | Direct-tool turn | Private composer message addressed to an analysis tool sidecar | Its attachments must never enter room catch-up | current |
 | Attachment-only turn | A writer send with no textarea text and one or more staged artifacts | Requires honest transcript copy without a fabricated model prompt | proposed |
 | Degraded asset | Metadata/ref remains, but verified bytes are missing or corrupt | Makes storage damage visible without bricking unrelated session state | proposed |
@@ -672,4 +689,7 @@ decision. See the accepted
 - [OpenRouter image inputs](https://openrouter.ai/docs/guides/overview/multimodal/image-understanding)
 - [OpenRouter audio inputs](https://openrouter.ai/docs/guides/overview/multimodal/audio)
 - [OpenRouter video inputs](https://openrouter.ai/docs/guides/overview/multimodal/videos)
-- [OpenRouter Models API](https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties)
+- [OpenRouter PDF inputs](https://openrouter.ai/docs/guides/overview/multimodal/pdfs)
+- [OpenRouter Models API](https://openrouter.ai/docs/api/api-reference/models/get-models)
+- [VS Code typed-array webview transfer](https://code.visualstudio.com/updates/v1_57#_improved-webview-array-buffer-transfers)
+- [Electron `File.path` replacement](https://www.electronjs.org/docs/latest/api/web-utils)

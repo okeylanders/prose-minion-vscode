@@ -2,7 +2,7 @@
 
 **Status:** Complete
 
-**Completed:** 2026-09-03
+**Completed:** 2026-09-04
 
 **Proposed branch:** `gate/workshop-multimodal-composer-00-decisions`
 
@@ -19,8 +19,8 @@ text-only behavior.
 ## Deliverables
 
 1. Accept or revise every product decision in the ADR: paste threshold,
-   attachment-only turns, item/byte limits, formats, capability-unknown policy,
-   previews, and damaged-asset behavior.
+   attachment-only turns, item/byte limits, formats, picker/drop intake,
+   capability-unknown policy, previews, and damaged-asset behavior.
 2. Accept or revise the durable ownership contract: the asset repository is the
    only binary-byte owner; room artifacts and participant history may repeat an
    immutable reference; `WorkshopThreadArtifact.kind` remains widget-only; and
@@ -30,22 +30,30 @@ text-only behavior.
    cancellation, retry, room catch-up, direct-tool privacy, restore, duplicate,
    and delete behavior.
 5. Add red/green architecture witnesses for the future rules:
-   - no raw bytes/base64/data URLs in IPC or persisted session types;
+   - no base64/data URLs in IPC or persisted session types;
+   - raw dropped bytes exist only in one bounded transient intake contract;
    - only the provider adapter may emit OpenRouter multimodal wire parts;
    - core remains `vscode`-free;
-   - media dispatch requires a host-side capability verdict;
+   - binary dispatch requires a host-side capability verdict;
    - asset paths are constructed only by the asset repository.
-6. Record tiny synthetic fixtures for each accepted media format. Do not add
-   copyrighted or personal media.
+6. Record tiny synthetic fixtures for each accepted binary format. Do not add
+   copyrighted or personal files.
 
 ## Accepted decisions
 
 Gate 00 accepts the recommendations in
 [ADR 2026-09-03](../../../../docs/adr/2026-09-03-durable-multimodal-workshop-messages.md),
 including the 2,000-character threshold, attachment-only sends, distinct
-repeated-paste actions, conservative size/format policy, metadata-only media
-pills, fail-closed unknown capability, local-file-only intake, and scoped
-degradation.
+repeated-paste actions, conservative size/format policy, metadata-only
+attachment pills, fail-closed unknown capability, local picker and
+drag-and-drop intake, native-file PDF delivery, atomic mixed-capability
+failure, and scoped degradation.
+
+On 2026-09-04, Okey explicitly ratified the sidecar-asset persistence model,
+drag-and-drop and PDF scope, exact draft preservation on failed mixed-modality
+sends, and the remaining recommended policy bundle. PDF uses the `document`
+asset kind, a 20 MiB per-item bound, and OpenRouter's native file path only;
+automatic or paid PDF parser fallback remains outside this epic.
 
 ## Current-behavior characterization ledger
 
@@ -70,12 +78,13 @@ them under new names:
 | Boundary | Gate 00 evidence |
 |---|---|
 | Core stays `vscode`-free | Existing `boundaries.test.ts` source scan |
-| Workshop IPC/durable contracts contain no raw bytes, byte containers, base64 fields, or data URLs | New actual-source scan plus deliberate violating fixtures in `boundaries.test.ts` |
+| Workshop IPC/durable contracts contain no base64 fields or data URLs | Actual-source scan plus deliberate violating fixtures in `boundaries.test.ts` |
+| Raw dropped bytes exist only in the future dedicated transient intake contract | Allowlisted-owner source scan plus allowed/disallowed fixtures in `boundaries.test.ts` |
 | OpenRouter multimodal wire names exist only in the future provider adapter | New actual-source scan plus allowed/disallowed ownership fixtures in `boundaries.test.ts` |
 | Workshop asset paths are constructed only by the future asset repository | New actual-source scan plus allowed/disallowed ownership fixtures in `boundaries.test.ts` |
 | Accepted limits and formats have one owner | `WORKSHOP_COMPOSER_ATTACHMENT_POLICY` plus exact policy test |
-| Every accepted format has non-personal test input | Header-only `WORKSHOP_SYNTHETIC_MEDIA_FIXTURES` inventory test |
-| Unsupported/unknown media makes zero provider calls | Mandatory Sprint 04 runtime test; Gate 00 records the contract but does not mock a dispatch path that does not exist yet |
+| Every accepted format has non-personal test input | Header-only `WORKSHOP_SYNTHETIC_ASSET_FIXTURES` inventory test, including PDF |
+| Unsupported/unknown binary input makes zero provider calls | Mandatory Sprint 04 runtime test; Gate 00 records the contract but does not mock a dispatch path that does not exist yet |
 
 The last row is intentionally a future behavioral witness rather than a Gate 00
 test double testing itself. Sprint 04 cannot open its capability gate until that
@@ -84,8 +93,8 @@ zero-fetch test is green.
 ## Exit criteria
 
 - [x] ADR status is Accepted and the epic has no architecture-reversing unknown.
-- [x] Byte/reference ownership and widget-versus-composer lifecycle boundaries
-      are explicit and accepted.
+- [x] Byte/reference ownership, the bounded D&D intake exception, and
+      widget-versus-composer lifecycle boundaries are explicit and accepted.
 - [x] Current attachment semantics are protected before the type migration.
 - [x] Each structural fitness witness fails against a deliberate violating
       fixture; the nonexistent dispatch path has a required Sprint 04 runtime
@@ -96,8 +105,8 @@ zero-fetch test is green.
 
 ## Validation evidence
 
-- `boundaries.test.ts` plus `workshopComposerAttachments.test.ts`: 2 suites,
-  32 tests passed.
+- `boundaries.test.ts` plus `workshopComposerAttachments.test.ts`: 3 matching
+  suites, 45 tests passed.
 - Existing characterization ledger: 7 suites, 165 tests passed.
 - All three TypeScript projects passed `npm run typecheck`.
 - Focused ESLint passed for every Gate 00 TypeScript change.

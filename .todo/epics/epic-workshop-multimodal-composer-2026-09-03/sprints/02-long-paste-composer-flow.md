@@ -29,8 +29,9 @@ without disturbing ordinary typing, short paste, or surrounding draft text.
 5. Enable send when either trimmed draft text or a staged attachment exists.
    For attachment-only sends, persist honest display copy such as
    `Shared 1 attachment` while the model receives only the attachment content.
-6. Preserve commit-on-success and rollback behavior. Host rejection leaves the
-   clipboard untouched and explains why no pill was staged.
+6. Preserve commit-on-success and rollback behavior. Send rejection/failure
+   preserves the exact typed draft and staged attachment ids. Intake rejection
+   leaves the clipboard untouched and explains why no pill was staged.
 7. Finish the long-paste pill's narrow-sidebar layout, keyboard removal, focus
    behavior, and screen-reader copy in this slice rather than deferring its UX
    debt to release qualification.
@@ -40,7 +41,7 @@ without disturbing ordinary typing, short paste, or surrounding draft text.
 - Exactly threshold minus one and exactly threshold characters.
 - Empty/whitespace-only, CRLF, Unicode, rich-text clipboard with plain fallback,
   and a paste while the attachment list is full.
-- Repeated identical paste: accepted as distinct writer actions unless Gate 00 locks
+- Repeated identical paste: accepted as distinct writer actions; no
   content-digest deduplication.
 - Paste while a run is active or before session hydration: refused without local
   ghost state.

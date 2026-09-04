@@ -16,7 +16,7 @@ export const WORKSHOP_COMPOSER_ATTACHMENT_POLICY = {
   },
   maximumItemsPerMessage: 3,
   maximumBinaryBytesPerMessage: 60 * MEBIBYTE,
-  media: {
+  assets: {
     image: {
       maximumBytes: 10 * MEBIBYTE,
       formats: {
@@ -46,8 +46,14 @@ export const WORKSHOP_COMPOSER_ATTACHMENT_POLICY = {
         mov: { extensions: ['.mov'], mimeTypes: ['video/quicktime', 'video/mov'] },
         webm: { extensions: ['.webm'], mimeTypes: ['video/webm'] }
       }
+    },
+    document: {
+      maximumBytes: 20 * MEBIBYTE,
+      formats: {
+        pdf: { extensions: ['.pdf'], mimeTypes: ['application/pdf'] }
+      }
     }
   }
 } as const;
 
-export type WorkshopMediaKind = keyof typeof WORKSHOP_COMPOSER_ATTACHMENT_POLICY.media;
+export type WorkshopBinaryAssetKind = keyof typeof WORKSHOP_COMPOSER_ATTACHMENT_POLICY.assets;

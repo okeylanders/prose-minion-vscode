@@ -16,10 +16,11 @@ provider-neutral discriminated contracts while preserving all existing behavior.
 ## Deliverables
 
 1. Introduce a canonical composer-attachment union with common display metadata
-   and kind-specific text or immutable asset-reference fields.
+   and kind-specific text or immutable asset-reference fields, including PDF as
+   the first `document` kind.
 2. Keep `WorkshopTurn` and webview snapshots display-safe; add kind, byte/word
    size, and degradation metadata without content or host paths.
-3. Generalize thread-artifact records so text frames and media references share
+3. Generalize thread-artifact records so text frames and binary asset references share
    `ta-N` identity without pretending binary bytes are text.
 4. Introduce provider-neutral `ModelMessage`/content-part contracts under API
    orchestration. Remove `ConversationManager`'s dependency on
@@ -33,17 +34,18 @@ provider-neutral discriminated contracts while preserving all existing behavior.
 
 ## Illustrative target contracts
 
-Gate 00 may refine names, but Sprint 01 must preserve this ownership shape:
+Implementation may refine local names, but Sprint 01 must preserve this accepted
+ownership shape:
 
 ```ts
-type WorkshopMediaKind = 'image' | 'audio' | 'video';
+type WorkshopBinaryAssetKind = 'image' | 'audio' | 'video' | 'document';
 
-interface WorkshopMediaAssetRef {
+interface WorkshopAttachmentAssetRef {
   sessionId: string;
   storageKey: string;
   sha256: string;
   byteLength: number;
-  mediaKind: WorkshopMediaKind;
+  assetKind: WorkshopBinaryAssetKind;
   mimeType: string;
   format: string;
 }
@@ -69,17 +71,17 @@ type WorkshopComposerAttachment = WorkshopComposerAttachmentBase &
         truncation?: { keptWords: number; totalWords: number };
       }
     | {
-        attachmentKind: WorkshopMediaKind;
-        asset: WorkshopMediaAssetRef;
+        attachmentKind: WorkshopBinaryAssetKind;
+        asset: WorkshopAttachmentAssetRef;
       }
   );
 
 type WorkshopThreadArtifactPayload =
   | { type: 'text'; content: string }
   | {
-      type: 'media';
-      mediaKind: WorkshopMediaKind;
-      asset: WorkshopMediaAssetRef;
+      type: 'asset';
+      assetKind: WorkshopBinaryAssetKind;
+      asset: WorkshopAttachmentAssetRef;
     };
 
 interface WorkshopThreadArtifactV2 {
@@ -98,14 +100,14 @@ interface ModelMessage {
 type ModelContentPart =
   | { type: 'text'; text: string }
   | {
-      type: 'media';
+      type: 'asset';
       artifactId: string;
-      mediaKind: WorkshopMediaKind;
-      asset: WorkshopMediaAssetRef;
+      assetKind: WorkshopBinaryAssetKind;
+      asset: WorkshopAttachmentAssetRef;
     };
 ```
 
-The persisted aggregate and conversation archive may repeat an immutable media
+The persisted aggregate and conversation archive may repeat an immutable asset
 reference, but neither may contain the referenced bytes. `WorkshopTurn` and
 webview snapshots project only display metadata: artifact id, label, attachment
 kind, word or byte size, format, and availability/degradation state. They omit
@@ -116,10 +118,11 @@ text bodies, asset storage keys, digests, source URIs, and host paths.
 - Decode released v1 through the existing v1-to-v2 migration, then migrate the
   resulting v2 object to v3.
 - Convert every existing pending message attachment to `text-file`, preserving
-  its bounded content and existing provenance/truncation metadata.
+  its bounded content and existing provenance/truncation metadata. Migration
+  creates no `document` attachment from a legacy text file.
 - Convert every existing `WorkshopThreadArtifact.content` to
   `payload: { type: 'text', content }`. Preserve an existing outer
-  `kind: widget:<registry-id>` exactly; do not reuse `kind` as the media
+  `kind: widget:<registry-id>` exactly; do not reuse `kind` as the asset
   discriminant.
 - Keep existing archived conversation message strings as strings. Migration
   creates no multipart entries and writes no asset files.
@@ -131,7 +134,7 @@ text bodies, asset storage keys, digests, source URIs, and host paths.
 - Legacy released v1 fixture -> v2 -> v3 opens and rewrites deterministically.
 - Existing v2 text attachments become the correct typed text-file records.
 - Unknown discriminants, extra fields, invalid `ta-N` ids, malformed digests,
-  cross-session refs, attachment/asset media-kind mismatches, and mismatched size
+  cross-session refs, attachment/asset-kind mismatches, and mismatched size
   fields fail at the raw boundary.
 - Conversation archives still require complete user/assistant exchanges and a
   sole leading runtime system message.
@@ -151,4 +154,4 @@ text bodies, asset storage keys, digests, source URIs, and host paths.
 ## Rollback seam
 
 Before any schema-v3 checkpoint is released, revert the sprint. After release,
-retain the v3 decoder even if later media slices roll back.
+retain the v3 decoder even if later binary slices roll back.

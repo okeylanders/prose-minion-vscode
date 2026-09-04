@@ -847,17 +847,25 @@ const MODEL_MESSAGE_CONTRACT = path.join(
 );
 const OPENROUTER_MULTIMODAL_ADAPTER_OWNER =
   'infrastructure/api/providers/OpenRouterMultimodalMessageAdapter.ts';
-const WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER =
-  'infrastructure/storage/WorkshopMediaAssetRepository.ts';
-const RAW_MEDIA_CONTRACT_SHAPE = new RegExp(
+const WORKSHOP_ATTACHMENT_INTAKE_MESSAGE_OWNER =
+  'shared/types/messages/workshop/attachmentIntake.ts';
+const WORKSHOP_ATTACHMENT_ASSET_REPOSITORY_OWNER =
+  'infrastructure/storage/WorkshopAttachmentAssetRepository.ts';
+const RAW_BINARY_CONTRACT_SHAPE = new RegExp(
   [
-    String.raw`\b(?:bytes|base64|dataUrl)\s*\??\s*:`,
-    String.raw`:\s*(?:Buffer|Uint8Array|ArrayBuffer|Blob)\b`,
+    String.raw`\bbytes\s*\??\s*:`,
+    String.raw`:\s*(?:Buffer|Uint8Array|ArrayBuffer|Blob)\b`
+  ].join('|'),
+  'i'
+);
+const ENCODED_BINARY_CONTRACT_SHAPE = new RegExp(
+  [
+    String.raw`\b(?:base64|dataUrl)\s*\??\s*:`,
     String.raw`['"]data:[a-z]+\/[a-z0-9.+-]+;base64,`
   ].join('|'),
   'i'
 );
-const OPENROUTER_MULTIMODAL_WIRE_TOKEN = /\b(?:image_url|input_audio|video_url)\b/;
+const OPENROUTER_MULTIMODAL_WIRE_TOKEN = /\b(?:image_url|input_audio|video_url|file_data|fileData)\b/;
 const WORKSHOP_ASSET_PATH_CONSTRUCTION = new RegExp(
   [
     String.raw`prose-minion[\\/]sessions[\\/]assets`,
@@ -984,14 +992,12 @@ describe('architectural boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('keeps raw media representations out of Workshop IPC and durable contracts', () => {
+  it('keeps encoded binary data out of Workshop IPC and durable contracts', () => {
     expect(unexpectedTokenOwners([
       { file: 'messages/workshop/bad.ts', source: 'interface Bad { base64: string }' },
-      { file: 'WorkshopSessionStateBad.ts', source: 'interface Bad { bytes: Uint8Array }' },
       { file: 'ModelMessageBad.ts', source: "const body = 'data:image/png;base64,AAAA'" }
-    ], RAW_MEDIA_CONTRACT_SHAPE)).toEqual([
+    ], ENCODED_BINARY_CONTRACT_SHAPE)).toEqual([
       'messages/workshop/bad.ts',
-      'WorkshopSessionStateBad.ts',
       'ModelMessageBad.ts'
     ]);
 
@@ -999,15 +1005,40 @@ describe('architectural boundaries', () => {
       file: path.relative(SRC_ROOT, file),
       source: fs.readFileSync(file, 'utf8')
     }));
-    expect(unexpectedTokenOwners(contracts, RAW_MEDIA_CONTRACT_SHAPE)).toEqual([]);
+    expect(unexpectedTokenOwners(contracts, ENCODED_BINARY_CONTRACT_SHAPE)).toEqual([]);
+  });
+
+  it('confines transient dropped bytes to the dedicated Workshop intake contract', () => {
+    expect(unexpectedTokenOwners([
+      { file: 'WorkshopSessionStateBad.ts', source: 'interface Bad { bytes: Uint8Array }' },
+      {
+        file: WORKSHOP_ATTACHMENT_INTAKE_MESSAGE_OWNER,
+        source: 'interface Intake { bytes: ArrayBuffer }'
+      }
+    ], RAW_BINARY_CONTRACT_SHAPE, [WORKSHOP_ATTACHMENT_INTAKE_MESSAGE_OWNER]))
+      .toEqual(['WorkshopSessionStateBad.ts']);
+
+    const contracts = workshopDurableContractFiles().map((file) => ({
+      file: path.relative(SRC_ROOT, file),
+      source: fs.readFileSync(file, 'utf8')
+    }));
+    expect(unexpectedTokenOwners(
+      contracts,
+      RAW_BINARY_CONTRACT_SHAPE,
+      [WORKSHOP_ATTACHMENT_INTAKE_MESSAGE_OWNER]
+    )).toEqual([]);
   });
 
   it('keeps OpenRouter multimodal wire names inside the OpenRouter adapter', () => {
     expect(unexpectedTokenOwners([
       { file: 'application/services/model/ModelMessage.ts', source: "type: 'image_url'" },
+      { file: 'application/services/model/ModelMessage.ts', source: 'file_data: value' },
       { file: OPENROUTER_MULTIMODAL_ADAPTER_OWNER, source: "type: 'input_audio'" }
     ], OPENROUTER_MULTIMODAL_WIRE_TOKEN, [OPENROUTER_MULTIMODAL_ADAPTER_OWNER]))
-      .toEqual(['application/services/model/ModelMessage.ts']);
+      .toEqual([
+        'application/services/model/ModelMessage.ts',
+        'application/services/model/ModelMessage.ts'
+      ]);
 
     const sources = collectSourceFiles(SRC_ROOT).map((file) => ({
       file: path.relative(SRC_ROOT, file),
@@ -1020,17 +1051,17 @@ describe('architectural boundaries', () => {
     )).toEqual([]);
   });
 
-  it('keeps Workshop media asset path construction inside its repository', () => {
+  it('keeps Workshop attachment asset path construction inside its repository', () => {
     expect(unexpectedTokenOwners([
       {
         file: 'application/handlers/domain/workshop/WorkshopRoomHandler.ts',
         source: "path.join('prose-minion', 'sessions', 'assets', sessionId)"
       },
       {
-        file: WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER,
+        file: WORKSHOP_ATTACHMENT_ASSET_REPOSITORY_OWNER,
         source: "path.join('prose-minion', 'sessions', 'assets', sessionId)"
       }
-    ], WORKSHOP_ASSET_PATH_CONSTRUCTION, [WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER]))
+    ], WORKSHOP_ASSET_PATH_CONSTRUCTION, [WORKSHOP_ATTACHMENT_ASSET_REPOSITORY_OWNER]))
       .toEqual(['application/handlers/domain/workshop/WorkshopRoomHandler.ts']);
 
     const sources = collectSourceFiles(SRC_ROOT).map((file) => ({
@@ -1040,7 +1071,7 @@ describe('architectural boundaries', () => {
     expect(unexpectedTokenOwners(
       sources,
       WORKSHOP_ASSET_PATH_CONSTRUCTION,
-      [WORKSHOP_MEDIA_ASSET_REPOSITORY_OWNER]
+      [WORKSHOP_ATTACHMENT_ASSET_REPOSITORY_OWNER]
     )).toEqual([]);
   });
 
