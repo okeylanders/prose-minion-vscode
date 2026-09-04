@@ -138,6 +138,7 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: [
       'WORKSHOP_ADD_CONTEXT_TEXT',
       'WORKSHOP_ADD_CONTEXT_FILE',
+      'WORKSHOP_REFRESH_CONTEXT_FILES',
       'WORKSHOP_REMOVE_CONTEXT_ATTACHMENT',
       'WORKSHOP_UPDATE_CONTEXT_TEXT',
       'WORKSHOP_ADD_CONTEXT_RESOURCES',
@@ -986,9 +987,9 @@ describe('architectural boundaries', () => {
       );
     };
 
-    expect(expectedOwnerPairs).toHaveLength(50);
+    expect(expectedOwnerPairs).toHaveLength(51);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
-      .toHaveLength(34);
+      .toHaveLength(35);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
       .toHaveLength(16);
     expect(duplicateLedgerEntries).toEqual([]);

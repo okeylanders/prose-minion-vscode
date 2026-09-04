@@ -18,6 +18,8 @@ import type {
   WorkshopConversationBehavior,
   WorkshopConversationBehaviorTransition,
   WorkshopContextAttachmentSnapshot,
+  WorkshopContextAttachmentTruncation,
+  WorkshopConfiguredResourceRef,
   WorkshopExcerpt,
   WorkshopExcerptSnapshot,
   WorkshopExcerptSource,
@@ -131,6 +133,22 @@ export type WorkshopContextAttachmentUpdateResult =
       reason: 'unknown' | 'not-editable' | 'over-budget';
       remainingWords: number;
     };
+
+/** A freshly read file snapshot that will replace one standing context body. */
+export interface WorkshopContextFileRefreshInput {
+  id: string;
+  content: string;
+  words: number;
+  truncation?: WorkshopContextAttachmentTruncation;
+  /** Re-authorized source, which may reconnect a moved workspace file. */
+  sourceUri: string;
+  relativePath: string;
+  configuredResource?: WorkshopConfiguredResourceRef;
+}
+
+export type WorkshopContextFileRefreshResult =
+  | { ok: true; refreshed: WorkshopContextAttachment[]; eventTurn?: WorkshopTurn }
+  | { ok: false; reason: 'unknown' | 'not-file' | 'over-budget' };
 
 /**
  * Full host-side one-shot attachment: the display-safe snapshot plus the

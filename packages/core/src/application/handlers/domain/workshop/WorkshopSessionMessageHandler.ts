@@ -36,6 +36,8 @@ const generateSessionRequestId = (): string =>
 
 export interface WorkshopSessionMessageHandlerOptions {
   postSessionState: () => void;
+  /** Re-read file-backed standing context after a named checkpoint hydrates. */
+  refreshContextFiles: () => Promise<void>;
   flushDeferredConversationSettings: () => Promise<void>;
   reportError: (message: string, details?: string) => void;
   /** Human label for a run currently blocking state replacement. */
@@ -44,6 +46,8 @@ export interface WorkshopSessionMessageHandlerOptions {
 
 export class WorkshopSessionMessageHandler {
   private sessionListAbortController?: AbortController;
+  /** A mounted panel reads the already-hydrated rolling session once. */
+  private initialContextRefreshCompleted = false;
 
   constructor(
     private readonly persistence: WorkshopSessionPersistenceCoordinator,
@@ -120,6 +124,12 @@ export class WorkshopSessionMessageHandler {
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
     await this.persistence.waitForSessionOperations();
+    if (!this.initialContextRefreshCompleted && !this.options.activeRunLabel()) {
+      // Set before awaiting so duplicate webview mount requests cannot start
+      // overlapping rereads against the same host-owned attachment list.
+      this.initialContextRefreshCompleted = true;
+      await this.options.refreshContextFiles();
+    }
     await this.options.flushDeferredConversationSettings();
     this.options.postSessionState();
     this.postRecoveryNotices();
@@ -210,6 +220,8 @@ export class WorkshopSessionMessageHandler {
     }
     try {
       const result = await this.persistence.openNamed(message.payload?.sessionId ?? '');
+      await this.options.refreshContextFiles();
+      this.initialContextRefreshCompleted = true;
       this.options.postSessionState();
       this.postRecoveryNotices();
       const degraded = result.degradedConversationKeys.length;

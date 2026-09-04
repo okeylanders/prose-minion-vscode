@@ -115,6 +115,7 @@ export class WorkshopSliceComposition {
       outputChannel,
       {
         postSessionState: host.postSessionState,
+        refreshContextFiles: () => this.contextHandler.refreshChangedContextFiles('session-open'),
         flushDeferredConversationSettings: host.flushDeferredConversationSettings,
         reportError: (message, details) =>
           host.reportRouteError('workshop', message, details, 'WorkshopSessionMessageHandler'),

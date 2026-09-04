@@ -152,7 +152,7 @@ const sheetCopy = (
         placeholder: '',
         editLabel: 'Source',
         meta: mode.relativePath ?? 'Attached project file',
-        foot: 'To change what the room sees, edit the file itself and re-attach it.',
+        foot: 'To change what the room sees, edit the file itself, then refresh changed files.',
         applyLabel: 'Save changes',
         readOnly: true
       };

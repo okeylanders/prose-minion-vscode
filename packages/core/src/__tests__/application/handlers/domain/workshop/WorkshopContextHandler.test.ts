@@ -17,6 +17,7 @@ import {
 const MUTATION_ROUTES = [
   MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
   MessageType.WORKSHOP_ADD_CONTEXT_FILE,
+  MessageType.WORKSHOP_REFRESH_CONTEXT_FILES,
   MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT,
   MessageType.WORKSHOP_UPDATE_CONTEXT_TEXT,
   MessageType.WORKSHOP_ADD_CONTEXT_RESOURCES,
@@ -69,6 +70,7 @@ describe('WorkshopContextHandler', () => {
   let log: LogSink;
   let effects: jest.Mocked<WorkshopRoomEffects>;
   let registerMutation: jest.MockedFunction<WorkshopMutationRouteRegistrar>;
+  let contextFiles: Record<string, string>;
 
   const posted = (type: MessageType) => postMessage.mock.calls
     .map(([entry]) => entry)
@@ -94,6 +96,7 @@ describe('WorkshopContextHandler', () => {
     postMessage = jest.fn().mockResolvedValue(undefined);
     shell = createFakeShellService();
     log = { appendLine: jest.fn() } as unknown as LogSink;
+    contextFiles = {};
     effects = {
       postSessionState: jest.fn(),
       postTurn: jest.fn(),
@@ -109,8 +112,11 @@ describe('WorkshopContextHandler', () => {
           loadResources: async () => []
         })
       } as never,
-      createFakeFileSystem(),
-      createFakeWorkspace()
+      createFakeFileSystem({}, contextFiles),
+      createFakeWorkspace({
+        workspaceFolders: () => [{ path: '/workspace', name: 'workspace' }],
+        asRelativePath: (filePath) => filePath.replace('/workspace/', '')
+      })
     );
     handler = new WorkshopContextHandler(
       contextAssistant as never,
@@ -127,18 +133,41 @@ describe('WorkshopContextHandler', () => {
     handler.registerRoutes(router, registerMutation);
   });
 
-  it('owns exactly thirteen routes and keeps reads outside the mutation registrar', () => {
-    expect(router.handlerCount).toBe(13);
+  it('owns exactly fourteen routes and keeps reads outside the mutation registrar', () => {
+    expect(router.handlerCount).toBe(14);
     expect(new Set(router.getRegisteredTypes())).toEqual(new Set(ALL_ROUTES));
 
     const mutationRegistrations = registerMutation.mock.calls.map(([type]) => type);
-    expect(registerMutation).toHaveBeenCalledTimes(9);
+    expect(registerMutation).toHaveBeenCalledTimes(10);
     expect(new Set(mutationRegistrations)).toEqual(new Set(MUTATION_ROUTES));
     expect(mutationRegistrations).toEqual(expect.not.arrayContaining(READ_ROUTES));
 
     for (const readRoute of READ_ROUTES) {
       expect(router.hasHandler(readRoute)).toBe(true);
     }
+  });
+
+  it('refreshes a wizard-picked file from its on-disk source without making it editable', async () => {
+    contextFiles['/workspace/voice-guide.md'] = 'Fresh source text.';
+    session.addContextAttachment({
+      kind: 'file',
+      origin: 'wizard',
+      label: 'voice-guide.md',
+      words: 2,
+      content: 'Old copy.',
+      sourceUri: 'file:///workspace/voice-guide.md',
+      relativePath: 'voice-guide.md'
+    });
+
+    await router.route(message(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES) as never);
+
+    expect(session.getContextAttachment('ctx-1')).toMatchObject({
+      origin: 'wizard',
+      content: 'Fresh source text.',
+      words: 3
+    });
+    expect(effects.markDirty).toHaveBeenCalledWith('context files refreshed');
+    expect(effects.postSessionState).toHaveBeenCalled();
   });
 
   it('keeps the wizard slot occupied after cancellation until the original run settles', async () => {

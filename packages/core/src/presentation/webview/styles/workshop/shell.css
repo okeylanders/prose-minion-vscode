@@ -985,6 +985,21 @@
   font-size: 10.5px;
   color: var(--pm-muted);
 }
+[data-pm-surface="workshop"] .pm-ws-ctx-refresh {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--pm-muted);
+  font: 10.5px var(--pm-mono);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-refresh:not(:disabled):hover {
+  color: var(--pm-accent-hi);
+}
 [data-pm-surface="workshop"] .pm-ws-ctx-pills {
   display: flex;
   flex-wrap: wrap;

@@ -121,6 +121,7 @@ export enum MessageType {
   WORKSHOP_SET_EXCERPT = 'workshop_set_excerpt',
   WORKSHOP_ADD_CONTEXT_TEXT = 'workshop_add_context_text',
   WORKSHOP_ADD_CONTEXT_FILE = 'workshop_add_context_file',
+  WORKSHOP_REFRESH_CONTEXT_FILES = 'workshop_refresh_context_files',
   WORKSHOP_REMOVE_CONTEXT_ATTACHMENT = 'workshop_remove_context_attachment',
   WORKSHOP_UPDATE_CONTEXT_TEXT = 'workshop_update_context_text',
   WORKSHOP_REQUEST_CONTEXT_ATTACHMENT = 'workshop_request_context_attachment',

@@ -189,6 +189,7 @@ export interface WorkshopRoomActions {
   rereadExcerpt: () => void;
   addContextText: (text: string) => void;
   addContextFile: () => void;
+  refreshContextFiles: () => void;
   removeContextAttachment: (id: string) => void;
   updateContextText: (id: string, text: string) => void;
   requestContextAttachment: (id: string) => void;
@@ -362,6 +363,10 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
 
   const addContextFile = React.useCallback(() => {
     post(MessageType.WORKSHOP_ADD_CONTEXT_FILE, {});
+  }, [post]);
+
+  const refreshContextFiles = React.useCallback(() => {
+    post(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {});
   }, [post]);
 
   const removeContextAttachment = React.useCallback((id: string) => {
@@ -814,6 +819,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     rereadExcerpt,
     addContextText,
     addContextFile,
+    refreshContextFiles,
     removeContextAttachment,
     updateContextText,
     requestContextAttachment,

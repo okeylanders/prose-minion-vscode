@@ -129,6 +129,8 @@ import type {
   WorkshopContextAttachmentInput,
   WorkshopContextAttachmentResult,
   WorkshopContextAttachmentUpdateResult,
+  WorkshopContextFileRefreshInput,
+  WorkshopContextFileRefreshResult,
   WorkshopExcerptInput,
   WorkshopExcerptReplacement,
   WorkshopMessageAttachment,
@@ -509,14 +511,9 @@ export class WorkshopSessionService {
   }
 
   /**
-   * Replace one authored attachment's body from the shared Edit/Preview sheet
-   * (Sprint 13A §6). Only writer text notes and wizard suggestions are
-   * editable: a plain project file's session copy must keep matching the file
-   * on disk, or "re-read from file" would silently discard writer edits.
-   *
-   * A wizard edit is session-only — the source file is never written. The
-   * change bumps the context revision like any other, so the retained host is
-   * told rather than silently re-prompted.
+   * Replace one text attachment's body from the shared Edit/Preview sheet.
+   * File attachments always remain source-backed, regardless of whether the
+   * writer or the Context wizard added them.
    */
   updateContextAttachmentText(
     id: string,
@@ -527,7 +524,7 @@ export class WorkshopSessionService {
     if (!attachment) {
       return { ok: false, reason: 'unknown', remainingWords: 0 };
     }
-    const editable = attachment.kind === 'text' || attachment.origin === 'wizard';
+    const editable = attachment.kind === 'text';
     if (!editable) {
       return { ok: false, reason: 'not-editable', remainingWords: 0 };
     }
@@ -547,6 +544,59 @@ export class WorkshopSessionService {
       `Edited context: ${attachment.label} · ${words.toLocaleString('en-US')} words`
     );
     return { ok: true, attachment: cloneAttachment(attachment), eventTurn };
+  }
+
+  /**
+   * Atomically replace the stored bodies of file-backed context attachments.
+   * The caller has already re-read and bounded each source; this aggregate
+   * preserves attachment identity and re-checks the shared budget before it
+   * makes any prompt-bearing mutation visible to a retained conversation.
+   */
+  refreshContextFileAttachments(
+    inputs: readonly WorkshopContextFileRefreshInput[],
+    eventContent: string
+  ): WorkshopContextFileRefreshResult {
+    const replacements = new Map(inputs.map((input) => [input.id, input]));
+    for (const input of inputs) {
+      const attachment = this.contextAttachments.find((candidate) => candidate.id === input.id);
+      if (!attachment) {
+        return { ok: false, reason: 'unknown' };
+      }
+      if (attachment.kind !== 'file') {
+        return { ok: false, reason: 'not-file' };
+      }
+    }
+
+    const refreshedWords = this.contextAttachments.reduce((total, attachment) => {
+      return total + (replacements.get(attachment.id)?.words ?? attachment.words);
+    }, 0);
+    if (refreshedWords > PROMPT_BUDGETS.contextAttachments.words) {
+      return { ok: false, reason: 'over-budget' };
+    }
+
+    const refreshed: WorkshopContextAttachment[] = [];
+    for (const attachment of this.contextAttachments) {
+      const input = replacements.get(attachment.id);
+      if (!input) {
+        continue;
+      }
+      attachment.content = input.content;
+      attachment.words = input.words;
+      attachment.truncation = input.truncation ? { ...input.truncation } : undefined;
+      attachment.sourceUri = input.sourceUri;
+      attachment.relativePath = input.relativePath;
+      attachment.configuredResource = input.configuredResource
+        ? { ...input.configuredResource }
+        : undefined;
+      refreshed.push(cloneAttachment(attachment));
+    }
+    const eventTurn = this.recordContextChange(eventContent);
+    return { ok: true, refreshed, eventTurn };
+  }
+
+  /** Record a file-refresh warning without claiming the prompt changed. */
+  recordContextRefreshNotice(content: string): WorkshopTurn | undefined {
+    return this.recordContextEvent(content);
   }
 
   removeContextAttachment(id: string): { removed?: WorkshopContextAttachment; eventTurn?: WorkshopTurn } {
@@ -946,6 +996,14 @@ export class WorkshopSessionService {
       return undefined;
     }
     this.pendingContextRevision = this.contextRevision;
+    return this.recordContextEvent(content);
+  }
+
+  /** Mint a visible context event without changing the context revision. */
+  private recordContextEvent(content: string): WorkshopTurn | undefined {
+    if (!this.hasHostConversation() && this.activeRun?.target !== 'host') {
+      return undefined;
+    }
     const eventTurn: WorkshopTurn = {
       id: this.nextTurnId('system'),
       role: 'system',
