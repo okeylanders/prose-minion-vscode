@@ -1041,6 +1041,7 @@ export const WorkshopApp: React.FC = () => {
               isRunning={roomMutationLocked}
               onAddText={openAddTextSheet}
               onAddFile={openAttachSelector}
+              onRefreshFiles={workshop.refreshContextFiles}
               onOpenAttachment={openAttachmentSheet}
               onRemove={workshop.removeContextAttachment}
               wizardRunning={workshop.wizardRunning}
@@ -1345,7 +1346,7 @@ export const WorkshopApp: React.FC = () => {
       </div>
 
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
-          text note, editing a wizard suggestion, and reading a project file
+          text note, editing a wizard-generated brief, and reading a project file
           (Sprint 13A §5–§7). */}
       {textSheet && (
         <WorkshopTextSheet

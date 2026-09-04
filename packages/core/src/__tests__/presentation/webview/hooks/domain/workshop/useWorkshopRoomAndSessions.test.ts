@@ -759,6 +759,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
       result.current.rereadExcerpt();
       result.current.addContextText('Project context.');
       result.current.addContextFile();
+      result.current.refreshContextFiles();
       result.current.removeContextAttachment('ctx-1');
       result.current.requestContextCatalog();
       result.current.searchContextResources('raven');
@@ -791,6 +792,7 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     expect(posted(MessageType.WORKSHOP_REREAD_EXCERPT)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_TEXT)[0].payload).toEqual({ text: 'Project context.' });
     expect(posted(MessageType.WORKSHOP_ADD_CONTEXT_FILE)).toHaveLength(1);
+    expect(posted(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT)[0].payload).toEqual({ id: 'ctx-1' });
     expect(posted(MessageType.WORKSHOP_REQUEST_CONTEXT_CATALOG)).toHaveLength(1);
     expect(posted(MessageType.WORKSHOP_SEARCH_CONTEXT_RESOURCES)[0].payload).toEqual({ query: 'raven' });

@@ -14,7 +14,7 @@
  * Context lane host-side; its picks land as ordinary wizard-tagged pills.
  *
  * Sprint 13A §6/§7: every pill is CLICKABLE and opens the shared Edit/Preview
- * sheet — text notes and wizard suggestions for edit, project files as a
+ * sheet — text notes (including wizard-generated briefs) for edit, project files as a
  * prettified read with an "open in editor tab" escape hatch. "Add text" opens
  * that same sheet instead of an inline textarea, so a note is composed and
  * previewed in one place rather than typed blind into a rail box.
@@ -37,6 +37,8 @@ interface ContextPanelProps {
   onAddText: () => void;
   /** Open the Context Selector modal. */
   onAddFile: () => void;
+  /** Re-read every file-backed attachment and adopt changed snapshots. */
+  onRefreshFiles: () => void;
   /** Open one attachment in the shared Edit/Preview sheet. */
   onOpenAttachment: (attachment: WorkshopContextAttachmentSnapshot) => void;
   onRemove: (id: string) => void;
@@ -57,9 +59,7 @@ const meterTone = (used: number, budget: number): string => {
 /** What clicking this pill will do, said in its tooltip before the click. */
 const openHint = (attachment: WorkshopContextAttachmentSnapshot): string => {
   if (attachment.kind === 'file') {
-    return attachment.origin === 'wizard'
-      ? `${attachment.label} — open to read or edit this session's copy`
-      : `${attachment.label} — open to read; opens in an editor tab from there`;
+    return `${attachment.label} — open to read; opens in an editor tab from there`;
   }
   return `${attachment.label} — open to read or edit`;
 };
@@ -70,6 +70,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   isRunning,
   onAddText,
   onAddFile,
+  onRefreshFiles,
   onOpenAttachment,
   onRemove,
   wizardRunning,
@@ -83,15 +84,28 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   return (
     <div className="pm-ws-block" id={WORKSHOP_CONTEXT_PANEL_ID}>
       <div className="pm-ws-block-head">
-        <div className="pm-ws-eyebrow">
-          <Icon name="cards" size={12} /> Context
+        <div className="pm-ws-ctx-title-row">
+          <div className="pm-ws-eyebrow">
+            <Icon name="cards" size={12} /> Context
+          </div>
+          {hasAttachments ? (
+            <span className="pm-ws-ctx-count">
+              {attachments.length} attachment{attachments.length === 1 ? '' : 's'}
+            </span>
+          ) : null}
         </div>
-        {hasAttachments ? (
-          <span className="pm-ws-ctx-count">
-            {attachments.length} attachment{attachments.length === 1 ? '' : 's'}
-          </span>
-        ) : null}
       </div>
+      {attachments.some((attachment) => attachment.kind === 'file') ? (
+        <button
+          className="pm-ws-file-refresh pm-ws-ctx-refresh"
+          type="button"
+          title="Re-read changed file attachments from disk"
+          onClick={onRefreshFiles}
+          disabled={isRunning}
+        >
+          <Icon name="refresh" size={11} /> Refresh changed files
+        </button>
+      ) : null}
 
       {hasAttachments ? (
         <div className="pm-ws-ctx-pills">
@@ -246,7 +260,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
       </div>
       {hasAttachments ? (
         <p className="pm-ws-intake-caption">
-          Files open for reading · text and wizard notes open for edit or preview.
+          Files open for reading · text notes and wizard briefs open for edit or preview.
         </p>
       ) : null}
       {pendingDelivery ? (

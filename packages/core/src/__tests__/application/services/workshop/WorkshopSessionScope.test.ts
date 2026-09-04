@@ -775,7 +775,7 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
         .toMatchObject({ ok: false, reason: 'not-editable' });
     });
 
-    it('allows editing a wizard suggestion, which is session-only by contract', () => {
+    it('refuses to edit a wizard-picked file; its source remains authoritative', () => {
       service.addContextAttachment({
         kind: 'file',
         origin: 'wizard',
@@ -785,15 +785,44 @@ describe('WorkshopSessionService — session scope (Sprint 13A)', () => {
         relativePath: 'Characters/kayla-voice-guide.md'
       });
 
-      const result = service.updateContextAttachmentText('ctx-1', 'Trimmed for this room.', 4);
-      expect(result.ok).toBe(true);
-      // A file-origin label stays the file's name; only text notes retitle.
-      expect(service.getContextAttachment('ctx-1')?.label).toBe('kayla-voice-guide.md');
+      expect(service.updateContextAttachmentText('ctx-1', 'Trimmed for this room.', 4))
+        .toMatchObject({ ok: false, reason: 'not-editable' });
     });
 
     it('reports an unknown attachment rather than silently doing nothing', () => {
       expect(service.updateContextAttachmentText('ctx-99', 'Anything.', 1))
         .toMatchObject({ ok: false, reason: 'unknown' });
+    });
+  });
+
+  describe('refreshing file attachments', () => {
+    it('replaces file content atomically while preserving the attachment identity', () => {
+      service.addContextAttachment({
+        kind: 'file',
+        origin: 'wizard',
+        label: 'kayla-voice-guide.md',
+        words: 3,
+        content: 'Old source text.',
+        sourceUri: 'file:///workspace/kayla-voice-guide.md',
+        relativePath: 'Characters/kayla-voice-guide.md'
+      });
+      const before = service.getContextAttachment('ctx-1')!;
+
+      const result = service.refreshContextFileAttachments([{
+        id: 'ctx-1',
+        content: 'Fresh source text now.',
+        words: 4,
+        sourceUri: 'file:///workspace/kayla-voice-guide.md',
+        relativePath: 'Characters/kayla-voice-guide.md'
+      }], 'Refreshed 1 context file: kayla-voice-guide.md');
+
+      expect(result).toMatchObject({ ok: true, refreshed: [{ id: 'ctx-1', words: 4 }] });
+      expect(service.getContextAttachment('ctx-1')).toMatchObject({
+        id: before.id,
+        addedAt: before.addedAt,
+        origin: 'wizard',
+        content: 'Fresh source text now.'
+      });
     });
   });
 });

@@ -141,7 +141,8 @@ describe('ExcerptPanel — passage pinned', () => {
       })
     });
 
-    expect(screen.getByText(/From chapters\/05\.md/).textContent).toContain('lines 143–151');
+    expect(screen.getByText('chapters/05.md').parentElement?.textContent)
+      .toBe('From chapters/05.md · lines 143–151');
   });
 
   it('stays honest about unknown sources', () => {

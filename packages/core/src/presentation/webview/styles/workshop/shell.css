@@ -595,6 +595,10 @@
   gap: 10px;
   margin-top: 9px;
 }
+[data-pm-surface="workshop"] .pm-ws-excerpt-actions-reread {
+  justify-content: center;
+  margin: 14px 0 4px;
+}
 [data-pm-surface="workshop"] .pm-ws-primary-btn {
   display: inline-flex;
   align-items: center;
@@ -980,16 +984,52 @@
   }
 }
 
+[data-pm-surface="workshop"] .pm-ws-ctx-title-row {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
 [data-pm-surface="workshop"] .pm-ws-ctx-count {
   font-family: var(--pm-mono);
   font-size: 10.5px;
+  color: var(--pm-warn, var(--pm-amber));
+  font-variant-numeric: tabular-nums;
+}
+[data-pm-surface="workshop"] .pm-ws-ctx-refresh {
+  margin: 14px 0 4px;
+}
+[data-pm-surface="workshop"] .pm-ws-file-refresh {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--pm-surface-2) 45%, transparent);
+  padding: 4px 10px;
+  color: var(--pm-text-2);
+  font: 500 11px/1.4 var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-file-refresh svg {
+  flex-shrink: 0;
   color: var(--pm-muted);
+}
+[data-pm-surface="workshop"] .pm-ws-file-refresh:not(:disabled):hover {
+  border-color: var(--pm-accent-lo);
+  background: color-mix(in srgb, var(--pm-accent-hi) 6%, transparent);
+  color: var(--pm-accent-hi);
 }
 [data-pm-surface="workshop"] .pm-ws-ctx-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 9px;
+  margin: 10px 0 9px;
 }
 [data-pm-surface="workshop"] .pm-ws-ctx-pill {
   display: inline-flex;
@@ -1120,10 +1160,25 @@
 [data-pm-surface="workshop"] .pm-ws-provenance {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  margin: 2px 0 8px;
+  margin: 16px 0 0;
+  text-align: center;
   font-size: 11.5px;
   color: var(--pm-text-2);
+}
+[data-pm-surface="workshop"] .pm-ws-provenance + .pm-ws-excerpt {
+  margin-top: 6px;
+}
+[data-pm-surface="workshop"] .pm-ws-provenance svg {
+  flex-shrink: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-provenance > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="workshop"] .pm-ws-provenance-file {
+  color: var(--pm-warn, var(--pm-amber));
 }
 [data-pm-surface="workshop"] .pm-ws-excerpt-count {
   display: flex;

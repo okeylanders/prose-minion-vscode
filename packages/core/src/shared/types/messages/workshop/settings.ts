@@ -77,7 +77,7 @@ export const DEFAULT_WORKSHOP_WRITER_PROFILE: Readonly<WorkshopWriterProfile> = 
 
 export const WORKSHOP_WRITER_PROFILE_LIMITS = Object.freeze({
   preferredAddress: 80,
-  bio: 1_000
+  bio: 20_000
 });
 
 export const WORKSHOP_WRITER_PROFILE_SETTING = Object.freeze({

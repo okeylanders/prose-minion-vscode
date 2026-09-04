@@ -37,6 +37,7 @@ const renderPanel = (overrides: Partial<React.ComponentProps<typeof ContextPanel
     isRunning: false,
     onAddText: jest.fn(),
     onAddFile: jest.fn(),
+    onRefreshFiles: jest.fn(),
     onOpenAttachment: jest.fn(),
     onRemove: jest.fn(),
     wizardRunning: false,
@@ -71,6 +72,19 @@ describe('ContextPanel', () => {
     const { props } = renderPanel();
     fireEvent.click(screen.getByRole('button', { name: /add from project/i }));
     expect(props.onAddFile).toHaveBeenCalled();
+  });
+
+  it('offers one header refresh action when file context is attached', () => {
+    const { container, props } = renderPanel({ attachments: [attachment()] });
+
+    const titleRow = container.querySelector('.pm-ws-ctx-title-row');
+    const refresh = screen.getByRole('button', { name: /refresh changed files/i });
+    expect(titleRow?.querySelector('.pm-ws-eyebrow')?.textContent).toContain('Context');
+    expect(titleRow?.querySelector('.pm-ws-ctx-count')?.textContent).toContain('1 attachment');
+    expect(titleRow?.contains(refresh)).toBe(false);
+
+    fireEvent.click(refresh);
+    expect(props.onRefreshFiles).toHaveBeenCalledTimes(1);
   });
 
   it('renders pills with label and size, and remove posts the id', () => {

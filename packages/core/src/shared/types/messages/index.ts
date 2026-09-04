@@ -139,6 +139,7 @@ import {
   WorkshopSetExcerptMessage,
   WorkshopAddContextTextMessage,
   WorkshopAddContextFileMessage,
+  WorkshopRefreshContextFilesMessage,
   WorkshopRemoveContextAttachmentMessage,
   WorkshopUpdateContextTextMessage,
   WorkshopRequestContextAttachmentMessage,
@@ -255,6 +256,7 @@ export type WebviewToExtensionMessage =
   | WorkshopSetExcerptMessage
   | WorkshopAddContextTextMessage
   | WorkshopAddContextFileMessage
+  | WorkshopRefreshContextFilesMessage
   | WorkshopRemoveContextAttachmentMessage
   | WorkshopUpdateContextTextMessage
   | WorkshopRequestContextAttachmentMessage
