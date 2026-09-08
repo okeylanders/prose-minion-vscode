@@ -1,3 +1,5 @@
+import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
+import { WorkshopNamedSessionChangedError } from '@/infrastructure/storage/WorkshopSessionStore';
 import {
   WorkshopSessionPersistenceCoordinator
 } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
@@ -155,10 +157,13 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
         named.push(next);
         return summary(next);
       }),
-      updateNamed: jest.fn(async (id: string, next: WorkshopPersistedSessionV2) => {
+      updateNamed: jest.fn(async (id: string, next: WorkshopPersistedSessionV2, expected: WorkshopPersistedSessionV2) => {
         const index = named.findIndex((entry) => entry.sessionId === id);
         if (index < 0) {
           throw new Error(`Named Workshop session ${id} was not found.`);
+        }
+        if (!hasSameWorkshopCheckpoint(named[index], expected)) {
+          throw new WorkshopNamedSessionChangedError();
         }
         named[index] = next;
         return summary(next, `saved-${index}.json`);
@@ -290,7 +295,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
 
     expect(store.updateNamed).toHaveBeenCalledWith(
       'named-current',
-      expect.objectContaining({ sessionId: 'named-current', title: 'Living room' })
+      expect.objectContaining({ sessionId: 'named-current', title: 'Living room' }),
+      expect.objectContaining({ sessionId: 'named-current' })
     );
     expect(named[0].workshop.turns.at(-1)?.artifact).toBe('session_resume');
     expect(statuses).toEqual(['saving', 'saved']);
@@ -314,15 +320,15 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.initialize();
     await coordinator.flush();
 
-    expect(store.updateNamed).not.toHaveBeenCalled();
-    expect(named[0].workshop.turns.at(-1)?.content)
-      .toBe('Writer-authored content disguised as a resume marker.');
-    expect(log.appendLine).toHaveBeenCalledWith(
-      expect.stringContaining('automatic named autosave association skipped to preserve both copies')
-    );
+    expect(session.getSnapshot().turns.some((turn) =>
+      turn.content === 'Writer-authored content disguised as a resume marker.'
+    )).toBe(true);
+    expect(named[0].workshop.turns.some((turn) =>
+      turn.content === 'Writer-authored content disguised as a resume marker.'
+    )).toBe(true);
   });
 
-  it('preserves a divergent named checkpoint instead of overwriting it from stale current.json', async () => {
+  it('promotes a divergent named checkpoint despite a newer current.json timestamp', async () => {
     current = persistedSession('shared-room', 'Shared room', 'The stale local excerpt.');
     current.updatedAt = '2026-07-23T15:00:00.000Z';
     current.temporal.lastActivityAt = current.updatedAt;
@@ -339,14 +345,9 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.initialize();
     await coordinator.flush();
 
-    expect(session.getExcerpt()?.text).toBe('The stale local excerpt.');
-    expect(current?.workshop.excerpt?.text).toBe('The stale local excerpt.');
+    expect(session.getExcerpt()?.text).toBe('The newer portable excerpt.');
+    expect(current?.workshop.excerpt?.text).toBe('The newer portable excerpt.');
     expect(named[0].workshop.excerpt?.text).toBe('The newer portable excerpt.');
-    expect(store.updateNamed).not.toHaveBeenCalled();
-    expect(log.appendLine).toHaveBeenCalledWith(
-      expect.stringContaining('automatic named autosave association skipped to preserve both copies')
-    );
-
     await coordinator.openNamed('shared-room');
 
     expect(session.getExcerpt()?.text).toBe('The newer portable excerpt.');
@@ -366,11 +367,125 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
 
     expect(store.updateNamed).toHaveBeenCalledWith(
       'shared-room',
+      expect.objectContaining({ sessionId: 'shared-room' }),
       expect.objectContaining({ sessionId: 'shared-room' })
     );
     expect(log.appendLine).not.toHaveBeenCalledWith(
       expect.stringContaining('Named checkpoint diverged from current.json')
     );
+  });
+
+  it('adopts a Git replacement when the tab loads after host initialization', async () => {
+    current = persistedSession('shared-room', 'Local', 'Local excerpt.');
+    named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV2);
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+    const incoming = persistedSession('shared-room', 'Incoming', 'Incoming excerpt.');
+    for (let index = 1; index < 82; index += 1) {
+      incoming.workshop.turns.push({
+        ...incoming.workshop.turns[0],
+        id: `turn-${index + 1}-system-${now.getTime() + index}`,
+        content: `Incoming turn ${index + 1}`
+      });
+    }
+    incoming.workshop.counters.turn = 82;
+    incoming.summary.turnCount = 82;
+    named[0] = incoming;
+
+    expect(await coordinator.refreshNamedSession()).toBe(true);
+
+    expect(session.getExcerpt()?.text).toBe('Incoming excerpt.');
+    expect(current?.title).toBe('Incoming');
+    expect(current?.workshop.turns.slice(0, 82)).toEqual(incoming.workshop.turns);
+    expect(current?.workshop.turns.at(-1)?.artifact).toBe('session_resume');
+    expect(named[0]).toBe(incoming);
+    expect(await coordinator.refreshNamedSession()).toBe(false);
+    expect(current?.workshop.turns).toHaveLength(83);
+  });
+
+  it('finds the matching named file when it arrives after an unnamed restore', async () => {
+    current = persistedSession('shared-room', 'Local', 'Local excerpt.');
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+    named.push(persistedSession('shared-room', 'Incoming', 'Incoming excerpt.'));
+
+    expect(await coordinator.refreshNamedSession()).toBe(true);
+    expect(current?.workshop.excerpt?.text).toBe('Incoming excerpt.');
+  });
+
+  it.each(['autosave', 'save', 'rename'] as const)(
+    'preserves a Git replacement before %s and permits saving after loading it', async (action) => {
+      current = persistedSession('shared-room', 'Local', 'Local excerpt.');
+      named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV2);
+      const coordinator = createCoordinator();
+      await coordinator.initialize();
+      await coordinator.flush();
+      const previousCurrent = current;
+      const incoming = persistedSession('shared-room', 'Incoming', 'Incoming excerpt.');
+      named[0] = incoming;
+      const statuses: string[] = [];
+      coordinator.addSessionSaveStatusListener(({ status }) => statuses.push(status));
+
+      if (action === 'autosave') {
+        coordinator.markDirty('context files refreshed');
+        await coordinator.flush();
+      } else {
+        await expect(action === 'save'
+          ? coordinator.saveNamed('Stale title', 'shared-room')
+          : coordinator.renameNamed('shared-room', 'Stale title'))
+          .rejects.toThrow('changed on disk');
+      }
+      expect(named[0]).toBe(incoming);
+      expect(current).toBe(previousCurrent);
+      expect(statuses.at(-1)).toBe('error');
+
+      await coordinator.refreshNamedSession();
+      coordinator.markDirty('loaded named session');
+      await coordinator.flush();
+      expect(named[0].workshop.excerpt?.text).toBe('Incoming excerpt.');
+      expect(statuses.at(-1)).toBe('saved');
+    }
+  );
+
+  it('rechecks a queued resume save when disk changes during hydration', async () => {
+    current = persistedSession('shared-room', 'Local', 'Local excerpt.');
+    named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV2);
+    const incoming = persistedSession('shared-room', 'Incoming', 'Incoming excerpt.');
+    const coordinator = createCoordinator(async () => { named[0] = incoming; });
+
+    await coordinator.initialize();
+    await coordinator.flush();
+    expect(named[0]).toBe(incoming);
+    await coordinator.refreshNamedSession();
+    expect(current?.workshop.excerpt?.text).toBe('Incoming excerpt.');
+  });
+
+  it('does not fall back to stale current when named lookup fails', async () => {
+    current = persistedSession('shared-room', 'Local', 'Local excerpt.');
+    store.readNamedWithRecovery.mockRejectedValue(new Error('Ambiguous named identity'));
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+
+    expect(coordinator.isCurrentCheckpointProtected()).toBe(true);
+    expect(store.writeCurrent).not.toHaveBeenCalled();
+    expect(store.updateNamed).not.toHaveBeenCalled();
+    expect(session.getExcerpt()).toBeUndefined();
+  });
+
+  it('retains the named commit and retries its rolling mirror after a current write failure', async () => {
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    const saved = await coordinator.saveNamed('Before');
+    await coordinator.flush();
+    store.writeCurrent.mockRejectedValueOnce(new Error('rolling write failed'));
+    await expect(coordinator.saveNamed('After', saved.sessionId)).rejects.toThrow('rolling write failed');
+    expect(named[0].title).toBe('After');
+    coordinator.markDirty('retry rolling mirror');
+    await coordinator.flush();
+    expect(current?.title).toBe('After');
   });
 
   it('preflights a malformed aggregate before importing any provider history', async () => {
@@ -503,6 +618,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(coordinator.consumeRecoveryNotices()).toEqual([]);
     await coordinator.flush();
 
+    expect((log.appendLine as jest.Mock).mock.calls.filter(([line]) => line.includes('Autosave failed'))).toEqual([]);
     const currentDraft = current?.workshop.widgetConfigs?.[0].draft as never;
     const namedDraft = named[0].workshop.widgetConfigs?.[0].draft as never;
     expect(currentDraft).toMatchObject({
@@ -601,7 +717,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
         sessionId: saved.sessionId,
         title: 'Living room',
         savedAt: now.toISOString()
-      })
+      }),
+      expect.objectContaining({ sessionId: saved.sessionId })
     );
     expect(named).toHaveLength(1);
     expect(named[0].workshop.turns.at(-1)?.content).toBe('I will.');
@@ -652,12 +769,12 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(named).toHaveLength(1);
     expect(named[0].title).toBe('Deliberate name');
     expect(store.writeCurrent.mock.invocationCallOrder[0])
-      .toBeLessThan(store.updateNamed.mock.invocationCallOrder[0]);
+      .toBeGreaterThan(store.updateNamed.mock.invocationCallOrder[0]);
     await expect(coordinator.saveNamed('Wrong target', 'some-other-id'))
       .rejects.toThrow('saved session changed');
   });
 
-  it('keeps the newer current truth when an associated named mirror update fails', async () => {
+  it('keeps both checkpoints unchanged when the authoritative named update fails', async () => {
     const coordinator = createCoordinator();
     await coordinator.initialize();
     const saved = await coordinator.saveNamed('Before');
@@ -671,18 +788,18 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await expect(coordinator.saveNamed('After', saved.sessionId))
       .rejects.toThrow('named mirror unavailable');
 
-    expect(current?.title).toBe('After');
+    expect(current?.title).toBe('Before');
     expect(named[0].title).toBe('Before');
     expect(statuses).toEqual(['saving', 'error']);
 
-    coordinator.markDirty('repair named mirror');
+    await coordinator.saveNamed('After', saved.sessionId);
     await coordinator.flush();
 
     expect(named[0].title).toBe('After');
     expect(statuses.at(-1)).toBe('saved');
   });
 
-  it('renames an active named room through the same current-first snapshot update', async () => {
+  it('renames an active named room through the same named-first snapshot update', async () => {
     const coordinator = createCoordinator();
     await coordinator.initialize();
     const saved = await coordinator.saveNamed('Before');
@@ -695,7 +812,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(renamed.title).toBe('After');
     expect(store.renameNamed).not.toHaveBeenCalled();
     expect(store.writeCurrent.mock.invocationCallOrder[0])
-      .toBeLessThan(store.updateNamed.mock.invocationCallOrder[0]);
+      .toBeGreaterThan(store.updateNamed.mock.invocationCallOrder[0]);
     expect(current?.title).toBe('After');
     expect(named[0].title).toBe('After');
   });

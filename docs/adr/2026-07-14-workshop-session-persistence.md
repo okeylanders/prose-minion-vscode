@@ -195,17 +195,15 @@ promotes its hydrated state to `current.json`. New Session replaces
 the active named file also returns the live room to current-only autosave.
 Stale conversation histories cannot resurrect.
 
-On initialization, `current.json` remains the ordinary machine-local recovery
-entry point. When it identifies an associated named checkpoint, the coordinator
-confirms that both contain the same durable state apart from named-file
-`savedAt` metadata, machine-local activity time, and synthetic resume markers
-before restoring automatic dual autosave. Any other difference has ambiguous
-cross-machine causality: wall clocks and resume turns are not treated as a
-lineage clock. Workshop therefore hydrates the local recovery copy while
-leaving the divergent named checkpoint detached and untouched. Opening the
-named checkpoint is the explicit authority gesture that promotes it to
-`current.json`; the next restart recognizes the resume-only delta and restores
-the association.
+On initialization, `current.json` identifies the room to restore. When a matching
+named checkpoint exists, that file is authoritative and its hydrated state
+replaces the rolling checkpoint, regardless of timestamps or transcript length.
+The webview load path rechecks the named file before refreshing context, covering
+Git sync after extension-host initialization. Each named update compares the full
+checkpoint against the version last accepted by the room and rejects external
+changes before committing. Named updates commit before their rolling mirror.
+See [Named checkpoint authority](2026-09-08-workshop-named-checkpoint-authority.md)
+for conflict handling and the filesystem concurrency limits.
 
 ### 7. The browser adopts the approved interaction set
 

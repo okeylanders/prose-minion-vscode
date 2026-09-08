@@ -46,7 +46,12 @@ describe('Workshop composed routing — session owner', () => {
 
   it.each(['restore', 'open'] as const)('announces a pending context scan during %s and clears it on completion', async (action) => {
     let finishScan!: () => void;
-    const refreshContextFiles = jest.fn(() => new Promise<void>((resolve) => { finishScan = resolve; }));
+    let started!: () => void;
+    const scanStarted = new Promise<void>((resolve) => { started = resolve; });
+    const refreshContextFiles = jest.fn(() => new Promise<void>((resolve) => {
+      finishScan = resolve;
+      started();
+    }));
     const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
       refreshContextFiles,
       postSessionState: jest.fn(),
@@ -57,7 +62,7 @@ describe('Workshop composed routing — session owner', () => {
     const pending = action === 'restore'
       ? handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} })
       : handler.handleOpenSession({ type: MessageType.WORKSHOP_OPEN_SESSION, source: 'webview.workshop', timestamp: 0, payload: { sessionId: 'named' } });
-    await Promise.resolve();
+    await scanStarted;
     expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
       .toEqual([{ scanning: true }]);
     finishScan();
@@ -83,6 +88,50 @@ describe('Workshop composed routing — session owner', () => {
     }
     expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
       .toEqual([{ scanning: true }, { scanning: false }]);
+  });
+
+  it('loads a changed named checkpoint before scanning context and publishing state', async () => {
+    const order: string[] = [];
+    persistence.refreshNamedSession.mockImplementation(async () => { order.push('named'); return true; });
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: async () => { order.push('context'); },
+      postSessionState: () => { order.push('state'); },
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => undefined
+    });
+    const request = { type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} } as const;
+    await handler.handleRequestSession(request);
+    await handler.handleRequestSession(request);
+    expect(order).toEqual(['named', 'context', 'state', 'named', 'context', 'state']);
+  });
+
+  it('reports a named load failure and skips context mutations', async () => {
+    persistence.refreshNamedSession.mockRejectedValue(new Error('Named checkpoint unreadable'));
+    const refreshContextFiles = jest.fn();
+    const reportError = jest.fn();
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles,
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError,
+      activeRunLabel: () => undefined
+    });
+    await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
+    expect(refreshContextFiles).not.toHaveBeenCalled();
+    expect(reportError).toHaveBeenCalledWith('Could not load the saved Workshop session.', 'Named checkpoint unreadable');
+  });
+
+  it('does not replace a room while a response is active', async () => {
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: jest.fn(),
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => 'response'
+    });
+    await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
+    expect(persistence.refreshNamedSession).not.toHaveBeenCalled();
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {

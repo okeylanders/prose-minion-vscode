@@ -438,7 +438,7 @@ describe('WorkshopSessionStore', () => {
     );
   });
 
-  it('updates a path warmed by listing without reparsing the transcript it replaces', async () => {
+  it('rechecks the full checkpoint even when listing warmed its path', async () => {
     const writer = createStore();
     const saved = await writer.saveNamed(session('warm-room', 'Before'));
     const store = createStore();
@@ -447,10 +447,11 @@ describe('WorkshopSessionStore', () => {
 
     await store.updateNamed(
       'warm-room',
-      session('warm-room', 'After', { updatedAt: '2026-07-23T11:00:00.000Z' })
+      session('warm-room', 'After', { updatedAt: '2026-07-23T11:00:00.000Z' }),
+      session('warm-room', 'Before')
     );
 
-    expect(fileSystem.readFileCalls).not.toContain(
+    expect(fileSystem.readFileCalls).toContain(
       path.join(sessionsDirectory, saved.fileName)
     );
     await expect(store.readNamed('warm-room')).resolves.toMatchObject({
@@ -569,7 +570,7 @@ describe('WorkshopSessionStore', () => {
       }
     });
 
-    const updated = await store.updateNamed('living-room', updatedSnapshot);
+    const updated = await store.updateNamed('living-room', updatedSnapshot, session('living-room', 'Before'));
 
     expect(updated).toMatchObject({
       sessionId: 'living-room',
@@ -589,11 +590,69 @@ describe('WorkshopSessionStore', () => {
     )).toHaveLength(1);
   });
 
+  it.each(['unchanged', 'updated', 'missing'] as const)(
+    'rejects changed full content with a %s summary', async (indexState) => {
+      const store = createStore();
+      const original = session('shared', 'Before');
+      const saved = await store.saveNamed(original);
+      const fullPath = path.join(sessionsDirectory, saved.fileName);
+      const indexPath = fullPath.replace(/\.json$/, '.summary.json');
+      const incoming = session('shared', 'Incoming');
+      // Same session ID, timestamps and turn count: only full content detects it.
+      fileSystem.setJson(fullPath, incoming);
+      if (indexState === 'updated') {
+        fileSystem.setJson(indexPath, { ...(fileSystem.json(indexPath) as object), title: 'Incoming' });
+      } else if (indexState === 'missing') {
+        fileSystem.files.delete(indexPath);
+      }
+      const before = fileSystem.files.get(fullPath);
+
+      await expect(store.updateNamed('shared', session('shared', 'Stale'), original))
+        .rejects.toThrow('changed on disk');
+      expect(fileSystem.files.get(fullPath)).toBe(before);
+      expect([...fileSystem.files.keys()].some((name) => name.includes('.tmp-'))).toBe(false);
+    }
+  );
+
+  it('rechecks incoming content after preparing the temporary named write', async () => {
+    const store = createStore();
+    const original = session('shared', 'Before');
+    const saved = await store.saveNamed(original);
+    const fullPath = path.join(sessionsDirectory, saved.fileName);
+    const incoming = session('shared', 'Incoming during write');
+    const write = fileSystem.writeFile.bind(fileSystem);
+    jest.spyOn(fileSystem, 'writeFile').mockImplementation(async (filePath, data) => {
+      await write(filePath, data);
+      if (filePath.startsWith(`${fullPath}.tmp-`)) {
+        fileSystem.setJson(fullPath, incoming);
+      }
+    });
+
+    await expect(store.updateNamed('shared', session('shared', 'Stale'), original))
+      .rejects.toThrow('changed on disk');
+    expect(fileSystem.json(fullPath)).toEqual(incoming);
+  });
+
+  it.each(['deleted', 'malformed'] as const)('preserves a %s named target instead of recreating it', async (state) => {
+    const store = createStore();
+    const original = session('shared', 'Before');
+    const saved = await store.saveNamed(original);
+    const fullPath = path.join(sessionsDirectory, saved.fileName);
+    if (state === 'deleted') {
+      fileSystem.files.delete(fullPath);
+    } else {
+      fileSystem.setJson(fullPath, { invalid: true });
+    }
+    const before = fileSystem.files.get(fullPath);
+    await expect(store.updateNamed('shared', session('shared', 'Stale'), original)).rejects.toThrow();
+    expect(fileSystem.files.get(fullPath)).toBe(before);
+  });
+
   it('rejects an update whose snapshot identity does not match the target', async () => {
     const store = createStore();
     await store.saveNamed(session('target', 'Target'));
 
-    await expect(store.updateNamed('target', session('intruder', 'Intruder')))
+    await expect(store.updateNamed('target', session('intruder', 'Intruder'), session('target', 'Target')))
       .rejects.toThrow('identity does not match');
     await expect(store.readNamed('target')).resolves.toMatchObject({ title: 'Target' });
   });
@@ -740,7 +799,8 @@ describe('WorkshopSessionStore', () => {
 
     await expect(store.updateNamed(
       'living-room',
-      session('living-room', 'After', { updatedAt: '2026-07-23T11:00:00.000Z' })
+      session('living-room', 'After', { updatedAt: '2026-07-23T11:00:00.000Z' }),
+      session('living-room', 'Before')
     )).resolves.toMatchObject({ title: 'After' });
 
     expect(fileSystem.json(fullPath)).toMatchObject({ title: 'After' });

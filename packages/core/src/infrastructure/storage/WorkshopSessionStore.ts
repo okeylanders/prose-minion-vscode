@@ -33,6 +33,7 @@ import {
 import {
   isMissingFileSystemPathError
 } from '@/infrastructure/storage/fileSystemErrors';
+import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
 
 export type {
   WorkshopStoredSessionSummary
@@ -103,6 +104,13 @@ export class WorkshopNamedSessionIdentityConflictError extends Error {
   constructor(sessionId: string) {
     super(`A named Workshop session already uses id ${sessionId}.`);
     this.name = 'WorkshopNamedSessionIdentityConflictError';
+  }
+}
+
+export class WorkshopNamedSessionChangedError extends Error {
+  constructor() {
+    super('The saved Workshop session changed on disk. Reopen the session to load the saved version before saving again.');
+    this.name = 'WorkshopNamedSessionChangedError';
   }
 }
 
@@ -247,10 +255,11 @@ export class WorkshopSessionStore {
   /** Replace one named checkpoint in place without changing its durable identity or path. */
   async updateNamed(
     sessionId: string,
-    session: WorkshopPersistedSessionV2
+    session: WorkshopPersistedSessionV2,
+    expected: WorkshopPersistedSessionV2
   ): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
-    const found = await this.requireNamedSessionPath(sessionId, paths);
+    const found = await this.requireNamedSession(sessionId, paths);
     const decoded = this.validateSessionForWrite(session);
     if (decoded.sessionId !== sessionId) {
       throw new Error('Updated Workshop session identity does not match its target.');
@@ -260,7 +269,13 @@ export class WorkshopSessionStore {
       found.filePath,
       found.fileName,
       decoded,
-      true
+      true,
+      async () => {
+        const latest = await this.readSessionFileExact(found.filePath, found.fileName);
+        if (!latest || !hasSameWorkshopCheckpoint(latest.session, expected)) {
+          throw new WorkshopNamedSessionChangedError();
+        }
+      }
     );
     this.rememberNamedSessionPath(
       paths,
@@ -320,14 +335,7 @@ export class WorkshopSessionStore {
       updatedAt: this.now().toISOString()
     };
     const decoded = this.validateSessionForWrite(updated);
-    await this.writeSnapshotWithSearchIndex(
-      paths,
-      found.filePath,
-      found.fileName,
-      decoded,
-      true
-    );
-    return workshopStoredSessionSummary(decoded, found.fileName);
+    return this.updateNamed(sessionId, decoded, found.session);
   }
 
   /**
@@ -382,33 +390,6 @@ export class WorkshopSessionStore {
       throw new WorkshopNamedSessionNotFoundError(sessionId);
     }
     return found;
-  }
-
-  /**
-   * Autosave updates need the immutable target path, not the old transcript.
-   * A valid compact index confirms the cached identity without reparsing the
-   * full file immediately before it is replaced.
-   */
-  private async requireNamedSessionPath(
-    sessionId: string,
-    paths: Extract<WorkshopSessionStoreAvailability, { available: true }>
-  ): Promise<CachedNamedSessionPath> {
-    const cacheKey = this.namedSessionCacheKey(paths, sessionId);
-    const cached = this.namedSessionPaths.get(cacheKey);
-    if (cached) {
-      const indexFileName = workshopSessionSearchIndexFileName(cached.fileName);
-      const searchIndex = await this.readSearchIndexForBrowser(
-        this.namedPath(paths, indexFileName),
-        indexFileName,
-        cached.fileName
-      );
-      if (searchIndex?.sessionId === sessionId) {
-        return cached;
-      }
-      this.namedSessionPaths.delete(cacheKey);
-    }
-    const found = await this.requireNamedSession(sessionId, paths);
-    return { fileName: found.fileName, filePath: found.filePath };
   }
 
   private async findNamedSession(
@@ -815,10 +796,11 @@ export class WorkshopSessionStore {
     targetPath: string,
     fileName: string,
     session: WorkshopPersistedSessionV2,
-    overwrite: boolean
+    overwrite: boolean,
+    beforeCommit?: () => Promise<void>
   ): Promise<void> {
     await this.ensureStorageDirectory(paths);
-    await this.writeAtomically(targetPath, session, overwrite);
+    await this.writeAtomically(targetPath, session, overwrite, beforeCommit);
     try {
       await this.writeSearchIndex(paths, fileName, session);
     } catch (error) {
@@ -856,14 +838,16 @@ export class WorkshopSessionStore {
   private async writeAtomically(
     targetPath: string,
     session: WorkshopPersistedSessionV2,
-    overwrite: boolean
+    overwrite: boolean,
+    beforeCommit?: () => Promise<void>
   ): Promise<void> {
     await this.writeJsonAtomically(
       targetPath,
       session,
       overwrite,
       this.limits.maximumExactFileBytes,
-      'Workshop session'
+      'Workshop session',
+      beforeCommit
     );
   }
 
@@ -872,7 +856,8 @@ export class WorkshopSessionStore {
     value: WorkshopPersistedSessionV2 | WorkshopSessionSearchIndexV1,
     overwrite: boolean,
     maximumBytes: number,
-    description: string
+    description: string,
+    beforeCommit?: () => Promise<void>
   ): Promise<void> {
     const text = JSON.stringify(value, undefined, 2);
     assertPersistedJsonNestingDepth(text, description);
@@ -890,6 +875,7 @@ export class WorkshopSessionStore {
     const temporaryPath = `${targetPath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
     try {
       await this.fileSystem.writeFile(temporaryPath, bytes);
+      await beforeCommit?.();
       await this.fileSystem.rename(temporaryPath, targetPath, { overwrite });
     } catch (error) {
       try {

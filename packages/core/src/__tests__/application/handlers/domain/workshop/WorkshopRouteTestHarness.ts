@@ -219,6 +219,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       disposeSessionSaveStatusListener
     ),
     waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
+    refreshNamedSession: jest.fn().mockResolvedValue(undefined),
     markDirty: jest.fn(),
     flush: jest.fn().mockResolvedValue(undefined),
     initialize: jest.fn().mockResolvedValue({

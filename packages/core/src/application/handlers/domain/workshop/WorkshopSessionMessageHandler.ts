@@ -125,6 +125,17 @@ export class WorkshopSessionMessageHandler {
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
     await this.persistence.waitForSessionOperations();
+    if (!this.options.activeRunLabel()) {
+      try {
+        if (await this.persistence.refreshNamedSession()) {
+          this.initialContextRefreshCompleted = false;
+        }
+      } catch (error) {
+        this.options.reportError('Could not load the saved Workshop session.', this.errorMessage(error));
+        this.options.postSessionState();
+        return;
+      }
+    }
     if (!this.initialContextRefreshCompleted && !this.options.activeRunLabel()) {
       // Set before awaiting so duplicate webview mount requests cannot start
       // overlapping rereads against the same host-owned attachment list.

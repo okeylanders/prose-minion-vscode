@@ -1,6 +1,6 @@
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import type { LogSink, SettingsStore } from '@/platform';
-import { DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
+import { DEFAULT_WORKSHOP_WRITER_PROFILE, WORKSHOP_WRITER_PROFILE_LIMITS } from '@messages';
 
 describe('WorkshopWriterProfileService', () => {
   it('logs a distinct rejection when persisted profile data is invalid', () => {
@@ -8,7 +8,7 @@ describe('WorkshopWriterProfileService', () => {
       get: jest.fn(() => ({
         enabled: true,
         preferredAddress: 'Okey',
-        bio: 'x'.repeat(1_001)
+        bio: 'x'.repeat(WORKSHOP_WRITER_PROFILE_LIMITS.bio + 1)
       })),
       update: jest.fn()
     } as unknown as SettingsStore;
