@@ -500,6 +500,7 @@
 
 /* ---------- Thread ---------- */
 [data-pm-surface="workshop"] .pm-ws-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -3712,4 +3713,35 @@
   [data-pm-surface="workshop"] .pm-ws-session-search-scope {
     display: none;
   }
+}
+
+/* Keep session hydration feedback over the chat pane without shifting its layout. */
+[data-pm-surface="workshop"] .pm-ws-session-content {
+  display: contents;
+}
+[data-pm-surface="workshop"] .pm-ws-session-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--pm-bg) 80%, transparent);
+}
+[data-pm-surface="workshop"] .pm-ws-session-loading-card {
+  max-width: 360px;
+  padding: 28px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: 12px;
+  background: var(--pm-bg);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+[data-pm-surface="workshop"] .pm-ws-session-loading-card .pm-ws-wizard-spin {
+  display: inline-block;
+  margin-right: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-session-loading-card p {
+  margin: 12px 0 0;
+  color: var(--pm-muted);
 }

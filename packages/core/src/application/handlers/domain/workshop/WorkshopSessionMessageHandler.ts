@@ -23,6 +23,7 @@ import {
   WorkshopSaveSessionMessage,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
+  WorkshopSessionContextScanMessage,
   WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionsDataMessage
 } from '@messages';
@@ -128,7 +129,7 @@ export class WorkshopSessionMessageHandler {
       // Set before awaiting so duplicate webview mount requests cannot start
       // overlapping rereads against the same host-owned attachment list.
       this.initialContextRefreshCompleted = true;
-      await this.options.refreshContextFiles();
+      await this.scanContextFiles();
     }
     await this.options.flushDeferredConversationSettings();
     this.options.postSessionState();
@@ -220,7 +221,7 @@ export class WorkshopSessionMessageHandler {
     }
     try {
       const result = await this.persistence.openNamed(message.payload?.sessionId ?? '');
-      await this.options.refreshContextFiles();
+      await this.scanContextFiles();
       this.initialContextRefreshCompleted = true;
       this.options.postSessionState();
       this.postRecoveryNotices();
@@ -236,6 +237,24 @@ export class WorkshopSessionMessageHandler {
       );
     } catch (error) {
       this.postActionFailure('open', error);
+    }
+  }
+
+  private async scanContextFiles(): Promise<void> {
+    const postScanState = (scanning: boolean): void => {
+      const message: WorkshopSessionContextScanMessage = {
+        type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
+        source: 'extension.workshop',
+        payload: { scanning },
+        timestamp: Date.now()
+      };
+      void this.postMessage(message);
+    };
+    postScanState(true);
+    try {
+      await this.options.refreshContextFiles();
+    } finally {
+      postScanState(false);
     }
   }
 

@@ -97,6 +97,7 @@ export function buildWorkshopAppMessageRoutes(
       workshopRoom.handleComposerDraftRestored,
     [MessageType.WORKSHOP_SESSIONS_DATA]: workshopSessions.handleSessionsData,
     [MessageType.WORKSHOP_SESSION_ACTION_RESULT]: workshopSessions.handleSessionActionResult,
+    [MessageType.WORKSHOP_SESSION_CONTEXT_SCAN]: workshopSessions.handleSessionContextScan,
     [MessageType.WORKSHOP_SESSION_SAVE_STATUS]: workshopSessions.handleSessionSaveStatus,
     [MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE]:
       workshopSessions.handleSessionRecoveryNotice,

@@ -1,3 +1,4 @@
+import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/WorkshopSessionMessageHandler';
 import {
   MessageType
 } from '@messages';
@@ -41,6 +42,47 @@ describe('Workshop composed routing — session owner', () => {
       pin,
       runProse
     } = createWorkshopRouteTestHarness());
+  });
+
+  it.each(['restore', 'open'] as const)('announces a pending context scan during %s and clears it on completion', async (action) => {
+    let finishScan!: () => void;
+    const refreshContextFiles = jest.fn(() => new Promise<void>((resolve) => { finishScan = resolve; }));
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles,
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => undefined
+    });
+    const pending = action === 'restore'
+      ? handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} })
+      : handler.handleOpenSession({ type: MessageType.WORKSHOP_OPEN_SESSION, source: 'webview.workshop', timestamp: 0, payload: { sessionId: 'named' } });
+    await Promise.resolve();
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
+      .toEqual([{ scanning: true }]);
+    finishScan();
+    await pending;
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
+      .toEqual([{ scanning: true }, { scanning: false }]);
+  });
+
+  it.each(['restore', 'open'] as const)('clears the scan indicator if the %s scan fails', async (action) => {
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: jest.fn().mockRejectedValue(new Error('File read failed')),
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => undefined
+    });
+    if (action === 'restore') {
+      await expect(handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} }))
+        .rejects.toThrow('File read failed');
+    } else {
+      await handler.handleOpenSession({ type: MessageType.WORKSHOP_OPEN_SESSION, source: 'webview.workshop', timestamp: 0, payload: { sessionId: 'named' } });
+      expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload.ok).toBe(false);
+    }
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
+      .toEqual([{ scanning: true }, { scanning: false }]);
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {
