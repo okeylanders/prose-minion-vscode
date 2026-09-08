@@ -32,9 +32,6 @@ import {
   WorkshopPersistedSessionV2,
   WorkshopPersistedSummaryV1
 } from '@/application/services/workshop/WorkshopPersistedSession';
-import type {
-  WorkshopWidgetRecoveryNotice
-} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 import {
   WorkshopConversationSettingsService
 } from '@/application/services/workshop/WorkshopConversationSettingsService';
@@ -48,6 +45,7 @@ import {
 } from '@services/analysis/AssistantToolService';
 import {
   WorkshopNamedSessionChangedError,
+  WorkshopNamedSessionNotFoundError,
   WorkshopSessionStore,
   WorkshopSessionStoreAvailability,
   WorkshopStoredSessionSummary
@@ -57,6 +55,7 @@ import {
   WorkshopConversationDegradation,
   WorkshopPersonaId,
   WorkshopSessionSaveStatusMessage,
+  WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionSummary,
   WorkshopToolId,
   workshopExcerptSourcePath
@@ -64,6 +63,7 @@ import {
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { countWords } from '@/utils/textUtils';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
+import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
 
 interface LiveSessionIdentity {
   sessionId: string;
@@ -80,7 +80,7 @@ interface LiveSessionRollback {
   temporal: ReturnType<WorkshopSessionTimeService['exportRuntimeState']>;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   degradedConversations: WorkshopConversationDegradation[];
-  recoveryNotices: WorkshopWidgetRecoveryNotice[];
+  recoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][];
 }
 
 interface WorkshopHydrationTransaction extends WorkshopSessionHydrateResult {
@@ -142,7 +142,7 @@ export class WorkshopSessionPersistenceCoordinator {
   private writtenRevision = 0;
   private degradedConversationKeys: WorkshopConversationLogicalKey[] = [];
   private degradedConversations: WorkshopConversationDegradation[] = [];
-  private pendingRecoveryNotices: WorkshopWidgetRecoveryNotice[] = [];
+  private pendingRecoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][] = [];
   private currentCheckpointError?: string;
   private acceptedWorkspaceRoot?: string;
   private initialUnavailableReason?: Extract<
@@ -186,7 +186,7 @@ export class WorkshopSessionPersistenceCoordinator {
     return this.degradedConversations.map((entry) => ({ ...entry }));
   }
 
-  consumeRecoveryNotices(): WorkshopWidgetRecoveryNotice[] {
+  consumeRecoveryNotices(): WorkshopSessionRecoveryNoticeMessage['payload'][] {
     const notices = this.pendingRecoveryNotices.map((notice) => ({ ...notice }));
     this.pendingRecoveryNotices = [];
     return notices;
@@ -245,9 +245,19 @@ export class WorkshopSessionPersistenceCoordinator {
         const current = await this.readCurrentCheckpoint();
         if (current) {
           // current.json locates the session; its named checkpoint owns the truth.
-          // Unreadable/ambiguous named files must not silently authorize fallback.
-          const named = await this.readNamedCheckpoint(current.session.sessionId);
+          // An inconclusive lookup permits rolling recovery, never a named write.
+          let named: WorkshopPersistedSessionCheckpointDecodeResult | undefined;
+          try {
+            named = await this.readNamedCheckpoint(current.session.sessionId);
+          } catch (error) {
+            this.outputChannel.appendLine(
+              `[WorkshopSessionPersistence] Named association unconfirmed; restoring current.json only: ${this.errorMessage(error)}`
+            );
+          }
           const authoritative = named ?? current;
+          const recoveryNotice = named
+            ? await this.preserveDisplacedLocalSession(current.session, named.session)
+            : undefined;
           if (named) {
             this.activeNamedSessionId = named.session.sessionId;
             this.acceptedNamedCheckpoint = named.session;
@@ -257,6 +267,9 @@ export class WorkshopSessionPersistenceCoordinator {
             );
           }
           result = await this.hydrate(authoritative.session, true, true, authoritative);
+          if (recoveryNotice) {
+            this.pendingRecoveryNotices.push(recoveryNotice);
+          }
         } else {
           this.recordStartMarker();
           this.markDirty('initial session');
@@ -324,12 +337,11 @@ export class WorkshopSessionPersistenceCoordinator {
         this.assertAcceptedWorkspace();
         const snapshot = await this.capture(this.identity);
         if (namedSessionId) {
-          const expected = this.requireAcceptedNamedCheckpoint(namedSessionId);
           const checkpoint = { ...snapshot, savedAt: normalizedIso(this.now()) };
-          await this.store.updateNamed(namedSessionId, checkpoint, expected);
-          this.acceptedNamedCheckpoint = checkpoint;
+          await this.writeNamedWithRollingRecovery(namedSessionId, checkpoint);
+        } else {
+          await this.store.writeCurrent(snapshot);
         }
-        await this.store.writeCurrent(snapshot);
         this.writtenRevision = Math.max(this.writtenRevision, revision);
         if (revision >= this.dirtyRevision) {
           this.emitSessionSaveStatus({ sessionId, status: 'saved' });
@@ -433,34 +445,47 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   /** Recheck disk on webview load, even when the host initialized before Git sync. */
-  async refreshNamedSession(): Promise<boolean> {
+  async refreshNamedSession(
+    afterLoad?: (changed: boolean) => Promise<void>
+  ): Promise<boolean> {
     return this.serializeSessionOperation(async () => {
-      if (!this.store.availability().available) {
-        return false;
-      }
-      const persisted = await this.readNamedCheckpoint(this.identity.sessionId);
-      if (!persisted) {
-        if (this.activeNamedSessionId) {
-          throw new WorkshopNamedSessionChangedError();
-        }
-        return false;
-      }
-      if (!this.acceptedNamedCheckpoint ||
-          !hasSameWorkshopCheckpoint(persisted.session, this.acceptedNamedCheckpoint)) {
-        await this.promoteNamedSession(persisted);
-        return true;
-      }
-      return false;
+      const changed = await this.refreshAssociatedNamedSession();
+      await afterLoad?.(changed);
+      return changed;
     });
   }
 
-  async openNamed(sessionId: string): Promise<WorkshopSessionHydrateResult> {
+  private async refreshAssociatedNamedSession(): Promise<boolean> {
+    // Discovery happens at startup or explicit Open. A deliberately detached
+    // room must not be reattached just because Git restores its old file.
+    if (!this.activeNamedSessionId) {
+      return false;
+    }
+    const persisted = await this.readNamedCheckpoint(this.activeNamedSessionId);
+    if (!persisted) {
+      await this.detachMissingNamedSession();
+      return false;
+    }
+    if (!this.acceptedNamedCheckpoint ||
+        !hasSameWorkshopCheckpoint(persisted.session, this.acceptedNamedCheckpoint)) {
+      await this.promoteNamedSession(persisted);
+      return true;
+    }
+    return false;
+  }
+
+  async openNamed(
+    sessionId: string,
+    afterLoad?: () => Promise<void>
+  ): Promise<WorkshopSessionHydrateResult> {
     return this.serializeSessionOperation(async () => {
       const persisted = await this.readNamedCheckpoint(sessionId);
       if (!persisted) {
-        throw new Error(`Named Workshop session ${sessionId} was not found.`);
+        throw new WorkshopNamedSessionNotFoundError(sessionId);
       }
-      return this.promoteNamedSession(persisted);
+      const result = await this.promoteNamedSession(persisted);
+      await afterLoad?.();
+      return result;
     });
   }
 
@@ -470,6 +495,11 @@ export class WorkshopSessionPersistenceCoordinator {
     const rollback = this.captureRollback();
     let hydration: WorkshopHydrationTransaction;
     try {
+      const recoveryNotice = this.identity.sessionId === persisted.session.sessionId
+        ? await this.preserveDisplacedLocalSession(
+          await this.capture(this.identity), persisted.session, this.acceptedNamedCheckpoint
+        )
+        : undefined;
       hydration = await this.hydrate(persisted.session, false, false, persisted);
       this.time.touch();
       this.activeNamedSessionId = persisted.session.sessionId;
@@ -484,6 +514,9 @@ export class WorkshopSessionPersistenceCoordinator {
       this.currentCheckpointError = undefined;
       // Queued pre-load revisions belong to the replaced room, not this one.
       this.writtenRevision = this.dirtyRevision;
+      if (recoveryNotice) {
+        this.pendingRecoveryNotices.push(recoveryNotice);
+      }
       this.outputChannel.appendLine(
         `[WorkshopSessionPersistence] Named checkpoint promoted to current.json ` +
         `(id=${persisted.session.sessionId}, turns=${persisted.session.workshop.turns.length})`
@@ -507,6 +540,35 @@ export class WorkshopSessionPersistenceCoordinator {
       throw new WorkshopNamedSessionChangedError();
     }
     return this.acceptedNamedCheckpoint;
+  }
+
+  private async preserveDisplacedLocalSession(
+    local: WorkshopPersistedSessionV2,
+    incoming: WorkshopPersistedSessionV2,
+    accepted?: WorkshopPersistedSessionV2
+  ): Promise<WorkshopSessionRecoveryNoticeMessage['payload'] | undefined> {
+    if (hasSameWorkshopRecoveryContent(local, incoming) ||
+        (accepted && hasSameWorkshopRecoveryContent(local, accepted))) {
+      return undefined;
+    }
+    // Save the complete local snapshot before hydration can replace either its
+    // aggregate or provider histories. Failure must abort the replacement.
+    const saved = await this.store.saveNamed({
+      ...local,
+      sessionId: this.idFactory(),
+      title: `${local.title} (local recovery)`,
+      savedAt: normalizedIso(this.now())
+    });
+    this.outputChannel.appendLine(
+      `[WorkshopSessionPersistence] Preserved displaced local session in ${saved.fileName}`
+    );
+    return {
+      code: 'local-session-preserved',
+      sessionId: saved.sessionId,
+      recoveryFileName: saved.fileName,
+      message: `Loaded the saved session. Your differing local work was preserved as ` +
+        `"${saved.title}" in Sessions (${saved.fileName}).`
+    };
   }
 
   async renameNamed(sessionId: string, title: string): Promise<WorkshopStoredSessionSummary> {
@@ -551,11 +613,32 @@ export class WorkshopSessionPersistenceCoordinator {
 
   async deleteNamed(sessionId: string): Promise<void> {
     return this.serializeSessionOperation(async () => {
-      await this.store.deleteNamed(sessionId);
-      if (this.activeNamedSessionId === sessionId) {
-        this.activeNamedSessionId = undefined;
-        this.acceptedNamedCheckpoint = undefined;
+      try {
+        await this.store.deleteNamed(sessionId);
+      } catch (error) {
+        if (!(error instanceof WorkshopNamedSessionNotFoundError) || this.activeNamedSessionId !== sessionId) {
+          throw error;
+        }
       }
+      if (this.activeNamedSessionId === sessionId) {
+        await this.detachMissingNamedSession();
+      }
+    });
+  }
+
+  private async detachMissingNamedSession(): Promise<void> {
+    const snapshot = await this.capture(this.identity);
+    await this.store.writeCurrent(snapshot);
+    this.activeNamedSessionId = undefined;
+    this.acceptedNamedCheckpoint = undefined;
+    this.writtenRevision = this.dirtyRevision;
+    this.outputChannel.appendLine(
+      `[WorkshopSessionPersistence] Named checkpoint missing; autosave continues to current.json (id=${this.identity.sessionId})`
+    );
+    this.pendingRecoveryNotices.push({
+      code: 'named-session-missing',
+      sessionId: this.identity.sessionId,
+      message: 'The saved file is no longer on disk. Your room is preserved in current.json; use Save as new to create a named session.'
     });
   }
 
@@ -1074,11 +1157,7 @@ export class WorkshopSessionPersistenceCoordinator {
     };
     this.emitSessionSaveStatus({ sessionId, status: 'saving' });
     try {
-      const expected = this.requireAcceptedNamedCheckpoint(sessionId);
-      const summary = await this.store.updateNamed(sessionId, checkpoint, expected);
-      this.acceptedNamedCheckpoint = checkpoint;
-      this.identity = nextIdentity;
-      await this.store.writeCurrent(checkpoint);
+      const summary = await this.writeNamedWithRollingRecovery(sessionId, checkpoint);
       this.currentCheckpointError = undefined;
       this.emitSessionSaveStatus({ sessionId, status: 'saved' });
       return summary;
@@ -1090,6 +1169,35 @@ export class WorkshopSessionPersistenceCoordinator {
       });
       throw error;
     }
+  }
+
+  private async writeNamedWithRollingRecovery(
+    sessionId: string,
+    checkpoint: WorkshopPersistedSessionV2
+  ): Promise<WorkshopStoredSessionSummary> {
+    let summary: WorkshopStoredSessionSummary;
+    try {
+      summary = await this.store.updateNamed(
+        sessionId, checkpoint, this.requireAcceptedNamedCheckpoint(sessionId)
+      );
+    } catch (namedError) {
+      // Authority and durability are separate: preserve live work without
+      // advancing the named baseline or reporting the named save as complete.
+      try {
+        await this.store.writeCurrent({ ...checkpoint, ...this.identity });
+      } catch (rollingError) {
+        throw new Error(
+          `${this.errorMessage(namedError)} Local recovery also failed: ${this.errorMessage(rollingError)}`
+        );
+      }
+      throw namedError;
+    }
+    this.acceptedNamedCheckpoint = checkpoint;
+    this.identity = {
+      sessionId: checkpoint.sessionId, title: checkpoint.title, createdAt: checkpoint.createdAt
+    };
+    await this.store.writeCurrent(checkpoint);
+    return summary;
   }
 
   private emitSessionSaveStatus(event: WorkshopSessionSaveStatus): void {

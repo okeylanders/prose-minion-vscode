@@ -49,6 +49,7 @@ export class WorkshopSessionMessageHandler {
   private sessionListAbortController?: AbortController;
   /** A mounted panel reads the already-hydrated rolling session once. */
   private initialContextRefreshCompleted = false;
+  private scanningContextFiles = false;
 
   constructor(
     private readonly persistence: WorkshopSessionPersistenceCoordinator,
@@ -125,26 +126,28 @@ export class WorkshopSessionMessageHandler {
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
     await this.persistence.waitForSessionOperations();
-    if (!this.options.activeRunLabel()) {
-      try {
-        if (await this.persistence.refreshNamedSession()) {
-          this.initialContextRefreshCompleted = false;
-        }
-      } catch (error) {
-        this.options.reportError('Could not load the saved Workshop session.', this.errorMessage(error));
-        this.options.postSessionState();
-        return;
+    try {
+      if (!this.options.activeRunLabel()) {
+        await this.persistence.refreshNamedSession(async (changed) => {
+          if (changed) {
+            this.initialContextRefreshCompleted = false;
+          }
+          if (!this.initialContextRefreshCompleted && !this.options.activeRunLabel()) {
+            await this.scanContextFiles();
+            this.initialContextRefreshCompleted = true;
+          }
+        });
       }
+      await this.options.flushDeferredConversationSettings();
+      this.options.postSessionState();
+      this.postRecoveryNotices();
+    } catch (error) {
+      this.options.reportError('Could not load the saved Workshop session.', this.errorMessage(error));
+      this.options.postSessionState();
+    } finally {
+      // Replay authoritative busy state even if the hidden tab missed scan-end.
+      this.postScanState(this.scanningContextFiles);
     }
-    if (!this.initialContextRefreshCompleted && !this.options.activeRunLabel()) {
-      // Set before awaiting so duplicate webview mount requests cannot start
-      // overlapping rereads against the same host-owned attachment list.
-      this.initialContextRefreshCompleted = true;
-      await this.scanContextFiles();
-    }
-    await this.options.flushDeferredConversationSettings();
-    this.options.postSessionState();
-    this.postRecoveryNotices();
   }
 
   async handleSaveSession(message: WorkshopSaveSessionMessage): Promise<void> {
@@ -231,9 +234,10 @@ export class WorkshopSessionMessageHandler {
       return;
     }
     try {
-      const result = await this.persistence.openNamed(message.payload?.sessionId ?? '');
-      await this.scanContextFiles();
-      this.initialContextRefreshCompleted = true;
+      const result = await this.persistence.openNamed(message.payload?.sessionId ?? '', async () => {
+        await this.scanContextFiles();
+        this.initialContextRefreshCompleted = true;
+      });
       this.options.postSessionState();
       this.postRecoveryNotices();
       const degraded = result.degradedConversationKeys.length;
@@ -251,21 +255,24 @@ export class WorkshopSessionMessageHandler {
     }
   }
 
-  private async scanContextFiles(): Promise<void> {
-    const postScanState = (scanning: boolean): void => {
-      const message: WorkshopSessionContextScanMessage = {
-        type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
-        source: 'extension.workshop',
-        payload: { scanning },
-        timestamp: Date.now()
-      };
-      void this.postMessage(message);
+  private postScanState(scanning: boolean): void {
+    const message: WorkshopSessionContextScanMessage = {
+      type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
+      source: 'extension.workshop',
+      payload: { scanning },
+      timestamp: Date.now()
     };
-    postScanState(true);
+    void this.postMessage(message);
+  }
+
+  private async scanContextFiles(): Promise<void> {
+    this.scanningContextFiles = true;
+    this.postScanState(true);
     try {
       await this.options.refreshContextFiles();
     } finally {
-      postScanState(false);
+      this.scanningContextFiles = false;
+      this.postScanState(false);
     }
   }
 

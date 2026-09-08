@@ -248,8 +248,12 @@ export function useWorkshopSessions(
   const handleSessionRecoveryNotice = React.useCallback(
     (message: WorkshopSessionRecoveryNoticeMessage) => {
       setRecoveryNotices((current) => {
-        const key = `${message.payload.code}:${message.payload.configId}`;
-        if (current.some((notice) => `${notice.code}:${notice.configId}` === key)) {
+        const noticeKey = (notice: WorkshopSessionRecoveryNoticeMessage['payload']): string =>
+          'sessionId' in notice
+            ? `${notice.code}:${notice.sessionId}`
+            : `${notice.code}:${notice.configId}`;
+        const key = noticeKey(message.payload);
+        if (current.some((notice) => noticeKey(notice) === key)) {
           return current;
         }
         return current.length >= 8

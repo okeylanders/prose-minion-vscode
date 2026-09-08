@@ -795,6 +795,15 @@ export interface WorkshopSessionRecoveryNoticeMessage extends MessageEnvelope<{
   widgetId: WorkshopWidgetId;
   configId: string;
   message: string;
+} | {
+  code: 'named-session-missing';
+  sessionId: string;
+  message: string;
+} | {
+  code: 'local-session-preserved';
+  sessionId: string;
+  recoveryFileName: string;
+  message: string;
 }> {
   type: MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE;
 }

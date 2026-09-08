@@ -1,6 +1,14 @@
 # Workshop named session overwritten after Git sync
 
-Status: development fix implemented and automated validation passed. Manual VS Code verification and manuscript restoration not performed.
+Status: review remediation implemented locally including approved F-03 recovery policy; manual verification and manuscript restoration not performed.
+
+Priority: High
+
+Related files: `WorkshopSessionPersistenceCoordinator.ts`, `WorkshopSessionStore.ts`,
+`WorkshopSessionMessageHandler.ts`, `WorkshopSessionPersistenceIntegration.test.ts`.
+
+Completion criteria: publish and re-review remediation, and complete manual VS Code checks. Keep this item active until those
+criteria are met; F-10/F-11 and baseline hashing remain deferred in the review ledger.
 
 The incident and initial reproduction below describe the pre-fix behavior.
 The implementation follows [ADR 2026-09-08](../../docs/adr/2026-09-08-workshop-named-checkpoint-authority.md).

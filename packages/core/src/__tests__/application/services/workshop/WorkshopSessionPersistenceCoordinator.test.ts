@@ -404,15 +404,15 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(current?.workshop.turns).toHaveLength(83);
   });
 
-  it('finds the matching named file when it arrives after an unnamed restore', async () => {
+  it('keeps an unassociated room detached when a same-ID file arrives later', async () => {
     current = persistedSession('shared-room', 'Local', 'Local excerpt.');
     const coordinator = createCoordinator();
     await coordinator.initialize();
     await coordinator.flush();
     named.push(persistedSession('shared-room', 'Incoming', 'Incoming excerpt.'));
 
-    expect(await coordinator.refreshNamedSession()).toBe(true);
-    expect(current?.workshop.excerpt?.text).toBe('Incoming excerpt.');
+    expect(await coordinator.refreshNamedSession()).toBe(false);
+    expect(current?.workshop.excerpt?.text).toBe('Local excerpt.');
   });
 
   it.each(['autosave', 'save', 'rename'] as const)(
@@ -438,7 +438,8 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
           .rejects.toThrow('changed on disk');
       }
       expect(named[0]).toBe(incoming);
-      expect(current).toBe(previousCurrent);
+      expect(current?.workshop).toEqual(previousCurrent?.workshop);
+      expect(current?.title).toBe('Local');
       expect(statuses.at(-1)).toBe('error');
 
       await coordinator.refreshNamedSession();
@@ -462,17 +463,17 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(current?.workshop.excerpt?.text).toBe('Incoming excerpt.');
   });
 
-  it('does not fall back to stale current when named lookup fails', async () => {
+  it('restores rolling state without authorizing named writes when lookup is inconclusive', async () => {
     current = persistedSession('shared-room', 'Local', 'Local excerpt.');
     store.readNamedWithRecovery.mockRejectedValue(new Error('Ambiguous named identity'));
     const coordinator = createCoordinator();
     await coordinator.initialize();
     await coordinator.flush();
 
-    expect(coordinator.isCurrentCheckpointProtected()).toBe(true);
-    expect(store.writeCurrent).not.toHaveBeenCalled();
+    expect(coordinator.isCurrentCheckpointProtected()).toBe(false);
+    expect(store.writeCurrent).toHaveBeenCalled();
     expect(store.updateNamed).not.toHaveBeenCalled();
-    expect(session.getExcerpt()).toBeUndefined();
+    expect(session.getExcerpt()?.text).toBe('Local excerpt.');
   });
 
   it('retains the named commit and retries its rolling mirror after a current write failure', async () => {

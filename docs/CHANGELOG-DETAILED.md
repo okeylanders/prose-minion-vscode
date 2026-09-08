@@ -18,6 +18,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attachment count, centered slim refresh buttons, and an amber source filename
   centered directly above the excerpt preview.
 
+### Changed — Workshop files and profiles
+
+- Workshop refreshes file-backed standing context on session open and through
+  **Refresh changed files**. Failed or refused reads preserve saved snapshots;
+  file-backed attachments are read-only, while text briefs remain editable.
+- A loading overlay marks context scans and prevents edits during loading. The
+  host serializes the scan with session loading and replays its current busy
+  state when a retained tab requests the room again.
+- Writer profiles support up to 20,000 biography characters. The setting explains
+  that longer profiles consume more prompt context.
+
+### Fixed — named checkpoint authority and recovery
+
+- A matching named Workshop file takes precedence over current.json on restore
+  and reload, including retained-tab reveal after Git sync. This supersedes the
+  v2.2.3 equivalence-or-detach policy described in that historical release entry.
+- Autosave, Save and Rename compare the complete named checkpoint against the
+  room's accepted baseline before writing and again immediately before rename.
+  Summary indexes never authorize replacement of a full checkpoint.
+- Failed named writes still preserve live work in current.json and report an
+  error. An unrelated corrupt session does not block rolling restore; a missing
+  active named file detaches safely and explains how to save a new checkpoint.
+- Preserve a full local recovery session under a fresh ID before replacing
+  meaningful divergent same-session content, then emit a writer-visible notice.
+  Resume-only differences, their bookkeeping and timestamps do not create copies.
+  Failure to save a needed copy aborts replacement.
+- Added real-store regression coverage for rolling recovery, missing files,
+  promotion rollback, meaningful recovery versus resume-only differences, recovery
+  write failures, and serialized context scanning.
+
 ## [2.2.4] - 2026-09-03 — Muse Spark 1.3 across shared model pickers
 
 ### Overview

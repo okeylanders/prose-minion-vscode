@@ -199,7 +199,7 @@ function createTestAssembly(): TestAssembly {
       isSessionOperationPending: jest.fn().mockReturnValue(false),
       addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
       waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
-    refreshNamedSession: jest.fn().mockResolvedValue(undefined),
+    refreshNamedSession: jest.fn(async (afterLoad?: (changed: boolean) => Promise<void>) => { await afterLoad?.(false); return false; }),
       markDirty: jest.fn(),
       flush: jest.fn().mockResolvedValue(undefined),
       initialize: jest.fn().mockResolvedValue({

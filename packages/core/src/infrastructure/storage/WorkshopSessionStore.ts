@@ -260,6 +260,9 @@ export class WorkshopSessionStore {
   ): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
     const found = await this.requireNamedSession(sessionId, paths);
+    if (!hasSameWorkshopCheckpoint(found.session, expected)) {
+      throw new WorkshopNamedSessionChangedError();
+    }
     const decoded = this.validateSessionForWrite(session);
     if (decoded.sessionId !== sessionId) {
       throw new Error('Updated Workshop session identity does not match its target.');

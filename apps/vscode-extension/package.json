@@ -414,7 +414,7 @@
             "bio": {
               "type": "string",
               "maxLength": 20000,
-              "description": "Short writer-authored context for Workshop personas. Stored globally; do not include sensitive information."
+              "description": "Writer-authored context for Workshop personas (up to 20,000 characters). Longer profiles consume more prompt context. Stored globally; do not include sensitive information."
             }
           },
           "required": ["enabled", "preferredAddress", "bio"],

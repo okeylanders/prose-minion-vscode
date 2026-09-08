@@ -6,21 +6,21 @@
 ## Resolution ledger
 
 Status legend: **Open** = act before merge · **Deferred** = accepted follow-up with reason ·
-**Addressed** = fixed · **Partially addressed** = fixed with remainder · **N/A** = praise, superseded, or not actionable.
+**Addressed** = implemented and automatically validated; independent re-review pending · **Partially addressed** = fixed with remainder · **N/A** = praise, superseded, or not actionable.
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | An unrelated unreadable session file now blocks restore, protects `current.json`, and errors every reveal of an unnamed room | Orchestrator (Blake lane), Marcus scout | 1 independent · 1 runway-prompted | — | **Open** |
-| F-02 | 🟠 High | Named-first ordering leaves the live room with no rolling checkpoint after any named-write failure; work after a conflict or external deletion is memory-only | Orchestrator (Blake lane), Marcus, Sam, Bria scouts | 1 independent · 3 runway-prompted | — | **Open** |
-| F-03 | 🟠 High | Local-only work is displaced silently on init and reveal, with no preserved copy and no writer-visible notice; contradicts the tech-debt "preserve both versions / surface the conflict" correction | Orchestrator (Bria lane), Bria, Sam scouts | 1 independent · 2 runway-prompted | — | **Open** — product decision required |
-| F-04 | 🟡 Standard | A missing named file for an associated room is reported as "changed on disk"; the association cannot be cleared through Delete or reveal | Orchestrator, Sam scout | 1 independent · 1 runway-prompted | — | **Open** |
-| F-05 | 🟡 Standard | The session-open context scan runs outside both the serialized session boundary and the mutation-route guard | Orchestrator, Marcus, Sam, Stan scouts | 1 independent · 3 runway-prompted | — | **Open** |
-| F-06 | 🟡 Standard | The loading overlay and `inert` content depend on a fire-and-forget `scanning:false` message that has no replay or fallback | Sam scout | 1 runway-prompted | — | **Open** |
-| F-07 | 🟡 Standard | Per-autosave cost on a named room is two full reads, four decodes, and two JSON round-trips of a file bounded at 25 MB; unnamed rooms scan the whole sessions directory on every reveal | Orchestrator (Tim lane), Marcus, Stan scouts | 1 independent · 2 runway-prompted | — | **Open** — fail-fast part; **Deferred** — hash baseline, until file sizes prove it |
-| F-08 | 🟡 Standard | Regression coverage misses the second-read rollback in `promoteNamedSession`, the missing-file and unrelated-corrupt-file paths, and any coordinator-plus-real-store round trip; manual VS Code verification is outstanding | Orchestrator (Cal lane) | 1 independent | — | **Open** |
-| F-09 | 🟡 Standard | Documentation and process parity: CHANGELOG Unreleased omits four of five commits, no memory-bank entry, stale PR title/body, ADR header convention, unarchived tech-debt bullets, "Short" bio description at 20,000 chars, narrower Astra doc footprint | Stan, Bria scouts | 2 runway-prompted | 🧭 Corroborated Runway | **Open** — CHANGELOG/ADR header before merge; rest may ride release prep |
-| F-10 | 🔵 Nit | Context refresh decides "unchanged" by body text only, unlike its excerpt sibling; a persistently refused source appends a notice turn and autosave on every scan | Sam, Stan scouts | 2 runway-prompted | 🧭 Corroborated Runway | **Deferred** — revisit with the next source-backed refresh |
-| F-11 | 🔵 Nit | `inert` drops composer focus during a scan with no restoration; the overlay is otherwise accessible | Orchestrator | 1 independent | — | **Deferred** — accessibility polish |
+| F-01 | 🟠 High | An unrelated unreadable session file now blocks restore, protects `current.json`, and errors every reveal of an unnamed room | Orchestrator (Blake lane), Marcus scout | 1 independent · 1 runway-prompted | — | **Addressed** — rolling-only startup restore after an inconclusive named lookup; unrelated-corrupt-file regression passes |
+| F-02 | 🟠 High | Named-first ordering leaves the live room with no rolling checkpoint after any named-write failure; work after a conflict or external deletion is memory-only | Orchestrator (Blake lane), Marcus, Sam, Bria scouts | 1 independent · 3 runway-prompted | — | **Addressed** — named-write failure still saves current.json; pending writes remain retryable; combined-failure regression passes |
+| F-03 | 🟠 High | Local-only work is displaced silently on init and reveal, with no preserved copy and no writer-visible notice; contradicts the tech-debt "preserve both versions / surface the conflict" correction | Orchestrator (Bria lane), Bria, Sam scouts | 1 independent · 2 runway-prompted | — | **Addressed** — approved recovery copy and filename notice before meaningful local work is displaced; resume-only bookkeeping excluded; preservation failure aborts replacement; startup/reveal/Open regressions pass |
+| F-04 | 🟡 Standard | A missing named file for an associated room is reported as "changed on disk"; the association cannot be cleared through Delete or reveal | Orchestrator, Sam scout | 1 independent · 1 runway-prompted | — | **Addressed** — missing active named files detach after rolling preservation, with a notice; Delete/reveal and no-reattachment regressions pass |
+| F-05 | 🟡 Standard | The session-open context scan runs outside both the serialized session boundary and the mutation-route guard | Orchestrator, Marcus, Sam, Stan scouts | 1 independent · 3 runway-prompted | — | **Addressed** — serialized load and mutation guard now span context scanning; concurrent-load regression passes |
+| F-06 | 🟡 Standard | The loading overlay and `inert` content depend on a fire-and-forget `scanning:false` message that has no replay or fallback | Sam scout | 1 runway-prompted | — | **Addressed** — each load request replays the authoritative scan state, including idle; missed-scan-end regression passes |
+| F-07 | 🟡 Standard | Per-autosave cost on a named room is two full reads, four decodes, and two JSON round-trips of a file bounded at 25 MB; unnamed rooms scan the whole sessions directory on every reveal | Orchestrator (Tim lane), Marcus, Stan scouts | 1 independent · 2 runway-prompted | — | **Partially addressed** — fail-fast comparison avoids unnecessary temporary writes; unassociated reveals skip discovery; hash-based comparison deferred pending measured need |
+| F-08 | 🟡 Standard | Regression coverage misses the second-read rollback in `promoteNamedSession`, the missing-file and unrelated-corrupt-file paths, and any coordinator-plus-real-store round trip; manual VS Code verification is outstanding | Orchestrator (Cal lane) | 1 independent | — | **Partially addressed** — real-store round trips, corruption/deletion, second-read rollback, duplicate loads, scan serialization and recovery-copy regressions added; 210 suites / 2,365 tests pass; manual VS Code verification remains |
+| F-09 | 🟡 Standard | Documentation and process parity: CHANGELOG Unreleased omits four of five commits, no memory-bank entry, stale PR title/body, ADR header convention, unarchived tech-debt bullets, "Short" bio description at 20,000 chars, narrower Astra doc footprint | Stan, Bria scouts | 2 runway-prompted | 🧭 Corroborated Runway | **Partially addressed** — changelogs, ADRs, profile description, Astra README and continuity note updated; PR title/body still pending; debt remains active for manual verification and re-review |
+| F-10 | 🔵 Nit | Context refresh decides "unchanged" by body text only, unlike its excerpt sibling; a persistently refused source appends a notice turn and autosave on every scan | Sam, Stan scouts | 2 runway-prompted | 🧭 Corroborated Runway | **Deferred** — body/fingerprint comparison parity and repeated-refusal notice deduplication remain for the next source-backed refresh change |
+| F-11 | 🔵 Nit | `inert` drops composer focus during a scan with no restoration; the overlay is otherwise accessible | Orchestrator | 1 independent | — | **Deferred** — composer-focus restoration after scans remains accessibility follow-up |
 | P-1 | 💚 Praise | The pre-rename recheck compares the full decoded destination against the accepted baseline; summary indexes never authorize a write | Orchestrator | 1 independent | — | N/A — preserve |
 | P-2 | 💚 Praise | Context refresh reuses `authorizeExcerptReread` and bounded `loadFile`; no new path-trust surface, failures keep the saved snapshot | Orchestrator, Bria scout | 1 independent · 1 runway-prompted | — | N/A — preserve |
 | P-3 | 💚 Praise | Named-lookup failure no longer authorizes a fallback write; the fail-closed intent is right even where F-01 shows its scope is too wide | Orchestrator | 1 independent | — | N/A — preserve |
@@ -399,3 +399,39 @@ Needs rework, narrowly. The core mechanism — full-checkpoint optimistic writes
 ---
 
 *Reviewed by the orchestrator with runway scouts Bria 🎯 · Stan 🗂️ · Marcus 🏛️ · Sam 🔍. Specialist panel and Sensei were not run at the author's request to conserve usage.*
+
+
+## Implementation response — 2026-09-08 (not independently re-reviewed)
+
+F-01–F-06 and the scoped F-07 improvements are implemented. The named checkpoint
+still owns read/write authority; rolling durability now continues independently
+when a named update is rejected. Startup can recover current.json after an
+inconclusive lookup without authorizing any named write. Unassociated rooms stay
+unassociated on reveal, avoiding repeated directory scans and unintended
+reattachment after Delete. A missing active named file detaches only after the
+live snapshot is written successfully, and emits a typed recovery notice.
+
+The existing serialized operation now spans context refresh through a narrow
+post-load callback; it does not weaken the aggregate's unknown-attachment
+rejection. Autosaves scheduled during the scan run after that operation. Each
+load request replays the handler's actual scanning state; this covers a missed
+scan-end message without clearing a different scan that is still active.
+
+F-08 automated gaps are covered by a coordinator-plus-real-store suite with
+synthetic fixtures. The final review has not been rerun and manual VS Code
+verification remains outstanding. F-03 is approved and implemented: meaningful
+differing same-session local content is saved under a fresh named recovery ID
+before hydration, followed by a writer-visible filename notice. Resume dividers,
+their counters/cursor movement and save/activity timestamps do not warrant a copy.
+Reveal/same-ID Open also compares with the accepted baseline so an incoming-only
+change does not create recovery. Startup conservatively preserves other divergence
+without an accepted baseline. Recovery-write failure aborts replacement. Real-store
+tests cover startup/reveal/Open preservation, automatic-only changes, complete
+local archives and transcripts, and recovery-write failures.
+F-10/F-11 and baseline hashing remain explicitly deferred as in the review.
+
+Final local remediation validation: 210 Jest suites / 2,365 tests / 2 snapshots
+passed; all three TypeScript projects passed; lint reported 0 errors (963 existing
+warnings); development build and bundle sentinels passed with the existing three
+webpack size warnings; `git diff --check` passed. These are implementation checks,
+not a new independent review or manual VS Code witness.

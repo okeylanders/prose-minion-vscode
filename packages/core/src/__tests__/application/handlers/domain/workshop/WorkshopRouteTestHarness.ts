@@ -219,7 +219,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       disposeSessionSaveStatusListener
     ),
     waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
-    refreshNamedSession: jest.fn().mockResolvedValue(undefined),
+    refreshNamedSession: jest.fn(async (afterLoad?: (changed: boolean) => Promise<void>) => { await afterLoad?.(false); return false; }),
     markDirty: jest.fn(),
     flush: jest.fn().mockResolvedValue(undefined),
     initialize: jest.fn().mockResolvedValue({
@@ -249,9 +249,9 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       truncated: false,
       searchTruncated: false
     }),
-    openNamed: jest.fn().mockResolvedValue({
-      restored: true,
-      degradedConversationKeys: []
+    openNamed: jest.fn(async (_id: string, afterLoad?: () => Promise<void>) => {
+      await afterLoad?.();
+      return { restored: true, degradedConversationKeys: [] };
     }),
     renameNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-1', title: 'Renamed Room' }),
     duplicateNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-2', title: 'Copied Room' }),
