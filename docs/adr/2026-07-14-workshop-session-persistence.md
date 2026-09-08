@@ -195,17 +195,21 @@ promotes its hydrated state to `current.json`. New Session replaces
 the active named file also returns the live room to current-only autosave.
 Stale conversation histories cannot resurrect.
 
-On initialization, `current.json` remains the ordinary machine-local recovery
-entry point. When it identifies an associated named checkpoint, the coordinator
-confirms that both contain the same durable state apart from named-file
-`savedAt` metadata, machine-local activity time, and synthetic resume markers
-before restoring automatic dual autosave. Any other difference has ambiguous
-cross-machine causality: wall clocks and resume turns are not treated as a
-lineage clock. Workshop therefore hydrates the local recovery copy while
-leaving the divergent named checkpoint detached and untouched. Opening the
-named checkpoint is the explicit authority gesture that promotes it to
-`current.json`; the next restart recognizes the resume-only delta and restores
-the association.
+On initialization, `current.json` identifies the room to restore. When a matching
+named checkpoint exists, that file is authoritative and its hydrated state
+replaces the rolling checkpoint, regardless of timestamps or transcript length.
+Meaningful displaced local content is first preserved as a separate named recovery
+session, with a writer-visible notice. Automatic resume notices and their
+bookkeeping alone do not warrant a recovery copy; failure to save a needed copy
+aborts replacement.
+The webview load path rechecks the named file before refreshing context, covering
+Git sync after extension-host initialization. Each named update compares the full
+checkpoint against the version last accepted by the room and rejects external
+changes before committing. Named updates are attempted before their rolling mirror. If a named update
+fails, the live snapshot is still written to current.json without advancing the
+named baseline, and the failure remains visible and retryable.
+See [Named checkpoint authority](2026-09-08-workshop-named-checkpoint-authority.md)
+for conflict handling and the filesystem concurrency limits.
 
 ### 7. The browser adopts the approved interaction set
 
@@ -329,8 +333,11 @@ Workshop run before the final coordinator flush.
 The implementation also treats a live named room as a moving durable room, not
 an accumulating series of same-title copies. Its immutable file path is cached
 only after authoritative creation or identity resolution, then revalidated
-before exact writes; ordinary per-turn autosave therefore does not rescan and
-parse every saved transcript. Queue status is revision-aware, so `Saved` is not
+before exact writes. An associated autosave reads its complete target checkpoint
+and compares it to the accepted baseline before preparing a write, then rechecks
+immediately before rename. It does not scan every saved transcript. Unassociated
+rooms skip reveal-time named lookup. Large-file baseline hashing remains deferred
+pending measured need. Queue status is revision-aware, so `Saved` is not
 emitted while a newer named-room revision is still waiting.
 
 Conversation Widgets remain a typed additive follow-up. No widget entity or

@@ -23,6 +23,7 @@ import {
   WorkshopSaveSessionMessage,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
+  WorkshopSessionContextScanMessage,
   WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionsDataMessage
 } from '@messages';
@@ -36,6 +37,8 @@ const generateSessionRequestId = (): string =>
 
 export interface WorkshopSessionMessageHandlerOptions {
   postSessionState: () => void;
+  /** Re-read file-backed standing context after a named checkpoint hydrates. */
+  refreshContextFiles: () => Promise<void>;
   flushDeferredConversationSettings: () => Promise<void>;
   reportError: (message: string, details?: string) => void;
   /** Human label for a run currently blocking state replacement. */
@@ -44,6 +47,9 @@ export interface WorkshopSessionMessageHandlerOptions {
 
 export class WorkshopSessionMessageHandler {
   private sessionListAbortController?: AbortController;
+  /** A mounted panel reads the already-hydrated rolling session once. */
+  private initialContextRefreshCompleted = false;
+  private scanningContextFiles = false;
 
   constructor(
     private readonly persistence: WorkshopSessionPersistenceCoordinator,
@@ -120,9 +126,28 @@ export class WorkshopSessionMessageHandler {
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
     await this.persistence.waitForSessionOperations();
-    await this.options.flushDeferredConversationSettings();
-    this.options.postSessionState();
-    this.postRecoveryNotices();
+    try {
+      if (!this.options.activeRunLabel()) {
+        await this.persistence.refreshNamedSession(async (changed) => {
+          if (changed) {
+            this.initialContextRefreshCompleted = false;
+          }
+          if (!this.initialContextRefreshCompleted && !this.options.activeRunLabel()) {
+            await this.scanContextFiles();
+            this.initialContextRefreshCompleted = true;
+          }
+        });
+      }
+      await this.options.flushDeferredConversationSettings();
+      this.options.postSessionState();
+      this.postRecoveryNotices();
+    } catch (error) {
+      this.options.reportError('Could not load the saved Workshop session.', this.errorMessage(error));
+      this.options.postSessionState();
+    } finally {
+      // Replay authoritative busy state even if the hidden tab missed scan-end.
+      this.postScanState(this.scanningContextFiles);
+    }
   }
 
   async handleSaveSession(message: WorkshopSaveSessionMessage): Promise<void> {
@@ -209,7 +234,10 @@ export class WorkshopSessionMessageHandler {
       return;
     }
     try {
-      const result = await this.persistence.openNamed(message.payload?.sessionId ?? '');
+      const result = await this.persistence.openNamed(message.payload?.sessionId ?? '', async () => {
+        await this.scanContextFiles();
+        this.initialContextRefreshCompleted = true;
+      });
       this.options.postSessionState();
       this.postRecoveryNotices();
       const degraded = result.degradedConversationKeys.length;
@@ -224,6 +252,27 @@ export class WorkshopSessionMessageHandler {
       );
     } catch (error) {
       this.postActionFailure('open', error);
+    }
+  }
+
+  private postScanState(scanning: boolean): void {
+    const message: WorkshopSessionContextScanMessage = {
+      type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
+      source: 'extension.workshop',
+      payload: { scanning },
+      timestamp: Date.now()
+    };
+    void this.postMessage(message);
+  }
+
+  private async scanContextFiles(): Promise<void> {
+    this.scanningContextFiles = true;
+    this.postScanState(true);
+    try {
+      await this.options.refreshContextFiles();
+    } finally {
+      this.scanningContextFiles = false;
+      this.postScanState(false);
     }
   }
 

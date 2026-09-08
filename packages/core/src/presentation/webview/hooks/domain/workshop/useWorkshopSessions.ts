@@ -6,6 +6,7 @@ import {
   MessageType,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
+  WorkshopSessionContextScanMessage,
   WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionSaveStatusMessage,
   WorkshopSessionSummary,
@@ -17,6 +18,7 @@ import type {
 } from './useWorkshopRoom';
 
 export interface WorkshopSessionsState {
+  scanningContextFiles: boolean;
   sessionsAvailable: boolean | null;
   sessionsUnavailableReason?: 'no-workspace' | 'multi-root';
   currentSessionSummary?: WorkshopSessionSummary;
@@ -47,6 +49,7 @@ export interface WorkshopSessionsActions {
   consumeSessionActionResult: () => void;
   handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
   handleSessionActionResult: (message: WorkshopSessionActionResultMessage) => void;
+  handleSessionContextScan: (message: WorkshopSessionContextScanMessage) => void;
   handleSessionSaveStatus: (message: WorkshopSessionSaveStatusMessage) => void;
   handleSessionRecoveryNotice: (message: WorkshopSessionRecoveryNoticeMessage) => void;
   consumeRecoveryNotice: () => void;
@@ -62,6 +65,7 @@ export function useWorkshopSessions(
   roomReplacement: WorkshopRoomReplacementPort
 ): UseWorkshopSessionsReturn {
   const vscode = useVSCodeApi();
+  const [scanningContextFiles, setScanningContextFiles] = React.useState(false);
   const [sessionsAvailable, setSessionsAvailable] = React.useState<boolean | null>(null);
   const [sessionsUnavailableReason, setSessionsUnavailableReason] = React.useState<
     'no-workspace' | 'multi-root' | undefined
@@ -233,6 +237,10 @@ export function useWorkshopSessions(
     [roomReplacement]
   );
 
+  const handleSessionContextScan = React.useCallback((message: WorkshopSessionContextScanMessage) => {
+    setScanningContextFiles(message.payload.scanning);
+  }, []);
+
   const handleSessionSaveStatus = React.useCallback((message: WorkshopSessionSaveStatusMessage) => {
     setSessionSaveStatus(message.payload);
   }, []);
@@ -240,8 +248,12 @@ export function useWorkshopSessions(
   const handleSessionRecoveryNotice = React.useCallback(
     (message: WorkshopSessionRecoveryNoticeMessage) => {
       setRecoveryNotices((current) => {
-        const key = `${message.payload.code}:${message.payload.configId}`;
-        if (current.some((notice) => `${notice.code}:${notice.configId}` === key)) {
+        const noticeKey = (notice: WorkshopSessionRecoveryNoticeMessage['payload']): string =>
+          'sessionId' in notice
+            ? `${notice.code}:${notice.sessionId}`
+            : `${notice.code}:${notice.configId}`;
+        const key = noticeKey(message.payload);
+        if (current.some((notice) => noticeKey(notice) === key)) {
           return current;
         }
         return current.length >= 8
@@ -257,6 +269,7 @@ export function useWorkshopSessions(
   }, []);
 
   return {
+    scanningContextFiles,
     sessionsAvailable,
     sessionsUnavailableReason,
     currentSessionSummary,
@@ -283,6 +296,7 @@ export function useWorkshopSessions(
     consumeSessionActionResult,
     handleSessionsData,
     handleSessionActionResult,
+    handleSessionContextScan,
     handleSessionSaveStatus,
     handleSessionRecoveryNotice,
     consumeRecoveryNotice,

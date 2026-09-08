@@ -300,6 +300,15 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/openai/gpt-5.6-sol
   - OpenAI: https://openai.com/
 
+### OpenAI GPT-6 Astra — Frontier Reasoning
+
+- **Available in:** Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search; existing defaults are unchanged
+- **Description:** OpenRouter lists a 1,050,000-token context window, up to 128,000 output tokens, reasoning, tool use, and structured outputs. These are provider capabilities, not a prose-quality benchmark
+- **Pricing:** As verified on September 4, 2026, base input/output rates are $10/$50 per million tokens; prompts of at least 272,000 tokens use $20/$75 rates
+- **Source:** [OpenRouter's live model catalog](https://openrouter.ai/api/v1/models)
+- **Model:** [GPT-6 Astra on OpenRouter](https://openrouter.ai/openai/gpt-6-astra)
+- **Astra Pro:** `openai/gpt-6-astra-pro` is deferred. It was absent from the live catalog and its endpoint listing returned 404 on September 4, 2026; verify availability before adding it
+
 ### Qwen3.7 Max — Open-Model Powerhouse
 
 - **Best For:** Long-context prose analysis, planning, and structured rewrites

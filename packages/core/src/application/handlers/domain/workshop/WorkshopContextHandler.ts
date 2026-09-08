@@ -6,6 +6,7 @@ import {
 } from '@/application/services/workshop/WorkshopSessionService';
 import type {
   WorkshopContextAttachmentInput,
+  WorkshopContextFileRefreshInput,
   WorkshopMessageAttachmentInput
 } from '@/application/services/workshop/WorkshopSessionRecords';
 import {
@@ -37,6 +38,7 @@ import {
   WorkshopContextCatalogMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopOpenContextAttachmentFileMessage,
+  WorkshopRefreshContextFilesMessage,
   WorkshopRemoveContextAttachmentMessage,
   WorkshopRemoveMessageAttachmentMessage,
   WorkshopRequestContextAttachmentMessage,
@@ -44,6 +46,7 @@ import {
   WorkshopRunContextWizardMessage,
   WorkshopSearchContextResourcesMessage,
   WorkshopUpdateContextTextMessage,
+  WorkshopExcerptSource,
   workshopExcerptSourceUri
 } from '@messages';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -102,6 +105,10 @@ export class WorkshopContextHandler {
   ): void {
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
+    registerMutation(
+      MessageType.WORKSHOP_REFRESH_CONTEXT_FILES,
+      this.handleRefreshContextFiles.bind(this)
+    );
     registerMutation(
       MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT,
       this.handleRemoveContextAttachment.bind(this)
@@ -222,6 +229,132 @@ export class WorkshopContextHandler {
       relativePath: displayPath,
       truncation: loaded.truncation
     });
+  }
+
+  async handleRefreshContextFiles(_message: WorkshopRefreshContextFilesMessage): Promise<void> {
+    await this.refreshChangedContextFiles('manual');
+  }
+
+  /**
+   * Re-read all source-backed standing attachments as one session mutation.
+   * The stored attachment content is the baseline, so this intentionally
+   * avoids a separate persisted fingerprint schema.
+   */
+  async refreshChangedContextFiles(origin: 'manual' | 'session-open'): Promise<void> {
+    const attachments = this.session.getContextAttachments()
+      .filter((attachment) => attachment.kind === 'file');
+    if (attachments.length === 0) {
+      if (origin === 'manual') {
+        this.effects.sendStatus('No file-backed context attachments to refresh.');
+      }
+      return;
+    }
+
+    let provisionalWords = this.session.contextWordsUsed();
+    const updates: Array<WorkshopContextFileRefreshInput & { label: string }> = [];
+    const failures: string[] = [];
+    const truncated: string[] = [];
+
+    for (const attachment of attachments) {
+      if (!attachment.sourceUri) {
+        failures.push(`${attachment.label} (source unavailable)`);
+        continue;
+      }
+      const source: Extract<WorkshopExcerptSource, { kind: 'file' }> = {
+        kind: 'file',
+        sourceUri: attachment.sourceUri,
+        relativePath: attachment.relativePath ?? attachment.label,
+        ...(attachment.configuredResource
+          ? { configuredResource: { ...attachment.configuredResource } }
+          : {})
+      };
+      const authorization = await this.contextIntakeService.authorizeExcerptReread(source);
+      if (authorization.kind === 'refused') {
+        failures.push(`${attachment.label} (${authorization.message})`);
+        continue;
+      }
+      const loaded = await this.contextIntakeService.loadFile(
+        authorization.fsPath,
+        authorization.source.relativePath,
+        {
+          maxBytes: PROMPT_BUDGETS.contextAttachments.fileBytes,
+          maxWords: PROMPT_BUDGETS.contextAttachments.words
+        },
+        'attach'
+      );
+      if (loaded.kind === 'refused') {
+        failures.push(`${attachment.label} (${loaded.refusal.message})`);
+        continue;
+      }
+
+      // The refreshed attachment takes the old one's slot in the aggregate.
+      // A changed file can therefore grow only into genuinely free capacity.
+      const availableWords = PROMPT_BUDGETS.contextAttachments.words
+        - (provisionalWords - attachment.words);
+      const totalWords = loaded.file.truncation?.totalWords ?? loaded.file.words;
+      const bounded = this.contextIntakeService.boundText(
+        loaded.file.text,
+        availableWords,
+        totalWords
+      );
+      if (bounded.text === attachment.content) {
+        continue;
+      }
+      provisionalWords = provisionalWords - attachment.words + bounded.words;
+      if (bounded.truncation) {
+        truncated.push(
+          `${attachment.label} (${bounded.truncation.keptWords.toLocaleString('en-US')} of ${bounded.truncation.totalWords.toLocaleString('en-US')} words)`
+        );
+      }
+      updates.push({
+        id: attachment.id,
+        label: attachment.label,
+        content: bounded.text,
+        words: bounded.words,
+        truncation: bounded.truncation,
+        sourceUri: authorization.source.sourceUri,
+        relativePath: authorization.source.relativePath,
+        configuredResource: authorization.source.configuredResource
+      });
+    }
+
+    const refreshSummary = this.contextRefreshSummary(updates, failures, truncated);
+    if (updates.length > 0) {
+      const result = this.session.refreshContextFileAttachments(
+        updates.map(({ label: _label, ...input }) => ({
+          ...input
+        })),
+        refreshSummary
+      );
+      if (!result.ok) {
+        const detail = `Context refresh could not be committed (${result.reason}).`;
+        this.outputChannel.appendLine(`[WorkshopContextHandler] ${detail}`);
+        this.effects.reportError('Could not refresh context files.', detail);
+        return;
+      }
+      if (result.eventTurn) {
+        this.effects.postTurn(result.eventTurn);
+      }
+      this.effects.markDirty('context files refreshed');
+      this.effects.postSessionState();
+      this.outputChannel.appendLine(
+        `[WorkshopContextHandler] ${refreshSummary}`
+      );
+      this.effects.sendStatus(refreshSummary);
+      return;
+    }
+
+    if (failures.length > 0) {
+      const eventTurn = this.session.recordContextRefreshNotice(refreshSummary);
+      if (eventTurn) {
+        this.effects.postTurn(eventTurn);
+        this.effects.markDirty('context file refresh warning');
+      }
+      this.outputChannel.appendLine(`[WorkshopContextHandler] ${refreshSummary}`);
+      this.effects.sendStatus(refreshSummary);
+    } else if (origin === 'manual') {
+      this.effects.sendStatus('Context files are unchanged.');
+    }
   }
 
   async handleRemoveContextAttachment(
@@ -856,6 +989,26 @@ export class WorkshopContextHandler {
             : [];
         })
       : [];
+  }
+
+  private contextRefreshSummary(
+    updates: readonly { label: string }[],
+    failures: readonly string[],
+    truncated: readonly string[]
+  ): string {
+    const parts: string[] = [];
+    if (updates.length > 0) {
+      parts.push(
+        `Refreshed ${updates.length} context file${updates.length === 1 ? '' : 's'}: ${updates.map(({ label }) => label).join(', ')}`
+      );
+    }
+    if (truncated.length > 0) {
+      parts.push(`head-sliced ${truncated.join(', ')}`);
+    }
+    if (failures.length > 0) {
+      parts.push(`retained saved snapshot for ${failures.join(', ')}`);
+    }
+    return parts.join(' · ');
   }
 
 }

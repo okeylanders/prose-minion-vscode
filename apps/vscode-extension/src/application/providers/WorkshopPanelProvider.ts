@@ -151,6 +151,14 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     const viewStateSubscription = panel.onDidChangeViewState(() => {
       if (panel.visible) {
         this.messageHandler?.flushCachedResults?.();
+        // A retained tab does not remount React. Reuse the normal load route
+        // so Git changes are adopted before the writer continues this room.
+        void this.messageHandler?.handleMessage({
+          type: MessageType.WORKSHOP_REQUEST_SESSION,
+          source: 'webview.workshop',
+          payload: {},
+          timestamp: Date.now()
+        });
       }
     });
 

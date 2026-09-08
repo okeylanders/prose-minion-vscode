@@ -90,6 +90,27 @@ describe('WorkshopApp', () => {
     jest.clearAllMocks();
   });
 
+  it('covers the chat while context is scanned, even when session state arrives mid-scan', () => {
+    render(<WorkshopApp />);
+    const scan = (scanning: boolean) => act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: {
+        type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
+        source: 'extension.workshop', timestamp: 1, payload: { scanning }
+      } }));
+    });
+
+    scan(true);
+    expect(screen.getByText('Scanning context files for updates…')).not.toBeNull();
+    const content = screen.getByLabelText('Session thread').querySelector('.pm-ws-session-content')!;
+    expect(content.hasAttribute('inert')).toBe(true);
+    act(() => window.dispatchEvent(new MessageEvent('message', { data: readySession() })));
+    expect(screen.getByText('Loading…')).not.toBeNull();
+
+    scan(false);
+    expect(screen.queryByText('Loading…')).toBeNull();
+    expect(content.hasAttribute('inert')).toBe(false);
+  });
+
   it('renders the room shell and opens its composed feature surfaces', () => {
     render(<WorkshopApp />, { wrapper: React.StrictMode });
 

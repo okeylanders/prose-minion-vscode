@@ -6,6 +6,10 @@ import {
 } from '@messages';
 
 describe('Workshop writer profile validation', () => {
+  it('allows up to 20,000 characters of writer context', () => {
+    expect(WORKSHOP_WRITER_PROFILE_LIMITS.bio).toBe(20_000);
+  });
+
   it('accepts a complete object and trims committed strings', () => {
     expect(coerceWorkshopWriterProfile({
       enabled: true,

@@ -773,6 +773,13 @@ export interface WorkshopSessionActionResultMessage extends MessageEnvelope<{
   type: MessageType.WORKSHOP_SESSION_ACTION_RESULT;
 }
 
+/** Ephemeral scan lifecycle while restoring/opening a Workshop session. */
+export interface WorkshopSessionContextScanMessage extends MessageEnvelope<{
+  scanning: boolean;
+}> {
+  type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN;
+}
+
 /** Actual rolling/named persistence state emitted by the ordered write queue. */
 export interface WorkshopSessionSaveStatusMessage extends MessageEnvelope<{
   sessionId: string;
@@ -787,6 +794,15 @@ export interface WorkshopSessionRecoveryNoticeMessage extends MessageEnvelope<{
   code: string;
   widgetId: WorkshopWidgetId;
   configId: string;
+  message: string;
+} | {
+  code: 'named-session-missing';
+  sessionId: string;
+  message: string;
+} | {
+  code: 'local-session-preserved';
+  sessionId: string;
+  recoveryFileName: string;
   message: string;
 }> {
   type: MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE;

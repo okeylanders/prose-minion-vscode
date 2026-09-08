@@ -93,8 +93,11 @@ const sourceLine = (
       : '';
   return (
     <>
-      <Icon name="doc" size={12} /> From {source.relativePath}
-      {lines}
+      <Icon name="doc" size={12} />
+      <span>
+        From <span className="pm-ws-provenance-file">{source.relativePath}</span>
+        {lines}
+      </span>
     </>
   );
 };
@@ -278,10 +281,10 @@ export const ExcerptPanel: React.FC<ExcerptPanelProps> = ({
           context.
         </p>
       )}
-      <div className="pm-ws-excerpt-actions">
+      <div className={`pm-ws-excerpt-actions${roomHasMemory && fileBacked ? ' pm-ws-excerpt-actions-reread' : ''}`}>
         {roomHasMemory && fileBacked ? (
           <button
-            className="pm-ws-action-btn"
+            className="pm-ws-file-refresh"
             type="button"
             onClick={onRereadFile}
             disabled={isRunning}

@@ -113,6 +113,15 @@ export interface WorkshopAddContextFileMessage extends MessageEnvelope<Record<st
   type: MessageType.WORKSHOP_ADD_CONTEXT_FILE;
 }
 
+/**
+ * Re-read every file-backed standing context attachment and adopt only the
+ * snapshots whose bounded prompt text changed. Text notes are session-owned
+ * and intentionally excluded.
+ */
+export interface WorkshopRefreshContextFilesMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.WORKSHOP_REFRESH_CONTEXT_FILES;
+}
+
 export interface WorkshopRemoveContextAttachmentPayload {
   id: string;
 }
@@ -123,9 +132,9 @@ export interface WorkshopRemoveContextAttachmentMessage
 }
 
 /**
- * Replace one authored attachment's text from the shared Edit/Preview sheet
- * (Sprint 13A). Writer text notes and wizard suggestions are editable in
- * session; a wizard edit never touches the source file on disk.
+ * Replace one text attachment's body from the shared Edit/Preview sheet.
+ * Writer notes and wizard-generated briefs are session-owned; file-backed
+ * attachments always remain read-only and refresh from their source.
  */
 export interface WorkshopUpdateContextTextPayload {
   id: string;

@@ -452,8 +452,10 @@ export const WorkshopApp: React.FC = () => {
     errorMessage: workshop.errorMessage
   });
 
+  const sessionLoading = workshopSessions.scanningContextFiles ||
+    workshopSessions.sessionActionPending === 'open';
   const roomMutationLocked =
-    workshop.isRunning || workshop.wizardRunning ||
+    sessionLoading || workshop.isRunning || workshop.wizardRunning ||
     workshopSessions.sessionActionPending !== undefined;
   // Sprint 13A §9: gating has two independent reasons, and the UI must say
   // WHICH one applies. No excerpt → a permanent, explained gate with a badge.
@@ -1041,6 +1043,7 @@ export const WorkshopApp: React.FC = () => {
               isRunning={roomMutationLocked}
               onAddText={openAddTextSheet}
               onAddFile={openAttachSelector}
+              onRefreshFiles={workshop.refreshContextFiles}
               onOpenAttachment={openAttachmentSheet}
               onRemove={workshop.removeContextAttachment}
               wizardRunning={workshop.wizardRunning}
@@ -1108,6 +1111,22 @@ export const WorkshopApp: React.FC = () => {
         </aside>
 
         <section className="pm-ws-main" aria-label="Session thread">
+          {sessionLoading && (
+            <div className="pm-ws-session-loading" role="status" aria-live="polite">
+              <div className="pm-ws-session-loading-card">
+                <span className="pm-ws-wizard-spin" aria-hidden="true" />
+                <strong>Loading…</strong>
+                <p>{workshopSessions.scanningContextFiles
+                  ? 'Scanning context files for updates…'
+                  : 'Opening your Workshop session…'}</p>
+              </div>
+            </div>
+          )}
+          <div
+            className="pm-ws-session-content"
+            aria-busy={sessionLoading}
+            {...{ inert: sessionLoading ? '' : undefined }}
+          >
           <ErrorBoundary
             ref={threadErrorRef}
             fallback={
@@ -1341,11 +1360,12 @@ export const WorkshopApp: React.FC = () => {
               onOpenWidgets={openWidgetsModal}
             />
           </ErrorBoundary>
+          </div>
         </section>
       </div>
 
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
-          text note, editing a wizard suggestion, and reading a project file
+          text note, editing a wizard-generated brief, and reading a project file
           (Sprint 13A §5–§7). */}
       {textSheet && (
         <WorkshopTextSheet
@@ -1569,7 +1589,7 @@ export const WorkshopApp: React.FC = () => {
         onSave={workshopSessions.saveSession}
       />
       <WorkshopSessionBrowserModal
-        open={sessionBrowserOpen}
+        open={sessionBrowserOpen && !sessionLoading}
         available={workshopSessions.sessionsAvailable}
         unavailableReason={
           workshopSessions.sessionsUnavailableReason ?? workshop.persistenceUnavailableReason

@@ -139,6 +139,7 @@ import {
   WorkshopSetExcerptMessage,
   WorkshopAddContextTextMessage,
   WorkshopAddContextFileMessage,
+  WorkshopRefreshContextFilesMessage,
   WorkshopRemoveContextAttachmentMessage,
   WorkshopUpdateContextTextMessage,
   WorkshopRequestContextAttachmentMessage,
@@ -175,6 +176,7 @@ import {
   WorkshopSessionsDataMessage,
   WorkshopSessionActionResultMessage,
   WorkshopSessionSaveStatusMessage,
+  WorkshopSessionContextScanMessage,
   WorkshopSessionRecoveryNoticeMessage,
   WorkshopGesturePlaygroundGenerateMessage,
   CancelGesturePlaygroundGenerateRequestMessage,
@@ -255,6 +257,7 @@ export type WebviewToExtensionMessage =
   | WorkshopSetExcerptMessage
   | WorkshopAddContextTextMessage
   | WorkshopAddContextFileMessage
+  | WorkshopRefreshContextFilesMessage
   | WorkshopRemoveContextAttachmentMessage
   | WorkshopUpdateContextTextMessage
   | WorkshopRequestContextAttachmentMessage
@@ -334,6 +337,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopSessionsDataMessage
   | WorkshopSessionActionResultMessage
   | WorkshopSessionSaveStatusMessage
+  | WorkshopSessionContextScanMessage
   | WorkshopSessionRecoveryNoticeMessage
   | WorkshopContextCatalogMessage
   | WorkshopContextSearchResultsMessage

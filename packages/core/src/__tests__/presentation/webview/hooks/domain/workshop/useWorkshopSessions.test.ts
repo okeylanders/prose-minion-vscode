@@ -99,10 +99,10 @@ describe('useWorkshopSessions', () => {
       result.current.handleSessionRecoveryNotice(notice('v1', 'wc-2'));
     });
 
-    expect(result.current.recoveryNotices.map(({ configId }) => configId))
+    expect(result.current.recoveryNotices.map((notice) => 'configId' in notice ? notice.configId : undefined))
       .toEqual(['wc-1', 'wc-2']);
     act(() => result.current.consumeRecoveryNotice());
-    expect(result.current.recoveryNotices.map(({ configId }) => configId))
+    expect(result.current.recoveryNotices.map((notice) => 'configId' in notice ? notice.configId : undefined))
       .toEqual(['wc-2']);
   });
 });

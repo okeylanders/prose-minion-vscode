@@ -1,3 +1,4 @@
+import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/WorkshopSessionMessageHandler';
 import {
   MessageType
 } from '@messages';
@@ -41,6 +42,117 @@ describe('Workshop composed routing — session owner', () => {
       pin,
       runProse
     } = createWorkshopRouteTestHarness());
+  });
+
+  it.each(['restore', 'open'] as const)('announces a pending context scan during %s and clears it on completion', async (action) => {
+    let finishScan!: () => void;
+    let started!: () => void;
+    const scanStarted = new Promise<void>((resolve) => { started = resolve; });
+    const refreshContextFiles = jest.fn(() => new Promise<void>((resolve) => {
+      finishScan = resolve;
+      started();
+    }));
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles,
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => undefined
+    });
+    const pending = action === 'restore'
+      ? handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} })
+      : handler.handleOpenSession({ type: MessageType.WORKSHOP_OPEN_SESSION, source: 'webview.workshop', timestamp: 0, payload: { sessionId: 'named' } });
+    await scanStarted;
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
+      .toEqual([{ scanning: true }]);
+    finishScan();
+    await pending;
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
+      .toEqual(action === 'restore'
+        ? [{ scanning: true }, { scanning: false }, { scanning: false }]
+        : [{ scanning: true }, { scanning: false }]);
+  });
+
+  it.each(['restore', 'open'] as const)('clears the scan indicator if the %s scan fails', async (action) => {
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: jest.fn().mockRejectedValue(new Error('File read failed')),
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => undefined
+    });
+    if (action === 'restore') {
+      await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
+    } else {
+      await handler.handleOpenSession({ type: MessageType.WORKSHOP_OPEN_SESSION, source: 'webview.workshop', timestamp: 0, payload: { sessionId: 'named' } });
+      expect(posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT).at(-1).payload.ok).toBe(false);
+    }
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
+      .toEqual(action === 'restore'
+        ? [{ scanning: true }, { scanning: false }, { scanning: false }]
+        : [{ scanning: true }, { scanning: false }]);
+  });
+
+  it('loads a changed named checkpoint before scanning context and publishing state', async () => {
+    const order: string[] = [];
+    persistence.refreshNamedSession.mockImplementation(async (afterLoad) => { order.push('named'); await afterLoad?.(true); return true; });
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: async () => { order.push('context'); },
+      postSessionState: () => { order.push('state'); },
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => undefined
+    });
+    const request = { type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} } as const;
+    await handler.handleRequestSession(request);
+    await handler.handleRequestSession(request);
+    expect(order).toEqual(['named', 'context', 'state', 'named', 'context', 'state']);
+  });
+
+  it('reports a named load failure and skips context mutations', async () => {
+    persistence.refreshNamedSession.mockRejectedValue(new Error('Named checkpoint unreadable'));
+    const refreshContextFiles = jest.fn();
+    const reportError = jest.fn();
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles,
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError,
+      activeRunLabel: () => undefined
+    });
+    await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
+    expect(refreshContextFiles).not.toHaveBeenCalled();
+    expect(reportError).toHaveBeenCalledWith('Could not load the saved Workshop session.', 'Named checkpoint unreadable');
+  });
+
+  it('does not replace a room while a response is active', async () => {
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: jest.fn(),
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => 'response'
+    });
+    await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
+    expect(persistence.refreshNamedSession).not.toHaveBeenCalled();
+  });
+
+  it('replays idle scan state when a retained tab missed the previous completion', async () => {
+    const refreshContextFiles = jest.fn(async () => undefined);
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles,
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => undefined
+    });
+    const request = { type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} } as const;
+    await handler.handleRequestSession(request);
+    postMessage.mockClear(); // Simulate a client that missed the completed scan.
+    await handler.handleRequestSession(request);
+    expect(refreshContextFiles).toHaveBeenCalledTimes(1);
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
+      .toEqual([{ scanning: false }]);
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {
@@ -170,7 +282,7 @@ describe('Workshop composed routing — session owner', () => {
 
       expect(persistence.saveNamed).toHaveBeenCalledWith('Saved Room', undefined);
       expect(persistence.list).toHaveBeenCalledWith('room', expect.any(AbortSignal));
-      expect(persistence.openNamed).toHaveBeenCalledWith('saved-1');
+      expect(persistence.openNamed).toHaveBeenCalledWith('saved-1', expect.any(Function));
       expect(persistence.renameNamed).toHaveBeenCalledWith('saved-1', 'Renamed Room');
       expect(persistence.duplicateNamed).toHaveBeenCalledWith('saved-1', 'Copied Room');
       expect(persistence.resolveRevealPath).toHaveBeenCalledWith('saved-1');

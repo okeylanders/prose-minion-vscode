@@ -4,6 +4,30 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+### Added
+
+- GPT-6 Astra (`openai/gpt-6-astra`) in shared model selectors and Category Search;
+  existing defaults are unchanged.
+- Refresh changed Workshop context files, with a loading indicator during scans.
+
+### Changed
+
+- Polished Workshop context/excerpt cards and made file-backed attachments
+  read-only; text briefs remain editable.
+- Increased the writer-profile biography limit to 20,000 characters.
+
+### Fixed
+
+- Named Workshop sessions take precedence over current.json when loading,
+  including returning to a retained tab after Git sync. This supersedes the
+  v2.2.3 conflict-selection behavior.
+- Reject stale named saves while retaining live work in rolling recovery. Handle
+  unrelated corrupt session files and externally deleted named files safely.
+- Preserve meaningful displaced local work in a separate recovery session before
+  loading its named checkpoint, with a notice showing where to find it. Automatic
+  resume notices alone do not create recovery files.
+- Serialize context scans with session loads and replay scan state on reveal.
+
 ## [2.2.4] - 2026-09-03
 
 ### Added

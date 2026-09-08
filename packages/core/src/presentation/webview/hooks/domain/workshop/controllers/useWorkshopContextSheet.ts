@@ -120,14 +120,14 @@ export function useWorkshopContextSheet({
 
   const openAttachmentSheet = React.useCallback(
     (attachment: WorkshopContextAttachmentSnapshot) => {
-      const mode: WorkshopTextSheetMode = attachment.origin === 'wizard'
-        ? { kind: 'context-wizard', label: attachment.label }
-        : attachment.kind === 'file'
-          ? {
-              kind: 'context-file',
-              label: attachment.label,
-              relativePath: attachment.relativePath
-            }
+      const mode: WorkshopTextSheetMode = attachment.kind === 'file'
+        ? {
+            kind: 'context-file',
+            label: attachment.label,
+            relativePath: attachment.relativePath
+          }
+        : attachment.origin === 'wizard'
+          ? { kind: 'context-wizard', label: attachment.label }
           : { kind: 'context-text', label: attachment.label };
       if (attachment.content !== undefined) {
         setTextSheet({ mode, attachmentId: attachment.id, seed: attachment.content });

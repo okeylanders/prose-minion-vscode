@@ -24,6 +24,15 @@
 
 ---
 
+## Coming next
+
+- GPT-6 Astra (`openai/gpt-6-astra`) in all shared model selectors and Category
+  Search, with existing defaults unchanged.
+- Workshop context-file refresh, clearer cards, and a loading indicator.
+- Named-session authority on load and protection against stale writes after Git
+  sync; rolling recovery continues when a named save fails.
+- Writer-profile biographies up to 20,000 characters.
+
 ## What's new in v2.2.4 — Muse Spark 1.3
 
 - **Muse Spark 1.3 joins every shared picker** — Meta's latest 1M-context multimodal Muse model is now available for Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search. Muse 1.1 and 1.2 remain available, and no defaults change.
