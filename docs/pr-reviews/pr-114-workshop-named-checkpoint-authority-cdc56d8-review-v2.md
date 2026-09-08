@@ -6,7 +6,7 @@
 ## Resolution ledger
 
 Status legend: **Open** = act before merge · **Deferred** = accepted follow-up with reason ·
-**Addressed** = implemented and automatically validated; independent re-review pending · **Partially addressed** = fixed with remainder · **N/A** = praise, superseded, or not actionable.
+**Addressed** = fixed and independently re-reviewed at `d5f522d` · **Partially addressed** = fixed with remainder · **N/A** = praise, superseded, or not actionable.
 
 | ID | Sev | Finding | Reviewers | Discovery | Signal | Status |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,80 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 | P-1 | 💚 Praise | The pre-rename recheck compares the full decoded destination against the accepted baseline; summary indexes never authorize a write | Orchestrator | 1 independent | — | N/A — preserve |
 | P-2 | 💚 Praise | Context refresh reuses `authorizeExcerptReread` and bounded `loadFile`; no new path-trust surface, failures keep the saved snapshot | Orchestrator, Bria scout | 1 independent · 1 runway-prompted | — | N/A — preserve |
 | P-3 | 💚 Praise | Named-lookup failure no longer authorizes a fallback write; the fail-closed intent is right even where F-01 shows its scope is too wide | Orchestrator | 1 independent | — | N/A — preserve |
+
+## Re-review receipt — 2026-09-08 · head `d5f522d`
+
+Independent re-review of `fix(workshop): preserve local recovery and address PR review`
+(23 files, +952/−197 over the reviewed head). Read in full: the coordinator, store,
+session message handler, contract, and webview-hook diffs; the new
+`WorkshopSessionRecoveryEquality.ts`; the new coordinator-plus-real-store suite
+`WorkshopSessionPersistenceIntegration.test.ts`; the ADR and tech-debt amendments.
+
+**Verified independently on `d5f522d`:** three TypeScript projects clean; lint 0 errors
+(963 pre-existing warnings); Jest 210 suites / 2,365 tests / 2 snapshots pass;
+`git diff --check` clean; CI "verify" green on the head. Manual VS Code verification
+remains outstanding, as the author states.
+
+**Confirmed fixed, with the evidence that persuaded me:**
+
+- **F-01** — `initializeOnce` now catches the named lookup separately and hydrates
+  `current.json` without associating (`Coordinator.ts` "Named association unconfirmed;
+  restoring current.json only"). The exact probe scenario from the first review
+  (never-named room beside a merge-conflicted sibling) is now a real-store test that
+  also proves autosave continues.
+- **F-02** — `writeNamedWithRollingRecovery` writes `current.json` when the named write
+  fails, keeps the dirty revision retryable, never advances the baseline, and reports
+  both failures if the rolling write also fails. Covered against the real store for
+  conflict and for external deletion.
+- **F-03** — `preserveDisplacedLocalSession` saves the losing room under a fresh id with
+  a "(local recovery)" title before hydration on startup, reveal, and same-id Open, then
+  posts a `local-session-preserved` notice that the webview renders as a toast. The
+  eligibility comparison (`hasSameWorkshopRecoveryContent`) ignores canonical resume
+  dividers, their counter and cursor movement, and timestamps; anything else counts as
+  work. Preservation failure aborts the replacement. Tests cover excerpt, transcript,
+  archive, and non-canonical-resume divergence, automatic-only differences, and
+  recovery-write failure on startup and reveal. The fail-safe direction is right: doubt
+  produces a copy, never a discard.
+- **F-04** — a confirmed-missing active file detaches after the live snapshot is written,
+  with a `named-session-missing` notice; Delete handles the already-missing case; an
+  unassociated room is no longer reattached when Git restores a same-id file.
+- **F-05** — `refreshNamedSession(afterLoad)` and `openNamed(sessionId, afterLoad)` run the
+  context scan inside the serialized operation, so mutation routes and a second load
+  wait; autosaves scheduled by the scan queue behind the operation without deadlock
+  (test "holds the operation guard across context scanning").
+- **F-06** — the handler tracks `scanningContextFiles` and replays it in a `finally` on
+  every load request, so a missed `scanning:false` clears on the next reveal.
+- **F-07 (partial)** — `updateNamed` compares the first read against the baseline before
+  writing the temp file; unassociated rooms skip the reveal lookup; the ADR 2026-07-14
+  sentence is corrected. The pre-rename recheck (two reads per successful autosave)
+  remains by design; byte-hash baselines stay deferred.
+- **F-08 (partial)** — the missing suites exist and run against the real store, including
+  second-read rollback and duplicate first-load requests.
+- **F-09 (partial)** — both changelogs, README "Coming next", ADR header and amendments,
+  tech-debt priority/criteria, bio description, and a memory-bank entry are in. **Still
+  open:** the PR title and body on GitHub are unchanged from the context-refresh
+  description; update them before merge.
+
+**Residuals noted, none blocking:**
+
+1. An associated room whose named file is missing *and* whose directory also holds an
+   unreadable index-less sibling still errors on every reveal instead of detaching
+   (`findNamedSession` throws before "not found" can be concluded). Two simultaneous
+   failures; acceptable, but the error text will say "could not load" rather than
+   "missing".
+2. `handleRequestSession` now reports any failure inside the try as "Could not load the
+   saved Workshop session", including a `flushDeferredConversationSettings` failure.
+   Cosmetic mislabel.
+3. `handleOpenSession` reports the open as failed if the scan inside `afterLoad` throws,
+   although the room was already promoted. Pre-existing shape, now inside the boundary.
+4. A resume divider sitting mid-transcript on one side only can make otherwise identical
+   histories compare unequal (turn ids embed the counter) and produce a recovery copy.
+   Fail-safe direction; worth knowing when a stray "(local recovery)" file appears.
+
+**Verdict after re-review:** the three High findings are resolved with real-store
+regressions; the mechanism now honors both promises (named authority and local
+durability). Remaining before merge: retitle the PR, and perform the manual VS Code
+pass the tech-debt note describes. Nearly there.
 
 ## Review coverage
 
@@ -401,7 +475,7 @@ Needs rework, narrowly. The core mechanism — full-checkpoint optimistic writes
 *Reviewed by the orchestrator with runway scouts Bria 🎯 · Stan 🗂️ · Marcus 🏛️ · Sam 🔍. Specialist panel and Sensei were not run at the author's request to conserve usage.*
 
 
-## Implementation response — 2026-09-08 (not independently re-reviewed)
+## Implementation response — 2026-09-08 (author)
 
 F-01–F-06 and the scoped F-07 improvements are implemented. The named checkpoint
 still owns read/write authority; rolling durability now continues independently
