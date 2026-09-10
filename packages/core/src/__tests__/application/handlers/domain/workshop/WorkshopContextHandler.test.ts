@@ -203,6 +203,10 @@ describe('WorkshopContextHandler', () => {
     expect(effects.markDirty).not.toHaveBeenCalled();
     expect(effects.postTurn).not.toHaveBeenCalled();
     expect(effects.sendStatus).toHaveBeenCalled();
+
+    await handler.refreshChangedContextFiles('manual');
+    expect(effects.markDirty).toHaveBeenCalledTimes(1);
+    expect(effects.postTurn).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the wizard slot occupied after cancellation until the original run settles', async () => {

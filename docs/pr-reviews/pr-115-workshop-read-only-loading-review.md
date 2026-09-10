@@ -11,15 +11,15 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 
 | ID | Sev | Finding | Verdict | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | Startup mirror failure (named changed during provider setup, or `current.json` write failure) leaves a stale hydrated room with a second `session_start` marker, drops the named association so reveal never adopts the newer file, and swallows the recovery notice for a recovery file that was already written | ✅ Confirmed by probe | **Open** |
-| F-02 | 🟠 High | A verified clean cache now suppresses **startup** recovery for autosaved work whose named file was later reverted by Git; before this PR startup preserved it conservatively | ✅ Confirmed by probe | **Decision** — by ADR design, but widens the no-recovery window from reveal to startup |
-| F-03 | 🟡 Standard | Save-as-new rejects with the rolling write error after the named file already exists and the live identity has moved; the writer is told the save failed | ✅ Confirmed by probe | **Open** |
-| F-04 | 🟡 Standard | Startup now awaits `ensureAssistantReady` for every named session, including archive-free ones; a provider-init rejection turns a previously fine restore into the F-01 protected state | 🔎 Traced | **Open** — fold into F-01 fix |
-| F-05 | 🟡 Standard | Test gaps on the new failure surface: startup write failure, save-as-new rolling failure, dropped recovery notice, provider-init rejection, rollback of `localWorkPending`, resume marker after a failed first interaction | — | **Open** |
-| F-06 | 🟡 Standard | Manual Refresh with no disk changes but with failures issues two `markDirty` calls and therefore two named writes per click | 🔎 Traced | **Deferred** — cost only, no correctness risk |
-| F-07 | 🔵 Nit | `awaitingInitialSession` re-covers the room with the loader if a startup error is dismissed before any session state arrives; the one host path that can do this (`waitForSessionOperations` rejecting) sits outside the handler's `try` | 🔎 Traced | **Deferred** — unlikely path |
-| F-08 | 🔵 Nit | Save-as-new advances `writtenRevision` even when the rolling mirror was skipped because `current.json` is protected, so `hasPendingWrite()` reports clean while the mirror is stale | 🔎 Traced | **Deferred** |
-| F-09 | 🔵 Nit | `.memory-bank` note says "Changes remain uncommitted" and cites a `/private/tmp` evidence file that is not in the repo | — | **Open** — doc hygiene |
+| F-01 | 🟠 High | Startup mirror failure (named changed during provider setup, or `current.json` write failure) leaves a stale hydrated room with a second `session_start` marker, drops the named association so reveal never adopts the newer file, and swallows the recovery notice for a recovery file that was already written | ✅ Confirmed by probe | **Addressed — re-review pending** — retain hydrated room/association/resume; retry cache independently; preserve committed recovery notices through failure |
+| F-02 | 🟠 High | A verified clean cache now suppresses **startup** recovery for autosaved work whose named file was later reverted by Git; before this PR startup preserved it conservatively | ✅ Confirmed by probe | **Addressed** — Accept approved by Okey; Git-revert consequence documented and regression tested |
+| F-03 | 🟡 Standard | Save-as-new rejects with the rolling write error after the named file already exists and the live identity has moved; the writer is told the save failed | ✅ Confirmed by probe | **Addressed — re-review pending** — named save succeeds; cache failure reported separately and retried without another named write |
+| F-04 | 🟡 Standard | Startup now awaits `ensureAssistantReady` for every named session, including archive-free ones; a provider-init rejection turns a previously fine restore into the F-01 protected state | 🔎 Traced | **Addressed — re-review pending** — mirror no longer invokes provider readiness; archive-free rejection guard tested |
+| F-05 | 🟡 Standard | Test gaps on the new failure surface: startup write failure, save-as-new rolling failure, dropped recovery notice, provider-init rejection, rollback of `localWorkPending`, resume marker after a failed first interaction | — | **Addressed — re-review pending** — real-store startup/save/rollback/V1/failed-interaction coverage and route error-boundary checks added |
+| F-06 | 🟡 Standard | Manual Refresh with no disk changes but with failures issues two `markDirty` calls and therefore two named writes per click | 🔎 Traced | **Addressed — re-review pending** — manual warning path schedules one dirty revision |
+| F-07 | 🔵 Nit | `awaitingInitialSession` re-covers the room with the loader if a startup error is dismissed before any session state arrives; the one host path that can do this (`waitForSessionOperations` rejecting) sits outside the handler's `try` | 🔎 Traced | **Addressed — re-review pending** — initialization await moved inside try; state/notices/scan completion covered on failure |
+| F-08 | 🔵 Nit | Save-as-new advances `writtenRevision` even when the rolling mirror was skipped because `current.json` is protected, so `hasPendingWrite()` reports clean while the mirror is stale | 🔎 Traced | **Addressed — re-review pending** — pending mirrors tracked separately; protected rescue remains pending without overwriting original |
+| F-09 | 🔵 Nit | `.memory-bank` note says "Changes remain uncommitted" and cites a `/private/tmp` evidence file that is not in the repo | — | **Addressed — re-review pending** — publication/manual verification notes updated; temporary evidence identified as ephemeral |
 | F-10 | 🟢 Praise | Rolling provenance is stripped at three independent boundaries (hash helper, coordinator recovery save, store `saveNamed`/`updateNamed`), so the marker cannot leak into named bytes even if one caller forgets | — | N/A — preserve |
 | F-11 | 🟢 Praise | Optimistic named-write checks are untouched: `acceptedNamedCheckpoint` is only ever assigned from a named read or a successful named write, and `mirrorNamedCheckpoint` rechecks the source after the async gap | — | N/A — preserve |
 | F-12 | 🟢 Praise | Status-ordering fix is minimal and correctly placed: clear on `scanning:true`, never on `scanning:false`, and `handleSessionState` does not touch status, so fresh scan results survive completion | — | N/A — preserve |
@@ -215,12 +215,12 @@ One `clearStatus` seam on the replacement port, called from `openSession`, `begi
 
 ---
 
-## Decisions for Okey
+## Decisions for Okey (resolved in remediation)
 
 1. **F-02:** accept that a verified clean cache drops autosaved-then-Git-reverted turns at startup (document it), narrow with a timestamp rule (ADR amendment), or add a silent `current.previous.json` safety copy.
 2. **F-01 shape:** on a startup mirror failure, should the room keep its named association and let reveal adopt later (my recommendation), or is "protected and detached until explicit Open" the intended contract? The existing test encodes the latter; the ADR 2026-09-08 reveal guarantee implies the former.
 
-## Straightforward fixes (no decision needed)
+## Straightforward fixes (original review recommendations; resolution above)
 
 - F-01 mechanics: no start marker after a successful hydrate; push the recovery notice regardless of mirror outcome; add branch tests.
 - F-03: do not reject Save-as-new on a rolling mirror failure; report via save status.
@@ -230,3 +230,37 @@ One `clearStatus` seam on the replacement port, called from `openSession`, `begi
 ---
 
 *Reviewed SHA `33e447f029b3296fc71a4be11cb1d413d7627d99`. Review only: no fixes implemented, no manuscript or session files touched, probe test file deleted before commit.*
+
+## Remediation assessment — 2026-09-10
+
+Okey approved named authority after Git reverts and retaining the named association
+through startup mirror failure. No timestamp precedence or silent backup file was
+added. The original findings above are retained as the reviewed-head record.
+
+Implementation now separates author dirty revisions from pending rolling mirrors.
+A mirror failure after successful startup hydration cannot append a start marker,
+clear the resume boundary, or detach named. Reveal adopts a changed named file;
+unchanged reveal and flush retry only the accepted cache payload. New author work
+supersedes old cache retries. Successful named saves return their summary while
+cache failures appear separately in save status, which is replayed on room request.
+Protected current files remain untouched by rescue saves/flush until explicit Open
+or reset. Named durability advances only the captured revision, preserving later
+queued author edits. Strict optimistic named checks remain intact.
+
+Committed recovery notices live outside hydration rollback and are delivered from
+load-finally paths. A failed promotion may leave a recovery file, but its notice is
+now delivered and retained work eligibility survives rollback. Manual warning
+refresh emits one dirty revision. Initialization failures publish room state and
+scan completion rather than leaving the loader waiting indefinitely.
+
+Manual evidence: Okey confirmed the stale-status fix after rebuilding. Live logs
+also confirmed clean-cache adoption without another recovery after the initial
+legacy-cache transition. The new injected failure paths are automated evidence;
+broader manual failure checks and independent remediation re-review remain pending.
+
+Validation after remediation: 210 Jest suites / 2,397 tests / 2 snapshots passed;
+all three TypeScript projects passed; lint reported 0 errors and 963 existing
+warnings; build and bundle sentinels passed with existing webpack size warnings;
+`git diff --check` passed. These remediation changes are included in PR #115; no manuscript files
+were modified. Independent remediation review and manual failure-path checks are
+still pending.

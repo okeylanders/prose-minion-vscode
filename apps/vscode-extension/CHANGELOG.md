@@ -18,6 +18,10 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Fixed
 
+- Keep restored Workshop rooms and recovery notices intact if updating current.json
+  fails. Cache retries no longer rewrite named sessions or their timestamps.
+- Report successful named saves separately from cache-copy failures. Git reverts
+  of named sessions also replace their clean caches, including autosaved turns.
 - Clear stale Workshop status messages when opening or starting a session and
   before loading context, so a previous session's refresh result does not linger.
 - Opening or revealing saved Workshop sessions no longer writes resume notices or

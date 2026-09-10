@@ -1,6 +1,6 @@
 # ADR 2026-09-10: Workshop loading does not create author work
 
-**Status:** Accepted — implemented locally; manual VS Code verification pending
+**Status:** Accepted — PR #115 remediation implemented for PR #115; failure-path re-review pending
 **Date:** 2026-09-10
 **Supersedes:** load-time mutation behavior in ADR 2026-09-08 (named authority retained)
 
@@ -45,3 +45,27 @@ The optional rolling marker extends the V2 envelope without changing named-file
 shape. Legacy checkpoints can cause one conservative recovery when provenance is
 unknown. The existing full-checkpoint optimistic-write checks and final filesystem
 compare/rename limitation remain unchanged.
+
+## Review clarification — 2026-09-10
+
+Named authority also applies when Git reverts real autosaved author work. Once
+that work was successfully written to named, its verified clean rolling copy
+follows the reverted named file without recovery. Unsaved work here means work
+not successfully committed to the named checkpoint, not work uncommitted to Git.
+No timestamp heuristic or additional backup file is introduced.
+
+A successful hydration or named write is independent of its rolling cache copy.
+A failed startup mirror keeps the hydrated room, named association, accepted
+baseline and pending resume. A later reveal adopts a changed named checkpoint;
+if named is unchanged, reveal or flush retries only its original cache payload.
+Cache retries do not capture runtime context, touch activity, or rewrite named.
+New author work supersedes an older cache retry; strict named-write checks remain.
+Save-as-new and explicit updates return the successful named result even if the
+cache copy fails, reporting that failure separately through save status.
+
+Pending cache copies are tracked separately from author dirty revisions and
+survive replacement rollback. A protected unreadable current file stays protected
+through rescue saves and flush; explicit Open or reset is required to replace it.
+Recovery notices describing successfully written files survive hydration and
+rollback, and are delivered even when the subsequent session load fails.
+Archive-free loads do not wait for provider readiness merely to copy a checkpoint.

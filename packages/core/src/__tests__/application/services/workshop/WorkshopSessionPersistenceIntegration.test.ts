@@ -3,7 +3,7 @@ import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionSt
 import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
-import { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
+import { decodeWorkshopPersistedSessionCheckpoint, WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
 import { isCleanRollingCheckpoint } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
@@ -69,6 +69,184 @@ function addResumeNotice(value: WorkshopPersistedSessionV2): void {
 }
 
 describe('Workshop persistence with the real store', () => {
+  it.each(['flush', 'reveal'] as const)('retries a failed startup cache mirror through %s without rewriting named or inventing turns', async (retry) => {
+    const { fs, store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Saved'));
+    await store.writeCurrent(checkpoint('named', 'Unique local work'));
+    const namedBytes = fs.files.get(`${directory}/${saved.fileName}`);
+    const oldCurrent = fs.files.get(currentPath);
+    const statuses: Array<{ status: string; error?: string }> = [];
+    coordinator.addSessionSaveStatusListener((status) => statuses.push(status));
+    jest.spyOn(store, 'writeCurrent').mockRejectedValueOnce(new Error('EACCES'));
+
+    expect((await coordinator.initialize()).restored).toBe(true);
+    expect(session.getExcerpt()?.text).toBe('Saved');
+    expect(session.getSnapshot().turns.map((turn) => turn.artifact)).toEqual(['session_start']);
+    expect(fs.files.get(currentPath)).toBe(oldCurrent);
+    expect(coordinator.hasPendingWrite()).toBe(true);
+    const notices = coordinator.consumeRecoveryNotices();
+    expect(notices).toEqual([expect.objectContaining({ code: 'local-session-preserved' })]);
+    expect((await store.list()).sessions).toHaveLength(2);
+    expect(statuses.at(-1)?.error).toContain('EACCES');
+
+    if (retry === 'flush') {
+      await coordinator.flush();
+    } else {
+      expect(await coordinator.refreshNamedSession()).toBe(false);
+    }
+    expect(coordinator.hasPendingWrite()).toBe(false);
+    expect(isCleanRollingCheckpoint((await store.readCurrent())!)).toBe(true);
+    expect(fs.files.get(`${directory}/${saved.fileName}`)).toBe(namedBytes);
+    expect(session.getSnapshot().turns.map((turn) => turn.artifact)).toEqual(['session_start']);
+    expect(coordinator.beginInteraction()?.artifact).toBe('session_resume');
+    expect(coordinator.beginInteraction()).toBeUndefined();
+    expect(statuses.at(-1)?.status).toBe('saved');
+  });
+
+  it('announces preserved local work despite a startup named race and adopts the replacement on reveal', async () => {
+    const { fs, store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'First read'));
+    await store.writeCurrent(checkpoint('named', 'Unique local work'));
+    const incoming = checkpoint('named', 'Incoming');
+    const read = store.readNamedWithRecovery.bind(store);
+    jest.spyOn(store, 'readNamedWithRecovery').mockImplementationOnce(async (id) => {
+      const first = await read(id);
+      fs.setJson(`${directory}/${saved.fileName}`, incoming);
+      return first;
+    });
+    await coordinator.initialize();
+    expect(session.getExcerpt()?.text).toBe('First read');
+    expect(session.getSnapshot().turns.map((turn) => turn.artifact)).toEqual(['session_start']);
+    // Leave the notice pending: the second hydration must not erase a committed recovery.
+    expect(await coordinator.refreshNamedSession()).toBe(true);
+    expect(session.getExcerpt()?.text).toBe('Incoming');
+    expect(coordinator.consumeRecoveryNotices()).toEqual([
+      expect.objectContaining({ code: 'local-session-preserved' })
+    ]);
+    expect((await store.list()).sessions).toHaveLength(2);
+    expect(fs.json(`${directory}/${saved.fileName}`)).toEqual(incoming);
+    expect(coordinator.beginInteraction()?.artifact).toBe('session_resume');
+  });
+
+  it('loads an archive-free named session without invoking unavailable provider setup', async () => {
+    const { store, coordinator, ready, session } = setup();
+    await store.saveNamed(checkpoint('named', 'Saved'));
+    await store.writeCurrent(checkpoint('named', 'Saved'));
+    ready.mockRejectedValue(new Error('Secret storage unavailable'));
+    expect((await coordinator.initialize()).restored).toBe(true);
+    await coordinator.refreshNamedSession();
+    expect(ready).not.toHaveBeenCalled();
+    expect(coordinator.isCurrentCheckpointProtected()).toBe(false);
+    expect(session.getExcerpt()?.text).toBe('Saved');
+  });
+
+  it.each(['new', 'update'] as const)('reports the successful %s named save separately from a failed cache copy and retries only the cache', async (mode) => {
+    const { fs, store, session, coordinator } = setup();
+    await coordinator.initialize();
+    await coordinator.flush();
+    const existing = mode === 'update' ? await coordinator.saveNamed('Existing') : undefined;
+    session.setExcerpt({ text: 'Saved author work', source: { kind: 'manual' } });
+    const statuses: Array<{ status: string; error?: string }> = [];
+    coordinator.addSessionSaveStatusListener((status) => statuses.push(status));
+    jest.spyOn(store, 'writeCurrent').mockRejectedValueOnce(new Error('disk full'));
+    const saved = await coordinator.saveNamed('Saved', existing?.sessionId);
+    const file = `${directory}/${saved.fileName}`;
+    const savedBytes = fs.files.get(file);
+    expect((await store.readNamed(saved.sessionId))?.workshop.excerpt?.text).toBe('Saved author work');
+    expect(statuses.at(-1)?.error).toContain('current.json could not be updated');
+    expect(coordinator.hasPendingWrite()).toBe(true);
+    await coordinator.flush();
+    expect(fs.files.get(file)).toBe(savedBytes);
+    expect(coordinator.hasPendingWrite()).toBe(false);
+    expect((await store.readCurrent())?.sessionId).toBe(saved.sessionId);
+    expect(statuses.at(-1)?.status).toBe('saved');
+    expect((await store.list()).sessions).toHaveLength(1);
+  });
+
+  it('keeps a protected original current file intact after rescue Save-as-new and flush', async () => {
+    const { fs, store, coordinator } = setup();
+    const unreadable = new TextEncoder().encode('{unreadable');
+    fs.files.set(currentPath, unreadable);
+    await coordinator.initialize();
+    const saved = await coordinator.saveNamed('Rescued');
+    expect(await store.readNamed(saved.sessionId)).toBeDefined();
+    expect(coordinator.hasPendingWrite()).toBe(true);
+    await coordinator.saveNamed('Rescued again', saved.sessionId);
+    await coordinator.flush();
+    expect(fs.files.get(currentPath)).toBe(unreadable);
+    expect(coordinator.hasPendingWrite()).toBe(true);
+    await coordinator.openNamed(saved.sessionId);
+    expect(coordinator.hasPendingWrite()).toBe(false);
+    expect((await store.readCurrent())?.sessionId).toBe(saved.sessionId);
+  });
+
+  it.each([false, true])('restores author-work eligibility after failed promotion (author dirty: %s)', async (dirty) => {
+    const { fs, store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Saved'));
+    await store.writeCurrent(checkpoint('named', 'Saved'));
+    await coordinator.initialize();
+    session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'ref.md',
+      content: 'Old', words: 1, sourceUri: 'file:///workspace/ref.md' });
+    coordinator.markDirty('attach reference');
+    await coordinator.flush();
+    const incoming = (await store.readNamed('named'))!;
+    session.refreshContextFileAttachments([{ id: session.getContextAttachments()[0].id,
+      content: 'Staged', words: 1, sourceUri: 'file:///workspace/ref.md', relativePath: 'ref.md' }]);
+    incoming.workshop.excerpt!.text = 'Incoming';
+    fs.setJson(`${directory}/${saved.fileName}`, incoming);
+    if (dirty) {
+      session.setExcerpt({ text: 'Unsaved author work', source: { kind: 'manual' } });
+      coordinator.markDirty('edit');
+      await coordinator.flush(); // Named conflict preserves local author work.
+    }
+    jest.spyOn(store, 'writeCurrent').mockRejectedValueOnce(new Error('cache failed'));
+    await expect(coordinator.openNamed('named')).rejects.toThrow('cache failed');
+    const afterFailure = (await store.list()).sessions.length;
+    // Committed recovery files must be announced even when the load rolls back.
+    expect(coordinator.consumeRecoveryNotices()).toHaveLength(dirty ? 1 : 0);
+    await coordinator.openNamed('named');
+    expect((await store.list()).sessions.length - afterFailure).toBe(dirty ? 1 : 0);
+    expect(session.getExcerpt()?.text).toBe('Incoming');
+    expect(coordinator.beginInteraction()?.artifact).toBe('session_resume');
+  });
+
+  it('persists one resume after an unavailable first message rolls back and does not mint another on retry', async () => {
+    const { store, session, coordinator } = setup();
+    await store.saveNamed(checkpoint('named', 'Saved'));
+    await store.writeCurrent(checkpoint('named', 'Saved'));
+    await coordinator.initialize();
+    expect(coordinator.beginInteraction()?.artifact).toBe('session_resume');
+    session.beginPersonaMessage('failed', 'Unavailable attempt');
+    expect(session.rollbackMessageRun('failed')).toBeDefined();
+    coordinator.markDirty('unavailable message rolled back');
+    await coordinator.flush();
+    const rolledBack = (await store.readNamed('named'))!;
+    expect(rolledBack.workshop.turns.filter((turn) => turn.artifact === 'session_resume')).toHaveLength(1);
+    expect(rolledBack.workshop.turns.some((turn) => turn.content === 'Unavailable attempt')).toBe(false);
+    expect(coordinator.beginInteraction()).toBeUndefined();
+    session.beginPersonaMessage('retry', 'Retry');
+    session.completeRun('retry', 'Reply');
+    coordinator.markDirty('completed retry');
+    await coordinator.flush();
+    expect((await store.readNamed('named'))?.workshop.turns.filter((turn) => turn.artifact === 'session_resume')).toHaveLength(1);
+  });
+
+  it('migrates a released V1 rolling session, preserves divergent content once, then establishes clean provenance', async () => {
+    const { fs, store, coordinator } = setup();
+    const legacy = require('@/__tests__/fixtures/workshop-session-v1-released.json');
+    fs.setJson(currentPath, legacy);
+    const decoded = decodeWorkshopPersistedSessionCheckpoint(legacy).session;
+    const incoming = checkpoint(decoded.sessionId, 'Incoming named excerpt');
+    await store.saveNamed(incoming);
+    await coordinator.initialize();
+    expect(coordinator.consumeRecoveryNotices().filter((notice) => notice.code === 'local-session-preserved')).toHaveLength(1);
+    expect(isCleanRollingCheckpoint((await store.readCurrent())!)).toBe(true);
+    const restarted = setup(fs);
+    await restarted.coordinator.initialize();
+    expect(restarted.coordinator.consumeRecoveryNotices().filter((notice) => notice.code === 'local-session-preserved')).toHaveLength(0);
+    expect((await store.list()).sessions).toHaveLength(2);
+  });
+
   it('keeps named bytes unchanged across load, discard, Git sync and restart without recovering a clean older cache', async () => {
     const { fs, store, coordinator } = setup();
     const old = checkpoint('named', 'Old committed excerpt');
@@ -96,6 +274,41 @@ describe('Workshop persistence with the real store', () => {
     expect((await restarted.store.list()).sessions).toHaveLength(1);
     expect(restarted.coordinator.consumeRecoveryNotices()).toEqual([]);
     expect((await restarted.store.readCurrent())?.workshop.turns).toEqual(incoming.workshop.turns);
+  });
+
+  it('honors a Git revert of autosaved named work without recovering its clean cache', async () => {
+    const { fs, store, session, coordinator } = setup();
+    const original = checkpoint('named', 'Committed');
+    const saved = await store.saveNamed(original);
+    await store.writeCurrent(original);
+    await coordinator.initialize();
+    session.beginPersonaMessage('message', 'Author work later discarded through Git.');
+    session.completeRun('message', 'Reply.');
+    coordinator.markDirty('completed conversation');
+    await coordinator.flush();
+    expect(isCleanRollingCheckpoint((await store.readCurrent())!)).toBe(true);
+    fs.setJson(`${directory}/${saved.fileName}`, original);
+    const restarted = setup(fs);
+    await restarted.coordinator.initialize();
+    expect((await store.readCurrent())?.workshop.turns).toEqual(original.workshop.turns);
+    expect(restarted.coordinator.consumeRecoveryNotices()).toEqual([]);
+    expect((await store.list()).sessions).toHaveLength(1);
+  });
+
+  it('never retries an old clean mirror over newer local work after a named conflict', async () => {
+    const { fs, store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Saved'));
+    await store.writeCurrent(checkpoint('named', 'Saved'));
+    jest.spyOn(store, 'writeCurrent').mockRejectedValueOnce(new Error('cache unavailable'));
+    await coordinator.initialize();
+    fs.setJson(`${directory}/${saved.fileName}`, checkpoint('named', 'Incoming'));
+    session.setExcerpt({ text: 'Unsaved local work', source: { kind: 'manual' } });
+    coordinator.markDirty('author edit');
+    await coordinator.flush();
+    await coordinator.flush();
+    expect((await store.readCurrent())?.workshop.excerpt?.text).toBe('Unsaved local work');
+    expect((await store.readCurrent())?.rollingCleanHash).toBeUndefined();
+    expect((await store.readNamed('named'))?.workshop.excerpt?.text).toBe('Incoming');
   });
 
   it('rejects a clean marker whose rolling content was subsequently edited', async () => {
@@ -376,7 +589,7 @@ describe('Workshop persistence with the real store', () => {
   });
 
   it('rolls back when a named file changes during promotion and retains the prior write baseline', async () => {
-    const { fs, store, session, coordinator, ready } = setup();
+    const { fs, store, session, coordinator } = setup();
     await store.saveNamed(checkpoint('old', 'Original'));
     const incoming = await store.saveNamed(checkpoint('incoming', 'First read'));
     await store.writeCurrent(checkpoint('old', 'Original'));
@@ -384,7 +597,12 @@ describe('Workshop persistence with the real store', () => {
     await coordinator.flush();
     const previousCurrent = fs.json(currentPath);
     const replacement = checkpoint('incoming', 'Changed during hydration');
-    ready.mockImplementationOnce(async () => { fs.setJson(`${directory}/${incoming.fileName}`, replacement); });
+    const read = store.readNamedWithRecovery.bind(store);
+    jest.spyOn(store, 'readNamedWithRecovery').mockImplementationOnce(async (id) => {
+      const first = await read(id);
+      fs.setJson(`${directory}/${incoming.fileName}`, replacement);
+      return first;
+    });
 
     await expect(coordinator.openNamed('incoming')).rejects.toThrow('changed on disk');
     expect(session.getExcerpt()?.text).toBe('Original');

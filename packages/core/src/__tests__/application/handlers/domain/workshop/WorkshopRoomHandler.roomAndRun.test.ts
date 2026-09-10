@@ -1150,6 +1150,20 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       .toContain('Add your OpenRouter API key');
   });
 
+  it('retains one resume boundary when the first interaction is unavailable and the writer retries', async () => {
+    await pin();
+    persistence.beginInteraction.mockImplementationOnce(() =>
+      session.recordSessionMarker('resume', 'Session resumed on interaction.')
+    );
+    service.startWorkshopPersonaConversation.mockRejectedValueOnce(new AgentRunUnavailableError('missing-credentials'));
+    await router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Try once.' }) as never);
+    expect(persistence.markDirty).toHaveBeenCalledWith('unavailable message rolled back');
+    expect(session.getSnapshot().turns.filter((turn) => turn.artifact === 'session_resume')).toHaveLength(1);
+    expect(session.getSnapshot().turns.some((turn) => turn.content === 'Try once.')).toBe(false);
+    await router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Try again.' }) as never);
+    expect(session.getSnapshot().turns.filter((turn) => turn.artifact === 'session_resume')).toHaveLength(1);
+  });
+
   it('keeps a retained host bound when insufficient credit rejects a follow-up', async () => {
     await pin();
     await router.route(message(

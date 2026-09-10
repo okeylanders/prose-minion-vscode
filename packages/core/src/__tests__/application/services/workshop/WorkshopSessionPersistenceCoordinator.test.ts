@@ -445,18 +445,25 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     }
   );
 
-  it('protects rolling state if named changes during startup hydration and permits explicit retry', async () => {
+  it('retains named association if named changes during startup and adopts it on reveal', async () => {
     current = persistedSession('shared-room', 'Local', 'Local excerpt.');
     named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV2);
     const incoming = persistedSession('shared-room', 'Incoming', 'Incoming excerpt.');
-    const coordinator = createCoordinator(async () => { named[0] = incoming; });
+    const readNamed = store.readNamed.getMockImplementation()!;
+    store.readNamed.mockImplementationOnce(async (id) => {
+      const first = await readNamed(id);
+      named[0] = incoming;
+      return first;
+    });
+    const coordinator = createCoordinator();
 
     await coordinator.initialize();
     await coordinator.flush();
     expect(named[0]).toBe(incoming);
-    expect(coordinator.isCurrentCheckpointProtected()).toBe(true);
+    expect(coordinator.hasPendingWrite()).toBe(true);
+    expect(session.getSnapshot().turns.map((turn) => turn.artifact)).toEqual(['session_start']);
     expect(store.updateNamed).not.toHaveBeenCalled();
-    await coordinator.openNamed('shared-room');
+    expect(await coordinator.refreshNamedSession()).toBe(true);
     expect(current?.workshop.excerpt?.text).toBe('Incoming excerpt.');
   });
 
@@ -479,10 +486,13 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     const saved = await coordinator.saveNamed('Before');
     await coordinator.flush();
     store.writeCurrent.mockRejectedValueOnce(new Error('rolling write failed'));
-    await expect(coordinator.saveNamed('After', saved.sessionId)).rejects.toThrow('rolling write failed');
+    await expect(coordinator.saveNamed('After', saved.sessionId)).resolves.toMatchObject({ title: 'After' });
     expect(named[0].title).toBe('After');
-    coordinator.markDirty('retry rolling mirror');
+    const namedWrites = store.updateNamed.mock.calls.length;
+    const savedTime = named[0].savedAt;
     await coordinator.flush();
+    expect(store.updateNamed).toHaveBeenCalledTimes(namedWrites);
+    expect(named[0].savedAt).toBe(savedTime);
     expect(current?.title).toBe('After');
   });
 

@@ -115,6 +115,26 @@ describe('Workshop composed routing — session owner', () => {
         : [{ scanning: true }, { scanning: false }]);
   });
 
+  it('publishes room state, recovery notices and scan completion when the initialization barrier rejects', async () => {
+    persistence.waitForSessionOperations.mockRejectedValueOnce(new Error('Initialization failed'));
+    persistence.consumeRecoveryNotices.mockReturnValueOnce([{
+      code: 'local-session-preserved', sessionId: 'recovery', recoveryFileName: 'recovery.json',
+      message: 'Local work was preserved.'
+    }]);
+    const state = jest.fn();
+    const error = jest.fn();
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: jest.fn(), postSessionState: state,
+      flushDeferredConversationSettings: jest.fn(), reportError: error,
+      activeRunLabel: () => undefined
+    });
+    await handler.handleRequestSession(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as never);
+    expect(error).toHaveBeenCalledWith('Could not load the saved Workshop session.', 'Initialization failed');
+    expect(state).toHaveBeenCalledTimes(1);
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).at(-1).payload.scanning).toBe(false);
+    expect(posted(MessageType.WORKSHOP_SESSION_RECOVERY_NOTICE)).toHaveLength(1);
+  });
+
   it('loads a changed named checkpoint before scanning context and publishing state', async () => {
     const order: string[] = [];
     persistence.refreshNamedSession.mockImplementation(async (afterLoad) => { order.push('named'); await afterLoad?.(true); return true; });

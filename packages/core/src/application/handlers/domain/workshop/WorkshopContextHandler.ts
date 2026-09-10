@@ -355,7 +355,6 @@ export class WorkshopContextHandler {
         : undefined;
       if (eventTurn) {
         this.effects.postTurn(eventTurn);
-        this.effects.markDirty('context file refresh warning');
       }
       this.outputChannel.appendLine(`[WorkshopContextHandler] ${refreshSummary}`);
       this.effects.sendStatus(refreshSummary);
