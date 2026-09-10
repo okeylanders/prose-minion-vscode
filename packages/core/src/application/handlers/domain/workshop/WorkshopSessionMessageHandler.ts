@@ -16,6 +16,7 @@ import {
   WorkshopDuplicateSessionMessage,
   WorkshopListSessionsMessage,
   WorkshopOpenSessionMessage,
+  WorkshopRefreshContextFilesMessage,
   WorkshopRenameSessionMessage,
   WorkshopRequestSessionMessage,
   WorkshopResetSessionMessage,
@@ -37,8 +38,8 @@ const generateSessionRequestId = (): string =>
 
 export interface WorkshopSessionMessageHandlerOptions {
   postSessionState: () => void;
-  /** Re-read file-backed standing context after a named checkpoint hydrates. */
-  refreshContextFiles: () => Promise<void>;
+  /** Re-read file-backed context with explicit or automatic persistence semantics. */
+  refreshContextFiles: (origin: 'manual' | 'session-open') => Promise<void>;
   flushDeferredConversationSettings: () => Promise<void>;
   reportError: (message: string, details?: string) => void;
   /** Human label for a run currently blocking state replacement. */
@@ -63,6 +64,7 @@ export class WorkshopSessionMessageHandler {
     router: MessageRouter,
     registerMutation: WorkshopMutationRouteRegistrar
   ): void {
+    registerMutation(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, this.handleRefreshContextFiles.bind(this));
     registerMutation(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this), 'new');
     router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
     registerMutation(MessageType.WORKSHOP_SAVE_SESSION, this.handleSaveSession.bind(this), 'save');
@@ -256,6 +258,21 @@ export class WorkshopSessionMessageHandler {
     }
   }
 
+  async handleRefreshContextFiles(_message: WorkshopRefreshContextFilesMessage): Promise<void> {
+    const activeRun = this.options.activeRunLabel();
+    if (activeRun) {
+      this.options.reportError(`Wait for the active ${activeRun} to finish before refreshing context files.`);
+      return;
+    }
+    try {
+      await this.persistence.runContextRefresh(() => this.scanContextFiles('manual'));
+    } catch (error) {
+      this.options.reportError('Could not refresh Workshop context files.', this.errorMessage(error));
+    } finally {
+      this.options.postSessionState();
+    }
+  }
+
   private postScanState(scanning: boolean): void {
     const message: WorkshopSessionContextScanMessage = {
       type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
@@ -266,11 +283,11 @@ export class WorkshopSessionMessageHandler {
     void this.postMessage(message);
   }
 
-  private async scanContextFiles(): Promise<void> {
+  private async scanContextFiles(origin: 'manual' | 'session-open' = 'session-open'): Promise<void> {
     this.scanningContextFiles = true;
     this.postScanState(true);
     try {
-      await this.options.refreshContextFiles();
+      await this.options.refreshContextFiles(origin);
     } finally {
       this.scanningContextFiles = false;
       this.postScanState(false);

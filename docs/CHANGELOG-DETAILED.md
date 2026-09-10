@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-09-10 — Workshop session authority and read-only loading
+
+### Overview
+
+This minor release combines PRs #114 and #115: named checkpoints own persisted
+session truth, automatic loading and context scans do not create author edits,
+and rolling cache failures can be retried without rewriting named checkpoints.
+It also adds context-file refresh, clearer Workshop cards, a larger writer-profile
+biography, and GPT-6 Astra in shared model selectors.
+
+### Compatibility and recovery
+
+- Existing V1/V2 sessions remain readable. The optional clean provenance marker
+  belongs only to rolling state; named files retain their existing schema.
+- Legacy rolling caches without provenance may produce one conservative recovery.
+  A Git revert of a named checkpoint also replaces its verified clean cache,
+  including autosaved author turns. Work not committed to named stays recoverable.
+- Startup mirror failures keep the hydrated room and named association. Explicit
+  Open remains transactional and rolls back if its cache promotion fails.
+- No timestamp ordering is used to authorize named replacement. Full checkpoint
+  checks and the existing filesystem compare/rename limitation remain unchanged.
+- The multimodal-composer epic is planning only and is not shipped functionality.
+
+References: [named authority ADR](adr/2026-09-08-workshop-named-checkpoint-authority.md),
+[read-only loading ADR](adr/2026-09-10-workshop-read-only-session-loading.md),
+[PR #115 review](pr-reviews/pr-115-workshop-read-only-loading-review.md).
+
+
 ### Added
 
 - Added `openai/gpt-6-astra` to every shared model picker and Category Search,
@@ -30,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that longer profiles consume more prompt context.
 
 ### Fixed — named checkpoint authority and recovery
+
+- Manual context refresh now holds the session busy until file reads finish, preventing delayed refresh results from changing another session or racing a new message.
 
 - Separate pending rolling mirrors from author dirty revisions. Startup mirror
   failures retain named association and resume state; reveal adopts changed named

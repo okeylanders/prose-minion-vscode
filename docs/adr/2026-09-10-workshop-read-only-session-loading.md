@@ -69,3 +69,15 @@ through rescue saves and flush; explicit Open or reset is required to replace it
 Recovery notices describing successfully written files survive hydration and
 rollback, and are delivered even when the subsequent session load fails.
 Archive-free loads do not wait for provider readiness merely to copy a checkpoint.
+
+### Release review: manual refresh ownership
+
+Manual **Refresh changed files** holds the persistence coordinator's existing serialized
+session operation for the complete scan, including asynchronous authorization and reads.
+The session message owner handles this lifecycle and emits the same scan busy state as
+loading; the context handler continues to own file intake and applying refreshed content.
+Open/New and message/tool/guest mutations are blocked while the scan owns the room.
+Refresh also rejects an already-active response or Context wizard before reading files.
+This prevents results captured in one session from replacing another session's attachment
+with the same session-local ID. Automatic Open/reveal scans already hold the operation
+and do not reacquire it. Failure releases ownership and clears the scan indicator.

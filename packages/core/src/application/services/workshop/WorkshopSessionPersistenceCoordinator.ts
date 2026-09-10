@@ -528,6 +528,11 @@ export class WorkshopSessionPersistenceCoordinator {
     };
   }
 
+  /** Hold room ownership across file reads so their results cannot reach another session. */
+  runContextRefresh(refresh: () => Promise<void>): Promise<void> {
+    return this.serializeSessionOperation(refresh);
+  }
+
   /** Recheck disk on webview load, even when the host initialized before Git sync. */
   async refreshNamedSession(
     afterLoad?: (changed: boolean) => Promise<void>

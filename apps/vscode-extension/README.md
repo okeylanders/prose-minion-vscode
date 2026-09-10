@@ -24,20 +24,24 @@
 
 ---
 
-## Coming next
+## What's new in v2.3.0 — Workshop sessions that follow your work
 
-- GPT-6 Astra (`openai/gpt-6-astra`) in all shared model selectors and Category
-  Search, with existing defaults unchanged.
-- Workshop context-file refresh, clearer cards, and a loading indicator.
-- Named-session authority on load and protection against stale writes after Git
-  sync; rolling recovery continues when a named save fails.
-- Writer-profile biographies up to 20,000 characters.
+- **Saved sessions lead after Git sync** — Workshop loads the named session and preserves meaningful unsaved differences in a separate recovery session when needed.
+- **Opening a session leaves its saved file alone** — automatic context rereads stay in memory until you work or explicitly save/refresh. Resume notices begin with your first interaction.
+- **Clearer loading and recovery** — loading stays visible after dismissing the welcome notice, old status messages clear when you switch sessions, and cache-copy failures are reported separately from successful named saves.
+- **Refresh your references** — reread changed context files from the project, with clearer excerpt and context cards. File-backed attachments are read-only; text briefs remain editable.
+- **More room for your writing preferences** — writer-profile biographies now support 20,000 characters.
+- **GPT-6 Astra joins the model pickers** — available in shared selectors and Category Search, with existing defaults unchanged.
 
-## What's new in v2.2.4 — Muse Spark 1.3
+**For Git-synced projects:** a named session reverted through Git also replaces its clean local cache, including autosaved turns. Older caches may produce one conservative recovery when you first load them after upgrading.
+
+### Also in v2.2.4 — Muse Spark 1.3
 
 - **Muse Spark 1.3 joins every shared picker** — Meta's latest 1M-context multimodal Muse model is now available for Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search. Muse 1.1 and 1.2 remain available, and no defaults change.
 
 ### Also in v2.2.3 — Safer Workshop sessions + Gemini 3.8 Flash
+
+The conflict-selection behavior described below is superseded by v2.3.0: named sessions now take precedence automatically.
 
 - **No silent cross-machine overwrite** — when a portable named Workshop session disagrees with the machine-local recovery copy, Prose Minion preserves both instead of guessing from timestamps and overwriting one.
 - **You choose the room that wins** — open the named session explicitly from the Workshop session browser to promote it after a sync conflict.

@@ -4,6 +4,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-09-10
+
 ### Added
 
 - GPT-6 Astra (`openai/gpt-6-astra`) in shared model selectors and Category Search;
@@ -17,6 +19,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 - Increased the writer-profile biography limit to 20,000 characters.
 
 ### Fixed
+
+- Manual context refresh now holds the session busy until file reads finish, preventing delayed refresh results from changing another session or racing a new message.
 
 - Keep restored Workshop rooms and recovery notices intact if updating current.json
   fails. Cache retries no longer rewrite named sessions or their timestamps.
@@ -40,6 +44,15 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
   loading its named checkpoint, with a notice showing where to find it. Automatic
   resume notices alone do not create recovery files.
 - Serialize context scans with session loads and replay scan state on reveal.
+
+### Upgrade notes
+
+- Older rolling caches may produce one conservative recovery on first load. Once
+  a clean cache is established, simply opening a session does not create recovery
+  copies or modify its named file.
+- Reverting a named session through Git also replaces its clean cache, including
+  autosaved author turns. Work not successfully saved to named remains recoverable.
+- Existing V1/V2 sessions remain readable. No manual session migration is needed.
 
 ## [2.2.4] - 2026-09-03
 

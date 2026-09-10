@@ -38,7 +38,6 @@ import {
   WorkshopContextCatalogMessage,
   WorkshopContextSearchResultsMessage,
   WorkshopOpenContextAttachmentFileMessage,
-  WorkshopRefreshContextFilesMessage,
   WorkshopRemoveContextAttachmentMessage,
   WorkshopRemoveMessageAttachmentMessage,
   WorkshopRequestContextAttachmentMessage,
@@ -105,10 +104,6 @@ export class WorkshopContextHandler {
   ): void {
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, this.handleAddContextText.bind(this));
     registerMutation(MessageType.WORKSHOP_ADD_CONTEXT_FILE, this.handleAddContextFile.bind(this));
-    registerMutation(
-      MessageType.WORKSHOP_REFRESH_CONTEXT_FILES,
-      this.handleRefreshContextFiles.bind(this)
-    );
     registerMutation(
       MessageType.WORKSHOP_REMOVE_CONTEXT_ATTACHMENT,
       this.handleRemoveContextAttachment.bind(this)
@@ -229,10 +224,6 @@ export class WorkshopContextHandler {
       relativePath: displayPath,
       truncation: loaded.truncation
     });
-  }
-
-  async handleRefreshContextFiles(_message: WorkshopRefreshContextFilesMessage): Promise<void> {
-    await this.refreshChangedContextFiles('manual');
   }
 
   /**

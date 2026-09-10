@@ -1,4 +1,5 @@
 import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/WorkshopSessionMessageHandler';
+import { WorkshopContextHandler } from '@handlers/domain/workshop/WorkshopContextHandler';
 import {
   MessageType
 } from '@messages';
@@ -195,6 +196,105 @@ describe('Workshop composed routing — session owner', () => {
     expect(refreshContextFiles).toHaveBeenCalledTimes(1);
     expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload))
       .toEqual([{ scanning: false }]);
+  });
+
+  it.each([
+    ['message', MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Continue.' }],
+    ['tool', MessageType.WORKSHOP_RUN_TOOL, { toolId: 'prose' }],
+    ['guest', MessageType.WORKSHOP_INVITE_GUEST, { personaId: 'margot', openingMessage: 'Join us.' }],
+    ['open', MessageType.WORKSHOP_OPEN_SESSION, { sessionId: 'another-room' }],
+    ['new', MessageType.WORKSHOP_RESET_SESSION, {}],
+    ['second refresh', MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {}]
+  ] as const)('blocks %s until the routed manual context scan finishes', async (_label, type, payload) => {
+    await pin();
+    let finishScan!: () => void;
+    let announceScan!: () => void;
+    const scanStarted = new Promise<void>((resolve) => { announceScan = resolve; });
+    const scan = jest.spyOn(WorkshopContextHandler.prototype, 'refreshChangedContextFiles')
+      .mockImplementation(() => new Promise<void>((resolve) => {
+        finishScan = resolve;
+        announceScan();
+      }));
+    // Model the coordinator's real operation ownership; integration tests cover its queue.
+    persistence.runContextRefresh.mockImplementation(async (refresh) => {
+      persistence.isSessionOperationPending.mockReturnValue(true);
+      try {
+        await refresh();
+      } finally {
+        persistence.isSessionOperationPending.mockReturnValue(false);
+      }
+    });
+    const pending = router.route(message(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {}) as never);
+    try {
+      await scanStarted;
+      expect(scan).toHaveBeenCalledWith('manual');
+      expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).at(-1).payload.scanning).toBe(true);
+
+      await router.route(message(type, payload) as never);
+
+      expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+      expect(service.startWorkshopGuestConversation).not.toHaveBeenCalled();
+      expect(service.analyzeProse).not.toHaveBeenCalled();
+      expect(persistence.openNamed).not.toHaveBeenCalled();
+      expect(persistence.resetSession).not.toHaveBeenCalled();
+      expect(persistence.runContextRefresh).toHaveBeenCalledTimes(1);
+      expect(scan).toHaveBeenCalledTimes(1);
+      const refusals = [
+        ...posted(MessageType.ERROR),
+        ...posted(MessageType.WORKSHOP_SESSION_ACTION_RESULT)
+      ];
+      expect(refusals.some((entry) => /session save or replacement/.test(entry.payload.message)))
+        .toBe(true);
+    } finally {
+      finishScan();
+      await pending;
+      scan.mockRestore();
+    }
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).at(-1).payload.scanning).toBe(false);
+    await router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Now continue.' }) as never);
+    expect(service.startWorkshopPersonaConversation).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['response', 'Context wizard'] as const)('refuses manual refresh during an active %s before file intake', async (activeRun) => {
+    const refreshContextFiles = jest.fn().mockResolvedValue(undefined);
+    const reportError = jest.fn();
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles,
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError,
+      activeRunLabel: () => activeRun
+    });
+
+    await handler.handleRefreshContextFiles(message(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {}) as never);
+
+    expect(persistence.runContextRefresh).not.toHaveBeenCalled();
+    expect(refreshContextFiles).not.toHaveBeenCalled();
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN)).toEqual([]);
+    expect(reportError).toHaveBeenCalledWith(
+      `Wait for the active ${activeRun} to finish before refreshing context files.`
+    );
+  });
+
+  it('clears manual scan busy state and publishes the room when file intake fails', async () => {
+    const refreshContextFiles = jest.fn().mockRejectedValue(new Error('Disk unavailable'));
+    const reportError = jest.fn();
+    const postSessionState = jest.fn();
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles,
+      postSessionState,
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError,
+      activeRunLabel: () => undefined
+    });
+
+    await handler.handleRefreshContextFiles(message(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {}) as never);
+
+    expect(refreshContextFiles).toHaveBeenCalledWith('manual');
+    expect(posted(MessageType.WORKSHOP_SESSION_CONTEXT_SCAN).map((entry) => entry.payload.scanning))
+      .toEqual([true, false]);
+    expect(postSessionState).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledWith('Could not refresh Workshop context files.', 'Disk unavailable');
   });
 
   it('forwards the coordinator named-save state as typed Workshop IPC', () => {
