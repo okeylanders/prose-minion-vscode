@@ -170,6 +170,41 @@ describe('WorkshopContextHandler', () => {
     expect(effects.postSessionState).toHaveBeenCalled();
   });
 
+  it('stages session-open refresh without dated turns or autosave, then accepts it on explicit Refresh', async () => {
+    pinExcerpt();
+    session.beginPersonaMessage('prior', 'Remember the reference.');
+    session.completeRun('prior', 'Ready.', undefined, false, 'host-runtime');
+    contextFiles['/workspace/reference.md'] = 'New reference.';
+    session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'reference.md',
+      content: 'Old reference.', words: 2, sourceUri: 'file:///workspace/reference.md', relativePath: 'reference.md' });
+    const before = session.exportCommittedState().turns;
+
+    await handler.refreshChangedContextFiles('session-open');
+    expect(session.getContextAttachments()[0].content).toBe('New reference.');
+    expect(session.exportCommittedState().turns).toEqual(before);
+    expect(effects.postTurn).not.toHaveBeenCalled();
+    expect(effects.markDirty).not.toHaveBeenCalled();
+    expect(session.collectPendingHostUpdates()?.contextAttachments?.attachments[0].content).toBe('New reference.');
+
+    await handler.refreshChangedContextFiles('manual');
+    expect(effects.markDirty).toHaveBeenCalledWith('context refresh accepted');
+  });
+
+  it('reports automatic reread failures without adding notice turns or scheduling writes', async () => {
+    pinExcerpt();
+    session.beginPersonaMessage('prior', 'Remember the reference.');
+    session.completeRun('prior', 'Ready.', undefined, false, 'host-runtime');
+    session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'missing.md',
+      content: 'Saved reference.', words: 2, sourceUri: 'file:///workspace/missing.md', relativePath: 'missing.md' });
+    const before = session.exportCommittedState();
+    await handler.refreshChangedContextFiles('session-open');
+    await handler.refreshChangedContextFiles('session-open');
+    expect(session.exportCommittedState()).toEqual(before);
+    expect(effects.markDirty).not.toHaveBeenCalled();
+    expect(effects.postTurn).not.toHaveBeenCalled();
+    expect(effects.sendStatus).toHaveBeenCalled();
+  });
+
   it('keeps the wizard slot occupied after cancellation until the original run settles', async () => {
     pinExcerpt();
     const firstResult = deferred<ReturnType<typeof wizardResult>>();

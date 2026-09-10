@@ -210,7 +210,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(store.writeCurrent).toHaveBeenCalled();
   });
 
-  it('restores the actual aggregate, adds one resume boundary, and does not repeat it', async () => {
+  it('restores without mutation and defers one resume boundary to actual interaction', async () => {
     const sourceSession = new WorkshopSessionService(() => now.getTime());
     sourceSession.setExcerpt({ text: 'The restored manuscript.', source: { kind: 'manual' } });
     sourceSession.recordSessionMarker('start', 'Session started before restart.');
@@ -243,7 +243,10 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(second).toBe(first);
     expect(session.getExcerpt()?.text).toBe('The restored manuscript.');
     expect(session.getSnapshot().turns.map((turn) => turn.artifact))
-      .toEqual(['session_start', 'session_resume']);
+      .toEqual(['session_start']);
+    expect(store.writeCurrent).not.toHaveBeenCalled();
+    expect(coordinator.beginInteraction()?.artifact).toBe('session_resume');
+    expect(coordinator.beginInteraction()).toBeUndefined();
     // Exercise the actual persistence resume path named by ADR 2026-07-25,
     // not merely two marker primitives on one never-persisted aggregate.
     expect(session.hasRoomMemory()).toBe(false);
@@ -293,13 +296,9 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.initialize();
     await coordinator.flush();
 
-    expect(store.updateNamed).toHaveBeenCalledWith(
-      'named-current',
-      expect.objectContaining({ sessionId: 'named-current', title: 'Living room' }),
-      expect.objectContaining({ sessionId: 'named-current' })
-    );
-    expect(named[0].workshop.turns.at(-1)?.artifact).toBe('session_resume');
-    expect(statuses).toEqual(['saving', 'saved']);
+    expect(store.updateNamed).not.toHaveBeenCalled();
+    expect(named[0].workshop.turns.at(-1)?.artifact).toBe('session_start');
+    expect(statuses).toEqual([]);
   });
 
   it('does not ignore a noncanonical turn merely labeled as a resume marker', async () => {
@@ -365,11 +364,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await restarted.initialize();
     await restarted.flush();
 
-    expect(store.updateNamed).toHaveBeenCalledWith(
-      'shared-room',
-      expect.objectContaining({ sessionId: 'shared-room' }),
-      expect.objectContaining({ sessionId: 'shared-room' })
-    );
+    expect(store.updateNamed).not.toHaveBeenCalled();
     expect(log.appendLine).not.toHaveBeenCalledWith(
       expect.stringContaining('Named checkpoint diverged from current.json')
     );
@@ -398,10 +393,10 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(session.getExcerpt()?.text).toBe('Incoming excerpt.');
     expect(current?.title).toBe('Incoming');
     expect(current?.workshop.turns.slice(0, 82)).toEqual(incoming.workshop.turns);
-    expect(current?.workshop.turns.at(-1)?.artifact).toBe('session_resume');
+    expect(current?.workshop.turns).toEqual(incoming.workshop.turns);
     expect(named[0]).toBe(incoming);
     expect(await coordinator.refreshNamedSession()).toBe(false);
-    expect(current?.workshop.turns).toHaveLength(83);
+    expect(current?.workshop.turns).toHaveLength(82);
   });
 
   it('keeps an unassociated room detached when a same-ID file arrives later', async () => {
@@ -438,7 +433,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
           .rejects.toThrow('changed on disk');
       }
       expect(named[0]).toBe(incoming);
-      expect(current?.workshop).toEqual(previousCurrent?.workshop);
+      expect(current?.workshop).toEqual(decodeWorkshopPersistedSessionCheckpoint(previousCurrent).session.workshop);
       expect(current?.title).toBe('Local');
       expect(statuses.at(-1)).toBe('error');
 
@@ -450,7 +445,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     }
   );
 
-  it('rechecks a queued resume save when disk changes during hydration', async () => {
+  it('protects rolling state if named changes during startup hydration and permits explicit retry', async () => {
     current = persistedSession('shared-room', 'Local', 'Local excerpt.');
     named.push(JSON.parse(JSON.stringify(current)) as WorkshopPersistedSessionV2);
     const incoming = persistedSession('shared-room', 'Incoming', 'Incoming excerpt.');
@@ -459,7 +454,9 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.initialize();
     await coordinator.flush();
     expect(named[0]).toBe(incoming);
-    await coordinator.refreshNamedSession();
+    expect(coordinator.isCurrentCheckpointProtected()).toBe(true);
+    expect(store.updateNamed).not.toHaveBeenCalled();
+    await coordinator.openNamed('shared-room');
     expect(current?.workshop.excerpt?.text).toBe('Incoming excerpt.');
   });
 
@@ -471,7 +468,7 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     await coordinator.flush();
 
     expect(coordinator.isCurrentCheckpointProtected()).toBe(false);
-    expect(store.writeCurrent).toHaveBeenCalled();
+    expect(store.writeCurrent).not.toHaveBeenCalled();
     expect(store.updateNamed).not.toHaveBeenCalled();
     expect(session.getExcerpt()?.text).toBe('Local excerpt.');
   });
@@ -627,7 +624,12 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
       evidenceMode: 'blend',
       resolvedLens: { version: 1 }
     });
-    expect(namedDraft).toEqual(currentDraft);
+    // Loading normalizes the rolling/runtime view without rewriting named.
+    expect(namedDraft).not.toEqual(currentDraft);
+    expect(store.updateNamed).not.toHaveBeenCalled();
+    coordinator.markDirty('explicit author edit');
+    await coordinator.flush();
+    expect(named[0].workshop.widgetConfigs?.[0]?.draft).toEqual(currentDraft);
     expect(current?.workshop.standingDirectives).toEqual([
       expect.objectContaining({ id: 'pd-1', widgetConfigId: 'wc-1' })
     ]);

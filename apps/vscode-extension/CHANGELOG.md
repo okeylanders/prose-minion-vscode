@@ -18,6 +18,13 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Fixed
 
+- Opening or revealing saved Workshop sessions no longer writes resume notices or
+  activity timestamps into named files. Resume is recorded on the first interaction.
+- Automatic context rereads remain pending until author activity or explicit
+  Save/Refresh. A verified clean rolling cache can follow incoming Git changes
+  without a recovery copy; unsaved author work remains recoverable.
+- Show Workshop loading feedback while the initial saved room is being restored,
+  including after dismissing the startup notice before context scanning begins.
 - Named Workshop sessions take precedence over current.json when loading,
   including returning to a retained tab after Git sync. This supersedes the
   v2.2.3 conflict-selection behavior.

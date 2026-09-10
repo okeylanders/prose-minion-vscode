@@ -324,7 +324,7 @@ export class WorkshopContextHandler {
         updates.map(({ label: _label, ...input }) => ({
           ...input
         })),
-        refreshSummary
+        origin === 'manual' ? refreshSummary : undefined
       );
       if (!result.ok) {
         const detail = `Context refresh could not be committed (${result.reason}).`;
@@ -335,7 +335,9 @@ export class WorkshopContextHandler {
       if (result.eventTurn) {
         this.effects.postTurn(result.eventTurn);
       }
-      this.effects.markDirty('context files refreshed');
+      if (origin === 'manual') {
+        this.effects.markDirty('context files refreshed');
+      }
       this.effects.postSessionState();
       this.outputChannel.appendLine(
         `[WorkshopContextHandler] ${refreshSummary}`
@@ -344,8 +346,13 @@ export class WorkshopContextHandler {
       return;
     }
 
+    if (origin === 'manual') {
+      this.effects.markDirty('context refresh accepted');
+    }
     if (failures.length > 0) {
-      const eventTurn = this.session.recordContextRefreshNotice(refreshSummary);
+      const eventTurn = origin === 'manual'
+        ? this.session.recordContextRefreshNotice(refreshSummary)
+        : undefined;
       if (eventTurn) {
         this.effects.postTurn(eventTurn);
         this.effects.markDirty('context file refresh warning');

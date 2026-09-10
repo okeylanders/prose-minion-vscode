@@ -70,6 +70,8 @@ interface WorkshopPersistedSessionData {
   updatedAt: string;
   /** Present on named checkpoints; absent on rolling current state. */
   savedAt?: string;
+  /** Rolling-only proof that this exact payload was already saved in a named file. */
+  rollingCleanHash?: string;
   temporal: WorkshopSessionTemporalStateV1;
   summary: WorkshopPersistedSummaryV1;
   workshop: WorkshopSessionStateV1;
@@ -190,7 +192,7 @@ function assertSupportedWorkshopPersistedSessionEnvelope(
       'workshop',
       'conversations'
     ],
-    ['savedAt']
+    ['savedAt', 'rollingCleanHash']
   );
   if (typeof value.sessionId !== 'string' || value.sessionId.trim().length === 0) {
     throw new Error('Workshop session id must be a non-empty string.');
@@ -203,6 +205,10 @@ function assertSupportedWorkshopPersistedSessionEnvelope(
   }
   if (value.savedAt !== undefined && !isTimestamp(value.savedAt)) {
     throw new Error('Workshop session file has an invalid savedAt timestamp.');
+  }
+  if (value.rollingCleanHash !== undefined &&
+      (typeof value.rollingCleanHash !== 'string' || !/^[a-f0-9]{64}$/.test(value.rollingCleanHash))) {
+    throw new Error('Workshop rolling checkpoint has an invalid clean hash.');
   }
   if (!Array.isArray(value.conversations)) {
     throw new Error('Workshop session file has invalid conversation archive.');
@@ -231,6 +237,7 @@ function decodeWorkshopPersistedSessionEnvelope(
     ...(value.savedAt !== undefined
       ? { savedAt: normalizeTimestamp(value.savedAt as string) }
       : {}),
+    ...(value.rollingCleanHash !== undefined ? { rollingCleanHash: value.rollingCleanHash as string } : {}),
     temporal: parseWorkshopSessionTemporalStateV1(value.temporal),
     summary: parseSummary(value.summary),
     workshop,

@@ -22,7 +22,7 @@ export function hasSameWorkshopRecoveryContent(
   right: WorkshopPersistedSessionV2
 ): boolean {
   const normalize = (value: WorkshopPersistedSessionV2): unknown => {
-    const { savedAt, updatedAt, summary, temporal, workshop, ...identity } =
+    const { savedAt, updatedAt, summary, rollingCleanHash, temporal, workshop, ...identity } =
       decodeWorkshopPersistedSessionCheckpoint(value).session;
     const { lastActivityAt, ...meaningfulTemporal } = temporal;
     const turns = workshop.turns.filter((turn) => !isAutomaticResumeMarker(turn));

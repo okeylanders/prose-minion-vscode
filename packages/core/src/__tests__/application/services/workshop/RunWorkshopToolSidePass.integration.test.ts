@@ -143,6 +143,7 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
         isSessionOperationPending: jest.fn().mockReturnValue(false),
         addSessionSaveStatusListener: jest.fn().mockReturnValue(() => undefined),
         waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
+        beginInteraction: jest.fn(),
         markDirty: jest.fn(),
         flush: jest.fn().mockResolvedValue(undefined),
         initialize: jest.fn().mockResolvedValue({

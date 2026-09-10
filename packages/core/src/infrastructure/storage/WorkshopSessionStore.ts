@@ -9,6 +9,7 @@
  */
 
 import * as path from 'path';
+import { withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import {
   decodeWorkshopPersistedSessionCheckpoint,
   WorkshopPersistedSessionCheckpointDecodeResult,
@@ -230,7 +231,7 @@ export class WorkshopSessionStore {
   /** Allocate a named file with immutable identity/path. The caller supplies a fresh id. */
   async saveNamed(session: WorkshopPersistedSessionV2): Promise<WorkshopStoredSessionSummary> {
     const paths = this.requireAvailability();
-    const decoded = this.validateSessionForWrite(session);
+    const decoded = this.validateSessionForWrite(withoutRollingProvenance(session));
     if (await this.findNamedSession(decoded.sessionId, paths, { ignoreUnreadable: true })) {
       throw new WorkshopNamedSessionIdentityConflictError(decoded.sessionId);
     }
@@ -263,7 +264,7 @@ export class WorkshopSessionStore {
     if (!hasSameWorkshopCheckpoint(found.session, expected)) {
       throw new WorkshopNamedSessionChangedError();
     }
-    const decoded = this.validateSessionForWrite(session);
+    const decoded = this.validateSessionForWrite(withoutRollingProvenance(session));
     if (decoded.sessionId !== sessionId) {
       throw new Error('Updated Workshop session identity does not match its target.');
     }

@@ -44,6 +44,28 @@ describe('Workshop composed routing — session owner', () => {
     } = createWorkshopRouteTestHarness());
   });
 
+  it.each(['message', 'tool', 'guest'] as const)('requests the pending resume boundary before a %s interaction', async (action) => {
+    await pin();
+    await router.route(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as never);
+    expect(persistence.beginInteraction).not.toHaveBeenCalled();
+    persistence.beginInteraction.mockImplementationOnce(() =>
+      session.recordSessionMarker('resume', 'Session resumed at the first interaction.')
+    );
+    if (action === 'message') {
+      await router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Continue.' }) as never);
+    } else if (action === 'guest') {
+      await router.route(message(MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'margot', openingMessage: 'Join us.' }) as never);
+    } else {
+      await runProse();
+    }
+    const turns = session.getSnapshot().turns;
+    const resumeIndex = turns.findIndex((turn) => turn.artifact === 'session_resume');
+    expect(resumeIndex).toBeGreaterThanOrEqual(0);
+    expect(turns.slice(resumeIndex + 1).some((turn) => turn.role === 'user')).toBe(true);
+    expect(persistence.beginInteraction).toHaveBeenCalledTimes(1);
+  });
+
   it.each(['restore', 'open'] as const)('announces a pending context scan during %s and clears it on completion', async (action) => {
     let finishScan!: () => void;
     let started!: () => void;

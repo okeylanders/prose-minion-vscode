@@ -31,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed — named checkpoint authority and recovery
 
+- Read-only saved-session loading: mirror named into current.json without touching
+  named bytes or activity time. Add a pending resume boundary only when a message,
+  tool run or guest interaction begins. Automatic source rereads stage runtime
+  context and retain provider-update delivery without dated turns or autosave.
+- Bind rolling clean provenance to its complete normalized payload using SHA-256.
+  Startup can distinguish an older clean saved cache from local author changes;
+  failed named writes clear that proof. Legacy or altered rolling payloads remain
+  conservatively recoverable. This marker never authorizes named replacement.
+
 - A matching named Workshop file takes precedence over current.json on restore
   and reload, including retained-tab reveal after Git sync. This supersedes the
   v2.2.3 equivalence-or-detach policy described in that historical release entry.

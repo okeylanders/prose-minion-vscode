@@ -1,6 +1,6 @@
 # ADR 2026-09-08: Workshop named checkpoint authority
 
-**Status:** Accepted; review remediation in progress
+**Status:** Accepted; load-time writes superseded by [ADR 2026-09-10](2026-09-10-workshop-read-only-session-loading.md)
 **Date:** 2026-09-08
 **Extends:** [Workshop session persistence](2026-07-14-workshop-session-persistence.md)
 
@@ -14,7 +14,8 @@ precedence over current.json, regardless of timestamps or transcript length.
 ## Decision
 
 - Restore the uniquely matching named session whenever current.json identifies
-  one. Refresh current.json from that session, including the new resume marker.
+  one. Refresh current.json as a clean mirror without adding a resume marker or
+  writing the named file. Resume is deferred until actual interaction.
 - Recheck the associated named session when the webview requests its room state,
   before refreshing file-backed context. Revealing a retained editor tab routes
   the same request because React does not remount. If it changed since the last accepted
@@ -72,3 +73,7 @@ a filesystem compare-and-swap: the filesystem port cannot atomically compare
 contents and rename against an unrelated Git process. A change in that final
 read/rename interval remains a platform limitation; atomic rename alone cannot
 provide such a guarantee.
+
+As of ADR 2026-09-10, valid rolling clean provenance suppresses recovery for an
+older saved cache. Uncommitted author changes still require preservation; runtime
+automatic refresh alone does not. Legacy unknown provenance remains conservative.

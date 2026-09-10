@@ -63,6 +63,7 @@ import {
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { countWords } from '@/utils/textUtils';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
+import { cleanRollingCheckpoint, isCleanRollingCheckpoint, withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
 
 interface LiveSessionIdentity {
@@ -80,6 +81,8 @@ interface LiveSessionRollback {
   temporal: ReturnType<WorkshopSessionTimeService['exportRuntimeState']>;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   degradedConversations: WorkshopConversationDegradation[];
+  resumePending: boolean;
+  localWorkPending: boolean;
   recoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][];
 }
 
@@ -138,6 +141,8 @@ export class WorkshopSessionPersistenceCoordinator {
   private autosaveQueue: Promise<void> = Promise.resolve();
   private sessionOperationQueue: Promise<void> = Promise.resolve();
   private pendingSessionOperations = 0;
+  private resumePending = false;
+  private localWorkPending = false;
   private dirtyRevision = 0;
   private writtenRevision = 0;
   private degradedConversationKeys: WorkshopConversationLogicalKey[] = [];
@@ -255,7 +260,13 @@ export class WorkshopSessionPersistenceCoordinator {
             );
           }
           const authoritative = named ?? current;
-          const recoveryNotice = named
+          const cleanRolling = isCleanRollingCheckpoint(current.session);
+          if (named && cleanRolling) {
+            this.outputChannel.appendLine(
+              `[WorkshopSessionPersistence] Clean rolling cache; adopting named without local recovery (id=${named.session.sessionId})`
+            );
+          }
+          const recoveryNotice = named && !cleanRolling
             ? await this.preserveDisplacedLocalSession(current.session, named.session)
             : undefined;
           if (named) {
@@ -266,7 +277,13 @@ export class WorkshopSessionPersistenceCoordinator {
               `(id=${named.session.sessionId}, turns=${named.session.workshop.turns.length})`
             );
           }
-          result = await this.hydrate(authoritative.session, true, true, authoritative);
+          result = await this.hydrate(authoritative.session, true, authoritative);
+          if (named) {
+            await this.mirrorNamedCheckpoint(named.session);
+            this.localWorkPending = false;
+          } else {
+            this.localWorkPending = !cleanRolling;
+          }
           if (recoveryNotice) {
             this.pendingRecoveryNotices.push(recoveryNotice);
           }
@@ -294,8 +311,29 @@ export class WorkshopSessionPersistenceCoordinator {
     return result;
   }
 
+  /** Called only once an actual message/tool interaction is about to begin. */
+  beginInteraction(): ReturnType<WorkshopSessionService['recordSessionMarker']> | undefined {
+    if (!this.resumePending) {
+      return undefined;
+    }
+    this.resumePending = false;
+    return this.session.recordSessionMarker('resume', this.time.describeVisibleMarker('resume'));
+  }
+
+  private async mirrorNamedCheckpoint(checkpoint: WorkshopPersistedSessionV2): Promise<void> {
+    // Provider setup can await. Recheck the named source before replacing the
+    // rolling cache, and preserve its original payload rather than a hydrated projection.
+    await this.ensureAssistantReady?.();
+    const latest = await this.readNamedCheckpoint(checkpoint.sessionId);
+    if (!latest || !hasSameWorkshopCheckpoint(latest.session, checkpoint)) {
+      throw new WorkshopNamedSessionChangedError();
+    }
+    await this.store.writeCurrent(cleanRollingCheckpoint(checkpoint));
+  }
+
   /** Mark one fully committed mutation for ordered rolling autosave. */
   markDirty(reason: string): void {
+    this.localWorkPending = true;
     this.time.touch();
     try {
       this.assertAcceptedWorkspace();
@@ -338,7 +376,7 @@ export class WorkshopSessionPersistenceCoordinator {
         const snapshot = await this.capture(this.identity);
         if (namedSessionId) {
           const checkpoint = { ...snapshot, savedAt: normalizedIso(this.now()) };
-          await this.writeNamedWithRollingRecovery(namedSessionId, checkpoint);
+          await this.writeNamedWithRollingRecovery(namedSessionId, checkpoint, revision);
         } else {
           await this.store.writeCurrent(snapshot);
         }
@@ -414,7 +452,11 @@ export class WorkshopSessionPersistenceCoordinator {
       this.identity = checkpointIdentity;
       this.activeNamedSessionId = checkpointIdentity.sessionId;
       this.acceptedNamedCheckpoint = checkpoint;
-      this.markDirty('named save identity');
+      if (!this.currentCheckpointError) {
+        await this.store.writeCurrent(cleanRollingCheckpoint(checkpoint));
+      }
+      this.localWorkPending = false;
+      this.writtenRevision = this.dirtyRevision;
       return summary;
     });
   }
@@ -495,22 +537,16 @@ export class WorkshopSessionPersistenceCoordinator {
     const rollback = this.captureRollback();
     let hydration: WorkshopHydrationTransaction;
     try {
-      const recoveryNotice = this.identity.sessionId === persisted.session.sessionId
+      const recoveryNotice = this.identity.sessionId === persisted.session.sessionId && this.localWorkPending
         ? await this.preserveDisplacedLocalSession(
           await this.capture(this.identity), persisted.session, this.acceptedNamedCheckpoint
         )
         : undefined;
-      hydration = await this.hydrate(persisted.session, false, false, persisted);
-      this.time.touch();
+      hydration = await this.hydrate(persisted.session, false, persisted);
       this.activeNamedSessionId = persisted.session.sessionId;
-      const promoted = await this.capture(this.identity);
-      // Hydration can await provider setup. Do not promote an obsolete read.
-      const latest = await this.readNamedCheckpoint(persisted.session.sessionId);
-      if (!latest || !hasSameWorkshopCheckpoint(latest.session, persisted.session)) {
-        throw new WorkshopNamedSessionChangedError();
-      }
-      await this.store.writeCurrent(promoted);
+      await this.mirrorNamedCheckpoint(persisted.session);
       this.acceptedNamedCheckpoint = persisted.session;
+      this.localWorkPending = false;
       this.currentCheckpointError = undefined;
       // Queued pre-load revisions belong to the replaced room, not this one.
       this.writtenRevision = this.dirtyRevision;
@@ -554,7 +590,7 @@ export class WorkshopSessionPersistenceCoordinator {
     // Save the complete local snapshot before hydration can replace either its
     // aggregate or provider histories. Failure must abort the replacement.
     const saved = await this.store.saveNamed({
-      ...local,
+      ...withoutRollingProvenance(local),
       sessionId: this.idFactory(),
       title: `${local.title} (local recovery)`,
       savedAt: normalizedIso(this.now())
@@ -776,7 +812,6 @@ export class WorkshopSessionPersistenceCoordinator {
   private async hydrate(
     persisted: WorkshopPersistedSessionV2,
     retirePreviousConversations = true,
-    scheduleResumeAutosave = true,
     checkpointRecovery?: Pick<
       WorkshopPersistedSessionCheckpointDecodeResult,
       'migrations' | 'normalizations' | 'recoveryNotices'
@@ -877,7 +912,7 @@ export class WorkshopSessionPersistenceCoordinator {
       ...(checkpointRecovery?.recoveryNotices ?? []),
       ...hydration.recoveryNotices
     ].map((notice) => ({ ...notice }));
-    this.session.recordSessionMarker('resume', this.time.describeVisibleMarker('resume'));
+    this.resumePending = true;
     if (retirePreviousConversations) {
       hydration.discardedConversationIds.forEach((conversationId) =>
         this.assistantToolService.discardConversation(conversationId)
@@ -889,9 +924,6 @@ export class WorkshopSessionPersistenceCoordinator {
         degradedConversations.map(({ key, reason }) => `${key}: ${reason}`).join('; ') || 'none'
       })`
     );
-    if (scheduleResumeAutosave) {
-      this.markDirty('resume marker');
-    }
     return {
       restored: true,
       degradedConversationKeys: degradedKeys,
@@ -1052,6 +1084,8 @@ export class WorkshopSessionPersistenceCoordinator {
       temporal: this.time.exportRuntimeState(),
       degradedConversationKeys: [...this.degradedConversationKeys],
       degradedConversations: this.getDegradedConversations(),
+      resumePending: this.resumePending,
+      localWorkPending: this.localWorkPending,
       recoveryNotices: this.pendingRecoveryNotices.map((notice) => ({ ...notice }))
     };
   }
@@ -1081,6 +1115,8 @@ export class WorkshopSessionPersistenceCoordinator {
       );
     this.time.restoreRuntimeState(rollback.temporal);
     this.identity = { ...rollback.identity };
+    this.resumePending = rollback.resumePending;
+    this.localWorkPending = rollback.localWorkPending;
     this.activeNamedSessionId = rollback.activeNamedSessionId;
     this.acceptedNamedCheckpoint = rollback.acceptedNamedCheckpoint;
     this.degradedConversationKeys = [...rollback.degradedConversationKeys];
@@ -1089,6 +1125,7 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   private recordStartMarker(): void {
+    this.resumePending = false;
     this.session.recordSessionMarker('start', this.time.describeVisibleMarker('start'));
   }
 
@@ -1173,9 +1210,11 @@ export class WorkshopSessionPersistenceCoordinator {
 
   private async writeNamedWithRollingRecovery(
     sessionId: string,
-    checkpoint: WorkshopPersistedSessionV2
+    checkpoint: WorkshopPersistedSessionV2,
+    savedRevision = this.dirtyRevision
   ): Promise<WorkshopStoredSessionSummary> {
     let summary: WorkshopStoredSessionSummary;
+    this.localWorkPending = true;
     try {
       summary = await this.store.updateNamed(
         sessionId, checkpoint, this.requireAcceptedNamedCheckpoint(sessionId)
@@ -1193,10 +1232,13 @@ export class WorkshopSessionPersistenceCoordinator {
       throw namedError;
     }
     this.acceptedNamedCheckpoint = checkpoint;
+    if (this.dirtyRevision <= savedRevision) {
+      this.localWorkPending = false;
+    }
     this.identity = {
       sessionId: checkpoint.sessionId, title: checkpoint.title, createdAt: checkpoint.createdAt
     };
-    await this.store.writeCurrent(checkpoint);
+    await this.store.writeCurrent(cleanRollingCheckpoint(checkpoint));
     return summary;
   }
 

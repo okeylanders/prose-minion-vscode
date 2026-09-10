@@ -5,6 +5,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
+import { isCleanRollingCheckpoint } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
@@ -34,8 +35,7 @@ function checkpoint(id: string, text: string): WorkshopPersistedSessionV2 {
   };
 }
 
-function setup() {
-  const fs = new MemoryFileSystem();
+function setup(fs = new MemoryFileSystem()) {
   const log: LogSink = { appendLine: jest.fn(), clear: jest.fn(), show: jest.fn() };
   const store = new WorkshopSessionStore(fs, workspace, log, now);
   const session = new WorkshopSessionService(() => now().getTime());
@@ -69,6 +69,120 @@ function addResumeNotice(value: WorkshopPersistedSessionV2): void {
 }
 
 describe('Workshop persistence with the real store', () => {
+  it('keeps named bytes unchanged across load, discard, Git sync and restart without recovering a clean older cache', async () => {
+    const { fs, store, coordinator } = setup();
+    const old = checkpoint('named', 'Old committed excerpt');
+    const saved = await store.saveNamed(old);
+    await store.writeCurrent(old); // Legacy cache initially agrees with named.
+    const file = `${directory}/${saved.fileName}`;
+    const oldBytes = fs.files.get(file);
+    await coordinator.initialize();
+    await coordinator.flush();
+    expect(fs.files.get(file)).toEqual(oldBytes);
+    expect(isCleanRollingCheckpoint((await store.readCurrent())!)).toBe(true);
+
+    // Discard tracked changes, then pull; ignored current.json remains older.
+    fs.setJson(file, old);
+    const incoming = checkpoint('named', 'Incoming committed excerpt');
+    fs.setJson(file, incoming);
+    const incomingBytes = fs.files.get(file);
+    const restarted = setup(fs);
+    await restarted.coordinator.initialize();
+    await restarted.coordinator.refreshNamedSession();
+    await restarted.coordinator.openNamed('named');
+    await restarted.coordinator.flush();
+    expect(restarted.session.getExcerpt()?.text).toBe('Incoming committed excerpt');
+    expect(fs.files.get(file)).toEqual(incomingBytes);
+    expect((await restarted.store.list()).sessions).toHaveLength(1);
+    expect(restarted.coordinator.consumeRecoveryNotices()).toEqual([]);
+    expect((await restarted.store.readCurrent())?.workshop.turns).toEqual(incoming.workshop.turns);
+  });
+
+  it('rejects a clean marker whose rolling content was subsequently edited', async () => {
+    const { fs, store, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Old'));
+    await store.writeCurrent(checkpoint('named', 'Old'));
+    await coordinator.initialize();
+    const edited = (await store.readCurrent())!;
+    edited.workshop.excerpt!.text = 'Unique local edit';
+    fs.setJson(currentPath, edited); // Stale hash must not authorize dropping content.
+    fs.setJson(`${directory}/${saved.fileName}`, checkpoint('named', 'Incoming'));
+    expect(isCleanRollingCheckpoint((await store.readCurrent())!)).toBe(false);
+    const restarted = setup(fs);
+    await restarted.coordinator.initialize();
+    const recovery = (await store.list()).sessions.find((entry) => entry.sessionId !== 'named')!;
+    expect((await store.readNamed(recovery.sessionId))?.workshop.excerpt?.text).toBe('Unique local edit');
+    expect((await store.readNamed(recovery.sessionId))?.rollingCleanHash).toBeUndefined();
+  });
+
+  it('retains author changes after a failed named save and recovers them on restart', async () => {
+    const { fs, store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Old'));
+    await store.writeCurrent(checkpoint('named', 'Old'));
+    await coordinator.initialize();
+    fs.setJson(`${directory}/${saved.fileName}`, checkpoint('named', 'Incoming'));
+    session.setExcerpt({ text: 'Unsaved local edit', source: { kind: 'manual' } });
+    coordinator.markDirty('author edit');
+    await coordinator.flush();
+    expect((await store.readCurrent())?.rollingCleanHash).toBeUndefined();
+    const restarted = setup(fs);
+    await restarted.coordinator.initialize();
+    const recovery = (await store.list()).sessions.find((entry) => entry.sessionId !== 'named')!;
+    expect((await store.readNamed(recovery.sessionId))?.workshop.excerpt?.text).toBe('Unsaved local edit');
+    expect(restarted.session.getExcerpt()?.text).toBe('Incoming');
+  });
+
+  it('stages automatic context updates without writes and commits them with the first interaction', async () => {
+    const { fs, store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Old'));
+    await store.writeCurrent(checkpoint('named', 'Old'));
+    await coordinator.initialize();
+    session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'reference.md',
+      content: 'Old reference', words: 2, sourceUri: 'file:///workspace/novel/reference.md' });
+    coordinator.markDirty('author added context');
+    await coordinator.flush();
+    const file = `${directory}/${saved.fileName}`;
+    const savedBytes = fs.files.get(file);
+    const savedCurrent = fs.files.get(currentPath);
+    const turnsBefore = session.exportCommittedState().turns;
+    const attachment = session.getContextAttachments()[0];
+    session.refreshContextFileAttachments([{ ...attachment, sourceUri: attachment.sourceUri!, relativePath: 'reference.md', content: 'Refreshed reference', words: 2 }]);
+    await coordinator.flush();
+    expect(fs.files.get(file)).toEqual(savedBytes);
+    expect(fs.files.get(currentPath)).toEqual(savedCurrent);
+    expect(session.exportCommittedState().turns).toEqual(turnsBefore);
+
+    expect(coordinator.beginInteraction()?.artifact).toBe('session_resume');
+    session.beginPersonaMessage('message', 'Use this reference.');
+    session.completeRun('message', 'Understood.', undefined, false, 'host-runtime');
+    coordinator.markDirty('persona turn completed');
+    await coordinator.flush();
+    const persisted = (await store.readNamed('named'))!;
+    expect(persisted.workshop.contextAttachments[0].content).toBe('Refreshed reference');
+    expect(persisted.workshop.turns.slice(-3).map((turn) => turn.artifact))
+      .toEqual(['session_resume', 'persona_message', 'persona_message']);
+    expect(persisted.rollingCleanHash).toBeUndefined();
+    expect(isCleanRollingCheckpoint((await store.readCurrent())!)).toBe(true);
+    expect(coordinator.beginInteraction()).toBeUndefined();
+  });
+
+  it('does not recover an automatically refreshed working set when Git replaces the named session', async () => {
+    const { fs, store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Old'));
+    await store.writeCurrent(checkpoint('named', 'Old'));
+    await coordinator.initialize();
+    session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'reference.md',
+      content: 'Old reference', words: 2, sourceUri: 'file:///workspace/novel/reference.md' });
+    coordinator.markDirty('author added context');
+    await coordinator.flush();
+    session.refreshContextFileAttachments([{ ...session.getContextAttachments()[0], sourceUri: 'file:///workspace/novel/reference.md', relativePath: 'reference.md', content: 'Automatic reread', words: 2 }]);
+    fs.setJson(`${directory}/${saved.fileName}`, checkpoint('named', 'Incoming'));
+    await coordinator.refreshNamedSession();
+    expect((await store.list()).sessions).toHaveLength(1);
+    expect(session.getExcerpt()?.text).toBe('Incoming');
+    expect(coordinator.consumeRecoveryNotices()).toEqual([]);
+  });
+
   it('does not create startup recovery for automatic resume notices and their bookkeeping', async () => {
     const { store, coordinator, session } = setup();
     const named = checkpoint('named', 'Initial');
@@ -83,7 +197,7 @@ describe('Workshop persistence with the real store', () => {
     await coordinator.flush();
     expect((await store.list()).sessions).toHaveLength(1);
     expect(coordinator.consumeRecoveryNotices()).toEqual([]);
-    expect(session.exportCommittedState().turns.filter((turn) => turn.artifact === 'session_resume')).toHaveLength(1);
+    expect(session.exportCommittedState().turns.filter((turn) => turn.artifact === 'session_resume')).toHaveLength(0);
   });
 
   it.each(['excerpt', 'transcript', 'archive', 'noncanonical resume'])(
@@ -179,6 +293,10 @@ describe('Workshop persistence with the real store', () => {
     }
     await store.writeCurrent(checkpoint('named', 'Local work'));
     fs.setJson(`${directory}/${saved.fileName}`, checkpoint('named', 'Incoming'));
+    if (phase === 'reveal') {
+      coordinator.markDirty('local edit');
+      await coordinator.flush();
+    }
     const before = fs.json(currentPath);
     jest.spyOn(store, 'saveNamed').mockRejectedValueOnce(new Error('Recovery disk full'));
     if (phase === 'startup') {
@@ -289,7 +407,7 @@ describe('Workshop persistence with the real store', () => {
     ]);
     await coordinator.flush();
     expect((await store.readCurrent())?.workshop.turns.filter((turn) => turn.artifact === 'session_resume'))
-      .toHaveLength(1);
+      .toHaveLength(0);
   });
 
   it('reports both failures if the named save and rolling recovery fail', async () => {

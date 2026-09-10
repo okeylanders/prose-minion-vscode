@@ -554,7 +554,7 @@ export class WorkshopSessionService {
    */
   refreshContextFileAttachments(
     inputs: readonly WorkshopContextFileRefreshInput[],
-    eventContent: string
+    eventContent?: string
   ): WorkshopContextFileRefreshResult {
     const replacements = new Map(inputs.map((input) => [input.id, input]));
     for (const input of inputs) {
@@ -990,13 +990,13 @@ export class WorkshopSessionService {
   }
 
   /** Bump the revision, queue host delivery, and mint the visible event turn mid-session. */
-  private recordContextChange(content: string): WorkshopTurn | undefined {
+  private recordContextChange(content?: string): WorkshopTurn | undefined {
     this.contextRevision += 1;
     if (!this.hasHostConversation() && this.activeRun?.target !== 'host') {
       return undefined;
     }
     this.pendingContextRevision = this.contextRevision;
-    return this.recordContextEvent(content);
+    return content === undefined ? undefined : this.recordContextEvent(content);
   }
 
   /** Mint a visible context event without changing the context revision. */

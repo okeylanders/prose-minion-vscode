@@ -220,6 +220,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     ),
     waitForSessionOperations: jest.fn().mockResolvedValue(undefined),
     refreshNamedSession: jest.fn(async (afterLoad?: (changed: boolean) => Promise<void>) => { await afterLoad?.(false); return false; }),
+    beginInteraction: jest.fn(),
     markDirty: jest.fn(),
     flush: jest.fn().mockResolvedValue(undefined),
     initialize: jest.fn().mockResolvedValue({
