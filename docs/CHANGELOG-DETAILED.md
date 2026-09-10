@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed — named checkpoint authority and recovery
 
+- Clear both Workshop status/ticker fields at session Open/New and context-scan
+  start. Preserve fresh scan results through completion and room snapshots so
+  switching sessions cannot display the previous room's file-refresh status.
 - Read-only saved-session loading: mirror named into current.json without touching
   named bytes or activity time. Add a pending resume boundary only when a message,
   tool run or guest interaction begins. Automatic source rereads stage runtime

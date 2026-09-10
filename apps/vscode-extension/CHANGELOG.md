@@ -18,6 +18,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Fixed
 
+- Clear stale Workshop status messages when opening or starting a session and
+  before loading context, so a previous session's refresh result does not linger.
 - Opening or revealing saved Workshop sessions no longer writes resume notices or
   activity timestamps into named files. Resume is recorded on the first interaction.
 - Automatic context rereads remain pending until author activity or explicit

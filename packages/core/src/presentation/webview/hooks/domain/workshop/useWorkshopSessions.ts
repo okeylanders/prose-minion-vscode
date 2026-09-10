@@ -142,9 +142,10 @@ export function useWorkshopSessions(
   }, [post]);
 
   const openSession = React.useCallback((sessionId: string) => {
+    roomReplacement.clearStatus();
     setSessionActionPending('open');
     post(MessageType.WORKSHOP_OPEN_SESSION, { sessionId });
-  }, [post]);
+  }, [post, roomReplacement]);
 
   const renameSession = React.useCallback((sessionId: string, title: string) => {
     setSessionActionPending('rename');
@@ -238,8 +239,12 @@ export function useWorkshopSessions(
   );
 
   const handleSessionContextScan = React.useCallback((message: WorkshopSessionContextScanMessage) => {
+    // Clear the previous result before a load/reveal scan, never after its new status arrives.
+    if (message.payload.scanning) {
+      roomReplacement.clearStatus();
+    }
     setScanningContextFiles(message.payload.scanning);
-  }, []);
+  }, [roomReplacement]);
 
   const handleSessionSaveStatus = React.useCallback((message: WorkshopSessionSaveStatusMessage) => {
     setSessionSaveStatus(message.payload);
