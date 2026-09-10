@@ -23,6 +23,7 @@ describe('useWorkshopSessions', () => {
 
   it('owns named-session posts independently of room state', () => {
     const replacement: WorkshopRoomReplacementPort = {
+      clearStatus: jest.fn(),
       beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0, errorMessage: '' })),
       restoreReplacement: jest.fn()
     };
@@ -51,6 +52,7 @@ describe('useWorkshopSessions', () => {
       errorMessage: 'Keep the prior room error visible.'
     };
     const replacement: WorkshopRoomReplacementPort = {
+      clearStatus: jest.fn(),
       beginReplacement: jest.fn(() => snapshot),
       restoreReplacement: jest.fn()
     };
@@ -74,6 +76,7 @@ describe('useWorkshopSessions', () => {
 
   it('queues recovery notices in order, deduplicates them, and consumes one at a time', () => {
     const replacement: WorkshopRoomReplacementPort = {
+      clearStatus: jest.fn(),
       beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0, errorMessage: '' })),
       restoreReplacement: jest.fn()
     };

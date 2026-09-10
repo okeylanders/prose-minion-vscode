@@ -90,6 +90,64 @@ describe('WorkshopApp', () => {
     jest.clearAllMocks();
   });
 
+  it('keeps startup loading visible after dismissing the notice before the room arrives', () => {
+    render(<WorkshopApp />);
+    act(() => window.dispatchEvent(new MessageEvent('message', { data: {
+      type: MessageType.STARTUP_NOTICE_DATA,
+      source: 'extension.workshop', timestamp: 1,
+      payload: { shouldShow: true, noticeVersion: 'test-notice' }
+    } })));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
+    expect(screen.getByText('Opening your Workshop session…')).not.toBeNull();
+    const content = screen.getByLabelText('Session thread').querySelector('.pm-ws-session-content')!;
+    expect(content.hasAttribute('inert')).toBe(true);
+
+    act(() => window.dispatchEvent(new MessageEvent('message', { data: readySession() })));
+    expect(screen.queryByText('Loading…')).toBeNull();
+    expect(content.hasAttribute('inert')).toBe(false);
+  });
+
+  it.each([true, false])('dismisses the notice into the current scan state (scanning=%s)', (scanning) => {
+    render(<WorkshopApp />);
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: {
+        type: MessageType.STARTUP_NOTICE_DATA,
+        source: 'extension.workshop', timestamp: 1,
+        payload: { shouldShow: true, noticeVersion: 'test-notice' }
+      } }));
+      window.dispatchEvent(new MessageEvent('message', { data: {
+        type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
+        source: 'extension.workshop', timestamp: 2, payload: { scanning: true }
+      } }));
+      window.dispatchEvent(new MessageEvent('message', { data: readySession() }));
+    });
+    if (!scanning) {
+      act(() => window.dispatchEvent(new MessageEvent('message', { data: {
+        type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
+        source: 'extension.workshop', timestamp: 3, payload: { scanning: false }
+      } })));
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByText('Loading…') !== null).toBe(scanning);
+    const content = screen.getByLabelText('Session thread').querySelector('.pm-ws-session-content')!;
+    expect(content.hasAttribute('inert')).toBe(scanning);
+  });
+
+  it('shows a startup error instead of covering it with the initial loader', () => {
+    render(<WorkshopApp />);
+    expect(screen.getByText('Opening your Workshop session…')).not.toBeNull();
+    act(() => window.dispatchEvent(new MessageEvent('message', { data: {
+      type: MessageType.ERROR, source: 'extension.workshop', timestamp: 1,
+      payload: { source: 'workshop', message: 'Could not load the saved Workshop session.' }
+    } })));
+    expect(screen.queryByText('Loading…')).toBeNull();
+    expect(screen.getByText('Could not load the saved Workshop session.')).not.toBeNull();
+    const content = screen.getByLabelText('Session thread').querySelector('.pm-ws-session-content')!;
+    expect(content.hasAttribute('inert')).toBe(false);
+  });
+
   it('covers the chat while context is scanned, even when session state arrives mid-scan', () => {
     render(<WorkshopApp />);
     const scan = (scanning: boolean) => act(() => {

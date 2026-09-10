@@ -125,8 +125,8 @@ export class WorkshopSessionMessageHandler {
   }
 
   async handleRequestSession(_message: WorkshopRequestSessionMessage): Promise<void> {
-    await this.persistence.waitForSessionOperations();
     try {
+      await this.persistence.waitForSessionOperations();
       if (!this.options.activeRunLabel()) {
         await this.persistence.refreshNamedSession(async (changed) => {
           if (changed) {
@@ -140,11 +140,11 @@ export class WorkshopSessionMessageHandler {
       }
       await this.options.flushDeferredConversationSettings();
       this.options.postSessionState();
-      this.postRecoveryNotices();
     } catch (error) {
       this.options.reportError('Could not load the saved Workshop session.', this.errorMessage(error));
       this.options.postSessionState();
     } finally {
+      this.postRecoveryNotices();
       // Replay authoritative busy state even if the hidden tab missed scan-end.
       this.postScanState(this.scanningContextFiles);
     }
@@ -239,7 +239,6 @@ export class WorkshopSessionMessageHandler {
         this.initialContextRefreshCompleted = true;
       });
       this.options.postSessionState();
-      this.postRecoveryNotices();
       const degraded = result.degradedConversationKeys.length;
       this.postActionResult(
         'open',
@@ -252,6 +251,8 @@ export class WorkshopSessionMessageHandler {
       );
     } catch (error) {
       this.postActionFailure('open', error);
+    } finally {
+      this.postRecoveryNotices();
     }
   }
 

@@ -18,6 +18,19 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ### Fixed
 
+- Keep restored Workshop rooms and recovery notices intact if updating current.json
+  fails. Cache retries no longer rewrite named sessions or their timestamps.
+- Report successful named saves separately from cache-copy failures. Git reverts
+  of named sessions also replace their clean caches, including autosaved turns.
+- Clear stale Workshop status messages when opening or starting a session and
+  before loading context, so a previous session's refresh result does not linger.
+- Opening or revealing saved Workshop sessions no longer writes resume notices or
+  activity timestamps into named files. Resume is recorded on the first interaction.
+- Automatic context rereads remain pending until author activity or explicit
+  Save/Refresh. A verified clean rolling cache can follow incoming Git changes
+  without a recovery copy; unsaved author work remains recoverable.
+- Show Workshop loading feedback while the initial saved room is being restored,
+  including after dismissing the startup notice before context scanning begins.
 - Named Workshop sessions take precedence over current.json when loading,
   including returning to a retained tab after Git sync. This supersedes the
   v2.2.3 conflict-selection behavior.

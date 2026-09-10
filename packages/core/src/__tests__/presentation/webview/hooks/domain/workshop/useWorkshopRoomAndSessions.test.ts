@@ -714,6 +714,61 @@ describe('useWorkshopRoom + useWorkshopSessions', () => {
     expect(result.current.statusMessage).toBe('Streaming Prose…');
   });
 
+  it.each(['open', 'new', 'scan'] as const)(
+    'clears the previous room status at %s start and preserves the new scan result',
+    (action) => {
+      const { result } = renderHook(() => useWorkshop());
+      const status = (message: string): StatusMessage => ({
+        type: MessageType.STATUS,
+        source: 'extension.workshop',
+        payload: { message, tickerMessage: message },
+        timestamp: 0
+      });
+      const scan = (scanning: boolean) => result.current.handleSessionContextScan({
+        type: MessageType.WORKSHOP_SESSION_CONTEXT_SCAN,
+        source: 'extension.workshop',
+        payload: { scanning },
+        timestamp: 0
+      });
+      act(() => result.current.handleStatusMessage(status('Refreshed 1 context file: chapter-6.4.md')));
+
+      act(() => {
+        if (action === 'open') {
+          result.current.openSession('fresh-analysis');
+        } else if (action === 'new') {
+          result.current.resetSession();
+        } else {
+          scan(true);
+        }
+      });
+      expect(result.current.statusMessage).toBe('');
+      expect(result.current.tickerMessage).toBe('');
+
+      // An unchanged scan emits no status: the previous room must stay cleared.
+      act(() => {
+        scan(false);
+        result.current.handleSessionState(sessionState({}));
+      });
+      expect(result.current.statusMessage).toBe('');
+      expect(result.current.tickerMessage).toBe('');
+
+      act(() => scan(true));
+      act(() => result.current.handleStatusMessage(status('Refreshed 1 context file: chapter-6.3.md')));
+      act(() => {
+        scan(false);
+        result.current.handleSessionState(sessionState({}));
+        result.current.handleSessionActionResult({
+          type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+          source: 'extension.workshop',
+          payload: { action: 'open', ok: true, message: 'Session opened.' },
+          timestamp: 0
+        });
+      });
+      expect(result.current.statusMessage).toBe('Refreshed 1 context file: chapter-6.3.md');
+      expect(result.current.tickerMessage).toBe('Refreshed 1 context file: chapter-6.3.md');
+    }
+  );
+
   it('accepts only workshop-sourced ERROR payloads and clears them on the next run', () => {
     const { result } = renderHook(() => useWorkshop());
 

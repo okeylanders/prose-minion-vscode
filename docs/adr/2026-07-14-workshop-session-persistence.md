@@ -150,7 +150,8 @@ Sessions persist temporal state rather than asking the model to infer it:
   conversation.
 
 The transcript receives a visible session-start marker. Reopening a persisted
-session adds a visible resume marker with the current local date/time and
+session defers its visible resume marker until the first message/tool interaction,
+using that interaction's current local date/time and
 elapsed interval. A panel/webview reload in the same live extension-host
 session does not create a false resume event.
 
@@ -208,6 +209,10 @@ checkpoint against the version last accepted by the room and rejects external
 changes before committing. Named updates are attempted before their rolling mirror. If a named update
 fails, the live snapshot is still written to current.json without advancing the
 named baseline, and the failure remains visible and retryable.
+Loading does not autosave the named file. Its rolling mirror carries a content-bound
+clean marker; an older valid clean mirror can be replaced without recovery.
+Automatic context refresh is runtime-only until author activity or explicit
+Save/Refresh. See [Read-only session loading](2026-09-10-workshop-read-only-session-loading.md).
 See [Named checkpoint authority](2026-09-08-workshop-named-checkpoint-authority.md)
 for conflict handling and the filesystem concurrency limits.
 

@@ -327,6 +327,13 @@ export class WorkshopRoomHandler {
     this.sliceComposition.dispose();
   }
 
+  private beginSessionInteraction(): void {
+    const marker = this.sessionPersistence.beginInteraction();
+    if (marker) {
+      this.postTurn(marker);
+    }
+  }
+
   // Message handlers
 
   async handleRunTool(message: WorkshopRunToolMessage): Promise<void> {
@@ -346,6 +353,7 @@ export class WorkshopRoomHandler {
     // A new run preempts any in-flight one: fresh turn, never continuation.
     this.preemptActiveRun();
 
+    this.beginSessionInteraction();
     const controller = new AbortController();
     await this.runToolSidePass.run(toolId, excerpt, controller, {
       activatePhase: (requestId, label, activeToolId, activeController) => {
@@ -543,6 +551,7 @@ export class WorkshopRoomHandler {
         workshopGuestConversationKey(personaId)
       );
       const writerProfile = this.conversationSettingsService.getWriterProfile();
+      this.beginSessionInteraction();
       const joinStart = this.session.beginPersonaGuestJoin(
         personaId,
         requestId,
@@ -1040,6 +1049,7 @@ export class WorkshopRoomHandler {
         }
       : undefined;
     const timeNotice = targetPlan.prepareTimeNotice();
+    this.beginSessionInteraction();
     const {
       modelMessage,
       userTurn,

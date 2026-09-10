@@ -31,6 +31,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed — named checkpoint authority and recovery
 
+- Separate pending rolling mirrors from author dirty revisions. Startup mirror
+  failures retain named association and resume state; reveal adopts changed named
+  files or retries unchanged mirrors, and flush retries only cache payloads.
+  Named Save-as-new/update results remain successful when only the mirror fails.
+- Preserve notices for committed recovery files through failed hydration/promotion;
+  publish state, notices and scan completion even after an initialization-barrier
+  error. Archive-free loading no longer requires provider readiness to mirror.
+- A Git revert of a successfully autosaved named session replaces its verified
+  clean cache without recovery, including real author turns. This is distinct
+  from unsaved author work, which still requires preservation.
+- Manual context refresh warnings schedule one author write instead of two.
+- Clear both Workshop status/ticker fields at session Open/New and context-scan
+  start. Preserve fresh scan results through completion and room snapshots so
+  switching sessions cannot display the previous room's file-refresh status.
+- Read-only saved-session loading: mirror named into current.json without touching
+  named bytes or activity time. Add a pending resume boundary only when a message,
+  tool run or guest interaction begins. Automatic source rereads stage runtime
+  context and retain provider-update delivery without dated turns or autosave.
+- Bind rolling clean provenance to its complete normalized payload using SHA-256.
+  Startup can distinguish an older clean saved cache from local author changes;
+  failed named writes clear that proof. Legacy or altered rolling payloads remain
+  conservatively recoverable. This marker never authorizes named replacement.
+
 - A matching named Workshop file takes precedence over current.json on restore
   and reload, including retained-tab reveal after Git sync. This supersedes the
   v2.2.3 equivalence-or-detach policy described in that historical release entry.

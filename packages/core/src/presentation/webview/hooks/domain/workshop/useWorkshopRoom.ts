@@ -253,6 +253,7 @@ export interface WorkshopRoomThreadSnapshot {
 
 /** One-way seam consumed by useWorkshopSessions for optimistic room replacement. */
 export interface WorkshopRoomReplacementPort {
+  clearStatus: () => void;
   beginReplacement: () => WorkshopRoomThreadSnapshot;
   restoreReplacement: (snapshot: WorkshopRoomThreadSnapshot) => void;
 }
@@ -562,13 +563,19 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     }
   }, [vscode]);
 
+  const clearStatus = React.useCallback(() => {
+    setStatusMessage('');
+    setTickerMessage('');
+  }, []);
+
   const beginReplacement = React.useCallback((): WorkshopRoomThreadSnapshot => {
     const snapshot = { turns: [...turns], totalTurns, errorMessage };
+    clearStatus();
     setErrorMessage('');
     setTurns([]);
     setTotalTurns(0);
     return snapshot;
-  }, [errorMessage, totalTurns, turns]);
+  }, [clearStatus, errorMessage, totalTurns, turns]);
 
   const restoreReplacement = React.useCallback((snapshot: WorkshopRoomThreadSnapshot) => {
     setTurns(snapshot.turns);
@@ -577,9 +584,10 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   }, []);
 
   const replacementPort = React.useMemo<WorkshopRoomReplacementPort>(() => ({
+    clearStatus,
     beginReplacement,
     restoreReplacement
-  }), [beginReplacement, restoreReplacement]);
+  }), [clearStatus, beginReplacement, restoreReplacement]);
 
   const requestSession = React.useCallback(() => {
     post(MessageType.WORKSHOP_REQUEST_SESSION, {});

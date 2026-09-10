@@ -452,7 +452,10 @@ export const WorkshopApp: React.FC = () => {
     errorMessage: workshop.errorMessage
   });
 
-  const sessionLoading = workshopSessions.scanningContextFiles ||
+  // Startup hydration precedes context scanning. Keep that wait visible even
+  // when the writer dismisses the startup notice before the first room arrives.
+  const awaitingInitialSession = !workshop.sessionReady && !workshop.errorMessage;
+  const sessionLoading = awaitingInitialSession || workshopSessions.scanningContextFiles ||
     workshopSessions.sessionActionPending === 'open';
   const roomMutationLocked =
     sessionLoading || workshop.isRunning || workshop.wizardRunning ||
