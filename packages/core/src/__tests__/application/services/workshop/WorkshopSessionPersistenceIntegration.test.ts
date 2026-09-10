@@ -69,6 +69,64 @@ function addResumeNotice(value: WorkshopPersistedSessionV2): void {
 }
 
 describe('Workshop persistence with the real store', () => {
+  it.each(['open', 'new'] as const)('keeps a delayed manual refresh in its original room before %s', async (action) => {
+    const { fs, store, session, coordinator } = setup();
+    await coordinator.initialize();
+    session.setExcerpt({ text: 'Session B', source: { kind: 'manual' } });
+    session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'b.md',
+      content: 'B body', words: 2, sourceUri: 'file:///workspace/b.md', relativePath: 'b.md' });
+    const savedB = await coordinator.saveNamed('Session B');
+    const bytesB = fs.files.get(`${directory}/${savedB.fileName}`);
+    await coordinator.resetSession({ clearWorkingSet: true });
+    session.setExcerpt({ text: 'Session A', source: { kind: 'manual' } });
+    session.addContextAttachment({ kind: 'file', origin: 'wizard', label: 'a.md',
+      content: 'Old A', words: 2, sourceUri: 'file:///workspace/a.md', relativePath: 'a.md' });
+    const attachmentA = session.getContextAttachments()[0];
+    expect(attachmentA.id).toBe('ctx-1');
+    let finishRead!: () => void;
+    let started!: () => void;
+    const startedRead = new Promise<void>((resolve) => { started = resolve; });
+    const read = new Promise<void>((resolve) => { finishRead = resolve; });
+    const refresh = coordinator.runContextRefresh(async () => {
+      started();
+      await read;
+      expect(session.refreshContextFileAttachments([{ id: attachmentA.id,
+        content: 'New A', words: 2, sourceUri: 'file:///workspace/a.md', relativePath: 'a.md' }],
+      'Refreshed A').ok).toBe(true);
+      coordinator.markDirty('context files refreshed');
+    });
+    expect(coordinator.isSessionOperationPending()).toBe(true);
+    await startedRead;
+    const replacement = action === 'open'
+      ? coordinator.openNamed(savedB.sessionId)
+      : coordinator.resetSession({ clearWorkingSet: true });
+    expect(session.getExcerpt()?.text).toBe('Session A');
+    finishRead();
+    await refresh;
+    await replacement;
+    await coordinator.flush();
+    if (action === 'open') {
+      expect(session.getContextAttachments()[0]).toMatchObject({ id: 'ctx-1',
+        label: 'b.md', content: 'B body', sourceUri: 'file:///workspace/b.md', relativePath: 'b.md' });
+    } else {
+      expect(session.getContextAttachments()).toEqual([]);
+    }
+    expect(fs.files.get(`${directory}/${savedB.fileName}`)).toBe(bytesB);
+    expect(coordinator.isSessionOperationPending()).toBe(false);
+  });
+
+  it('releases manual refresh ownership after failure so another session can open', async () => {
+    const { store, session, coordinator } = setup();
+    const saved = await store.saveNamed(checkpoint('named', 'Saved'));
+    await coordinator.initialize();
+    await expect(coordinator.runContextRefresh(async () => {
+      throw new Error('Read failed');
+    })).rejects.toThrow('Read failed');
+    expect(coordinator.isSessionOperationPending()).toBe(false);
+    await coordinator.openNamed(saved.sessionId);
+    expect(session.getExcerpt()?.text).toBe('Saved');
+  });
+
   it.each(['flush', 'reveal'] as const)('retries a failed startup cache mirror through %s without rewriting named or inventing turns', async (retry) => {
     const { fs, store, session, coordinator } = setup();
     const saved = await store.saveNamed(checkpoint('named', 'Saved'));
