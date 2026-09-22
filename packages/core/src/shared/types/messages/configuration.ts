@@ -12,6 +12,17 @@ import { TokenUsage } from './tokenUsage';
 
 export type ModelScope = 'assistant' | 'dictionary' | 'context' | 'category' | 'widget';
 
+export type ModelParameterConfidence =
+  | 'published'
+  | 'estimated'
+  | 'undisclosed'
+  | 'not-applicable';
+
+export interface ModelParameterCount {
+  label: string;
+  confidence: ModelParameterConfidence;
+}
+
 export interface ModelOption {
   id: string;
   label: string;
@@ -22,6 +33,7 @@ export interface ModelOption {
   knowledgeCutoff?: string;
   expirationDate?: string;
   contextLength?: number;
+  parameterCount?: ModelParameterCount;
   pricing?: {
     prompt: string;
     completion: string;

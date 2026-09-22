@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — GPT-6 Luna and Sol
+
+- Added `openai/gpt-6-luna`, `openai/gpt-6-luna-pro`, `openai/gpt-6-sol`, and `openai/gpt-6-sol-pro` to Recommended Models and Category Search.
+- OpenRouter advertises 1.05M context, up to 128K output, text/image/file input, tool calling, structured outputs, and adjustable reasoning for all four models.
+- Retained the GPT-5.6 generation and every existing default. No GPT-6 Terra route was live during the catalog audit; `~openai/gpt-terra-latest` still resolved to GPT-5.6 Terra.
+- Catalog and endpoint contracts were verified without paid inference or prose-quality qualification.
+
+### Added — Model parameter tags
+
+- Added a parameter-count tag to every Model Explorer card.
+- Published provider/model-card counts are distinguished from approximate totals derived from public Hugging Face safetensor metadata; approximate values use `≈` and a dashed tag.
+- Proprietary models without a disclosed size show `params undisclosed`. Multi-model orchestration systems show `multi-model system` because a single count would be misleading.
+- Parameter metadata is curated locally because OpenRouter's `/api/v1/models` response does not expose a dedicated parameter-count field. The browser adds no new runtime request.
+- Added a third Model Explorer pivot, **By Release Date**. It groups models under month-and-year headings in descending order, sorts each month by release day, and places models without live release metadata in a final `Release date unavailable` group.
+
 ## [2.4.0] - 2026-09-22 — OpenRouter model catalog refresh
 
 The curated model pickers now use live OpenRouter IDs, add recent opt-in choices,

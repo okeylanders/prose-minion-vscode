@@ -4,6 +4,12 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+### Added
+
+- Added GPT-6 Luna, Luna Pro, Sol, and Sol Pro as opt-in choices in every shared model picker and Category Search. GPT-5.6 Luna, Terra, and Sol remain available, and existing defaults are unchanged.
+- Added a parameter-count tag to every Model Explorer card. Published counts are shown directly, public-weight estimates use `≈`, routed systems are identified, and proprietary counts remain explicitly undisclosed.
+- Added a **By Release Date** Model Explorer view that groups models by month and year, newest first, and orders models within each month by release day.
+
 ## [2.4.0] - 2026-09-22
 
 ### Added

@@ -130,6 +130,30 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Premium GPT-5.5 variant for high-accuracy category matching on difficult/ambiguous inputs'
   },
   {
+    id: 'openai/gpt-6-luna',
+    name: 'GPT-6 Luna',
+    family: 'GPT-6',
+    description: 'Fast, low-cost GPT-6 tier with 1.05M context for high-volume category matching'
+  },
+  {
+    id: 'openai/gpt-6-luna-pro',
+    name: 'GPT-6 Luna Pro',
+    family: 'GPT-6',
+    description: 'GPT-6 Luna with Pro reasoning mode for more difficult category matching at Luna token rates'
+  },
+  {
+    id: 'openai/gpt-6-sol',
+    name: 'GPT-6 Sol',
+    family: 'GPT-6',
+    description: 'Cost-efficient high-end GPT-6 tier with 1.05M context for demanding category matching'
+  },
+  {
+    id: 'openai/gpt-6-sol-pro',
+    name: 'GPT-6 Sol Pro',
+    family: 'GPT-6',
+    description: 'GPT-6 Sol with Pro reasoning mode for complex and ambiguous category matching'
+  },
+  {
     id: 'openai/gpt-6-astra',
     name: 'GPT-6 Astra',
     family: 'GPT-6',
@@ -760,6 +784,30 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-5.6 Sol',
     family: 'GPT-5.6',
     description: 'Flagship GPT-5.6 tier with 1M context. Premium option for difficult structural critique, complex reasoning, and multi-step revision planning.'
+  },
+  {
+    id: 'openai/gpt-6-luna',
+    name: 'GPT-6 Luna',
+    family: 'GPT-6',
+    description: 'Fast, low-cost GPT-6 tier with 1.05M context. Strong fit for high-volume assistant conversations, dictionary checks, and responsive editorial workflows.'
+  },
+  {
+    id: 'openai/gpt-6-luna-pro',
+    name: 'GPT-6 Luna Pro',
+    family: 'GPT-6',
+    description: 'GPT-6 Luna served with Pro reasoning mode for harder analysis while retaining Luna token rates.'
+  },
+  {
+    id: 'openai/gpt-6-sol',
+    name: 'GPT-6 Sol',
+    family: 'GPT-6',
+    description: 'Cost-efficient high-end GPT-6 tier with 1.05M context. Suited to demanding prose analysis, revision planning, and sustained Workshop conversations.'
+  },
+  {
+    id: 'openai/gpt-6-sol-pro',
+    name: 'GPT-6 Sol Pro',
+    family: 'GPT-6',
+    description: 'GPT-6 Sol served with Pro reasoning mode for difficult structural critique and long-running editorial work.'
   },
   {
     id: 'openai/gpt-6-astra',

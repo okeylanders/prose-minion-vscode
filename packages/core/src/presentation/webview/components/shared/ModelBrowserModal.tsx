@@ -1,8 +1,10 @@
 import * as React from 'react';
-import { ModelOption, ModelScope } from '@shared/types';
+import { ModelOption, ModelParameterConfidence, ModelScope } from '@shared/types';
 import { Icon } from '@components/shared/Icon';
 
-type ModelBrowserPivot = 'provider' | 'family';
+type ModelBrowserPivot = 'provider' | 'family' | 'release-date';
+
+const RELEASE_DATE_UNAVAILABLE = 'Release date unavailable';
 
 interface ModelBrowserModalProps {
   open: boolean;
@@ -45,6 +47,9 @@ const getGroupLabel = (model: ModelOption, pivot: ModelBrowserPivot): string => 
   if (pivot === 'family') {
     return model.family ?? 'Other';
   }
+  if (pivot === 'release-date') {
+    return formatReleaseMonth(model.releaseDate) ?? RELEASE_DATE_UNAVAILABLE;
+  }
   return getProviderLabel(getProviderId(model));
 };
 
@@ -52,7 +57,31 @@ const formatReleaseDate = (releaseDate?: string): string | undefined => {
   if (!releaseDate) {
     return undefined;
   }
-  return releaseDate.slice(0, 7);
+  const date = new Date(`${releaseDate}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) {
+    return undefined;
+  }
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+};
+
+const formatReleaseMonth = (releaseDate?: string): string | undefined => {
+  if (!releaseDate) {
+    return undefined;
+  }
+  const date = new Date(`${releaseDate}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) {
+    return undefined;
+  }
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
 };
 
 const formatPrice = (price?: string): string => {
@@ -88,6 +117,19 @@ const formatContext = (contextLength?: number): string | undefined => {
   return `${contextLength.toLocaleString()} ctx`;
 };
 
+const getParameterCountTitle = (confidence: ModelParameterConfidence): string => {
+  switch (confidence) {
+    case 'published':
+      return 'Parameter count published by the provider or model author';
+    case 'estimated':
+      return 'Approximate total from public model-weight metadata';
+    case 'not-applicable':
+      return 'This routed system does not have one meaningful parameter count';
+    default:
+      return 'The provider has not published a parameter count';
+  }
+};
+
 const normalize = (value: string | undefined): string => value?.toLowerCase() ?? '';
 
 const modelMatchesSearch = (model: ModelOption, query: string): boolean => {
@@ -100,6 +142,7 @@ const modelMatchesSearch = (model: ModelOption, query: string): boolean => {
     model.label,
     model.description,
     model.family,
+    model.parameterCount?.label,
     getProviderLabel(getProviderId(model)),
     getProviderId(model),
   ].map(normalize).join(' ');
@@ -150,8 +193,10 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
     .filter(model => modelMatchesSearch(model, normalizedQuery))
     .sort(sortModels);
 
-  const groups = Array.from(new Set(filteredModels.map(model => getGroupLabel(model, pivot))))
-    .sort((a, b) => a.localeCompare(b));
+  const groups = Array.from(new Set(filteredModels.map(model => getGroupLabel(model, pivot))));
+  if (pivot !== 'release-date') {
+    groups.sort((a, b) => a.localeCompare(b));
+  }
 
   const groupCounts = new Map<string, number>();
   filteredModels.forEach(model => {
@@ -177,7 +222,7 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
           <div>
             <div className="pm-eyebrow">{label}</div>
             <div className="tm-title">Choose a Model</div>
-            <div className="tm-subtitle">Pricing, release dates, and context windows are loaded from OpenRouter.</div>
+            <div className="tm-subtitle">Live OpenRouter pricing and context, with curated parameter disclosures.</div>
           </div>
           <button type="button" className="btn ghost tm-close" onClick={onClose} aria-label="Close">
             <Icon name="x" size={16} />
@@ -190,7 +235,7 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search models, providers, families..."
+            placeholder="Search models, providers, families, sizes..."
           />
         </label>
 
@@ -212,6 +257,15 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
             onClick={() => setPivot('family')}
           >
             By Family
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={pivot === 'release-date'}
+            className={`mb-pivot ${pivot === 'release-date' ? 'active' : ''}`}
+            onClick={() => setPivot('release-date')}
+          >
+            By Release Date
           </button>
         </div>
 
@@ -253,6 +307,10 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
                     const selected = model.id === value;
                     const context = formatContext(model.contextLength);
                     const releaseDate = formatReleaseDate(model.releaseDate);
+                    const parameterCount = model.parameterCount ?? {
+                      label: 'params undisclosed',
+                      confidence: 'undisclosed' as const
+                    };
                     return (
                       <button
                         type="button"
@@ -289,6 +347,12 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
                           {model.family && <span className="mb-badge">{model.family}</span>}
                           {releaseDate && <span className="mb-badge">{releaseDate}</span>}
                           {context && <span className="mb-badge accent">{context}</span>}
+                          <span
+                            className={`mb-badge parameter ${parameterCount.confidence}`}
+                            title={getParameterCountTitle(parameterCount.confidence)}
+                          >
+                            {parameterCount.label}
+                          </span>
                           {model.knowledgeCutoff && <span className="mb-badge">cutoff {model.knowledgeCutoff}</span>}
                           {model.expirationDate && <span className="mb-badge warn">expires {model.expirationDate}</span>}
                         </span>

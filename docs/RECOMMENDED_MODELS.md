@@ -336,6 +336,38 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/openai/gpt-5.6-sol
   - OpenAI: https://openai.com/
 
+### OpenAI GPT-6 Luna — Fast, Low-Cost Workhorse
+
+- **Best For:** High-volume assistant conversations, dictionary work, Category Search, and responsive editorial passes
+- **Description:** OpenRouter lists 1.05M context, up to 128K output, text/image/file input, tools, structured outputs, and adjustable reasoning
+- **Pricing:** $0.10/$0.50 per million input/output tokens; prompts of at least 272K tokens use $0.20/$0.75 rates
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6-luna
+
+### OpenAI GPT-6 Luna Pro — Deeper Reasoning at Luna Rates
+
+- **Best For:** Harder analysis that benefits from Pro reasoning without moving to Sol or Astra pricing
+- **Description:** The same underlying Luna model served with `reasoning.mode` set to `pro`; OpenRouter lists the same per-token rates as Luna
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6-luna-pro
+
+### OpenAI GPT-6 Sol — High-End Editorial Reasoning
+
+- **Best For:** Demanding prose analysis, revision planning, and sustained Workshop conversations
+- **Description:** OpenRouter positions Sol between the fast Luna tier and flagship Astra, with the same 1.05M context and multimodal/tool contract
+- **Pricing:** $2/$10 per million input/output tokens; prompts of at least 272K tokens use $4/$15 rates
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6-sol
+
+### OpenAI GPT-6 Sol Pro — Premium Sol Reasoning
+
+- **Best For:** Difficult structural critique and long-running editorial work
+- **Description:** The same underlying Sol model served with `reasoning.mode` set to `pro`; OpenRouter lists the same per-token rates as Sol
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6-sol-pro
+
+OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains available and the always-latest Terra alias still resolves to it.
+
 ### OpenAI GPT-6 Astra — Frontier Reasoning
 
 - **Available in:** Assistant, Dictionary, Context, Workshop, Conversation Widgets, and Category Search; existing defaults are unchanged
