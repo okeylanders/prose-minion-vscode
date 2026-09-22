@@ -4,6 +4,18 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-09-22
+
+### Added
+
+- Added opt-in Claude Opus 5.5, Grok 4.7, DeepSeek V4.1 Flash, GPT-6 Astra Pro, GLM 5.3 FlashX, and MiMo V2.6 Flash, Pro, and Pro UltraSpeed to the model pickers and Category Search.
+- Added the available Hermes 3 70B and 405B choices for writing and Workshop conversations. Hermes 4 405B remains available.
+
+### Changed
+
+- Updated Mercury 2.5 and Qwen3.8 Max to their current OpenRouter IDs. Qwen3.8 Max is now also available for Category Search.
+- Replaced unavailable interactive choices for Mistral Large 2512 and Hermes 4 70B with Mistral Large 2407 and Hermes 3 70B. Existing model defaults are unchanged.
+
 ## [2.3.0] - 2026-09-10
 
 ### Added

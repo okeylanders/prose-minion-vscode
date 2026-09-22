@@ -24,7 +24,13 @@
 
 ---
 
-## What's new in v2.3.0 — Workshop sessions that follow your work
+## What's new in v2.4.0 — More models for your writing
+
+- **More choices in every model picker** — Claude Opus 5.5, Grok 4.7, DeepSeek V4.1 Flash, GPT-6 Astra Pro, GLM 5.3 FlashX, and three MiMo V2.6 models are available as opt-in choices, including in Category Search.
+- **Current OpenRouter routes** — Mercury 2.5 and Qwen3.8 Max use their current IDs. The available Mistral Large 2407 and Hermes 3 models replace unavailable interactive choices; Hermes 4 405B remains selectable.
+- **Your defaults stay put** — existing model defaults are unchanged. New models are available to try, with provider capabilities verified against OpenRouter; prose quality has not been evaluated in this release workflow.
+
+### Also in v2.3.0 — Workshop sessions that follow your work
 
 - **Saved sessions lead after Git sync** — Workshop loads the named session and preserves meaningful unsaved differences in a separate recovery session when needed.
 - **Opening a session leaves its saved file alone** — automatic context rereads stay in memory until you work or explicitly save/refresh. Resume notices begin with your first interaction.

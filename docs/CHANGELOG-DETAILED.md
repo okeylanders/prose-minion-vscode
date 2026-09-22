@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-09-22 — OpenRouter model catalog refresh
+
+The curated model pickers now use live OpenRouter IDs, add recent opt-in choices,
+and retain the existing Assistant, Dictionary, Context, Widget, and Category defaults.
+The extension's chat and Category Search routes are unchanged. These catalog
+additions do not imply paid inference or prose-quality qualification.
+
+### Changed — OpenRouter model choices
+
+- Replaced retired interactive IDs with live choices for Mercury 2.5, Qwen3.8 Max 0902, Mistral Large 2407, and Hermes 3 70B. Added Qwen3.8 Max 0902 to Category Search and Hermes 3 405B alongside Hermes 4 405B.
+- Added opt-in Claude Opus 5.5, Grok 4.7, DeepSeek V4.1 Flash, GPT-6 Astra Pro, GLM 5.3 FlashX, and the three MiMo V2.6 variants to shared and Category Search choices. Existing defaults are unchanged.
+- Catalog availability and advertised capabilities were verified against OpenRouter. Paid inference and prose quality were not evaluated.
+
 ## [2.3.0] - 2026-09-10 — Workshop session authority and read-only loading
 
 ### Overview
