@@ -4,8 +4,73 @@ jest.mock('p-limit', () => ({
 }));
 
 import { DictionaryService } from '@/infrastructure/api/services/dictionary/DictionaryService';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
 
 describe('DictionaryService', () => {
+  const buildLookupService = async (runInitial: jest.Mock) => {
+    const outputChannel = {
+      appendLine: jest.fn(),
+      show: jest.fn(),
+      clear: jest.fn()
+    };
+    const service = new DictionaryService(
+      {
+        ensureInitialized: jest.fn().mockResolvedValue(undefined),
+        getEngine: jest.fn().mockReturnValue({ runInitial })
+      } as any,
+      {
+        getPromptLoader: () => ({
+          loadSharedPrompts: jest.fn().mockResolvedValue('shared prompts'),
+          loadPrompts: jest.fn().mockResolvedValue('dictionary prompts')
+        })
+      } as any,
+      {
+        getOptions: jest.fn().mockReturnValue({ temperature: 0.4, maxTokens: 10000 })
+      } as any,
+      outputChannel
+    );
+
+    await service.refreshConfiguration();
+    return { service, outputChannel };
+  };
+
+  it.each([
+    ['standard', (service: DictionaryService) => service.lookupWord('commanding')],
+    ['streaming', (service: DictionaryService) => service.lookupWordStreaming('commanding', undefined, jest.fn())]
+  ])('includes provider details in %s lookup failures', async (_mode, lookup) => {
+    const runInitial = jest.fn().mockRejectedValue(
+      new AgentRunUnavailableError(
+        'provider-unavailable',
+        'OpenRouter API error 400: temperature is not supported'
+      )
+    );
+    const { service, outputChannel } = await buildLookupService(runInitial);
+
+    const result = await lookup(service);
+
+    expect(result.content).toBe(
+      'Error: The selected AI provider is temporarily unavailable. Try again shortly.\n\n' +
+      'Provider details: OpenRouter API error 400: temperature is not supported'
+    );
+    expect(outputChannel.appendLine).toHaveBeenCalledWith(
+      '[DictionaryService] Lookup failed: The selected AI provider is temporarily unavailable. ' +
+      'Try again shortly. | OpenRouter API error 400: temperature is not supported'
+    );
+  });
+
+  it('keeps ordinary lookup failures concise while recording them', async () => {
+    const { service, outputChannel } = await buildLookupService(
+      jest.fn().mockRejectedValue(new Error('Prompt assembly failed'))
+    );
+
+    const result = await service.lookupWord('commanding');
+
+    expect(result.content).toBe('Error: Prompt assembly failed');
+    expect(outputChannel.appendLine).toHaveBeenCalledWith(
+      '[DictionaryService] Lookup failed: Prompt assembly failed'
+    );
+  });
+
   it('includes the Special Focus block before AI Advisory Notes in fast generation', async () => {
     const loadPrompts = jest.fn().mockImplementation(async (paths: string[]) => paths[0]);
     const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => ({

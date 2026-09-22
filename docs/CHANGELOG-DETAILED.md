@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parameter metadata is curated locally because OpenRouter's `/api/v1/models` response does not expose a dedicated parameter-count field. The browser adds no new runtime request.
 - Added a third Model Explorer pivot, **By Release Date**. It groups models under month-and-year headings in descending order, sorts each month by release day, and places models without live release metadata in a final `Release date unavailable` group.
 
+### Fixed — Dictionary provider diagnostics
+
+- Dictionary lookup failures retain the readable run-engine message and append OpenRouter's underlying provider response when one is available.
+- The same diagnostic is written to the Prose Minion output channel so rejected parameters, rate limits, and provider routing failures can be distinguished without reproducing the request under a debugger.
+
 ## [2.4.0] - 2026-09-22 — OpenRouter model catalog refresh
 
 The curated model pickers now use live OpenRouter IDs, add recent opt-in choices,

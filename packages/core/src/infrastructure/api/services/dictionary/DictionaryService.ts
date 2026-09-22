@@ -22,7 +22,10 @@ import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
-import { AgentRunEngine } from '@orchestration/AgentRunEngine';
+import {
+  AgentRunEngine,
+  AgentRunUnavailableError
+} from '@orchestration/AgentRunEngine';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
@@ -182,7 +185,7 @@ export class DictionaryService {
     } catch (error) {
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
-        `Error: ${error instanceof Error ? error.message : String(error)}`
+        this.formatLookupFailure(error)
       );
     }
   }
@@ -234,9 +237,27 @@ export class DictionaryService {
       // AbortError is now caught in the orchestrator, so this is only for other errors
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
-        `Error: ${error instanceof Error ? error.message : String(error)}`
+        this.formatLookupFailure(error)
       );
     }
+  }
+
+  /**
+   * Keep the readable run-engine message while preserving the provider response
+   * needed to diagnose rejected requests and transient routing failures.
+   */
+  private formatLookupFailure(error: unknown): string {
+    const message = error instanceof Error ? error.message : String(error);
+    const providerDetails = error instanceof AgentRunUnavailableError
+      ? error.providerDetails?.trim()
+      : undefined;
+
+    const diagnostic = providerDetails ? `${message} | ${providerDetails}` : message;
+    this.outputChannel?.appendLine(`[DictionaryService] Lookup failed: ${diagnostic}`);
+
+    return providerDetails
+      ? `Error: ${message}\n\nProvider details: ${providerDetails}`
+      : `Error: ${message}`;
   }
 
   /**
