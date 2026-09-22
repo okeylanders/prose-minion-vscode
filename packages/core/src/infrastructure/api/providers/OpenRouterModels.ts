@@ -106,6 +106,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s newest Opus model with 1M context, stronger agentic reasoning, and premium long-form analysis quality'
   },
   {
+    id: 'anthropic/claude-opus-5.5',
+    name: 'Claude Opus 5.5',
+    family: 'Claude Opus',
+    description: '1M-context premium reasoner for difficult category matching and long editorial inputs'
+  },
+  {
     id: 'openai/gpt-5.4-mini',
     name: 'GPT-5.4 Mini',
     family: 'GPT-5.4',
@@ -130,14 +136,20 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'OpenAI frontier reasoning model with 1.05M context and structured-output support for complex category matching'
   },
   {
+    id: 'openai/gpt-6-astra-pro',
+    name: 'GPT-6 Astra Pro',
+    family: 'GPT-6',
+    description: 'Premium 1.05M-context reasoning model for complex category matching'
+  },
+  {
     id: 'openai/gpt-oss-120b:nitro',
     name: 'GPT-OSS 120B Nitro',
     family: 'GPT-OSS',
     description: 'Default for Category Search; OpenAI\'s open-weight reasoner routed to the highest-throughput available provider for extremely fast semantic matching'
   },
   {
-    id: 'inception/mercury-2.5-preview',
-    name: 'Mercury 2.5 Preview',
+    id: 'inception/mercury-2.5',
+    name: 'Mercury 2.5',
     family: 'Inception Mercury',
     description: 'Extremely fast, low-cost diffusion reasoning model with 260K context for responsive dictionary lookups, category matching, and utility analysis'
   },
@@ -208,6 +220,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Updated 1.31M-context Flash checkpoint with strong tool use and structured-output support for fast, inexpensive category matching'
   },
   {
+    id: 'deepseek/deepseek-v4.1-flash',
+    name: 'DeepSeek V4.1 Flash',
+    family: 'DeepSeek V4',
+    description: '1M-context multimodal Flash model for inexpensive category matching'
+  },
+  {
     id: 'stepfun/step-3.7-flash',
     name: 'Step 3.7 Flash',
     family: 'Step',
@@ -230,6 +248,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'Qwen3.8 Flash',
     family: 'Qwen3.8',
     description: 'Fast 1M-context multimodal model for responsive category matching and inexpensive utility analysis'
+  },
+  {
+    id: 'qwen/qwen3.8-max-0902',
+    name: 'Qwen3.8 Max 0902',
+    family: 'Qwen3.8',
+    description: '1M-context multimodal reasoner for complex category matching'
   },
   {
     id: 'mistralai/mistral-small-2603',
@@ -274,10 +298,10 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'OpenAI stable chat alias that tracks the latest Instant chat model for conversational utility work'
   },
   {
-    id: 'mistralai/mistral-large-2512',
-    name: 'Mistral Large 2512',
+    id: 'mistralai/mistral-large-2407',
+    name: 'Mistral Large 2407',
     family: 'Mistral Large',
-    description: 'Newest Mistral Large with improved reasoning and instruction following over 2411'
+    description: 'Available 131K-context Mistral Large checkpoint for multilingual category matching'
   },
   {
     id: 'z-ai/glm-4.7',
@@ -308,6 +332,36 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'GLM 5.3 Flash',
     family: 'GLM 5',
     description: 'Fast 1.31M-context multimodal model with structured-output support for responsive, low-cost category matching'
+  },
+  {
+    id: 'z-ai/glm-5.3-flashx',
+    name: 'GLM 5.3 FlashX',
+    family: 'GLM 5',
+    description: 'High-speed 1M-context multimodal GLM variant for responsive category matching'
+  },
+  {
+    id: 'x-ai/grok-4.7',
+    name: 'Grok 4.7',
+    family: 'Grok 4',
+    description: '500K-context frontier reasoner for complex category matching'
+  },
+  {
+    id: 'xiaomi/mimo-v2.6-flash',
+    name: 'MiMo V2.6 Flash',
+    family: 'MiMo V2.6',
+    description: 'Low-cost 1M-context multimodal model for category matching'
+  },
+  {
+    id: 'xiaomi/mimo-v2.6-pro',
+    name: 'MiMo V2.6 Pro',
+    family: 'MiMo V2.6',
+    description: '1M-context multimodal model for complex category matching'
+  },
+  {
+    id: 'xiaomi/mimo-v2.6-pro-ultraspeed',
+    name: 'MiMo V2.6 Pro UltraSpeed',
+    family: 'MiMo V2.6',
+    description: 'Higher-throughput 1M-context Pro route for responsive category matching'
   },
 ];
 
@@ -408,8 +462,14 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s most capable model. Careful, sustained work on a long manuscript — deep revision passes, structural analysis, and feedback that holds together across a whole chapter. Slower and pricier, strongest judgment.'
   },
   {
-    id: 'inception/mercury-2.5-preview',
-    name: 'Mercury 2.5 Preview',
+    id: 'anthropic/claude-opus-5.5',
+    name: 'Claude Opus 5.5',
+    family: 'Claude Opus',
+    description: 'Premium 1M-context reasoner for sustained manuscript critique and complex editorial work.'
+  },
+  {
+    id: 'inception/mercury-2.5',
+    name: 'Mercury 2.5',
     family: 'Inception Mercury',
     description: 'Extremely fast diffusion reasoning model with 260K context and very low token cost. A strong fit for dictionary alternatives, category matching, quick critiques, and other latency-sensitive utility work.'
   },
@@ -460,6 +520,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'DeepSeek V4 Flash 0731',
     family: 'DeepSeek V4',
     description: 'Updated 1.31M-context Flash checkpoint with excellent value for fast, structured long-context analysis and utility rewriting.'
+  },
+  {
+    id: 'deepseek/deepseek-v4.1-flash',
+    name: 'DeepSeek V4.1 Flash',
+    family: 'DeepSeek V4',
+    description: 'Low-cost 1M-context multimodal model for long-context critique and utility rewriting.'
   },
   {
     id: 'stepfun/step-3.7-flash',
@@ -582,6 +648,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Fast 1.31M-context multimodal model with structured outputs. Excellent value for responsive critique, large-context analysis, and utility rewrites.'
   },
   {
+    id: 'z-ai/glm-5.3-flashx',
+    name: 'GLM 5.3 FlashX',
+    family: 'GLM 5',
+    description: 'High-speed 1M-context multimodal GLM variant for responsive critique and utility work.'
+  },
+  {
     id: 'openai/gpt-4.1',
     name: 'GPT-4.1',
     family: 'GPT-4',
@@ -696,6 +768,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'OpenAI frontier reasoning model with 1.05M context and structured-output support. Available for prose analysis, revision planning, and context-heavy Workshop conversations.'
   },
   {
+    id: 'openai/gpt-6-astra-pro',
+    name: 'GPT-6 Astra Pro',
+    family: 'GPT-6',
+    description: 'Premium 1.05M-context reasoner for difficult structural critique and long editorial workflows.'
+  },
+  {
     id: 'openai/gpt-chat-latest',
     name: 'GPT Chat Latest',
     family: 'GPT Chat',
@@ -732,6 +810,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'xAI\'s latest Grok flagship with 500K context and stronger frontier reasoning for difficult structural critique, research, and knowledge-heavy editorial work.'
   },
   {
+    id: 'x-ai/grok-4.7',
+    name: 'Grok 4.7',
+    family: 'Grok 4',
+    description: '500K-context frontier reasoner for structural critique and research-heavy editorial work.'
+  },
+  {
     id: 'moonshotai/kimi-k2-0905',
     name: 'Kimi K2 0905',
     family: 'Kimi K2',
@@ -762,8 +846,8 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Moonshot AI\'s big open-weight reasoner. Punches near the frontier at a lower price and handles very long documents well — a solid mid-cost pick for whole-manuscript analysis.'
   },
   {
-    id: 'qwen/qwen3.8-max',
-    name: 'Qwen3.8 Max',
+    id: 'qwen/qwen3.8-max-0902',
+    name: 'Qwen3.8 Max 0902',
     family: 'Qwen3.8',
     description: 'Qwen\'s flagship multimodal reasoner with 1M context. Strong for complex manuscript analysis, visual context, and long-horizon editorial planning.'
   },
@@ -774,10 +858,10 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Fast 1M-context multimodal model. A high-value option for responsive critique, large-document analysis, and utility rewriting.'
   },
   {
-    id: 'mistralai/mistral-large-2512',
-    name: 'Mistral Large 2512',
+    id: 'mistralai/mistral-large-2407',
+    name: 'Mistral Large 2407',
     family: 'Mistral Large',
-    description: 'Newest Mistral Large. Improved reasoning and instruction following over 2411 with strong multilingual prose.'
+    description: 'Available 131K-context Mistral Large checkpoint for multilingual prose and structured critique.'
   },
   {
     id: 'mistralai/mistral-medium-3.1',
@@ -804,10 +888,34 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Uncensored frontier model. Best for mature themes, gritty narratives, and avoiding "assistant voice".'
   },
   {
-    id: 'nousresearch/hermes-4-70b',
-    name: 'Nous Hermes 4 70B',
-    family: 'Hermes 4',
-    description: 'Smaller, cheaper Hermes 4. Same uncensored character handling at lower cost for mature-theme drafting.'
+    id: 'nousresearch/hermes-3-llama-3.1-70b',
+    name: 'Nous Hermes 3 70B Instruct',
+    family: 'Hermes 3',
+    description: '131K-context instruction model for roleplay, dialogue, and character-focused drafting.'
+  },
+  {
+    id: 'nousresearch/hermes-3-llama-3.1-405b',
+    name: 'Nous Hermes 3 405B Instruct',
+    family: 'Hermes 3',
+    description: 'Larger 131K-context Hermes 3 model for roleplay, dialogue, and character-focused drafting.'
+  },
+  {
+    id: 'xiaomi/mimo-v2.6-flash',
+    name: 'MiMo V2.6 Flash',
+    family: 'MiMo V2.6',
+    description: 'Low-cost 1M-context multimodal model for quick critique and utility rewriting.'
+  },
+  {
+    id: 'xiaomi/mimo-v2.6-pro',
+    name: 'MiMo V2.6 Pro',
+    family: 'MiMo V2.6',
+    description: '1M-context multimodal flagship for long-context critique and editorial planning.'
+  },
+  {
+    id: 'xiaomi/mimo-v2.6-pro-ultraspeed',
+    name: 'MiMo V2.6 Pro UltraSpeed',
+    family: 'MiMo V2.6',
+    description: 'Higher-throughput Pro route for responsive long-context critique and editorial work.'
   },
   {
     id: 'qwen/qwen3-coder-plus',

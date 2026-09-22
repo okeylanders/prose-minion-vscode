@@ -7,18 +7,33 @@ import { RECOMMENDED_MODELS } from '@providers/OpenRouterModels';
 const EXPECTED_SHARED_MODEL_IDS = [
   'meta/muse-spark-1.1',
   'meta/muse-spark-1.3',
-  'qwen/qwen3.8-max',
+  'qwen/qwen3.8-max-0902',
   'anthropic/claude-fable-5.1',
-  'inception/mercury-2.5-preview',
+  'inception/mercury-2.5',
   'google/gemini-3.8-flash',
-  'openai/gpt-6-astra'
+  'openai/gpt-6-astra',
+  'anthropic/claude-opus-5.5',
+  'deepseek/deepseek-v4.1-flash',
+  'x-ai/grok-4.7',
+  'openai/gpt-6-astra-pro',
+  'z-ai/glm-5.3-flashx',
+  'xiaomi/mimo-v2.6-flash',
+  'xiaomi/mimo-v2.6-pro',
+  'xiaomi/mimo-v2.6-pro-ultraspeed',
+  'mistralai/mistral-large-2407',
+  'nousresearch/hermes-3-llama-3.1-70b',
+  'nousresearch/hermes-3-llama-3.1-405b'
 ] as const;
 
 const RETIRED_MODEL_IDS = [
   'anthropic/claude-opus-4.7-fast',
   'anthropic/claude-opus-4.8-fast',
   'anthropic/claude-opus-5-fast',
-  'arcee-ai/virtuoso-large'
+  'arcee-ai/virtuoso-large',
+  'inception/mercury-2.5-preview',
+  'qwen/qwen3.8-max',
+  'mistralai/mistral-large-2512',
+  'nousresearch/hermes-4-70b'
 ] as const;
 
 describe('Workshop widget model catalog', () => {

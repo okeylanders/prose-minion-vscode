@@ -90,6 +90,13 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-opus-5
   - Anthropic: https://www.anthropic.com
 
+### Claude Opus 5.5 — Premium Long-Context Reasoning
+
+- **Best For:** Difficult structural critique and sustained editorial work
+- **Description:** OpenRouter lists 1M context and mandatory reasoning. Prose quality has not been verified in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-opus-5.5
+
 ### Aion 3.0 — Collaborative Storytelling
 
 - **Best For:** Narrative tension, character conflict, and exploratory scene work
@@ -119,6 +126,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/nousresearch/hermes-4-405b
   - Nous Research: https://nousresearch.com/
+
+### Nous Hermes 3 70B and 405B — Character-Focused Drafting
+
+- **Best For:** Dialogue, roleplay, and character exploration
+- **Description:** Both available Hermes 3 checkpoints have 131K context. The 70B and 405B sizes remain separate choices
+- **Links:**
+  - OpenRouter 70B: https://openrouter.ai/nousresearch/hermes-3-llama-3.1-70b
+  - OpenRouter 405B: https://openrouter.ai/nousresearch/hermes-3-llama-3.1-405b
 
 ---
 
@@ -158,6 +173,13 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/deepseek/deepseek-v4-flash-0731
   - DeepSeek: https://www.deepseek.com/
 
+### DeepSeek V4.1 Flash — Multimodal Value
+
+- **Best For:** Cost-conscious long-context critique and utility rewriting
+- **Description:** OpenRouter lists 1M context, image input, reasoning, and structured-output support
+- **Links:**
+  - OpenRouter: https://openrouter.ai/deepseek/deepseek-v4.1-flash
+
 ### xAI Grok 4.3 — Deep Reasoning
 
 - **Best For:** Massive context with strong reasoning
@@ -182,6 +204,13 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/x-ai/grok-4.6
   - xAI: https://x.ai/
 
+### xAI Grok 4.7 — Frontier Reasoning
+
+- **Best For:** Complex structural critique and research-heavy editorial work
+- **Description:** OpenRouter lists 500K context and mandatory reasoning. Editorial quality has not been verified in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/x-ai/grok-4.7
+
 ### Mistral Medium 3.5 — Literary Analysis
 
 - **Best For:** Deeper structural critiques
@@ -190,12 +219,12 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/mistralai/mistral-medium-3-5
   - Mistral AI: https://mistral.ai/
 
-### Mistral Large 2512 — European Prose & Structured Critique
+### Mistral Large 2407 — Multilingual Critique
 
-- **Best For:** High-quality multilingual prose analysis and instruction-following critique
-- **Description:** Newer Mistral Large generation with improved reasoning and instruction following over 2411
+- **Best For:** Multilingual prose analysis and instruction-following critique
+- **Description:** Available interactive Mistral Large checkpoint with 131K context; the 2512 checkpoint is currently batch-only
 - **Links:**
-  - OpenRouter: https://openrouter.ai/mistralai/mistral-large-2512
+  - OpenRouter: https://openrouter.ai/mistralai/mistral-large-2407
   - Mistral AI: https://mistral.ai/
 
 ### GLM 5.2 — Long-Horizon Reasoning
@@ -221,6 +250,13 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/z-ai/glm-5.3-flash
   - Z.AI: https://z.ai/
+
+### GLM 5.3 FlashX — High-Speed Multimodal Work
+
+- **Best For:** Responsive critique and utility work
+- **Description:** OpenRouter lists a high-speed 1M-context variant of GLM 5.3 Flash with image and video input
+- **Links:**
+  - OpenRouter: https://openrouter.ai/z-ai/glm-5.3-flashx
 
 ### Moonshot Kimi K2 — Plot Logic
 
@@ -307,7 +343,7 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Pricing:** As verified on September 4, 2026, base input/output rates are $10/$50 per million tokens; prompts of at least 272,000 tokens use $20/$75 rates
 - **Source:** [OpenRouter's live model catalog](https://openrouter.ai/api/v1/models)
 - **Model:** [GPT-6 Astra on OpenRouter](https://openrouter.ai/openai/gpt-6-astra)
-- **Astra Pro:** `openai/gpt-6-astra-pro` is deferred. It was absent from the live catalog and its endpoint listing returned 404 on September 4, 2026; verify availability before adding it
+- **Astra Pro:** `openai/gpt-6-astra-pro` is now available as an opt-in premium choice. OpenRouter lists 1.05M context and mandatory reasoning; prose quality has not been verified in this extension
 
 ### Qwen3.7 Max — Open-Model Powerhouse
 
@@ -317,12 +353,12 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/qwen/qwen3.7-max
   - Qwen: https://qwenlm.github.io/
 
-### Qwen3.8 Max — New Open-Model Flagship
+### Qwen3.8 Max 0902 — Open-Model Flagship
 
 - **Best For:** Complex manuscript analysis, visual context, and long-horizon editorial planning
 - **Description:** Qwen's newest multimodal reasoning model with 1M context and strong general-purpose reasoning
 - **Links:**
-  - OpenRouter: https://openrouter.ai/qwen/qwen3.8-max
+  - OpenRouter: https://openrouter.ai/qwen/qwen3.8-max-0902
   - Qwen: https://qwenlm.github.io/
 
 ### Qwen3.8 Flash — Fast Multimodal Workhorse
@@ -363,13 +399,22 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/openai/gpt-oss-120b:nitro
   - OpenAI: https://openai.com/open-models/
 
-### Mercury 2.5 Preview — Diffusion-Speed Utility Work
+### Mercury 2.5 — Diffusion-Speed Utility Work
 
 - **Best For:** Dictionary alternatives, Category Search, rapid critiques, and other latency-sensitive utility work
-- **Description:** Inception's 260K-context diffusion reasoning model is exceptionally fast and inexpensive. It remains an opt-in preview choice rather than a default
+- **Description:** Inception's 260K-context diffusion reasoning model is fast and inexpensive. It remains an opt-in choice rather than a default
 - **Links:**
-  - OpenRouter: https://openrouter.ai/inception/mercury-2.5-preview
+  - OpenRouter: https://openrouter.ai/inception/mercury-2.5
   - Inception: https://www.inceptionlabs.ai/
+
+### Xiaomi MiMo V2.6 — Multimodal Options
+
+- **Best For:** Trying low-cost Flash, flagship Pro, or the higher-throughput Pro UltraSpeed route
+- **Description:** All three have 1M context and accept text, image, video, and audio input on OpenRouter. Their prose quality has not been verified in this extension
+- **Links:**
+  - Flash: https://openrouter.ai/xiaomi/mimo-v2.6-flash
+  - Pro: https://openrouter.ai/xiaomi/mimo-v2.6-pro
+  - Pro UltraSpeed: https://openrouter.ai/xiaomi/mimo-v2.6-pro-ultraspeed
 
 ### Claude Haiku 4.5 — Quick Checks
 
