@@ -5,7 +5,7 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.5.0] - 2026-09-23 — Model Explorer and dictionary diagnostics
 
 ### Added — GPT-6 Luna and Sol
 
@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Proprietary models without a disclosed size show `params undisclosed`. Multi-model orchestration systems show `multi-model system` because a single count would be misleading.
 - Parameter metadata is curated locally because OpenRouter's `/api/v1/models` response does not expose a dedicated parameter-count field. The browser adds no new runtime request.
 - Added a third Model Explorer pivot, **By Release Date**. It groups models under month-and-year headings in descending order, sorts each month by release day, and places models without live release metadata in a final `Release date unavailable` group.
+
+### Added — Aion 3.5 storytelling models
+
+- Added `aion-labs/aion-3.5-mini` and `aion-labs/aion-3.5` to the shared Recommended Models catalog used by Assistant, Dictionary, Context, Workshop, and Conversation Widgets. Both are opt-in; defaults and the separate Category Search catalog are unchanged.
+- OpenRouter lists both as GLM-based multi-model storytelling systems with 262,144 context tokens, 32,768 maximum output tokens, and support for temperature, reasoning, and tool calling. Aion 3.5 Mini is listed at $0.70/M input and $1.40/M output; Aion 3.5 at $3/M input and $6/M output. These are catalog checks, without paid inference or prose-quality qualification.
+- Their Model Explorer parameter tags say `multi-model system`, since a single parameter count would misrepresent the collaborative system.
 
 ### Fixed — Dictionary provider diagnostics
 

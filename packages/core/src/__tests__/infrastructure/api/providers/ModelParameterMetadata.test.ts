@@ -31,5 +31,11 @@ describe('ModelParameterMetadata', () => {
       label: 'multi-model system',
       confidence: 'not-applicable'
     });
+    for (const id of ['aion-labs/aion-3.5-mini', 'aion-labs/aion-3.5']) {
+      expect(getModelParameterMetadata(id)).toEqual({
+        label: 'multi-model system',
+        confidence: 'not-applicable'
+      });
+    }
   });
 });

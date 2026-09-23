@@ -60,7 +60,9 @@ export const MODEL_PARAMETER_METADATA: Readonly<Record<string, ModelParameterCou
   'aion-labs/aion-2.0': { label: '≈685B base params', confidence: 'estimated' },
   'sakana/fugu-ultra': { label: 'multi-model system', confidence: 'not-applicable' },
   'aion-labs/aion-3.0-mini': { label: 'multi-model system', confidence: 'not-applicable' },
-  'aion-labs/aion-3.0': { label: 'multi-model system', confidence: 'not-applicable' }
+  'aion-labs/aion-3.0': { label: 'multi-model system', confidence: 'not-applicable' },
+  'aion-labs/aion-3.5-mini': { label: 'multi-model system', confidence: 'not-applicable' },
+  'aion-labs/aion-3.5': { label: 'multi-model system', confidence: 'not-applicable' }
 };
 
 export const getModelParameterMetadata = (modelId: string): ModelParameterCount => {

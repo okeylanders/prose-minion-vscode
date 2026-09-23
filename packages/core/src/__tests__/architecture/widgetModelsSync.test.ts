@@ -26,7 +26,9 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'xiaomi/mimo-v2.6-pro-ultraspeed',
   'mistralai/mistral-large-2407',
   'nousresearch/hermes-3-llama-3.1-70b',
-  'nousresearch/hermes-3-llama-3.1-405b'
+  'nousresearch/hermes-3-llama-3.1-405b',
+  'aion-labs/aion-3.5-mini',
+  'aion-labs/aion-3.5'
 ] as const;
 
 const RETIRED_MODEL_IDS = [

@@ -1044,6 +1044,18 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Premium multi-model storytelling system built on the GLM family. Uses collaborative generation for stronger narrative structure, tension, and conflict.'
   },
   {
+    id: 'aion-labs/aion-3.5-mini',
+    name: 'Aion 3.5 Mini',
+    family: 'Aion',
+    description: 'Lower-cost multi-model storytelling system built on the GLM family, with 262K context for scene exploration, character conflict, and narrative tension.'
+  },
+  {
+    id: 'aion-labs/aion-3.5',
+    name: 'Aion 3.5',
+    family: 'Aion',
+    description: 'Premium GLM-based multi-model storytelling system with 262K context; specialized models collaborate on narrative structure, tension, and conflict.'
+  },
+  {
     id: 'thedrummer/cydonia-24b-v4.1',
     name: 'TheDrummer: Cydonia 24B v4.1',
     family: 'TheDrummer',

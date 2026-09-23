@@ -111,6 +111,20 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/aion-labs/aion-3.0-mini
 
+### Aion 3.5 Mini — Value Storytelling
+
+- **Best For:** Lower-cost scene exploration, character conflict, and narrative tension
+- **Description:** GLM-based multi-model storytelling system with 262K context. OpenRouter lists $0.70/M input and $1.40/M output tokens; its narrative quality has not been evaluated in Prose Minion
+- **Links:**
+  - OpenRouter: https://openrouter.ai/aion-labs/aion-3.5-mini
+
+### Aion 3.5 — Collaborative Storytelling
+
+- **Best For:** Premium scene work, narrative structure, and character conflict
+- **Description:** GLM-based multi-model storytelling system with 262K context. OpenRouter lists $3/M input and $6/M output tokens; its narrative quality has not been evaluated in Prose Minion
+- **Links:**
+  - OpenRouter: https://openrouter.ai/aion-labs/aion-3.5
+
 ### Sao10K Euryale 70B — Roleplay & Voice
 
 - **Best For:** Capturing unique character voices
