@@ -11,6 +11,10 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'anthropic/claude-fable-5.1',
   'inception/mercury-2.5',
   'google/gemini-3.8-flash',
+  'openai/gpt-6-luna',
+  'openai/gpt-6-luna-pro',
+  'openai/gpt-6-sol',
+  'openai/gpt-6-sol-pro',
   'openai/gpt-6-astra',
   'anthropic/claude-opus-5.5',
   'deepseek/deepseek-v4.1-flash',
@@ -22,7 +26,9 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'xiaomi/mimo-v2.6-pro-ultraspeed',
   'mistralai/mistral-large-2407',
   'nousresearch/hermes-3-llama-3.1-70b',
-  'nousresearch/hermes-3-llama-3.1-405b'
+  'nousresearch/hermes-3-llama-3.1-405b',
+  'aion-labs/aion-3.5-mini',
+  'aion-labs/aion-3.5'
 ] as const;
 
 const RETIRED_MODEL_IDS = [

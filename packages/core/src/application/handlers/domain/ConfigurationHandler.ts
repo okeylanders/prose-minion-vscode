@@ -39,6 +39,7 @@ import {
   OpenRouterModel,
   OpenRouterModels
 } from '@providers/OpenRouterModels';
+import { getModelParameterMetadata } from '@providers/ModelParameterMetadata';
 import { WORD_SEARCH_DEFAULTS } from '@shared/constants/wordSearchDefaults';
 
 export class ConfigurationHandler {
@@ -396,6 +397,7 @@ export class ConfigurationHandler {
       knowledgeCutoff: live?.knowledge_cutoff,
       expirationDate: live?.expiration_date,
       contextLength: live && !live.isFallback ? live.context_length : undefined,
+      parameterCount: getModelParameterMetadata(curated.id),
       pricing: pricingAvailable ? live?.pricing : undefined,
       pricingAvailable,
       liveDataAvailable: Boolean(live && !live.isFallback)
@@ -415,6 +417,7 @@ export class ConfigurationHandler {
       knowledgeCutoff: live?.knowledge_cutoff,
       expirationDate: live?.expiration_date,
       contextLength: live && !live.isFallback ? live.context_length : undefined,
+      parameterCount: getModelParameterMetadata(modelId),
       pricing: pricingAvailable ? live?.pricing : undefined,
       pricingAvailable,
       liveDataAvailable: Boolean(live && !live.isFallback)

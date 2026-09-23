@@ -129,6 +129,10 @@ describe('ConfigurationHandler', () => {
       expect(option.pricing).toEqual({ prompt: '0.000015', completion: '0.000075' });
       expect(option.contextLength).toBe(200000);
       expect(option.releaseDate).toBe(new Date(created * 1000).toISOString().slice(0, 10));
+      expect(option.parameterCount).toEqual({
+        label: 'params undisclosed',
+        confidence: 'undisclosed'
+      });
       // Curated metadata still wins for label/description/family.
       expect(option.label).toBe('Claude Opus 4.8');
       expect(option.family).toBe('Claude Opus');
@@ -162,6 +166,10 @@ describe('ConfigurationHandler', () => {
       expect(option.liveDataAvailable).toBe(true);
       expect(option.contextLength).toBe(131072);
       expect(option.pricing).toEqual({ prompt: '0.00000003', completion: '0.00000017' });
+      expect(option.parameterCount).toEqual({
+        label: '117B params · 5.1B active',
+        confidence: 'published'
+      });
     });
 
     it('suppresses pricing and logs a degraded WARN when the catalog is all fallback', async () => {
@@ -224,6 +232,10 @@ describe('ConfigurationHandler', () => {
       expect(custom).toBeDefined();
       expect(custom!.label).toBe('custom/model-x');
       expect(custom!.description).toBe('Custom model (from settings)');
+      expect(custom!.parameterCount).toEqual({
+        label: 'params undisclosed',
+        confidence: 'undisclosed'
+      });
       // categoryOptions is always sent alongside options.
       expect(Array.isArray(payload.categoryOptions)).toBe(true);
       expect(payload.categoryOptions!.length).toBeGreaterThan(0);

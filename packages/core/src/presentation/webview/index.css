@@ -2352,7 +2352,7 @@ select:focus {
 
 .mb-pivots {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   margin: 0 16px 12px;
   padding: 4px;
@@ -2526,6 +2526,17 @@ select:focus {
 .mb-badge.warn {
   color: var(--pm-warning, var(--pm-accent-hi));
   border-style: dashed;
+}
+
+.mb-badge.parameter.estimated,
+.mb-badge.parameter.undisclosed,
+.mb-badge.parameter.not-applicable {
+  border-style: dashed;
+}
+
+.mb-badge.parameter.undisclosed,
+.mb-badge.parameter.not-applicable {
+  color: var(--pm-dim);
 }
 
 .mb-desc {

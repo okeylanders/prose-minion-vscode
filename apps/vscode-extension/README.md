@@ -24,7 +24,15 @@
 
 ---
 
-## What's new in v2.4.0 — More models for your writing
+## What's new in v2.5.0 — Explore and choose models
+
+- **Find models by release date** — Model Explorer groups choices by month and year, with the newest models first.
+- **See model size at a glance** — parameter tags distinguish published counts, estimates, undisclosed sizes, and multi-model systems.
+- **Try new writing models** — GPT-6 Luna and Sol variants and Aion 3.5 Mini and Aion 3.5 join the shared model pickers as opt-in choices.
+- **Diagnose dictionary failures** — failed lookups show the provider's error details beneath the readable message and record them in the Prose Minion output channel.
+- **Existing choices stay put** — saved model selections and defaults are unchanged. New models have been checked against OpenRouter's catalog, without paid inference or prose-quality qualification.
+
+### Also in v2.4.0 — More models for your writing
 
 - **More choices in every model picker** — Claude Opus 5.5, Grok 4.7, DeepSeek V4.1 Flash, GPT-6 Astra Pro, GLM 5.3 FlashX, and three MiMo V2.6 models are available as opt-in choices, including in Category Search.
 - **Current OpenRouter routes** — Mercury 2.5 and Qwen3.8 Max use their current IDs. The available Mistral Large 2407 and Hermes 3 models replace unavailable interactive choices; Hermes 4 405B remains selectable.

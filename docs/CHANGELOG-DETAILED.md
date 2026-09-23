@@ -5,7 +5,33 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.5.0] - 2026-09-23 — Model Explorer and dictionary diagnostics
+
+### Added — GPT-6 Luna and Sol
+
+- Added `openai/gpt-6-luna`, `openai/gpt-6-luna-pro`, `openai/gpt-6-sol`, and `openai/gpt-6-sol-pro` to Recommended Models and Category Search.
+- OpenRouter advertises 1.05M context, up to 128K output, text/image/file input, tool calling, structured outputs, and adjustable reasoning for all four models.
+- Retained the GPT-5.6 generation and every existing default. No GPT-6 Terra route was live during the catalog audit; `~openai/gpt-terra-latest` still resolved to GPT-5.6 Terra.
+- Catalog and endpoint contracts were verified without paid inference or prose-quality qualification.
+
+### Added — Model parameter tags
+
+- Added a parameter-count tag to every Model Explorer card.
+- Published provider/model-card counts are distinguished from approximate totals derived from public Hugging Face safetensor metadata; approximate values use `≈` and a dashed tag.
+- Proprietary models without a disclosed size show `params undisclosed`. Multi-model orchestration systems show `multi-model system` because a single count would be misleading.
+- Parameter metadata is curated locally because OpenRouter's `/api/v1/models` response does not expose a dedicated parameter-count field. The browser adds no new runtime request.
+- Added a third Model Explorer pivot, **By Release Date**. It groups models under month-and-year headings in descending order, sorts each month by release day, and places models without live release metadata in a final `Release date unavailable` group.
+
+### Added — Aion 3.5 storytelling models
+
+- Added `aion-labs/aion-3.5-mini` and `aion-labs/aion-3.5` to the shared Recommended Models catalog used by Assistant, Dictionary, Context, Workshop, and Conversation Widgets. Both are opt-in; defaults and the separate Category Search catalog are unchanged.
+- OpenRouter lists both as GLM-based multi-model storytelling systems with 262,144 context tokens, 32,768 maximum output tokens, and support for temperature, reasoning, and tool calling. Aion 3.5 Mini is listed at $0.70/M input and $1.40/M output; Aion 3.5 at $3/M input and $6/M output. These are catalog checks, without paid inference or prose-quality qualification.
+- Their Model Explorer parameter tags say `multi-model system`, since a single parameter count would misrepresent the collaborative system.
+
+### Fixed — Dictionary provider diagnostics
+
+- Dictionary lookup failures retain the readable run-engine message and append OpenRouter's underlying provider response when one is available.
+- The same diagnostic is written to the Prose Minion output channel so rejected parameters, rate limits, and provider routing failures can be distinguished without reproducing the request under a debugger.
 
 ## [2.4.0] - 2026-09-22 — OpenRouter model catalog refresh
 
