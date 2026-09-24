@@ -4,6 +4,7 @@
  */
 
 import * as path from 'path';
+import { randomUUID } from 'node:crypto';
 import { FileSystem, FileType, LogSink, ShellService, Workspace } from '@/platform';
 import {
   CopyResultSuccessMessage,
@@ -176,8 +177,8 @@ export class FileOperationsHandler {
       const sanitizedWord = this.sanitizeFileSegment(rawWord.toLowerCase()) || 'entry';
       targetDir = path.join(rootPath, 'prose-minion', 'dictionary-entries');
       await this.fileSystem.createDirectory(targetDir);
-      fileName = `${sanitizedWord}.md`;
-      fileContent = content.trim();
+      const filePath = await this.writeNumberedDictionaryEntry(targetDir, sanitizedWord, content.trim());
+      return { relativePath: this.workspace.asRelativePath(filePath, false), absolutePath: filePath };
     } else if (assistantResultFilePrefix(toolName)) {
       targetDir = path.join(rootPath, 'prose-minion', 'assistant');
       await this.fileSystem.createDirectory(targetDir);
@@ -226,6 +227,39 @@ export class FileOperationsHandler {
     // `false` (no workspace-folder prefix) matches every other call site and the
     // single-root norm; the saved file always lives under workspaceFolders[0].
     return { relativePath: this.workspace.asRelativePath(filePath, false), absolutePath: filePath };
+  }
+
+  private async writeNumberedDictionaryEntry(directory: string, stem: string, content: string): Promise<string> {
+    const temporaryPath = path.join(directory, `.${stem}.${randomUUID()}.tmp`);
+    try {
+      await this.fileSystem.writeFile(temporaryPath, new TextEncoder().encode(content));
+
+      for (let number = 1; ; number++) {
+        const fileName = number === 1 ? `${stem}.md` : `${stem}-${number}.md`;
+        const destination = path.join(directory, fileName);
+        try {
+          await this.fileSystem.rename(temporaryPath, destination, { overwrite: false });
+          return destination;
+        } catch (error) {
+          // Retry only when the destination was taken; preserve other I/O errors.
+          if (!/EEXIST|FileExists|already exists|destination exists/i.test(String(error))) {
+            throw error;
+          }
+          try {
+            await this.fileSystem.stat(destination);
+          } catch {
+            throw error;
+          }
+        }
+      }
+    } catch (error) {
+      try {
+        await this.fileSystem.delete(temporaryPath);
+      } catch {
+        // The temporary file may already have been moved or the write may have failed.
+      }
+      throw error;
+    }
   }
 
   private async getNextSequentialNumber(directory: string, prefix: string): Promise<number> {

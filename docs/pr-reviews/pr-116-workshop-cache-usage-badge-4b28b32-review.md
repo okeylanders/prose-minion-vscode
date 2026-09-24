@@ -26,7 +26,13 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 - **F-03:** The badge now has visible text marked `aria-hidden` and a visually hidden full sentence that includes the prompt denominator and any reported cache writes. The UI test checks that sentence.
 - **F-04:** Still open. Okey reports the feature works in live use, but no model id, redacted cache-usage response fields, or narrow editor-tab accessibility check were recorded. The sprint criterion remains unchecked.
 
-**Current verdict:** The code findings are addressed and the downgrade decision is recorded. Manual narrow-tab/provider proof remains an open sprint criterion, not a claim made by this review.
+On 2026-09-24, F-02 occurred in the Extension Development Host after the development checkout moved from this branch back to `main`: that build rejected `current.json` at `state.turns[10].usage.cachedTokens` and paused automatic recovery. The checkpoint was left untouched. Development returned to this branch and the extension bundle was rebuilt; this restores a reader that accepts the field on the next host reload. The accepted v2.5.0 downgrade limitation remains.
+
+### Scope added after the initial review (2026-09-24)
+
+Okey chose to ship numbered dictionary saves in this PR. `FileOperationsHandler` now saves the first entry as `<word>.md` and later entries as `<word>-2.md`, `<word>-3.md`, etc. It publishes each file through a no-overwrite rename, so concurrent saves cannot replace an earlier entry. The handler tests cover a new entry, a pre-existing entry, and two concurrent saves. This addition was not part of the initial review snapshot above; it needs review as part of the updated PR diff.
+
+**Current verdict:** The initial code findings are addressed and the downgrade decision is recorded. The numbered-save addition needs review in the updated PR diff. Manual narrow-tab/provider proof remains an open sprint criterion, not a claim made by this review.
 
 ---
 
@@ -40,6 +46,8 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 | Live OpenRouter response / narrow editor-tab visual check | ❌ Not performed |
 
 Follow-up validation on 2026-09-24: focused `DictionaryService` and `WorkshopTurnBubble` Jest suites passed (2 suites, 34 tests); the full Jest suite passed (212 suites, 2,423 tests, 2 snapshots); `npm run typecheck` passed across core, webview, and extension; `npm run build` and bundle verification passed with webpack size warnings; changed-file ESLint passed with 7 existing warnings and no errors; `git diff --check` passed. These checks did not include a live provider call or a narrow editor-tab visual check.
+
+After the numbered-save addition, the full Jest suite passed again (212 suites, 2,425 tests, 2 snapshots); `npm run typecheck`, `npm run build` with bundle verification, and changed-file ESLint also passed. The restarted Development Host's session recovery still requires manual observation after reload.
 
 ---
 

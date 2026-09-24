@@ -7,6 +7,7 @@ import { FileOperationsHandler } from '@/application/handlers/domain/FileOperati
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { MessageType } from '@/shared/types/messages';
 import { GESTURE_DICTIONARY_RESULT_TOOL_NAME } from '@shared/constants/resultToolNames';
+import { MemoryFileSystem } from '../../../mocks/MemoryFileSystem';
 import {
   createFakeFileSystem,
   createFakeShellService,
@@ -79,6 +80,70 @@ describe('FileOperationsHandler', () => {
   });
 
   describe('save_result', () => {
+    it('saves a new dictionary word under its plain filename', async () => {
+      const fileSystem = new MemoryFileSystem();
+      const saveHandler = new FileOperationsHandler(
+        mockPostMessage,
+        fileSystem,
+        createFakeWorkspace({
+          workspaceFolders: () => [{ path: '/workspace', name: 'workspace', uriString: 'file:///workspace' }],
+          asRelativePath: (p) => p.replace('/workspace/', '')
+        }),
+        createFakeShellService(),
+        { appendLine } as any
+      );
+
+      await saveHandler.handleSaveResult({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.utilities.tab',
+        payload: { toolName: 'dictionary_lookup', content: 'First entry', metadata: { word: 'Commanding' } },
+        timestamp: 0
+      });
+
+      const filePath = '/workspace/prose-minion/dictionary-entries/commanding.md';
+      expect(new TextDecoder().decode(fileSystem.files.get(filePath))).toBe('First entry');
+      expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SAVE_RESULT_SUCCESS,
+        payload: { toolName: 'dictionary_lookup', filePath: 'prose-minion/dictionary-entries/commanding.md' }
+      }));
+      expect(fileSystem.renameCalls).toEqual([expect.objectContaining({ toPath: filePath, overwrite: false })]);
+    });
+
+    it('numbers repeat dictionary saves without replacing an existing entry', async () => {
+      const fileSystem = new MemoryFileSystem();
+      const directory = '/workspace/prose-minion/dictionary-entries';
+      fileSystem.files.set(`${directory}/commanding.md`, new TextEncoder().encode('Original entry'));
+      const saveHandler = new FileOperationsHandler(
+        mockPostMessage,
+        fileSystem,
+        createFakeWorkspace({
+          workspaceFolders: () => [{ path: '/workspace', name: 'workspace', uriString: 'file:///workspace' }],
+          asRelativePath: (p) => p.replace('/workspace/', '')
+        }),
+        createFakeShellService(),
+        { appendLine } as any
+      );
+      const save = (toolName: string, content: string) => saveHandler.handleSaveResult({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.utilities.tab',
+        payload: { toolName, content, metadata: { word: 'Commanding' } },
+        timestamp: 0
+      });
+
+      await Promise.all([
+        save('dictionary_lookup', 'Second entry'),
+        save('dictionary_fast_generate', 'Third entry')
+      ]);
+
+      const read = (name: string) => new TextDecoder().decode(fileSystem.files.get(`${directory}/${name}`));
+      expect(read('commanding.md')).toBe('Original entry');
+      expect(new Set([read('commanding-2.md'), read('commanding-3.md')]))
+        .toEqual(new Set(['Second entry', 'Third entry']));
+      expect(fileSystem.renameCalls).toHaveLength(2);
+      expect(fileSystem.renameCalls.every(call => call.overwrite === false)).toBe(true);
+      expect([...fileSystem.files.keys()].filter(filePath => filePath.endsWith('.tmp'))).toHaveLength(0);
+    });
+
     it('saves attributed Workshop persona synthesis through the closed allowlist', async () => {
       handler.registerRoutes(router);
 
