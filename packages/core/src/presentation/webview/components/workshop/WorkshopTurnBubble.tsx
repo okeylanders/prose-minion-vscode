@@ -383,11 +383,24 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </span>
           )}
           {turn.usage && (
-            <span
-              className="pm-ws-turn-usage"
-              title={`${turn.usage.totalTokens.toLocaleString()} tokens processed across ${turn.usage.requestCount ?? 1} ${(turn.usage.requestCount ?? 1) === 1 ? 'call' : 'calls'}`}
-            >
-              {turn.usage.totalTokens.toLocaleString()} processed
+            <span className="pm-ws-turn-usage-group">
+              <span
+                className="pm-ws-turn-usage"
+                title={`${turn.usage.totalTokens.toLocaleString()} tokens processed across ${turn.usage.requestCount ?? 1} ${(turn.usage.requestCount ?? 1) === 1 ? 'call' : 'calls'}`}
+              >
+                {turn.usage.totalTokens.toLocaleString()} processed
+              </span>
+              {turn.usage.cachedTokens !== undefined && (
+                <span
+                  className={`pm-ws-turn-cache${turn.usage.cachedTokens > 0 ? ' pm-ws-turn-cache-hit' : ''}`}
+                  title={`${turn.usage.cachedTokens.toLocaleString()} of ${turn.usage.promptTokens.toLocaleString()} prompt tokens read from provider cache${turn.usage.cacheWriteTokens !== undefined ? `; ${turn.usage.cacheWriteTokens.toLocaleString()} tokens written to cache` : ''}.`}
+                >
+                  <span aria-hidden="true">{turn.usage.cachedTokens.toLocaleString()} cached</span>
+                  <span className="pm-ws-visually-hidden">
+                    {turn.usage.cachedTokens.toLocaleString()} of {turn.usage.promptTokens.toLocaleString()} prompt tokens read from provider cache{turn.usage.cacheWriteTokens !== undefined ? `; ${turn.usage.cacheWriteTokens.toLocaleString()} tokens written to cache` : ''}.
+                  </span>
+                </span>
+              )}
             </span>
           )}
         </div>

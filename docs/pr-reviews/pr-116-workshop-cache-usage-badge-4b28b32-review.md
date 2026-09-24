@@ -1,0 +1,124 @@
+# PR Review — Show reported cache usage on Workshop responses
+
+**Author:** okeylanders · **PR:** [#116](https://github.com/okeylanders/prose-minion-vscode/pull/116) (Open)
+**Branches:** `feat/workshop-cache-usage-badge` → `main`
+**Base:** `e8b8185` · **Head:** `4b28b3294b7a3947a1d8f26ac10584cef266d440` · **Scope:** 13 files · +243 / −15 · 1 commit
+**Reviewed:** 2026-09-24 · **Mode:** quick single-reviewer read (Ada Forge). No reviewer subagents were launched.
+
+## Resolution ledger
+
+Status legend: **Open** = act before merge · **Deferred** = accepted follow-up with reason · **Addressed** = fixed · **N/A** = praise or not actionable · **Decision** = needs Okey's call.
+
+| ID | Sev | Finding | Verdict | Status |
+| --- | --- | --- | --- | --- |
+| F-01 | 🟡 Standard | `DictionaryService.generateParallelDictionary` rebuilds usage from four fields and drops `cachedTokens`/`cacheWriteTokens`. A persona turn that runs the parallel dictionary sidecar therefore loses its cache badge, even when every provider call reported cache details | 🔎 Traced | **Addressed** |
+| F-02 | 🟡 Standard | Sessions saved by this build contain `usage.cachedTokens`. v2.5.0's `exactObject` validator rejects unknown keys, so a writer who rolls back to the Marketplace build cannot open sessions saved by this build | 🔎 Traced | **Deferred: accepted limitation** |
+| F-03 | 🔵 Nit | `aria-label` on a role-less `<span>` is not reliably announced (ARIA 1.2 disallows naming the generic role). The label also omits the write count and the "of N prompt tokens" detail that the `title` carries | — | **Addressed** |
+| F-04 | 🔵 Nit | The epic and sprint remain in `.todo/epics/` with one unchecked criterion (narrow editor-tab legibility). That is correct if the check is still pending; record the model and response fields when you run it | — | **Open** |
+| F-05 | 🟢 Praise | All-or-nothing aggregation in `addUsage` keeps an unreported call from being shown as a cache miss. The comment explains why, and a test covers it | — | N/A: keep |
+| F-06 | 🟢 Praise | Absent and zero stay distinct end to end: the client parser only accepts non-negative safe integers, the persisted shape re-validates, and the UI shows `0 cached` for an explicit zero and nothing for absent | — | N/A: keep |
+| F-07 | 🟢 Praise | Scope discipline: the context bar is left alone, and the ADR note explains why it still means window occupancy | — | N/A: keep |
+
+### Follow-up disposition (2026-09-24)
+
+- **F-01:** The parallel dictionary aggregate now carries both cache fields only when every block reports the corresponding field. A test covers complete reporting and one block without a cache-read count.
+- **F-02:** Okey accepts forward-only session compatibility across this release. The [session codec ADR](../adr/2026-07-30-workshop-session-codec-evolution.md) now records that older strict validators, including v2.5.0, reject new cache keys after downgrade. Supporting downgrade remains outside this PR; a future codec policy could address it.
+- **F-03:** The badge now has visible text marked `aria-hidden` and a visually hidden full sentence that includes the prompt denominator and any reported cache writes. The UI test checks that sentence.
+- **F-04:** Still open. Okey reports the feature works in live use, but no model id, redacted cache-usage response fields, or narrow editor-tab accessibility check were recorded. The sprint criterion remains unchecked.
+
+On 2026-09-24, F-02 occurred in the Extension Development Host after the development checkout moved from this branch back to `main`: that build rejected `current.json` at `state.turns[10].usage.cachedTokens` and paused automatic recovery. The checkpoint was left untouched. Development returned to this branch and the extension bundle was rebuilt; this restores a reader that accepts the field on the next host reload. The accepted v2.5.0 downgrade limitation remains.
+
+### Scope added after the initial review (2026-09-24)
+
+Okey chose to ship numbered dictionary saves in this PR. `FileOperationsHandler` now saves the first entry as `<word>.md` and later entries as `<word>-2.md`, `<word>-3.md`, etc. It publishes each file through a no-overwrite rename, so concurrent saves cannot replace an earlier entry. The handler tests cover a new entry, a pre-existing entry, and two concurrent saves. This addition was not part of the initial review snapshot above; it needs review as part of the updated PR diff.
+
+**Current verdict:** The initial code findings are addressed and the downgrade decision is recorded. The numbered-save addition needs review in the updated PR diff. Manual narrow-tab/provider proof remains an open sprint criterion, not a claim made by this review.
+
+---
+
+## Verification at initial review
+
+| Check | Result |
+| --- | --- |
+| Local branch matches the PR head (`4b28b32`) | ✅ |
+| `npm ci`, then the 4 touched Jest suites (`AgentRunEngine`, `WorkshopPersistedSession`, `OpenRouterClient`, `WorkshopTurnBubble`) | ✅ 4 suites / 116 tests passed (matches the PR description) |
+| Full suite, typechecks, lint, build | ❌ Not run here. This review relies on the PR's stated results |
+| Live OpenRouter response / narrow editor-tab visual check | ❌ Not performed |
+
+Follow-up validation on 2026-09-24: focused `DictionaryService` and `WorkshopTurnBubble` Jest suites passed (2 suites, 34 tests); the full Jest suite passed (212 suites, 2,423 tests, 2 snapshots); `npm run typecheck` passed across core, webview, and extension; `npm run build` and bundle verification passed with webpack size warnings; changed-file ESLint passed with 7 existing warnings and no errors; `git diff --check` passed. These checks did not include a live provider call or a narrow editor-tab visual check.
+
+After the numbered-save addition, the full Jest suite passed again (212 suites, 2,425 tests, 2 snapshots); `npm run typecheck`, `npm run build` with bundle verification, and changed-file ESLint also passed. The restarted Development Host's session recovery still requires manual observation after reload.
+
+---
+
+## Executive briefing
+
+This change is small, well-bounded and honest. Provider-reported cache counts go through one parser (`OpenRouterClient.toTokenUsage`), which handles both streaming and non-streaming usage. They are summed at the one place where a logical response's calls are combined (`AgentRunEngine.addUsage`), cloned by spread into Workshop turns, validated at the persistence boundary, and shown in the turn header. I found no correctness bug in the numbers the badge shows. When the badge appears, its value is right.
+
+The two Standard findings are about when the badge disappears (F-01) and what happens to saved sessions if the writer rolls back to v2.5.0 (F-02). Neither blocks merge on its own. F-01 is a small fix in this PR's domain. F-02 is a policy call.
+
+---
+
+## Findings
+
+### F-01 🟡 Parallel dictionary sidecar drops cache fields, which hides the badge for the whole turn
+
+`packages/core/src/infrastructure/api/services/dictionary/DictionaryService.ts:550-614` rebuilds a fresh `TokenUsage` from `promptTokens`, `completionTokens`, `totalTokens` and `costUsd`. Its block results come from the same `OpenRouterClient`, so after this PR they carry `cachedTokens`/`cacheWriteTokens`. The aggregate throws them away.
+
+Path to the writer:
+
+```
+WorkshopPersonaCapability (≈L501) → dictionaryService.generateParallelDictionary(...)
+  → fulfillment.usage = entry.usage            // no cache fields
+AgentRunEngine L430: totalUsage = addUsage(totalUsage, fulfillment.usage)
+  → cachedTokens: total defined && usage undefined → undefined
+WorkshopTurnBubble: turn.usage.cachedTokens === undefined → no badge
+```
+
+This is the honest failure direction: the badge hides instead of showing a false number. The result is still wrong. The persona's own calls reported caching and the writer sees nothing. The streaming single-lookup path (`lookupWordStreaming`) passes usage through unchanged, so only the parallel path is affected.
+
+**Suggested fix:** in the aggregate loop, apply the same all-or-nothing rule as `addUsage`. Track `cacheReportedByAll` and sum only while every block's usage reports the field. A shared `sumReportedTokens(a, b)` helper next to `TokenUsage` would stop the rule from drifting between the two aggregators. Add one case to the dictionary service tests.
+
+### F-02 🟡 Rolling back to v2.5.0 would reject sessions saved by this build (Decision)
+
+`assertTokenUsage` uses `exactObject` (`persistedValidation.ts:43`), which rejects keys outside the allow-list. Adding `cachedTokens`/`cacheWriteTokens` to the allow-list is correct for this build, and old sessions still load (sprint criterion ✅). The codec is closed in both directions, though. Once this ships, v2.5.0 treats any saved turn with a cache count as malformed.
+
+ADR 2026-07-30 does not discuss rollback, and it says a version bump is needed only when prior shapes become invalid or semantics change. Neither applies here, so **no `schemaVersion` bump is needed.** The open question is only whether you care about rollback:
+
+- **Accept (likely right for alpha):** add a sentence to the codec ADR or changelog stating that sessions are forward-only across releases.
+- **Harden later:** have the token-usage shape (and possibly other leaf records) ignore unknown numeric fields. This weakens the strict boundary, so it should be its own ADR, not part of this PR.
+
+### F-03 🔵 `aria-label` on a generic span
+
+`WorkshopTurnBubble.tsx:397`. Many screen readers ignore an `aria-label` on a role-less `span`, and ARIA 1.2 marks naming the generic role as prohibited. In practice the visible text `2,400 cached` is what gets read, and that text is adequate. Two options: drop `aria-label` and rely on the visible text, or put a visually hidden `<span>` with the full sentence (read and write counts) next to it. The test currently asserts the `aria-label` string. Update the test if you change this.
+
+### F-04 🔵 Sprint bookkeeping
+
+The sprint's last criterion (narrow editor-tab legibility and accessibility) is unchecked, and the "Manual proof" section notes the evidence gap. That is honest. When you do the check, record the model id and one sample `prompt_tokens_details` payload, redacted if needed, so the ADR's later context-bar slice has a real fixture to work from.
+
+---
+
+## Things I checked and found fine
+
+- **Streaming and non-streaming normalization** share `toTokenUsage`, and the tests cover both.
+- **Workshop turn cloning** uses `{ ...usage }` (`WorkshopSessionService.ts:1307/1379/1577`), so the new fields survive without codec work beyond the allow-list.
+- **Estimated or cancelled usage** has no cache fields, so the badge hides. Correct.
+- **`requestCount`/`costUsd` semantics** are unchanged. `isEstimate` is still dropped by `addUsage` for multi-call turns, but that behavior predates this PR.
+- **CSS:** `--pm-ok` has the same `#6fc98a` fallback as its existing uses at L1206-1208. `flex-wrap` on `.pm-ws-turn-head` plus `margin-left: auto` on the group wraps cleanly without reordering the header. The hit state is not color-only, because the count text carries the meaning.
+- **Tooltip wording:** "N of M prompt tokens read from provider cache" still holds for multi-call turns, because both N and M are sums over the same calls.
+
+---
+
+## Initial review report card
+
+| Dimension | Grade | Note |
+| --- | --- | --- |
+| Correctness | A− | Numbers are right; F-01 hides a badge that could be shown |
+| Contract / persistence | B+ | Additive and validated; rollback stance undeclared (F-02) |
+| Tests | A | They test behavior: absent vs zero, partial aggregation, round trip, negative rejection |
+| Accessibility | B | Visible text works; `aria-label` doesn't do what it looks like (F-03) |
+| Scope discipline | A | Observes caching without changing it |
+
+**Initial verdict:** Approve once F-01 is fixed, or once it is tracked if you'd rather ship now. F-02 needs a one-line decision. F-03 and F-04 can go in whenever convenient. See the follow-up disposition above for the current status.
+
+> *The cache badge is an honest witness: it keeps silent rather than guess. Now we just need the dictionary to stop tearing up its evidence.*

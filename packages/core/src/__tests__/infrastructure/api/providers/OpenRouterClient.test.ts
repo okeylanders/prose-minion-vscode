@@ -158,7 +158,10 @@ describe('OpenRouterClient model hot-swap', () => {
         id: 'response-1',
         model: 'model/resolved',
         choices: [{ message: { role: 'assistant', content: 'Hi' }, finish_reason: 'stop' }],
-        usage: { prompt_tokens: 38, completion_tokens: 4, total_tokens: 42, cost: 0.002 },
+        usage: {
+          prompt_tokens: 38, completion_tokens: 4, total_tokens: 42, cost: 0.002,
+          prompt_tokens_details: { cached_tokens: 24, cache_write_tokens: 0 }
+        },
         openrouter_metadata: { pipeline: [{ type: 'context_compression', name: 'context-compression' }] }
       })
     }) as unknown as typeof fetch;
@@ -176,6 +179,7 @@ describe('OpenRouterClient model hot-swap', () => {
         finishReason: 'stop',
         contextCompression: 'applied'
       });
+      expect(result.usage).toMatchObject({ cachedTokens: 24, cacheWriteTokens: 0 });
     } finally {
       global.fetch = originalFetch;
     }
@@ -318,7 +322,10 @@ describe('OpenRouterClient model hot-swap', () => {
       { model: 'model/resolved', choices: [{ delta: {}, finish_reason: 'stop' }] },
       {
         choices: [],
-        usage: { prompt_tokens: 12, completion_tokens: 2, total_tokens: 14 },
+        usage: {
+          prompt_tokens: 12, completion_tokens: 2, total_tokens: 14,
+          prompt_tokens_details: { cached_tokens: 0, cache_write_tokens: 12 }
+        },
         openrouter_metadata: { pipeline: [{ type: 'guardrail' }] }
       },
       '[DONE]'
@@ -339,7 +346,7 @@ describe('OpenRouterClient model hot-swap', () => {
         done: true,
         id: 'gen-stream-123',
         finishReason: 'stop',
-        usage: { promptTokens: 12, completionTokens: 2, totalTokens: 14 },
+        usage: { promptTokens: 12, completionTokens: 2, totalTokens: 14, cachedTokens: 0, cacheWriteTokens: 12 },
         observation: {
           modelId: 'model/resolved',
           promptTokens: 12,

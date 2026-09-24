@@ -4,6 +4,14 @@ Status: Proposed
 Date: 2026-08-06
 Extends: [ADR 2025-10-26 — Token Usage and Cost Widget](2025-10-26-token-usage-and-cost-widget.md)
 
+Implementation note (2026-09-23): The first slice is the per-response cache
+indicator in the Workshop turn header, tracked by [Workshop Cache Usage
+Evidence](../../.todo/epics/epic-workshop-cache-usage-2026-09-23/README.md).
+It reads provider-reported counts through the existing turn-usage contract.
+The cumulative context-bar split in Decision 3-4 remains proposed; its bar
+also represents context-window occupancy, so those visual semantics need a
+separate design pass.
+
 ## Context
 
 The Workshop context bar (`ContextBudget.tsx`) shows a single cumulative

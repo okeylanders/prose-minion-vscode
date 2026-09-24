@@ -61,6 +61,13 @@ Before a Marketplace release that changes session persistence:
 
 No version bump occurs for a release that leaves the persisted contract intact.
 
+Adding optional provider cache usage counts to V2 turns leaves previously
+valid sessions readable and does not change required shape or semantics, so it
+does not bump `schemaVersion`. The strict V2 validator in an older release
+(including v2.5.0) rejects these new keys if a writer downgrades after saving
+with the newer build. We accept this forward-only session compatibility for
+this addition; downgrade support would require a separate codec policy change.
+
 ### V2 implementation (v2.2.0)
 
 The first Conversation Widgets release advances the full Workshop session

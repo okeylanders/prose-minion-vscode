@@ -954,6 +954,13 @@ export class AgentRunEngine {
       requestCount: (total.requestCount ?? 1) + (usage.requestCount ?? 1),
       costUsd: typeof total.costUsd === 'number' || typeof usage.costUsd === 'number'
         ? (total.costUsd ?? 0) + (usage.costUsd ?? 0)
+        : undefined,
+      // A partial sum could make an unreported call look like a cache miss.
+      cachedTokens: total.cachedTokens !== undefined && usage.cachedTokens !== undefined
+        ? total.cachedTokens + usage.cachedTokens
+        : undefined,
+      cacheWriteTokens: total.cacheWriteTokens !== undefined && usage.cacheWriteTokens !== undefined
+        ? total.cacheWriteTokens + usage.cacheWriteTokens
         : undefined
     };
   }

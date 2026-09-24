@@ -111,6 +111,28 @@ describe('parseWorkshopPersistedSession', () => {
     expect(source.conversations[0].messages[0].content).toBe('Remember the blue cup.');
   });
 
+  it('round-trips measured cache usage on a completed response', () => {
+    const source = persistedSession();
+    const workshop = new WorkshopSessionService(() => 1_000);
+    workshop.setExcerpt({ text: 'A defensive copy of the room.', source: { kind: 'manual' } });
+    workshop.beginToolRun('prose', 'tool-run');
+    workshop.completeToolReport('tool-run', 'A report.', 'tool-conversation', {
+      promptTokens: 800, completionTokens: 50, totalTokens: 850,
+      cachedTokens: 500, cacheWriteTokens: 0
+    });
+    source.workshop = workshop.exportCommittedState();
+    source.summary.turnCount = source.workshop.turns.length;
+
+    const restored = parseWorkshopPersistedSession(source);
+    expect(restored.workshop.turns.at(-1)?.usage).toMatchObject({
+      cachedTokens: 500, cacheWriteTokens: 0
+    });
+
+    source.workshop.turns.at(-1)!.usage!.cachedTokens = -1;
+    expect(() => parseWorkshopPersistedSession(source))
+      .toThrow(/cachedTokens.*non-negative safe integer/);
+  });
+
   it('rejects malformed product and temporal state at the outer boundary', () => {
     const malformedProduct = persistedSession() as unknown as {
       workshop: { counters: { turn: unknown } };

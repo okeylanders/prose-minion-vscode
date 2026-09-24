@@ -61,7 +61,11 @@ export interface OpenRouterResponse {
     cost?: number;
     cost_details?: {
       upstream_inference_cost?: number;
-    }
+    };
+    prompt_tokens_details?: {
+      cached_tokens?: number;
+      cache_write_tokens?: number;
+    };
   };
   openrouter_metadata?: unknown;
 }
@@ -434,11 +438,15 @@ export class OpenRouterClient {
     if (!raw) return undefined;
     const cost = raw.cost ?? raw.costUsd ?? raw.cost_usd;
     const costNum = cost !== undefined && cost !== null ? Number(cost) : undefined;
+    const reportedTokens = (value: unknown): number | undefined =>
+      typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
     return {
       promptTokens: Number(raw.prompt_tokens) || 0,
       completionTokens: Number(raw.completion_tokens) || 0,
       totalTokens: Number(raw.total_tokens) || 0,
-      costUsd: Number.isFinite(costNum) ? costNum : undefined
+      costUsd: Number.isFinite(costNum) ? costNum : undefined,
+      cachedTokens: reportedTokens(raw.prompt_tokens_details?.cached_tokens),
+      cacheWriteTokens: reportedTokens(raw.prompt_tokens_details?.cache_write_tokens)
     };
   }
 

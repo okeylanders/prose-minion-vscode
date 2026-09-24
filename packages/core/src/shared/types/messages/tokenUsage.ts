@@ -15,4 +15,8 @@ export interface TokenUsage {
   requestCount?: number;
   costUsd?: number;
   isEstimate?: boolean;
+  /** Prompt tokens the provider explicitly reported reading from cache. Absent means unreported. */
+  cachedTokens?: number;
+  /** Prompt tokens the provider explicitly reported writing to cache. Absent means unreported. */
+  cacheWriteTokens?: number;
 }

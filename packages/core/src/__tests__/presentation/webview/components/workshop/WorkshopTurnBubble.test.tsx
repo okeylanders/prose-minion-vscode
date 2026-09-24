@@ -602,6 +602,53 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(document.body.textContent).not.toContain('172,000 tokens');
   });
 
+  it.each([
+    [2_400, '2,400 cached', '2,400 of 8,000 prompt tokens read from provider cache; 0 tokens written to cache.'],
+    [0, '0 cached', '0 of 8,000 prompt tokens read from provider cache; 0 tokens written to cache.']
+  ])('shows a reported cache read of %s on the response header', (cachedTokens, label, detail) => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('A measured reply.'),
+          usage: {
+            promptTokens: 8_000, completionTokens: 500, totalTokens: 8_500,
+            cachedTokens, cacheWriteTokens: 0
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    const badge = screen.getByText(label);
+    const cache = badge.closest('.pm-ws-turn-cache');
+    expect(cache?.getAttribute('title')).toBe(detail);
+    expect(badge.getAttribute('aria-hidden')).toBe('true');
+    expect(cache?.querySelector('.pm-ws-visually-hidden')?.textContent?.trim()).toBe(detail);
+    expect(badge.closest('.pm-ws-turn-head')).toBeTruthy();
+  });
+
+  it('omits cache status when the provider did not report a cache read', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('A measured reply.'),
+          usage: { promptTokens: 8_000, completionTokens: 500, totalTokens: 8_500 }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByText(/cached$/)).toBeNull();
+  });
+
   it('renders excerpt revisions as participant-neutral thread dividers', () => {
     render(
       <WorkshopTurnBubble
