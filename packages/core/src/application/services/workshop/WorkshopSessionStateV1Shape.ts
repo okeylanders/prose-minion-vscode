@@ -749,7 +749,7 @@ function assertTokenUsage(value: unknown, path: string): void {
     value,
     path,
     ['promptTokens', 'completionTokens', 'totalTokens'],
-    ['requestCount', 'costUsd', 'isEstimate']
+    ['requestCount', 'costUsd', 'isEstimate', 'cachedTokens', 'cacheWriteTokens']
   );
   numberAt(usage.promptTokens, `${path}.promptTokens`);
   numberAt(usage.completionTokens, `${path}.completionTokens`);
@@ -757,6 +757,14 @@ function assertTokenUsage(value: unknown, path: string): void {
   optionalNumberAt(usage.requestCount, `${path}.requestCount`);
   optionalNumberAt(usage.costUsd, `${path}.costUsd`);
   optionalBooleanAt(usage.isEstimate, `${path}.isEstimate`);
+  for (const field of ['cachedTokens', 'cacheWriteTokens'] as const) {
+    const tokens = usage[field];
+    if (tokens !== undefined && (
+      typeof tokens !== 'number' || !Number.isSafeInteger(tokens) || tokens < 0
+    )) {
+      shapeError(`${path}.${field}`, 'non-negative safe integer');
+    }
+  }
 }
 
 function assertBehavior(value: unknown, path: string): void {

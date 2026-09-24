@@ -1252,6 +1252,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
 }
 [data-pm-surface="workshop"] .pm-ws-private-thread-label {
@@ -1268,6 +1269,27 @@
   font-size: 10.5px;
   color: var(--pm-dim);
   white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-usage-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  margin-left: auto;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-cache {
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-r-pill);
+  padding: 2px 6px;
+  color: var(--pm-dim);
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-cache-hit {
+  border-color: color-mix(in srgb, var(--pm-ok, #6fc98a) 40%, var(--pm-border-soft));
+  color: var(--pm-ok, #6fc98a);
 }
 [data-pm-surface="workshop"] .pm-ws-turn-truncated {
   font-size: 11.5px;

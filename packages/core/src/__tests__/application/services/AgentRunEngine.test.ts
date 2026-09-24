@@ -278,12 +278,15 @@ describe('AgentRunEngine', () => {
       evidence: 'Evidence',
       deliveredItems: ['dialogue.md'],
       artifacts: [],
-      usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25, requestCount: 2 }
+      usage: {
+        promptTokens: 20, completionTokens: 5, totalTokens: 25, requestCount: 2,
+        cachedTokens: 12, cacheWriteTokens: 0
+      }
     });
     client.createChatCompletion
       .mockResolvedValueOnce({
         content: GUIDE_REQUEST,
-        usage: { promptTokens: 38, completionTokens: 2, totalTokens: 40 },
+        usage: { promptTokens: 38, completionTokens: 2, totalTokens: 40, cachedTokens: 0, cacheWriteTokens: 38 },
         observation: {
           modelId: 'model/a', promptTokens: 38, completionTokens: 2, totalTokens: 40,
           requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'unknown', measuredAt: 1
@@ -291,7 +294,7 @@ describe('AgentRunEngine', () => {
       })
       .mockResolvedValueOnce({
         content: 'Final response.',
-        usage: { promptTokens: 41, completionTokens: 3, totalTokens: 44 },
+        usage: { promptTokens: 41, completionTokens: 3, totalTokens: 44, cachedTokens: 30, cacheWriteTokens: 0 },
         observation: {
           modelId: 'model/a', promptTokens: 41, completionTokens: 3, totalTokens: 44,
           requestedMaxOutputTokens: 10_000, finishReason: 'stop', contextCompression: 'not-applied', measuredAt: 2
@@ -302,7 +305,9 @@ describe('AgentRunEngine', () => {
       toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
       policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: guides
     });
-    expect(result.usage).toMatchObject({ totalTokens: 109, requestCount: 4 });
+    expect(result.usage).toMatchObject({
+      totalTokens: 109, requestCount: 4, cachedTokens: 42, cacheWriteTokens: 38
+    });
     expect(conversations.getContextBudget(result.conversationId)).toMatchObject({
       contextTokens: 44,
       promptTokens: 41,
@@ -311,6 +316,27 @@ describe('AgentRunEngine', () => {
       callsThisTurn: 4,
       turnProcessedTokens: 109
     });
+  });
+
+  it('does not present a partial cache count as the total for a multi-call response', async () => {
+    client.createChatCompletion
+      .mockResolvedValueOnce({
+        content: GUIDE_REQUEST,
+        usage: { promptTokens: 38, completionTokens: 2, totalTokens: 40, cachedTokens: 0 }
+      })
+      .mockResolvedValueOnce({
+        content: 'Final response.',
+        usage: { promptTokens: 41, completionTokens: 3, totalTokens: 44 }
+      });
+
+    const result = await engine.runInitial({
+      toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze.',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' },
+      capability: capability()
+    });
+
+    expect(result.usage).toMatchObject({ totalTokens: 84, requestCount: 2 });
+    expect(result.usage?.cachedTokens).toBeUndefined();
   });
 
   it('retains citations gathered before a capability round produces the final response', async () => {
