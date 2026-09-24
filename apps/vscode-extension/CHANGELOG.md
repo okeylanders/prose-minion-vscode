@@ -2,6 +2,18 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.6.0] - 2026-09-24
+
+### Added
+
+- Workshop response headers show how many prompt tokens OpenRouter reported reading from cache. A reported zero appears as `0 cached`; if the provider does not report cache reads, no cache count appears. Hovering over the count shows the prompt-token total and any reported cache writes.
+- Repeated Dictionary saves keep every entry: the first uses `<word>.md`, followed by `<word>-2.md`, `<word>-3.md`, and so on. Existing files are not replaced, including when two saves start together.
+
+### Upgrade notes
+
+- Cache counts observe provider behavior; this release does not enable provider-specific caching or change the Workshop context bar.
+- Workshop sessions saved with cache-usage fields may be rejected by older strict readers such as v2.5.0 after a downgrade. Reopen those sessions with v2.6.0 or newer. Existing sessions remain readable by v2.6.0.
+
 ## [2.5.0] - 2026-09-23
 
 ### Added

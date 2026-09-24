@@ -24,7 +24,13 @@
 
 ---
 
-## What's new in v2.5.0 — Explore and choose models
+## What's new in v2.6.0 — See cache use and keep Dictionary takes
+
+- **See reported cache reuse** — Workshop responses show `N cached` when OpenRouter reports prompt tokens read from cache. An explicit zero is shown; missing cache details leave the indicator hidden. The existing context bar still shows context-window occupancy.
+- **Keep each Dictionary entry** — saving the same word again creates `<word>-2.md`, then `<word>-3.md`, instead of replacing the earlier file. Standard and fast Dictionary saves both use this naming.
+- **Downgrade note** — v2.5.0 may reject Workshop sessions saved with the new cache fields. Reopen those sessions with v2.6.0 or newer.
+
+### Also in v2.5.0 — Explore and choose models
 
 - **Find models by release date** — Model Explorer groups choices by month and year, with the newest models first.
 - **See model size at a glance** — parameter tags distinguish published counts, estimates, undisclosed sizes, and multi-model systems.

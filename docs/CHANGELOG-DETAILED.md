@@ -5,6 +5,29 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-09-24 — Workshop cache visibility and numbered Dictionary saves
+
+### Overview
+
+PR [#116](https://github.com/okeylanders/prose-minion-vscode/pull/116) adds response-local cache-use evidence to Workshop and preserves repeated Dictionary saves. The context bar still represents context-window occupancy; this release does not turn on provider-specific prompt caching or session affinity.
+
+### Added — provider-reported cache usage
+
+- Normalize OpenRouter's `usage.prompt_tokens_details.cached_tokens` and `cache_write_tokens` for streaming and non-streaming responses. Only non-negative safe integer counts are accepted; absent, explicit zero, and positive counts remain distinct.
+- Carry those optional counts through `TokenUsage`, parallel Dictionary block usage, Workshop multi-call aggregation, persisted turns, and the response header. An incomplete multi-call cache report stays unknown instead of becoming a false zero. The badge displays `N cached` next to processed tokens and exposes the prompt-token denominator and any cache-write count in its detail text.
+- Keep the existing Workshop context bar unchanged. Its value is window occupancy, not measured cache reuse. See the [cache visibility ADR](adr/2026-08-06-context-cache-token-visibility.md) and [one-sprint epic](../.todo/epics/epic-workshop-cache-usage-2026-09-23/README.md).
+
+### Added — non-overwriting Dictionary entries
+
+- `FileOperationsHandler` now writes a first entry to `<word>.md` and subsequent saves to `<word>-2.md`, `<word>-3.md`, and so on. It stages the new content in a temporary file and publishes it with `rename(..., { overwrite: false })`, retrying only when another file took that name. This protects an existing entry even if two saves arrive together.
+- The same behavior covers standard and fast Dictionary generation. The saved content and model attribution are unchanged.
+
+### Compatibility and verification
+
+- V2 Workshop sessions without cache fields still load. New optional cache fields survive a save and reopen in v2.6.0. v2.5.0's strict session reader rejects sessions containing those fields after downgrade; this forward-only limitation is recorded in the [session codec ADR](adr/2026-07-30-workshop-session-codec-evolution.md).
+- Automated coverage spans OpenRouter usage parsing, multi-call and parallel Dictionary aggregation, persisted-session validation, response presentation, and concurrent non-overwriting saves. The [PR review](pr-reviews/pr-116-workshop-cache-usage-badge-4b28b32-review.md) records the original findings and the scope added afterward.
+- Live use confirmed the cache indicator and a Development Host reload restored a session after returning to the cache-capable branch. The exact provider usage payload and narrow editor-tab accessibility check were not recorded.
+
 ## [2.5.0] - 2026-09-23 — Model Explorer and dictionary diagnostics
 
 ### Added — GPT-6 Luna and Sol
