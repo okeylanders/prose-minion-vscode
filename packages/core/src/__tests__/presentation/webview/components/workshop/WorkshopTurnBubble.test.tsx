@@ -624,9 +624,10 @@ describe('WorkshopTurnBubble variation cards', () => {
     );
 
     const badge = screen.getByText(label);
-    expect(badge.getAttribute('title')).toBe(detail);
-    expect(badge.getAttribute('aria-label'))
-      .toBe(`${cachedTokens.toLocaleString()} prompt tokens read from provider cache for this response`);
+    const cache = badge.closest('.pm-ws-turn-cache');
+    expect(cache?.getAttribute('title')).toBe(detail);
+    expect(badge.getAttribute('aria-hidden')).toBe('true');
+    expect(cache?.querySelector('.pm-ws-visually-hidden')?.textContent?.trim()).toBe(detail);
     expect(badge.closest('.pm-ws-turn-head')).toBeTruthy();
   });
 

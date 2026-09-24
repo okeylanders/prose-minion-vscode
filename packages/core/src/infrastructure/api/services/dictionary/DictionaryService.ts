@@ -552,6 +552,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     let totalCompletionTokens = 0;
     let totalTokens = 0;
     let totalCostUsd = 0;
+    let totalCachedTokens: number | undefined = 0;
+    let totalCacheWriteTokens: number | undefined = 0;
     let hasUsageData = false;
 
     // Sort blocks to maintain order and build result
@@ -559,6 +561,13 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
 
     for (const blockName of DICTIONARY_BLOCKS) {
       const result = blockResults.find(r => r.blockName === blockName);
+      // An unreported block makes the aggregate cache count unknown, not zero.
+      totalCachedTokens = totalCachedTokens !== undefined && result?.usage?.cachedTokens !== undefined
+        ? totalCachedTokens + result.usage.cachedTokens
+        : undefined;
+      totalCacheWriteTokens = totalCacheWriteTokens !== undefined && result?.usage?.cacheWriteTokens !== undefined
+        ? totalCacheWriteTokens + result.usage.cacheWriteTokens
+        : undefined;
       if (result) {
         blockDurations[blockName] = result.duration;
 
@@ -610,7 +619,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         promptTokens: totalPromptTokens,
         completionTokens: totalCompletionTokens,
         totalTokens,
-        costUsd: totalCostUsd
+        costUsd: totalCostUsd,
+        cachedTokens: totalCachedTokens,
+        cacheWriteTokens: totalCacheWriteTokens
       } : undefined
     };
   }

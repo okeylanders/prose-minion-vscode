@@ -394,9 +394,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                 <span
                   className={`pm-ws-turn-cache${turn.usage.cachedTokens > 0 ? ' pm-ws-turn-cache-hit' : ''}`}
                   title={`${turn.usage.cachedTokens.toLocaleString()} of ${turn.usage.promptTokens.toLocaleString()} prompt tokens read from provider cache${turn.usage.cacheWriteTokens !== undefined ? `; ${turn.usage.cacheWriteTokens.toLocaleString()} tokens written to cache` : ''}.`}
-                  aria-label={`${turn.usage.cachedTokens.toLocaleString()} prompt tokens read from provider cache for this response`}
                 >
-                  {turn.usage.cachedTokens.toLocaleString()} cached
+                  <span aria-hidden="true">{turn.usage.cachedTokens.toLocaleString()} cached</span>
+                  <span className="pm-ws-visually-hidden">
+                    {turn.usage.cachedTokens.toLocaleString()} of {turn.usage.promptTokens.toLocaleString()} prompt tokens read from provider cache{turn.usage.cacheWriteTokens !== undefined ? `; ${turn.usage.cacheWriteTokens.toLocaleString()} tokens written to cache` : ''}.
+                  </span>
                 </span>
               )}
             </span>

@@ -11,17 +11,26 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 
 | ID | Sev | Finding | Verdict | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | `DictionaryService.generateParallelDictionary` rebuilds usage from four fields and drops `cachedTokens`/`cacheWriteTokens`. A persona turn that runs the parallel dictionary sidecar therefore loses its cache badge, even when every provider call reported cache details | 🔎 Traced | **Open** |
-| F-02 | 🟡 Standard | Sessions saved by this build contain `usage.cachedTokens`. v2.5.0's `exactObject` validator rejects unknown keys, so a writer who rolls back to the Marketplace build cannot open sessions saved by this build | 🔎 Traced | **Decision** |
-| F-03 | 🔵 Nit | `aria-label` on a role-less `<span>` is not reliably announced (ARIA 1.2 disallows naming the generic role). The label also omits the write count and the "of N prompt tokens" detail that the `title` carries | — | **Open** |
+| F-01 | 🟡 Standard | `DictionaryService.generateParallelDictionary` rebuilds usage from four fields and drops `cachedTokens`/`cacheWriteTokens`. A persona turn that runs the parallel dictionary sidecar therefore loses its cache badge, even when every provider call reported cache details | 🔎 Traced | **Addressed** |
+| F-02 | 🟡 Standard | Sessions saved by this build contain `usage.cachedTokens`. v2.5.0's `exactObject` validator rejects unknown keys, so a writer who rolls back to the Marketplace build cannot open sessions saved by this build | 🔎 Traced | **Deferred: accepted limitation** |
+| F-03 | 🔵 Nit | `aria-label` on a role-less `<span>` is not reliably announced (ARIA 1.2 disallows naming the generic role). The label also omits the write count and the "of N prompt tokens" detail that the `title` carries | — | **Addressed** |
 | F-04 | 🔵 Nit | The epic and sprint remain in `.todo/epics/` with one unchecked criterion (narrow editor-tab legibility). That is correct if the check is still pending; record the model and response fields when you run it | — | **Open** |
 | F-05 | 🟢 Praise | All-or-nothing aggregation in `addUsage` keeps an unreported call from being shown as a cache miss. The comment explains why, and a test covers it | — | N/A: keep |
 | F-06 | 🟢 Praise | Absent and zero stay distinct end to end: the client parser only accepts non-negative safe integers, the persisted shape re-validates, and the UI shows `0 cached` for an explicit zero and nothing for absent | — | N/A: keep |
 | F-07 | 🟢 Praise | Scope discipline: the context bar is left alone, and the ADR note explains why it still means window occupancy | — | N/A: keep |
 
+### Follow-up disposition (2026-09-24)
+
+- **F-01:** The parallel dictionary aggregate now carries both cache fields only when every block reports the corresponding field. A test covers complete reporting and one block without a cache-read count.
+- **F-02:** Okey accepts forward-only session compatibility across this release. The [session codec ADR](../adr/2026-07-30-workshop-session-codec-evolution.md) now records that older strict validators, including v2.5.0, reject new cache keys after downgrade. Supporting downgrade remains outside this PR; a future codec policy could address it.
+- **F-03:** The badge now has visible text marked `aria-hidden` and a visually hidden full sentence that includes the prompt denominator and any reported cache writes. The UI test checks that sentence.
+- **F-04:** Still open. Okey reports the feature works in live use, but no model id, redacted cache-usage response fields, or narrow editor-tab accessibility check were recorded. The sprint criterion remains unchecked.
+
+**Current verdict:** The code findings are addressed and the downgrade decision is recorded. Manual narrow-tab/provider proof remains an open sprint criterion, not a claim made by this review.
+
 ---
 
-## Verification actually run
+## Verification at initial review
 
 | Check | Result |
 | --- | --- |
@@ -29,6 +38,8 @@ Status legend: **Open** = act before merge · **Deferred** = accepted follow-up 
 | `npm ci`, then the 4 touched Jest suites (`AgentRunEngine`, `WorkshopPersistedSession`, `OpenRouterClient`, `WorkshopTurnBubble`) | ✅ 4 suites / 116 tests passed (matches the PR description) |
 | Full suite, typechecks, lint, build | ❌ Not run here. This review relies on the PR's stated results |
 | Live OpenRouter response / narrow editor-tab visual check | ❌ Not performed |
+
+Follow-up validation on 2026-09-24: focused `DictionaryService` and `WorkshopTurnBubble` Jest suites passed (2 suites, 34 tests); the full Jest suite passed (212 suites, 2,423 tests, 2 snapshots); `npm run typecheck` passed across core, webview, and extension; `npm run build` and bundle verification passed with webpack size warnings; changed-file ESLint passed with 7 existing warnings and no errors; `git diff --check` passed. These checks did not include a live provider call or a narrow editor-tab visual check.
 
 ---
 
@@ -90,7 +101,7 @@ The sprint's last criterion (narrow editor-tab legibility and accessibility) is 
 
 ---
 
-## Report card
+## Initial review report card
 
 | Dimension | Grade | Note |
 | --- | --- | --- |
@@ -100,6 +111,6 @@ The sprint's last criterion (narrow editor-tab legibility and accessibility) is 
 | Accessibility | B | Visible text works; `aria-label` doesn't do what it looks like (F-03) |
 | Scope discipline | A | Observes caching without changing it |
 
-**Verdict:** Approve once F-01 is fixed, or once it is tracked if you'd rather ship now. F-02 needs a one-line decision. F-03 and F-04 can go in whenever convenient.
+**Initial verdict:** Approve once F-01 is fixed, or once it is tracked if you'd rather ship now. F-02 needs a one-line decision. F-03 and F-04 can go in whenever convenient. See the follow-up disposition above for the current status.
 
 > *The cache badge is an honest witness: it keeps silent rather than guess. Now we just need the dictionary to stop tearing up its evidence.*

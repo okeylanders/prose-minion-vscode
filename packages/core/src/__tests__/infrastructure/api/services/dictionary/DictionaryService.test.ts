@@ -107,6 +107,36 @@ describe('DictionaryService', () => {
     );
   });
 
+  it('sums cache counts only when every parallel dictionary block reports them', async () => {
+    let omitDefinitionCacheRead = false;
+    const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => ({
+      content: `## ${toolName}`,
+      usage: {
+        promptTokens: 10,
+        completionTokens: 2,
+        totalTokens: 12,
+        ...(omitDefinitionCacheRead && toolName === 'dictionary-fast-definition' ? {} : { cachedTokens: 2 }),
+        cacheWriteTokens: 1
+      }
+    }));
+    const { service } = await buildLookupService(runInitial);
+
+    const fullyReported = await service.generateParallelDictionary('crash');
+    expect(fullyReported.metadata.totalBlocks).toBe(15);
+    expect(fullyReported.usage).toMatchObject({
+      promptTokens: 150,
+      completionTokens: 30,
+      totalTokens: 180,
+      cachedTokens: 30,
+      cacheWriteTokens: 15
+    });
+
+    omitDefinitionCacheRead = true;
+    const partiallyReported = await service.generateParallelDictionary('crash');
+    expect(partiallyReported.usage?.cachedTokens).toBeUndefined();
+    expect(partiallyReported.usage?.cacheWriteTokens).toBe(15);
+  });
+
   it('only asks the special-focus block to generate the Special Focus section', async () => {
     const loadPrompts = jest.fn().mockImplementation(async (paths: string[]) => paths[0]);
     const runInitial = jest.fn().mockResolvedValue({
