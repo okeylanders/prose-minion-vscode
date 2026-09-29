@@ -79,7 +79,13 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     id: 'anthropic/claude-sonnet-5',
     name: 'Claude Sonnet 5',
     family: 'Claude Sonnet',
-    description: 'Anthropic\'s newest Sonnet model with 1M context, adaptive reasoning, and frontier performance for professional writing and agentic work'
+    description: '1M-context Sonnet model with adaptive reasoning for professional writing and agentic work'
+  },
+  {
+    id: 'anthropic/claude-sonnet-5.5',
+    name: 'Claude Sonnet 5.5',
+    family: 'Claude Sonnet',
+    description: 'Newest 1M-context Sonnet model for everyday prose analysis, writing assistance, and long-context editorial work'
   },
   {
     id: 'anthropic/claude-haiku-4.5',
@@ -176,6 +182,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'Mercury 2.5',
     family: 'Inception Mercury',
     description: 'Extremely fast, low-cost diffusion reasoning model with 260K context for responsive dictionary lookups, category matching, and utility analysis'
+  },
+  {
+    id: 'upstage/solar-mini4',
+    name: 'Solar Mini 4',
+    family: 'Solar',
+    description: 'Low-cost 524K-context text model for high-volume category matching and utility analysis'
   },
   {
     id: 'google/gemini-2.5-flash',
@@ -280,6 +292,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: '1M-context multimodal reasoner for complex category matching'
   },
   {
+    id: 'qwen/qwen3.8-max-prime',
+    name: 'Qwen3.8 Max Prime',
+    family: 'Qwen3.8',
+    description: 'Higher-throughput 1M-context multimodal reasoner for complex category matching at a higher token price'
+  },
+  {
     id: 'mistralai/mistral-small-2603',
     name: 'Mistral Small 4',
     family: 'Mistral Small',
@@ -350,6 +368,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     name: 'GLM 5.2',
     family: 'GLM 5',
     description: 'Z.AI\'s GLM 5.2 flagship with 1M context and stronger long-horizon reasoning for structured category matching'
+  },
+  {
+    id: 'z-ai/glm-5.3-prime',
+    name: 'GLM 5.3 Prime',
+    family: 'GLM 5',
+    description: 'Higher-throughput 1M-context text reasoner for complex category matching at a higher token price'
   },
   {
     id: 'z-ai/glm-5.3-flash',
@@ -441,7 +465,13 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     id: 'anthropic/claude-sonnet-5',
     name: 'Claude Sonnet 5',
     family: 'Claude Sonnet',
-    description: 'Anthropic\'s newest Sonnet flagship. 1M context, adaptive reasoning, and frontier performance across prose analysis, coding, agents, and professional writing workflows.'
+    description: '1M-context Sonnet model with adaptive reasoning for prose analysis, coding, agents, and professional writing workflows.'
+  },
+  {
+    id: 'anthropic/claude-sonnet-5.5',
+    name: 'Claude Sonnet 5.5',
+    family: 'Claude Sonnet',
+    description: 'Anthropic\'s newest Sonnet model with 1M context. An opt-in choice for everyday prose analysis, writing assistance, and sustained editorial conversations.'
   },
   {
     id: 'anthropic/claude-fable-5',
@@ -496,6 +526,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Mercury 2.5',
     family: 'Inception Mercury',
     description: 'Extremely fast diffusion reasoning model with 260K context and very low token cost. A strong fit for dictionary alternatives, category matching, quick critiques, and other latency-sensitive utility work.'
+  },
+  {
+    id: 'upstage/solar-mini4',
+    name: 'Solar Mini 4',
+    family: 'Solar',
+    description: 'Compact 35B-parameter mixture-of-experts model with 3B active parameters and 524K context. An opt-in low-cost choice for dictionary alternatives, category search, and exploratory prose work.'
   },
   {
     id: 'deepseek/deepseek-r1',
@@ -663,7 +699,13 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     id: 'z-ai/glm-5.3',
     name: 'GLM 5.3',
     family: 'GLM 5',
-    description: 'Z.AI\'s newest 1M-context reasoning model. A premium GLM option for complex manuscript analysis and extended editorial planning.'
+    description: 'Z.AI\'s 1M-context reasoning model. A premium GLM option for complex manuscript analysis and extended editorial planning.'
+  },
+  {
+    id: 'z-ai/glm-5.3-prime',
+    name: 'GLM 5.3 Prime',
+    family: 'GLM 5',
+    description: 'Higher-throughput GLM 5.3 route with 1M context and mandatory reasoning. An opt-in, higher-priced choice for responsive long-form critique and editorial planning.'
   },
   {
     id: 'z-ai/glm-5.3-flash',
@@ -898,6 +940,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Qwen3.8 Max 0902',
     family: 'Qwen3.8',
     description: 'Qwen\'s flagship multimodal reasoner with 1M context. Strong for complex manuscript analysis, visual context, and long-horizon editorial planning.'
+  },
+  {
+    id: 'qwen/qwen3.8-max-prime',
+    name: 'Qwen3.8 Max Prime',
+    family: 'Qwen3.8',
+    description: 'Higher-throughput Qwen3.8 Max route with 1M context and text, image, and video input. An opt-in, higher-priced choice for responsive manuscript analysis and editorial planning.'
   },
   {
     id: 'qwen/qwen3.8-flash',

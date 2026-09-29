@@ -34,13 +34,20 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/meta/muse-spark-1.3
   - Meta: https://ai.meta.com/
 
-### Claude Sonnet 5 — New Sonnet Flagship
+### Claude Sonnet 5 — Previous Sonnet Generation
 
 - **Best For:** Default high-quality prose analysis, long-context critique, and mixed writing + tooling workflows
-- **Description:** Anthropic's newest Sonnet model with 1M context, adaptive reasoning, and frontier performance across professional writing, coding, and agentic work
+- **Description:** Sonnet model with 1M context and adaptive reasoning for professional writing, coding, and agentic work
 - **Links:**
   - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-5
   - Anthropic: https://www.anthropic.com
+
+### Claude Sonnet 5.5 — Latest Sonnet Generation
+
+- **Best For:** Everyday prose analysis, writing assistance, and sustained editorial conversations
+- **Description:** OpenRouter lists 1M context, text/image/file input, adaptive reasoning, and a 128K maximum output. Its prose quality has not been verified in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-5.5
 
 ### Claude Fable 5.1 — Long-Running Editorial Work
 
@@ -58,10 +65,10 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-4.5
   - Anthropic: https://www.anthropic.com
 
-### Claude Sonnet 4.6 — New Sonnet Flagship
+### Claude Sonnet 4.6 — Earlier Sonnet Option
 
 - **Best For:** Stronger long-context reasoning and mixed writing + coding workflows
-- **Description:** Newest Sonnet generation with improved reliability, deeper reasoning stability, and agentic execution
+- **Description:** Earlier Sonnet generation with improved reliability, reasoning stability, and agentic execution
 - **Links:**
   - OpenRouter: https://openrouter.ai/anthropic/claude-sonnet-4.6
   - Anthropic: https://www.anthropic.com
@@ -252,10 +259,17 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 ### GLM 5.3 — Premium Reasoning
 
 - **Best For:** Complex manuscript analysis and extended editorial planning
-- **Description:** Z.AI's newest 1M-context reasoning model is a premium GLM option for difficult, multi-step work.
+- **Description:** Z.AI's 1M-context reasoning model is a premium GLM option for difficult, multi-step work.
 - **Links:**
   - OpenRouter: https://openrouter.ai/z-ai/glm-5.3
   - Z.AI: https://z.ai/
+
+### GLM 5.3 Prime — Faster Premium Reasoning
+
+- **Best For:** Responsive long-form critique, complex Category Search, and extended editorial planning
+- **Description:** Higher-throughput GLM 5.3 route with 1M context and mandatory reasoning. OpenRouter lists $2.80/M input and $8.80/M output, above the base model; prose quality has not been verified in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/z-ai/glm-5.3-prime
 
 ### GLM 5.3 Flash — Fast Multimodal Value
 
@@ -402,10 +416,17 @@ OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains ava
 ### Qwen3.8 Max 0902 — Open-Model Flagship
 
 - **Best For:** Complex manuscript analysis, visual context, and long-horizon editorial planning
-- **Description:** Qwen's newest multimodal reasoning model with 1M context and strong general-purpose reasoning
+- **Description:** Qwen's multimodal reasoning model with 1M context and strong general-purpose reasoning
 - **Links:**
   - OpenRouter: https://openrouter.ai/qwen/qwen3.8-max-0902
   - Qwen: https://qwenlm.github.io/
+
+### Qwen3.8 Max Prime — Faster Multimodal Reasoning
+
+- **Best For:** Responsive manuscript analysis, visual context, and complex Category Search
+- **Description:** Higher-throughput Qwen3.8 Max route with 1M context and text, image, and video input. OpenRouter lists $4/M input and $12/M output, above the 0902 model; prose quality has not been verified in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/qwen/qwen3.8-max-prime
 
 ### Qwen3.8 Flash — Fast Multimodal Workhorse
 
@@ -452,6 +473,13 @@ OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains ava
 - **Links:**
   - OpenRouter: https://openrouter.ai/inception/mercury-2.5
   - Inception: https://www.inceptionlabs.ai/
+
+### Solar Mini 4 — Low-Cost Long Context
+
+- **Best For:** High-volume Category Search, dictionary alternatives, and exploratory prose work
+- **Description:** Upstage's text model has 524K context and a published 35B total / 3B active parameter count. OpenRouter currently lists $0.05/M input and $0.20/M output promotional pricing; its prose quality has not been verified in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/upstage/solar-mini4
 
 ### Xiaomi MiMo V2.6 — Multimodal Options
 
