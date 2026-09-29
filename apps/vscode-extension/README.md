@@ -24,7 +24,12 @@
 
 ---
 
-## What's new in v2.6.1 — More model choices
+## What's new in v2.6.2 — GPT-6.1 Sol choices
+
+- **Try GPT-6.1 Sol or Sol Pro** — both join every shared model picker and Category Search. Pro uses a deeper reasoning mode and may consume more output tokens.
+- **Your choices stay yours** — defaults and saved selections are unchanged. OpenRouter lists these models, but their prose quality has not been evaluated in Prose Minion.
+
+### Also in v2.6.1 — More model choices
 
 - **Try Claude Sonnet 5.5** — available in every shared model picker and Category Search, alongside Sonnet 5.
 - **Choose a faster premium route** — GLM 5.3 Prime and Qwen3.8 Max Prime offer higher throughput at higher token prices than their base models.
