@@ -5,10 +5,11 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — OpenRouter model choices
+## [2.6.1] - 2026-09-29 — OpenRouter model choices
 
 - Added opt-in Claude Sonnet 5.5, Solar Mini 4, GLM 5.3 Prime, and Qwen3.8 Max Prime to shared model pickers and Category Search. Existing model defaults and saved selections remain unchanged.
 - The Prime routes trade higher token prices for higher throughput than their base models. Verified all four IDs and their advertised capabilities against OpenRouter's live catalog and endpoint metadata. This does not establish paid inference or prose quality.
+- Synchronized the curated model lists, Category Search settings enum, model parameter tags, recommended-model guide, and catalog architecture checks. No message contracts or provider transport changed.
 
 ## [2.6.0] - 2026-09-24 — Workshop cache visibility and numbered Dictionary saves
 

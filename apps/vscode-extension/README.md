@@ -24,7 +24,14 @@
 
 ---
 
-## What's new in v2.6.0 — See cache use and keep Dictionary takes
+## What's new in v2.6.1 — More model choices
+
+- **Try Claude Sonnet 5.5** — available in every shared model picker and Category Search, alongside Sonnet 5.
+- **Choose a faster premium route** — GLM 5.3 Prime and Qwen3.8 Max Prime offer higher throughput at higher token prices than their base models.
+- **Try a low-cost long-context model** — Solar Mini 4 joins the pickers for utility work and exploratory prose.
+- **Your choices stay yours** — defaults and saved selections are unchanged. OpenRouter lists these models, but their prose quality has not been evaluated in Prose Minion.
+
+### Also in v2.6.0 — See cache use and keep Dictionary takes
 
 - **See reported cache reuse** — Workshop responses show `N cached` when OpenRouter reports prompt tokens read from cache. An explicit zero is shown; missing cache details leave the indicator hidden. The existing context bar still shows context-window occupancy.
 - **Keep each Dictionary entry** — saving the same word again creates `<word>-2.md`, then `<word>-3.md`, instead of replacing the earlier file. Standard and fast Dictionary saves both use this naming.
