@@ -2,6 +2,15 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.6.1] - 2026-09-29
+
+### Added
+
+- Claude Sonnet 5.5 and Solar Mini 4 are available as opt-in choices for writing tools and Category Search.
+- GLM 5.3 Prime and Qwen3.8 Max Prime offer faster, higher-priced alternatives to their base models.
+
+Existing model defaults and saved selections are unchanged. Model availability was checked against OpenRouter; prose quality has not been evaluated in this release.
+
 ## [2.6.0] - 2026-09-24
 
 ### Added
