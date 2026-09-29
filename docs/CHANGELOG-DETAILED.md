@@ -5,6 +5,13 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] - 2026-09-29 — GPT-6.1 Sol model choices
+
+- Added `openai/gpt-6.1-sol` and `openai/gpt-6.1-sol-pro` to the shared Recommended Models catalog and Category Search settings enum. The same shared list feeds Assistant, Dictionary, Context, Workshop, and Conversation Widgets.
+- OpenRouter's live catalog lists both interactive routes with 1.05M context, up to 128K output, text/image/file input, tool use, structured outputs, adjustable reasoning, and identical published per-token rates. Sol Pro uses `reasoning.mode: pro` and may use more output tokens. These are catalog facts, not paid-inference or prose-quality results.
+- Updated the recommended-model guide and the widget catalog parity check. All 117 previously curated model IDs still resolved in the live catalog at release preparation. Existing defaults and saved selections are unchanged.
+- Updated the root, core, extension, and lockfile versions to 2.6.2. This patch release changes model options and documentation; it does not change provider transport or message contracts.
+
 ## [2.6.1] - 2026-09-29 — OpenRouter model choices
 
 - Added opt-in Claude Sonnet 5.5, Solar Mini 4, GLM 5.3 Prime, and Qwen3.8 Max Prime to shared model pickers and Category Search. Existing model defaults and saved selections remain unchanged.

@@ -2,6 +2,14 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.6.2] - 2026-09-29
+
+### Added
+
+- GPT-6.1 Sol and GPT-6.1 Sol Pro are available as opt-in choices for writing tools and Category Search.
+
+Existing model defaults and saved selections are unchanged. Both interactive routes and their advertised capabilities were checked against OpenRouter; prose quality has not been evaluated in this release.
+
 ## [2.6.1] - 2026-09-29
 
 ### Added
