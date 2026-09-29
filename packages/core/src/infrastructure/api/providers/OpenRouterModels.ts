@@ -160,6 +160,18 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'GPT-6 Sol with Pro reasoning mode for complex and ambiguous category matching'
   },
   {
+    id: 'openai/gpt-6.1-sol',
+    name: 'GPT-6.1 Sol',
+    family: 'GPT-6.1',
+    description: 'Updated Sol reasoning model with 1.05M context for demanding category matching'
+  },
+  {
+    id: 'openai/gpt-6.1-sol-pro',
+    name: 'GPT-6.1 Sol Pro',
+    family: 'GPT-6.1',
+    description: 'GPT-6.1 Sol with Pro reasoning mode for complex and ambiguous category matching'
+  },
+  {
     id: 'openai/gpt-6-astra',
     name: 'GPT-6 Astra',
     family: 'GPT-6',
@@ -850,6 +862,18 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'GPT-6 Sol Pro',
     family: 'GPT-6',
     description: 'GPT-6 Sol served with Pro reasoning mode for difficult structural critique and long-running editorial work.'
+  },
+  {
+    id: 'openai/gpt-6.1-sol',
+    name: 'GPT-6.1 Sol',
+    family: 'GPT-6.1',
+    description: 'Updated Sol reasoning model with 1.05M context for demanding prose analysis, revision planning, and sustained Workshop conversations.'
+  },
+  {
+    id: 'openai/gpt-6.1-sol-pro',
+    name: 'GPT-6.1 Sol Pro',
+    family: 'GPT-6.1',
+    description: 'GPT-6.1 Sol served with Pro reasoning mode for difficult structural critique and long-running editorial work.'
   },
   {
     id: 'openai/gpt-6-astra',

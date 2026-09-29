@@ -394,6 +394,21 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 - **Links:**
   - OpenRouter: https://openrouter.ai/openai/gpt-6-sol-pro
 
+### OpenAI GPT-6.1 Sol — Updated High-End Reasoning
+
+- **Best For:** Demanding prose analysis, revision planning, and sustained Workshop conversations
+- **Description:** OpenRouter lists 1.05M context, up to 128K output, text/image/file input, tools, structured outputs, and adjustable reasoning
+- **Pricing:** $2/$10 per million input/output tokens; prompts of at least 272K tokens use $4/$15 rates
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6.1-sol
+
+### OpenAI GPT-6.1 Sol Pro — Deeper Sol Reasoning
+
+- **Best For:** Difficult structural critique and long-running editorial work
+- **Description:** The same underlying GPT-6.1 Sol model served with `reasoning.mode` set to `pro`; OpenRouter lists the same per-token rates, but Pro mode may use more output tokens
+- **Links:**
+  - OpenRouter: https://openrouter.ai/openai/gpt-6.1-sol-pro
+
 OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains available and the always-latest Terra alias still resolves to it.
 
 ### OpenAI GPT-6 Astra — Frontier Reasoning

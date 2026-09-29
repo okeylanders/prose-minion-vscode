@@ -16,6 +16,8 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'openai/gpt-6-luna-pro',
   'openai/gpt-6-sol',
   'openai/gpt-6-sol-pro',
+  'openai/gpt-6.1-sol',
+  'openai/gpt-6.1-sol-pro',
   'openai/gpt-6-astra',
   'anthropic/claude-opus-5.5',
   'anthropic/claude-sonnet-5.5',
