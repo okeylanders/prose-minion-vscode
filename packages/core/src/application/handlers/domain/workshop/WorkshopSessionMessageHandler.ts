@@ -2,16 +2,22 @@
  * Session-persistence IPC slice for Workshop.
  *
  * WorkshopRoomHandler owns the room and run orchestration. This per-webview
- * collaborator owns only New/Save/Open/browser messages, response envelopes,
- * and cancellation of superseded browser searches.
+ * collaborator owns only New/Rewind/Save/Open/browser messages, response
+ * envelopes, and cancellation of superseded browser searches.
  */
 
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
-import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+import {
+  WorkshopRewindCut,
+  WorkshopRewindOutcome,
+  WorkshopRewindRefusedError,
+  WorkshopSessionPersistenceCoordinator
+} from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { LogSink, ShellService } from '@/platform';
 import {
   MessageType,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopDeleteSessionMessage,
   WorkshopDuplicateSessionMessage,
   WorkshopListSessionsMessage,
@@ -21,6 +27,7 @@ import {
   WorkshopRequestSessionMessage,
   WorkshopResetSessionMessage,
   WorkshopRevealSessionMessage,
+  WorkshopRewindSessionMessage,
   WorkshopSaveSessionMessage,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
@@ -31,6 +38,9 @@ import {
 import type {
   WorkshopMutationRouteRegistrar
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
+import { workshopPersonaLabel, isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
+import { workshopToolLabel, isWorkshopToolId } from '@shared/constants/workshopTools';
+import { workshopRewindUnavailableReason } from '@shared/constants/workshopRewind';
 
 let sessionRequestCounter = 0;
 const generateSessionRequestId = (): string =>
@@ -44,6 +54,8 @@ export interface WorkshopSessionMessageHandlerOptions {
   reportError: (message: string, details?: string) => void;
   /** Human label for a run currently blocking state replacement. */
   activeRunLabel: () => 'Context wizard' | 'response' | undefined;
+  /** The cut a thread bubble offers (ADR 2026-09-30 §1), if any. */
+  rewindCutForBubble: (turnId: string) => WorkshopRewindCut | undefined;
 }
 
 export class WorkshopSessionMessageHandler {
@@ -66,6 +78,7 @@ export class WorkshopSessionMessageHandler {
   ): void {
     registerMutation(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, this.handleRefreshContextFiles.bind(this));
     registerMutation(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this), 'new');
+    registerMutation(MessageType.WORKSHOP_REWIND_SESSION, this.handleRewindSession.bind(this), 'rewind');
     router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
     registerMutation(MessageType.WORKSHOP_SAVE_SESSION, this.handleSaveSession.bind(this), 'save');
     router.register(MessageType.WORKSHOP_LIST_SESSIONS, this.handleListSessions.bind(this));
@@ -123,6 +136,51 @@ export class WorkshopSessionMessageHandler {
     } catch (error) {
       this.options.postSessionState();
       this.postActionFailure('new', error);
+    }
+  }
+
+  /**
+   * Rewind to one bubble (ADR 2026-09-30 §6). The bubble maps to its cut
+   * here; the coordinator re-checks the cut, cuts, installs and writes the
+   * room, or restores the prior one. A writer-message rewind returns its text
+   * to the composer; its attachments come back through session state.
+   */
+  async handleRewindSession(message: WorkshopRewindSessionMessage): Promise<void> {
+    if (this.rejectWhileRunning('rewind the conversation', 'rewind')) {
+      return;
+    }
+    const turnId = typeof message.payload?.turnId === 'string' ? message.payload.turnId : '';
+    const cut = this.options.rewindCutForBubble(turnId);
+    if (!cut) {
+      this.postActionResult('rewind', false, `${workshopRewindUnavailableReason('not-a-rest-point')}.`);
+      return;
+    }
+    try {
+      const outcome = await this.persistence.rewindTo(cut, { origin: 'writer' });
+      await this.options.flushDeferredConversationSettings();
+      this.options.postSessionState();
+      if (outcome.composerRestore) {
+        const restored: WorkshopComposerDraftRestoredMessage = {
+          type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+          source: 'extension.workshop',
+          payload: { text: outcome.composerRestore.text },
+          timestamp: Date.now()
+        };
+        void this.postMessage(restored);
+      }
+      this.postActionResult('rewind', true, describeRewindOutcome(outcome));
+    } catch (error) {
+      this.options.postSessionState();
+      if (error instanceof WorkshopRewindRefusedError) {
+        this.outputChannel.appendLine(
+          `[WorkshopSessionMessageHandler] Rewind refused (turn=${turnId}, reason=${error.reason})`
+        );
+        this.postActionResult('rewind', false, `${workshopRewindUnavailableReason(error.reason)}.`);
+      } else {
+        this.postActionFailure('rewind', error);
+      }
+    } finally {
+      this.postRecoveryNotices();
     }
   }
 
@@ -384,4 +442,34 @@ export class WorkshopSessionMessageHandler {
   private errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
   }
+}
+
+/** The action result a writer reads after a rewind: what went, and what to redo. */
+function describeRewindOutcome(outcome: WorkshopRewindOutcome): string {
+  const removed = outcome.summary.removedTurnCount;
+  const sentences = [
+    removed === 0
+      ? 'Rewound: nothing after this point to remove.'
+      : `Rewound: ${removed} ${removed === 1 ? 'turn' : 'turns'} removed.`,
+    ...outcome.summary.droppedConversationKeys.map(describeDroppedParticipant)
+  ];
+  const unrestored = outcome.composerRestore?.unrestoredAttachmentLabels ?? [];
+  if (unrestored.length > 0) {
+    sentences.push(`Re-attach ${unrestored.join(', ')} before you send it again.`);
+  }
+  return sentences.join(' ');
+}
+
+function describeDroppedParticipant(key: string): string {
+  if (key === 'host') {
+    return 'The host starts fresh from here.';
+  }
+  const id = key.slice(key.indexOf(':') + 1);
+  if (key.startsWith('guest:') && isWorkshopPersonaId(id)) {
+    return `${workshopPersonaLabel(id)} left the room.`;
+  }
+  if (key.startsWith('tool:') && isWorkshopToolId(id)) {
+    return `The ${workshopToolLabel(id)} tool's conversation was set aside; run it again for a fresh report.`;
+  }
+  return 'A participant was set aside.';
 }

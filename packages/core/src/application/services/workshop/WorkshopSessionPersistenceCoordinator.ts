@@ -118,6 +118,11 @@ interface WorkshopRoomInstallation {
   recoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][];
 }
 
+// The Rewind operation's public vocabulary: handlers depend on the
+// coordinator, never on the session collaborators behind it.
+export type { WorkshopRewindCut } from '@/application/services/workshop/session/WorkshopRewindPolicy';
+export { WorkshopRewindRefusedError } from '@/application/services/workshop/session/WorkshopSessionRewind';
+
 /**
  * Who asked for a rewind. A writer's bubble action re-seeds the composer; a
  * Side Quest's End (not yet wired to a route) never does.

@@ -122,6 +122,7 @@ import {
   WorkshopCutEvaluation,
   WorkshopRewindCut,
   WorkshopRewindPolicy,
+  workshopBubbleCut,
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import {
@@ -2204,6 +2205,12 @@ export class WorkshopSessionService {
    */
   evaluateRewindCut(cut: WorkshopRewindCut): WorkshopCutEvaluation {
     return this.rewindPolicy().evaluateCut(cut);
+  }
+
+  /** The cut a thread bubble offers (ADR 2026-09-30 §1); undefined when it offers none. */
+  rewindCutForBubble(turnId: string): WorkshopRewindCut | undefined {
+    const turn = this.turnLedger.find(turnId);
+    return turn ? workshopBubbleCut(workshopRewindTurnFacts(turn)) : undefined;
   }
 
   /** Rewind policy over the live ledger; built per read, never cached. */
