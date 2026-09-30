@@ -61,7 +61,8 @@ Let a writer rewind the room to any rewindable rest point, exactly. All cutting 
 
 ## Inputs from Sprint 01
 
-- **Oracle source.** `runCanonicalScriptedRoom()` (in `__tests__/application/services/workshop/session/ScriptedWorkshopRoom.ts`) supplies `restPoints: { label, headTurnId, workshop, archive }[]`. Extend the script rather than writing a second one: add a one-shot widget commit and a standing-directive change.
+- **Oracle source.** `runCanonicalScriptedRoom()` (in `__tests__/application/services/workshop/session/ScriptedWorkshopRoom.ts`) supplies `restPoints: { label, headTurnId, workshop, archive }[]`. It already replaces a still-live sidecar. Extend the script rather than writing a second one: add a committed one-shot widget and a standing-directive change (PR #117 review F-02).
+- **Provider seam proof.** The scripted room writes history through `ConversationManager.addMessages`, not `AgentRunEngine`. Add one focused integration case with a real `AgentRunEngine`, scripted transport and the production count reader for a multi-round commit (F-02).
 - **Cut validation.** `WorkshopRewindPolicy.evaluateCut(cut)` normalizes every accepted cut to `keptThroughTurnId`, the last kept turn. The transform can slice from that id. `busy` is evaluated first; the coordinator must pass pending session operations in as busy.
 - **Hydration baselines.** `hydrateCommittedState(state, bindings, behavior, importedHistory)` takes the imported archive counts. Pass the cut archive's counts, so any participant left unmarked is baselined, and a mark that disagrees with its imported history is dropped.
 - **Open questions to settle before the transform.**

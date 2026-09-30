@@ -41,6 +41,13 @@
 - `npm run lint`: 0 errors, 1,024 warnings, identical to baseline.
 - `git diff --check`: clean.
 
+## Review round (PR #117)
+
+- Okey's review (`docs/pr-reviews/pr-117-retained-history-marks-3ca270d-review.md`) approved Sprint 01.
+- **F-01 addressed.** Integrity now requires commit-mark anchors and per-key coverage after the first mark, so a hole or a misplaced mark degrades the whole key.
+- **F-02 partially addressed.** Live-sidecar replacement is in the canonical room. The widget, directive and real-engine cases moved to the Sprint 02 inputs.
+- **CI lesson.** ts-jest caches compiles per test file, so a changed shared contract can pass locally and fail in CI (it happened on this PR's first run). Run `npx jest --no-cache` before pushing a change to a shared type.
+
 ## Follow-ups
 
 - Sprint 02: build the transform and the Rewind operation on `runCanonicalScriptedRoom()` and `WorkshopRewindPolicy.evaluateCut`. Settle the open questions in the Sprint 02 plan's "Inputs from Sprint 01" section.
