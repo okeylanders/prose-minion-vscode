@@ -4,7 +4,7 @@
 **Epic:** [Workshop Rewind and Branch](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Proposed; amended with Sprint 01 findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration, cut from `main` at `53ebaa6`); `sprint/workshop-rewind-and-branch-01-marks`
-**State:** Sprint 01 in review. Sprint 02 not started, by request: pause for review after each sprint.
+**State:** Sprint 01 merged into the integration branch via PR #117 (`b1497d8`). Sprint 02 not started, by request: pause for review after each sprint.
 
 ## What landed
 
@@ -51,4 +51,4 @@
 ## Follow-ups
 
 - Sprint 02: build the transform and the Rewind operation on `runCanonicalScriptedRoom()` and `WorkshopRewindPolicy.evaluateCut`. Settle the open questions in the Sprint 02 plan's "Inputs from Sprint 01" section.
-- Ask Okey whether Sprint 01 should also merge to `main` early, so marks start accruing in real sessions.
+- Resolved: Sprint 01 does not merge to `main` early; the epic merges to `main` as one unit (Okey, 2026-09-30).

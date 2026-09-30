@@ -1,10 +1,10 @@
 # Sprint 01: Retained-History Marks
 
-**Status:** Implemented — in review
+**Status:** Complete — merged into `epic/workshop-rewind-and-branch` via [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117) (`b1497d8`)
 **Branch:** `sprint/workshop-rewind-and-branch-01-marks`
 **Depends on:** ADR 2026-09-30 (proposed is enough to start)
 **Blocks:** Sprints 02 and 03
-**Mergeable alone:** Yes. There is no user-visible behavior; marks begin accruing in real sessions.
+**Mergeable alone:** Yes in principle (no user-visible behavior), but not merged early: the epic merges to `main` as one unit (decided 2026-09-30).
 
 ## Goal
 

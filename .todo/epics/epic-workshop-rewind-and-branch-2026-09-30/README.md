@@ -1,7 +1,7 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** In progress — Sprint 01 (retained-history marks) implemented and in review; ADR amended with its findings
+**Status:** In progress — Sprint 01 (retained-history marks) complete and merged into the integration branch ([PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)); Sprint 02 (Rewind) next. ADR amended with Sprint 01's findings
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
@@ -52,7 +52,7 @@ The visible ledger and each participant's retained LLM history are separate orde
 | [02](sprints/02-rewind.md) | `sprint/workshop-rewind-and-branch-02-rewind` | Pure rewind transform, coordinator Rewind operation, route and contract, bubble actions, confirm, composer restore | Rewinding to any rest point reproduces that point's recorded room (the equivalence oracle) and the writer can use it end to end |
 | [03](sprints/03-branch-and-release.md) | `sprint/workshop-rewind-and-branch-03-branch` | Branch operation, saved-source requirement, Branch action, docs and release readiness | Branch from a named room opens an exact cut copy while the source survives; unnamed rooms get the save-first popup; full gates green |
 
-Each sprint branch is cut from the integration branch and merged back through its own PR. Sprint 01 is safe to merge to `main` alone, because marks accrue silently. That is recommended: every day marks are live widens what later sprints can rewind in real sessions.
+Each sprint branch is cut from the integration branch and merged back through its own PR. **Decided 2026-09-30 (Okey): the epic merges to `main` as one unit.** Sprint 01 would have been safe to merge alone, because marks accrue silently, but it stays on the integration branch until Rewind and Branch ship together.
 
 ## Epic completion criteria
 
