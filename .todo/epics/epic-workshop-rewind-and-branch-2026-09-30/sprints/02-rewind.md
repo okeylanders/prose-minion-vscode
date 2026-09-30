@@ -59,6 +59,16 @@ Let a writer rewind the room to any rewindable rest point, exactly. All cutting 
    - **Composer.** Confirm the composer re-seed and restaged attachment pills appear after a writer-bubble rewind.
 5. **Diagnostics.** Log one output-channel line per rewind with the cut turn, removed turn count, per-key message counts before and after, and dropped keys. Never log message content.
 
+## Inputs from Sprint 01
+
+- **Oracle source.** `runCanonicalScriptedRoom()` (in `__tests__/application/services/workshop/session/ScriptedWorkshopRoom.ts`) supplies `restPoints: { label, headTurnId, workshop, archive }[]`. Extend the script rather than writing a second one: add a one-shot widget commit and a standing-directive change.
+- **Cut validation.** `WorkshopRewindPolicy.evaluateCut(cut)` normalizes every accepted cut to `keptThroughTurnId`, the last kept turn. The transform can slice from that id. `busy` is evaluated first; the coordinator must pass pending session operations in as busy.
+- **Hydration baselines.** `hydrateCommittedState(state, bindings, behavior, importedHistory)` takes the imported archive counts. Pass the cut archive's counts, so any participant left unmarked is baselined, and a mark that disagrees with its imported history is dropped.
+- **Open questions to settle before the transform.**
+  - **Context-source supersede.** Re-delivered resources overwrite their row (ADR finding 6). Recommendation: append plus stale chain.
+  - **Temporal state.** Per-persona time notices are not rewound: `WorkshopSessionTimeService` state lives outside `workshop`. Decide whether it stays current, like the working set.
+  - **Conversation `lastActivity`.** It is wall-clock and never rewound. Treat it as an intended oracle difference.
+
 ## Tests
 
 - **Equivalence oracle** (the core proof). Using the Sprint 01 scripted room, rewind from the final state to every rest point. Assert the result equals that point's recorded oracle snapshot modulo the intended differences:

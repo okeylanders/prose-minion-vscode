@@ -1,6 +1,6 @@
 # Sprint 01: Retained-History Marks
 
-**Status:** Planned
+**Status:** Implemented — in review
 **Branch:** `sprint/workshop-rewind-and-branch-01-marks`
 **Depends on:** ADR 2026-09-30 (proposed is enough to start)
 **Blocks:** Sprints 02 and 03
@@ -71,3 +71,20 @@ Make "where did each participant's history stand after turn T?" an exact, persis
 ## Exit
 
 Scripted-room marks match oracle counts at every rest point. Marks persist, round-trip and prune correctly. The rewindability flag is on the snapshot. Full Jest, all TypeScript projects, ESLint and `git diff --check` pass.
+
+## Delivery notes (2026-09-30)
+
+The deliverables landed with these corrections, each also recorded in the ADR's [Sprint 01 implementation findings](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-01-implementation-findings):
+
+- **Recording site.** Marks are recorded by the completion boundary after the run settles, not inside `WorkshopSessionService.completeRun`. `completeWorkshopRun` gained a required `readRetainedHistory` reader and a `settleCommittedRun` hook; the three handler call sites moved their post-completion bookkeeping into it unchanged. `adoptWriterReport` records the tool report's mark. The shared step is `WorkshopRetainedHistoryCommit.ts`.
+- **Pruning.** It also covers excerpt-revision sidecar retirement and a completion that rebinds a participant to a different conversation.
+- **Commit-only change.** `abandonRun` removes the provisional widget manifest row, so a participant's latest mark describes it at every rest point.
+- **Boundary equality.** The persisted boundary requires the latest mark to equal its archive, not just not exceed it.
+- **Recovery equality.** It ignores marks.
+
+**Modules.**
+- `session/WorkshopRetainedHistoryMarks.ts` holds the pure rules shared by integrity, normalization, the persisted boundary and hydration.
+- `session/WorkshopRetainedHistoryLedger.ts` is the collaborator.
+- `session/WorkshopRewindPolicy.ts` holds the cut and bubble layers; `evaluateCut` returns `keptThroughTurnId`.
+
+**Shared test asset.** `__tests__/application/services/workshop/session/ScriptedWorkshopRoom.ts` drives the real aggregate, a real `ConversationManager`, room delivery and the production completion boundary. `runCanonicalScriptedRoom()` captures `{ workshop, archive }` at every rest point for Sprint 02's equivalence oracle.
