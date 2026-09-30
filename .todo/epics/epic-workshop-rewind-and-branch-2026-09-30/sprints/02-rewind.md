@@ -1,6 +1,6 @@
 # Sprint 02: Rewind
 
-**Status:** Planned
+**Status:** In progress — kickoff decisions confirmed 2026-09-30 (see [Kickoff decisions](#kickoff-decisions-2026-09-30))
 **Branch:** `sprint/workshop-rewind-and-branch-02-rewind`
 **Depends on:** Sprint 01
 **Blocks:** Sprint 03
@@ -65,10 +65,26 @@ Let a writer rewind the room to any rewindable rest point, exactly. All cutting 
 - **Provider seam proof.** The scripted room writes history through `ConversationManager.addMessages`, not `AgentRunEngine`. Add one focused integration case with a real `AgentRunEngine`, scripted transport and the production count reader for a multi-round commit (F-02).
 - **Cut validation.** `WorkshopRewindPolicy.evaluateCut(cut)` normalizes every accepted cut to `keptThroughTurnId`, the last kept turn. The transform can slice from that id. `busy` is evaluated first; the coordinator must pass pending session operations in as busy.
 - **Hydration baselines.** `hydrateCommittedState(state, bindings, behavior, importedHistory)` takes the imported archive counts. Pass the cut archive's counts, so any participant left unmarked is baselined, and a mark that disagrees with its imported history is dropped.
-- **Open questions to settle before the transform.**
+- **Open questions to settle before the transform.** Settled at kickoff; see below.
   - **Context-source supersede.** Re-delivered resources overwrite their row (ADR finding 6). Recommendation: append plus stale chain.
   - **Temporal state.** Per-persona time notices are not rewound: `WorkshopSessionTimeService` state lives outside `workshop`. Decide whether it stays current, like the working set.
   - **Conversation `lastActivity`.** It is wall-clock and never rewound. Treat it as an intended oracle difference.
+
+## Kickoff decisions (2026-09-30)
+
+Confirmed with Okey before the transform was written. The ADR records each one in its [Sprint 02 kickoff decisions](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-02-kickoff-decisions).
+
+1. **Context-source supersede: append plus stale chain.** Re-delivery appends a row and marks the superseded row stale; the transform recomputes the chain inside the kept prefix. Replacing in place could leave a kept row naming an `art-N` the cut history no longer holds.
+2. **Temporal state stays current.** Rewind does not re-hydrate the time service, so it queues no resume notices and records no "Session resumed" marker. That is why Rewind shares Open's import-and-hydrate core rather than calling `hydrate()` whole.
+3. **Conversation `lastActivity` is an intended oracle difference.**
+4. **Host marks record the context revision the host holds.** The ADR §2 divider rule misses a kept divider after the host's last kept commit (the canonical "context added" rest point), context edits during a host run, and silent session-open file refreshes. The transform re-queues `pendingContext` exactly when the cut host mark's `contextRevision` is older than the current revision.
+5. **Rewind writes inside the operation.** An unnamed room writes `current.json`; a named room writes its named file through the identity-checked update and then schedules the rolling mirror. Any failure before the durable write completes rolls back. This gives the "write" failure point in the coordinator tests something real to roll back.
+
+Also decided, as implementation calls within the plan:
+
+- Participants a rewind drops are named in the action result, not in the degraded-memory banner, whose copy ("will begin fresh on their next turn") describes hydration loss.
+- Direct tool messages are private and never publish thread artifacts, so their attachment bodies exist only in the tool's provider history. A writer-bubble rewind of one restores the text and names any attachments that must be re-attached; it never parses provider history for them.
+- A writer-bubble rewind points the chat target back at the rewound message's addressee when that participant survives, so the edited text goes back where it went.
 
 ## Tests
 

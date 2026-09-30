@@ -1,7 +1,7 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** In progress — Sprint 01 (retained-history marks) complete and merged into the integration branch ([PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)); Sprint 02 (Rewind) next. ADR amended with Sprint 01's findings
+**Status:** In progress — Sprint 01 (retained-history marks) complete and merged into the integration branch ([PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)); Sprint 02 (Rewind) in progress on `sprint/workshop-rewind-and-branch-02-rewind`. ADR amended with Sprint 01's findings and Sprint 02's kickoff decisions
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)

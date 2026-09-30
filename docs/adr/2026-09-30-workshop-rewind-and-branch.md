@@ -1,6 +1,6 @@
 # ADR 2026-09-30: Workshop Rewind and Branch
 
-**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings))
+**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)) and Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions))
 **Date:** 2026-09-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md)
 **Answers:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md), rejected alternative "Fork or branch the conversation into the new session"
@@ -54,7 +54,7 @@ Capability cards, dividers (session, context, excerpt and directive markers), to
 Rewind restores the thread and every participant's memory to C. It does **not** restore the excerpt, context attachments, to-do statuses or widget configs. Those have no history, and inventing one is out of scope. The honest reconciliation reuses existing delivery machinery:
 
 - **Excerpt.** The host's delivered excerpt version is re-derived from its cut writer-source pin rows. If the current version is newer, `revisions.pendingExcerpt` is re-queued. The next host turn then receives the existing "the writer has revised the pinned excerpt" frame.
-- **Context.** If any dropped turn is a `context_change` divider, `revisions.pendingContext` is re-queued at the current context revision.
+- **Context.** If the host's cut mark records an older context revision than the current one, `revisions.pendingContext` is re-queued at the current context revision. (Amended at Sprint 02 kickoff: the original divider rule missed kept dividers, context edits during a host run, and silent session-open refreshes. See [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions), item 4.)
 - **To-dos.** To-dos whose `source.turnId` was dropped are removed. Surviving to-dos keep their current status.
 - **Scope.** Scope is immutable, so the cut room keeps it. A cut before the host's first reply restores host-persona selectability. It does not unlock scope while any participant tombstone remains (Roster `hasRoomMemory`).
 
@@ -77,6 +77,8 @@ interface WorkshopRetainedHistoryMarkV1 {
   writerSourceCount: number;
   /** Reader offset at this point; absent for tool sidecars (instruments read nothing). */
   lastSeenRoomTurnId?: string;
+  /** Host only: the context revision the host holds at this point (Sprint 02 kickoff, item 4). */
+  contextRevision?: number;
   origin: 'commit' | 'baseline';
 }
 ```
@@ -160,7 +162,7 @@ Rewind is a coordinator session operation, serialized behind queued autosaves an
 4. Apply the transform.
 5. Import the cut archive (fresh runtime ids, system prompts rebuilt from current settings, including standing-directive frames) and hydrate the cut aggregate. This is the proven promotion path Open uses.
 6. Discard every prior runtime conversation id; the imported ones replace them.
-7. Mark dirty so the ordered autosave writes `current.json` and, for an associated named room, the named file.
+7. Write the cut room durably before reporting success, as New and Open do: an unnamed room writes `current.json`; an associated named room writes its named file through the identity-checked update, then schedules the rolling mirror. A failure before the durable write completes restores the prior room. (Amended at Sprint 02 kickoff; the original step marked the room dirty and left the write to autosave, which left no write failure to roll back. See [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions), item 5.)
 8. Post session state, the action result, and any degradation notice. For a writer-bubble rewind, also post `WORKSHOP_COMPOSER_DRAFT_RESTORED`.
 
 On any failure, `restoreRollback` reinstates the prior room untouched. Rewind on a named room is deliberately destructive to that named file's future. The confirm copy points the writer to Branch when they want to keep both.
@@ -221,8 +223,18 @@ Recorded 2026-09-30 while building the marks. Each item corrects or completes a 
 3. **Abandoned widget commits left a manifest row behind.** The one-shot widget coordinator stamps its artifact into the target's manifest at room acceptance, before inference. A cancelled or failed run kept a row for an artifact the participant never received. `abandonRun` now removes it. Participant state thus changes only at commits (§3 **Commit-only change**).
 4. **The persisted boundary requires equality, not just an upper bound.** "Marks exceed the archive" misses an archive that grew past its latest mark. The boundary now also requires the latest mark to equal the archive. Hydration applies the same check against freshly imported histories.
 5. **Recovery equality ignores marks.** Opening a legacy file records baselines. Without this, the live room differs from its file only by marks, and a later Open of the same session preserves a spurious "(local recovery)" copy. An integration test covers it.
-6. **Open question for Sprint 02: context-source supersede.** `ConversationManager.appendContextSources` *replaces* a row in place when a canonical resource is re-delivered. Slicing to `contextSourceCount` restores the right set of rows, but a re-delivered row keeps its later metadata (`deliveredAt`, `sizeChars`, `promptTokensDelta`, `artifactId`). Recommendation: make re-delivery append a new row and mark the superseded one stale, then recompute that stale chain in the transform exactly as §5 already does for host pins. The alternative is to accept the metadata drift as an intended oracle difference.
+6. **Open question for Sprint 02: context-source supersede.** *(Resolved at Sprint 02 kickoff: append plus stale chain. See [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions), item 1.)* `ConversationManager.appendContextSources` *replaces* a row in place when a canonical resource is re-delivered. Slicing to `contextSourceCount` restores the right set of rows, but a re-delivered row keeps its later metadata (`deliveredAt`, `sizeChars`, `promptTokensDelta`, `artifactId`). Recommendation: make re-delivery append a new row and mark the superseded one stale, then recompute that stale chain in the transform exactly as §5 already does for host pins. The alternative is to accept the metadata drift as an intended oracle difference.
 7. **Anchors and coverage (PR #117 review F-01).** Ordered, monotonic, tail-verified marks could still omit an intermediate commit, or anchor a commit mark to another participant's turn. Either one survived every boundary and published a cut that would slice the wrong prefix. Integrity now requires both properties (§3 **Validation**), degrading the whole key otherwise.
+
+## Sprint 02 kickoff decisions
+
+Confirmed 2026-09-30 before the transform was written. Each confirms or corrects a detail above.
+
+1. **Context-source re-delivery appends (resolves finding 6).** `ConversationManager.appendContextSources` appends a new row when a canonical resource is re-delivered and marks the superseded row `stale`, the dimmed-history rule host pins already follow. A mark's `contextSourceCount` then slices to exactly the rows the history held at the mark, and the transform recomputes the stale chain inside the kept prefix. Replacing in place was worse than metadata drift: a kept row could name an `art-N` that the cut history no longer contains.
+2. **Temporal state stays current.** Per-persona time notices are not rewound, like the working set. Rewind does not re-hydrate the time service, so it queues no resume notices and records no "Session resumed" marker. A dropped participant keeps its notice entry, as dismissal and generation loss already do.
+3. **Conversation `lastActivity` is wall-clock and never rewound.** It is an intended oracle difference.
+4. **Host marks record the context revision the host holds (amends §2 Context and §3).** The divider rule is not exact. A kept divider after the host's last kept commit is undelivered at the cut. A context edit made during a host run is not delivered by that run. A session-open file refresh changes the revision with no divider at all. Excerpt delivery has a record, the host pin rows; context delivery had none. Host marks therefore carry an optional `contextRevision`: the context revision the host holds at that rest point, which is `revisions.context` when no context update is pending and `revisions.pendingContext − 1` otherwise (a pending revision is always the current one). It is recorded at settlement and at baseline, and validated as host-only, non-decreasing, and never later than the revision the host currently holds. The transform re-queues `pendingContext` at the current revision exactly when the host's cut mark records an older one. Marks are unreleased, so there is no schema bump; an integration-branch checkpoint whose host marks lack the field degrades through the existing inconsistent-mark normalization.
+5. **Rewind is durable before it succeeds (amends §6 step 7).** Like New and Open, the operation writes inside itself. Any failure at transform, import, hydrate or write restores the prior room through `restoreRollback`, and the prior provider conversations are discarded only after the durable write succeeds. A rolling-mirror failure after a successful named write stays independently retryable and does not roll back. While `current.json` is protected, Rewind stays in memory, like every other mutation in that state.
 
 ## Consequences
 
