@@ -948,6 +948,60 @@ describe('architectural boundaries', () => {
     ]);
   });
 
+  it('every Workshop retained-history commit records a mark at one boundary (ADR 2026-09-30 §3)', () => {
+    const sourceFiles = collectSourceFiles(SRC_ROOT);
+    const filesMatching = (pattern: RegExp, within = SRC_ROOT) => sourceFiles
+      .filter((file) => file.startsWith(within) && pattern.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file))
+      .sort();
+
+    // Retained provider runs start only where their results reach a
+    // completion function (the infrastructure seam itself is excluded).
+    expect(filesMatching(
+      /\.(continueConversation|startWorkshopPersonaConversation|startWorkshopGuestConversation)\(/,
+      path.join(SRC_ROOT, 'application')
+    )).toEqual([
+      'application/handlers/domain/workshop/WorkshopRoomHandler.ts',
+      'application/services/workshop/RunWorkshopToolSidePass.ts'
+    ]);
+    expect(filesMatching(/retainConversation:\s*true/)).toEqual([
+      'application/services/workshop/RunWorkshopToolSidePass.ts'
+    ]);
+    // The aggregate's two provider-history commit points are finalized only
+    // by the two completion functions…
+    expect(filesMatching(/\.completeRun\(/)).toEqual([
+      'application/services/workshop/WorkshopRunCompletion.ts'
+    ]);
+    expect(filesMatching(/\.completeToolReport\(/)).toEqual([
+      'application/services/workshop/WorkshopAnalysisSidePass.ts'
+    ]);
+    // …which both record through the one completion-boundary step…
+    expect(filesMatching(/\brecordWorkshopRetainedHistoryCommit\(/)).toEqual([
+      'application/services/workshop/WorkshopAnalysisSidePass.ts',
+      'application/services/workshop/WorkshopRetainedHistoryCommit.ts',
+      'application/services/workshop/WorkshopRunCompletion.ts'
+    ]);
+    // …the only caller of the aggregate's recorder.
+    expect(filesMatching(/\.recordRetainedHistoryMark\(/)).toEqual([
+      'application/services/workshop/WorkshopRetainedHistoryCommit.ts'
+    ]);
+  });
+
+  it('retained-history marks stay host-private (ADR 2026-09-30 §3)', () => {
+    const webviewContract = [
+      path.join(SRC_ROOT, 'presentation', 'webview'),
+      path.join(SRC_ROOT, 'shared', 'types', 'messages')
+    ];
+    const offenders = collectSourceFiles(SRC_ROOT)
+      .filter((file) => webviewContract.some((root) => file.startsWith(root)))
+      .filter((file) =>
+        /retainedHistoryMarks|WorkshopRetainedHistory(Mark|Ledger)/.test(fs.readFileSync(file, 'utf8'))
+      )
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(offenders).toEqual([]);
+  });
+
   it('keeps every Workshop route with its declared owner and gate classification', () => {
     const handlerFiles = collectSourceFiles(WORKSHOP_HANDLER_ROOT);
     const routeRegistration =
