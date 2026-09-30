@@ -12,7 +12,8 @@
 
 import {
   ConversationManager,
-  ConversationNotFoundError
+  ConversationNotFoundError,
+  withContextSourceSupersedeChain
 } from '@orchestration/ConversationManager';
 
 describe('ConversationManager', () => {
@@ -297,38 +298,84 @@ describe('ConversationManager', () => {
     });
   });
 
-  it('replaces superseded same-resource manifest rows and clears them on reset (Phase 7)', () => {
+  it('appends re-delivered manifest rows, stales the superseded row, and clears them on reset (Phase 7)', () => {
     const manager = new ConversationManager();
     const id = manager.startConversation('host', 'System');
-    const entry = (sizeChars: number, deliveredAt: number) => ({
+    const entry = (sizeChars: number, deliveredAt: number, artifactId: string) => ({
       kind: 'resource' as const,
       origin: 'host' as const,
       label: 'chapters/ch-04.md',
       configuredResource: { group: 'chapters' as const, path: 'chapters/ch-04.md' },
       sizeChars,
       isEstimate: true,
+      artifactId,
       deliveredAt
     });
 
-    manager.appendContextSources(id, [entry(400, 1)]);
-    // Re-reading the same canonical resource REPLACES its row.
-    manager.appendContextSources(id, [entry(520, 2)]);
+    manager.appendContextSources(id, [entry(400, 1, 'art-1')]);
+    expect(manager.getCommittedHistoryCounts(id)?.contextSourceCount).toBe(1);
+    // Re-reading the same canonical resource APPENDS a live row and keeps the
+    // earlier delivery as stale history: the conversation still carries both,
+    // and the row count only grows, so a count always slices an exact prefix.
+    manager.appendContextSources(id, [entry(520, 2, 'art-2')]);
     manager.appendContextSources(id, [{
       kind: 'dictionary', origin: 'host', label: 'liminal', sizeChars: 90, isEstimate: true, deliveredAt: 3
     }]);
 
     const sources = manager.getContextSources(id);
-    expect(sources).toHaveLength(2);
-    expect(sources[0]).toMatchObject({ label: 'chapters/ch-04.md', sizeChars: 520, deliveredAt: 2 });
+    expect(sources).toHaveLength(3);
+    expect(sources[0]).toMatchObject({ sizeChars: 400, artifactId: 'art-1', deliveredAt: 1, stale: true });
+    expect(sources[1]).toMatchObject({ sizeChars: 520, artifactId: 'art-2', deliveredAt: 2 });
+    expect(sources[1].stale).toBeUndefined();
+    expect(sources[2]).toMatchObject({ label: 'liminal' });
+    expect(sources[2].stale).toBeUndefined();
+    expect(manager.getCommittedHistoryCounts(id)?.contextSourceCount).toBe(3);
 
     // Returned rows are clones — external mutation cannot reach storage.
-    sources[0].sizeChars = 9999;
-    expect(manager.getContextSources(id)[0].sizeChars).toBe(520);
+    sources[1].sizeChars = 9999;
+    expect(manager.getContextSources(id)[1].sizeChars).toBe(520);
 
     manager.resetConversation(id);
     expect(manager.getContextSources(id)).toEqual([]);
     expect(manager.getContextSources('missing')).toEqual([]);
-    expect(() => manager.appendContextSources('missing', [entry(1, 1)])).toThrow('not found');
+    expect(() => manager.appendContextSources('missing', [entry(1, 1, 'art-9')])).toThrow('not found');
+  });
+
+  it('recomputes the supersede chain for a kept prefix of manifest rows (ADR 2026-09-30)', () => {
+    const manager = new ConversationManager();
+    const id = manager.startConversation('host', 'System');
+    const resource = (label: string, deliveredAt: number, artifactId: string) => ({
+      kind: 'resource' as const,
+      origin: 'host' as const,
+      label,
+      configuredResource: { group: 'chapters' as const, path: label },
+      sizeChars: 100 + deliveredAt,
+      isEstimate: true,
+      artifactId,
+      deliveredAt
+    });
+    manager.appendContextSources(id, [resource('chapters/one.md', 1, 'art-1')]);
+    manager.appendContextSources(id, [resource('chapters/two.md', 2, 'art-2')]);
+    manager.appendContextSources(id, [resource('chapters/one.md', 3, 'art-3')]);
+    manager.appendContextSources(id, [resource('chapters/one.md', 4, 'art-4')]);
+    const committed = manager.getContextSources(id);
+    expect(committed.map((row) => row.stale === true)).toEqual([true, false, true, false]);
+
+    // A cut keeping three rows: art-3 was superseded only after the cut, so
+    // it is live again; art-1 was already superseded inside the prefix.
+    const prefix = withContextSourceSupersedeChain(committed.slice(0, 3));
+    expect(prefix.map((row) => [row.artifactId, row.stale === true])).toEqual([
+      ['art-1', true],
+      ['art-2', false],
+      ['art-3', false]
+    ]);
+    expect('stale' in prefix[2]).toBe(false);
+    // The helper copies; the committed rows are untouched.
+    expect(committed[2].stale).toBe(true);
+    prefix[0].configuredResource!.path = 'mutated.md';
+    expect(committed[0].configuredResource?.path).toBe('chapters/one.md');
+    // A full prefix is already a consistent chain.
+    expect(withContextSourceSupersedeChain(committed)).toEqual(committed);
   });
 
   describe('conversation archive V1', () => {
