@@ -32,6 +32,7 @@ const stateWithTurns = (turns: WorkshopTurn[], totalTurns = turns.length): Works
       standingDirectives: [],
       todos: [],
       turns,
+      turnRewindability: {},
       totalTurns,
       truncatedTurns: Math.max(0, totalTurns - turns.length),
       roomHasMemory: turns.length > 0,

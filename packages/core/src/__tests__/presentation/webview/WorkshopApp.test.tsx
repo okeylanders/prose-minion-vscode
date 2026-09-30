@@ -57,6 +57,7 @@ const readySession = (): WorkshopSessionStateMessage => ({
       standingDirectives: [],
       todos: [],
       turns: [existingTurn],
+      turnRewindability: {},
       totalTurns: 1,
       truncatedTurns: 0,
       roomHasMemory: true,
