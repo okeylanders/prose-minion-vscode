@@ -78,6 +78,17 @@ export interface ConversationArchiveEntryV1<K extends string = string> {
   nextArtifactNumber: number;
 }
 
+/**
+ * Committed retained-history lengths, measured in the same units the archive
+ * persists: messages exclude the replaceable system prompt, and context
+ * sources count manifest rows. Applications record these beside their own
+ * ledger so a later cut can slice an archive to an exact committed prefix.
+ */
+export interface ConversationHistoryCounts {
+  messageCount: number;
+  contextSourceCount: number;
+}
+
 export interface ConversationExportTarget<K extends string = string> {
   key: K;
   conversationId: string;
@@ -398,6 +409,22 @@ export class ConversationManager {
         conversation.contextSources[existingIndex] = stored;
       }
     }
+  }
+
+  /**
+   * History lengths an archive of this conversation would carry right now.
+   * Every turn commits atomically through addMessages, so held messages are
+   * always committed; undefined names a conversation this manager lacks.
+   */
+  getCommittedHistoryCounts(conversationId: string): ConversationHistoryCounts | undefined {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      return undefined;
+    }
+    return {
+      messageCount: Math.max(0, conversation.messages.length - 1),
+      contextSourceCount: conversation.contextSources?.length ?? 0
+    };
   }
 
   getContextSources(conversationId: string | undefined): ContextSourceEntry[] {

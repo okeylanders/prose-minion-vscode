@@ -41,6 +41,21 @@ export class WorkshopTurnLedger {
     return this.turns.some((turn) => turn.id === id);
   }
 
+  /** Zero-based append-order position, or undefined for an unknown turn. */
+  position(id: string): number | undefined {
+    const index = this.turns.findIndex((turn) => turn.id === id);
+    return index < 0 ? undefined : index;
+  }
+
+  /**
+   * Map every stored turn in order without cloning bodies. The projection
+   * sees the stored record, so it must copy whatever it keeps; this exists
+   * for whole-ledger scans whose output is a few scalar facts per turn.
+   */
+  project<T>(projection: (turn: Readonly<WorkshopTurn>) => T): T[] {
+    return this.turns.map((turn) => projection(turn));
+  }
+
   head(): WorkshopTurn | undefined {
     const turn = this.turns.at(-1);
     return turn ? cloneTurn(turn) : undefined;

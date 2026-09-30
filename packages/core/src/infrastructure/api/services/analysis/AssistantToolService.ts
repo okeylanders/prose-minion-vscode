@@ -57,6 +57,7 @@ import {
 import type {
   ConversationArchiveEntryV1,
   ConversationExportTarget,
+  ConversationHistoryCounts,
   ConversationImportOutcome,
   ConversationImportTarget,
   ConversationSystemMessageReplacement
@@ -947,6 +948,17 @@ export class AssistantToolService {
   /** Agent-fetched manifest rows for a retained conversation (Phase 7). */
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.currentAssistantEngine()?.getConversationContextSources(conversationId) ?? [];
+  }
+
+  /**
+   * Committed history lengths of one retained Workshop conversation, read at
+   * a run's completion boundary for its retained-history mark (ADR
+   * 2026-09-30 §3). Result mapping after the engine commit is synchronous, so
+   * this observes exactly the history the completing run just committed.
+   * Undefined names a conversation the captured engine generation lacks.
+   */
+  readWorkshopRetainedHistory(conversationId: string): ConversationHistoryCounts | undefined {
+    return this.currentAssistantEngine()?.getConversationHistoryCounts(conversationId);
   }
 
   /**

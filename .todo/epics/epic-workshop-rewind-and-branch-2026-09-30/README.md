@@ -1,7 +1,7 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** Planned — ADR proposed; kickoff confirms the product decisions below
+**Status:** In progress — Sprint 01 (retained-history marks) implemented and in review; ADR amended with its findings
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
@@ -57,8 +57,8 @@ Each sprint branch is cut from the integration branch and merged back through it
 ## Epic completion criteria
 
 - [ ] ADR accepted; D1–D7 confirmed or revised in the ADR.
-- [ ] Marks recorded at every retained-history commit, guarded by an architecture test.
-- [ ] Marks pruned on every conversation discard; baseline marks recorded on hydration.
+- [x] Marks recorded at every retained-history commit, guarded by an architecture test.
+- [x] Marks pruned on every conversation discard; baseline marks recorded on hydration.
 - [ ] Per-turn rewindability computed host-side and rendered, never re-derived, by the webview.
 - [ ] Rewind reproduces recorded rest-point state for host, guest, sidecar, capability, widget, to-do, excerpt-revision and context-change scenarios.
 - [ ] Writer-bubble rewind restores composer text and one-shot attachments.

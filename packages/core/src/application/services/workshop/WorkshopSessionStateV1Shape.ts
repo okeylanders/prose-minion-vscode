@@ -99,7 +99,9 @@ function assertWorkshopSessionShape(
       // Optional since Sprint 02B: pre-directive checkpoints have none.
       'standingDirectives',
       // Optional: pre-room-artifact-ledger checkpoints retain refs only.
-      'threadArtifacts'
+      'threadArtifacts',
+      // Optional since ADR 2026-09-30: pre-rewind checkpoints carry no marks.
+      'retainedHistoryMarks'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -151,12 +153,47 @@ function assertWorkshopSessionShape(
       assertThreadArtifact
     );
   }
+  if (state.retainedHistoryMarks !== undefined) {
+    arrayOf(
+      state.retainedHistoryMarks,
+      'Workshop session state.retainedHistoryMarks',
+      assertRetainedHistoryMark
+    );
+  }
   if (state.lastCommittedPersonaBehavior !== undefined) {
     assertLastCommittedBehavior(
       state.lastCommittedPersonaBehavior,
       'Workshop session state.lastCommittedPersonaBehavior'
     );
   }
+}
+
+/**
+ * Structure only. Key well-formedness, turn references, even message counts,
+ * and per-key order are integrity rules; an inconsistent mark degrades
+ * rewindability at the checkpoint boundary instead of refusing the file.
+ */
+function assertRetainedHistoryMark(value: unknown, path: string): void {
+  const mark = exactObject(
+    value,
+    path,
+    [
+      'turnId',
+      'conversationKey',
+      'messageCount',
+      'contextSourceCount',
+      'writerSourceCount',
+      'origin'
+    ],
+    ['lastSeenRoomTurnId']
+  );
+  stringAt(mark.turnId, `${path}.turnId`);
+  stringAt(mark.conversationKey, `${path}.conversationKey`);
+  numberAt(mark.messageCount, `${path}.messageCount`);
+  numberAt(mark.contextSourceCount, `${path}.contextSourceCount`);
+  numberAt(mark.writerSourceCount, `${path}.writerSourceCount`);
+  optionalStringAt(mark.lastSeenRoomTurnId, `${path}.lastSeenRoomTurnId`);
+  enumAt(mark.origin, `${path}.origin`, ['commit', 'baseline']);
 }
 
 function assertThreadArtifact(value: unknown, path: string): void {

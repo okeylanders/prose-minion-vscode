@@ -65,6 +65,9 @@ import { countWords } from '@/utils/textUtils';
 import { hasSameWorkshopCheckpoint } from '@/application/services/workshop/WorkshopSessionCheckpointEquality';
 import { cleanRollingCheckpoint, isCleanRollingCheckpoint, withoutRollingProvenance } from '@/application/services/workshop/WorkshopRollingCheckpoint';
 import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/WorkshopSessionRecoveryEquality';
+import type {
+  WorkshopImportedRetainedHistory
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 
 interface LiveSessionIdentity {
   sessionId: string;
@@ -899,9 +902,20 @@ export class WorkshopSessionPersistenceCoordinator {
       : [];
 
     const bindings: Partial<Record<WorkshopConversationLogicalKey, string>> = {};
+    // Exactly what each import restored, so a participant without a mark gets
+    // a baseline describing the history it really holds (ADR 2026-09-30 §3).
+    const importedHistory: WorkshopImportedRetainedHistory = {};
+    const importedEntries = new Map(targets.map((target) => [target.entry.key, target.entry]));
     for (const outcome of outcomes) {
       if (outcome.status === 'imported') {
         bindings[outcome.key] = outcome.conversationId;
+        const entry = importedEntries.get(outcome.key);
+        if (entry) {
+          importedHistory[outcome.key] = {
+            messageCount: entry.messages.length,
+            contextSourceCount: entry.contextSources.length
+          };
+        }
       }
     }
     const importedIds = outcomes.flatMap((outcome) =>
@@ -912,7 +926,8 @@ export class WorkshopSessionPersistenceCoordinator {
       hydration = this.session.hydrateCommittedState(
         workshop,
         bindings as WorkshopRuntimeConversationBindings,
-        this.session.getConversationBehavior()
+        this.session.getConversationBehavior(),
+        importedHistory
       );
       this.logSchemaMigrations(checkpointRecovery?.migrations ?? []);
       this.logCheckpointNormalizations(unique([

@@ -105,6 +105,23 @@ import {
   WorkshopParticipantRosterState
 } from '@/application/services/workshop/session/WorkshopParticipantRoster';
 import {
+  WorkshopRetainedHistoryLedger,
+  WorkshopRetainedParticipantFacts
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryLedger';
+import {
+  findInconsistentRetainedHistoryMarkKeys,
+  hydratedRetainedHistoryMarks,
+  WorkshopCommittedRetainedHistory,
+  WorkshopHydratedRetainedParticipant,
+  WorkshopImportedRetainedHistory,
+  WorkshopRetainedHistoryMarkOutcome,
+  withoutRetainedHistoryMarkKeys
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
+import {
+  WorkshopRewindPolicy,
+  workshopRewindTurnFacts
+} from '@/application/services/workshop/session/WorkshopRewindPolicy';
+import {
   attachmentSnapshot,
   cloneAnalysisInputs,
   cloneAttachment,
@@ -228,6 +245,8 @@ export class WorkshopSessionService {
   private readonly participantRoster: WorkshopParticipantRoster;
   /** Writer-promoted tasks; staleness is derived from passage version at read time. */
   private readonly todoLedger: WorkshopTodoLedger;
+  /** Where each retained history stood at each commit (ADR 2026-09-30 §3). */
+  private readonly retainedHistory: WorkshopRetainedHistoryLedger;
   private behavior: WorkshopConversationBehavior;
   /** System-prompt behavior that governed the latest committed persona reply. */
   private lastCommittedPersonaBehavior?: Pick<
@@ -247,6 +266,9 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger = new WorkshopStandingDirectiveLedger(this.now);
     this.todoLedger = new WorkshopTodoLedger(this.now);
     this.turnLedger = new WorkshopTurnLedger(this.now);
+    this.retainedHistory = new WorkshopRetainedHistoryLedger(
+      (turnId) => this.turnLedger.position(turnId)
+    );
     this.passageScope = new WorkshopPassageScope(this.now);
     this.participantRoster = new WorkshopParticipantRoster();
   }
@@ -386,6 +408,9 @@ export class WorkshopSessionService {
 
     const retired = this.participantRoster.retireToolSidecars();
     const conversationIds = retired.map(sidecar => sidecar.conversationId);
+    // Retired conversations take their marks with them; a later run of the
+    // same tool adopts a fresh conversation under the same key.
+    retired.forEach((sidecar) => this.retainedHistory.pruneKey(`tool:${sidecar.toolId}`));
     // Retired sidecars take their manifests with them (Phase 7).
     this.toolWriterSources = {};
     this.queueExcerptDelivery();
@@ -1201,6 +1226,9 @@ export class WorkshopSessionService {
   ): void {
     const roomHead = this.turnLedger.head()?.id;
     this.participantRoster.adoptPersonaGuest(personaId, conversationId, roomHead);
+    // A re-invited guest reuses its key; no mark from an earlier membership
+    // may describe the fresh conversation.
+    this.retainedHistory.pruneKey(`guest:${personaId}`);
     // Never re-read live room state here: adoption follows an awaited provider
     // call, so only the join-time snapshot can truthfully describe what shipped.
     this.guestWriterSources.set(
@@ -1216,6 +1244,7 @@ export class WorkshopSessionService {
       return undefined;
     }
     this.guestWriterSources.delete(personaId);
+    this.retainedHistory.pruneKey(`guest:${personaId}`);
     if (this.activeRun?.target === 'personaGuest' && this.activeRun.guestPersonaId === personaId) {
       this.activeRun = undefined;
     }
@@ -1591,6 +1620,10 @@ export class WorkshopSessionService {
     };
 
     if (isHost && conversationId) {
+      if (this.getHostConversationId() !== conversationId) {
+        // Marks describe one conversation: binding another restarts them.
+        this.retainedHistory.pruneKey('host');
+      }
       if (!this.hasHostConversation()) {
         // First host adoption: the initial envelope delivered the current
         // pin — stamp it as the host's first writer-origin manifest row.
@@ -1616,6 +1649,9 @@ export class WorkshopSessionService {
         );
       }
       if (this.isLivePersonaGuest(active.guestPersonaId)) {
+        if (this.getPersonaGuestConversationId(active.guestPersonaId) !== conversationId) {
+          this.retainedHistory.pruneKey(`guest:${active.guestPersonaId}`);
+        }
         this.participantRoster.setPersonaGuestConversationId(
           active.guestPersonaId,
           conversationId
@@ -1665,11 +1701,28 @@ export class WorkshopSessionService {
     return this.todoLedger.collectOpen(this.getExcerptVersion());
   }
 
-  /** Cancel or preempt only the active request; keep its visible writer turn. */
+  /**
+   * Cancel or preempt only the active request; keep its visible writer turn.
+   *
+   * A one-shot widget artifact is stamped into its target's manifest when the
+   * room accepts the turn, before inference. An abandoned run committed no
+   * history, so the target never received it: the row leaves with the run,
+   * exactly as it does on rollback. Participant state therefore changes only
+   * at commits, which is what lets a retained-history mark describe every
+   * rest point up to the participant's next commit. The widget config keeps
+   * its linkage, because the writer turn stays visible.
+   */
   abandonRun(requestId: string): void {
-    if (this.activeRun?.requestId === requestId) {
-      this.activeRun = undefined;
+    if (this.activeRun?.requestId !== requestId) {
+      return;
     }
+    const writerTurn = this.activeRun.writerTurnId
+      ? this.turnLedger.find(this.activeRun.writerTurnId)
+      : undefined;
+    if (writerTurn?.widgetCommit?.rail === 'thread-artifact') {
+      this.removeWriterSourceArtifact(writerTurn.widgetCommit.artifactId);
+    }
+    this.activeRun = undefined;
   }
 
   /**
@@ -1726,6 +1779,7 @@ export class WorkshopSessionService {
     this.activeHostPin = undefined;
     this.toolWriterSources = {};
     this.guestWriterSources.clear();
+    this.retainedHistory.pruneAll();
     return conversationIds;
   }
 
@@ -1759,6 +1813,7 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger.reset();
     this.pendingContextRevision = undefined;
     this.todoLedger.reset();
+    this.retainedHistory.reset();
     this.lastCommittedPersonaBehavior = undefined;
     this.participantRoster.reset();
     return conversationIds;
@@ -1784,8 +1839,9 @@ export class WorkshopSessionService {
     const turnState = this.turnLedger.exportState();
     const passageState = this.passageScope.exportState();
     const rosterState = this.participantRoster.exportState();
+    const retainedHistoryState = this.retainedHistory.exportState();
 
-    return {
+    const state: WorkshopSessionStateV1 = {
       excerpt: passageState.excerpt,
       scope: passageState.scope,
       shelvedExcerpt: passageState.shelvedExcerpt,
@@ -1849,10 +1905,14 @@ export class WorkshopSessionService {
       },
       selectedToolId: rosterState.selectedToolId,
       todos: todoState.todos,
+      retainedHistoryMarks: retainedHistoryState.marks,
       lastCommittedPersonaBehavior: this.lastCommittedPersonaBehavior
         ? { ...this.lastCommittedPersonaBehavior }
         : undefined
     };
+    // Recording and pruning keep marks consistent; this is the backstop. A
+    // bookkeeping slip must cost rewindability, never block a save.
+    return withoutRetainedHistoryMarkKeys(state, findInconsistentRetainedHistoryMarkKeys(state));
   }
 
   /**
@@ -1865,15 +1925,23 @@ export class WorkshopSessionService {
    * participant. Tool sidecars are dropped, guests become disposed, host
    * memory becomes fresh, and an invalid active target falls back to host.
    * The current global behavior is injected rather than replayed from disk.
+   *
+   * `importedHistory` carries the archive counts of freshly imported
+   * conversations (ADR 2026-09-30 §3): a live participant without a mark
+   * gains a baseline at the ledger head, and a mark that disagrees with the
+   * history just imported is dropped. Rebinding still-live conversations
+   * (rollback) passes none and keeps the exported marks as they are.
    */
   hydrateCommittedState(
     state: WorkshopSessionStateV1,
     runtimeBindings: WorkshopRuntimeConversationBindings,
-    currentBehavior: WorkshopConversationBehavior
+    currentBehavior: WorkshopConversationBehavior,
+    importedHistory: WorkshopImportedRetainedHistory = {}
   ): WorkshopSessionHydrationResult {
     validateWorkshopSessionStateV1(state, {
       allowLegacyOpenSessionWithExcerpt: true,
-      skipWidgetDraftIntegrity: true
+      skipWidgetDraftIntegrity: true,
+      skipRetainedHistoryMarkIntegrity: true
     });
     const normalization = normalizeWorkshopSessionCheckpointForHydration(state);
     const normalized = normalization.state;
@@ -1987,6 +2055,43 @@ export class WorkshopSessionService {
       (source) => source.kind === 'pin' && source.stale !== true
     );
     const activeHostPin = hostConversationId ? activeHostPins[0] : undefined;
+    const retainedParticipants: WorkshopHydratedRetainedParticipant[] = [
+      ...(hostConversationId
+        ? [{
+            conversationKey: 'host' as const,
+            writerSourceCount: hostWriterSources.length,
+            lastSeenRoomTurnId: rosterState.host.lastSeenRoomTurnId
+          }]
+        : []),
+      ...Object.keys(toolSidecars).map((rawToolId) => {
+        const toolId = rawToolId as WorkshopToolId;
+        return {
+          conversationKey: `tool:${toolId}` as const,
+          writerSourceCount: toolWriterSources[toolId]?.length ?? 0
+        };
+      }),
+      ...[...rosterState.personaGuests.values()]
+        .filter((guest) => guest.liveness === 'live')
+        .map((guest) => ({
+          conversationKey: `guest:${guest.personaId}` as const,
+          writerSourceCount: guestWriterSources.get(guest.personaId)?.length ?? 0,
+          lastSeenRoomTurnId: guest.lastSeenRoomTurnId
+        }))
+    ];
+    // Degradation discarded some conversations above; their marks go with
+    // them, and every surviving participant without a mark gains a baseline.
+    const hydratedMarks = hydratedRetainedHistoryMarks({
+      marks: normalized.retainedHistoryMarks ?? [],
+      participants: retainedParticipants,
+      headTurnId: normalized.turns.at(-1)?.id,
+      importedHistory
+    });
+    const retainedHistoryState = this.retainedHistory.prepareState({
+      marks: hydratedMarks.marks
+    });
+    const normalizations = hydratedMarks.unverifiedKeys.length > 0
+      ? [...normalization.normalizations, 'dropped-unverifiable-retained-history-marks' as const]
+      : normalization.normalizations;
     const discardedConversationIds = this.participantRoster.conversationIds();
 
     // Prepared collaborator values are aggregate-owned mutable drafts until
@@ -2009,6 +2114,7 @@ export class WorkshopSessionService {
     this.standingDirectiveLedger.installPreparedState(standingDirectiveState);
     this.todoLedger.installPreparedState(todoState);
     this.turnLedger.installPreparedState(turnState);
+    this.retainedHistory.installPreparedState(retainedHistoryState);
     this.passageScope.installPreparedState(passageState);
     this.participantRoster.installPreparedState(rosterState);
     this.behavior = behavior;
@@ -2017,9 +2123,76 @@ export class WorkshopSessionService {
     return {
       discardedConversationIds,
       degradedConversationKeys,
-      normalizations: normalization.normalizations,
+      normalizations,
       recoveryNotices: normalization.notices
     };
+  }
+
+  /**
+   * Record where a committed participant's retained history now stands (ADR
+   * 2026-09-30 §3). The run-completion boundary calls this once the run has
+   * fully settled — delivery acknowledged, host updates and shipped
+   * attachments committed — so the writer-source rows and reader offset
+   * describe the rest point after this turn, not the instant of adoption.
+   *
+   * The boundary supplies provider counts it read from the conversation the
+   * run committed into. An unreadable or mismatched history prunes the
+   * participant's marks instead of recording a guess: a hole in the sequence
+   * would make a later cut slice at the wrong commit.
+   */
+  recordRetainedHistoryMark(
+    turnId: string,
+    committed: WorkshopCommittedRetainedHistory | undefined
+  ): WorkshopRetainedHistoryMarkOutcome {
+    return this.retainedHistory.recordCommit({
+      turn: this.turnLedger.find(turnId),
+      committed,
+      participant: (key, turn) => this.retainedParticipantFacts(key, turn)
+    });
+  }
+
+  /** Aggregate-owned facts a mark records for one live, bound participant. */
+  private retainedParticipantFacts(
+    key: WorkshopConversationLogicalKey,
+    turn: Readonly<WorkshopTurn>
+  ): WorkshopRetainedParticipantFacts | undefined {
+    if (key === 'host') {
+      const conversationId = this.getHostConversationId();
+      return conversationId === undefined ? undefined : {
+        conversationId,
+        writerSourceCount: this.hostWriterSources.length,
+        lastSeenRoomTurnId: this.participantRoster.readRoomDeliveryOffset({ kind: 'host' })
+      };
+    }
+    if (turn.participant === 'guest' && turn.personaId) {
+      const personaId = turn.personaId;
+      const conversationId = this.getPersonaGuestConversationId(personaId);
+      return conversationId === undefined ? undefined : {
+        conversationId,
+        writerSourceCount: this.guestWriterSources.get(personaId)?.length ?? 0,
+        lastSeenRoomTurnId: this.participantRoster.readRoomDeliveryOffset({
+          kind: 'personaGuest',
+          personaId
+        })
+      };
+    }
+    const toolId = turn.toolId;
+    const conversationId = toolId ? this.getToolSidecarConversationId(toolId) : undefined;
+    // A report describes its sidecar only while it is that sidecar's latest.
+    const liveReport = turn.artifact !== 'tool_report'
+      || (toolId !== undefined && this.isLiveToolReport(toolId, turn.id));
+    return toolId === undefined || conversationId === undefined || !liveReport
+      ? undefined
+      : { conversationId, writerSourceCount: this.toolWriterSources[toolId]?.length ?? 0 };
+  }
+
+  /** Rewind policy over the live ledger; built per read, never cached. */
+  private rewindPolicy(): WorkshopRewindPolicy {
+    return new WorkshopRewindPolicy({
+      turns: this.turnLedger.project(workshopRewindTurnFacts),
+      marks: this.retainedHistory.all(),
+      busy: this.activeRun !== undefined
+    });
   }
 
   getSnapshot(): WorkshopSessionSnapshot {
@@ -2053,6 +2226,9 @@ export class WorkshopSessionService {
       widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
       standingDirectives: this.standingDirectiveSummaries(),
       turns: windowed,
+      turnRewindability: this.rewindPolicy().bubbleRewindability(
+        windowed.map((turn) => turn.id)
+      ),
       totalTurns: this.turnLedger.count(),
       truncatedTurns: this.turnLedger.count() - windowed.length,
       roomHasMemory: this.hasRoomMemory(),
@@ -2159,6 +2335,9 @@ export class WorkshopSessionService {
       conversationId,
       latestReportTurnId
     );
+    // Every report adopts a fresh conversation, so the key's mark sequence
+    // restarts; the completion boundary records the report's own mark.
+    this.retainedHistory.pruneKey(`tool:${toolId}`);
     // A sidecar is a fresh conversation on adoption: its writer-origin rows
     // are exactly the pin + standing attachments its run received (Phase 7).
     // Replacement replaces the manifest with the conversation.

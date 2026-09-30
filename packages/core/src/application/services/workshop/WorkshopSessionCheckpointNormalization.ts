@@ -16,6 +16,10 @@ import {
 import type {
   WorkshopWidgetRecoveryNotice
 } from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
+import {
+  findInconsistentRetainedHistoryMarkKeys,
+  withoutRetainedHistoryMarkKeys
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 
 export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
@@ -28,7 +32,11 @@ export type WorkshopSessionCheckpointNormalization =
   | 'defaulted-proactive-assistance'
   | 'discarded-nonpersona-widget-recommendation'
   | WorkshopWidgetCheckpointNormalization
-  | 'headed-missing-room-offsets';
+  | 'headed-missing-room-offsets'
+  // Not development drift: ADR 2026-09-30 §3 degrades a mark that cannot be
+  // trusted by dropping its key's marks, so it can never refuse a session.
+  | 'dropped-inconsistent-retained-history-marks'
+  | 'dropped-unverifiable-retained-history-marks';
 
 export interface WorkshopSessionCheckpointNormalizationResult {
   state: WorkshopSessionStateV1;
@@ -190,17 +198,25 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   delete revisions.pendingExcerptChange;
   delete revisions.pendingExcerptWithdrawal;
 
+  const normalized: WorkshopSessionStateV1 = {
+    ...state,
+    turns,
+    excerpt,
+    scope,
+    shelvedExcerpt,
+    widgetConfigs,
+    revisions,
+    participants
+  };
+  // Runs last, against the normalized participants and turns it must agree
+  // with. A key is judged whole: one untrustworthy mark discards the key.
+  const inconsistentMarkKeys = findInconsistentRetainedHistoryMarkKeys(normalized);
+  if (inconsistentMarkKeys.size > 0) {
+    normalizations.push('dropped-inconsistent-retained-history-marks');
+  }
+
   return {
-    state: {
-      ...state,
-      turns,
-      excerpt,
-      scope,
-      shelvedExcerpt,
-      widgetConfigs,
-      revisions,
-      participants
-    },
+    state: withoutRetainedHistoryMarkKeys(normalized, inconsistentMarkKeys),
     normalizations: [...new Set(normalizations)],
     notices
   };
