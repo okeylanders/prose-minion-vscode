@@ -632,6 +632,13 @@ export class WorkshopRoomHandler {
           createsRetainedConversation: true,
           copy: workshopMessageCompletionCopy(workshopPersonaLabel(personaId)),
           discardConversation: (id) => this.assistantToolService.discardConversation(id),
+          readRetainedHistory: (id) => this.assistantToolService.readWorkshopRetainedHistory(id),
+          settleCommittedRun: () => {
+            this.session.recordRoomThreadArtifactDeliveries(
+              join.transcript.deliveredTurnIds,
+              { kind: 'personaGuest', personaId }
+            );
+          },
           log: (line) => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`),
           events: {
             streamCompleted: (id, content, cancelled, usage, truncated) =>
@@ -645,10 +652,6 @@ export class WorkshopRoomHandler {
           }
         });
         if (assistantTurn) {
-          this.session.recordRoomThreadArtifactDeliveries(
-            join.transcript.deliveredTurnIds,
-            { kind: 'personaGuest', personaId }
-          );
           this.commitTimeNotice(timeNotice);
           this.session.setChatTarget({ kind: 'personaGuest', personaId });
           this.sendStatus(`${workshopPersonaLabel(personaId)} joined the room.`);
@@ -1152,6 +1155,57 @@ export class WorkshopRoomHandler {
         createsRetainedConversation: targetPlan.createsRetainedConversation,
         copy: workshopMessageCompletionCopy(label),
         discardConversation: (id) => this.assistantToolService.discardConversation(id),
+        readRetainedHistory: (id) => this.assistantToolService.readWorkshopRetainedHistory(id),
+        // Everything this commit changes about the participant settles here,
+        // before completion records its retained-history mark.
+        settleCommittedRun: () => {
+          if (roomDelivery) {
+            try {
+              this.roomDelivery.commit(roomDelivery);
+              this.outputChannel.appendLine(
+                `[WorkshopRoomHandler] Room delivery committed ` +
+                `(${roomDelivery.reader.kind === 'host'
+                  ? 'host'
+                  : `guest=${roomDelivery.reader.personaId}`}; ` +
+                `through=${roomDelivery.deliveredTurnIds.at(-1) ?? '<none>'})`
+              );
+            } catch (error) {
+              // The model reply is already committed and visible. A failed
+              // acknowledgement is bookkeeping failure only; retain the offset so
+              // the same contiguous prefix retries instead of misreporting the
+              // successful participant turn as failed.
+              this.outputChannel.appendLine(
+                `[WorkshopRoomHandler] Room delivery acknowledgement retained for retry after ` +
+                `committed ${label} reply: ${error instanceof Error ? error.message : String(error)}`
+              );
+            }
+          }
+          if (pendingHostUpdates) {
+            this.session.commitPendingHostUpdates(pendingHostUpdates);
+            this.outputChannel.appendLine(
+              `[WorkshopRoomHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+            );
+          }
+          if (messageAttachments.length > 0) {
+            // A failed/cancelled turn never settles, which leaves the staged
+            // artifacts pending — the pills survive and a retry ships the
+            // same ids.
+            if (targetPlan.publishesRoomArtifacts) {
+              this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
+              this.outputChannel.appendLine(
+                `[WorkshopRoomHandler] Room thread artifacts published on ${userTurn.id} ` +
+                `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
+              );
+            }
+            this.session.commitMessageAttachments(
+              messageAttachments.map((a) => a.id),
+              targetPlan.chatTarget
+            );
+            this.outputChannel.appendLine(
+              `[WorkshopRoomHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
+            );
+          }
+        },
         log: (line) => this.outputChannel.appendLine(`[WorkshopRoomHandler] ${line}`),
         events: {
           streamCompleted: (id, content, cancelled, usage, truncated) =>
@@ -1164,27 +1218,7 @@ export class WorkshopRoomHandler {
             this.sendError('workshop.widget_recommendation', errorMessage, details)
         }
       });
-      if (assistantTurn && roomDelivery) {
-        try {
-          this.roomDelivery.commit(roomDelivery);
-          this.outputChannel.appendLine(
-            `[WorkshopRoomHandler] Room delivery committed ` +
-            `(${roomDelivery.reader.kind === 'host'
-              ? 'host'
-              : `guest=${roomDelivery.reader.personaId}`}; ` +
-            `through=${roomDelivery.deliveredTurnIds.at(-1) ?? '<none>'})`
-          );
-        } catch (error) {
-          // The model reply is already committed and visible. A failed
-          // acknowledgement is bookkeeping failure only; retain the offset so
-          // the same contiguous prefix retries instead of misreporting the
-          // successful participant turn as failed.
-          this.outputChannel.appendLine(
-            `[WorkshopRoomHandler] Room delivery acknowledgement retained for retry after ` +
-            `committed ${label} reply: ${error instanceof Error ? error.message : String(error)}`
-          );
-        }
-      } else if (roomDelivery) {
+      if (!assistantTurn && roomDelivery) {
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Room delivery retained after incomplete ${label} reply ` +
           `(${roomDelivery.reader.kind === 'host'
@@ -1193,33 +1227,9 @@ export class WorkshopRoomHandler {
           `${roomDelivery.deliveredTurnIds.length} turns remain pending)`
         );
       }
-      if (assistantTurn && pendingHostUpdates) {
-        this.session.commitPendingHostUpdates(pendingHostUpdates);
-        this.outputChannel.appendLine(
-          `[WorkshopRoomHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
-        );
-      } else if (pendingHostUpdates) {
+      if (!assistantTurn && pendingHostUpdates) {
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Pending host update retained after incomplete delivery (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
-        );
-      }
-      if (assistantTurn && messageAttachments.length > 0) {
-        // A failed/cancelled turn falls through to the catch, which leaves
-        // the staged artifacts pending — the pills survive and a retry
-        // ships the same ids.
-        if (targetPlan.publishesRoomArtifacts) {
-          this.session.recordRoomThreadArtifacts(userTurn.id, roomThreadArtifacts);
-          this.outputChannel.appendLine(
-            `[WorkshopRoomHandler] Room thread artifacts published on ${userTurn.id} ` +
-            `(${roomThreadArtifacts.map((artifact) => artifact.id).join(', ')})`
-          );
-        }
-        this.session.commitMessageAttachments(
-          messageAttachments.map((a) => a.id),
-          targetPlan.chatTarget
-        );
-        this.outputChannel.appendLine(
-          `[WorkshopRoomHandler] Message attachments shipped (${messageAttachments.map((a) => a.id).join(', ')})`
         );
       }
       if (assistantTurn) {

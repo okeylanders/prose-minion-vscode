@@ -28,6 +28,9 @@ import {
   inspectWorkshopActionableFindings,
   WORKSHOP_ACTIONABLE_FINDINGS_INSTRUCTION
 } from './WorkshopActionableFindings';
+import {
+  recordWorkshopRetainedHistoryCommit
+} from '@/application/services/workshop/WorkshopRetainedHistoryCommit';
 
 export interface PersonaAnalysisAdoption {
   turn: WorkshopTurn;
@@ -194,6 +197,17 @@ export class WorkshopAnalysisSidePass {
       actionableFindings,
       input.inputProvenance
     );
+    if (completion) {
+      // Adoption settles the sidecar completely — its conversation and
+      // manifest — so its retained-history mark is recorded right here.
+      recordWorkshopRetainedHistoryCommit({
+        session: this.session,
+        turn: completion.turn,
+        conversationId: input.conversationId,
+        readRetainedHistory: (id) => this.assistantToolService.readWorkshopRetainedHistory(id),
+        log: (line) => this.outputChannel.appendLine(`[WorkshopAnalysisSidePass] ${line}`)
+      });
+    }
     if (completion?.replacedConversationId) {
       this.assistantToolService.discardConversation(completion.replacedConversationId);
       this.outputChannel.appendLine(

@@ -5,6 +5,7 @@ import {
   WorkshopRunCompletionEvents
 } from '@/application/services/workshop/WorkshopRunCompletion';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WorkshopRoomDeliveryService } from '@/application/services/workshop/WorkshopRoomDeliveryService';
 import { AnalysisResult } from '@/domain/models/AnalysisResult';
 import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -18,6 +19,7 @@ describe('completeWorkshopRun', () => {
   let session: WorkshopSessionService;
   let events: jest.Mocked<WorkshopRunCompletionEvents>;
   let discardConversation: jest.Mock;
+  let readRetainedHistory: jest.Mock;
   let log: jest.Mock;
 
   const result = (content: string, extra: Partial<AnalysisResult> = {}): AnalysisResult => ({
@@ -101,6 +103,7 @@ describe('completeWorkshopRun', () => {
     createsRetainedConversation: input.createsRetainedConversation ?? true,
     copy: workshopMessageCompletionCopy('Jill'),
     discardConversation,
+    readRetainedHistory,
     log,
     events
   });
@@ -116,6 +119,7 @@ describe('completeWorkshopRun', () => {
       widgetRecommendationRejected: jest.fn()
     };
     discardConversation = jest.fn();
+    readRetainedHistory = jest.fn(() => ({ messageCount: 2, contextSourceCount: 0 }));
     log = jest.fn();
   });
 
@@ -272,6 +276,7 @@ describe('completeWorkshopRun', () => {
       createsRetainedConversation: false,
       copy: workshopMessageCompletionCopy('Felix'),
       discardConversation,
+      readRetainedHistory,
       log,
       events
     })!;
@@ -356,6 +361,7 @@ describe('completeWorkshopRun', () => {
       createsRetainedConversation: false,
       copy: workshopMessageCompletionCopy('Margot'),
       discardConversation,
+      readRetainedHistory,
       log,
       events
     })!;
@@ -547,6 +553,7 @@ describe('completeWorkshopRun', () => {
       createsRetainedConversation: false,
       copy: workshopMessageCompletionCopy('Felix'),
       discardConversation,
+      readRetainedHistory,
       log,
       events
     })!;
@@ -673,5 +680,239 @@ describe('completeWorkshopRun', () => {
       apiKeyMissingError: 'OpenRouter API key not configured.',
       retentionFailedError: "Failed to retain Prose's conversation."
     });
+  });
+});
+
+/**
+ * ADR 2026-09-30 §3: completion records where the committed participant's
+ * retained history stands, AFTER caller-owned settlement, so the mark carries
+ * the acknowledged room offset and every manifest row the commit shipped.
+ */
+describe('completeWorkshopRun retained-history marks', () => {
+  const reply = (content: string, conversationId?: string): AnalysisResult => ({
+    toolName: 'workshop-test',
+    content,
+    conversationId
+  } as AnalysisResult);
+
+  const events = (): jest.Mocked<WorkshopRunCompletionEvents> => ({
+    streamCompleted: jest.fn(),
+    turnCompleted: jest.fn(),
+    status: jest.fn(),
+    error: jest.fn(),
+    widgetRecommendationRejected: jest.fn()
+  });
+
+  const room = () => {
+    let now = 0;
+    const session = new WorkshopSessionService(() => ++now);
+    session.setExcerpt({ text: 'A pinned excerpt.', source: { kind: 'manual' } });
+    session.recordSessionMarker('start', 'Session started.');
+    return session;
+  };
+
+  it('records the settled participant: offset and manifest rows committed during settlement', () => {
+    const session = room();
+    const delivery = new WorkshopRoomDeliveryService(session);
+    const prepared = delivery.prepare({ kind: 'host' });
+    session.beginPersonaMessage('req-1', 'Hello');
+    session.addMessageAttachment({ label: 'notes.md', words: 1, content: 'Notes.' });
+    const order: string[] = [];
+    const runEvents = events();
+    runEvents.turnCompleted.mockImplementation(() => order.push('announced'));
+    const readRetainedHistory = jest.fn(() => {
+      order.push('read');
+      return { messageCount: 4, contextSourceCount: 1 };
+    });
+
+    const turn = completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Jill',
+      result: reply('Welcome back.', 'host-conv'),
+      aborted: false,
+      createsRetainedConversation: true,
+      copy: workshopMessageCompletionCopy('Jill'),
+      discardConversation: jest.fn(),
+      readRetainedHistory,
+      settleCommittedRun: () => {
+        order.push('settled');
+        delivery.commit(prepared);
+        session.commitMessageAttachments(['ta-1']);
+      },
+      log: jest.fn(),
+      events: runEvents
+    })!;
+
+    expect(order).toEqual(['announced', 'settled', 'read']);
+    expect(readRetainedHistory).toHaveBeenCalledWith('host-conv');
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([{
+      turnId: turn.id,
+      conversationKey: 'host',
+      messageCount: 4,
+      contextSourceCount: 1,
+      // The first-adoption pin plus the attachment shipped during settlement.
+      writerSourceCount: 2,
+      lastSeenRoomTurnId: prepared.deliveredTurnIds.at(-1),
+      origin: 'commit'
+    }]);
+  });
+
+  it('records the mark even when settlement throws, then surfaces the failure', () => {
+    const session = room();
+    session.beginPersonaMessage('req-1', 'Hello');
+
+    expect(() => completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Jill',
+      result: reply('Welcome back.', 'host-conv'),
+      aborted: false,
+      createsRetainedConversation: true,
+      copy: workshopMessageCompletionCopy('Jill'),
+      discardConversation: jest.fn(),
+      readRetainedHistory: () => ({ messageCount: 2, contextSourceCount: 0 }),
+      settleCommittedRun: () => {
+        throw new Error('bookkeeping failed');
+      },
+      log: jest.fn(),
+      events: events()
+    })).toThrow('bookkeeping failed');
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([
+      expect.objectContaining({ conversationKey: 'host', messageCount: 2 })
+    ]);
+  });
+
+  it.each([
+    ['an unreadable history', () => undefined, 'reason=history-unreadable'],
+    ['a reader that throws', () => {
+      throw new Error('engine generation gone');
+    }, 'read failed: engine generation gone']
+  ])('keeps the committed turn and prunes the key for %s', (_label, reader, logged) => {
+    const session = room();
+    session.beginPersonaMessage('req-1', 'Hello');
+    completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Jill',
+      result: reply('First.', 'host-conv'),
+      aborted: false,
+      createsRetainedConversation: true,
+      copy: workshopMessageCompletionCopy('Jill'),
+      discardConversation: jest.fn(),
+      readRetainedHistory: () => ({ messageCount: 2, contextSourceCount: 0 }),
+      log: jest.fn(),
+      events: events()
+    });
+    session.beginPersonaMessage('req-2', 'Again');
+    const log = jest.fn();
+
+    const turn = completeWorkshopRun({
+      session,
+      requestId: 'req-2',
+      label: 'Jill',
+      result: reply('Second.', 'host-conv'),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy('Jill'),
+      discardConversation: jest.fn(),
+      readRetainedHistory: reader as () => undefined,
+      log,
+      events: events()
+    });
+
+    expect(turn).toMatchObject({ content: 'Second.' });
+    // A hole in the host's sequence would slice a later cut at the wrong
+    // commit, so the earlier mark goes too.
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([]);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining(logged));
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('pruned 1 earlier marks'));
+  });
+
+  it('restarts the host sequence when a run rebinds the host to another conversation', () => {
+    const session = room();
+    const settleHost = (requestId: string, conversationId: string, messageCount: number) => {
+      session.beginPersonaMessage(requestId, 'Hello');
+      return completeWorkshopRun({
+        session,
+        requestId,
+        label: 'Jill',
+        result: reply('Reply.', conversationId),
+        aborted: false,
+        createsRetainedConversation: false,
+        copy: workshopMessageCompletionCopy('Jill'),
+        discardConversation: jest.fn(),
+        readRetainedHistory: () => ({ messageCount, contextSourceCount: 0 }),
+        log: jest.fn(),
+        events: events()
+      })!;
+    };
+    settleHost('req-1', 'host-conv', 2);
+    settleHost('req-2', 'host-conv', 4);
+
+    // Even a longer history must not extend marks written for another one.
+    const rebound = settleHost('req-3', 'rebuilt-host-conv', 6);
+
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([
+      expect.objectContaining({ turnId: rebound.id, conversationKey: 'host', messageCount: 6 })
+    ]);
+  });
+
+  it('refuses counts from a conversation the participant is not bound to', () => {
+    const session = room();
+    session.beginToolRun('prose', 'tool-run');
+    session.completeToolReport('tool-run', 'Report.', 'tool-conv');
+    session.beginDirectToolMessage('prose', 'req-1', 'Say more.');
+    const log = jest.fn();
+
+    completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Prose',
+      result: reply('More.', 'not-the-sidecar-conv'),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy('Prose'),
+      discardConversation: jest.fn(),
+      readRetainedHistory: () => ({ messageCount: 4, contextSourceCount: 0 }),
+      log,
+      events: events()
+    });
+
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([]);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('reason=conversation-mismatch'));
+  });
+
+  it.each([
+    ['cancelled', true, (session: WorkshopSessionService) => session],
+    ['zombie', false, (session: WorkshopSessionService) => {
+      session.abandonRun('req-1');
+      return session;
+    }]
+  ])('records nothing for a %s run', (_label, aborted, prepare) => {
+    const session = room();
+    session.beginPersonaMessage('req-1', 'Hello');
+    prepare(session);
+    const readRetainedHistory = jest.fn();
+
+    completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Jill',
+      result: reply('Never landed.', 'host-conv'),
+      aborted,
+      createsRetainedConversation: true,
+      copy: workshopMessageCompletionCopy('Jill'),
+      discardConversation: jest.fn(),
+      readRetainedHistory,
+      settleCommittedRun: () => {
+        throw new Error('an uncommitted run never settles');
+      },
+      log: jest.fn(),
+      events: events()
+    });
+
+    expect(readRetainedHistory).not.toHaveBeenCalled();
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([]);
   });
 });
