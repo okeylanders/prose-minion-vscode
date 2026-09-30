@@ -8,6 +8,7 @@ import type { UrlCitation } from '@messages';
 import {
   ConversationArchiveEntryV1,
   ConversationExportTarget,
+  ConversationHistoryCounts,
   ConversationImportOutcome,
   ConversationImportTarget,
   ConversationManager,
@@ -619,6 +620,11 @@ export class AgentRunEngine {
 
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
     return this.conversationManager.getContextSources(conversationId);
+  }
+
+  /** Committed history lengths, measured in archive units, for one retained conversation. */
+  getConversationHistoryCounts(conversationId: string): ConversationHistoryCounts | undefined {
+    return this.conversationManager.getCommittedHistoryCounts(conversationId);
   }
 
   /**
