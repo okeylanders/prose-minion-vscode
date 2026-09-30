@@ -141,12 +141,21 @@ export function normalizeWorkshopSessionCheckpointForHydration(
         guest.lastSeenHostTurnId !== undefined
         || guest.deliveredToHostThroughTurnId !== undefined
     );
+  // A restored participant starts current rather than replaying the room
+  // (ADR 2026-07-24 §12). A participant with no retained conversation — an
+  // unbound host, a disposed guest — has read nothing: an absent offset is
+  // its truth, and heading it would withhold the catch-up a fresh participant
+  // needs (ADR 2026-09-30, Sprint 02 implementation findings).
+  const hostRetainsConversation = state.participants.host.conversationKey === 'host';
+  const guestRetainsConversation = (
+    guest: WorkshopSessionStateV1['participants']['personaGuests'][number]
+  ): boolean => guest.liveness === 'live' && guest.conversationKey !== undefined;
   const headedMissingRoomOffsets =
     ledgerHead !== undefined
     && (
-      state.participants.host.lastSeenRoomTurnId === undefined
+      (hostRetainsConversation && state.participants.host.lastSeenRoomTurnId === undefined)
       || state.participants.personaGuests.some(
-        (guest) => guest.lastSeenRoomTurnId === undefined
+        (guest) => guestRetainsConversation(guest) && guest.lastSeenRoomTurnId === undefined
       )
     );
   if (discardedLegacyDeliveryCursors) {
@@ -171,15 +180,18 @@ export function normalizeWorkshopSessionCheckpointForHydration(
     } = guest;
     return {
       ...currentGuest,
-      lastSeenRoomTurnId: currentGuest.lastSeenRoomTurnId ?? ledgerHead
+      lastSeenRoomTurnId: guestRetainsConversation(currentGuest)
+        ? currentGuest.lastSeenRoomTurnId ?? ledgerHead
+        : currentGuest.lastSeenRoomTurnId
     };
   });
   const participants = {
     ...state.participants,
     host: {
       ...state.participants.host,
-      lastSeenRoomTurnId:
-        state.participants.host.lastSeenRoomTurnId ?? ledgerHead
+      lastSeenRoomTurnId: hostRetainsConversation
+        ? state.participants.host.lastSeenRoomTurnId ?? ledgerHead
+        : state.participants.host.lastSeenRoomTurnId
     },
     toolSidecars,
     personaGuests
