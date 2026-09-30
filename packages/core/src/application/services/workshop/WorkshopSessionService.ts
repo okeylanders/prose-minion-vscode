@@ -118,6 +118,10 @@ import {
   withoutRetainedHistoryMarkKeys
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 import {
+  WorkshopRewindPolicy,
+  workshopRewindTurnFacts
+} from '@/application/services/workshop/session/WorkshopRewindPolicy';
+import {
   attachmentSnapshot,
   cloneAnalysisInputs,
   cloneAttachment,
@@ -2182,6 +2186,15 @@ export class WorkshopSessionService {
       : { conversationId, writerSourceCount: this.toolWriterSources[toolId]?.length ?? 0 };
   }
 
+  /** Rewind policy over the live ledger; built per read, never cached. */
+  private rewindPolicy(): WorkshopRewindPolicy {
+    return new WorkshopRewindPolicy({
+      turns: this.turnLedger.project(workshopRewindTurnFacts),
+      marks: this.retainedHistory.all(),
+      busy: this.activeRun !== undefined
+    });
+  }
+
   getSnapshot(): WorkshopSessionSnapshot {
     const windowed = this.turnLedger.window(WORKSHOP_SNAPSHOT_TURN_WINDOW);
     const passageState = this.passageScope.exportState();
@@ -2213,6 +2226,9 @@ export class WorkshopSessionService {
       widgetConfigs: this.widgetConfigLedger.summariesFor(visibleWidgetConfigIds),
       standingDirectives: this.standingDirectiveSummaries(),
       turns: windowed,
+      turnRewindability: this.rewindPolicy().bubbleRewindability(
+        windowed.map((turn) => turn.id)
+      ),
       totalTurns: this.turnLedger.count(),
       truncatedTurns: this.turnLedger.count() - windowed.length,
       roomHasMemory: this.hasRoomMemory(),
