@@ -7,7 +7,7 @@
 
 ## Goal
 
-Let a writer branch from any rewindable point into a new named session. The source is guaranteed saved and never modified. Then close the epic with docs and release evidence.
+Let a writer branch from any rewindable point of a saved (named) session into a new named session. The source is never modified. Unnamed rooms are asked to save first. Then close the epic with docs and release evidence.
 
 ## Deliverables
 
@@ -17,7 +17,7 @@ Let a writer branch from any rewindable point into a new named session. The sour
    - re-check the policy.
 
    Then:
-   1. **Save first.** For an unnamed room, save it as a new named session under `defaultTitle` (decision D2), reusing the `saveNamed` path so identity, association and the rolling mirror follow existing rules. For an associated named room, confirm its latest autosave landed.
+   1. **Require a saved source (D2).** Refuse unless the live room is associated with a named session (`activeNamedSessionId`), with the message "Save this session before branching." For an associated room, confirm its latest autosave landed.
    2. Export the live room and apply `rewindWorkshopSession`.
    3. Build a new V2 persisted session:
       - fresh `sessionId` and `createdAt` / `updatedAt` / `savedAt`;
@@ -31,13 +31,14 @@ Let a writer branch from any rewindable point into a new named session. The sour
    - Add `MessageType.WORKSHOP_BRANCH_SESSION` with payload `{ turnId: string; title?: string }`.
    - Add `'branch'` to `WorkshopSessionAction`.
    - Register the handler via `registerMutation` + `rejectWhileRunning`.
-   - Post session state and an action result naming both sessions, e.g. "Saved “Untitled session — Felix — Sep 30” and opened “… — branch”".
+   - Post session state and an action result naming both sessions, e.g. "Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch”".
    - Post `WORKSHOP_COMPOSER_DRAFT_RESTORED` for a writer-bubble branch.
    - Refresh the session list so the Sessions menu shows the branch as the active named session.
 3. **Webview.**
    - Add a "Branch from here" action beside Rewind on both bubble types, using the existing `branch` icon and the same host rewindability flag.
    - Additionally disable it with a reason when persistence is unavailable (D7).
-   - No confirm dialog (D4). Show pending state through `sessionActionPending('branch')`, so `roomMutationLocked` covers the transition.
+   - No confirm dialog for a named room (D4). Show pending state through `sessionActionPending('branch')`, so `roomMutationLocked` covers the transition.
+   - **Unnamed room (D2).** Clicking Branch posts nothing. It opens a `WorkshopConfirmDialog` popup: title "Save before branching", body "Branching creates a new session from this point. Save this session first so it isn't replaced.", confirm label "Save session…", which opens the existing Save modal, plus Cancel. Add the case to the `sessionConfirm` union. Whether the room is named comes from the existing `activeNamedSessionSummary`.
 4. **Docs and release.**
    - **ADR.** Status → Accepted, with any kickoff decision changes folded in.
    - **Docs.** Update `docs/ARCHITECTURE.md` Workshop persistence notes and the AGENTS.md Workshop section, briefly: marks, the transform, and the new routes.
@@ -49,14 +50,12 @@ Let a writer branch from any rewindable point into a new named session. The sour
 ## Tests
 
 - **Unnamed source.**
-  - The source is saved as a named session first.
-  - The branch opens as the live room.
-  - `current.json` now mirrors the branch.
-  - The saved source contains the full, uncut conversation.
+  - The webview shows the save-first popup and posts no branch request; "Save session…" opens the Save modal.
+  - The host refuses a branch request for an unnamed room and leaves the room, `current.json` and every named file unchanged.
+  - After saving, Branch succeeds from the now-named room.
 - **Named source.** The source named file is byte-identical before and after Branch.
 - **Branch content.** The branch passes the Sprint 02 equivalence oracle for its cut point, and its summary and search index reflect the cut room.
 - **Failures.**
-  - An injected failure at save-first leaves the live room unchanged and associated as before.
   - An injected failure at branch write leaves the saved source, with no orphan branch file.
   - An injected failure at promotion triggers rollback, and the branch file remains as an openable named session, reported honestly.
 - **Refusals.** Active run, pending session operation, persistence unavailable, and a non-rewindable turn.
@@ -69,10 +68,10 @@ Record results in the memory-bank entry. Use cheap models and short rooms.
 1. **Guest and capability rewind.** In a host conversation with one capability read and one guest, rewind to the host reply before the guest joined. Confirm the guest is disposed and the host's next reply does not mention anything past the cut.
 2. **Writer-bubble edit.** Rewind a writer bubble and check the text and attachments return to the composer. Edit, resend, and confirm the thread continues coherently.
 3. **Excerpt revision.** Revise the excerpt, then rewind to before the revision. Confirm the next host reply acknowledges the revised excerpt frame.
-4. **Unnamed-room branch.** Branch from an unnamed room. Both sessions appear in the browser; reopen each and verify its content.
+4. **Unnamed-room branch.** Click Branch in an unnamed room: the save-first popup appears. Save, click Branch again; both sessions appear in the browser. Reopen each and verify its content.
 5. **Reload.** Reload the window after a rewind and after a branch. Both restore exactly.
 6. **Legacy session.** Open a pre-feature session. Earlier turns show the disabled reason; turns after the reopen point rewind.
 
 ## Exit
 
-Branch works from named and unnamed rooms with the source preserved. All epic completion criteria are checked. Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. Manual smoke is recorded.
+Branch works from named rooms with the source preserved, and unnamed rooms are asked to save first. All epic completion criteria are checked. Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. Manual smoke is recorded.

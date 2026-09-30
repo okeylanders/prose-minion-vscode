@@ -11,7 +11,7 @@
 Writers want two per-bubble actions in the Workshop thread:
 
 - **Rewind to here.** Return the room to the chosen point and remove everything after it.
-- **Branch from here.** Make sure the current room is saved, then open a new session that starts from exactly that point.
+- **Branch from here.** From a saved session, open a new session that starts from exactly that point. An unsaved room is asked to save first.
 
 The visible thread is not the whole room. Per ADR 2026-07-24 §1, a room is one ordered ledger (`WorkshopSessionService.turns`) plus an independent retained provider history per participant: the host, each persona guest and each tool sidecar (`ConversationManager`). The ledger is canonical. Each history is an append-only projection of it, specialized by reader:
 
@@ -171,10 +171,11 @@ Rewind is also cheap to run. A cut history is a byte-identical prefix of what wa
 Branch is a coordinator session operation:
 
 1. Refuse while a run is active or persistence is unavailable, and re-check rewindability.
-2. Queued autosaves complete first, via `serializeSessionOperation`.
-3. **Ensure the source is saved.**
-   - An associated named room is already current on disk.
-   - An unnamed room is first saved as a new named session under its default title (`defaultTitle`), with no prompt. The result notice names it. Otherwise opening the branch would overwrite `current.json`, the unnamed room's only durable copy.
+2. **Require a saved source.** Branch is available only in a room associated with a named session. An unnamed room's only durable copy is `current.json`, which opening the branch would overwrite.
+   - The webview does not send the request for an unnamed room. It shows a popup explaining that the session must be saved before branching, with a "Save session…" action that opens the existing Save modal.
+   - After saving, the writer clicks Branch again. Nothing is saved automatically.
+   - The host refuses an unnamed-room request anyway, with the same explanation, so a stale webview cannot bypass the rule.
+3. Queued autosaves complete first, via `serializeSessionOperation`, so the associated named file is current on disk.
 4. Export and transform exactly as in §6.
 5. Build a new persisted session:
    - fresh `sessionId` and timestamps;
@@ -203,6 +204,13 @@ The working-set difference (a newer excerpt or context) is delivered as an expli
 `retainedHistoryMarks` is an **optional** field on `WorkshopSessionStateV1`. Absent means no marks, and hydration records baselines. Adding an optional field makes no formerly valid shape invalid, so per ADR 2026-07-30 it needs no `schemaVersion` bump. It follows the precedent of `widgetConfigs` and `standingDirectives`.
 
 The exact-key shape validator and integrity validator gain the field in the same change. As with those precedents, a build older than this change will not open a file that carries marks.
+
+**Open question for kickoff: downgrade compatibility.** Every Workshop validator is exact-key, from the envelope (`assertSupportedWorkshopPersistedSessionEnvelope`) down. So an older build refuses any session this build writes, not only files that use a new feature. The refusal is safe: a named file is left untouched, and a failed `current.json` is protected from overwrite. It still matters because session files travel through Git between machines that may run different versions. Two options:
+
+- **A — in-file field (as above).** Simplest. It matches the `widgetConfigs` and `standingDirectives` precedent. Older builds cannot open saved sessions until they upgrade.
+- **B — sidecar file.** Store marks in `<session>.history-marks.json` beside each session file, following the `.summary.json` precedent. The session file itself stays byte-compatible, so older builds keep opening every session. Each mark gains a `prefixHash` (SHA-256 of `messages[0, messageCount)`), so a new build detects a sidecar that an older build left stale: it discards the mismatched marks and falls back to a baseline. Cost: the sidecar lifecycle across save, rolling mirror, duplicate, rename, delete and recovery, plus about half a sprint of tests.
+
+`prefixHash` is worth adding under either option: it turns "the mark fits inside the archive" into "the mark describes this exact history".
 
 ## Consequences
 
