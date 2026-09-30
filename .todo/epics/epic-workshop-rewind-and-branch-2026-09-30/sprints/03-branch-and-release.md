@@ -43,6 +43,7 @@ Let a writer branch from any rewindable point of a saved (named) session into a 
    - **ADR.** Status → Accepted, with any kickoff decision changes folded in.
    - **Docs.** Update `docs/ARCHITECTURE.md` Workshop persistence notes and the AGENTS.md Workshop section, briefly: marks, the transform, and the new routes.
    - **What's New.** Add a notice entry per ADR 2026-08-05.
+   - **Release notes.** State that sessions saved by this release cannot be opened by earlier versions, so writers who sync sessions through Git should update every machine first (ADR §9).
    - **Parked feature.** Update `.todo/features/feature-workshop-branch-board/README.md` with the lineage follow-up (`branchedFrom`) and a link to this epic.
    - **Memory bank.** Add `.memory-bank/YYYYMMDD-HHMM-workshop-rewind-and-branch.md` with facts, verification run and follow-ups.
    - **Archive.** Move the epic to `.todo/archive/epics/` after merge, with an `ARCHIVE.md` note.

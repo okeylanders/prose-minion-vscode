@@ -205,12 +205,9 @@ The working-set difference (a newer excerpt or context) is delivered as an expli
 
 The exact-key shape validator and integrity validator gain the field in the same change. As with those precedents, a build older than this change will not open a file that carries marks.
 
-**Open question for kickoff: downgrade compatibility.** Every Workshop validator is exact-key, from the envelope (`assertSupportedWorkshopPersistedSessionEnvelope`) down. So an older build refuses any session this build writes, not only files that use a new feature. The refusal is safe: a named file is left untouched, and a failed `current.json` is protected from overwrite. It still matters because session files travel through Git between machines that may run different versions. Two options:
+**Downgrade compatibility (decided 2026-09-30: in-file field).** Every Workshop validator is exact-key, from the envelope (`assertSupportedWorkshopPersistedSessionEnvelope`) down. A build older than this change therefore refuses any session this build writes, not only files that use Rewind. The refusal is safe: a named file is left untouched, and a failed `current.json` is protected from overwrite. Writers who sync sessions through Git must update every machine before opening sessions saved by this release. Release notes say so.
 
-- **A — in-file field (as above).** Simplest. It matches the `widgetConfigs` and `standingDirectives` precedent. Older builds cannot open saved sessions until they upgrade.
-- **B — sidecar file.** Store marks in `<session>.history-marks.json` beside each session file, following the `.summary.json` precedent. The session file itself stays byte-compatible, so older builds keep opening every session. Each mark gains a `prefixHash` (SHA-256 of `messages[0, messageCount)`), so a new build detects a sidecar that an older build left stale: it discards the mismatched marks and falls back to a baseline. Cost: the sidecar lifecycle across save, rolling mirror, duplicate, rename, delete and recovery, plus about half a sprint of tests.
-
-`prefixHash` is worth adding under either option: it turns "the mark fits inside the archive" into "the mark describes this exact history".
+A sidecar marks file was considered and rejected for v1. It would have kept session files readable by older builds, at the cost of a second file's lifecycle across save, mirror, duplicate, rename, delete and recovery. Because marks and archive are written atomically in one file, an older build can never leave marks stale. The per-mark history hash that the sidecar needed is therefore unnecessary.
 
 ## Consequences
 
