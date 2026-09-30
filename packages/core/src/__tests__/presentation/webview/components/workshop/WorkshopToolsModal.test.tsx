@@ -5,6 +5,7 @@
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { WorkshopToolsModal } from '@components/workshop/WorkshopToolsModal';
+import { WORKSHOP_TOOL_CATALOG } from '@shared/constants/workshopTools';
 
 describe('WorkshopToolsModal (sheet browser)', () => {
   afterEach(cleanup);
@@ -23,15 +24,14 @@ describe('WorkshopToolsModal (sheet browser)', () => {
     return props;
   };
 
-  it('renders all 14 tools across the three groups', () => {
+  it('renders the full tool catalog across the three groups', () => {
     renderModal();
     expect(screen.getByText('Primary')).toBeTruthy();
     expect(screen.getByText('The daily passes — the six the rail keeps at hand.')).toBeTruthy();
     expect(screen.getByText('Craft & Voice')).toBeTruthy();
     expect(screen.getByText('Technical')).toBeTruthy();
-    // 14 selectable cards + Cancel + launch + close = the card count is the contract.
     const cards = document.querySelectorAll('.pm-ws-sb-card');
-    expect(cards).toHaveLength(14);
+    expect(cards).toHaveLength(WORKSHOP_TOOL_CATALOG.length);
     expect(document.querySelector('.pm-ws-browser-modal')?.className)
       .toContain('pm-ws-modal-sheet');
   });
@@ -58,6 +58,30 @@ describe('WorkshopToolsModal (sheet browser)', () => {
     fireEvent.click(card);
     const launch = screen.getByRole('button', { name: 'Run a tool' }) as HTMLButtonElement;
     expect(launch.disabled).toBe(true);
+  });
+
+  it.each([
+    { requestViaPersona: false, launchLabel: 'Run Craft Steering' },
+    { requestViaPersona: true, launchLabel: 'Ask about Craft Steering' }
+  ])('selects Craft Steering before committing with persona routing $requestViaPersona', ({ requestViaPersona, launchLabel }) => {
+    const { onSelect } = renderModal({ requestViaPersona });
+    fireEvent.click(screen.getByRole('button', { name: /Craft Steering/ }));
+    expect(onSelect).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: launchLabel }));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith('craft-steering');
+  });
+
+  it('prevents a gated Craft Steering selection from launching', () => {
+    const { onSelect } = renderModal({ disabled: true, activeToolId: 'craft-steering' });
+    const card = screen.getByRole('button', { name: /^Craft Steering/ }) as HTMLButtonElement;
+    const launch = screen.getByRole('button', { name: 'Run Craft Steering' }) as HTMLButtonElement;
+    expect(card.disabled).toBe(true);
+    expect(launch.disabled).toBe(true);
+    fireEvent.click(card);
+    fireEvent.click(launch);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('seeds the selection from the active tool', () => {

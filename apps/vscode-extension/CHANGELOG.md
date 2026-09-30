@@ -2,6 +2,12 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- **Craft Steering** analysis in both the sidebar and Workshop tools, inspired by Ursula K. Le Guin's *Steering the Craft*. Examines sound, rhythm, sentence handoffs, and narrative control while preserving intentional pauses, repetition, and voice. Includes a structured report with sample revisions, Creative Variations, Bound Creative Variations, a fidelity check, and passage-specific read-aloud practice. Workshop personas can invoke it for an isolated analysis too.
+
 ## [2.6.2] - 2026-09-29
 
 ### Added

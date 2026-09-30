@@ -19,7 +19,7 @@ describe('WritingToolsAssistant', () => {
     assistant = new WritingToolsAssistant(engine as never, promptLoader as never, (() => guides) as never, output as never);
   });
 
-  it.each<WritingToolsFocus>(['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition'])(
+  it.each<WritingToolsFocus>(['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'craft-steering'])(
     'declares the guides policy for %s',
     async focus => {
       const result = await assistant.analyze({ text: 'Test passage' }, { focus });
@@ -38,6 +38,32 @@ describe('WritingToolsAssistant', () => {
       policy: expect.objectContaining({ capabilityCatalog: 'none' }),
       capability: undefined
     }));
+  });
+
+  it('retains a usable Craft Steering analysis when prompt resources cannot load', async () => {
+    promptLoader.loadPrompts.mockRejectedValueOnce(new Error('Resource unavailable'));
+    const passage = 'Rain tapped the roof. Then it stopped.';
+
+    const result = await assistant.analyze(
+      { text: passage, contextText: 'A deliberate pause before the visitor arrives.' },
+      { focus: 'craft-steering', includeCraftGuides: false }
+    );
+
+    expect(result.content).toBe('Analysis result content');
+    const request = engine.runInitial.mock.calls[0][0];
+    expect(request.toolName).toBe('writing-tools-craft-steering');
+    expect(request.systemMessage).toContain('# Craft Steering Analysis');
+    expect(request.systemMessage).toContain('Trace how one sentence prepares the next.');
+    expect(request.systemMessage).toContain('forward movement does not require constant speed');
+    expect(request.systemMessage).toContain('What to Preserve');
+    expect(request.systemMessage).toContain('Sample Revisions');
+    expect(request.systemMessage).toContain('Creative Variations');
+    expect(request.systemMessage).toContain('Bound Creative Variations');
+    expect(request.systemMessage).toContain('original already works');
+    expect(request.systemMessage).toContain('Shared prompts content');
+    expect(request.userMessage).toContain(passage);
+    expect(request.userMessage).toContain('A deliberate pause before the visitor arrives.');
+    expect(request.capability).toBeUndefined();
   });
 
   it('preserves prompt and streaming inputs in the run request', async () => {

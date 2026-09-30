@@ -3,7 +3,7 @@
  * multi-turn).
  *
  * The Workshop editor tab runs the EXISTING analysis tools (dialogue, prose,
- * and the twelve WritingToolsFocus modes) against an excerpt pinned host-side
+ * and the WritingToolsFocus modes) against an excerpt pinned host-side
  * in WorkshopSessionService. These contracts carry tool ids and completed
  * turns — never raw model prompts and never the API key.
  *

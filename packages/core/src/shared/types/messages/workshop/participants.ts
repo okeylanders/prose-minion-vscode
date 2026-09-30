@@ -3,8 +3,8 @@
 import { MessageEnvelope, MessageType } from '../base';
 import { WritingToolsFocus } from '../analysis';
 /**
- * Wire id for a Workshop tool — the design catalog's 14 tools mapped 1:1 onto
- * the existing analysis contracts: `dialogue`, `prose`, and the twelve
+ * Wire id for a Workshop tool — the catalog entries map onto
+ * the existing analysis contracts: `dialogue`, `prose`, and the
  * WritingToolsFocus modes. The handler routes on this; it never invents tools.
  */
 export type WorkshopToolId = 'dialogue' | 'prose' | WritingToolsFocus;

@@ -121,7 +121,7 @@ export const WorkshopPathChooser: React.FC<WorkshopPathChooserProps> = ({
               <Icon name="doc" size={14} /> Choose from project…
             </button>
           </div>
-          <div className="pm-ws-path-note">All 14 tools available · guests can be invited</div>
+          <div className="pm-ws-path-note">All analysis tools available · guests can be invited</div>
         </div>
 
         <div className="pm-ws-path-card pm-ws-path-card-chat">

@@ -218,5 +218,27 @@ describe('FileOperationsHandler', () => {
       );
       expect(appendLine).toHaveBeenCalledWith(expect.stringContaining('[FileOpsHandler] ERROR file_ops.save'));
     });
+
+    it('saves Craft Steering through its named analysis result contract', async () => {
+      handler.registerRoutes(router);
+
+      await router.route({
+        type: MessageType.SAVE_RESULT,
+        source: 'webview.workshop',
+        payload: {
+          toolName: 'writing_tools_craft-steering',
+          content: '# Craft Steering Analysis\n\nThe pause changes the rhythm.'
+        },
+        timestamp: 0
+      });
+
+      expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SAVE_RESULT_SUCCESS,
+        payload: expect.objectContaining({
+          toolName: 'writing_tools_craft-steering',
+          filePath: expect.stringContaining('craft-steering-analysis-1.md')
+        })
+      }));
+    });
   });
 });

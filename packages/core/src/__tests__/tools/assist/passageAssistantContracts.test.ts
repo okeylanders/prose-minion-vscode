@@ -105,6 +105,7 @@ describe('passage assistant contracts', () => {
     ['gestures', 'choreographic event generation', 'convert static descriptions into live choreographic events'],
     ['choreography', 'scene-wide choreography analysis', 'scene-wide choreography patterns'],
     ['stock-and-signature', 'cognitive economy analysis', 'cognitive economy: categorize each beat'],
+    ['craft-steering', 'sound, rhythm, sentence-to-sentence movement', 'perform a Craft Steering Analysis'],
     ['placeholders', 'bidirectional precision analysis', 'two directions: (1) SHARPEN']
   ];
 
