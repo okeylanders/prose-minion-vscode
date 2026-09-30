@@ -48,6 +48,23 @@ Let a writer branch from any rewindable point of a saved (named) session into a 
    - **Memory bank.** Add `.memory-bank/YYYYMMDD-HHMM-workshop-rewind-and-branch.md` with facts, verification run and follow-ups.
    - **Archive.** Move the epic to `.todo/archive/epics/` after merge, with an `ARCHIVE.md` note.
 
+## Inputs from Sprint 02
+
+- **Cut and export.** `rewindWorkshopSession` (in `session/WorkshopSessionRewind.ts`) is the §7 step 4 transform, unchanged. Its `summary` already counts what the branch leaves out. The coordinator's `exportLiveRoom()` is the export `capture()` uses.
+- **Promotion core.** `installRoom(workshop, conversations)` is the import-and-hydrate core that `hydrate()` (and so Open) and Rewind share. Branch promotes a *new named* session, so it also takes a new identity, `activeNamedSessionId` and accepted checkpoint, as `promoteNamedSession` does. Build on that path rather than on Rewind's in-place install.
+- **Refusals and copy.**
+  - `WorkshopRewindRefusedError` (re-exported by the coordinator, because handlers may not import session collaborators) and `workshopRewindUnavailableReason` cover Branch's policy refusals.
+  - `rewindCutForBubble(turnId)` maps a bubble to its cut.
+  - Add the save-first popup to `workshopSessionConfirmCopy.ts`, beside the rewind copy.
+- **Webview.**
+  - Branch sits beside `WorkshopRewindAction` in both footers and reads the same host verdict and room-wide paused reason.
+  - The latest reply offers Branch but not Rewind (ADR Sprint 02 finding 5). `WorkshopApp.threadRewindability` drops that bubble's verdict today, so pass Branch the unfiltered map.
+  - A writer-bubble branch re-seeds the composer exactly as the rewind route does.
+- **Kickoff consideration: coordinator size.** Sprint 02 took `WorkshopSessionPersistenceCoordinator` from 1,364 to 1,574 lines. Branch is its fourth room-replacement operation (New, Open, Rewind, Branch), and all four share rollback, installation and a durable write. Decide at kickoff whether Branch lands in the coordinator or in an extracted room-replacement collaborator.
+- **Open follow-ups to schedule or defer.**
+  - [Rewound widget commits: reopen the released config](../../../tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
+  - [Time notices outlive their conversations](../../../tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). Branch inherits both through the shared transform.
+
 ## Tests
 
 - **Unnamed source.**

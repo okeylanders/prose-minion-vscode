@@ -1,6 +1,6 @@
 # ADR 2026-09-30: Workshop Rewind and Branch
 
-**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)) and Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions))
+**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)), Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions)) and Sprint 02 findings (see [Sprint 02 implementation findings](#sprint-02-implementation-findings))
 **Date:** 2026-09-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md)
 **Answers:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md), rejected alternative "Fork or branch the conversation into the new session"
@@ -118,10 +118,22 @@ rewindWorkshopSession(input: {
 }): {
   workshop: WorkshopSessionStateV1;
   conversations: ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[];
-  droppedConversationKeys: WorkshopConversationLogicalKey[];
-  composerRestore?: { text: string; attachmentIds: string[] };
+  summary: {                                   // counted once; callers never recount
+    keptThroughTurnId: string;
+    removedTurnCount: number;
+    droppedConversationKeys: WorkshopConversationLogicalKey[];
+    removedTodoCount: number;
+  };
+  composerRestore?: {                          // writer-bubble cuts only
+    text: string;
+    attachmentIds: string[];                   // restaged under their original ta-N ids
+    unrestoredAttachmentLabels: string[];      // the writer re-attaches these
+  };
+  unverifiedConversationKeys: WorkshopConversationLogicalKey[]; // diagnostics
 }
 ```
+
+A refused cut throws `WorkshopRewindRefusedError` carrying the policy's refusal reason. (Result shape amended in Sprint 02; see [Sprint 02 implementation findings](#sprint-02-implementation-findings), item 6.)
 
 It lives in its own module under `application/services/workshop/session/`. It does not grow `WorkshopSessionService`. Its rules:
 
@@ -135,7 +147,7 @@ It lives in its own module under `application/services/workshop/session/`. It do
   - Restore each reader's `lastSeenRoomTurnId` from its mark.
   - Drop sidecars whose `latestReportTurnId` was dropped or whose key was dropped.
   - Dispose guests whose key was dropped.
-  - Repair `chatTarget` to host when its target is gone. The transform does this itself, because strict validation runs before hydration's chat-target repair.
+  - Repair `chatTarget` to host when its target is gone. The transform does this itself, because strict validation runs before hydration's chat-target repair. A writer-bubble cut first points the target back at the rewound message's addressee when that participant survives (Sprint 02 finding 4).
   - Remove the host binding entirely when the host has no mark at or before C.
 - **Writer sources.**
   - Slice each participant's rows to its mark's `writerSourceCount`.
@@ -235,6 +247,19 @@ Confirmed 2026-09-30 before the transform was written. Each confirms or corrects
 3. **Conversation `lastActivity` is wall-clock and never rewound.** It is an intended oracle difference.
 4. **Host marks record the context revision the host holds (amends §2 Context and §3).** The divider rule is not exact. A kept divider after the host's last kept commit is undelivered at the cut. A context edit made during a host run is not delivered by that run. A session-open file refresh changes the revision with no divider at all. Excerpt delivery has a record, the host pin rows; context delivery had none. Host marks therefore carry an optional `contextRevision`: the context revision the host holds at that rest point, which is `revisions.context` when no context update is pending and `revisions.pendingContext − 1` otherwise (a pending revision is always the current one). It is recorded at settlement and at baseline, and validated as host-only, non-decreasing, and never later than the revision the host currently holds. The transform re-queues `pendingContext` at the current revision exactly when the host's cut mark records an older one. Marks are unreleased, so there is no schema bump; an integration-branch checkpoint whose host marks lack the field degrades through the existing inconsistent-mark normalization.
 5. **Rewind is durable before it succeeds (amends §6 step 7).** Like New and Open, the operation writes inside itself. Any failure at transform, import, hydrate or write restores the prior room through `restoreRollback`, and the prior provider conversations are discarded only after the durable write succeeds. A rolling-mirror failure after a successful named write stays independently retryable and does not roll back. While `current.json` is protected, Rewind stays in memory, like every other mutation in that state.
+
+## Sprint 02 implementation findings
+
+Recorded 2026-09-30 while building Rewind. Each item corrects or completes a detail above; the decision itself stands.
+
+1. **An absent room offset stays absent for a participant with no retained conversation.** A cut before the host's first reply removes the host binding (§5), and the next host must receive the kept thread as catch-up. The hydration normalization `headed-missing-room-offsets` headed every absent `lastSeenRoomTurnId` to the ledger head, which is exactly the failure the "wipe participant histories" alternative describes: the fresh host would have received nothing. The normalization now heads offsets only for a host that retains a conversation and for live guests that do. An unbound host or a disposed guest has read nothing, so absence is its truth. The named-room coordinator test found this; regression tests cover both the normalization and the fresh host's catch-up after a rewind.
+2. **Participants a rewind drops are named in the action result, not in the degraded-memory banner.** The banner's copy ("will begin fresh on their next turn") describes hydration loss. A dropped participant is a consequence the writer chose, so the result says it plainly: the host starts fresh, a guest left the room, a tool's conversation was set aside and can be re-run.
+3. **A direct tool message's attachments are named for re-attach, not restaged.** Direct tool messages are private and never publish thread artifacts, so their attachment bodies exist only in the tool's provider history. Restaging them would mean parsing provider messages (invariant 2). A writer-bubble rewind of one restores the text and lists the attachments to re-attach. The same list names any attachment that no longer fits the composer's staging limit.
+4. **A writer edit returns the chat target to the message's addressee.** Without this, an edit of a message sent to a guest or a tool would be re-sent to whoever the target had become since. When the addressee did not survive the cut, the §5 repair applies and the target falls back to the host.
+5. **The latest reply offers no Rewind action.** The host still publishes a verdict for it, because the idle head is a real rest point: Side Quests pin it, and Branch from the latest reply is meaningful (Sprint 03). Rewinding there would change nothing, so the webview omits only that one action. This is a presentation choice, not a re-derived verdict.
+6. **The transform returns a cut summary, not loose fields.** `droppedConversationKeys` lives in `summary` beside `keptThroughTurnId`, `removedTurnCount` and `removedTodoCount`, so the action result, the log line and a future Side Quest divider read one count. `composerRestore` gains `unrestoredAttachmentLabels` (item 3), and `unverifiedConversationKeys` reports marks the transform could not trust, which it treats as unmarked, as the persisted boundary does. §5 shows the amended signature.
+7. **D7 gating in the webview.** Rewind follows New-session availability. While persistence is unavailable, every Rewind action is disabled with the reason ("Rewind needs a single-root workspace" or "Rewind needs an open workspace folder"). While the room is busy (a live turn, a run, the Context wizard, or a pending session change), every action is disabled with one busy reason. The host still refuses on its own; webview gating remains advisory.
+8. **Session handlers reach the rewind vocabulary through the coordinator.** The architecture guard forbids handlers from importing session collaborators. `WorkshopSessionPersistenceCoordinator` therefore re-exports `WorkshopRewindCut` and `WorkshopRewindRefusedError`. The bubble-to-cut mapping stays in `WorkshopSessionService` as thin delegation to the Sprint 01 policy.
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 # Sprint 02: Rewind
 
-**Status:** In progress — kickoff decisions confirmed 2026-09-30 (see [Kickoff decisions](#kickoff-decisions-2026-09-30))
+**Status:** In review — delivered 2026-09-30 on `sprint/workshop-rewind-and-branch-02-rewind`, PR into `epic/workshop-rewind-and-branch` (see [Delivery notes](#delivery-notes-2026-09-30))
 **Branch:** `sprint/workshop-rewind-and-branch-02-rewind`
 **Depends on:** Sprint 01
 **Blocks:** Sprint 03
@@ -125,3 +125,52 @@ Also decided, as implementation calls within the plan:
 ## Exit
 
 The equivalence oracle passes for every rest point in the scripted room. Rewind works end to end in unit, route and webview tests. Full Jest, all TypeScript projects, ESLint and `git diff --check` pass.
+
+## Delivery notes (2026-09-30)
+
+Every deliverable landed. The corrections below are also recorded in the ADR's [Sprint 02 implementation findings](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-02-implementation-findings).
+
+**Plan deviations.**
+- **Durable write.** The coordinator writes inside the operation rather than calling `markDirty` and leaving the write to autosave (kickoff decision 5). A named room updates its file through the identity-checked `updateNamed`; an unnamed room writes `current.json`.
+- **Result shape.** The transform returns `summary { keptThroughTurnId, removedTurnCount, droppedConversationKeys, removedTodoCount }`. `composerRestore` gains `unrestoredAttachmentLabels`, and the result reports `unverifiedConversationKeys` for diagnostics.
+- **Action result.** It names the participants the rewind dropped. Hydration-degraded participants still arrive as recovery notices.
+- **Confirm union.** It carries `edit`, so a writer message reads "Edit this message?" with the label "Rewind and edit".
+- **Gating.** Actions are disabled with a reason rather than hidden: one busy reason while the room is busy, and the D7 reason while persistence is unavailable. The latest reply offers no Rewind action (ADR finding 5).
+- **Offset normalization.** `headed-missing-room-offsets` now leaves an absent offset absent for a participant with no retained conversation. A cut before the host's first reply depends on it (ADR finding 1).
+
+**Modules.**
+- `session/WorkshopSessionRewind.ts` holds the pure transform and `WorkshopRewindRefusedError`.
+- `WorkshopSessionPersistenceCoordinator` adds `rewindTo`, `commitRewoundRoom` and `logRewind`. It shares three extracted cores:
+  - `installRoom` (import plus hydrate) with `hydrate`, and so with Open;
+  - `exportLiveRoom` with `capture`;
+  - `acceptNamedWrite` with the named write path.
+- `WorkshopSessionService` gains two delegating methods: `evaluateRewindCut` and `rewindCutForBubble`.
+- `WORKSHOP_REWIND_SESSION` is a registered mutation in `WorkshopSessionMessageHandler`. The writer-facing refusal copy lives in `shared/constants/workshopRewind.ts`.
+- On the webview side, `useWorkshopRoom.turnRewindability` feeds the bubble action (`WorkshopTurnBubble`), `useWorkshopSessions.rewindTo` sends the request, and `workshopSessionConfirmCopy.ts` holds the confirm copy.
+
+**Supporting changes.**
+- Context-source re-delivery now appends a row and stales the superseded one.
+- Host marks record `contextRevision`.
+- The canonical scripted room installs a standing directive before the host's first reply, commits a one-shot widget and re-delivers a resource (PR #117 F-02).
+- One integration case drives a real `AgentRunEngine` through two multi-round commits with the production count reader (F-02).
+
+**Proof.**
+- **Equivalence oracle** (`WorkshopSessionRewind.oracle.test.ts`):
+  - Every rest point after the directive floor rewinds to its recorded room, modulo eight named intended differences, and a vacuity guard proves each difference occurs.
+  - It is mutation-checked: the ADR's original divider rule fails it, and so does removing the stale-chain recompute.
+- **Transform table and properties** (`WorkshopSessionRewind.test.ts`, 23 tests). The unit table, strict validation, counters never lowered, and rewinding to the head as the identity.
+- **Coordinator** (`WorkshopSessionRewindCoordinator.test.ts`, 16 tests):
+  - named and unnamed writes;
+  - rollback at transform, import, hydrate and write;
+  - refusals (a run, a pending operation, a split run, the directive floor, no workspace);
+  - the protected `current.json` case;
+  - generic cuts for a Side Quest end;
+  - a removed host's full catch-up;
+  - temporal state kept current.
+- **Route** (`WorkshopRoutes.rewind.test.ts`, 7 tests) and the **webview** bubble, confirm, composer and snapshot tests.
+
+**Follow-ups captured.**
+- [Rewound widget commits: reopen the released config](../../../tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
+- [Time notices outlive their conversations](../../../tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host after an "Edit from here" on the first message gets no time frame for up to an hour.
+
+Manual Extension Development Host smoke is recorded with Sprint 03's, as that plan specifies.
