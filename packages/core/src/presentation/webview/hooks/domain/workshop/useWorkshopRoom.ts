@@ -58,6 +58,7 @@ import {
   WorkshopToolId,
   WorkshopTodoAction,
   WorkshopTodoItem,
+  WorkshopTurnRewindability,
   WorkshopTurn,
   WorkshopTurnMessage,
   WorkshopWriterProfile,
@@ -130,6 +131,11 @@ export interface WorkshopRoomState {
   /** True while the Context wizard streams under 'workshop-context'. */
   wizardRunning: boolean;
   turns: WorkshopTurn[];
+  /**
+   * The host's Rewind verdicts for the eligible bubbles in `turns` (ADR
+   * 2026-09-30 §4). Rendered, never re-derived: the host re-checks anyway.
+   */
+  turnRewindability: Readonly<Record<string, WorkshopTurnRewindability>>;
   /**
    * Turns held host-side but not present in this webview (a bounded snapshot
    * window bit on reload of a marathon thread). 0 in normal operation.
@@ -293,6 +299,8 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [wizardRun, setWizardRun] = React.useState<string | null>(null);
   const [contextSearch, setContextSearch] = React.useState<WorkshopContextSearchResultsPayload | null>(null);
   const [turns, setTurns] = React.useState<WorkshopTurn[]>([]);
+  const [turnRewindability, setTurnRewindability] =
+    React.useState<Readonly<Record<string, WorkshopTurnRewindability>>>({});
   const [totalTurns, setTotalTurns] = React.useState(0);
   const [hasHostConversation, setHasHostConversation] = React.useState(false);
   const [selectedPersonaId, setSelectedPersonaId] = React.useState<WorkshopPersonaId>('jill');
@@ -647,7 +655,9 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       // The host snapshot is authoritative. Marathon sessions deliberately
       // expose only the latest bounded window in the webview; the aggregate and
       // persisted session retain the complete ledger for future pagination.
+      // A rewind arrives the same way: a shorter snapshot replaces the thread.
       setTurns(session.turns);
+      setTurnRewindability(session.turnRewindability ?? {});
 
       const activeRequestId = session.activeRequestId ?? null;
       if (activeRequestId) {
@@ -793,6 +803,7 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     contextSearch,
     wizardRunning: wizardRun !== null,
     turns,
+    turnRewindability,
     hiddenTurns,
     hasHostConversation,
     selectedPersonaId,

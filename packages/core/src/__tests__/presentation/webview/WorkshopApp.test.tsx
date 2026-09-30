@@ -265,6 +265,112 @@ describe('WorkshopApp', () => {
       .toBe('Keep this draft safe.');
   });
 
+  describe('Rewind (ADR 2026-09-30)', () => {
+    const message = (id: string, role: 'user' | 'assistant', content: string): WorkshopTurn => ({
+      id,
+      role,
+      kind: 'message',
+      participant: role === 'user' ? 'writer' : 'host',
+      artifact: 'persona_message',
+      ...(role === 'assistant' ? { personaId: 'jill' as const, personaLabel: 'Jill' } : {}),
+      content,
+      timestamp: 1,
+      excerptVersion: 0
+    });
+    const question = message('turn-2-user-2', 'user', 'What does the cup mean?');
+    const answer = message('turn-3-assistant-3', 'assistant', 'It is a promise.');
+    const followUp = message('turn-4-user-4', 'user', 'And the sill?');
+    const latest = message('turn-5-assistant-5', 'assistant', 'It is the threshold.');
+    const roomWith = (turns: WorkshopTurn[]) => {
+      const state = readySession();
+      state.payload.session.turns = turns;
+      state.payload.session.totalTurns = turns.length;
+      state.payload.session.turnRewindability = Object.fromEntries(
+        turns.filter((turn) => turn.kind === 'message').map((turn) => [turn.id, { available: true as const }])
+      );
+      return state;
+    };
+    const rewindPosts = () => vscode.postMessage.mock.calls
+      .map(([posted]) => posted)
+      .filter((posted) => posted.type === MessageType.WORKSHOP_REWIND_SESSION);
+
+    it('offers no rewind on the latest reply, which is already where the room stands', () => {
+      render(<WorkshopApp />);
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: roomWith([existingTurn, question, answer, followUp, latest])
+        }));
+      });
+
+      // One agent action (the earlier reply) and two edit actions (both writer messages).
+      expect(screen.getAllByRole('button', { name: /Rewind to here/ })).toHaveLength(1);
+      expect(screen.getAllByRole('button', { name: /Edit from here/ })).toHaveLength(2);
+    });
+
+    it('confirms an agent-reply rewind with its removed count, and cancelling sends nothing', () => {
+      render(<WorkshopApp />);
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: roomWith([existingTurn, question, answer, followUp, latest])
+        }));
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Rewind to here/ }));
+      const dialog = screen.getByRole('dialog', { name: 'Rewind to here?' });
+      expect(dialog.textContent).toContain(
+        '2 turns will be removed. Your excerpt and context stay as they are now. ' +
+        'To keep this conversation too, use Branch instead.'
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(screen.queryByRole('dialog', { name: 'Rewind to here?' })).toBeNull();
+      expect(rewindPosts()).toEqual([]);
+    });
+
+    it('edits a writer message: confirm, then the host\'s shorter room and restored draft', () => {
+      render(<WorkshopApp />);
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: roomWith([existingTurn, question, answer, followUp, latest])
+        }));
+      });
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Edit from here/ })[0]);
+      const dialog = screen.getByRole('dialog', { name: 'Edit this message?' });
+      expect(dialog.textContent).toContain('This message and 3 turns after it will be removed.');
+      fireEvent.click(screen.getByRole('button', { name: 'Rewind and edit' }));
+
+      expect(rewindPosts()).toEqual([expect.objectContaining({
+        source: 'webview.workshop',
+        payload: { turnId: question.id }
+      })]);
+      // Nothing is removed until the host answers with the rewound room.
+      expect(screen.getByText('It is the threshold.')).not.toBeNull();
+
+      // The host restaged the message's one-shot attachment under its old id.
+      const rewound = roomWith([existingTurn]);
+      rewound.payload.session.pendingMessageAttachments = [
+        { id: 'ta-1', label: 'beat-sheet.md', words: 7 }
+      ];
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', { data: rewound }));
+        window.dispatchEvent(new MessageEvent('message', {
+          data: {
+            type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+            source: 'extension.workshop',
+            payload: { text: question.content },
+            timestamp: 2
+          }
+        }));
+      });
+
+      expect(screen.queryByText('It is the threshold.')).toBeNull();
+      expect(screen.queryByText('It is a promise.')).toBeNull();
+      expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe(question.content);
+      expect(screen.getByText(/beat-sheet\.md/)).not.toBeNull();
+    });
+  });
+
   it('opens the exact Creative persona prefill without generating or committing for the writer', () => {
     render(<WorkshopApp />);
     const session = readySession();

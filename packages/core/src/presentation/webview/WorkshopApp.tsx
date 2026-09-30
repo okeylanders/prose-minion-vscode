@@ -72,6 +72,8 @@ import { WorkshopContextSelectorModal } from './components/workshop/WorkshopCont
 import { WorkshopConversationBehaviorModal } from './components/workshop/WorkshopConversationBehaviorModal';
 import { WorkshopSessionBrowserModal } from './components/workshop/WorkshopSessionBrowserModal';
 import { WorkshopConfirmDialog } from './components/workshop/WorkshopConfirmDialog';
+import { workshopSessionConfirmCopy } from './components/workshop/workshopSessionConfirmCopy';
+import { workshopRewindUnavailableReason } from '@shared/constants/workshopRewind';
 import {
   WorkshopSaveSessionManifest,
   WorkshopSaveSessionModal
@@ -538,6 +540,7 @@ export const WorkshopApp: React.FC = () => {
     setSessionSearchQuery: workshopSessions.setSessionSearchQuery,
     resetSession: workshopSessions.resetSession,
     openSession: workshopSessions.openSession,
+    rewindTo: workshopSessions.rewindTo,
     consumeSessionActionResult: workshopSessions.consumeSessionActionResult,
     onResult: handleSessionResult
   });
@@ -746,6 +749,42 @@ export const WorkshopApp: React.FC = () => {
     },
     [vscode]
   );
+
+  // Rewind (ADR 2026-09-30 §4, §6): the host verdict decides each bubble; the
+  // room's own busy states pause every bubble at once, with one reason.
+  const rewindPausedReason = showLiveTurn || workshop.isRunning || workshop.wizardRunning
+    ? workshopRewindUnavailableReason('busy')
+    : roomMutationLocked
+      ? 'Wait for the current session change to finish'
+      : !workshop.persistenceAvailable
+        ? workshop.persistenceUnavailableReason === 'multi-root'
+          ? 'Rewind needs a single-root workspace'
+          : 'Rewind needs an open workspace folder'
+        : undefined;
+  // The latest reply is already where the room stands: rewinding there would
+  // change nothing, so it offers no action.
+  const threadRewindability = React.useMemo(() => {
+    const latest = workshop.turns.at(-1);
+    if (!latest || latest.role !== 'assistant' || !(latest.id in workshop.turnRewindability)) {
+      return workshop.turnRewindability;
+    }
+    const { [latest.id]: _latest, ...earlier } = workshop.turnRewindability;
+    return earlier;
+  }, [workshop.turns, workshop.turnRewindability]);
+  const requestRewind = React.useCallback((turn: WorkshopTurn) => {
+    const index = workshop.turns.findIndex((candidate) => candidate.id === turn.id);
+    if (index < 0) {
+      return;
+    }
+    // The window is always the ledger's newest turns, so every removed turn
+    // is on screen: everything after a reply, and a writer message itself.
+    const removedCount = workshop.turns.length - index - (turn.role === 'user' ? 0 : 1);
+    sessionSurfaces.requestRewind(
+      turn.id,
+      removedCount,
+      turn.role === 'user' && turn.widgetCommit === undefined
+    );
+  }, [sessionSurfaces.requestRewind, workshop.turns]);
 
   const saveTurn = React.useCallback(
     (content: string, turn: WorkshopTurn) => {
@@ -1232,6 +1271,9 @@ export const WorkshopApp: React.FC = () => {
                 onSave={saveTurn}
                 onOpenWidgetConfig={widgetOpening.openWidgetConfig}
                 onOpenWidgetRecommendation={widgetOpening.openWidgetRecommendation}
+                turnRewindability={threadRewindability}
+                rewindPausedReason={rewindPausedReason}
+                onRewind={requestRewind}
               />
 
               {showLiveTurn && (
@@ -1619,33 +1661,7 @@ export const WorkshopApp: React.FC = () => {
       />
       <WorkshopConfirmDialog
         open={sessionConfirm !== null}
-        title={sessionConfirm?.kind === 'open'
-          ? `Open “${sessionConfirm.title}”?`
-          : sessionConfirm?.kind === 'new-full'
-            ? 'Clear the excerpt and context?'
-            : sessionConfirm?.kind === 'replace-shelf'
-              ? 'Replace the passage you set aside?'
-              : 'Start a new session?'}
-        body={sessionConfirm?.kind === 'open'
-          ? 'Your current Workshop room will be replaced.'
-          : sessionConfirm?.kind === 'new-full'
-            ? 'This starts an empty room: the excerpt, anything on the shelf, every ' +
-              'context attachment, the thread, tasks, guests, and conversation memory ' +
-              'are all cleared. Saved sessions on disk are not touched.'
-            : sessionConfirm?.kind === 'replace-shelf'
-              ? `“${shelvedExcerptTitle ?? 'The set-aside passage'}” was typed or pasted ` +
-                'straight into the room, so the shelf is the only place it exists — ' +
-                'pinning a new excerpt discards it for good. To bring it back instead, ' +
-                'cancel and use “Re-pin”. Your conversation is kept either way.'
-              : 'The pinned excerpt and standing context stay; the thread, tasks, ' +
-                'guests, and conversation memory reset.'}
-        confirmLabel={sessionConfirm?.kind === 'open'
-          ? 'Open session'
-          : sessionConfirm?.kind === 'new-full'
-            ? 'Clear everything'
-            : sessionConfirm?.kind === 'replace-shelf'
-              ? 'Discard and pin a new one'
-              : 'New session'}
+        {...workshopSessionConfirmCopy(sessionConfirm, { shelvedExcerptTitle })}
         onConfirm={acceptSessionConfirm}
         onCancel={cancelSessionConfirm}
       />

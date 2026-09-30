@@ -14,7 +14,12 @@
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
-import { WorkshopPersonaId, WorkshopToolId, WorkshopTurn } from '@messages';
+import {
+  WorkshopPersonaId,
+  WorkshopToolId,
+  WorkshopTurn,
+  WorkshopTurnRewindability
+} from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
 import { WORKSHOP_WIDGET_ICONS } from './workshopWidgetIcons';
@@ -23,6 +28,7 @@ import {
   workshopWidgetLabel,
   workshopWidgetSelectionUnitLabel
 } from '@shared/constants/workshopWidgets';
+import { workshopRewindUnavailableReason } from '@shared/constants/workshopRewind';
 
 interface WorkshopTurnBubbleProps {
   turn: WorkshopTurn;
@@ -48,7 +54,48 @@ interface WorkshopTurnBubbleProps {
     personaLabel?: string,
     personaId?: WorkshopPersonaId
   ) => void;
+  /**
+   * The host's verdict for this bubble's Rewind action (ADR 2026-09-30 §4);
+   * absent when the bubble offers none. Rendered, never re-derived.
+   */
+  rewindability?: WorkshopTurnRewindability;
+  /** Why rewinding is paused for the whole room right now, if it is. */
+  rewindPausedReason?: string;
+  onRewind?: (turn: WorkshopTurn) => void;
 }
+
+/**
+ * The bubble's Rewind action. A writer message rewinds as an edit (its text
+ * returns to the composer), except a widget commit's, whose draft stays with
+ * its widget. A disabled action carries the reason instead of vanishing.
+ */
+const WorkshopRewindAction: React.FC<{
+  turn: WorkshopTurn;
+  rewindability: WorkshopTurnRewindability;
+  pausedReason?: string;
+  onRewind: (turn: WorkshopTurn) => void;
+}> = ({ turn, rewindability, pausedReason, onRewind }) => {
+  const edit = turn.role === 'user' && turn.widgetCommit === undefined;
+  const unavailable = rewindability.available
+    ? pausedReason
+    : workshopRewindUnavailableReason(rewindability.reason);
+  const hint = turn.role === 'user'
+    ? edit
+      ? 'Remove this message and everything after it; its text returns to the composer'
+      : 'Remove this message and everything after it'
+    : 'Keep this reply and remove everything after it';
+  return (
+    <button
+      type="button"
+      className="pm-ws-rewind-action"
+      disabled={unavailable !== undefined}
+      title={unavailable ?? hint}
+      onClick={() => onRewind(turn)}
+    >
+      <Icon name="history" size={13} /> {edit ? 'Edit from here' : 'Rewind to here'}
+    </button>
+  );
+};
 
 interface ParsedVariation {
   number: string;
@@ -196,8 +243,21 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onCopy,
   onSave,
   onOpenWidgetConfig,
-  onOpenWidgetRecommendation
+  onOpenWidgetRecommendation,
+  rewindability,
+  rewindPausedReason,
+  onRewind
 }) => {
+  const rewindAction = rewindability && onRewind
+    ? (
+        <WorkshopRewindAction
+          turn={turn}
+          rewindability={rewindability}
+          pausedReason={rewindPausedReason}
+          onRewind={onRewind}
+        />
+      )
+    : null;
   // Persona replies are editorial conversation, not a tool artifact. Never
   // reinterpret their headings as tool variations with copy/save provenance.
   const parsedVariations = React.useMemo(
@@ -344,6 +404,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                   )} · re-open
                 </span>
               </button>
+            </div>
+          )}
+          {rewindAction && (
+            <div className="pm-ws-turn-actions pm-ws-turn-actions-writer">
+              {rewindAction}
             </div>
           )}
         </div>
@@ -547,6 +612,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               <Icon name="dialogue" size={13} /> Talk directly to {turn.toolLabel}
             </button>
           )}
+          {rewindAction}
         </div>
         {turn.widgetRecommendation && onOpenWidgetRecommendation && (
           <button

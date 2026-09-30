@@ -852,3 +852,115 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(metadata).not.toContain('0 bytes searched');
   });
 });
+
+describe('WorkshopTurnBubble Rewind action (ADR 2026-09-30 §4)', () => {
+  const noop = () => undefined;
+  const hostReply: WorkshopTurn = {
+    id: 'turn-4-assistant-1',
+    role: 'assistant',
+    kind: 'message',
+    participant: 'host',
+    artifact: 'persona_message',
+    personaId: 'jill',
+    personaLabel: 'Jill',
+    content: 'A host reply.',
+    timestamp: 0,
+    excerptVersion: 1
+  };
+  const writerMessage: WorkshopTurn = {
+    id: 'turn-3-user-1',
+    role: 'user',
+    kind: 'message',
+    participant: 'writer',
+    artifact: 'persona_message',
+    content: 'What does the cup mean?',
+    timestamp: 0,
+    excerptVersion: 1
+  };
+  const renderBubble = (
+    turn: WorkshopTurn,
+    props: Partial<React.ComponentProps<typeof WorkshopTurnBubble>> = {}
+  ) => render(
+    <WorkshopTurnBubble
+      turn={turn}
+      quickActionToolId={null}
+      onQuickAction={noop}
+      onTalkDirectly={noop}
+      onCopy={noop}
+      onSave={noop}
+      {...props}
+    />
+  );
+
+  it('offers Rewind on an agent reply and calls back with the turn', () => {
+    const onRewind = jest.fn();
+    renderBubble(hostReply, { rewindability: { available: true }, onRewind });
+
+    const action = screen.getByRole('button', { name: /Rewind to here/ });
+    expect((action as HTMLButtonElement).disabled).toBe(false);
+    expect(action.getAttribute('title')).toBe('Keep this reply and remove everything after it');
+    fireEvent.click(action);
+    expect(onRewind).toHaveBeenCalledWith(hostReply);
+  });
+
+  it('gives a writer message its own footer, where rewinding is an edit', () => {
+    const onRewind = jest.fn();
+    const { container } = renderBubble(writerMessage, {
+      rewindability: { available: true },
+      onRewind
+    });
+
+    expect(container.querySelector('.pm-ws-turn-user .pm-ws-turn-actions-writer')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Edit from here/ }));
+    expect(onRewind).toHaveBeenCalledWith(writerMessage);
+  });
+
+  it('keeps a widget-commit message a plain rewind: its draft stays with the widget', () => {
+    renderBubble({
+      ...writerMessage,
+      widgetCommit: {
+        widgetId: 'gesture-playground',
+        widgetConfigId: 'wc-1',
+        rail: 'thread-artifact',
+        artifactId: 'ta-2',
+        selectionCount: 1
+      }
+    }, { rewindability: { available: true }, onRewind: jest.fn() });
+
+    expect(screen.getByRole('button', { name: /Rewind to here/ }).getAttribute('title'))
+      .toBe('Remove this message and everything after it');
+    expect(screen.queryByRole('button', { name: /Edit from here/ })).toBeNull();
+  });
+
+  it.each([
+    ['before-rewind-support', 'Saved before rewind support'],
+    ['before-directive-change', "Can't cross a prose directive change yet"],
+    ['busy', 'Wait for the current response to finish']
+  ] as const)('disables the action with its reason when the host says %s', (reason, text) => {
+    const onRewind = jest.fn();
+    renderBubble(hostReply, { rewindability: { available: false, reason }, onRewind });
+
+    const action = screen.getByRole('button', { name: /Rewind to here/ });
+    expect((action as HTMLButtonElement).disabled).toBe(true);
+    expect(action.getAttribute('title')).toBe(text);
+    fireEvent.click(action);
+    expect(onRewind).not.toHaveBeenCalled();
+  });
+
+  it('pauses an available action while the room is busy, with the paused reason', () => {
+    renderBubble(hostReply, {
+      rewindability: { available: true },
+      rewindPausedReason: 'Wait for the current session change to finish',
+      onRewind: jest.fn()
+    });
+
+    const action = screen.getByRole('button', { name: /Rewind to here/ }) as HTMLButtonElement;
+    expect(action.disabled).toBe(true);
+    expect(action.getAttribute('title')).toBe('Wait for the current session change to finish');
+  });
+
+  it('offers nothing where the host published no verdict', () => {
+    renderBubble(hostReply, { onRewind: jest.fn() });
+    expect(screen.queryByRole('button', { name: /Rewind to here/ })).toBeNull();
+  });
+});

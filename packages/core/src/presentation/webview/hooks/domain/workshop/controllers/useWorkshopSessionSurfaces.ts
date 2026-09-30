@@ -10,7 +10,12 @@ export type WorkshopSessionConfirm =
   | { kind: 'new' }
   | { kind: 'new-full' }
   | { kind: 'open'; sessionId: string; title: string }
-  | { kind: 'replace-shelf'; resume: 'paste' | 'choose' };
+  | { kind: 'replace-shelf'; resume: 'paste' | 'choose' }
+  /**
+   * Rewind to one bubble (ADR 2026-09-30, D4: Rewind confirms). `edit` marks a
+   * writer message whose text returns to the composer.
+   */
+  | { kind: 'rewind'; turnId: string; removedCount: number; edit: boolean };
 
 /** Work this controller cannot resolve alone; the shell must finish it. */
 export type WorkshopSessionConfirmResumption = { resume: 'paste' | 'choose' };
@@ -27,6 +32,7 @@ export interface UseWorkshopSessionSurfacesOptions {
   setSessionSearchQuery: (query: string) => void;
   resetSession: (options?: { clearWorkingSet?: boolean }) => void;
   openSession: (sessionId: string) => void;
+  rewindTo: (turnId: string) => void;
   consumeSessionActionResult: () => void;
   onResult: (result: WorkshopSessionActionResultMessage['payload']) => void;
 }
@@ -48,6 +54,7 @@ export interface WorkshopSessionSurfacesActions {
   startFullReset: () => void;
   openStoredSession: (session: WorkshopSessionSummary) => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
+  requestRewind: (turnId: string, removedCount: number, edit: boolean) => void;
   acceptSessionConfirm: () => WorkshopSessionConfirmResumption | undefined;
   cancelSessionConfirm: () => void;
 }
@@ -73,6 +80,7 @@ export function useWorkshopSessionSurfaces({
   setSessionSearchQuery,
   resetSession,
   openSession,
+  rewindTo,
   consumeSessionActionResult,
   onResult
 }: UseWorkshopSessionSurfacesOptions): UseWorkshopSessionSurfacesReturn {
@@ -190,6 +198,13 @@ export function useWorkshopSessionSurfaces({
     setSessionConfirm({ kind: 'replace-shelf', resume });
   }, []);
 
+  const requestRewind = React.useCallback(
+    (turnId: string, removedCount: number, edit: boolean) => {
+      setSessionConfirm({ kind: 'rewind', turnId, removedCount, edit });
+    },
+    []
+  );
+
   const acceptSessionConfirm = React.useCallback(() => {
     if (!sessionConfirm) {
       return undefined;
@@ -201,11 +216,13 @@ export function useWorkshopSessionSurfaces({
       resetSession({ clearWorkingSet: true });
     } else if (sessionConfirm.kind === 'open') {
       openSession(sessionConfirm.sessionId);
+    } else if (sessionConfirm.kind === 'rewind') {
+      rewindTo(sessionConfirm.turnId);
     } else {
       return { resume: sessionConfirm.resume };
     }
     return undefined;
-  }, [openSession, resetSession, sessionConfirm]);
+  }, [openSession, resetSession, rewindTo, sessionConfirm]);
 
   const cancelSessionConfirm = React.useCallback(() => setSessionConfirm(null), []);
 
@@ -259,6 +276,7 @@ export function useWorkshopSessionSurfaces({
     startFullReset,
     openStoredSession,
     requestShelfReplacement,
+    requestRewind,
     acceptSessionConfirm,
     cancelSessionConfirm,
     persistedState: {}
