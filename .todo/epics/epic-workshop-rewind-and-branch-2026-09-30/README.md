@@ -68,6 +68,10 @@ Each sprint branch is cut from the integration branch and merged back through it
 - [ ] Manual Extension Development Host smoke recorded (see Sprint 03).
 - [ ] Memory-bank completion entry; parked Branch Board feature updated with lineage follow-up.
 
+## Adjacent feature: Side Quests
+
+[Side Quests](../../features/feature-workshop-side-quests/README.md) are automated rewind: Start pins the current point and End rewinds to it. This epic lays only the foundation. Sprint 01 separates "valid cut point" from bubble eligibility, and Sprint 02 adds the generic `rewindTo(cut, { origin })` operation and a cut summary. No Side Quest state, divider types or UI ship here.
+
 ## Out of scope
 
 - Rewinding the working set (excerpt text, context bodies, to-do statuses).

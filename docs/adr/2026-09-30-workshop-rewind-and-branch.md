@@ -237,6 +237,8 @@ A sidecar marks file was considered and rejected for v1. It would have kept sess
 
 ## Follow-ups
 
+- [Side Quests](../../.todo/features/feature-workshop-side-quests/README.md): Start pins the current idle head and End rewinds to it. This ADR's cut policy therefore answers for any rest point, dividers included, and the rewind operation is generic over its origin. Side Quest state and UI are decided in that feature, not here.
+
 - Branch lineage metadata and a "branched from" row in the session browser. This belongs with the parked [Branch Board](../../.todo/features/feature-workshop-branch-board/README.md) feature's explicit branch model.
 - Crossing standing-directive changes, which needs directive revision history.
 - Optional verified backfill of marks for pre-baseline turns.

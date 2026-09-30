@@ -31,7 +31,9 @@ Let a writer rewind the room to any rewindable rest point, exactly. All cutting 
    - marks kept at or before C.
 
    For a `beforeTurn` cut, restage the writer turn's `messageAttachments` bodies from `threadArtifacts` into `pendingMessageAttachments` with their original `ta-N` ids.
-2. **Coordinator operation.** Add `rewindTo(turnId)` in `WorkshopSessionPersistenceCoordinator`, following the ADR §6 sequence:
+
+   The result also carries a **cut summary**: `{ removedTurnCount, droppedConversationKeys, removedTodoCount }`. The action result and Side Quest's closing divider both use it, so no caller recounts.
+2. **Coordinator operation.** Add a generic `rewindTo(cut, { origin: 'writer' | 'sideQuestEnd' })` in `WorkshopSessionPersistenceCoordinator`. It validates the cut with `evaluateCut`, not the bubble layer. The `origin` selects notice copy and whether the composer is re-seeded (`'writer'` only); a later origin needs no new operation. Only `'writer'` is wired to a route in this sprint. It follows the ADR §6 sequence:
    - `serializeSessionOperation`;
    - active-run refusal and policy re-check;
    - `captureRollback`;
@@ -79,6 +81,7 @@ Let a writer rewind the room to any rewindable rest point, exactly. All cutting 
   - to-do sourced after C (removed);
   - one-shot widget commit after C;
   - a `beforeTurn` cut with attachments (restaged with the same ids).
+- **Generic cuts.** Cutting at a divider or at the idle head through `rewindTo(cut, { origin: 'sideQuestEnd' })` works and does not re-seed the composer. The cut summary counts are correct.
 - **Property checks.** Output always passes strict `validateWorkshopSessionStateV1`. Counters are never lower. Rewinding to the head is the identity.
 - **Coordinator.**
   - Injected failures at transform, import, hydrate and write each leave the prior room and bindings intact.

@@ -36,9 +36,10 @@ Make "where did each participant's history stand after turn T?" an exact, persis
    - Add integrity rules in `WorkshopSessionStateV1Integrity.ts`: the turn exists, the key is well-formed, `messageCount` is even and ≥ 0, and marks are non-decreasing per key in ledger order.
    - At the persisted-session boundary, check each key against its archive length. A key whose marks exceed its archive is dropped with a logged `WorkshopSessionCheckpointNormalization`-style entry.
    - No `schemaVersion` bump (ADR §9).
-7. **Rewindability.**
-   - Add `session/WorkshopRewindPolicy.ts`, a pure function from ledger + marks + directive markers + run state to a per-turn result: `{ rewind: true } | { rewind: false; reason: 'not-a-rest-point' | 'before-rewind-support' | 'before-directive-change' | 'busy' }`, covering ADR §1 and §4.
-   - Publish it on the snapshot for windowed turns only, as a display-safe map or per-turn field. Update `WorkshopSessionSnapshot` docs and the webview type, but do not render it yet.
+7. **Rewindability.** Add `session/WorkshopRewindPolicy.ts` with two layers. They stay separate so that non-bubble callers, starting with [Side Quests](../../../features/feature-workshop-side-quests/README.md), can cut at dividers.
+   - **Cut layer: `evaluateCut(cut)`.** A pure function from ledger + marks + directive markers + run state that answers "can the room be cut here?" for any cut `{ kind: 'afterTurn' | 'beforeTurn'; turnId }`, including dividers and session markers. It returns `{ ok: true } | { ok: false; reason: 'not-a-rest-point' | 'before-rewind-support' | 'before-directive-change' | 'busy' }`, covering ADR §1 rest points and §4. The ledger head while idle is always a valid `afterTurn` cut.
+   - **Bubble layer.** A thin mapping from eligible bubbles to their cut (ADR §1 table), then `evaluateCut`. Ineligible bubbles report `not-a-rest-point`.
+   - **Snapshot.** Publish the bubble result on the snapshot for windowed turns only, as a display-safe map or per-turn field. Update `WorkshopSessionSnapshot` docs and the webview type, but do not render it yet.
 8. **Architecture guard.** Add a test in `__tests__/architecture/` that fails if a Workshop code path commits a retained conversation without recording a mark, for example by asserting that the two completion functions are the only callers that finalize Workshop runs. Model it on the existing single-delivery-site guard.
 
 ## Tests
@@ -60,6 +61,7 @@ Make "where did each participant's history stand after turn T?" an exact, persis
   - Mismatched marks degrade to "unmarked" without failing the open.
 - Shape and integrity reject malformed marks. A legacy fixture (no field) still opens.
 - Policy truth table:
+  - `evaluateCut` on dividers, session markers and the idle head (valid), and mid-run positions (invalid);
   - every bubble type;
   - pre-baseline host turns;
   - a directive floor;
