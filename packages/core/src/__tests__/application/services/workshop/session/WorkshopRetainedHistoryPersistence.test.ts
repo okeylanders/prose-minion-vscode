@@ -159,6 +159,82 @@ describe('retained-history mark persistence (ADR 2026-09-30 §3, §9)', () => {
       .toEqual(hostImported ? [expect.objectContaining({ origin: 'baseline' })] : []);
   });
 
+  /**
+   * Review F-01 (docs/pr-reviews/pr-117-retained-history-marks-3ca270d-review.md):
+   * ordered, monotonic, tail-verified marks can still omit a commit or anchor a
+   * commit to another participant's turn. Either would make a cut select the
+   * wrong history prefix, so the key degrades as a whole.
+   */
+  describe('commit anchors and sequence coverage', () => {
+    const synthesisProbe = () => {
+      const session = persisted(runCanonicalScriptedRoom());
+      const synthesis = session.workshop.turns.find(
+        (turn) => turn.artifact === 'persona_synthesis'
+      )!;
+      const synthesisMark = marksOf(session.workshop).find(
+        (mark) => mark.conversationKey === 'host' && mark.turnId === synthesis.id
+      )!;
+      return { session, synthesis, synthesisMark };
+    };
+    const withoutMarks = (state: WorkshopSessionStateV1) => {
+      const { retainedHistoryMarks: _marks, ...content } = state;
+      return content;
+    };
+
+    it.each([
+      ['a missing intermediate commit mark', (probe: ReturnType<typeof synthesisProbe>) => {
+        probe.session.workshop.retainedHistoryMarks = marksOf(probe.session.workshop)
+          .filter((mark) => mark !== probe.synthesisMark);
+      }],
+      ['a commit mark moved onto another participant\'s turn', (probe: ReturnType<typeof synthesisProbe>) => {
+        // The report precedes the synthesis and the host's offset already
+        // reaches it, so the offset rules cannot tell the mark is misplaced.
+        probe.synthesisMark.turnId = probe.synthesis.reportTurnId!;
+        expect(probe.synthesisMark.lastSeenRoomTurnId).toBe(probe.synthesis.reportTurnId);
+      }],
+      ['a spurious commit mark on another participant\'s turn', (probe: ReturnType<typeof synthesisProbe>) => {
+        // Coverage stays complete and every count stays monotonic; only the
+        // anchor rule sees that a cut at the report would keep the synthesis.
+        const marks = marksOf(probe.session.workshop);
+        marks.splice(marks.indexOf(probe.synthesisMark), 0, {
+          ...probe.synthesisMark,
+          turnId: probe.synthesis.reportTurnId!
+        });
+      }]
+    ])('degrades the whole host key for %s', (_label, tamper) => {
+      const probe = synthesisProbe();
+      const guestMarks = marksOf(probe.session.workshop)
+        .filter((mark) => mark.conversationKey === 'guest:margot');
+      // The latest host mark still equals the archive: the tail check passes.
+      const hostArchive = probe.session.conversations.find((entry) => entry.key === 'host')!;
+      expect(marksOf(probe.session.workshop).filter((mark) => mark.conversationKey === 'host').at(-1))
+        .toMatchObject({ messageCount: hostArchive.messages.length });
+      tamper(probe);
+
+      expect(() => validateWorkshopSessionStateV1(probe.session.workshop))
+        .toThrow(/retained-history marks are inconsistent \(keys=host\)/);
+      const decoded = decodeWorkshopPersistedSessionCheckpoint(probe.session);
+
+      expect(decoded.normalizations).toEqual(['dropped-inconsistent-retained-history-marks']);
+      expect(marksOf(decoded.session.workshop).filter((mark) => mark.conversationKey === 'host'))
+        .toEqual([]);
+      // Unrelated participants and every piece of writer content survive.
+      expect(marksOf(decoded.session.workshop).filter((mark) => mark.conversationKey === 'guest:margot'))
+        .toEqual(guestMarks);
+      expect(withoutMarks(decoded.session.workshop)).toEqual(withoutMarks(probe.session.workshop));
+      expect(decoded.session.conversations).toEqual(probe.session.conversations);
+
+      const { live } = open(decoded.session);
+      const head = decoded.session.workshop.turns.at(-1)!.id;
+      expect(marksOf(live.exportCommittedState()).filter((mark) => mark.conversationKey === 'host'))
+        .toEqual([expect.objectContaining({ turnId: head, origin: 'baseline' })]);
+      const verdicts = live.getSnapshot().turnRewindability;
+      expect(verdicts[probe.synthesis.id]).toEqual({ available: false, reason: 'before-rewind-support' });
+      expect(verdicts[probe.synthesis.reportTurnId!])
+        .toEqual({ available: false, reason: 'before-rewind-support' });
+    });
+  });
+
   describe('grammar and integrity', () => {
     const scriptedState = (): WorkshopSessionStateV1 =>
       clone(runCanonicalScriptedRoom().session.exportCommittedState());

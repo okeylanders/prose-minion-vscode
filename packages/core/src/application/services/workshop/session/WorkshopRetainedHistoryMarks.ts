@@ -170,13 +170,20 @@ function retainedParticipants(
  *
  * A key is consistent when every mark:
  * - names a well-formed key held by a live, bound participant;
- * - names an existing turn, and a reader offset that exists and does not
- *   follow the mark's own turn (tool marks carry no offset);
+ * - names an existing turn — for a commit mark, a reply turn that committed
+ *   into this key's own conversation — and a reader offset that exists and
+ *   does not follow the mark's own turn (tool marks carry no offset);
  * - carries safe non-negative counts with an even message count;
  * - follows the key's previous mark in strict ledger order without any count
  *   decreasing, with a baseline only ever as the key's first mark;
  * - never claims more writer-source rows than the participant holds, nor an
- *   offset beyond the participant's current offset (both only grow).
+ *   offset beyond the participant's current offset (both only grow);
+ * and every reply that committed into the key after its first mark carries a
+ * mark. Membership changes prune a key, so its first surviving mark starts
+ * the current membership: commits before it belong to discarded memberships
+ * (or predate a baseline) and are not this sequence's to cover. Rewind policy
+ * relies on that coverage: it treats any mark at or before a cut as proof that
+ * the last commit before the cut is marked.
  */
 export function findInconsistentRetainedHistoryMarkKeys(
   state: WorkshopSessionStateV1
@@ -186,12 +193,14 @@ export function findInconsistentRetainedHistoryMarkKeys(
     return new Set();
   }
   const positions = new Map(state.turns.map((turn, index) => [turn.id, index]));
+  const commitKeys = state.turns.map((turn) => workshopRetainedHistoryKeyForCommitTurn(turn));
   const participants = retainedParticipants(state);
   const inconsistent = new Set<string>();
   const previousByKey = new Map<
     string,
     { mark: WorkshopRetainedHistoryMarkV1; index: number }
   >();
+  const markedIndexesByKey = new Map<string, { first: number; all: Set<number> }>();
 
   for (const mark of marks) {
     const key = mark.conversationKey;
@@ -213,6 +222,9 @@ export function findInconsistentRetainedHistoryMarkKeys(
     const consistent =
       participant !== undefined
       && index !== undefined
+      // A commit mark is anchored to the reply that committed into its key;
+      // a baseline may sit on any head turn.
+      && (mark.origin === 'baseline' || commitKeys[index] === key)
       && isValidRetainedHistoryCounts(mark)
       && isCount(mark.writerSourceCount)
       && mark.writerSourceCount <= participant.writerSourceCount
@@ -244,6 +256,23 @@ export function findInconsistentRetainedHistoryMarkKeys(
       continue;
     }
     previousByKey.set(key, { mark, index });
+    const marked = markedIndexesByKey.get(key) ?? { first: index, all: new Set<number>() };
+    marked.all.add(index);
+    markedIndexesByKey.set(key, marked);
+  }
+
+  // Coverage: no commit of the current membership may be missing its mark.
+  for (const [key, marked] of markedIndexesByKey) {
+    if (inconsistent.has(key)) {
+      continue;
+    }
+    // Per-key order is strictly increasing, so the first mark seen is the floor.
+    const uncovered = commitKeys.some(
+      (commitKey, index) => commitKey === key && index > marked.first && !marked.all.has(index)
+    );
+    if (uncovered) {
+      inconsistent.add(key);
+    }
   }
   return inconsistent;
 }
