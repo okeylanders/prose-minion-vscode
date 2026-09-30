@@ -135,10 +135,17 @@ export class ScriptedWorkshopRoom {
   /**
    * @param options.resources Labels the capability rounds deliver, in round
    * order; re-using a label re-delivers that resource.
+   * @param options.reply The host's reply, when a test needs its content
+   * (for example a `### Next steps` section that yields findings).
    */
   hostMessage(
     text: string,
-    options: { capabilityRounds?: number; attachment?: ScriptedAttachment; resources?: string[] } = {}
+    options: {
+      capabilityRounds?: number;
+      attachment?: ScriptedAttachment;
+      resources?: string[];
+      reply?: string;
+    } = {}
   ): WorkshopTurn {
     this.session.setChatTarget({ kind: 'host' });
     const staged = this.stage(options.attachment);
@@ -147,15 +154,16 @@ export class ScriptedWorkshopRoom {
     const pendingHostUpdates = this.session.collectPendingHostUpdates();
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
     const evidence = this.recordCapabilityEvidence(requestId, options.capabilityRounds ?? 0);
+    const replyContent = options.reply ?? `Host reply to "${text}".`;
     const conversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
       `[host] ${text}`,
-      `Host reply to "${text}".`,
+      replyContent,
       evidence,
       options.resources
     );
-    const reply = this.complete(requestId, 'Jill', conversationId, `Host reply to "${text}".`, () => {
+    const reply = this.complete(requestId, 'Jill', conversationId, replyContent, () => {
       this.delivery.commit(roomDelivery);
       if (pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);
