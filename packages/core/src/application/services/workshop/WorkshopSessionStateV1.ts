@@ -68,6 +68,13 @@ export interface WorkshopRetainedHistoryMarkV1 {
   writerSourceCount: number;
   /** Reader offset at this point; absent for tool sidecars (instruments read nothing). */
   lastSeenRoomTurnId?: string;
+  /**
+   * Host marks only: the context revision the host holds at this point. The
+   * ledger shows no reliable record of context delivery (a session-open file
+   * refresh changes the revision without a divider), so a rewind re-queues
+   * pending context exactly when this is older than the current revision.
+   */
+  contextRevision?: number;
   origin: 'commit' | 'baseline';
 }
 

@@ -115,7 +115,8 @@ import {
   WorkshopHydratedRetainedParticipant,
   WorkshopImportedRetainedHistory,
   WorkshopRetainedHistoryMarkOutcome,
-  withoutRetainedHistoryMarkKeys
+  withoutRetainedHistoryMarkKeys,
+  workshopHostHeldContextRevision
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 import {
   WorkshopRewindPolicy,
@@ -2060,7 +2061,11 @@ export class WorkshopSessionService {
         ? [{
             conversationKey: 'host' as const,
             writerSourceCount: hostWriterSources.length,
-            lastSeenRoomTurnId: rosterState.host.lastSeenRoomTurnId
+            lastSeenRoomTurnId: rosterState.host.lastSeenRoomTurnId,
+            contextRevision: workshopHostHeldContextRevision({
+              context: normalized.revisions.context,
+              pendingContext: pendingContextRevision
+            })
           }]
         : []),
       ...Object.keys(toolSidecars).map((rawToolId) => {
@@ -2161,7 +2166,11 @@ export class WorkshopSessionService {
       return conversationId === undefined ? undefined : {
         conversationId,
         writerSourceCount: this.hostWriterSources.length,
-        lastSeenRoomTurnId: this.participantRoster.readRoomDeliveryOffset({ kind: 'host' })
+        lastSeenRoomTurnId: this.participantRoster.readRoomDeliveryOffset({ kind: 'host' }),
+        contextRevision: workshopHostHeldContextRevision({
+          context: this.contextRevision,
+          pendingContext: this.pendingContextRevision
+        })
       };
     }
     if (turn.participant === 'guest' && turn.personaId) {

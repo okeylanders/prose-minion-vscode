@@ -5,6 +5,9 @@ import type {
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import type { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
 import {
+  workshopHostHeldContextRevision
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
+import {
   runCanonicalScriptedRoom,
   ScriptedRestPoint,
   ScriptedWorkshopRoom
@@ -29,7 +32,8 @@ function liveParticipantFacts(
       facts.set(entry.key, {
         ...base,
         writerSourceCount: state.writerSources.host.length,
-        lastSeenRoomTurnId: state.participants.host.lastSeenRoomTurnId
+        lastSeenRoomTurnId: state.participants.host.lastSeenRoomTurnId,
+        contextRevision: workshopHostHeldContextRevision(state.revisions)
       });
     } else if (entry.key.startsWith('tool:')) {
       const toolId = entry.key.slice('tool:'.length) as keyof WorkshopSessionStateV1['writerSources']['tools'];
