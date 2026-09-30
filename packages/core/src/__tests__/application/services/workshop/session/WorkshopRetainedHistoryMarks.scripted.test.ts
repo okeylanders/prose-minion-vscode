@@ -130,6 +130,23 @@ describe('retained-history marks in a scripted room (ADR 2026-09-30 §3)', () =>
     expect(latestMarks(first).get('host')).toMatchObject({ messageCount: 6, contextSourceCount: 2 });
   });
 
+  it('restarts the sidecar key when a new report replaces the live sidecar', () => {
+    const toolMarks = (point: ScriptedRestPoint) => (point.workshop.retainedHistoryMarks ?? [])
+      .filter((mark) => mark.conversationKey === 'tool:prose');
+    const followUp = room.restPoints.find((point) => point.label.startsWith('prose follow-up'))!;
+    const reports = room.restPoints.filter((point) => point.label === 'prose report');
+    expect(reports).toHaveLength(2);
+    const replacement = reports[1];
+
+    // The first sidecar marked its report and its direct follow-up…
+    expect(toolMarks(followUp)).toHaveLength(2);
+    // …and the replacement discards that conversation and its marks together.
+    expect(toolMarks(replacement)).toEqual([
+      expect.objectContaining({ turnId: replacement.headTurnId, messageCount: 2, origin: 'commit' })
+    ]);
+    expect(replacement.archive.find((entry) => entry.key === 'tool:prose')?.messages).toHaveLength(2);
+  });
+
   it('prunes sidecar marks when an excerpt revision retires the sidecar', () => {
     const revised = room.restPoints.find((point) => point.label.startsWith('excerpt revised'))!;
     expect(revised.workshop.participants.toolSidecars).toEqual([]);

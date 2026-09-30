@@ -520,6 +520,8 @@ export function runCanonicalScriptedRoom(): ScriptedWorkshopRoom {
   room.directToolMessage('prose', 'Which sentence drags?', {
     attachment: { label: 'draft-notes.md', content: 'The second sentence runs long.' }
   });
+  // A second report replaces the still-live sidecar, follow-up history and all.
+  room.toolRun('prose');
   room.inviteGuest('margot', 'Margot, read this with us.');
   room.guestMessage('margot', 'How does the voice sound?');
   room.reviseExcerpt('The first cup waits on the cold sill.');
