@@ -119,6 +119,8 @@ import {
   workshopHostHeldContextRevision
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 import {
+  WorkshopCutEvaluation,
+  WorkshopRewindCut,
   WorkshopRewindPolicy,
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
@@ -2193,6 +2195,15 @@ export class WorkshopSessionService {
     return toolId === undefined || conversationId === undefined || !liveReport
       ? undefined
       : { conversationId, writerSourceCount: this.toolWriterSources[toolId]?.length ?? 0 };
+  }
+
+  /**
+   * Re-check one cut against the live room (ADR 2026-09-30 §4). Snapshot
+   * verdicts are advisory, so every rewind operation asks again here; the
+   * caller adds pending session operations to `busy`.
+   */
+  evaluateRewindCut(cut: WorkshopRewindCut): WorkshopCutEvaluation {
+    return this.rewindPolicy().evaluateCut(cut);
   }
 
   /** Rewind policy over the live ledger; built per read, never cached. */
