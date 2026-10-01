@@ -72,7 +72,7 @@ Let a writer rewind the room to any rewindable rest point, exactly. All cutting 
 
 ## Kickoff decisions (2026-09-30)
 
-Confirmed with Okey before the transform was written. The ADR records each one in its [Sprint 02 kickoff decisions](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-02-kickoff-decisions).
+Confirmed with Okey before the transform was written. The ADR records each one in its [Sprint 02 kickoff decisions](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-02-kickoff-decisions).
 
 1. **Context-source supersede: append plus stale chain.** Re-delivery appends a row and marks the superseded row stale; the transform recomputes the chain inside the kept prefix. Replacing in place could leave a kept row naming an `art-N` the cut history no longer holds.
 2. **Temporal state stays current.** Rewind does not re-hydrate the time service, so it queues no resume notices and records no "Session resumed" marker. That is why Rewind shares Open's import-and-hydrate core rather than calling `hydrate()` whole.
@@ -128,7 +128,7 @@ The equivalence oracle passes for every rest point in the scripted room. Rewind 
 
 ## Delivery notes (2026-09-30)
 
-Every deliverable landed. The corrections below are also recorded in the ADR's [Sprint 02 implementation findings](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-02-implementation-findings).
+Every deliverable landed. The corrections below are also recorded in the ADR's [Sprint 02 implementation findings](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-02-implementation-findings).
 
 **Plan deviations.**
 - **Durable write.** The coordinator writes inside the operation rather than calling `markDirty` and leaving the write to autosave (kickoff decision 5). A named room updates its file through the identity-checked `updateNamed`; an unnamed room writes `current.json`.
@@ -170,7 +170,7 @@ Every deliverable landed. The corrections below are also recorded in the ADR's [
 - **Route** (`WorkshopRoutes.rewind.test.ts`, 7 tests) and the **webview** bubble, confirm, composer and snapshot tests.
 
 **Follow-ups captured.**
-- [Rewound widget commits: reopen the released config](../../../archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
-- [Time notices outlive their conversations](../../../archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host after an "Edit from here" on the first message gets no time frame for up to an hour.
+- [Rewound widget commits: reopen the released config](../../../tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
+- [Time notices outlive their conversations](../../../tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host after an "Edit from here" on the first message gets no time frame for up to an hour.
 
 Manual Extension Development Host smoke is recorded with Sprint 03's, as that plan specifies.

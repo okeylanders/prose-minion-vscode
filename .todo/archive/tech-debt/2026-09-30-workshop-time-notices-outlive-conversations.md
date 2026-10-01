@@ -5,7 +5,7 @@
 **Status**: Resolved in Workshop Rewind and Branch, Sprint 03 (kickoff decision 2)
 **Priority**: Medium
 **Estimated Effort**: Small (a time-service method plus calls at each conversation-ending seam, with tests)
-**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 

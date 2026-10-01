@@ -5,7 +5,7 @@
 **Status**: Deferred
 **Priority**: Low
 **Estimated Effort**: Medium (one collaborator extraction behind the coordinator, no behavior change)
-**Found by**: Workshop Rewind and Branch, Sprint 03 kickoff ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch, Sprint 03 kickoff ([epic](../archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 

@@ -5,7 +5,7 @@
 **Status**: Identified
 **Priority**: Low
 **Estimated Effort**: Small (one screenshot, one notice entry and its tests)
-**Found by**: Workshop Rewind and Branch, Sprint 03 delivery ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch, Sprint 03 delivery ([epic](../archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 

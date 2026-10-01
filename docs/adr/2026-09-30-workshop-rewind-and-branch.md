@@ -4,7 +4,7 @@
 **Date:** 2026-09-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md)
 **Answers:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md), rejected alternative "Fork or branch the conversation into the new session"
-**Epic:** [Workshop Rewind and Branch](../../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
+**Epic:** [Workshop Rewind and Branch](../../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 
 ## Context
 

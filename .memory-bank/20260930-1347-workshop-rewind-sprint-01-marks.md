@@ -1,7 +1,7 @@
 # Workshop Rewind and Branch — Sprint 01 (retained-history marks) implemented
 
 **Date:** 2026-09-30 (CDT)
-**Epic:** [Workshop Rewind and Branch](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
+**Epic:** [Workshop Rewind and Branch](../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Proposed; amended with Sprint 01 findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration, cut from `main` at `53ebaa6`); `sprint/workshop-rewind-and-branch-01-marks`
 **State:** Sprint 01 merged into the integration branch via PR #117 (`b1497d8`). Sprint 02 not started, by request: pause for review after each sprint.

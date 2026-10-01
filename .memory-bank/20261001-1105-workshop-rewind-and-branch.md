@@ -1,7 +1,7 @@
 # Workshop Rewind and Branch — Sprint 03 (Branch and release readiness) and epic closure
 
 **Date:** 2026-10-01 (CDT)
-**Epic:** [Workshop Rewind and Branch](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
+**Epic:** [Workshop Rewind and Branch](../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01, with D1–D7 folded in; amended with Sprint 03 kickoff decisions and findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration); `sprint/workshop-rewind-and-branch-03-branch`
 **State:** Complete on the integration branch. Sprint 03 merged via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) as `a7c24bd` (2026-10-01), after its review requested changes and then approved following two re-reviews (see [Review round](#review-round-pr-120-2026-10-01)). `main` (`53ebaa6`) is still the epic's merge-base, so the merge to `main` carries no drift. Okey deferred the manual smoke to the `main` build (2026-10-01), so it now gates the release, not the merge (see [Epic closure](#epic-closure-2026-10-01)). Still to come, in order:
@@ -136,6 +136,8 @@ The [review](../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md) reques
     - three PascalCase components: `WorkshopRewindAction`, `WorkshopBranchAction` and `NoticeActions`.
   - `npm run build`: webpack plus `verify:bundle` passed, with webpack's existing bundle-size warnings.
   - `git diff --check`: clean.
+- **Archive.** The epic folder moved to [`.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/`](../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/ARCHIVE.md) with an `ARCHIVE.md`, in the epic's PR into `main`; it takes effect when that PR merges. The move repointed 39 links across `.todo/`, `.memory-bank/` and `docs/` (the ADR and the detailed changelog), including the moved files' own outbound links. A resolving check over every Markdown file found no new dangling link. `.ai/central-agent-setup.md` links only the ADR, so it needed no change.
+- **New follow-up entries.** The smoke, release preparation and the notice screenshot each have a `.todo/tech-debt/` entry (listed below).
 
 ## Manual smoke (Extension Development Host)
 
@@ -165,4 +167,4 @@ Also glance at the startup notice: it should open once on the new first page.
 - [The manual smoke on the `main` build](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (High, planned): the release gate since Okey deferred it (see [Epic closure](#epic-closure-2026-10-01)).
 - [A real screenshot of the bubble actions](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low, identified). The page draws them inline today.
 - [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (Medium, blocked on the smoke): both changelogs carry `[Unreleased]`. The release notes keep the §9 warning: sessions saved by this release can't be opened by older builds, so writers who sync through Git should update every machine first.
-- Archive the epic under `.todo/archive/epics/` with an `ARCHIVE.md` note after its merge to `main`, not before.
+- The epic's archive is prepared in its PR into `main`, as PR #95 did for the Workshop beta, and takes effect when that PR merges (see [Epic closure](#epic-closure-2026-10-01)). This replaces the earlier plan to archive only after the merge.

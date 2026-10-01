@@ -5,7 +5,7 @@
 **Status**: Resolved in Workshop Rewind and Branch, Sprint 03 (kickoff decision 3), with one accepted residue
 **Priority**: Medium
 **Estimated Effort**: Small (one result field plus a webview opening path, with tests)
-**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 

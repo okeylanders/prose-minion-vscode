@@ -5,7 +5,7 @@
 **Status**: Planned — Okey runs it on the `main` build after the epic merges
 **Priority**: High (the release gate)
 **Estimated Effort**: Small (seven short Extension Development Host scenarios with cheap models)
-**Found by**: Workshop Rewind and Branch epic closure ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch epic closure ([epic](../archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 
@@ -23,7 +23,7 @@ On a build of `main` that includes the epic, run the seven scenarios in the [epi
 ## Related Files
 
 - `.memory-bank/20261001-1105-workshop-rewind-and-branch.md`: the checklist and the results table.
-- [Sprint 03](../epics/epic-workshop-rewind-and-branch-2026-09-30/sprints/03-branch-and-release.md): the smoke as planned.
+- [Sprint 03](../archive/epics/epic-workshop-rewind-and-branch-2026-09-30/sprints/03-branch-and-release.md): the smoke as planned.
 - [Release preparation](2026-10-01-workshop-rewind-and-branch-release-preparation.md), which waits on this.
 
 ## Completion Criteria

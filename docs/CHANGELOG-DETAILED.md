@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Overview
 
-The [Workshop Rewind and Branch epic](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md) ([ADR 2026-09-30](adr/2026-09-30-workshop-rewind-and-branch.md)) ships three sprints as one unit:
+The [Workshop Rewind and Branch epic](../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md) ([ADR 2026-09-30](adr/2026-09-30-workshop-rewind-and-branch.md)) ships three sprints as one unit:
 
 - retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117);
 - Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119);

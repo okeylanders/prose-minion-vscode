@@ -5,7 +5,7 @@
 **Status**: Blocked — waits on the [manual smoke](2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Priority**: Medium
 **Estimated Effort**: Small (the usual release preparation)
-**Found by**: Workshop Rewind and Branch epic closure ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch epic closure ([epic](../archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 

@@ -14,7 +14,7 @@ and how a writer compares or returns to them.
 
 ## Follow-up from Workshop Rewind and Branch (2026-10-01)
 
-The [Workshop Rewind and Branch epic](../../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
+The [Workshop Rewind and Branch epic](../../archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 shipped a first Branch without a branch model. "Branch from here" saves the
 room, cut at a rest point, as a new named session and opens it; the source
 session is never modified ([ADR 2026-09-30 §7](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)).

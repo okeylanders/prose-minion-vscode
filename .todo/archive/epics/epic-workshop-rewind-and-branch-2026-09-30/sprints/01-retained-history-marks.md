@@ -36,7 +36,7 @@ Make "where did each participant's history stand after turn T?" an exact, persis
    - Add integrity rules in `WorkshopSessionStateV1Integrity.ts`: the turn exists, the key is well-formed, `messageCount` is even and ≥ 0, and marks are non-decreasing per key in ledger order.
    - At the persisted-session boundary, check each key against its archive length. A key whose marks exceed its archive is dropped with a logged `WorkshopSessionCheckpointNormalization`-style entry.
    - No `schemaVersion` bump (ADR §9).
-7. **Rewindability.** Add `session/WorkshopRewindPolicy.ts` with two layers. They stay separate so that non-bubble callers, starting with [Side Quests](../../../features/feature-workshop-side-quests/README.md), can cut at dividers.
+7. **Rewindability.** Add `session/WorkshopRewindPolicy.ts` with two layers. They stay separate so that non-bubble callers, starting with [Side Quests](../../../../features/feature-workshop-side-quests/README.md), can cut at dividers.
    - **Cut layer: `evaluateCut(cut)`.** A pure function from ledger + marks + directive markers + run state that answers "can the room be cut here?" for any cut `{ kind: 'afterTurn' | 'beforeTurn'; turnId }`, including dividers and session markers. It returns `{ ok: true } | { ok: false; reason: 'not-a-rest-point' | 'before-rewind-support' | 'before-directive-change' | 'busy' }`, covering ADR §1 rest points and §4. The ledger head while idle is always a valid `afterTurn` cut.
    - **Bubble layer.** A thin mapping from eligible bubbles to their cut (ADR §1 table), then `evaluateCut`. Ineligible bubbles report `not-a-rest-point`.
    - **Snapshot.** Publish the bubble result on the snapshot for windowed turns only, as a display-safe map or per-turn field. Update `WorkshopSessionSnapshot` docs and the webview type, but do not render it yet.
@@ -74,7 +74,7 @@ Scripted-room marks match oracle counts at every rest point. Marks persist, roun
 
 ## Delivery notes (2026-09-30)
 
-The deliverables landed with these corrections, each also recorded in the ADR's [Sprint 01 implementation findings](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-01-implementation-findings):
+The deliverables landed with these corrections, each also recorded in the ADR's [Sprint 01 implementation findings](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-01-implementation-findings):
 
 - **Recording site.** Marks are recorded by the completion boundary after the run settles, not inside `WorkshopSessionService.completeRun`. `completeWorkshopRun` gained a required `readRetainedHistory` reader and a `settleCommittedRun` hook; the three handler call sites moved their post-completion bookkeeping into it unchanged. `adoptWriterReport` records the tool report's mark. The shared step is `WorkshopRetainedHistoryCommit.ts`.
 - **Pruning.** It also covers excerpt-revision sidecar retirement and a completion that rebinds a participant to a different conversation.

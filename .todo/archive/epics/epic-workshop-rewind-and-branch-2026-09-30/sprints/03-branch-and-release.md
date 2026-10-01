@@ -1,6 +1,6 @@
 # Sprint 03: Branch and Release Readiness
 
-**Status:** Complete — merged into `epic/workshop-rewind-and-branch` via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) (`a7c24bd`); delivered 2026-10-01 (see [Delivery notes](#delivery-notes-2026-10-01)). Okey deferred the manual smoke to the `main` build after the epic merges (2026-10-01); it is now the [release gate](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
+**Status:** Complete — merged into `epic/workshop-rewind-and-branch` via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) (`a7c24bd`); delivered 2026-10-01 (see [Delivery notes](#delivery-notes-2026-10-01)). Okey deferred the manual smoke to the `main` build after the epic merges (2026-10-01); it is now the [release gate](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Branch:** `sprint/workshop-rewind-and-branch-03-branch`
 **Depends on:** Sprint 02
 **Blocks:** Epic closure
@@ -62,15 +62,15 @@ Let a writer branch from any rewindable point of a saved (named) session into a 
   - A writer-bubble branch re-seeds the composer exactly as the rewind route does.
 - **Kickoff consideration: coordinator size.** Sprint 02 took `WorkshopSessionPersistenceCoordinator` from 1,364 to 1,574 lines. Branch is its fourth room-replacement operation (New, Open, Rewind, Branch), and all four share rollback, installation and a durable write. Decide at kickoff whether Branch lands in the coordinator or in an extracted room-replacement collaborator.
 - **Open follow-ups to schedule or defer.**
-  - [Rewound widget commits: reopen the released config](../../../archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
-  - [Time notices outlive their conversations](../../../archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). Branch inherits both through the shared transform.
-- **PR #119 review carry-over** ([review](../../../../docs/pr-reviews/pr-119-workshop-rewind-ca93f7e-review.md)).
+  - [Rewound widget commits: reopen the released config](../../../tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
+  - [Time notices outlive their conversations](../../../tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). Branch inherits both through the shared transform.
+- **PR #119 review carry-over** ([review](../../../../../docs/pr-reviews/pr-119-workshop-rewind-ca93f7e-review.md)).
   - **F-01.** The Rewind confirmation ends "To keep this conversation too, use Branch instead.", and `WorkshopApp.test.tsx` asserts it. Branch makes the sentence true, so keep both and mark F-01 Addressed in the review ledger when Branch lands.
   - **Release disposition.** The review asks that both follow-ups above stay visible at release. The release notes or the epic's archive note must record each one as fixed or explicitly accepted.
 
 ## Kickoff decisions (2026-10-01)
 
-Confirmed with Okey before `branchFrom` was written. The ADR records each one in its [Sprint 03 kickoff decisions](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-kickoff-decisions).
+Confirmed with Okey before `branchFrom` was written. The ADR records each one in its [Sprint 03 kickoff decisions](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-kickoff-decisions).
 
 1. **One room-replacement transaction.** A private coordinator helper owns the sequence every room replacement shares:
    - capture the rollback;
@@ -132,7 +132,7 @@ Branch works from named rooms with the source preserved, and unnamed rooms are a
 
 ## Delivery notes (2026-10-01)
 
-Every deliverable landed except the manual smoke, which waits on Okey (kickoff decision 4). The corrections below are also recorded in the ADR's [Sprint 03 implementation findings](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-implementation-findings).
+Every deliverable landed except the manual smoke, which waits on Okey (kickoff decision 4). The corrections below are also recorded in the ADR's [Sprint 03 implementation findings](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-implementation-findings).
 
 **Plan deviations.**
 - **Coordinator API.** `branchFrom(cut, { title? })` takes a cut, as `rewindTo` does, and the route maps the bubble. It has no `origin`, because only a writer branches.
@@ -186,16 +186,16 @@ Every deliverable landed except the manual smoke, which waits on Okey (kickoff d
 - `npm run build`: passed.
 - `git diff --check`: clean.
 
-**Review round** ([PR #120 review](../../../../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md)). The review requested changes. All three findings were fixed before integration, each with mutation-checked regressions; ADR findings 5–7 record them.
+**Review round** ([PR #120 review](../../../../../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md)). The review requested changes. All three findings were fixed before integration, each with mutation-checked regressions; ADR findings 5–7 record them.
 - **F-01 (High).** Branch proves its source file still holds the room. It checks before writing anything, refusing with `source-changed`. It checks again at the commit that replaces `current.json`, through the store's `beforeCommit` seam; the re-review moved this check there from after the import.
 - **F-02.** A widget edit goes back to the participant its message addressed.
 - **F-03.** Rewind also ends the time notices of personas whose import degrades.
 
 **Follow-ups captured.**
-- [Persistence coordinator ownership](../../../tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred).
-- [The browser lists an unreadable session](../../../tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified), the review's side observation.
-- Branch lineage (`branchedFrom`), in the parked [Branch Board](../../../features/feature-workshop-branch-board/README.md) feature.
-- [A real screenshot of the bubble actions](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low).
-- [The manual smoke on the `main` build](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), now the release gate (High).
-- [Release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (both changelogs carry `[Unreleased]`); it waits on the smoke.
-- Archive the epic after its merge to `main`.
+- [Persistence coordinator ownership](../../../../tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred).
+- [The browser lists an unreadable session](../../../../tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified), the review's side observation.
+- Branch lineage (`branchedFrom`), in the parked [Branch Board](../../../../features/feature-workshop-branch-board/README.md) feature.
+- [A real screenshot of the bubble actions](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low).
+- [The manual smoke on the `main` build](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), now the release gate (High).
+- [Release preparation](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (both changelogs carry `[Unreleased]`); it waits on the smoke.
+- Archive the epic: prepared in the epic's PR into `main` and effective when it merges, following PR #95's pattern ([archive note](../ARCHIVE.md)).

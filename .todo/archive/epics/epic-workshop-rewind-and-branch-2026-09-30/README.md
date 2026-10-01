@@ -1,10 +1,10 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** Complete — all three sprints are merged into the integration branch: Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117), `b1497d8`), Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119), `5fb85a0`) and Sprint 03 (Branch and release readiness, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120), `a7c24bd`). The ADR is accepted. The epic merges to `main` as one unit. Okey deferred the manual Extension Development Host smoke to the `main` build after that merge (2026-10-01), so it is now the [release gate](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
+**Status:** Complete — all three sprints are merged into the integration branch: Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117), `b1497d8`), Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119), `5fb85a0`) and Sprint 03 (Branch and release readiness, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120), `a7c24bd`). The ADR is accepted. The epic merges to `main` as one unit through its own PR, and the archive becomes effective when that PR merges (see [ARCHIVE.md](ARCHIVE.md)). Okey deferred the manual Extension Development Host smoke to the `main` build after that merge (2026-10-01), so it is now the [release gate](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
-**Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
+**Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
 
 ## Problem
 
@@ -21,7 +21,7 @@ Add two actions to the bottom of eligible writer and agent bubbles:
 
 The visible ledger and each participant's retained LLM history are separate ordered records with no shared index. Rewind is the first operation that has to cut both at the same moment. The ADR introduces **retained-history marks** to record where each history stood after each commit. It then applies one pure transform over the persisted session shape and installs the result through the proven Open path.
 
-## Decisions (accepted in the [ADR](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#product-decisions-d1d7))
+## Decisions (accepted in the [ADR](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#product-decisions-d1d7))
 
 | # | Decision | Default |
 |---|---|---|
@@ -65,12 +65,12 @@ Each sprint branch is cut from the integration branch and merged back through it
 - [x] Branch works from named rooms and the source session file is byte-unchanged; unnamed rooms show the save-first popup and the host refuses them.
 - [x] Rollback proven for failures injected at transform, import, hydrate and write.
 - [x] Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. *Epic head `a7c24bd`, re-run at archive preparation: 228 suites / 2,722 tests; lint 0 errors.*
-- [ ] Manual Extension Development Host smoke recorded (see Sprint 03). *Deferred (Okey, 2026-10-01) to the `main` build after the epic merges: the cloud container cannot run the Extension Development Host (Sprint 03 kickoff decision 4), and the smoke gates the release, not the merge. Tracked in [its own entry](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md); the checklist and results table are in the [memory-bank entry](../../../.memory-bank/20261001-1105-workshop-rewind-and-branch.md).*
+- [ ] Manual Extension Development Host smoke recorded (see Sprint 03). *Deferred (Okey, 2026-10-01) to the `main` build after the epic merges: the cloud container cannot run the Extension Development Host (Sprint 03 kickoff decision 4), and the smoke gates the release, not the merge. Tracked in [its own entry](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md); the checklist and results table are in the [memory-bank entry](../../../../.memory-bank/20261001-1105-workshop-rewind-and-branch.md).*
 - [x] Memory-bank completion entry; parked Branch Board feature updated with lineage follow-up.
 
 ## Adjacent feature: Side Quests
 
-[Side Quests](../../features/feature-workshop-side-quests/README.md) are automated rewind: Start pins the current point and End rewinds to it. This epic lays only the foundation. Sprint 01 separates "valid cut point" from bubble eligibility, and Sprint 02 adds the generic `rewindTo(cut, { origin })` operation and a cut summary. No Side Quest state, divider types or UI ship here.
+[Side Quests](../../../features/feature-workshop-side-quests/README.md) are automated rewind: Start pins the current point and End rewinds to it. This epic lays only the foundation. Sprint 01 separates "valid cut point" from bubble eligibility, and Sprint 02 adds the generic `rewindTo(cut, { origin })` operation and a cut summary. No Side Quest state, divider types or UI ship here.
 
 ## Out of scope
 
