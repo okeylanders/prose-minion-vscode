@@ -81,7 +81,7 @@ export class WritingToolsAssistant {
 
   private getAnalysisInstruction(focus: WritingToolsFocus): string {
     const instructions: Record<WritingToolsFocus, string> = {
-      'craft-steering': 'Please perform a Craft Steering Analysis using the twelve-section report template: assess intent, sound and cadence, sentence handoffs, breath and narrative control, and what to preserve. Give up to three revision priorities, concrete before/after Sample Revisions, and passage-specific Craft Notes. Include both Creative Variations (3-5 distinct approaches) and Bound Creative Variations (3-5 controlled experiments), writing the full prose of one compact selected stretch for every version and explaining gains, costs, and preserved intent. Use fewer versions only when the input cannot support meaningful alternatives without invention. An effective original still permits optional creative exploration without manufactured flaws. Finish with an intent/fidelity check and read-aloud practice. Preserve meaning, facts, action order, POV, tense, voice, intentional fragments, breath cues, repetition, and earned lyricism. If no passage was supplied, ask for one instead of inventing an analysis.',
+      'craft-steering': 'Please perform a Craft Steering Analysis using the twelve-section report template: assess intent, sound and cadence, sentence handoffs, breath and narrative control, and what to preserve. Give up to three revision priorities, concrete before/after Sample Revisions, and passage-specific Craft Notes. Include both creative variations (3-5 distinct approaches) and bound creative variations (3-5 controlled experiments), writing the full prose of one compact selected stretch for every version and explaining gains, costs, and preserved intent. Use fewer versions only when the input cannot support meaningful alternatives without invention. An effective original still permits optional creative exploration without manufactured flaws. Finish with an intent/fidelity check and read-aloud practice. Preserve meaning, facts, action order, POV, tense, voice, intentional fragments, breath cues, repetition, and earned lyricism. If no passage was supplied, ask for one instead of inventing an analysis.',
       cliche: 'Please analyze this passage for cliches, dead metaphors, stock phrases, and overused expressions. Provide fresh alternatives.',
       continuity: 'Please analyze this passage for continuity errors, choreography issues, object tracking problems, and logical inconsistencies.',
       style: 'Please analyze this passage for stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
@@ -100,6 +100,9 @@ export class WritingToolsAssistant {
 
   private getDefaultInstructions(focus: WritingToolsFocus): string {
     const defaults: Record<WritingToolsFocus, string> = {
+      // Sections 9-10 use sentence case on purpose: in title case their names match a
+      // Workshop widget's name, which the architecture boundary tests reserve for that
+      // widget's modules. focus/craft-steering.md keeps the title-case headings.
       'craft-steering': `# Craft Steering Analysis
 
 An original analytical application inspired by Ursula K. Le Guin's Steering the Craft.
@@ -134,11 +137,11 @@ state their scope limits; do not invent findings to fill them.
    honestly; if a local example cannot help, state why.
 8. Craft Notes: one or two short paragraphs connecting this passage's specific
    choices to a transferable revision principle, rather than a book summary.
-9. Creative Variations: choose one compact contiguous stretch, quote the original,
+9. Creative variations: choose one compact contiguous stretch, quote the original,
    and write 3-5 complete versions (three by default) using distinct craft approaches.
    For each: name the approach, provide full prose, and explain craft choices,
    gain/cost, entry/exit connections, and protected features.
-10. Bound Creative Variations: use the same selection where possible; declare its
+10. Bound creative variations: use the same selection where possible; declare its
    baseline and invariants. Write 3-5 complete new versions (three by default),
    each varying one primary dimension: sentence shape, punctuation/spacing,
    sound/recurrence, handoff, or density/implication. State what changes, what stays

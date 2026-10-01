@@ -57,8 +57,8 @@ describe('WritingToolsAssistant', () => {
     expect(request.systemMessage).toContain('forward movement does not require constant speed');
     expect(request.systemMessage).toContain('What to Preserve');
     expect(request.systemMessage).toContain('Sample Revisions');
-    expect(request.systemMessage).toContain('Creative Variations');
-    expect(request.systemMessage).toContain('Bound Creative Variations');
+    expect(request.systemMessage).toContain('9. Creative variations');
+    expect(request.systemMessage).toContain('10. Bound creative variations');
     expect(request.systemMessage).toContain('original already works');
     expect(request.systemMessage).toContain('Shared prompts content');
     expect(request.userMessage).toContain(passage);
