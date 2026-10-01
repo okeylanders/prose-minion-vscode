@@ -968,4 +968,78 @@ describe('WorkshopTurnBubble Rewind action (ADR 2026-09-30 §4)', () => {
     renderBubble(hostReply, { onRewind: jest.fn() });
     expect(screen.queryByRole('button', { name: /Rewind to here/ })).toBeNull();
   });
+
+  describe('Branch action (ADR 2026-09-30 §7)', () => {
+    it('sits beside Rewind on an agent reply and calls back with the turn', () => {
+      const onBranch = jest.fn();
+      renderBubble(hostReply, {
+        rewindability: { available: true },
+        onRewind: jest.fn(),
+        branchability: { available: true },
+        onBranch
+      });
+
+      const footer = screen.getByRole('button', { name: /Rewind to here/ }).parentElement!;
+      const action = screen.getByRole('button', { name: /Branch from here/ });
+      expect(action.parentElement).toBe(footer);
+      expect(action.getAttribute('title'))
+        .toBe('Start a new session that ends with this reply; this one stays as it is');
+      fireEvent.click(action);
+      expect(onBranch).toHaveBeenCalledWith(hostReply);
+    });
+
+    it('sits beside Edit in a writer message\'s footer', () => {
+      const onBranch = jest.fn();
+      const { container } = renderBubble(writerMessage, {
+        rewindability: { available: true },
+        onRewind: jest.fn(),
+        branchability: { available: true },
+        onBranch
+      });
+
+      const footer = container.querySelector('.pm-ws-turn-actions-writer')!;
+      expect(footer.querySelector('.pm-ws-rewind-action')).not.toBeNull();
+      expect(footer.querySelector('.pm-ws-branch-action')?.getAttribute('title'))
+        .toBe('Start a new session from just before this message; its text returns to the composer there');
+      fireEvent.click(screen.getByRole('button', { name: /Branch from here/ }));
+      expect(onBranch).toHaveBeenCalledWith(writerMessage);
+    });
+
+    it('stands alone where only Branch has a verdict, as on the latest reply', () => {
+      const { container } = renderBubble(writerMessage, {
+        branchability: { available: true },
+        onBranch: jest.fn()
+      });
+
+      expect(screen.queryByRole('button', { name: /Edit from here/ })).toBeNull();
+      expect(container.querySelector('.pm-ws-turn-actions-writer .pm-ws-branch-action')).not.toBeNull();
+    });
+
+    it.each([
+      ['before-rewind-support', 'Saved before rewind support'],
+      ['before-directive-change', "Can't cross a prose directive change yet"],
+      ['busy', 'Wait for the current response to finish']
+    ] as const)('disables the action with the host reason when it says %s', (reason, text) => {
+      const onBranch = jest.fn();
+      renderBubble(hostReply, { branchability: { available: false, reason }, onBranch });
+
+      const action = screen.getByRole('button', { name: /Branch from here/ }) as HTMLButtonElement;
+      expect(action.disabled).toBe(true);
+      expect(action.getAttribute('title')).toBe(text);
+      fireEvent.click(action);
+      expect(onBranch).not.toHaveBeenCalled();
+    });
+
+    it('pauses with the room-wide reason, including the D7 persistence reason', () => {
+      renderBubble(hostReply, {
+        branchability: { available: true },
+        branchPausedReason: 'Branch needs an open workspace folder',
+        onBranch: jest.fn()
+      });
+
+      const action = screen.getByRole('button', { name: /Branch from here/ }) as HTMLButtonElement;
+      expect(action.disabled).toBe(true);
+      expect(action.getAttribute('title')).toBe('Branch needs an open workspace folder');
+    });
+  });
 });

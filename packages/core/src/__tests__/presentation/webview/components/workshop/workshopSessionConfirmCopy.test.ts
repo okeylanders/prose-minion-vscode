@@ -37,6 +37,15 @@ describe('workshopSessionConfirmCopy', () => {
     ).body).toMatch(/^This message and 1 turn after it will be removed\./);
   });
 
+  it('asks an unsaved room to save before branching (ADR 2026-09-30, D2)', () => {
+    expect(workshopSessionConfirmCopy({ kind: 'save-before-branch' }, {})).toEqual({
+      title: 'Save before branching',
+      body: 'Branching creates a new session from this point. ' +
+        "Save this session first so it isn't replaced.",
+      confirmLabel: 'Save session…'
+    });
+  });
+
   it('says a widget message reopens its widget (Sprint 03 kickoff decision 3)', () => {
     expect(workshopSessionConfirmCopy(
       { kind: 'rewind', turnId: 't', removedCount: 3, edit: 'widget' },

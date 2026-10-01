@@ -62,6 +62,14 @@ interface WorkshopTurnBubbleProps {
   /** Why rewinding is paused for the whole room right now, if it is. */
   rewindPausedReason?: string;
   onRewind?: (turn: WorkshopTurn) => void;
+  /**
+   * The host's verdict for this bubble's Branch action: the same cut policy
+   * as Rewind's, but offered on the latest reply too (ADR 2026-09-30 §7).
+   */
+  branchability?: WorkshopTurnRewindability;
+  /** Why branching is paused for the whole room right now, if it is. */
+  branchPausedReason?: string;
+  onBranch?: (turn: WorkshopTurn) => void;
 }
 
 /**
@@ -93,6 +101,38 @@ const WorkshopRewindAction: React.FC<{
       onClick={() => onRewind(turn)}
     >
       <Icon name="history" size={13} /> {edit ? 'Edit from here' : 'Rewind to here'}
+    </button>
+  );
+};
+
+/**
+ * The bubble's Branch action (ADR 2026-09-30 §7): a new saved session from
+ * this point, leaving this one as it is. A writer message's branch is an edit
+ * there, as its rewind is here. A disabled action carries the reason.
+ */
+const WorkshopBranchAction: React.FC<{
+  turn: WorkshopTurn;
+  branchability: WorkshopTurnRewindability;
+  pausedReason?: string;
+  onBranch: (turn: WorkshopTurn) => void;
+}> = ({ turn, branchability, pausedReason, onBranch }) => {
+  const unavailable = branchability.available
+    ? pausedReason
+    : workshopRewindUnavailableReason(branchability.reason, 'branch');
+  const hint = turn.role !== 'user'
+    ? 'Start a new session that ends with this reply; this one stays as it is'
+    : turn.widgetCommit
+      ? 'Start a new session from just before this message; its widget reopens there'
+      : 'Start a new session from just before this message; its text returns to the composer there';
+  return (
+    <button
+      type="button"
+      className="pm-ws-branch-action"
+      disabled={unavailable !== undefined}
+      title={unavailable ?? hint}
+      onClick={() => onBranch(turn)}
+    >
+      <Icon name="branch" size={13} /> Branch from here
     </button>
   );
 };
@@ -246,7 +286,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onOpenWidgetRecommendation,
   rewindability,
   rewindPausedReason,
-  onRewind
+  onRewind,
+  branchability,
+  branchPausedReason,
+  onBranch
 }) => {
   const rewindAction = rewindability && onRewind
     ? (
@@ -255,6 +298,16 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
           rewindability={rewindability}
           pausedReason={rewindPausedReason}
           onRewind={onRewind}
+        />
+      )
+    : null;
+  const branchAction = branchability && onBranch
+    ? (
+        <WorkshopBranchAction
+          turn={turn}
+          branchability={branchability}
+          pausedReason={branchPausedReason}
+          onBranch={onBranch}
         />
       )
     : null;
@@ -406,9 +459,10 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
               </button>
             </div>
           )}
-          {rewindAction && (
+          {(rewindAction || branchAction) && (
             <div className="pm-ws-turn-actions pm-ws-turn-actions-writer">
               {rewindAction}
+              {branchAction}
             </div>
           )}
         </div>
@@ -613,6 +667,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </button>
           )}
           {rewindAction}
+          {branchAction}
         </div>
         {turn.widgetRecommendation && onOpenWidgetRecommendation && (
           <button

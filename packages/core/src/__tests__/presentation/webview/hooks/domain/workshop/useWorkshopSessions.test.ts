@@ -75,6 +75,37 @@ describe('useWorkshopSessions', () => {
     expect(result.current.sessionActionResult).toEqual(settled.payload);
   });
 
+  it('posts a branch without resetting the room optimistically, and settles on its result', () => {
+    const replacement: WorkshopRoomReplacementPort = {
+      clearStatus: jest.fn(),
+      beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0, errorMessage: '' })),
+      restoreReplacement: jest.fn()
+    };
+    const { result } = renderHook(() => useWorkshopSessions(replacement));
+    const vscode = useVSCodeApi() as ReturnType<typeof createMockVSCode>;
+
+    act(() => result.current.branchFrom('turn-4-assistant-9'));
+
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_BRANCH_SESSION,
+      source: 'webview.workshop',
+      payload: { turnId: 'turn-4-assistant-9' }
+    }));
+    expect(replacement.clearStatus).toHaveBeenCalledTimes(1);
+    expect(replacement.beginReplacement).not.toHaveBeenCalled();
+    expect(result.current.sessionActionPending).toBe('branch');
+
+    const settled: WorkshopSessionActionResultMessage = {
+      type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+      source: 'extension.workshop',
+      payload: { action: 'branch', ok: true, message: 'Branched “A” into “A — branch”.' },
+      timestamp: 1
+    };
+    act(() => result.current.handleSessionActionResult(settled));
+    expect(result.current.sessionActionPending).toBeUndefined();
+    expect(result.current.sessionActionResult).toEqual(settled.payload);
+  });
+
   it('restores the exact room snapshot when New Session is rejected', () => {
     const snapshot = {
       turns: [{ id: 'prior' } as never],

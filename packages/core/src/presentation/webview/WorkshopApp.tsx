@@ -534,6 +534,7 @@ export const WorkshopApp: React.FC = () => {
     sessionMutationsDisabled,
     hasReplaceableSessionState,
     hasWorkingSet,
+    roomIsNamed: workshopSessions.activeNamedSessionSummary !== undefined,
     sessionSearchQuery: workshopSessions.sessionSearchQuery,
     sessionActionResult: workshopSessions.sessionActionResult,
     requestSessions: workshopSessions.requestSessions,
@@ -541,6 +542,7 @@ export const WorkshopApp: React.FC = () => {
     resetSession: workshopSessions.resetSession,
     openSession: workshopSessions.openSession,
     rewindTo: workshopSessions.rewindTo,
+    branchFrom: workshopSessions.branchFrom,
     consumeSessionActionResult: workshopSessions.consumeSessionActionResult,
     onResult: handleSessionResult
   });
@@ -750,19 +752,25 @@ export const WorkshopApp: React.FC = () => {
     [vscode]
   );
 
-  // Rewind (ADR 2026-09-30 §4, §6): the host verdict decides each bubble; the
-  // room's own busy states pause every bubble at once, with one reason.
-  const rewindPausedReason = showLiveTurn || workshop.isRunning || workshop.wizardRunning
+  // Rewind and Branch (ADR 2026-09-30 §4, §6, §7): the host verdict decides
+  // each bubble; the room's own busy states pause every bubble at once, with
+  // one reason. Both write sessions, so both need persistence (D7).
+  const roomPausedReason = showLiveTurn || workshop.isRunning || workshop.wizardRunning
     ? workshopRewindUnavailableReason('busy')
     : roomMutationLocked
       ? 'Wait for the current session change to finish'
-      : !workshop.persistenceAvailable
-        ? workshop.persistenceUnavailableReason === 'multi-root'
-          ? 'Rewind needs a single-root workspace'
-          : 'Rewind needs an open workspace folder'
-        : undefined;
+      : undefined;
+  const storagePausedReason = (action: 'Rewind' | 'Branch'): string | undefined =>
+    workshop.persistenceAvailable
+      ? undefined
+      : workshop.persistenceUnavailableReason === 'multi-root'
+        ? `${action} needs a single-root workspace`
+        : `${action} needs an open workspace folder`;
+  const rewindPausedReason = roomPausedReason ?? storagePausedReason('Rewind');
+  const branchPausedReason = roomPausedReason ?? storagePausedReason('Branch');
   // The latest reply is already where the room stands: rewinding there would
-  // change nothing, so it offers no action.
+  // change nothing, so it offers no Rewind. Branch keeps it: a branch from the
+  // head is a new session that continues from here.
   const threadRewindability = React.useMemo(() => {
     const latest = workshop.turns.at(-1);
     if (!latest || latest.role !== 'assistant' || !(latest.id in workshop.turnRewindability)) {
@@ -785,6 +793,10 @@ export const WorkshopApp: React.FC = () => {
       turn.role === 'user' ? (turn.widgetCommit ? 'widget' : 'composer') : undefined
     );
   }, [sessionSurfaces.requestRewind, workshop.turns]);
+  const requestBranch = React.useCallback(
+    (turn: WorkshopTurn) => sessionSurfaces.requestBranch(turn.id),
+    [sessionSurfaces.requestBranch]
+  );
 
   const saveTurn = React.useCallback(
     (content: string, turn: WorkshopTurn) => {
@@ -1274,6 +1286,9 @@ export const WorkshopApp: React.FC = () => {
                 turnRewindability={threadRewindability}
                 rewindPausedReason={rewindPausedReason}
                 onRewind={requestRewind}
+                turnBranchability={workshop.turnRewindability}
+                branchPausedReason={branchPausedReason}
+                onBranch={requestBranch}
               />
 
               {showLiveTurn && (

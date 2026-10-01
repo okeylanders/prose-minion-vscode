@@ -34,6 +34,11 @@ interface WorkshopThreadProps {
   /** Why rewinding is paused for the whole room right now, if it is. */
   rewindPausedReason?: string;
   onRewind?: (turn: WorkshopTurn) => void;
+  /** The same host verdicts for Branch, which also offers the latest reply. */
+  turnBranchability?: Readonly<Record<string, WorkshopTurnRewindability>>;
+  /** Why branching is paused for the whole room right now, if it is. */
+  branchPausedReason?: string;
+  onBranch?: (turn: WorkshopTurn) => void;
 }
 
 export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
@@ -51,7 +56,10 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   onOpenWidgetRecommendation,
   turnRewindability = {},
   rewindPausedReason,
-  onRewind
+  onRewind,
+  turnBranchability = {},
+  branchPausedReason,
+  onBranch
 }) => (
   <>
     {turns.map((turn) => {
@@ -92,6 +100,9 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
           rewindability={turnRewindability[turn.id]}
           rewindPausedReason={rewindPausedReason}
           onRewind={onRewind}
+          branchability={turnBranchability[turn.id]}
+          branchPausedReason={branchPausedReason}
+          onBranch={onBranch}
         />
       );
     })}

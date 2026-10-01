@@ -265,7 +265,7 @@ describe('WorkshopApp', () => {
       .toBe('Keep this draft safe.');
   });
 
-  describe('Rewind (ADR 2026-09-30)', () => {
+  describe('Rewind and Branch (ADR 2026-09-30)', () => {
     const message = (id: string, role: 'user' | 'assistant', content: string): WorkshopTurn => ({
       id,
       role,
@@ -449,6 +449,154 @@ describe('WorkshopApp', () => {
       });
 
       expect(screen.getByText(/Reopened from a message you rewound/)).not.toBeNull();
+    });
+
+    describe('Branch (§7)', () => {
+      const branchPosts = () => vscode.postMessage.mock.calls
+        .map(([posted]) => posted)
+        .filter((posted) => posted.type === MessageType.WORKSHOP_BRANCH_SESSION);
+      const listPosts = () => vscode.postMessage.mock.calls
+        .map(([posted]) => posted)
+        .filter((posted) => posted.type === MessageType.WORKSHOP_LIST_SESSIONS);
+      const namedSession = {
+        sessionId: 'chapter-3',
+        title: 'Chapter 3 — Felix',
+        fileName: 'chapter-3.json',
+        kind: 'named' as const,
+        startedAt: 1,
+        updatedAt: 2,
+        savedAt: 2,
+        timezone: 'America/Chicago',
+        hostPersonaId: 'jill' as const,
+        participantPersonaIds: ['jill' as const],
+        turnCount: 5,
+        excerptWordCount: 0
+      };
+      /** Answer the webview's latest session-list request with this room saved. */
+      const answerSessionsAsNamed = () => {
+        const requestId = listPosts().at(-1)!.payload.requestId;
+        act(() => {
+          window.dispatchEvent(new MessageEvent('message', {
+            data: {
+              type: MessageType.WORKSHOP_SESSIONS_DATA,
+              source: 'extension.workshop',
+              payload: {
+                requestId,
+                available: true,
+                current: { ...namedSession, kind: 'current', fileName: 'current.json' },
+                sessions: [namedSession]
+              },
+              timestamp: 3
+            }
+          }));
+        });
+      };
+
+      it('offers Branch on every eligible bubble, the latest reply included', () => {
+        render(<WorkshopApp />);
+        act(() => {
+          window.dispatchEvent(new MessageEvent('message', {
+            data: roomWith([existingTurn, question, answer, followUp, latest])
+          }));
+        });
+
+        expect(screen.getAllByRole('button', { name: /Branch from here/ })).toHaveLength(4);
+        expect(screen.getAllByRole('button', { name: /Rewind to here/ })).toHaveLength(1);
+      });
+
+      it('asks an unsaved room to save first: the popup opens Save and nothing is sent', () => {
+        render(<WorkshopApp />);
+        act(() => {
+          window.dispatchEvent(new MessageEvent('message', {
+            data: roomWith([existingTurn, question, answer, followUp, latest])
+          }));
+        });
+
+        fireEvent.click(screen.getAllByRole('button', { name: /Branch from here/ }).at(-1)!);
+        const dialog = screen.getByRole('dialog', { name: 'Save before branching' });
+        expect(dialog.textContent).toContain(
+          'Branching creates a new session from this point. ' +
+          "Save this session first so it isn't replaced."
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Save session…' }));
+
+        expect(screen.queryByRole('dialog', { name: 'Save before branching' })).toBeNull();
+        expect(screen.getByRole('dialog', { name: 'Save session' })).not.toBeNull();
+        expect(branchPosts()).toEqual([]);
+      });
+
+      it('branches a saved room at once, then follows the branch as the active session', () => {
+        render(<WorkshopApp />);
+        act(() => {
+          window.dispatchEvent(new MessageEvent('message', {
+            data: roomWith([existingTurn, question, answer, followUp, latest])
+          }));
+        });
+        answerSessionsAsNamed();
+
+        // From the writer's message: the branch is an edit there.
+        fireEvent.click(screen.getAllByRole('button', { name: /Branch from here/ })[0]);
+
+        expect(screen.queryByRole('dialog')).toBeNull();
+        expect(branchPosts()).toEqual([expect.objectContaining({
+          source: 'webview.workshop',
+          payload: { turnId: question.id }
+        })]);
+        // Pending: every room action pauses until the host answers.
+        expect((screen.getAllByRole('button', { name: /Branch from here/ })[0] as HTMLButtonElement).disabled)
+          .toBe(true);
+
+        const listsBefore = listPosts().length;
+        act(() => {
+          window.dispatchEvent(new MessageEvent('message', { data: roomWith([existingTurn]) }));
+          window.dispatchEvent(new MessageEvent('message', {
+            data: {
+              type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+              source: 'extension.workshop',
+              payload: { text: question.content },
+              timestamp: 4
+            }
+          }));
+          window.dispatchEvent(new MessageEvent('message', {
+            data: {
+              type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+              source: 'extension.workshop',
+              payload: {
+                action: 'branch',
+                ok: true,
+                message: 'Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch”.'
+              },
+              timestamp: 5
+            }
+          }));
+        });
+
+        expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe(question.content);
+        expect(screen.getByText('Branched “Chapter 3 — Felix” into “Chapter 3 — Felix — branch”.'))
+          .not.toBeNull();
+        // The Sessions list is re-read whole, so the branch becomes the active session.
+        expect(listPosts().length).toBeGreaterThan(listsBefore);
+        expect(listPosts().at(-1)!.payload.query).toBeUndefined();
+      });
+
+      it('disables Branch with its own D7 reason when sessions cannot be saved', () => {
+        render(<WorkshopApp />);
+        const state = roomWith([existingTurn, question, answer, followUp, latest]);
+        state.payload.persistence = {
+          available: false,
+          unavailableReason: 'no-workspace',
+          degradedConversationKeys: []
+        };
+        act(() => {
+          window.dispatchEvent(new MessageEvent('message', { data: state }));
+        });
+
+        const action = screen.getAllByRole('button', { name: /Branch from here/ })[0] as HTMLButtonElement;
+        expect(action.disabled).toBe(true);
+        expect(action.getAttribute('title')).toBe('Branch needs an open workspace folder');
+        expect(screen.getAllByRole('button', { name: /Edit from here/ })[0].getAttribute('title'))
+          .toBe('Rewind needs an open workspace folder');
+      });
     });
   });
 

@@ -61,6 +61,13 @@ export function workshopSessionConfirmCopy(
             body: `${turnsLabel(confirm.removedCount)} will be removed. ${REWIND_KEEPS}`,
             confirmLabel: 'Rewind'
           };
+    case 'save-before-branch':
+      return {
+        title: 'Save before branching',
+        body: 'Branching creates a new session from this point. ' +
+          "Save this session first so it isn't replaced.",
+        confirmLabel: 'Save session…'
+      };
     case 'new':
     case undefined:
       return {
