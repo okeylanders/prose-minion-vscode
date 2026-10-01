@@ -178,6 +178,10 @@ export function rewindWorkshopSession(
     config.committedTurnId !== undefined && !keptTurnIds.has(config.committedTurnId)
       ? [config.id]
       : []);
+  const widgetRestore = widgetRestoreFor(writerTurn, releasedWidgetConfigIds);
+  // An edit, in the composer or in its widget, goes back to the participant
+  // the message was sent to, not whoever the room addressed after it.
+  const editedTurn = restore || widgetRestore ? writerTurn : undefined;
 
   const workshop = clonePersistedJson<WorkshopSessionStateV1>({
     ...source,
@@ -204,7 +208,7 @@ export function rewindWorkshopSession(
     participants: {
       ...participants,
       chatTarget: repairedChatTarget(
-        restore ? addresseeOf(writerTurn!) : participants.chatTarget,
+        editedTurn ? addresseeOf(editedTurn) : participants.chatTarget,
         participants
       )
     },
@@ -256,7 +260,7 @@ export function rewindWorkshopSession(
       releasedWidgetConfigIds
     },
     composerRestore: restore?.composer,
-    widgetRestore: widgetRestoreFor(writerTurn, releasedWidgetConfigIds),
+    widgetRestore,
     unverifiedConversationKeys: [...unverified] as WorkshopConversationLogicalKey[]
   };
 }

@@ -277,6 +277,27 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect(outcome.widgetRestore).toEqual({ widgetConfigId: message.widgetCommit!.widgetConfigId });
       expect(outcome.composerRestore).toBeUndefined();
     });
+
+    it('sends a reopened widget message back to the host it addressed, not a later chat target (PR #120 review F-02)', async () => {
+      const room = new ScriptedWorkshopRoom().start();
+      room.hostMessage('Opening?');
+      room.inviteGuest('margot', 'Margot, read this with us.');
+      room.hostWidgetCommit();
+      room.guestMessage('margot', 'How does the voice sound?');
+      const { coordinator, session, store } = await openCanonicalSession(room);
+      expect(session.getChatTarget()).toEqual({ kind: 'personaGuest', personaId: 'margot' });
+      const message = room.session.readRoomLedger()
+        .find((turn) => turn.widgetCommit?.rail === 'thread-artifact')!;
+
+      const outcome = await coordinator.branchFrom(before(message.id));
+
+      expect(outcome.widgetRestore).toEqual({ widgetConfigId: message.widgetCommit!.widgetConfigId });
+      // Margot is still in the branch; a recommit from the reopened sheet goes to the host.
+      expect(session.getPersonaGuestConversationId('margot')).toBeDefined();
+      expect(session.getChatTarget()).toEqual({ kind: 'host' });
+      expect((await store.readNamed(outcome.branch.sessionId))!.workshop.participants.chatTarget)
+        .toEqual({ kind: 'host' });
+    });
   });
 
   describe('an unnamed room (D2: save first)', () => {

@@ -386,6 +386,31 @@ describe('rewindWorkshopSession (ADR 2026-09-30 §5)', () => {
       expect(result.workshop.participants.chatTarget).toEqual({ kind: 'personaGuest', personaId: 'margot' });
       expect(result.composerRestore?.text).toBe('How does the voice sound?');
     });
+
+    it.each<[string, (room: ScriptedWorkshopRoom) => void]>([
+      ['a guest', (room) => room.guestMessage('margot', 'How does the voice sound?')],
+      ['a tool', (room) => room.directToolMessage('prose', 'Which sentence drags?')]
+    ])('targets the host a rewound widget message was sent to, though %s was addressed later', (_later, addressLater) => {
+      const room = new ScriptedWorkshopRoom().start();
+      room.hostMessage('Opening?');
+      room.toolRun('prose');
+      room.inviteGuest('margot', 'Margot, read this with us.');
+      const reply = room.hostWidgetCommit();
+      addressLater(room);
+      expect(room.session.getChatTarget()).not.toEqual({ kind: 'host' });
+
+      const result = rewind(room, before(writerTurnOf(room, reply).id));
+
+      // Both later participants survive the cut; the edit still goes to the host.
+      expect(result.widgetRestore).toEqual({ widgetConfigId: writerTurnOf(room, reply).widgetCommit!.widgetConfigId });
+      expect(result.workshop.participants.personaGuests).toEqual([
+        expect.objectContaining({ personaId: 'margot', liveness: 'live' })
+      ]);
+      expect(result.workshop.participants.toolSidecars).toEqual([
+        expect.objectContaining({ toolId: 'prose' })
+      ]);
+      expect(result.workshop.participants.chatTarget).toEqual({ kind: 'host' });
+    });
   });
 
   describe('refusals', () => {

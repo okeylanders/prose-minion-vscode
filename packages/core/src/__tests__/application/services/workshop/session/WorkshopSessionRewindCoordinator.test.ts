@@ -334,6 +334,28 @@ describe('WorkshopSessionPersistenceCoordinator.rewindTo (ADR 2026-09-30 §6)', 
       );
       expect(questOutcome.widgetRestore).toBeUndefined();
     });
+
+    it('sends a reopened widget message back to the host it addressed, not a later chat target (PR #120 review F-02)', async () => {
+      const harness = setupCoordinator();
+      const room = new ScriptedWorkshopRoom().start();
+      room.hostMessage('Opening?');
+      room.inviteGuest('margot', 'Margot, read this with us.');
+      room.hostWidgetCommit();
+      room.guestMessage('margot', 'How does the voice sound?');
+      await harness.store.saveNamed(scriptedCheckpoint('widget-then-guest', room));
+      await harness.coordinator.initialize();
+      await harness.coordinator.openNamed('widget-then-guest');
+      expect(harness.session.getChatTarget()).toEqual({ kind: 'personaGuest', personaId: 'margot' });
+      const message = room.session.readRoomLedger()
+        .find((turn) => turn.widgetCommit?.rail === 'thread-artifact')!;
+
+      const outcome = await harness.coordinator.rewindTo(before(message.id), { origin: 'writer' });
+
+      expect(outcome.widgetRestore).toEqual({ widgetConfigId: message.widgetCommit!.widgetConfigId });
+      // Margot is still in the room; a recommit from the reopened sheet goes to the host.
+      expect(harness.session.getPersonaGuestConversationId('margot')).toBeDefined();
+      expect(harness.session.getChatTarget()).toEqual({ kind: 'host' });
+    });
   });
 
   it('hands a host removed by the cut the whole kept room as catch-up on its first run', async () => {
