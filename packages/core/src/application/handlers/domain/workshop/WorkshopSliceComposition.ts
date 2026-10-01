@@ -119,7 +119,8 @@ export class WorkshopSliceComposition {
         flushDeferredConversationSettings: host.flushDeferredConversationSettings,
         reportError: (message, details) =>
           host.reportRouteError('workshop', message, details, 'WorkshopSessionMessageHandler'),
-        activeRunLabel: host.activeRunLabel
+        activeRunLabel: host.activeRunLabel,
+        rewindCutForBubble: (turnId) => session.rewindCutForBubble(turnId)
       }
     );
     this.gesturePlaygroundHandler = new WorkshopGesturePlaygroundHandler(

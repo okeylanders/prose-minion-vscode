@@ -2,16 +2,26 @@
  * Session-persistence IPC slice for Workshop.
  *
  * WorkshopRoomHandler owns the room and run orchestration. This per-webview
- * collaborator owns only New/Save/Open/browser messages, response envelopes,
- * and cancellation of superseded browser searches.
+ * collaborator owns only New/Rewind/Branch/Save/Open/browser messages,
+ * response envelopes, and cancellation of superseded browser searches.
  */
 
 import { MessageRouter } from '@handlers/MessageRouter';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
-import { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+import {
+  WorkshopBranchNotOpenedError,
+  WorkshopBranchOutcome,
+  WorkshopBranchRefusedError,
+  WorkshopRewindCut,
+  WorkshopRewindOutcome,
+  WorkshopRewindRefusedError,
+  WorkshopSessionPersistenceCoordinator
+} from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
 import { LogSink, ShellService } from '@/platform';
 import {
   MessageType,
+  WorkshopBranchSessionMessage,
+  WorkshopComposerDraftRestoredMessage,
   WorkshopDeleteSessionMessage,
   WorkshopDuplicateSessionMessage,
   WorkshopListSessionsMessage,
@@ -21,16 +31,24 @@ import {
   WorkshopRequestSessionMessage,
   WorkshopResetSessionMessage,
   WorkshopRevealSessionMessage,
+  WorkshopRewindSessionMessage,
   WorkshopSaveSessionMessage,
   WorkshopSessionAction,
   WorkshopSessionActionResultMessage,
   WorkshopSessionContextScanMessage,
   WorkshopSessionRecoveryNoticeMessage,
-  WorkshopSessionsDataMessage
+  WorkshopSessionsDataMessage,
+  WorkshopWidgetConfigRestoredMessage
 } from '@messages';
 import type {
   WorkshopMutationRouteRegistrar
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
+import { workshopPersonaLabel, isWorkshopPersonaId } from '@shared/constants/workshopPersonas';
+import { workshopToolLabel, isWorkshopToolId } from '@shared/constants/workshopTools';
+import {
+  workshopBranchUnavailableReason,
+  workshopRewindUnavailableReason
+} from '@shared/constants/workshopRewind';
 
 let sessionRequestCounter = 0;
 const generateSessionRequestId = (): string =>
@@ -44,6 +62,8 @@ export interface WorkshopSessionMessageHandlerOptions {
   reportError: (message: string, details?: string) => void;
   /** Human label for a run currently blocking state replacement. */
   activeRunLabel: () => 'Context wizard' | 'response' | undefined;
+  /** The cut a thread bubble offers (ADR 2026-09-30 §1), if any. */
+  rewindCutForBubble: (turnId: string) => WorkshopRewindCut | undefined;
 }
 
 export class WorkshopSessionMessageHandler {
@@ -66,6 +86,8 @@ export class WorkshopSessionMessageHandler {
   ): void {
     registerMutation(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, this.handleRefreshContextFiles.bind(this));
     registerMutation(MessageType.WORKSHOP_RESET_SESSION, this.handleResetSession.bind(this), 'new');
+    registerMutation(MessageType.WORKSHOP_REWIND_SESSION, this.handleRewindSession.bind(this), 'rewind');
+    registerMutation(MessageType.WORKSHOP_BRANCH_SESSION, this.handleBranchSession.bind(this), 'branch');
     router.register(MessageType.WORKSHOP_REQUEST_SESSION, this.handleRequestSession.bind(this));
     registerMutation(MessageType.WORKSHOP_SAVE_SESSION, this.handleSaveSession.bind(this), 'save');
     router.register(MessageType.WORKSHOP_LIST_SESSIONS, this.handleListSessions.bind(this));
@@ -123,6 +145,117 @@ export class WorkshopSessionMessageHandler {
     } catch (error) {
       this.options.postSessionState();
       this.postActionFailure('new', error);
+    }
+  }
+
+  /**
+   * Rewind to one bubble (ADR 2026-09-30 §6). The bubble maps to its cut
+   * here; the coordinator re-checks the cut, cuts, installs and writes the
+   * room, or restores the prior one. A writer-message rewind is an edit (see
+   * `postEditRestores`).
+   */
+  async handleRewindSession(message: WorkshopRewindSessionMessage): Promise<void> {
+    if (this.rejectWhileRunning('rewind the conversation', 'rewind')) {
+      return;
+    }
+    const turnId = typeof message.payload?.turnId === 'string' ? message.payload.turnId : '';
+    const cut = this.options.rewindCutForBubble(turnId);
+    if (!cut) {
+      this.postActionResult('rewind', false, `${workshopRewindUnavailableReason('not-a-rest-point')}.`);
+      return;
+    }
+    try {
+      const outcome = await this.persistence.rewindTo(cut, { origin: 'writer' });
+      await this.options.flushDeferredConversationSettings();
+      this.options.postSessionState();
+      this.postEditRestores(outcome);
+      this.postActionResult('rewind', true, describeRewindOutcome(outcome));
+    } catch (error) {
+      this.options.postSessionState();
+      if (error instanceof WorkshopRewindRefusedError) {
+        this.outputChannel.appendLine(
+          `[WorkshopSessionMessageHandler] Rewind refused (turn=${turnId}, reason=${error.reason})`
+        );
+        this.postActionResult('rewind', false, `${workshopRewindUnavailableReason(error.reason)}.`);
+      } else {
+        this.postActionFailure('rewind', error);
+      }
+    } finally {
+      this.postRecoveryNotices();
+    }
+  }
+
+  /**
+   * Branch from one bubble (ADR 2026-09-30 §7). The bubble maps to its cut
+   * here, as for Rewind; the coordinator refuses an unsaved source, re-checks
+   * the cut, saves the cut room as a new named session and opens it. A
+   * writer-message branch is an edit in the branch (see `postEditRestores`).
+   */
+  async handleBranchSession(message: WorkshopBranchSessionMessage): Promise<void> {
+    if (this.rejectWhileRunning('branch the conversation', 'branch')) {
+      return;
+    }
+    const turnId = typeof message.payload?.turnId === 'string' ? message.payload.turnId : '';
+    const title = typeof message.payload?.title === 'string' ? message.payload.title : undefined;
+    const cut = this.options.rewindCutForBubble(turnId);
+    if (!cut) {
+      this.postActionResult('branch', false, `${workshopRewindUnavailableReason('not-a-rest-point', 'branch')}.`);
+      return;
+    }
+    try {
+      const outcome = await this.persistence.branchFrom(cut, title === undefined ? {} : { title });
+      await this.options.flushDeferredConversationSettings();
+      this.options.postSessionState();
+      this.postEditRestores(outcome);
+      this.postActionResult('branch', true, describeBranchOutcome(outcome));
+    } catch (error) {
+      this.options.postSessionState();
+      if (error instanceof WorkshopBranchRefusedError) {
+        this.outputChannel.appendLine(
+          `[WorkshopSessionMessageHandler] Branch refused (turn=${turnId}, reason=${error.reason})`
+        );
+        this.postActionResult('branch', false, `${workshopBranchUnavailableReason(error.reason)}.`);
+      } else if (error instanceof WorkshopRewindRefusedError) {
+        this.outputChannel.appendLine(
+          `[WorkshopSessionMessageHandler] Branch refused (turn=${turnId}, reason=${error.reason})`
+        );
+        this.postActionResult('branch', false, `${workshopRewindUnavailableReason(error.reason, 'branch')}.`);
+      } else if (error instanceof WorkshopBranchNotOpenedError) {
+        // The branch is saved; only opening it failed, and the room was restored.
+        this.postActionResult('branch', false, describeBranchNotOpened(error));
+      } else {
+        this.postActionFailure('branch', error);
+      }
+    } finally {
+      this.postRecoveryNotices();
+    }
+  }
+
+  /**
+   * A writer-bubble cut is an edit: what it removed returns to where the
+   * writer made it. Message text goes back to the composer (its attachments
+   * come back through session state); a widget message reopens its widget.
+   */
+  private postEditRestores(
+    outcome: Pick<WorkshopRewindOutcome | WorkshopBranchOutcome, 'composerRestore' | 'widgetRestore'>
+  ): void {
+    if (outcome.composerRestore) {
+      const restored: WorkshopComposerDraftRestoredMessage = {
+        type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+        source: 'extension.workshop',
+        payload: { text: outcome.composerRestore.text },
+        timestamp: Date.now()
+      };
+      void this.postMessage(restored);
+    }
+    if (outcome.widgetRestore) {
+      const reopened: WorkshopWidgetConfigRestoredMessage = {
+        type: MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED,
+        source: 'extension.workshop',
+        payload: { widgetConfigId: outcome.widgetRestore.widgetConfigId },
+        timestamp: Date.now()
+      };
+      void this.postMessage(reopened);
     }
   }
 
@@ -384,4 +517,76 @@ export class WorkshopSessionMessageHandler {
   private errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
   }
+}
+
+/** The action result a writer reads after a rewind: what went, and what to redo. */
+function describeRewindOutcome(outcome: WorkshopRewindOutcome): string {
+  const removed = outcome.summary.removedTurnCount;
+  const sentences = [
+    removed === 0
+      ? 'Rewound: nothing after this point to remove.'
+      : `Rewound: ${removed} ${removed === 1 ? 'turn' : 'turns'} removed.`,
+    ...outcome.summary.droppedConversationKeys.map(describeDroppedParticipant)
+  ];
+  const unrestored = outcome.composerRestore?.unrestoredAttachmentLabels ?? [];
+  if (unrestored.length > 0) {
+    sentences.push(`Re-attach ${unrestored.join(', ')} before you send it again.`);
+  }
+  return sentences.join(' ');
+}
+
+/** End a borrowed error message as a sentence, whatever punctuation it brought. */
+function asSentence(text: string): string {
+  const trimmed = text.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * A saved branch that did not open; the room was restored. When the source's
+ * file changed meanwhile, opening the branch would replace the only complete
+ * copy of this room, so the writer keeps the room first.
+ */
+function describeBranchNotOpened(error: WorkshopBranchNotOpenedError): string {
+  const saved = `Saved the branch as “${error.branch.title}”, but`;
+  if (error.refusal === 'source-changed') {
+    return `${saved} didn't open it: this session's saved file went missing or changed on disk ` +
+      'while branching. Your room is unchanged. Reopen it from Sessions, or use Save as new to ' +
+      'keep this room, before you open the branch.';
+  }
+  return `${saved} couldn't open it: ${asSentence(error.detail)} ` +
+    'Your room is unchanged. Open the branch from Sessions to continue there.';
+}
+
+/**
+ * The action result a writer reads after a branch: both sessions by name,
+ * what the branch leaves in the source, and what to redo.
+ */
+function describeBranchOutcome(outcome: WorkshopBranchOutcome): string {
+  const left = outcome.summary.removedTurnCount;
+  const sentences = [
+    `Branched “${outcome.source.title}” into “${outcome.branch.title}”.`,
+    ...(left > 0
+      ? [`${left} later ${left === 1 ? 'turn stays' : 'turns stay'} in “${outcome.source.title}”.`]
+      : []),
+    ...outcome.summary.droppedConversationKeys.map(describeDroppedParticipant)
+  ];
+  const unrestored = outcome.composerRestore?.unrestoredAttachmentLabels ?? [];
+  if (unrestored.length > 0) {
+    sentences.push(`Re-attach ${unrestored.join(', ')} before you send it again.`);
+  }
+  return sentences.join(' ');
+}
+
+function describeDroppedParticipant(key: string): string {
+  if (key === 'host') {
+    return 'The host starts fresh from here.';
+  }
+  const id = key.slice(key.indexOf(':') + 1);
+  if (key.startsWith('guest:') && isWorkshopPersonaId(id)) {
+    return `${workshopPersonaLabel(id)} left the room.`;
+  }
+  if (key.startsWith('tool:') && isWorkshopToolId(id)) {
+    return `The ${workshopToolLabel(id)} tool's conversation was set aside; run it again for a fresh report.`;
+  }
+  return 'A participant was set aside.';
 }

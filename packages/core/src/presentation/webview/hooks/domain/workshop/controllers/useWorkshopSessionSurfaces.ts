@@ -6,11 +6,27 @@ import {
   WorkshopSessionSummary
 } from '@messages';
 
+/**
+ * What a writer-message rewind hands back for editing: its text to the
+ * composer, or a widget commit's released config to its widget sheet.
+ */
+export type WorkshopRewindEdit = 'composer' | 'widget';
+
 export type WorkshopSessionConfirm =
   | { kind: 'new' }
   | { kind: 'new-full' }
   | { kind: 'open'; sessionId: string; title: string }
-  | { kind: 'replace-shelf'; resume: 'paste' | 'choose' };
+  | { kind: 'replace-shelf'; resume: 'paste' | 'choose' }
+  /**
+   * Rewind to one bubble (ADR 2026-09-30, D4: Rewind confirms). `edit` marks a
+   * writer message, which returns for editing; a reply has none.
+   */
+  | { kind: 'rewind'; turnId: string; removedCount: number; edit?: WorkshopRewindEdit }
+  /**
+   * Branch from an unsaved room (ADR 2026-09-30, D2): nothing is sent. The
+   * writer saves first, then branches again; nothing saves automatically.
+   */
+  | { kind: 'save-before-branch' };
 
 /** Work this controller cannot resolve alone; the shell must finish it. */
 export type WorkshopSessionConfirmResumption = { resume: 'paste' | 'choose' };
@@ -21,12 +37,16 @@ export interface UseWorkshopSessionSurfacesOptions {
   sessionMutationsDisabled: boolean;
   hasReplaceableSessionState: boolean;
   hasWorkingSet: boolean;
+  /** The live room is a saved, named session: the one kind Branch accepts (D2). */
+  roomIsNamed: boolean;
   sessionSearchQuery: string;
   sessionActionResult?: WorkshopSessionActionResultMessage['payload'];
   requestSessions: (query?: string) => void;
   setSessionSearchQuery: (query: string) => void;
   resetSession: (options?: { clearWorkingSet?: boolean }) => void;
   openSession: (sessionId: string) => void;
+  rewindTo: (turnId: string) => void;
+  branchFrom: (turnId: string) => void;
   consumeSessionActionResult: () => void;
   onResult: (result: WorkshopSessionActionResultMessage['payload']) => void;
 }
@@ -48,6 +68,8 @@ export interface WorkshopSessionSurfacesActions {
   startFullReset: () => void;
   openStoredSession: (session: WorkshopSessionSummary) => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
+  requestRewind: (turnId: string, removedCount: number, edit?: WorkshopRewindEdit) => void;
+  requestBranch: (turnId: string) => void;
   acceptSessionConfirm: () => WorkshopSessionConfirmResumption | undefined;
   cancelSessionConfirm: () => void;
 }
@@ -67,12 +89,15 @@ export function useWorkshopSessionSurfaces({
   sessionMutationsDisabled,
   hasReplaceableSessionState,
   hasWorkingSet,
+  roomIsNamed,
   sessionSearchQuery,
   sessionActionResult,
   requestSessions,
   setSessionSearchQuery,
   resetSession,
   openSession,
+  rewindTo,
+  branchFrom,
   consumeSessionActionResult,
   onResult
 }: UseWorkshopSessionSurfacesOptions): UseWorkshopSessionSurfacesReturn {
@@ -107,8 +132,11 @@ export function useWorkshopSessionSurfaces({
       setSaveSessionModalOpen(false);
     }
     if (
-      sessionActionResult.ok &&
-      (sessionActionResult.action === 'open' || sessionActionResult.action === 'new')
+      sessionActionResult.ok && (
+        sessionActionResult.action === 'open' ||
+        sessionActionResult.action === 'new' ||
+        sessionActionResult.action === 'branch'
+      )
     ) {
       setSessionBrowserOpen(false);
     }
@@ -117,9 +145,11 @@ export function useWorkshopSessionSurfaces({
     const activeRoomIdentityChanged = sessionActionResult.ok && (
       sessionActionResult.action === 'save' ||
       sessionActionResult.action === 'open' ||
-      sessionActionResult.action === 'new'
+      sessionActionResult.action === 'new' ||
+      sessionActionResult.action === 'branch'
     );
-    if (activeRoomIdentityChanged) {
+    // A branch that was saved but not opened still added a session.
+    if (activeRoomIdentityChanged || sessionActionResult.action === 'branch') {
       requestSessions('');
     } else if (sessionBrowserOpen || sessionsMenuOpen || sessionIndexChanged) {
       requestSessions();
@@ -190,6 +220,23 @@ export function useWorkshopSessionSurfaces({
     setSessionConfirm({ kind: 'replace-shelf', resume });
   }, []);
 
+  const requestRewind = React.useCallback(
+    (turnId: string, removedCount: number, edit?: WorkshopRewindEdit) => {
+      setSessionConfirm({ kind: 'rewind', turnId, removedCount, ...(edit ? { edit } : {}) });
+    },
+    []
+  );
+
+  // D4: Branch is non-destructive, so a saved room branches without a
+  // confirmation. An unsaved room is asked to save first (D2).
+  const requestBranch = React.useCallback((turnId: string) => {
+    if (roomIsNamed) {
+      branchFrom(turnId);
+      return;
+    }
+    setSessionConfirm({ kind: 'save-before-branch' });
+  }, [branchFrom, roomIsNamed]);
+
   const acceptSessionConfirm = React.useCallback(() => {
     if (!sessionConfirm) {
       return undefined;
@@ -201,11 +248,15 @@ export function useWorkshopSessionSurfaces({
       resetSession({ clearWorkingSet: true });
     } else if (sessionConfirm.kind === 'open') {
       openSession(sessionConfirm.sessionId);
+    } else if (sessionConfirm.kind === 'rewind') {
+      rewindTo(sessionConfirm.turnId);
+    } else if (sessionConfirm.kind === 'save-before-branch') {
+      openSaveSessionModal();
     } else {
       return { resume: sessionConfirm.resume };
     }
     return undefined;
-  }, [openSession, resetSession, sessionConfirm]);
+  }, [openSaveSessionModal, openSession, resetSession, rewindTo, sessionConfirm]);
 
   const cancelSessionConfirm = React.useCallback(() => setSessionConfirm(null), []);
 
@@ -259,6 +310,8 @@ export function useWorkshopSessionSurfaces({
     startFullReset,
     openStoredSession,
     requestShelfReplacement,
+    requestRewind,
+    requestBranch,
     acceptSessionConfirm,
     cancelSessionConfirm,
     persistedState: {}

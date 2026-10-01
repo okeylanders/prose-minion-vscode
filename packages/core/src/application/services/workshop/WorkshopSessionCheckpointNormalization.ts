@@ -16,6 +16,10 @@ import {
 import type {
   WorkshopWidgetRecoveryNotice
 } from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
+import {
+  findInconsistentRetainedHistoryMarkKeys,
+  withoutRetainedHistoryMarkKeys
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 
 export type WorkshopSessionCheckpointNormalization =
   | 'discarded-legacy-scope-transition'
@@ -28,7 +32,11 @@ export type WorkshopSessionCheckpointNormalization =
   | 'defaulted-proactive-assistance'
   | 'discarded-nonpersona-widget-recommendation'
   | WorkshopWidgetCheckpointNormalization
-  | 'headed-missing-room-offsets';
+  | 'headed-missing-room-offsets'
+  // Not development drift: ADR 2026-09-30 §3 degrades a mark that cannot be
+  // trusted by dropping its key's marks, so it can never refuse a session.
+  | 'dropped-inconsistent-retained-history-marks'
+  | 'dropped-unverifiable-retained-history-marks';
 
 export interface WorkshopSessionCheckpointNormalizationResult {
   state: WorkshopSessionStateV1;
@@ -133,12 +141,21 @@ export function normalizeWorkshopSessionCheckpointForHydration(
         guest.lastSeenHostTurnId !== undefined
         || guest.deliveredToHostThroughTurnId !== undefined
     );
+  // A restored participant starts current rather than replaying the room
+  // (ADR 2026-07-24 §12). A participant with no retained conversation — an
+  // unbound host, a disposed guest — has read nothing: an absent offset is
+  // its truth, and heading it would withhold the catch-up a fresh participant
+  // needs (ADR 2026-09-30, Sprint 02 implementation findings).
+  const hostRetainsConversation = state.participants.host.conversationKey === 'host';
+  const guestRetainsConversation = (
+    guest: WorkshopSessionStateV1['participants']['personaGuests'][number]
+  ): boolean => guest.liveness === 'live' && guest.conversationKey !== undefined;
   const headedMissingRoomOffsets =
     ledgerHead !== undefined
     && (
-      state.participants.host.lastSeenRoomTurnId === undefined
+      (hostRetainsConversation && state.participants.host.lastSeenRoomTurnId === undefined)
       || state.participants.personaGuests.some(
-        (guest) => guest.lastSeenRoomTurnId === undefined
+        (guest) => guestRetainsConversation(guest) && guest.lastSeenRoomTurnId === undefined
       )
     );
   if (discardedLegacyDeliveryCursors) {
@@ -163,15 +180,18 @@ export function normalizeWorkshopSessionCheckpointForHydration(
     } = guest;
     return {
       ...currentGuest,
-      lastSeenRoomTurnId: currentGuest.lastSeenRoomTurnId ?? ledgerHead
+      lastSeenRoomTurnId: guestRetainsConversation(currentGuest)
+        ? currentGuest.lastSeenRoomTurnId ?? ledgerHead
+        : currentGuest.lastSeenRoomTurnId
     };
   });
   const participants = {
     ...state.participants,
     host: {
       ...state.participants.host,
-      lastSeenRoomTurnId:
-        state.participants.host.lastSeenRoomTurnId ?? ledgerHead
+      lastSeenRoomTurnId: hostRetainsConversation
+        ? state.participants.host.lastSeenRoomTurnId ?? ledgerHead
+        : state.participants.host.lastSeenRoomTurnId
     },
     toolSidecars,
     personaGuests
@@ -190,17 +210,25 @@ export function normalizeWorkshopSessionCheckpointForHydration(
   delete revisions.pendingExcerptChange;
   delete revisions.pendingExcerptWithdrawal;
 
+  const normalized: WorkshopSessionStateV1 = {
+    ...state,
+    turns,
+    excerpt,
+    scope,
+    shelvedExcerpt,
+    widgetConfigs,
+    revisions,
+    participants
+  };
+  // Runs last, against the normalized participants and turns it must agree
+  // with. A key is judged whole: one untrustworthy mark discards the key.
+  const inconsistentMarkKeys = findInconsistentRetainedHistoryMarkKeys(normalized);
+  if (inconsistentMarkKeys.size > 0) {
+    normalizations.push('dropped-inconsistent-retained-history-marks');
+  }
+
   return {
-    state: {
-      ...state,
-      turns,
-      excerpt,
-      scope,
-      shelvedExcerpt,
-      widgetConfigs,
-      revisions,
-      participants
-    },
+    state: withoutRetainedHistoryMarkKeys(normalized, inconsistentMarkKeys),
     normalizations: [...new Set(normalizations)],
     notices
   };

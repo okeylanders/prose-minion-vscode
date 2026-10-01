@@ -1405,6 +1405,15 @@
   color: var(--pm-text);
   border-color: var(--pm-border-2);
 }
+/* Rewind (ADR 2026-09-30): a disabled action stays visible with its reason. */
+[data-pm-surface="workshop"] .pm-ws-turn-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-turn-actions-writer {
+  justify-content: flex-end;
+  margin-top: 4px;
+}
 
 /* Quick actions */
 [data-pm-surface="workshop"] .pm-ws-qbar {

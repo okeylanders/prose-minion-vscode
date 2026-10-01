@@ -65,6 +65,7 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         standingDirectives: [],
         todos: [],
         turns,
+        turnRewindability: {},
         totalTurns: turns.length,
         truncatedTurns: 0,
         roomHasMemory: false,

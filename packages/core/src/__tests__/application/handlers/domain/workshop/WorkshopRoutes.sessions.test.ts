@@ -80,7 +80,8 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState: jest.fn(),
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError: jest.fn(),
-      activeRunLabel: () => undefined
+      activeRunLabel: () => undefined,
+      rewindCutForBubble: () => undefined
     });
     const pending = action === 'restore'
       ? handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} })
@@ -102,7 +103,8 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState: jest.fn(),
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError: jest.fn(),
-      activeRunLabel: () => undefined
+      activeRunLabel: () => undefined,
+      rewindCutForBubble: () => undefined
     });
     if (action === 'restore') {
       await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
@@ -127,7 +129,8 @@ describe('Workshop composed routing — session owner', () => {
     const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
       refreshContextFiles: jest.fn(), postSessionState: state,
       flushDeferredConversationSettings: jest.fn(), reportError: error,
-      activeRunLabel: () => undefined
+      activeRunLabel: () => undefined,
+      rewindCutForBubble: () => undefined
     });
     await handler.handleRequestSession(message(MessageType.WORKSHOP_REQUEST_SESSION, {}) as never);
     expect(error).toHaveBeenCalledWith('Could not load the saved Workshop session.', 'Initialization failed');
@@ -144,7 +147,8 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState: () => { order.push('state'); },
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError: jest.fn(),
-      activeRunLabel: () => undefined
+      activeRunLabel: () => undefined,
+      rewindCutForBubble: () => undefined
     });
     const request = { type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} } as const;
     await handler.handleRequestSession(request);
@@ -161,7 +165,8 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState: jest.fn(),
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError,
-      activeRunLabel: () => undefined
+      activeRunLabel: () => undefined,
+      rewindCutForBubble: () => undefined
     });
     await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
     expect(refreshContextFiles).not.toHaveBeenCalled();
@@ -174,10 +179,38 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState: jest.fn(),
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError: jest.fn(),
-      activeRunLabel: () => 'response'
+      activeRunLabel: () => 'response',
+      rewindCutForBubble: () => undefined
     });
     await handler.handleRequestSession({ type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} });
     expect(persistence.refreshNamedSession).not.toHaveBeenCalled();
+  });
+
+  it('does not rewind a room while a response is active', async () => {
+    const rewindCutForBubble = jest.fn();
+    const handler = new WorkshopSessionMessageHandler(persistence, postMessage, shell, log, {
+      refreshContextFiles: jest.fn(),
+      postSessionState: jest.fn(),
+      flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
+      reportError: jest.fn(),
+      activeRunLabel: () => 'response',
+      rewindCutForBubble
+    });
+    await handler.handleRewindSession({
+      type: MessageType.WORKSHOP_REWIND_SESSION,
+      source: 'webview.workshop',
+      timestamp: 0,
+      payload: { turnId: 'turn-2-assistant-2' }
+    });
+    expect(rewindCutForBubble).not.toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+      payload: {
+        action: 'rewind',
+        ok: false,
+        message: 'Wait for the current response to finish before you rewind the conversation.'
+      }
+    }));
   });
 
   it('replays idle scan state when a retained tab missed the previous completion', async () => {
@@ -187,7 +220,8 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState: jest.fn(),
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError: jest.fn(),
-      activeRunLabel: () => undefined
+      activeRunLabel: () => undefined,
+      rewindCutForBubble: () => undefined
     });
     const request = { type: MessageType.WORKSHOP_REQUEST_SESSION, source: 'webview.workshop', timestamp: 0, payload: {} } as const;
     await handler.handleRequestSession(request);
@@ -263,7 +297,8 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState: jest.fn(),
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError,
-      activeRunLabel: () => activeRun
+      activeRunLabel: () => activeRun,
+      rewindCutForBubble: () => undefined
     });
 
     await handler.handleRefreshContextFiles(message(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {}) as never);
@@ -285,7 +320,8 @@ describe('Workshop composed routing — session owner', () => {
       postSessionState,
       flushDeferredConversationSettings: jest.fn().mockResolvedValue(undefined),
       reportError,
-      activeRunLabel: () => undefined
+      activeRunLabel: () => undefined,
+      rewindCutForBubble: () => undefined
     });
 
     await handler.handleRefreshContextFiles(message(MessageType.WORKSHOP_REFRESH_CONTEXT_FILES, {}) as never);

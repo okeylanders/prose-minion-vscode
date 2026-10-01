@@ -5,6 +5,7 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import {
   MessageType,
   WorkshopWidgetConfigDataMessage,
+  WorkshopWidgetConfigRestoredMessage,
   WorkshopWidgetConfigSnapshot
 } from '@messages';
 
@@ -12,12 +13,20 @@ export interface WorkshopWidgetHostState {
   widgetConfigData: WorkshopWidgetConfigSnapshot | null;
   widgetConfigResponseId: string | null;
   widgetConfigError: string | null;
+  /**
+   * A config the host released by rewinding its widget message, waiting for
+   * the opening controller to reopen it (ADR 2026-09-30, Sprint 03 kickoff
+   * decision 3).
+   */
+  restoredWidgetConfigId: string | null;
 }
 
 export interface WorkshopWidgetHostActions {
   requestWidgetConfig: (configId: string) => void;
   clearWidgetConfigData: () => void;
   handleWidgetConfigData: (message: WorkshopWidgetConfigDataMessage) => void;
+  handleWidgetConfigRestored: (message: WorkshopWidgetConfigRestoredMessage) => void;
+  consumeRestoredWidgetConfig: () => void;
 }
 
 export interface WorkshopWidgetHostPersistence {
@@ -35,6 +44,7 @@ export function useWorkshopWidgetHost(): UseWorkshopWidgetHostReturn {
     React.useState<WorkshopWidgetConfigSnapshot | null>(null);
   const [widgetConfigResponseId, setWidgetConfigResponseId] = React.useState<string | null>(null);
   const [widgetConfigError, setWidgetConfigError] = React.useState<string | null>(null);
+  const [restoredWidgetConfigId, setRestoredWidgetConfigId] = React.useState<string | null>(null);
 
   const requestWidgetConfig = React.useCallback((configId: string) => {
     setWidgetConfigData(null);
@@ -63,13 +73,27 @@ export function useWorkshopWidgetHost(): UseWorkshopWidgetHostReturn {
     []
   );
 
+  const handleWidgetConfigRestored = React.useCallback(
+    (message: WorkshopWidgetConfigRestoredMessage) => {
+      setRestoredWidgetConfigId(message.payload.widgetConfigId);
+    },
+    []
+  );
+
+  const consumeRestoredWidgetConfig = React.useCallback(() => {
+    setRestoredWidgetConfigId(null);
+  }, []);
+
   return {
     widgetConfigData,
     widgetConfigResponseId,
     widgetConfigError,
+    restoredWidgetConfigId,
     requestWidgetConfig,
     clearWidgetConfigData,
     handleWidgetConfigData,
+    handleWidgetConfigRestored,
+    consumeRestoredWidgetConfig,
     persistedState: {}
   };
 }

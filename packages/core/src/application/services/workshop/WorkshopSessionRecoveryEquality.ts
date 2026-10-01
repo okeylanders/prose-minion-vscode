@@ -22,9 +22,12 @@ export function hasSameWorkshopRecoveryContent(
   right: WorkshopPersistedSessionV2
 ): boolean {
   const normalize = (value: WorkshopPersistedSessionV2): unknown => {
-    const { savedAt, updatedAt, summary, rollingCleanHash, temporal, workshop, ...identity } =
+    const { savedAt, updatedAt, summary, rollingCleanHash, temporal, workshop: decodedWorkshop, ...identity } =
       decodeWorkshopPersistedSessionCheckpoint(value).session;
     const { lastActivityAt, ...meaningfulTemporal } = temporal;
+    // Retained-history marks are host bookkeeping, not writer work: opening a
+    // legacy file records baselines, and must not look like unsaved content.
+    const { retainedHistoryMarks: _marks, ...workshop } = decodedWorkshop;
     const turns = workshop.turns.filter((turn) => !isAutomaticResumeMarker(turn));
     // Decoding can advance participant cursors over automatic dividers. Map
     // those cursors back to the last content turn, retaining all other cursor

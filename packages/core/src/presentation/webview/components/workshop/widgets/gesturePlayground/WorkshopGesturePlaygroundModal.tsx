@@ -537,10 +537,19 @@ export const WorkshopGesturePlaygroundModal: React.FC<WorkshopGesturePlaygroundM
           {opening.kind === 'clone' && (
             <div className="pm-ws-gesture-banner pm-ws-gesture-banner-clone">
               <Icon name="refresh" size={13} />
-              <span>
-                <b>Re-opened from a committed turn.</b> The old chip stays as history — committing
-                again creates a <b>new</b> turn at the head. History is never rewritten.
-              </span>
+              {opening.config.committedTurnId === undefined ? (
+                // Only a rewind releases a commit (ADR 2026-09-30, Sprint 03
+                // kickoff decision 3); no chip is left to reopen it from.
+                <span>
+                  <b>Reopened from a message you rewound.</b> Adjust it, then commit to send it
+                  again as a <b>new</b> turn at the head.
+                </span>
+              ) : (
+                <span>
+                  <b>Re-opened from a committed turn.</b> The old chip stays as history — committing
+                  again creates a <b>new</b> turn at the head. History is never rewritten.
+                </span>
+              )}
             </div>
           )}
           <WorkshopModalShell.CloseButton />

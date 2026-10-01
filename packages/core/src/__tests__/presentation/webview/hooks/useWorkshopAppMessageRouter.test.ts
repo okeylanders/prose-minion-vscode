@@ -23,7 +23,7 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionContextScan: jest.fn(),
     handleSessionRecoveryNotice: jest.fn()
   } as never,
-  widgetHost: { handleWidgetConfigData: jest.fn() } as never,
+  widgetHost: { handleWidgetConfigData: jest.fn(), handleWidgetConfigRestored: jest.fn() } as never,
   gesturePlayground: {
     handleWidgetMenuResult: jest.fn(),
     handleWidgetGenerationProgress: jest.fn(),
@@ -124,6 +124,21 @@ describe('buildWorkshopAppMessageRoutes', () => {
     routes[MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]!(message as never);
 
     expect(deps.workshopRoom.handleComposerDraftRestored).toHaveBeenCalledWith(message);
+  });
+
+  it('routes a rewound widget message\'s released config to the widget host', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const message = {
+      type: MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: { widgetConfigId: 'wc-2' }
+    } as const;
+
+    routes[MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED]!(message as never);
+
+    expect(deps.widgetHost.handleWidgetConfigRestored).toHaveBeenCalledWith(message);
   });
 
   it('routes successful key self-heal to the Workshop availability owner', () => {

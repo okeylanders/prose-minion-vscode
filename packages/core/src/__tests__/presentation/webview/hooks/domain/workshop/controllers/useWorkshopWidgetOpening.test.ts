@@ -82,8 +82,10 @@ const emptyHost = (): WorkshopWidgetOpeningHost => ({
   widgetConfigData: null,
   widgetConfigResponseId: null,
   widgetConfigError: null,
+  restoredWidgetConfigId: null,
   requestWidgetConfig: jest.fn(),
-  clearWidgetConfigData: jest.fn()
+  clearWidgetConfigData: jest.fn(),
+  consumeRestoredWidgetConfig: jest.fn()
 });
 
 describe('useWorkshopWidgetOpening', () => {
@@ -181,6 +183,36 @@ describe('useWorkshopWidgetOpening', () => {
       kind: 'edit',
       config: lexicalConfig
     });
+  });
+
+  it('reopens a released config the host restored after a widget-message rewind', () => {
+    let host = emptyHost();
+    const { result, rerender } = renderHook(() => useWorkshopWidgetOpening({
+      host,
+      standingDirectives: [],
+      onError: jest.fn(),
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations: jest.fn()
+    }));
+    expect(host.requestWidgetConfig).not.toHaveBeenCalled();
+
+    host = { ...host, restoredWidgetConfigId: gestureConfig.id };
+    rerender();
+    expect(host.consumeRestoredWidgetConfig).toHaveBeenCalledTimes(1);
+    expect(host.requestWidgetConfig).toHaveBeenCalledWith(gestureConfig.id);
+    expect(result.current.pendingWidgetConfigId).toBe(gestureConfig.id);
+
+    // It opens exactly as the thread chip's reopen does: clone the draft.
+    host = {
+      ...host,
+      restoredWidgetConfigId: null,
+      widgetConfigData: gestureConfig,
+      widgetConfigResponseId: gestureConfig.id
+    };
+    rerender();
+    expect(result.current.gesturePlaygroundOpening).toEqual({ kind: 'clone', config: gestureConfig });
+    expect(result.current.pendingWidgetConfigId).toBeNull();
   });
 
   it('settles an exact host error without opening another surface', () => {

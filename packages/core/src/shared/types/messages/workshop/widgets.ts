@@ -171,6 +171,19 @@ export interface WorkshopWidgetConfigDataMessage extends MessageEnvelope<{
   type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA;
 }
 
+/**
+ * Re-opens a widget sheet on a config whose one-shot commit the writer
+ * rewound or branched away from its own message (ADR 2026-09-30, Sprint 03
+ * kickoff decision 3). The widget twin of WORKSHOP_COMPOSER_DRAFT_RESTORED:
+ * the config keeps its draft host-side, and the webview requests it through
+ * the ordinary WORKSHOP_REQUEST_WIDGET_CONFIG path.
+ */
+export interface WorkshopWidgetConfigRestoredMessage extends MessageEnvelope<{
+  widgetConfigId: string;
+}> {
+  type: MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED;
+}
+
 /** Family rail contract; each supported one-shot widget contributes one exact arm. */
 export type WorkshopCommitWidgetPayload =
   | WorkshopGesturePlaygroundCommitPayload

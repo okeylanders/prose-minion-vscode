@@ -412,6 +412,26 @@ export interface WorkshopTurn {
 }
 
 /**
+ * Why an eligible bubble's Rewind/Branch action is disabled (ADR 2026-09-30
+ * §4): the conversation was saved before rewind support reached this point,
+ * the cut would cross a standing prose-directive change (not honest yet in
+ * v1), or a run is in flight.
+ */
+export type WorkshopTurnRewindUnavailableReason =
+  | 'before-rewind-support'
+  | 'before-directive-change'
+  | 'busy';
+
+/**
+ * Host-computed rewindability of one eligible bubble. Display-safe: the
+ * retained-history marks behind it never leave the host, and the webview
+ * renders this verdict without re-deriving it. Rewind and Branch re-check it.
+ */
+export type WorkshopTurnRewindability =
+  | { available: true }
+  | { available: false; reason: WorkshopTurnRewindUnavailableReason };
+
+/**
  * Full host-side session aggregate, as exposed to the webview. This is the
  * reload-safety contract: a webview that (re)mounts requests this snapshot and
  * rebuilds the thread from it — React never owns the session.
@@ -464,6 +484,14 @@ export interface WorkshopSessionSnapshot {
   /** Active passage-scoped prose directives; one entry per closed family. */
   standingDirectives: WorkshopStandingDirectiveSummary[];
   turns: WorkshopTurn[];
+  /**
+   * Aggregate-owned Rewind/Branch policy for the bubbles in `turns`, keyed by
+   * turn id (ADR 2026-09-30 §4). Only eligible bubbles appear — agent replies
+   * and writer messages; dividers, capability cards, and tool requests offer
+   * no action and are absent. Like `participantSubjectReady`, the webview
+   * consumes this result and never re-derives it.
+   */
+  turnRewindability: Record<string, WorkshopTurnRewindability>;
   /** Total turns held host-side (>= turns.length). */
   totalTurns: number;
   /** Older turns omitted from this snapshot's window. */
@@ -593,6 +621,36 @@ export interface WorkshopResetSessionPayload {
 export interface WorkshopResetSessionMessage
   extends MessageEnvelope<WorkshopResetSessionPayload> {
   type: MessageType.WORKSHOP_RESET_SESSION;
+}
+
+/**
+ * Rewind the room to one thread bubble (ADR 2026-09-30 §1, §6). The host maps
+ * the bubble to its cut (after a reply, before a writer message) and checks
+ * it again: the snapshot's rewindability flag is advisory. A writer-message
+ * rewind is an edit, so its text returns through
+ * WORKSHOP_COMPOSER_DRAFT_RESTORED and its one-shot attachments are staged
+ * again under their original ids.
+ */
+export interface WorkshopRewindSessionMessage extends MessageEnvelope<{
+  turnId: string;
+}> {
+  type: MessageType.WORKSHOP_REWIND_SESSION;
+}
+
+/**
+ * Branch from one thread bubble (ADR 2026-09-30 §7): the host maps the bubble
+ * to its cut exactly as Rewind does, saves the cut room as a new named
+ * session, and opens it. The source session is never modified. Only a saved
+ * room can branch: the webview asks an unnamed room to save first, and the
+ * host refuses one anyway. `title` overrides the default
+ * `"<source title> — branch"`. A writer-message branch is an edit in the
+ * branch, restored through the same messages as a writer-message rewind.
+ */
+export interface WorkshopBranchSessionMessage extends MessageEnvelope<{
+  turnId: string;
+  title?: string;
+}> {
+  type: MessageType.WORKSHOP_BRANCH_SESSION;
 }
 
 /** Sent on webview mount: "give me the session as the host knows it". */
@@ -757,6 +815,8 @@ export interface WorkshopSessionsDataMessage extends MessageEnvelope<{
 
 export type WorkshopSessionAction =
   | 'new'
+  | 'rewind'
+  | 'branch'
   | 'save'
   | 'open'
   | 'rename'
