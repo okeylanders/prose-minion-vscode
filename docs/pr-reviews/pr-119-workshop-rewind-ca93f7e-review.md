@@ -12,7 +12,7 @@ Status legend: **Open** = actionable recommendation with the deadline stated bel
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🔵 Nit | Rewind confirmation recommends Branch before that action exists | Confirmation helper and WorkshopApp test compared with Sprint 03's delivery plan | **Open** — resolve when the UI is released: implement Branch in Sprint 03, or omit the recommendation if Rewind ships independently |
+| F-01 | 🔵 Nit | Rewind confirmation recommends Branch before that action exists | Confirmation helper and WorkshopApp test compared with Sprint 03's delivery plan | **Open** — resolve when the UI is released: implement Branch in Sprint 03, or omit the recommendation if Rewind ships independently. *Tracking:* the epic merges to `main` as one unit, so Rewind never ships without Branch. The sentence and its test stay, and Sprint 03's exit criteria close F-01 once Branch lands |
 | F-02 | 🟢 Praise | The pure transform cuts both room representations together and validates its output | Source tracing, equivalence oracle, transform tests, and independent correctness review | N/A — preserve |
 | F-03 | 🟢 Praise | Ordinary write failures retain a usable rollback room; named mirror failures have separate retry semantics | Coordinator/install/rollback source tracing and passing coordinator/persistence tests | N/A — preserve |
 

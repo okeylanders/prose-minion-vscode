@@ -64,6 +64,9 @@ Let a writer branch from any rewindable point of a saved (named) session into a 
 - **Open follow-ups to schedule or defer.**
   - [Rewound widget commits: reopen the released config](../../../tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
   - [Time notices outlive their conversations](../../../tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). Branch inherits both through the shared transform.
+- **PR #119 review carry-over** ([review](../../../../docs/pr-reviews/pr-119-workshop-rewind-ca93f7e-review.md)).
+  - **F-01.** The Rewind confirmation ends "To keep this conversation too, use Branch instead.", and `WorkshopApp.test.tsx` asserts it. Branch makes the sentence true, so keep both and mark F-01 Addressed in the review ledger when Branch lands.
+  - **Release disposition.** The review asks that both follow-ups above stay visible at release. The release notes or the epic's archive note must record each one as fixed or explicitly accepted.
 
 ## Tests
 
@@ -92,4 +95,4 @@ Record results in the memory-bank entry. Use cheap models and short rooms.
 
 ## Exit
 
-Branch works from named rooms with the source preserved, and unnamed rooms are asked to save first. All epic completion criteria are checked. Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. Manual smoke is recorded.
+Branch works from named rooms with the source preserved, and unnamed rooms are asked to save first. PR #119 review F-01 is addressed. All epic completion criteria are checked. Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. Manual smoke is recorded.
