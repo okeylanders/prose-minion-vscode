@@ -540,6 +540,61 @@
   justify-content: center;
   align-items: flex-start;
 }
+/* The thread's own action buttons, drawn inline where no screenshot exists
+   yet; a called-out action wears the same ring and badge as a figure's box. */
+[data-pm-surface="workshop"] .pm-ws-notice-actions {
+  flex: none;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-actions-caption {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 0 0 10px;
+}
+[data-pm-surface="workshop"] .pm-ws-notice-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  color: var(--pm-muted);
+  padding: 6px 9px;
+  font: 12px var(--pm-sans);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-action-called {
+  border: 2px solid var(--pm-accent-hi);
+  color: var(--pm-text-2);
+  box-shadow:
+    0 0 0 3px rgba(224, 103, 58, 0.16),
+    0 0 18px rgba(224, 103, 58, 0.3);
+}
+[data-pm-surface="workshop"] .pm-ws-notice-action > i {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-accent);
+  color: #1c0f07;
+  font: 700 11px/20px var(--pm-sans);
+  text-align: center;
+  font-style: normal;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
 [data-pm-surface="workshop"] .pm-ws-notice-thumb {
   flex: 1;
   /* Without this the captions' intrinsic width keeps the row wider than the
@@ -634,7 +689,8 @@
   color: var(--pm-text-2);
   font-weight: 600;
 }
-[data-pm-surface="workshop"] .pm-ws-notice-guide-note {
+[data-pm-surface="workshop"] .pm-ws-notice-guide-note,
+[data-pm-surface="workshop"] .pm-ws-notice-note {
   margin-top: 14px !important;
   padding-top: 12px;
   border-top: 1px dashed var(--pm-border-2);
