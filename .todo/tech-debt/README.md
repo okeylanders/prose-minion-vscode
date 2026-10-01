@@ -69,7 +69,6 @@ elsewhere.
 | Medium | [Widget recommendation prompt assembly](2026-07-31-workshop-widget-recommendation-prompt-assembly.md) | Deferred |
 | Low | [Filesystem missing-file error contract](2026-07-27-filesystem-missing-error-contract.md) | Partially mitigated |
 | Low | [Widget-config counter integrity validation](2026-07-31-widget-config-counter-integrity.md) | Identified |
-| Medium | [Rewound widget commits: reopen the released config](2026-09-30-workshop-rewound-widget-commit-reopen.md) | Identified |
 
 ## Review Guidance
 

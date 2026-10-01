@@ -92,7 +92,7 @@ Named authority remains identity-checked. Once the named write succeeds, its rol
 
 Two known limitations are already documented in this PR; they are not new findings or silently accepted deferrals:
 
-- [Released widget configs have no reopening entry point](../../.todo/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md). The retained draft survives host-side, but the removed commit bubble was its UI entry point. A writer cannot currently retry that draft through the thread. Keep this visible in the epic's release disposition.
+- [Released widget configs have no reopening entry point](../../.todo/archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md). The retained draft survives host-side, but the removed commit bubble was its UI entry point. A writer cannot currently retry that draft through the thread. Keep this visible in the epic's release disposition.
 - [Time notices outlive discarded conversations](../../.todo/archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host or re-invited guest can miss its initial time frame until the hourly interval expires. This is per-conversation delivery bookkeeping, and the debt record gives a focused correction that preserves current temporal state.
 
 Sprint 03 also records the coordinator's size as a kickoff decision. Its growth merits that planned ownership discussion before adding Branch, but the extracted transform and shared installation core are coherent here; line count alone is not a merge blocker.

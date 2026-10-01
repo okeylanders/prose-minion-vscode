@@ -65,9 +65,9 @@ interface WorkshopTurnBubbleProps {
 }
 
 /**
- * The bubble's Rewind action. A writer message rewinds as an edit (its text
- * returns to the composer), except a widget commit's, whose draft stays with
- * its widget. A disabled action carries the reason instead of vanishing.
+ * The bubble's Rewind action. A writer message rewinds as an edit: its text
+ * returns to the composer, or a widget commit's widget reopens on its draft.
+ * A disabled action carries the reason instead of vanishing.
  */
 const WorkshopRewindAction: React.FC<{
   turn: WorkshopTurn;
@@ -75,15 +75,15 @@ const WorkshopRewindAction: React.FC<{
   pausedReason?: string;
   onRewind: (turn: WorkshopTurn) => void;
 }> = ({ turn, rewindability, pausedReason, onRewind }) => {
-  const edit = turn.role === 'user' && turn.widgetCommit === undefined;
+  const edit = turn.role === 'user';
   const unavailable = rewindability.available
     ? pausedReason
     : workshopRewindUnavailableReason(rewindability.reason);
-  const hint = turn.role === 'user'
-    ? edit
-      ? 'Remove this message and everything after it; its text returns to the composer'
-      : 'Remove this message and everything after it'
-    : 'Keep this reply and remove everything after it';
+  const hint = !edit
+    ? 'Keep this reply and remove everything after it'
+    : turn.widgetCommit
+      ? 'Remove this message and everything after it; its widget reopens so you can send it again'
+      : 'Remove this message and everything after it; its text returns to the composer';
   return (
     <button
       type="button"

@@ -915,8 +915,9 @@ describe('WorkshopTurnBubble Rewind action (ADR 2026-09-30 §4)', () => {
     expect(onRewind).toHaveBeenCalledWith(writerMessage);
   });
 
-  it('keeps a widget-commit message a plain rewind: its draft stays with the widget', () => {
-    renderBubble({
+  it('edits a widget-commit message in its widget, not the composer (Sprint 03 kickoff decision 3)', () => {
+    const onRewind = jest.fn();
+    const widgetMessage: WorkshopTurn = {
       ...writerMessage,
       widgetCommit: {
         widgetId: 'gesture-playground',
@@ -925,11 +926,15 @@ describe('WorkshopTurnBubble Rewind action (ADR 2026-09-30 §4)', () => {
         artifactId: 'ta-2',
         selectionCount: 1
       }
-    }, { rewindability: { available: true }, onRewind: jest.fn() });
+    };
+    renderBubble(widgetMessage, { rewindability: { available: true }, onRewind });
 
-    expect(screen.getByRole('button', { name: /Rewind to here/ }).getAttribute('title'))
-      .toBe('Remove this message and everything after it');
-    expect(screen.queryByRole('button', { name: /Edit from here/ })).toBeNull();
+    const action = screen.getByRole('button', { name: /Edit from here/ });
+    expect(action.getAttribute('title'))
+      .toBe('Remove this message and everything after it; its widget reopens so you can send it again');
+    expect(screen.queryByRole('button', { name: /Rewind to here/ })).toBeNull();
+    fireEvent.click(action);
+    expect(onRewind).toHaveBeenCalledWith(widgetMessage);
   });
 
   it.each([

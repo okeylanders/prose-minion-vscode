@@ -19,7 +19,7 @@ describe('workshopSessionConfirmCopy', () => {
 
   it('says what a rewind removes and what stays (ADR 2026-09-30, D4)', () => {
     expect(workshopSessionConfirmCopy(
-      { kind: 'rewind', turnId: 't', removedCount: 1, edit: false },
+      { kind: 'rewind', turnId: 't', removedCount: 1 },
       {}
     )).toEqual({
       title: 'Rewind to here?',
@@ -28,12 +28,26 @@ describe('workshopSessionConfirmCopy', () => {
       confirmLabel: 'Rewind'
     });
     expect(workshopSessionConfirmCopy(
-      { kind: 'rewind', turnId: 't', removedCount: 1, edit: true },
+      { kind: 'rewind', turnId: 't', removedCount: 1, edit: 'composer' },
       {}
     ).body).toMatch(/^This message will be removed\. Its text returns to the composer/);
     expect(workshopSessionConfirmCopy(
-      { kind: 'rewind', turnId: 't', removedCount: 2, edit: true },
+      { kind: 'rewind', turnId: 't', removedCount: 2, edit: 'composer' },
       {}
     ).body).toMatch(/^This message and 1 turn after it will be removed\./);
+  });
+
+  it('says a widget message reopens its widget (Sprint 03 kickoff decision 3)', () => {
+    expect(workshopSessionConfirmCopy(
+      { kind: 'rewind', turnId: 't', removedCount: 3, edit: 'widget' },
+      {}
+    )).toEqual({
+      title: 'Edit this message?',
+      body: 'This message and 2 turns after it will be removed. ' +
+        'Its widget reopens so you can adjust it and send it again. ' +
+        'Your excerpt and context stay as they are now. ' +
+        'To keep this conversation too, use Branch instead.',
+      confirmLabel: 'Rewind and edit'
+    });
   });
 });

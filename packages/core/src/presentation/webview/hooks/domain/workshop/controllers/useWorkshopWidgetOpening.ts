@@ -41,8 +41,11 @@ export interface WorkshopWidgetOpeningHost {
   widgetConfigData: WorkshopWidgetConfigSnapshot | null;
   widgetConfigResponseId: string | null;
   widgetConfigError: string | null;
+  /** A released config the host asked to reopen after rewinding its widget message. */
+  restoredWidgetConfigId: string | null;
   requestWidgetConfig: (configId: string) => void;
   clearWidgetConfigData: () => void;
+  consumeRestoredWidgetConfig: () => void;
 }
 
 export interface UseWorkshopWidgetOpeningOptions {
@@ -103,6 +106,22 @@ export function useWorkshopWidgetOpening({
     setPendingWidgetConfigId(widgetConfigId);
     host.requestWidgetConfig(widgetConfigId);
   }, [host.requestWidgetConfig]);
+
+  // A rewound widget message is an edit of that widget (ADR 2026-09-30,
+  // Sprint 03 kickoff decision 3): its released config reopens exactly as the
+  // thread chip would have reopened it.
+  const requestRestoredWidgetConfig = React.useCallback(() => {
+    const configId = host.restoredWidgetConfigId;
+    if (!configId) {
+      return;
+    }
+    host.consumeRestoredWidgetConfig();
+    openWidgetConfig(configId);
+  }, [host.consumeRestoredWidgetConfig, host.restoredWidgetConfigId, openWidgetConfig]);
+
+  React.useEffect(() => {
+    requestRestoredWidgetConfig();
+  }, [requestRestoredWidgetConfig]);
 
   const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
     if (widgetId === 'gesture-playground') {

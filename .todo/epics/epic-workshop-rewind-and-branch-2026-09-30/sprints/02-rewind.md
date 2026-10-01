@@ -170,7 +170,7 @@ Every deliverable landed. The corrections below are also recorded in the ADR's [
 - **Route** (`WorkshopRoutes.rewind.test.ts`, 7 tests) and the **webview** bubble, confirm, composer and snapshot tests.
 
 **Follow-ups captured.**
-- [Rewound widget commits: reopen the released config](../../../tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
+- [Rewound widget commits: reopen the released config](../../../archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
 - [Time notices outlive their conversations](../../../archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host after an "Edit from here" on the first message gets no time frame for up to an hour.
 
 Manual Extension Development Host smoke is recorded with Sprint 03's, as that plan specifies.

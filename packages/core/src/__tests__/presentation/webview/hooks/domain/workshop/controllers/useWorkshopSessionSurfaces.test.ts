@@ -93,18 +93,18 @@ describe('useWorkshopSessionSurfaces', () => {
     const props = options({ hasReplaceableSessionState: true });
     const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
 
-    act(() => result.current.requestRewind('turn-3-assistant-3', 2, false));
+    act(() => result.current.requestRewind('turn-3-assistant-3', 2));
     expect(result.current.sessionConfirm).toEqual({
       kind: 'rewind',
       turnId: 'turn-3-assistant-3',
-      removedCount: 2,
-      edit: false
+      removedCount: 2
     });
     expect(props.rewindTo).not.toHaveBeenCalled();
     act(() => result.current.cancelSessionConfirm());
     expect(result.current.sessionConfirm).toBeNull();
 
-    act(() => result.current.requestRewind('turn-2-user-2', 3, true));
+    act(() => result.current.requestRewind('turn-2-user-2', 3, 'composer'));
+    expect(result.current.sessionConfirm).toMatchObject({ edit: 'composer' });
     let resumption: ReturnType<typeof result.current.acceptSessionConfirm>;
     act(() => { resumption = result.current.acceptSessionConfirm(); });
     expect(resumption!).toBeUndefined();

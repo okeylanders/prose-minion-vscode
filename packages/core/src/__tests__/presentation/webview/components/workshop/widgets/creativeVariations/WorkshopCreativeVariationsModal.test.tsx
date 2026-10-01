@@ -497,9 +497,23 @@ describe('WorkshopCreativeVariationsModal', () => {
   });
 
   it('labels the clone posture and relabels commit as a new turn', () => {
-    renderModal({ banner: { kind: 'clone' }, draft: generatedDraft, commitBlockers: [] });
+    renderModal({
+      banner: { kind: 'clone', from: 'committed-turn' },
+      draft: generatedDraft,
+      commitBlockers: []
+    });
     expect(screen.getByText(/Re-opened from a committed turn/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Commit as new turn' })).toBeTruthy();
+  });
+
+  it('says a config released by a rewind was reopened from the rewound message', () => {
+    renderModal({
+      banner: { kind: 'clone', from: 'rewound-message' },
+      draft: generatedDraft,
+      commitBlockers: []
+    });
+    expect(screen.getByText(/Reopened from a message you rewound/)).toBeTruthy();
+    expect(screen.queryByText(/Re-opened from a committed turn/)).toBeNull();
   });
 
   it('credits a persona seed without ceding writer authority', () => {

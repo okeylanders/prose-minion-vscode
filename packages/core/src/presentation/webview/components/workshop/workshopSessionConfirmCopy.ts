@@ -50,7 +50,9 @@ export function workshopSessionConfirmCopy(
             body: (confirm.removedCount > 1
               ? `This message and ${turnsLabel(confirm.removedCount - 1)} after it will be removed. `
               : 'This message will be removed. ') +
-              'Its text returns to the composer so you can edit it and send it again. ' +
+              (confirm.edit === 'widget'
+                ? 'Its widget reopens so you can adjust it and send it again. '
+                : 'Its text returns to the composer so you can edit it and send it again. ') +
               REWIND_KEEPS,
             confirmLabel: 'Rewind and edit'
           }

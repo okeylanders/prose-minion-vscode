@@ -369,6 +369,87 @@ describe('WorkshopApp', () => {
       expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe(question.content);
       expect(screen.getByText(/beat-sheet\.md/)).not.toBeNull();
     });
+
+    it('edits a widget message in its widget: the host\'s restore reopens the released config', () => {
+      render(<WorkshopApp />);
+      const widgetMessage: WorkshopTurn = {
+        ...question,
+        content: 'Here are the directions I want.',
+        widgetCommit: {
+          widgetId: 'gesture-playground',
+          widgetConfigId: 'wc-1',
+          rail: 'thread-artifact',
+          artifactId: 'ta-1',
+          selectionCount: 1
+        }
+      };
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: roomWith([existingTurn, widgetMessage, answer, followUp, latest])
+        }));
+      });
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Edit from here/ })[0]);
+      const dialog = screen.getByRole('dialog', { name: 'Edit this message?' });
+      expect(dialog.textContent).toContain('Its widget reopens so you can adjust it and send it again.');
+      fireEvent.click(screen.getByRole('button', { name: 'Rewind and edit' }));
+      expect(rewindPosts()).toEqual([expect.objectContaining({
+        payload: { turnId: widgetMessage.id }
+      })]);
+
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', { data: roomWith([existingTurn]) }));
+        window.dispatchEvent(new MessageEvent('message', {
+          data: {
+            type: MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED,
+            source: 'extension.workshop',
+            payload: { widgetConfigId: 'wc-1' },
+            timestamp: 2
+          }
+        }));
+      });
+
+      expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.WORKSHOP_REQUEST_WIDGET_CONFIG,
+        payload: { configId: 'wc-1' }
+      }));
+      // Widget copy belongs to the widget: the composer stays empty.
+      expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('');
+
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: {
+            type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA,
+            source: 'extension.workshop.widget',
+            timestamp: 3,
+            payload: {
+              configId: 'wc-1',
+              // Released by the rewind: no commit linkage remains.
+              config: {
+                id: 'wc-1',
+                widgetId: 'gesture-playground',
+                revision: 1,
+                createdAt: 1,
+                draft: {
+                  targetPhrase: 'she smiled',
+                  writerInstructions: '',
+                  contextText: '',
+                  characterNotes: '',
+                  sourceReferences: [],
+                  dictionaryMarkdown: '',
+                  menu: [],
+                  selections: [],
+                  note: '',
+                  includeDictionaryInCommit: false
+                }
+              }
+            }
+          }
+        }));
+      });
+
+      expect(screen.getByText(/Reopened from a message you rewound/)).not.toBeNull();
+    });
   });
 
   it('opens the exact Creative persona prefill without generating or committing for the writer', () => {

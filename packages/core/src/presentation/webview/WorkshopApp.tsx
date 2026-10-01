@@ -782,7 +782,7 @@ export const WorkshopApp: React.FC = () => {
     sessionSurfaces.requestRewind(
       turn.id,
       removedCount,
-      turn.role === 'user' && turn.widgetCommit === undefined
+      turn.role === 'user' ? (turn.widgetCommit ? 'widget' : 'composer') : undefined
     );
   }, [sessionSurfaces.requestRewind, workshop.turns]);
 
@@ -1459,7 +1459,12 @@ export const WorkshopApp: React.FC = () => {
           open
           banner={
             widgetOpening.creativeVariationsOpening.kind === 'clone'
-              ? { kind: 'clone' }
+              ? {
+                  kind: 'clone',
+                  from: widgetOpening.creativeVariationsOpening.config.committedTurnId === undefined
+                    ? 'rewound-message'
+                    : 'committed-turn'
+                }
               : widgetOpening.creativeVariationsOpening.kind === 'seed'
                 ? {
                     kind: 'seed',

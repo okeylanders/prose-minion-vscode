@@ -6,6 +6,12 @@ import {
   WorkshopSessionSummary
 } from '@messages';
 
+/**
+ * What a writer-message rewind hands back for editing: its text to the
+ * composer, or a widget commit's released config to its widget sheet.
+ */
+export type WorkshopRewindEdit = 'composer' | 'widget';
+
 export type WorkshopSessionConfirm =
   | { kind: 'new' }
   | { kind: 'new-full' }
@@ -13,9 +19,9 @@ export type WorkshopSessionConfirm =
   | { kind: 'replace-shelf'; resume: 'paste' | 'choose' }
   /**
    * Rewind to one bubble (ADR 2026-09-30, D4: Rewind confirms). `edit` marks a
-   * writer message whose text returns to the composer.
+   * writer message, which returns for editing; a reply has none.
    */
-  | { kind: 'rewind'; turnId: string; removedCount: number; edit: boolean };
+  | { kind: 'rewind'; turnId: string; removedCount: number; edit?: WorkshopRewindEdit };
 
 /** Work this controller cannot resolve alone; the shell must finish it. */
 export type WorkshopSessionConfirmResumption = { resume: 'paste' | 'choose' };
@@ -54,7 +60,7 @@ export interface WorkshopSessionSurfacesActions {
   startFullReset: () => void;
   openStoredSession: (session: WorkshopSessionSummary) => void;
   requestShelfReplacement: (resume: 'paste' | 'choose') => void;
-  requestRewind: (turnId: string, removedCount: number, edit: boolean) => void;
+  requestRewind: (turnId: string, removedCount: number, edit?: WorkshopRewindEdit) => void;
   acceptSessionConfirm: () => WorkshopSessionConfirmResumption | undefined;
   cancelSessionConfirm: () => void;
 }
@@ -199,8 +205,8 @@ export function useWorkshopSessionSurfaces({
   }, []);
 
   const requestRewind = React.useCallback(
-    (turnId: string, removedCount: number, edit: boolean) => {
-      setSessionConfirm({ kind: 'rewind', turnId, removedCount, edit });
+    (turnId: string, removedCount: number, edit?: WorkshopRewindEdit) => {
+      setSessionConfirm({ kind: 'rewind', turnId, removedCount, ...(edit ? { edit } : {}) });
     },
     []
   );
