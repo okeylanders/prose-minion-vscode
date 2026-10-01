@@ -30,12 +30,14 @@ const options = (
   sessionMutationsDisabled: false,
   hasReplaceableSessionState: false,
   hasWorkingSet: false,
+  roomIsNamed: false,
   sessionSearchQuery: '',
   requestSessions: jest.fn(),
   setSessionSearchQuery: jest.fn(),
   resetSession: jest.fn(),
   openSession: jest.fn(),
   rewindTo: jest.fn(),
+  branchFrom: jest.fn(),
   consumeSessionActionResult: jest.fn(),
   onResult: jest.fn(),
   ...overrides
@@ -93,23 +95,68 @@ describe('useWorkshopSessionSurfaces', () => {
     const props = options({ hasReplaceableSessionState: true });
     const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
 
-    act(() => result.current.requestRewind('turn-3-assistant-3', 2, false));
+    act(() => result.current.requestRewind('turn-3-assistant-3', 2));
     expect(result.current.sessionConfirm).toEqual({
       kind: 'rewind',
       turnId: 'turn-3-assistant-3',
-      removedCount: 2,
-      edit: false
+      removedCount: 2
     });
     expect(props.rewindTo).not.toHaveBeenCalled();
     act(() => result.current.cancelSessionConfirm());
     expect(result.current.sessionConfirm).toBeNull();
 
-    act(() => result.current.requestRewind('turn-2-user-2', 3, true));
+    act(() => result.current.requestRewind('turn-2-user-2', 3, 'composer'));
+    expect(result.current.sessionConfirm).toMatchObject({ edit: 'composer' });
     let resumption: ReturnType<typeof result.current.acceptSessionConfirm>;
     act(() => { resumption = result.current.acceptSessionConfirm(); });
     expect(resumption!).toBeUndefined();
     expect(props.rewindTo).toHaveBeenCalledWith('turn-2-user-2');
     expect(result.current.sessionConfirm).toBeNull();
+  });
+
+  it('branches a saved room at once: Branch is non-destructive (D4)', () => {
+    const props = options({ roomIsNamed: true });
+    const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
+
+    act(() => result.current.requestBranch('turn-3-assistant-3'));
+
+    expect(props.branchFrom).toHaveBeenCalledWith('turn-3-assistant-3');
+    expect(result.current.sessionConfirm).toBeNull();
+  });
+
+  it('asks an unsaved room to save first, posts nothing, and opens Save (D2)', () => {
+    const props = options({ roomIsNamed: false });
+    const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
+
+    act(() => result.current.requestBranch('turn-3-assistant-3'));
+    expect(result.current.sessionConfirm).toEqual({ kind: 'save-before-branch' });
+    expect(props.branchFrom).not.toHaveBeenCalled();
+
+    let resumption: ReturnType<typeof result.current.acceptSessionConfirm>;
+    act(() => { resumption = result.current.acceptSessionConfirm(); });
+    expect(resumption!).toBeUndefined();
+    expect(result.current.saveSessionModalOpen).toBe(true);
+    // Saving never branches by itself: the writer clicks Branch again.
+    expect(props.branchFrom).not.toHaveBeenCalled();
+
+    act(() => result.current.requestBranch('turn-3-assistant-3'));
+    act(() => result.current.cancelSessionConfirm());
+    expect(result.current.sessionConfirm).toBeNull();
+    expect(props.branchFrom).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('refreshes the session list authoritatively after a branch (ok=%s)', (ok) => {
+    const props = options();
+    const { rerender } = renderHook(() => useWorkshopSessionSurfaces(props));
+    (props.requestSessions as jest.Mock).mockClear();
+
+    props.sessionActionResult = { action: 'branch', ok, message: 'Branch result.' };
+    rerender();
+
+    // A branch makes a new active session, or, if it could not open it,
+    // still adds one to the browser.
+    expect(props.requestSessions).toHaveBeenLastCalledWith('');
+    expect(props.onResult).toHaveBeenCalledWith(props.sessionActionResult);
   });
 
   it('settles session results, closes matching surfaces, and refreshes authoritatively', () => {

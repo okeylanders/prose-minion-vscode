@@ -13,6 +13,7 @@ import type {
 import {
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,
+  WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopWidgetConfigSnapshot
 } from '@messages';
 import { ModelOption } from '@shared/types';
@@ -57,6 +58,9 @@ const config: WorkshopWidgetConfigSnapshot = {
   widgetId: 'gesture-playground',
   revision: 1,
   createdAt: 1,
+  // Reopened from its thread chip: the commit linkage is intact.
+  committedTurnId: 'turn-2-user-2',
+  artifactId: 'ta-1',
   draft: {
     targetPhrase: 'she smiled',
     writerInstructions: 'Keep the reaction private and avoid eye language.',
@@ -573,6 +577,15 @@ describe('WorkshopGesturePlaygroundModal', () => {
     expect(screen.queryByRole('dialog', { name: 'Widget Model browser' })).toBeNull();
     expect(view.container.querySelector('.pm-ws-gesture-menu')).toBeNull();
     expect(view.container.querySelector('.pm-ws-gesture-dictionary')).toBeNull();
+  });
+
+  it('says a config released by a rewind was reopened from the rewound message', () => {
+    const { committedTurnId: _turnId, artifactId: _artifactId, ...released } =
+      config as WorkshopGesturePlaygroundWidgetConfigSnapshot;
+    renderModal({ kind: 'clone', config: released });
+    expect(screen.getByText(/Reopened from a message you rewound/)).toBeTruthy();
+    expect(screen.queryByText(/Re-opened from a committed turn/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Commit as new turn' })).toBeTruthy();
   });
 
   it('re-hydrates the exact prior draft on clone and commits as a new turn', () => {

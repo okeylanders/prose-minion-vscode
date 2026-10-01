@@ -14,6 +14,7 @@ import type {
   WorkshopConversationLogicalKey
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import type { WorkshopSessionSaveStatus } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+import type { WorkshopPersonaConversationKey } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { clonePersistedJson } from '@/application/services/workshop/persistedJson';
 import { WorkshopSessionStoreUnavailableError } from '@/infrastructure/storage/WorkshopSessionStore';
 import type { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
@@ -270,7 +271,8 @@ describe('WorkshopSessionPersistenceCoordinator.rewindTo (ADR 2026-09-30 §6)', 
         keptThroughTurnId: head,
         removedTurnCount: 0,
         droppedConversationKeys: [],
-        removedTodoCount: 0
+        removedTodoCount: 0,
+        releasedWidgetConfigIds: []
       });
 
       const divider = restPoint(room, 'excerpt revised to v2');
@@ -308,6 +310,53 @@ describe('WorkshopSessionPersistenceCoordinator.rewindTo (ADR 2026-09-30 §6)', 
       const questOutcome = await quest.coordinator.rewindTo(writerCut(quest.room), { origin: 'sideQuestEnd' });
       expect(questOutcome.composerRestore).toBeUndefined();
     });
+
+    it('reopens a widget message\'s released config for the writer origin only (Sprint 03 kickoff decision 3)', async () => {
+      const widgetMessage = (room: ScriptedWorkshopRoom) =>
+        room.session.readRoomLedger().find((turn) => turn.widgetCommit?.rail === 'thread-artifact')!;
+
+      const writer = await openCanonicalRoom();
+      const message = widgetMessage(writer.room);
+      const configId = message.widgetCommit!.widgetConfigId;
+      const outcome = await writer.coordinator.rewindTo(before(message.id), { origin: 'writer' });
+
+      expect(outcome.widgetRestore).toEqual({ widgetConfigId: configId });
+      expect(outcome.composerRestore).toBeUndefined();
+      expect(outcome.summary.releasedWidgetConfigIds).toEqual([configId]);
+      // The retry token is held host-side, draft and all, ready to reopen.
+      const released = writer.session.getWidgetConfig(configId)!;
+      expect(released.committedTurnId).toBeUndefined();
+      expect(released.draft).toEqual(writer.room.session.getWidgetConfig(configId)!.draft);
+
+      const quest = await openCanonicalRoom();
+      const questOutcome = await quest.coordinator.rewindTo(
+        before(widgetMessage(quest.room).id),
+        { origin: 'sideQuestEnd' }
+      );
+      expect(questOutcome.widgetRestore).toBeUndefined();
+    });
+
+    it('sends a reopened widget message back to the host it addressed, not a later chat target (PR #120 review F-02)', async () => {
+      const harness = setupCoordinator();
+      const room = new ScriptedWorkshopRoom().start();
+      room.hostMessage('Opening?');
+      room.inviteGuest('margot', 'Margot, read this with us.');
+      room.hostWidgetCommit();
+      room.guestMessage('margot', 'How does the voice sound?');
+      await harness.store.saveNamed(scriptedCheckpoint('widget-then-guest', room));
+      await harness.coordinator.initialize();
+      await harness.coordinator.openNamed('widget-then-guest');
+      expect(harness.session.getChatTarget()).toEqual({ kind: 'personaGuest', personaId: 'margot' });
+      const message = room.session.readRoomLedger()
+        .find((turn) => turn.widgetCommit?.rail === 'thread-artifact')!;
+
+      const outcome = await harness.coordinator.rewindTo(before(message.id), { origin: 'writer' });
+
+      expect(outcome.widgetRestore).toEqual({ widgetConfigId: message.widgetCommit!.widgetConfigId });
+      // Margot is still in the room; a recommit from the reopened sheet goes to the host.
+      expect(harness.session.getPersonaGuestConversationId('margot')).toBeDefined();
+      expect(harness.session.getChatTarget()).toEqual({ kind: 'host' });
+    });
   });
 
   it('hands a host removed by the cut the whole kept room as catch-up on its first run', async () => {
@@ -329,18 +378,140 @@ describe('WorkshopSessionPersistenceCoordinator.rewindTo (ADR 2026-09-30 §6)', 
     expect(catchUp.hasConversationalCatchUp).toBe(true);
   });
 
-  it('keeps temporal state current: no resume marker and no resume notices (kickoff decision 2)', async () => {
-    const { coordinator, time, room } = await openCanonicalRoom();
-    // Opening queued one resume marker; the first interaction consumes it.
-    expect(coordinator.beginInteraction()).toBeDefined();
-    const temporalBefore = time.exportRuntimeState();
-    const point = restPoint(room, 'prose report');
+  describe('temporal state (Sprint 02 kickoff decision 2, as amended at Sprint 03 kickoff)', () => {
+    it('stays current for a surviving persona and ends with a dropped one', async () => {
+      const { coordinator, time, room, store } = await openCanonicalRoom();
+      // Opening queued one resume marker; the first interaction consumes it.
+      expect(coordinator.beginInteraction()).toBeDefined();
+      // Both retained personas have been handed their frames since the open.
+      time.commitNotice(time.prepareNotice('host')!);
+      time.commitNotice(time.prepareNotice('guest:margot')!);
+      const hostNotice = time.exportState().personaNotices
+        .find((notice) => notice.conversationKey === 'host');
+      const point = restPoint(room, 'prose report');
 
-    await coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' });
+      const outcome = await coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' });
 
-    expect(coordinator.beginInteraction()).toBeUndefined();
-    expect(time.exportRuntimeState().pendingResumeKeys).toEqual(temporalBefore.pendingResumeKeys);
-    expect(time.exportRuntimeState().temporal.personaNotices)
-      .toEqual(temporalBefore.temporal.personaNotices);
+      expect(outcome.summary.droppedConversationKeys).toEqual(['guest:margot']);
+      // No resume marker and no resume frame: the surviving host's hour stands.
+      expect(coordinator.beginInteraction()).toBeUndefined();
+      expect(time.prepareNotice('host')).toBeUndefined();
+      expect(time.exportRuntimeState()).toEqual({
+        temporal: expect.objectContaining({ personaNotices: [hostNotice] }),
+        pendingResumeKeys: []
+      });
+      // Margot's conversation ended with the cut, and the written room agrees.
+      expect(time.prepareNotice('guest:margot')).toMatchObject({ reason: 'session_start' });
+      expect((await store.readNamed('scripted'))?.temporal.personaNotices).toEqual([hostNotice]);
+    });
+
+    it('gives the fresh host a session-start frame, and rollback restores the old notice', async () => {
+      const { coordinator, time, room, store } = await openCanonicalRoom();
+      time.commitNotice(time.prepareNotice('host')!);
+      // Before the host's first reply: the cut removes the host's conversation.
+      const point = restPoint(room, 'standing directive installed');
+      const before = time.exportRuntimeState();
+      jest.spyOn(store, 'updateNamed').mockRejectedValueOnce(new Error('write failed'));
+
+      await expect(coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' }))
+        .rejects.toThrow('write failed');
+
+      expect(time.exportRuntimeState()).toEqual(before);
+      expect(time.prepareNotice('host')).toBeUndefined();
+
+      const outcome = await coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' });
+
+      expect(outcome.summary.droppedConversationKeys).toContain('host');
+      expect(time.prepareNotice('host')).toMatchObject({ reason: 'session_start' });
+      expect((await store.readNamed('scripted'))?.temporal.personaNotices).toEqual([]);
+    });
+
+    describe('a persona whose history fails to import (PR #120 review F-03)', () => {
+      type Harness = ReturnType<typeof setupCoordinator>;
+
+      /** Import every history but `key`'s, as when its current prompt cannot be rebuilt. */
+      const degradeImportOf = ({ assistant, manager }: Harness, key: WorkshopPersonaConversationKey) => {
+        const importArchive = assistant.importWorkshopConversationArchive.getMockImplementation()!;
+        assistant.importWorkshopConversationArchive.mockImplementationOnce(async (targets) =>
+          (await importArchive(targets)).map((outcome) => {
+            if (outcome.key !== key || outcome.status !== 'imported') {
+              return outcome;
+            }
+            manager.deleteConversation(outcome.conversationId);
+            return { key: outcome.key, status: 'degraded' as const, reason: 'Current system prompt could not be rebuilt.' };
+          }));
+      };
+
+      /** A saved host-and-Margot room, both handed their frames since it opened. */
+      async function openWithNotices() {
+        const harness = setupCoordinator();
+        const room = new ScriptedWorkshopRoom().start();
+        room.hostMessage('Opening?');
+        room.inviteGuest('margot', 'Margot, read this with us.');
+        room.hostWidgetCommit();
+        room.guestMessage('margot', 'How does the voice sound?');
+        room.hostMessage('Anything else?');
+        await harness.store.saveNamed(scriptedCheckpoint('scripted', room));
+        await harness.coordinator.initialize();
+        await harness.coordinator.openNamed('scripted');
+        expect(harness.coordinator.beginInteraction()).toBeDefined();
+        harness.time.commitNotice(harness.time.prepareNotice('host')!);
+        harness.time.commitNotice(harness.time.prepareNotice('guest:margot')!);
+        // Both personas survive a cut after the widget reply.
+        const cut = after(restPoint(room, 'host reply: gesture directions').headTurnId);
+        return { ...harness, cut };
+      }
+
+      it.each<[WorkshopPersonaConversationKey, WorkshopPersonaConversationKey]>([
+        ['host', 'guest:margot'],
+        ['guest:margot', 'host']
+      ])('ends %s\'s notice with its conversation and keeps %s\'s', async (degraded, imported) => {
+        const harness = await openWithNotices();
+        const { coordinator, time, store, cut } = harness;
+        const kept = time.exportState().personaNotices
+          .filter((notice) => notice.conversationKey === imported);
+        degradeImportOf(harness, degraded);
+
+        const outcome = await coordinator.rewindTo(cut, { origin: 'writer' });
+
+        expect(outcome.summary.droppedConversationKeys).not.toContain(degraded);
+        expect(outcome.degradedConversationKeys).toEqual([degraded]);
+        expect(time.prepareNotice(degraded)).toMatchObject({ reason: 'session_start' });
+        expect(time.prepareNotice(imported)).toBeUndefined();
+        expect(time.exportState().personaNotices).toEqual(kept);
+        expect((await store.readNamed('scripted'))?.temporal.personaNotices).toEqual(kept);
+      });
+
+      it('restores the notice when the rewound room fails to write', async () => {
+        const harness = await openWithNotices();
+        const { coordinator, time, store, cut } = harness;
+        const before = time.exportRuntimeState();
+        degradeImportOf(harness, 'host');
+        jest.spyOn(store, 'updateNamed').mockRejectedValueOnce(new Error('write failed'));
+
+        await expect(coordinator.rewindTo(cut, { origin: 'writer' })).rejects.toThrow('write failed');
+
+        expect(time.exportRuntimeState()).toEqual(before);
+        expect(time.prepareNotice('host')).toBeUndefined();
+      });
+
+      it('needs no forgetting on Open, which queues every retained persona a resume frame', async () => {
+        const harness = setupCoordinator();
+        const checkpoint = scriptedCheckpoint('scripted', runCanonicalScriptedRoom());
+        checkpoint.temporal = {
+          ...checkpoint.temporal,
+          personaNotices: [{ conversationKey: 'host', notifiedAt: checkpoint.temporal.startedAt }]
+        };
+        await harness.store.saveNamed(checkpoint);
+        await harness.coordinator.initialize();
+        degradeImportOf(harness, 'host');
+
+        const opened = await harness.coordinator.openNamed('scripted');
+
+        // The fresh host still gets its time frame on its first turn.
+        expect(opened.degradedConversationKeys).toEqual(['host']);
+        expect(harness.time.prepareNotice('host')).toMatchObject({ reason: 'session_resume' });
+      });
+    });
   });
 });

@@ -703,6 +703,8 @@ export class WorkshopRoomHandler {
       return;
     }
     this.assistantToolService.discardConversation(conversationId);
+    // A re-invited guest is a fresh conversation and gets its own time frame.
+    this.sessionTime.forgetNotices([workshopGuestConversationKey(personaId)]);
     this.outputChannel.appendLine(
       `[WorkshopRoomHandler] Guest dismissed (persona=${personaId}, conversation=${conversationId})`
     );
@@ -1265,6 +1267,8 @@ export class WorkshopRoomHandler {
         // generation as a whole, not merely the id that happened to be used.
         const discardedConversationIds = this.session.clearAllConversations();
         this.discardConversations(discardedConversationIds);
+        // Every persona starts a fresh conversation, so each gets a fresh time frame.
+        this.sessionTime.forgetAllNotices();
         this.outputChannel.appendLine(
           `[WorkshopRoomHandler] Conversation generation lost (${discardedConversationIds.length} conversations discarded: ${discardedConversationIds.join(', ') || 'none'}): ${details}`
         );

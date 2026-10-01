@@ -817,6 +817,31 @@ while Workshop features are under active development. Follow [ADR
   they do not need independent schema versions unless they become separately
   stored or decoded outside a Workshop session.
 
+### Workshop Rewind and Branch
+
+Follow [ADR 2026-09-30](docs/adr/2026-09-30-workshop-rewind-and-branch.md) when
+touching retained histories or whole-room operations:
+
+- **Marks.** Every settled commit records a retained-history mark. Discarding
+  or replacing a conversation prunes its marks. Marks are host-private: the
+  webview receives only `turnRewindability` and never re-derives it. A new
+  commit path must record a mark after settlement; an architecture guard pins
+  the chain.
+- **One transform.** `rewindWorkshopSession` is the only code that cuts a room.
+  It slices histories only at marks, never parses provider message formats,
+  and never lowers an id counter.
+- **Operations.** The coordinator's `rewindTo` and `branchFrom` back the
+  `WORKSHOP_REWIND_SESSION` and `WORKSHOP_BRANCH_SESSION` routes. Handlers map
+  a bubble to its cut and reach the cut vocabulary only through the
+  coordinator, never through session collaborators.
+- **Room replacement.** New, Open, Rewind and Branch share the coordinator's
+  room-replacement transaction. A new whole-room operation joins it rather
+  than hand-rolling rollback.
+- **Branch.** Branch never writes its source session file. It refuses an
+  unnamed room, a named room with unsaved work, and a room whose file on
+  disk no longer matches it. It checks the file again at the commit that
+  replaces `current.json`, through the store's `beforeCommit` seam.
+
 ### Operational Tips
 
 **Parallel Subagents**: For independent tasks (e.g., updating multiple components), launch multiple Task tool calls in a single message. 3-5x faster than sequential.

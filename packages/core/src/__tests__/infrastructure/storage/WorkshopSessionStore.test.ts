@@ -122,6 +122,26 @@ describe('WorkshopSessionStore', () => {
     await expect(store.readCurrent()).resolves.toEqual(canonical);
   });
 
+  it('runs a current.json commit check after the temporary write, and keeps the old file when it throws', async () => {
+    const store = createStore();
+    const currentPath = path.join(sessionsDirectory, 'current.json');
+    await store.writeCurrent(session('current-1', 'Current room'));
+    const before = fileSystem.files.get(currentPath);
+    let staged: string[] = [];
+
+    await expect(store.writeCurrent(session('current-2', 'Replacement'), {
+      beforeCommit: async () => {
+        staged = [...fileSystem.files.keys()].filter((file) => file.startsWith(`${currentPath}.tmp-`));
+        throw new Error('source changed');
+      }
+    })).rejects.toThrow('source changed');
+
+    // The check saw the staged snapshot; the rename never happened.
+    expect(staged).toHaveLength(1);
+    expect(fileSystem.files.get(currentPath)).toEqual(before);
+    expect([...fileSystem.files.keys()].filter((file) => file.includes('.tmp-'))).toEqual([]);
+  });
+
   it('returns codec-owned recovery evidence for an exact legacy widget checkpoint', async () => {
     const store = createStore();
     const checkpoint = session('legacy-current', 'Legacy current');

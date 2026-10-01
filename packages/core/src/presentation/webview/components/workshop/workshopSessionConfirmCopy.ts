@@ -50,7 +50,9 @@ export function workshopSessionConfirmCopy(
             body: (confirm.removedCount > 1
               ? `This message and ${turnsLabel(confirm.removedCount - 1)} after it will be removed. `
               : 'This message will be removed. ') +
-              'Its text returns to the composer so you can edit it and send it again. ' +
+              (confirm.edit === 'widget'
+                ? 'Its widget reopens so you can adjust it and send it again. '
+                : 'Its text returns to the composer so you can edit it and send it again. ') +
               REWIND_KEEPS,
             confirmLabel: 'Rewind and edit'
           }
@@ -59,6 +61,13 @@ export function workshopSessionConfirmCopy(
             body: `${turnsLabel(confirm.removedCount)} will be removed. ${REWIND_KEEPS}`,
             confirmLabel: 'Rewind'
           };
+    case 'save-before-branch':
+      return {
+        title: 'Save before branching',
+        body: 'Branching creates a new session from this point. ' +
+          "Save this session first so it isn't replaced.",
+        confirmLabel: 'Save session…'
+      };
     case 'new':
     case undefined:
       return {

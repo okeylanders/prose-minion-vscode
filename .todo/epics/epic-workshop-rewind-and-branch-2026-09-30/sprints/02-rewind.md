@@ -1,6 +1,6 @@
 # Sprint 02: Rewind
 
-**Status:** In review — delivered 2026-09-30 on `sprint/workshop-rewind-and-branch-02-rewind`, PR into `epic/workshop-rewind-and-branch` (see [Delivery notes](#delivery-notes-2026-09-30))
+**Status:** Complete — merged into `epic/workshop-rewind-and-branch` via [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119) (`5fb85a0`); delivered 2026-09-30 (see [Delivery notes](#delivery-notes-2026-09-30))
 **Branch:** `sprint/workshop-rewind-and-branch-02-rewind`
 **Depends on:** Sprint 01
 **Blocks:** Sprint 03
@@ -170,7 +170,7 @@ Every deliverable landed. The corrections below are also recorded in the ADR's [
 - **Route** (`WorkshopRoutes.rewind.test.ts`, 7 tests) and the **webview** bubble, confirm, composer and snapshot tests.
 
 **Follow-ups captured.**
-- [Rewound widget commits: reopen the released config](../../../tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
-- [Time notices outlive their conversations](../../../tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host after an "Edit from here" on the first message gets no time frame for up to an hour.
+- [Rewound widget commits: reopen the released config](../../../archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md).
+- [Time notices outlive their conversations](../../../archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host after an "Edit from here" on the first message gets no time frame for up to an hour.
 
 Manual Extension Development Host smoke is recorded with Sprint 03's, as that plan specifies.

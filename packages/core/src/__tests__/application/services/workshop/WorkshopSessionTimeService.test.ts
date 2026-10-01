@@ -120,4 +120,63 @@ describe('WorkshopSessionTimeService', () => {
     expect(service.prepareNotice(workshopGuestConversationKey('agnes')))
       .toMatchObject({ reason: 'session_resume' });
   });
+
+  describe('notices end with their conversation (ADR 2026-09-30, Sprint 03 kickoff decision 2)', () => {
+    const agnes = workshopGuestConversationKey('agnes');
+
+    it('gives a fresh conversation under a forgotten key its own session-start frame', () => {
+      const service = createService();
+      service.commitNotice(service.prepareNotice('host')!);
+      service.commitNotice(service.prepareNotice(agnes)!);
+      now = instant('2026-07-23T14:10:00.000Z');
+      expect(service.prepareNotice('host')).toBeUndefined();
+
+      service.forgetNotices(['host']);
+
+      expect(service.prepareNotice('host')).toMatchObject({ reason: 'session_start' });
+      // A surviving conversation keeps its hour.
+      expect(service.prepareNotice(agnes)).toBeUndefined();
+      expect(service.exportState().personaNotices.map((notice) => notice.conversationKey))
+        .toEqual([agnes]);
+    });
+
+    it('drops a forgotten key\'s pending resume notice too', () => {
+      const service = createService();
+      service.hydrate(service.exportState(), ['host', agnes]);
+
+      service.forgetNotices([agnes]);
+
+      expect(service.prepareNotice(agnes)).toMatchObject({ reason: 'session_start' });
+      expect(service.prepareNotice('host')).toMatchObject({ reason: 'session_resume' });
+      expect(service.exportRuntimeState().pendingResumeKeys).toEqual(['host']);
+    });
+
+    it('forgets every persona after a generation loss, keeping the session clock', () => {
+      const service = createService();
+      service.commitNotice(service.prepareNotice('host')!);
+      service.hydrate(service.exportState(), [agnes]);
+      const { startedAt, timezone } = service.exportState();
+
+      service.forgetAllNotices();
+
+      expect(service.exportRuntimeState()).toEqual({
+        temporal: expect.objectContaining({ startedAt, timezone, personaNotices: [] }),
+        pendingResumeKeys: []
+      });
+      expect(service.prepareNotice('host')).toMatchObject({ reason: 'session_start' });
+      expect(service.prepareNotice(agnes)).toMatchObject({ reason: 'session_start' });
+    });
+
+    it('is undone by a transaction rollback', () => {
+      const service = createService();
+      service.commitNotice(service.prepareNotice('host')!);
+      const rollback = service.exportRuntimeState();
+
+      service.forgetNotices(['host']);
+      service.restoreRuntimeState(rollback);
+
+      expect(service.prepareNotice('host')).toBeUndefined();
+      expect(service.exportRuntimeState()).toEqual(rollback);
+    });
+  });
 });

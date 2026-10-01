@@ -47,7 +47,8 @@ const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 export type WorkshopCreativeVariationsBanner =
   | { kind: 'none' }
   | { kind: 'seed'; personaLabel: string }
-  | { kind: 'clone' };
+  /** A rewound message released its commit, so no chip is left behind (ADR 2026-09-30). */
+  | { kind: 'clone'; from: 'committed-turn' | 'rewound-message' };
 
 /** Presentation projection of the async generation lifecycle. */
 export type WorkshopCreativeVariationsGenerationPhase =
@@ -366,10 +367,17 @@ export const WorkshopCreativeVariationsModal: React.FC<WorkshopCreativeVariation
           {banner.kind === 'clone' && (
             <div className="pm-ws-cvx-banner pm-ws-cvx-banner-clone">
               <Icon name="refresh" size={13} />
-              <span>
-                <b>Re-opened from a committed turn.</b> The old chip stays as history —
-                committing again creates a <b>new</b> turn at the head.
-              </span>
+              {banner.from === 'rewound-message' ? (
+                <span>
+                  <b>Reopened from a message you rewound.</b> Adjust it, then commit to send
+                  it again as a <b>new</b> turn at the head.
+                </span>
+              ) : (
+                <span>
+                  <b>Re-opened from a committed turn.</b> The old chip stays as history —
+                  committing again creates a <b>new</b> turn at the head.
+                </span>
+              )}
             </div>
           )}
           <WorkshopModalShell.CloseButton disabled={commitPending} />

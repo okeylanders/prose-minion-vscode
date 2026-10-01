@@ -161,6 +161,8 @@ import {
   WorkshopSetSessionScopeMessage,
   WorkshopRepinExcerptMessage,
   WorkshopResetSessionMessage,
+  WorkshopRewindSessionMessage,
+  WorkshopBranchSessionMessage,
   WorkshopRequestSessionMessage,
   WorkshopDismissErrorMessage,
   WorkshopSaveSessionMessage,
@@ -196,6 +198,7 @@ import {
   WorkshopLexicalGravityLensesSavedMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
+  WorkshopWidgetConfigRestoredMessage,
   WorkshopCommitWidgetMessage,
   WorkshopApplyStandingWidgetMessage,
   WorkshopRemoveStandingWidgetMessage,
@@ -278,6 +281,8 @@ export type WebviewToExtensionMessage =
   | WorkshopSetSessionScopeMessage
   | WorkshopRepinExcerptMessage
   | WorkshopResetSessionMessage
+  | WorkshopRewindSessionMessage
+  | WorkshopBranchSessionMessage
   | WorkshopRequestSessionMessage
   | WorkshopDismissErrorMessage
   | WorkshopSaveSessionMessage
@@ -351,4 +356,5 @@ export type ExtensionToWebviewMessage =
   | WorkshopLexicalGravityLensCandidatesMessage
   | WorkshopLexicalGravityLensesSavedMessage
   | WorkshopWidgetConfigDataMessage
+  | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage;

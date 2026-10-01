@@ -1,11 +1,11 @@
 # Rewound one-shot widget commits leave their released config unreachable
 
 **Date Identified**: 2026-09-30
-**Reviewed**: 2026-09-30
-**Status**: Identified
+**Reviewed**: 2026-10-01
+**Status**: Resolved in Workshop Rewind and Branch, Sprint 03 (kickoff decision 3), with one accepted residue
 **Priority**: Medium
 **Estimated Effort**: Small (one result field plus a webview opening path, with tests)
-**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 
@@ -51,3 +51,24 @@ of a writer-bubble edit: what was removed comes back to where it is edited.
 - A test covers a rewind past a one-shot commit that reopens, or offers to
   reopen, that config. A standing directive is never affected, because the
   directive floor already refuses those cuts.
+
+## Resolution (2026-10-01)
+
+Confirmed at Sprint 03 kickoff and recorded in ADR 2026-09-30, [Sprint 03 kickoff decisions](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-kickoff-decisions), item 3. The first recommendation landed, scoped to the widget message itself.
+
+- **Transform.** `rewindWorkshopSession` reports `summary.releasedWidgetConfigIds`. When the cut is a writer-bubble cut on a widget commit's own message, it also returns `widgetRestore { widgetConfigId }`, the widget twin of `composerRestore`.
+- **Route.** For a writer-origin rewind (and Branch, which shares the transform), `WorkshopSessionMessageHandler` posts `WORKSHOP_WIDGET_CONFIG_RESTORED`.
+- **Webview.**
+  - `useWorkshopWidgetHost` holds the restored id, and `useWorkshopWidgetOpening` reopens it through the existing `openWidgetConfig` path.
+  - The sheet opens as a clone of the released draft. The banner reads "Reopened from a message you rewound" instead of claiming an old chip remains.
+  - The widget message's action reads "Edit from here", and its confirmation says the widget reopens.
+
+**Accepted residue.** A cut that skips past a commit, for example a rewind to an earlier reply, releases the config silently. Its retry token stays host-side with no thread entry point. This is deliberate: the writer chose to go back past that widget, and an unrequested sheet after an ordinary rewind would surprise them.
+
+Regression tests:
+
+- `WorkshopSessionRewind.test.ts` and the oracle: released ids, and a restore only for the widget message.
+- `WorkshopSessionRewindCoordinator.test.ts`: writer origin only.
+- `WorkshopRoutes.rewind.test.ts`: the posted restore.
+- The widget host, opening controller, router, bubble, confirm-copy and modal suites.
+- `WorkshopApp.test.tsx`: the full edit flow.

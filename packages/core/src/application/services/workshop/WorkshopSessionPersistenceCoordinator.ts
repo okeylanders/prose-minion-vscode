@@ -23,6 +23,7 @@ import {
 import {
   WorkshopPersonaConversationKey,
   WorkshopSessionTimeService,
+  isWorkshopPersonaConversationKey,
   parseWorkshopSessionTemporalStateV1,
   workshopGuestConversationKey
 } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -73,11 +74,21 @@ import type {
   WorkshopRewindCut
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import {
+  WorkshopBranchNotOpenedError,
+  WorkshopBranchRefusedError,
+  workshopBranchCheckpoint
+} from '@/application/services/workshop/WorkshopSessionBranch';
+import {
+  requireWorkshopSessionTitle,
+  workshopBranchTitle
+} from '@/application/services/workshop/WorkshopSessionTitles';
+import {
   rewindWorkshopSession,
   WorkshopRetainedArchiveEntry,
   WorkshopRewindComposerRestore,
   WorkshopRewindCutSummary,
   WorkshopRewindRefusedError,
+  WorkshopRewindWidgetRestore,
   WorkshopSessionRewindResult
 } from '@/application/services/workshop/session/WorkshopSessionRewind';
 
@@ -107,6 +118,11 @@ interface WorkshopHydrationTransaction extends WorkshopSessionHydrateResult {
   discardedConversationIds: string[];
 }
 
+/** What replaced the live room: the runtime conversations it superseded. */
+interface WorkshopRoomReplacement {
+  discardedConversationIds: readonly string[];
+}
+
 /** One promoted room: its imported histories bound to its hydrated aggregate. */
 interface WorkshopRoomInstallation {
   workshop: WorkshopSessionStateV1;
@@ -118,10 +134,14 @@ interface WorkshopRoomInstallation {
   recoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][];
 }
 
-// The Rewind operation's public vocabulary: handlers depend on the
+// The Rewind and Branch operations' public vocabulary: handlers depend on the
 // coordinator, never on the session collaborators behind it.
 export type { WorkshopRewindCut } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 export { WorkshopRewindRefusedError } from '@/application/services/workshop/session/WorkshopSessionRewind';
+export {
+  WorkshopBranchNotOpenedError,
+  WorkshopBranchRefusedError
+} from '@/application/services/workshop/WorkshopSessionBranch';
 
 /**
  * Who asked for a rewind. A writer's bubble action re-seeds the composer; a
@@ -133,6 +153,22 @@ export interface WorkshopRewindOutcome {
   summary: WorkshopRewindCutSummary;
   /** Present only when a writer rewinds their own message (origin `'writer'`). */
   composerRestore?: WorkshopRewindComposerRestore;
+  /** Present only when a writer rewinds their own widget message (origin `'writer'`). */
+  widgetRestore?: WorkshopRewindWidgetRestore;
+  degradedConversationKeys: WorkshopConversationLogicalKey[];
+  degradedConversations: WorkshopConversationDegradation[];
+}
+
+export interface WorkshopBranchOutcome {
+  /** The named session the branch was cut from. Branch never writes its file. */
+  source: { sessionId: string; title: string };
+  /** The new named session, now the live room. */
+  branch: WorkshopStoredSessionSummary;
+  summary: WorkshopRewindCutSummary;
+  /** Present only when the writer branched from their own message. */
+  composerRestore?: WorkshopRewindComposerRestore;
+  /** Present only when the writer branched from their own widget message. */
+  widgetRestore?: WorkshopRewindWidgetRestore;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   degradedConversations: WorkshopConversationDegradation[];
 }
@@ -172,6 +208,29 @@ export type WorkshopSessionSaveStatus = WorkshopSessionSaveStatusMessage['payloa
 const normalizedIso = (date: Date): string => date.toISOString();
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
+
+/** What a cut kept and removed, for one log line: counts and keys, never content. */
+function describeWorkshopCut(
+  cut: WorkshopRewindCut,
+  cutRoom: WorkshopSessionRewindResult,
+  before: readonly WorkshopRetainedArchiveEntry[]
+): string {
+  const after = new Map(cutRoom.conversations.map((entry) => [entry.key, entry.messages.length]));
+  const histories = before
+    .map((entry) => `${entry.key} ${entry.messages.length}→${after.get(entry.key) ?? 'dropped'}`)
+    .join(', ') || 'none';
+  const { summary } = cutRoom;
+  return `cut=${cut.kind}:${cut.turnId}, ` +
+    `keptThrough=${summary.keptThroughTurnId}, removedTurns=${summary.removedTurnCount}, ` +
+    `removedTodos=${summary.removedTodoCount}, messages=${histories}, ` +
+    `dropped=${summary.droppedConversationKeys.join(',') || 'none'}` +
+    (summary.releasedWidgetConfigIds.length > 0
+      ? `, releasedWidgets=${summary.releasedWidgetConfigIds.join(',')}`
+      : '') +
+    (cutRoom.unverifiedConversationKeys.length > 0
+      ? `, unverifiedMarks=${cutRoom.unverifiedConversationKeys.join(',')}`
+      : '');
+}
 
 export class WorkshopSessionPersistenceCoordinator {
   private readonly now: () => Date;
@@ -373,14 +432,17 @@ export class WorkshopSessionPersistenceCoordinator {
     return this.session.recordSessionMarker('resume', this.time.describeVisibleMarker('resume'));
   }
 
-  private async mirrorNamedCheckpoint(checkpoint: WorkshopPersistedSessionV2): Promise<void> {
+  private async mirrorNamedCheckpoint(
+    checkpoint: WorkshopPersistedSessionV2,
+    beforeCommit?: () => Promise<void>
+  ): Promise<void> {
     // Hydration/provider setup may already have awaited. Recheck the named source before replacing the
     // rolling cache, and preserve its original payload rather than a hydrated projection.
     const latest = await this.readNamedCheckpoint(checkpoint.sessionId);
     if (!latest || !hasSameWorkshopCheckpoint(latest.session, checkpoint)) {
       throw new WorkshopNamedSessionChangedError();
     }
-    await this.store.writeCurrent(cleanRollingCheckpoint(checkpoint));
+    await this.store.writeCurrent(cleanRollingCheckpoint(checkpoint), { beforeCommit });
   }
 
   /** A named commit/load succeeded; failure of its cache copy is independently retryable. */
@@ -519,7 +581,7 @@ export class WorkshopSessionPersistenceCoordinator {
     targetSessionId?: string
   ): Promise<WorkshopStoredSessionSummary> {
     return this.serializeSessionOperation(async () => {
-      const normalizedTitle = this.requireTitle(title);
+      const normalizedTitle = requireWorkshopSessionTitle(title);
       const now = normalizedIso(this.now());
       if (targetSessionId !== undefined) {
         return this.updateActiveNamedSession(targetSessionId, normalizedTitle, now);
@@ -625,19 +687,25 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   private async promoteNamedSession(
-    persisted: WorkshopPersistedSessionCheckpointDecodeResult
+    persisted: WorkshopPersistedSessionCheckpointDecodeResult,
+    options: {
+      /**
+       * Runs at the commit of the rolling write: after the new current.json
+       * is written to a temporary file, immediately before it replaces the
+       * room being left. A throw keeps current.json and restores that room.
+       */
+      beforeReplacingCurrent?: () => Promise<void>;
+    } = {}
   ): Promise<WorkshopSessionHydrateResult> {
-    const rollback = this.captureRollback();
-    let hydration: WorkshopHydrationTransaction;
-    try {
+    const hydration = await this.replaceLiveRoom(async () => {
       if (this.identity.sessionId === persisted.session.sessionId && this.localWorkPending) {
         await this.preserveDisplacedLocalSession(
           await this.capture(this.identity), persisted.session, this.acceptedNamedCheckpoint
         );
       }
-      hydration = await this.hydrate(persisted.session, false, persisted);
+      const promoted = await this.hydrate(persisted.session, false, persisted);
       this.activeNamedSessionId = persisted.session.sessionId;
-      await this.mirrorNamedCheckpoint(persisted.session);
+      await this.mirrorNamedCheckpoint(persisted.session, options.beforeReplacingCurrent);
       this.acceptedNamedCheckpoint = persisted.session;
       this.localWorkPending = false;
       this.currentCheckpointError = undefined;
@@ -649,13 +717,8 @@ export class WorkshopSessionPersistenceCoordinator {
         `[WorkshopSessionPersistence] Named checkpoint promoted to current.json ` +
         `(id=${persisted.session.sessionId}, turns=${persisted.session.workshop.turns.length})`
       );
-    } catch (error) {
-      this.restoreRollback(rollback);
-      throw error;
-    }
-    hydration.discardedConversationIds.forEach((conversationId) =>
-      this.assistantToolService.discardConversation(conversationId)
-    );
+      return promoted;
+    });
     return {
       restored: hydration.restored,
       degradedConversationKeys: hydration.degradedConversationKeys,
@@ -704,11 +767,11 @@ export class WorkshopSessionPersistenceCoordinator {
       if (this.activeNamedSessionId === sessionId) {
         return this.updateActiveNamedSession(
           sessionId,
-          this.requireTitle(title),
+          requireWorkshopSessionTitle(title),
           normalizedIso(this.now())
         );
       }
-      return this.store.renameNamed(sessionId, this.requireTitle(title));
+      return this.store.renameNamed(sessionId, requireWorkshopSessionTitle(title));
     });
   }
 
@@ -730,7 +793,7 @@ export class WorkshopSessionPersistenceCoordinator {
       const duplicate: WorkshopPersistedSessionV2 = {
         ...source.session,
         sessionId: this.idFactory(),
-        title: this.requireTitle(requestedTitle ?? `${source.session.title} copy`),
+        title: requireWorkshopSessionTitle(requestedTitle ?? `${source.session.title} copy`),
         createdAt: now,
         updatedAt: now,
         savedAt: now
@@ -790,28 +853,27 @@ export class WorkshopSessionPersistenceCoordinator {
     options: { clearWorkingSet?: boolean } = {}
   ): Promise<WorkshopResetSummary> {
     return this.serializeSessionOperation(async () => {
-      const rollback = this.captureRollback();
-      // Read the working set BEFORE the aggregate drops it. A destructive
-      // reset is the one action here that can be disputed later, and "it
-      // deleted my context" is unanswerable against a log that only says a
-      // wipe happened.
-      const cleared = options.clearWorkingSet
-        ? this.describeClearedWorkingSet()
-        : { attachmentLabels: [] };
-      const discarded = this.session.reset(options);
-      this.time.reset();
-      const createdAt = normalizedIso(this.now());
-      this.identity = {
-        sessionId: this.idFactory(),
-        title: this.defaultTitle(createdAt),
-        createdAt
-      };
-      this.activeNamedSessionId = undefined;
-      this.acceptedNamedCheckpoint = undefined;
-      this.degradedConversationKeys = [];
-      this.degradedConversations = [];
-      this.recordStartMarker();
-      try {
+      const reset = await this.replaceLiveRoom(async () => {
+        // Read the working set BEFORE the aggregate drops it. A destructive
+        // reset is the one action here that can be disputed later, and "it
+        // deleted my context" is unanswerable against a log that only says a
+        // wipe happened.
+        const cleared: WorkshopResetSummary = options.clearWorkingSet
+          ? this.describeClearedWorkingSet()
+          : { attachmentLabels: [] };
+        const discardedConversationIds = this.session.reset(options);
+        this.time.reset();
+        const createdAt = normalizedIso(this.now());
+        this.identity = {
+          sessionId: this.idFactory(),
+          title: this.defaultTitle(createdAt),
+          createdAt
+        };
+        this.activeNamedSessionId = undefined;
+        this.acceptedNamedCheckpoint = undefined;
+        this.degradedConversationKeys = [];
+        this.degradedConversations = [];
+        this.recordStartMarker();
         const promoted = await this.capture(this.identity);
         await this.store.writeCurrent(promoted);
         this.currentCheckpointError = undefined;
@@ -819,14 +881,9 @@ export class WorkshopSessionPersistenceCoordinator {
         this.localWorkPending = false;
         this.writtenRevision = this.dirtyRevision;
         this.emitSessionSaveStatus({ sessionId: this.identity.sessionId, status: 'saved' });
-      } catch (error) {
-        this.restoreRollback(rollback);
-        throw error;
-      }
-      discarded.forEach((conversationId) =>
-        this.assistantToolService.discardConversation(conversationId)
-      );
-      return cleared;
+        return { discardedConversationIds, cleared };
+      });
+      return reset.cleared;
     });
   }
 
@@ -871,34 +928,167 @@ export class WorkshopSessionPersistenceCoordinator {
       if (!evaluation.ok) {
         throw new WorkshopRewindRefusedError(evaluation.reason);
       }
-      const rollback = this.captureRollback();
-      let before: WorkshopRetainedArchiveEntry[];
-      let rewound: WorkshopSessionRewindResult;
-      let installed: WorkshopRoomInstallation;
-      try {
+      const { installed, rewound, before } = await this.replaceLiveRoom(async () => {
         const live = await this.exportLiveRoom();
-        before = live.conversations;
-        rewound = rewindWorkshopSession({ ...live, cut });
-        installed = await this.installRoom(rewound.workshop, rewound.conversations);
+        const cutRoom = rewindWorkshopSession({ ...live, cut });
+        const room = await this.installRoom(cutRoom.workshop, cutRoom.conversations);
+        // A persona left without a conversation, dropped by the cut or lost to
+        // a degraded import, starts its next one fresh, time frame included.
+        // Inside the transaction, so rollback restores the notices. (Open and
+        // Branch rebuild the time state instead, queuing a resume frame for
+        // every retained persona, imported or not.)
+        this.time.forgetNotices(
+          [...cutRoom.summary.droppedConversationKeys, ...room.degradedConversationKeys]
+            .filter(isWorkshopPersonaConversationKey)
+        );
         await this.commitRewoundRoom();
-      } catch (error) {
-        this.restoreRollback(rollback);
-        throw error;
-      }
+        return {
+          discardedConversationIds: room.discardedConversationIds,
+          installed: room,
+          rewound: cutRoom,
+          before: live.conversations
+        };
+      });
       this.degradedConversationKeys = installed.degradedConversationKeys;
       this.degradedConversations = installed.degradedConversations;
       this.pendingRecoveryNotices.push(...installed.recoveryNotices.map((notice) => ({ ...notice })));
-      installed.discardedConversationIds.forEach((conversationId) =>
-        this.assistantToolService.discardConversation(conversationId)
-      );
       this.logRewind(cut, options.origin, rewound, before);
       return {
         summary: rewound.summary,
         composerRestore: options.origin === 'writer' ? rewound.composerRestore : undefined,
+        widgetRestore: options.origin === 'writer' ? rewound.widgetRestore : undefined,
         degradedConversationKeys: [...installed.degradedConversationKeys],
         degradedConversations: installed.degradedConversations.map((entry) => ({ ...entry }))
       };
     });
+  }
+
+  /**
+   * Branch from a rest point of the saved room (ADR 2026-09-30 §7): save the
+   * cut room as a new named session, then open it through the named-session
+   * promotion that Open uses. The source session's file is never written,
+   * and it must still hold this room, read back from disk, both before the
+   * branch is saved and at the commit that replaces current.json.
+   * A failure before the branch is saved changes nothing and leaves no file;
+   * a failure while opening it restores the prior room and reports the saved
+   * branch, which stays openable from Sessions.
+   */
+  async branchFrom(
+    cut: WorkshopRewindCut,
+    options: { title?: string } = {}
+  ): Promise<WorkshopBranchOutcome> {
+    // As for Rewind: a cut chosen against this room must not wait in line and
+    // then run against another one.
+    if (this.isSessionOperationPending()) {
+      throw new WorkshopRewindRefusedError('busy');
+    }
+    return this.serializeSessionOperation(async () => {
+      const availability = this.store.availability();
+      if (!availability.available) {
+        throw new WorkshopSessionStoreUnavailableError(availability.reason);
+      }
+      // D2: an unnamed room's only durable copy is current.json, which
+      // opening the branch would replace.
+      const sourceSessionId = this.activeNamedSessionId;
+      if (!sourceSessionId) {
+        throw new WorkshopBranchRefusedError('unsaved-session');
+      }
+      // Queued autosaves have settled by now. Branch never writes the source,
+      // so it cannot flush work they failed to save, and opening the branch
+      // would leave that work behind.
+      if (this.localWorkPending || this.dirtyRevision > this.writtenRevision) {
+        throw new WorkshopBranchRefusedError('unsaved-changes');
+      }
+      const evaluation = this.session.evaluateRewindCut(cut);
+      if (!evaluation.ok) {
+        throw new WorkshopRewindRefusedError(evaluation.reason);
+      }
+      // The source's file, not the association, is what survives the branch.
+      // Prove it before writing anything, and again at the commit of the
+      // rolling write, the instant before current.json stops holding this room.
+      const accepted = this.acceptedNamedCheckpoint;
+      const requireIntactSource = () => this.requireIntactBranchSource(sourceSessionId, accepted);
+      await requireIntactSource();
+      const source = { sessionId: sourceSessionId, title: this.identity.title };
+      const live = await this.exportLiveRoom();
+      const branched = rewindWorkshopSession({ ...live, cut });
+      // The store writes atomically: a failed save leaves no branch file.
+      const saved = await this.store.saveNamed(workshopBranchCheckpoint({
+        sessionId: this.idFactory(),
+        title: options.title === undefined
+          ? workshopBranchTitle(source.title)
+          : requireWorkshopSessionTitle(options.title),
+        now: normalizedIso(this.now()),
+        timezone: this.time.exportState().timezone,
+        summary: this.buildSummary(branched.workshop),
+        workshop: branched.workshop,
+        conversations: branched.conversations
+      }));
+      let opened: WorkshopSessionHydrateResult;
+      try {
+        // Open the branch exactly as Sessions would: from its file.
+        const persisted = await this.readNamedCheckpoint(saved.sessionId);
+        if (!persisted) {
+          throw new WorkshopNamedSessionNotFoundError(saved.sessionId);
+        }
+        opened = await this.promoteNamedSession(persisted, {
+          beforeReplacingCurrent: requireIntactSource
+        });
+      } catch (error) {
+        this.outputChannel.appendLine(
+          `[WorkshopSessionPersistence] Branch saved but not opened; prior room restored ` +
+          `(source=${source.sessionId}, branch=${saved.sessionId}, file=${saved.fileName}): ` +
+          this.errorMessage(error)
+        );
+        throw new WorkshopBranchNotOpenedError(
+          saved,
+          this.errorMessage(error),
+          error instanceof WorkshopBranchRefusedError ? error.reason : undefined
+        );
+      }
+      this.outputChannel.appendLine(
+        `[WorkshopSessionPersistence] Room branched (source=${source.sessionId}, ` +
+        `branch=${saved.sessionId}, file=${saved.fileName}, ` +
+        `${describeWorkshopCut(cut, branched, live.conversations)})`
+      );
+      return {
+        source,
+        branch: saved,
+        summary: branched.summary,
+        composerRestore: branched.composerRestore,
+        widgetRestore: branched.widgetRestore,
+        degradedConversationKeys: [...opened.degradedConversationKeys],
+        degradedConversations: (opened.degradedConversations ?? []).map((entry) => ({ ...entry }))
+      };
+    });
+  }
+
+  /**
+   * Branch's proof that its source file still holds this room. The named
+   * association and clean revisions describe the live room, not the disk:
+   * Git or another process may have deleted, corrupted or replaced the file
+   * since the room accepted it. Opening the branch replaces current.json, so
+   * without this proof the room Branch leaves could have no complete copy.
+   */
+  private async requireIntactBranchSource(
+    sessionId: string,
+    accepted: WorkshopPersistedSessionV2 | undefined
+  ): Promise<void> {
+    let latest: WorkshopPersistedSessionCheckpointDecodeResult | undefined;
+    try {
+      latest = await this.readNamedCheckpoint(sessionId);
+    } catch (error) {
+      this.outputChannel.appendLine(
+        `[WorkshopSessionPersistence] Branch source unreadable (id=${sessionId}): ${this.errorMessage(error)}`
+      );
+      throw new WorkshopBranchRefusedError('source-changed');
+    }
+    if (!latest || accepted?.sessionId !== sessionId || !hasSameWorkshopCheckpoint(latest.session, accepted)) {
+      this.outputChannel.appendLine(
+        `[WorkshopSessionPersistence] Branch source ${latest ? 'changed' : 'missing'} on disk (id=${sessionId})`
+      );
+      throw new WorkshopBranchRefusedError('source-changed');
+    }
   }
 
   /**
@@ -946,20 +1136,9 @@ export class WorkshopSessionPersistenceCoordinator {
     rewound: WorkshopSessionRewindResult,
     before: readonly WorkshopRetainedArchiveEntry[]
   ): void {
-    const after = new Map(rewound.conversations.map((entry) => [entry.key, entry.messages.length]));
-    const histories = before
-      .map((entry) => `${entry.key} ${entry.messages.length}→${after.get(entry.key) ?? 'dropped'}`)
-      .join(', ') || 'none';
-    const { summary } = rewound;
     this.outputChannel.appendLine(
-      `[WorkshopSessionPersistence] Room rewound (origin=${origin}, cut=${cut.kind}:${cut.turnId}, ` +
-      `keptThrough=${summary.keptThroughTurnId}, removedTurns=${summary.removedTurnCount}, ` +
-      `removedTodos=${summary.removedTodoCount}, messages=${histories}, ` +
-      `dropped=${summary.droppedConversationKeys.join(',') || 'none'}` +
-      (rewound.unverifiedConversationKeys.length > 0
-        ? `, unverifiedMarks=${rewound.unverifiedConversationKeys.join(',')}`
-        : '') +
-      ')'
+      `[WorkshopSessionPersistence] Room rewound (origin=${origin}, ` +
+      `${describeWorkshopCut(cut, rewound, before)})`
     );
   }
 
@@ -1363,6 +1542,30 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   /**
+   * The room-replacement transaction New, Open, Rewind and Branch share (ADR
+   * 2026-09-30, Sprint 03 kickoff decision 1). `replace` prepares, installs
+   * and durably writes the new room. Any failure restores the prior room over
+   * its still-live conversations; the conversations the new room superseded
+   * are discarded only once it has fully succeeded.
+   */
+  private async replaceLiveRoom<T extends WorkshopRoomReplacement>(
+    replace: () => Promise<T>
+  ): Promise<T> {
+    const rollback = this.captureRollback();
+    let replaced: T;
+    try {
+      replaced = await replace();
+    } catch (error) {
+      this.restoreRollback(rollback);
+      throw error;
+    }
+    replaced.discardedConversationIds.forEach((conversationId) =>
+      this.assistantToolService.discardConversation(conversationId)
+    );
+    return replaced;
+  }
+
+  /**
    * Rebind the prior aggregate to its still-live provider histories. Only
    * conversations introduced by the failed replacement are retired; the
    * protected rollback ids cannot be discarded even if replacement failed
@@ -1433,17 +1636,6 @@ export class WorkshopSessionPersistenceCoordinator {
       day: 'numeric'
     }).format(new Date(createdAt));
     return `Untitled session — ${workshopPersonaLabel(this.session.getSelectedPersonaId())} — ${date}`;
-  }
-
-  private requireTitle(title: string): string {
-    const normalized = title.trim();
-    if (!normalized) {
-      throw new Error('Workshop session title cannot be blank.');
-    }
-    if (normalized.length > 160) {
-      throw new Error('Workshop session titles are limited to 160 characters.');
-    }
-    return normalized;
   }
 
   /** Commit the authoritative named checkpoint before its rolling mirror. */

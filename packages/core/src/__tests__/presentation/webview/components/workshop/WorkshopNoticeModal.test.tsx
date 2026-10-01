@@ -26,25 +26,65 @@ describe('WorkshopNoticeModal', () => {
   /** The media well's legend, which repeats the control names as call-outs. */
   const legend = () => document.querySelector('.pm-ws-notice-legend') as HTMLElement;
 
-  it('opens on page one of six with prev disabled', () => {
+  it('opens on the newest notice, page one of seven, with prev disabled', () => {
     renderModal();
-    expect(screen.getByText(/1 \/ 6/)).toBeTruthy();
-    expect(screen.getByText('Welcome to the Workshop beta')).toBeTruthy();
-    expect(screen.getByText(/never changes project files on its own/)).toBeTruthy();
+    expect(screen.getByText(/1 \/ 7/)).toBeTruthy();
+    expect(screen.getByText('New: rewind, edit, and branch')).toBeTruthy();
     const prev = screen.getByRole('button', { name: 'Previous notice' }) as HTMLButtonElement;
     expect(prev.disabled).toBe(true);
+  });
+
+  /* ADR 2026-09-30, Sprint 03 kickoff decision 5: the release's new page leads. */
+  it('explains rewind, edit, and branch, and warns Git-synced writers to update first', () => {
+    renderModal();
+
+    expect(within(copy()).getByText('Rewind to here')).toBeTruthy();
+    expect(within(copy()).getByText('Edit from here')).toBeTruthy();
+    expect(within(copy()).getByText('Branch from here')).toBeTruthy();
+    expect(within(copy()).getByText(/Save the session before you branch/)).toBeTruthy();
+    expect(within(copy()).getByText(/excerpt and context\s+always stay as they are now/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
+      'Sessions saved by this version can’t be opened by earlier versions of Prose Minion. ' +
+      'If you sync sessions through Git, update Prose Minion on every machine first.'
+    );
+  });
+
+  it('draws the thread\'s own actions, called out to match the legend', () => {
+    renderModal();
+
+    const rows = Array.from(document.querySelectorAll('.pm-ws-notice-actions'));
+    expect(rows.map((row) => row.querySelector('.pm-ws-notice-actions-caption')?.textContent))
+      .toEqual(['Under a reply', 'Under a message you sent']);
+    /* Decorative, like a figure's call-outs: the legend carries the meaning. */
+    rows.forEach((row) => expect(row.getAttribute('aria-hidden')).toBe('true'));
+    const called = Array.from(document.querySelectorAll('.pm-ws-notice-action-called'));
+    expect(called.map((node) => node.textContent)).toEqual([
+      '1 Rewind to here',
+      '3 Branch from here',
+      '2 Edit from here'
+    ]);
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Rewind to here — keep this reply; remove everything after it.',
+      '2Edit from here — your message comes back to edit and send again.',
+      '3Branch from here — a new saved session from this point; this one stays.'
+    ]);
   });
 
   it('pages with arrows and dots, disabling next on the last page', () => {
     renderModal();
     const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
     fireEvent.click(next);
-    expect(screen.getByText(/2 \/ 6/)).toBeTruthy();
+    expect(screen.getByText(/2 \/ 7/)).toBeTruthy();
+    expect(screen.getByText('Welcome to the Workshop beta')).toBeTruthy();
+    expect(screen.getByText(/never changes project files on its own/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
+    expect(screen.getByText(/3 \/ 7/)).toBeTruthy();
     expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     expect(within(copy()).getByText(/Prose Minion Settings/)).toBeTruthy();
     expect(within(copy()).getByText(/individual chapter files/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 6' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 7' }));
     expect(screen.getByText('Agents can work with your project')).toBeTruthy();
     expect(screen.getByText(/do not need to attach every file by hand/)).toBeTruthy();
     expect(next.disabled).toBe(true);
@@ -53,13 +93,13 @@ describe('WorkshopNoticeModal', () => {
   it('explains host choice, model guidance, conversation settings, and persona-run tools', () => {
     renderModal();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
     expect(screen.getByText('Choose a host, then invite guests')).toBeTruthy();
     expect(within(copy()).getByText('Gemini 3.6 Flash')).toBeTruthy();
     expect(within(copy()).getByText('GPT-5.6 Terra')).toBeTruthy();
     expect(within(copy()).getByText('GPT-5.6 Sol')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
     expect(within(copy()).getByText(/Conversation Controller/)).toBeTruthy();
     expect(within(copy()).getByText(/About you/)).toBeTruthy();
     expect(within(copy()).getByText(/clickable citation pill/)).toBeTruthy();
@@ -68,7 +108,7 @@ describe('WorkshopNoticeModal', () => {
        must survive a design re-pull. */
     expect(within(copy()).getByText(/comfortable sharing/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 6' }));
     expect(screen.getByText('Tools — run them directly, or ask a persona')).toBeTruthy();
     expect(within(copy()).getByText(/specific line, variation, or question/)).toBeTruthy();
   });
@@ -81,6 +121,8 @@ describe('WorkshopNoticeModal', () => {
         )
       };
       renderModal();
+      /* The newest notice draws its actions inline; the tour's shots follow. */
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
 
       const shots = screen.getAllByRole('img') as HTMLImageElement[];
       expect(shots.length).toBeGreaterThan(0);
@@ -93,7 +135,7 @@ describe('WorkshopNoticeModal', () => {
 
     it('renders one call-out per legend row, positioned in percentages', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
 
       const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
       expect(callouts).toHaveLength(4);
@@ -110,11 +152,12 @@ describe('WorkshopNoticeModal', () => {
 
     it('survives a host that never stamped the screenshots', () => {
       renderModal();
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
       const shots = screen.getAllByRole('img') as HTMLImageElement[];
       expect(shots.length).toBeGreaterThan(0);
       shots.forEach((img) => expect(img.getAttribute('src')).toBe(''));
       /* The tour still pages — a missing asset costs a picture, not the box. */
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
       expect(screen.getByText("Set the room's conversation style")).toBeTruthy();
     });
 
@@ -127,7 +170,7 @@ describe('WorkshopNoticeModal', () => {
      */
     it('keeps the setup page narrow enough that both shots fit without scrolling', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
 
       const figures = Array.from(
         document.querySelectorAll('.pm-ws-notice-figure')
@@ -146,7 +189,7 @@ describe('WorkshopNoticeModal', () => {
 
     it('shows the Conversation Controller tabs as three captioned thumbnails', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
 
       const captions = Array.from(document.querySelectorAll('.pm-ws-notice-thumb figcaption'));
       expect(captions.map((node) => node.textContent)).toEqual([
@@ -160,7 +203,7 @@ describe('WorkshopNoticeModal', () => {
   describe('project-configuration guide', () => {
     it('is reachable from the setup notice and returns to the same page', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
 
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
 
@@ -170,13 +213,13 @@ describe('WorkshopNoticeModal', () => {
       expect(screen.queryByText('Start with an open project folder')).toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/2 \/ 6/)).toBeTruthy();
+      expect(screen.getByText(/3 \/ 7/)).toBeTruthy();
       expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     });
 
     it('is reachable from the agents notice and returns to the LAST page', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 6' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 7' }));
 
       fireEvent.click(screen.getByRole('button', { name: /Project Resource Locations/ }));
       expect(screen.getByRole('dialog', { name: 'How to configure your project' })).toBeTruthy();
@@ -184,7 +227,7 @@ describe('WorkshopNoticeModal', () => {
       /* The boundary page is where an index-reset or PAGES.length - 1 off-by-one
          hides while passing on an interior page (PR #94 review, Cal). */
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/6 \/ 6/)).toBeTruthy();
+      expect(screen.getByText(/7 \/ 7/)).toBeTruthy();
       expect(screen.getByText('Agents can work with your project')).toBeTruthy();
       const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
       expect(next.disabled).toBe(true);
@@ -198,12 +241,12 @@ describe('WorkshopNoticeModal', () => {
     it('renders the guide-link sentences with correct spacing and punctuation', () => {
       renderModal();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
       expect(document.querySelector('.pm-ws-notice-guide-note')?.textContent).toBe(
         'Then follow How to configure your project for the whole walkthrough.'
       );
 
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 6' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 7' }));
       expect(document.querySelector('.pm-ws-notice-guide-note')?.textContent).toBe(
         'Project-file reading depends on the paths set in Project Resource Locations.'
       );
@@ -212,7 +255,7 @@ describe('WorkshopNoticeModal', () => {
     it('keeps "Don\'t show again" checked across a trip through the guide', () => {
       const { onDismiss } = renderModal();
       fireEvent.click(screen.getByRole('checkbox'));
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
 
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
@@ -224,7 +267,7 @@ describe('WorkshopNoticeModal', () => {
 
     it('closes on Escape without touching the notice dismissal', () => {
       const { onClose, onDismiss } = renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
 
       fireEvent.keyDown(window, { key: 'Escape' });
@@ -253,7 +296,7 @@ describe('WorkshopNoticeModal', () => {
       const { unmount } = render(
         <WorkshopNoticeModal open onClose={jest.fn()} onDismiss={jest.fn()} />
       );
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
 
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
       await Promise.resolve();

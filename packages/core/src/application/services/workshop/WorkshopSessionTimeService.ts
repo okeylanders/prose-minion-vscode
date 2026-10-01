@@ -298,6 +298,36 @@ export class WorkshopSessionTimeService {
     this.pendingResumeKeys.delete(notice.conversationKey);
   }
 
+  /**
+   * End the delivery bookkeeping of persona conversations that ended without
+   * a replacement history (ADR 2026-09-30, Sprint 03 kickoff decision 2). A
+   * notice entry is per-conversation state, like a room offset: a fresh
+   * conversation under the same key must receive its own session-start frame,
+   * not inherit the hour its predecessor was given. Surviving conversations
+   * keep their entries.
+   */
+  forgetNotices(keys: readonly WorkshopPersonaConversationKey[]): void {
+    const forgotten = new Set(keys);
+    if (forgotten.size === 0) {
+      return;
+    }
+    this.state = {
+      ...this.state,
+      personaNotices: this.state.personaNotices.filter(
+        (notice) => !forgotten.has(notice.conversationKey)
+      )
+    };
+    forgotten.forEach((key) => this.pendingResumeKeys.delete(key));
+  }
+
+  /** Every persona conversation ended at once (an assistant generation loss). */
+  forgetAllNotices(): void {
+    this.forgetNotices([
+      ...this.state.personaNotices.map((notice) => notice.conversationKey),
+      ...this.pendingResumeKeys
+    ]);
+  }
+
   touch(at: Date | string = this.now()): void {
     const observedAt = normalizeDate(at);
     this.state = {

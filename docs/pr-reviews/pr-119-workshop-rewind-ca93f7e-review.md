@@ -12,7 +12,7 @@ Status legend: **Open** = actionable recommendation with the deadline stated bel
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🔵 Nit | Rewind confirmation recommends Branch before that action exists | Confirmation helper and WorkshopApp test compared with Sprint 03's delivery plan | **Open** — resolve when the UI is released: implement Branch in Sprint 03, or omit the recommendation if Rewind ships independently. *Tracking:* the epic merges to `main` as one unit, so Rewind never ships without Branch. The sentence and its test stay, and Sprint 03's exit criteria close F-01 once Branch lands |
+| F-01 | 🔵 Nit | Rewind confirmation recommends Branch before that action exists | Confirmation helper and WorkshopApp test compared with Sprint 03's delivery plan | **Addressed** (2026-10-01, Sprint 03) — Branch landed: "Branch from here" sits beside Rewind in both bubble footers. The epic merges to `main` as one unit, so Rewind never ships without it. The confirmation sentence "To keep this conversation too, use Branch instead." and its `WorkshopApp.test.tsx` assertion stay as they are |
 | F-02 | 🟢 Praise | The pure transform cuts both room representations together and validates its output | Source tracing, equivalence oracle, transform tests, and independent correctness review | N/A — preserve |
 | F-03 | 🟢 Praise | Ordinary write failures retain a usable rollback room; named mirror failures have separate retry semantics | Coordinator/install/rollback source tracing and passing coordinator/persistence tests | N/A — preserve |
 
@@ -92,8 +92,13 @@ Named authority remains identity-checked. Once the named write succeeds, its rol
 
 Two known limitations are already documented in this PR; they are not new findings or silently accepted deferrals:
 
-- [Released widget configs have no reopening entry point](../../.todo/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md). The retained draft survives host-side, but the removed commit bubble was its UI entry point. A writer cannot currently retry that draft through the thread. Keep this visible in the epic's release disposition.
-- [Time notices outlive discarded conversations](../../.todo/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host or re-invited guest can miss its initial time frame until the hourly interval expires. This is per-conversation delivery bookkeeping, and the debt record gives a focused correction that preserves current temporal state.
+- [Released widget configs have no reopening entry point](../../.todo/archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md). The retained draft survives host-side, but the removed commit bubble was its UI entry point. A writer cannot currently retry that draft through the thread. Keep this visible in the epic's release disposition.
+- [Time notices outlive discarded conversations](../../.todo/archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md). A fresh host or re-invited guest can miss its initial time frame until the hourly interval expires. This is per-conversation delivery bookkeeping, and the debt record gives a focused correction that preserves current temporal state.
+
+**Release disposition (2026-10-01, Sprint 03).** Both follow-ups were scheduled at the Sprint 03 kickoff:
+
+- **Time notices: fixed.** `forgetNotices` ends a notice with its conversation at rewind drops, guest dismissal and generation loss. The record is archived.
+- **Released widget configs: fixed, with one accepted residue.** A writer-bubble cut on a widget commit's own message reopens its widget on the released config. A cut that only skips past a commit releases the config silently. That residue is accepted and named in the release notes' upgrade notes. The record is archived.
 
 Sprint 03 also records the coordinator's size as a kickoff decision. Its growth merits that planned ownership discussion before adding Branch, but the extracted transform and shared installation core are coherent here; line count alone is not a merge blocker.
 

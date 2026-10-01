@@ -637,6 +637,22 @@ export interface WorkshopRewindSessionMessage extends MessageEnvelope<{
   type: MessageType.WORKSHOP_REWIND_SESSION;
 }
 
+/**
+ * Branch from one thread bubble (ADR 2026-09-30 §7): the host maps the bubble
+ * to its cut exactly as Rewind does, saves the cut room as a new named
+ * session, and opens it. The source session is never modified. Only a saved
+ * room can branch: the webview asks an unnamed room to save first, and the
+ * host refuses one anyway. `title` overrides the default
+ * `"<source title> — branch"`. A writer-message branch is an edit in the
+ * branch, restored through the same messages as a writer-message rewind.
+ */
+export interface WorkshopBranchSessionMessage extends MessageEnvelope<{
+  turnId: string;
+  title?: string;
+}> {
+  type: MessageType.WORKSHOP_BRANCH_SESSION;
+}
+
 /** Sent on webview mount: "give me the session as the host knows it". */
 export interface WorkshopRequestSessionMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.WORKSHOP_REQUEST_SESSION;
@@ -800,6 +816,7 @@ export interface WorkshopSessionsDataMessage extends MessageEnvelope<{
 export type WorkshopSessionAction =
   | 'new'
   | 'rewind'
+  | 'branch'
   | 'save'
   | 'open'
   | 'rename'

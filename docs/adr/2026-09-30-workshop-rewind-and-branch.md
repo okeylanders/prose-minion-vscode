@@ -1,6 +1,6 @@
 # ADR 2026-09-30: Workshop Rewind and Branch
 
-**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)), Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions)) and Sprint 02 findings (see [Sprint 02 implementation findings](#sprint-02-implementation-findings))
+**Status:** Accepted (2026-10-01), with the epic's product decisions D1–D7 folded in (see [Product decisions](#product-decisions-d1d7)). Amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)), Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions)), Sprint 02 findings (see [Sprint 02 implementation findings](#sprint-02-implementation-findings)), Sprint 03 kickoff decisions (see [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions)) and Sprint 03 findings (see [Sprint 03 implementation findings](#sprint-03-implementation-findings))
 **Date:** 2026-09-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md)
 **Answers:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md), rejected alternative "Fork or branch the conversation into the new session"
@@ -123,17 +123,21 @@ rewindWorkshopSession(input: {
     removedTurnCount: number;
     droppedConversationKeys: WorkshopConversationLogicalKey[];
     removedTodoCount: number;
+    releasedWidgetConfigIds: string[];         // one-shot commits the cut removed
   };
   composerRestore?: {                          // writer-bubble cuts only
     text: string;
     attachmentIds: string[];                   // restaged under their original ta-N ids
     unrestoredAttachmentLabels: string[];      // the writer re-attaches these
   };
+  widgetRestore?: {                            // a widget commit's own message only
+    widgetConfigId: string;                    // its released config reopens in the widget sheet
+  };
   unverifiedConversationKeys: WorkshopConversationLogicalKey[]; // diagnostics
 }
 ```
 
-A refused cut throws `WorkshopRewindRefusedError` carrying the policy's refusal reason. (Result shape amended in Sprint 02; see [Sprint 02 implementation findings](#sprint-02-implementation-findings), item 6.)
+A refused cut throws `WorkshopRewindRefusedError` carrying the policy's refusal reason. (Result shape amended in Sprint 02, see [Sprint 02 implementation findings](#sprint-02-implementation-findings), item 6; and in Sprint 03, see [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions), item 3.)
 
 It lives in its own module under `application/services/workshop/session/`. It does not grow `WorkshopSessionService`. Its rules:
 
@@ -192,15 +196,18 @@ Branch is a coordinator session operation:
    - The webview does not send the request for an unnamed room. It shows a popup explaining that the session must be saved before branching, with a "Save session…" action that opens the existing Save modal.
    - After saving, the writer clicks Branch again. Nothing is saved automatically.
    - The host refuses an unnamed-room request anyway, with the same explanation, so a stale webview cannot bypass the rule.
-3. Queued autosaves complete first, via `serializeSessionOperation`, so the associated named file is current on disk.
+3. Queued autosaves complete first, via `serializeSessionOperation`, so the associated named file is current on disk. A named room whose latest autosave did not land is refused: Branch never writes the source, so it cannot flush that work either (Sprint 03 kickoff).
+   - **The source file must still hold this room.** Branch reads it back and compares it with the checkpoint the room accepted. A missing, unreadable or replaced file is refused before anything is written (PR #120 review F-01). Git or another process can change the file while the room is open, and the association alone cannot show that.
 4. Export and transform exactly as in §6.
 5. Build a new persisted session:
    - fresh `sessionId` and timestamps;
-   - title `"<source title> — branch"` (collision-safe, renamable);
+   - a fresh temporal start in the source's timezone, with no persona notices;
+   - title `"<source title> — branch"` (renamable; the store keeps file names collision-free, and a long source title is trimmed to fit the title limit);
    - summary rebuilt from the cut aggregate.
-   Write it with the existing named `saveNamed` path.
-6. Promote it into the live room through the existing open/promotion path.
-7. Post session state and a result naming both sessions. Re-seed the composer for a writer-bubble branch.
+   Write it with the existing named `saveNamed` path. The store writes atomically, so a failure here leaves no branch file and changes nothing.
+6. Read the branch back from its file and promote it into the live room through the named-session promotion that Open uses, on the shared room-replacement transaction (Sprint 03 kickoff, item 1). A failure here restores the prior room; the branch stays on disk as an openable named session, and the result says so.
+   - The source is proved again at the commit of the rolling write, after the new `current.json` is written to a temporary file and immediately before the atomic rename, through the store's `beforeCommit` seam. This covers a change at any point after the first check, including during the mirror's own reads and writes. If the source changed, the temporary file is removed, `current.json` keeps the room, the prior room is restored, and the result asks the writer to keep this room before opening the branch.
+7. Post session state and a result naming both sessions. A writer-bubble branch is an edit in the branch: the composer is re-seeded, or a widget message's released config reopens in its widget.
 
 The source session is never modified by Branch. Branch lineage (`branchedFrom`) is not persisted in v1. See Follow-ups.
 
@@ -226,6 +233,20 @@ The exact-key shape validator and integrity validator gain the field in the same
 
 A sidecar marks file was considered and rejected for v1. It would have kept session files readable by older builds, at the cost of a second file's lifecycle across save, mirror, duplicate, rename, delete and recovery. Because marks and archive are written atomically in one file, an older build can never leave marks stale. The per-mark history hash that the sidecar needed is therefore unnecessary.
 
+## Product decisions (D1–D7)
+
+The epic proposed these product decisions and confirmed them through its sprints. They are accepted with this ADR.
+
+| # | Decision | Accepted as |
+|---|---|---|
+| D1 | Writer-bubble semantics | A writer-bubble action cuts to *before* the message (§1). Its text and one-shot attachments return to the composer. A widget commit's message reopens its widget on the released config instead (Sprint 03 kickoff, item 3). |
+| D2 | Branching from an unnamed room | Not allowed. The webview shows a "Save before branching" popup whose "Save session…" opens the Save modal, and the writer branches again after saving. The host refuses with "Save this session before branching." (§7) |
+| D3 | Branch title | `"<source title> — branch"`, renamable afterwards. A long source title is trimmed so the suffix fits. |
+| D4 | Confirmation | Rewind confirms, naming how many turns go and that the excerpt and context stay current. Branch does not confirm, because it is non-destructive. |
+| D5 | Legacy sessions | Exact from the reopen point onward through baseline marks (§3). Earlier turns show a disabled action with the reason "Saved before rewind support". No backfill heuristic. |
+| D6 | Standing prose directives | Neither action crosses the latest directive change in v1 (§4, the directive floor). |
+| D7 | Persistence unavailable | Rewind follows New-session availability. Branch is disabled, and each action says why: "Rewind needs …" or "Branch needs …", a single-root workspace or an open workspace folder. |
+
 ## Sprint 01 implementation findings
 
 Recorded 2026-09-30 while building the marks. Each item corrects or completes a detail above; the decision itself stands.
@@ -243,7 +264,7 @@ Recorded 2026-09-30 while building the marks. Each item corrects or completes a 
 Confirmed 2026-09-30 before the transform was written. Each confirms or corrects a detail above.
 
 1. **Context-source re-delivery appends (resolves finding 6).** `ConversationManager.appendContextSources` appends a new row when a canonical resource is re-delivered and marks the superseded row `stale`, the dimmed-history rule host pins already follow. A mark's `contextSourceCount` then slices to exactly the rows the history held at the mark, and the transform recomputes the stale chain inside the kept prefix. Replacing in place was worse than metadata drift: a kept row could name an `art-N` that the cut history no longer contains.
-2. **Temporal state stays current.** Per-persona time notices are not rewound, like the working set. Rewind does not re-hydrate the time service, so it queues no resume notices and records no "Session resumed" marker. A dropped participant keeps its notice entry, as dismissal and generation loss already do.
+2. **Temporal state stays current.** Per-persona time notices are not rewound, like the working set. Rewind does not re-hydrate the time service, so it queues no resume notices and records no "Session resumed" marker. A dropped participant's notice entry ends with its conversation, so a fresh conversation under the same key receives its own session-start frame. (Amended at Sprint 03 kickoff: the original sentence kept the entry, as dismissal and generation loss then did, and a fresh host could go up to an hour without a time frame. See [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions), item 2.)
 3. **Conversation `lastActivity` is wall-clock and never rewound.** It is an intended oracle difference.
 4. **Host marks record the context revision the host holds (amends §2 Context and §3).** The divider rule is not exact. A kept divider after the host's last kept commit is undelivered at the cut. A context edit made during a host run is not delivered by that run. A session-open file refresh changes the revision with no divider at all. Excerpt delivery has a record, the host pin rows; context delivery had none. Host marks therefore carry an optional `contextRevision`: the context revision the host holds at that rest point, which is `revisions.context` when no context update is pending and `revisions.pendingContext − 1` otherwise (a pending revision is always the current one). It is recorded at settlement and at baseline, and validated as host-only, non-decreasing, and never later than the revision the host currently holds. The transform re-queues `pendingContext` at the current revision exactly when the host's cut mark records an older one. Marks are unreleased, so there is no schema bump; an integration-branch checkpoint whose host marks lack the field degrades through the existing inconsistent-mark normalization.
 5. **Rewind is durable before it succeeds (amends §6 step 7).** Like New and Open, the operation writes inside itself. Any failure at transform, import, hydrate or write restores the prior room through `restoreRollback`, and the prior provider conversations are discarded only after the durable write succeeds. A rolling-mirror failure after a successful named write stays independently retryable and does not roll back. While `current.json` is protected, Rewind stays in memory, like every other mutation in that state.
@@ -261,6 +282,52 @@ Recorded 2026-09-30 while building Rewind. Each item corrects or completes a det
 7. **D7 gating in the webview.** Rewind follows New-session availability. While persistence is unavailable, every Rewind action is disabled with the reason ("Rewind needs a single-root workspace" or "Rewind needs an open workspace folder"). While the room is busy (a live turn, a run, the Context wizard, or a pending session change), every action is disabled with one busy reason. The host still refuses on its own; webview gating remains advisory.
 8. **Session handlers reach the rewind vocabulary through the coordinator.** The architecture guard forbids handlers from importing session collaborators. `WorkshopSessionPersistenceCoordinator` therefore re-exports `WorkshopRewindCut` and `WorkshopRewindRefusedError`. The bubble-to-cut mapping stays in `WorkshopSessionService` as thin delegation to the Sprint 01 policy.
 
+## Sprint 03 kickoff decisions
+
+Confirmed 2026-10-01 before Branch was written. Each confirms or corrects a detail above.
+
+1. **One room-replacement transaction.** New, Open, Rewind and Branch all replace the live room, and all four share one sequence:
+   - capture the rollback;
+   - prepare, install and write the new room durably;
+   - restore the prior room on any failure;
+   - discard the replaced conversations only after success.
+
+   A private coordinator helper owns that sequence. New, Rewind and the named-session promotion use it; Open, refresh and Branch reach it through the promotion. No room-replacement collaborator is extracted yet.
+2. **Time notices end with their conversation (amends Sprint 02 kickoff decision 2).** A notice entry is per-conversation delivery state, like a room offset. `WorkshopSessionTimeService.forgetNotices(keys)` removes a persona key's entry and any pending resume notice wherever a persona conversation ends with no replacement history:
+   - the persona keys a rewind drops, inside the operation and before its durable write, so rollback restores them;
+   - guest dismissal;
+   - an assistant generation loss.
+
+   Surviving participants keep their entries, so temporal state otherwise stays current. A branch starts with no persona notices at all (§7).
+3. **A rewound widget commit reopens its widget.** The transform's summary reports the one-shot configs a cut released. A writer-bubble cut on a widget commit's own message is an edit of that widget: its released config reopens in the widget sheet, the widget twin of the composer re-seed (§1). A cut that skips past a commit releases its config silently, and that residue is accepted.
+4. **Manual smoke is recorded by the writer.** A cloud session cannot run the Extension Development Host, so the epic's smoke criterion stays open until Okey records results.
+5. **What's New uses the existing startup notice.** ADR 2026-08-05's notice ledger is not implemented. The release prepends a Rewind and Branch page to the Workshop startup notice and moves its version from `v3` to `v4`.
+
+Also settled at kickoff, within §7:
+
+- The coordinator's `branchFrom` takes a cut, like `rewindTo`. The route maps a bubble to its cut.
+- The branch's temporal state is fresh: its start and last activity are the branch time, and it keeps the source's timezone and no persona notices. Promotion is Open's path, so retained personas receive a resume frame and the first interaction records "Session resumed".
+- A named room whose latest autosave has not landed is refused. Branch never writes the source file, so it cannot flush that file either.
+- The title is `"<source title> — branch"`. The source title is trimmed so the suffix fits the 160-character title limit; the store already makes the file name collision-free.
+
+## Sprint 03 implementation findings
+
+Recorded 2026-10-01 while building Branch. Each item corrects or completes a detail above; the decision itself stands.
+
+1. **New rolls back a failed reset, too.** Moving New onto the shared room-replacement transaction exposed a gap. Its reset prelude (aggregate reset, clock reset, start marker) ran before its `try` block, so a throw there left a half-reset room. The prelude now runs inside the transaction and restores the prior room like any other failure. A regression test pins it.
+2. **Branch opens what it wrote.** The branch is read back from its file and promoted from that decode result, exactly as Sessions would open it. Promotion's mirror step already re-reads the named file before writing `current.json`, so a branch file that cannot be read back fails promotion rather than producing a room its file does not describe.
+3. **A released widget config needs honest copy.** The widget sheets' clone banner said the old chip "stays as history". After a rewind, nothing remains: the commit and its chip are gone. A clone of a config without commit linkage now reads "Reopened from a message you rewound". Only a rewind can release a commit, so that state identifies the case.
+4. **Branch verdicts are Rewind verdicts, unfiltered.** The webview passes Branch the same `turnRewindability` map without dropping the latest reply. Rewind and Branch share every reason except a non-rest point, which no bubble shows: the host words that refusal "Can't branch from this point".
+
+Three more came from the [PR #120 review](../pr-reviews/pr-120-workshop-branch-16c751b-review.md) and were fixed before integration:
+
+5. **Branch proves its source on disk (F-01).** A clean, named room says nothing about its file: Git or another process can delete, corrupt or replace it while the room is open. Opening the branch replaces `current.json` and discards the room's histories, so Branch could leave a room with no complete copy.
+   - Branch now compares the source file with the accepted checkpoint before writing anything (§7 step 3).
+   - It compares again at the commit of the rolling write, immediately before `current.json` is replaced (§7 step 6). The PR re-review found that a first version checked before the mirror's last reads and writes, which left a gap.
+   - A mismatch is the refusal reason `source-changed`: "This session's saved file is missing or changed on disk. Reopen it from Sessions, or use Save as new to keep this room, before branching."
+6. **A widget edit goes back to its addressee (F-02).** Only a composer edit restored the edited message's chat target. A widget edit kept the room's later target, so a recommit from the reopened sheet could go to a later guest, or be refused for a later tool. Both edit forms now restore the addressee through the same repair, falling back to the host.
+7. **A degraded import ends a notice too (F-03).** Rewind forgot time notices only for the keys the cut drops. A persona whose history degrades during installation also starts fresh, so Rewind now forgets those keys too, inside the transaction. Open, Branch and refresh rebuild time state from the file and queue a resume frame for every retained persona, so they needed no change.
+
 ## Consequences
 
 **Good**
@@ -270,6 +337,7 @@ Recorded 2026-09-30 while building Rewind. Each item corrects or completes a det
 - The cutting logic is one pure, table-tested function. The install path is the already-proven Open/promotion path, with rollback.
 - Private capability evidence, delivery offsets and prompt-cache prefixes survive a rewind. A cheaper design would have lost them all.
 - The planned context-compaction epic gains a reliable map from history spans to ledger turns.
+- A branch is the same cut room in a new envelope. Its key proof holds every branch to the room the Rewind oracle expects at that point, and Branch never writes its source.
 
 **Costs and limits**
 
@@ -278,6 +346,8 @@ Recorded 2026-09-30 while building Rewind. Each item corrects or completes a det
 - Pre-baseline turns in reopened legacy sessions are not rewindable.
 - Guests dismissed after C are not resurrected. Sidecars replaced after C are dropped, and the writer can re-run the tool.
 - The working set does not rewind, and to-do status edits are not undone.
+- A one-shot widget config released by a cut that skips past its commit stays host-side with no thread entry point. Only an edit of the widget's own message reopens it (Sprint 03 kickoff, item 3).
+- Sessions saved by this release cannot be opened by earlier builds (§9).
 
 ## Alternatives considered
 
@@ -291,6 +361,8 @@ Recorded 2026-09-30 while building Rewind. Each item corrects or completes a det
 
 - [Side Quests](../../.todo/features/feature-workshop-side-quests/README.md): Start pins the current idle head and End rewinds to it. This ADR's cut policy therefore answers for any rest point, dividers included, and the rewind operation is generic over its origin. Side Quest state and UI are decided in that feature, not here.
 
-- Branch lineage metadata and a "branched from" row in the session browser. This belongs with the parked [Branch Board](../../.todo/features/feature-workshop-branch-board/README.md) feature's explicit branch model.
+- Branch lineage metadata (`branchedFrom`) and a "branched from" row in the session browser. This belongs with the parked [Branch Board](../../.todo/features/feature-workshop-branch-board/README.md) feature's explicit branch model.
+- A screenshot of the bubble actions for the startup notice, which draws them inline until one exists.
+- [The persistence coordinator's ownership](../../.todo/tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) now that it carries four room replacements.
 - Crossing standing-directive changes, which needs directive revision history.
 - Optional verified backfill of marks for pre-baseline turns.
