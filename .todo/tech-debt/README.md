@@ -71,6 +71,9 @@ elsewhere.
 | Low | [Widget-config counter integrity validation](2026-07-31-widget-config-counter-integrity.md) | Identified |
 | Low | [Persistence coordinator ownership](2026-10-01-workshop-persistence-coordinator-ownership.md) | Deferred |
 | Low | [Browser lists an unreadable session](2026-10-01-workshop-browser-lists-unreadable-session.md) | Identified |
+| High | [Rewind and Branch manual smoke on `main`](2026-10-01-workshop-rewind-and-branch-main-smoke.md) | Planned |
+| Medium | [Rewind and Branch release preparation](2026-10-01-workshop-rewind-and-branch-release-preparation.md) | Blocked on the smoke |
+| Low | [Rewind and Branch notice screenshot](2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) | Identified |
 
 ## Review Guidance
 
