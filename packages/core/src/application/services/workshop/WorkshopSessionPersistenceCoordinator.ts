@@ -107,6 +107,11 @@ interface WorkshopHydrationTransaction extends WorkshopSessionHydrateResult {
   discardedConversationIds: string[];
 }
 
+/** What replaced the live room: the runtime conversations it superseded. */
+interface WorkshopRoomReplacement {
+  discardedConversationIds: readonly string[];
+}
+
 /** One promoted room: its imported histories bound to its hydrated aggregate. */
 interface WorkshopRoomInstallation {
   workshop: WorkshopSessionStateV1;
@@ -627,15 +632,13 @@ export class WorkshopSessionPersistenceCoordinator {
   private async promoteNamedSession(
     persisted: WorkshopPersistedSessionCheckpointDecodeResult
   ): Promise<WorkshopSessionHydrateResult> {
-    const rollback = this.captureRollback();
-    let hydration: WorkshopHydrationTransaction;
-    try {
+    const hydration = await this.replaceLiveRoom(async () => {
       if (this.identity.sessionId === persisted.session.sessionId && this.localWorkPending) {
         await this.preserveDisplacedLocalSession(
           await this.capture(this.identity), persisted.session, this.acceptedNamedCheckpoint
         );
       }
-      hydration = await this.hydrate(persisted.session, false, persisted);
+      const promoted = await this.hydrate(persisted.session, false, persisted);
       this.activeNamedSessionId = persisted.session.sessionId;
       await this.mirrorNamedCheckpoint(persisted.session);
       this.acceptedNamedCheckpoint = persisted.session;
@@ -649,13 +652,8 @@ export class WorkshopSessionPersistenceCoordinator {
         `[WorkshopSessionPersistence] Named checkpoint promoted to current.json ` +
         `(id=${persisted.session.sessionId}, turns=${persisted.session.workshop.turns.length})`
       );
-    } catch (error) {
-      this.restoreRollback(rollback);
-      throw error;
-    }
-    hydration.discardedConversationIds.forEach((conversationId) =>
-      this.assistantToolService.discardConversation(conversationId)
-    );
+      return promoted;
+    });
     return {
       restored: hydration.restored,
       degradedConversationKeys: hydration.degradedConversationKeys,
@@ -790,28 +788,27 @@ export class WorkshopSessionPersistenceCoordinator {
     options: { clearWorkingSet?: boolean } = {}
   ): Promise<WorkshopResetSummary> {
     return this.serializeSessionOperation(async () => {
-      const rollback = this.captureRollback();
-      // Read the working set BEFORE the aggregate drops it. A destructive
-      // reset is the one action here that can be disputed later, and "it
-      // deleted my context" is unanswerable against a log that only says a
-      // wipe happened.
-      const cleared = options.clearWorkingSet
-        ? this.describeClearedWorkingSet()
-        : { attachmentLabels: [] };
-      const discarded = this.session.reset(options);
-      this.time.reset();
-      const createdAt = normalizedIso(this.now());
-      this.identity = {
-        sessionId: this.idFactory(),
-        title: this.defaultTitle(createdAt),
-        createdAt
-      };
-      this.activeNamedSessionId = undefined;
-      this.acceptedNamedCheckpoint = undefined;
-      this.degradedConversationKeys = [];
-      this.degradedConversations = [];
-      this.recordStartMarker();
-      try {
+      const reset = await this.replaceLiveRoom(async () => {
+        // Read the working set BEFORE the aggregate drops it. A destructive
+        // reset is the one action here that can be disputed later, and "it
+        // deleted my context" is unanswerable against a log that only says a
+        // wipe happened.
+        const cleared: WorkshopResetSummary = options.clearWorkingSet
+          ? this.describeClearedWorkingSet()
+          : { attachmentLabels: [] };
+        const discardedConversationIds = this.session.reset(options);
+        this.time.reset();
+        const createdAt = normalizedIso(this.now());
+        this.identity = {
+          sessionId: this.idFactory(),
+          title: this.defaultTitle(createdAt),
+          createdAt
+        };
+        this.activeNamedSessionId = undefined;
+        this.acceptedNamedCheckpoint = undefined;
+        this.degradedConversationKeys = [];
+        this.degradedConversations = [];
+        this.recordStartMarker();
         const promoted = await this.capture(this.identity);
         await this.store.writeCurrent(promoted);
         this.currentCheckpointError = undefined;
@@ -819,14 +816,9 @@ export class WorkshopSessionPersistenceCoordinator {
         this.localWorkPending = false;
         this.writtenRevision = this.dirtyRevision;
         this.emitSessionSaveStatus({ sessionId: this.identity.sessionId, status: 'saved' });
-      } catch (error) {
-        this.restoreRollback(rollback);
-        throw error;
-      }
-      discarded.forEach((conversationId) =>
-        this.assistantToolService.discardConversation(conversationId)
-      );
-      return cleared;
+        return { discardedConversationIds, cleared };
+      });
+      return reset.cleared;
     });
   }
 
@@ -871,26 +863,21 @@ export class WorkshopSessionPersistenceCoordinator {
       if (!evaluation.ok) {
         throw new WorkshopRewindRefusedError(evaluation.reason);
       }
-      const rollback = this.captureRollback();
-      let before: WorkshopRetainedArchiveEntry[];
-      let rewound: WorkshopSessionRewindResult;
-      let installed: WorkshopRoomInstallation;
-      try {
+      const { installed, rewound, before } = await this.replaceLiveRoom(async () => {
         const live = await this.exportLiveRoom();
-        before = live.conversations;
-        rewound = rewindWorkshopSession({ ...live, cut });
-        installed = await this.installRoom(rewound.workshop, rewound.conversations);
+        const cutRoom = rewindWorkshopSession({ ...live, cut });
+        const room = await this.installRoom(cutRoom.workshop, cutRoom.conversations);
         await this.commitRewoundRoom();
-      } catch (error) {
-        this.restoreRollback(rollback);
-        throw error;
-      }
+        return {
+          discardedConversationIds: room.discardedConversationIds,
+          installed: room,
+          rewound: cutRoom,
+          before: live.conversations
+        };
+      });
       this.degradedConversationKeys = installed.degradedConversationKeys;
       this.degradedConversations = installed.degradedConversations;
       this.pendingRecoveryNotices.push(...installed.recoveryNotices.map((notice) => ({ ...notice })));
-      installed.discardedConversationIds.forEach((conversationId) =>
-        this.assistantToolService.discardConversation(conversationId)
-      );
       this.logRewind(cut, options.origin, rewound, before);
       return {
         summary: rewound.summary,
@@ -1360,6 +1347,30 @@ export class WorkshopSessionPersistenceCoordinator {
       currentCheckpointError: this.currentCheckpointError,
       recoveryNotices: this.pendingRecoveryNotices.map((notice) => ({ ...notice }))
     };
+  }
+
+  /**
+   * The room-replacement transaction New, Open, Rewind and Branch share (ADR
+   * 2026-09-30, Sprint 03 kickoff decision 1). `replace` prepares, installs
+   * and durably writes the new room. Any failure restores the prior room over
+   * its still-live conversations; the conversations the new room superseded
+   * are discarded only once it has fully succeeded.
+   */
+  private async replaceLiveRoom<T extends WorkshopRoomReplacement>(
+    replace: () => Promise<T>
+  ): Promise<T> {
+    const rollback = this.captureRollback();
+    let replaced: T;
+    try {
+      replaced = await replace();
+    } catch (error) {
+      this.restoreRollback(rollback);
+      throw error;
+    }
+    replaced.discardedConversationIds.forEach((conversationId) =>
+      this.assistantToolService.discardConversation(conversationId)
+    );
+    return replaced;
   }
 
   /**
