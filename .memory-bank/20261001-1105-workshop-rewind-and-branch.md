@@ -142,6 +142,7 @@ Also glance at the startup notice: it should open once on the new first page.
 
 ## Follow-ups
 
+- [Browser lists an unreadable session](../.todo/tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified). The PR #120 review noticed it, and a probe confirmed it; it predates this epic.
 - [Persistence coordinator ownership](../.todo/tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred). Extract room replacement when the next whole-room operation arrives, for example Side Quests.
 - Branch lineage (`branchedFrom`) lives in the parked [Branch Board](../.todo/features/feature-workshop-branch-board/README.md) feature. No lineage is persisted in v1.
 - A real screenshot of the bubble actions for the notice page. The page draws them inline today.
