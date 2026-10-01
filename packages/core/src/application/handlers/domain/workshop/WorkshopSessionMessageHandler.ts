@@ -222,12 +222,7 @@ export class WorkshopSessionMessageHandler {
         this.postActionResult('branch', false, `${workshopRewindUnavailableReason(error.reason, 'branch')}.`);
       } else if (error instanceof WorkshopBranchNotOpenedError) {
         // The branch is saved; only opening it failed, and the room was restored.
-        this.postActionResult(
-          'branch',
-          false,
-          `Saved the branch as “${error.branch.title}”, but couldn't open it: ${asSentence(error.detail)} ` +
-          'Your room is unchanged. Open the branch from Sessions to continue there.'
-        );
+        this.postActionResult('branch', false, describeBranchNotOpened(error));
       } else {
         this.postActionFailure('branch', error);
       }
@@ -544,6 +539,22 @@ function describeRewindOutcome(outcome: WorkshopRewindOutcome): string {
 function asSentence(text: string): string {
   const trimmed = text.trim();
   return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * A saved branch that did not open; the room was restored. When the source's
+ * file changed meanwhile, opening the branch would replace the only complete
+ * copy of this room, so the writer keeps the room first.
+ */
+function describeBranchNotOpened(error: WorkshopBranchNotOpenedError): string {
+  const saved = `Saved the branch as “${error.branch.title}”, but`;
+  if (error.refusal === 'source-changed') {
+    return `${saved} didn't open it: this session's saved file went missing or changed on disk ` +
+      'while branching. Your room is unchanged. Reopen it from Sessions, or use Save as new to ' +
+      'keep this room, before you open the branch.';
+  }
+  return `${saved} couldn't open it: ${asSentence(error.detail)} ` +
+    'Your room is unchanged. Open the branch from Sessions to continue there.';
 }
 
 /**

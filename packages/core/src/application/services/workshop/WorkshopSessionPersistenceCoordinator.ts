@@ -684,7 +684,14 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   private async promoteNamedSession(
-    persisted: WorkshopPersistedSessionCheckpointDecodeResult
+    persisted: WorkshopPersistedSessionCheckpointDecodeResult,
+    options: {
+      /**
+       * Runs after the import, just before current.json stops holding the
+       * room being replaced. A throw restores that room.
+       */
+      beforeReplacingCurrent?: () => Promise<void>;
+    } = {}
   ): Promise<WorkshopSessionHydrateResult> {
     const hydration = await this.replaceLiveRoom(async () => {
       if (this.identity.sessionId === persisted.session.sessionId && this.localWorkPending) {
@@ -694,6 +701,7 @@ export class WorkshopSessionPersistenceCoordinator {
       }
       const promoted = await this.hydrate(persisted.session, false, persisted);
       this.activeNamedSessionId = persisted.session.sessionId;
+      await options.beforeReplacingCurrent?.();
       await this.mirrorNamedCheckpoint(persisted.session);
       this.acceptedNamedCheckpoint = persisted.session;
       this.localWorkPending = false;
@@ -951,7 +959,9 @@ export class WorkshopSessionPersistenceCoordinator {
   /**
    * Branch from a rest point of the saved room (ADR 2026-09-30 §7): save the
    * cut room as a new named session, then open it through the named-session
-   * promotion that Open uses. The source session's file is never written.
+   * promotion that Open uses. The source session's file is never written,
+   * and it must still hold this room, read back from disk, both before the
+   * branch is saved and before current.json is replaced.
    * A failure before the branch is saved changes nothing and leaves no file;
    * a failure while opening it restores the prior room and reports the saved
    * branch, which stays openable from Sessions.
@@ -986,6 +996,12 @@ export class WorkshopSessionPersistenceCoordinator {
       if (!evaluation.ok) {
         throw new WorkshopRewindRefusedError(evaluation.reason);
       }
+      // The source's file, not the association, is what survives the branch.
+      // Prove it before writing anything, and again once the branch has been
+      // saved and imported, before current.json stops holding this room.
+      const accepted = this.acceptedNamedCheckpoint;
+      const requireIntactSource = () => this.requireIntactBranchSource(sourceSessionId, accepted);
+      await requireIntactSource();
       const source = { sessionId: sourceSessionId, title: this.identity.title };
       const live = await this.exportLiveRoom();
       const branched = rewindWorkshopSession({ ...live, cut });
@@ -1008,14 +1024,20 @@ export class WorkshopSessionPersistenceCoordinator {
         if (!persisted) {
           throw new WorkshopNamedSessionNotFoundError(saved.sessionId);
         }
-        opened = await this.promoteNamedSession(persisted);
+        opened = await this.promoteNamedSession(persisted, {
+          beforeReplacingCurrent: requireIntactSource
+        });
       } catch (error) {
         this.outputChannel.appendLine(
           `[WorkshopSessionPersistence] Branch saved but not opened; prior room restored ` +
           `(source=${source.sessionId}, branch=${saved.sessionId}, file=${saved.fileName}): ` +
           this.errorMessage(error)
         );
-        throw new WorkshopBranchNotOpenedError(saved, this.errorMessage(error));
+        throw new WorkshopBranchNotOpenedError(
+          saved,
+          this.errorMessage(error),
+          error instanceof WorkshopBranchRefusedError ? error.reason : undefined
+        );
       }
       this.outputChannel.appendLine(
         `[WorkshopSessionPersistence] Room branched (source=${source.sessionId}, ` +
@@ -1032,6 +1054,34 @@ export class WorkshopSessionPersistenceCoordinator {
         degradedConversations: (opened.degradedConversations ?? []).map((entry) => ({ ...entry }))
       };
     });
+  }
+
+  /**
+   * Branch's proof that its source file still holds this room. The named
+   * association and clean revisions describe the live room, not the disk:
+   * Git or another process may have deleted, corrupted or replaced the file
+   * since the room accepted it. Opening the branch replaces current.json, so
+   * without this proof the room Branch leaves could have no complete copy.
+   */
+  private async requireIntactBranchSource(
+    sessionId: string,
+    accepted: WorkshopPersistedSessionV2 | undefined
+  ): Promise<void> {
+    let latest: WorkshopPersistedSessionCheckpointDecodeResult | undefined;
+    try {
+      latest = await this.readNamedCheckpoint(sessionId);
+    } catch (error) {
+      this.outputChannel.appendLine(
+        `[WorkshopSessionPersistence] Branch source unreadable (id=${sessionId}): ${this.errorMessage(error)}`
+      );
+      throw new WorkshopBranchRefusedError('source-changed');
+    }
+    if (!latest || accepted?.sessionId !== sessionId || !hasSameWorkshopCheckpoint(latest.session, accepted)) {
+      this.outputChannel.appendLine(
+        `[WorkshopSessionPersistence] Branch source ${latest ? 'changed' : 'missing'} on disk (id=${sessionId})`
+      );
+      throw new WorkshopBranchRefusedError('source-changed');
+    }
   }
 
   /**

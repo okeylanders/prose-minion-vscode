@@ -137,7 +137,9 @@ describe('Workshop Branch route', () => {
 
   it.each([
     ['unsaved-session', 'Save this session before branching.'],
-    ['unsaved-changes', "Save this session's latest changes before branching."]
+    ['unsaved-changes', "Save this session's latest changes before branching."],
+    ['source-changed', "This session's saved file is missing or changed on disk. " +
+      'Reopen it from Sessions, or use Save as new to keep this room, before branching.']
   ] as const)('refuses an %s source in writer terms and republishes the room', async (reason, text) => {
     const harness = await sentRoom();
     harness.persistence.branchFrom.mockRejectedValue(new WorkshopBranchRefusedError(reason));
@@ -178,6 +180,27 @@ describe('Workshop Branch route', () => {
         'Open the branch from Sessions to continue there.'
     });
     expect(harness.posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toEqual([]);
+  });
+
+  it('asks the writer to keep the room first when its source changed while branching', async () => {
+    const harness = await sentRoom();
+    harness.persistence.branchFrom.mockRejectedValue(new WorkshopBranchNotOpenedError(
+      outcome().branch,
+      'Workshop branch refused: source-changed',
+      'source-changed'
+    ));
+
+    await branch(harness, harness.reply);
+
+    // Opening the branch now would replace this room's only complete copy.
+    expect(lastResult(harness)).toEqual({
+      action: 'branch',
+      ok: false,
+      message: 'Saved the branch as “Chapter 3 — Felix — branch”, but didn\'t open it: ' +
+        "this session's saved file went missing or changed on disk while branching. " +
+        'Your room is unchanged. Reopen it from Sessions, or use Save as new to keep this room, ' +
+        'before you open the branch.'
+    });
   });
 
   it('refuses a bubble that offers no branch without asking the coordinator', async () => {

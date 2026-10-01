@@ -74,7 +74,12 @@ export class WorkshopBranchRefusedError extends Error {
 export class WorkshopBranchNotOpenedError extends Error {
   constructor(
     readonly branch: Pick<WorkshopStoredSessionSummary, 'sessionId' | 'title' | 'fileName'>,
-    readonly detail: string
+    readonly detail: string,
+    /**
+     * Set when Branch itself declined to open the branch: its source changed
+     * on disk while the branch was being saved and opened.
+     */
+    readonly refusal?: WorkshopBranchRefusalReason
   ) {
     super(`Workshop branch “${branch.title}” was saved but not opened: ${detail}`);
     this.name = 'WorkshopBranchNotOpenedError';

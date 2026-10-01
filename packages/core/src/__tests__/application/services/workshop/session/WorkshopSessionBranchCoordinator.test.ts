@@ -475,4 +475,93 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect(await textOf(fs, sourcePath)).toBe(sourceBefore);
     });
   });
+
+  describe('a source file changed on disk (PR #120 review F-01)', () => {
+    type OpenSession = Awaited<ReturnType<typeof openCanonicalSession>>;
+
+    /** An earlier, valid save of the same session: what a Git checkout could restore. */
+    const earlierSave = (): WorkshopPersistedSessionV2 => {
+      const earlier = new ScriptedWorkshopRoom().start();
+      earlier.hostMessage('What is this scene doing?');
+      return sourceCheckpoint(earlier);
+    };
+
+    const externalChanges: Array<[string, (harness: OpenSession) => Promise<void>]> = [
+      ['deleted', ({ fs, sourcePath }) => fs.delete(sourcePath)],
+      ['corrupted', ({ fs, sourcePath }) =>
+        fs.writeFile(sourcePath, new TextEncoder().encode('{"schemaVersion":2,"sessionId":'))],
+      ['replaced by an earlier save', async ({ fs, sourcePath }) => fs.setJson(sourcePath, earlierSave())]
+    ];
+
+    /** The live room, its runtime histories and its rolling copy, exactly. */
+    async function roomState({ session, manager, fs }: OpenSession) {
+      const host = session.getHostConversationId()!;
+      return {
+        room: session.exportCommittedState(),
+        bindings: { host, guest: session.getPersonaGuestConversationId('margot') },
+        hostHistory: manager.getMessages(host),
+        conversationCount: manager.getActiveConversationCount(),
+        current: await textOf(fs, `${SESSIONS_DIRECTORY}/current.json`)
+      };
+    }
+
+    it.each(externalChanges)('refuses a source that was %s, writing nothing and keeping the room', async (_change, change) => {
+      const harness = await openCanonicalSession();
+      const { coordinator, store, fs, room } = harness;
+      const cut = after(restPoint(room, 'prose report').headTurnId);
+      await change(harness);
+      const before = await roomState(harness);
+      const filesBefore = await sessionFiles(fs);
+      const saveNamed = jest.spyOn(store, 'saveNamed');
+
+      const refusal = await refusalOf(coordinator.branchFrom(cut));
+
+      expect(refusal).toBeInstanceOf(WorkshopBranchRefusedError);
+      expect((refusal as WorkshopBranchRefusedError).reason).toBe('source-changed');
+      expect(saveNamed).not.toHaveBeenCalled();
+      expect(await roomState(harness)).toEqual(before);
+      expect(await sessionFiles(fs)).toEqual(filesBefore);
+
+      // The way out the refusal names: keep this room as a new session.
+      saveNamed.mockRestore();
+      const kept = await coordinator.saveNamed('Scripted room, kept');
+      const outcome = await coordinator.branchFrom(cut);
+      expect(outcome.source).toEqual({ sessionId: kept.sessionId, title: 'Scripted room, kept' });
+      expect(outcome.summary.removedTurnCount).toBeGreaterThan(0);
+    });
+
+    it.each<[string, (harness: OpenSession, change: () => Promise<void>) => void]>([
+      ['the branch save', ({ store }, change) => {
+        const save = store.saveNamed.bind(store);
+        jest.spyOn(store, 'saveNamed').mockImplementationOnce(async (checkpoint) => {
+          const saved = await save(checkpoint);
+          await change();
+          return saved;
+        });
+      }],
+      ['the branch import', ({ assistant }, change) => {
+        const importArchive = assistant.importWorkshopConversationArchive.getMockImplementation()!;
+        assistant.importWorkshopConversationArchive.mockImplementationOnce(async (targets) => {
+          await change();
+          return importArchive(targets);
+        });
+      }]
+    ])('keeps the room when the source is deleted during %s, and reports the saved branch', async (_stage, inject) => {
+      const harness = await openCanonicalSession();
+      const { coordinator, fs, room, sourcePath } = harness;
+      const before = await roomState(harness);
+      inject(harness, () => fs.delete(sourcePath));
+
+      const failure = await refusalOf(coordinator.branchFrom(after(restPoint(room, 'prose report').headTurnId)));
+
+      expect(failure).toBeInstanceOf(WorkshopBranchNotOpenedError);
+      const { branch, refusal } = failure as WorkshopBranchNotOpenedError;
+      expect(refusal).toBe('source-changed');
+      // current.json still holds the whole room, over its live histories.
+      expect(await roomState(harness)).toEqual(before);
+      // The branch was saved before the change showed, so it stays openable.
+      expect((await coordinator.list()).sessions.map((session) => session.sessionId))
+        .toEqual([branch.sessionId]);
+    });
+  });
 });
