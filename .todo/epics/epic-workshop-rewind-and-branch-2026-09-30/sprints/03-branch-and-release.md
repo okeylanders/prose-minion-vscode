@@ -1,6 +1,6 @@
 # Sprint 03: Branch and Release Readiness
 
-**Status:** In review — delivered 2026-10-01 on `sprint/workshop-rewind-and-branch-03-branch`, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) into `epic/workshop-rewind-and-branch` (see [Delivery notes](#delivery-notes-2026-10-01)). Manual smoke waits on Okey
+**Status:** Complete — merged into `epic/workshop-rewind-and-branch` via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) (`a7c24bd`); delivered 2026-10-01 (see [Delivery notes](#delivery-notes-2026-10-01)). Okey deferred the manual smoke to the `main` build after the epic merges (2026-10-01); it is now the [release gate](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Branch:** `sprint/workshop-rewind-and-branch-03-branch`
 **Depends on:** Sprint 02
 **Blocks:** Epic closure
@@ -193,7 +193,9 @@ Every deliverable landed except the manual smoke, which waits on Okey (kickoff d
 
 **Follow-ups captured.**
 - [Persistence coordinator ownership](../../../tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred).
+- [The browser lists an unreadable session](../../../tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified), the review's side observation.
 - Branch lineage (`branchedFrom`), in the parked [Branch Board](../../../features/feature-workshop-branch-board/README.md) feature.
-- A real screenshot of the bubble actions for the notice page.
-- Release preparation names the version (both changelogs carry `[Unreleased]`).
+- [A real screenshot of the bubble actions](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low).
+- [The manual smoke on the `main` build](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), now the release gate (High).
+- [Release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (both changelogs carry `[Unreleased]`); it waits on the smoke.
 - Archive the epic after its merge to `main`.

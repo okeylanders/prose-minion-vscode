@@ -1,14 +1,13 @@
-# Workshop Rewind and Branch — Sprint 03 (Branch and release readiness) implemented
+# Workshop Rewind and Branch — Sprint 03 (Branch and release readiness) and epic closure
 
 **Date:** 2026-10-01 (CDT)
 **Epic:** [Workshop Rewind and Branch](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01, with D1–D7 folded in; amended with Sprint 03 kickoff decisions and findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration); `sprint/workshop-rewind-and-branch-03-branch`
-**State:** Sprint 03 is in review as [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) into the integration branch. Its review requested changes, and all three findings are addressed (see [Review round](#review-round-pr-120-2026-10-01)). Still to come, in order:
-1. The PR merges.
-2. Okey runs the manual smoke below and records the results here.
-3. The epic merges to `main` as one unit.
-4. The epic is archived.
+**State:** Complete on the integration branch. Sprint 03 merged via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) as `a7c24bd` (2026-10-01), after its review requested changes and then approved following two re-reviews (see [Review round](#review-round-pr-120-2026-10-01)). `main` (`53ebaa6`) is still the epic's merge-base, so the merge to `main` carries no drift. Okey deferred the manual smoke to the `main` build (2026-10-01), so it now gates the release, not the merge (see [Epic closure](#epic-closure-2026-10-01)). Still to come, in order:
+1. The epic's PR into `main` merges as one unit, with a merge commit, on Okey's go-ahead. The epic's archive takes effect with it.
+2. Okey runs the [manual smoke](#manual-smoke-extension-development-host) on the `main` build and records the results here. Anything wonky is patched off `main`.
+3. [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version.
 
 ## What landed
 
@@ -125,9 +124,26 @@ The [review](../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md) reques
 - `npm run build`: webpack plus `verify:bundle` passed.
 - `git diff --check`: clean.
 
-## Manual smoke (Extension Development Host) — results pending (Okey)
+## Epic closure (2026-10-01)
 
-The cloud container cannot run the Extension Development Host. Use cheap models and short rooms. This covers Sprint 02's Rewind smoke too, and scenario 7 covers the PR #120 review's F-01. Record each result below with the date and build.
+- **Integration.** PR #120 merged into `epic/workshop-rewind-and-branch` as `a7c24bd`. The branch is 55 commits ahead of `main` and 0 behind: `main` is still the merge-base `53ebaa6`, so no merge from `main` was needed.
+- **Smoke deferred.** The plan recorded the smoke before the merge. Okey chose instead to run it on the `main` build after the merge and patch anything wonky from there, so the Craft Steering branch can be rebased and merged next. The smoke therefore gates the release rather than the merge, as the PR #119 and #120 reviews already framed it. It has [its own entry](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), and its criterion stays unchecked in the epic until results are recorded below.
+- **Verification at archive preparation.** The closure commits change only Markdown. Every check was run at `a7c24bd` and again on the closure commits before pushing, with the same results:
+  - `npx jest --no-cache`: 228 suites, 2,722 tests, 2 snapshots passed.
+  - `npm run typecheck`: core, webview and extension clean.
+  - `npm run lint`: 0 errors, 1,030 warnings. `main` (`53ebaa6`), linted in a separate worktree, has 1,024. Diffed by file, rule and message, the six new warnings are all `@typescript-eslint/naming-convention` and follow the repo's existing conventions, and none were removed:
+    - three `MessageType` members: `WORKSHOP_REWIND_SESSION`, `WORKSHOP_BRANCH_SESSION` and `WORKSHOP_WIDGET_CONFIG_RESTORED`;
+    - three PascalCase components: `WorkshopRewindAction`, `WorkshopBranchAction` and `NoticeActions`.
+  - `npm run build`: webpack plus `verify:bundle` passed, with webpack's existing bundle-size warnings.
+  - `git diff --check`: clean.
+
+## Manual smoke (Extension Development Host)
+
+**Deferred to the `main` build (Okey, 2026-10-01).** Okey runs these scenarios on a build of `main` after the epic merges, and anything wonky gets patched in a small PR off `main`. Results gate [release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md), not the merge.
+
+The cloud container cannot run the Extension Development Host. Use cheap models and short rooms. This covers Sprint 02's Rewind smoke too, and scenario 7 covers the PR #120 review's F-01. Record each result below with the date and the build (the `main` commit).
+
+**Build:** pending (`main` after the epic merges) · **Date:** pending
 
 | # | Scenario | Steps and expectation | Result |
 |---:|---|---|---|
@@ -146,6 +162,7 @@ Also glance at the startup notice: it should open once on the new first page.
 - [Browser lists an unreadable session](../.todo/tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified). The PR #120 review noticed it, and a probe confirmed it; it predates this epic.
 - [Persistence coordinator ownership](../.todo/tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred). Extract room replacement when the next whole-room operation arrives, for example Side Quests.
 - Branch lineage (`branchedFrom`) lives in the parked [Branch Board](../.todo/features/feature-workshop-branch-board/README.md) feature. No lineage is persisted in v1.
-- A real screenshot of the bubble actions for the notice page. The page draws them inline today.
-- Release preparation names the version: both changelogs carry `[Unreleased]`. The release notes keep the §9 warning: sessions saved by this release can't be opened by older builds, so writers who sync through Git should update every machine first.
+- [The manual smoke on the `main` build](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (High, planned): the release gate since Okey deferred it (see [Epic closure](#epic-closure-2026-10-01)).
+- [A real screenshot of the bubble actions](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low, identified). The page draws them inline today.
+- [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (Medium, blocked on the smoke): both changelogs carry `[Unreleased]`. The release notes keep the §9 warning: sessions saved by this release can't be opened by older builds, so writers who sync through Git should update every machine first.
 - Archive the epic under `.todo/archive/epics/` with an `ARCHIVE.md` note after its merge to `main`, not before.

@@ -1,7 +1,7 @@
 # Feature: Workshop Side Quests
 
 **Date Identified:** 2026-09-30
-**Status:** Planned — blocked by [Workshop Rewind and Branch](../../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md) Sprint 02
+**Status:** Planned — its foundation, [Workshop Rewind and Branch](../../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md) Sprint 02's generic `rewindTo(cut, { origin })`, is complete and reaches `main` when that epic merges
 **Priority:** Medium
 **Decision base:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
 

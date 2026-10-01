@@ -362,7 +362,7 @@ Three more came from the [PR #120 review](../pr-reviews/pr-120-workshop-branch-1
 - [Side Quests](../../.todo/features/feature-workshop-side-quests/README.md): Start pins the current idle head and End rewinds to it. This ADR's cut policy therefore answers for any rest point, dividers included, and the rewind operation is generic over its origin. Side Quest state and UI are decided in that feature, not here.
 
 - Branch lineage metadata (`branchedFrom`) and a "branched from" row in the session browser. This belongs with the parked [Branch Board](../../.todo/features/feature-workshop-branch-board/README.md) feature's explicit branch model.
-- A screenshot of the bubble actions for the startup notice, which draws them inline until one exists.
+- [A screenshot of the bubble actions](../../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the startup notice, which draws them inline until one exists.
 - [The persistence coordinator's ownership](../../.todo/tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) now that it carries four room replacements.
 - Crossing standing-directive changes, which needs directive revision history.
 - Optional verified backfill of marks for pre-baseline turns.
