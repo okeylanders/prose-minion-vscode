@@ -4,7 +4,7 @@
 **Epic:** [Workshop Rewind and Branch](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Proposed; amended with Sprint 02 kickoff decisions and findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration); `sprint/workshop-rewind-and-branch-02-rewind`
-**State:** Sprint 02 delivered and in review as one PR into the integration branch. Sprint 03 (Branch) not started, by request: pause for review after each sprint.
+**State:** Sprint 02 merged into the integration branch via PR #119 (`5fb85a0`). Sprint 03 (Branch) not started, by request: pause for review after each sprint.
 
 ## What landed
 
