@@ -294,6 +294,48 @@ Application and presentation consumers import these contracts through
 exact-union, or closed-registry seams; architecture witnesses scan the inverse
 case so feature semantics cannot hide behind a generic filename.
 
+### 8. Workshop Session Persistence, Rewind, and Branch
+
+A Workshop session file holds both halves of a room: the aggregate
+(`WorkshopSessionStateV1`) and every retained participant history
+(`ConversationArchiveEntryV1[]`). `WorkshopSessionPersistenceCoordinator` is
+the one seam that captures, hydrates, and retires both, so `current.json` and
+a named file never describe a room from two moments. New, Open, Rewind, and
+Branch replace the live room through one private transaction:
+
+1. capture a rollback;
+2. prepare, install, and durably write the new room;
+3. restore the prior room on any failure;
+4. discard the replaced provider conversations only after success.
+
+A participant's retained history is an append-only projection of the ledger,
+with no index shared between them. **Retained-history marks** record each
+history's state at every settled commit: message, context-source, and
+writer-source counts, the room offset, and, for the host, the context revision
+it holds. Marks are host-private. The webview receives only the per-turn
+`turnRewindability` verdict, which `WorkshopRewindPolicy` computes and every
+operation re-checks.
+
+`rewindWorkshopSession` (`session/WorkshopSessionRewind.ts`) is the one pure
+transform. It cuts the ledger and every history together at a real rest
+point, slicing histories only at marks and never parsing provider messages.
+The working set (excerpt, context, to-do statuses, widget configs) stays
+current. Whatever the cut host was never handed is re-queued through the
+ordinary update frames, and id counters are never lowered.
+
+- **Rewind** (`WORKSHOP_REWIND_SESSION`, `rewindTo`) installs the cut room in
+  place and writes it before reporting success.
+- **Branch** (`WORKSHOP_BRANCH_SESSION`, `branchFrom`) saves the cut room as a
+  new named session and opens it through the named-session promotion Open
+  uses. It needs a saved source with nothing waiting to be written, and it
+  never writes the source file.
+
+A writer-message cut is an edit. Its text returns to the composer
+(`WORKSHOP_COMPOSER_DRAFT_RESTORED`), or a widget commit's released config
+reopens in its widget (`WORKSHOP_WIDGET_CONFIG_RESTORED`).
+
+**References**: [Workshop Session Persistence (2026-07-14)](adr/2026-07-14-workshop-session-persistence.md), [Workshop Rewind and Branch (2026-09-30)](adr/2026-09-30-workshop-rewind-and-branch.md)
+
 ---
 
 ## Settings Architecture
@@ -343,5 +385,6 @@ The VS Code adapter uses **dual webpack** (`apps/vscode-extension/webpack.config
 - [Secure API Key Storage (2025-10-27)](adr/2025-10-27-secure-api-key-storage.md)
 - [Lightweight Testing Framework (2025-11-15)](adr/2025-11-15-lightweight-testing-framework.md)
 - [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
+- [Workshop Rewind and Branch (2026-09-30)](adr/2026-09-30-workshop-rewind-and-branch.md)
 
 See [TESTING.md](TESTING.md) for the test strategy, [CONFIGURATION.md](CONFIGURATION.md) for settings, and [TOOLS.md](TOOLS.md) for the tool inventory.

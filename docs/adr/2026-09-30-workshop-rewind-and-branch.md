@@ -1,6 +1,6 @@
 # ADR 2026-09-30: Workshop Rewind and Branch
 
-**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)), Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions)), Sprint 02 findings (see [Sprint 02 implementation findings](#sprint-02-implementation-findings)) and Sprint 03 kickoff decisions (see [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions))
+**Status:** Accepted (2026-10-01), with the epic's product decisions D1–D7 folded in (see [Product decisions](#product-decisions-d1d7)). Amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)), Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions)), Sprint 02 findings (see [Sprint 02 implementation findings](#sprint-02-implementation-findings)), Sprint 03 kickoff decisions (see [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions)) and Sprint 03 findings (see [Sprint 03 implementation findings](#sprint-03-implementation-findings))
 **Date:** 2026-09-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md)
 **Answers:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md), rejected alternative "Fork or branch the conversation into the new session"
@@ -196,15 +196,16 @@ Branch is a coordinator session operation:
    - The webview does not send the request for an unnamed room. It shows a popup explaining that the session must be saved before branching, with a "Save session…" action that opens the existing Save modal.
    - After saving, the writer clicks Branch again. Nothing is saved automatically.
    - The host refuses an unnamed-room request anyway, with the same explanation, so a stale webview cannot bypass the rule.
-3. Queued autosaves complete first, via `serializeSessionOperation`, so the associated named file is current on disk.
+3. Queued autosaves complete first, via `serializeSessionOperation`, so the associated named file is current on disk. A named room whose latest autosave did not land is refused: Branch never writes the source, so it cannot flush that work either (Sprint 03 kickoff).
 4. Export and transform exactly as in §6.
 5. Build a new persisted session:
    - fresh `sessionId` and timestamps;
-   - title `"<source title> — branch"` (collision-safe, renamable);
+   - a fresh temporal start in the source's timezone, with no persona notices;
+   - title `"<source title> — branch"` (renamable; the store keeps file names collision-free, and a long source title is trimmed to fit the title limit);
    - summary rebuilt from the cut aggregate.
-   Write it with the existing named `saveNamed` path.
-6. Promote it into the live room through the existing open/promotion path.
-7. Post session state and a result naming both sessions. Re-seed the composer for a writer-bubble branch.
+   Write it with the existing named `saveNamed` path. The store writes atomically, so a failure here leaves no branch file and changes nothing.
+6. Read the branch back from its file and promote it into the live room through the named-session promotion that Open uses, on the shared room-replacement transaction (Sprint 03 kickoff, item 1). A failure here restores the prior room; the branch stays on disk as an openable named session, and the result says so.
+7. Post session state and a result naming both sessions. A writer-bubble branch is an edit in the branch: the composer is re-seeded, or a widget message's released config reopens in its widget.
 
 The source session is never modified by Branch. Branch lineage (`branchedFrom`) is not persisted in v1. See Follow-ups.
 
@@ -229,6 +230,20 @@ The exact-key shape validator and integrity validator gain the field in the same
 **Downgrade compatibility (decided 2026-09-30: in-file field).** Every Workshop validator is exact-key, from the envelope (`assertSupportedWorkshopPersistedSessionEnvelope`) down. A build older than this change therefore refuses any session this build writes, not only files that use Rewind. The refusal is safe: a named file is left untouched, and a failed `current.json` is protected from overwrite. Writers who sync sessions through Git must update every machine before opening sessions saved by this release. Release notes say so.
 
 A sidecar marks file was considered and rejected for v1. It would have kept session files readable by older builds, at the cost of a second file's lifecycle across save, mirror, duplicate, rename, delete and recovery. Because marks and archive are written atomically in one file, an older build can never leave marks stale. The per-mark history hash that the sidecar needed is therefore unnecessary.
+
+## Product decisions (D1–D7)
+
+The epic proposed these product decisions and confirmed them through its sprints. They are accepted with this ADR.
+
+| # | Decision | Accepted as |
+|---|---|---|
+| D1 | Writer-bubble semantics | A writer-bubble action cuts to *before* the message (§1). Its text and one-shot attachments return to the composer. A widget commit's message reopens its widget on the released config instead (Sprint 03 kickoff, item 3). |
+| D2 | Branching from an unnamed room | Not allowed. The webview shows a "Save before branching" popup whose "Save session…" opens the Save modal, and the writer branches again after saving. The host refuses with "Save this session before branching." (§7) |
+| D3 | Branch title | `"<source title> — branch"`, renamable afterwards. A long source title is trimmed so the suffix fits. |
+| D4 | Confirmation | Rewind confirms, naming how many turns go and that the excerpt and context stay current. Branch does not confirm, because it is non-destructive. |
+| D5 | Legacy sessions | Exact from the reopen point onward through baseline marks (§3). Earlier turns show a disabled action with the reason "Saved before rewind support". No backfill heuristic. |
+| D6 | Standing prose directives | Neither action crosses the latest directive change in v1 (§4, the directive floor). |
+| D7 | Persistence unavailable | Rewind follows New-session availability. Branch is disabled, and each action says why: "Rewind needs …" or "Branch needs …", a single-root workspace or an open workspace folder. |
 
 ## Sprint 01 implementation findings
 
@@ -293,6 +308,15 @@ Also settled at kickoff, within §7:
 - A named room whose latest autosave has not landed is refused. Branch never writes the source file, so it cannot flush that file either.
 - The title is `"<source title> — branch"`. The source title is trimmed so the suffix fits the 160-character title limit; the store already makes the file name collision-free.
 
+## Sprint 03 implementation findings
+
+Recorded 2026-10-01 while building Branch. Each item corrects or completes a detail above; the decision itself stands.
+
+1. **New rolls back a failed reset, too.** Moving New onto the shared room-replacement transaction exposed a gap. Its reset prelude (aggregate reset, clock reset, start marker) ran before its `try` block, so a throw there left a half-reset room. The prelude now runs inside the transaction and restores the prior room like any other failure. A regression test pins it.
+2. **Branch opens what it wrote.** The branch is read back from its file and promoted from that decode result, exactly as Sessions would open it. Promotion's mirror step already re-reads the named file before writing `current.json`, so a branch file that cannot be read back fails promotion rather than producing a room its file does not describe.
+3. **A released widget config needs honest copy.** The widget sheets' clone banner said the old chip "stays as history". After a rewind, nothing remains: the commit and its chip are gone. A clone of a config without commit linkage now reads "Reopened from a message you rewound". Only a rewind can release a commit, so that state identifies the case.
+4. **Branch verdicts are Rewind verdicts, unfiltered.** The webview passes Branch the same `turnRewindability` map without dropping the latest reply. Rewind and Branch share every reason except a non-rest point, which no bubble shows: the host words that refusal "Can't branch from this point".
+
 ## Consequences
 
 **Good**
@@ -302,6 +326,7 @@ Also settled at kickoff, within §7:
 - The cutting logic is one pure, table-tested function. The install path is the already-proven Open/promotion path, with rollback.
 - Private capability evidence, delivery offsets and prompt-cache prefixes survive a rewind. A cheaper design would have lost them all.
 - The planned context-compaction epic gains a reliable map from history spans to ledger turns.
+- A branch is the same cut room in a new envelope. Its key proof holds every branch to the room the Rewind oracle expects at that point, and Branch never writes its source.
 
 **Costs and limits**
 
@@ -310,6 +335,8 @@ Also settled at kickoff, within §7:
 - Pre-baseline turns in reopened legacy sessions are not rewindable.
 - Guests dismissed after C are not resurrected. Sidecars replaced after C are dropped, and the writer can re-run the tool.
 - The working set does not rewind, and to-do status edits are not undone.
+- A one-shot widget config released by a cut that skips past its commit stays host-side with no thread entry point. Only an edit of the widget's own message reopens it (Sprint 03 kickoff, item 3).
+- Sessions saved by this release cannot be opened by earlier builds (§9).
 
 ## Alternatives considered
 
@@ -323,6 +350,8 @@ Also settled at kickoff, within §7:
 
 - [Side Quests](../../.todo/features/feature-workshop-side-quests/README.md): Start pins the current idle head and End rewinds to it. This ADR's cut policy therefore answers for any rest point, dividers included, and the rewind operation is generic over its origin. Side Quest state and UI are decided in that feature, not here.
 
-- Branch lineage metadata and a "branched from" row in the session browser. This belongs with the parked [Branch Board](../../.todo/features/feature-workshop-branch-board/README.md) feature's explicit branch model.
+- Branch lineage metadata (`branchedFrom`) and a "branched from" row in the session browser. This belongs with the parked [Branch Board](../../.todo/features/feature-workshop-branch-board/README.md) feature's explicit branch model.
+- A screenshot of the bubble actions for the startup notice, which draws them inline until one exists.
+- [The persistence coordinator's ownership](../../.todo/tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) now that it carries four room replacements.
 - Crossing standing-directive changes, which needs directive revision history.
 - Optional verified backfill of marks for pre-baseline turns.
