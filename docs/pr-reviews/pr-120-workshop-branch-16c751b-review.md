@@ -6,6 +6,7 @@
 **Scope:** 68 files · +3,366 / −430 · 15 commits
 **Reviewed:** 2026-10-01 · **Mode:** quick Ada Forge review, with an independent correctness pass over routes, webview flows, widget restoration, and time-notice lifetimes. Format follows the recent reviews in this directory; this is a focused review, not the full specialist panel.
 **Re-reviewed:** 2026-10-01 · **Head:** `8f4186faf8aa9e1a1f3137a57d30a9423b82522b` · **Delta:** five fix/documentation commits after the published report `97530338`. The original findings below describe `16c751b9`; current dispositions and new evidence are recorded in the ledger and re-review section.
+**Final re-review:** 2026-10-01 · **Head:** `a640deff48df186f7bfd89ba963233a94362c96f` · **Delta:** commit-boundary fix `47979f11` and its documentation commit. All three findings are independently verified as addressed at this head.
 
 ## Resolution ledger
 
@@ -13,13 +14,13 @@ Status legend: **Open** = actionable recommendation with the deadline below · *
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | Branch can overwrite the only complete checkpoint after an external source-file change | Original source-change cases now have passing regressions; two additional late-mirror probes still reproduce loss | **Addressed** (2026-10-01, `16ea5f2`, remaining gate `47979f1`) — the early check before saving is unchanged. The late check now runs at the commit seam of the rolling write: `store.writeCurrent` takes the store's existing `beforeCommit` hook, which runs after the temporary snapshot is written and immediately before the atomic rename. A failed check removes the temporary file, keeps `current.json`, restores the room, and reports the saved branch as not opened because the source changed. Both late-mirror seams have regressions; moving the guard back before the mirror fails exactly those two, and dropping it fails all four mid-branch cases. A store test pins the hook. Awaiting re-review |
+| F-01 | 🟠 High | Branch can overwrite the only complete checkpoint after an external source-file change | Original source-change and late-mirror scenarios now have passing regressions; both independent late-race probes preserve the full room | **Addressed and independently verified** (2026-10-01, `16ea5f2` + `47979f1`, final re-review at `a640deff`) — the early no-write check remains; the late guard reaches the store's existing `beforeCommit` hook after the temporary snapshot write and immediately before rename. Source loss during mirror read or rolling temporary write now keeps `current.json` and prior runtime histories, removes the temporary file, and reports the saved branch as not opened. Permanent coordinator/store tests and an independent review confirm ordering and rollback |
 | F-02 | 🟡 Standard | Reopening a widget edit retains the later chat target and can send the edit to the wrong participant | Real-coordinator Rewind and Branch probes, plus commit-handler dispatch tracing | **Addressed and independently verified** (2026-10-01, `ed576c3`, re-review at `8f4186f`) — composer and widget edits restore the addressee through `addresseeOf` / `repairedChatTarget`. New regressions cover later guest/tool targets and both operations; the original independent reproduction now passes. Host fallback is preserved |
 | F-03 | 🟡 Standard | Rewind leaves old time notices attached to personas whose replacement history import degrades | Real-coordinator host-only degradation probe; guest imports preserved | **Addressed and independently verified** (2026-10-01, `0af3539`, re-review at `8f4186f`) — degraded persona keys join cut-dropped keys inside the transaction before writing. Tests cover host/guest degradation, survivor notices, durable state, and rollback; the original independent reproduction now passes. Open/Branch/refresh resume behavior is covered, and the archived debt is qualified |
 | F-04 | 🟢 Praise | One replacement transaction protects the prior runtime histories through installation and durable promotion | Source tracing and passing rollback tests | N/A — preserve |
 | F-05 | 🟢 Praise | Branch reuses the cut oracle, and the UI uses the host's authoritative verdicts and snapshots | Seventeen-rest-point proof, route/UI tests, and source tracing | N/A — preserve |
 
-**Current verdict:** Request changes before integration for the remaining F-01 race. F-02 and F-03 are resolved. F-01's source checks fix the original cases, but run before the final asynchronous mirror work rather than at its commit boundary. Manual Extension Development Host smoke remains pending separately.
+**Current verdict:** Approve for integration into the epic branch. F-01, F-02, and F-03 are addressed and independently verified; no additional actionable finding was identified in the remediation. Manual Extension Development Host smoke remains a separate pending release gate. This verdict does not perform or authorize a merge or release.
 
 ---
 
@@ -96,6 +97,30 @@ The remaining gate is implemented as recommended. `WorkshopSessionStore.writeCur
 - **Mutation checks:** moving the guard back before the mirror (as at `8f4186f`) fails exactly the two late-seam tests, and dropping the late guard fails all four mid-branch tests. Ignoring the hook in `writeCurrent` fails the store test.
 
 Verification is listed in the PR description.
+
+---
+
+## Final re-review — `a640deff` (2026-10-01)
+
+**F-01 is resolved.** Source checks retain the early refusal before Branch writes anything and now use the store's actual commit boundary for the final refusal. The guard flows through `promoteNamedSession` → `mirrorNamedCheckpoint` → `writeCurrent` → `writeJsonAtomically`, after the final mirror read and temporary snapshot write. A throwing guard leaves the old rolling checkpoint intact, cleans up the temporary file, and triggers the existing room rollback before the coordinator advances accepted checkpoint state or retires prior conversations.
+
+The two previous late-change probes were replayed at the same I/O seams with the intended preservation assertions. Deleting the source during the final branch-file read or rolling temporary write now produces `WorkshopBranchNotOpenedError` with refusal `source-changed`. Both probes verify byte-identical original `current.json`, unchanged aggregate, original host binding/history, unchanged active conversation count, no temporary-file residue, and a valid saved cut branch available for later opening. The independent review also ran eight relevant changed-source/commit-hook tests across two suites; all passed. Ordinary Open and mirror callers supply no guard and keep their existing behavior.
+
+This is the repository's established optimistic filesystem commit check, matching `updateNamed`; it is not a transaction or lock across the source and rolling files. No further filesystem operation in Branch's replacement path intervenes between the completed source check and the rolling rename. External edits after that commit remain separate events.
+
+| Check at `a640deff` | Result |
+| --- | --- |
+| Local checkout equals live PR head; GitHub `verify` | ✅ Matching head; CI success |
+| `npm test -- --runInBand` | ✅ 228 suites / 2,722 tests / 2 snapshots passed |
+| `npm run typecheck` | ✅ Core, webview, and extension passed |
+| `npm run lint` | ✅ Exit 0; 0 errors / 1,030 warnings |
+| `npm run build` | ✅ Webpack and `verify:bundle` passed |
+| `git diff --check 6a9ddef0...a640deff` | ✅ |
+| Independent replay of both late-race probes | ✅ Two tests now pass with the intended preservation assertions |
+| Independent commit-boundary review and targeted tests | ✅ No new finding; two suites / eight relevant tests passed |
+| Live providers / manual host smoke / visual inspection | Not performed; the seven-scenario manual checklist remains pending |
+
+Author-recorded mutation checks were not repeated. The temporary independent probe was removed from the checkout; this review publication changes only this report. The earlier re-review and original findings remain in the report as historical evidence; their loss descriptions no longer describe the final reviewed head.
 
 ---
 
@@ -185,11 +210,11 @@ The [manual smoke checklist](../../.memory-bank/20261001-1105-workshop-rewind-an
 
 | Dimension | Assessment |
 | --- | --- |
-| Preservation / named authority | C+ — initial and save/import changes are gated; F-01 still reproduces loss during final mirror I/O |
-| Replacement / rollback | A− — coherent transaction and passing failure tests; the source guard needs the final commit seam |
+| Preservation / named authority | A− — F-01 resolved through early source validation and the established optimistic commit check |
+| Replacement / rollback | A — source refusal preserves the full rolling file and prior histories, with temporary-file cleanup verified |
 | Edit and participant lifetimes | A− — F-02/F-03 resolved with regression and independent reproduction evidence |
-| Tests | B+ — all 2,719 tests and other automated gates pass; late-mirror cases remain uncovered |
+| Tests | A− — all 2,722 tests and other automated gates pass; late-mirror regressions and independent replays now cover the reported gaps |
 | Architecture / scope | A− — shared transform/promotion and explicit ports; large coordinator ownership is already tracked |
 | Presentation / release evidence | B+ — authoritative gates and release notes are coherent; manual/visual evidence is pending |
 
-The report card reflects re-review at `8f4186f`; the original narrative/findings are retained as historical evidence. No implementation fixes, merge, or release actions were performed by the reviewer.
+The report card reflects final re-review at `a640deff`; the earlier narrative/findings are retained as historical evidence. No implementation fixes, merge, or release actions were performed by the reviewer.
