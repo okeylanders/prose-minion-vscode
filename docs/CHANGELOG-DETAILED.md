@@ -28,19 +28,20 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 - One pure transform, `rewindWorkshopSession`, cuts the ledger and every retained history together at a real rest point, slicing only at marks.
 - The working set stays current. Pending excerpt and context updates are re-queued for a surviving host, and id counters are never lowered.
 - `rewindTo` installs the cut room through Open's promotion core and writes it before reporting success. Any failure restores the prior room.
-- A writer message rewinds as an edit. Its text and one-shot attachments return to the composer; a widget commit's released config reopens in its widget.
+- A writer message rewinds as an edit. Its text and one-shot attachments return to the composer; a widget commit's released config reopens in its widget. Either edit is addressed to the participant the message went to.
 
 ### Added — Branch
 
 - `branchFrom` saves the cut room as a new named session and opens it through the named-session promotion Open uses. The new session has a fresh identity and timestamps, a fresh temporal start in the source's timezone, the title `"<source> — branch"`, and a summary rebuilt from the cut room.
 - The source session file is never written. A failed save leaves no file behind. A failed open restores the prior room and reports the saved branch, which stays openable from Sessions.
+- Branch reads the source file back and compares it with the checkpoint the room accepted. It does this before writing anything, and again just before `current.json` is replaced. A missing, unreadable or replaced source is refused, so a Git change made while the room is open cannot cost the room its only complete copy.
 - An unnamed room shows a "Save before branching" popup, and the host refuses it regardless. A named room with unsaved changes is refused too.
 - Branch is offered on the latest reply, where Rewind is not.
 - The startup notice moves to `v4` and leads with a Rewind and Branch page.
 
 ### Fixed
 
-- Time-notice entries now end with their conversation: rewind drops, guest dismissal, and generation loss. A fresh host or guest gets a session-start time frame on its first turn.
+- Time-notice entries now end with their conversation: rewind drops and degraded imports, guest dismissal, and generation loss. A fresh host or guest gets a session-start time frame on its first turn.
 - New's reset now rolls back fully if anything in the reset itself fails.
 
 ### Compatibility and verification
@@ -49,11 +50,12 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 - **Sprint 02 follow-ups, release disposition:**
   - [Time notices outlive their conversations](../.todo/archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md): fixed.
   - [Rewound widget commits](../.todo/archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md): fixed for the widget's own message. A cut that skips past a commit releases its config without reopening it, which is accepted and named in the upgrade notes.
+- **Review:** the [PR #120 review](pr-reviews/pr-120-workshop-branch-16c751b-review.md) found three issues: a source file changed on disk, a widget edit's addressee, and notices after a degraded import. All three were fixed before integration, each with mutation-checked regressions.
 - **Proof:**
   - The Rewind equivalence oracle covers every rest point of the canonical scripted room.
   - Branch's key proof holds each branch file to the oracle's expected room at all 17 rest points after the directive floor, with the source file byte-identical.
   - Rollback is fault-injected at transform, import, hydrate, and write for Rewind, and at transform, branch write, import, hydrate, and mirror for Branch.
-  - The manual Extension Development Host smoke checklist (six scenarios) is in the [epic memory-bank entry](../.memory-bank/20261001-1105-workshop-rewind-and-branch.md). Its results are recorded there before release.
+  - The manual Extension Development Host smoke checklist (seven scenarios) is in the [epic memory-bank entry](../.memory-bank/20261001-1105-workshop-rewind-and-branch.md). Its results are recorded there before release.
 
 ## [2.6.2] - 2026-09-29 — GPT-6.1 Sol model choices
 

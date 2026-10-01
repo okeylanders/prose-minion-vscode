@@ -4,7 +4,7 @@
 **Epic:** [Workshop Rewind and Branch](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01, with D1–D7 folded in; amended with Sprint 03 kickoff decisions and findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration); `sprint/workshop-rewind-and-branch-03-branch`
-**State:** Sprint 03 is in review as [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) into the integration branch. Still to come, in order:
+**State:** Sprint 03 is in review as [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) into the integration branch. Its review requested changes, and all three findings are addressed (see [Review round](#review-round-pr-120-2026-10-01)). Still to come, in order:
 1. The PR merges.
 2. Okey runs the manual smoke below and records the results here.
 3. The epic merges to `main` as one unit.
@@ -76,6 +76,22 @@
 3. The released-config clone banner needed honest copy.
 4. Branch verdicts are Rewind verdicts, unfiltered. The host words a non-rest-point refusal "Can't branch from this point".
 
+## Review round (PR #120, 2026-10-01)
+
+The [review](../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md) requested changes. ADR Sprint 03 findings 5–7 record each fix:
+
+- **F-01 (High), `16ea5f2`: Branch proves its source on disk.**
+  - The problem: the named association and clean revisions did not show the file still existed. If Git deleted, corrupted or replaced it while the room was open, the branch would replace `current.json` and the room would lose its only complete copy.
+  - The fix: Branch compares the source file with the accepted checkpoint before writing anything, refusing with `source-changed`. It compares again after the branch import, before `current.json` is replaced; a mismatch rolls back and reports the saved branch.
+  - Regressions: the reviewer's three probes are now permanent tests, and each also proves that Save as new and then Branch works. A deletion during the branch save and one during the import are covered.
+  - Mutations caught: no early check (3 failures), no late check (2), neither (5).
+- **F-02 (Standard), `ed576c3`: a widget edit goes back to its addressee.**
+  - Both edit forms now restore the chat target through `addresseeOf` and `repairedChatTarget`.
+  - Regressions: a later guest and a later tool in the transform, and a later guest through Rewind and Branch. The pre-fix condition fails all four.
+- **F-03 (Standard), `0af3539`: Rewind also ends the notices of personas whose import degrades.**
+  - Regressions: host and guest degradation, write-failure rollback, and a test pinning that Open still queues a resume frame. The pre-fix code fails both degradation cases.
+  - The archived debt record's resolution is qualified.
+
 ## Proof
 
 - **Key proof** (`WorkshopSessionBranchCoordinator.test.ts`):
@@ -110,16 +126,17 @@
 
 ## Manual smoke (Extension Development Host) — results pending (Okey)
 
-The cloud container cannot run the Extension Development Host. Use cheap models and short rooms. This covers Sprint 02's Rewind smoke too. Record each result below with the date and build.
+The cloud container cannot run the Extension Development Host. Use cheap models and short rooms. This covers Sprint 02's Rewind smoke too, and scenario 7 covers the PR #120 review's F-01. Record each result below with the date and build.
 
 | # | Scenario | Steps and expectation | Result |
 |---:|---|---|---|
 | 1 | Guest and capability rewind | In a host conversation with one capability read and one guest, rewind to the host reply before the guest joined. The guest is disposed, and the host's next reply mentions nothing past the cut. | Pending |
-| 2 | Writer-bubble edit | "Edit from here" on a writer bubble returns its text and attachments to the composer. Edit and resend; the thread continues coherently. Also try a widget message: its widget reopens on the released config. | Pending |
+| 2 | Writer-bubble edit | "Edit from here" on a writer bubble returns its text and attachments to the composer. Edit and resend; the thread continues coherently. Also try a widget message sent to the host, then talk to a guest, then edit the widget message: its widget reopens on the released config, and sending it goes to the host. | Pending |
 | 3 | Excerpt revision | Revise the excerpt, then rewind to before the revision. The next host reply acknowledges the revised excerpt frame. | Pending |
 | 4 | Unnamed-room branch | Click Branch in an unnamed room: the "Save before branching" popup appears and "Save session…" opens the Save modal. Save, then click Branch again: both sessions appear in the browser. Reopen each and verify its content. | Pending |
 | 5 | Reload | Reload the window after a rewind and after a branch. Both restore exactly. | Pending |
 | 6 | Legacy session | Open a pre-feature session. Earlier turns show the disabled reason; turns after the reopen point rewind and branch. | Pending |
+| 7 | Source changed on disk | With a named session open, delete or edit its file outside VS Code (or check out an older version with Git), then click Branch. It is refused with "This session's saved file is missing or changed on disk…", and the room stays. Use Save as new, then Branch: it works. | Pending |
 
 Also glance at the startup notice: it should open once on the new first page.
 

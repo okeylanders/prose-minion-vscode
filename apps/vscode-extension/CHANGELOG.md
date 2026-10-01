@@ -8,8 +8,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 - Workshop replies and your own messages have new actions underneath.
   - **Rewind to here** returns the room to a reply, including what every participant remembers, and removes everything after it.
-  - **Edit from here** removes one of your messages and everything after it. The message goes back to the composer, or its widget reopens, so you can change it and send it again.
-  - **Branch from here** leaves the conversation as it is and opens a new saved session that starts at that point. Save the session first; an unsaved room asks you to.
+  - **Edit from here** removes one of your messages and everything after it. The message goes back to the composer, or its widget reopens, so you can change it and send it again to the same participant.
+  - **Branch from here** leaves the conversation as it is and opens a new saved session that starts at that point. Save the session first; an unsaved room asks you to. If the saved file changed on disk, for example after a Git pull, Branch asks you to reopen it or save the room as a new session first.
 - Rewind and Branch keep your excerpt, context, and to-do statuses as they are now.
 
 ### Fixed

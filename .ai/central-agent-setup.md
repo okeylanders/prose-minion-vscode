@@ -838,7 +838,9 @@ touching retained histories or whole-room operations:
   room-replacement transaction. A new whole-room operation joins it rather
   than hand-rolling rollback.
 - **Branch.** Branch never writes its source session file. It refuses an
-  unnamed room and a named room with unsaved work.
+  unnamed room, a named room with unsaved work, and a room whose file on
+  disk no longer matches it. It checks the file again before replacing
+  `current.json`.
 
 ### Operational Tips
 

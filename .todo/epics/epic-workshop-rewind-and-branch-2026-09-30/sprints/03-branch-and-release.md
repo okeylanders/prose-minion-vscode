@@ -124,6 +124,7 @@ Record results in the memory-bank entry. Use cheap models and short rooms.
 4. **Unnamed-room branch.** Click Branch in an unnamed room: the save-first popup appears. Save, click Branch again; both sessions appear in the browser. Reopen each and verify its content.
 5. **Reload.** Reload the window after a rewind and after a branch. Both restore exactly.
 6. **Legacy session.** Open a pre-feature session. Earlier turns show the disabled reason; turns after the reopen point rewind.
+7. **Source changed on disk** (added after the PR #120 review). With a named session open, delete or edit its file outside VS Code, then click Branch. It is refused, and the room stays. Use Save as new, then Branch: it works.
 
 ## Exit
 
@@ -184,6 +185,11 @@ Every deliverable landed except the manual smoke, which waits on Okey (kickoff d
 - `npm run lint`: 0 errors, 1,030 warnings. The base had 1,026; the four new warnings follow the repo's naming conventions: two `MessageType` members and two PascalCase components.
 - `npm run build`: passed.
 - `git diff --check`: clean.
+
+**Review round** ([PR #120 review](../../../../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md)). The review requested changes. All three findings were fixed before integration, each with mutation-checked regressions; ADR findings 5–7 record them.
+- **F-01 (High).** Branch proves its source file still holds the room. It checks before writing anything, refusing with `source-changed`, and again after the branch import, before `current.json` is replaced.
+- **F-02.** A widget edit goes back to the participant its message addressed.
+- **F-03.** Rewind also ends the time notices of personas whose import degrades.
 
 **Follow-ups captured.**
 - [Persistence coordinator ownership](../../../tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred).
