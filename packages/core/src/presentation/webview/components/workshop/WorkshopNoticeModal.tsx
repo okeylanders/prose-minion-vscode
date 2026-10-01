@@ -350,7 +350,7 @@ const PAGES: readonly NoticePage[] = [
     tag: 'primer',
     body: (
       <>
-        Run any of the fourteen analyses directly against a pinned excerpt and its report lands
+        Run any analysis tool directly against a pinned excerpt and its report lands
         visibly in the thread. Or ask your host or a guest to run an isolated analysis on a
         specific line, variation, or question from the conversation. Just ask: the persona can
         decide when a tool would help and bring the useful result back into the room. Direct tool
@@ -372,7 +372,7 @@ const PAGES: readonly NoticePage[] = [
       }
     ],
     legend: [
-      { label: '1', term: 'Tools', detail: 'the fourteen analyses; enabled once an excerpt is pinned.' },
+      { label: '1', term: 'Tools', detail: 'analysis tools; enabled once an excerpt is pinned.' },
       { label: '2', term: '+', detail: 'pin the excerpt and attach project context.' }
     ]
   },

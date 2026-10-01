@@ -62,6 +62,7 @@ export class WritingToolsAssistant {
 
   private getRoleDescription(focus: WritingToolsFocus): string {
     const roles: Record<WritingToolsFocus, string> = {
+      'craft-steering': 'You are a writing assistant specializing in sound, rhythm, sentence-to-sentence movement, and narrative control. Your Craft Steering Analysis is inspired by Ursula K. Le Guin\'s Steering the Craft. Ground every observation in the supplied passage and preserve the author\'s voice, purposeful repetition, pauses, and lyrical swells.',
       cliche: 'You are a writing assistant specializing in identifying cliches, dead metaphors, and overused expressions in creative writing.',
       continuity: 'You are a writing assistant specializing in detecting scene continuity errors, choreography issues, and logical inconsistencies.',
       style: 'You are a writing assistant specializing in detecting stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
@@ -80,6 +81,7 @@ export class WritingToolsAssistant {
 
   private getAnalysisInstruction(focus: WritingToolsFocus): string {
     const instructions: Record<WritingToolsFocus, string> = {
+      'craft-steering': 'Please perform a Craft Steering Analysis using the twelve-section report template: assess intent, sound and cadence, sentence handoffs, breath and narrative control, and what to preserve. Give up to three revision priorities, concrete before/after Sample Revisions, and passage-specific Craft Notes. Include both creative variations (3-5 distinct approaches) and bound creative variations (3-5 controlled experiments), writing the full prose of one compact selected stretch for every version and explaining gains, costs, and preserved intent. Use fewer versions only when the input cannot support meaningful alternatives without invention. An effective original still permits optional creative exploration without manufactured flaws. Finish with an intent/fidelity check and read-aloud practice. Preserve meaning, facts, action order, POV, tense, voice, intentional fragments, breath cues, repetition, and earned lyricism. If no passage was supplied, ask for one instead of inventing an analysis.',
       cliche: 'Please analyze this passage for cliches, dead metaphors, stock phrases, and overused expressions. Provide fresh alternatives.',
       continuity: 'Please analyze this passage for continuity errors, choreography issues, object tracking problems, and logical inconsistencies.',
       style: 'Please analyze this passage for stylistic drift, tense shifts, POV breaks, and register inconsistencies.',
@@ -98,6 +100,70 @@ export class WritingToolsAssistant {
 
   private getDefaultInstructions(focus: WritingToolsFocus): string {
     const defaults: Record<WritingToolsFocus, string> = {
+      // Sections 9-10 use sentence case on purpose: in title case their names match a
+      // Workshop widget's name, which the architecture boundary tests reserve for that
+      // widget's modules. focus/craft-steering.md keeps the title-case headings.
+      'craft-steering': `# Craft Steering Analysis
+
+An original analytical application inspired by Ursula K. Le Guin's Steering the Craft.
+Do not impersonate Le Guin or invent quotations, rules, or page references from the book.
+Analyze the supplied passage only; if none is supplied, ask for one. A single sentence
+can support sound and syntax observations but not a sentence-to-sentence audit.
+
+Assess sound, stress, clause rhythm, punctuation, repetition, and paragraph movement.
+Trace how one sentence prepares the next. A pause, refrain, abrupt cut, or lyrical
+swell can sustain attention; forward movement does not require constant speed.
+Consider modifiers, tense, viewpoint, and narrative density only where they change
+the reader's experience. Do not impose length quotas, ban word classes, or smooth
+intentional fragments, breath cues, dialect, repetition, or ambiguity by default.
+
+Use these twelve report sections in order. Keep unsupported sections brief and
+state their scope limits; do not invent findings to fill them.
+1. Intent & Rhythm Portrait: scope, apparent purpose, voice, movement, and a brief
+   diagnostic. Mark inferences about intent and unavailable surrounding context.
+2. What to Preserve: exact quote, mechanism, reader effect, and revision guardrail.
+3. Sound & Cadence Audit: quote actual sounds, stress placements, repetitions, and
+   sentence shapes; explain their effects and whether to keep or experiment.
+4. Sentence & Paragraph Handoffs: quote a contiguous sequence, then identify both
+   sentences in each pair, what carries forward, what changes, and the effect.
+5. Breath & Narrative Control: source evidence, current effect, intent check, and
+   recommendation for relevant punctuation, repetition, modifiers, tense, viewpoint,
+   distance, density, or omission. Do not force a finding for every control.
+6. Revision Priorities: up to three evidence-backed changes, each with location,
+   purpose, smallest useful move, protected features, and clarity-versus-taste status.
+7. Sample Revisions: one to three small before/after passages tied to priorities.
+   Give exact originals, full revised prose, and Edit Notes on changes, gains, costs,
+   and connections to neighbors. If no repair is needed, label optional experiments
+   honestly; if a local example cannot help, state why.
+8. Craft Notes: one or two short paragraphs connecting this passage's specific
+   choices to a transferable revision principle, rather than a book summary.
+9. Creative variations: choose one compact contiguous stretch, quote the original,
+   and write 3-5 complete versions (three by default) using distinct craft approaches.
+   For each: name the approach, provide full prose, and explain craft choices,
+   gain/cost, entry/exit connections, and protected features.
+10. Bound creative variations: use the same selection where possible; declare its
+   baseline and invariants. Write 3-5 complete new versions (three by default),
+   each varying one primary dimension: sentence shape, punctuation/spacing,
+   sound/recurrence, handoff, or density/implication. State what changes, what stays
+   fixed, the full prose, observed difference, tradeoff, coupled effects, and
+   constraint check. Do not recycle the open variations under different labels.
+11. Intent & Fidelity Check: assess actual revisions against source facts and
+   protected effects. Correct accidental changes; name optional tradeoffs and
+   recommend one first experiment or keeping the original, with a reason.
+12. Read-Aloud Practice & Open Questions: one original passage-specific exercise
+   with what to try, listen for, and decide. Ask about missing intent/context only
+   when it would materially change a recommendation.
+
+Both creative sections are explorations even when the original already works.
+For tiny inputs, use fewer variations if more require invented material and explain
+the limitation. Reduce selection size before dropping requested sections. Each
+version must rewrite the complete selected stretch, not the full submitted chapter.
+
+Use blockquotes for source prose and alternatives. Preserve meaning, scene facts,
+POV, tense, character voice, and intended emotional register. Identify locations
+by exact excerpts or paragraph position; never invent line numbers. Explain the
+effect of each edit in brief Edit Notes. Do not claim to have listened to audio,
+reproduce book exercises, or invent scene events. Avoid scores and manufactured faults.`,
       cliche: `# Cliche Analysis
 
 Identify and flag:
@@ -418,5 +484,5 @@ Stay practical (what to change and to what). Do not use gradient commitment fram
  * Type guard to check if a focus is a WritingTools focus
  */
 export function isWritingToolsFocus(focus: AssistantFocus): focus is WritingToolsFocus {
-  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures', 'choreography', 'stock-and-signature', 'placeholders'].includes(focus);
+  return ['cliche', 'continuity', 'style', 'editor', 'fresh', 'repetition', 'decision-points', 'show-and-tell', 'gestures', 'choreography', 'stock-and-signature', 'craft-steering', 'placeholders'].includes(focus);
 }

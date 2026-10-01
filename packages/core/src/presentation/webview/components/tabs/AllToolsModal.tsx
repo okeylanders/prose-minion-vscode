@@ -38,6 +38,7 @@ const TOOLS: ToolDef[] = [
   { group: 'Craft & Voice', name: 'Show & Tell', icon: 'eye', desc: 'Dramatization balance — under-rendered peaks that should show; over-labored transitions that should tell.', action: { kind: 'writingTool', focus: 'show-and-tell' } },
   { group: 'Craft & Voice', name: 'Choreography', icon: 'move', desc: 'Scene-wide movement audit — choreography defaults, zone-by-zone staging, and spatial continuity.', action: { kind: 'writingTool', focus: 'choreography' } },
   { group: 'Craft & Voice', name: 'Stock & Signature', icon: 'target', desc: 'Cognitive economy — maps functional stock, decorated stock, and signature beats at the peaks.', action: { kind: 'writingTool', focus: 'stock-and-signature' } },
+  { group: 'Craft & Voice', name: 'Craft Steering', icon: 'wave', desc: 'Sound, rhythm, and how each sentence carries you into the next. Inspired by Le Guin’s Steering the Craft.', action: { kind: 'writingTool', focus: 'craft-steering' } },
   { group: 'Craft & Voice', name: 'Placeholders', icon: 'search', desc: 'Vague where it should commit (somethings, noun fog, weak gradients); over-precise where it should breathe (loud transitions, stacked modifiers).', action: { kind: 'writingTool', focus: 'placeholders' } },
 
   { group: 'Technical', name: 'Style', icon: 'palette', desc: 'Style consistency — tense drift, POV breaks, and register shifts within the passage.', action: { kind: 'writingTool', focus: 'style' } },

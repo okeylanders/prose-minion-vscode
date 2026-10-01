@@ -1,5 +1,5 @@
 /**
- * WorkshopToolsModal — the full 14-tool palette, rebuilt on the shared
+ * WorkshopToolsModal — the full analysis palette, rebuilt on the shared
  * WorkshopSheetBrowser (2026-07-26 design drop): select a tool, then launch
  * from the locked footer. Renders from the shared catalog so the modal cannot
  * invent tools or drift from handler routing.

@@ -39,6 +39,7 @@ export const ASSISTANT_RESULT_FILE_PREFIXES: Readonly<Record<string, string>> = 
   [WORKSHOP_RESULT_TOOL_NAMES.repetition]: 'repetition-analysis-',
   [WORKSHOP_RESULT_TOOL_NAMES['show-and-tell']]: 'show-and-tell-analysis-',
   [WORKSHOP_RESULT_TOOL_NAMES['stock-and-signature']]: 'stock-signature-analysis-',
+  [WORKSHOP_RESULT_TOOL_NAMES['craft-steering']]: 'craft-steering-analysis-',
   [WORKSHOP_RESULT_TOOL_NAMES.style]: 'style-consistency-',
   [GESTURE_DICTIONARY_RESULT_TOOL_NAME]: 'gesture-dictionary-',
   [WORKSHOP_PERSONA_RESULT_TOOL_NAME]: 'workshop-persona-'

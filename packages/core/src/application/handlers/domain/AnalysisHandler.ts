@@ -365,6 +365,7 @@ export class AnalysisHandler {
         gestures: 'Gesture & Choreographic Events',
         choreography: 'Choreography Analysis',
         'stock-and-signature': 'Stock & Signature Analysis',
+        'craft-steering': 'Craft Steering Analysis',
         placeholders: 'Placeholder Analysis'
       };
       this.sendStatus(`Streaming ${focusLabels[focus] || focus}...`);

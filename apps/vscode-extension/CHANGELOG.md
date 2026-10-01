@@ -11,6 +11,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
   - **Edit from here** removes one of your messages and everything after it. The message goes back to the composer, or its widget reopens, so you can change it and send it again to the same participant.
   - **Branch from here** leaves the conversation as it is and opens a new saved session that starts at that point. Save the session first; an unsaved room asks you to. If the saved file changed on disk, for example after a Git pull, Branch asks you to reopen it or save the room as a new session first.
 - Rewind and Branch keep your excerpt, context, and to-do statuses as they are now.
+- **Craft Steering** analysis in both the sidebar and Workshop tools, inspired by Ursula K. Le Guin's *Steering the Craft*. Examines sound, rhythm, sentence handoffs, and narrative control while preserving intentional pauses, repetition, and voice. Includes a structured report with sample revisions, Creative Variations, Bound Creative Variations, a fidelity check, and passage-specific read-aloud practice. Workshop personas can invoke it for an isolated analysis too.
 
 ### Fixed
 

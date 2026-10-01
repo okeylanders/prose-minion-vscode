@@ -1,8 +1,7 @@
 /**
- * The Workshop tool catalog — the design prototype's 14 tools, mapped 1:1 onto
- * the EXISTING analysis contracts: `dialogue`, `prose`, and the twelve
- * WritingToolsFocus modes (ADR 2026-07-03). Labels and grouping come from the
- * reference comp's TOOLS table (docs/design/pm-frames-fulltab.js).
+ * The Workshop tool catalog, mapped onto the analysis contracts: `dialogue`,
+ * `prose`, and WritingToolsFocus modes (ADR 2026-07-03). Labels and grouping
+ * extend the reference comp's TOOLS table (docs/design/pm-frames-fulltab.js).
  *
  * This is the single deterministic source for tool ids ↔ labels: the webview
  * palette renders from it and WorkshopRoomHandler labels turns with it, so the two
@@ -31,6 +30,7 @@ export const WORKSHOP_TOOL_CATALOG: readonly WorkshopToolDescriptor[] = [
   { id: 'show-and-tell', label: 'Show & Tell', group: 'Craft & Voice', description: 'Where you summarize vs. dramatize on the page.' },
   { id: 'choreography', label: 'Choreography', group: 'Craft & Voice', description: 'Spatial logic of movement through a scene.' },
   { id: 'stock-and-signature', label: 'Stock & Signature', group: 'Craft & Voice', description: 'Generic beats vs. your distinctive authorial moves.' },
+  { id: 'craft-steering', label: 'Craft Steering', group: 'Craft & Voice', description: 'Sound, rhythm, and how each sentence carries you into the next. Inspired by Le Guin’s Steering the Craft.' },
   { id: 'placeholders', label: 'Placeholders', group: 'Craft & Voice', description: 'Find TODOs, [brackets], and unfinished seams.' },
   { id: 'style', label: 'Style', group: 'Technical', description: 'Weak verbs, adverbs, filler, and passive voice.' },
   { id: 'editor', label: 'Editor', group: 'Technical', description: 'A holistic developmental editor pass.' },

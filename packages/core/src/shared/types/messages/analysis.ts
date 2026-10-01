@@ -26,9 +26,10 @@ export type DialogueFocus = 'dialogue' | 'microbeats' | 'both';
  * - gestures: Choreographic event generation (converting static states into live events with consequences)
  * - choreography: Scene-wide movement pattern analysis and variation (physical action flow, zone diversity)
  * - stock-and-signature: Cognitive economy analysis (functional stock vs decorated stock vs signature beats, originality audit)
+ * - craft-steering: Sound, rhythm, sentence movement, and narrative control inspired by Steering the Craft
  * - placeholders: Bidirectional precision analysis (sharpen vague placeholders, soften over-precise background language)
  */
-export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell' | 'gestures' | 'choreography' | 'stock-and-signature' | 'placeholders';
+export type WritingToolsFocus = 'cliche' | 'continuity' | 'style' | 'editor' | 'fresh' | 'repetition' | 'decision-points' | 'show-and-tell' | 'gestures' | 'choreography' | 'stock-and-signature' | 'craft-steering' | 'placeholders';
 
 /**
  * Union of all assistant focus modes (for backward compatibility)

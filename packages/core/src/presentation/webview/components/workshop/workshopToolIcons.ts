@@ -18,6 +18,7 @@ export const WORKSHOP_TOOL_ICONS: Record<WorkshopToolId, IconName> = {
   'show-and-tell': 'eye',
   choreography: 'move',
   'stock-and-signature': 'target',
+  'craft-steering': 'wave',
   placeholders: 'search',
   style: 'palette',
   editor: 'list',

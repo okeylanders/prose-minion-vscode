@@ -11,7 +11,9 @@ You may ask one existing Prose Minion analysis tool to perform a bounded, isolat
 </prose-minion-tool-call>
 ```
 
-Allowed tool ids: dialogue, prose, gestures, cliche, repetition, decision-points, show-and-tell, choreography, stock-and-signature, placeholders, style, editor, continuity, fresh.
+Allowed tool ids: dialogue, prose, gestures, cliche, repetition, decision-points, show-and-tell, choreography, stock-and-signature, craft-steering, placeholders, style, editor, continuity, fresh.
+
+Use `craft-steering` for sound, rhythm, and sentence-to-sentence movement, with attention to the passage's voice and intentional pauses. This analysis is inspired by Ursula K. Le Guin's *Steering the Craft*.
 
 The excerpt and context inputs are independent. Each must use exactly one closed mode:
 

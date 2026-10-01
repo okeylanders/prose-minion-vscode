@@ -102,6 +102,23 @@ describe('WorkshopCapabilityXmlCodec', () => {
     });
   });
 
+  it('accepts Craft Steering on a persona-selected passage', () => {
+    expect(codec.inspect(analysisCall([
+      '<toolId>craft-steering</toolId>',
+      '<excerptMode>replace</excerptMode>',
+      '<excerptText>Rain tapped the roof. Then it stopped.</excerptText>',
+      '<contextMode>inherit</contextMode>'
+    ].join('')))).toEqual({
+      kind: 'request',
+      request: {
+        capability: 'analysis.run',
+        toolId: 'craft-steering',
+        excerpt: { mode: 'replace', text: 'Rain tapped the roof. Then it stopped.' },
+        context: { mode: 'inherit' }
+      }
+    });
+  });
+
   it.each([
     ['unknown mode', analysisCall('<toolId>prose</toolId><excerptMode>borrow</excerptMode><contextMode>omit</contextMode>'), 'unknown-input-mode', 'excerptMode'],
     ['prepend without text', analysisCall('<toolId>prose</toolId><excerptMode>prepend</excerptMode><contextMode>omit</contextMode>'), 'input-mode-text-mismatch', 'excerptText'],
