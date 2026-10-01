@@ -1,6 +1,6 @@
 # Sprint 03: Branch and Release Readiness
 
-**Status:** In review — delivered 2026-10-01 on `sprint/workshop-rewind-and-branch-03-branch`, PR into `epic/workshop-rewind-and-branch` (see [Delivery notes](#delivery-notes-2026-10-01)). Manual smoke waits on Okey
+**Status:** In review — delivered 2026-10-01 on `sprint/workshop-rewind-and-branch-03-branch`, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) into `epic/workshop-rewind-and-branch` (see [Delivery notes](#delivery-notes-2026-10-01)). Manual smoke waits on Okey
 **Branch:** `sprint/workshop-rewind-and-branch-03-branch`
 **Depends on:** Sprint 02
 **Blocks:** Epic closure

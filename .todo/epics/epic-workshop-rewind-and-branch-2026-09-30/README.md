@@ -1,7 +1,7 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** In review — Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)) and Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119)) complete and merged into the integration branch. Sprint 03 (Branch and release readiness) delivered on `sprint/workshop-rewind-and-branch-03-branch` and in review. The ADR is accepted. Okey's manual Extension Development Host smoke and the single merge to `main` remain
+**Status:** In review — Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)) and Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119)) complete and merged into the integration branch. Sprint 03 (Branch and release readiness) delivered on `sprint/workshop-rewind-and-branch-03-branch` and in review as [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120). The ADR is accepted. Okey's manual Extension Development Host smoke and the single merge to `main` remain
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)

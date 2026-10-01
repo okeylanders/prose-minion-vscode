@@ -13,7 +13,7 @@ The [Workshop Rewind and Branch epic](../.todo/epics/epic-workshop-rewind-and-br
 
 - retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117);
 - Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119);
-- Branch and release readiness (Sprint 03).
+- Branch and release readiness, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120).
 
 Writers can return the Workshop room to any eligible reply or message, exactly, or branch a saved session from that point into a new named session.
 

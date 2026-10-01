@@ -4,7 +4,7 @@
 **Epic:** [Workshop Rewind and Branch](../.todo/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01, with D1–D7 folded in; amended with Sprint 03 kickoff decisions and findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration); `sprint/workshop-rewind-and-branch-03-branch`
-**State:** Sprint 03 is in review as one PR into the integration branch. Still to come, in order:
+**State:** Sprint 03 is in review as [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) into the integration branch. Still to come, in order:
 1. The PR merges.
 2. Okey runs the manual smoke below and records the results here.
 3. The epic merges to `main` as one unit.
