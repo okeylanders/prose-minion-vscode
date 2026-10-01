@@ -23,6 +23,7 @@ import {
 import {
   WorkshopPersonaConversationKey,
   WorkshopSessionTimeService,
+  isWorkshopPersonaConversationKey,
   parseWorkshopSessionTemporalStateV1,
   workshopGuestConversationKey
 } from '@/application/services/workshop/WorkshopSessionTimeService';
@@ -867,6 +868,11 @@ export class WorkshopSessionPersistenceCoordinator {
         const live = await this.exportLiveRoom();
         const cutRoom = rewindWorkshopSession({ ...live, cut });
         const room = await this.installRoom(cutRoom.workshop, cutRoom.conversations);
+        // A dropped persona's next conversation starts fresh, time frame
+        // included. Inside the transaction, so rollback restores the notices.
+        this.time.forgetNotices(
+          cutRoom.summary.droppedConversationKeys.filter(isWorkshopPersonaConversationKey)
+        );
         await this.commitRewoundRoom();
         return {
           discardedConversationIds: room.discardedConversationIds,

@@ -70,7 +70,6 @@ elsewhere.
 | Low | [Filesystem missing-file error contract](2026-07-27-filesystem-missing-error-contract.md) | Partially mitigated |
 | Low | [Widget-config counter integrity validation](2026-07-31-widget-config-counter-integrity.md) | Identified |
 | Medium | [Rewound widget commits: reopen the released config](2026-09-30-workshop-rewound-widget-commit-reopen.md) | Identified |
-| Medium | [Time notices outlive their conversations](2026-09-30-workshop-time-notices-outlive-conversations.md) | Identified |
 
 ## Review Guidance
 

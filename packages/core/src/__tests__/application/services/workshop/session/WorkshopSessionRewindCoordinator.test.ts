@@ -329,18 +329,52 @@ describe('WorkshopSessionPersistenceCoordinator.rewindTo (ADR 2026-09-30 §6)', 
     expect(catchUp.hasConversationalCatchUp).toBe(true);
   });
 
-  it('keeps temporal state current: no resume marker and no resume notices (kickoff decision 2)', async () => {
-    const { coordinator, time, room } = await openCanonicalRoom();
-    // Opening queued one resume marker; the first interaction consumes it.
-    expect(coordinator.beginInteraction()).toBeDefined();
-    const temporalBefore = time.exportRuntimeState();
-    const point = restPoint(room, 'prose report');
+  describe('temporal state (Sprint 02 kickoff decision 2, as amended at Sprint 03 kickoff)', () => {
+    it('stays current for a surviving persona and ends with a dropped one', async () => {
+      const { coordinator, time, room, store } = await openCanonicalRoom();
+      // Opening queued one resume marker; the first interaction consumes it.
+      expect(coordinator.beginInteraction()).toBeDefined();
+      // Both retained personas have been handed their frames since the open.
+      time.commitNotice(time.prepareNotice('host')!);
+      time.commitNotice(time.prepareNotice('guest:margot')!);
+      const hostNotice = time.exportState().personaNotices
+        .find((notice) => notice.conversationKey === 'host');
+      const point = restPoint(room, 'prose report');
 
-    await coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' });
+      const outcome = await coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' });
 
-    expect(coordinator.beginInteraction()).toBeUndefined();
-    expect(time.exportRuntimeState().pendingResumeKeys).toEqual(temporalBefore.pendingResumeKeys);
-    expect(time.exportRuntimeState().temporal.personaNotices)
-      .toEqual(temporalBefore.temporal.personaNotices);
+      expect(outcome.summary.droppedConversationKeys).toEqual(['guest:margot']);
+      // No resume marker and no resume frame: the surviving host's hour stands.
+      expect(coordinator.beginInteraction()).toBeUndefined();
+      expect(time.prepareNotice('host')).toBeUndefined();
+      expect(time.exportRuntimeState()).toEqual({
+        temporal: expect.objectContaining({ personaNotices: [hostNotice] }),
+        pendingResumeKeys: []
+      });
+      // Margot's conversation ended with the cut, and the written room agrees.
+      expect(time.prepareNotice('guest:margot')).toMatchObject({ reason: 'session_start' });
+      expect((await store.readNamed('scripted'))?.temporal.personaNotices).toEqual([hostNotice]);
+    });
+
+    it('gives the fresh host a session-start frame, and rollback restores the old notice', async () => {
+      const { coordinator, time, room, store } = await openCanonicalRoom();
+      time.commitNotice(time.prepareNotice('host')!);
+      // Before the host's first reply: the cut removes the host's conversation.
+      const point = restPoint(room, 'standing directive installed');
+      const before = time.exportRuntimeState();
+      jest.spyOn(store, 'updateNamed').mockRejectedValueOnce(new Error('write failed'));
+
+      await expect(coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' }))
+        .rejects.toThrow('write failed');
+
+      expect(time.exportRuntimeState()).toEqual(before);
+      expect(time.prepareNotice('host')).toBeUndefined();
+
+      const outcome = await coordinator.rewindTo(after(point.headTurnId), { origin: 'writer' });
+
+      expect(outcome.summary.droppedConversationKeys).toContain('host');
+      expect(time.prepareNotice('host')).toMatchObject({ reason: 'session_start' });
+      expect((await store.readNamed('scripted'))?.temporal.personaNotices).toEqual([]);
+    });
   });
 });

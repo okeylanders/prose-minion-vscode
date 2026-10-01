@@ -1,11 +1,11 @@
 # Workshop time notices outlive the conversations they were delivered to
 
 **Date Identified**: 2026-09-30
-**Reviewed**: 2026-09-30
-**Status**: Identified
+**Reviewed**: 2026-10-01
+**Status**: Resolved in Workshop Rewind and Branch, Sprint 03 (kickoff decision 2)
 **Priority**: Medium
 **Estimated Effort**: Small (a time-service method plus calls at each conversation-ending seam, with tests)
-**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
 
 ## Problem
 
@@ -61,3 +61,22 @@ lands.
   `session_start` time frame. A regression test proves it.
 - A guest re-invited after dismissal gets a `session_start` frame.
 - Rollback of a failed rewind restores the forgotten entries.
+
+## Resolution (2026-10-01)
+
+Confirmed at Sprint 03 kickoff and recorded in ADR 2026-09-30, [Sprint 03 kickoff decisions](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-kickoff-decisions), item 2. Sprint 02 kickoff decision 2's last sentence is amended.
+
+- `WorkshopSessionTimeService.forgetNotices(keys)` removes each key's notice entry and any pending resume notice. `forgetAllNotices()` does the same for every persona.
+- It is called at three seams where a persona conversation ends with no replacement history:
+  - **Rewind:** the persona keys the cut drops. The call runs inside the room-replacement transaction, before the durable write, so the written file agrees and rollback restores the entries.
+  - **Guest dismissal:** in `WorkshopRoomHandler.handleDismissGuest`.
+  - **Generation loss:** in the `ConversationNotFoundError` path, which calls `clearAllConversations`. The recommendation above did not list this seam, but it ends every persona conversation the same way.
+- Surviving participants keep their entries, so temporal state otherwise stays current. A branch starts with no persona notices at all.
+
+Regression tests:
+
+- `WorkshopSessionTimeService.test.ts`: forgetting, pending resume notices, forget-all and rollback.
+- `WorkshopSessionRewindCoordinator.test.ts`: a fresh host's session-start frame after a cut drops the host; rollback restores the notice; a surviving host's hour stands; the written file agrees.
+- `WorkshopRoomHandler.roomAndRun.test.ts`: a guest re-invited after dismissal, and a host after generation loss, each receive a session-start frame within the hour.
+
+Each call site was mutation-checked: removing it fails its test.
