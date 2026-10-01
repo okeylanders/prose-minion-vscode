@@ -9,7 +9,7 @@
 
 ## Problem
 
-Both changelogs carry the epic under `[Unreleased]` ([CHANGELOG.md](../../apps/vscode-extension/CHANGELOG.md) and [CHANGELOG-DETAILED.md](../../docs/CHANGELOG-DETAILED.md)), and every package is still at 2.6.2. Sprint 03 left the version to release preparation on purpose, so once the epic merges, `main` carries Rewind and Branch without a release that names them.
+Both changelogs carry the epic under `[Unreleased]` ([CHANGELOG.md](../../apps/vscode-extension/CHANGELOG.md) and [CHANGELOG-DETAILED.md](../../docs/CHANGELOG-DETAILED.md)), and every package is still at 2.6.2. Sprint 03 left the version to release preparation on purpose, so once [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) merges, `main` carries Rewind and Branch without a release that names them.
 
 This is also the first release whose saved sessions earlier builds can't open ([ADR 2026-09-30 §9](../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#9-codec)). Writers who sync sessions through Git must update every machine first, and the release notes must keep saying so.
 

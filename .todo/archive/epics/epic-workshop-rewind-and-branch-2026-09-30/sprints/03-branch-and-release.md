@@ -198,4 +198,4 @@ Every deliverable landed except the manual smoke, which waits on Okey (kickoff d
 - [A real screenshot of the bubble actions](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low).
 - [The manual smoke on the `main` build](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), now the release gate (High).
 - [Release preparation](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (both changelogs carry `[Unreleased]`); it waits on the smoke.
-- Archive the epic: prepared in the epic's PR into `main` and effective when it merges, following PR #95's pattern ([archive note](../ARCHIVE.md)).
+- Archive the epic: prepared in [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) and effective when it merges, following PR #95's pattern ([archive note](../ARCHIVE.md)).

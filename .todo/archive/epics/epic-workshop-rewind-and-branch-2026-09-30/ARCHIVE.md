@@ -1,7 +1,7 @@
 # Workshop Rewind and Branch Epic Archive
 
 **Archive prepared:** 2026-10-01
-**Effective:** When the epic's PR into `main` merges
+**Effective:** When [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) merges to `main`
 **Release state:** Unreleased. Both changelogs carry `[Unreleased]`; [release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version after the [manual smoke](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Integration branch:** `epic/workshop-rewind-and-branch`
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01)
@@ -18,7 +18,7 @@ The excerpt, context and to-do statuses stay as they are now.
 
 Underneath, retained-history marks record where each participant's history stood after each commit. One pure transform cuts the ledger and every history together at a real rest point, and the cut room installs through Open's promotion path, with rollback on any failure. A branch is that same cut room in a new envelope, held to the Rewind oracle's expected room at all 17 rest points after the directive floor.
 
-The epic was built on its integration branch and reviewed sprint by sprint. It merges to `main` as one unit (decided 2026-09-30).
+The epic was built on its integration branch and reviewed sprint by sprint. It merges to `main` as one unit in [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) (decided 2026-09-30).
 
 ## Sprints, PRs and reviews
 

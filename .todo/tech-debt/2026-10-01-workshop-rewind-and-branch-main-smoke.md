@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-10-01
 **Reviewed**: 2026-10-01
-**Status**: Planned — Okey runs it on the `main` build after the epic merges
+**Status**: Planned — Okey runs it on the `main` build after [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) merges
 **Priority**: High (the release gate)
 **Estimated Effort**: Small (seven short Extension Development Host scenarios with cheap models)
 **Found by**: Workshop Rewind and Branch epic closure ([epic](../archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
