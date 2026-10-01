@@ -44,6 +44,10 @@ import {
   WORKSHOP_PERSISTED_SESSION_V1_TO_V2_MIGRATION,
   WorkshopPersistedSessionMigration
 } from '@/application/services/workshop/WorkshopPersistedSessionV1ToV2Migration';
+import {
+  findUnverifiableRetainedHistoryMarkKeys,
+  withoutRetainedHistoryMarkKeys
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 
 export const CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION = 2 as const;
 
@@ -158,14 +162,24 @@ export function decodeWorkshopPersistedSessionCheckpoint(
   assertCurrentWorkshopPersistedSessionEnvelope(current);
   const checkpoint = parseWorkshopSessionStateV1(current.workshop);
   const recovery = normalizeWorkshopSessionCheckpointForHydration(checkpoint);
-  assertCurrentWorkshopSessionStateV1(recovery.state);
-  assertWorkshopPersistedSessionStateV2(recovery.state);
-  validateWorkshopSessionStateV1(recovery.state);
+  // The one boundary where the aggregate meets its archive (ADR 2026-09-30
+  // §3): marks the archive cannot verify are dropped, never trusted to slice.
+  const unverifiableMarkKeys = findUnverifiableRetainedHistoryMarkKeys(
+    recovery.state.retainedHistoryMarks ?? [],
+    current.conversations as unknown[]
+  );
+  const state = withoutRetainedHistoryMarkKeys(recovery.state, unverifiableMarkKeys);
+  const normalizations = unverifiableMarkKeys.size > 0
+    ? [...recovery.normalizations, 'dropped-unverifiable-retained-history-marks' as const]
+    : recovery.normalizations;
+  assertCurrentWorkshopSessionStateV1(state);
+  assertWorkshopPersistedSessionStateV2(state);
+  validateWorkshopSessionStateV1(state);
   return {
     migrations,
-    normalizations: recovery.normalizations,
+    normalizations,
     recoveryNotices: recovery.notices,
-    session: decodeWorkshopPersistedSessionEnvelope(current, recovery.state)
+    session: decodeWorkshopPersistedSessionEnvelope(current, state)
   };
 }
 

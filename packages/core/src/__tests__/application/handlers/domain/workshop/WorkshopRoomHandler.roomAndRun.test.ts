@@ -484,6 +484,59 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       expect(service.continueConversation.mock.calls[0][1])
         .not.toContain('<workshop-time-context');
     });
+
+    // ADR 2026-09-30, Sprint 03 kickoff decision 2: a notice ends with the
+    // conversation it was delivered to, so a fresh one gets its own frame.
+    it('gives a guest re-invited within the hour of a dismissal a fresh session-start frame', async () => {
+      await pin();
+      await router.route(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'margot', openingMessage: 'Read this with us.' }
+      ) as any);
+      await router.route(message(
+        MessageType.WORKSHOP_DISMISS_GUEST,
+        { personaId: 'margot' }
+      ) as any);
+      setTimeNow(new Date('2026-07-23T14:10:00.000Z'));
+
+      await router.route(message(
+        MessageType.WORKSHOP_INVITE_GUEST,
+        { personaId: 'margot', openingMessage: 'Back for another look?' }
+      ) as any);
+
+      const [first, again] = service.startWorkshopGuestConversation.mock.calls
+        .map(([input]) => input.message);
+      expect(first).toContain('<workshop-time-context reason="session-start">');
+      expect(again).toContain('<workshop-time-context reason="session-start">');
+    });
+
+    it('gives the fresh host a session-start frame after a generation loss', async () => {
+      await pin();
+      await router.route(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Open the room.' }
+      ) as any);
+      setTimeNow(new Date('2026-07-23T14:10:00.000Z'));
+      service.continueConversation.mockRejectedValueOnce(
+        Object.assign(new Error('gone'), { name: 'ConversationNotFoundError' })
+      );
+      await router.route(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Continue.' }
+      ) as any);
+      expect(session.getHostConversationId()).toBeUndefined();
+
+      await router.route(message(
+        MessageType.WORKSHOP_SEND_MESSAGE,
+        { text: 'Start again.' }
+      ) as any);
+
+      const restarted = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0] as unknown as {
+        timeFrame?: string;
+      };
+      expect(service.startWorkshopPersonaConversation).toHaveBeenCalledTimes(2);
+      expect(restarted.timeFrame).toContain('<workshop-time-context reason="session-start">');
+    });
   });
 
   it('invites an explicit guest with the bounded room envelope and routes to its retained sidecar', async () => {

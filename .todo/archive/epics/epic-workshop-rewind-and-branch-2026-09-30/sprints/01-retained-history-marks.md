@@ -1,10 +1,10 @@
 # Sprint 01: Retained-History Marks
 
-**Status:** Planned
+**Status:** Complete — merged into `epic/workshop-rewind-and-branch` via [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117) (`b1497d8`)
 **Branch:** `sprint/workshop-rewind-and-branch-01-marks`
 **Depends on:** ADR 2026-09-30 (proposed is enough to start)
 **Blocks:** Sprints 02 and 03
-**Mergeable alone:** Yes. There is no user-visible behavior; marks begin accruing in real sessions.
+**Mergeable alone:** Yes in principle (no user-visible behavior), but not merged early: the epic merges to `main` as one unit (decided 2026-09-30).
 
 ## Goal
 
@@ -36,7 +36,7 @@ Make "where did each participant's history stand after turn T?" an exact, persis
    - Add integrity rules in `WorkshopSessionStateV1Integrity.ts`: the turn exists, the key is well-formed, `messageCount` is even and ≥ 0, and marks are non-decreasing per key in ledger order.
    - At the persisted-session boundary, check each key against its archive length. A key whose marks exceed its archive is dropped with a logged `WorkshopSessionCheckpointNormalization`-style entry.
    - No `schemaVersion` bump (ADR §9).
-7. **Rewindability.** Add `session/WorkshopRewindPolicy.ts` with two layers. They stay separate so that non-bubble callers, starting with [Side Quests](../../../features/feature-workshop-side-quests/README.md), can cut at dividers.
+7. **Rewindability.** Add `session/WorkshopRewindPolicy.ts` with two layers. They stay separate so that non-bubble callers, starting with [Side Quests](../../../../features/feature-workshop-side-quests/README.md), can cut at dividers.
    - **Cut layer: `evaluateCut(cut)`.** A pure function from ledger + marks + directive markers + run state that answers "can the room be cut here?" for any cut `{ kind: 'afterTurn' | 'beforeTurn'; turnId }`, including dividers and session markers. It returns `{ ok: true } | { ok: false; reason: 'not-a-rest-point' | 'before-rewind-support' | 'before-directive-change' | 'busy' }`, covering ADR §1 rest points and §4. The ledger head while idle is always a valid `afterTurn` cut.
    - **Bubble layer.** A thin mapping from eligible bubbles to their cut (ADR §1 table), then `evaluateCut`. Ineligible bubbles report `not-a-rest-point`.
    - **Snapshot.** Publish the bubble result on the snapshot for windowed turns only, as a display-safe map or per-turn field. Update `WorkshopSessionSnapshot` docs and the webview type, but do not render it yet.
@@ -71,3 +71,20 @@ Make "where did each participant's history stand after turn T?" an exact, persis
 ## Exit
 
 Scripted-room marks match oracle counts at every rest point. Marks persist, round-trip and prune correctly. The rewindability flag is on the snapshot. Full Jest, all TypeScript projects, ESLint and `git diff --check` pass.
+
+## Delivery notes (2026-09-30)
+
+The deliverables landed with these corrections, each also recorded in the ADR's [Sprint 01 implementation findings](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-01-implementation-findings):
+
+- **Recording site.** Marks are recorded by the completion boundary after the run settles, not inside `WorkshopSessionService.completeRun`. `completeWorkshopRun` gained a required `readRetainedHistory` reader and a `settleCommittedRun` hook; the three handler call sites moved their post-completion bookkeeping into it unchanged. `adoptWriterReport` records the tool report's mark. The shared step is `WorkshopRetainedHistoryCommit.ts`.
+- **Pruning.** It also covers excerpt-revision sidecar retirement and a completion that rebinds a participant to a different conversation.
+- **Commit-only change.** `abandonRun` removes the provisional widget manifest row, so a participant's latest mark describes it at every rest point.
+- **Boundary equality.** The persisted boundary requires the latest mark to equal its archive, not just not exceed it.
+- **Recovery equality.** It ignores marks.
+
+**Modules.**
+- `session/WorkshopRetainedHistoryMarks.ts` holds the pure rules shared by integrity, normalization, the persisted boundary and hydration.
+- `session/WorkshopRetainedHistoryLedger.ts` is the collaborator.
+- `session/WorkshopRewindPolicy.ts` holds the cut and bubble layers; `evaluateCut` returns `keptThroughTurnId`.
+
+**Shared test asset.** `__tests__/application/services/workshop/session/ScriptedWorkshopRoom.ts` drives the real aggregate, a real `ConversationManager`, room delivery and the production completion boundary. `runCanonicalScriptedRoom()` captures `{ workshop, archive }` at every rest point for Sprint 02's equivalence oracle.

@@ -1054,6 +1054,29 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(assistant.discardConversation).not.toHaveBeenCalledWith('old-host');
   });
 
+  it('rolls back New when the reset itself fails, before anything is written', async () => {
+    // New shares the room-replacement transaction (ADR 2026-09-30, Sprint 03
+    // kickoff decision 1): a throw anywhere inside it restores the prior room.
+    const coordinator = createCoordinator();
+    await coordinator.initialize();
+    await coordinator.flush();
+    session.setExcerpt({ text: 'Keep this workspace.', source: { kind: 'manual' } });
+    session.beginPersonaMessage('old-run', 'Keep this thread.');
+    session.completeRun('old-run', 'Kept.', undefined, false, 'old-host');
+    const turnsBefore = session.readRoomLedger().map((turn) => turn.id);
+    const writes = store.writeCurrent.mock.calls.length;
+    jest.spyOn(time, 'reset').mockImplementationOnce(() => {
+      throw new Error('clock reset failed');
+    });
+
+    await expect(coordinator.resetSession()).rejects.toThrow('clock reset failed');
+
+    expect(session.readRoomLedger().map((turn) => turn.id)).toEqual(turnsBefore);
+    expect(session.getHostConversationId()).toBe('old-host');
+    expect(assistant.discardConversation).not.toHaveBeenCalledWith('old-host');
+    expect(store.writeCurrent.mock.calls).toHaveLength(writes);
+  });
+
   it('rolls back a FULL reset when durable current promotion fails', async () => {
     const coordinator = createCoordinator();
     await coordinator.initialize();

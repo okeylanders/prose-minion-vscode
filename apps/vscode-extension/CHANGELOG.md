@@ -2,6 +2,26 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- Workshop replies and your own messages have new actions underneath.
+  - **Rewind to here** returns the room to a reply, including what every participant remembers, and removes everything after it.
+  - **Edit from here** removes one of your messages and everything after it. The message goes back to the composer, or its widget reopens, so you can change it and send it again to the same participant.
+  - **Branch from here** leaves the conversation as it is and opens a new saved session that starts at that point. Save the session first; an unsaved room asks you to. If the saved file changed on disk, for example after a Git pull, Branch asks you to reopen it or save the room as a new session first.
+- Rewind and Branch keep your excerpt, context, and to-do statuses as they are now.
+
+### Fixed
+
+- A host or guest that starts a fresh conversation now gets its date and time context on its first reply, instead of up to an hour later. This covers editing the first message, re-inviting a dismissed guest, and a conversation reset after settings change.
+
+### Upgrade notes
+
+- **Sessions saved by this release can't be opened by earlier versions of Prose Minion.** If you sync Workshop sessions through Git, update Prose Minion on every machine before you open sessions saved by this release. An earlier version refuses such a session and leaves it unchanged.
+- In sessions saved by earlier versions, Rewind and Branch work from the point you reopen them. Earlier turns show a disabled action with the reason "Saved before rewind support".
+- If you rewind past a widget's message instead of editing that message, the widget doesn't reopen. To use it again, start it from the Widgets browser.
+
 ## [2.6.2] - 2026-09-29
 
 ### Added

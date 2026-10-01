@@ -19,6 +19,9 @@ import type {
 import {
   assertWorkshopWidgetDraftIntegrity
 } from '@/application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle';
+import {
+  findInconsistentRetainedHistoryMarkKeys
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 
 export interface WorkshopSessionStateV1ValidationOptions {
   /**
@@ -29,6 +32,12 @@ export interface WorkshopSessionStateV1ValidationOptions {
   allowLegacyOpenSessionWithExcerpt?: boolean;
   /** Raw checkpoint preflight runs before widget-local normalization. */
   skipWidgetDraftIntegrity?: boolean;
+  /**
+   * Raw checkpoint preflight runs before retained-history marks are
+   * reconciled (ADR 2026-09-30 §3): an inconsistent mark is dropped with a
+   * logged normalization, never allowed to refuse a writer's session open.
+   */
+  skipRetainedHistoryMarkIntegrity?: boolean;
 }
 
 export function validateWorkshopSessionStateV1(
@@ -503,6 +512,16 @@ export function validateWorkshopSessionStateV1(
     )
   ) {
     throw new Error('Persisted Workshop chat target references a non-live guest');
+  }
+
+  if (options.skipRetainedHistoryMarkIntegrity !== true) {
+    const inconsistentMarkKeys = [...findInconsistentRetainedHistoryMarkKeys(state)];
+    if (inconsistentMarkKeys.length > 0) {
+      throw new Error(
+        'Persisted Workshop retained-history marks are inconsistent ' +
+        `(keys=${inconsistentMarkKeys.sort().join(',')})`
+      );
+    }
   }
 }
 

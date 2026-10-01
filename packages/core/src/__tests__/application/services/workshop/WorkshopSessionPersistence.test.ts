@@ -537,6 +537,37 @@ describe('WorkshopSessionService committed persistence', () => {
       .not.toHaveProperty('deliveredToHostThroughTurnId');
   });
 
+  it('leaves absent offsets absent for participants that retain no conversation (ADR 2026-09-30)', () => {
+    const state = buildCompleteState();
+    // An unbound host has read nothing; a disposed guest reads nothing again
+    // until a re-invitation adopts a fresh offset at its join.
+    delete state.participants.host.conversationKey;
+    delete state.participants.host.lastSeenRoomTurnId;
+    state.writerSources.host = [];
+    delete state.revisions.pendingExcerpt;
+    delete state.revisions.pendingContext;
+    state.participants.personaGuests = state.participants.personaGuests.map((guest) => ({
+      personaId: guest.personaId,
+      liveness: 'disposed' as const
+    }));
+    state.writerSources.guests = [];
+    state.participants.chatTarget = { kind: 'host' };
+    state.retainedHistoryMarks = (state.retainedHistoryMarks ?? [])
+      .filter((mark) => mark.conversationKey.startsWith('tool:'));
+
+    const restored = new WorkshopSessionService(() => 50_000);
+    const result = restored.hydrateCommittedState(state, {
+      ['tool:prose']: 'restored-tool'
+    }, currentBehavior);
+    const hydrated = restored.exportCommittedState();
+
+    expect(result.normalizations).not.toContain('headed-missing-room-offsets');
+    expect(hydrated.participants.host.lastSeenRoomTurnId).toBeUndefined();
+    expect(hydrated.participants.personaGuests[0].lastSeenRoomTurnId).toBeUndefined();
+    // The fresh host's first run therefore receives the whole room as catch-up.
+    expect(restored.readRoomDeliveryState({ kind: 'host' }).lastSeenRoomTurnId).toBeUndefined();
+  });
+
   it('rejects capability publication that does not point to its participant reply', () => {
     const state = buildCompleteState();
     const capabilityTurn = state.turns.find((turn) => turn.artifact === 'tool_report')!;

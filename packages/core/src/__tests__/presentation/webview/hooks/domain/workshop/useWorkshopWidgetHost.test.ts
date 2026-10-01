@@ -52,4 +52,22 @@ describe('useWorkshopWidgetHost', () => {
     expect(result.current.widgetConfigResponseId).toBeNull();
     expect(result.current.widgetConfigError).toBeNull();
   });
+
+  it('holds a released config the host asked to reopen until it is consumed', () => {
+    const { result } = renderHook(() => useWorkshopWidgetHost());
+    expect(result.current.restoredWidgetConfigId).toBeNull();
+
+    act(() => result.current.handleWidgetConfigRestored({
+      type: MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: { widgetConfigId: 'wc-4' }
+    }));
+    expect(result.current.restoredWidgetConfigId).toBe('wc-4');
+    // Restoring asks for nothing by itself; the opening controller does.
+    expect(mockVSCode.postMessage).not.toHaveBeenCalled();
+
+    act(() => result.current.consumeRestoredWidgetConfig());
+    expect(result.current.restoredWidgetConfigId).toBeNull();
+  });
 });

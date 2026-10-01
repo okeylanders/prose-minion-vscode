@@ -852,3 +852,194 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(metadata).not.toContain('0 bytes searched');
   });
 });
+
+describe('WorkshopTurnBubble Rewind action (ADR 2026-09-30 §4)', () => {
+  const noop = () => undefined;
+  const hostReply: WorkshopTurn = {
+    id: 'turn-4-assistant-1',
+    role: 'assistant',
+    kind: 'message',
+    participant: 'host',
+    artifact: 'persona_message',
+    personaId: 'jill',
+    personaLabel: 'Jill',
+    content: 'A host reply.',
+    timestamp: 0,
+    excerptVersion: 1
+  };
+  const writerMessage: WorkshopTurn = {
+    id: 'turn-3-user-1',
+    role: 'user',
+    kind: 'message',
+    participant: 'writer',
+    artifact: 'persona_message',
+    content: 'What does the cup mean?',
+    timestamp: 0,
+    excerptVersion: 1
+  };
+  const renderBubble = (
+    turn: WorkshopTurn,
+    props: Partial<React.ComponentProps<typeof WorkshopTurnBubble>> = {}
+  ) => render(
+    <WorkshopTurnBubble
+      turn={turn}
+      quickActionToolId={null}
+      onQuickAction={noop}
+      onTalkDirectly={noop}
+      onCopy={noop}
+      onSave={noop}
+      {...props}
+    />
+  );
+
+  it('offers Rewind on an agent reply and calls back with the turn', () => {
+    const onRewind = jest.fn();
+    renderBubble(hostReply, { rewindability: { available: true }, onRewind });
+
+    const action = screen.getByRole('button', { name: /Rewind to here/ });
+    expect((action as HTMLButtonElement).disabled).toBe(false);
+    expect(action.getAttribute('title')).toBe('Keep this reply and remove everything after it');
+    fireEvent.click(action);
+    expect(onRewind).toHaveBeenCalledWith(hostReply);
+  });
+
+  it('gives a writer message its own footer, where rewinding is an edit', () => {
+    const onRewind = jest.fn();
+    const { container } = renderBubble(writerMessage, {
+      rewindability: { available: true },
+      onRewind
+    });
+
+    expect(container.querySelector('.pm-ws-turn-user .pm-ws-turn-actions-writer')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Edit from here/ }));
+    expect(onRewind).toHaveBeenCalledWith(writerMessage);
+  });
+
+  it('edits a widget-commit message in its widget, not the composer (Sprint 03 kickoff decision 3)', () => {
+    const onRewind = jest.fn();
+    const widgetMessage: WorkshopTurn = {
+      ...writerMessage,
+      widgetCommit: {
+        widgetId: 'gesture-playground',
+        widgetConfigId: 'wc-1',
+        rail: 'thread-artifact',
+        artifactId: 'ta-2',
+        selectionCount: 1
+      }
+    };
+    renderBubble(widgetMessage, { rewindability: { available: true }, onRewind });
+
+    const action = screen.getByRole('button', { name: /Edit from here/ });
+    expect(action.getAttribute('title'))
+      .toBe('Remove this message and everything after it; its widget reopens so you can send it again');
+    expect(screen.queryByRole('button', { name: /Rewind to here/ })).toBeNull();
+    fireEvent.click(action);
+    expect(onRewind).toHaveBeenCalledWith(widgetMessage);
+  });
+
+  it.each([
+    ['before-rewind-support', 'Saved before rewind support'],
+    ['before-directive-change', "Can't cross a prose directive change yet"],
+    ['busy', 'Wait for the current response to finish']
+  ] as const)('disables the action with its reason when the host says %s', (reason, text) => {
+    const onRewind = jest.fn();
+    renderBubble(hostReply, { rewindability: { available: false, reason }, onRewind });
+
+    const action = screen.getByRole('button', { name: /Rewind to here/ });
+    expect((action as HTMLButtonElement).disabled).toBe(true);
+    expect(action.getAttribute('title')).toBe(text);
+    fireEvent.click(action);
+    expect(onRewind).not.toHaveBeenCalled();
+  });
+
+  it('pauses an available action while the room is busy, with the paused reason', () => {
+    renderBubble(hostReply, {
+      rewindability: { available: true },
+      rewindPausedReason: 'Wait for the current session change to finish',
+      onRewind: jest.fn()
+    });
+
+    const action = screen.getByRole('button', { name: /Rewind to here/ }) as HTMLButtonElement;
+    expect(action.disabled).toBe(true);
+    expect(action.getAttribute('title')).toBe('Wait for the current session change to finish');
+  });
+
+  it('offers nothing where the host published no verdict', () => {
+    renderBubble(hostReply, { onRewind: jest.fn() });
+    expect(screen.queryByRole('button', { name: /Rewind to here/ })).toBeNull();
+  });
+
+  describe('Branch action (ADR 2026-09-30 §7)', () => {
+    it('sits beside Rewind on an agent reply and calls back with the turn', () => {
+      const onBranch = jest.fn();
+      renderBubble(hostReply, {
+        rewindability: { available: true },
+        onRewind: jest.fn(),
+        branchability: { available: true },
+        onBranch
+      });
+
+      const footer = screen.getByRole('button', { name: /Rewind to here/ }).parentElement!;
+      const action = screen.getByRole('button', { name: /Branch from here/ });
+      expect(action.parentElement).toBe(footer);
+      expect(action.getAttribute('title'))
+        .toBe('Start a new session that ends with this reply; this one stays as it is');
+      fireEvent.click(action);
+      expect(onBranch).toHaveBeenCalledWith(hostReply);
+    });
+
+    it('sits beside Edit in a writer message\'s footer', () => {
+      const onBranch = jest.fn();
+      const { container } = renderBubble(writerMessage, {
+        rewindability: { available: true },
+        onRewind: jest.fn(),
+        branchability: { available: true },
+        onBranch
+      });
+
+      const footer = container.querySelector('.pm-ws-turn-actions-writer')!;
+      expect(footer.querySelector('.pm-ws-rewind-action')).not.toBeNull();
+      expect(footer.querySelector('.pm-ws-branch-action')?.getAttribute('title'))
+        .toBe('Start a new session from just before this message; its text returns to the composer there');
+      fireEvent.click(screen.getByRole('button', { name: /Branch from here/ }));
+      expect(onBranch).toHaveBeenCalledWith(writerMessage);
+    });
+
+    it('stands alone where only Branch has a verdict, as on the latest reply', () => {
+      const { container } = renderBubble(writerMessage, {
+        branchability: { available: true },
+        onBranch: jest.fn()
+      });
+
+      expect(screen.queryByRole('button', { name: /Edit from here/ })).toBeNull();
+      expect(container.querySelector('.pm-ws-turn-actions-writer .pm-ws-branch-action')).not.toBeNull();
+    });
+
+    it.each([
+      ['before-rewind-support', 'Saved before rewind support'],
+      ['before-directive-change', "Can't cross a prose directive change yet"],
+      ['busy', 'Wait for the current response to finish']
+    ] as const)('disables the action with the host reason when it says %s', (reason, text) => {
+      const onBranch = jest.fn();
+      renderBubble(hostReply, { branchability: { available: false, reason }, onBranch });
+
+      const action = screen.getByRole('button', { name: /Branch from here/ }) as HTMLButtonElement;
+      expect(action.disabled).toBe(true);
+      expect(action.getAttribute('title')).toBe(text);
+      fireEvent.click(action);
+      expect(onBranch).not.toHaveBeenCalled();
+    });
+
+    it('pauses with the room-wide reason, including the D7 persistence reason', () => {
+      renderBubble(hostReply, {
+        branchability: { available: true },
+        branchPausedReason: 'Branch needs an open workspace folder',
+        onBranch: jest.fn()
+      });
+
+      const action = screen.getByRole('button', { name: /Branch from here/ }) as HTMLButtonElement;
+      expect(action.disabled).toBe(true);
+      expect(action.getAttribute('title')).toBe('Branch needs an open workspace folder');
+    });
+  });
+});

@@ -5,6 +5,58 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Workshop Rewind and Branch
+
+### Overview
+
+The [Workshop Rewind and Branch epic](../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md) ([ADR 2026-09-30](adr/2026-09-30-workshop-rewind-and-branch.md)) ships three sprints as one unit:
+
+- retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117);
+- Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119);
+- Branch and release readiness, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120).
+
+Writers can return the Workshop room to any eligible reply or message, exactly, or branch a saved session from that point into a new named session.
+
+### Added — retained-history marks
+
+- Every settled commit records a host-private mark. A mark holds each retained history's message, context-source, and writer-source counts, its room offset, and, for the host, the context revision it holds.
+- Discards prune marks, and hydration records baselines. Strict integrity checks drop an inconsistent key, which degrades rewindability rather than failing a session open.
+- The webview receives only a per-turn `turnRewindability` verdict.
+
+### Added — Rewind
+
+- One pure transform, `rewindWorkshopSession`, cuts the ledger and every retained history together at a real rest point, slicing only at marks.
+- The working set stays current. Pending excerpt and context updates are re-queued for a surviving host, and id counters are never lowered.
+- `rewindTo` installs the cut room through Open's promotion core and writes it before reporting success. Any failure restores the prior room.
+- A writer message rewinds as an edit. Its text and one-shot attachments return to the composer; a widget commit's released config reopens in its widget. Either edit is addressed to the participant the message went to.
+
+### Added — Branch
+
+- `branchFrom` saves the cut room as a new named session and opens it through the named-session promotion Open uses. The new session has a fresh identity and timestamps, a fresh temporal start in the source's timezone, the title `"<source> — branch"`, and a summary rebuilt from the cut room.
+- The source session file is never written. A failed save leaves no file behind. A failed open restores the prior room and reports the saved branch, which stays openable from Sessions.
+- Branch reads the source file back and compares it with the checkpoint the room accepted. It does this before writing anything, and again at the commit that replaces `current.json`, immediately before its atomic rename. A missing, unreadable or replaced source is refused, so a Git change made while the room is open cannot cost the room its only complete copy.
+- An unnamed room shows a "Save before branching" popup, and the host refuses it regardless. A named room with unsaved changes is refused too.
+- Branch is offered on the latest reply, where Rewind is not.
+- The startup notice moves to `v4` and leads with a Rewind and Branch page.
+
+### Fixed
+
+- Time-notice entries now end with their conversation: rewind drops and degraded imports, guest dismissal, and generation loss. A fresh host or guest gets a session-start time frame on its first turn.
+- New's reset now rolls back fully if anything in the reset itself fails.
+
+### Compatibility and verification
+
+- `retainedHistoryMarks` is an optional field, so no `schemaVersion` bump is needed (ADR §9). Every Workshop validator is exact-key, however, so **a build older than this release refuses any session this release writes**. The refusal is safe: a named file is left untouched, and a failed `current.json` is protected from overwrite. Writers who sync sessions through Git must update every machine first.
+- **Sprint 02 follow-ups, release disposition:**
+  - [Time notices outlive their conversations](../.todo/archive/tech-debt/2026-09-30-workshop-time-notices-outlive-conversations.md): fixed.
+  - [Rewound widget commits](../.todo/archive/tech-debt/2026-09-30-workshop-rewound-widget-commit-reopen.md): fixed for the widget's own message. A cut that skips past a commit releases its config without reopening it, which is accepted and named in the upgrade notes.
+- **Review:** the [PR #120 review](pr-reviews/pr-120-workshop-branch-16c751b-review.md) found three issues: a source file changed on disk, a widget edit's addressee, and notices after a degraded import. All three were fixed before integration, each with mutation-checked regressions.
+- **Proof:**
+  - The Rewind equivalence oracle covers every rest point of the canonical scripted room.
+  - Branch's key proof holds each branch file to the oracle's expected room at all 17 rest points after the directive floor, with the source file byte-identical.
+  - Rollback is fault-injected at transform, import, hydrate, and write for Rewind, and at transform, branch write, import, hydrate, and mirror for Branch.
+  - The manual Extension Development Host smoke checklist (seven scenarios) is in the [epic memory-bank entry](../.memory-bank/20261001-1105-workshop-rewind-and-branch.md). Its results are recorded there before release.
+
 ## [2.6.2] - 2026-09-29 — GPT-6.1 Sol model choices
 
 - Added `openai/gpt-6.1-sol` and `openai/gpt-6.1-sol-pro` to the shared Recommended Models catalog and Category Search settings enum. The same shared list feeds Assistant, Dictionary, Context, Workshop, and Conversation Widgets.

@@ -48,6 +48,36 @@ export type WorkshopRuntimeConversationBindings = Readonly<
   Partial<Record<WorkshopConversationLogicalKey, string>>
 >;
 
+/**
+ * Where one participant's retained provider history stood at a ledger turn
+ * (ADR 2026-09-30 §3). The room ledger and each retained history are parallel
+ * ordered records with no shared index; a mark is the recorded bridge that
+ * lets a rewind cut both at the same moment without parsing message formats.
+ *
+ * Host-private: marks never enter the webview snapshot.
+ */
+export interface WorkshopRetainedHistoryMarkV1 {
+  /** Ledger turn at which this participant state held (reply/report/join turn, or head for a baseline). */
+  turnId: string;
+  conversationKey: WorkshopConversationLogicalKey;
+  /** Archived message count, system message excluded. Always even. */
+  messageCount: number;
+  /** Committed ConversationManager contextSources rows at this point. */
+  contextSourceCount: number;
+  /** The participant's writer-source manifest rows at this point. */
+  writerSourceCount: number;
+  /** Reader offset at this point; absent for tool sidecars (instruments read nothing). */
+  lastSeenRoomTurnId?: string;
+  /**
+   * Host marks only: the context revision the host holds at this point. The
+   * ledger shows no reliable record of context delivery (a session-open file
+   * refresh changes the revision without a divider), so a rewind re-queues
+   * pending context exactly when this is older than the current revision.
+   */
+  contextRevision?: number;
+  origin: 'commit' | 'baseline';
+}
+
 export interface WorkshopSessionStateV1 {
   excerpt?: WorkshopExcerpt;
   /**
@@ -147,6 +177,13 @@ export interface WorkshopSessionStateV1 {
   };
   selectedToolId?: WorkshopToolId;
   todos: WorkshopStoredTodoItemV1[];
+  /**
+   * Retained-history marks in ledger order (ADR 2026-09-30 §3). OPTIONAL in
+   * the persisted grammar, like `widgetConfigs` before it (ADR 2026-07-30: an
+   * optional field invalidates no prior shape, so no schema bump). Absent
+   * means no marks; hydration records baselines at the ledger head.
+   */
+  retainedHistoryMarks?: WorkshopRetainedHistoryMarkV1[];
   lastCommittedPersonaBehavior?: Pick<
     WorkshopConversationBehavior,
     'interactionMode' | 'expressionLevel' | 'relationalDepth'
@@ -168,7 +205,10 @@ export function parseWorkshopSessionStateV1(value: unknown): WorkshopSessionStat
   // against current invariants before replacing the live aggregate.
   validateWorkshopSessionStateV1(decoded, {
     allowLegacyOpenSessionWithExcerpt: true,
-    skipWidgetDraftIntegrity: true
+    skipWidgetDraftIntegrity: true,
+    // An inconsistent mark degrades rewindability, never a session open:
+    // checkpoint normalization drops such keys before strict validation.
+    skipRetainedHistoryMarkIntegrity: true
   });
   return decoded;
 }

@@ -114,6 +114,7 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT]:
       gesturePlayground.handleWidgetMenuResult,
     [MessageType.WORKSHOP_WIDGET_CONFIG_DATA]: widgetHost.handleWidgetConfigData,
+    [MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED]: widgetHost.handleWidgetConfigRestored,
     [MessageType.WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS]:
       gesturePlayground.handleWidgetGenerationProgress,
     [MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS]:

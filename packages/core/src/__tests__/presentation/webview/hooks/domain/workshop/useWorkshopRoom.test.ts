@@ -32,6 +32,7 @@ const stateWithTurns = (turns: WorkshopTurn[], totalTurns = turns.length): Works
       standingDirectives: [],
       todos: [],
       turns,
+      turnRewindability: {},
       totalTurns,
       truncatedTurns: Math.max(0, totalTurns - turns.length),
       roomHasMemory: turns.length > 0,
@@ -78,6 +79,36 @@ describe('useWorkshopRoom', () => {
       source: 'webview.workshop',
       payload: {}
     }));
+  });
+
+  it('lets a shorter snapshot replace the thread and its rewind verdicts wholesale (ADR 2026-09-30)', () => {
+    const turn = (id: string, role: 'user' | 'assistant'): WorkshopTurn => ({
+      id,
+      role,
+      kind: 'message',
+      participant: role === 'user' ? 'writer' : 'host',
+      artifact: 'persona_message',
+      content: id,
+      timestamp: 1,
+      excerptVersion: 0
+    });
+    const long = [turn('w1', 'user'), turn('r1', 'assistant'), turn('w2', 'user'), turn('r2', 'assistant')];
+    const { result } = renderHook(() => useWorkshopRoom());
+    const withVerdicts = (turns: WorkshopTurn[]) => {
+      const state = stateWithTurns(turns);
+      state.payload.session.turnRewindability = Object.fromEntries(
+        turns.map((entry) => [entry.id, { available: true as const }])
+      );
+      return state;
+    };
+
+    act(() => result.current.handleSessionState(withVerdicts(long)));
+    expect(Object.keys(result.current.turnRewindability)).toEqual(['w1', 'r1', 'w2', 'r2']);
+
+    act(() => result.current.handleSessionState(withVerdicts(long.slice(0, 2))));
+    expect(result.current.turns.map((entry) => entry.id)).toEqual(['w1', 'r1']);
+    expect(Object.keys(result.current.turnRewindability)).toEqual(['w1', 'r1']);
+    expect(result.current.hiddenTurns).toBe(0);
   });
 
   it('turns each restored transient send into a fresh composer seed', () => {

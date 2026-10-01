@@ -295,4 +295,45 @@ describe('WorkshopAnalysisSidePass', () => {
       context: { material: 'no context attachments', mode: 'inherit' }
     });
   });
+
+  it('marks each adopted writer report, restarting the tool key on replacement (ADR 2026-09-30 §3)', () => {
+    const histories = new Map([
+      ['prose-conv-1', { messageCount: 4, contextSourceCount: 1 }],
+      ['prose-conv-2', { messageCount: 2, contextSourceCount: 0 }]
+    ]);
+    const service = {
+      discardConversation: jest.fn(),
+      readWorkshopRetainedHistory: jest.fn((id: string) => histories.get(id))
+    } as unknown as jest.Mocked<AssistantToolService>;
+    const session = new WorkshopSessionService(() => 3);
+    session.setExcerpt({ text: 'The cup moves.', source: { kind: 'manual' } });
+    const log = { appendLine: jest.fn() } as unknown as LogSink;
+    const sidePass = new WorkshopAnalysisSidePass(service, session, log);
+
+    session.beginToolRun('prose', 'run-1');
+    const first = sidePass.adoptWriterReport({
+      requestId: 'run-1', content: 'First report.', conversationId: 'prose-conv-1', toolId: 'prose'
+    })!;
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([{
+      turnId: first.turn.id,
+      conversationKey: 'tool:prose',
+      messageCount: 4,
+      contextSourceCount: 1,
+      // A fresh sidecar's manifest is the pin its run received.
+      writerSourceCount: 1,
+      origin: 'commit'
+    }]);
+
+    session.beginToolRun('prose', 'run-2');
+    const second = sidePass.adoptWriterReport({
+      requestId: 'run-2', content: 'Second report.', conversationId: 'prose-conv-2', toolId: 'prose'
+    })!;
+
+    // The replaced conversation is gone, so its (longer) marks cannot
+    // describe the new sidecar: the sequence restarts at the new report.
+    expect(service.discardConversation).toHaveBeenCalledWith('prose-conv-1');
+    expect(session.exportCommittedState().retainedHistoryMarks).toEqual([
+      expect.objectContaining({ turnId: second.turn.id, conversationKey: 'tool:prose', messageCount: 2 })
+    ]);
+  });
 });

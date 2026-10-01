@@ -118,6 +118,9 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
   const session = new WorkshopSessionService(() => 1);
   const contextBudgets = new Map<string, ContextBudgetSnapshot>();
   const contextSources = new Map<string, import('@messages').ContextSourceEntry[]>();
+  // Committed history grows by one exchange per completed run; the completion
+  // boundary reads it exactly once per commit (ADR 2026-09-30 §3).
+  const retainedHistory = new Map<string, number>();
   const postMessage = jest.fn().mockResolvedValue(undefined);
   const log = { appendLine: jest.fn() } as unknown as LogSink;
   const disposeStatusListener = jest.fn();
@@ -144,6 +147,12 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     replaceWorkshopConversationSettings: jest.fn().mockResolvedValue(undefined),
     discardConversation: jest.fn((conversationId: string) => {
       contextBudgets.delete(conversationId);
+      retainedHistory.delete(conversationId);
+    }),
+    readWorkshopRetainedHistory: jest.fn((conversationId: string) => {
+      const messageCount = (retainedHistory.get(conversationId) ?? 0) + 2;
+      retainedHistory.set(conversationId, messageCount);
+      return { messageCount, contextSourceCount: 0 };
     }),
     getConversationContextBudget: jest.fn((conversationId: string | undefined) =>
       conversationId ? contextBudgets.get(conversationId) : undefined
@@ -231,6 +240,8 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     resetSession: jest.fn(async () => {
       session.reset().forEach((conversationId) => service.discardConversation(conversationId));
     }),
+    rewindTo: jest.fn(),
+    branchFrom: jest.fn(),
     saveNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-1', title: 'Saved Room' }),
     list: jest.fn().mockResolvedValue({
       availability: { available: true },

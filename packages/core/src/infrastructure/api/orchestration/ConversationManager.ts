@@ -78,6 +78,17 @@ export interface ConversationArchiveEntryV1<K extends string = string> {
   nextArtifactNumber: number;
 }
 
+/**
+ * Committed retained-history lengths, measured in the same units the archive
+ * persists: messages exclude the replaceable system prompt, and context
+ * sources count manifest rows. Applications record these beside their own
+ * ledger so a later cut can slice an archive to an exact committed prefix.
+ */
+export interface ConversationHistoryCounts {
+  messageCount: number;
+  contextSourceCount: number;
+}
+
 export interface ConversationExportTarget<K extends string = string> {
   key: K;
   conversationId: string;
@@ -94,13 +105,33 @@ export type ConversationImportOutcome<K extends string = string> =
 
 /**
  * Supersede identity for a manifest row: re-delivering the same canonical
- * resource (or same-kind/same-label item) REPLACES its entry instead of
- * duplicating it (Sprint 12 Phase 7).
+ * resource (or same-kind/same-label item) supersedes its earlier row. The
+ * earlier row stays as stale, dimmed history (Sprint 12 Phase 7), because the
+ * history really does still carry that earlier delivery.
  */
 const contextSourceKey = (entry: ContextSourceEntry): string =>
   `${entry.kind}${entry.origin}${entry.configuredResource
     ? `${entry.configuredResource.group}:${entry.configuredResource.path}`
     : `label:${entry.label}`}`;
+
+/**
+ * Recompute the supersede chain over committed manifest rows: the latest row
+ * for each resource is live and every earlier one is stale. A history cut
+ * keeps a prefix of the rows (ADR 2026-09-30), and a row superseded only
+ * after the cut must become live again.
+ */
+export function withContextSourceSupersedeChain(
+  sources: readonly ContextSourceEntry[]
+): ContextSourceEntry[] {
+  const latestIndexByKey = new Map<string, number>();
+  sources.forEach((entry, index) => latestIndexByKey.set(contextSourceKey(entry), index));
+  return sources.map((entry, index) => {
+    const { stale: _stale, ...row } = cloneContextSource(entry);
+    return latestIndexByKey.get(contextSourceKey(entry)) === index
+      ? row
+      : { ...row, stale: true };
+  });
+}
 
 export class ConversationManager {
   private conversations: Map<string, ConversationContext> = new Map();
@@ -373,9 +404,11 @@ export class ConversationManager {
 
   /**
    * Commit agent-fetched manifest rows for an atomically committed turn
-   * (Sprint 12 Phase 7). Re-delivered canonical resources replace their
-   * prior row. Callers commit only after history commits — a cancelled turn
-   * never reaches this, so the prior manifest survives it.
+   * (Sprint 12 Phase 7). A re-delivered canonical resource appends a new row
+   * and marks its earlier row stale, so rows only ever grow and a retained-
+   * history mark's row count slices to exactly what the history held (ADR
+   * 2026-09-30). Callers commit only after history commits — a cancelled
+   * turn never reaches this, so the prior manifest survives it.
    */
   appendContextSources(conversationId: string, entries: readonly ContextSourceEntry[]): void {
     const conversation = this.conversations.get(conversationId);
@@ -385,19 +418,31 @@ export class ConversationManager {
     conversation.contextSources ??= [];
     for (const entry of entries) {
       const key = contextSourceKey(entry);
-      const existingIndex = conversation.contextSources.findIndex(
-        (existing) => contextSourceKey(existing) === key
-      );
-      const stored = {
-        ...entry,
-        configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
-      };
-      if (existingIndex === -1) {
-        conversation.contextSources.push(stored);
-      } else {
-        conversation.contextSources[existingIndex] = stored;
+      for (const existing of conversation.contextSources) {
+        if (existing.stale !== true && contextSourceKey(existing) === key) {
+          existing.stale = true;
+        }
       }
+      // A delivery is live when it lands; only a later delivery supersedes it.
+      const { stale: _stale, ...stored } = cloneContextSource(entry);
+      conversation.contextSources.push(stored);
     }
+  }
+
+  /**
+   * History lengths an archive of this conversation would carry right now.
+   * Every turn commits atomically through addMessages, so held messages are
+   * always committed; undefined names a conversation this manager lacks.
+   */
+  getCommittedHistoryCounts(conversationId: string): ConversationHistoryCounts | undefined {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      return undefined;
+    }
+    return {
+      messageCount: Math.max(0, conversation.messages.length - 1),
+      contextSourceCount: conversation.contextSources?.length ?? 0
+    };
   }
 
   getContextSources(conversationId: string | undefined): ContextSourceEntry[] {
@@ -603,12 +648,14 @@ export class ConversationManager {
   }
 }
 
-const cloneContextSources = (
-  sources: readonly ContextSourceEntry[]
-): ContextSourceEntry[] => sources.map((entry) => ({
+const cloneContextSource = (entry: ContextSourceEntry): ContextSourceEntry => ({
   ...entry,
   configuredResource: entry.configuredResource ? { ...entry.configuredResource } : undefined
-}));
+});
+
+const cloneContextSources = (
+  sources: readonly ContextSourceEntry[]
+): ContextSourceEntry[] => sources.map(cloneContextSource);
 
 const duplicateValues = <T>(values: readonly T[]): Set<T> => {
   const seen = new Set<T>();

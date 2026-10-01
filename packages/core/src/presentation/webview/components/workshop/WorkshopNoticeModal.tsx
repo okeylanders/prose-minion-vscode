@@ -1,7 +1,10 @@
 /**
- * WorkshopNoticeModal — the six-page "Workshop · beta" startup notice, in the
+ * WorkshopNoticeModal — the seven-page "Workshop · beta" startup notice, in the
  * wide screenshot format from the 2026-07-27 design drop
- * (docs/design/pm-wk-notify.js + `Prose Minion - Notice Modal.html`).
+ * (docs/design/pm-wk-notify.js + `Prose Minion - Notice Modal.html`). The
+ * newest feature leads the tour (ADR 2026-09-30, Sprint 03 kickoff decision
+ * 5): every machine sees the whole box again after a version bump, so what
+ * changed comes first.
  *
  * Layout is two columns: an annotated media well on the left (screenshots of
  * the real controls, with numbered call-out boxes and a matching legend) and
@@ -24,7 +27,7 @@
 
 import * as React from 'react';
 import { WorkshopNoticeShot } from '@shared/constants/workshopNotices';
-import { Icon } from '@components/shared/Icon';
+import { Icon, IconName } from '@components/shared/Icon';
 import { getNoticeShotUri } from '@utils/proseMinionAssets';
 import { WorkshopModalShell } from './WorkshopModalShell';
 import { WorkshopConfigureGuide } from './WorkshopConfigureGuide';
@@ -61,7 +64,19 @@ interface NoticeThumbRow {
   thumbs: Array<{ shot: WorkshopNoticeShot; alt: string; caption: string }>;
 }
 
-type NoticeMedia = NoticeFigure | NoticeThumbRow;
+/**
+ * A row of the thread's own action buttons, drawn inline because no screenshot
+ * of them exists yet. Decorative, like a figure's call-outs: the legend is the
+ * accessible description, keyed by each action's call-out label.
+ */
+interface NoticeActionRow {
+  kind: 'actions';
+  /** Where the row appears, e.g. "Under a reply". */
+  caption: string;
+  actions: ReadonlyArray<{ label: string; icon: IconName; callout?: string }>;
+}
+
+type NoticeMedia = NoticeFigure | NoticeThumbRow | NoticeActionRow;
 
 /**
  * One legend row — the same "what does call-out N point at" data as
@@ -78,8 +93,10 @@ interface NoticeLegendRow {
 
 interface NoticePage {
   title: string;
-  tag: 'beta' | 'setup' | 'primer';
+  tag: 'new' | 'beta' | 'setup' | 'primer';
   body: React.ReactNode;
+  /** A second, quieter paragraph under the body, set off like the guide note. */
+  note?: React.ReactNode;
   /** Heading over the media well ("Where to look"). */
   wellTitle: string;
   media: readonly NoticeMedia[];
@@ -103,6 +120,53 @@ interface NoticePage {
 const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
+  {
+    title: 'New: rewind, edit, and branch',
+    tag: 'new',
+    body: (
+      <>
+        Replies and your own messages now have actions underneath. <b>Rewind to here</b> returns
+        the room to a reply: the thread, and what every participant remembers, go back to that
+        point, and everything after it is removed. On a message you sent, <b>Edit from here</b>{' '}
+        removes it and everything after it, then puts it back in the composer (or reopens its
+        widget) so you can change it and send it again. <b>Branch from here</b> leaves this
+        conversation as it is and opens a new saved session that starts from that point, so you
+        can try another direction. Save the session before you branch. Your excerpt and context
+        always stay as they are now.
+      </>
+    ),
+    note: (
+      <>
+        Sessions saved by this version can&rsquo;t be opened by earlier versions of Prose Minion.
+        If you sync sessions through Git, update Prose Minion on every machine first.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'actions',
+        caption: 'Under a reply',
+        actions: [
+          { label: 'Copy', icon: 'copy' },
+          { label: 'Rewind to here', icon: 'history', callout: '1' },
+          { label: 'Branch from here', icon: 'branch', callout: '3' }
+        ]
+      },
+      {
+        kind: 'actions',
+        caption: 'Under a message you sent',
+        actions: [
+          { label: 'Edit from here', icon: 'history', callout: '2' },
+          { label: 'Branch from here', icon: 'branch' }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Rewind to here', detail: 'keep this reply; remove everything after it.' },
+      { label: '2', term: 'Edit from here', detail: 'your message comes back to edit and send again.' },
+      { label: '3', term: 'Branch from here', detail: 'a new saved session from this point; this one stays.' }
+    ]
+  },
   {
     title: 'Welcome to the Workshop beta',
     tag: 'beta',
@@ -368,10 +432,29 @@ const NoticeCallouts: React.FC<{ callouts?: readonly NoticeCallout[] }> = ({ cal
   </>
 );
 
+const NoticeActions: React.FC<{ row: NoticeActionRow }> = ({ row }) => (
+  <div className="pm-ws-notice-actions" aria-hidden="true">
+    <span className="pm-ws-notice-actions-caption">{row.caption}</span>
+    <span className="pm-ws-notice-actions-row">
+      {row.actions.map((action) => (
+        <span
+          key={action.label}
+          className={`pm-ws-notice-action${action.callout ? ' pm-ws-notice-action-called' : ''}`}
+        >
+          {action.callout && <i>{action.callout}</i>}
+          <Icon name={action.icon} size={13} /> {action.label}
+        </span>
+      ))}
+    </span>
+  </div>
+);
+
 const NoticeMediaWell: React.FC<{ media: readonly NoticeMedia[] }> = ({ media }) => (
   <>
     {media.map((entry, index) =>
-      entry.kind === 'thumbs' ? (
+      entry.kind === 'actions' ? (
+        <NoticeActions row={entry} key={`actions-${index}`} />
+      ) : entry.kind === 'thumbs' ? (
         <div className="pm-ws-notice-thumbs" key={`thumbs-${index}`}>
           {entry.thumbs.map((thumb) => (
             <figure className="pm-ws-notice-thumb" key={thumb.shot}>
@@ -491,6 +574,7 @@ export const WorkshopNoticeModal: React.FC<WorkshopNoticeModalProps> = ({
               </span>
               <h2 id="pm-ws-notice-title">{page.title}</h2>
               <p>{page.body}</p>
+              {page.note && <p className="pm-ws-notice-note">{page.note}</p>}
               {page.guideLink && (
                 <p className="pm-ws-notice-guide-note">
                   {`${page.guideLink.lead} `}

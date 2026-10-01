@@ -34,6 +34,10 @@ import {
 import { boundedLogText } from '@/utils/boundedLogText';
 import { isAgentRunIncomplete } from '@orchestration/AgentRunContracts';
 import { workshopWidgetLabel } from '@shared/constants/workshopWidgets';
+import {
+  recordWorkshopRetainedHistoryCommit,
+  WorkshopRetainedHistoryReader
+} from '@/application/services/workshop/WorkshopRetainedHistoryCommit';
 
 export interface WorkshopRunCompletionCopy {
   cancelledStatus: string;
@@ -92,6 +96,20 @@ export interface WorkshopRunCompletionInput {
   createsRetainedConversation: boolean;
   copy: WorkshopRunCompletionCopy;
   discardConversation: (conversationId: string) => void;
+  /**
+   * Committed history counts of the retained conversation this run wrote,
+   * for its retained-history mark (ADR 2026-09-30 §3). Supplied through the
+   * application seam; the aggregate never reaches into provider history.
+   */
+  readRetainedHistory: WorkshopRetainedHistoryReader;
+  /**
+   * Caller-owned bookkeeping that belongs to this run's commit: room-delivery
+   * acknowledgement, pending host updates, shipped attachments. It runs once
+   * the reply is adopted and announced, and before the mark is recorded, so
+   * the mark describes the settled participant — its manifest rows and room
+   * offset — rather than the instant of adoption.
+   */
+  settleCommittedRun?: (turn: WorkshopTurn) => void;
   log: (line: string) => void;
   events: WorkshopRunCompletionEvents;
 }
@@ -288,6 +306,40 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
     return undefined;
   }
 
+  try {
+    announceCommittedRun(input, turn, {
+      widgetRecommendation,
+      unavailableWidgetSource,
+      displayContent,
+      truncated
+    });
+    input.settleCommittedRun?.(turn);
+  } finally {
+    // The history is committed whether or not settlement finished, so the
+    // mark is always recorded: it describes whatever the participant now is.
+    recordWorkshopRetainedHistoryCommit({
+      session,
+      turn,
+      conversationId: result.conversationId,
+      readRetainedHistory: input.readRetainedHistory,
+      log: input.log
+    });
+  }
+  return turn;
+}
+
+function announceCommittedRun(
+  input: WorkshopRunCompletionInput,
+  turn: WorkshopTurn,
+  completion: {
+    widgetRecommendation: ReturnType<typeof inspectWorkshopWidgetRecommendation>;
+    unavailableWidgetSource: string | undefined;
+    displayContent: string;
+    truncated: boolean;
+  }
+): void {
+  const { label, requestId, result, events } = input;
+  const { widgetRecommendation, unavailableWidgetSource, displayContent, truncated } = completion;
   if (widgetRecommendation.outcome === 'accepted' && !unavailableWidgetSource) {
     const attached = turn.widgetRecommendation !== undefined;
     input.log(
@@ -312,7 +364,6 @@ export function completeWorkshopRun(input: WorkshopRunCompletionInput): Workshop
 
   events.streamCompleted(requestId, displayContent, false, result.usage, truncated);
   events.turnCompleted(turn);
-  return turn;
 }
 
 /**
