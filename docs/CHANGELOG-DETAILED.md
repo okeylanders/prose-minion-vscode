@@ -34,7 +34,7 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 
 - `branchFrom` saves the cut room as a new named session and opens it through the named-session promotion Open uses. The new session has a fresh identity and timestamps, a fresh temporal start in the source's timezone, the title `"<source> — branch"`, and a summary rebuilt from the cut room.
 - The source session file is never written. A failed save leaves no file behind. A failed open restores the prior room and reports the saved branch, which stays openable from Sessions.
-- Branch reads the source file back and compares it with the checkpoint the room accepted. It does this before writing anything, and again just before `current.json` is replaced. A missing, unreadable or replaced source is refused, so a Git change made while the room is open cannot cost the room its only complete copy.
+- Branch reads the source file back and compares it with the checkpoint the room accepted. It does this before writing anything, and again at the commit that replaces `current.json`, immediately before its atomic rename. A missing, unreadable or replaced source is refused, so a Git change made while the room is open cannot cost the room its only complete copy.
 - An unnamed room shows a "Save before branching" popup, and the host refuses it regardless. A named room with unsaved changes is refused too.
 - Branch is offered on the latest reply, where Rewind is not.
 - The startup notice moves to `v4` and leads with a Rewind and Branch page.

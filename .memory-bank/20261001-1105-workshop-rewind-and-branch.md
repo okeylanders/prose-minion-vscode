@@ -80,11 +80,12 @@
 
 The [review](../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md) requested changes. ADR Sprint 03 findings 5–7 record each fix:
 
-- **F-01 (High), `16ea5f2`: Branch proves its source on disk.**
+- **F-01 (High), `16ea5f2` and `47979f1`: Branch proves its source on disk.**
   - The problem: the named association and clean revisions did not show the file still existed. If Git deleted, corrupted or replaced it while the room was open, the branch would replace `current.json` and the room would lose its only complete copy.
-  - The fix: Branch compares the source file with the accepted checkpoint before writing anything, refusing with `source-changed`. It compares again after the branch import, before `current.json` is replaced; a mismatch rolls back and reports the saved branch.
-  - Regressions: the reviewer's three probes are now permanent tests, and each also proves that Save as new and then Branch works. A deletion during the branch save and one during the import are covered.
-  - Mutations caught: no early check (3 failures), no late check (2), neither (5).
+  - The fix: Branch compares the source file with the accepted checkpoint before writing anything, refusing with `source-changed`. It compares again at the commit of the rolling write, immediately before `current.json` is replaced, through the store's `beforeCommit` seam. A mismatch there removes the temporary file, keeps `current.json`, rolls back and reports the saved branch.
+  - Re-review: the first version, `16ea5f2`, checked again after the import instead. The re-review found that a source deletion during the mirror's last reads and writes still slipped through. `47979f1` moved the check to the commit seam, as the reviewer recommended.
+  - Regressions: the reviewer's three probes are now permanent tests, and each also proves that Save as new and then Branch works. Deletions are covered during the branch save, the import, the mirror's branch read, and after the rolling temporary write. A store test pins the hook.
+  - Mutations caught: no early check (3 failures); the late guard back before the mirror (the two late seams); no late guard (all four mid-branch cases).
 - **F-02 (Standard), `ed576c3`: a widget edit goes back to its addressee.**
   - Both edit forms now restore the chat target through `addresseeOf` and `repairedChatTarget`.
   - Regressions: a later guest and a later tool in the transform, and a later guest through Rewind and Branch. The pre-fix condition fails all four.

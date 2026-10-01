@@ -329,7 +329,7 @@ ordinary update frames, and id counters are never lowered.
   new named session and opens it through the named-session promotion Open
   uses. It needs a saved source with nothing waiting to be written, whose
   file on disk still matches the room, before it saves the branch and again
-  before it replaces `current.json`. It never writes the source file.
+  at the commit that replaces `current.json`. It never writes the source file.
 
 A writer-message cut is an edit. Its text returns to the composer
 (`WORKSHOP_COMPOSER_DRAFT_RESTORED`), or a widget commit's released config

@@ -839,8 +839,8 @@ touching retained histories or whole-room operations:
   than hand-rolling rollback.
 - **Branch.** Branch never writes its source session file. It refuses an
   unnamed room, a named room with unsaved work, and a room whose file on
-  disk no longer matches it. It checks the file again before replacing
-  `current.json`.
+  disk no longer matches it. It checks the file again at the commit that
+  replaces `current.json`, through the store's `beforeCommit` seam.
 
 ### Operational Tips
 

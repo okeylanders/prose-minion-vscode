@@ -206,7 +206,7 @@ Branch is a coordinator session operation:
    - summary rebuilt from the cut aggregate.
    Write it with the existing named `saveNamed` path. The store writes atomically, so a failure here leaves no branch file and changes nothing.
 6. Read the branch back from its file and promote it into the live room through the named-session promotion that Open uses, on the shared room-replacement transaction (Sprint 03 kickoff, item 1). A failure here restores the prior room; the branch stays on disk as an openable named session, and the result says so.
-   - After the import and just before `current.json` is replaced, the source is proved again. This covers a change during the branch save or the import. If it changed, the prior room is restored, and the result asks the writer to keep this room before opening the branch.
+   - The source is proved again at the commit of the rolling write, after the new `current.json` is written to a temporary file and immediately before the atomic rename, through the store's `beforeCommit` seam. This covers a change at any point after the first check, including during the mirror's own reads and writes. If the source changed, the temporary file is removed, `current.json` keeps the room, the prior room is restored, and the result asks the writer to keep this room before opening the branch.
 7. Post session state and a result naming both sessions. A writer-bubble branch is an edit in the branch: the composer is re-seeded, or a widget message's released config reopens in its widget.
 
 The source session is never modified by Branch. Branch lineage (`branchedFrom`) is not persisted in v1. See Follow-ups.
@@ -323,7 +323,7 @@ Three more came from the [PR #120 review](../pr-reviews/pr-120-workshop-branch-1
 
 5. **Branch proves its source on disk (F-01).** A clean, named room says nothing about its file: Git or another process can delete, corrupt or replace it while the room is open. Opening the branch replaces `current.json` and discards the room's histories, so Branch could leave a room with no complete copy.
    - Branch now compares the source file with the accepted checkpoint before writing anything (§7 step 3).
-   - It compares again after the branch import, before `current.json` is replaced (§7 step 6).
+   - It compares again at the commit of the rolling write, immediately before `current.json` is replaced (§7 step 6). The PR re-review found that a first version checked before the mirror's last reads and writes, which left a gap.
    - A mismatch is the refusal reason `source-changed`: "This session's saved file is missing or changed on disk. Reopen it from Sessions, or use Save as new to keep this room, before branching."
 6. **A widget edit goes back to its addressee (F-02).** Only a composer edit restored the edited message's chat target. A widget edit kept the room's later target, so a recommit from the reopened sheet could go to a later guest, or be refused for a later tool. Both edit forms now restore the addressee through the same repair, falling back to the host.
 7. **A degraded import ends a notice too (F-03).** Rewind forgot time notices only for the keys the cut drops. A persona whose history degrades during installation also starts fresh, so Rewind now forgets those keys too, inside the transaction. Open, Branch and refresh rebuild time state from the file and queue a resume frame for every retained persona, so they needed no change.

@@ -187,7 +187,7 @@ Every deliverable landed except the manual smoke, which waits on Okey (kickoff d
 - `git diff --check`: clean.
 
 **Review round** ([PR #120 review](../../../../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md)). The review requested changes. All three findings were fixed before integration, each with mutation-checked regressions; ADR findings 5–7 record them.
-- **F-01 (High).** Branch proves its source file still holds the room. It checks before writing anything, refusing with `source-changed`, and again after the branch import, before `current.json` is replaced.
+- **F-01 (High).** Branch proves its source file still holds the room. It checks before writing anything, refusing with `source-changed`. It checks again at the commit that replaces `current.json`, through the store's `beforeCommit` seam; the re-review moved this check there from after the import.
 - **F-02.** A widget edit goes back to the participant its message addressed.
 - **F-03.** Rewind also ends the time notices of personas whose import degrades.
 

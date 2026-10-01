@@ -13,7 +13,7 @@ Status legend: **Open** = actionable recommendation with the deadline below · *
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟠 High | Branch can overwrite the only complete checkpoint after an external source-file change | Original source-change cases now have passing regressions; two additional late-mirror probes still reproduce loss | **Partially addressed** (re-reviewed 2026-10-01, `8f4186f`) — `16ea5f2` compares the source with its accepted checkpoint before saving and after import. The deleted/corrupt/earlier source cases and changes during save/import are covered. The second check still precedes the branch mirror read and rolling temporary-file write; a source deletion during either await succeeds and loses the full room. See re-review below. **Remaining gate: fix before integration** |
+| F-01 | 🟠 High | Branch can overwrite the only complete checkpoint after an external source-file change | Original source-change cases now have passing regressions; two additional late-mirror probes still reproduce loss | **Addressed** (2026-10-01, `16ea5f2`, remaining gate `47979f1`) — the early check before saving is unchanged. The late check now runs at the commit seam of the rolling write: `store.writeCurrent` takes the store's existing `beforeCommit` hook, which runs after the temporary snapshot is written and immediately before the atomic rename. A failed check removes the temporary file, keeps `current.json`, restores the room, and reports the saved branch as not opened because the source changed. Both late-mirror seams have regressions; moving the guard back before the mirror fails exactly those two, and dropping it fails all four mid-branch cases. A store test pins the hook. Awaiting re-review |
 | F-02 | 🟡 Standard | Reopening a widget edit retains the later chat target and can send the edit to the wrong participant | Real-coordinator Rewind and Branch probes, plus commit-handler dispatch tracing | **Addressed and independently verified** (2026-10-01, `ed576c3`, re-review at `8f4186f`) — composer and widget edits restore the addressee through `addresseeOf` / `repairedChatTarget`. New regressions cover later guest/tool targets and both operations; the original independent reproduction now passes. Host fallback is preserved |
 | F-03 | 🟡 Standard | Rewind leaves old time notices attached to personas whose replacement history import degrades | Real-coordinator host-only degradation probe; guest imports preserved | **Addressed and independently verified** (2026-10-01, `0af3539`, re-review at `8f4186f`) — degraded persona keys join cut-dropped keys inside the transaction before writing. Tests cover host/guest degradation, survivor notices, durable state, and rollback; the original independent reproduction now passes. Open/Branch/refresh resume behavior is covered, and the archived debt is qualified |
 | F-04 | 🟢 Praise | One replacement transaction protects the prior runtime histories through installation and durable promotion | Source tracing and passing rollback tests | N/A — preserve |
@@ -86,6 +86,16 @@ Both probes assert that exactly two source checks completed, proving the new gua
 | Live providers / manual host smoke / visual inspection | Not performed |
 
 Author-recorded mutation checks were not repeated during this re-review. Temporary probes were removed from the checkout; only this report is changed by the reviewer. The unreadable browser row is now explicitly tracked as [Low-priority debt](../../.todo/tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md), separate from the source-preservation gate. The expanded seven-scenario manual checklist still shows pending results.
+
+### Author response — `47979f1` (2026-10-01)
+
+The remaining gate is implemented as recommended. `WorkshopSessionStore.writeCurrent(session, { beforeCommit })` passes the hook to the existing atomic writer. `mirrorNamedCheckpoint` forwards it, and `promoteNamedSession` gives it Branch's source guard in place of the post-import check, so the guard runs between the temporary write and the rename. The early, no-write check is unchanged.
+
+- **New regressions** (`WorkshopSessionBranchCoordinator.test.ts`): the source is deleted while the mirror reads the branch back, or right after the rolling temporary file is written. Each test asserts the source-changed not-opened result, the unchanged room, histories and `current.json`, an openable branch, and no leftover temporary file.
+- **Store test:** a throwing `beforeCommit` sees the staged snapshot, keeps the old `current.json` and leaves no temporary file.
+- **Mutation checks:** moving the guard back before the mirror (as at `8f4186f`) fails exactly the two late-seam tests, and dropping the late guard fails all four mid-branch tests. Ignoring the hook in `writeCurrent` fails the store test.
+
+Verification is listed in the PR description.
 
 ---
 
