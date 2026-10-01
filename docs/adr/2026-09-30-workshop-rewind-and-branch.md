@@ -1,6 +1,6 @@
 # ADR 2026-09-30: Workshop Rewind and Branch
 
-**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)), Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions)) and Sprint 02 findings (see [Sprint 02 implementation findings](#sprint-02-implementation-findings))
+**Status:** Proposed — amended by Sprint 01 findings (see [Sprint 01 implementation findings](#sprint-01-implementation-findings)), Sprint 02 kickoff decisions (see [Sprint 02 kickoff decisions](#sprint-02-kickoff-decisions)), Sprint 02 findings (see [Sprint 02 implementation findings](#sprint-02-implementation-findings)) and Sprint 03 kickoff decisions (see [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions))
 **Date:** 2026-09-30
 **Extends:** [ADR 2026-07-14 — Workshop Session Persistence](2026-07-14-workshop-session-persistence.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md)
 **Answers:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md), rejected alternative "Fork or branch the conversation into the new session"
@@ -243,7 +243,7 @@ Recorded 2026-09-30 while building the marks. Each item corrects or completes a 
 Confirmed 2026-09-30 before the transform was written. Each confirms or corrects a detail above.
 
 1. **Context-source re-delivery appends (resolves finding 6).** `ConversationManager.appendContextSources` appends a new row when a canonical resource is re-delivered and marks the superseded row `stale`, the dimmed-history rule host pins already follow. A mark's `contextSourceCount` then slices to exactly the rows the history held at the mark, and the transform recomputes the stale chain inside the kept prefix. Replacing in place was worse than metadata drift: a kept row could name an `art-N` that the cut history no longer contains.
-2. **Temporal state stays current.** Per-persona time notices are not rewound, like the working set. Rewind does not re-hydrate the time service, so it queues no resume notices and records no "Session resumed" marker. A dropped participant keeps its notice entry, as dismissal and generation loss already do.
+2. **Temporal state stays current.** Per-persona time notices are not rewound, like the working set. Rewind does not re-hydrate the time service, so it queues no resume notices and records no "Session resumed" marker. A dropped participant's notice entry ends with its conversation, so a fresh conversation under the same key receives its own session-start frame. (Amended at Sprint 03 kickoff: the original sentence kept the entry, as dismissal and generation loss then did, and a fresh host could go up to an hour without a time frame. See [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions), item 2.)
 3. **Conversation `lastActivity` is wall-clock and never rewound.** It is an intended oracle difference.
 4. **Host marks record the context revision the host holds (amends §2 Context and §3).** The divider rule is not exact. A kept divider after the host's last kept commit is undelivered at the cut. A context edit made during a host run is not delivered by that run. A session-open file refresh changes the revision with no divider at all. Excerpt delivery has a record, the host pin rows; context delivery had none. Host marks therefore carry an optional `contextRevision`: the context revision the host holds at that rest point, which is `revisions.context` when no context update is pending and `revisions.pendingContext − 1` otherwise (a pending revision is always the current one). It is recorded at settlement and at baseline, and validated as host-only, non-decreasing, and never later than the revision the host currently holds. The transform re-queues `pendingContext` at the current revision exactly when the host's cut mark records an older one. Marks are unreleased, so there is no schema bump; an integration-branch checkpoint whose host marks lack the field degrades through the existing inconsistent-mark normalization.
 5. **Rewind is durable before it succeeds (amends §6 step 7).** Like New and Open, the operation writes inside itself. Any failure at transform, import, hydrate or write restores the prior room through `restoreRollback`, and the prior provider conversations are discarded only after the durable write succeeds. A rolling-mirror failure after a successful named write stays independently retryable and does not roll back. While `current.json` is protected, Rewind stays in memory, like every other mutation in that state.
@@ -260,6 +260,34 @@ Recorded 2026-09-30 while building Rewind. Each item corrects or completes a det
 6. **The transform returns a cut summary, not loose fields.** `droppedConversationKeys` lives in `summary` beside `keptThroughTurnId`, `removedTurnCount` and `removedTodoCount`, so the action result, the log line and a future Side Quest divider read one count. `composerRestore` gains `unrestoredAttachmentLabels` (item 3), and `unverifiedConversationKeys` reports marks the transform could not trust, which it treats as unmarked, as the persisted boundary does. §5 shows the amended signature.
 7. **D7 gating in the webview.** Rewind follows New-session availability. While persistence is unavailable, every Rewind action is disabled with the reason ("Rewind needs a single-root workspace" or "Rewind needs an open workspace folder"). While the room is busy (a live turn, a run, the Context wizard, or a pending session change), every action is disabled with one busy reason. The host still refuses on its own; webview gating remains advisory.
 8. **Session handlers reach the rewind vocabulary through the coordinator.** The architecture guard forbids handlers from importing session collaborators. `WorkshopSessionPersistenceCoordinator` therefore re-exports `WorkshopRewindCut` and `WorkshopRewindRefusedError`. The bubble-to-cut mapping stays in `WorkshopSessionService` as thin delegation to the Sprint 01 policy.
+
+## Sprint 03 kickoff decisions
+
+Confirmed 2026-10-01 before Branch was written. Each confirms or corrects a detail above.
+
+1. **One room-replacement transaction.** New, Open, Rewind and Branch all replace the live room, and all four share one sequence:
+   - capture the rollback;
+   - prepare, install and write the new room durably;
+   - restore the prior room on any failure;
+   - discard the replaced conversations only after success.
+
+   A private coordinator helper owns that sequence. New, Rewind and the named-session promotion use it; Open, refresh and Branch reach it through the promotion. No room-replacement collaborator is extracted yet.
+2. **Time notices end with their conversation (amends Sprint 02 kickoff decision 2).** A notice entry is per-conversation delivery state, like a room offset. `WorkshopSessionTimeService.forgetNotices(keys)` removes a persona key's entry and any pending resume notice wherever a persona conversation ends with no replacement history:
+   - the persona keys a rewind drops, inside the operation and before its durable write, so rollback restores them;
+   - guest dismissal;
+   - an assistant generation loss.
+
+   Surviving participants keep their entries, so temporal state otherwise stays current. A branch starts with no persona notices at all (§7).
+3. **A rewound widget commit reopens its widget.** The transform's summary reports the one-shot configs a cut released. A writer-bubble cut on a widget commit's own message is an edit of that widget: its released config reopens in the widget sheet, the widget twin of the composer re-seed (§1). A cut that skips past a commit releases its config silently, and that residue is accepted.
+4. **Manual smoke is recorded by the writer.** A cloud session cannot run the Extension Development Host, so the epic's smoke criterion stays open until Okey records results.
+5. **What's New uses the existing startup notice.** ADR 2026-08-05's notice ledger is not implemented. The release prepends a Rewind and Branch page to the Workshop startup notice and moves its version from `v3` to `v4`.
+
+Also settled at kickoff, within §7:
+
+- The coordinator's `branchFrom` takes a cut, like `rewindTo`. The route maps a bubble to its cut.
+- The branch's temporal state is fresh: its start and last activity are the branch time, and it keeps the source's timezone and no persona notices. Promotion is Open's path, so retained personas receive a resume frame and the first interaction records "Session resumed".
+- A named room whose latest autosave has not landed is refused. Branch never writes the source file, so it cannot flush that file either.
+- The title is `"<source title> — branch"`. The source title is trimmed so the suffix fits the 160-character title limit; the store already makes the file name collision-free.
 
 ## Consequences
 

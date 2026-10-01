@@ -1,6 +1,6 @@
 # Sprint 03: Branch and Release Readiness
 
-**Status:** Planned
+**Status:** In progress — kickoff decisions confirmed 2026-10-01 (see [Kickoff decisions](#kickoff-decisions-2026-10-01))
 **Branch:** `sprint/workshop-rewind-and-branch-03-branch`
 **Depends on:** Sprint 02
 **Blocks:** Epic closure
@@ -67,6 +67,38 @@ Let a writer branch from any rewindable point of a saved (named) session into a 
 - **PR #119 review carry-over** ([review](../../../../docs/pr-reviews/pr-119-workshop-rewind-ca93f7e-review.md)).
   - **F-01.** The Rewind confirmation ends "To keep this conversation too, use Branch instead.", and `WorkshopApp.test.tsx` asserts it. Branch makes the sentence true, so keep both and mark F-01 Addressed in the review ledger when Branch lands.
   - **Release disposition.** The review asks that both follow-ups above stay visible at release. The release notes or the epic's archive note must record each one as fixed or explicitly accepted.
+
+## Kickoff decisions (2026-10-01)
+
+Confirmed with Okey before `branchFrom` was written. The ADR records each one in its [Sprint 03 kickoff decisions](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-kickoff-decisions).
+
+1. **One room-replacement transaction.** A private coordinator helper owns the sequence every room replacement shares:
+   - capture the rollback;
+   - prepare, install and write the new room durably;
+   - restore the prior room on any failure;
+   - discard the replaced conversations only after success.
+
+   New, Rewind and `promoteNamedSession` use it. Open, refresh and Branch reach it through `promoteNamedSession`. No new collaborator class yet.
+2. **Time notices end with their conversation.** `WorkshopSessionTimeService.forgetNotices(keys)` removes a persona key's notice entry and any pending resume notice. It is called at three seams where a persona conversation ends with no replacement history:
+   - the persona keys a rewind drops, inside the operation and before the durable write, so rollback covers it;
+   - guest dismissal;
+   - generation loss (`clearAllConversations`).
+
+   Surviving participants keep their entries. This amends the last sentence of Sprint 02 kickoff decision 2.
+3. **A rewound widget commit reopens its widget.** The transform reports `summary.releasedWidgetConfigIds`.
+   - When the cut bubble is a widget-commit message (a `beforeTurn` cut), a writer's Rewind or Branch reopens that widget's sheet on the released config. This is the widget twin of the composer re-seed.
+   - The bubble's action reads "Edit from here".
+   - A cut that skips past a commit releases its config silently. That residue is accepted.
+4. **Manual smoke is Okey's.** The cloud container cannot run the Extension Development Host. The memory-bank entry carries the six-scenario checklist, and the epic criterion stays unchecked until the results are recorded.
+5. **What's New uses the existing startup notice.** ADR 2026-08-05's ledger is not implemented. A Rewind and Branch page is *prepended* to the Workshop startup notice, and `WORKSHOP_STARTUP_NOTICE_VERSION` moves from `v3` to `v4`, following that mechanism's documented workflow. Every machine sees the tour once more, opening on the new page.
+
+Also decided as implementation calls within the plan:
+
+- `branchFrom(cut, …)` takes a cut, as `rewindTo` does, and the route maps the bubble through `rewindCutForBubble`. The key proof branches at dividers, which offer no bubble.
+- The branch file's temporal state is fresh: `startedAt` and `lastActivityAt` are the branch time, the timezone is the source's, and there are no persona notices. Promotion is Open's path, so retained personas get a resume frame and the first interaction records "Session resumed".
+- A named room whose latest autosave has not landed is refused with "Save this session's latest changes before branching." Branch never writes the source file, so it cannot flush it either.
+- The branch title is `"<source title> — branch"`, with the source title trimmed so the suffix fits the 160-character limit.
+- Release notes go in an `[Unreleased]` section of both changelogs; release preparation names the version.
 
 ## Tests
 
