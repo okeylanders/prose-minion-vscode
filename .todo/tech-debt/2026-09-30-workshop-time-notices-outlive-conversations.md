@@ -1,0 +1,63 @@
+# Workshop time notices outlive the conversations they were delivered to
+
+**Date Identified**: 2026-09-30
+**Reviewed**: 2026-09-30
+**Status**: Identified
+**Priority**: Medium
+**Estimated Effort**: Small (a time-service method plus calls at each conversation-ending seam, with tests)
+**Found by**: Workshop Rewind and Branch, Sprint 02 ([epic](../epics/epic-workshop-rewind-and-branch-2026-09-30/README.md))
+
+## Problem
+
+`WorkshopSessionTimeService.personaNotices` records, per persona conversation
+key (`host`, `guest:<personaId>`), when that conversation was last given a
+`<workshop-time-context>` frame. `prepareNotice` sends a `session_start` frame
+only when a key has no entry, and an `hourly` frame only an hour after the
+last one. Only `reset()` removes entries.
+
+An entry therefore outlives the conversation it describes. When a new
+conversation takes over the same key within the hour, it receives no time
+frame at all: no date, no timezone and no session-start grounding.
+
+- **Rewind (new in Sprint 02).** Editing the first writer message ("Edit from
+  here") cuts before the host's first reply. The host binding is removed and
+  the next host starts fresh, but the `host` entry from the discarded reply
+  remains. This is a common flow: editing an opening message right after a
+  disappointing first reply. The same applies to a guest a rewind disposes
+  that is re-invited.
+- **Dismissal (pre-existing).** A dismissed guest re-invited within the hour
+  joins with no time frame (`WorkshopRoomHandler` join path →
+  `prepareNotice(guest:<id>)`).
+
+The ADR's Sprint 02 kickoff item 2 recorded that a dropped participant keeps
+its entry, "as dismissal and generation loss already do". That keeps Rewind
+consistent with dismissal, but it also carries dismissal's gap into Rewind.
+It is not rewinding temporal state: an entry is per-conversation delivery
+state, like a room offset, and it should end with its conversation.
+
+## Recommendation
+
+Add `WorkshopSessionTimeService.forgetNotices(keys)`, and call it wherever a
+persona conversation ends without a replacement history:
+
+- Rewind's dropped keys, inside the operation before the durable write, so
+  rollback and the written file both cover it;
+- guest dismissal.
+
+Leave surviving participants' entries alone. That keeps kickoff decision 2
+("temporal state stays current") intact. Amend its last sentence when this
+lands.
+
+## Related Files
+
+- `packages/core/src/application/services/workshop/WorkshopSessionTimeService.ts`
+- `packages/core/src/application/services/workshop/WorkshopSessionPersistenceCoordinator.ts` (`rewindTo`)
+- `packages/core/src/application/handlers/domain/workshop/WorkshopRoomHandler.ts` (time notice preparation)
+- `docs/adr/2026-09-30-workshop-rewind-and-branch.md` (Sprint 02 kickoff decisions, item 2)
+
+## Completion Criteria
+
+- After a rewind that drops the host, the next host's first envelope carries a
+  `session_start` time frame. A regression test proves it.
+- A guest re-invited after dismissal gets a `session_start` frame.
+- Rollback of a failed rewind restores the forgotten entries.

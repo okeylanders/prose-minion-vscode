@@ -48,6 +48,7 @@ describe('per-turn rewindability on the snapshot (ADR 2026-09-30 §4)', () => {
       'capability',
       'tool_request',
       'session_start',
+      'standing_directive_change',
       'excerpt_revision',
       'context_change'
     ]));

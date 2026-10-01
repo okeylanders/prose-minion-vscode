@@ -48,6 +48,7 @@ import {
   WorkshopNamedSessionNotFoundError,
   WorkshopSessionStore,
   WorkshopSessionStoreAvailability,
+  WorkshopSessionStoreUnavailableError,
   WorkshopStoredSessionSummary
 } from '@/infrastructure/storage/WorkshopSessionStore';
 import { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
@@ -68,6 +69,17 @@ import { hasSameWorkshopRecoveryContent } from '@/application/services/workshop/
 import type {
   WorkshopImportedRetainedHistory
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
+import type {
+  WorkshopRewindCut
+} from '@/application/services/workshop/session/WorkshopRewindPolicy';
+import {
+  rewindWorkshopSession,
+  WorkshopRetainedArchiveEntry,
+  WorkshopRewindComposerRestore,
+  WorkshopRewindCutSummary,
+  WorkshopRewindRefusedError,
+  WorkshopSessionRewindResult
+} from '@/application/services/workshop/session/WorkshopSessionRewind';
 
 interface LiveSessionIdentity {
   sessionId: string;
@@ -93,6 +105,36 @@ interface LiveSessionRollback {
 
 interface WorkshopHydrationTransaction extends WorkshopSessionHydrateResult {
   discardedConversationIds: string[];
+}
+
+/** One promoted room: its imported histories bound to its hydrated aggregate. */
+interface WorkshopRoomInstallation {
+  workshop: WorkshopSessionStateV1;
+  importedConversationCount: number;
+  degradedConversationKeys: WorkshopConversationLogicalKey[];
+  degradedConversations: WorkshopConversationDegradation[];
+  /** The runtime conversations the installation replaced. */
+  discardedConversationIds: string[];
+  recoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][];
+}
+
+// The Rewind operation's public vocabulary: handlers depend on the
+// coordinator, never on the session collaborators behind it.
+export type { WorkshopRewindCut } from '@/application/services/workshop/session/WorkshopRewindPolicy';
+export { WorkshopRewindRefusedError } from '@/application/services/workshop/session/WorkshopSessionRewind';
+
+/**
+ * Who asked for a rewind. A writer's bubble action re-seeds the composer; a
+ * Side Quest's End (not yet wired to a route) never does.
+ */
+export type WorkshopRewindOrigin = 'writer' | 'sideQuestEnd';
+
+export interface WorkshopRewindOutcome {
+  summary: WorkshopRewindCutSummary;
+  /** Present only when a writer rewinds their own message (origin `'writer'`). */
+  composerRestore?: WorkshopRewindComposerRestore;
+  degradedConversationKeys: WorkshopConversationLogicalKey[];
+  degradedConversations: WorkshopConversationDegradation[];
 }
 
 export interface WorkshopSessionHydrateResult {
@@ -801,7 +843,131 @@ export class WorkshopSessionPersistenceCoordinator {
     };
   }
 
-  private async capture(identity: LiveSessionIdentity): Promise<WorkshopPersistedSessionV2> {
+  /**
+   * Rewind the live room to a rest point (ADR 2026-09-30 §6). Generic over its
+   * origin: a writer's bubble action today, a Side Quest's End later.
+   *
+   * The cut is re-checked here, because webview gating is advisory. The live
+   * room is exported exactly as a checkpoint captures it, cut by the pure
+   * transform, installed through Open's promotion core, and written before
+   * the operation reports success. Any failure restores the prior room, and
+   * the prior provider conversations are discarded only after the write.
+   */
+  async rewindTo(
+    cut: WorkshopRewindCut,
+    options: { origin: WorkshopRewindOrigin }
+  ): Promise<WorkshopRewindOutcome> {
+    // A pending operation may replace this room. A cut chosen against it must
+    // not wait in line and then run against another one.
+    if (this.isSessionOperationPending()) {
+      throw new WorkshopRewindRefusedError('busy');
+    }
+    return this.serializeSessionOperation(async () => {
+      const availability = this.store.availability();
+      if (!availability.available) {
+        throw new WorkshopSessionStoreUnavailableError(availability.reason);
+      }
+      const evaluation = this.session.evaluateRewindCut(cut);
+      if (!evaluation.ok) {
+        throw new WorkshopRewindRefusedError(evaluation.reason);
+      }
+      const rollback = this.captureRollback();
+      let before: WorkshopRetainedArchiveEntry[];
+      let rewound: WorkshopSessionRewindResult;
+      let installed: WorkshopRoomInstallation;
+      try {
+        const live = await this.exportLiveRoom();
+        before = live.conversations;
+        rewound = rewindWorkshopSession({ ...live, cut });
+        installed = await this.installRoom(rewound.workshop, rewound.conversations);
+        await this.commitRewoundRoom();
+      } catch (error) {
+        this.restoreRollback(rollback);
+        throw error;
+      }
+      this.degradedConversationKeys = installed.degradedConversationKeys;
+      this.degradedConversations = installed.degradedConversations;
+      this.pendingRecoveryNotices.push(...installed.recoveryNotices.map((notice) => ({ ...notice })));
+      installed.discardedConversationIds.forEach((conversationId) =>
+        this.assistantToolService.discardConversation(conversationId)
+      );
+      this.logRewind(cut, options.origin, rewound, before);
+      return {
+        summary: rewound.summary,
+        composerRestore: options.origin === 'writer' ? rewound.composerRestore : undefined,
+        degradedConversationKeys: [...installed.degradedConversationKeys],
+        degradedConversations: installed.degradedConversations.map((entry) => ({ ...entry }))
+      };
+    });
+  }
+
+  /**
+   * Write the rewound room durably before reporting success (ADR 2026-09-30,
+   * Sprint 02 kickoff item 5). A rewind is author work, so it follows the
+   * autosave's authority rules: an associated named file is updated only
+   * while it is still the checkpoint this room accepted, and a protected
+   * current.json is never overwritten.
+   */
+  private async commitRewoundRoom(): Promise<void> {
+    this.localWorkPending = true;
+    this.pendingRollingMirror = undefined;
+    this.time.touch();
+    const sessionId = this.identity.sessionId;
+    if (this.currentCheckpointError) {
+      this.outputChannel.appendLine(
+        `[WorkshopSessionPersistence] Rewound room kept in memory while current.json is protected: ` +
+        this.currentCheckpointError
+      );
+      this.emitSessionSaveStatus({ sessionId, status: 'error', error: this.currentCheckpointError });
+      return;
+    }
+    const revision = this.dirtyRevision;
+    const snapshot = await this.capture(this.identity);
+    const namedSessionId = this.activeNamedSessionId;
+    if (namedSessionId) {
+      const checkpoint = { ...snapshot, savedAt: normalizedIso(this.now()) };
+      await this.store.updateNamed(
+        namedSessionId, checkpoint, this.requireAcceptedNamedCheckpoint(namedSessionId)
+      );
+      await this.acceptNamedWrite(checkpoint, revision);
+    } else {
+      await this.store.writeCurrent(snapshot);
+      this.writtenRevision = Math.max(this.writtenRevision, revision);
+    }
+    if (!this.pendingRollingMirror) {
+      this.emitSessionSaveStatus({ sessionId, status: 'saved' });
+    }
+  }
+
+  /** One line per rewind: counts and keys only, never message content. */
+  private logRewind(
+    cut: WorkshopRewindCut,
+    origin: WorkshopRewindOrigin,
+    rewound: WorkshopSessionRewindResult,
+    before: readonly WorkshopRetainedArchiveEntry[]
+  ): void {
+    const after = new Map(rewound.conversations.map((entry) => [entry.key, entry.messages.length]));
+    const histories = before
+      .map((entry) => `${entry.key} ${entry.messages.length}→${after.get(entry.key) ?? 'dropped'}`)
+      .join(', ') || 'none';
+    const { summary } = rewound;
+    this.outputChannel.appendLine(
+      `[WorkshopSessionPersistence] Room rewound (origin=${origin}, cut=${cut.kind}:${cut.turnId}, ` +
+      `keptThrough=${summary.keptThroughTurnId}, removedTurns=${summary.removedTurnCount}, ` +
+      `removedTodos=${summary.removedTodoCount}, messages=${histories}, ` +
+      `dropped=${summary.droppedConversationKeys.join(',') || 'none'}` +
+      (rewound.unverifiedConversationKeys.length > 0
+        ? `, unverifiedMarks=${rewound.unverifiedConversationKeys.join(',')}`
+        : '') +
+      ')'
+    );
+  }
+
+  /** Both halves of the live room, exactly as a checkpoint captures them. */
+  private async exportLiveRoom(): Promise<{
+    workshop: WorkshopSessionStateV1;
+    conversations: WorkshopRetainedArchiveEntry[];
+  }> {
     // Assistant generation setup may await. It must settle before either half
     // of the coherent snapshot is read.
     await this.ensureAssistantReady?.();
@@ -810,6 +976,11 @@ export class WorkshopSessionPersistenceCoordinator {
     const conversations = targets.length > 0
       ? this.assistantToolService.exportWorkshopConversationArchive(targets)
       : [];
+    return { workshop, conversations };
+  }
+
+  private async capture(identity: LiveSessionIdentity): Promise<WorkshopPersistedSessionV2> {
+    const { workshop, conversations } = await this.exportLiveRoom();
     const temporal = this.time.exportState();
     return {
       schemaVersion: CURRENT_WORKSHOP_PERSISTED_SESSION_SCHEMA_VERSION,
@@ -874,11 +1045,70 @@ export class WorkshopSessionPersistenceCoordinator {
     >
   ): Promise<WorkshopHydrationTransaction> {
     // Structural preflight happens before ConversationManager can mint ids.
-    const workshop = parseWorkshopSessionStateV1(persisted.workshop);
     const temporal = parseWorkshopSessionTemporalStateV1(persisted.temporal);
+    const installed = await this.installRoom(
+      persisted.workshop,
+      persisted.conversations,
+      checkpointRecovery
+    );
+    const personaResumeKeys: WorkshopPersonaConversationKey[] = [
+      'host',
+      ...installed.workshop.participants.personaGuests
+        .filter((guest) => guest.liveness === 'live')
+        .map((guest) => workshopGuestConversationKey(guest.personaId))
+    ];
+    this.time.hydrate(temporal, personaResumeKeys);
+    this.identity = {
+      sessionId: persisted.sessionId,
+      title: persisted.title,
+      createdAt: persisted.createdAt
+    };
+    this.degradedConversationKeys = installed.degradedConversationKeys;
+    this.degradedConversations = installed.degradedConversations;
+    this.pendingRecoveryNotices = [
+      ...(checkpointRecovery?.recoveryNotices ?? []),
+      ...installed.recoveryNotices
+    ].map((notice) => ({ ...notice }));
+    this.resumePending = true;
+    if (retirePreviousConversations) {
+      installed.discardedConversationIds.forEach((conversationId) =>
+        this.assistantToolService.discardConversation(conversationId)
+      );
+    }
+    this.outputChannel.appendLine(
+      `[WorkshopSessionPersistence] Session hydrated ` +
+      `(id=${persisted.sessionId}, conversations=${installed.importedConversationCount}, degraded=${
+        installed.degradedConversations.map(({ key, reason }) => `${key}: ${reason}`).join('; ') || 'none'
+      })`
+    );
+    return {
+      restored: true,
+      degradedConversationKeys: installed.degradedConversationKeys,
+      degradedConversations: installed.degradedConversations,
+      discardedConversationIds: installed.discardedConversationIds
+    };
+  }
+
+  /**
+   * Open's promotion core, shared with Rewind: import a checkpoint's
+   * histories (fresh runtime ids, system prompts rebuilt from current
+   * settings) and hydrate its aggregate over them. It changes neither the
+   * session identity nor its temporal state, and it retires nothing: the
+   * caller decides when the replaced conversations go.
+   */
+  private async installRoom(
+    workshopValue: unknown,
+    conversations: WorkshopPersistedSessionV2['conversations'],
+    checkpointRecovery?: Pick<
+      WorkshopPersistedSessionCheckpointDecodeResult,
+      'migrations' | 'normalizations'
+    >
+  ): Promise<WorkshopRoomInstallation> {
+    // Structural preflight happens before ConversationManager can mint ids.
+    const workshop = parseWorkshopSessionStateV1(workshopValue);
     const descriptors = this.importDescriptors(workshop);
     const expectedKeys = new Set(descriptors.keys());
-    const archiveEntries = persisted.conversations.filter(
+    const archiveEntries = conversations.filter(
       (entry): entry is ConversationArchiveEntryV1<WorkshopConversationLogicalKey> =>
         entry !== null &&
         typeof entry === 'object' &&
@@ -962,41 +1192,13 @@ export class WorkshopSessionPersistenceCoordinator {
           ? 'No valid retained conversation archive was available for this participant.'
           : 'The retained conversation could not be rebound to this participant.')
     }));
-    const personaResumeKeys: WorkshopPersonaConversationKey[] = [
-      'host',
-      ...workshop.participants.personaGuests
-        .filter((guest) => guest.liveness === 'live')
-        .map((guest) => workshopGuestConversationKey(guest.personaId))
-    ];
-    this.time.hydrate(temporal, personaResumeKeys);
-    this.identity = {
-      sessionId: persisted.sessionId,
-      title: persisted.title,
-      createdAt: persisted.createdAt
-    };
-    this.degradedConversationKeys = degradedKeys;
-    this.degradedConversations = degradedConversations;
-    this.pendingRecoveryNotices = [
-      ...(checkpointRecovery?.recoveryNotices ?? []),
-      ...hydration.recoveryNotices
-    ].map((notice) => ({ ...notice }));
-    this.resumePending = true;
-    if (retirePreviousConversations) {
-      hydration.discardedConversationIds.forEach((conversationId) =>
-        this.assistantToolService.discardConversation(conversationId)
-      );
-    }
-    this.outputChannel.appendLine(
-      `[WorkshopSessionPersistence] Session hydrated ` +
-      `(id=${persisted.sessionId}, conversations=${outcomes.length}, degraded=${
-        degradedConversations.map(({ key, reason }) => `${key}: ${reason}`).join('; ') || 'none'
-      })`
-    );
     return {
-      restored: true,
+      workshop,
+      importedConversationCount: outcomes.length,
       degradedConversationKeys: degradedKeys,
       degradedConversations,
-      discardedConversationIds: hydration.discardedConversationIds
+      discardedConversationIds: hydration.discardedConversationIds,
+      recoveryNotices: hydration.recoveryNotices
     };
   }
 
@@ -1306,6 +1508,15 @@ export class WorkshopSessionPersistenceCoordinator {
       }
       throw namedError;
     }
+    await this.acceptNamedWrite(checkpoint, savedRevision);
+    return summary;
+  }
+
+  /** A named write landed: it becomes this room's accepted checkpoint. */
+  private async acceptNamedWrite(
+    checkpoint: WorkshopPersistedSessionV2,
+    savedRevision: number
+  ): Promise<void> {
     this.acceptedNamedCheckpoint = checkpoint;
     this.writtenRevision = Math.max(this.writtenRevision, savedRevision);
     if (this.dirtyRevision <= savedRevision) {
@@ -1316,7 +1527,6 @@ export class WorkshopSessionPersistenceCoordinator {
     };
     // Named durability is complete even if its rolling mirror needs a retry.
     await this.scheduleRollingMirror(checkpoint);
-    return summary;
   }
 
   private emitSessionSaveStatus(event: WorkshopSessionSaveStatus): void {

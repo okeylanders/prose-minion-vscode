@@ -1,7 +1,7 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** In progress — Sprint 01 (retained-history marks) complete and merged into the integration branch ([PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)); Sprint 02 (Rewind) next. ADR amended with Sprint 01's findings
+**Status:** In progress — Sprint 01 (retained-history marks) complete and merged into the integration branch ([PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)); Sprint 02 (Rewind) delivered and in review on `sprint/workshop-rewind-and-branch-02-rewind`. ADR amended with Sprint 01's findings and Sprint 02's kickoff decisions and findings
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
@@ -59,11 +59,11 @@ Each sprint branch is cut from the integration branch and merged back through it
 - [ ] ADR accepted; D1–D7 confirmed or revised in the ADR.
 - [x] Marks recorded at every retained-history commit, guarded by an architecture test.
 - [x] Marks pruned on every conversation discard; baseline marks recorded on hydration.
-- [ ] Per-turn rewindability computed host-side and rendered, never re-derived, by the webview.
-- [ ] Rewind reproduces recorded rest-point state for host, guest, sidecar, capability, widget, to-do, excerpt-revision and context-change scenarios.
-- [ ] Writer-bubble rewind restores composer text and one-shot attachments.
+- [x] Per-turn rewindability computed host-side and rendered, never re-derived, by the webview.
+- [x] Rewind reproduces recorded rest-point state for host, guest, sidecar, capability, widget, to-do, excerpt-revision and context-change scenarios.
+- [x] Writer-bubble rewind restores composer text and one-shot attachments. (A direct tool message's attachments are named for re-attach; ADR Sprint 02 finding 3.)
 - [ ] Branch works from named rooms and the source session file is byte-unchanged; unnamed rooms show the save-first popup and the host refuses them.
-- [ ] Rollback proven for failures injected at transform, import, hydrate and write.
+- [x] Rollback proven for failures injected at transform, import, hydrate and write.
 - [ ] Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass.
 - [ ] Manual Extension Development Host smoke recorded (see Sprint 03).
 - [ ] Memory-bank completion entry; parked Branch Board feature updated with lineage follow-up.

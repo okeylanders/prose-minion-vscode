@@ -115,10 +115,14 @@ import {
   WorkshopHydratedRetainedParticipant,
   WorkshopImportedRetainedHistory,
   WorkshopRetainedHistoryMarkOutcome,
-  withoutRetainedHistoryMarkKeys
+  withoutRetainedHistoryMarkKeys,
+  workshopHostHeldContextRevision
 } from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
 import {
+  WorkshopCutEvaluation,
+  WorkshopRewindCut,
   WorkshopRewindPolicy,
+  workshopBubbleCut,
   workshopRewindTurnFacts
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import {
@@ -2060,7 +2064,11 @@ export class WorkshopSessionService {
         ? [{
             conversationKey: 'host' as const,
             writerSourceCount: hostWriterSources.length,
-            lastSeenRoomTurnId: rosterState.host.lastSeenRoomTurnId
+            lastSeenRoomTurnId: rosterState.host.lastSeenRoomTurnId,
+            contextRevision: workshopHostHeldContextRevision({
+              context: normalized.revisions.context,
+              pendingContext: pendingContextRevision
+            })
           }]
         : []),
       ...Object.keys(toolSidecars).map((rawToolId) => {
@@ -2161,7 +2169,11 @@ export class WorkshopSessionService {
       return conversationId === undefined ? undefined : {
         conversationId,
         writerSourceCount: this.hostWriterSources.length,
-        lastSeenRoomTurnId: this.participantRoster.readRoomDeliveryOffset({ kind: 'host' })
+        lastSeenRoomTurnId: this.participantRoster.readRoomDeliveryOffset({ kind: 'host' }),
+        contextRevision: workshopHostHeldContextRevision({
+          context: this.contextRevision,
+          pendingContext: this.pendingContextRevision
+        })
       };
     }
     if (turn.participant === 'guest' && turn.personaId) {
@@ -2184,6 +2196,21 @@ export class WorkshopSessionService {
     return toolId === undefined || conversationId === undefined || !liveReport
       ? undefined
       : { conversationId, writerSourceCount: this.toolWriterSources[toolId]?.length ?? 0 };
+  }
+
+  /**
+   * Re-check one cut against the live room (ADR 2026-09-30 §4). Snapshot
+   * verdicts are advisory, so every rewind operation asks again here; the
+   * caller adds pending session operations to `busy`.
+   */
+  evaluateRewindCut(cut: WorkshopRewindCut): WorkshopCutEvaluation {
+    return this.rewindPolicy().evaluateCut(cut);
+  }
+
+  /** The cut a thread bubble offers (ADR 2026-09-30 §1); undefined when it offers none. */
+  rewindCutForBubble(turnId: string): WorkshopRewindCut | undefined {
+    const turn = this.turnLedger.find(turnId);
+    return turn ? workshopBubbleCut(workshopRewindTurnFacts(turn)) : undefined;
   }
 
   /** Rewind policy over the live ledger; built per read, never cached. */

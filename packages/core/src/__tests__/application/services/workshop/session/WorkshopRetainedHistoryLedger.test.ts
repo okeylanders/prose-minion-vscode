@@ -47,7 +47,8 @@ describe('WorkshopRetainedHistoryLedger', () => {
     ['a fractional writer count', mark('t2', { writerSourceCount: 1.5 }), 'invalid-counts'],
     ['an unknown turn', mark('t9'), 'unknown-turn'],
     ['an unknown offset', mark('t2', { lastSeenRoomTurnId: 't9' }), 'invalid-offset'],
-    ['an offset after its own turn', mark('t2', { lastSeenRoomTurnId: 't4' }), 'invalid-offset']
+    ['an offset after its own turn', mark('t2', { lastSeenRoomTurnId: 't4' }), 'invalid-offset'],
+    ['a negative context revision', mark('t2', { contextRevision: -1 }), 'invalid-counts']
   ])('refuses %s and prunes the key rather than keep a hole', (_label, invalid, reason) => {
     ledger.record(mark('t1'));
     ledger.record(mark('t1', { conversationKey: 'guest:margot' }));
@@ -61,13 +62,25 @@ describe('WorkshopRetainedHistoryLedger', () => {
     ['an earlier turn', mark('t2', { messageCount: 6 })],
     ['a shrinking history', mark('t4', { messageCount: 2 })],
     ['fewer writer rows', mark('t4', { messageCount: 6, writerSourceCount: 0 })],
-    ['a regressing offset', mark('t4', { messageCount: 6, lastSeenRoomTurnId: 't0' })]
+    ['a regressing offset', mark('t4', { messageCount: 6, lastSeenRoomTurnId: 't0' })],
+    ['a regressing context revision', mark('t4', { messageCount: 6, lastSeenRoomTurnId: 't2', contextRevision: 0 })]
   ])('restarts the key sequence at a valid mark that breaks order: %s', (_label, next) => {
-    ledger.record(mark('t1'));
-    ledger.record(mark('t3', { messageCount: 4, lastSeenRoomTurnId: 't2' }));
+    // Every case but the last keeps the held context revision, so each one
+    // isolates a single broken rule.
+    const held = { contextRevision: next.contextRevision === 0 ? 1 : next.contextRevision };
+    ledger.record(mark('t1', held));
+    ledger.record(mark('t3', { messageCount: 4, lastSeenRoomTurnId: 't2', ...held }));
 
     expect(ledger.record(next)).toEqual({ recorded: true, mark: next, prunedMarks: 2 });
     expect(ledger.all()).toEqual([next]);
+  });
+
+  it('extends the sequence while the held context revision only grows', () => {
+    ledger.record(mark('t1', { contextRevision: 0 }));
+    const next = mark('t3', { messageCount: 4, lastSeenRoomTurnId: 't2', contextRevision: 2 });
+
+    expect(ledger.record(next)).toEqual({ recorded: true, mark: next, prunedMarks: 0 });
+    expect(ledger.all().map(({ contextRevision }) => contextRevision)).toEqual([0, 2]);
   });
 
   it('prunes one key, or every key', () => {

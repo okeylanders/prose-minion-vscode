@@ -38,6 +38,11 @@ export interface WorkshopSessionsState {
 
 export interface WorkshopSessionsActions {
   resetSession: (options?: { clearWorkingSet?: boolean }) => void;
+  /**
+   * Rewind the room to one bubble (ADR 2026-09-30 §6). Nothing resets
+   * optimistically: the host's next snapshot replaces the thread wholesale.
+   */
+  rewindTo: (turnId: string) => void;
   requestSessions: (query?: string) => void;
   setSessionSearchQuery: (query: string) => void;
   saveSession: (title: string, sessionId?: string) => void;
@@ -115,6 +120,12 @@ export function useWorkshopSessions(
     post(MessageType.WORKSHOP_RESET_SESSION, {
       ...(options.clearWorkingSet ? { clearWorkingSet: true } : {})
     });
+  }, [post, roomReplacement]);
+
+  const rewindTo = React.useCallback((turnId: string) => {
+    roomReplacement.clearStatus();
+    setSessionActionPending('rewind');
+    post(MessageType.WORKSHOP_REWIND_SESSION, { turnId });
   }, [post, roomReplacement]);
 
   const requestSessions = React.useCallback((query?: string) => {
@@ -290,6 +301,7 @@ export function useWorkshopSessions(
     sessionSaveStatus,
     recoveryNotices,
     resetSession,
+    rewindTo,
     requestSessions,
     setSessionSearchQuery,
     saveSession,

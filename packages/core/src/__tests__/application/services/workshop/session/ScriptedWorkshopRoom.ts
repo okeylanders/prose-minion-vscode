@@ -32,6 +32,12 @@ import type {
 import type { WorkshopMessageAttachment } from '@/application/services/workshop/WorkshopSessionRecords';
 import type { AnalysisResult } from '@/domain/models/AnalysisResult';
 import {
+  WORKSHOP_STANDING_DIRECTIVE_OPERATIONS
+} from '@/application/services/workshop/directives/WorkshopStandingDirectiveOperations';
+import {
+  builtInLexicalGravityLens
+} from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
+import {
   ConversationArchiveEntryV1,
   ConversationManager
 } from '@orchestration/ConversationManager';
@@ -40,10 +46,12 @@ import type { AssistantToolService } from '@services/analysis/AssistantToolServi
 import type {
   ContextSourceEntry,
   WorkshopChatTarget,
+  WorkshopGesturePlaygroundDraft,
   WorkshopPersonaId,
   WorkshopToolId,
   WorkshopTurn
 } from '@messages';
+import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import type { LogSink } from '@/platform';
 
 export interface ScriptedRestPoint {
@@ -64,6 +72,22 @@ const toolConversationName = (toolId: WorkshopToolId): string =>
     : toolId === 'prose'
       ? 'prose-assistant'
       : `writing-tools-${toolId}`;
+
+const GESTURE_DRAFT: WorkshopGesturePlaygroundDraft = {
+  targetPhrase: 'she smiled',
+  writerInstructions: '',
+  contextText: '',
+  characterNotes: '',
+  sourceReferences: [],
+  dictionaryMarkdown: '# Gesture Dictionary\n\nA quiet refusal.',
+  menu: Array.from({ length: 4 }, (_, index) => ({
+    heading: `Route ${index + 1}`,
+    options: [`Option ${index + 1}.1`, `Option ${index + 1}.2`, `Option ${index + 1}.3`]
+  })),
+  selections: ['Option 1.1'],
+  note: '',
+  includeDictionaryInCommit: false
+};
 
 const silentEvents = (): WorkshopRunCompletionEvents => ({
   streamCompleted: () => undefined,
@@ -108,24 +132,38 @@ export class ScriptedWorkshopRoom {
     return this.rest('start');
   }
 
+  /**
+   * @param options.resources Labels the capability rounds deliver, in round
+   * order; re-using a label re-delivers that resource.
+   * @param options.reply The host's reply, when a test needs its content
+   * (for example a `### Next steps` section that yields findings).
+   */
   hostMessage(
     text: string,
-    options: { capabilityRounds?: number; attachment?: ScriptedAttachment } = {}
+    options: {
+      capabilityRounds?: number;
+      attachment?: ScriptedAttachment;
+      resources?: string[];
+      reply?: string;
+    } = {}
   ): WorkshopTurn {
+    this.session.setChatTarget({ kind: 'host' });
     const staged = this.stage(options.attachment);
     const requestId = this.requestId('host');
     const roomDelivery = this.delivery.prepare({ kind: 'host' });
     const pendingHostUpdates = this.session.collectPendingHostUpdates();
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
     const evidence = this.recordCapabilityEvidence(requestId, options.capabilityRounds ?? 0);
+    const replyContent = options.reply ?? `Host reply to "${text}".`;
     const conversationId = this.commitHistory(
       this.session.getHostConversationId(),
       `workshop_persona_${this.session.getSelectedPersonaId()}`,
       `[host] ${text}`,
-      `Host reply to "${text}".`,
-      evidence
+      replyContent,
+      evidence,
+      options.resources
     );
-    const reply = this.complete(requestId, 'Jill', conversationId, `Host reply to "${text}".`, () => {
+    const reply = this.complete(requestId, 'Jill', conversationId, replyContent, () => {
       this.delivery.commit(roomDelivery);
       if (pendingHostUpdates) {
         this.session.commitPendingHostUpdates(pendingHostUpdates);
@@ -134,6 +172,100 @@ export class ScriptedWorkshopRoom {
     });
     this.rest(`host reply: ${text}`);
     return reply;
+  }
+
+  /**
+   * A committed one-shot widget sent to the host, sequenced as the widget
+   * commit route and the room handler do: config and `ta-N` minted first,
+   * the artifact published with the writer turn before inference, linkage and
+   * the manifest row stamped at room acceptance, and the mark recorded after
+   * the reply settles.
+   */
+  hostWidgetCommit(): WorkshopTurn {
+    this.session.setChatTarget({ kind: 'host' });
+    const config = this.session.createWidgetConfig({
+      widgetId: 'gesture-playground',
+      draft: GESTURE_DRAFT
+    });
+    const artifactId = this.session.mintWidgetArtifactId();
+    const artifact = {
+      label: 'Gesture Playground',
+      content: 'Gesture directions I want:\n· Option 1.1',
+      selectionCount: 1
+    };
+    const requestId = this.requestId('widget');
+    const roomDelivery = this.delivery.prepare({ kind: 'host' });
+    const pendingHostUpdates = this.session.collectPendingHostUpdates();
+    const writerTurn = this.session.beginPersonaMessage(
+      requestId,
+      'Here are the directions I want.',
+      undefined,
+      {
+        widgetId: 'gesture-playground',
+        widgetConfigId: config.id,
+        rail: 'thread-artifact',
+        artifactId,
+        selectionCount: artifact.selectionCount
+      }
+    );
+    this.session.recordRoomThreadArtifacts(writerTurn.id, [{
+      id: artifactId,
+      kind: workshopWidgetArtifactKind('gesture-playground'),
+      name: artifact.label,
+      content: artifact.content
+    }]);
+    this.session.recordWidgetCommit(config.id, { turnId: writerTurn.id, artifactId });
+    this.session.recordWidgetArtifactDelivery(
+      artifactId,
+      artifact.label,
+      artifact.content.length,
+      { kind: 'host' }
+    );
+    const conversationId = this.commitHistory(
+      this.session.getHostConversationId(),
+      `workshop_persona_${this.session.getSelectedPersonaId()}`,
+      `[host] gesture directions ${artifactId}`,
+      'Host reply to the gesture directions.'
+    );
+    const reply = this.complete(requestId, 'Jill', conversationId, 'Host reply to the gesture directions.', () => {
+      this.delivery.commit(roomDelivery);
+      if (pendingHostUpdates) {
+        this.session.commitPendingHostUpdates(pendingHostUpdates);
+      }
+    });
+    this.rest('host reply: gesture directions');
+    return reply;
+  }
+
+  /**
+   * Install a standing prose directive the way the directive service does
+   * between runs. Its retained-prompt replacement is left out: it rewrites
+   * system prompts, which no conversation archive persists.
+   */
+  installStandingDirective(): WorkshopTurn {
+    const request = WORKSHOP_STANDING_DIRECTIVE_OPERATIONS.prepareApply({
+      requestToken: 'scripted-directive',
+      widgetId: 'lexical-gravity',
+      draft: {
+        lensSlug: 'photography',
+        applicationMode: 'interpret',
+        evidenceMode: 'blend',
+        weight: 60,
+        reach: 2,
+        metaphorPull: true,
+        resolvedLens: builtInLexicalGravityLens('photography')!
+      }
+    });
+    const preparedConfig = this.session.prepareWidgetConfigCreation(request.widgetConfigInput);
+    const preparedDirective = this.session.prepareStandingDirectiveUpsert({
+      family: request.family,
+      widgetId: request.widgetId,
+      widgetConfigId: preparedConfig.config.id,
+      revision: preparedConfig.config.revision
+    });
+    const turn = this.session.commitStandingDirectiveMutation(preparedDirective, preparedConfig);
+    this.rest('standing directive installed');
+    return turn;
   }
 
   /** Writer-requested tool run: report (sidecar commit) then host synthesis. */
@@ -303,6 +435,7 @@ export class ScriptedWorkshopRoom {
 
   /** A host message the writer cancels before any provider history commits. */
   cancelledHostMessage(text: string): WorkshopTurn {
+    this.session.setChatTarget({ kind: 'host' });
     const requestId = this.requestId('cancelled-host');
     const writerTurn = this.session.beginPersonaMessage(requestId, text);
     completeWorkshopRun({
@@ -397,7 +530,8 @@ export class ScriptedWorkshopRoom {
     toolName: string,
     userMessage: string,
     reply: string,
-    evidence: string[] = []
+    evidence: string[] = [],
+    resourceLabels: readonly string[] = []
   ): string {
     const id = conversationId ?? this.conversations.startConversation(toolName, `${toolName} system`);
     const messages: OpenRouterMessage[] = [{ role: 'user', content: userMessage }];
@@ -411,7 +545,7 @@ export class ScriptedWorkshopRoom {
       sources.push({
         kind: 'resource',
         origin: 'host',
-        label: `Characters/scripted-${this.runCounter}-${round}.md`,
+        label: resourceLabels[round] ?? `Characters/scripted-${this.runCounter}-${round}.md`,
         sizeChars: 120,
         isEstimate: true,
         deliveredAt: this.clock,
@@ -515,7 +649,14 @@ export class ScriptedWorkshopRoom {
  */
 export function runCanonicalScriptedRoom(): ScriptedWorkshopRoom {
   const room = new ScriptedWorkshopRoom().start();
-  room.hostMessage('What is this scene doing?', { capabilityRounds: 2 });
+  // Installed before the host's first reply, so every later rest point sits
+  // on the rewindable side of the v1 directive floor (ADR 2026-09-30 §4) and
+  // only the start point is refused.
+  room.installStandingDirective();
+  room.hostMessage('What is this scene doing?', {
+    capabilityRounds: 2,
+    resources: ['Characters/margot.md', 'Chapters/ch-02.md']
+  });
   room.toolRun('prose');
   room.directToolMessage('prose', 'Which sentence drags?', {
     attachment: { label: 'draft-notes.md', content: 'The second sentence runs long.' }
@@ -524,6 +665,7 @@ export function runCanonicalScriptedRoom(): ScriptedWorkshopRoom {
   room.toolRun('prose');
   room.inviteGuest('margot', 'Margot, read this with us.');
   room.guestMessage('margot', 'How does the voice sound?');
+  room.hostWidgetCommit();
   room.reviseExcerpt('The first cup waits on the cold sill.');
   room.addContext('Continuity note', 'The cup was blue in chapter two.');
   room.hostMessage('Does the revision land?', {
@@ -532,6 +674,10 @@ export function runCanonicalScriptedRoom(): ScriptedWorkshopRoom {
   room.dismissGuest('margot');
   room.inviteGuest('margot', 'Margot, back for another look?');
   room.cancelledHostMessage('Never mind that.');
-  room.hostMessage('Where should the chapter end?', { capabilityRounds: 1 });
+  // Re-reading a resource the host already holds supersedes its first row.
+  room.hostMessage('Where should the chapter end?', {
+    capabilityRounds: 1,
+    resources: ['Characters/margot.md']
+  });
   return room;
 }

@@ -45,6 +45,36 @@ describe('useWorkshopSessions', () => {
     ]);
   });
 
+  it('posts a rewind without resetting the room optimistically, and settles on its result', () => {
+    const replacement: WorkshopRoomReplacementPort = {
+      clearStatus: jest.fn(),
+      beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0, errorMessage: '' })),
+      restoreReplacement: jest.fn()
+    };
+    const { result } = renderHook(() => useWorkshopSessions(replacement));
+    const vscode = useVSCodeApi() as ReturnType<typeof createMockVSCode>;
+
+    act(() => result.current.rewindTo('turn-4-assistant-9'));
+
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_REWIND_SESSION,
+      payload: { turnId: 'turn-4-assistant-9' }
+    }));
+    // The host snapshot replaces the thread; nothing is cleared ahead of it.
+    expect(replacement.beginReplacement).not.toHaveBeenCalled();
+    expect(result.current.sessionActionPending).toBe('rewind');
+
+    const settled: WorkshopSessionActionResultMessage = {
+      type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+      source: 'extension.workshop',
+      payload: { action: 'rewind', ok: true, message: 'Rewound: 2 turns removed.' },
+      timestamp: 1
+    };
+    act(() => result.current.handleSessionActionResult(settled));
+    expect(result.current.sessionActionPending).toBeUndefined();
+    expect(result.current.sessionActionResult).toEqual(settled.payload);
+  });
+
   it('restores the exact room snapshot when New Session is rejected', () => {
     const snapshot = {
       turns: [{ id: 'prior' } as never],

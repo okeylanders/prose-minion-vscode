@@ -5,6 +5,9 @@ import type {
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import type { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
 import {
+  workshopHostHeldContextRevision
+} from '@/application/services/workshop/session/WorkshopRetainedHistoryMarks';
+import {
   runCanonicalScriptedRoom,
   ScriptedRestPoint,
   ScriptedWorkshopRoom
@@ -29,7 +32,8 @@ function liveParticipantFacts(
       facts.set(entry.key, {
         ...base,
         writerSourceCount: state.writerSources.host.length,
-        lastSeenRoomTurnId: state.participants.host.lastSeenRoomTurnId
+        lastSeenRoomTurnId: state.participants.host.lastSeenRoomTurnId,
+        contextRevision: workshopHostHeldContextRevision(state.revisions)
       });
     } else if (entry.key.startsWith('tool:')) {
       const toolId = entry.key.slice('tool:'.length) as keyof WorkshopSessionStateV1['writerSources']['tools'];
@@ -181,6 +185,60 @@ describe('retained-history marks in a scripted room (ADR 2026-09-30 §3)', () =>
     ));
     expect(recorded).toHaveLength(everMarked.size);
     expect(room.log.join('\n')).not.toContain('Host reply to');
+  });
+
+  /** Review F-02: the canonical room also commits a one-shot widget and a directive. */
+  it('marks a committed one-shot widget reply with the widget artifact in the host manifest', () => {
+    const point = room.restPoints.find((candidate) => candidate.label === 'host reply: gesture directions')!;
+    const writerTurn = point.workshop.turns.at(-2)!;
+    const commit = writerTurn.widgetCommit!;
+    if (commit.rail !== 'thread-artifact') {
+      throw new Error('The scripted widget commit must ride the thread-artifact rail');
+    }
+    expect(commit).toMatchObject({ widgetId: 'gesture-playground' });
+    expect(point.workshop.widgetConfigs?.find((config) => config.id === commit.widgetConfigId))
+      .toMatchObject({ committedTurnId: writerTurn.id, artifactId: commit.artifactId });
+    expect(point.workshop.threadArtifacts?.map((artifact) => artifact.id)).toContain(commit.artifactId);
+    // Stamped at room acceptance, so the settled host mark counts it.
+    const hostRows = point.workshop.writerSources.host;
+    expect(hostRows.at(-1)).toMatchObject({ kind: 'message-attachment', artifactId: commit.artifactId });
+    expect(latestMarks(point).get('host')).toMatchObject({
+      turnId: point.headTurnId,
+      writerSourceCount: hostRows.length
+    });
+  });
+
+  it('installs a standing directive before the host exists, so no later mark crosses it', () => {
+    const installed = room.restPoints.find((point) => point.label === 'standing directive installed')!;
+    const divider = installed.workshop.turns.at(-1)!;
+    expect(divider).toMatchObject({ artifact: 'standing_directive_change', role: 'system' });
+    expect(installed.workshop.retainedHistoryMarks).toEqual([]);
+    const final = room.restPoints.at(-1)!;
+    expect(final.workshop.standingDirectives).toEqual(installed.workshop.standingDirectives);
+    const dividerIndex = final.workshop.turns.findIndex((turn) => turn.id === divider.id);
+    const turnIndex = new Map(final.workshop.turns.map((turn, index) => [turn.id, index]));
+    for (const mark of final.workshop.retainedHistoryMarks ?? []) {
+      expect(turnIndex.get(mark.turnId)!).toBeGreaterThan(dividerIndex);
+    }
+  });
+
+  it('appends a re-delivered resource and stales the host row it supersedes', () => {
+    const first = room.restPoints.find((point) => point.label === 'host reply: What is this scene doing?')!;
+    const final = room.restPoints.at(-1)!;
+    const hostSources = (point: ScriptedRestPoint) =>
+      point.archive.find((entry) => entry.key === 'host')!.contextSources
+        .map((row) => [row.label, row.stale === true]);
+
+    expect(hostSources(first)).toEqual([
+      ['Characters/margot.md', false],
+      ['Chapters/ch-02.md', false]
+    ]);
+    expect(hostSources(final)).toEqual([
+      ['Characters/margot.md', true],
+      ['Chapters/ch-02.md', false],
+      ['Characters/margot.md', false]
+    ]);
+    expect(latestMarks(final).get('host')).toMatchObject({ contextSourceCount: 3 });
   });
 
   it('prunes every mark when the assistant generation is lost, and on reset', () => {

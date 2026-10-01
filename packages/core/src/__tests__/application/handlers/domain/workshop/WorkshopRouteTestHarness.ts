@@ -240,6 +240,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     resetSession: jest.fn(async () => {
       session.reset().forEach((conversationId) => service.discardConversation(conversationId));
     }),
+    rewindTo: jest.fn(),
     saveNamed: jest.fn().mockResolvedValue({ sessionId: 'saved-1', title: 'Saved Room' }),
     list: jest.fn().mockResolvedValue({
       availability: { available: true },

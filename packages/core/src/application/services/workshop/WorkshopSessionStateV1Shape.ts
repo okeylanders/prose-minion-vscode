@@ -185,7 +185,7 @@ function assertRetainedHistoryMark(value: unknown, path: string): void {
       'writerSourceCount',
       'origin'
     ],
-    ['lastSeenRoomTurnId']
+    ['lastSeenRoomTurnId', 'contextRevision']
   );
   stringAt(mark.turnId, `${path}.turnId`);
   stringAt(mark.conversationKey, `${path}.conversationKey`);
@@ -193,6 +193,7 @@ function assertRetainedHistoryMark(value: unknown, path: string): void {
   numberAt(mark.contextSourceCount, `${path}.contextSourceCount`);
   numberAt(mark.writerSourceCount, `${path}.writerSourceCount`);
   optionalStringAt(mark.lastSeenRoomTurnId, `${path}.lastSeenRoomTurnId`);
+  optionalNumberAt(mark.contextRevision, `${path}.contextRevision`);
   enumAt(mark.origin, `${path}.origin`, ['commit', 'baseline']);
 }
 

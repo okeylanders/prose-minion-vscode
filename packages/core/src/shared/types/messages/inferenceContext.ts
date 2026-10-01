@@ -41,7 +41,10 @@ export interface ContextSourceEntry {
   promptTokensDelta?: number;
   isEstimate: boolean;
   excerptVersion?: number;
-  /** Superseded by a later excerpt revision; rendered dimmed, never vanished. */
+  /**
+   * Superseded by a later delivery: an excerpt revision for pins, a re-delivery
+   * of the same resource for agent-fetched rows. Rendered dimmed, never vanished.
+   */
   stale?: boolean;
   /** Host-minted retained artifact that delivered this source, when applicable. */
   artifactId?: string;

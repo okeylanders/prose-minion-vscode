@@ -86,6 +86,21 @@ export function workshopRetainedHistoryKeyForCommitTurn(
 
 const isCount = (value: number): boolean => Number.isSafeInteger(value) && value >= 0;
 
+/**
+ * The context revision a live host holds (ADR 2026-09-30, Sprint 02 kickoff
+ * item 4). A pending context update is always the current revision, so while
+ * one is pending the host holds at most the revision before it. The value is
+ * exact for the question a rewind asks: does the host hold the current
+ * revision?
+ */
+export function workshopHostHeldContextRevision(
+  revisions: Readonly<{ context: number; pendingContext?: number }>
+): number {
+  return revisions.pendingContext === undefined
+    ? revisions.context
+    : Math.max(0, revisions.pendingContext - 1);
+}
+
 /** Archived histories always hold complete user/assistant exchanges. */
 export function isValidRetainedHistoryCounts(counts: WorkshopRetainedHistoryCounts): boolean {
   return isCount(counts.messageCount)
@@ -131,6 +146,8 @@ interface RetainedParticipantFacts {
   writerSourceCount: number;
   /** Absent for tool sidecars, which read nothing from the room. */
   reader?: { lastSeenRoomTurnId?: string };
+  /** Host only: the context revision it holds now. */
+  heldContextRevision?: number;
 }
 
 /** Live, bound participants in a persisted state, keyed by their conversation. */
@@ -141,7 +158,8 @@ function retainedParticipants(
   if (state.participants.host.conversationKey === 'host') {
     participants.set('host', {
       writerSourceCount: state.writerSources.host.length,
-      reader: { lastSeenRoomTurnId: state.participants.host.lastSeenRoomTurnId }
+      reader: { lastSeenRoomTurnId: state.participants.host.lastSeenRoomTurnId },
+      heldContextRevision: workshopHostHeldContextRevision(state.revisions)
     });
   }
   for (const sidecar of state.participants.toolSidecars) {
@@ -174,8 +192,10 @@ function retainedParticipants(
  *   into this key's own conversation — and a reader offset that exists and
  *   does not follow the mark's own turn (tool marks carry no offset);
  * - carries safe non-negative counts with an even message count;
+ * - for the host, and only the host, carries the context revision it held,
+ *   never later than the revision it holds now;
  * - follows the key's previous mark in strict ledger order without any count
- *   decreasing, with a baseline only ever as the key's first mark;
+ *   or revision decreasing, with a baseline only ever as the key's first mark;
  * - never claims more writer-source rows than the participant holds, nor an
  *   offset beyond the participant's current offset (both only grow);
  * and every reply that committed into the key after its first mark carries a
@@ -228,6 +248,11 @@ export function findInconsistentRetainedHistoryMarkKeys(
       && isValidRetainedHistoryCounts(mark)
       && isCount(mark.writerSourceCount)
       && mark.writerSourceCount <= participant.writerSourceCount
+      && (participant.heldContextRevision === undefined
+        ? mark.contextRevision === undefined
+        : mark.contextRevision !== undefined
+          && isCount(mark.contextRevision)
+          && mark.contextRevision <= participant.heldContextRevision)
       && (mark.origin === 'commit' || previous === undefined)
       && (participant.reader === undefined
         ? mark.lastSeenRoomTurnId === undefined
@@ -243,6 +268,7 @@ export function findInconsistentRetainedHistoryMarkKeys(
         && mark.messageCount >= previous.mark.messageCount
         && mark.contextSourceCount >= previous.mark.contextSourceCount
         && mark.writerSourceCount >= previous.mark.writerSourceCount
+        && (mark.contextRevision ?? 0) >= (previous.mark.contextRevision ?? 0)
         && (
           previous.mark.lastSeenRoomTurnId === undefined
           || (
@@ -352,6 +378,8 @@ export interface WorkshopHydratedRetainedParticipant {
   conversationKey: WorkshopConversationLogicalKey;
   writerSourceCount: number;
   lastSeenRoomTurnId?: string;
+  /** Host only: the context revision it holds. */
+  contextRevision?: number;
 }
 
 export interface WorkshopHydratedRetainedHistoryMarks {
@@ -409,6 +437,9 @@ export function hydratedRetainedHistoryMarks(input: {
         writerSourceCount: participant.writerSourceCount,
         ...(participant.lastSeenRoomTurnId !== undefined
           ? { lastSeenRoomTurnId: participant.lastSeenRoomTurnId }
+          : {}),
+        ...(participant.contextRevision !== undefined
+          ? { contextRevision: participant.contextRevision }
           : {}),
         origin: 'baseline'
       });

@@ -623,6 +623,20 @@ export interface WorkshopResetSessionMessage
   type: MessageType.WORKSHOP_RESET_SESSION;
 }
 
+/**
+ * Rewind the room to one thread bubble (ADR 2026-09-30 §1, §6). The host maps
+ * the bubble to its cut (after a reply, before a writer message) and checks
+ * it again: the snapshot's rewindability flag is advisory. A writer-message
+ * rewind is an edit, so its text returns through
+ * WORKSHOP_COMPOSER_DRAFT_RESTORED and its one-shot attachments are staged
+ * again under their original ids.
+ */
+export interface WorkshopRewindSessionMessage extends MessageEnvelope<{
+  turnId: string;
+}> {
+  type: MessageType.WORKSHOP_REWIND_SESSION;
+}
+
 /** Sent on webview mount: "give me the session as the host knows it". */
 export interface WorkshopRequestSessionMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.WORKSHOP_REQUEST_SESSION;
@@ -785,6 +799,7 @@ export interface WorkshopSessionsDataMessage extends MessageEnvelope<{
 
 export type WorkshopSessionAction =
   | 'new'
+  | 'rewind'
   | 'save'
   | 'open'
   | 'rename'

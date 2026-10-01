@@ -123,6 +123,9 @@ describe('retained-history mark persistence (ADR 2026-09-30 §3, §9)', () => {
         : state.participants.personaGuests.find(
             (guest) => `guest:${guest.personaId}` === entry.key
           )!.lastSeenRoomTurnId,
+      // Only the host receives context updates; its baseline records the
+      // revision it holds at the reopen point.
+      ...(entry.key === 'host' ? { contextRevision: state.revisions.context } : {}),
       origin: 'baseline'
     })));
   });
@@ -277,6 +280,20 @@ describe('retained-history mark persistence (ADR 2026-09-30 §3, §9)', () => {
       ['an offset beyond its own turn', (marks) => {
         hostMarks(marks)[0].lastSeenRoomTurnId = marks.at(-1)!.turnId;
         return 'host';
+      }],
+      ['a host mark without the context revision it held', (marks) => {
+        delete hostMarks(marks)[0].contextRevision;
+        return 'host';
+      }],
+      ['a context revision that goes backwards', (marks) => {
+        // Still no later than the revision the host holds now; only order sees it.
+        hostMarks(marks)[0].contextRevision = hostMarks(marks).at(-1)!.contextRevision;
+        expect(hostMarks(marks)[1].contextRevision).toBeLessThan(hostMarks(marks)[0].contextRevision!);
+        return 'host';
+      }],
+      ['a context revision later than the host holds', (marks) => {
+        hostMarks(marks).at(-1)!.contextRevision = 99;
+        return 'host';
       }]
     ])('normalizes away a key whose marks carry %s, and strict integrity refuses it', (_label, corrupt) => {
       const state = scriptedState();
@@ -295,6 +312,46 @@ describe('retained-history mark persistence (ADR 2026-09-30 §3, §9)', () => {
       // A key is judged whole, and only the untrustworthy key pays.
       expect(marksOf(normalized.state).filter((mark) => mark.conversationKey === 'guest:margot'))
         .toEqual(guestMarks);
+    });
+
+    it('refuses a context revision on a guest mark: only the host receives context updates', () => {
+      const state = scriptedState();
+      const hostMarksBefore = marksOf(state).filter((mark) => mark.conversationKey === 'host');
+      marksOf(state).find((mark) => mark.conversationKey === 'guest:margot')!.contextRevision = 0;
+
+      expect(() => validateWorkshopSessionStateV1(state))
+        .toThrow(/retained-history marks are inconsistent \(keys=guest:margot\)/);
+      const normalized = normalizeWorkshopSessionCheckpointForHydration(
+        parseWorkshopSessionStateV1(state)
+      );
+      expect(marksOf(normalized.state).filter((mark) => mark.conversationKey === 'guest:margot'))
+        .toEqual([]);
+      expect(marksOf(normalized.state).filter((mark) => mark.conversationKey === 'host'))
+        .toEqual(hostMarksBefore);
+    });
+
+    it('re-baselines the host of an integration-branch checkpoint whose host marks predate context revisions', () => {
+      const room = runCanonicalScriptedRoom();
+      const session = persisted(room);
+      for (const mark of marksOf(session.workshop)) {
+        delete mark.contextRevision;
+      }
+
+      const decoded = decodeWorkshopPersistedSessionCheckpoint(session);
+      expect(decoded.normalizations).toEqual(['dropped-inconsistent-retained-history-marks']);
+      const { live } = open(decoded.session);
+      const state = live.exportCommittedState();
+      expect(marksOf(state).filter((mark) => mark.conversationKey === 'host')).toEqual([
+        expect.objectContaining({
+          turnId: state.turns.at(-1)!.id,
+          origin: 'baseline',
+          contextRevision: state.revisions.context
+        })
+      ]);
+      // Guests never carried the field, so their marks survive untouched.
+      expect(marksOf(state).filter((mark) => mark.conversationKey === 'guest:margot'))
+        .toEqual(marksOf(room.session.exportCommittedState())
+          .filter((mark) => mark.conversationKey === 'guest:margot'));
     });
 
     it('drops marks for a participant the state no longer retains', () => {

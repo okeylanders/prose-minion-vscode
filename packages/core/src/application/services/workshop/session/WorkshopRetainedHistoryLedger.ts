@@ -34,6 +34,8 @@ export interface WorkshopRetainedParticipantFacts {
   conversationId: string;
   writerSourceCount: number;
   lastSeenRoomTurnId?: string;
+  /** Host only: the context revision it holds once the commit has settled. */
+  contextRevision?: number;
 }
 
 export interface WorkshopRetainedHistoryLedgerState {
@@ -72,6 +74,10 @@ export class WorkshopRetainedHistoryLedger {
       !isValidRetainedHistoryCounts(mark)
       || !Number.isSafeInteger(mark.writerSourceCount)
       || mark.writerSourceCount < 0
+      || (
+        mark.contextRevision !== undefined
+        && (!Number.isSafeInteger(mark.contextRevision) || mark.contextRevision < 0)
+      )
     ) {
       return { recorded: false, reason: 'invalid-counts', prunedMarks: this.pruneKey(mark.conversationKey) };
     }
@@ -95,6 +101,7 @@ export class WorkshopRetainedHistoryLedger {
       && latest.messageCount <= mark.messageCount
       && latest.contextSourceCount <= mark.contextSourceCount
       && latest.writerSourceCount <= mark.writerSourceCount
+      && (latest.contextRevision ?? 0) <= (mark.contextRevision ?? 0)
       && (
         latest.lastSeenRoomTurnId === undefined
         || (
@@ -156,6 +163,9 @@ export class WorkshopRetainedHistoryLedger {
       writerSourceCount: participant.writerSourceCount,
       ...(participant.lastSeenRoomTurnId !== undefined
         ? { lastSeenRoomTurnId: participant.lastSeenRoomTurnId }
+        : {}),
+      ...(participant.contextRevision !== undefined
+        ? { contextRevision: participant.contextRevision }
         : {}),
       origin: 'commit'
     });

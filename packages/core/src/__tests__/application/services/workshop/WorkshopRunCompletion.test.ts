@@ -754,6 +754,8 @@ describe('completeWorkshopRun retained-history marks', () => {
       // The first-adoption pin plus the attachment shipped during settlement.
       writerSourceCount: 2,
       lastSeenRoomTurnId: prepared.deliveredTurnIds.at(-1),
+      // No context change has happened, so the host holds revision zero.
+      contextRevision: 0,
       origin: 'commit'
     }]);
   });
@@ -781,6 +783,54 @@ describe('completeWorkshopRun retained-history marks', () => {
     expect(session.exportCommittedState().retainedHistoryMarks).toEqual([
       expect.objectContaining({ conversationKey: 'host', messageCount: 2 })
     ]);
+  });
+
+  it('records the context revision the host holds, including after an edit made during its run', () => {
+    const session = room();
+    let messageCount = 0;
+    const complete = (requestId: string, content: string, settle?: () => void) => {
+      messageCount += 2;
+      const committed = messageCount;
+      return completeWorkshopRun({
+        session,
+        requestId,
+        label: 'Jill',
+        result: reply(content, 'host-conv'),
+        aborted: false,
+        createsRetainedConversation: requestId === 'req-1',
+        copy: workshopMessageCompletionCopy('Jill'),
+        discardConversation: jest.fn(),
+        readRetainedHistory: () => ({ messageCount: committed, contextSourceCount: 0 }),
+        settleCommittedRun: settle,
+        log: jest.fn(),
+        events: events()
+      });
+    };
+    const addNote = (label: string) => session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label,
+      words: 2,
+      content: `${label} body.`
+    });
+
+    session.beginPersonaMessage('req-1', 'Hello');
+    complete('req-1', 'First.');
+    addNote('Before the run');
+    const firstUpdate = session.collectPendingHostUpdates()!;
+    session.beginPersonaMessage('req-2', 'Again');
+    // Edited while the host is still answering: this run cannot deliver it.
+    addNote('During the run');
+    complete('req-2', 'Second.', () => session.commitPendingHostUpdates(firstUpdate));
+    expect(session.exportCommittedState().revisions).toMatchObject({ context: 2, pendingContext: 2 });
+    const secondUpdate = session.collectPendingHostUpdates()!;
+    session.beginPersonaMessage('req-3', 'Third');
+    complete('req-3', 'Third.', () => session.commitPendingHostUpdates(secondUpdate));
+
+    const state = session.exportCommittedState();
+    expect(state.revisions.pendingContext).toBeUndefined();
+    // Revision 1 arrived with the second reply; revision 2 only with the third.
+    expect(state.retainedHistoryMarks?.map((mark) => mark.contextRevision)).toEqual([0, 1, 2]);
   });
 
   it.each([

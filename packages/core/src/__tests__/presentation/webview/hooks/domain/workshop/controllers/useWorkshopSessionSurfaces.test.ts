@@ -35,6 +35,7 @@ const options = (
   setSessionSearchQuery: jest.fn(),
   resetSession: jest.fn(),
   openSession: jest.fn(),
+  rewindTo: jest.fn(),
   consumeSessionActionResult: jest.fn(),
   onResult: jest.fn(),
   ...overrides
@@ -85,6 +86,29 @@ describe('useWorkshopSessionSurfaces', () => {
     let resumption: { resume: 'paste' | 'choose' } | undefined;
     act(() => { resumption = result.current.acceptSessionConfirm(); });
     expect(resumption).toEqual({ resume: 'paste' });
+    expect(result.current.sessionConfirm).toBeNull();
+  });
+
+  it('confirms a rewind before posting it, and forgets it on cancel', () => {
+    const props = options({ hasReplaceableSessionState: true });
+    const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
+
+    act(() => result.current.requestRewind('turn-3-assistant-3', 2, false));
+    expect(result.current.sessionConfirm).toEqual({
+      kind: 'rewind',
+      turnId: 'turn-3-assistant-3',
+      removedCount: 2,
+      edit: false
+    });
+    expect(props.rewindTo).not.toHaveBeenCalled();
+    act(() => result.current.cancelSessionConfirm());
+    expect(result.current.sessionConfirm).toBeNull();
+
+    act(() => result.current.requestRewind('turn-2-user-2', 3, true));
+    let resumption: ReturnType<typeof result.current.acceptSessionConfirm>;
+    act(() => { resumption = result.current.acceptSessionConfirm(); });
+    expect(resumption!).toBeUndefined();
+    expect(props.rewindTo).toHaveBeenCalledWith('turn-2-user-2');
     expect(result.current.sessionConfirm).toBeNull();
   });
 
