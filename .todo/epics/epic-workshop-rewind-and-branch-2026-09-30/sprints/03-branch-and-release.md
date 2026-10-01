@@ -1,6 +1,6 @@
 # Sprint 03: Branch and Release Readiness
 
-**Status:** In progress — kickoff decisions confirmed 2026-10-01 (see [Kickoff decisions](#kickoff-decisions-2026-10-01))
+**Status:** In review — delivered 2026-10-01 on `sprint/workshop-rewind-and-branch-03-branch`, PR into `epic/workshop-rewind-and-branch` (see [Delivery notes](#delivery-notes-2026-10-01)). Manual smoke waits on Okey
 **Branch:** `sprint/workshop-rewind-and-branch-03-branch`
 **Depends on:** Sprint 02
 **Blocks:** Epic closure
@@ -128,3 +128,66 @@ Record results in the memory-bank entry. Use cheap models and short rooms.
 ## Exit
 
 Branch works from named rooms with the source preserved, and unnamed rooms are asked to save first. PR #119 review F-01 is addressed. All epic completion criteria are checked. Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. Manual smoke is recorded.
+
+## Delivery notes (2026-10-01)
+
+Every deliverable landed except the manual smoke, which waits on Okey (kickoff decision 4). The corrections below are also recorded in the ADR's [Sprint 03 implementation findings](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-implementation-findings).
+
+**Plan deviations.**
+- **Coordinator API.** `branchFrom(cut, { title? })` takes a cut, as `rewindTo` does, and the route maps the bubble. It has no `origin`, because only a writer branches.
+- **Saved-source preflight.** It also refuses a named room whose latest autosave did not land, with "Save this session's latest changes before branching."
+- **Read-back promotion.** The branch is read back from its file and promoted from that decode result, exactly as Sessions would open it (finding 2).
+- **What's New.** A page is prepended to the existing startup notice, now `v4`, instead of an entry in ADR 2026-08-05's unbuilt ledger (kickoff decision 5). No screenshot of the bubble actions exists, so the page draws them inline with the notice's call-out badges.
+- **New's transaction.** New joined the shared transaction too, so a failure in its reset prelude now rolls back (finding 1).
+- **Released-config banner.** The widget sheets' clone banner now names a rewound message (finding 3).
+
+**Modules.**
+- `WorkshopSessionTitles.ts`: the title limit, `requireWorkshopSessionTitle` and `workshopBranchTitle`.
+- `WorkshopSessionBranch.ts`: the branch envelope (`workshopBranchCheckpoint`), `WorkshopBranchRefusedError` and `WorkshopBranchNotOpenedError`. The coordinator re-exports both errors for handlers.
+- `WorkshopSessionPersistenceCoordinator`: `replaceLiveRoom`, used by New, Rewind and the named-session promotion; `branchFrom`; and `describeWorkshopCut`, shared by the Rewind and Branch log lines.
+- `WorkshopSessionTimeService`: `forgetNotices` and `forgetAllNotices`.
+- The transform: `summary.releasedWidgetConfigIds` and `widgetRestore`.
+- Contracts: `WORKSHOP_BRANCH_SESSION { turnId, title? }`, the `'branch'` action and `WORKSHOP_WIDGET_CONFIG_RESTORED`.
+- `WorkshopSessionMessageHandler`: `handleBranchSession`, plus `postEditRestores`, which Rewind shares.
+- Webview:
+  - `WorkshopBranchAction` beside Rewind, fed the unfiltered verdict map;
+  - `useWorkshopSessions.branchFrom`;
+  - `useWorkshopSessionSurfaces.requestBranch` and the `save-before-branch` popup;
+  - the widget reopen through `useWorkshopWidgetHost` and `useWorkshopWidgetOpening`;
+  - the notice page.
+
+**Proof.**
+- **Key proof** (`WorkshopSessionBranchCoordinator.test.ts`):
+  - Branches the canonical room from a named checkpoint at all 17 rest points after the directive floor.
+  - Each branch file's `{ workshop, conversations }` equals `expectedRewoundRoom`, the oracle's builder, now shared from `WorkshopRewindOracle.ts`.
+  - The envelope is exact: fresh id and times, fresh temporal start in the source's timezone, the title, a rebuilt summary, and no lineage keys.
+  - The source file is byte-identical, and the branch is the live, active named session.
+- **Coordinator** (37 tests):
+  - D2 refusal with the session directory unchanged, then a branch once saved;
+  - refusals: a run, a pending operation, no workspace, a position inside a run, the directive floor, unsaved changes;
+  - failures at the transform and the branch write, leaving no file and no temporary file;
+  - failures at import, hydrate and the `current.json` mirror: rollback, the branch openable, an honest error;
+  - writer and widget edits;
+  - Open's temporal semantics;
+  - the browser summary and content search.
+- **Mutations.** Each is caught:
+  - letting an unnamed room through;
+  - skipping the unsaved-changes check;
+  - writing the source (22 failures);
+  - summarizing the source instead of the cut (17 failures).
+- **Time notices.** Unit, coordinator (a fresh host's session-start frame; rollback restores the notice) and route (re-invite after dismissal; generation loss). Each seam is mutation-checked.
+- **Route** (13 tests) and **webview**: the bubble, surfaces, sessions hook, confirm copy, `WorkshopApp` flows and the seven-page notice.
+
+**Verification** (before the PR push):
+- `npx jest --no-cache`: 228 suites, 2,704 tests, 2 snapshots.
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,030 warnings. The base had 1,026; the four new warnings follow the repo's naming conventions: two `MessageType` members and two PascalCase components.
+- `npm run build`: passed.
+- `git diff --check`: clean.
+
+**Follow-ups captured.**
+- [Persistence coordinator ownership](../../../tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred).
+- Branch lineage (`branchedFrom`), in the parked [Branch Board](../../../features/feature-workshop-branch-board/README.md) feature.
+- A real screenshot of the bubble actions for the notice page.
+- Release preparation names the version (both changelogs carry `[Unreleased]`).
+- Archive the epic after its merge to `main`.

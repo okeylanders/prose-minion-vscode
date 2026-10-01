@@ -1,7 +1,7 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** In progress — Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)) and Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119)) complete and merged into the integration branch; Sprint 03 (Branch and release readiness) in progress on `sprint/workshop-rewind-and-branch-03-branch`. ADR amended with Sprint 01's findings and Sprint 02's kickoff decisions and findings
+**Status:** In review — Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117)) and Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119)) complete and merged into the integration branch. Sprint 03 (Branch and release readiness) delivered on `sprint/workshop-rewind-and-branch-03-branch` and in review. The ADR is accepted. Okey's manual Extension Development Host smoke and the single merge to `main` remain
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
@@ -21,11 +21,11 @@ Add two actions to the bottom of eligible writer and agent bubbles:
 
 The visible ledger and each participant's retained LLM history are separate ordered records with no shared index. Rewind is the first operation that has to cut both at the same moment. The ADR introduces **retained-history marks** to record where each history stood after each commit. It then applies one pure transform over the persisted session shape and installs the result through the proven Open path.
 
-## Decisions (proposed; confirm at kickoff)
+## Decisions (accepted in the [ADR](../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#product-decisions-d1d7))
 
 | # | Decision | Default |
 |---|---|---|
-| D1 | Writer-bubble semantics | Rewind/Branch to *before* the message; its text and one-shot attachments return to the composer |
+| D1 | Writer-bubble semantics | Rewind/Branch to *before* the message; its text and one-shot attachments return to the composer. A widget message reopens its widget instead (Sprint 03 kickoff) |
 | D2 | Branching from an unnamed room | Not allowed: a popup explains the session must be saved first and offers "Save session…" (opens the Save modal); the writer then clicks Branch again. The host also refuses. **Confirmed 2026-09-30.** |
 | D3 | Branch title | `"<source title> — branch"`, renamable afterwards |
 | D4 | Confirmation | Rewind confirms and states how many turns go and that the excerpt and context stay current; Branch does not confirm (non-destructive) |
@@ -56,17 +56,17 @@ Each sprint branch is cut from the integration branch and merged back through it
 
 ## Epic completion criteria
 
-- [ ] ADR accepted; D1–D7 confirmed or revised in the ADR.
+- [x] ADR accepted; D1–D7 confirmed or revised in the ADR.
 - [x] Marks recorded at every retained-history commit, guarded by an architecture test.
 - [x] Marks pruned on every conversation discard; baseline marks recorded on hydration.
 - [x] Per-turn rewindability computed host-side and rendered, never re-derived, by the webview.
 - [x] Rewind reproduces recorded rest-point state for host, guest, sidecar, capability, widget, to-do, excerpt-revision and context-change scenarios.
 - [x] Writer-bubble rewind restores composer text and one-shot attachments. (A direct tool message's attachments are named for re-attach; ADR Sprint 02 finding 3.)
-- [ ] Branch works from named rooms and the source session file is byte-unchanged; unnamed rooms show the save-first popup and the host refuses them.
+- [x] Branch works from named rooms and the source session file is byte-unchanged; unnamed rooms show the save-first popup and the host refuses them.
 - [x] Rollback proven for failures injected at transform, import, hydrate and write.
-- [ ] Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass.
-- [ ] Manual Extension Development Host smoke recorded (see Sprint 03).
-- [ ] Memory-bank completion entry; parked Branch Board feature updated with lineage follow-up.
+- [x] Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. *Sprint 03 head: 228 suites / 2,704 tests; lint 0 errors.*
+- [ ] Manual Extension Development Host smoke recorded (see Sprint 03). *Waiting on Okey: the cloud container cannot run the Extension Development Host (Sprint 03 kickoff decision 4). The checklist is in the [memory-bank entry](../../../.memory-bank/20261001-1105-workshop-rewind-and-branch.md).*
+- [x] Memory-bank completion entry; parked Branch Board feature updated with lineage follow-up.
 
 ## Adjacent feature: Side Quests
 
