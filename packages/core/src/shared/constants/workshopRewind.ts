@@ -11,7 +11,15 @@ export type WorkshopRewindRefusalReason =
   | WorkshopTurnRewindUnavailableReason
   | 'not-a-rest-point';
 
-export function workshopRewindUnavailableReason(reason: WorkshopRewindRefusalReason): string {
+/**
+ * Rewind and Branch share one cut policy, so they share its reasons. Only a
+ * position that is no rest point names the action, because no bubble ever
+ * shows that one.
+ */
+export function workshopRewindUnavailableReason(
+  reason: WorkshopRewindRefusalReason,
+  action: 'rewind' | 'branch' = 'rewind'
+): string {
   switch (reason) {
     case 'busy':
       return 'Wait for the current response to finish';
@@ -20,7 +28,7 @@ export function workshopRewindUnavailableReason(reason: WorkshopRewindRefusalRea
     case 'before-directive-change':
       return "Can't cross a prose directive change yet";
     case 'not-a-rest-point':
-      return "Can't rewind to this point";
+      return action === 'branch' ? "Can't branch from this point" : "Can't rewind to this point";
   }
 }
 

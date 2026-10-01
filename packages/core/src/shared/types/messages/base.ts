@@ -144,6 +144,7 @@ export enum MessageType {
   WORKSHOP_REPIN_EXCERPT = 'workshop_repin_excerpt',
   WORKSHOP_RESET_SESSION = 'workshop_reset_session',
   WORKSHOP_REWIND_SESSION = 'workshop_rewind_session',
+  WORKSHOP_BRANCH_SESSION = 'workshop_branch_session',
   WORKSHOP_REQUEST_SESSION = 'workshop_request_session',
   WORKSHOP_DISMISS_ERROR = 'workshop_dismiss_error',
   WORKSHOP_SAVE_SESSION = 'workshop_save_session',
