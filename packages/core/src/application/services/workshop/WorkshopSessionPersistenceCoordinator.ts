@@ -74,6 +74,15 @@ import type {
   WorkshopRewindCut
 } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 import {
+  WorkshopBranchNotOpenedError,
+  WorkshopBranchRefusedError,
+  workshopBranchCheckpoint
+} from '@/application/services/workshop/WorkshopSessionBranch';
+import {
+  requireWorkshopSessionTitle,
+  workshopBranchTitle
+} from '@/application/services/workshop/WorkshopSessionTitles';
+import {
   rewindWorkshopSession,
   WorkshopRetainedArchiveEntry,
   WorkshopRewindComposerRestore,
@@ -125,10 +134,14 @@ interface WorkshopRoomInstallation {
   recoveryNotices: WorkshopSessionRecoveryNoticeMessage['payload'][];
 }
 
-// The Rewind operation's public vocabulary: handlers depend on the
+// The Rewind and Branch operations' public vocabulary: handlers depend on the
 // coordinator, never on the session collaborators behind it.
 export type { WorkshopRewindCut } from '@/application/services/workshop/session/WorkshopRewindPolicy';
 export { WorkshopRewindRefusedError } from '@/application/services/workshop/session/WorkshopSessionRewind';
+export {
+  WorkshopBranchNotOpenedError,
+  WorkshopBranchRefusedError
+} from '@/application/services/workshop/WorkshopSessionBranch';
 
 /**
  * Who asked for a rewind. A writer's bubble action re-seeds the composer; a
@@ -141,6 +154,20 @@ export interface WorkshopRewindOutcome {
   /** Present only when a writer rewinds their own message (origin `'writer'`). */
   composerRestore?: WorkshopRewindComposerRestore;
   /** Present only when a writer rewinds their own widget message (origin `'writer'`). */
+  widgetRestore?: WorkshopRewindWidgetRestore;
+  degradedConversationKeys: WorkshopConversationLogicalKey[];
+  degradedConversations: WorkshopConversationDegradation[];
+}
+
+export interface WorkshopBranchOutcome {
+  /** The named session the branch was cut from. Branch never writes its file. */
+  source: { sessionId: string; title: string };
+  /** The new named session, now the live room. */
+  branch: WorkshopStoredSessionSummary;
+  summary: WorkshopRewindCutSummary;
+  /** Present only when the writer branched from their own message. */
+  composerRestore?: WorkshopRewindComposerRestore;
+  /** Present only when the writer branched from their own widget message. */
   widgetRestore?: WorkshopRewindWidgetRestore;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   degradedConversations: WorkshopConversationDegradation[];
@@ -181,6 +208,29 @@ export type WorkshopSessionSaveStatus = WorkshopSessionSaveStatusMessage['payloa
 const normalizedIso = (date: Date): string => date.toISOString();
 
 const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];
+
+/** What a cut kept and removed, for one log line: counts and keys, never content. */
+function describeWorkshopCut(
+  cut: WorkshopRewindCut,
+  cutRoom: WorkshopSessionRewindResult,
+  before: readonly WorkshopRetainedArchiveEntry[]
+): string {
+  const after = new Map(cutRoom.conversations.map((entry) => [entry.key, entry.messages.length]));
+  const histories = before
+    .map((entry) => `${entry.key} ${entry.messages.length}→${after.get(entry.key) ?? 'dropped'}`)
+    .join(', ') || 'none';
+  const { summary } = cutRoom;
+  return `cut=${cut.kind}:${cut.turnId}, ` +
+    `keptThrough=${summary.keptThroughTurnId}, removedTurns=${summary.removedTurnCount}, ` +
+    `removedTodos=${summary.removedTodoCount}, messages=${histories}, ` +
+    `dropped=${summary.droppedConversationKeys.join(',') || 'none'}` +
+    (summary.releasedWidgetConfigIds.length > 0
+      ? `, releasedWidgets=${summary.releasedWidgetConfigIds.join(',')}`
+      : '') +
+    (cutRoom.unverifiedConversationKeys.length > 0
+      ? `, unverifiedMarks=${cutRoom.unverifiedConversationKeys.join(',')}`
+      : '');
+}
 
 export class WorkshopSessionPersistenceCoordinator {
   private readonly now: () => Date;
@@ -528,7 +578,7 @@ export class WorkshopSessionPersistenceCoordinator {
     targetSessionId?: string
   ): Promise<WorkshopStoredSessionSummary> {
     return this.serializeSessionOperation(async () => {
-      const normalizedTitle = this.requireTitle(title);
+      const normalizedTitle = requireWorkshopSessionTitle(title);
       const now = normalizedIso(this.now());
       if (targetSessionId !== undefined) {
         return this.updateActiveNamedSession(targetSessionId, normalizedTitle, now);
@@ -706,11 +756,11 @@ export class WorkshopSessionPersistenceCoordinator {
       if (this.activeNamedSessionId === sessionId) {
         return this.updateActiveNamedSession(
           sessionId,
-          this.requireTitle(title),
+          requireWorkshopSessionTitle(title),
           normalizedIso(this.now())
         );
       }
-      return this.store.renameNamed(sessionId, this.requireTitle(title));
+      return this.store.renameNamed(sessionId, requireWorkshopSessionTitle(title));
     });
   }
 
@@ -732,7 +782,7 @@ export class WorkshopSessionPersistenceCoordinator {
       const duplicate: WorkshopPersistedSessionV2 = {
         ...source.session,
         sessionId: this.idFactory(),
-        title: this.requireTitle(requestedTitle ?? `${source.session.title} copy`),
+        title: requireWorkshopSessionTitle(requestedTitle ?? `${source.session.title} copy`),
         createdAt: now,
         updatedAt: now,
         savedAt: now
@@ -899,6 +949,92 @@ export class WorkshopSessionPersistenceCoordinator {
   }
 
   /**
+   * Branch from a rest point of the saved room (ADR 2026-09-30 §7): save the
+   * cut room as a new named session, then open it through the named-session
+   * promotion that Open uses. The source session's file is never written.
+   * A failure before the branch is saved changes nothing and leaves no file;
+   * a failure while opening it restores the prior room and reports the saved
+   * branch, which stays openable from Sessions.
+   */
+  async branchFrom(
+    cut: WorkshopRewindCut,
+    options: { title?: string } = {}
+  ): Promise<WorkshopBranchOutcome> {
+    // As for Rewind: a cut chosen against this room must not wait in line and
+    // then run against another one.
+    if (this.isSessionOperationPending()) {
+      throw new WorkshopRewindRefusedError('busy');
+    }
+    return this.serializeSessionOperation(async () => {
+      const availability = this.store.availability();
+      if (!availability.available) {
+        throw new WorkshopSessionStoreUnavailableError(availability.reason);
+      }
+      // D2: an unnamed room's only durable copy is current.json, which
+      // opening the branch would replace.
+      const sourceSessionId = this.activeNamedSessionId;
+      if (!sourceSessionId) {
+        throw new WorkshopBranchRefusedError('unsaved-session');
+      }
+      // Queued autosaves have settled by now. Branch never writes the source,
+      // so it cannot flush work they failed to save, and opening the branch
+      // would leave that work behind.
+      if (this.localWorkPending || this.dirtyRevision > this.writtenRevision) {
+        throw new WorkshopBranchRefusedError('unsaved-changes');
+      }
+      const evaluation = this.session.evaluateRewindCut(cut);
+      if (!evaluation.ok) {
+        throw new WorkshopRewindRefusedError(evaluation.reason);
+      }
+      const source = { sessionId: sourceSessionId, title: this.identity.title };
+      const live = await this.exportLiveRoom();
+      const branched = rewindWorkshopSession({ ...live, cut });
+      // The store writes atomically: a failed save leaves no branch file.
+      const saved = await this.store.saveNamed(workshopBranchCheckpoint({
+        sessionId: this.idFactory(),
+        title: options.title === undefined
+          ? workshopBranchTitle(source.title)
+          : requireWorkshopSessionTitle(options.title),
+        now: normalizedIso(this.now()),
+        timezone: this.time.exportState().timezone,
+        summary: this.buildSummary(branched.workshop),
+        workshop: branched.workshop,
+        conversations: branched.conversations
+      }));
+      let opened: WorkshopSessionHydrateResult;
+      try {
+        // Open the branch exactly as Sessions would: from its file.
+        const persisted = await this.readNamedCheckpoint(saved.sessionId);
+        if (!persisted) {
+          throw new WorkshopNamedSessionNotFoundError(saved.sessionId);
+        }
+        opened = await this.promoteNamedSession(persisted);
+      } catch (error) {
+        this.outputChannel.appendLine(
+          `[WorkshopSessionPersistence] Branch saved but not opened; prior room restored ` +
+          `(source=${source.sessionId}, branch=${saved.sessionId}, file=${saved.fileName}): ` +
+          this.errorMessage(error)
+        );
+        throw new WorkshopBranchNotOpenedError(saved, this.errorMessage(error));
+      }
+      this.outputChannel.appendLine(
+        `[WorkshopSessionPersistence] Room branched (source=${source.sessionId}, ` +
+        `branch=${saved.sessionId}, file=${saved.fileName}, ` +
+        `${describeWorkshopCut(cut, branched, live.conversations)})`
+      );
+      return {
+        source,
+        branch: saved,
+        summary: branched.summary,
+        composerRestore: branched.composerRestore,
+        widgetRestore: branched.widgetRestore,
+        degradedConversationKeys: [...opened.degradedConversationKeys],
+        degradedConversations: (opened.degradedConversations ?? []).map((entry) => ({ ...entry }))
+      };
+    });
+  }
+
+  /**
    * Write the rewound room durably before reporting success (ADR 2026-09-30,
    * Sprint 02 kickoff item 5). A rewind is author work, so it follows the
    * autosave's authority rules: an associated named file is updated only
@@ -943,23 +1079,9 @@ export class WorkshopSessionPersistenceCoordinator {
     rewound: WorkshopSessionRewindResult,
     before: readonly WorkshopRetainedArchiveEntry[]
   ): void {
-    const after = new Map(rewound.conversations.map((entry) => [entry.key, entry.messages.length]));
-    const histories = before
-      .map((entry) => `${entry.key} ${entry.messages.length}→${after.get(entry.key) ?? 'dropped'}`)
-      .join(', ') || 'none';
-    const { summary } = rewound;
     this.outputChannel.appendLine(
-      `[WorkshopSessionPersistence] Room rewound (origin=${origin}, cut=${cut.kind}:${cut.turnId}, ` +
-      `keptThrough=${summary.keptThroughTurnId}, removedTurns=${summary.removedTurnCount}, ` +
-      `removedTodos=${summary.removedTodoCount}, messages=${histories}, ` +
-      `dropped=${summary.droppedConversationKeys.join(',') || 'none'}` +
-      (summary.releasedWidgetConfigIds.length > 0
-        ? `, releasedWidgets=${summary.releasedWidgetConfigIds.join(',')}`
-        : '') +
-      (rewound.unverifiedConversationKeys.length > 0
-        ? `, unverifiedMarks=${rewound.unverifiedConversationKeys.join(',')}`
-        : '') +
-      ')'
+      `[WorkshopSessionPersistence] Room rewound (origin=${origin}, ` +
+      `${describeWorkshopCut(cut, rewound, before)})`
     );
   }
 
@@ -1457,17 +1579,6 @@ export class WorkshopSessionPersistenceCoordinator {
       day: 'numeric'
     }).format(new Date(createdAt));
     return `Untitled session — ${workshopPersonaLabel(this.session.getSelectedPersonaId())} — ${date}`;
-  }
-
-  private requireTitle(title: string): string {
-    const normalized = title.trim();
-    if (!normalized) {
-      throw new Error('Workshop session title cannot be blank.');
-    }
-    if (normalized.length > 160) {
-      throw new Error('Workshop session titles are limited to 160 characters.');
-    }
-    return normalized;
   }
 
   /** Commit the authoritative named checkpoint before its rolling mirror. */
