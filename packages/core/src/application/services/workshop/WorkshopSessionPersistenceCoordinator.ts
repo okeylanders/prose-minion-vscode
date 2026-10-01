@@ -929,10 +929,14 @@ export class WorkshopSessionPersistenceCoordinator {
         const live = await this.exportLiveRoom();
         const cutRoom = rewindWorkshopSession({ ...live, cut });
         const room = await this.installRoom(cutRoom.workshop, cutRoom.conversations);
-        // A dropped persona's next conversation starts fresh, time frame
-        // included. Inside the transaction, so rollback restores the notices.
+        // A persona left without a conversation, dropped by the cut or lost to
+        // a degraded import, starts its next one fresh, time frame included.
+        // Inside the transaction, so rollback restores the notices. (Open and
+        // Branch rebuild the time state instead, queuing a resume frame for
+        // every retained persona, imported or not.)
         this.time.forgetNotices(
-          cutRoom.summary.droppedConversationKeys.filter(isWorkshopPersonaConversationKey)
+          [...cutRoom.summary.droppedConversationKeys, ...room.degradedConversationKeys]
+            .filter(isWorkshopPersonaConversationKey)
         );
         await this.commitRewoundRoom();
         return {

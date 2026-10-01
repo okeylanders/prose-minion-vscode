@@ -68,7 +68,7 @@ Confirmed at Sprint 03 kickoff and recorded in ADR 2026-09-30, [Sprint 03 kickof
 
 - `WorkshopSessionTimeService.forgetNotices(keys)` removes each key's notice entry and any pending resume notice. `forgetAllNotices()` does the same for every persona.
 - It is called at three seams where a persona conversation ends with no replacement history:
-  - **Rewind:** the persona keys the cut drops. The call runs inside the room-replacement transaction, before the durable write, so the written file agrees and rollback restores the entries.
+  - **Rewind:** the persona keys the cut drops, and the keys whose replacement history degrades during installation. The call runs inside the room-replacement transaction, before the durable write, so the written file agrees and rollback restores the entries.
   - **Guest dismissal:** in `WorkshopRoomHandler.handleDismissGuest`.
   - **Generation loss:** in the `ConversationNotFoundError` path, which calls `clearAllConversations`. The recommendation above did not list this seam, but it ends every persona conversation the same way.
 - Surviving participants keep their entries, so temporal state otherwise stays current. A branch starts with no persona notices at all.
@@ -80,3 +80,5 @@ Regression tests:
 - `WorkshopRoomHandler.roomAndRun.test.ts`: a guest re-invited after dismissal, and a host after generation loss, each receive a session-start frame within the hour.
 
 Each call site was mutation-checked: removing it fails its test.
+
+**Completed after the PR #120 review (F-03).** As first written, the Rewind seam forgot only the keys the cut drops. A persona can survive the cut but lose its history in installation: the import degrades a key whose current prompt cannot be rebuilt. That persona kept its old notice and missed its first time frame. Rewind now forgets degraded persona keys too. `WorkshopSessionRewindCoordinator.test.ts` covers host and guest degradation, keeps the imported persona's notice, and restores the notice when the write fails. Open, Branch and refresh need no change: they rebuild the time state from the file and queue a resume frame for every retained persona, imported or not. A test pins that, too.
