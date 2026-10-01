@@ -73,9 +73,11 @@ describe('rewindWorkshopSession (ADR 2026-09-30 §5)', () => {
       keptThroughTurnId: first.id,
       removedTurnCount: 2,
       droppedConversationKeys: [],
-      removedTodoCount: 0
+      removedTodoCount: 0,
+      releasedWidgetConfigIds: []
     });
     expect(result.composerRestore).toBeUndefined();
+    expect(result.widgetRestore).toBeUndefined();
   });
 
   it('capability rounds: slices every committed round and keeps the run\'s published cards', () => {
@@ -310,11 +312,21 @@ describe('rewindWorkshopSession (ADR 2026-09-30 §5)', () => {
     expect(result.workshop.threadArtifacts).toEqual([]);
     expect(result.workshop.writerSources.host.some((row) => row.kind === 'message-attachment'))
       .toBe(false);
+    // Skipping past the commit releases it silently (kickoff decision 3).
+    expect(result.summary.releasedWidgetConfigIds).toEqual([commit.widgetConfigId]);
+    expect(result.widgetRestore).toBeUndefined();
     // A writer-bubble cut on the widget message releases it the same way and
-    // re-seeds nothing: widget copy belongs to the widget sheet.
+    // is an edit of that widget: the composer gets nothing, because widget
+    // copy belongs to the widget sheet, and the released config reopens there.
     const edit = rewind(room, before(writerTurn.id));
     expect(edit.workshop).toEqual(result.workshop);
     expect(edit.composerRestore).toBeUndefined();
+    expect(edit.summary.releasedWidgetConfigIds).toEqual([commit.widgetConfigId]);
+    expect(edit.widgetRestore).toEqual({ widgetConfigId: commit.widgetConfigId });
+    // A cut that keeps the commit releases nothing.
+    const kept = rewind(room, after(widgetReply.id));
+    expect(kept.summary.releasedWidgetConfigIds).toEqual([]);
+    expect(kept.widgetRestore).toBeUndefined();
   });
 
   describe('writer-bubble cuts (ADR §1)', () => {
@@ -437,7 +449,12 @@ describe('rewindWorkshopSession (ADR 2026-09-30 §5)', () => {
 
       expect(result.workshop).toEqual(clonePersistedJson(workshop));
       expect(result.conversations).toEqual(clonePersistedJson(conversations));
-      expect(result.summary).toMatchObject({ removedTurnCount: 0, droppedConversationKeys: [], removedTodoCount: 0 });
+      expect(result.summary).toMatchObject({
+        removedTurnCount: 0,
+        droppedConversationKeys: [],
+        removedTodoCount: 0,
+        releasedWidgetConfigIds: []
+      });
     });
 
     it('never lowers a counter, never mutates its inputs, and validates strictly at every accepted cut', () => {

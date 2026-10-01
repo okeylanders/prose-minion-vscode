@@ -72,6 +72,11 @@ export interface WorkshopRewindCutSummary {
    */
   droppedConversationKeys: WorkshopConversationLogicalKey[];
   removedTodoCount: number;
+  /**
+   * One-shot widget configs whose commit the cut removed. Each keeps its
+   * draft as a retry token (Sprint 03 kickoff decision 3).
+   */
+  releasedWidgetConfigIds: string[];
 }
 
 /** A writer-bubble cut is an edit: the removed message returns to the composer. */
@@ -87,11 +92,21 @@ export interface WorkshopRewindComposerRestore {
   unrestoredAttachmentLabels: string[];
 }
 
+/**
+ * A writer-bubble cut on a widget commit's message edits that widget: its
+ * released config reopens in the widget sheet, the widget twin of the
+ * composer restore (Sprint 03 kickoff decision 3).
+ */
+export interface WorkshopRewindWidgetRestore {
+  widgetConfigId: string;
+}
+
 export interface WorkshopSessionRewindResult {
   workshop: WorkshopSessionStateV1;
   conversations: WorkshopRetainedArchiveEntry[];
   summary: WorkshopRewindCutSummary;
   composerRestore?: WorkshopRewindComposerRestore;
+  widgetRestore?: WorkshopRewindWidgetRestore;
   /**
    * Keys whose marks disagreed with their archive. Their marks are not
    * trusted, exactly as at the persisted-session boundary, so the cut treats
@@ -159,6 +174,10 @@ export function rewindWorkshopSession(
   const writerTurn = input.cut.kind === 'beforeTurn' ? source.turns[cutIndex + 1] : undefined;
   const restore = composerRestoreFor(writerTurn, source);
   const todos = source.todos.filter((todo) => keptTurnIds.has(todo.source.turnId));
+  const releasedWidgetConfigIds = (source.widgetConfigs ?? []).flatMap((config) =>
+    config.committedTurnId !== undefined && !keptTurnIds.has(config.committedTurnId)
+      ? [config.id]
+      : []);
 
   const workshop = clonePersistedJson<WorkshopSessionStateV1>({
     ...source,
@@ -233,9 +252,11 @@ export function rewindWorkshopSession(
       keptThroughTurnId: evaluation.keptThroughTurnId,
       removedTurnCount: source.turns.length - turns.length,
       droppedConversationKeys,
-      removedTodoCount: source.todos.length - todos.length
+      removedTodoCount: source.todos.length - todos.length,
+      releasedWidgetConfigIds
     },
     composerRestore: restore?.composer,
+    widgetRestore: widgetRestoreFor(writerTurn, releasedWidgetConfigIds),
     unverifiedConversationKeys: [...unverified] as WorkshopConversationLogicalKey[]
   };
 }
@@ -396,8 +417,8 @@ function releaseDroppedThreadCommit(
 /**
  * The composer edit for a writer-bubble cut (ADR §1): the message text, and
  * its one-shot attachments restaged under their original ids. A widget
- * commit's message is not re-seeded: its config becomes the retry token, and
- * widget copy belongs to the widget sheet.
+ * commit's message is not re-seeded: widget copy belongs to the widget
+ * sheet, where its released config reopens instead (`widgetRestoreFor`).
  */
 function composerRestoreFor(
   writerTurn: WorkshopTurn | undefined,
@@ -447,6 +468,23 @@ function composerRestoreFor(
     },
     restaged
   };
+}
+
+/**
+ * The widget edit for a writer-bubble cut on a widget commit's own message:
+ * its released config reopens where the writer built it. A cut that only
+ * skips past a commit releases the config without reopening anything.
+ */
+function widgetRestoreFor(
+  writerTurn: WorkshopTurn | undefined,
+  releasedWidgetConfigIds: readonly string[]
+): WorkshopRewindWidgetRestore | undefined {
+  const commit = writerTurn?.role === 'user' && writerTurn.participant === 'writer'
+    ? writerTurn.widgetCommit
+    : undefined;
+  return commit?.rail === 'thread-artifact' && releasedWidgetConfigIds.includes(commit.widgetConfigId)
+    ? { widgetConfigId: commit.widgetConfigId }
+    : undefined;
 }
 
 /** The participant a writer message was addressed to. */

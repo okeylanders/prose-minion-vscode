@@ -33,7 +33,8 @@ import {
   WorkshopSessionActionResultMessage,
   WorkshopSessionContextScanMessage,
   WorkshopSessionRecoveryNoticeMessage,
-  WorkshopSessionsDataMessage
+  WorkshopSessionsDataMessage,
+  WorkshopWidgetConfigRestoredMessage
 } from '@messages';
 import type {
   WorkshopMutationRouteRegistrar
@@ -142,8 +143,8 @@ export class WorkshopSessionMessageHandler {
   /**
    * Rewind to one bubble (ADR 2026-09-30 §6). The bubble maps to its cut
    * here; the coordinator re-checks the cut, cuts, installs and writes the
-   * room, or restores the prior one. A writer-message rewind returns its text
-   * to the composer; its attachments come back through session state.
+   * room, or restores the prior one. A writer-message rewind is an edit (see
+   * `postEditRestores`).
    */
   async handleRewindSession(message: WorkshopRewindSessionMessage): Promise<void> {
     if (this.rejectWhileRunning('rewind the conversation', 'rewind')) {
@@ -159,15 +160,7 @@ export class WorkshopSessionMessageHandler {
       const outcome = await this.persistence.rewindTo(cut, { origin: 'writer' });
       await this.options.flushDeferredConversationSettings();
       this.options.postSessionState();
-      if (outcome.composerRestore) {
-        const restored: WorkshopComposerDraftRestoredMessage = {
-          type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
-          source: 'extension.workshop',
-          payload: { text: outcome.composerRestore.text },
-          timestamp: Date.now()
-        };
-        void this.postMessage(restored);
-      }
+      this.postEditRestores(outcome);
       this.postActionResult('rewind', true, describeRewindOutcome(outcome));
     } catch (error) {
       this.options.postSessionState();
@@ -181,6 +174,34 @@ export class WorkshopSessionMessageHandler {
       }
     } finally {
       this.postRecoveryNotices();
+    }
+  }
+
+  /**
+   * A writer-bubble cut is an edit: what it removed returns to where the
+   * writer made it. Message text goes back to the composer (its attachments
+   * come back through session state); a widget message reopens its widget.
+   */
+  private postEditRestores(
+    outcome: Pick<WorkshopRewindOutcome, 'composerRestore' | 'widgetRestore'>
+  ): void {
+    if (outcome.composerRestore) {
+      const restored: WorkshopComposerDraftRestoredMessage = {
+        type: MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED,
+        source: 'extension.workshop',
+        payload: { text: outcome.composerRestore.text },
+        timestamp: Date.now()
+      };
+      void this.postMessage(restored);
+    }
+    if (outcome.widgetRestore) {
+      const reopened: WorkshopWidgetConfigRestoredMessage = {
+        type: MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED,
+        source: 'extension.workshop',
+        payload: { widgetConfigId: outcome.widgetRestore.widgetConfigId },
+        timestamp: Date.now()
+      };
+      void this.postMessage(reopened);
     }
   }
 

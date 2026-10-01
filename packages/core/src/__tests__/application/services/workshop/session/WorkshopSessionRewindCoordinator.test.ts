@@ -270,7 +270,8 @@ describe('WorkshopSessionPersistenceCoordinator.rewindTo (ADR 2026-09-30 §6)', 
         keptThroughTurnId: head,
         removedTurnCount: 0,
         droppedConversationKeys: [],
-        removedTodoCount: 0
+        removedTodoCount: 0,
+        releasedWidgetConfigIds: []
       });
 
       const divider = restPoint(room, 'excerpt revised to v2');
@@ -307,6 +308,31 @@ describe('WorkshopSessionPersistenceCoordinator.rewindTo (ADR 2026-09-30 §6)', 
       const quest = await openCanonicalRoom();
       const questOutcome = await quest.coordinator.rewindTo(writerCut(quest.room), { origin: 'sideQuestEnd' });
       expect(questOutcome.composerRestore).toBeUndefined();
+    });
+
+    it('reopens a widget message\'s released config for the writer origin only (Sprint 03 kickoff decision 3)', async () => {
+      const widgetMessage = (room: ScriptedWorkshopRoom) =>
+        room.session.readRoomLedger().find((turn) => turn.widgetCommit?.rail === 'thread-artifact')!;
+
+      const writer = await openCanonicalRoom();
+      const message = widgetMessage(writer.room);
+      const configId = message.widgetCommit!.widgetConfigId;
+      const outcome = await writer.coordinator.rewindTo(before(message.id), { origin: 'writer' });
+
+      expect(outcome.widgetRestore).toEqual({ widgetConfigId: configId });
+      expect(outcome.composerRestore).toBeUndefined();
+      expect(outcome.summary.releasedWidgetConfigIds).toEqual([configId]);
+      // The retry token is held host-side, draft and all, ready to reopen.
+      const released = writer.session.getWidgetConfig(configId)!;
+      expect(released.committedTurnId).toBeUndefined();
+      expect(released.draft).toEqual(writer.room.session.getWidgetConfig(configId)!.draft);
+
+      const quest = await openCanonicalRoom();
+      const questOutcome = await quest.coordinator.rewindTo(
+        before(widgetMessage(quest.room).id),
+        { origin: 'sideQuestEnd' }
+      );
+      expect(questOutcome.widgetRestore).toBeUndefined();
     });
   });
 

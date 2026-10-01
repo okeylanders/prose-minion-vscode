@@ -16,7 +16,8 @@ describe('Workshop Rewind route', () => {
       keptThroughTurnId: 'turn-1-system-1',
       removedTurnCount: 2,
       droppedConversationKeys: ['host'],
-      removedTodoCount: 0
+      removedTodoCount: 0,
+      releasedWidgetConfigIds: []
     },
     degradedConversationKeys: [],
     degradedConversations: [],
@@ -72,7 +73,8 @@ describe('Workshop Rewind route', () => {
         keptThroughTurnId: 'reply',
         removedTurnCount: 1,
         droppedConversationKeys: ['guest:margot', 'tool:prose'],
-        removedTodoCount: 0
+        removedTodoCount: 0,
+        releasedWidgetConfigIds: []
       }
     }));
 
@@ -87,6 +89,31 @@ describe('Workshop Rewind route', () => {
       'Rewound: 1 turn removed. Margot left the room. ' +
       "The Prose tool's conversation was set aside; run it again for a fresh report."
     );
+  });
+
+  it('reopens the widget of a rewound widget message (Sprint 03 kickoff decision 3)', async () => {
+    const harness = await sentRoom();
+    harness.persistence.rewindTo.mockResolvedValue(outcome({
+      summary: {
+        keptThroughTurnId: 'turn-1-system-1',
+        removedTurnCount: 2,
+        droppedConversationKeys: [],
+        removedTodoCount: 0,
+        releasedWidgetConfigIds: ['wc-1']
+      },
+      widgetRestore: { widgetConfigId: 'wc-1' }
+    }));
+
+    await rewind(harness, harness.writerTurn);
+
+    expect(harness.posted(MessageType.WORKSHOP_WIDGET_CONFIG_RESTORED).map((entry) => entry.payload))
+      .toEqual([{ widgetConfigId: 'wc-1' }]);
+    expect(harness.posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED)).toEqual([]);
+    expect(lastResult(harness)).toEqual({
+      action: 'rewind',
+      ok: true,
+      message: 'Rewound: 2 turns removed.'
+    });
   });
 
   it('names attachments the writer must re-attach', async () => {

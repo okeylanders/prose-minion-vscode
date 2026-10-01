@@ -123,17 +123,21 @@ rewindWorkshopSession(input: {
     removedTurnCount: number;
     droppedConversationKeys: WorkshopConversationLogicalKey[];
     removedTodoCount: number;
+    releasedWidgetConfigIds: string[];         // one-shot commits the cut removed
   };
   composerRestore?: {                          // writer-bubble cuts only
     text: string;
     attachmentIds: string[];                   // restaged under their original ta-N ids
     unrestoredAttachmentLabels: string[];      // the writer re-attaches these
   };
+  widgetRestore?: {                            // a widget commit's own message only
+    widgetConfigId: string;                    // its released config reopens in the widget sheet
+  };
   unverifiedConversationKeys: WorkshopConversationLogicalKey[]; // diagnostics
 }
 ```
 
-A refused cut throws `WorkshopRewindRefusedError` carrying the policy's refusal reason. (Result shape amended in Sprint 02; see [Sprint 02 implementation findings](#sprint-02-implementation-findings), item 6.)
+A refused cut throws `WorkshopRewindRefusedError` carrying the policy's refusal reason. (Result shape amended in Sprint 02, see [Sprint 02 implementation findings](#sprint-02-implementation-findings), item 6; and in Sprint 03, see [Sprint 03 kickoff decisions](#sprint-03-kickoff-decisions), item 3.)
 
 It lives in its own module under `application/services/workshop/session/`. It does not grow `WorkshopSessionService`. Its rules:
 

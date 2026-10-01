@@ -179,6 +179,7 @@ export enum MessageType {
   WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED = 'workshop_lexical_gravity_lenses_saved',
   WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
   WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',
+  WORKSHOP_WIDGET_CONFIG_RESTORED = 'workshop_widget_config_restored',
   WORKSHOP_COMMIT_WIDGET = 'workshop_commit_widget',
   WORKSHOP_APPLY_STANDING_WIDGET = 'workshop_apply_standing_widget',
   WORKSHOP_REMOVE_STANDING_WIDGET = 'workshop_remove_standing_widget',

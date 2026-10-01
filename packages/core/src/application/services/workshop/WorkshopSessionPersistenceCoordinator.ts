@@ -79,6 +79,7 @@ import {
   WorkshopRewindComposerRestore,
   WorkshopRewindCutSummary,
   WorkshopRewindRefusedError,
+  WorkshopRewindWidgetRestore,
   WorkshopSessionRewindResult
 } from '@/application/services/workshop/session/WorkshopSessionRewind';
 
@@ -139,6 +140,8 @@ export interface WorkshopRewindOutcome {
   summary: WorkshopRewindCutSummary;
   /** Present only when a writer rewinds their own message (origin `'writer'`). */
   composerRestore?: WorkshopRewindComposerRestore;
+  /** Present only when a writer rewinds their own widget message (origin `'writer'`). */
+  widgetRestore?: WorkshopRewindWidgetRestore;
   degradedConversationKeys: WorkshopConversationLogicalKey[];
   degradedConversations: WorkshopConversationDegradation[];
 }
@@ -888,6 +891,7 @@ export class WorkshopSessionPersistenceCoordinator {
       return {
         summary: rewound.summary,
         composerRestore: options.origin === 'writer' ? rewound.composerRestore : undefined,
+        widgetRestore: options.origin === 'writer' ? rewound.widgetRestore : undefined,
         degradedConversationKeys: [...installed.degradedConversationKeys],
         degradedConversations: installed.degradedConversations.map((entry) => ({ ...entry }))
       };
@@ -949,6 +953,9 @@ export class WorkshopSessionPersistenceCoordinator {
       `keptThrough=${summary.keptThroughTurnId}, removedTurns=${summary.removedTurnCount}, ` +
       `removedTodos=${summary.removedTodoCount}, messages=${histories}, ` +
       `dropped=${summary.droppedConversationKeys.join(',') || 'none'}` +
+      (summary.releasedWidgetConfigIds.length > 0
+        ? `, releasedWidgets=${summary.releasedWidgetConfigIds.join(',')}`
+        : '') +
       (rewound.unverifiedConversationKeys.length > 0
         ? `, unverifiedMarks=${rewound.unverifiedConversationKeys.join(',')}`
         : '') +

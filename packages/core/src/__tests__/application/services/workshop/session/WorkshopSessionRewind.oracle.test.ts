@@ -42,6 +42,7 @@ interface ExpectedRoom {
   workshop: WorkshopSessionStateV1;
   archive: WorkshopRetainedArchiveEntry[];
   droppedConversationKeys: WorkshopConversationLogicalKey[];
+  releasedWidgetConfigIds: string[];
 }
 
 const retainedKeys = (state: WorkshopSessionStateV1): WorkshopConversationLogicalKey[] => [
@@ -186,7 +187,12 @@ function expectedRewind(point: ScriptedRestPoint, final: ScriptedRestPoint): Exp
   return {
     workshop: clonePersistedJson(workshop),
     archive: clonePersistedJson(archive),
-    droppedConversationKeys: retainedKeys(now).filter((key) => !retainedKeys(workshop).includes(key))
+    droppedConversationKeys: retainedKeys(now).filter((key) => !retainedKeys(workshop).includes(key)),
+    // Rule 5, counted: every config whose commit turn the cut removed.
+    releasedWidgetConfigIds: (now.widgetConfigs ?? []).flatMap((config) =>
+      config.committedTurnId !== undefined && !keptTurnIds.has(config.committedTurnId)
+        ? [config.id]
+        : [])
   };
 }
 
@@ -236,7 +242,8 @@ describe('the rewind equivalence oracle over the canonical scripted room', () =>
           keptThroughTurnId: point.headTurnId,
           removedTurnCount: final.workshop.turns.length - point.workshop.turns.length,
           droppedConversationKeys: expected.droppedConversationKeys,
-          removedTodoCount: 0
+          removedTodoCount: 0,
+          releasedWidgetConfigIds: expected.releasedWidgetConfigIds
         }
       });
       compared.push(point.label);
