@@ -432,14 +432,17 @@ export class WorkshopSessionPersistenceCoordinator {
     return this.session.recordSessionMarker('resume', this.time.describeVisibleMarker('resume'));
   }
 
-  private async mirrorNamedCheckpoint(checkpoint: WorkshopPersistedSessionV2): Promise<void> {
+  private async mirrorNamedCheckpoint(
+    checkpoint: WorkshopPersistedSessionV2,
+    beforeCommit?: () => Promise<void>
+  ): Promise<void> {
     // Hydration/provider setup may already have awaited. Recheck the named source before replacing the
     // rolling cache, and preserve its original payload rather than a hydrated projection.
     const latest = await this.readNamedCheckpoint(checkpoint.sessionId);
     if (!latest || !hasSameWorkshopCheckpoint(latest.session, checkpoint)) {
       throw new WorkshopNamedSessionChangedError();
     }
-    await this.store.writeCurrent(cleanRollingCheckpoint(checkpoint));
+    await this.store.writeCurrent(cleanRollingCheckpoint(checkpoint), { beforeCommit });
   }
 
   /** A named commit/load succeeded; failure of its cache copy is independently retryable. */
@@ -687,8 +690,9 @@ export class WorkshopSessionPersistenceCoordinator {
     persisted: WorkshopPersistedSessionCheckpointDecodeResult,
     options: {
       /**
-       * Runs after the import, just before current.json stops holding the
-       * room being replaced. A throw restores that room.
+       * Runs at the commit of the rolling write: after the new current.json
+       * is written to a temporary file, immediately before it replaces the
+       * room being left. A throw keeps current.json and restores that room.
        */
       beforeReplacingCurrent?: () => Promise<void>;
     } = {}
@@ -701,8 +705,7 @@ export class WorkshopSessionPersistenceCoordinator {
       }
       const promoted = await this.hydrate(persisted.session, false, persisted);
       this.activeNamedSessionId = persisted.session.sessionId;
-      await options.beforeReplacingCurrent?.();
-      await this.mirrorNamedCheckpoint(persisted.session);
+      await this.mirrorNamedCheckpoint(persisted.session, options.beforeReplacingCurrent);
       this.acceptedNamedCheckpoint = persisted.session;
       this.localWorkPending = false;
       this.currentCheckpointError = undefined;
@@ -965,7 +968,7 @@ export class WorkshopSessionPersistenceCoordinator {
    * cut room as a new named session, then open it through the named-session
    * promotion that Open uses. The source session's file is never written,
    * and it must still hold this room, read back from disk, both before the
-   * branch is saved and before current.json is replaced.
+   * branch is saved and at the commit that replaces current.json.
    * A failure before the branch is saved changes nothing and leaves no file;
    * a failure while opening it restores the prior room and reports the saved
    * branch, which stays openable from Sessions.
@@ -1001,8 +1004,8 @@ export class WorkshopSessionPersistenceCoordinator {
         throw new WorkshopRewindRefusedError(evaluation.reason);
       }
       // The source's file, not the association, is what survives the branch.
-      // Prove it before writing anything, and again once the branch has been
-      // saved and imported, before current.json stops holding this room.
+      // Prove it before writing anything, and again at the commit of the
+      // rolling write, the instant before current.json stops holding this room.
       const accepted = this.acceptedNamedCheckpoint;
       const requireIntactSource = () => this.requireIntactBranchSource(sourceSessionId, accepted);
       await requireIntactSource();

@@ -566,6 +566,29 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
           await change();
           return importArchive(targets);
         });
+      }],
+      // The re-review's late seams (PR #120 review F-01): the rolling mirror
+      // re-reads the branch, then writes a temporary file and renames it.
+      ['the mirror\'s branch read', ({ store }, change) => {
+        const read = store.readNamedWithRecovery.bind(store);
+        let branchReads = 0;
+        jest.spyOn(store, 'readNamedWithRecovery').mockImplementation(async (sessionId) => {
+          const result = await read(sessionId);
+          // The first branch read opens it; the second is the mirror's.
+          if (sessionId !== 'scripted' && ++branchReads === 2) {
+            await change();
+          }
+          return result;
+        });
+      }],
+      ['the rolling write, before its rename', ({ fs }, change) => {
+        const write = fs.writeFile.bind(fs);
+        jest.spyOn(fs, 'writeFile').mockImplementation(async (filePath, data) => {
+          await write(filePath, data);
+          if (filePath.startsWith(`${SESSIONS_DIRECTORY}/current.json.tmp-`)) {
+            await change();
+          }
+        });
       }]
     ])('keeps the room when the source is deleted during %s, and reports the saved branch', async (_stage, inject) => {
       const harness = await openCanonicalSession();
@@ -580,9 +603,11 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
       expect(refusal).toBe('source-changed');
       // current.json still holds the whole room, over its live histories.
       expect(await roomState(harness)).toEqual(before);
-      // The branch was saved before the change showed, so it stays openable.
+      // The branch was saved before the change showed, so it stays openable;
+      // no temporary rolling file is left behind.
       expect((await coordinator.list()).sessions.map((session) => session.sessionId))
         .toEqual([branch.sessionId]);
+      expect(Object.keys(await sessionFiles(fs)).filter((name) => name.includes('.tmp-'))).toEqual([]);
     });
   });
 });

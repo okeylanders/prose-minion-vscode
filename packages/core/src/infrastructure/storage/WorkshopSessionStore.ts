@@ -216,7 +216,15 @@ export class WorkshopSessionStore {
     return this.readSessionFileExact(paths.currentPath, 'current.json');
   }
 
-  async writeCurrent(session: WorkshopPersistedSessionV2): Promise<void> {
+  /**
+   * @param options.beforeCommit Runs after the temporary snapshot is written,
+   * immediately before it replaces current.json. A throw leaves current.json
+   * as it was and removes the temporary file.
+   */
+  async writeCurrent(
+    session: WorkshopPersistedSessionV2,
+    options: { beforeCommit?: () => Promise<void> } = {}
+  ): Promise<void> {
     const paths = this.requireAvailability();
     const decoded = this.validateSessionForWrite(session);
     await this.writeSnapshotWithSearchIndex(
@@ -224,7 +232,8 @@ export class WorkshopSessionStore {
       paths.currentPath,
       'current.json',
       decoded,
-      true
+      true,
+      options.beforeCommit
     );
   }
 
