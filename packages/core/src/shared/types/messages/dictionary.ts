@@ -6,7 +6,12 @@
 import { MessageEnvelope, MessageType } from './base';
 import { TokenUsage } from './tokenUsage';
 
-export interface LookupDictionaryPayload {
+export interface DictionaryEntryOptions {
+  /** Include the Topic & Related Lexicon appendix unless explicitly disabled. */
+  includeEncyclopedia?: boolean;
+}
+
+export interface LookupDictionaryPayload extends DictionaryEntryOptions {
   word: string;
   contextText?: string;
 }
@@ -26,7 +31,7 @@ export interface DictionaryResultMessage extends MessageEnvelope<DictionaryResul
 
 // Fast (parallel) dictionary generation
 
-export interface FastGenerateDictionaryPayload {
+export interface FastGenerateDictionaryPayload extends DictionaryEntryOptions {
   word: string;
   context?: string;
   sourceUri?: string;

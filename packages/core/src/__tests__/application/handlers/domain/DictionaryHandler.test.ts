@@ -10,12 +10,21 @@ import { MessageType } from '@/shared/types/messages';
 describe('DictionaryHandler', () => {
   let handler: DictionaryHandler;
   let router: MessageRouter;
+  let mockService: { lookupWordStreaming: jest.Mock; generateParallelDictionary: jest.Mock };
 
   beforeEach(() => {
-    const mockService = {} as any;
+    mockService = {
+      lookupWordStreaming: jest.fn().mockResolvedValue({
+        content: '# Entry', toolName: 'dictionary_lookup'
+      }),
+      generateParallelDictionary: jest.fn().mockResolvedValue({
+        word: 'plosive', result: '# Entry',
+        metadata: { totalDuration: 10, blockDurations: {}, partialFailures: [], successCount: 15, totalBlocks: 15 }
+      })
+    };
     const mockPostMessage = jest.fn().mockResolvedValue(undefined);
 
-    handler = new DictionaryHandler(mockService, mockPostMessage);
+    handler = new DictionaryHandler(mockService as never, mockPostMessage);
     router = new MessageRouter();
   });
 
@@ -29,5 +38,37 @@ describe('DictionaryHandler', () => {
       handler.registerRoutes(router);
       expect(router.handlerCount).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it.each([true, false, undefined])('forwards encyclopedia=%s to streaming lookup', async includeEncyclopedia => {
+    await handler.handleLookupDictionary({
+      type: MessageType.LOOKUP_DICTIONARY,
+      source: 'webview.dictionary',
+      payload: { word: 'plosive', contextText: 'Compare consonant textures.', includeEncyclopedia },
+      timestamp: 1
+    });
+
+    expect(mockService.lookupWordStreaming).toHaveBeenCalledWith(
+      'plosive',
+      'Compare consonant textures.',
+      expect.any(Function),
+      expect.any(AbortSignal),
+      { includeEncyclopedia }
+    );
+  });
+
+  it.each([true, false, undefined])('forwards encyclopedia=%s to Fast Generate', async includeEncyclopedia => {
+    await handler.handleFastGenerate({
+      type: MessageType.FAST_GENERATE_DICTIONARY,
+      source: 'webview.dictionary',
+      payload: { word: 'plosive', context: 'Compare consonant textures.', includeEncyclopedia },
+      timestamp: 1
+    });
+
+    expect(mockService.generateParallelDictionary).toHaveBeenCalledWith(
+      'plosive',
+      'Compare consonant textures.',
+      { includeEncyclopedia }
+    );
   });
 });

@@ -18,7 +18,7 @@
 
 import { LogSink } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
-import { API_KEY_NOT_CONFIGURED_HEADING } from '@messages';
+import { API_KEY_NOT_CONFIGURED_HEADING, DictionaryEntryOptions } from '@messages';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -36,7 +36,7 @@ import {
 } from '@messages/dictionary';
 import { TokenUsage } from '@messages/tokenUsage';
 import { StatusEmitter } from '@messages/status';
-import { StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 
 /**
  * Service wrapper for AI-powered dictionary lookups
@@ -65,10 +65,12 @@ const DICTIONARY_BLOCKS = [
   'usage-watchpoints',
   'semantic-gradient',
   'special-focus',
-  'ai-advisory-notes'
+  'ai-advisory-notes',
+  'topic-related-lexicon'
 ] as const;
 
 type DictionaryBlockName = typeof DICTIONARY_BLOCKS[number];
+type DictionaryLookupMode = 'standard' | 'streaming';
 
 /**
  * Progress callback for parallel generation
@@ -79,7 +81,7 @@ export type ParallelGenerationProgressCallback = (progress: {
   totalBlocks: number;
 }) => void;
 
-export interface ParallelDictionaryOptions {
+export interface ParallelDictionaryOptions extends DictionaryEntryOptions {
   onProgress?: ParallelGenerationProgressCallback;
   signal?: AbortSignal;
 }
@@ -154,7 +156,11 @@ export class DictionaryService {
    * @param contextText - Optional context text to understand word usage
    * @returns Dictionary lookup result with definitions, synonyms, and usage
    */
-  async lookupWord(word: string, contextText?: string): Promise<AnalysisResult> {
+  async lookupWord(
+    word: string,
+    contextText?: string,
+    entryOptions: DictionaryEntryOptions = {}
+  ): Promise<AnalysisResult> {
     if (!this.dictionaryUtility) {
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
@@ -165,17 +171,21 @@ export class DictionaryService {
     try {
       // Get options from ToolOptionsProvider
       const options = this.toolOptions.getOptions();
+      const includeEncyclopedia = entryOptions.includeEncyclopedia !== false;
+      this.logLookupStarted('standard', includeEncyclopedia, options.maxTokens);
 
       const executionResult = await this.dictionaryUtility.lookup(
         {
           word,
-          contextText
+          contextText,
+          includeEncyclopedia: entryOptions.includeEncyclopedia
         },
         {
           temperature: options.temperature ?? 0.4,
           maxTokens: options.maxTokens
         }
       );
+      this.logLookupCompleted('standard', includeEncyclopedia, executionResult);
 
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
@@ -204,7 +214,8 @@ export class DictionaryService {
     word: string,
     contextText: string | undefined,
     onToken: StreamingTokenCallback,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    entryOptions: DictionaryEntryOptions = {}
   ): Promise<AnalysisResult> {
     if (!this.dictionaryUtility) {
       return AnalysisResultFactory.createAnalysisResult(
@@ -215,9 +226,11 @@ export class DictionaryService {
 
     try {
       const options = this.toolOptions.getOptions();
+      const includeEncyclopedia = entryOptions.includeEncyclopedia !== false;
+      this.logLookupStarted('streaming', includeEncyclopedia, options.maxTokens);
 
       const executionResult = await this.dictionaryUtility.lookup(
-        { word, contextText },
+        { word, contextText, includeEncyclopedia: entryOptions.includeEncyclopedia },
         {
           temperature: options.temperature ?? 0.4,
           maxTokens: options.maxTokens,
@@ -225,6 +238,7 @@ export class DictionaryService {
           onToken
         }
       );
+      this.logLookupCompleted('streaming', includeEncyclopedia, executionResult);
 
       // Note: orchestrator now catches AbortError internally and returns partial content
       // The executionResult.content will contain whatever was received before cancellation
@@ -238,6 +252,35 @@ export class DictionaryService {
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
         this.formatLookupFailure(error)
+      );
+    }
+  }
+
+  private logLookupStarted(mode: DictionaryLookupMode, includeEncyclopedia: boolean, maxTokens: number): void {
+    this.outputChannel?.appendLine(
+      `[DictionaryService] Lookup started: mode=${mode} encyclopedia=${includeEncyclopedia ? 'enabled' : 'disabled'} maxTokens=${maxTokens}`
+    );
+  }
+
+  private logLookupCompleted(mode: DictionaryLookupMode, includeEncyclopedia: boolean, result: ExecutionResult): void {
+    if (!this.outputChannel) return;
+
+    const hasTopicSection = result.content.split('\n').some(line =>
+      /^#{1,6}\s/.test(line) && line
+        .replace(/^#{1,6}\s*/, '')
+        .replace(/[*_]/g, '')
+        .replace(/^📂\s*/, '')
+        .trim()
+        .toLowerCase() === 'topic & related lexicon'
+    );
+    this.outputChannel.appendLine(
+      `[DictionaryService] Lookup completed: mode=${mode} encyclopedia=${includeEncyclopedia ? 'enabled' : 'disabled'} ` +
+      `finishReason=${result.finishReason ?? 'unreported'} completionTokens=${result.usage?.completionTokens ?? 'unreported'} ` +
+      `cancelled=${result.cancelled === true} hasTopicSection=${hasTopicSection}`
+    );
+    if (includeEncyclopedia && !hasTopicSection && !result.cancelled && result.finishReason === 'stop') {
+      this.outputChannel.appendLine(
+        `[DictionaryService] Encyclopedia section missing from completed lookup: mode=${mode} finishReason=stop`
       );
     }
   }
@@ -289,7 +332,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    *
    * @param word - Word to look up
    * @param context - Optional context text
-   * @param options - Optional progress and cancellation controls.
+   * @param options - Optional entry content, progress, and cancellation controls.
    * @returns Combined dictionary result with metadata
    */
   async generateParallelDictionary(
@@ -318,19 +361,22 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     // Load prompts
     const baseInstructions = await this.loadBlockPrompt('00-base-instructions');
     const completedBlocks: string[] = [];
-    const totalBlocks = DICTIONARY_BLOCKS.length;
+    const selectedBlocks = DICTIONARY_BLOCKS.filter(blockName =>
+      options.includeEncyclopedia !== false || blockName !== 'topic-related-lexicon'
+    );
+    const totalBlocks = selectedBlocks.length;
 
     // Create concurrency limiter
     const limit = pLimit(this.CONCURRENCY_LIMIT);
 
     // Create block generation promises
-    const blockPromises = DICTIONARY_BLOCKS.map((blockName, index) =>
+    const blockPromises = selectedBlocks.map(blockName =>
       limit(async () => {
         const result = await this.generateSingleBlock(
           engine,
           baseInstructions,
           blockName,
-          index + 1,
+          DICTIONARY_BLOCKS.indexOf(blockName) + 1,
           word,
           context,
           options.signal
@@ -362,7 +408,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const blockResults = await Promise.all(blockPromises);
 
     // Assemble and return result
-    return this.assembleParallelResult(word, blockResults, startTime);
+    return this.assembleParallelResult(word, selectedBlocks, blockResults, startTime);
   }
 
   /**
@@ -379,6 +425,15 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
   ): Promise<DictionaryBlockResult> {
     const startTime = Date.now();
     const paddedNumber = String(blockNumber).padStart(2, '0');
+    const isTopicLexicon = blockName === 'topic-related-lexicon';
+    // Developed topic explanations, vocabulary, and reading suggestions need
+    // more generation room than the compact dictionary blocks.
+    const blockOptions = {
+      temperature: 0.4,
+      maxTokens: isTopicLexicon ? 6000 : 3500,
+      timeoutMs: isTopicLexicon ? 90000 : this.BLOCK_TIMEOUT,
+      signal
+    };
 
     try {
       // Load block-specific prompt
@@ -398,12 +453,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         systemMessage,
         userMessage,
         policy: AGENT_RUN_POLICIES.dictionary,
-        options: {
-          temperature: 0.4,
-          maxTokens: 3500, // Smaller max for individual blocks
-          timeoutMs: this.BLOCK_TIMEOUT,
-          signal
-        }
+        options: blockOptions
       });
       if (result.cancelled || signal?.aborted) {
         throw this.abortError(signal);
@@ -439,12 +489,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           systemMessage,
           userMessage,
           policy: AGENT_RUN_POLICIES.dictionary,
-          options: {
-            temperature: 0.4,
-            maxTokens: 3500,
-            timeoutMs: this.BLOCK_TIMEOUT,
-            signal
-          }
+          options: blockOptions
         });
         if (result.cancelled || signal?.aborted) {
           throw this.abortError(signal);
@@ -537,6 +582,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    */
   private assembleParallelResult(
     word: string,
+    selectedBlocks: readonly DictionaryBlockName[],
     blockResults: DictionaryBlockResult[],
     startTime: number
   ): FastGenerateDictionaryResultPayload {
@@ -559,7 +605,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     // Sort blocks to maintain order and build result
     const orderedContent: string[] = [];
 
-    for (const blockName of DICTIONARY_BLOCKS) {
+    for (const blockName of selectedBlocks) {
       const result = blockResults.find(r => r.blockName === blockName);
       // An unreported block makes the aggregate cache count unknown, not zero.
       totalCachedTokens = totalCachedTokens !== undefined && result?.usage?.cachedTokens !== undefined
@@ -596,7 +642,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const combinedResult = header + '\n' + orderedContent.join('\n\n');
 
     this.outputChannel?.appendLine(
-      `[DictionaryService] Parallel generation completed: ${successCount}/${DICTIONARY_BLOCKS.length} blocks in ${totalDuration}ms`
+      `[DictionaryService] Parallel generation completed: ${successCount}/${selectedBlocks.length} blocks in ${totalDuration}ms`
     );
 
     if (partialFailures.length > 0) {
@@ -613,7 +659,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         blockDurations,
         partialFailures,
         successCount,
-        totalBlocks: DICTIONARY_BLOCKS.length
+        totalBlocks: selectedBlocks.length
       },
       usage: hasUsageData ? {
         promptTokens: totalPromptTokens,

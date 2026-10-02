@@ -5,7 +5,7 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Workshop Rewind and Branch
+## [Unreleased] — Workshop Rewind and Branch, Craft Steering, and Dictionary topic families
 
 ### Overview
 
@@ -37,12 +37,22 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 - Branch reads the source file back and compares it with the checkpoint the room accepted. It does this before writing anything, and again at the commit that replaces `current.json`, immediately before its atomic rename. A missing, unreadable or replaced source is refused, so a Git change made while the room is open cannot cost the room its only complete copy.
 - An unnamed room shows a "Save before branching" popup, and the host refuses it regardless. A named room with unsaved changes is refused too.
 - Branch is offered on the latest reply, where Rewind is not.
+- Nested branch titles increment the trailing suffix (`— branch 2`, `— branch 3`, …), folding repeated suffixes from earlier naming into that number. Title truncation reserves room for the number and preserves surrogate pairs.
 - The startup notice moves to `v4` and leads with a Rewind and Branch page.
 
 ### Fixed
 
 - Time-notice entries now end with their conversation: rewind drops and degraded imports, guest dismissal, and generation loss. A fresh host or guest gets a session-start time frame on its first turn.
 - New's reset now rolls back fully if anything in the reset itself fails.
+
+### Added — Dictionary topic families
+
+- Standard and streaming lookup, including the missing-resource fallback, can append `📂 Topic & Related Lexicon` after AI Advisory Notes. Each topic has developed explanatory paragraphs, related vocabulary with meaningful connections, a concrete illustration and writing application, and one or two possible reference books when confidently known. Topic counts and vocabulary counts are flexible; this section has additional space beyond the original entry's length target.
+- The Dictionary tab's encyclopedia switch uses theme tokens and persists with dictionary form state. Both run buttons and context-menu auto-run carry the request option. When disabled, standard lookup leaves out the optional prompt and example, while Fast Generate skips the Topic request entirely. Persona-initiated lookup and full-entry calls always pass the option as false.
+- Fast Generate has 15 standard blocks and an optional final Topic block, numbered 16. Progress, result metadata, partial failures, and token/cache totals reflect only the selected blocks.
+- The expanded Fast Generate topic block has a 6,000-token ceiling and a 90-second timeout on initial attempts and retries; other blocks retain 3,500 tokens and 15 seconds.
+- The pre-existing section instructions and examples retain their original wording and creative breadth, including Sense Explorer. Topic guidance welcomes creative associations while explaining conceptual relationships within its own section. Suggested books are further reading, not claims that the generated entry consulted those sources.
+- Enabled standard lookups put Topic directly into the primary output blueprint and explicitly require it in the active system/user request, avoiding ambiguity from describing an enabled entry as optional. Lookup diagnostics record the option, output limit, finish reason, and Topic-heading presence without logging source text.
 
 ### Compatibility and verification
 

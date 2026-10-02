@@ -1088,6 +1088,121 @@ select:focus {
   transform: none;
 }
 
+.pm-dictionary-encyclopedia-option {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
+  color: var(--pm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pm-dictionary-encyclopedia-option[aria-checked="true"] {
+  border-color: var(--pm-primary-soft-border);
+  background: color-mix(in srgb, var(--pm-primary) 5%, var(--pm-surface));
+}
+
+.pm-dictionary-encyclopedia-option:hover:not(:disabled) {
+  border-color: var(--pm-primary);
+}
+
+.pm-dictionary-encyclopedia-option:focus-visible {
+  outline: 2px solid var(--pm-primary);
+  outline-offset: 2px;
+}
+
+.pm-dictionary-encyclopedia-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pm-dictionary-encyclopedia-copy {
+  min-width: 0;
+}
+
+.pm-dictionary-encyclopedia-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-weight: 600;
+}
+
+.pm-dictionary-encyclopedia-kind {
+  padding: 2px 7px;
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-surface-2);
+  color: var(--pm-text-2);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.pm-dictionary-encyclopedia-description {
+  display: block;
+  margin-top: 6px;
+  color: var(--pm-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.pm-dictionary-encyclopedia-control {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--pm-text-2);
+  font-size: 11px;
+}
+
+.pm-dictionary-encyclopedia-track {
+  box-sizing: border-box;
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border: 1px solid var(--pm-border-2);
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-inset);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pm-dictionary-encyclopedia-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pm-muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pm-dictionary-encyclopedia-option[aria-checked="true"] .pm-dictionary-encyclopedia-track {
+  border-color: var(--pm-primary);
+  background: var(--pm-primary);
+}
+
+.pm-dictionary-encyclopedia-option[aria-checked="true"] .pm-dictionary-encyclopedia-thumb {
+  transform: translateX(16px);
+  background: var(--pm-primary-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-dictionary-encyclopedia-track,
+  .pm-dictionary-encyclopedia-thumb {
+    transition: none;
+  }
+}
+
 .button-group {
   display: flex;
   flex-wrap: wrap;
@@ -1097,6 +1212,13 @@ select:focus {
   background-color: var(--pm-surface);
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-r-card);
+}
+
+.pm-dictionary-generation-note {
+  margin: var(--spacing-sm) 0 var(--spacing-md);
+  color: var(--pm-muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 /* Analysis buttons section with visual hierarchy */

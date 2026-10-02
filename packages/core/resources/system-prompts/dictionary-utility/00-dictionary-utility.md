@@ -27,6 +27,7 @@ Respond with the following sections in order (icons included):
 13. 🧭 **Semantic Gradient** — Ordered ladder of near-synonyms from weakest to strongest intensity.
 14. Special Focus — When optional context or notes are provided, add a dedicated markdown section titled `## **Special Focus: [brief context label]**` that explicitly answers the writer's question or use case with targeted guidance, examples, and recommendations.
 15. 🧠 **AI Advisory Notes** — Flag which insights derive from creative inference or limited certainty.
+{{ENCYCLOPEDIA_BLUEPRINT_SECTION}}
 
 ## Style Guardrails
 - Keep sections scannable with bullets or compact paragraphs.

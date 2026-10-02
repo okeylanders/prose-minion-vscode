@@ -202,7 +202,7 @@ Branch is a coordinator session operation:
 5. Build a new persisted session:
    - fresh `sessionId` and timestamps;
    - a fresh temporal start in the source's timezone, with no persona notices;
-   - title `"<source title> — branch"` (renamable; the store keeps file names collision-free, and a long source title is trimmed to fit the title limit);
+   - title `"<source title> — branch"`, incrementing a trailing branch suffix to `"— branch 2"`, `"— branch 3"`, and so on for nested branches (renamable; the store keeps file names collision-free, and a long source title is trimmed to fit the title limit);
    - summary rebuilt from the cut aggregate.
    Write it with the existing named `saveNamed` path. The store writes atomically, so a failure here leaves no branch file and changes nothing.
 6. Read the branch back from its file and promote it into the live room through the named-session promotion that Open uses, on the shared room-replacement transaction (Sprint 03 kickoff, item 1). A failure here restores the prior room; the branch stays on disk as an openable named session, and the result says so.
@@ -241,7 +241,7 @@ The epic proposed these product decisions and confirmed them through its sprints
 |---|---|---|
 | D1 | Writer-bubble semantics | A writer-bubble action cuts to *before* the message (§1). Its text and one-shot attachments return to the composer. A widget commit's message reopens its widget on the released config instead (Sprint 03 kickoff, item 3). |
 | D2 | Branching from an unnamed room | Not allowed. The webview shows a "Save before branching" popup whose "Save session…" opens the Save modal, and the writer branches again after saving. The host refuses with "Save this session before branching." (§7) |
-| D3 | Branch title | `"<source title> — branch"`, renamable afterwards. A long source title is trimmed so the suffix fits. |
+| D3 | Branch title | `"<source title> — branch"`, renamable afterwards. Nested branches increment the trailing suffix (`"— branch 2"`, `"— branch 3"`, …); repeated trailing `"— branch"` suffixes count toward that number. A long source title is trimmed so the suffix fits. |
 | D4 | Confirmation | Rewind confirms, naming how many turns go and that the excerpt and context stay current. Branch does not confirm, because it is non-destructive. |
 | D5 | Legacy sessions | Exact from the reopen point onward through baseline marks (§3). Earlier turns show a disabled action with the reason "Saved before rewind support". No backfill heuristic. |
 | D6 | Standing prose directives | Neither action crosses the latest directive change in v1 (§4, the directive floor). |
@@ -308,7 +308,7 @@ Also settled at kickoff, within §7:
 - The coordinator's `branchFrom` takes a cut, like `rewindTo`. The route maps a bubble to its cut.
 - The branch's temporal state is fresh: its start and last activity are the branch time, and it keeps the source's timezone and no persona notices. Promotion is Open's path, so retained personas receive a resume frame and the first interaction records "Session resumed".
 - A named room whose latest autosave has not landed is refused. Branch never writes the source file, so it cannot flush that file either.
-- The title is `"<source title> — branch"`. The source title is trimmed so the suffix fits the 160-character title limit; the store already makes the file name collision-free.
+- The first branch title is `"<source title> — branch"`. The 2026-10-01 smoke follow-up amends nested naming to increment a trailing branch suffix instead of appending another one, counting repeated suffixes from earlier naming toward the number. The source title is trimmed so the suffix fits the 160-character title limit; the store already makes the file name collision-free.
 
 ## Sprint 03 implementation findings
 

@@ -142,7 +142,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       source: 'webview.utilities.tab',
       payload: {
         word: sanitizedWord,
-        context: contextValue || undefined
+        context: contextValue || undefined,
+        includeEncyclopedia: dictionary.includeEncyclopedia
       },
       timestamp: Date.now()
     });
@@ -186,7 +187,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       source: 'webview.utilities.tab',
       payload: {
         word: sanitizedWord,
-        contextText: dictionary.context.trim() || undefined
+        contextText: dictionary.context.trim() || undefined,
+        includeEncyclopedia: dictionary.includeEncyclopedia
       },
       timestamp: Date.now()
     });
@@ -210,7 +212,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       source: 'webview.utilities.tab',
       payload: {
         word: sanitizedWord,
-        context: dictionary.context.trim() || undefined
+        context: dictionary.context.trim() || undefined,
+        includeEncyclopedia: dictionary.includeEncyclopedia
       },
       timestamp: Date.now()
     });
@@ -296,6 +299,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
 
   const canCopyDictionary = Boolean(dictionary.result && dictionary.result.trim().length > 0);
   const canSaveDictionary = Boolean(canCopyDictionary && (dictionary.toolName ?? 'dictionary_lookup'));
+  const isGenerating = dictionary.loading || dictionary.isFastGenerating || dictionary.isStreaming;
 
   return (
     <div className="tab-content">
@@ -354,23 +358,57 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
         />
       </div>
 
+      <button
+        type="button"
+        role="switch"
+        className="pm-dictionary-encyclopedia-option"
+        aria-checked={dictionary.includeEncyclopedia}
+        aria-labelledby="dictionary-encyclopedia-label dictionary-encyclopedia-kind"
+        aria-describedby="dictionary-encyclopedia-description"
+        disabled={isGenerating}
+        onClick={() => dictionary.setIncludeEncyclopedia(!dictionary.includeEncyclopedia)}
+      >
+        <span className="pm-dictionary-encyclopedia-copy">
+          <span className="pm-dictionary-encyclopedia-heading">
+            <span id="dictionary-encyclopedia-label">Topic &amp; Related Lexicon</span>
+            <span id="dictionary-encyclopedia-kind" className="pm-dictionary-encyclopedia-kind">Encyclopedia entry</span>
+          </span>
+          <span id="dictionary-encyclopedia-description" className="pm-dictionary-encyclopedia-description">
+            Append in-depth topic exploration, related vocabulary, and possible reference books to the end of this entry.
+          </span>
+        </span>
+        <span className="pm-dictionary-encyclopedia-control" aria-hidden="true">
+          <span>{dictionary.includeEncyclopedia ? 'On' : 'Off'}</span>
+          <span className="pm-dictionary-encyclopedia-track">
+            <span className="pm-dictionary-encyclopedia-thumb" />
+          </span>
+        </span>
+      </button>
+
       <div className="button-group">
         <button
           className="btn btn-primary"
           onClick={handleLookup}
-          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating || dictionary.isStreaming}
+          disabled={!dictionary.word.trim() || isGenerating}
         >
           Run Dictionary Lookup
         </button>
         <button
           className="btn btn-secondary"
           onClick={handleFastGenerate}
-          disabled={!dictionary.word.trim() || dictionary.loading || dictionary.isFastGenerating || dictionary.isStreaming}
+          disabled={!dictionary.word.trim() || isGenerating}
           title="Experimental: Generate using parallel API calls (2-4× faster)"
         >
           ⚡ Experimental: Run Dictionary Lookup [Fast]
         </button>
       </div>
+
+      <p className="pm-dictionary-generation-note">
+        <em>
+          * Fast Dictionary results may be less thorough because each section is generated separately.
+          A single request gives the model more continuous context and may lead to richer, more creative exploration.
+        </em>
+      </p>
 
       {dictionary.isStreaming && (
         <StreamingContent
