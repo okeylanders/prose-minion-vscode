@@ -319,7 +319,7 @@ describe('WorkshopPersonaCapability', () => {
     });
   });
 
-  it('calls the dictionary service directly and records exact, versioned evidence', async () => {
+  it('omits encyclopedia content from persona lookups and records exact, versioned evidence', async () => {
     const adapter = capability();
     const result = await adapter.fulfill({
       capability: 'dictionary.lookup',
@@ -332,7 +332,8 @@ describe('WorkshopPersonaCapability', () => {
       'liminal',
       'Mara pauses at the door.\n\nLookup purpose: Check threshold connotations.',
       expect.any(Function),
-      controller.signal
+      controller.signal,
+      { includeEncyclopedia: false }
     );
     expect(result.evidence).toContain('Threshold-toned.');
     expect(result.evidence).toContain('excerpt-version="1"');
@@ -395,6 +396,15 @@ describe('WorkshopPersonaCapability', () => {
     const second = await adapter.fulfill(request);
 
     expect(dictionary.generateParallelDictionary).toHaveBeenCalledTimes(1);
+    expect(dictionary.generateParallelDictionary).toHaveBeenCalledWith(
+      'liminal',
+      'Threshold scene.\n\nLookup purpose: Explore the full lexical field.',
+      expect.objectContaining({
+        includeEncyclopedia: false,
+        signal: controller.signal,
+        onProgress: expect.any(Function)
+      })
+    );
     expect(first.evidence).toContain('soundplay-rhyme');
     expect(first.deliveredItems).toEqual(['dictionary.full-entry:partial']);
     expect(second.deliveredItems).toEqual(['dictionary.full-entry:rejected']);

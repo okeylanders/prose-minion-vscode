@@ -28,6 +28,7 @@ describe('useDictionary - Type Contracts', () => {
         loading: false,
         word: '',
         context: '',
+        includeEncyclopedia: true,
         wordEdited: false,
         sourceUri: '',
         relativePath: '',
@@ -68,6 +69,7 @@ describe('useDictionary - Type Contracts', () => {
         setLoading: jest.fn(),
         setWord: jest.fn(),
         setContext: jest.fn(),
+        setIncludeEncyclopedia: jest.fn(),
         setWordEdited: jest.fn(),
         setSource: jest.fn(),
         clearResult: jest.fn(),
@@ -100,6 +102,7 @@ describe('useDictionary - Type Contracts', () => {
         dictionaryToolName: undefined,
         dictionaryWord: '',
         dictionaryContext: '',
+        dictionaryIncludeEncyclopedia: true,
         dictionaryWordEdited: false,
         dictionarySourceUri: '',
         dictionaryRelativePath: '',
@@ -111,6 +114,48 @@ describe('useDictionary - Type Contracts', () => {
       expect(persistence).toHaveProperty('dictionaryContext');
       expect(persistence).toHaveProperty('dictionaryToolName');
     });
+  });
+});
+
+describe('useDictionary - Encyclopedia Preference', () => {
+  beforeEach(() => {
+    (useVSCodeApi as jest.Mock).mockReturnValue(createMockVSCode());
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('includes the encyclopedia by default for existing dictionary users', () => {
+    const { result } = renderHook(() => useDictionary());
+
+    expect(result.current.includeEncyclopedia).toBe(true);
+    expect(result.current.persistedState.dictionaryIncludeEncyclopedia).toBe(true);
+  });
+
+  it.each([false, true])('restores a saved encyclopedia preference of %s', (includeEncyclopedia) => {
+    (usePersistedState as jest.Mock).mockReturnValue({
+      dictionaryIncludeEncyclopedia: includeEncyclopedia
+    });
+
+    const { result } = renderHook(() => useDictionary());
+
+    expect(result.current.includeEncyclopedia).toBe(includeEncyclopedia);
+  });
+
+  it('persists changes so the next webview restores the same choice', () => {
+    const { result, unmount } = renderHook(() => useDictionary());
+
+    act(() => result.current.setIncludeEncyclopedia(false));
+
+    expect(result.current.includeEncyclopedia).toBe(false);
+    const persistedState = result.current.persistedState;
+    unmount();
+    (usePersistedState as jest.Mock).mockReturnValue(persistedState);
+
+    const restored = renderHook(() => useDictionary());
+    expect(restored.result.current.includeEncyclopedia).toBe(false);
   });
 });
 

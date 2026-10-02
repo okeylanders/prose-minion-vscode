@@ -171,7 +171,7 @@ export class DictionaryHandler {
    * Uses streaming API for progressive response display
    */
   async handleLookupDictionary(message: LookupDictionaryMessage): Promise<void> {
-    const { word, contextText } = message.payload;
+    const { word, contextText, includeEncyclopedia } = message.payload;
 
     if (!word.trim()) {
       this.sendError('dictionary', 'Dictionary lookup requires a word to search');
@@ -194,7 +194,8 @@ export class DictionaryHandler {
           // Send each token as a chunk
           this.sendStreamChunk(requestId, token);
         },
-        controller.signal
+        controller.signal,
+        { includeEncyclopedia }
       );
 
       // Send complete message - use signal.aborted to detect cancellation
@@ -225,7 +226,7 @@ export class DictionaryHandler {
    */
   async handleFastGenerate(message: FastGenerateDictionaryMessage): Promise<void> {
     try {
-      const { word, context } = message.payload;
+      const { word, context, includeEncyclopedia } = message.payload;
 
       if (!word.trim()) {
         this.sendError('dictionary', 'Fast dictionary generation requires a word');
@@ -237,7 +238,8 @@ export class DictionaryHandler {
       // Generate parallel dictionary (progress sent via STATUS messages)
       const result = await this.dictionaryService.generateParallelDictionary(
         word,
-        context
+        context,
+        { includeEncyclopedia }
       );
 
       // Send result back to webview

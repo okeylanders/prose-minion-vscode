@@ -47,9 +47,12 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 
 ### Added — Dictionary topic families
 
-- Standard and streaming lookup, including the missing-resource fallback, include `📂 Topic & Related Lexicon` between Collocations & Idioms and Morphology & Family. Each topic has a short explanation and related terms with brief meanings and connections; multiple established senses can occupy separate groups, and creative associations are labeled.
-- Fast Generate has a dedicated topic-family block and now reports 16 blocks. Prompt resources from Morphology & Family onward are renumbered to match assembly order. Progress and token/cache totals include the new block through the existing fan-out path.
-- Sense Explorer instructions no longer require filling a fixed synonym/antonym quota for narrow technical senses. Broader categories, subtypes, and contrasting sound classes are explained as related concepts rather than mislabeled equivalents or opposites.
+- Standard and streaming lookup, including the missing-resource fallback, can append `📂 Topic & Related Lexicon` after AI Advisory Notes. Each topic has developed explanatory paragraphs, related vocabulary with meaningful connections, a concrete illustration and writing application, and one or two possible reference books when confidently known. Topic counts and vocabulary counts are flexible; this section has additional space beyond the original entry's length target.
+- The Dictionary tab's encyclopedia switch uses theme tokens and persists with dictionary form state. Both run buttons and context-menu auto-run carry the request option. When disabled, standard lookup leaves out the optional prompt and example, while Fast Generate skips the Topic request entirely. Persona-initiated lookup and full-entry calls always pass the option as false.
+- Fast Generate has 15 standard blocks and an optional final Topic block, numbered 16. Progress, result metadata, partial failures, and token/cache totals reflect only the selected blocks.
+- The expanded Fast Generate topic block has a 6,000-token ceiling and a 90-second timeout on initial attempts and retries; other blocks retain 3,500 tokens and 15 seconds.
+- The pre-existing section instructions and examples retain their original wording and creative breadth, including Sense Explorer. Topic guidance welcomes creative associations while explaining conceptual relationships within its own section. Suggested books are further reading, not claims that the generated entry consulted those sources.
+- Enabled standard lookups put Topic directly into the primary output blueprint and explicitly require it in the active system/user request, avoiding ambiguity from describing an enabled entry as optional. Lookup diagnostics record the option, output limit, finish reason, and Topic-heading presence without logging source text.
 
 ### Compatibility and verification
 
