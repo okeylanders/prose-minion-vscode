@@ -6,6 +6,7 @@
 export const WORKSHOP_SESSION_TITLE_MAX_LENGTH = 160;
 
 const BRANCH_TITLE_SUFFIX = ' — branch';
+const BRANCH_TITLE_SUFFIX_PATTERN = / — branch(?: ([1-9]\d*))?$/;
 
 /** A trimmed, non-blank title within the length limit. */
 export function requireWorkshopSessionTitle(title: string): string {
@@ -22,13 +23,24 @@ export function requireWorkshopSessionTitle(title: string): string {
 }
 
 /**
- * A branch's default title (ADR 2026-09-30, D3): `"<source title> — branch"`,
- * renamable afterwards. A long source title is trimmed so the suffix still
- * fits, and never mid-way through a surrogate pair.
+ * A branch's default title (ADR 2026-09-30, D3): `"<source title> — branch"`.
+ * Nested branches increment that suffix rather than repeat it; repeated
+ * suffixes from earlier naming count toward the same number. A long source
+ * title is trimmed so the suffix fits, never mid-way through a surrogate pair.
  */
 export function workshopBranchTitle(sourceTitle: string): string {
-  const room = WORKSHOP_SESSION_TITLE_MAX_LENGTH - BRANCH_TITLE_SUFFIX.length;
   let base = sourceTitle.trim();
+  let branchNumber = 1n;
+  let existingSuffix = BRANCH_TITLE_SUFFIX_PATTERN.exec(base);
+  while (existingSuffix) {
+    branchNumber += BigInt(existingSuffix[1] ?? '1');
+    base = base.slice(0, existingSuffix.index).trimEnd();
+    existingSuffix = BRANCH_TITLE_SUFFIX_PATTERN.exec(base);
+  }
+  const suffix = branchNumber === 1n
+    ? BRANCH_TITLE_SUFFIX
+    : `${BRANCH_TITLE_SUFFIX} ${branchNumber}`;
+  const room = WORKSHOP_SESSION_TITLE_MAX_LENGTH - suffix.length;
   if (base.length > room) {
     base = base.slice(0, room);
     if (/[\uD800-\uDBFF]$/.test(base)) {
@@ -36,5 +48,5 @@ export function workshopBranchTitle(sourceTitle: string): string {
     }
     base = base.trimEnd();
   }
-  return requireWorkshopSessionTitle(`${base}${BRANCH_TITLE_SUFFIX}`);
+  return requireWorkshopSessionTitle(`${base}${suffix}`);
 }

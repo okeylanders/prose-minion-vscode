@@ -241,6 +241,30 @@ describe('WorkshopSessionPersistenceCoordinator.branchFrom (ADR 2026-09-30 §7)'
     expect(long.branch.title).toHaveLength(160);
   });
 
+  it('saves nested branches with incremented titles and preserves each source', async () => {
+    const { coordinator, store, fs, room } = await openCanonicalSession();
+    const cut = after(restPoint(room, 'prose report').headTurnId);
+    let sourceId = 'scripted';
+    let sourceTitle = 'Scripted room';
+
+    for (const title of ['Scripted room — branch', 'Scripted room — branch 2', 'Scripted room — branch 3']) {
+      const sourcePath = await store.resolveRevealPath(sourceId);
+      const sourceBefore = await textOf(fs, sourcePath);
+
+      const outcome = await coordinator.branchFrom(cut);
+
+      expect(outcome.source).toEqual({ sessionId: sourceId, title: sourceTitle });
+      expect(outcome.branch.title).toBe(title);
+      expect((await store.readNamed(outcome.branch.sessionId))?.title).toBe(title);
+      expect(await textOf(fs, sourcePath)).toBe(sourceBefore);
+      sourceId = outcome.branch.sessionId;
+      sourceTitle = title;
+    }
+
+    expect((await coordinator.list()).sessions.map((session) => session.title).sort())
+      .toEqual(['Scripted room', 'Scripted room — branch', 'Scripted room — branch 2', 'Scripted room — branch 3']);
+  });
+
   describe('a writer-message branch is an edit in the branch', () => {
     it('re-seeds the composer and restages the message attachments under their ids', async () => {
       const { coordinator, session, store, room } = await openCanonicalSession();

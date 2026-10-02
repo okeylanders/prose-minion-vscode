@@ -17,9 +17,27 @@ describe('Workshop session titles', () => {
   describe('workshopBranchTitle (ADR 2026-09-30, D3)', () => {
     it('names a branch after its source', () => {
       expect(workshopBranchTitle('Chapter 3 — Felix')).toBe('Chapter 3 — Felix — branch');
-      // A branch of a branch reads as one.
-      expect(workshopBranchTitle('Chapter 3 — Felix — branch'))
-        .toBe('Chapter 3 — Felix — branch — branch');
+    });
+
+    it.each([
+      ['Chapter 3 — Felix — branch', 'Chapter 3 — Felix — branch 2'],
+      ['Chapter 3 — Felix — branch 2', 'Chapter 3 — Felix — branch 3'],
+      ['Chapter 3 — Felix — branch 9', 'Chapter 3 — Felix — branch 10'],
+      ['  Chapter 3 — Felix — branch 99  ', 'Chapter 3 — Felix — branch 100'],
+      ['Chapter 3 — Felix — branch — branch', 'Chapter 3 — Felix — branch 3'],
+      ['Chapter 3 — Felix — branch 2 — branch', 'Chapter 3 — Felix — branch 4'],
+      ['Chapter 3 — Felix — branch 9007199254740992', 'Chapter 3 — Felix — branch 9007199254740993']
+    ])('increments the branch suffix of %s', (source, expected) => {
+      expect(workshopBranchTitle(source)).toBe(expected);
+    });
+
+    it.each([
+      'The branch',
+      'Chapter — branch notes',
+      'Chapter — branch 0',
+      'Chapter — branch 2 — alternate ending'
+    ])('preserves branch wording outside a trailing generated suffix: %s', (source) => {
+      expect(workshopBranchTitle(source)).toBe(`${source} — branch`);
     });
 
     it('trims a long source title so the suffix still fits the limit', () => {
@@ -39,6 +57,21 @@ describe('Workshop session titles', () => {
 
       expect(title).toBe(`${'a'.repeat(150)} — branch`);
       expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(title)).toBe(false);
+    });
+
+    it('reserves space when the incremented number gains a digit', () => {
+      const title = workshopBranchTitle(`${'a'.repeat(149)} — branch 9`);
+
+      expect(title).toBe(`${'a'.repeat(148)} — branch 10`);
+      expect(title).toHaveLength(WORKSHOP_SESSION_TITLE_MAX_LENGTH);
+    });
+
+    it('reserves space for an incremented suffix without splitting an emoji', () => {
+      const title = workshopBranchTitle(`${'a'.repeat(147)}🌒 — branch 9`);
+
+      expect(title).toBe(`${'a'.repeat(147)} — branch 10`);
+      expect(title.length).toBeLessThanOrEqual(WORKSHOP_SESSION_TITLE_MAX_LENGTH);
+      expect(requireWorkshopSessionTitle(title)).toBe(title);
     });
   });
 });

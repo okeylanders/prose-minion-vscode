@@ -12,9 +12,12 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
   - **Branch from here** leaves the conversation as it is and opens a new saved session that starts at that point. Save the session first; an unsaved room asks you to. If the saved file changed on disk, for example after a Git pull, Branch asks you to reopen it or save the room as a new session first.
 - Rewind and Branch keep your excerpt, context, and to-do statuses as they are now.
 - **Craft Steering** analysis in both the sidebar and Workshop tools, inspired by Ursula K. Le Guin's *Steering the Craft*. Examines sound, rhythm, sentence handoffs, and narrative control while preserving intentional pauses, repetition, and voice. Includes a structured report with sample revisions, Creative Variations, Bound Creative Variations, a fidelity check, and passage-specific read-aloud practice. Workshop personas can invoke it for an isolated analysis too.
+- Dictionary entries include **Topic & Related Lexicon**: relevant topic families with short explanations and related terms, each with a brief meaning and connection. Available in standard lookup and Fast Generate; multiple senses get separate groups, and creative associations are labeled.
 
 ### Fixed
 
+- Branching a branch increments its title suffix (`— branch 2`, `— branch 3`, and so on) instead of adding another `— branch`.
+- Dictionary instructions allow fewer synonyms and antonyms for technical words, keeping related categories distinct from true equivalents or opposites.
 - A host or guest that starts a fresh conversation now gets its date and time context on its first reply, instead of up to an hour later. This covers editing the first message, re-inviting a dismissed guest, and a conversation reset after settings change.
 
 ### Upgrade notes

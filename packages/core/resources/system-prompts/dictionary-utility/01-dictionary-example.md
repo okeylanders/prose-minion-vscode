@@ -26,22 +26,22 @@ To compress or crush something with force, producing a sharp, brittle sound; to 
 1. **Physical crushing with sound**  
    - *Definition*: Compressed or crushed something brittle, producing characteristic breaking sounds.  
    - *Example*: *The frost-hardened grass crunched beneath their boots like breaking glass.*  
-   - *Synonyms*: crushed, ground, pulverized, shattered, splintered, fractured, crackled, snapped, broke, fragmented, crumbled, mashed  
-   - *Antonyms*: cushioned, muffled, silenced, padded, softened, absorbed  
+   - *Synonyms*: crushed, ground, compressed, crumbled, pulverized (choose by force and resulting texture).
+   - *Antonyms*: No direct lexical antonym; cushioning and muffling are contrasting actions, not opposites of every sense.
    - *Nuance*: Highlights action plus acoustics; implies brittleness or dryness.
 
 2. **Mastication/eating**  
    - *Definition*: Chewed food with audible grinding or breaking sounds.  
    - *Example*: *She crunched the apple between her teeth, juice running down her chin.*  
-   - *Synonyms*: chomped, munched, gnawed, chewed, masticated, ground, bit, gnashed, devoured, consumed, crushed, mangled  
-   - *Antonyms*: swallowed, gulped, slurped, sipped, dissolved, melted  
+   - *Synonyms*: chomped, munched, gnawed, chewed, masticated (not all imply the same sound).
+   - *Antonyms*: No direct lexical antonym; swallowing or sipping describes a different action.
    - *Nuance*: Suggests texture contrast and freshness; often conveys satisfaction.
 
 3. **Data/number processing**  
    - *Definition*: Performed intensive calculations or analysis.  
    - *Example*: *The algorithm crunched terabytes of data overnight.*  
    - *Synonyms*: processed, computed, calculated, analyzed, tabulated, compiled, parsed, evaluated, assessed, quantified, examined, interpreted  
-   - *Antonyms*: estimated, guessed, approximated, ignored, overlooked, simplified  
+   - *Antonyms*: *Left unprocessed* is a contextual opposite; estimating or simplifying still involves processing.
    - *Nuance*: Implies exhaustive, systematic processing with time pressure.
 
 4. **Compressed/reduced (informal)**  
@@ -68,6 +68,26 @@ To compress or crush something with force, producing a sharp, brittle sound; to 
 - Collocations: *crunched numbers*, *crunched underfoot*, *crunched leaves*, *crunched data*, *crunched for time*.  
 - Idioms: “when it comes to the crunch” (critical juncture), “credit crunch” (financial squeeze).  
 - Cliché refreshers: swap “crunched the numbers” for “interrogated the spreadsheets,” “parsed the figures.”
+
+# 📂 Topic & Related Lexicon
+
+### Brittle materials and fracture
+The physical sense of *crunched* combines compression with audible breakage. These terms describe nearby material properties and breaking processes, rather than interchangeable replacements for the verb.
+- **Brittleness** — Tendency to break with little deformation; helps explain a crisp crunch.
+- **Fracture** — A break or the process of breaking; the broader event that crunching may involve.
+- **Compression** — Squeezing under force; the pressure that can produce a crunch.
+
+### Eating and food texture
+The eating sense joins chewing with the texture and sound of food. This vocabulary helps distinguish the action from the quality being experienced.
+- **Mastication** — Chewing; the broader process in which a food may crunch.
+- **Crispness** — A texture that breaks readily, often with a sharp sound.
+- **Mouthfeel** — Physical sensations of food in the mouth, including crunchy texture.
+
+### Data processing and analysis
+In *crunched the numbers*, the word refers to computational or analytical work, not physical breakage.
+- **Computation** — Calculation, often by computer; a core activity in number-crunching.
+- **Aggregation** — Combining data into summaries; one possible processing step.
+- **Tabulation** — Arranging data in tables; a related way to organize results.
 
 # 🧬 Morphology & Family  
 - Base: *crunch*  

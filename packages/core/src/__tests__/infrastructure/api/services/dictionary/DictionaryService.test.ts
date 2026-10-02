@@ -5,6 +5,10 @@ jest.mock('p-limit', () => ({
 
 import { DictionaryService } from '@/infrastructure/api/services/dictionary/DictionaryService';
 import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const PROMPT_ROOT = path.resolve(__dirname, '../../../../../../resources/system-prompts');
 
 describe('DictionaryService', () => {
   const buildLookupService = async (runInitial: jest.Mock) => {
@@ -98,9 +102,9 @@ describe('DictionaryService', () => {
 
     const promptPaths = loadPrompts.mock.calls.map(([paths]) => paths[0]);
 
-    expect(promptPaths).toContain('dictionary-fast/14-special-focus-block.md');
-    expect(promptPaths).toContain('dictionary-fast/15-ai-advisory-notes-block.md');
-    expect(result.metadata.totalBlocks).toBe(15);
+    expect(promptPaths).toContain('dictionary-fast/15-special-focus-block.md');
+    expect(promptPaths).toContain('dictionary-fast/16-ai-advisory-notes-block.md');
+    expect(result.metadata.totalBlocks).toBe(16);
     expect(result.result.indexOf('# special focus')).toBeGreaterThan(-1);
     expect(result.result.indexOf('# ai advisory notes')).toBeGreaterThan(
       result.result.indexOf('# special focus')
@@ -122,19 +126,77 @@ describe('DictionaryService', () => {
     const { service } = await buildLookupService(runInitial);
 
     const fullyReported = await service.generateParallelDictionary('crash');
-    expect(fullyReported.metadata.totalBlocks).toBe(15);
+    expect(fullyReported.metadata.totalBlocks).toBe(16);
     expect(fullyReported.usage).toMatchObject({
-      promptTokens: 150,
-      completionTokens: 30,
-      totalTokens: 180,
-      cachedTokens: 30,
-      cacheWriteTokens: 15
+      promptTokens: 160,
+      completionTokens: 32,
+      totalTokens: 192,
+      cachedTokens: 32,
+      cacheWriteTokens: 16
     });
 
     omitDefinitionCacheRead = true;
     const partiallyReported = await service.generateParallelDictionary('crash');
     expect(partiallyReported.usage?.cachedTokens).toBeUndefined();
-    expect(partiallyReported.usage?.cacheWriteTokens).toBe(15);
+    expect(partiallyReported.usage?.cacheWriteTokens).toBe(16);
+  });
+
+  it('loads every bundled fast prompt and assembles topic families between collocations and morphology', async () => {
+    const loadPrompts = jest.fn(async (paths: string[]) =>
+      paths.map((file) => fs.readFileSync(path.join(PROMPT_ROOT, file), 'utf8')).join('\n\n'));
+    const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => ({
+      content: toolName === 'dictionary-fast-topic-related-lexicon'
+        ? '# 📂 Topic & Related Lexicon\n\n### Phonetics\nHow speech sounds are formed.\n- **Fricative** — A contrasting consonant class.'
+        : `# ${toolName.replace('dictionary-fast-', '').replace(/-/g, ' ')}`,
+      usage: undefined
+    }));
+    const service = new DictionaryService(
+      { ensureInitialized: async () => undefined, getEngine: () => ({ runInitial }) } as never,
+      { getPromptLoader: () => ({ loadPrompts }) } as never,
+      {} as never
+    );
+    const onProgress = jest.fn();
+
+    const result = await service.generateParallelDictionary(
+      'plosive', 'Compare consonant textures in prose.', { onProgress }
+    );
+
+    expect(result.metadata).toMatchObject({ totalBlocks: 16, successCount: 16, partialFailures: [] });
+    expect(loadPrompts.mock.calls.map(([paths]) => paths[0]))
+      .toContain('dictionary-fast/08-topic-related-lexicon-block.md');
+    const request = runInitial.mock.calls.find(([call]) => call.toolName === 'dictionary-fast-topic-related-lexicon')![0];
+    expect(request.systemMessage).toContain('# 📂 Topic & Related Lexicon');
+    expect(request.systemMessage).toContain('not automatically synonyms or antonyms');
+    const senseRequest = runInitial.mock.calls.find(([call]) => call.toolName === 'dictionary-fast-sense-explorer')![0];
+    expect(senseRequest.systemMessage).toContain('no direct antonym exists');
+    expect(request.userMessage).toContain('Compare consonant textures in prose.');
+    expect(result.result.indexOf('# 📂 Topic & Related Lexicon'))
+      .toBeGreaterThan(result.result.indexOf('# collocations idioms'));
+    expect(result.result.indexOf('# morphology family'))
+      .toBeGreaterThan(result.result.indexOf('# 📂 Topic & Related Lexicon'));
+    expect(onProgress).toHaveBeenLastCalledWith({
+      word: 'plosive', completedBlocks: expect.arrayContaining(['topic-related-lexicon']), totalBlocks: 16
+    });
+  });
+
+  it('reports a failed topic-family block without losing the other sections', async () => {
+    const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => {
+      if (toolName.startsWith('dictionary-fast-topic-related-lexicon')) {
+        throw new Error('Topic generation unavailable');
+      }
+      return { content: `# ${toolName}`, usage: undefined };
+    });
+    const { service } = await buildLookupService(runInitial);
+
+    const result = await service.generateParallelDictionary('plosive');
+
+    expect(result.metadata).toMatchObject({
+      totalBlocks: 16, successCount: 15, partialFailures: ['topic-related-lexicon']
+    });
+    expect(runInitial.mock.calls.filter(([call]) => call.toolName.startsWith('dictionary-fast-topic-related-lexicon')))
+      .toHaveLength(2);
+    expect(result.result).toContain('# dictionary-fast-definition');
+    expect(result.result).toContain('# dictionary-fast-morphology-family');
   });
 
   it('only asks the special-focus block to generate the Special Focus section', async () => {

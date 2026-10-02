@@ -5,7 +5,7 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Workshop Rewind and Branch
+## [Unreleased] — Workshop Rewind and Branch, Craft Steering, and Dictionary topic families
 
 ### Overview
 
@@ -37,12 +37,19 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 - Branch reads the source file back and compares it with the checkpoint the room accepted. It does this before writing anything, and again at the commit that replaces `current.json`, immediately before its atomic rename. A missing, unreadable or replaced source is refused, so a Git change made while the room is open cannot cost the room its only complete copy.
 - An unnamed room shows a "Save before branching" popup, and the host refuses it regardless. A named room with unsaved changes is refused too.
 - Branch is offered on the latest reply, where Rewind is not.
+- Nested branch titles increment the trailing suffix (`— branch 2`, `— branch 3`, …), folding repeated suffixes from earlier naming into that number. Title truncation reserves room for the number and preserves surrogate pairs.
 - The startup notice moves to `v4` and leads with a Rewind and Branch page.
 
 ### Fixed
 
 - Time-notice entries now end with their conversation: rewind drops and degraded imports, guest dismissal, and generation loss. A fresh host or guest gets a session-start time frame on its first turn.
 - New's reset now rolls back fully if anything in the reset itself fails.
+
+### Added — Dictionary topic families
+
+- Standard and streaming lookup, including the missing-resource fallback, include `📂 Topic & Related Lexicon` between Collocations & Idioms and Morphology & Family. Each topic has a short explanation and related terms with brief meanings and connections; multiple established senses can occupy separate groups, and creative associations are labeled.
+- Fast Generate has a dedicated topic-family block and now reports 16 blocks. Prompt resources from Morphology & Family onward are renumbered to match assembly order. Progress and token/cache totals include the new block through the existing fan-out path.
+- Sense Explorer instructions no longer require filling a fixed synonym/antonym quota for narrow technical senses. Broader categories, subtypes, and contrasting sound classes are explained as related concepts rather than mislabeled equivalents or opposites.
 
 ### Compatibility and verification
 

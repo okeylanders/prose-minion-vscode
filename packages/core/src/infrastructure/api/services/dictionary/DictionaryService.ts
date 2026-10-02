@@ -58,6 +58,7 @@ const DICTIONARY_BLOCKS = [
   'register-connotation',
   'narrative-texture',
   'collocations-idioms',
+  'topic-related-lexicon',
   'morphology-family',
   'character-voice',
   'soundplay-rhyme',
