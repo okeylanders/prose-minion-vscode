@@ -10,22 +10,33 @@ import {
   TokenUsage
 } from '@shared/types';
 import { isHttpUrl, type UrlCitation } from '@messages';
+import type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
+import {
+  prepareOpenRouterPromptCacheRequest,
+  OpenRouterPreparedMessages
+} from '@providers/OpenRouterPromptCachePolicy';
+
+export type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
 
 const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
 const UNSTRUCTURED_ERROR_BODY_CHARACTERS = 1_000;
 
-export interface OpenRouterMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-export interface OpenRouterRequest {
+export interface OpenRouterRequest extends OpenRouterPreparedMessages {
   model: string;
-  messages: OpenRouterMessage[];
   temperature?: number;
   max_tokens?: number;
   reasoning?: OpenRouterReasoningOptions;
   usage?: { include: boolean };
+}
+
+export interface OpenRouterCompletionOptions {
+  temperature?: number;
+  maxTokens?: number;
+  signal?: AbortSignal;
+  tools?: OpenRouterWebSearchTool[];
+  reasoning?: OpenRouterReasoningOptions;
+  /** Retained history identity: enables conversation affinity and caching policy. */
+  conversationId?: string;
 }
 
 export interface OpenRouterReasoningOptions {
@@ -134,13 +145,7 @@ export class OpenRouterClient {
 
   async createChatCompletion(
     messages: OpenRouterMessage[],
-    options?: {
-      temperature?: number;
-      maxTokens?: number;
-      signal?: AbortSignal;
-      tools?: OpenRouterWebSearchTool[];
-      reasoning?: OpenRouterReasoningOptions;
-    }
+    options?: OpenRouterCompletionOptions
   ): Promise<{
     content: string;
     finishReason?: string;
@@ -153,7 +158,7 @@ export class OpenRouterClient {
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
     const response = await this.fetchCompletion({
       model: requestedModel,
-      messages,
+      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.conversationId),
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,
       usage: { include: true },
@@ -213,13 +218,7 @@ export class OpenRouterClient {
    */
   async *createStreamingChatCompletion(
     messages: OpenRouterMessage[],
-    options?: {
-      temperature?: number;
-      maxTokens?: number;
-      signal?: AbortSignal;
-      tools?: OpenRouterWebSearchTool[];
-      reasoning?: OpenRouterReasoningOptions;
-    }
+    options?: OpenRouterCompletionOptions
   ): AsyncGenerator<{
     token: string;
     done: boolean;
@@ -233,7 +232,7 @@ export class OpenRouterClient {
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
     const response = await this.fetchCompletion({
       model: requestedModel,
-      messages,
+      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.conversationId),
       stream: true,
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,

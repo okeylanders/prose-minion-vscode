@@ -1,7 +1,8 @@
 import {
   normalizeContextCompression,
   OpenRouterApiError,
-  OpenRouterClient
+  OpenRouterClient,
+  OpenRouterMessage
 } from '@providers/OpenRouterClient';
 
 const streamingResponse = (...events: unknown[]): Response => {
@@ -32,6 +33,159 @@ describe('OpenRouter context-compression metadata', () => {
     ['unparseable pipeline', { pipeline: 'changed' }, 'unknown']
   ])('normalizes %s', (_label, metadata, expected) => {
     expect(normalizeContextCompression(metadata)).toBe(expected);
+  });
+});
+
+describe('OpenRouterClient conversation prompt caching', () => {
+  const originalFetch = global.fetch;
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    fetchMock = jest.fn().mockImplementation(async (_url, init) => {
+      const body = JSON.parse(init.body);
+      return body.stream
+        ? streamingResponse({ choices: [{ delta: { content: 'Reply' }, finish_reason: 'stop' }] }, '[DONE]')
+        : { ok: true, json: async () => ({ choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterEach(() => { global.fetch = originalFetch; });
+
+  const send = async (
+    client: OpenRouterClient,
+    streaming: boolean,
+    conversationId?: string,
+    messages: OpenRouterMessage[] = [{ role: 'user', content: 'Hello' }]
+  ) => {
+    const options = {
+      conversationId,
+      maxTokens: 512,
+      reasoning: { effort: 'low' as const },
+      signal: new AbortController().signal
+    };
+    if (streaming) {
+      for await (const _chunk of client.createStreamingChatCompletion(messages, options)) {
+        // Dispatch and consume the full response.
+      }
+    } else {
+      await client.createChatCompletion(messages, options);
+    }
+    return JSON.parse(fetchMock.mock.calls.at(-1)![1].body as string);
+  };
+
+  describe.each([false, true])('streaming=%s', streaming => {
+    it.each([
+      ['anthropic/claude-sonnet-4.6', true],
+      ['anthropic/claude-opus-4.6', true],
+      ['anthropic/claude-opus-4.8:nitro', true],
+      ['~anthropic/claude-sonnet-latest', true],
+      ['openai/gpt-5.4', false],
+      ['google/gemini-2.5-pro', false],
+      ['z-ai/glm-4.6', false],
+      ['qwen/qwen3-max-thinking', false],
+      ['meta/muse-spark-1.3', false],
+      ['openrouter/auto', false]
+    ])('applies only the documented conversation policy for %s', async (model, explicitCaching) => {
+      const body = await send(new OpenRouterClient('key', model), streaming, 'participant-1');
+      expect(body).toMatchObject({
+        model,
+        max_tokens: 512,
+        reasoning: { effort: 'low' },
+        messages: [{ role: 'user', content: 'Hello' }],
+        session_id: expect.stringMatching(/^prose-minion:[a-f0-9]{64}$/)
+      });
+      expect(body.cache_control).toEqual(explicitCaching ? { type: 'ephemeral' } : undefined);
+      expect(body).not.toHaveProperty('conversationId');
+      expect(body).not.toHaveProperty('provider');
+      expect(fetchMock.mock.calls.at(-1)![1].signal).toBeInstanceOf(AbortSignal);
+      if (streaming) {
+        expect(body).toMatchObject({ stream: true, stream_options: { include_usage: true } });
+      } else {
+        expect(body.usage).toEqual({ include: true });
+      }
+    });
+
+    it.each(['qwen/qwen3-max', 'qwen/qwen3.8-max-0902', '~deepseek/deepseek-v3.2:nitro'])
+    ('serializes %s with content-block cache hints on the system and advancing tail', async model => {
+      const client = new OpenRouterClient('key', model);
+      const messages: OpenRouterMessage[] = [
+        { role: 'system', content: 'Stable instructions' },
+        { role: 'user', content: 'Hello' }
+      ];
+      const frozenMessages = messages.map(message => Object.freeze({ ...message }));
+      const initial = await send(client, streaming, 'participant-1', frozenMessages);
+      const followUp = await send(client, streaming, 'participant-1', [
+        ...frozenMessages,
+        { role: 'assistant', content: 'Reply' },
+        { role: 'user', content: 'Continue' }
+      ]);
+      expect(followUp).toMatchObject({
+        model, max_tokens: 512, reasoning: { effort: 'low' }, session_id: initial.session_id
+      });
+      expect(followUp.messages).toEqual([
+        { role: 'system', content: [{ type: 'text', text: 'Stable instructions', cache_control: { type: 'ephemeral' } }] },
+        { role: 'user', content: [{ type: 'text', text: 'Hello' }] },
+        { role: 'assistant', content: [{ type: 'text', text: 'Reply' }] },
+        { role: 'user', content: [{ type: 'text', text: 'Continue', cache_control: { type: 'ephemeral' } }] }
+      ]);
+      expect(initial.messages[1].content[0].cache_control).toEqual({ type: 'ephemeral' });
+      expect(followUp).not.toHaveProperty('cache_control');
+      expect(followUp).not.toHaveProperty('provider');
+      expect(frozenMessages).toEqual(messages);
+
+      client.setModel('anthropic/claude-opus-4.6');
+      const claude = await send(client, streaming, 'participant-1', frozenMessages);
+      expect(claude.messages).toEqual(messages);
+      expect(claude.cache_control).toEqual({ type: 'ephemeral' });
+      expect(claude.session_id).toBe(initial.session_id);
+      client.setModel('google/gemini-3.8-flash');
+      const gemini = await send(client, streaming, 'participant-1', frozenMessages);
+      expect(gemini.messages).toEqual(messages);
+      expect(gemini).not.toHaveProperty('cache_control');
+    });
+
+    it.each(['anthropic/claude-opus-4.6', 'qwen/qwen3-max'])
+    ('leaves discarded one-off %s requests without cache-write opt-in or session affinity', async model => {
+      const body = await send(new OpenRouterClient('key', model), streaming);
+      expect(body).not.toHaveProperty('cache_control');
+      expect(body).not.toHaveProperty('session_id');
+      expect(body.messages).toEqual([{ role: 'user', content: 'Hello' }]);
+    });
+
+    it('keeps affinity on continuation, isolates participants, and recalculates hints after a model swap', async () => {
+      const client = new OpenRouterClient('key', 'anthropic/claude-opus-4.6');
+      const messages: OpenRouterMessage[] = [
+        { role: 'system', content: 'Stable instructions' },
+        { role: 'user', content: 'Opening request' }
+      ];
+      const frozenMessages = messages.map(message => Object.freeze({ ...message }));
+      const first = await send(client, streaming, 'participant-1', frozenMessages);
+      const second = await send(client, streaming, 'participant-1', [
+        ...frozenMessages,
+        { role: 'assistant', content: 'Reply' },
+        { role: 'user', content: 'Follow-up' }
+      ]);
+      expect(second.session_id).toBe(first.session_id);
+      expect(second.messages.slice(0, first.messages.length)).toEqual(first.messages);
+      expect(frozenMessages).toEqual(messages);
+      expect(await send(client, streaming, 'participant-2')).not.toMatchObject({ session_id: first.session_id });
+
+      client.setModel('openai/gpt-5.4');
+      const openai = await send(client, streaming, 'participant-1');
+      expect(openai.session_id).toBe(first.session_id);
+      expect(openai).not.toHaveProperty('cache_control');
+      client.setModel('anthropic/claude-sonnet-4.6');
+      expect(await send(client, streaming, 'participant-1')).toMatchObject({
+        session_id: first.session_id, cache_control: { type: 'ephemeral' }
+      });
+    });
+
+    it('bounds opaque routing keys even when runtime conversation ids contain long tool names', async () => {
+      const body = await send(new OpenRouterClient('key', 'anthropic/claude-sonnet-4.6'), streaming, 'tool-name'.repeat(100));
+      expect(body.session_id.length).toBeLessThanOrEqual(256);
+      expect(body.session_id).not.toContain('tool-name');
+    });
   });
 });
 

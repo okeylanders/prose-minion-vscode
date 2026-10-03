@@ -106,6 +106,48 @@ describe('AgentRunEngine', () => {
 
   afterEach(() => engine.dispose());
 
+  it.each([false, true])('carries retained conversation identity through every inference (streaming=%s)', async streaming => {
+    const responses = [PERSONA_REQUEST, 'Initial reply', PERSONA_REQUEST, 'Follow-up reply', 'Guest reply', 'One-off reply'];
+    if (streaming) {
+      client.createStreamingChatCompletion.mockImplementation(() => stream([responses.shift()!]));
+    } else {
+      client.createChatCompletion.mockImplementation(async () => ({ content: responses.shift()!, finishReason: 'stop' }));
+    }
+    const options = streaming ? { onToken: jest.fn() } : undefined;
+    const initial = await engine.runInitial({
+      toolName: 'workshop-host', systemMessage: 'Stable instructions', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(), options
+    });
+    await engine.continueConversation({
+      conversationId: initial.conversationId!, userMessage: 'Continue',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(), options
+    });
+    const guest = await engine.runInitial({
+      toolName: 'workshop-guest', systemMessage: 'Guest instructions', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources, options
+    });
+    await engine.runInitial({
+      toolName: 'dictionary', systemMessage: 'Dictionary instructions', userMessage: 'Define a word',
+      policy: AGENT_RUN_POLICIES.dictionary, options
+    });
+
+    const calls = (streaming ? client.createStreamingChatCompletion : client.createChatCompletion).mock.calls;
+    expect(calls).toHaveLength(6);
+    for (const [_messages, providerOptions] of calls.slice(0, 4)) {
+      expect(providerOptions.conversationId).toBe(initial.conversationId);
+    }
+    expect(calls[4][1].conversationId).toBe(guest.conversationId);
+    expect(guest.conversationId).not.toBe(initial.conversationId);
+    expect(calls[5][1]).not.toHaveProperty('conversationId');
+    expect(conversations.getMessages(initial.conversationId!)).toEqual(
+      expect.arrayContaining([{ role: 'system', content: 'Stable instructions' }])
+    );
+    for (const message of conversations.getMessages(initial.conversationId!)) {
+      expect(typeof message.content).toBe('string');
+      expect(message).not.toHaveProperty('cache_control');
+    }
+  });
+
   it('hydrates while offline, rejects a send without mutation, then continues after provider attachment', async () => {
     const offlineConversations = new ConversationManager();
     const offlineEngine = new AgentRunEngine(
