@@ -1,10 +1,11 @@
 /**
- * WorkshopNoticeModal — the seven-page "Workshop · beta" startup notice, in the
+ * WorkshopNoticeModal — the paged "Workshop · beta" startup notice, in the
  * wide screenshot format from the 2026-07-27 design drop
  * (docs/design/pm-wk-notify.js + `Prose Minion - Notice Modal.html`). The
- * newest feature leads the tour (ADR 2026-09-30, Sprint 03 kickoff decision
- * 5): every machine sees the whole box again after a version bump, so what
- * changed comes first.
+ * release's new features lead the tour (ADR 2026-09-30, Sprint 03 kickoff
+ * decision 5): every machine sees the whole box again after a version bump,
+ * so what changed comes first. v2.7.0 leads with Rewind/Branch, then Craft
+ * Steering and the Dictionary's Topic & Related Lexicon.
  *
  * Layout is two columns: an annotated media well on the left (screenshots of
  * the real controls, with numbered call-out boxes and a matching legend) and
@@ -165,6 +166,103 @@ const PAGES: readonly NoticePage[] = [
       { label: '1', term: 'Rewind to here', detail: 'keep this reply; remove everything after it.' },
       { label: '2', term: 'Edit from here', detail: 'your message comes back to edit and send again.' },
       { label: '3', term: 'Branch from here', detail: 'a new saved session from this point; this one stays.' }
+    ]
+  },
+  {
+    title: 'New: Craft Steering',
+    tag: 'new',
+    /* "creative variations" stays lower case on purpose: in title case it is a
+       Workshop widget's name, which the feature-boundary guard in
+       boundaries.test.ts reserves for that widget's own family. */
+    body: (
+      <>
+        A new analysis tool under <b>Craft &amp; Voice</b>, inspired by Ursula K. Le Guin&rsquo;s{' '}
+        <i>Steering the Craft</i>. It listens to sound, rhythm, and how each sentence carries you
+        into the next. The report names what to preserve, audits sound and narrative control, and
+        traces the handoffs between sentences. Its sample revisions and creative variations each
+        explain what they gain and what they cost. Pauses, repetition, and fragments you meant
+        are judged by their effect, not smoothed away. Run it from{' '}
+        <b>Tools</b> on a pinned excerpt, or ask your host or a guest to run it on a passage from
+        the conversation.
+      </>
+    ),
+    note: (
+      <>
+        Craft Steering is in the sidebar&rsquo;s Writing Tools too, under Craft &amp; Voice.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'composer-controls',
+        alt: 'The composer control bar, with Tools highlighted',
+        maxWidthPx: 560,
+        ratio: '1320 / 338',
+        callouts: [
+          { label: '1', leftPercent: 77.2, topPercent: 52.5, widthPercent: 11.2, heightPercent: 22 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'tools-craft-steering',
+        alt: 'The Tools picker, with the Craft Steering card selected',
+        maxWidthPx: 460,
+        ratio: '1242 / 364',
+        callouts: [
+          { label: '2', leftPercent: 2.7, topPercent: 9.3, widthPercent: 46.9, heightPercent: 81.4 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Tools', detail: 'runs a tool directly on the pinned excerpt.' },
+      { label: '2', term: 'Craft Steering', detail: 'under Craft & Voice; one run, and the report lands in the thread.' }
+    ]
+  },
+  {
+    title: 'New: Topic & Related Lexicon',
+    tag: 'new',
+    body: (
+      <>
+        Dictionary entries can now end with an encyclopedia entry: the topics a word belongs to,
+        related vocabulary, examples for your writing, and possible reference books for each
+        topic. Turn it on or off with the <b>Topic &amp; Related Lexicon</b> switch above the
+        lookup buttons in the sidebar&rsquo;s <b>Dictionary</b> tab. It starts on and remembers
+        your choice for both standard and Fast lookups.
+      </>
+    ),
+    note: (
+      <>
+        When a host or guest looks up a word for you in the Workshop, the encyclopedia entry is
+        left out.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'dictionary-topic-switch',
+        alt: 'The Topic & Related Lexicon switch in the Dictionary tab, turned on',
+        maxWidthPx: 420,
+        ratio: '948 / 208',
+        callouts: [
+          { label: '1', leftPercent: 80.6, topPercent: 32.2, widthPercent: 16, heightPercent: 35.6 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'dictionary-topic-entry',
+        alt: 'The start of a Topic & Related Lexicon entry for "fricative"',
+        maxWidthPx: 360,
+        ratio: '964 / 696',
+        callouts: [
+          { label: '2', leftPercent: 4.4, topPercent: 4.9, widthPercent: 52.9, heightPercent: 10.3 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Topic & Related Lexicon', detail: 'the switch above the lookup buttons; on by default.' },
+      { label: '2', term: 'Encyclopedia entry', detail: 'added at the end: topics, related vocabulary, examples, and possible reference books.' }
     ]
   },
   {

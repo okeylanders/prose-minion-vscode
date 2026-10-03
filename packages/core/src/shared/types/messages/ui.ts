@@ -169,7 +169,7 @@ export function coerceWebviewErrorText(raw: unknown): string | undefined {
 
 /**
  * Startup notice (Sprint 14 §5). The webview asks whether the Workshop's
- * six-page beta notice should show; the host answers from per-machine
+ * paged beta notice should show; the host answers from per-machine
  * GlobalStateStore against the current notice version. Dismissal is only
  * recorded when the writer checks "Don't show again" — a plain Dismiss
  * closes locally and sends nothing.

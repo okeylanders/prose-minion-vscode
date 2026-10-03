@@ -1,5 +1,5 @@
 /**
- * useStartupNotice — the Workshop's six-page beta notice (Sprint 14 §5).
+ * useStartupNotice — the Workshop's paged beta notice (Sprint 14 §5).
  *
  * The webview never decides visibility on its own: it asks the host on mount,
  * the host answers from per-machine GlobalStateStore against the current

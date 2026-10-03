@@ -38,7 +38,7 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 - An unnamed room shows a "Save before branching" popup, and the host refuses it regardless. A named room with unsaved changes is refused too.
 - Branch is offered on the latest reply, where Rewind is not.
 - Nested branch titles increment the trailing suffix (`— branch 2`, `— branch 3`, …), folding repeated suffixes from earlier naming into that number. Title truncation reserves room for the number and preserves surrogate pairs.
-- The startup notice moves to `v4` and leads with a Rewind and Branch page.
+- The startup notice moves to `v5` and leads with this release: a Rewind and Branch page, then Craft Steering and Topic & Related Lexicon pages. Their three new screenshots (`tools-craft-steering`, `dictionary-topic-switch`, `dictionary-topic-entry`) are 2× captures of the real webview.
 
 ### Fixed
 

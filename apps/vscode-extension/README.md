@@ -28,8 +28,20 @@
 
 - **Try another direction in Workshop** — rewind to a reply, edit an earlier message in its composer or widget, or branch a saved conversation into a new session. Branch keeps the source file intact; your current excerpt and context stay with you.
 - **Listen to your prose with Craft Steering** — examine sound, rhythm, sentence handoffs, and narrative control in the sidebar or Workshop, with revision experiments that preserve your passage's intent.
-- **Explore a word's wider world** — the optional Dictionary encyclopedia entry adds topic explanations, related vocabulary, writing examples, and possible reference books. Its switch remembers your choice for standard and Fast generation; persona calls leave it out.
+- **Explore a word's wider world** — the optional Dictionary encyclopedia entry, **Topic & Related Lexicon**, adds topic explanations, related vocabulary, writing examples, and possible reference books. Its switch remembers your choice for standard and Fast generation; persona calls leave it out.
 - **Update every Git-synced machine first** — sessions saved by v2.7.0 cannot be opened by earlier Prose Minion versions. Older sessions still open; Rewind and Branch become available from their reopen point onward.
+
+**Craft Steering** sits under **Craft & Voice** in the sidebar's Writing Tools and in the Workshop's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it listens to how each sentence carries you into the next, and it judges the pauses, repetition, and fragments you meant by their effect instead of smoothing them away.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/craft-steering.png" alt="Craft Steering in the sidebar's Writing Tools picker under Craft and Voice, and selected in the Workshop's Tools picker with its Run Craft Steering button" width="100%"/>
+</p>
+
+**Topic & Related Lexicon** turns a dictionary entry outward: the topics a word belongs to, the vocabulary around it, how to use it on the page, and suggested reading. One switch in the Dictionary tab turns it on or off.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-topic-lexicon.png" alt="Left: the Dictionary tab looking up 'Fricative' with the Topic and Related Lexicon switch on. Right: the resulting encyclopedia entry, covering phonetics and phonology, related vocabulary, a writing example, and two reference books" width="100%"/>
+</p>
 
 ### Also in v2.6.2 — GPT-6.1 Sol choices
 
@@ -179,7 +191,7 @@ All offline, no key, no cost — from a single chapter to the whole draft, with 
 
 ## A dictionary that writes fiction
 
-Not a definition lookup — a craft reference: connotation, register, sense explorer, soundplay, and character-voice variations for any word or phrase in your draft.
+Not a definition lookup — a craft reference: connotation, register, sense explorer, soundplay, and character-voice variations for any word or phrase in your draft. Leave **Topic & Related Lexicon** on to close each entry with topic explanations, related vocabulary, writing examples, and possible reference books.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-spread.png" alt="Dictionary lookup input with scene context next to the resulting writer-focused entry" width="100%"/>
