@@ -1,6 +1,6 @@
 # Craft Steering Analysis
 
-Status: Implemented and automated checks passed; manual host/provider review pending.
+Status: Verified — automated checks passed; Okey confirmed all manual host/provider checks on 2026-10-02. Awaiting v2.7.0 publication.
 Priority: Medium
 Branch: `feature/craft-steering-analysis`
 
@@ -47,8 +47,8 @@ These sources establish the inspiration. The report structure, revision safeguar
 - [x] The dedicated prompt and missing-resource fallback preserve the focus and authorial intent.
 - [x] Saved reports use `craft-steering-analysis-` filenames.
 - [x] Typecheck, focused tests, and production build pass; prompt included in staged resources.
-- [ ] Manual Extension Development Host check of both pickers, streaming/cancel, copy/save, and Workshop follow-up.
-- [ ] Author reviews a real model report for craft usefulness and fidelity to the passage's intent.
+- [x] Manual Extension Development Host check of both pickers, streaming/cancel, copy/save, and Workshop follow-up.
+- [x] Author reviews a real model report for craft usefulness and fidelity to the passage's intent.
 
 ## Manual review passages
 
@@ -64,3 +64,7 @@ Use a short, rhythmic passage with purposeful repeated wording and a held pause;
 - `git diff --check`: passed.
 
 These checks establish integration and packaging behavior; they do not establish the quality of a generated critique. No paid provider calls or interactive host checks were run.
+
+## Manual verification confirmed — 2026-10-02
+
+Okey confirmed all checks performed on main reviewed at `7f9823be`. The manual completion criteria above are marked passed on that report, without inventing additional provider logs or output samples. Release preparation targets v2.7.0.

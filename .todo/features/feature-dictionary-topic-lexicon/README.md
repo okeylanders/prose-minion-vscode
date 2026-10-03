@@ -1,6 +1,6 @@
 # Dictionary Topic & Related Lexicon
 
-Status: Implemented; automated checks passed; live-model smoke pending.
+Status: Verified — automated checks passed; Okey confirmed all manual host/provider checks on 2026-10-02. Awaiting v2.7.0 publication.
 Priority: Low
 Branch: `feature/workshop-smoke-tweaks`
 Requested: 2026-10-01
@@ -43,16 +43,20 @@ The expanded examples' possible resources were checked against publisher or auth
 - [x] Progress, token/cache aggregation, and failed-block reporting account for the new block.
 - [x] All 15 pre-existing Fast blocks and all original reference-entry sections match the pre-change versions byte-for-byte after accounting for the new section and numbering. Original section wording is preserved in full/fallback instructions; the primary blueprint has an explicit slot for the enabled Topic section.
 - [x] Revised verification (2026-10-02): six focused suites / 80 tests pass for prompt composition, service block selection/accounting, message forwarding, persona exclusion, and persisted UI controls. All TypeScript projects and production build pass; all 20 dictionary prompt resources match their staged copies with no stale filenames. Scoped lint has zero errors (naming/curly warnings remain); build reports Browserslist age and webview bundle-size warnings.
-- [ ] Check *plosive* through both lookup modes in the Extension Development Host: substantial topic explanations, useful term connections, examples, and sensible book suggestions, with the original sections' creative breadth intact.
-- [ ] Check a word with several senses, such as *bank*, with context for one sense; verify useful families remain separate and the contextual sense is prioritized.
-- [ ] Check the switch in dark, light, sepia, and Follow VS Code modes; confirm its saved choice and encyclopedia omission in standard, Fast, and persona-triggered results.
+- [x] Check *plosive* through both lookup modes in the Extension Development Host: substantial topic explanations, useful term connections, examples, and sensible book suggestions, with the original sections' creative breadth intact.
+- [x] Check a word with several senses, such as *bank*, with context for one sense; verify useful families remain separate and the contextual sense is prioritized.
+- [x] Check the switch in dark, light, sepia, and Follow VS Code modes; confirm its saved choice and encyclopedia omission in standard, Fast, and persona-triggered results.
 
-Automated checks cover prompt delivery, resources, ordering, fallback, and transport behavior; live report accuracy and usefulness still need the manual checks above.
+Automated checks cover prompt delivery, resources, ordering, fallback, and transport behavior; live report accuracy and usefulness were checked by Okey, who confirmed all checks complete on 2026-10-02.
 
 ## Enabled-section omission investigation — 2026-10-02
 
 The writer's GPT-OSS 120B Nitro *copper* lookup ended at AI Advisory Notes with the switch enabled. The VS Code output log at `20260903T093032/window36/exthost/output_logging_20261002T143146/2-Prose Minion.log` shows the current checkout and an extension activation after the latest build. Three standard lookup runs completed; input tokens rose from 2,632 to 4,603 for the last two runs, consistent with inclusion of the encyclopedia resource. Completion counts were 3,092, 3,266, and 3,618. The old log did not record the effective option, full prompt, or finish reason, so it does not independently prove the exact prompt or why generation ended.
 
-The likely cause was conflicting prompt emphasis: the primary blueprint and full reference ended at Advisory Notes, while the appended guidance called itself an "Optional Encyclopedia Entry." The fix inserts section 16 into the enabled blueprint and makes the active selection explicit in both system and user messages. Sparse service diagnostics record the effective mode, token limit, finish reason, and Topic-heading presence without logging the word, manuscript context, or full response. Live rechecking of this fix remains pending.
+The likely cause was conflicting prompt emphasis: the primary blueprint and full reference ended at Advisory Notes, while the appended guidance called itself an "Optional Encyclopedia Entry." The fix inserts section 16 into the enabled blueprint and makes the active selection explicit in both system and user messages. Sparse service diagnostics record the effective mode, token limit, finish reason, and Topic-heading presence without logging the word, manuscript context, or full response. Okey confirmed live rechecking of this fix passed on 2026-10-02.
 
 Fix validation: 29 focused utility/service tests pass, all TypeScript projects and the production build pass, and the corrected prompt resources match the staged extension copies. These checks validate prompt delivery and diagnostics; no additional paid provider call was run.
+
+## Manual verification confirmed — 2026-10-02
+
+Okey confirmed all checks performed on main reviewed at `7f9823be`. The manual completion criteria above are marked passed on that report, without inventing additional provider logs or output samples. Release preparation targets v2.7.0.

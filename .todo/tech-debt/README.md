@@ -71,8 +71,11 @@ elsewhere.
 | Low | [Widget-config counter integrity validation](2026-07-31-widget-config-counter-integrity.md) | Identified |
 | Low | [Persistence coordinator ownership](2026-10-01-workshop-persistence-coordinator-ownership.md) | Deferred |
 | Low | [Browser lists an unreadable session](2026-10-01-workshop-browser-lists-unreadable-session.md) | Identified |
-| High | [Rewind and Branch manual smoke on `main`](2026-10-01-workshop-rewind-and-branch-main-smoke.md) | Planned |
-| Medium | [Rewind and Branch release preparation](2026-10-01-workshop-rewind-and-branch-release-preparation.md) | Blocked on the smoke |
+| Medium | [Rewind and Branch release preparation](2026-10-01-workshop-rewind-and-branch-release-preparation.md) | In Progress — v2.7.0 |
+| Medium | [Dictionary suggested-book reliability](2026-10-02-dictionary-suggested-book-reliability.md) | Identified |
+| Low | [Writing Tools overview image](2026-10-02-writing-tools-overview-image.md) | Identified |
+| Medium | [Release dependency audit](2026-10-02-release-dependency-audit-follow-up.md) | Deferred |
+| Low | [Mark grouping allocation](2026-10-02-workshop-mark-grouping-allocation.md) | Identified |
 | Low | [Rewind and Branch notice screenshot](2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) | Identified |
 
 ## Review Guidance
@@ -83,3 +86,7 @@ elsewhere.
   defect without a concrete failure mode.
 - When a broad item produces a specific actionable concern, split out the
   focused concern and narrow the parent document.
+
+## Recently resolved
+
+- [Rewind and Branch main smoke](../archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md): all checks confirmed by Okey on 2026-10-02.

@@ -2,7 +2,7 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
-## [Unreleased]
+## [2.7.0] - 2026-10-02
 
 ### Added
 
@@ -13,6 +13,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 - Rewind and Branch keep your excerpt, context, and to-do statuses as they are now.
 - **Craft Steering** analysis in both the sidebar and Workshop tools, inspired by Ursula K. Le Guin's *Steering the Craft*. Examines sound, rhythm, sentence handoffs, and narrative control while preserving intentional pauses, repetition, and voice. Includes a structured report with sample revisions, Creative Variations, Bound Creative Variations, a fidelity check, and passage-specific read-aloud practice. Workshop personas can invoke it for an isolated analysis too.
 - Dictionary entries can end with **Topic & Related Lexicon**, an optional encyclopedia entry with developed topic explanations, related vocabulary, writing examples, and one or two suggested books per topic. A switch above the lookup buttons follows your selected theme and remembers your choice for standard lookup and Fast Generate. Persona tool calls omit the encyclopedia entry.
+- The Workshop's startup tour opens once more and begins with this release's new features: Rewind and Branch, Craft Steering, and Topic & Related Lexicon.
 
 ### Fixed
 

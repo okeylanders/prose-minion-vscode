@@ -39,7 +39,10 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
         "controller-about-you": "https://webview.test/ext/assets/workshop-notices/controller-about-you.png",
         "controller-advanced": "https://webview.test/ext/assets/workshop-notices/controller-advanced.png",
         "project-layout": "https://webview.test/ext/assets/workshop-notices/project-layout.png",
-        "settings-resource-locations": "https://webview.test/ext/assets/workshop-notices/settings-resource-locations.png"
+        "settings-resource-locations": "https://webview.test/ext/assets/workshop-notices/settings-resource-locations.png",
+        "tools-craft-steering": "https://webview.test/ext/assets/workshop-notices/tools-craft-steering.png",
+        "dictionary-topic-switch": "https://webview.test/ext/assets/workshop-notices/dictionary-topic-switch.png",
+        "dictionary-topic-entry": "https://webview.test/ext/assets/workshop-notices/dictionary-topic-entry.png"
       }
     };
   </script>

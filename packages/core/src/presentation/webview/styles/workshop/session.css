@@ -412,7 +412,7 @@
 }
 
 /* ---------- Startup beta notices ----------
-   Six-page "Workshop · beta" tour in the wide screenshot format from the
+   Paged "Workshop · beta" tour in the wide screenshot format from the
    2026-07-27 drop, ported from the comp's wk-notice / nt-* system
    (docs/design/pm-wk-pins.css). */
 [data-pm-surface="workshop"] .pm-ws-notice-modal {

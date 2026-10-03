@@ -4,10 +4,7 @@
 **Epic:** [Workshop Rewind and Branch](../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01, with D1–D7 folded in; amended with Sprint 03 kickoff decisions and findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration); `sprint/workshop-rewind-and-branch-03-branch`
-**State:** Complete on the integration branch. Sprint 03 merged via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) as `a7c24bd` (2026-10-01), after its review requested changes and then approved following two re-reviews (see [Review round](#review-round-pr-120-2026-10-01)). `main` (`53ebaa6`) is still the epic's merge-base, so the merge to `main` carries no drift. Okey deferred the manual smoke to the `main` build (2026-10-01), so it now gates the release, not the merge (see [Epic closure](#epic-closure-2026-10-01)). Still to come, in order:
-1. [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) merges the epic into `main` as one unit, with a merge commit, on Okey's go-ahead. The epic's archive takes effect with it.
-2. Okey runs the [manual smoke](#manual-smoke-extension-development-host) on the `main` build and records the results here. Anything wonky is patched off `main`.
-3. [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version.
+**State (updated 2026-10-02):** Merged to `main` through [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121); the epic is archived. Sprint 03 merged into integration via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) as `a7c24bd` on 2026-10-01 after two re-reviews. Okey confirmed the [manual smoke](#manual-smoke-extension-development-host) on 2026-10-02. [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is in progress on `release/v2.7.0`; publication remains.
 
 ## What landed
 
@@ -127,7 +124,7 @@ The [review](../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md) reques
 ## Epic closure (2026-10-01)
 
 - **Integration.** PR #120 merged into `epic/workshop-rewind-and-branch` as `a7c24bd`. The branch is 55 commits ahead of `main` and 0 behind: `main` is still the merge-base `53ebaa6`, so no merge from `main` was needed.
-- **Smoke deferred.** The plan recorded the smoke before the merge. Okey chose instead to run it on the `main` build after the merge and patch anything wonky from there, so the Craft Steering branch can be rebased and merged next. The smoke therefore gates the release rather than the merge, as the PR #119 and #120 reviews already framed it. It has [its own entry](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), and its criterion stays unchecked in the epic until results are recorded below.
+- **Smoke deferred.** The plan recorded the smoke before the merge. Okey chose instead to run it on the `main` build after the merge and patch anything wonky from there, so the Craft Steering branch can be rebased and merged next. The smoke therefore gates the release rather than the merge, as the PR #119 and #120 reviews already framed it. It has [its own entry](../.todo/archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), and its criterion was left unchecked until the 2026-10-02 confirmation below.
 - **Verification at archive preparation.** The closure commits change only Markdown. Every check was run at `a7c24bd` and again on the closure commits before pushing, with the same results:
   - `npx jest --no-cache`: 228 suites, 2,722 tests, 2 snapshots passed.
   - `npm run typecheck`: core, webview and extension clean.
@@ -141,30 +138,32 @@ The [review](../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md) reques
 
 ## Manual smoke (Extension Development Host)
 
-**Deferred to the `main` build (Okey, 2026-10-01).** Okey runs these scenarios on a build of `main` after the epic merges, and anything wonky gets patched in a small PR off `main`. Results gate [release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md), not the merge.
+**Passed on `main`, confirmed by Okey on 2026-10-02.** The original 2026-10-01 plan deferred testing until after the epic merged. Results satisfy [release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md), not the merge.
 
 The cloud container cannot run the Extension Development Host. Use cheap models and short rooms. This covers Sprint 02's Rewind smoke too, and scenario 7 covers the PR #120 review's F-01. Record each result below with the date and the build (the `main` commit).
 
-**Build:** pending (`main` after PR #121 merges) · **Date:** pending
+**Build:** `main` reviewed at `7f9823be` · **Confirmation date:** 2026-10-02 (America/Chicago)
+
+Okey confirmed, "I've performed all the checks." The seven scenarios and startup-notice check below are recorded as passed on that confirmation. No additional execution log or exact test time was supplied.
 
 | # | Scenario | Steps and expectation | Result |
 |---:|---|---|---|
-| 1 | Guest and capability rewind | In a host conversation with one capability read and one guest, rewind to the host reply before the guest joined. The guest is disposed, and the host's next reply mentions nothing past the cut. | Pending |
-| 2 | Writer-bubble edit | "Edit from here" on a writer bubble returns its text and attachments to the composer. Edit and resend; the thread continues coherently. Also try a widget message sent to the host, then talk to a guest, then edit the widget message: its widget reopens on the released config, and sending it goes to the host. | Pending |
-| 3 | Excerpt revision | Revise the excerpt, then rewind to before the revision. The next host reply acknowledges the revised excerpt frame. | Pending |
-| 4 | Unnamed-room branch | Click Branch in an unnamed room: the "Save before branching" popup appears and "Save session…" opens the Save modal. Save, then click Branch again: both sessions appear in the browser. Reopen each and verify its content. | Pending |
-| 5 | Reload | Reload the window after a rewind and after a branch. Both restore exactly. | Pending |
-| 6 | Legacy session | Open a pre-feature session. Earlier turns show the disabled reason; turns after the reopen point rewind and branch. | Pending |
-| 7 | Source changed on disk | With a named session open, delete or edit its file outside VS Code (or check out an older version with Git), then click Branch. It is refused with "This session's saved file is missing or changed on disk…", and the room stays. Use Save as new, then Branch: it works. | Pending |
+| 1 | Guest and capability rewind | In a host conversation with one capability read and one guest, rewind to the host reply before the guest joined. The guest is disposed, and the host's next reply mentions nothing past the cut. | Passed — Okey confirmed 2026-10-02 |
+| 2 | Writer-bubble edit | "Edit from here" on a writer bubble returns its text and attachments to the composer. Edit and resend; the thread continues coherently. Also try a widget message sent to the host, then talk to a guest, then edit the widget message: its widget reopens on the released config, and sending it goes to the host. | Passed — Okey confirmed 2026-10-02 |
+| 3 | Excerpt revision | Revise the excerpt, then rewind to before the revision. The next host reply acknowledges the revised excerpt frame. | Passed — Okey confirmed 2026-10-02 |
+| 4 | Unnamed-room branch | Click Branch in an unnamed room: the "Save before branching" popup appears and "Save session…" opens the Save modal. Save, then click Branch again: both sessions appear in the browser. Reopen each and verify its content. | Passed — Okey confirmed 2026-10-02 |
+| 5 | Reload | Reload the window after a rewind and after a branch. Both restore exactly. | Passed — Okey confirmed 2026-10-02 |
+| 6 | Legacy session | Open a pre-feature session. Earlier turns show the disabled reason; turns after the reopen point rewind and branch. | Passed — Okey confirmed 2026-10-02 |
+| 7 | Source changed on disk | With a named session open, delete or edit its file outside VS Code (or check out an older version with Git), then click Branch. It is refused with "This session's saved file is missing or changed on disk…", and the room stays. Use Save as new, then Branch: it works. | Passed — Okey confirmed 2026-10-02 |
 
-Also glance at the startup notice: it should open once on the new first page.
+Startup notice: passed — Okey's confirmation includes opening once on the new first page.
 
 ## Follow-ups
 
 - [Browser lists an unreadable session](../.todo/tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified). The PR #120 review noticed it, and a probe confirmed it; it predates this epic.
 - [Persistence coordinator ownership](../.todo/tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred). Extract room replacement when the next whole-room operation arrives, for example Side Quests.
 - Branch lineage (`branchedFrom`) lives in the parked [Branch Board](../.todo/features/feature-workshop-branch-board/README.md) feature. No lineage is persisted in v1.
-- [The manual smoke on the `main` build](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (High, planned): the release gate since Okey deferred it (see [Epic closure](#epic-closure-2026-10-01)).
+- [The manual smoke on the `main` build](../.todo/archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (Resolved, 2026-10-02): Okey confirmed all scenarios passed; this was the release gate after Okey deferred it (see [Epic closure](#epic-closure-2026-10-01)).
 - [A real screenshot of the bubble actions](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low, identified). The page draws them inline today.
-- [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (Medium, blocked on the smoke): both changelogs carry `[Unreleased]`. The release notes keep the §9 warning: sessions saved by this release can't be opened by older builds, so writers who sync through Git should update every machine first.
+- [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is in progress (Medium, smoke passed): both changelogs now name v2.7.0. The release notes keep the §9 warning: sessions saved by this release can't be opened by older builds, so writers who sync through Git should update every machine first.
 - The epic's archive is prepared in [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121), as PR #95 did for the Workshop beta, and takes effect when that PR merges (see [Epic closure](#epic-closure-2026-10-01)). This replaces the earlier plan to archive only after the merge.
