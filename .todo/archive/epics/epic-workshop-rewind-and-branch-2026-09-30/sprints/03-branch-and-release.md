@@ -1,6 +1,6 @@
 # Sprint 03: Branch and Release Readiness
 
-**Status:** Complete — merged into `epic/workshop-rewind-and-branch` via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) (`a7c24bd`); delivered 2026-10-01 (see [Delivery notes](#delivery-notes-2026-10-01)). Okey deferred the manual smoke to the `main` build after the epic merges (2026-10-01); it is now the [release gate](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
+**Status:** Complete; manual smoke confirmed passed by Okey on 2026-10-02 — merged into `epic/workshop-rewind-and-branch` via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) (`a7c24bd`); delivered 2026-10-01 (see [Delivery notes](#delivery-notes-2026-10-01)). Okey deferred the manual smoke to the `main` build after the epic merges (2026-10-01); it is now the [release gate](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Branch:** `sprint/workshop-rewind-and-branch-03-branch`
 **Depends on:** Sprint 02
 **Blocks:** Epic closure
@@ -89,7 +89,7 @@ Confirmed with Okey before `branchFrom` was written. The ADR records each one in
    - When the cut bubble is a widget-commit message (a `beforeTurn` cut), a writer's Rewind or Branch reopens that widget's sheet on the released config. This is the widget twin of the composer re-seed.
    - The bubble's action reads "Edit from here".
    - A cut that skips past a commit releases its config silently. That residue is accepted.
-4. **Manual smoke is Okey's.** The cloud container cannot run the Extension Development Host. The memory-bank entry carries the six-scenario checklist, and the epic criterion stays unchecked until the results are recorded.
+4. **Manual smoke is Okey's.** The cloud container cannot run the Extension Development Host. The memory-bank entry carries the six-scenario checklist, and the epic criterion was left unchecked until results were recorded. Okey confirmed the final seven-scenario checklist passed on 2026-10-02.
 5. **What's New uses the existing startup notice.** ADR 2026-08-05's ledger is not implemented. A Rewind and Branch page is *prepended* to the Workshop startup notice, and `WORKSHOP_STARTUP_NOTICE_VERSION` moves from `v3` to `v4`, following that mechanism's documented workflow. Every machine sees the tour once more, opening on the new page.
 
 Also decided as implementation calls within the plan:
@@ -132,7 +132,7 @@ Branch works from named rooms with the source preserved, and unnamed rooms are a
 
 ## Delivery notes (2026-10-01)
 
-Every deliverable landed except the manual smoke, which waits on Okey (kickoff decision 4). The corrections below are also recorded in the ADR's [Sprint 03 implementation findings](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-implementation-findings).
+At delivery, every deliverable landed except the manual smoke (kickoff decision 4). Okey subsequently confirmed all checks passed on 2026-10-02. The corrections below are also recorded in the ADR's [Sprint 03 implementation findings](../../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md#sprint-03-implementation-findings).
 
 **Plan deviations.**
 - **Coordinator API.** `branchFrom(cut, { title? })` takes a cut, as `rewindTo` does, and the route maps the bubble. It has no `origin`, because only a writer branches.
@@ -196,6 +196,10 @@ Every deliverable landed except the manual smoke, which waits on Okey (kickoff d
 - [The browser lists an unreadable session](../../../../tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified), the review's side observation.
 - Branch lineage (`branchedFrom`), in the parked [Branch Board](../../../../features/feature-workshop-branch-board/README.md) feature.
 - [A real screenshot of the bubble actions](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low).
-- [The manual smoke on the `main` build](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), now the release gate (High).
-- [Release preparation](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version (both changelogs carry `[Unreleased]`); it waits on the smoke.
+- [The manual smoke on the `main` build](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), resolved after Okey confirmed all checks passed on 2026-10-02.
+- [Release preparation](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is in progress for v2.7.0; the smoke gate is satisfied.
 - Archive the epic: prepared in [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) and effective when it merges, following PR #95's pattern ([archive note](../ARCHIVE.md)).
+
+## Release verification update — 2026-10-02
+
+Okey confirmed all manual checks performed on main reviewed at `7f9823be`. The seven-scenario memory-bank table and archived smoke record now carry passing results. Release preparation proceeds for v2.7.0. Earlier deferral notes are historical.

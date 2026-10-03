@@ -24,7 +24,14 @@
 
 ---
 
-## What's new in v2.6.2 — GPT-6.1 Sol choices
+## What's new in v2.7.0 — Rewind, branch, and explore
+
+- **Try another direction in Workshop** — rewind to a reply, edit an earlier message in its composer or widget, or branch a saved conversation into a new session. Branch keeps the source file intact; your current excerpt and context stay with you.
+- **Listen to your prose with Craft Steering** — examine sound, rhythm, sentence handoffs, and narrative control in the sidebar or Workshop, with revision experiments that preserve your passage's intent.
+- **Explore a word's wider world** — the optional Dictionary encyclopedia entry adds topic explanations, related vocabulary, writing examples, and possible reference books. Its switch remembers your choice for standard and Fast generation; persona calls leave it out.
+- **Update every Git-synced machine first** — sessions saved by v2.7.0 cannot be opened by earlier Prose Minion versions. Older sessions still open; Rewind and Branch become available from their reopen point onward.
+
+### Also in v2.6.2 — GPT-6.1 Sol choices
 
 - **Try GPT-6.1 Sol or Sol Pro** — both join every shared model picker and Category Search. Pro uses a deeper reasoning mode and may consume more output tokens.
 - **Your choices stay yours** — defaults and saved selections are unchanged. OpenRouter lists these models, but their prose quality has not been evaluated in Prose Minion.

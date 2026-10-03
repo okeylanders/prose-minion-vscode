@@ -1,8 +1,8 @@
 # Workshop Rewind and Branch Epic Archive
 
 **Archive prepared:** 2026-10-01
-**Effective:** When [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) merges to `main`
-**Release state:** Unreleased. Both changelogs carry `[Unreleased]`; [release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) names the version after the [manual smoke](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
+**Effective:** [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) merged to `main`
+**Release state:** v2.7.0 preparation in progress. Both changelogs name 2.7.0; [release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) follows the passed [manual smoke](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Integration branch:** `epic/workshop-rewind-and-branch`
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01)
 
@@ -40,12 +40,12 @@ The closure commits change only Markdown on top of `a7c24bd`. Each check ran at 
 - `npm run build`: webpack and `verify:bundle` passed.
 - `git diff --check`: clean.
 - Markdown links: the archive move repointed 39 links, including the moved files' own outbound links. A resolving check over every Markdown file found no new dangling link.
-- Manual Extension Development Host smoke: **not run yet.** Okey deferred it to the `main` build after the merge (2026-10-01). It gates the release, and it is the one unchecked criterion in this epic's README.
+- Manual Extension Development Host smoke: **passed, confirmed 2026-10-02.** It was deferred to the `main` build at archive preparation; the release criterion is now checked.
 
 ## Follow-ups retained outside this archive
 
-- [Manual smoke on the `main` build](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (High, planned): the release gate.
-- [Release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) (Medium, blocked on the smoke): names the version and keeps the Git-sync upgrade warning.
+- [Manual smoke on the `main` build](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (Resolved): Okey confirmed the release gate passed on 2026-10-02.
+- [Release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) (Medium, in progress; smoke passed): names the version and keeps the Git-sync upgrade warning.
 - [Persistence coordinator ownership](../../../tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred).
 - [The browser lists an unreadable session](../../../tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified).
 - [A real screenshot for the notice's Rewind and Branch page](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) (Low, identified).
@@ -59,3 +59,7 @@ The detailed record lives in [`.memory-bank/20261001-1105-workshop-rewind-and-br
 ## Historical docs
 
 The README and sprint files in this folder are the original execution record. Their status lines are historical; prefer this note for the final state.
+
+## Verification update — 2026-10-02
+
+The manual release gate is satisfied: Okey confirmed all checks passed on main reviewed at `7f9823be`. See the memory-bank result table. v2.7.0 preparation is in progress.

@@ -1,7 +1,7 @@
 # Epic: Workshop Rewind and Branch
 
 **Created:** 2026-09-30
-**Status:** Complete — all three sprints are merged into the integration branch: Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117), `b1497d8`), Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119), `5fb85a0`) and Sprint 03 (Branch and release readiness, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120), `a7c24bd`). The ADR is accepted. The epic merges to `main` as one unit through [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121), and the archive becomes effective when it merges (see [ARCHIVE.md](ARCHIVE.md)). Okey deferred the manual Extension Development Host smoke to the `main` build after that merge (2026-10-01), so it is now the [release gate](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
+**Status:** Complete; manual smoke confirmed passed by Okey on 2026-10-02 — all three sprints are merged into the integration branch: Sprint 01 (retained-history marks, [PR #117](https://github.com/okeylanders/prose-minion-vscode/pull/117), `b1497d8`), Sprint 02 (Rewind, [PR #119](https://github.com/okeylanders/prose-minion-vscode/pull/119), `5fb85a0`) and Sprint 03 (Branch and release readiness, [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120), `a7c24bd`). The ADR is accepted. The epic merges to `main` as one unit through [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121), and the archive becomes effective when it merges (see [ARCHIVE.md](ARCHIVE.md)). Okey deferred the manual Extension Development Host smoke to the `main` build after that merge (2026-10-01), so it is now the [release gate](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Priority:** High
 **Integration branch:** `epic/workshop-rewind-and-branch` (cut from `main`)
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md)
@@ -65,7 +65,7 @@ Each sprint branch is cut from the integration branch and merged back through it
 - [x] Branch works from named rooms and the source session file is byte-unchanged; unnamed rooms show the save-first popup and the host refuses them.
 - [x] Rollback proven for failures injected at transform, import, hydrate and write.
 - [x] Focused tests, full Jest, all TypeScript projects, ESLint, production build and `git diff --check` pass. *Epic head `a7c24bd`, re-run at archive preparation: 228 suites / 2,722 tests; lint 0 errors.*
-- [ ] Manual Extension Development Host smoke recorded (see Sprint 03). *Deferred (Okey, 2026-10-01) to the `main` build after the epic merges: the cloud container cannot run the Extension Development Host (Sprint 03 kickoff decision 4), and the smoke gates the release, not the merge. Tracked in [its own entry](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md); the checklist and results table are in the [memory-bank entry](../../../../.memory-bank/20261001-1105-workshop-rewind-and-branch.md).*
+- [x] Manual Extension Development Host smoke recorded (see Sprint 03). *Deferred (Okey, 2026-10-01) to the `main` build after the epic merges: the cloud container cannot run the Extension Development Host (Sprint 03 kickoff decision 4), and the smoke gates the release, not the merge. Tracked in [its own entry](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md); the checklist and results table are in the [memory-bank entry](../../../../.memory-bank/20261001-1105-workshop-rewind-and-branch.md).* — passed, confirmed by Okey on 2026-10-02 (see memory-bank results).
 - [x] Memory-bank completion entry; parked Branch Board feature updated with lineage follow-up.
 
 ## Adjacent feature: Side Quests
@@ -79,3 +79,7 @@ Each sprint branch is cut from the integration branch and merged back through it
 - Backfilling marks for turns before a legacy session's reopen point.
 - Branch lineage metadata, branch comparison, and the Branch Board.
 - Rewind in the sidebar Assistant (non-Workshop) tools.
+
+## Release verification update — 2026-10-02
+
+Okey confirmed all manual checks performed on main reviewed at `7f9823be`. The seven-scenario memory-bank table and archived smoke record now carry passing results. Release preparation proceeds for v2.7.0. Earlier deferral notes are historical.
