@@ -45,6 +45,14 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 - Time-notice entries now end with their conversation: rewind drops and degraded imports, guest dismissal, and generation loss. A fresh host or guest gets a session-start time frame on its first turn.
 - New's reset now rolls back fully if anything in the reset itself fails.
 
+### Added — Craft Steering
+
+- Added `craft-steering` to the sidebar Writing Tools and Workshop Tools pickers under **Craft & Voice**, with the waveform icon and **Craft Steering Analysis** report title. Workshop personas can call it through the existing `analysis.run` capability.
+- The tool follows the existing WritingToolsFocus path for passage/context assembly, streaming, cancellation and retained Workshop results; it introduces no new transport or persistence contract. Saved reports use the `craft-steering-analysis-` prefix.
+- The dedicated `writing-tools-assistant/focus/craft-steering.md` prompt and missing-resource fallback preserve authorial intent while examining sound, cadence, sentence handoffs, punctuation/breath and narrative control. The twelve-section report includes what to preserve, sample revisions, distinct and constrained variations, gains/costs, a fidelity check and passage-specific read-aloud practice.
+- Attribution names Ursula K. Le Guin's *Steering the Craft* as inspiration; the rubric is an original application, without invented quotations or endorsement claims. Purposeful pauses, repetition and fragments are evaluated by effect rather than mechanically removed.
+- Integrated through [PR #118](https://github.com/okeylanders/prose-minion-vscode/pull/118). The [feature record](../.todo/features/feature-craft-steering-analysis/README.md) records focused routing/prompt/fallback tests and Okey's confirmed host/provider review. The v2.7.0 README and startup tour now show both access paths.
+
 ### Added — Dictionary topic families
 
 - Standard and streaming lookup, including the missing-resource fallback, can append `📂 Topic & Related Lexicon` after AI Advisory Notes. Each topic has developed explanatory paragraphs, related vocabulary with meaningful connections, a concrete illustration and writing application, and one or two possible reference books when confidently known. Topic counts and vocabulary counts are flexible; this section has additional space beyond the original entry's length target.
