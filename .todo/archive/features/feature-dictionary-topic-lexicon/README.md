@@ -1,6 +1,6 @@
 # Dictionary Topic & Related Lexicon
 
-Status: Verified — automated checks passed; Okey confirmed all manual host/provider checks on 2026-10-02. Awaiting v2.7.0 publication.
+Status: Complete — published in [v2.7.0](https://github.com/okeylanders/prose-minion-vscode/releases/tag/v2.7.0) on 2026-10-02.
 Priority: Low
 Branch: `feature/workshop-smoke-tweaks`
 Requested: 2026-10-01
@@ -25,10 +25,10 @@ A dictionary entry explains a word's meanings and morphological family but does 
 
 ## Related Files
 
-- [Full prompt](../../../packages/core/resources/system-prompts/dictionary-utility/00-dictionary-utility.md), [reference entry](../../../packages/core/resources/system-prompts/dictionary-utility/01-dictionary-example.md), and [optional encyclopedia instructions and example](../../../packages/core/resources/system-prompts/dictionary-utility/02-encyclopedia-entry.md).
-- [Fast topic block](../../../packages/core/resources/system-prompts/dictionary-fast/16-topic-related-lexicon-block.md) and [Sense Explorer](../../../packages/core/resources/system-prompts/dictionary-fast/04-sense-explorer-block.md).
-- [DictionaryUtility](../../../packages/core/src/tools/utility/dictionaryUtility.ts): standard/streaming instructions and fallback.
-- [DictionaryService](../../../packages/core/src/infrastructure/api/services/dictionary/DictionaryService.ts): Fast Generate registry, progress, assembly, and usage aggregation.
+- [Full prompt](../../../../packages/core/resources/system-prompts/dictionary-utility/00-dictionary-utility.md), [reference entry](../../../../packages/core/resources/system-prompts/dictionary-utility/01-dictionary-example.md), and [optional encyclopedia instructions and example](../../../../packages/core/resources/system-prompts/dictionary-utility/02-encyclopedia-entry.md).
+- [Fast topic block](../../../../packages/core/resources/system-prompts/dictionary-fast/16-topic-related-lexicon-block.md) and [Sense Explorer](../../../../packages/core/resources/system-prompts/dictionary-fast/04-sense-explorer-block.md).
+- [DictionaryUtility](../../../../packages/core/src/tools/utility/dictionaryUtility.ts): standard/streaming instructions and fallback.
+- [DictionaryService](../../../../packages/core/src/infrastructure/api/services/dictionary/DictionaryService.ts): Fast Generate registry, progress, assembly, and usage aggregation.
 
 ## Example Grounding
 
@@ -60,3 +60,7 @@ Fix validation: 29 focused utility/service tests pass, all TypeScript projects a
 ## Manual verification confirmed — 2026-10-02
 
 Okey confirmed all checks performed on main reviewed at `7f9823be`. The manual completion criteria above are marked passed on that report, without inventing additional provider logs or output samples. Release preparation targets v2.7.0.
+
+## Publication — 2026-10-02
+
+Shipped in [v2.7.0](https://github.com/okeylanders/prose-minion-vscode/releases/tag/v2.7.0); the verified feature record is archived.

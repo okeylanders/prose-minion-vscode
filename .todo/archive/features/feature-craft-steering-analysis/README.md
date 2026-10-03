@@ -1,6 +1,6 @@
 # Craft Steering Analysis
 
-Status: Verified — automated checks passed; Okey confirmed all manual host/provider checks on 2026-10-02. Awaiting v2.7.0 publication.
+Status: Complete — published in [v2.7.0](https://github.com/okeylanders/prose-minion-vscode/releases/tag/v2.7.0) on 2026-10-02.
 Priority: Medium
 Branch: `feature/craft-steering-analysis`
 
@@ -68,3 +68,7 @@ These checks establish integration and packaging behavior; they do not establish
 ## Manual verification confirmed — 2026-10-02
 
 Okey confirmed all checks performed on main reviewed at `7f9823be`. The manual completion criteria above are marked passed on that report, without inventing additional provider logs or output samples. Release preparation targets v2.7.0.
+
+## Publication — 2026-10-02
+
+Shipped in [v2.7.0](https://github.com/okeylanders/prose-minion-vscode/releases/tag/v2.7.0); the verified feature record is archived.

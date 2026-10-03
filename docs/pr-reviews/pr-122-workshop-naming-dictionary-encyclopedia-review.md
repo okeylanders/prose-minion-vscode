@@ -52,7 +52,7 @@ Checks ran against `6b0a05b` before this documentation-only report was added. Fr
 
 Dependency installation succeeded with a workspace-compatible npm cache after the default cache path failed. Install lifecycle scripts were disabled locally; CI's ordinary `npm ci` passed. No provider credentials or paid model calls were used.
 
-Governing material: `AGENTS.md`, complete net diff, live PR metadata/comments/reviews, [Rewind/Branch ADR](../adr/2026-09-30-workshop-rewind-and-branch.md), [Dictionary feature plan](../../.todo/features/feature-dictionary-topic-lexicon/README.md), relevant source/tests, build resource staging, and CI workflow. No existing discussion comments or submitted reviews were present. No checkout-local `.agents/skills` directory was available.
+Governing material: `AGENTS.md`, complete net diff, live PR metadata/comments/reviews, [Rewind/Branch ADR](../adr/2026-09-30-workshop-rewind-and-branch.md), [Dictionary feature plan](../../.todo/archive/features/feature-dictionary-topic-lexicon/README.md), relevant source/tests, build resource staging, and CI workflow. No existing discussion comments or submitted reviews were present. No checkout-local `.agents/skills` directory was available.
 
 ## Executive briefing
 

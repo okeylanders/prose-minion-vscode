@@ -51,7 +51,7 @@ Writers can return the Workshop room to any eligible reply or message, exactly, 
 - The tool follows the existing WritingToolsFocus path for passage/context assembly, streaming, cancellation and retained Workshop results; it introduces no new transport or persistence contract. Saved reports use the `craft-steering-analysis-` prefix.
 - The dedicated `writing-tools-assistant/focus/craft-steering.md` prompt and missing-resource fallback preserve authorial intent while examining sound, cadence, sentence handoffs, punctuation/breath and narrative control. The twelve-section report includes what to preserve, sample revisions, distinct and constrained variations, gains/costs, a fidelity check and passage-specific read-aloud practice.
 - Attribution names Ursula K. Le Guin's *Steering the Craft* as inspiration; the rubric is an original application, without invented quotations or endorsement claims. Purposeful pauses, repetition and fragments are evaluated by effect rather than mechanically removed.
-- Integrated through [PR #118](https://github.com/okeylanders/prose-minion-vscode/pull/118). The [feature record](../.todo/features/feature-craft-steering-analysis/README.md) records focused routing/prompt/fallback tests and Okey's confirmed host/provider review. The v2.7.0 README and startup tour now show both access paths.
+- Integrated through [PR #118](https://github.com/okeylanders/prose-minion-vscode/pull/118). The [feature record](../.todo/archive/features/feature-craft-steering-analysis/README.md) records focused routing/prompt/fallback tests and Okey's confirmed host/provider review. The v2.7.0 README and startup tour now show both access paths.
 
 ### Added — Dictionary topic families
 

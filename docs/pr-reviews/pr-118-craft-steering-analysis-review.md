@@ -55,7 +55,7 @@ Checks ran against the reviewed head before adding this report. Local runtime: N
 
 All ten specialist lanes completed: Marcus (architecture), Blake (critical correctness), Sam (edge cases), Parker (quality), Cal (tests), Stan (standards), Tim (performance), Patricia (security), Oliver (observability), and Bria (domain intent). The three praise findings below were independently checked against the current source. Overlapping coverage was not counted as finding consensus. No existing PR comments or submitted reviews were present when inspected.
 
-Governing material: `AGENTS.md` / `CLAUDE.md`, live PR description and metadata, the complete net diff, relevant production files and tests, the [feature plan](../../.todo/features/feature-craft-steering-analysis/README.md), sibling prompts, and the CI workflow.
+Governing material: `AGENTS.md` / `CLAUDE.md`, live PR description and metadata, the complete net diff, relevant production files and tests, the [feature plan](../../.todo/archive/features/feature-craft-steering-analysis/README.md), sibling prompts, and the CI workflow.
 
 ## Report card
 

@@ -71,7 +71,6 @@ elsewhere.
 | Low | [Widget-config counter integrity validation](2026-07-31-widget-config-counter-integrity.md) | Identified |
 | Low | [Persistence coordinator ownership](2026-10-01-workshop-persistence-coordinator-ownership.md) | Deferred |
 | Low | [Browser lists an unreadable session](2026-10-01-workshop-browser-lists-unreadable-session.md) | Identified |
-| Medium | [Rewind and Branch release preparation](2026-10-01-workshop-rewind-and-branch-release-preparation.md) | In Progress — v2.7.0 |
 | Medium | [Dictionary suggested-book reliability](2026-10-02-dictionary-suggested-book-reliability.md) | Identified |
 | Low | [Writing Tools overview image](2026-10-02-writing-tools-overview-image.md) | Identified |
 | Medium | [Release dependency audit](2026-10-02-release-dependency-audit-follow-up.md) | Deferred |
@@ -90,3 +89,5 @@ elsewhere.
 ## Recently resolved
 
 - [Rewind and Branch main smoke](../archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md): all checks confirmed by Okey on 2026-10-02.
+
+- [Rewind and Branch release preparation](../archive/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md): v2.7.0 published on 2026-10-02.

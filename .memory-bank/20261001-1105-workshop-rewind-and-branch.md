@@ -4,7 +4,7 @@
 **Epic:** [Workshop Rewind and Branch](../.todo/archive/epics/epic-workshop-rewind-and-branch-2026-09-30/README.md)
 **ADR:** [2026-09-30 Workshop Rewind and Branch](../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01, with D1–D7 folded in; amended with Sprint 03 kickoff decisions and findings)
 **Branches:** `epic/workshop-rewind-and-branch` (integration); `sprint/workshop-rewind-and-branch-03-branch`
-**State (updated 2026-10-02):** Merged to `main` through [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121); the epic is archived. Sprint 03 merged into integration via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) as `a7c24bd` on 2026-10-01 after two re-reviews. Okey confirmed the [manual smoke](#manual-smoke-extension-development-host) on 2026-10-02. [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is in progress on `release/v2.7.0`; publication remains.
+**State (updated 2026-10-02):** Merged to `main` through [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121); the epic is archived. Sprint 03 merged into integration via [PR #120](https://github.com/okeylanders/prose-minion-vscode/pull/120) as `a7c24bd` on 2026-10-01 after two re-reviews. Okey confirmed the [manual smoke](#manual-smoke-extension-development-host) on 2026-10-02. [Release preparation](../.todo/archive/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) completed with v2.7.0 publication on 2026-10-02.
 
 ## What landed
 
@@ -138,7 +138,7 @@ The [review](../docs/pr-reviews/pr-120-workshop-branch-16c751b-review.md) reques
 
 ## Manual smoke (Extension Development Host)
 
-**Passed on `main`, confirmed by Okey on 2026-10-02.** The original 2026-10-01 plan deferred testing until after the epic merged. Results satisfy [release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md), not the merge.
+**Passed on `main`, confirmed by Okey on 2026-10-02.** The original 2026-10-01 plan deferred testing until after the epic merged. Results satisfy [release preparation](../.todo/archive/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md), not the merge.
 
 The cloud container cannot run the Extension Development Host. Use cheap models and short rooms. This covers Sprint 02's Rewind smoke too, and scenario 7 covers the PR #120 review's F-01. Record each result below with the date and the build (the `main` commit).
 
@@ -165,5 +165,5 @@ Startup notice: passed — Okey's confirmation includes opening once on the new 
 - Branch lineage (`branchedFrom`) lives in the parked [Branch Board](../.todo/features/feature-workshop-branch-board/README.md) feature. No lineage is persisted in v1.
 - [The manual smoke on the `main` build](../.todo/archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (Resolved, 2026-10-02): Okey confirmed all scenarios passed; this was the release gate after Okey deferred it (see [Epic closure](#epic-closure-2026-10-01)).
 - [A real screenshot of the bubble actions](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low, identified). The page draws them inline today.
-- [Release preparation](../.todo/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is in progress (Medium, smoke passed): both changelogs now name v2.7.0. The release notes keep the §9 warning: sessions saved by this release can't be opened by older builds, so writers who sync through Git should update every machine first.
+- [Release preparation](../.todo/archive/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is resolved: v2.7.0 is published, and both changelogs name it. The release notes keep the §9 warning: sessions saved by this release can't be opened by older builds, so writers who sync through Git should update every machine first.
 - The epic's archive is prepared in [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121), as PR #95 did for the Workshop beta, and takes effect when that PR merges (see [Epic closure](#epic-closure-2026-10-01)). This replaces the earlier plan to archive only after the merge.

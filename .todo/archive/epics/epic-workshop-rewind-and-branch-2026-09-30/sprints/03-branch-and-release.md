@@ -197,7 +197,7 @@ At delivery, every deliverable landed except the manual smoke (kickoff decision 
 - Branch lineage (`branchedFrom`), in the parked [Branch Board](../../../../features/feature-workshop-branch-board/README.md) feature.
 - [A real screenshot of the bubble actions](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) for the notice page (Low).
 - [The manual smoke on the `main` build](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md), resolved after Okey confirmed all checks passed on 2026-10-02.
-- [Release preparation](../../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is in progress for v2.7.0; the smoke gate is satisfied.
+- [Release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) is complete; v2.7.0 is published and the smoke gate is satisfied.
 - Archive the epic: prepared in [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) and effective when it merges, following PR #95's pattern ([archive note](../ARCHIVE.md)).
 
 ## Release verification update — 2026-10-02

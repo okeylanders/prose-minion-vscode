@@ -2,7 +2,7 @@
 
 **Archive prepared:** 2026-10-01
 **Effective:** [PR #121](https://github.com/okeylanders/prose-minion-vscode/pull/121) merged to `main`
-**Release state:** v2.7.0 preparation in progress. Both changelogs name 2.7.0; [release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) follows the passed [manual smoke](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
+**Release state:** v2.7.0 published on 2026-10-02. Both changelogs name 2.7.0; [release preparation](../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) follows the passed [manual smoke](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md)
 **Integration branch:** `epic/workshop-rewind-and-branch`
 **Decision:** [ADR 2026-09-30 — Workshop Rewind and Branch](../../../../docs/adr/2026-09-30-workshop-rewind-and-branch.md) (Accepted 2026-10-01)
 
@@ -45,7 +45,7 @@ The closure commits change only Markdown on top of `a7c24bd`. Each check ran at 
 ## Follow-ups retained outside this archive
 
 - [Manual smoke on the `main` build](../../tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md) (Resolved): Okey confirmed the release gate passed on 2026-10-02.
-- [Release preparation](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) (Medium, in progress; smoke passed): names the version and keeps the Git-sync upgrade warning.
+- [Release preparation](../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md) (Resolved; v2.7.0 published): names the version and keeps the Git-sync upgrade warning.
 - [Persistence coordinator ownership](../../../tech-debt/2026-10-01-workshop-persistence-coordinator-ownership.md) (Low, deferred).
 - [The browser lists an unreadable session](../../../tech-debt/2026-10-01-workshop-browser-lists-unreadable-session.md) (Low, identified).
 - [A real screenshot for the notice's Rewind and Branch page](../../../tech-debt/2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) (Low, identified).
@@ -63,3 +63,7 @@ The README and sprint files in this folder are the original execution record. Th
 ## Verification update — 2026-10-02
 
 The manual release gate is satisfied: Okey confirmed all checks passed on main reviewed at `7f9823be`. See the memory-bank result table. v2.7.0 preparation is in progress.
+
+## Publication — 2026-10-02
+
+The epic shipped in [v2.7.0](https://github.com/okeylanders/prose-minion-vscode/releases/tag/v2.7.0); the manual release gate and release-preparation record are resolved.

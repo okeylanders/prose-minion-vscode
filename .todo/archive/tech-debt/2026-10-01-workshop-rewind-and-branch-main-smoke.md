@@ -24,7 +24,7 @@ On a build of `main` that includes the epic, run the seven scenarios in the [epi
 
 - `.memory-bank/20261001-1105-workshop-rewind-and-branch.md`: the checklist and the results table.
 - [Sprint 03](../epics/epic-workshop-rewind-and-branch-2026-09-30/sprints/03-branch-and-release.md): the smoke as planned.
-- [Release preparation](../../tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md), which waits on this.
+- [Release preparation](2026-10-01-workshop-rewind-and-branch-release-preparation.md), which waits on this.
 
 ## Completion Criteria
 
