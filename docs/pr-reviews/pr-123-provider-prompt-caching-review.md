@@ -21,17 +21,17 @@ act before merge · **Deferred** = real issue, safe to punt for a stated reason 
 
 | # | Sev | Finding | Reviewers | Consensus | Status |
 |---|-----|---------|-----------|-----------|--------|
-| F-01 | 🟠 High | The 100k-word standing context has no model-window guard. A context edit re-appends the full list to append-only history, and the failed turn retries the oversize prompt | Blake, Tim | 🎯 | **Open**. Medium confidence (provider windows unverified). Guard, warn, or send deltas before doubling |
-| F-02 | 🟡 Standard | Persona prompt still tells the model 50,000 words / 420,000 chars. Validator now allows 100k / 840k. Architecture docs still say 50k and "3 items" | Stan, Bria | 🎯 | **Open**. One-line prompt fix. Land the sync test from the July debt note, or log a progress note on it |
+| F-01 | 🟠 High | The 100k-word standing context has no model-window guard. A context edit re-appends the full list to append-only history, and the failed turn retries the oversize prompt | Blake, Tim | 🎯 | **Addressed**. Acknowledged attachment deltas plus per-inference model-window preflight; live metadata/estimated token caveats documented |
+| F-02 | 🟡 Standard | Persona prompt still tells the model 50,000 words / 420,000 chars. Validator now allows 100k / 840k. Architecture docs still say 50k and "3 items" | Stan, Bria | 🎯 | **Addressed**. Persona figures and current architecture docs synced; CI guard verified with deliberate prompt drift |
 | F-03 | 🟡 Standard | The "estimate belongs to another model" gate is written twice, against two sources of "current model", and neither copy is tested | Marcus, Cal, Stan, Parker | 🎯🎯 Strong | **Open**. Cal rated this High; the panel majority rated it Standard |
-| F-04 | 🟡 Standard | Gesture Playground's 420k referenced-source cap is now smaller than one legal context attachment | Blake (+ orchestrator, independently) | — | **Open**. Derive it from the budget table and add a guard test |
+| F-04 | 🟡 Standard | Gesture Playground's 420k referenced-source cap is now smaller than one legal context attachment | Blake (+ orchestrator, independently) | — | **Addressed**. Gesture source cap derives from standing-context plus excerpt character ceilings; full-bound source test passes. F-18 intake caveat remains |
 | F-05 | 🟡 Standard | The countdown subtracts the webview's clock from a timestamp minted on the extension host. These are different machines under Remote-SSH, WSL and dev containers | Sam | — | **Open**. Send a relative remaining duration |
 | F-06 | 🟡 Standard | The cache policy chosen, TTL sent, routing key, and reason for a suppressed estimate are never logged | Oliver | — | **Open**. Needed before live acceptance can be read |
 | F-07 | 🟡 Standard | The 1h-TTL setting → wire chain is tested in halves, and the engine's settings stub ignores its key | Cal | — | **Open** |
 | F-08 | 🟡 Standard | The compression-applied suppression and the requested-vs-response TTL guard are unreachable from tests | Cal | — | **Open** |
 | F-09 | 🟡 Standard | The response-model guard reuses the exact-id Alibaba allowlist, so a dated response id silently drops the estimate | Sam | — | **Open**. Medium confidence. Fold into the F-08 test work |
-| F-10 | 🟡 Standard | ADR says "rewind preserves its id"; rewind actually mints fresh ids, so the routing key changes | Bria | — | **Open**. Fix the ADR at minimum |
-| F-11 | 🟡 Standard | Going from 3 to 7 per-message items at 10k words each silently raises the per-message ceiling from 30k to 70k words, with no aggregate bound | Bria | — | **Open**. Decide whether that's intended and document it, or cap the aggregate |
+| F-10 | 🟡 Standard | ADR says "rewind preserves its id"; rewind actually mints fresh ids, so the routing key changes | Bria | — | **Addressed**. ADR now states that rewind mints fresh runtime ids, matching existing behavior |
+| F-11 | 🟡 Standard | Going from 3 to 7 per-message items at 10k words each silently raises the per-message ceiling from 30k to 70k words, with no aggregate bound | Bria | — | **Addressed**. Seven 10K-word items intentionally permit 70K words; aggregate request headroom is checked before dispatch |
 | F-12 | 🟡 Standard | Cache economics are only half disclosed: cold turns cost +25% (5m) or +100% (1h), cold-write triggers aren't surfaced, and there's no off switch | Tim | — | **Open** for the Settings copy · off switch can be **Deferred** |
 | F-13 | 🟡 Standard | Vendor-named `claudeCacheTtl` rides the generic completion seam and bypasses the `ToolOptions` path that temperature/maxTokens use | Marcus, Parker | 🎯 | **Deferred**. The repo has mixed precedent; this is a convention call, so take it on the next touch |
 | F-14 | 🟡 Standard | Cache expiry and model id travel as two always-paired optionals, cleared by hand. `toObservation` has 7 positional args. The policy is resolved up to 4× per request | Parker, Marcus | 🎯 | **Open**. Lands naturally with F-03 |
@@ -401,3 +401,37 @@ The chain from the 1h setting to the wire was tested in two well-built halves, b
 ---
 
 *Reviewed by: Marcus 🏛️ · Blake 🔥 · Sam 🔍 · Parker 📖 · Cal 🧪 · Stan 🗂️ · Tim ⚡ · Patricia 🛡️ · Oliver 🌙 · Bria 🎯 · Sensei 🎓*
+
+## Follow-up: attachment delta delivery and window preflight
+
+Okey authorized attachment deltas and a model-window guard after confirming
+that an edit re-appended the whole attachment list. F-01, F-02, F-04, F-10, and
+F-11 are addressed in this pass; all other findings retain their ledger status.
+The original report above describes the reviewed head, not the follow-up code.
+
+- Acknowledged attachment fingerprints drive added/changed bodies and removed
+  ids. Initial delivery, successful updates, in-flight edits, retries, restore,
+  host loss, and rewind preserve generation ownership. Missing or invalidated
+  baselines require one complete resynchronization; unchanged normal updates
+  no longer duplicate full lists. Earlier transcript content stays untouched.
+- Before each inference, estimated input (history, in-turn evidence, tool
+  envelope) plus output reserve and 5% headroom is compared with live cached
+  model metadata. Offline fallback/unknown windows are logged as unverified
+  for retained requests and remain provider-validated. Token estimation is
+  prose-oriented, not exact provider tokenization. Refused requests preserve
+  history and pending updates. This guard also covers one-shot calls.
+- The requested 100K-word/seven-item limits remain. Seven 10K-word items permit
+  up to 70K words in a message; that intake ceiling does not override the
+  selected model's estimated request capacity.
+- Persona excerpt/context ceilings and current architecture docs match the
+  budget table. The sync test rejected an intentional 25,001-word mismatch.
+  Gesture source allowance derives from both shared character ceilings, with
+  full-bound service coverage. F-18's word-only standing intake remains deferred.
+- The caching ADR now describes fresh runtime ids after rewind.
+
+Design: [acknowledged context-delta ADR](../adr/2026-10-03-workshop-context-delta-delivery.md).
+Verification: 236 suites / 2,932 tests / 2 snapshots passed; monorepo typecheck,
+production build/bundle verification, changed-file ESLint (zero errors), and
+diff checks passed. Existing warning-level output remains. No paid provider
+requests were made. Machine-local logs are diagnostic scratch files, not a
+substitute for the committed tests and reproducible commands.

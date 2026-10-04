@@ -99,6 +99,9 @@ describe('the rewind equivalence oracle over the canonical scripted room', () =>
       if (JSON.stringify(expected.workshop.contextAttachments) !== JSON.stringify(recorded.contextAttachments)) {
         differences.add('context stays current');
       }
+      if (JSON.stringify(expected.workshop.hostContextDelivery) !== JSON.stringify(recorded.hostContextDelivery)) {
+        differences.add('context acknowledgement invalidated');
+      }
       if (JSON.stringify(expected.workshop.counters) !== JSON.stringify(recorded.counters)) {
         differences.add('counters never lowered');
       }
@@ -121,6 +124,7 @@ describe('the rewind equivalence oracle over the canonical scripted room', () =>
     }
     expect([...differences].sort()).toEqual([
       'chat target stays current',
+      'context acknowledgement invalidated',
       'context stays current',
       'counters never lowered',
       'discarded memberships dropped',

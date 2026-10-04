@@ -185,6 +185,8 @@ export function rewindWorkshopSession(
 
   const workshop = clonePersistedJson<WorkshopSessionStateV1>({
     ...source,
+    hostContextDelivery: hostMark?.contextRevision === source.hostContextDelivery?.revision
+      ? source.hostContextDelivery : undefined,
     pendingMessageAttachments: [
       ...(restore?.restaged ?? []),
       ...source.pendingMessageAttachments

@@ -706,14 +706,16 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       service.collectWriterSources({ kind: 'host' })
         .filter((source) => source.kind === 'pin')
     ).toEqual(pinsBeforeContextDelivery);
-    // The newer generation stays pending and ships the FULL current list.
-    expect(service.collectPendingHostUpdates()?.contextAttachments?.attachments).toHaveLength(3);
+    // Acknowledge the captured generation; only the newer attachment remains to ship.
+    expect(service.collectPendingHostUpdates()?.contextAttachments).toMatchObject({
+      mode: 'delta', attachments: [expect.objectContaining({ id: 'ctx-3' })]
+    });
 
     service.replaceExcerpt({ text: 'Revised text.', source: { kind: 'manual' } });
     expect(service.getContextAttachments()).toHaveLength(3);
     const combinedDelivery = service.collectPendingHostUpdates()!;
     expect(combinedDelivery.excerpt?.version).toBe(2);
-    expect(combinedDelivery.contextAttachments?.attachments).toHaveLength(3);
+    expect(combinedDelivery.contextAttachments?.attachments).toHaveLength(1);
     service.commitPendingHostUpdates(combinedDelivery);
     expect(service.collectPendingHostUpdates()).toBeUndefined();
   });

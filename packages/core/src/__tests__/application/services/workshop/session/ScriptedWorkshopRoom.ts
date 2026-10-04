@@ -151,7 +151,9 @@ export class ScriptedWorkshopRoom {
     const staged = this.stage(options.attachment);
     const requestId = this.requestId('host');
     const roomDelivery = this.delivery.prepare({ kind: 'host' });
-    const pendingHostUpdates = this.session.collectPendingHostUpdates();
+    const pendingHostUpdates = this.session.hasHostConversation()
+      ? this.session.collectPendingHostUpdates()
+      : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const writerTurn = this.session.beginPersonaMessage(requestId, text, this.refs(staged));
     const evidence = this.recordCapabilityEvidence(requestId, options.capabilityRounds ?? 0);
     const replyContent = options.reply ?? `Host reply to "${text}".`;
@@ -195,7 +197,9 @@ export class ScriptedWorkshopRoom {
     };
     const requestId = this.requestId('widget');
     const roomDelivery = this.delivery.prepare({ kind: 'host' });
-    const pendingHostUpdates = this.session.collectPendingHostUpdates();
+    const pendingHostUpdates = this.session.hasHostConversation()
+      ? this.session.collectPendingHostUpdates()
+      : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const writerTurn = this.session.beginPersonaMessage(
       requestId,
       'Here are the directions I want.',
@@ -291,7 +295,9 @@ export class ScriptedWorkshopRoom {
     this.rest(`${toolId} report`);
 
     const roomDelivery = this.delivery.prepare({ kind: 'host' });
-    const pendingHostUpdates = this.session.collectPendingHostUpdates();
+    const pendingHostUpdates = this.session.hasHostConversation()
+      ? this.session.collectPendingHostUpdates()
+      : { contextAttachments: this.session.prepareInitialHostContextDelivery() };
     const synthesisRequestId = this.requestId(`synthesis-${toolId}`);
     this.session.beginPersonaSynthesis(synthesisRequestId, completion.turn.id);
     const hostConversationId = this.commitHistory(

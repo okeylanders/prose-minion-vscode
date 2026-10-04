@@ -4,6 +4,7 @@
  */
 
 import { LogSink } from '@/platform';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   ContextCompressionState,
   InferenceRequestObservation,
@@ -20,7 +21,6 @@ import {
 
 export type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
 
-const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
 const UNSTRUCTURED_ERROR_BODY_CHARACTERS = 1_000;
 
 export interface OpenRouterRequest extends OpenRouterPreparedMessages {
@@ -158,7 +158,7 @@ export class OpenRouterClient {
     citations?: UrlCitation[];
   }> {
     const requestedModel = this.model;
-    const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
+    const requestedMaxOutputTokens = options?.maxTokens ?? PROMPT_BUDGETS.inferenceContext.defaultOutputTokens;
     const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({
       model: requestedModel,
@@ -235,7 +235,7 @@ export class OpenRouterClient {
     citations?: UrlCitation[];
   }> {
     const requestedModel = this.model;
-    const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
+    const requestedMaxOutputTokens = options?.maxTokens ?? PROMPT_BUDGETS.inferenceContext.defaultOutputTokens;
     const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({
       model: requestedModel,

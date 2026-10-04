@@ -30,6 +30,8 @@ import {
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { coerceClaudeCacheTtl } from '@messages';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
+import { assertRequestFitsContext } from '@orchestration/RequestContextPreflight';
 import {
   ContextBudgetSnapshot,
   ContextSourceEntry,
@@ -711,6 +713,17 @@ export class AgentRunEngine {
     provider: OpenRouterClient,
     conversationId?: string
   ): Promise<TurnResult> {
+    const contextLength = OpenRouterModels.getCachedContextLength(provider.getModel?.() ?? this.model);
+    if (contextLength !== undefined) {
+      try {
+        assertRequestFitsContext(messages, contextLength, options.maxTokens, options.tools);
+      } catch (error) {
+        this.outputChannel?.appendLine(`[AgentRunEngine] Context preflight refused request: ${error instanceof Error ? error.message : String(error)}`);
+        throw error;
+      }
+    } else if (conversationId) {
+      this.outputChannel?.appendLine('[AgentRunEngine] Context preflight unavailable: no live model-window metadata; provider validation remains authoritative.');
+    }
     const completionOptions = {
       temperature: options.temperature,
       maxTokens: options.maxTokens,

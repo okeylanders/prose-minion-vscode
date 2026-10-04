@@ -28,6 +28,8 @@ requests. Cache reporting was implemented separately from activation.
 - [x] Claude's five-minute/default or one-hour duration is selectable in General settings.
 - [x] Selected participant's estimated cache window is centered between composer controls in the accent color.
 - [x] GPT-5.6+ (including Terra 5.6) native caching supplies a documented 30-minute estimate.
+- [x] Standing-context updates send acknowledged attachment deltas and explicit removals.
+- [x] Each inference checks estimated input/output/headroom against known live model-window metadata.
 - [ ] Live Claude follow-up reports cache reads after a cold cache write.
 - [ ] Live supported Qwen follow-up reports cache reads after a cold cache write.
 
@@ -52,3 +54,17 @@ Branch: `fix/anthropic-prompt-caching`.
   ESLint (zero errors), and diff checks. Logs: `/private/tmp/prose-minion-pr-*`.
   Updated the context-selector fixture for six staged attachments and verified
   that selecting two more blocks confirmation under the seven-item cap.
+
+## Review follow-up
+
+PR #123 F-01/F-02/F-04/F-10/F-11 addressed: context deltas, model-window
+preflight, prompt-budget sync guard, derived Gesture source allowance, and
+accurate rewind/per-message-limit documentation. See the
+[resolution ledger](../../../docs/pr-reviews/pr-123-provider-prompt-caching-review.md)
+for findings still open/deferred and the
+[delta-delivery ADR](../../../docs/adr/2026-10-03-workshop-context-delta-delivery.md)
+for the baseline, full-resynchronization, and token-estimation limits.
+
+236 suites / 2,932 tests / 2 snapshots passed; typecheck, production build,
+changed-file ESLint (zero errors), and diff checks passed. The new prompt-budget
+guard rejected deliberate prose drift before the prompt was restored.

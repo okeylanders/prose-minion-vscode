@@ -60,7 +60,7 @@ are separate optimizations, not requirements to enable caching.
 Keep model-specific wire fields out of conversation history, session JSON,
 webview messages, and domain settings. Re-evaluate the policy using the model
 captured for each request, so a hot-swap cannot retain the prior family's hints.
-Hydration/branching receive new runtime ids; rewind preserves its id. Neither
+Hydration, branching, and rewind receive new runtime ids. Neither
 identity nor a hint promises a cache hit: exact prefix matching, TTL, provider
 availability, model thresholds, and provider normalization still apply.
 

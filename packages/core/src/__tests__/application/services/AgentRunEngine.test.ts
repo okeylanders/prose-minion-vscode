@@ -9,6 +9,8 @@ import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequest
 import { ResourceReadRequest } from '@orchestration/ResourceReadXmlCodec';
 import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import { OpenRouterApiError } from '@providers/OpenRouterClient';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
+import { AgentContextWindowExceededError } from '@orchestration/RequestContextPreflight';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -104,7 +106,53 @@ describe('AgentRunEngine', () => {
     engine = new AgentRunEngine(client as never, conversations, statusCallback);
   });
 
-  afterEach(() => engine.dispose());
+  afterEach(() => { engine.dispose(); jest.restoreAllMocks(); });
+
+  it.each([false, true])('refuses an oversized initial retained request before provider I/O (streaming=%s)', async streaming => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System',
+      userMessage: 'word '.repeat(40_000), policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
+      options: { maxTokens: 10_000, ...(streaming ? { onToken: jest.fn() } : {}) }
+    })).rejects.toThrow(AgentContextWindowExceededError);
+    expect(client.createChatCompletion).not.toHaveBeenCalled();
+    expect(client.createStreamingChatCompletion).not.toHaveBeenCalled();
+  });
+
+  it('leaves retained history unchanged on a preflight refusal and allows retry with a larger window', async () => {
+    const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    const initial = await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources });
+    const prior = conversations.getMessages(initial.conversationId!);
+    const request = { conversationId: initial.conversationId!, userMessage: 'word '.repeat(40_000),
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources };
+    await expect(engine.continueConversation(request)).rejects.toThrow(/This inference was not sent/);
+    expect(conversations.getMessages(initial.conversationId!)).toEqual(prior);
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+    window.mockReturnValue(1_000_000);
+    await expect(engine.continueConversation(request)).resolves.toMatchObject({ content: 'Reply' });
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(2);
+  });
+
+  it('checks growth from capability evidence before another provider inference', async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    client.createChatCompletion.mockResolvedValue({ content: PERSONA_REQUEST });
+    const capability = personaCapability(jest.fn().mockResolvedValue({
+      evidence: 'word '.repeat(40_000), artifacts: [], deliveredItems: []
+    }));
+    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability
+    })).rejects.toThrow(AgentContextWindowExceededError);
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps provider validation when live window metadata is unavailable', async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(undefined);
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources })).resolves.toMatchObject({ content: 'Reply' });
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+  });
 
   it('reads Claude duration per retained request and leaves discarded runs without cache options', async () => {
     engine.dispose();

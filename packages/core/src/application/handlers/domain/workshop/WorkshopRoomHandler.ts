@@ -989,6 +989,8 @@ export class WorkshopRoomHandler {
     const roomCatchUp = roomDelivery?.frame;
     const hasConversationalCatchUp = roomDelivery?.hasConversationalCatchUp ?? false;
     const pendingHostUpdates = targetPlan.collectPendingHostUpdates();
+    const initialHostContextDelivery = targetPlan.chatTarget.kind === 'host' && !targetPlan.conversationId
+      ? this.session.prepareInitialHostContextDelivery() : undefined;
     const todoEvidence = targetPlan.buildTodoEvidence();
     // A fresh host already receives the current excerpt and brief through its
     // initial envelope. Only retained conversations need a superseding delta.
@@ -1136,7 +1138,7 @@ export class WorkshopRoomHandler {
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
-              this.session.getContextAttachments()
+              initialHostContextDelivery?.attachments ?? this.session.getContextAttachments()
             ),
             excerptSourceFrame: excerpt
               ? buildWorkshopExcerptSourceFrame(excerpt.source)
@@ -1182,10 +1184,12 @@ export class WorkshopRoomHandler {
               );
             }
           }
-          if (pendingHostUpdates) {
-            this.session.commitPendingHostUpdates(pendingHostUpdates);
+          const deliveredHostUpdates = initialHostContextDelivery
+            ? { ...pendingHostUpdates, contextAttachments: initialHostContextDelivery } : pendingHostUpdates;
+          if (deliveredHostUpdates) {
+            this.session.commitPendingHostUpdates(deliveredHostUpdates);
             this.outputChannel.appendLine(
-              `[WorkshopRoomHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
+              `[WorkshopRoomHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(deliveredHostUpdates)})`
             );
           }
           if (messageAttachments.length > 0) {

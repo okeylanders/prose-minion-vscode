@@ -101,7 +101,7 @@ describe('prompt budgets', () => {
       gestureCharacterNotesCharacters: 1_500,
       gestureSourceReferences: 8,
       gestureSourceReferenceCharacters: 500,
-      gestureReferencedSourceCharacters: 420_000,
+      gestureReferencedSourceCharacters: PROMPT_BUDGETS.contextAttachments.characters + PROMPT_BUDGETS.personaExcerpt.characters,
       gestureOutputTokens: 50_000,
       gestureMoreOutputTokens: 8_000,
       gestureRecommendationFrameAllowanceCharacters: 2_000,

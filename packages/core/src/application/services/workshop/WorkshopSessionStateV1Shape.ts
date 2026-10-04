@@ -101,7 +101,8 @@ function assertWorkshopSessionShape(
       // Optional: pre-room-artifact-ledger checkpoints retain refs only.
       'threadArtifacts',
       // Optional since ADR 2026-09-30: pre-rewind checkpoints carry no marks.
-      'retainedHistoryMarks'
+      'retainedHistoryMarks',
+      'hostContextDelivery'
     ]
   );
   if (state.excerpt !== undefined) {
@@ -114,6 +115,18 @@ function assertWorkshopSessionShape(
     assertExcerpt(state.shelvedExcerpt, 'Workshop session state.shelvedExcerpt');
   }
   arrayOf(state.contextAttachments, 'Workshop session state.contextAttachments', assertContextAttachment);
+  if (state.hostContextDelivery !== undefined) {
+    const label = 'Workshop session state.hostContextDelivery';
+    const baseline = exactObject(state.hostContextDelivery, label, ['revision', 'attachments']);
+    numberAt(baseline.revision, `${label}.revision`);
+    arrayOf(baseline.attachments, `${label}.attachments`, (value, rowLabel) => {
+      const row = exactObject(value, rowLabel, ['id', 'fingerprint']);
+      stringAt(row.id, `${rowLabel}.id`);
+      if (typeof row.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(row.fingerprint)) {
+        shapeError(`${rowLabel}.fingerprint`, 'SHA-256 hex fingerprint');
+      }
+    });
+  }
   arrayOf(
     state.pendingMessageAttachments,
     'Workshop session state.pendingMessageAttachments',

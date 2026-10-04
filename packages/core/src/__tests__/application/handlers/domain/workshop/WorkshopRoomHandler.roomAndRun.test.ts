@@ -1310,6 +1310,34 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       expect(input.contextAttachmentsFrame).toContain('She does not believe it.');
     });
 
+    it('sends only a changed attachment on continuation and keeps a failed delta pending', async () => {
+      await chooseOpen();
+      for (const text of ['Original note', 'Unchanged reference']) {
+        await router.route(message(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, { text }) as any);
+      }
+      await send('Start');
+      const initial = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+      expect(initial.contextAttachmentsFrame).toContain('Original note');
+      expect(initial.contextAttachmentsFrame).toContain('Unchanged reference');
+
+      session.updateContextAttachmentText('ctx-1', 'Changed note', 2);
+      service.continueConversation.mockRejectedValueOnce(new Error('Provider unavailable'));
+      await send('Use the edit');
+      const failed = service.continueConversation.mock.calls.at(-1)![1];
+      expect(failed).toContain('Changed note');
+      expect(failed).not.toContain('Unchanged reference');
+      expect(session.collectPendingHostUpdates()?.contextAttachments?.attachments).toHaveLength(1);
+      await send('Try again');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('Changed note');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).not.toContain('Unchanged reference');
+      expect(session.collectPendingHostUpdates()).toBeUndefined();
+
+      session.removeContextAttachment('ctx-2');
+      await send('Use the removal');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('Removed context attachment: context-attachment:ctx-2');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).not.toContain('Changed note');
+    });
+
     it('refuses a tool run in an open conversation, with a visible reason', async () => {
       await chooseOpen();
       await runProse();
