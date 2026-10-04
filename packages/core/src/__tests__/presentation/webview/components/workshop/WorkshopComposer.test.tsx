@@ -51,6 +51,12 @@ describe('WorkshopComposer', () => {
     expect((composer as HTMLTextAreaElement).value).toBe('');
   });
 
+  it('places the cache estimate between the plus button and the action buttons', () => {
+    renderComposer({ estimatedCacheExpiresAt: Date.now() + 60_000 });
+    const add = screen.getByRole('button', { name: 'Add context' });
+    expect(add.parentElement?.nextElementSibling?.textContent).toContain('Est. Cache Time Remaining:');
+  });
+
   it('keeps Shift+Enter available for a newline instead of sending', () => {
     const { onSend } = renderComposer();
     const composer = screen.getByRole('textbox', { name: 'Message Choreography' });

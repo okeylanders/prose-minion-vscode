@@ -502,8 +502,18 @@ export function buildWorkshopHostUpdateFrame(
   }
 
   if (updates.contextAttachments) {
-    const frame = buildWorkshopContextAttachmentsFrame(updates.contextAttachments.attachments);
-    if (frame === undefined) {
+    const delivery = updates.contextAttachments;
+    const frame = buildWorkshopContextAttachmentsFrame(delivery.attachments);
+    if (delivery.mode === 'delta') {
+      if (frame || delivery.removedAttachmentIds.length > 0) {
+        sections.push(
+          'The writer updated standing context. Replace or add only the attachment ids below; keep all other attachments unchanged. Earlier versions of these ids are superseded.',
+          ...(frame ? [frame] : []),
+          ...delivery.removedAttachmentIds.map(id =>
+            `Removed context attachment: context-attachment:${id}. Do not rely on its earlier contents.`)
+        );
+      }
+    } else if (frame === undefined) {
       sections.push(
         'The writer removed all context attachments. Do not rely on earlier attached context.'
       );
@@ -526,7 +536,7 @@ export function describeWorkshopPendingHostUpdates(
   return [
     updates.excerpt ? `excerpt v${updates.excerpt.version} (revised)` : undefined,
     updates.contextAttachments
-      ? `context r${updates.contextAttachments.revision} (${updates.contextAttachments.attachments.length} attachments)`
+      ? `context r${updates.contextAttachments.revision} (${updates.contextAttachments.mode}; ${updates.contextAttachments.attachments.length} attachments, ${updates.contextAttachments.removedAttachmentIds.length} removals)`
       : undefined
   ].filter((part): part is string => part !== undefined).join(' + ');
 }

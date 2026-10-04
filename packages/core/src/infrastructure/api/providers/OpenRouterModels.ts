@@ -1151,6 +1151,20 @@ export class OpenRouterModels {
   private static readonly API_URL = 'https://openrouter.ai/api/v1/models';
   private static cachedModels: OpenRouterModel[] | null = null;
 
+  /** Live catalog evidence only: the offline fallback's 200K value is not a provider limit. */
+  static getCachedContextLength(model: string): number | undefined {
+    const requested = model.trim();
+    const normalized = requested.replace(/^~/, '');
+    // Prefer exact and base alias catalog entries before normalized ids;
+    // their context windows can differ from the underlying model.
+    const candidates = [requested, requested.split(':')[0], normalized, normalized.split(':')[0]];
+    const live = candidates
+      .map(id => this.cachedModels?.find(candidate => candidate.id === id))
+      .find(candidate => candidate !== undefined);
+    return live && !live.isFallback && Number.isSafeInteger(live.context_length) && live.context_length > 0
+      ? live.context_length : undefined;
+  }
+
   /**
    * Fetch available models from OpenRouter API
    */

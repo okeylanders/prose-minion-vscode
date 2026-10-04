@@ -6,6 +6,7 @@
  * copy helpers remain unversioned elsewhere.
  */
 
+import type { WorkshopContextDeliveryBaseline } from '@/application/services/workshop/WorkshopContextDelivery';
 import {
   ContextSourceEntry,
   WorkshopChatTarget,
@@ -90,6 +91,8 @@ export interface WorkshopSessionStateV1 {
   /** The passage the writer set aside; restored by re-pin, never deleted. */
   shelvedExcerpt?: WorkshopExcerpt;
   contextAttachments: WorkshopContextAttachment[];
+  /** Fingerprints of the last successful host delivery; absent means full resynchronization. */
+  hostContextDelivery?: WorkshopContextDeliveryBaseline;
   pendingMessageAttachments: WorkshopMessageAttachment[];
   /**
    * Host-private bodies for committed room-wide one-shot artifacts. OPTIONAL

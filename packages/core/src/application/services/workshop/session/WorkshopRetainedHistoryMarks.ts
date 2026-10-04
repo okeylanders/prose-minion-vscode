@@ -159,7 +159,7 @@ function retainedParticipants(
     participants.set('host', {
       writerSourceCount: state.writerSources.host.length,
       reader: { lastSeenRoomTurnId: state.participants.host.lastSeenRoomTurnId },
-      heldContextRevision: workshopHostHeldContextRevision(state.revisions)
+      heldContextRevision: state.hostContextDelivery?.revision ?? workshopHostHeldContextRevision(state.revisions)
     });
   }
   for (const sidecar of state.participants.toolSidecars) {

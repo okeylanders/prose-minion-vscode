@@ -118,6 +118,20 @@ export function validateWorkshopSessionStateV1(
   if (greatestAttachmentNumber > state.counters.attachment) {
     throw new Error('Persisted Workshop attachment counter trails an existing id');
   }
+  if (state.hostContextDelivery) {
+    requireCounter(state.hostContextDelivery.revision, 'host context delivery revision');
+    if (state.hostContextDelivery.revision > state.revisions.context) {
+      throw new Error('Persisted Workshop host context delivery is ahead of the working set');
+    }
+    const deliveredIds = new Set<string>();
+    for (const row of state.hostContextDelivery.attachments) {
+      const suffix = numericIdSuffix(row.id, /^ctx-(\d+)$/, 'delivered context attachment');
+      if (deliveredIds.has(row.id) || suffix > state.counters.attachment) {
+        throw new Error('Persisted Workshop host context delivery has duplicate or unissued attachment ids');
+      }
+      deliveredIds.add(row.id);
+    }
+  }
 
   const turnIds = new Set<string>();
   let greatestTurnNumber = 0;

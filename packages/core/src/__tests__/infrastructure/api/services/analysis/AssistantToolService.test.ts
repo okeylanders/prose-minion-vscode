@@ -6,7 +6,17 @@ import {
 } from '@orchestration/AgentRunEngine';
 import type { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
-import { API_KEY_NOT_CONFIGURED_HEADING, DEFAULT_WORKSHOP_WRITER_PROFILE } from '@messages';
+import {
+  API_KEY_NOT_CONFIGURED_HEADING,
+  DEFAULT_WORKSHOP_WRITER_PROFILE,
+  MessageType,
+  WebviewToExtensionMessage
+} from '@messages';
+import { AnalysisHandler } from '@handlers/domain/AnalysisHandler';
+import { MessageRouter } from '@handlers/MessageRouter';
+import { ConversationManager } from '@orchestration/ConversationManager';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
+import { createFakeSettings } from '@/__tests__/mocks/platform';
 import {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
 } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
@@ -575,5 +585,128 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(engine.runInitial).toHaveBeenCalledWith(expect.objectContaining({
       options: expect.objectContaining({ signal: controller.signal, onToken })
     }));
+  });
+});
+
+describe('AssistantToolService — real context-window refusal boundaries', () => {
+  const oversizedText = 'word '.repeat(60_000);
+  let provider: {
+    getModel: jest.Mock;
+    createChatCompletion: jest.Mock;
+    createStreamingChatCompletion: jest.Mock;
+  };
+  let conversations: ConversationManager;
+  let engine: AgentRunEngine;
+  let service: AssistantToolService;
+  let handler: AnalysisHandler | undefined;
+  let createGuideCapability: jest.Mock;
+  let createWorkshopToolContextCapability: jest.Mock;
+
+  beforeEach(async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    provider = {
+      getModel: jest.fn().mockReturnValue('test/prose-model'),
+      createChatCompletion: jest.fn(),
+      createStreamingChatCompletion: jest.fn()
+    };
+    conversations = new ConversationManager();
+    engine = new AgentRunEngine(provider as never, conversations);
+    createGuideCapability = jest.fn();
+    createWorkshopToolContextCapability = jest.fn().mockReturnValue(undefined);
+    service = new AssistantToolService(
+      {
+        ensureInitialized: jest.fn().mockResolvedValue(undefined),
+        getEngine: jest.fn(() => engine),
+        createGuideCapability,
+        createWorkshopToolContextCapability,
+        setStatusCallback: jest.fn()
+      } as unknown as AIResourceManager,
+      {
+        getPromptLoader: () => ({
+          loadSharedPrompts: jest.fn().mockResolvedValue('Shared prose instructions.'),
+          loadPrompts: jest.fn().mockResolvedValue('Analyze the passage.')
+        })
+      } as unknown as ResourceLoaderService,
+      {
+        getOptions: jest.fn().mockReturnValue({
+          includeCraftGuides: false, temperature: 0.7, maxTokens: 1000
+        })
+      } as unknown as ToolOptionsProvider,
+      WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
+    );
+    await service.refreshConfiguration();
+  });
+
+  afterEach(() => {
+    handler?.dispose();
+    handler = undefined;
+    engine.dispose();
+    jest.restoreAllMocks();
+  });
+
+  it.each([
+    ['dialogue', MessageType.ANALYZE_DIALOGUE, 'both', 'analysis.dialogue'],
+    ['prose', MessageType.ANALYZE_PROSE, undefined, 'analysis.prose'],
+    ['writing tools', MessageType.ANALYZE_WRITING_TOOLS, 'editor', 'analysis.writing_tools']
+  ] as const)('routes a real %s preflight refusal to an error and cancelled stream without an analysis result',
+    async (_route, type, focus, source) => {
+      const postMessage = jest.fn().mockResolvedValue(undefined);
+      handler = new AnalysisHandler(service, postMessage, createFakeSettings({ includeCraftGuides: false }));
+      const router = new MessageRouter();
+      handler.registerRoutes(router);
+
+      await router.route({
+        type,
+        source: 'webview.test',
+        payload: { text: oversizedText, focus },
+        timestamp: 1
+      } as WebviewToExtensionMessage);
+
+      const sent = postMessage.mock.calls.map(([entry]) => entry);
+      const started = sent.find(entry => entry.type === MessageType.STREAM_STARTED);
+      expect(started).toBeDefined();
+      expect(sent).toContainEqual(expect.objectContaining({
+        type: MessageType.STREAM_COMPLETE,
+        payload: expect.objectContaining({
+          requestId: started.payload.requestId,
+          cancelled: true,
+          content: ''
+        })
+      }));
+      expect(sent).toContainEqual(expect.objectContaining({
+        type: MessageType.ERROR,
+        payload: expect.objectContaining({
+          source,
+          message: expect.stringContaining('estimated context window'),
+          details: expect.stringContaining('50,000-token window')
+        })
+      }));
+      expect(sent.some(entry => entry.type === MessageType.ANALYSIS_RESULT)).toBe(false);
+      expect(sent.some(entry => entry.type === MessageType.STREAM_CHUNK)).toBe(false);
+      expect(provider.createChatCompletion).not.toHaveBeenCalled();
+      expect(provider.createStreamingChatCompletion).not.toHaveBeenCalled();
+      expect(createGuideCapability).not.toHaveBeenCalled();
+      expect(createWorkshopToolContextCapability).not.toHaveBeenCalled();
+      expect(conversations.getActiveConversationCount()).toBe(0);
+    });
+
+  it('rejects a retained Prose tool preflight instead of returning an error result or retaining a conversation', async () => {
+    const onToken = jest.fn();
+
+    await expect(service.analyzeProse(oversizedText, undefined, undefined, {
+      onToken,
+      retainConversation: true
+    })).rejects.toMatchObject({
+      name: 'AgentRunUnavailableError',
+      reason: 'context-window-exceeded',
+      message: expect.stringContaining('estimated context window'),
+      providerDetails: expect.stringContaining('1,000 reserved output tokens')
+    });
+
+    expect(onToken).not.toHaveBeenCalled();
+    expect(provider.createChatCompletion).not.toHaveBeenCalled();
+    expect(provider.createStreamingChatCompletion).not.toHaveBeenCalled();
+    expect(createGuideCapability).not.toHaveBeenCalled();
+    expect(conversations.getActiveConversationCount()).toBe(0);
   });
 });

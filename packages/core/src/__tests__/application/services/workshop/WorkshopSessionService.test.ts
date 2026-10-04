@@ -706,14 +706,16 @@ describe('WorkshopSessionService — Sprint 06B sidecars and direct handoff', ()
       service.collectWriterSources({ kind: 'host' })
         .filter((source) => source.kind === 'pin')
     ).toEqual(pinsBeforeContextDelivery);
-    // The newer generation stays pending and ships the FULL current list.
-    expect(service.collectPendingHostUpdates()?.contextAttachments?.attachments).toHaveLength(3);
+    // Acknowledge the captured generation; only the newer attachment remains to ship.
+    expect(service.collectPendingHostUpdates()?.contextAttachments).toMatchObject({
+      mode: 'delta', attachments: [expect.objectContaining({ id: 'ctx-3' })]
+    });
 
     service.replaceExcerpt({ text: 'Revised text.', source: { kind: 'manual' } });
     expect(service.getContextAttachments()).toHaveLength(3);
     const combinedDelivery = service.collectPendingHostUpdates()!;
     expect(combinedDelivery.excerpt?.version).toBe(2);
-    expect(combinedDelivery.contextAttachments?.attachments).toHaveLength(3);
+    expect(combinedDelivery.contextAttachments?.attachments).toHaveLength(1);
     service.commitPendingHostUpdates(combinedDelivery);
     expect(service.collectPendingHostUpdates()).toBeUndefined();
   });
@@ -1366,7 +1368,7 @@ describe('message attachments — one-shot thread-artifacts (Phase 6B)', () => {
     ...overrides
   });
 
-  it('mints monotonic ta-N ids, guards duplicates before the cap, and enforces the item cap', () => {
+  it('accepts seven attachments, rejects an eighth, and frees slots without reusing ids', () => {
     const session = new WorkshopSessionService(() => 1);
 
     expect(session.addMessageAttachment(attachment('chapters/a.md'))).toMatchObject({
@@ -1378,16 +1380,22 @@ describe('message attachments — one-shot thread-artifacts (Phase 6B)', () => {
     expect(session.addMessageAttachment(attachment('chapters/a.md'))).toEqual({
       ok: false, reason: 'duplicate'
     });
-    expect(session.addMessageAttachment(attachment('chapters/c.md'))).toMatchObject({
-      ok: true, attachment: { id: 'ta-3' }
+    ['c', 'd', 'e', 'f', 'g'].forEach((name, index) => {
+      expect(session.addMessageAttachment(attachment(`chapters/${name}.md`))).toMatchObject({
+        ok: true, attachment: { id: `ta-${index + 3}` }
+      });
     });
-    expect(session.addMessageAttachment(attachment('chapters/d.md'))).toEqual({
+    expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(7);
+    expect(session.addMessageAttachment(attachment('chapters/h.md'))).toEqual({
       ok: false, reason: 'limit'
+    });
+    expect(session.addMessageAttachment(attachment('chapters/a.md'))).toEqual({
+      ok: false, reason: 'duplicate'
     });
     // Removal frees a slot, and the freed id is never reused.
     expect(session.removeMessageAttachment('ta-2')?.id).toBe('ta-2');
-    expect(session.addMessageAttachment(attachment('chapters/d.md'))).toMatchObject({
-      ok: true, attachment: { id: 'ta-4' }
+    expect(session.addMessageAttachment(attachment('chapters/h.md'))).toMatchObject({
+      ok: true, attachment: { id: 'ta-8' }
     });
   });
 

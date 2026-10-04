@@ -358,6 +358,17 @@ describe('GesturePlaygroundService.generateMenu', () => {
     expect(runInitial).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts a full standing-context source plus the pinned excerpt at their shared character ceilings', async () => {
+    const { service, runInitial } = build(framed());
+    await expect(service.generateMenu({ ...request, sourceMaterials: [
+      { reference: { kind: 'context-attachment', attachmentId: 'ctx-1' },
+        label: 'Long chapter', content: 'x'.repeat(PROMPT_BUDGETS.contextAttachments.characters) },
+      { reference: { kind: 'active-excerpt' },
+        label: 'Excerpt', content: 'x'.repeat(PROMPT_BUDGETS.personaExcerpt.characters) }
+    ] })).resolves.toEqual(expect.objectContaining({ cancelled: false }));
+    expect(runInitial).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ['no frames', 'Here is a useful but unframed answer.'],
     ['empty dictionary', framed('   ')],

@@ -256,6 +256,7 @@ describe('rewindWorkshopSession (ADR 2026-09-30 §5)', () => {
       const { room, first } = contextRoom();
       const result = rewind(room, after(first.id));
       expect(result.workshop.revisions).toMatchObject({ context: 1, pendingContext: 1 });
+      expect(result.workshop.hostContextDelivery).toBeUndefined();
     });
 
     it('re-queues a change whose divider the cut keeps but the host never received', () => {
@@ -273,6 +274,7 @@ describe('rewindWorkshopSession (ADR 2026-09-30 §5)', () => {
       const { room, delivered } = contextRoom();
       const result = rewind(room, after(delivered.id));
       expect(result.workshop.revisions.pendingContext).toBeUndefined();
+      expect(result.workshop.hostContextDelivery).toEqual(room.session.exportCommittedState().hostContextDelivery);
     });
   });
 

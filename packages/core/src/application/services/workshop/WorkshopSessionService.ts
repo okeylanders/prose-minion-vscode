@@ -52,6 +52,7 @@ import {
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { WorkshopContextDelivery } from '@/application/services/workshop/WorkshopContextDelivery';
 import {
   WORKSHOP_ACTIONABLE_FINDING_BOUNDS
 } from '@/application/services/workshop/WorkshopActionableFindings';
@@ -214,6 +215,7 @@ export class WorkshopSessionService {
   private contextAttachments: WorkshopContextAttachment[] = [];
   private contextRevision = 0;
   private pendingContextRevision?: number;
+  private readonly contextDelivery = new WorkshopContextDelivery();
   private attachmentCounter = 0;
   private pendingMessageAttachments: WorkshopMessageAttachment[] = [];
   /** Monotonic `ta-N` mint — never reused within a session (surgery address). */
@@ -1050,17 +1052,28 @@ export class WorkshopSessionService {
   collectPendingHostUpdates(): WorkshopPendingHostUpdates | undefined {
     const excerpt = this.passageScope.collectPendingExcerptDelivery();
     const contextAttachments = this.pendingContextRevision !== undefined
-      ? {
-          revision: this.pendingContextRevision,
-          attachments: this.getContextAttachments()
-        }
+      ? this.contextDelivery.prepare(this.pendingContextRevision, this.getContextAttachments())
       : undefined;
     return excerpt || contextAttachments
       ? { excerpt, contextAttachments }
       : undefined;
   }
 
-  /** Clear only the exact update generation that a successful host turn shipped. */
+  /** Capture the exact initial envelope before provider I/O, including an empty working set. */
+  prepareInitialHostContextDelivery(): NonNullable<WorkshopPendingHostUpdates['contextAttachments']> {
+    return this.contextDelivery.prepare(this.contextRevision, this.getContextAttachments(), true);
+  }
+
+  /** One capture seam for host chat and tool synthesis, before their provider I/O. */
+  prepareHostUpdatesForDelivery(conversationId?: string): WorkshopPendingHostUpdates | undefined {
+    const pending = this.collectPendingHostUpdates();
+    return conversationId ? pending : {
+      ...pending,
+      contextAttachments: this.prepareInitialHostContextDelivery()
+    };
+  }
+
+  /** Clear pending generations covered by the successful delivery, leaving newer edits queued. */
   commitPendingHostUpdates(delivered: WorkshopPendingHostUpdates): void {
     if (
       delivered.excerpt
@@ -1073,8 +1086,12 @@ export class WorkshopSessionService {
         this.appendHostPin(pin);
       }
     }
-    if (delivered.contextAttachments?.revision === this.pendingContextRevision) {
-      this.pendingContextRevision = undefined;
+    if (delivered.contextAttachments) {
+      this.contextDelivery.acknowledge(delivered.contextAttachments.baseline);
+      if (this.pendingContextRevision !== undefined
+        && delivered.contextAttachments.revision >= this.pendingContextRevision) {
+        this.pendingContextRevision = undefined;
+      }
     }
   }
 
@@ -1293,6 +1310,7 @@ export class WorkshopSessionService {
       phase: 'tool_report',
       target: 'tool',
       toolId,
+      writerTurnId: turn.id,
       excerptVersion: this.getExcerptVersion()
     };
     return cloneTurn(turn);
@@ -1773,11 +1791,27 @@ export class WorkshopSessionService {
     return writerTurn;
   }
 
+  /** Remove a provisional tool request when the tool could not answer; adopted reports stay. */
+  rollbackToolRun(requestId: string): WorkshopTurn | undefined {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId || active.phase !== 'tool_report' || !active.writerTurnId) {
+      return undefined;
+    }
+    const turn = this.turnLedger.find(active.writerTurnId);
+    if (!turn || turn.artifact !== 'tool_request') {
+      throw new Error(`Cannot roll back missing Workshop tool request ${active.writerTurnId}`);
+    }
+    this.turnLedger.removeByIds(new Set([turn.id]));
+    this.activeRun = undefined;
+    return turn;
+  }
+
   /** Clear every retained participant after an assistant-resource generation loss. */
   clearAllConversations(): string[] {
     const conversationIds = this.participantRoster.clearAllConversations();
     this.passageScope.clearPendingExcerptDelivery();
     this.pendingContextRevision = undefined;
+    this.contextDelivery.install();
     // Manifests live and die with their conversations (Phase 7).
     this.hostWriterSources = [];
     this.activeHostPin = undefined;
@@ -1850,6 +1884,7 @@ export class WorkshopSessionService {
       scope: passageState.scope,
       shelvedExcerpt: passageState.shelvedExcerpt,
       contextAttachments: this.contextAttachments.map(cloneAttachment),
+      hostContextDelivery: this.contextDelivery.exportState(),
       pendingMessageAttachments: this.pendingMessageAttachments.map(cloneMessageAttachment),
       threadArtifacts: this.threadArtifacts.map(cloneThreadArtifact),
       revisions: {
@@ -2065,7 +2100,7 @@ export class WorkshopSessionService {
             conversationKey: 'host' as const,
             writerSourceCount: hostWriterSources.length,
             lastSeenRoomTurnId: rosterState.host.lastSeenRoomTurnId,
-            contextRevision: workshopHostHeldContextRevision({
+            contextRevision: normalized.hostContextDelivery?.revision ?? workshopHostHeldContextRevision({
               context: normalized.revisions.context,
               pendingContext: pendingContextRevision
             })
@@ -2109,6 +2144,7 @@ export class WorkshopSessionService {
     this.contextAttachments = contextAttachments;
     this.contextRevision = normalized.revisions.context;
     this.pendingContextRevision = pendingContextRevision;
+    this.contextDelivery.install(hostConversationId ? normalized.hostContextDelivery : undefined);
     this.attachmentCounter = normalized.counters.attachment;
     this.pendingMessageAttachments = pendingMessageAttachments;
     this.threadArtifactCounter = normalized.counters.threadArtifact;
@@ -2170,7 +2206,7 @@ export class WorkshopSessionService {
         conversationId,
         writerSourceCount: this.hostWriterSources.length,
         lastSeenRoomTurnId: this.participantRoster.readRoomDeliveryOffset({ kind: 'host' }),
-        contextRevision: workshopHostHeldContextRevision({
+        contextRevision: this.contextDelivery.acknowledgedRevision() ?? workshopHostHeldContextRevision({
           context: this.contextRevision,
           pendingContext: this.pendingContextRevision
         })

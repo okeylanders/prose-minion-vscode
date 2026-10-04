@@ -11,9 +11,10 @@ describe('SettingsOverlay', () => {
 
   it('surfaces the dedicated Widget Model selection', () => {
     const onModelChange = jest.fn();
+    const updateSetting = jest.fn();
     const emptySettingsHook = {
       settings: new Proxy({}, { get: () => '' }),
-      updateSetting: jest.fn()
+      updateSetting
     };
 
     render(
@@ -32,6 +33,7 @@ describe('SettingsOverlay', () => {
             includeCraftGuides: true,
             temperature: 0.7,
             maxTokens: 10_000,
+            claudeCacheTtl: '5m',
             applyContextWindowTrimming: true
           }
         } as any}
@@ -75,5 +77,10 @@ describe('SettingsOverlay', () => {
 
     fireEvent.change(widgetSelect, { target: { value: 'anthropic/claude-haiku-4.5' } });
     expect(onModelChange).toHaveBeenCalledWith('widget', 'anthropic/claude-haiku-4.5');
+    const cacheSelect = screen.getByText('Claude Cache Duration').closest('label')?.querySelector('select')!;
+    expect(cacheSelect.value).toBe('5m');
+    fireEvent.change(cacheSelect, { target: { value: '1h' } });
+    expect(updateSetting).toHaveBeenCalledWith('claudeCacheTtl', '1h');
+    expect(screen.getByText(/one-hour writes cost 2×/)).toBeTruthy();
   });
 });

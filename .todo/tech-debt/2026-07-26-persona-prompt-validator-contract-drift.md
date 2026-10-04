@@ -129,6 +129,18 @@ that removes the second encoding entirely. Worth weighing before Tier 2.
 ## Related
 
 - [PR #88 review](../../docs/pr-reviews/pr-88-persona-analysis-inputs-review.md)
+
+## Progress — 2026-10-03, PR #123 follow-up
+
+Tier 1 is implemented by `personaPromptBudgetsSync.test.ts`: the four prose
+figures are parsed from the real prompt and checked against the validator's
+budget table. Excerpt figures now read 25,000/300,000; context reads
+100,000/840,000. A deliberate 25,001-word prompt edit made the guard fail,
+then the prompt was restored. Full suite, typecheck, and build passed.
+
+Tier 2 remains deferred: this pass changes no input modes or preconditions.
+The existing resolver behavior tests remain the authority until that grammar
+changes or another mode-rule drift provides evidence for the additional guard.
 - [Sprint 13B](../epics/epic-workshop-editor-tab-2026-07-03/sprints/13b-run-local-analysis.md)
 - [Tech debt: Workshop god files](2026-07-25-workshop-god-files.md) — the other
   structural item raised by the same review

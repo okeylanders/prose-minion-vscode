@@ -1178,11 +1178,11 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
     expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/API key/);
   });
 
-  it('rolls a first writer message back when the offline host cannot answer', async () => {
+  it.each(['missing-credentials', 'context-window-exceeded'] as const)('rolls a first writer message back when the host cannot answer (%s)', async reason => {
     await pin();
     const turnsBeforeSend = session.getSnapshot().turns;
     service.startWorkshopPersonaConversation.mockRejectedValueOnce(
-      new AgentRunUnavailableError('missing-credentials')
+      new AgentRunUnavailableError(reason)
     );
 
     await router.route(message(
@@ -1200,7 +1200,66 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       })
     ]);
     expect(posted(MessageType.ERROR).at(-1).payload.message)
-      .toContain('Add your OpenRouter API key');
+      .toBe(new AgentRunUnavailableError(reason).message);
+    expect(persistence.markDirty).toHaveBeenCalledWith('unavailable message rolled back');
+  });
+
+  it('acknowledges a tool-born host snapshot and sends only edits/removals on retry', async () => {
+    await pin();
+    const large = 'unchanged-manuscript '.repeat(5_000);
+    await router.route(message(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, { text: large }) as any);
+    // Tool I/O precedes synthesis; its in-flight changes belong in the initial host envelope.
+    service.analyzeProse.mockImplementationOnce(async () => {
+      session.addContextAttachment({ kind: 'text', origin: 'writer', label: 'note', content: 'note before synthesis', words: 3 });
+      return analysisResult('Tool report', { conversationId: 'tool-conv' }) as any;
+    });
+    service.startWorkshopPersonaConversation.mockImplementationOnce(async input => {
+      expect(input.contextAttachmentsFrame).toContain(large.trim());
+      expect(input.contextAttachmentsFrame).toContain('note before synthesis');
+      session.updateContextAttachmentText('ctx-2', 'changed during synthesis', 3);
+      return analysisResult('Synthesis', { conversationId: 'host-conv' }) as any;
+    });
+    await runProse();
+    expect(session.exportCommittedState().hostContextDelivery?.revision).toBe(2);
+    expect(session.collectPendingHostUpdates()?.contextAttachments).toMatchObject({
+      mode: 'delta', attachments: [expect.objectContaining({ id: 'ctx-2', content: 'changed during synthesis' })]
+    });
+    const prior = session.getSnapshot().turns;
+    service.continueConversation.mockRejectedValueOnce(new AgentRunUnavailableError('context-window-exceeded', 'Estimated window overflow'));
+    const send = () => router.route(message(MessageType.WORKSHOP_SEND_MESSAGE, { text: 'Use the edit' }) as any);
+    await send();
+    expect(session.getSnapshot().turns).toEqual(prior);
+    expect(posted(MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED).at(-1).payload.text).toBe('Use the edit');
+    expect(session.collectPendingHostUpdates()?.contextAttachments?.mode).toBe('delta');
+    await send();
+    const frame = service.continueConversation.mock.calls.at(-1)![1];
+    expect(frame).toContain('changed during synthesis');
+    expect(frame).not.toContain(large.trim());
+    expect(session.collectPendingHostUpdates()).toBeUndefined();
+    expect(session.getSnapshot().turns.filter(turn => turn.content === 'Use the edit')).toHaveLength(1);
+    session.removeContextAttachment('ctx-1');
+    await send();
+    expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('Removed context attachment: context-attachment:ctx-1');
+    expect(service.continueConversation.mock.calls.at(-1)![1]).not.toContain(large.trim());
+  });
+
+  it('removes a refused tool request without publishing a report and keeps a completed report on synthesis refusal', async () => {
+    await pin();
+    const before = session.getSnapshot().turns;
+    service.analyzeProse.mockRejectedValueOnce(new AgentRunUnavailableError('context-window-exceeded', 'Estimated window overflow'));
+    await runProse();
+    expect(session.getSnapshot().turns).toEqual(before);
+    expect(session.getToolSidecarConversationId('prose')).toBeUndefined();
+    expect(service.startWorkshopPersonaConversation).not.toHaveBeenCalled();
+    expect(posted(MessageType.ERROR).at(-1).payload).toMatchObject({
+      message: expect.stringContaining('standing context'), details: 'Estimated window overflow'
+    });
+    service.startWorkshopPersonaConversation.mockRejectedValueOnce(new AgentRunUnavailableError('context-window-exceeded'));
+    await runProse();
+    expect(session.getSnapshot().turns.filter(turn => turn.artifact === 'tool_request')).toHaveLength(1);
+    expect(session.getSnapshot().turns.filter(turn => turn.artifact === 'tool_report')).toHaveLength(1);
+    expect(session.getToolSidecarConversationId('prose')).toBe('tool-conv');
+    expect(session.exportCommittedState().hostContextDelivery).toBeUndefined();
   });
 
   it('retains one resume boundary when the first interaction is unavailable and the writer retries', async () => {
@@ -1308,6 +1367,34 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
 
       const input = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
       expect(input.contextAttachmentsFrame).toContain('She does not believe it.');
+    });
+
+    it('sends only a changed attachment on continuation and keeps a failed delta pending', async () => {
+      await chooseOpen();
+      for (const text of ['Original note', 'Unchanged reference']) {
+        await router.route(message(MessageType.WORKSHOP_ADD_CONTEXT_TEXT, { text }) as any);
+      }
+      await send('Start');
+      const initial = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0];
+      expect(initial.contextAttachmentsFrame).toContain('Original note');
+      expect(initial.contextAttachmentsFrame).toContain('Unchanged reference');
+
+      session.updateContextAttachmentText('ctx-1', 'Changed note', 2);
+      service.continueConversation.mockRejectedValueOnce(new Error('Provider unavailable'));
+      await send('Use the edit');
+      const failed = service.continueConversation.mock.calls.at(-1)![1];
+      expect(failed).toContain('Changed note');
+      expect(failed).not.toContain('Unchanged reference');
+      expect(session.collectPendingHostUpdates()?.contextAttachments?.attachments).toHaveLength(1);
+      await send('Try again');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('Changed note');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).not.toContain('Unchanged reference');
+      expect(session.collectPendingHostUpdates()).toBeUndefined();
+
+      session.removeContextAttachment('ctx-2');
+      await send('Use the removal');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).toContain('Removed context attachment: context-attachment:ctx-2');
+      expect(service.continueConversation.mock.calls.at(-1)![1]).not.toContain('Changed note');
     });
 
     it('refuses a tool run in an open conversation, with a visible reason', async () => {

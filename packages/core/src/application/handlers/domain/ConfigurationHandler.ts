@@ -25,7 +25,8 @@ import {
   DeleteApiKeyMessage,
   MessageType,
   ErrorSource,
-  ErrorMessage
+  ErrorMessage,
+  coerceClaudeCacheTtl
 } from '@messages';
 import {
   MessageTransport,
@@ -154,6 +155,7 @@ export class ConfigurationHandler {
         'includeCraftGuides': this.settings.get<boolean>('proseMinion', 'includeCraftGuides') ?? true,
         'temperature': this.settings.get<number>('proseMinion', 'temperature') ?? 0.7,
         'maxTokens': this.settings.get<number>('proseMinion', 'maxTokens') ?? 10000,
+        'claudeCacheTtl': coerceClaudeCacheTtl(this.settings.get<unknown>('proseMinion', 'claudeCacheTtl')),
         'applyContextWindowTrimming': this.settings.get<boolean>('proseMinion', 'applyContextWindowTrimming') ?? true,
         'ui.showTokenWidget': this.settings.get<boolean>('proseMinion', 'ui.showTokenWidget') ?? true,
         'ui.sidebarTheme': this.settings.get<string>('proseMinion', 'ui.sidebarTheme') ?? 'follow-vscode',
@@ -214,11 +216,14 @@ export class ConfigurationHandler {
         'wordSearch.',
         'contextPaths.'
       ];
-      const allowedTop = new Set(['includeCraftGuides', 'temperature', 'maxTokens', 'applyContextWindowTrimming']);
+      const allowedTop = new Set(['includeCraftGuides', 'temperature', 'maxTokens', 'applyContextWindowTrimming', 'claudeCacheTtl']);
 
       const isAllowed = allowedTop.has(key) || allowedPrefixes.some(prefix => key.startsWith(prefix));
       if (!isAllowed) {
         throw new Error(`Unsupported setting key: ${key}`);
+      }
+      if (key === 'claudeCacheTtl' && value !== '5m' && value !== '1h') {
+        throw new Error('Claude cache duration must be 5m or 1h');
       }
 
       // Mark this update as webview-originated to prevent echo-back

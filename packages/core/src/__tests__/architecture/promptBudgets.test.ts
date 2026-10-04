@@ -66,7 +66,7 @@ describe('prompt budgets', () => {
       characters: 100_000,
       headerAllowanceCharacters: 1_200
     });
-    expect(PROMPT_BUDGETS.contextAttachments.words).toBe(50_000);
+    expect(PROMPT_BUDGETS.contextAttachments.words).toBe(100_000);
   });
 
   it('keeps the locked Workshop capability ceilings in the shared table', () => {
@@ -101,7 +101,7 @@ describe('prompt budgets', () => {
       gestureCharacterNotesCharacters: 1_500,
       gestureSourceReferences: 8,
       gestureSourceReferenceCharacters: 500,
-      gestureReferencedSourceCharacters: 420_000,
+      gestureReferencedSourceCharacters: PROMPT_BUDGETS.contextAttachments.characters + PROMPT_BUDGETS.personaExcerpt.characters,
       gestureOutputTokens: 50_000,
       gestureMoreOutputTokens: 8_000,
       gestureRecommendationFrameAllowanceCharacters: 2_000,

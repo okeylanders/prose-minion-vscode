@@ -12,6 +12,7 @@
  * whole-session consistency boundary.
  */
 
+import type { WorkshopContextDeliveryBaseline } from '@/application/services/workshop/WorkshopContextDelivery';
 import type {
   ContextSourceEntry,
   WorkshopActionableFinding,
@@ -170,7 +171,10 @@ export interface WorkshopPendingHostUpdates {
   excerpt?: WorkshopExcerpt;
   contextAttachments?: {
     revision: number;
+    mode: 'replace' | 'delta';
     attachments: WorkshopContextAttachment[];
+    removedAttachmentIds: string[];
+    baseline: WorkshopContextDeliveryBaseline;
   };
 }
 

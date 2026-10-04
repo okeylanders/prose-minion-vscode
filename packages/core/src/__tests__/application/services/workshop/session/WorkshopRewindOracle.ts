@@ -70,6 +70,8 @@ const deliveredExcerptVersion = (hostRows: readonly ContextSourceEntry[]): numbe
  *    host if it names a participant the cut room lacks.
  * 8. Archived histories keep the current artifact counter (never lowered)
  *    and wall-clock `lastActivity` (kickoff decision 3).
+ * 9. A host context acknowledgement is valid only for its recorded history
+ *    revision; a later baseline is invalidated for full resynchronization.
  */
 export function expectedRewoundRoom(
   point: ScriptedRestPoint,
@@ -125,6 +127,10 @@ export function expectedRewoundRoom(
     shelvedExcerpt: now.shelvedExcerpt,
     scope: now.scope,
     contextAttachments: now.contextAttachments,
+    // An acknowledgement for a later host history cannot describe the cut history.
+    hostContextDelivery: hostSurvives
+      && now.hostContextDelivery?.revision === recorded.hostContextDelivery?.revision
+      ? now.hostContextDelivery : undefined,
     pendingMessageAttachments: now.pendingMessageAttachments,
     standingDirectives: now.standingDirectives,
     selectedToolId: now.selectedToolId,

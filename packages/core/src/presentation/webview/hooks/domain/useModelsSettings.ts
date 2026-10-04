@@ -1,13 +1,13 @@
 import React from 'react';
 import { MessageType, ModelScope, ModelOption } from '@shared/types';
-import { SettingsDataMessage, ModelDataMessage } from '@messages';
+import { SettingsDataMessage, ModelDataMessage, ClaudeCacheTtl, coerceClaudeCacheTtl } from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 import { usePersistedState } from '../usePersistence';
 import { CATEGORY_MODELS, DEFAULT_CATEGORY_MODEL } from '@providers/OpenRouterModels';
 
 /**
  * Models Settings
- * 9 settings for AI model configuration and agent behavior (5 models + 4 behavior)
+ * AI model configuration and agent behavior, including Claude cache duration.
  * Syncs with package.json proseMinion.* settings
  */
 export interface ModelsSettings {
@@ -18,10 +18,11 @@ export interface ModelsSettings {
   categoryModel: string;           // Model for category search
   widgetModel: string;             // Model for Conversation Widget generation
 
-  // Agent Behavior (4 settings)
+  // Agent Behavior
   includeCraftGuides: boolean;     // Include craft guides in prompts (default: true)
   temperature: number;             // Sampling temperature 0-2 (default: 0.7)
   maxTokens: number;               // Max tokens per request (default: 10000)
+  claudeCacheTtl: ClaudeCacheTtl;
   applyContextWindowTrimming: boolean;  // Apply context window trimming (default: true)
 }
 
@@ -120,6 +121,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
     includeCraftGuides: true,
     temperature: 0.7,
     maxTokens: 10000,
+    claudeCacheTtl: '5m',
     applyContextWindowTrimming: true,
   };
 
@@ -129,6 +131,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
   const [settings, setSettings] = React.useState<ModelsSettings>({
     ...defaults,
     ...(persistedSeed ?? {}),
+    claudeCacheTtl: coerceClaudeCacheTtl(persistedSeed?.claudeCacheTtl),
   });
 
   const [modelOptions, setModelOptions] = React.useState<ModelOption[]>([]);
@@ -164,6 +167,8 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
         includeCraftGuides: settingsData['includeCraftGuides'] as boolean | undefined,
         temperature: settingsData['temperature'] as number | undefined,
         maxTokens: settingsData['maxTokens'] as number | undefined,
+        claudeCacheTtl: settingsData['claudeCacheTtl'] === undefined
+          ? undefined : coerceClaudeCacheTtl(settingsData['claudeCacheTtl']),
         applyContextWindowTrimming: settingsData['applyContextWindowTrimming'] as boolean | undefined,
       };
 
@@ -172,6 +177,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
         modelsSettings.assistantModel !== undefined
         || modelsSettings.widgetModel !== undefined
         || modelsSettings.temperature !== undefined
+        || modelsSettings.claudeCacheTtl !== undefined
       ) {
         setSettings(prev => ({
           ...prev,
@@ -185,6 +191,7 @@ export const useModelsSettings = (): UseModelsSettingsReturn => {
           includeCraftGuides: modelsSettings.includeCraftGuides ?? prev.includeCraftGuides,
           temperature: modelsSettings.temperature ?? prev.temperature,
           maxTokens: modelsSettings.maxTokens ?? prev.maxTokens,
+          claudeCacheTtl: modelsSettings.claudeCacheTtl ?? prev.claudeCacheTtl,
           applyContextWindowTrimming: modelsSettings.applyContextWindowTrimming ?? prev.applyContextWindowTrimming,
         }));
       }

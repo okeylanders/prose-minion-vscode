@@ -54,6 +54,31 @@ describe('ConfigurationHandler', () => {
     });
   });
 
+  it.each(['5m', '1h', '24h', 60, null])('validates Claude cache duration before saving (%s)', async value => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    const postMessage = jest.fn();
+    const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never,
+      { update } as never, {} as never, postMessage, { appendLine: jest.fn() } as never);
+    await built.handleUpdateSetting({ type: MessageType.UPDATE_SETTING, source: 'webview', timestamp: 0,
+      payload: { key: 'claudeCacheTtl', value } } as never);
+    if (value === '5m' || value === '1h') {
+      expect(update).toHaveBeenCalledWith('proseMinion', 'claudeCacheTtl', value);
+    } else {
+      expect(update).not.toHaveBeenCalled();
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.ERROR }));
+    }
+  });
+
+  it('projects the stored Claude duration through settings data', async () => {
+    const postMessage = jest.fn();
+    const built = new ConfigurationHandler({} as never, {} as never, {} as never, {} as never, {} as never,
+      { get: (_section: string, key: string) => key === 'claudeCacheTtl' ? '1h' : undefined } as never,
+      {} as never, postMessage, { appendLine: jest.fn() } as never);
+    await built.handleRequestSettingsData({} as never);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.SETTINGS_DATA,
+      payload: { settings: expect.objectContaining({ claudeCacheTtl: '1h' }) } }));
+  });
+
   describe('sendModelData (curated⨝live transform)', () => {
     const CURATED_ID = 'anthropic/claude-opus-4.8';
 

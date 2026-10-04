@@ -9,6 +9,7 @@ import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequest
 import { ResourceReadRequest } from '@orchestration/ResourceReadXmlCodec';
 import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import { OpenRouterApiError } from '@providers/OpenRouterClient';
+import { OpenRouterModels } from '@providers/OpenRouterModels';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -104,7 +105,161 @@ describe('AgentRunEngine', () => {
     engine = new AgentRunEngine(client as never, conversations, statusCallback);
   });
 
-  afterEach(() => engine.dispose());
+  afterEach(() => { engine.dispose(); jest.restoreAllMocks(); });
+
+  it.each([false, true])('refuses an oversized initial retained request before provider I/O (streaming=%s)', async streaming => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System',
+      userMessage: 'word '.repeat(40_000), policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
+      options: { maxTokens: 10_000, ...(streaming ? { onToken: jest.fn() } : {}) }
+    })).rejects.toMatchObject({
+      name: 'AgentRunUnavailableError', reason: 'context-window-exceeded',
+      message: expect.stringContaining('Reduce standing context'),
+      providerDetails: expect.stringContaining('50,000-token window')
+    });
+    expect(client.createChatCompletion).not.toHaveBeenCalled();
+    expect(client.createStreamingChatCompletion).not.toHaveBeenCalled();
+  });
+
+  it('leaves retained history unchanged on a preflight refusal and allows retry with a larger window', async () => {
+    const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    const initial = await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources });
+    const prior = conversations.getMessages(initial.conversationId!);
+    const request = { conversationId: initial.conversationId!, userMessage: 'word '.repeat(40_000),
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources };
+    await expect(engine.continueConversation(request)).rejects.toThrow(/This inference was not sent/);
+    expect(conversations.getMessages(initial.conversationId!)).toEqual(prior);
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+    window.mockReturnValue(1_000_000);
+    await expect(engine.continueConversation(request)).resolves.toMatchObject({ content: 'Reply' });
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(2);
+  });
+
+  it('checks growth from capability evidence before another provider inference', async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    client.createChatCompletion.mockResolvedValue({ content: PERSONA_REQUEST });
+    const capability = personaCapability(jest.fn().mockResolvedValue({
+      evidence: 'word '.repeat(40_000), artifacts: [], deliveredItems: []
+    }));
+    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability
+    })).rejects.toMatchObject({ name: 'AgentRunUnavailableError', reason: 'context-window-exceeded' });
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps provider validation when live window metadata is unavailable', async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(undefined);
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources })).resolves.toMatchObject({ content: 'Reply' });
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs missing metadata once across rounds and turns, then re-arms after recovery or a model change', async () => {
+    const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(undefined);
+    const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    engine.dispose();
+    const getModel = jest.fn().mockReturnValue('custom/first');
+    engine = new AgentRunEngine({ ...client, getModel } as never, conversations, undefined, log);
+    client.createChatCompletion.mockResolvedValueOnce({ content: GUIDE_REQUEST })
+      .mockResolvedValue({ content: 'Reply' });
+    const initial = await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: capability() });
+    const next = { conversationId: initial.conversationId!, userMessage: 'Continue',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' as const }, capability: capability() };
+    const unavailableLogs = () => log.appendLine.mock.calls.filter(([line]) => line.includes('Context preflight unavailable'));
+    await engine.continueConversation(next);
+    expect(unavailableLogs()).toHaveLength(1);
+    window.mockReturnValue(200_000);
+    await engine.continueConversation(next);
+    window.mockReturnValue(undefined);
+    await engine.continueConversation(next);
+    expect(unavailableLogs()).toHaveLength(2);
+    getModel.mockReturnValue('custom/second');
+    await engine.continueConversation(next);
+    expect(unavailableLogs()).toHaveLength(3);
+  });
+
+  it('reads Claude duration per retained request and leaves discarded runs without cache options', async () => {
+    engine.dispose();
+    let ttl = '1h';
+    engine = new AgentRunEngine(client as never, conversations, undefined, undefined, undefined,
+      { get: () => ttl } as never);
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    expect(client.createChatCompletion.mock.calls[0][1].claudeCacheTtl).toBe('1h');
+    ttl = '5m';
+    await engine.continueConversation({ conversationId: initial.conversationId!, userMessage: 'Continue',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources });
+    expect(client.createChatCompletion.mock.calls[1][1].claudeCacheTtl).toBe('5m');
+    await engine.runInitial({ toolName: 'dictionary', systemMessage: 'System', userMessage: 'Word',
+      policy: AGENT_RUN_POLICIES.dictionary });
+    expect(client.createChatCompletion.mock.calls[2][1]).not.toHaveProperty('claudeCacheTtl');
+  });
+
+  it.each(['hit', 'miss', 'unreported'])('uses only the final request cache window (%s)', async final => {
+    const observation = { modelId: 'anthropic/claude-sonnet-5', promptTokens: 4096, completionTokens: 10,
+      totalTokens: 4106, requestedMaxOutputTokens: 1000, contextCompression: 'unknown', measuredAt: 0 };
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST,
+        usage: { promptTokens: 4096, completionTokens: 10, totalTokens: 4106, cachedTokens: 4096 },
+        observation: { ...observation, estimatedCacheExpiresAt: 300_000, cacheRequestModelId: 'anthropic/claude-sonnet-5' } })
+      .mockResolvedValueOnce({ content: 'Final reply',
+        usage: { promptTokens: 4096, completionTokens: 10, totalTokens: 4106, cachedTokens: final === 'hit' ? 4096 : 0 },
+        observation: final === 'unreported' ? undefined : { ...observation,
+          ...(final === 'hit' ? { estimatedCacheExpiresAt: 301_000, cacheRequestModelId: 'anthropic/claude-sonnet-5' } : {}) } });
+    const result = await engine.runInitial({ toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: capability() });
+    expect(conversations.getContextBudget(result.conversationId)?.estimatedCacheExpiresAt)
+      .toBe(final === 'hit' ? 301_000 : undefined);
+  });
+
+  it.each([false, true])('carries retained conversation identity through every inference (streaming=%s)', async streaming => {
+    const responses = [PERSONA_REQUEST, 'Initial reply', PERSONA_REQUEST, 'Follow-up reply', 'Guest reply', 'One-off reply'];
+    if (streaming) {
+      client.createStreamingChatCompletion.mockImplementation(() => stream([responses.shift()!]));
+    } else {
+      client.createChatCompletion.mockImplementation(async () => ({ content: responses.shift()!, finishReason: 'stop' }));
+    }
+    const options = streaming ? { onToken: jest.fn() } : undefined;
+    const initial = await engine.runInitial({
+      toolName: 'workshop-host', systemMessage: 'Stable instructions', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(), options
+    });
+    await engine.continueConversation({
+      conversationId: initial.conversationId!, userMessage: 'Continue',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(), options
+    });
+    const guest = await engine.runInitial({
+      toolName: 'workshop-guest', systemMessage: 'Guest instructions', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources, options
+    });
+    await engine.runInitial({
+      toolName: 'dictionary', systemMessage: 'Dictionary instructions', userMessage: 'Define a word',
+      policy: AGENT_RUN_POLICIES.dictionary, options
+    });
+
+    const calls = (streaming ? client.createStreamingChatCompletion : client.createChatCompletion).mock.calls;
+    expect(calls).toHaveLength(6);
+    for (const [_messages, providerOptions] of calls.slice(0, 4)) {
+      expect(providerOptions.conversationId).toBe(initial.conversationId);
+    }
+    expect(calls[4][1].conversationId).toBe(guest.conversationId);
+    expect(guest.conversationId).not.toBe(initial.conversationId);
+    expect(calls[5][1]).not.toHaveProperty('conversationId');
+    expect(conversations.getMessages(initial.conversationId!)).toEqual(
+      expect.arrayContaining([{ role: 'system', content: 'Stable instructions' }])
+    );
+    for (const message of conversations.getMessages(initial.conversationId!)) {
+      expect(typeof message.content).toBe('string');
+      expect(message).not.toHaveProperty('cache_control');
+    }
+  });
 
   it('hydrates while offline, rejects a send without mutation, then continues after provider attachment', async () => {
     const offlineConversations = new ConversationManager();

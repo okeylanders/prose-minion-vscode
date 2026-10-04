@@ -793,7 +793,7 @@ export class WorkshopRoomHandler {
           hostUpdateDeliveryLabel: conversationId
             ? 'retained delta frame'
             : 'fresh-host initial envelope',
-          collectPendingHostUpdates: () => this.session.collectPendingHostUpdates(),
+          collectPendingHostUpdates: () => this.session.prepareHostUpdatesForDelivery(conversationId),
           buildTodoEvidence: () =>
             buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost()),
           buildHostUpdateFrame: (pendingHostUpdates) => conversationId
@@ -1136,7 +1136,7 @@ export class WorkshopRoomHandler {
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
-              this.session.getContextAttachments()
+              pendingHostUpdates?.contextAttachments?.attachments ?? []
             ),
             excerptSourceFrame: excerpt
               ? buildWorkshopExcerptSourceFrame(excerpt.source)

@@ -54,6 +54,10 @@ export interface ContextSourceEntry {
 
 /** Facts reported for one completed provider request. */
 export interface InferenceRequestObservation {
+  /** Conservative window estimate from reported activity; never a provider expiry. */
+  estimatedCacheExpiresAt?: number;
+  /** Requested routing/model id that this estimate belongs to, including aliases. */
+  cacheRequestModelId?: string;
   modelId: string;
   promptTokens: number;
   completionTokens: number;
@@ -67,6 +71,9 @@ export interface InferenceRequestObservation {
 
 /** Backward-looking context and processed-traffic telemetry for one logical turn. */
 export interface ContextBudgetSnapshot {
+  /** Latest request's cache-window estimate, ephemeral with the context reading. */
+  estimatedCacheExpiresAt?: number;
+  cacheRequestModelId?: string;
   modelId: string;
   /** Provider-measured retained context after the latest committed reply. */
   contextTokens: number;

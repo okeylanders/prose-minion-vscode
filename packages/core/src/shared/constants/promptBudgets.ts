@@ -8,6 +8,13 @@
  */
 
 export interface PromptBudgets {
+  readonly inferenceContext: Readonly<{
+    defaultOutputTokens: number;
+    bytesPerToken: number;
+    tokensPerWord: number;
+    messageOverheadTokens: number;
+    headroomFraction: number;
+  }>;
   readonly fileExcerpt: Readonly<{ words: number; bytes: number }>;
   readonly personaExcerpt: Readonly<{ words: number; characters: number }>;
   readonly contextAttachments: Readonly<{
@@ -169,16 +176,22 @@ export interface PromptBudgets {
   }>;
 }
 
+const PERSONA_EXCERPT = { words: 25_000, characters: 300_000 };
+// Raised to 100k for long-form Workshop rooms (Okey 2026-10-03).
+// A configurable ceiling is tracked in the context-attachment-budget-setting debt note.
+const CONTEXT_ATTACHMENTS = { words: 100_000, characters: 840_000, fileBytes: 5 * 1024 * 1024 };
+
 export const PROMPT_BUDGETS: PromptBudgets = {
-  fileExcerpt: { words: 25_000, bytes: 5 * 1024 * 1024 },
-  personaExcerpt: { words: 25_000, characters: 300_000 },
-  // Raised to 50k for long-form Workshop rooms (Okey 2026-07-26). Making this a user
-  // setting is tracked in .todo/tech-debt/2026-07-17-context-attachment-budget-setting.md.
-  contextAttachments: {
-    words: 50_000,
-    characters: 420_000,
-    fileBytes: 5 * 1024 * 1024
+  inferenceContext: {
+    defaultOutputTokens: 10_000,
+    bytesPerToken: 4,
+    tokensPerWord: 1.5,
+    messageOverheadTokens: 12,
+    headroomFraction: 0.05
   },
+  fileExcerpt: { words: 25_000, bytes: 5 * 1024 * 1024 },
+  personaExcerpt: PERSONA_EXCERPT,
+  contextAttachments: CONTEXT_ATTACHMENTS,
   workshopCapability: {
     wordCharacters: 100,
     contextCharacters: 4_000,
@@ -214,7 +227,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
-  workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 },
+  workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },
   workshopWidgets: {
     gestureTargetPhraseCharacters: 300,
     gestureWriterInstructionsCharacters: 1_000,
@@ -222,7 +235,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     gestureCharacterNotesCharacters: 1_500,
     gestureSourceReferences: 8,
     gestureSourceReferenceCharacters: 500,
-    gestureReferencedSourceCharacters: 420_000,
+    gestureReferencedSourceCharacters: CONTEXT_ATTACHMENTS.characters + PERSONA_EXCERPT.characters,
     gestureOutputTokens: 50_000,
     gestureMoreOutputTokens: 8_000,
     gestureRecommendationFrameAllowanceCharacters: 2_000,

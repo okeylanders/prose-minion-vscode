@@ -22,7 +22,7 @@ flowchart TB
         F4["provenance lines (head-slice notes, or<br/>'Source provenance was not provided.')"]
         F5["&lt;workshop-excerpt-source&gt;<br/>kind · display-safe path · line range ·<br/>configured-resource ref (never a raw URI)"]
         F6["&lt;pinned-excerpt&gt;<br/>Widget reference: active-excerpt · version<br/>excerpt text (≤ 25,000 words)"]
-        F7["&lt;context-attachments count=N&gt;<br/>per-attachment frames (≤ 50,000 words total,<br/>budget enforced at ATTACH time, not here)"]
+        F7["&lt;context-attachments count=N&gt;<br/>per-attachment frames (≤ 100,000 words total,<br/>budget enforced at ATTACH time, not here)"]
         F8["&lt;workshop-behavior-activation&gt;"]
         F9["&lt;writer-message&gt; opener &lt;/writer-message&gt;"]
         F1 --> F2 --> F3 --> F4 --> F5 --> F6 --> F7 --> F8 --> F9
@@ -63,7 +63,7 @@ sequenceDiagram
     Note over T: old frames remain verbatim in history
     W->>SS: next host-directed message
     SS->>PB: collectPendingHostUpdates()
-    PB->>T: &lt;workshop-host-update&gt; rides that turn:<br/>"The writer has revised the pinned excerpt.<br/>Earlier versions in this conversation are superseded."<br/>+ fresh &lt;pinned-excerpt version=N&gt;<br/>and/or "This list supersedes any earlier attached context."<br/>+ full regenerated &lt;context-attachments&gt;
+    PB->>T: &lt;workshop-host-update&gt; rides that turn:<br/>"The writer has revised the pinned excerpt.<br/>Earlier versions in this conversation are superseded."<br/>+ fresh &lt;pinned-excerpt version=N&gt;<br/>and/or changed attachment bodies and explicit removed ids<br/>(unchanged attachment bodies stay in earlier history)
     T-->>SS: run succeeds → commit that exact generation<br/>(version/revision matched; failure retains for retry)
 ```
 
@@ -76,9 +76,11 @@ Key properties:
   conversation, including tombstones. So a retained host receiving an excerpt
   frame has by construction already been handed that passage. The old
   "added"/"repinned" leads were deleted with the machinery that needed them.
-- **Context changes ship the full current list**, not a diff — "supersedes any
-  earlier attached context." Removing all attachments sends an explicit
-  "do not rely on earlier attached context" line instead of silence.
+- **Context changes ship acknowledged deltas**: added/changed bodies by id and
+  explicit removed ids. Unchanged bodies stay in the earlier transcript. The
+  initial envelope supplies the full working set; a missing or invalidated
+  delivery baseline requires one complete resynchronization. See
+  [context-delivery ADR](../../adr/2026-10-03-workshop-context-delta-delivery.md).
 - **Generation-exact commit.** Pending updates clear only when the delivered
   excerpt version / context revision matches what was staged; a failed or
   cancelled run retries the same delta on the next turn.
@@ -132,13 +134,17 @@ From [promptBudgets.ts](../../../packages/core/src/shared/constants/promptBudget
 | Budget | Limit | Enforced |
 |---|---|---|
 | `personaExcerpt` | 25,000 words / 300,000 chars | At frame-build time (`trimToWordLimit`) — initial envelope, guest join, host update |
-| `contextAttachments` | 50,000 words / 420,000 chars / 5 MiB per file | **At attach time** — the frame builder never trims |
+| `contextAttachments` | 100,000 words / 840,000 chars / 5 MiB per file | Aggregate words at attach time; characters bound persona-supplied analysis text. The frame builder never trims. |
 | `workshopTodos` | 12 items / 12,000 chars | Inside `buildWorkshopTodoEvidence`, omissions reported honestly |
 | `guestJoinSnapshot` | 100 turns / 100,000 chars | Join transcript packer |
-| `workshopThreadArtifacts` | 3 items per message / 10,000 words | Message attachments |
+| `workshopThreadArtifacts` | 7 items per message / 10,000 words per item | Message attachments; up to 70,000 words per message, subject to request context preflight |
 | Room delivery runaway guard | 1,000,000 chars | `WorkshopRoomDeliveryService` (catches runaway state, not normal shaping) |
 
-Cost intuition: a first host turn can legitimately carry ~75k words of
-excerpt + context that stay in **every subsequent request**, and each excerpt
-revision adds up to another 25k-word block rather than replacing the old one.
-This is the price of an honest append-only transcript.
+Cost intuition: a first host turn can carry up to 125k words of excerpt plus
+standing context, and seven one-shot items can add another 70k words. These
+are intake ceilings, not a promise that every model can accept their sum.
+Before provider dispatch, estimated input plus output and safety headroom is
+checked against live cached model-window metadata; unknown/fallback windows
+remain provider-validated. Each excerpt revision still adds another block;
+context revisions now add only changed/new bodies and removal notices. Cache
+reads reduce billing but do not remove old versions from the context window.
