@@ -87,6 +87,22 @@ describe('acknowledged standing-context delivery', () => {
     ] });
   });
 
+  it('clears an older pending revision covered by a retried fresh-host snapshot', () => {
+    const session = new WorkshopSessionService(() => 1);
+    session.setSessionScope('open');
+    session.addContextAttachment({ kind: 'text', origin: 'writer', label: 'a', content: 'first', words: 1 });
+    session.beginPersonaMessage('cancelled', 'Hello');
+    session.updateContextAttachmentText('ctx-1', 'second', 1);
+    session.abandonRun('cancelled');
+    session.updateContextAttachmentText('ctx-1', 'third', 1);
+    expect(session.exportCommittedState().revisions).toMatchObject({ context: 3, pendingContext: 2 });
+    const delivery = session.prepareHostUpdatesForDelivery()!;
+    expect(delivery.contextAttachments).toMatchObject({ revision: 3, mode: 'replace' });
+    session.commitPendingHostUpdates(delivery);
+    expect(session.exportCommittedState().revisions.pendingContext).toBeUndefined();
+    expect(session.collectPendingHostUpdates()).toBeUndefined();
+  });
+
   it('rejects malformed or impossible persisted acknowledgement metadata', () => {
     const session = new WorkshopSessionService(() => 1);
     session.addContextAttachment({ kind: 'text', origin: 'writer', label: 'a', content: 'original', words: 1 });

@@ -90,17 +90,7 @@ export class RunWorkshopToolSidePass {
     let currentRequestId = toolRequestId;
     let reportAdopted = false;
     let hostDeliveryAttempted = false;
-    const hadHostConversation = this.session.hasHostConversation();
-    const pendingHostUpdates = this.session.collectPendingHostUpdates();
-    const todoEvidence = buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost());
-    const hostUpdateFrame = hadHostConversation
-      ? buildWorkshopHostUpdateFrame(pendingHostUpdates)
-      : undefined;
-    if (pendingHostUpdates) {
-      this.outputChannel.appendLine(
-        `[RunWorkshopToolSidePass] Pending host update prepared for synthesis (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${hadHostConversation ? 'retained delta frame' : 'fresh-host initial envelope'})`
-      );
-    }
+    let pendingHostUpdates: ReturnType<WorkshopSessionService['prepareHostUpdatesForDelivery']>;
 
     events.activatePhase(toolRequestId, toolLabel, toolId, controller);
     const userTurn = this.session.beginToolRun(toolId, toolRequestId);
@@ -207,6 +197,14 @@ export class RunWorkshopToolSidePass {
           : undefined
       };
       const hostConversationId = this.session.getHostConversationId();
+      pendingHostUpdates = this.session.prepareHostUpdatesForDelivery(hostConversationId);
+      const todoEvidence = buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost());
+      const hostUpdateFrame = hostConversationId ? buildWorkshopHostUpdateFrame(pendingHostUpdates) : undefined;
+      if (pendingHostUpdates) {
+        this.outputChannel.appendLine(
+          `[RunWorkshopToolSidePass] Pending host update prepared for synthesis (${describeWorkshopPendingHostUpdates(pendingHostUpdates)}; ${hostConversationId ? 'retained delta frame' : 'fresh-host initial envelope'})`
+        );
+      }
       const hostMessage = buildWorkshopHostMessage(synthesisRequest, {
         roomCatchUp,
         todoEvidence,
@@ -246,7 +244,7 @@ export class RunWorkshopToolSidePass {
             messageIsTrustedEnvelope: true,
             ...behaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
-              this.session.getContextAttachments()
+              pendingHostUpdates?.contextAttachments?.attachments ?? []
             ),
             excerptSourceFrame: buildWorkshopExcerptSourceFrame(excerpt.source)
           }, {
@@ -312,7 +310,11 @@ export class RunWorkshopToolSidePass {
       events.sessionChanged();
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
-      this.session.abandonRun(currentRequestId);
+      if (error instanceof AgentRunUnavailableError && !reportAdopted) {
+        this.session.rollbackToolRun(currentRequestId);
+      } else {
+        this.session.abandonRun(currentRequestId);
+      }
       events.streamCompleted(currentRequestId, '', true);
       if (hostDeliveryAttempted && pendingHostUpdates) {
         this.outputChannel.appendLine(

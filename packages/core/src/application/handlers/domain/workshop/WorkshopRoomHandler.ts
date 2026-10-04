@@ -793,7 +793,7 @@ export class WorkshopRoomHandler {
           hostUpdateDeliveryLabel: conversationId
             ? 'retained delta frame'
             : 'fresh-host initial envelope',
-          collectPendingHostUpdates: () => this.session.collectPendingHostUpdates(),
+          collectPendingHostUpdates: () => this.session.prepareHostUpdatesForDelivery(conversationId),
           buildTodoEvidence: () =>
             buildWorkshopTodoEvidence(this.session.collectOpenTodosForHost()),
           buildHostUpdateFrame: (pendingHostUpdates) => conversationId
@@ -989,8 +989,6 @@ export class WorkshopRoomHandler {
     const roomCatchUp = roomDelivery?.frame;
     const hasConversationalCatchUp = roomDelivery?.hasConversationalCatchUp ?? false;
     const pendingHostUpdates = targetPlan.collectPendingHostUpdates();
-    const initialHostContextDelivery = targetPlan.chatTarget.kind === 'host' && !targetPlan.conversationId
-      ? this.session.prepareInitialHostContextDelivery() : undefined;
     const todoEvidence = targetPlan.buildTodoEvidence();
     // A fresh host already receives the current excerpt and brief through its
     // initial envelope. Only retained conversations need a superseding delta.
@@ -1138,7 +1136,7 @@ export class WorkshopRoomHandler {
             messageIsTrustedEnvelope: true,
             ...personaBehaviorFrames,
             contextAttachmentsFrame: buildWorkshopContextAttachmentsFrame(
-              initialHostContextDelivery?.attachments ?? this.session.getContextAttachments()
+              pendingHostUpdates?.contextAttachments?.attachments ?? []
             ),
             excerptSourceFrame: excerpt
               ? buildWorkshopExcerptSourceFrame(excerpt.source)
@@ -1184,12 +1182,10 @@ export class WorkshopRoomHandler {
               );
             }
           }
-          const deliveredHostUpdates = initialHostContextDelivery
-            ? { ...pendingHostUpdates, contextAttachments: initialHostContextDelivery } : pendingHostUpdates;
-          if (deliveredHostUpdates) {
-            this.session.commitPendingHostUpdates(deliveredHostUpdates);
+          if (pendingHostUpdates) {
+            this.session.commitPendingHostUpdates(pendingHostUpdates);
             this.outputChannel.appendLine(
-              `[WorkshopRoomHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(deliveredHostUpdates)})`
+              `[WorkshopRoomHandler] Pending host update committed (${describeWorkshopPendingHostUpdates(pendingHostUpdates)})`
             );
           }
           if (messageAttachments.length > 0) {

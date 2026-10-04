@@ -46,7 +46,10 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
         finishReason: 'stop',
         conversationId: toolName === 'prose-assistant' ? 'engine-tool-conv' : 'engine-host-conv'
       })),
-      continueConversation: jest.fn(),
+      continueConversation: jest.fn().mockResolvedValue({
+        content: 'continued host', usedGuides: [], requestedResources: [], artifacts: [],
+        finishReason: 'stop', conversationId: 'engine-host-conv'
+      }),
       discardConversation: jest.fn(),
       getConversationContextBudget: jest.fn(),
       getConversationContextSources: jest.fn().mockReturnValue([])
@@ -166,6 +169,11 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       payload: { text: 'The sentence under test.' },
       timestamp: 1
     });
+    const manuscript = 'unchanged reference '.repeat(2_500);
+    await router.route({
+      type: MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+      source: 'webview.workshop', payload: { text: manuscript }, timestamp: 1
+    });
 
     await router.route({
       type: MessageType.WORKSHOP_RUN_TOOL,
@@ -210,5 +218,20 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
       interactionMode: 'balanced',
       expressionLevel: 'full'
     });
+    expect(engine.runInitial.mock.calls[1][0].userMessage).toContain(manuscript.trim());
+    expect(session.exportCommittedState().hostContextDelivery?.attachments).toHaveLength(1);
+    await router.route({
+      type: MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+      source: 'webview.workshop', payload: { text: 'Four words of notes' }, timestamp: 3
+    });
+    await router.route({
+      type: MessageType.WORKSHOP_SEND_MESSAGE,
+      source: 'webview.workshop', payload: { text: 'Use my note' }, timestamp: 4
+    });
+    expect(engine.continueConversation).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 'engine-host-conv', userMessage: expect.stringContaining('Four words of notes')
+    }));
+    expect(engine.continueConversation.mock.calls.at(-1)![0].userMessage).not.toContain(manuscript.trim());
+    expect(session.collectPendingHostUpdates()).toBeUndefined();
   });
 });

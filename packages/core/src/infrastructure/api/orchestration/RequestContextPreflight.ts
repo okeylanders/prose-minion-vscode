@@ -19,7 +19,8 @@ export class AgentContextWindowExceededError extends Error {
     super(`This request is estimated at ${inputTokens.toLocaleString('en-US')} input tokens plus ` +
       `${outputTokens.toLocaleString('en-US')} reserved output tokens, exceeding the selected model's ` +
       `${contextLength.toLocaleString('en-US')}-token window with safety headroom. ` +
-      'Shorten new inputs, start a fresh room, or switch to a model with a larger window. This inference was not sent.');
+      'Reduce standing context or the excerpt, or switch to a model with a larger window. ' +
+      'For a long conversation, start a fresh room with fewer inputs. This inference was not sent.');
     this.name = 'AgentContextWindowExceededError';
   }
 }

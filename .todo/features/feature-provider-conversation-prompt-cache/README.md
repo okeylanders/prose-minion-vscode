@@ -30,6 +30,10 @@ requests. Cache reporting was implemented separately from activation.
 - [x] GPT-5.6+ (including Terra 5.6) native caching supplies a documented 30-minute estimate.
 - [x] Standing-context updates send acknowledged attachment deltas and explicit removals.
 - [x] Each inference checks estimated input/output/headroom against known live model-window metadata.
+- [x] Host chat and tool synthesis share captured context delivery and successful acknowledgement.
+- [x] Context-window refusals restore host drafts and use the unavailable-run seam for tools/sidebar.
+- [x] Literal alias lookup, covered pending revisions, and unknown-window log throttling are verified.
+- [ ] Calibrate token estimation and show numerical model-adjusted remaining capacity (review F-28).
 - [ ] Live Claude follow-up reports cache reads after a cold cache write.
 - [ ] Live supported Qwen follow-up reports cache reads after a cold cache write.
 
@@ -68,3 +72,11 @@ for the baseline, full-resynchronization, and token-estimation limits.
 236 suites / 2,932 tests / 2 snapshots passed; typecheck, production build,
 changed-file ESLint (zero errors), and diff checks passed. The new prompt-budget
 guard rejected deliberate prose drift before the prompt was restored.
+
+Re-review follow-up (2026-10-04): F-26/F-27/F-29/F-30/F-31 addressed. F-28
+has accurate intake-limit and refusal guidance; estimator calibration and
+numerical remaining-capacity display remain open. All 236 suites / 2,943 tests /
+2 snapshots passed, along with typecheck, production build/bundle verification,
+changed-file ESLint (zero errors), and diff checks. Real engine/service/sidebar
+tests protect error routing; tool-born host tests protect initial acknowledgement,
+small deltas, in-flight edits, retry, and removal.

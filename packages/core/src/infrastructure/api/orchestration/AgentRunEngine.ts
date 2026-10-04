@@ -31,7 +31,7 @@ import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { coerceClaudeCacheTtl } from '@messages';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
-import { assertRequestFitsContext } from '@orchestration/RequestContextPreflight';
+import { AgentContextWindowExceededError, assertRequestFitsContext } from '@orchestration/RequestContextPreflight';
 import {
   ContextBudgetSnapshot,
   ContextSourceEntry,
@@ -47,6 +47,7 @@ export type AgentRunUnavailableReason =
   | 'authentication'
   | 'insufficient-credits'
   | 'token-budget-exceeded'
+  | 'context-window-exceeded'
   | 'rate-limited'
   | 'provider-unavailable';
 
@@ -74,6 +75,8 @@ export class AgentRunUnavailableError extends Error {
         return 'The OpenRouter account or API key has insufficient credits. Add credits and try again.';
       case 'token-budget-exceeded':
         return 'OpenRouter stopped the request at its token budget. Shorten the request or adjust the API key limit before trying again.';
+      case 'context-window-exceeded':
+        return 'This request exceeds the selected model\'s estimated context window. Reduce standing context or the excerpt, or switch to a model with a larger window. For a long conversation, start a fresh room with fewer inputs. This inference was not sent.';
       case 'rate-limited':
         return retryAfterSeconds
           ? `OpenRouter is rate limiting requests. Try again in about ${retryAfterSeconds} seconds.`
@@ -208,6 +211,8 @@ export class AgentRunEngine {
   private readonly conversationCleanupInterval: NodeJS.Timeout;
   private openRouterClient?: OpenRouterClient;
   private model: string;
+  /** Log once per uninterrupted period of missing metadata for the current model. */
+  private contextPreflightUnavailableModel?: string;
   /**
    * Conversation ids with an in-flight run, marked for the entire span in
    * which a run reads or commits history (ADR 2026-07-20). The between-run
@@ -713,16 +718,22 @@ export class AgentRunEngine {
     provider: OpenRouterClient,
     conversationId?: string
   ): Promise<TurnResult> {
-    const contextLength = OpenRouterModels.getCachedContextLength(provider.getModel?.() ?? this.model);
+    const model = provider.getModel?.() ?? this.model;
+    const contextLength = OpenRouterModels.getCachedContextLength(model);
     if (contextLength !== undefined) {
+      this.contextPreflightUnavailableModel = undefined;
       try {
         assertRequestFitsContext(messages, contextLength, options.maxTokens, options.tools);
       } catch (error) {
         this.outputChannel?.appendLine(`[AgentRunEngine] Context preflight refused request: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof AgentContextWindowExceededError) {
+          throw new AgentRunUnavailableError('context-window-exceeded', error.message);
+        }
         throw error;
       }
-    } else if (conversationId) {
+    } else if (conversationId && this.contextPreflightUnavailableModel !== model) {
       this.outputChannel?.appendLine('[AgentRunEngine] Context preflight unavailable: no live model-window metadata; provider validation remains authoritative.');
+      this.contextPreflightUnavailableModel = model;
     }
     const completionOptions = {
       temperature: options.temperature,

@@ -10,7 +10,6 @@ import { ResourceReadRequest } from '@orchestration/ResourceReadXmlCodec';
 import { WorkshopCapabilityXmlCodec } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import { OpenRouterApiError } from '@providers/OpenRouterClient';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
-import { AgentContextWindowExceededError } from '@orchestration/RequestContextPreflight';
 
 const stream = async function* (tokens: string[], usage = { promptTokens: 3, completionTokens: 2, totalTokens: 5 }) {
   for (const token of tokens) {
@@ -113,7 +112,11 @@ describe('AgentRunEngine', () => {
     await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System',
       userMessage: 'word '.repeat(40_000), policy: AGENT_RUN_POLICIES.workshopToolWithoutResources,
       options: { maxTokens: 10_000, ...(streaming ? { onToken: jest.fn() } : {}) }
-    })).rejects.toThrow(AgentContextWindowExceededError);
+    })).rejects.toMatchObject({
+      name: 'AgentRunUnavailableError', reason: 'context-window-exceeded',
+      message: expect.stringContaining('Reduce standing context'),
+      providerDetails: expect.stringContaining('50,000-token window')
+    });
     expect(client.createChatCompletion).not.toHaveBeenCalled();
     expect(client.createStreamingChatCompletion).not.toHaveBeenCalled();
   });
@@ -142,7 +145,7 @@ describe('AgentRunEngine', () => {
     }));
     await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
       policy: AGENT_RUN_POLICIES.workshopHost, capability
-    })).rejects.toThrow(AgentContextWindowExceededError);
+    })).rejects.toMatchObject({ name: 'AgentRunUnavailableError', reason: 'context-window-exceeded' });
     expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
   });
 
@@ -152,6 +155,31 @@ describe('AgentRunEngine', () => {
     await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
       policy: AGENT_RUN_POLICIES.workshopToolWithoutResources })).resolves.toMatchObject({ content: 'Reply' });
     expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs missing metadata once across rounds and turns, then re-arms after recovery or a model change', async () => {
+    const window = jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(undefined);
+    const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
+    engine.dispose();
+    const getModel = jest.fn().mockReturnValue('custom/first');
+    engine = new AgentRunEngine({ ...client, getModel } as never, conversations, undefined, log);
+    client.createChatCompletion.mockResolvedValueOnce({ content: GUIDE_REQUEST })
+      .mockResolvedValue({ content: 'Reply' });
+    const initial = await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: capability() });
+    const next = { conversationId: initial.conversationId!, userMessage: 'Continue',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' as const }, capability: capability() };
+    const unavailableLogs = () => log.appendLine.mock.calls.filter(([line]) => line.includes('Context preflight unavailable'));
+    await engine.continueConversation(next);
+    expect(unavailableLogs()).toHaveLength(1);
+    window.mockReturnValue(200_000);
+    await engine.continueConversation(next);
+    window.mockReturnValue(undefined);
+    await engine.continueConversation(next);
+    expect(unavailableLogs()).toHaveLength(2);
+    getModel.mockReturnValue('custom/second');
+    await engine.continueConversation(next);
+    expect(unavailableLogs()).toHaveLength(3);
   });
 
   it('reads Claude duration per retained request and leaves discarded runs without cache options', async () => {

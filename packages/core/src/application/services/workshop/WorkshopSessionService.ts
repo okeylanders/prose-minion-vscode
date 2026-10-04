@@ -1064,7 +1064,16 @@ export class WorkshopSessionService {
     return this.contextDelivery.prepare(this.contextRevision, this.getContextAttachments(), true);
   }
 
-  /** Clear only the exact update generation that a successful host turn shipped. */
+  /** One capture seam for host chat and tool synthesis, before their provider I/O. */
+  prepareHostUpdatesForDelivery(conversationId?: string): WorkshopPendingHostUpdates | undefined {
+    const pending = this.collectPendingHostUpdates();
+    return conversationId ? pending : {
+      ...pending,
+      contextAttachments: this.prepareInitialHostContextDelivery()
+    };
+  }
+
+  /** Clear pending generations covered by the successful delivery, leaving newer edits queued. */
   commitPendingHostUpdates(delivered: WorkshopPendingHostUpdates): void {
     if (
       delivered.excerpt
@@ -1079,7 +1088,8 @@ export class WorkshopSessionService {
     }
     if (delivered.contextAttachments) {
       this.contextDelivery.acknowledge(delivered.contextAttachments.baseline);
-      if (delivered.contextAttachments.revision === this.pendingContextRevision) {
+      if (this.pendingContextRevision !== undefined
+        && delivered.contextAttachments.revision >= this.pendingContextRevision) {
         this.pendingContextRevision = undefined;
       }
     }
@@ -1300,6 +1310,7 @@ export class WorkshopSessionService {
       phase: 'tool_report',
       target: 'tool',
       toolId,
+      writerTurnId: turn.id,
       excerptVersion: this.getExcerptVersion()
     };
     return cloneTurn(turn);
@@ -1778,6 +1789,21 @@ export class WorkshopSessionService {
     );
     this.activeRun = undefined;
     return writerTurn;
+  }
+
+  /** Remove a provisional tool request when the tool could not answer; adopted reports stay. */
+  rollbackToolRun(requestId: string): WorkshopTurn | undefined {
+    const active = this.activeRun;
+    if (active?.requestId !== requestId || active.phase !== 'tool_report' || !active.writerTurnId) {
+      return undefined;
+    }
+    const turn = this.turnLedger.find(active.writerTurnId);
+    if (!turn || turn.artifact !== 'tool_request') {
+      throw new Error(`Cannot roll back missing Workshop tool request ${active.writerTurnId}`);
+    }
+    this.turnLedger.removeByIds(new Set([turn.id]));
+    this.activeRun = undefined;
+    return turn;
   }
 
   /** Clear every retained participant after an assistant-resource generation loss. */

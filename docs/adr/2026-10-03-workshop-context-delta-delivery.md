@@ -18,11 +18,14 @@ that baseline. It emits added/changed attachment bodies and explicit removed
 ids. Unchanged bodies do not enter a new history message. Changed bodies replace
 the model's active version by id; earlier versions remain honest history.
 
-Capture the initial attachment snapshot before dispatch and acknowledge that
-exact snapshot only after the first host turn succeeds. A successful update
-advances the baseline even when a newer edit is pending; clearing pending state
-still requires matching revision generations. Failure/cancellation leaves the
-baseline untouched. Multiple edits before dispatch coalesce by current state.
+Both host chat and tool-report synthesis use one preparation seam to capture
+the initial attachment snapshot before host dispatch and acknowledge that exact
+snapshot only after the first host turn succeeds. Tool synthesis captures after
+the analysis pass, so intervening edits belong to its initial envelope. A
+successful update advances the baseline even when a newer edit is pending;
+clear pending revisions covered by the delivered generation, leaving newer
+revisions queued. Failure/cancellation leaves the baseline untouched. Multiple
+edits before dispatch coalesce by current state.
 
 Persist the host-private fingerprint baseline alongside the existing V1 room
 state; validate its shape, revision, unique ids, and counter references. It never
@@ -35,13 +38,20 @@ state, and do not alter old messages or historical cache prefixes.
 
 Before each provider inference, check an estimated input token count
 plus requested output and safety headroom against the selected model's live,
-cached context length. Normalize routing aliases/variants for catalog lookup.
-Do not treat offline fallback metadata as a real window. Unknown windows are
-logged and left to the provider. Count all history and in-turn tool/correction
+cached context length. Prefer literal alias catalog entries, then normalize
+routing aliases/variants for catalog lookup. Do not treat offline fallback
+metadata as a real window. Unknown windows are logged once per uninterrupted
+period of missing metadata for the current model and left to the provider.
+Count all history and in-turn tool/correction
 messages; a cache read still occupies context. Refuse an estimated overflow
 before provider I/O, preserving pending work and atomic history. Explain that
-the writer can shorten new inputs, start a fresh room, or switch to a larger
-model. This estimate is a practical preflight, not an exact tokenizer guarantee.
+the writer can reduce standing context or the excerpt, start a fresh room with
+fewer inputs for a long conversation, or switch to a larger model. Expose
+overflows as `AgentRunUnavailableError` with a `context-window-exceeded` reason
+and numeric details: the host restores its provisional writer message to the
+composer, a refused tool request is rolled back, and sidebar tools publish an
+error without an analysis result. A completed tool report survives a refused
+synthesis. This estimate is a practical preflight, not an exact tokenizer guarantee.
 
 Keep the requested 100K-word and seven-item limits. Sync persona prompt numbers
 with the validator and guard them in CI. Derive Gesture Playground's referenced
@@ -49,6 +59,9 @@ source allowance from standing context plus the pinned-excerpt character cap.
 Seven items at 10K words each intentionally allow up to 70K words in a single
 message. Aggregate history still has to pass request context preflight; the
 standing and per-message limits are intake ceilings, not model-window guarantees.
+The context panel states this distinction before send. Keep the conservative
+estimator pending provider-tokenizer calibration; a live numerical remaining
+capacity display remains follow-up work (review F-28).
 
 ## Verification
 

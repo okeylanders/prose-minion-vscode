@@ -250,7 +250,7 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
           </span>
         </div>
         <div className="pm-ws-meter-cap">
-          One budget across all attachments
+          Attachment intake limit
           {used >= budget
             ? ' · at cap — remove something to add more'
             : used / budget >= 0.7
@@ -258,6 +258,10 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
               : ''}
         </div>
       </div>
+      <p className="pm-ws-intake-caption">
+        Your model's window must also fit the excerpt, conversation, and reply.
+        Larger inputs may need a model with a larger window, even below this limit.
+      </p>
       {hasAttachments ? (
         <p className="pm-ws-intake-caption">
           Files open for reading · text notes and wizard briefs open for edit or preview.
