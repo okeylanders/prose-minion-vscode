@@ -5,6 +5,43 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-10-04 — Provider caching and acknowledged Workshop context
+
+### Overview
+
+[PR #123](https://github.com/okeylanders/prose-minion-vscode/pull/123) adds retained-conversation cache policies, Claude duration controls, response-backed cache-window estimates, larger attachment intake limits, acknowledged context deltas, and model-window preflight. Ten commits follow v2.7.0; two are publication/archive records for the preceding release. The release branch also updates the Workshop tour and the Marketplace README artwork.
+
+### Provider caching and composer estimate
+
+- `OpenRouterPromptCachePolicy` owns a closed registry at the adapter boundary. Retained Claude requests carry automatic ephemeral caching and the five-minute/default or one-hour preference. Fourteen explicitly supported Alibaba-compatible model IDs receive stable system and advancing tail content breakpoints. Other providers retain native request behavior. Opaque SHA-256 conversation keys supply OpenRouter affinity without exposing runtime tool names.
+- Cache wire metadata never mutates retained string histories or enters persisted session transcripts. Each inference resolves its captured model. Discarded one-shot analysis and dictionary calls receive no retained-conversation opt-in.
+- `proseMinion.claudeCacheTtl` follows the existing configuration handler, settings watcher, models hook, and Settings overlay path. Validation permits only `5m` and `1h`; changes affect future requests.
+- The latest inference's optional estimate travels through ephemeral context-budget telemetry. Positive cache reads/writes qualify Claude and GPT-5.6+ native OpenAI models; supported Alibaba routes require a reported write. Unknown lifetimes, compressed requests, model mismatches, and missing final-call evidence hide the estimate. Dispatch time anchors the estimate; resets, restore, and rewind clear it. The composer renders a clock in the accent color and says `window elapsed` rather than promising eviction.
+- Cold Claude writes are priced above uncached input: five-minute writes are 1.25× and one-hour writes are 2×, with model-specific discounted reads. The longer setting is not a universal savings guarantee. See [Claude pricing](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [OpenRouter caching](https://openrouter.ai/docs/guides/best-practices/prompt-caching), checked 2026-10-04. The native OpenAI policy's minimum 30-minute eligibility estimate follows the [OpenAI cache-lifetime contract](https://developers.openai.com/api/docs/guides/prompt-caching).
+
+### Context delivery, intake limits, and refusal behavior
+
+- Standing context rises from 50K to 100K words; per-message attachments rise from three to seven, at 10K words each. Persona prompt limits have a synchronization guard. Gesture Playground referenced-source limits derive from context and excerpt character budgets.
+- `WorkshopContextDelivery` compares attachment fingerprints against the host's acknowledged baseline. Added/changed bodies and explicit removed IDs enter new frames; unchanged bodies do not. Changed attachments supersede their active version by ID without rewriting historical content. Missing or invalidated baselines cause one full resynchronization.
+- Host chat and tool-report synthesis share `prepareHostUpdatesForDelivery`. Synthesis captures after the analysis report, immediately before host dispatch. Only successful delivery acknowledges the captured generation; failed/cancelled turns preserve updates and newer in-flight edits remain queued. Rewind preserves a baseline only when its revision agrees with the surviving history mark.
+- `RequestContextPreflight` estimates history, in-turn evidence and tool envelopes, reply reserve, and safety headroom against cached live model metadata before each inference. Exact alias/variant catalog rows take priority. Unknown/offline windows remain provider-validated; retained-request diagnostics throttle continuous missing metadata.
+- Estimated overflow uses `AgentRunUnavailableError` with a distinct reason and numeric details. Host rollback restores the draft, refused tool requests leave no orphan request, adopted reports survive refused synthesis, and sidebar analysis emits an error without an analysis result. Intake ceilings do not guarantee model capacity; tokenizer calibration and numerical remaining-capacity UI remain follow-ups.
+
+### Workshop tour and README artwork
+
+- The startup notice moves to `v6` and leads with two pages: prompt caching with the cache clock, and the larger context budgets. Their six screenshots are 2× captures of the real webview bundle: `composer-cache-clock`, `reply-cached-badge`, `settings-cache-duration`, `attach-menu`, `message-attachment-slots`, and `context-intake-meter`.
+- The v2.7.0 pages stay on as `primer` pages, without "New:", because the tour doubles as the writer's full guide. Craft Steering and Topic & Related Lexicon follow the Tools page, and Rewind, edit, and branch precedes the project-agents page. Rewind's v2.7.0 downgrade note moves to the context page, as this release's upgrade note. The tour grows to eleven pages.
+- The Marketplace README adds `workshop-prompt-caching.png` and `workshop-more-context.png` under What's new. The v2.7.0 Craft Steering and Topic & Related Lexicon images move into the Assistant and Dictionary sections.
+
+### Compatibility and review
+
+- v2.7.0 sessions remain readable. The optional host-private `hostContextDelivery` fingerprint baseline is validated for revision, unique IDs, and counters. Earlier exact-key session readers reject newly written sessions containing it; Git-synced machines should all upgrade first. No schema-version bump or release-time migration is added.
+- The [PR #123 resolution ledger](pr-reviews/pr-123-provider-prompt-caching-review.md) records the initial findings and two verified fix reviews. Current follow-ups resolve the High findings, including tool-born initial context and refusal error routing.
+- The [focused release review](pr-reviews/release-2026-10-04-prompt-caching-review.md) found no new critical blocker. Remote-clock estimates, workspace duration overrides, diagnostic/test gaps, model-adjusted capacity, and live provider acceptance remain documented follow-ups. No paid provider requests were made.
+- The dependency audit is not clean: 44 affected package names, including 42 high propagated tooling findings, one moderate packaging finding, one low runtime sanitizer finding, and no critical advisory. Per-package reachability, test limits, and deferred actions are in the [dependency follow-up](../.todo/tech-debt/2026-10-02-release-dependency-audit-follow-up.md).
+
+Design: [provider policy ADR](adr/2026-10-03-provider-conversation-prompt-caching.md), [cache-window ADR](adr/2026-10-03-cache-window-indicator.md), [acknowledged delta ADR](adr/2026-10-03-workshop-context-delta-delivery.md). Active acceptance work remains in the [feature record](../.todo/features/feature-provider-conversation-prompt-cache/README.md).
+
 ## [2.7.0] - 2026-10-02 — Workshop Rewind and Branch, Craft Steering, and Dictionary topic families
 
 ### Overview

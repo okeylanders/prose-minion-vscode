@@ -2,6 +2,28 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.8.0] - 2026-10-04
+
+### Added
+
+- Workshop retained conversations request prompt caching for Claude and supported Alibaba/Qwen routes. Other providers keep their native caching behavior. Cache reuse depends on the model, serving provider, matching conversation prefix, and time between requests.
+- Choose Claude's five-minute cache duration (the default) or one hour in General settings. Cold cache writes cost more than ordinary input; one-hour writes cost more than five-minute writes. The choice affects subsequent retained requests.
+- A clock beside the Workshop composer shows an estimated cache window after the provider reports qualifying cache activity. The response's cached-token badge remains the evidence of actual reuse; the countdown does not guarantee a cache hit.
+- Standing context can contain up to 100,000 words, and each message can carry up to seven attachments of up to 10,000 words each. The selected model still needs room for the excerpt, conversation history, and reply.
+- The Workshop's startup tour opens once more and begins with prompt caching and the larger context budgets.
+
+### Fixed
+
+- Updating standing context sends only added or changed attachments and explicit removals after successful delivery. Small edits no longer append the whole context list again. Failed turns keep updates pending for retry, including when a tool starts the host conversation.
+- Requests that are estimated to exceed a known live model's context window stop before sending. Workshop restores the draft or reports the refused tool request clearly; a completed tool report remains available if its follow-up discussion is refused. Sidebar analysis reports the error without showing it as an analysis result.
+- Persona context limits and Gesture Playground source limits follow the shared attachment budgets.
+
+### Upgrade notes
+
+- Existing sessions remain readable. Sessions saved with the new context-delivery bookkeeping cannot be opened by older Prose Minion versions. If you sync sessions through Git, update every machine before opening sessions saved by this release.
+- Model-window checks are estimates. Unknown or offline model-window metadata leaves validation to the provider; the attachment intake limit is not a promise that every model can use all of it.
+- Automated caching checks pass; live Claude/Qwen cache-hit and duration acceptance remain pending.
+
 ## [2.7.0] - 2026-10-02
 
 ### Added
