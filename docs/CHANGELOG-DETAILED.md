@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Overview
 
-[PR #123](https://github.com/okeylanders/prose-minion-vscode/pull/123) adds retained-conversation cache policies, Claude duration controls, response-backed cache-window estimates, larger attachment intake limits, acknowledged context deltas, and model-window preflight. Ten commits follow v2.7.0; two are publication/archive records for the preceding release. The designer's Workshop tour and graphics pass remains pending on the release branch.
+[PR #123](https://github.com/okeylanders/prose-minion-vscode/pull/123) adds retained-conversation cache policies, Claude duration controls, response-backed cache-window estimates, larger attachment intake limits, acknowledged context deltas, and model-window preflight. Ten commits follow v2.7.0; two are publication/archive records for the preceding release. The release branch also updates the Workshop tour and the Marketplace README artwork.
 
 ### Provider caching and composer estimate
 
@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Host chat and tool-report synthesis share `prepareHostUpdatesForDelivery`. Synthesis captures after the analysis report, immediately before host dispatch. Only successful delivery acknowledges the captured generation; failed/cancelled turns preserve updates and newer in-flight edits remain queued. Rewind preserves a baseline only when its revision agrees with the surviving history mark.
 - `RequestContextPreflight` estimates history, in-turn evidence and tool envelopes, reply reserve, and safety headroom against cached live model metadata before each inference. Exact alias/variant catalog rows take priority. Unknown/offline windows remain provider-validated; retained-request diagnostics throttle continuous missing metadata.
 - Estimated overflow uses `AgentRunUnavailableError` with a distinct reason and numeric details. Host rollback restores the draft, refused tool requests leave no orphan request, adopted reports survive refused synthesis, and sidebar analysis emits an error without an analysis result. Intake ceilings do not guarantee model capacity; tokenizer calibration and numerical remaining-capacity UI remain follow-ups.
+
+### Workshop tour and README artwork
+
+- The startup notice moves to `v6` and leads with two pages: prompt caching with the cache clock, and the larger context budgets. Their six screenshots are 2× captures of the real webview bundle: `composer-cache-clock`, `reply-cached-badge`, `settings-cache-duration`, `attach-menu`, `message-attachment-slots`, and `context-intake-meter`.
+- Rewind, edit, and branch stays on as a `primer` page before the project-agents page. Its v2.7.0 downgrade note moves to the context page, as this release's upgrade note. The v2.7.0 Craft Steering and Topic & Related Lexicon pages retire with their three screenshots, so the tour stays at nine pages.
+- The Marketplace README adds `workshop-prompt-caching.png` and `workshop-more-context.png` under What's new. The v2.7.0 Craft Steering and Topic & Related Lexicon images move into the Assistant and Dictionary sections.
 
 ### Compatibility and review
 

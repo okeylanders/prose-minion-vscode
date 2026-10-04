@@ -40,9 +40,12 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
         "controller-advanced": "https://webview.test/ext/assets/workshop-notices/controller-advanced.png",
         "project-layout": "https://webview.test/ext/assets/workshop-notices/project-layout.png",
         "settings-resource-locations": "https://webview.test/ext/assets/workshop-notices/settings-resource-locations.png",
-        "tools-craft-steering": "https://webview.test/ext/assets/workshop-notices/tools-craft-steering.png",
-        "dictionary-topic-switch": "https://webview.test/ext/assets/workshop-notices/dictionary-topic-switch.png",
-        "dictionary-topic-entry": "https://webview.test/ext/assets/workshop-notices/dictionary-topic-entry.png"
+        "composer-cache-clock": "https://webview.test/ext/assets/workshop-notices/composer-cache-clock.png",
+        "reply-cached-badge": "https://webview.test/ext/assets/workshop-notices/reply-cached-badge.png",
+        "settings-cache-duration": "https://webview.test/ext/assets/workshop-notices/settings-cache-duration.png",
+        "attach-menu": "https://webview.test/ext/assets/workshop-notices/attach-menu.png",
+        "message-attachment-slots": "https://webview.test/ext/assets/workshop-notices/message-attachment-slots.png",
+        "context-intake-meter": "https://webview.test/ext/assets/workshop-notices/context-intake-meter.png"
       }
     };
   </script>

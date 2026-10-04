@@ -9,7 +9,7 @@
  * That re-show is deliberate product behavior (Sprint 14 §5), not a bug.
  */
 
-export const WORKSHOP_STARTUP_NOTICE_VERSION = 'v5';
+export const WORKSHOP_STARTUP_NOTICE_VERSION = 'v6';
 
 export const WORKSHOP_STARTUP_NOTICE_DISMISSED_KEY =
   'proseMinion.workshopNotice.dismissedVersion';
@@ -38,9 +38,12 @@ export const WORKSHOP_NOTICE_SHOTS = [
   'controller-advanced',
   'project-layout',
   'settings-resource-locations',
-  'tools-craft-steering',
-  'dictionary-topic-switch',
-  'dictionary-topic-entry'
+  'composer-cache-clock',
+  'reply-cached-badge',
+  'settings-cache-duration',
+  'attach-menu',
+  'message-attachment-slots',
+  'context-intake-meter'
 ] as const;
 
 export type WorkshopNoticeShot = (typeof WORKSHOP_NOTICE_SHOTS)[number];

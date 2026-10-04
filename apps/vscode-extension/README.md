@@ -34,24 +34,24 @@
 
 Live Claude/Qwen cache-hit and duration acceptance remain pending.
 
+**Cache-aware conversations.** Pick Claude's cache window in General settings. Once the provider reports cache activity, a clock in the composer estimates how much of the window is left; the **cached** count on each reply is what confirms reuse.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-prompt-caching.png" alt="Left: General settings with Claude Cache Duration set to 1 hour. Right: a Workshop reply showing 118,842 cached tokens, the context bar at 126K of 950K, and the composer clock reading Est. Cache Time Remaining: 30 min" width="100%"/>
+</p>
+
+**More room for context.** Standing context holds up to 100,000 words and rides with every message. Files you attach to a single message (up to seven, 10,000 words each) ride that message only.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-more-context.png" alt="Left: the Workshop context panel with five files totalling 37,342 of 100,000 words. Right: the Attach to message picker with one character file selected and 1 of 7 remaining slots" width="100%"/>
+</p>
+
 ### Also in v2.7.0 — Rewind, branch, and explore
 
 - **Try another direction in Workshop** — rewind to a reply, edit an earlier message in its composer or widget, or branch a saved conversation into a new session. Branch keeps the source file intact; your current excerpt and context stay with you.
 - **Listen to your prose with Craft Steering** — examine sound, rhythm, sentence handoffs, and narrative control in the sidebar or Workshop, with revision experiments that preserve your passage's intent.
 - **Explore a word's wider world** — the optional Dictionary encyclopedia entry, **Topic & Related Lexicon**, adds topic explanations, related vocabulary, writing examples, and possible reference books. Its switch remembers your choice for standard and Fast generation; persona calls leave it out.
 - **Update every Git-synced machine first** — sessions saved by v2.7.0 cannot be opened by earlier Prose Minion versions. Older sessions still open; Rewind and Branch become available from their reopen point onward.
-
-**Craft Steering** sits under **Craft & Voice** in the sidebar's Writing Tools and in the Workshop's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it listens to how each sentence carries you into the next, and it judges the pauses, repetition, and fragments you meant by their effect instead of smoothing them away.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/craft-steering.png" alt="Craft Steering in the sidebar's Writing Tools picker under Craft and Voice, and selected in the Workshop's Tools picker with its Run Craft Steering button" width="100%"/>
-</p>
-
-**Topic & Related Lexicon** turns a dictionary entry outward: the topics a word belongs to, the vocabulary around it, how to use it on the page, and suggested reading. One switch in the Dictionary tab turns it on or off.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-topic-lexicon.png" alt="Left: the Dictionary tab looking up 'Fricative' with the Topic and Related Lexicon switch on. Right: the resulting encyclopedia entry, covering phonetics and phonology, related vocabulary, a writing example, and two reference books" width="100%"/>
-</p>
 
 ### Also in v2.6.2 — GPT-6.1 Sol choices
 
@@ -179,6 +179,10 @@ Focused passes, from Dialogue & Beats to Continuity — each one a single, opini
 
 **Craft Steering** appears under **Craft & Voice** in both the sidebar's Writing Tools picker and the Workshop tab's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it examines sound, rhythm, and how each sentence leads into the next. Its report identifies what to preserve, audits sound and narrative control, and traces sentence handoffs. Sample revisions show small changes; Creative Variations explore distinct treatments of a selected passage; Bound Creative Variations isolate particular craft choices. Each revision explains its gains and costs, followed by a fidelity check and optional read-aloud practice. Intentional pauses, repetition, fragments, and lyrical swells are assessed for their effect. You can also ask a Workshop persona to run Craft Steering on a passage in the conversation.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/craft-steering.png" alt="Craft Steering in the sidebar's Writing Tools picker under Craft and Voice, and selected in the Workshop's Tools picker with its Run Craft Steering button" width="100%"/>
+</p>
+
 ---
 
 ## Search: by pattern, or by meaning
@@ -207,6 +211,10 @@ Not a definition lookup — a craft reference: connotation, register, sense expl
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-spread.png" alt="Dictionary lookup input with scene context next to the resulting writer-focused entry" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-topic-lexicon.png" alt="Left: the Dictionary tab looking up 'Fricative' with the Topic and Related Lexicon switch on. Right: the resulting encyclopedia entry, covering phonetics and phonology, related vocabulary, a writing example, and two reference books" width="100%"/>
 </p>
 
 ---

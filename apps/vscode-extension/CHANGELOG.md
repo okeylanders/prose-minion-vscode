@@ -10,6 +10,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 - Choose Claude's five-minute cache duration (the default) or one hour in General settings. Cold cache writes cost more than ordinary input; one-hour writes cost more than five-minute writes. The choice affects subsequent retained requests.
 - A clock beside the Workshop composer shows an estimated cache window after the provider reports qualifying cache activity. The response's cached-token badge remains the evidence of actual reuse; the countdown does not guarantee a cache hit.
 - Standing context can contain up to 100,000 words, and each message can carry up to seven attachments of up to 10,000 words each. The selected model still needs room for the excerpt, conversation history, and reply.
+- The Workshop's startup tour opens once more and begins with prompt caching and the larger context budgets.
 
 ### Fixed
 
