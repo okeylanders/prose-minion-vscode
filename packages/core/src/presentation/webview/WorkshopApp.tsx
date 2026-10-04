@@ -1405,6 +1405,11 @@ export const WorkshopApp: React.FC = () => {
               onAddExcerpt={addExcerptByPaste}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
+              estimatedCacheExpiresAt={
+                workshop.contextBudget?.snapshot?.cacheRequestModelId
+                  === (modelsSettings.modelSelections.assistant ?? modelsSettings.settings.assistantModel)
+                  ? workshop.contextBudget?.snapshot?.estimatedCacheExpiresAt : undefined
+              }
               isRunning={workshop.isRunning}
               sessionReady={workshop.sessionReady}
               conversationBehavior={workshop.conversationBehavior}

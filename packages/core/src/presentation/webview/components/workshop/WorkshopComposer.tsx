@@ -26,6 +26,7 @@
 
 import * as React from 'react';
 import { Icon } from '@components/shared/Icon';
+import { WorkshopCacheIndicator } from '@components/workshop/WorkshopCacheIndicator';
 import {
   WORKSHOP_INTERACTION_MODE_LABELS,
   WORKSHOP_RELATIONAL_DEPTH_LABELS,
@@ -57,6 +58,7 @@ interface WorkshopComposerProps {
   hasConversation: boolean;
   /** Deterministic current-recipient label for visible, accessible composer language. */
   recipientLabel: string;
+  estimatedCacheExpiresAt?: number;
   /** A run is streaming — show stop instead of send. */
   isRunning: boolean;
   /** First host snapshot has arrived. */
@@ -102,6 +104,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   onAddExcerpt,
   hasConversation,
   recipientLabel,
+  estimatedCacheExpiresAt,
   isRunning,
   sessionReady,
   conversationBehavior,
@@ -289,6 +292,10 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
             </div>
           )}
         </div>
+        <WorkshopCacheIndicator
+          estimatedExpiresAt={estimatedCacheExpiresAt}
+          recipientLabel={recipientLabel}
+        />
         {canAddExcerpt && (
           /* The composer's own door into the passage path (§4). It sits beside
              the attach button rather than in the action cluster, because it

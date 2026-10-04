@@ -25,6 +25,9 @@ requests. Cache reporting was implemented separately from activation.
 - [x] Participant conversation identity controls stable provider affinity.
 - [x] Histories and session contracts remain plain strings without cache metadata.
 - [x] Regression tests, typecheck, and build pass.
+- [x] Claude's five-minute/default or one-hour duration is selectable in General settings.
+- [x] Selected participant's estimated cache window is centered between composer controls in the accent color.
+- [x] GPT-5.6+ (including Terra 5.6) native caching supplies a documented 30-minute estimate.
 - [ ] Live Claude follow-up reports cache reads after a cold cache write.
 - [ ] Live supported Qwen follow-up reports cache reads after a cold cache write.
 
@@ -33,9 +36,19 @@ requests. Cache reporting was implemented separately from activation.
 Branch: `fix/anthropic-prompt-caching`.
 
 - Extended focused policy/provider/engine suites: 147 tests passed.
-- Extended full Jest suite: 231 suites, 2,863 tests, 2 snapshots passed.
+- Duration/indicator full Jest suite: 232 suites, 2,886 tests, 2 snapshots passed;
+  final provider-evidence refinement: 8 focused suites and 208 tests passed.
 - Full monorepo typecheck and production build/bundle verification passed.
 - Changed-file ESLint: no errors; warning-level API wire naming and existing
   formatting warnings. Build/test toolchain warnings also remain.
 - No live provider requests were made. See ADR for the acceptance procedure
   and cold-write/TTL limitations.
+- Browser composer preview verified at 1,162px and 680px widths.
+- Terra/native OpenAI extension: 5 focused suites / 204 tests passed; typecheck,
+  production build, and ESLint verification use `/private/tmp/prose-minion-terra-cache-*` logs.
+- See [duration and indicator ADR](../../../docs/adr/2026-10-03-cache-window-indicator.md).
+- Final PR preparation: 232 suites / 2,914 tests / 2 snapshots passed, with
+  monorepo typecheck, production build/bundle verification, changed-file
+  ESLint (zero errors), and diff checks. Logs: `/private/tmp/prose-minion-pr-*`.
+  Updated the context-selector fixture for six staged attachments and verified
+  that selecting two more blocks confirmation under the seven-item cap.

@@ -319,6 +319,14 @@
           "description": "Maximum length of AI responses",
           "order": 8
         },
+        "proseMinion.claudeCacheTtl": {
+          "type": "string",
+          "enum": ["5m", "1h"],
+          "enumDescriptions": ["5 minutes; cache writes cost 1.25× normal input.", "1 hour; cache writes cost 2× normal input (60% more than 5 minutes)."],
+          "default": "5m",
+          "description": "Cache duration for retained Claude conversations. Reuse refreshes the window. Cache-read pricing is unchanged. Applies to subsequent requests.",
+          "order": 8.1
+        },
         "proseMinion.contextPaths.characters": {
           "type": "string",
           "default": "characters/**/*,Characters/**/*",

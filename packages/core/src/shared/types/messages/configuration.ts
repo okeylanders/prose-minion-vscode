@@ -158,3 +158,9 @@ export interface UpdateApiKeyPayload {
 export interface UpdateApiKeyMessage extends MessageEnvelope<UpdateApiKeyPayload> {
   type: MessageType.UPDATE_API_KEY;
 }
+/** Writer-selected lifetime for retained Claude prompt caches. */
+export type ClaudeCacheTtl = '5m' | '1h';
+
+export function coerceClaudeCacheTtl(value: unknown): ClaudeCacheTtl {
+  return value === '1h' ? '1h' : '5m';
+}

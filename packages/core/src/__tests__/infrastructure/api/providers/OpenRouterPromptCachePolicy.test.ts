@@ -1,5 +1,38 @@
 import type { OpenRouterMessage, OpenRouterWireMessage } from '@providers/OpenRouterChatContracts';
-import { prepareOpenRouterPromptCacheRequest } from '@providers/OpenRouterPromptCachePolicy';
+import { prepareOpenRouterPromptCacheRequest, getOpenRouterPromptCacheTtlSeconds } from '@providers/OpenRouterPromptCachePolicy';
+
+describe('selected cache duration', () => {
+  it.each([
+    'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna', 'openai/gpt-5.6-sol',
+    'openai/gpt-6-sol', 'openai/gpt-6-luna-pro', 'openai/gpt-6-astra',
+    'openai/gpt-6.1-sol', '~openai/gpt-5.6-terra:nitro'
+  ])('recognizes %s native 30-minute window without changing its request', model => {
+    const messages: OpenRouterMessage[] = [{ role: 'user', content: 'Hello' }];
+    expect(getOpenRouterPromptCacheTtlSeconds(model, '1h')).toBe(1800);
+    const request = prepareOpenRouterPromptCacheRequest(model, messages, 'room', '1h');
+    expect(request.messages).toBe(messages);
+    expect(request).not.toHaveProperty('cache_control');
+    expect(request).not.toHaveProperty('prompt_cache_options');
+  });
+
+  it.each(['openai/gpt-5.5', 'openai/gpt-5.4', 'openai/gpt-5.2', 'openai/gpt-4.1',
+    'openai/gpt-oss-120b', 'openai/gpt-chat-latest', 'openrouter/auto', 'other/gpt-5.6-terra',
+    'openai/gpt-5.60invalid', 'openai/gpt-60invalid'])('keeps %s lifetime unknown', model => {
+    expect(getOpenRouterPromptCacheTtlSeconds(model)).toBeUndefined();
+  });
+
+  it('selects one hour only for retained Claude requests, including aliases', () => {
+    expect(prepareOpenRouterPromptCacheRequest('~anthropic/claude-sonnet-latest', [], 'room', '1h').cache_control)
+      .toEqual({ type: 'ephemeral', ttl: '1h' });
+    expect(prepareOpenRouterPromptCacheRequest('anthropic/claude-sonnet-5', [], undefined, '1h'))
+      .toEqual({ messages: [] });
+    const qwen = prepareOpenRouterPromptCacheRequest('qwen/qwen-plus', [{ role: 'user', content: 'Hello' }], 'room', '1h');
+    expect(qwen.messages).toEqual([cachedMessage('user', 'Hello')]);
+    expect(getOpenRouterPromptCacheTtlSeconds('qwen/qwen-plus', '1h')).toBe(300);
+    expect(getOpenRouterPromptCacheTtlSeconds('anthropic/claude-sonnet-5', '1h')).toBe(3600);
+    expect(getOpenRouterPromptCacheTtlSeconds('google/gemini-2.5-pro', '1h')).toBeUndefined();
+  });
+});
 
 const cachedMessage = (role: OpenRouterMessage['role'], text: string): OpenRouterWireMessage => ({
   role,

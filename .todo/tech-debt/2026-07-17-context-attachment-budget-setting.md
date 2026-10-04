@@ -12,13 +12,14 @@ hardcoded constant: `PROMPT_BUDGETS.contextAttachments.words` in
 Sprint 12 shipped it at 10,000 words and bumped it to **35,000** as an
 interim value once real sessions showed the cap biting (three medium files
 filled it, crowding out the wizard's brief and chapter files).
+The current ceiling is **100,000 words** (Okey's 2026-10-03 request).
 
 The right ceiling depends on the writer's model window and project shape —
 it should be a user setting, not a code constant.
 
 ## Proposed shape
 
-- New setting `proseMinion.workshop.contextBudgetWords` (default 35,000)
+- New setting `proseMinion.workshop.contextBudgetWords` (default 100,000)
   following the unified settings architecture
   ([ADR 2025-11-03](../../docs/adr/2025-11-03-unified-settings-architecture.md)):
   `package.json` contribution → `ConfigurationHandler` getter → domain hook →

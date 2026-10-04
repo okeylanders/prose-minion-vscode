@@ -29,6 +29,7 @@ import {
 } from './AgentRunContracts';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
+import { coerceClaudeCacheTtl } from '@messages';
 import {
   ContextBudgetSnapshot,
   ContextSourceEntry,
@@ -363,7 +364,13 @@ export class AgentRunEngine {
     let correctionTurns = 0;
 
     const recordObservation = (observation?: InferenceRequestObservation): void => {
-      if (!observation) return;
+      if (!observation) {
+        // Missing final-call telemetry cannot renew an earlier call's cache.
+        if (latestObservation) {
+          latestObservation = { ...latestObservation, estimatedCacheExpiresAt: undefined, cacheRequestModelId: undefined };
+        }
+        return;
+      }
       latestObservation = observation;
       peakPromptTokens = Math.max(peakPromptTokens, observation.promptTokens);
     };
@@ -616,7 +623,11 @@ export class AgentRunEngine {
   }
 
   getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
-    return this.conversationManager.getContextBudget(conversationId);
+    const snapshot = this.conversationManager.getContextBudget(conversationId);
+    if (snapshot?.cacheRequestModelId && snapshot.cacheRequestModelId !== this.model) {
+      return { ...snapshot, estimatedCacheExpiresAt: undefined, cacheRequestModelId: undefined };
+    }
+    return snapshot;
   }
 
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
@@ -706,7 +717,10 @@ export class AgentRunEngine {
       signal: options.signal,
       tools: options.tools,
       reasoning: options.reasoning,
-      ...(conversationId ? { conversationId } : {})
+      ...(conversationId ? {
+        conversationId,
+        claudeCacheTtl: coerceClaudeCacheTtl(this.settings?.get<unknown>('proseMinion', 'claudeCacheTtl'))
+      } : {})
     };
     if (!options.onToken) {
       try {
@@ -1008,6 +1022,11 @@ export class AgentRunEngine {
       callsThisTurn: turnUsage.requestCount ?? 1,
       turnProcessedTokens: turnUsage.totalTokens,
       contextCompression: observation.contextCompression,
+      ...(observation.estimatedCacheExpiresAt !== undefined
+        ? {
+          estimatedCacheExpiresAt: observation.estimatedCacheExpiresAt,
+          cacheRequestModelId: observation.cacheRequestModelId
+        } : {}),
       measuredAt: observation.measuredAt
     };
   }

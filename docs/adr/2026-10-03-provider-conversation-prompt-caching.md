@@ -70,8 +70,10 @@ availability, model thresholds, and provider normalization still apply.
   a surcharge. No blanket opt-in for discarded dictionary/analysis calls.
 - Session affinity also helps providers with implicit caching before their
   first reported cache hit. It preserves OpenRouter's availability fallback.
-- No persisted-schema or UI changes. Existing per-response cache counts remain
-  the evidence of actual reuse; costs remain provider-reported.
+- Cache activation needs no persisted-schema or UI changes. Existing
+  per-response cache counts remain the evidence of actual reuse; costs remain
+  provider-reported. The duration setting and composer estimate follow the
+  [cache-window ADR](2026-10-03-cache-window-indicator.md).
 - Test serialized streaming/non-streaming bodies, model switching, exact model
   detection, advancing content breakpoints, immutable history, and the
   engine's retained/discarded lifecycle. Verify typecheck and build.
@@ -82,7 +84,8 @@ availability, model thresholds, and provider normalization still apply.
 - Validate supported Alibaba/Qwen Workshop follow-ups the same way. A marker
   enables the supported route's cache; it does not prove the chosen endpoint
   cached the request. Cold writes still carry a surcharge.
-- One-hour TTL and optional Gemini explicit caching remain separate work.
+- One-hour Claude TTL is implemented in the cache-window follow-up. Optional
+  Gemini explicit caching remains separate work.
 
 ## Sources (checked 2026-10-03)
 

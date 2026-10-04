@@ -168,9 +168,20 @@ describe('WorkshopContextSelectorModal', () => {
   it('message mode confirms one-shot refs, caps by remaining slots, and marks staged files (Phase 6B)', () => {
     const { props } = renderModal({
       mode: 'message',
+      catalog: [
+        ...CATALOG,
+        { group: 'characters', path: 'Characters/mara.md', label: 'mara', sizeBytes: 900 }
+      ],
       pendingMessageAttachments: [
         { id: 'ta-1', label: 'echoes.md', words: 120, relativePath: 'Themes/echoes.md', configuredResource: { group: 'themes', path: 'Themes/echoes.md' } },
-        { id: 'ta-2', label: 'kayla.md', words: 80, relativePath: 'Characters/kayla.md', configuredResource: { group: 'characters', path: 'Characters/kayla.md' } }
+        { id: 'ta-2', label: 'kayla.md', words: 80, relativePath: 'Characters/kayla.md', configuredResource: { group: 'characters', path: 'Characters/kayla.md' } },
+        ...['water', 'fire', 'earth', 'air'].map((name, index) => ({
+          id: `ta-${index + 3}`,
+          label: `${name}.md`,
+          words: 80,
+          relativePath: `Themes/${name}.md`,
+          configuredResource: { group: 'themes' as const, path: `Themes/${name}.md` }
+        }))
       ]
     });
 
@@ -181,8 +192,13 @@ describe('WorkshopContextSelectorModal', () => {
     // Already-staged files read as attached and stay disabled in this mode.
     const kayla = screen.getByRole('checkbox', { name: /kayla/ }) as HTMLButtonElement;
     expect(kayla.disabled).toBe(true);
+    const mara = screen.getByRole('checkbox', { name: /mara/ }) as HTMLButtonElement;
+    expect(mara.disabled).toBe(false);
 
     fireEvent.click(screen.getByRole('checkbox', { name: /raven/ }));
+    fireEvent.click(mara);
+    expect((screen.getByRole('button', { name: /Attach 2 to message/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(mara);
     fireEvent.click(screen.getByRole('button', { name: /Attach 1 to message/ }));
 
     expect(props.onConfirm).toHaveBeenCalledWith([

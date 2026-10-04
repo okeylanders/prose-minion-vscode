@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { ClaudeCacheTtl, coerceClaudeCacheTtl, TokenUsage } from '@messages';
 import type {
   OpenRouterCacheControl,
   OpenRouterMessage,
@@ -15,7 +16,9 @@ type PreparedCacheContent = Pick<OpenRouterPreparedMessages, 'messages' | 'cache
 
 interface OpenRouterPromptCachePolicy {
   readonly supports: (model: string) => boolean;
-  readonly prepare: (messages: readonly OpenRouterMessage[]) => PreparedCacheContent;
+  readonly prepare: (messages: readonly OpenRouterMessage[], ttl: ClaudeCacheTtl) => PreparedCacheContent;
+  readonly ttlSeconds: (ttl: ClaudeCacheTtl) => number | undefined;
+  readonly confirmsActivity: (usage: TokenUsage) => boolean;
 }
 
 // OpenRouter's caching guide plus Alibaba endpoint cache-write metadata,
@@ -60,38 +63,82 @@ function prepareAlibabaCacheContent(messages: readonly OpenRouterMessage[]): Pre
   };
 }
 
+/** GPT-5.6+ has a documented 30-minute default, including automatic caching. */
+function supportsOpenAiCacheWindow(model: string): boolean {
+  const version = /^openai\/gpt-(\d+)(?:\.(\d+))?(?:-|$)/.exec(model);
+  if (!version) {
+    return false;
+  }
+  const major = Number(version[1]);
+  const minor = Number(version[2] ?? 0);
+  return major > 5 || (major === 5 && minor >= 6);
+}
+
 const PROMPT_CACHE_POLICIES = {
   anthropicAutomatic: {
     supports: model => model.startsWith('anthropic/'),
-    prepare: messages => ({ messages, cache_control: { type: 'ephemeral' } })
+    prepare: (messages, ttl) => ({
+      messages,
+      cache_control: { type: 'ephemeral', ...(ttl === '1h' ? { ttl } : {}) }
+    }),
+    ttlSeconds: ttl => ttl === '1h' ? 3600 : 300,
+    confirmsActivity: usage => (usage.cachedTokens ?? 0) > 0 || (usage.cacheWriteTokens ?? 0) > 0
   },
   alibabaExplicit: {
     supports: model => ALIBABA_EXPLICIT_CACHE_MODELS.has(model),
-    prepare: prepareAlibabaCacheContent
+    prepare: prepareAlibabaCacheContent,
+    ttlSeconds: () => 300,
+    // A read alone could come from another endpoint's implicit cache, whose
+    // lifetime is unknown. Explicit writes prove the known five-minute mode.
+    confirmsActivity: usage => (usage.cacheWriteTokens ?? 0) > 0
+  },
+  openaiAutomatic: {
+    supports: supportsOpenAiCacheWindow,
+    prepare: messages => ({ messages }),
+    // A minimum eligibility window, not an exact eviction time. OpenAI may
+    // retain it longer; this policy does not change its automatic caching.
+    ttlSeconds: () => 1800,
+    confirmsActivity: usage => (usage.cachedTokens ?? 0) > 0 || (usage.cacheWriteTokens ?? 0) > 0
   },
   native: {
     supports: () => true,
-    prepare: messages => ({ messages })
+    prepare: messages => ({ messages }),
+    ttlSeconds: () => undefined,
+    confirmsActivity: () => false
   }
 } satisfies Record<string, OpenRouterPromptCachePolicy>;
+
+function resolvePromptCachePolicy(model: string): OpenRouterPromptCachePolicy {
+  const baseModel = model.replace(/^~/, '').split(':')[0];
+  return Object.values(PROMPT_CACHE_POLICIES).find(candidate => candidate.supports(baseModel))
+    ?? PROMPT_CACHE_POLICIES.native;
+}
+
+/** Documented cache window only; unknown native retention stays unestimated. */
+export function getOpenRouterPromptCacheTtlSeconds(model: string, ttl?: ClaudeCacheTtl): number | undefined {
+  return resolvePromptCachePolicy(model).ttlSeconds(coerceClaudeCacheTtl(ttl));
+}
+
+export function hasOpenRouterKnownCacheActivity(model: string, usage: TokenUsage): boolean {
+  return resolvePromptCachePolicy(model).confirmsActivity(usage);
+}
 
 /** Translate retained-conversation intent into an outgoing cache request. */
 export function prepareOpenRouterPromptCacheRequest(
   model: string,
   messages: readonly OpenRouterMessage[],
-  conversationId?: string
+  conversationId?: string,
+  claudeCacheTtl?: ClaudeCacheTtl
 ): OpenRouterPreparedMessages {
   if (!conversationId) {
     return { messages };
   }
 
-  const baseModel = model.replace(/^~/, '').split(':')[0];
-  const policy = Object.values(PROMPT_CACHE_POLICIES).find(candidate => candidate.supports(baseModel))
-    ?? PROMPT_CACHE_POLICIES.native;
+  const policy = resolvePromptCachePolicy(model);
 
   return {
     // Bound the routing key without exposing tool names from runtime ids.
     session_id: `prose-minion:${createHash('sha256').update(conversationId).digest('hex')}`,
-    ...policy.prepare(messages)
+    ...policy.prepare(messages, coerceClaudeCacheTtl(claudeCacheTtl))
   };
 }

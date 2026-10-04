@@ -188,6 +188,23 @@ export const SettingsOverlay = React.memo<SettingsOverlayProps>(({
       <section className="settings-section">
         <h3 className="settings-section-title">General</h3>
 
+        <label className="settings-label">
+          <div className="settings-label-title">Claude Cache Duration</div>
+          <select
+            value={getModelsSetting('claudeCacheTtl')}
+            onChange={(event) => modelsSettings.updateSetting('claudeCacheTtl', event.target.value)}
+            className="settings-select"
+          >
+            <option value="5m">5 minutes (default)</option>
+            <option value="1h">1 hour</option>
+          </select>
+          <div className="settings-description">
+            For retained Claude conversations. Five-minute cache writes cost 1.25× normal input;
+            one-hour writes cost 2× (60% more). Cache-read pricing stays the same.
+            Each reuse refreshes the window. Changes apply to subsequent requests.
+          </div>
+        </label>
+
         <label className="settings-checkbox-label">
           <input
             type="checkbox"

@@ -24,6 +24,89 @@ const streamingResponse = (...events: unknown[]): Response => {
   } as unknown as Response;
 };
 
+describe('estimated cache window', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => { global.fetch = originalFetch; jest.restoreAllMocks(); });
+
+  it.each([false, true])('uses request start and selected TTL after confirmed activity (streaming=%s)', async streaming => {
+    let now = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
+    const usage = { prompt_tokens: 4096, completion_tokens: 10, total_tokens: 4106,
+      prompt_tokens_details: { cached_tokens: 0, cache_write_tokens: 4096 } };
+    global.fetch = jest.fn(async (_url, init) => {
+      expect(JSON.parse(init!.body as string).cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
+      now += 120_000; // A long response must not add generation time to the cache window.
+      return streaming ? streamingResponse({ model: 'anthropic/claude-sonnet-5', usage,
+        choices: [{ delta: { content: 'Reply' }, finish_reason: 'stop' }] }, '[DONE]')
+        : { ok: true, json: async () => ({ model: 'anthropic/claude-sonnet-5', usage,
+          choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) } as Response;
+    }) as typeof fetch;
+    const client = new OpenRouterClient('key', 'anthropic/claude-sonnet-5');
+    const options = { conversationId: 'room', claudeCacheTtl: '1h' as const };
+    let observation;
+    if (streaming) {
+      for await (const chunk of client.createStreamingChatCompletion([], options)) {
+        if (chunk.done) observation = chunk.observation;
+      }
+    } else observation = (await client.createChatCompletion([], options)).observation;
+    expect(observation).toMatchObject({ estimatedCacheExpiresAt: 4_600_000,
+      cacheRequestModelId: 'anthropic/claude-sonnet-5', measuredAt: 1_120_000 });
+  });
+
+  it.each([false, true])('reports Terra 5.6 window after a cache hit (streaming=%s)', async streaming => {
+    let now = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
+    const usage = { prompt_tokens: 159_000, completion_tokens: 1000, total_tokens: 160_000,
+      prompt_tokens_details: { cached_tokens: 157_711, cache_write_tokens: 0 } };
+    global.fetch = jest.fn(async (_url, init) => {
+      const body = JSON.parse(init!.body as string);
+      expect(body.model).toBe('~openai/gpt-5.6-terra:nitro');
+      expect(body.cache_control).toBeUndefined();
+      expect(body.prompt_cache_options).toBeUndefined();
+      now += 60_000;
+      return streaming ? streamingResponse({ model: 'openai/gpt-5.6-terra', usage,
+        choices: [{ delta: { content: 'Reply' }, finish_reason: 'stop' }] }, '[DONE]')
+        : { ok: true, json: async () => ({ model: 'openai/gpt-5.6-terra', usage,
+          choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) } as Response;
+    }) as typeof fetch;
+    const client = new OpenRouterClient('key', '~openai/gpt-5.6-terra:nitro');
+    const options = { conversationId: 'room', claudeCacheTtl: '1h' as const };
+    let observation;
+    if (streaming) {
+      for await (const chunk of client.createStreamingChatCompletion([], options)) {
+        if (chunk.done) observation = chunk.observation;
+      }
+    } else observation = (await client.createChatCompletion([], options)).observation;
+    expect(observation).toMatchObject({ estimatedCacheExpiresAt: 2_800_000,
+      cacheRequestModelId: '~openai/gpt-5.6-terra:nitro', measuredAt: 1_060_000 });
+  });
+
+  it.each([
+    ['anthropic/claude-sonnet-5', 'room', 40, 0, 300_000],
+    ['anthropic/claude-sonnet-5', 'room', 0, 40, 300_000],
+    ['anthropic/claude-sonnet-5', 'room', 0, 0, undefined],
+    ['anthropic/claude-sonnet-5', undefined, 40, 0, undefined],
+    ['google/gemini-2.5-pro', 'room', 40, 0, undefined],
+    ['meta/muse-spark-1.3', 'room', 40, 0, undefined],
+    ['qwen/qwen-plus', 'room', 40, 0, undefined],
+    ['qwen/qwen-plus', 'room', 40, 10, 300_000],
+    ['openai/gpt-5.6-terra', 'room', 40, 0, 1_800_000],
+    ['openai/gpt-5.6-terra', 'room', 0, 40, 1_800_000],
+    ['openai/gpt-5.6-terra', 'room', 0, 0, undefined],
+    ['openai/gpt-5.6-terra', undefined, 40, 0, undefined],
+    ['openai/gpt-5.4', 'room', 40, 0, undefined]
+  ])('gates estimates by known policy and evidence (%s, %s, %s, %s)', async (model, conversationId, reads, writes, expiresAt) => {
+    jest.spyOn(Date, 'now').mockReturnValue(0);
+    global.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ model,
+      choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }],
+      usage: { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110,
+        prompt_tokens_details: { cached_tokens: reads, cache_write_tokens: writes } }
+    }) })) as unknown as typeof fetch;
+    const result = await new OpenRouterClient('key', model).createChatCompletion([], { conversationId });
+    expect(result.observation?.estimatedCacheExpiresAt).toBe(expiresAt);
+  });
+});
+
 describe('OpenRouter context-compression metadata', () => {
   it.each([
     ['missing metadata', undefined, 'unknown'],

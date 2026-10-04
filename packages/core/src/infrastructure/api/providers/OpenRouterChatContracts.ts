@@ -6,6 +6,7 @@ export interface OpenRouterMessage {
 
 export interface OpenRouterCacheControl {
   type: 'ephemeral';
+  ttl?: '5m' | '1h';
 }
 
 export interface OpenRouterTextContentBlock {

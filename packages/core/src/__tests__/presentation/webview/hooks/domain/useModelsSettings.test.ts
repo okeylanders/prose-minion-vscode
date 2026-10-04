@@ -50,6 +50,7 @@ describe('useModelsSettings', () => {
         includeCraftGuides: true,
         temperature: 0.7,
         maxTokens: 10000,
+        claudeCacheTtl: '5m',
         applyContextWindowTrimming: true
       });
     });
@@ -64,6 +65,7 @@ describe('useModelsSettings', () => {
         includeCraftGuides: false,
         temperature: 0.5,
         maxTokens: 5000,
+        claudeCacheTtl: '5m',
         applyContextWindowTrimming: false
       };
 
@@ -89,12 +91,24 @@ describe('useModelsSettings', () => {
         includeCraftGuides: true,                       // Default
         temperature: 0.9,                               // From persisted
         maxTokens: 10000,                               // Default
+        claudeCacheTtl: '5m',
         applyContextWindowTrimming: true                // Default
       });
     });
   });
 
   describe('Persistence State', () => {
+    it('saves the Claude duration and synchronizes external settings edits', () => {
+      const { result } = renderHook(() => useModelsSettings());
+      act(() => result.current.updateSetting('claudeCacheTtl', '1h'));
+      expect(mockVSCode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.UPDATE_SETTING, payload: { key: 'claudeCacheTtl', value: '1h' }
+      }));
+      expect(result.current.persistedState.modelsSettings.claudeCacheTtl).toBe('1h');
+      act(() => result.current.handleSettingsData({ type: MessageType.SETTINGS_DATA,
+        source: 'extension.handler', timestamp: 0, payload: { settings: { claudeCacheTtl: '5m' } } }));
+      expect(result.current.settings.claudeCacheTtl).toBe('5m');
+    });
     it('should expose persistedState for usePersistence', () => {
       const { result } = renderHook(() => useModelsSettings());
 
