@@ -72,7 +72,7 @@ import { LabeledContextBudgetSnapshot } from '@messages';
 
 /**
  * One attachment body, fetched on demand for the Edit/Preview sheet (Sprint 13A
- * §7). Attachment content is prompt-bearing host state under a shared 50,000-word
+ * §7). Attachment content is prompt-bearing host state under a shared 100,000-word
  * budget, so it deliberately does not ride every session snapshot.
  */
 export interface WorkshopAttachmentContentState {

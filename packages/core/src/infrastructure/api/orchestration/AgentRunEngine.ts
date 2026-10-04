@@ -29,6 +29,7 @@ import {
 } from './AgentRunContracts';
 import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
+import { coerceClaudeCacheTtl } from '@messages';
 import {
   ContextBudgetSnapshot,
   ContextSourceEntry,
@@ -350,6 +351,7 @@ export class AgentRunEngine {
     const termination = this.createTerminationContext(options);
     const runOptions = { ...options, signal: termination.signal ?? options.signal };
     const history = this.conversationManager.getMessages(conversationId);
+    const retainedConversationId = policy.retention === 'retain' ? conversationId : undefined;
     const pendingMessages: OpenRouterMessage[] = [{ role: 'user', content: userMessage }];
     const artifacts: CapabilityArtifact[] = [];
     const usedGuides: string[] = [];
@@ -362,7 +364,13 @@ export class AgentRunEngine {
     let correctionTurns = 0;
 
     const recordObservation = (observation?: InferenceRequestObservation): void => {
-      if (!observation) return;
+      if (!observation) {
+        // Missing final-call telemetry cannot renew an earlier call's cache.
+        if (latestObservation) {
+          latestObservation = { ...latestObservation, estimatedCacheExpiresAt: undefined, cacheRequestModelId: undefined };
+        }
+        return;
+      }
       latestObservation = observation;
       peakPromptTokens = Math.max(peakPromptTokens, observation.promptTokens);
     };
@@ -376,7 +384,7 @@ export class AgentRunEngine {
         { role: 'assistant', content: previous.content },
         { role: 'user', content: instruction }
       );
-      const next = await this.executeTurn(currentMessages(), runOptions, capability, provider);
+      const next = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
       recordObservation(next.observation);
       totalUsage = this.addUsage(totalUsage, next.usage);
       runCitations = this.mergeUrlCitations(runCitations, next.citations);
@@ -409,7 +417,7 @@ export class AgentRunEngine {
     };
 
     try {
-      let last = await this.executeTurn(currentMessages(), runOptions, capability, provider);
+      let last = await this.executeTurn(currentMessages(), runOptions, capability, provider, retainedConversationId);
       recordObservation(last.observation);
       totalUsage = this.addUsage(totalUsage, last.usage);
       runCitations = this.mergeUrlCitations(runCitations, last.citations);
@@ -615,7 +623,11 @@ export class AgentRunEngine {
   }
 
   getConversationContextBudget(conversationId: string | undefined): ContextBudgetSnapshot | undefined {
-    return this.conversationManager.getContextBudget(conversationId);
+    const snapshot = this.conversationManager.getContextBudget(conversationId);
+    if (snapshot?.cacheRequestModelId && snapshot.cacheRequestModelId !== this.model) {
+      return { ...snapshot, estimatedCacheExpiresAt: undefined, cacheRequestModelId: undefined };
+    }
+    return snapshot;
   }
 
   getConversationContextSources(conversationId: string | undefined): ContextSourceEntry[] {
@@ -696,17 +708,23 @@ export class AgentRunEngine {
     messages: OpenRouterMessage[],
     options: AgentRunOptions,
     capability: AnyAgentCapability | undefined,
-    provider: OpenRouterClient
+    provider: OpenRouterClient,
+    conversationId?: string
   ): Promise<TurnResult> {
+    const completionOptions = {
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      signal: options.signal,
+      tools: options.tools,
+      reasoning: options.reasoning,
+      ...(conversationId ? {
+        conversationId,
+        claudeCacheTtl: coerceClaudeCacheTtl(this.settings?.get<unknown>('proseMinion', 'claudeCacheTtl'))
+      } : {})
+    };
     if (!options.onToken) {
       try {
-        const response = await provider.createChatCompletion(messages, {
-          temperature: options.temperature,
-          maxTokens: options.maxTokens,
-          signal: options.signal,
-          tools: options.tools,
-          reasoning: options.reasoning
-        });
+        const response = await provider.createChatCompletion(messages, completionOptions);
         this.emitUsage(response.usage);
         const inspection = capability?.inspectRequest(response.content);
         this.logCapabilityInspection(capability, inspection, response.content);
@@ -740,13 +758,7 @@ export class AgentRunEngine {
     const visibilityGuard = capability ? new ToolCallStreamVisibilityGuard() : undefined;
 
     try {
-      for await (const chunk of provider.createStreamingChatCompletion(messages, {
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
-        signal: options.signal,
-        tools: options.tools,
-        reasoning: options.reasoning
-      })) {
+      for await (const chunk of provider.createStreamingChatCompletion(messages, completionOptions)) {
         if (chunk.done) {
           providerResponseId = chunk.id ?? providerResponseId;
           usage = chunk.usage ?? usage;
@@ -1010,6 +1022,11 @@ export class AgentRunEngine {
       callsThisTurn: turnUsage.requestCount ?? 1,
       turnProcessedTokens: turnUsage.totalTokens,
       contextCompression: observation.contextCompression,
+      ...(observation.estimatedCacheExpiresAt !== undefined
+        ? {
+          estimatedCacheExpiresAt: observation.estimatedCacheExpiresAt,
+          cacheRequestModelId: observation.cacheRequestModelId
+        } : {}),
       measuredAt: observation.measuredAt
     };
   }

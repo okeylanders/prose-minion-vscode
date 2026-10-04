@@ -66,7 +66,7 @@ describe('prompt budgets', () => {
       characters: 100_000,
       headerAllowanceCharacters: 1_200
     });
-    expect(PROMPT_BUDGETS.contextAttachments.words).toBe(50_000);
+    expect(PROMPT_BUDGETS.contextAttachments.words).toBe(100_000);
   });
 
   it('keeps the locked Workshop capability ceilings in the shared table', () => {

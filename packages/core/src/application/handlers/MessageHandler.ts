@@ -93,6 +93,7 @@ export class MessageHandler {
     'proseMinion.includeCraftGuides',
     'proseMinion.temperature',
     'proseMinion.maxTokens',
+    'proseMinion.claudeCacheTtl',
     'proseMinion.applyContextWindowTrimming'
   ] as const;
 

@@ -42,6 +42,23 @@ describe('Workshop composed routing — context owner', () => {
     } = createWorkshopRouteTestHarness());
   });
 
+  it('preserves 100,000 words of standing context through attachment and a tool pass', async () => {
+    await pin();
+    const text = `${'reference '.repeat(99_999)}final-marker`;
+    await router.route(message(
+      MessageType.WORKSHOP_ADD_CONTEXT_TEXT,
+      { text }
+    ) as any);
+
+    expect(session.getContextAttachments()).toEqual([
+      expect.objectContaining({ words: 100_000, content: text })
+    ]);
+    expect(posted(MessageType.ERROR)).toHaveLength(0);
+
+    await runProse();
+    expect(service.analyzeProse.mock.calls[0][1]).toContain(text);
+  });
+
   it('rejects an over-budget text note at attach time — nothing over-budget reaches a tool pass', async () => {
     await pin();
     const longNote = Array.from(
@@ -281,11 +298,16 @@ describe('Workshop composed routing — context owner', () => {
       expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/too large to attach safely/i);
     });
 
-    it('enforces the per-message item cap and the duplicate guard at staging time', async () => {
-      resourceFiles.push(
-        { group: 'themes', path: 'Themes/water.md', label: 'water', sizeBytes: 40, absolutePath: '/ws/Themes/water.md', content: 'Water motif.' },
-        { group: 'themes', path: 'Themes/fire.md', label: 'fire', sizeBytes: 40, absolutePath: '/ws/Themes/fire.md', content: 'Fire motif.' }
-      );
+    it('stages seven resources, reports an eighth over the cap, and still identifies duplicates', async () => {
+      const motifs = ['water', 'fire', 'earth', 'air', 'light', 'shadow'];
+      resourceFiles.push(...motifs.map((motif) => ({
+        group: 'themes' as const,
+        path: `Themes/${motif}.md`,
+        label: motif,
+        sizeBytes: 40,
+        absolutePath: `/ws/Themes/${motif}.md`,
+        content: `${motif} motif.`
+      })));
 
       await router.route(message(
         MessageType.WORKSHOP_ATTACH_MESSAGE_RESOURCES,
@@ -293,13 +315,12 @@ describe('Workshop composed routing — context owner', () => {
           items: [
             { group: 'characters', path: 'Characters/raven.md' },
             { group: 'themes', path: 'Themes/echoes.md' },
-            { group: 'themes', path: 'Themes/water.md' },
-            { group: 'themes', path: 'Themes/fire.md' }
+            ...motifs.map((motif) => ({ group: 'themes', path: `Themes/${motif}.md` }))
           ]
         }
       ) as any);
-      expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(3);
-      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/at most 3/);
+      expect(session.getSnapshot().pendingMessageAttachments).toHaveLength(7);
+      expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/at most 7/);
 
       await attachRaven();
       expect(posted(MessageType.ERROR).at(-1).payload.message).toMatch(/already attached/);

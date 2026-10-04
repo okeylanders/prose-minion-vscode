@@ -9,23 +9,37 @@ import {
   InferenceRequestObservation,
   TokenUsage
 } from '@shared/types';
-import { isHttpUrl, type UrlCitation } from '@messages';
+import { isHttpUrl, type UrlCitation, type ClaudeCacheTtl } from '@messages';
+import type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
+import {
+  prepareOpenRouterPromptCacheRequest,
+  getOpenRouterPromptCacheTtlSeconds,
+  hasOpenRouterKnownCacheActivity,
+  OpenRouterPreparedMessages
+} from '@providers/OpenRouterPromptCachePolicy';
+
+export type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
 
 const FALLBACK_OUTPUT_RESERVE_TOKENS = 10000;
 const UNSTRUCTURED_ERROR_BODY_CHARACTERS = 1_000;
 
-export interface OpenRouterMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-export interface OpenRouterRequest {
+export interface OpenRouterRequest extends OpenRouterPreparedMessages {
   model: string;
-  messages: OpenRouterMessage[];
   temperature?: number;
   max_tokens?: number;
   reasoning?: OpenRouterReasoningOptions;
   usage?: { include: boolean };
+}
+
+export interface OpenRouterCompletionOptions {
+  temperature?: number;
+  maxTokens?: number;
+  signal?: AbortSignal;
+  tools?: OpenRouterWebSearchTool[];
+  reasoning?: OpenRouterReasoningOptions;
+  /** Retained history identity: enables conversation affinity and caching policy. */
+  conversationId?: string;
+  claudeCacheTtl?: ClaudeCacheTtl;
 }
 
 export interface OpenRouterReasoningOptions {
@@ -134,13 +148,7 @@ export class OpenRouterClient {
 
   async createChatCompletion(
     messages: OpenRouterMessage[],
-    options?: {
-      temperature?: number;
-      maxTokens?: number;
-      signal?: AbortSignal;
-      tools?: OpenRouterWebSearchTool[];
-      reasoning?: OpenRouterReasoningOptions;
-    }
+    options?: OpenRouterCompletionOptions
   ): Promise<{
     content: string;
     finishReason?: string;
@@ -151,9 +159,10 @@ export class OpenRouterClient {
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
+    const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({
       model: requestedModel,
-      messages,
+      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.conversationId, options?.claudeCacheTtl),
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,
       usage: { include: true },
@@ -187,7 +196,9 @@ export class OpenRouterClient {
         requestedMaxOutputTokens,
         usage,
         data.choices[0]?.finish_reason,
-        data.openrouter_metadata
+        data.openrouter_metadata,
+        this.estimateCacheExpiry(requestedModel, data.model || requestedModel, options, usage, requestStartedAt),
+        requestedModel
       ) : undefined
     };
   }
@@ -213,13 +224,7 @@ export class OpenRouterClient {
    */
   async *createStreamingChatCompletion(
     messages: OpenRouterMessage[],
-    options?: {
-      temperature?: number;
-      maxTokens?: number;
-      signal?: AbortSignal;
-      tools?: OpenRouterWebSearchTool[];
-      reasoning?: OpenRouterReasoningOptions;
-    }
+    options?: OpenRouterCompletionOptions
   ): AsyncGenerator<{
     token: string;
     done: boolean;
@@ -231,9 +236,10 @@ export class OpenRouterClient {
   }> {
     const requestedModel = this.model;
     const requestedMaxOutputTokens = options?.maxTokens ?? FALLBACK_OUTPUT_RESERVE_TOKENS;
+    const requestStartedAt = Date.now();
     const response = await this.fetchCompletion({
       model: requestedModel,
-      messages,
+      ...prepareOpenRouterPromptCacheRequest(requestedModel, messages, options?.conversationId, options?.claudeCacheTtl),
       stream: true,
       temperature: options?.temperature ?? 0.7,
       max_tokens: requestedMaxOutputTokens,
@@ -275,7 +281,9 @@ export class OpenRouterClient {
           requestedMaxOutputTokens,
           usage,
           finishReason,
-          routerMetadata
+          routerMetadata,
+          this.estimateCacheExpiry(requestedModel, responseModel, options, usage, requestStartedAt),
+          requestedModel
         ) : undefined,
         citations
       });
@@ -511,12 +519,33 @@ export class OpenRouterClient {
     return merged.length > 0 ? merged : undefined;
   }
 
+  private estimateCacheExpiry(
+    requestedModel: string,
+    responseModel: string,
+    options: OpenRouterCompletionOptions | undefined,
+    usage: TokenUsage,
+    requestStartedAt: number
+  ): number | undefined {
+    if (!options?.conversationId || !hasOpenRouterKnownCacheActivity(requestedModel, usage)) {
+      return undefined;
+    }
+    const ttl = getOpenRouterPromptCacheTtlSeconds(requestedModel, options.claudeCacheTtl);
+    if (ttl === undefined || ttl !== getOpenRouterPromptCacheTtlSeconds(responseModel, options.claudeCacheTtl)) {
+      return undefined;
+    }
+    // Provider usage confirms activity, not its timestamp. Dispatch time is
+    // conservative: a long generation must not extend the displayed window.
+    return requestStartedAt + ttl * 1000;
+  }
+
   private toObservation(
     modelId: string,
     requestedMaxOutputTokens: number,
     usage: TokenUsage,
     finishReason: string | undefined,
-    routerMetadata: unknown
+    routerMetadata: unknown,
+    estimatedCacheExpiresAt?: number,
+    cacheRequestModelId?: string
   ): InferenceRequestObservation {
     const contextCompression = normalizeContextCompression(routerMetadata);
     if (routerMetadata !== undefined && contextCompression === 'unknown') {
@@ -533,6 +562,8 @@ export class OpenRouterClient {
       requestedMaxOutputTokens,
       finishReason,
       contextCompression,
+      ...(contextCompression !== 'applied' && estimatedCacheExpiresAt !== undefined
+        ? { estimatedCacheExpiresAt, cacheRequestModelId } : {}),
       measuredAt: Date.now()
     };
   }

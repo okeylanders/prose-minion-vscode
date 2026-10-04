@@ -106,6 +106,85 @@ describe('AgentRunEngine', () => {
 
   afterEach(() => engine.dispose());
 
+  it('reads Claude duration per retained request and leaves discarded runs without cache options', async () => {
+    engine.dispose();
+    let ttl = '1h';
+    engine = new AgentRunEngine(client as never, conversations, undefined, undefined, undefined,
+      { get: () => ttl } as never);
+    client.createChatCompletion.mockResolvedValue({ content: 'Reply' });
+    const initial = await engine.runInitial({
+      toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources
+    });
+    expect(client.createChatCompletion.mock.calls[0][1].claudeCacheTtl).toBe('1h');
+    ttl = '5m';
+    await engine.continueConversation({ conversationId: initial.conversationId!, userMessage: 'Continue',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources });
+    expect(client.createChatCompletion.mock.calls[1][1].claudeCacheTtl).toBe('5m');
+    await engine.runInitial({ toolName: 'dictionary', systemMessage: 'System', userMessage: 'Word',
+      policy: AGENT_RUN_POLICIES.dictionary });
+    expect(client.createChatCompletion.mock.calls[2][1]).not.toHaveProperty('claudeCacheTtl');
+  });
+
+  it.each(['hit', 'miss', 'unreported'])('uses only the final request cache window (%s)', async final => {
+    const observation = { modelId: 'anthropic/claude-sonnet-5', promptTokens: 4096, completionTokens: 10,
+      totalTokens: 4106, requestedMaxOutputTokens: 1000, contextCompression: 'unknown', measuredAt: 0 };
+    client.createChatCompletion
+      .mockResolvedValueOnce({ content: GUIDE_REQUEST,
+        usage: { promptTokens: 4096, completionTokens: 10, totalTokens: 4106, cachedTokens: 4096 },
+        observation: { ...observation, estimatedCacheExpiresAt: 300_000, cacheRequestModelId: 'anthropic/claude-sonnet-5' } })
+      .mockResolvedValueOnce({ content: 'Final reply',
+        usage: { promptTokens: 4096, completionTokens: 10, totalTokens: 4106, cachedTokens: final === 'hit' ? 4096 : 0 },
+        observation: final === 'unreported' ? undefined : { ...observation,
+          ...(final === 'hit' ? { estimatedCacheExpiresAt: 301_000, cacheRequestModelId: 'anthropic/claude-sonnet-5' } : {}) } });
+    const result = await engine.runInitial({ toolName: 'dialogue', systemMessage: 'System', userMessage: 'Analyze',
+      policy: { ...AGENT_RUN_POLICIES.assistant, retention: 'retain' }, capability: capability() });
+    expect(conversations.getContextBudget(result.conversationId)?.estimatedCacheExpiresAt)
+      .toBe(final === 'hit' ? 301_000 : undefined);
+  });
+
+  it.each([false, true])('carries retained conversation identity through every inference (streaming=%s)', async streaming => {
+    const responses = [PERSONA_REQUEST, 'Initial reply', PERSONA_REQUEST, 'Follow-up reply', 'Guest reply', 'One-off reply'];
+    if (streaming) {
+      client.createStreamingChatCompletion.mockImplementation(() => stream([responses.shift()!]));
+    } else {
+      client.createChatCompletion.mockImplementation(async () => ({ content: responses.shift()!, finishReason: 'stop' }));
+    }
+    const options = streaming ? { onToken: jest.fn() } : undefined;
+    const initial = await engine.runInitial({
+      toolName: 'workshop-host', systemMessage: 'Stable instructions', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(), options
+    });
+    await engine.continueConversation({
+      conversationId: initial.conversationId!, userMessage: 'Continue',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(), options
+    });
+    const guest = await engine.runInitial({
+      toolName: 'workshop-guest', systemMessage: 'Guest instructions', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopToolWithoutResources, options
+    });
+    await engine.runInitial({
+      toolName: 'dictionary', systemMessage: 'Dictionary instructions', userMessage: 'Define a word',
+      policy: AGENT_RUN_POLICIES.dictionary, options
+    });
+
+    const calls = (streaming ? client.createStreamingChatCompletion : client.createChatCompletion).mock.calls;
+    expect(calls).toHaveLength(6);
+    for (const [_messages, providerOptions] of calls.slice(0, 4)) {
+      expect(providerOptions.conversationId).toBe(initial.conversationId);
+    }
+    expect(calls[4][1].conversationId).toBe(guest.conversationId);
+    expect(guest.conversationId).not.toBe(initial.conversationId);
+    expect(calls[5][1]).not.toHaveProperty('conversationId');
+    expect(conversations.getMessages(initial.conversationId!)).toEqual(
+      expect.arrayContaining([{ role: 'system', content: 'Stable instructions' }])
+    );
+    for (const message of conversations.getMessages(initial.conversationId!)) {
+      expect(typeof message.content).toBe('string');
+      expect(message).not.toHaveProperty('cache_control');
+    }
+  });
+
   it('hydrates while offline, rejects a send without mutation, then continues after provider attachment', async () => {
     const offlineConversations = new ConversationManager();
     const offlineEngine = new AgentRunEngine(

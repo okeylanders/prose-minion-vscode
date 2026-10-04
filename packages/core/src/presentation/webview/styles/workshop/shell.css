@@ -1650,8 +1650,27 @@
 }
 [data-pm-surface="workshop"] .pm-ws-comp-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-cache {
+  flex: 1 1 180px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--pm-accent-hi);
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-cache svg {
+  flex-shrink: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-cache-expired {
+  opacity: 0.65;
 }
 [data-pm-surface="workshop"] .pm-ws-comp-add {
   width: 36px;

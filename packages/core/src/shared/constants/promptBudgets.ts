@@ -172,11 +172,11 @@ export interface PromptBudgets {
 export const PROMPT_BUDGETS: PromptBudgets = {
   fileExcerpt: { words: 25_000, bytes: 5 * 1024 * 1024 },
   personaExcerpt: { words: 25_000, characters: 300_000 },
-  // Raised to 50k for long-form Workshop rooms (Okey 2026-07-26). Making this a user
+  // Raised to 100k for long-form Workshop rooms (Okey 2026-10-03). Making this a user
   // setting is tracked in .todo/tech-debt/2026-07-17-context-attachment-budget-setting.md.
   contextAttachments: {
-    words: 50_000,
-    characters: 420_000,
+    words: 100_000,
+    characters: 840_000,
     fileBytes: 5 * 1024 * 1024
   },
   workshopCapability: {
@@ -214,7 +214,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
-  workshopThreadArtifacts: { itemsPerMessage: 3, words: 10_000 },
+  workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },
   workshopWidgets: {
     gestureTargetPhraseCharacters: 300,
     gestureWriterInstructionsCharacters: 1_000,
