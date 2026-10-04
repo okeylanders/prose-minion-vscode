@@ -24,7 +24,17 @@
 
 ---
 
-## What's new in v2.7.0 — Rewind, branch, and explore
+## What's new in v2.8.0 — Cache-aware Workshop conversations
+
+- **Request reuse for retained conversations** — Workshop enables prompt caching for Claude and supported Alibaba/Qwen routes while preserving other providers' native behavior. Provider-reported cached-token counts show actual reuse.
+- **Choose Claude's cache duration** — General settings offers five minutes (default) or one hour. Cold writes cost more than ordinary input, and one-hour writes cost more than five-minute writes; choose for your working rhythm.
+- **See an estimated cache window** — a clock beside the composer appears after qualifying provider cache activity. It is an estimate, not a promise that the next request will hit cache.
+- **Attach more and resend less** — up to 100K words of standing context and seven attachments per message. Subsequent context edits send only changed material and removals. Known live model windows receive an estimated capacity check; a refused Workshop send restores your draft.
+- **Upgrade Git-synced machines together** — existing sessions open, but sessions saved with the new context-delivery bookkeeping need this version or newer on every machine.
+
+Live Claude/Qwen cache-hit and duration acceptance remain pending.
+
+### Also in v2.7.0 — Rewind, branch, and explore
 
 - **Try another direction in Workshop** — rewind to a reply, edit an earlier message in its composer or widget, or branch a saved conversation into a new session. Branch keeps the source file intact; your current excerpt and context stay with you.
 - **Listen to your prose with Craft Steering** — examine sound, rhythm, sentence handoffs, and narrative control in the sidebar or Workshop, with revision experiments that preserve your passage's intent.
