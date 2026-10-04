@@ -4,9 +4,9 @@
  * (docs/design/pm-wk-notify.js + `Prose Minion - Notice Modal.html`). The
  * release's new features lead the tour (ADR 2026-09-30, Sprint 03 kickoff
  * decision 5): every machine sees the whole box again after a version bump,
- * so what changed comes first. Each release replaces the previous release's
- * `new` pages: a Workshop control worth teaching stays on as a `primer` (Rewind,
- * edit, and branch), and announcements of sidebar-wide tools retire.
+ * so what changed comes first. The tour is also the writer's full guide, so
+ * a previous release's `new` pages stay on as `primer` pages after the
+ * standing tour, never retire.
  *
  * Layout is two columns: an annotated media well on the left (screenshots of
  * the real controls, with numbered call-out boxes and a matching legend) and
@@ -447,6 +447,103 @@ const PAGES: readonly NoticePage[] = [
     legend: [
       { label: '1', term: 'Tools', detail: 'analysis tools; enabled once an excerpt is pinned.' },
       { label: '2', term: '+', detail: 'pin the excerpt and attach project context.' }
+    ]
+  },
+  {
+    title: 'Craft Steering',
+    tag: 'primer',
+    /* "creative variations" stays lower case on purpose: in title case it is a
+       Workshop widget's name, which the feature-boundary guard in
+       boundaries.test.ts reserves for that widget's own family. */
+    body: (
+      <>
+        An analysis tool under <b>Craft &amp; Voice</b>, inspired by Ursula K. Le Guin&rsquo;s{' '}
+        <i>Steering the Craft</i>. It listens to sound, rhythm, and how each sentence carries you
+        into the next. The report names what to preserve, audits sound and narrative control, and
+        traces the handoffs between sentences. Its sample revisions and creative variations each
+        explain what they gain and what they cost. Pauses, repetition, and fragments you meant
+        are judged by their effect, not smoothed away. Run it from{' '}
+        <b>Tools</b> on a pinned excerpt, or ask your host or a guest to run it on a passage from
+        the conversation.
+      </>
+    ),
+    note: (
+      <>
+        Craft Steering is in the sidebar&rsquo;s Writing Tools too, under Craft &amp; Voice.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'composer-controls',
+        alt: 'The composer control bar, with Tools highlighted',
+        maxWidthPx: 560,
+        ratio: '1320 / 338',
+        callouts: [
+          { label: '1', leftPercent: 77.2, topPercent: 52.5, widthPercent: 11.2, heightPercent: 22 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'tools-craft-steering',
+        alt: 'The Tools picker, with the Craft Steering card selected',
+        maxWidthPx: 460,
+        ratio: '1242 / 364',
+        callouts: [
+          { label: '2', leftPercent: 2.7, topPercent: 9.3, widthPercent: 46.9, heightPercent: 81.4 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Tools', detail: 'runs a tool directly on the pinned excerpt.' },
+      { label: '2', term: 'Craft Steering', detail: 'under Craft & Voice; one run, and the report lands in the thread.' }
+    ]
+  },
+  {
+    title: 'Topic & Related Lexicon',
+    tag: 'primer',
+    body: (
+      <>
+        Dictionary entries can end with an encyclopedia entry: the topics a word belongs to,
+        related vocabulary, examples for your writing, and possible reference books for each
+        topic. Turn it on or off with the <b>Topic &amp; Related Lexicon</b> switch above the
+        lookup buttons in the sidebar&rsquo;s <b>Dictionary</b> tab. It starts on and remembers
+        your choice for both standard and Fast lookups.
+      </>
+    ),
+    note: (
+      <>
+        When a host or guest looks up a word for you in the Workshop, the encyclopedia entry is
+        left out.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'dictionary-topic-switch',
+        alt: 'The Topic & Related Lexicon switch in the Dictionary tab, turned on',
+        maxWidthPx: 420,
+        ratio: '948 / 208',
+        callouts: [
+          { label: '1', leftPercent: 80.6, topPercent: 32.2, widthPercent: 16, heightPercent: 35.6 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'dictionary-topic-entry',
+        alt: 'The start of a Topic & Related Lexicon entry for "fricative"',
+        maxWidthPx: 360,
+        ratio: '964 / 696',
+        callouts: [
+          { label: '2', leftPercent: 4.4, topPercent: 4.9, widthPercent: 52.9, heightPercent: 10.3 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Topic & Related Lexicon', detail: 'the switch above the lookup buttons; on by default.' },
+      { label: '2', term: 'Encyclopedia entry', detail: 'added at the end: topics, related vocabulary, examples, and possible reference books.' }
     ]
   },
   {

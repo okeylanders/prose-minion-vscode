@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Workshop tour and README artwork
 
 - The startup notice moves to `v6` and leads with two pages: prompt caching with the cache clock, and the larger context budgets. Their six screenshots are 2× captures of the real webview bundle: `composer-cache-clock`, `reply-cached-badge`, `settings-cache-duration`, `attach-menu`, `message-attachment-slots`, and `context-intake-meter`.
-- Rewind, edit, and branch stays on as a `primer` page before the project-agents page. Its v2.7.0 downgrade note moves to the context page, as this release's upgrade note. The v2.7.0 Craft Steering and Topic & Related Lexicon pages retire with their three screenshots, so the tour stays at nine pages.
+- The v2.7.0 pages stay on as `primer` pages, without "New:", because the tour doubles as the writer's full guide. Craft Steering and Topic & Related Lexicon follow the Tools page, and Rewind, edit, and branch precedes the project-agents page. Rewind's v2.7.0 downgrade note moves to the context page, as this release's upgrade note. The tour grows to eleven pages.
 - The Marketplace README adds `workshop-prompt-caching.png` and `workshop-more-context.png` under What's new. The v2.7.0 Craft Steering and Topic & Related Lexicon images move into the Assistant and Dictionary sections.
 
 ### Compatibility and review

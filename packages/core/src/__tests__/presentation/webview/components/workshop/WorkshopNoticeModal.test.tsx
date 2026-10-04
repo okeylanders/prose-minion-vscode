@@ -26,9 +26,9 @@ describe('WorkshopNoticeModal', () => {
   /** The media well's legend, which repeats the control names as call-outs. */
   const legend = () => document.querySelector('.pm-ws-notice-legend') as HTMLElement;
 
-  it('opens on the newest notice, page one of nine, with prev disabled', () => {
+  it('opens on the newest notice, page one of eleven, with prev disabled', () => {
     renderModal();
-    expect(screen.getByText(/1 \/ 9/)).toBeTruthy();
+    expect(screen.getByText(/1 \/ 11/)).toBeTruthy();
     expect(screen.getByText('New: prompt caching, with a cache clock')).toBeTruthy();
     const prev = screen.getByRole('button', { name: 'Previous notice' }) as HTMLButtonElement;
     expect(prev.disabled).toBe(true);
@@ -38,7 +38,7 @@ describe('WorkshopNoticeModal', () => {
   it('introduces prompt caching first: the clock is an estimate, the cached count is evidence', () => {
     renderModal();
 
-    expect(screen.getByText(/1 \/ 9/).parentElement?.textContent).toBe('1 / 9 · new');
+    expect(screen.getByText(/1 \/ 11/).parentElement?.textContent).toBe('1 / 11 · new');
     expect(within(copy()).getByText(/supported Alibaba\/Qwen routes/)).toBeTruthy();
     expect(within(copy()).getByText(/Other providers\s+keep their own caching/)).toBeTruthy();
     expect(within(copy()).getByText(/It is an estimate, not a\s+promise/)).toBeTruthy();
@@ -61,7 +61,7 @@ describe('WorkshopNoticeModal', () => {
     renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
 
-    expect(screen.getByText(/2 \/ 9/).parentElement?.textContent).toBe('2 / 9 · new');
+    expect(screen.getByText(/2 \/ 11/).parentElement?.textContent).toBe('2 / 11 · new');
     expect(screen.getByText('New: room for more context')).toBeTruthy();
     expect(within(copy()).getByText('100,000 words')).toBeTruthy();
     expect(within(copy()).getByText('seven attachments')).toBeTruthy();
@@ -82,12 +82,55 @@ describe('WorkshopNoticeModal', () => {
     ]);
   });
 
-  /* No longer this release's news: Rewind stays on as a standing primer. */
-  it('keeps rewind, edit, and branch as a primer, without the old release note', () => {
+  /* The tour is the writer's full guide: earlier releases' pages stay on as primers. */
+  it('keeps Craft Steering as a primer, pointing at Tools and its Craft & Voice card', () => {
     renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Notice 8' }));
 
-    expect(screen.getByText(/8 \/ 9/).parentElement?.textContent).toBe('8 / 9 · primer');
+    expect(screen.getByText(/8 \/ 11/).parentElement?.textContent).toBe('8 / 11 · primer');
+    expect(screen.getByText('Craft Steering', { selector: 'h2' })).toBeTruthy();
+    expect(within(copy()).getByText('Steering the Craft')).toBeTruthy();
+    expect(within(copy()).getByText(/judged by their effect, not smoothed away/)).toBeTruthy();
+    /* Persona-run analysis is part of the feature, not just the picker. */
+    expect(within(copy()).getByText(/ask your host or a guest to run it/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
+      'Craft Steering is in the sidebar’s Writing Tools too, under Craft & Voice.'
+    );
+
+    const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
+    expect(callouts.map((node) => node.textContent)).toEqual(['1', '2']);
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Tools — runs a tool directly on the pinned excerpt.',
+      '2Craft Steering — under Craft & Voice; one run, and the report lands in the thread.'
+    ]);
+  });
+
+  it('keeps Topic & Related Lexicon as a primer, and says personas leave it out', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+
+    expect(screen.getByText(/9 \/ 11/).parentElement?.textContent).toBe('9 / 11 · primer');
+    expect(screen.getByText('Topic & Related Lexicon', { selector: 'h2' })).toBeTruthy();
+    expect(within(copy()).getByText(/Dictionary entries can end with an encyclopedia entry/)).toBeTruthy();
+    expect(within(copy()).getByText(/possible reference books for each\s+topic/)).toBeTruthy();
+    expect(within(copy()).getByText(/It starts on and remembers\s+your choice for both standard and Fast lookups/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
+      'When a host or guest looks up a word for you in the Workshop, the encyclopedia entry is left out.'
+    );
+
+    const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
+    expect(callouts.map((node) => node.textContent)).toEqual(['1', '2']);
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Topic & Related Lexicon — the switch above the lookup buttons; on by default.',
+      '2Encyclopedia entry — added at the end: topics, related vocabulary, examples, and possible reference books.'
+    ]);
+  });
+
+  it('keeps rewind, edit, and branch as a primer, without the old release note', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
+
+    expect(screen.getByText(/10 \/ 11/).parentElement?.textContent).toBe('10 / 11 · primer');
     expect(screen.getByText('Rewind, edit, and branch')).toBeTruthy();
     expect(within(copy()).getByText('Rewind to here')).toBeTruthy();
     expect(within(copy()).getByText('Edit from here')).toBeTruthy();
@@ -99,7 +142,7 @@ describe('WorkshopNoticeModal', () => {
 
   it('draws the thread\'s own actions, called out to match the legend', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 8' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
 
     const rows = Array.from(document.querySelectorAll('.pm-ws-notice-actions'));
     expect(rows.map((row) => row.querySelector('.pm-ws-notice-actions-caption')?.textContent))
@@ -123,21 +166,21 @@ describe('WorkshopNoticeModal', () => {
     renderModal();
     const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
     fireEvent.click(next);
-    expect(screen.getByText(/2 \/ 9/)).toBeTruthy();
+    expect(screen.getByText(/2 \/ 11/)).toBeTruthy();
     expect(screen.getByText('New: room for more context')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
-    expect(screen.getByText(/3 \/ 9/)).toBeTruthy();
+    expect(screen.getByText(/3 \/ 11/)).toBeTruthy();
     expect(screen.getByText('Welcome to the Workshop beta')).toBeTruthy();
     expect(screen.getByText(/never changes project files on its own/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
-    expect(screen.getByText(/4 \/ 9/)).toBeTruthy();
+    expect(screen.getByText(/4 \/ 11/)).toBeTruthy();
     expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     expect(within(copy()).getByText(/Prose Minion Settings/)).toBeTruthy();
     expect(within(copy()).getByText(/individual chapter files/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
     expect(screen.getByText('Agents can work with your project')).toBeTruthy();
     expect(screen.getByText(/do not need to attach every file by hand/)).toBeTruthy();
     expect(next.disabled).toBe(true);
@@ -187,8 +230,10 @@ describe('WorkshopNoticeModal', () => {
 
     it.each([
       ['Notice 1', ['composer-cache-clock', 'reply-cached-badge', 'settings-cache-duration']],
-      ['Notice 2', ['attach-menu', 'message-attachment-slots', 'context-intake-meter']]
-    ])('shows the new-feature screenshots on %s', (dot, names) => {
+      ['Notice 2', ['attach-menu', 'message-attachment-slots', 'context-intake-meter']],
+      ['Notice 8', ['composer-controls', 'tools-craft-steering']],
+      ['Notice 9', ['dictionary-topic-switch', 'dictionary-topic-entry']]
+    ])('shows the feature screenshots on %s', (dot, names) => {
       window.proseMinionAssets = {
         noticeShots: Object.fromEntries(
           WORKSHOP_NOTICE_SHOTS.map((name) => [name, `https://webview.test/${name}.png`])
@@ -284,13 +329,13 @@ describe('WorkshopNoticeModal', () => {
       expect(screen.queryByText('Start with an open project folder')).toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/4 \/ 9/)).toBeTruthy();
+      expect(screen.getByText(/4 \/ 11/)).toBeTruthy();
       expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     });
 
     it('is reachable from the agents notice and returns to the LAST page', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
 
       fireEvent.click(screen.getByRole('button', { name: /Project Resource Locations/ }));
       expect(screen.getByRole('dialog', { name: 'How to configure your project' })).toBeTruthy();
@@ -298,7 +343,7 @@ describe('WorkshopNoticeModal', () => {
       /* The boundary page is where an index-reset or PAGES.length - 1 off-by-one
          hides while passing on an interior page (PR #94 review, Cal). */
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/9 \/ 9/)).toBeTruthy();
+      expect(screen.getByText(/11 \/ 11/)).toBeTruthy();
       expect(screen.getByText('Agents can work with your project')).toBeTruthy();
       const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
       expect(next.disabled).toBe(true);
@@ -317,7 +362,7 @@ describe('WorkshopNoticeModal', () => {
         'Then follow How to configure your project for the whole walkthrough.'
       );
 
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
       expect(document.querySelector('.pm-ws-notice-guide-note')?.textContent).toBe(
         'Project-file reading depends on the paths set in Project Resource Locations.'
       );

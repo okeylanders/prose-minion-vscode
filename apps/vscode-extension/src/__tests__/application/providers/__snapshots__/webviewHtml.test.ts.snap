@@ -45,7 +45,10 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
         "settings-cache-duration": "https://webview.test/ext/assets/workshop-notices/settings-cache-duration.png",
         "attach-menu": "https://webview.test/ext/assets/workshop-notices/attach-menu.png",
         "message-attachment-slots": "https://webview.test/ext/assets/workshop-notices/message-attachment-slots.png",
-        "context-intake-meter": "https://webview.test/ext/assets/workshop-notices/context-intake-meter.png"
+        "context-intake-meter": "https://webview.test/ext/assets/workshop-notices/context-intake-meter.png",
+        "tools-craft-steering": "https://webview.test/ext/assets/workshop-notices/tools-craft-steering.png",
+        "dictionary-topic-switch": "https://webview.test/ext/assets/workshop-notices/dictionary-topic-switch.png",
+        "dictionary-topic-entry": "https://webview.test/ext/assets/workshop-notices/dictionary-topic-entry.png"
       }
     };
   </script>

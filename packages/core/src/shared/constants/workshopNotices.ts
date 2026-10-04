@@ -43,7 +43,10 @@ export const WORKSHOP_NOTICE_SHOTS = [
   'settings-cache-duration',
   'attach-menu',
   'message-attachment-slots',
-  'context-intake-meter'
+  'context-intake-meter',
+  'tools-craft-steering',
+  'dictionary-topic-switch',
+  'dictionary-topic-entry'
 ] as const;
 
 export type WorkshopNoticeShot = (typeof WORKSHOP_NOTICE_SHOTS)[number];
