@@ -130,7 +130,8 @@ session, then `transcript.todos` lists that session's to-dos.
   `todoSessions`.
 - `<match>` uses the search module's session-level matching: the same
   tokenizer, prefix rule, and all-terms preference. It narrows sessions, not
-  items.
+  items. [Slice 2C's D8](slice-2c-excerpt-summaries.md#d8-the-catalog-gains-match)
+  proposes one `<match>` rule for the family: title and excerpt label only.
 - `<source>` accepts a tool id or a persona id. Both are closed lists, so the
   codec validates them.
 - `<persona>` (sessions a persona took part in) behaves as it does elsewhere
