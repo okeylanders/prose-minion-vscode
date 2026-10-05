@@ -30,6 +30,11 @@ import {
   WorkshopRecallClock,
   workshopRecallDuration
 } from '@/application/services/workshop/recall/WorkshopRecallTime';
+import {
+  recallBlock,
+  recallLabel,
+  recallLabelList
+} from '@/application/services/workshop/recall/WorkshopRecallText';
 import type {
   WorkshopRecallHit,
   WorkshopRecallSessionHits
@@ -45,14 +50,30 @@ import type {
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 import type { WorkshopSessionScope } from '@messages';
 
-/** One label: a title, an id, a file name. */
-const LABEL_CHARACTERS = 200;
 /** The context-attachment labels in a read's header. */
 const READ_CONTEXT_LABEL_CHARACTERS = 2_000;
 /** The context-attachment labels in one session-level search hit. */
 const HIT_CONTEXT_LABEL_CHARACTERS = 400;
+/** Participant names on one header or catalog line. */
+const PARTICIPANT_CHARACTERS = 400;
 /** Sessions named in one hit's "also in". */
 const ALSO_IN_SESSIONS = 3;
+/** Ranges one footer or header list names before counting the rest. */
+const LISTED_RANGES = 12;
+
+/**
+ * A read's complete text is header + entries + footer. The header and the
+ * footer each have a hard cap, so the entries' share is known before any
+ * metadata is rendered, whatever a saved file holds (PR 126 review F-01).
+ */
+const READ_HEADER_CHARACTERS = 4_000;
+const READ_FOOTER_CHARACTERS = 1_000;
+/**
+ * The smallest supported `readCharacters`: both caps, plus room for a
+ * readable head of one entry. A smaller window is a programming error.
+ */
+export const WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS =
+  READ_HEADER_CHARACTERS + READ_FOOTER_CHARACTERS + 1_000;
 
 /** The one-line framing at the top of every recall body. */
 export const WORKSHOP_TRANSCRIPT_RECALL_FRAMING =
@@ -176,19 +197,32 @@ export function renderWorkshopRecallRead(
   }
   if (result.outcome === 'unreadable') {
     return notRead(body([
-      `The saved session ${quoted(result.title)} (id ${label(result.sessionId)}) could not be read; ` +
+      `The saved session ${quoted(result.title)} (id ${recallLabel(result.sessionId)}) could not be read; ` +
         'its file may be damaged or too large. Nothing from it is shown.'
     ]));
   }
   const budget = options.readCharacters ?? PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters;
-  const header = body([...readHeader(result.header, options.now), requestedLine(result)]);
+  if (budget < WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS) {
+    throw new RangeError(
+      `A session-recall read needs at least ${WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS} characters; got ${budget}.`
+    );
+  }
+  const header = recallBlock(
+    body([...readHeader(result.header, options.now), requestedLine(result), ...contextLine(result.header)]),
+    READ_HEADER_CHARACTERS,
+    '[header shortened to fit the window]'
+  );
   // header + separator + blocks (each costed with its separator) + footer.
   const window = packWorkshopRecallReadWindow(
     result.ranges,
     result.header.timezone,
-    budget - header.length - WORKSHOP_RECALL_BLOCK_SEPARATOR.length - footerReserve(result.ranges)
+    budget - header.length - WORKSHOP_RECALL_BLOCK_SEPARATOR.length - READ_FOOTER_CHARACTERS
   );
-  const footer = readFooter(result, window).join('\n');
+  const footer = recallBlock(
+    readFooter(result, window).join('\n'),
+    READ_FOOTER_CHARACTERS,
+    '[footer shortened]'
+  );
   return {
     content: [header, ...window.blocks, footer].join(WORKSHOP_RECALL_BLOCK_SEPARATOR),
     delivered: window.delivered,
@@ -199,34 +233,34 @@ export function renderWorkshopRecallRead(
 
 // ── Read windows ─────────────────────────────────────────────────────────────
 
-/** Fixed footer copy, beyond the range lists it quotes. */
-const FOOTER_FIXED_CHARACTERS = 200;
-/**
- * The footer quotes at most three range lists (shown, empty, continue), each
- * no longer than the requested list plus a digit or two per range.
- */
-function footerReserve(ranges: readonly WorkshopRecallTurnRange[]): number {
-  return FOOTER_FIXED_CHARACTERS + 3 * (formatWorkshopRecallTurnRanges(ranges).length + 4 * ranges.length);
-}
-
+/** Context labels come last, so a header over its cap loses them first. */
 function readHeader(header: WorkshopRecallHeader, now: number): string[] {
   const clock = new WorkshopRecallClock(header.timezone);
   return [
-    `Session ${quoted(header.title)} · id ${label(header.sessionId)}`,
+    `Session ${quoted(header.title)} · id ${recallLabel(header.sessionId)}`,
     `Saved ${savedAt(header.savedAt, header.timezone, now)} · started ${clock.date(Date.parse(header.startedAt))}`,
-    `Host ${header.host} · participants ${header.participants.join(', ')}`,
-    ...scopeLine(header.scope, header.excerptLabel),
-    ...(header.contextLabels.length > 0
-      ? [`Context attachments (labels only): ${labelList(header.contextLabels, READ_CONTEXT_LABEL_CHARACTERS)}`]
-      : [])
+    `Host ${recallLabel(header.host)} · participants ${recallLabelList(header.participants, PARTICIPANT_CHARACTERS)}`,
+    ...scopeLine(header.scope, header.excerptLabel)
   ];
+}
+
+function contextLine(header: WorkshopRecallHeader): string[] {
+  return header.contextLabels.length > 0
+    ? [`Context attachments (labels only): ${recallLabelList(header.contextLabels, READ_CONTEXT_LABEL_CHARACTERS)}`]
+    : [];
 }
 
 function requestedLine(result: Extract<WorkshopRecallReadResult, { outcome: 'read' }>): string {
   const total = result.header.turnCount;
   return result.fromStart
     ? `Requested: the whole session from turn 1 (${count(total, 'turn')}).`
-    : `Requested: turns ${formatWorkshopRecallTurnRanges(result.ranges)} of ${total}.`;
+    : `Requested: turns ${listedRanges(result.ranges)} of ${total}.`;
+}
+
+/** At most LISTED_RANGES ranges in the `<turns>` grammar, then a count of the rest. */
+function listedRanges(ranges: readonly WorkshopRecallTurnRange[]): string {
+  const listed = formatWorkshopRecallTurnRanges(ranges.slice(0, LISTED_RANGES));
+  return ranges.length > LISTED_RANGES ? `${listed}, and ${ranges.length - LISTED_RANGES} more ranges` : listed;
 }
 
 function readFooter(
@@ -239,7 +273,7 @@ function readFooter(
     lines.push(
       result.header.turnCount === 0
         ? 'This session has no turns.'
-        : `No visible turns in ${formatWorkshopRecallTurnRanges(empty)}; ` +
+        : `No visible turns in ${listedRanges(empty)}; ` +
           `this session ends at turn ${result.header.turnCount}.`
     );
     return lines;
@@ -248,14 +282,19 @@ function readFooter(
     window.delivered.length === 0
       ? 'No turn fit in this window.'
       : window.continuation.length === 0
-        ? `Shown: turns ${formatWorkshopRecallTurnRanges(window.delivered)}; every requested turn is here.`
-        : `Shown: turns ${formatWorkshopRecallTurnRanges(window.delivered)}; the window is full.`
+        ? `Shown: turns ${listedRanges(window.delivered)}; every requested turn is here.`
+        : `Shown: turns ${listedRanges(window.delivered)}; the window is full.`
   );
   if (empty.length > 0) {
-    lines.push(`No visible turns in ${formatWorkshopRecallTurnRanges(empty)}.`);
+    lines.push(`No visible turns in ${listedRanges(empty)}.`);
   }
   if (window.continuation.length > 0) {
-    lines.push(`Continue with <turns>${formatWorkshopRecallTurnRanges(window.continuation)}</turns>.`);
+    const next = window.continuation.slice(0, LISTED_RANGES);
+    const later = window.continuation.length - next.length;
+    lines.push(
+      `Continue with <turns>${formatWorkshopRecallTurnRanges(next)}</turns>` +
+        (later > 0 ? `, then the ${later} further ranges requested.` : '.')
+    );
   }
   return lines;
 }
@@ -264,9 +303,9 @@ function readFooter(
 
 function catalogEntry(session: WorkshopRecallCatalogSession, ordinal: number, now: number): string[] {
   return [
-    `${ordinal}. ${quoted(session.title)} · id ${label(session.sessionId)}`,
+    `${ordinal}. ${quoted(session.title)} · id ${recallLabel(session.sessionId)}`,
     `   Saved ${savedAt(session.savedAt, session.timezone, now)}`,
-    `   Host ${session.host} · participants ${session.participants.join(', ')}`,
+    `   Host ${recallLabel(session.host)} · participants ${recallLabelList(session.participants, PARTICIPANT_CHARACTERS)}`,
     `   ${[...scopeLine(session.scope, session.excerptLabel), `last turn ${session.lastTurn}`].join(' · ')}`
   ];
 }
@@ -274,7 +313,7 @@ function catalogEntry(session: WorkshopRecallCatalogSession, ordinal: number, no
 function searchedLine(result: Extract<WorkshopRecallSearchResult, { outcome: 'searched' }>): string {
   const { bounds } = result;
   const filter = [
-    ...(result.sessionId ? [`session ${label(result.sessionId)}`] : []),
+    ...(result.sessionId ? [`session ${recallLabel(result.sessionId)}`] : []),
     ...(result.personaId ? [`sessions that include ${workshopPersonaLabel(result.personaId)}`] : [])
   ];
   const notSearched = [
@@ -299,7 +338,7 @@ function searchedLine(result: Extract<WorkshopRecallSearchResult, { outcome: 'se
 function sessionHits(session: WorkshopRecallSessionHits, now: number): string[] {
   const { header } = session;
   return [
-    `${quoted(header.title)} · id ${label(header.sessionId)} · saved ${savedAt(header.savedAt, header.timezone, now)}`,
+    `${quoted(header.title)} · id ${recallLabel(header.sessionId)} · saved ${savedAt(header.savedAt, header.timezone, now)}`,
     ...session.hits.map((hit) => `- ${hitLine(hit)}`),
     ...(session.omittedHits > 0
       ? [`  ${count(session.omittedHits, 'more hit')} in this session not shown.`]
@@ -311,8 +350,8 @@ function hitLine(hit: WorkshopRecallHit): string {
   if (hit.kind === 'session') {
     const labels = [
       ...(hit.title ? [`title ${quoted(hit.title)}`] : []),
-      ...(hit.excerptLabel ? [`excerpt ${label(hit.excerptLabel)}`] : []),
-      ...(hit.contextLabels.length > 0 ? [`context ${labelList(hit.contextLabels, HIT_CONTEXT_LABEL_CHARACTERS)}`] : [])
+      ...(hit.excerptLabel ? [`excerpt ${recallLabel(hit.excerptLabel)}`] : []),
+      ...(hit.contextLabels.length > 0 ? [`context ${recallLabelList(hit.contextLabels, HIT_CONTEXT_LABEL_CHARACTERS)}`] : [])
     ];
     return `session labels: ${labels.join('; ')}`;
   }
@@ -330,9 +369,9 @@ function hitLine(hit: WorkshopRecallHit): string {
 function speakerOf(entry: WorkshopTranscriptEntry): string {
   switch (entry.kind) {
     case 'writer':
-      return `${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${entry.privateWith ? ` · private with ${entry.privateWith}` : ''}`;
+      return `${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${entry.privateWith ? ` · private with ${recallLabel(entry.privateWith)}` : ''}`;
     case 'reply':
-      return `${entry.speaker}${entry.privateWith ? ' · private' : ''}`;
+      return `${recallLabel(entry.speaker)}${entry.privateWith ? ' · private' : ''}`;
     case 'event':
       return 'event';
     default:
@@ -398,7 +437,7 @@ function listingNote(truncated: boolean): string[] {
 
 function scopeLine(scope: WorkshopSessionScope | undefined, excerptLabel: string | undefined): string[] {
   if (excerptLabel && scope !== 'open') {
-    return [`excerpt ${label(excerptLabel)}`];
+    return [`excerpt ${recallLabel(excerptLabel)}`];
   }
   if (scope === 'open') {
     return ['open conversation'];
@@ -413,36 +452,7 @@ function savedAt(iso: string, timezone: string, now: number): string {
 }
 
 function quoted(text: string): string {
-  return `“${label(text)}”`;
-}
-
-/**
- * Labels come from saved files and have no length of their own, so every
- * one is clipped: metadata must never crowd out the record it describes.
- */
-function label(text: string): string {
-  const line = oneLine(text);
-  return line.length <= LABEL_CHARACTERS ? line : `${line.slice(0, LABEL_CHARACTERS - 1)}…`;
-}
-
-/** Labels until `limit` characters, then a count of the rest. */
-function labelList(labels: readonly string[], limit: number): string {
-  const shown: string[] = [];
-  let length = 0;
-  for (const entry of labels) {
-    const next = label(entry);
-    if (shown.length > 0 && length + next.length + 2 > limit) {
-      break;
-    }
-    shown.push(next);
-    length += next.length + 2;
-  }
-  const rest = labels.length - shown.length;
-  return rest > 0 ? `${shown.join(', ')}, … and ${rest.toLocaleString('en-US')} more` : shown.join(', ');
-}
-
-function oneLine(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return `“${recallLabel(text)}”`;
 }
 
 function count(value: number, unit: string): string {

@@ -16,6 +16,7 @@
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WORKSHOP_TRANSCRIPT_WRITER_LABEL } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import type { WorkshopRecallEntry } from '@/application/services/workshop/recall/WorkshopRecallDocument';
+import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 import {
   WorkshopRecallClock,
   workshopRecallDuration
@@ -29,6 +30,8 @@ import type {
 const NOTICE_RESERVE = 120;
 /** A cut shorter than this reads as noise; the entry waits for the next window instead. */
 const MINIMUM_CUT_CHARACTERS = 200;
+/** The "Attached:" line of one writer turn. */
+const ATTACHMENT_LABEL_CHARACTERS = 1_000;
 /** Between header, entries, notices, and footer. */
 export const WORKSHOP_RECALL_BLOCK_SEPARATOR = '\n\n';
 
@@ -175,10 +178,10 @@ function renderEntry(recall: WorkshopRecallEntry, clock: WorkshopRecallClock): s
       return `[${at} · event] ${entry.text}`;
     case 'writer': {
       const lines = [
-        `[${at} · ${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${entry.privateWith ? ` · private with ${entry.privateWith}` : ''}]`
+        `[${at} · ${WORKSHOP_TRANSCRIPT_WRITER_LABEL}${entry.privateWith ? ` · private with ${recallLabel(entry.privateWith)}` : ''}]`
       ];
       if (entry.attachmentLabels.length > 0) {
-        lines.push(`Attached: ${entry.attachmentLabels.join(', ')}`);
+        lines.push(`Attached: ${recallLabelList(entry.attachmentLabels, ATTACHMENT_LABEL_CHARACTERS)}`);
       }
       if (entry.widget) {
         lines.push(`Composed with ${entry.widget.label} · ${entry.widget.detail}`);
@@ -189,7 +192,8 @@ function renderEntry(recall: WorkshopRecallEntry, clock: WorkshopRecallClock): s
       return lines.join('\n');
     }
     case 'reply': {
-      const lines = [`[${at} · ${entry.speaker}${entry.privateWith ? ' · private' : ''}]`];
+      // Labels from a saved file are clipped; the reply itself is the record.
+      const lines = [`[${at} · ${recallLabel(entry.speaker)}${entry.privateWith ? ' · private' : ''}]`];
       if (entry.truncated) {
         lines.push('(This reply hit the max-token limit and was cut off.)');
       }

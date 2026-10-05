@@ -15,6 +15,7 @@ import {
   renderWorkshopRecallCatalog,
   renderWorkshopRecallRead,
   renderWorkshopRecallSearch,
+  WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS,
   WORKSHOP_TRANSCRIPT_RECALL_FRAMING
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRenderer';
 import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
@@ -32,6 +33,7 @@ import {
   writerTurn
 } from '@/__tests__/application/services/workshop/transcript/workshopTranscriptFixtures';
 import {
+  RECALL_ROOT,
   recallSession,
   RecallSessionInput,
   saveRecallRoom
@@ -174,8 +176,9 @@ describe('renderWorkshopRecallRead', () => {
       'Saved Saturday, October 3, 2026, 2:03 PM (America/Chicago), 2 days ago · started Thursday, October 1, 2026',
       'Host Jill · participants Jill, Cliff',
       'excerpt chapter-6.md',
-      'Context attachments (labels only): keeper-notes.md, Tide tables',
-      'Requested: the whole session from turn 1 (1 turn).'
+      'Requested: the whole session from turn 1 (1 turn).',
+      // Last, so a header over its cap loses context labels first.
+      'Context attachments (labels only): keeper-notes.md, Tide tables'
     ]);
   });
 
@@ -259,9 +262,9 @@ describe('renderWorkshopRecallRead', () => {
       writerTurn('t-1', { content: `Opening line. ${'salt '.repeat(5_000)}` }),
       writerTurn('t-2', { content: 'Short.' })
     ]);
-    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 4_000 });
+    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 6_000 });
 
-    expect(rendered.content.length).toBeLessThanOrEqual(4_000);
+    expect(rendered.content.length).toBeLessThanOrEqual(6_000);
     expect(rendered.content).toContain('Opening line. salt salt');
     expect(rendered.truncatedEntry).toMatchObject({ position: 1 });
     expect(rendered.truncatedEntry!.shownCharacters).toBeLessThan(rendered.truncatedEntry!.totalCharacters);
@@ -275,7 +278,7 @@ describe('renderWorkshopRecallRead', () => {
       writerTurn('t-1', { content: 'Short.' }),
       writerTurn('t-2', { content: 'salt '.repeat(5_000) })
     ]);
-    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 4_000 });
+    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 6_000 });
 
     expect(rendered.truncatedEntry).toBeUndefined();
     expect(rendered.delivered.map(({ from, to }) => [from, to])).toEqual([[1, 1]]);
@@ -489,28 +492,129 @@ describe('the composite read bound (PR 126 review F-01)', () => {
     expect(rendered.content).toContain('Hello.');
   });
 
-  it('keeps every budget, from no room for an entry upward, within its window', () => {
+  it('keeps every supported budget within its window, and every read makes progress', () => {
     const document = doc('s-1', [
-      writerTurn('t-1', { content: `First. ${'salt '.repeat(600)}` }),
+      writerTurn('t-1', { content: `First. ${'salt '.repeat(1_200)}` }),
       fixtureTurn('t-2', { content: `Second. ${'tide '.repeat(300)}` }),
       writerTurn('t-3', { content: 'Third.' })
     ], { contextLabels: ['keeper-notes.md'] });
-    // The irreducible read: header and footer, with no room for any entry.
-    const floor = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 0 });
-    expect(floor.delivered).toEqual([]);
-    expect(floor.continuation).toEqual([{ from: 1, to: 3 }]);
-    expect(floor.content).toContain('No turn fit in this window.\nContinue with <turns>1-3</turns>.');
-
     const budgets = [
-      // One character at a time through no room, 0-4 characters of room, and the first cut.
-      ...Array.from({ length: 900 }, (_, step) => floor.content.length + step),
-      ...Array.from({ length: 120 }, (_, step) => floor.content.length + 900 + step * 37)
+      // One character at a time from the minimum through the first entry's cut...
+      ...Array.from({ length: 900 }, (_, step) => WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS + step),
+      // ...then on through the first entry whole, the second, and all three.
+      ...Array.from({ length: 200 }, (_, step) => WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS + 900 + step * 37)
     ];
+    const outcomes = new Set<string>();
     for (const readCharacters of budgets) {
       const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters });
 
       expect([readCharacters, rendered.content.length <= readCharacters]).toEqual([readCharacters, true]);
+      expect([readCharacters, rendered.delivered.length]).toEqual([readCharacters, 1]);
       expectAccounted(rendered, [1, 2, 3]);
+      outcomes.add(`${rendered.delivered[0].to}${rendered.truncatedEntry ? ' cut' : ''}`);
+    }
+    // The sweep crosses every packing outcome.
+    expect([...outcomes]).toEqual(['1 cut', '1', '2', '3']);
+  });
+});
+
+describe('the complete read bound for accepted, edited metadata (PR 126 re-review F-01)', () => {
+  const READ_CHARACTERS = PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters;
+  const SESSIONS = `${RECALL_ROOT}/prose-minion/sessions`;
+
+  /** Save a short room, then edit its authoritative file the way a writer's tools might. */
+  async function editedRoom(edit: (session: Record<string, any>) => void) {
+    const room = await saveRecallRoom('Normal title', (session, advance) => {
+      session.setSessionScope('open');
+      session.beginPersonaMessage('run-1', 'A short question about the lighthouse.');
+      advance(60_000);
+      session.completeRun('run-1', 'A short reply about the lighthouse.', undefined, false, 'runtime-host');
+    });
+    const file = [...room.fs.files.keys()].find((name) =>
+      name.startsWith(SESSIONS) && name.endsWith('.json') &&
+      !name.endsWith('.summary.json') && !name.endsWith('/current.json'))!;
+    const session = JSON.parse(new TextDecoder().decode(room.fs.files.get(file)));
+    edit(session);
+    room.fs.files.set(file, new TextEncoder().encode(JSON.stringify(session, undefined, 2)));
+    return { ...room, service: new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log) };
+  }
+
+  it('fits the window when a saved file lists one participant ten thousand times', async () => {
+    const { service, savedSessionId } = await editedRoom((session) => {
+      session.summary.participantPersonaIds = Array.from({ length: 10_000 }, () => 'jill');
+    });
+
+    const read = await service.read({ sessionId: savedSessionId, turns: [{ from: 2, to: 3 }] });
+    const rendered = renderWorkshopRecallRead(read, { now: NOW });
+
+    expect(read).toMatchObject({ outcome: 'read', header: { participants: ['Jill'] } });
+    expect(rendered.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
+    expect(rendered.delivered.map(({ from, to }) => [from, to])).toEqual([[2, 3]]);
+    expect(rendered.continuation).toEqual([]);
+    expect(rendered.content).toContain('Host Jill · participants Jill\n');
+  });
+
+  it('clips a reply speaker from a saved file in search and in reads', async () => {
+    const speaker = 'P'.repeat(100_000);
+    const { service, savedSessionId } = await editedRoom((session) => {
+      for (const turn of session.workshop.turns) {
+        if (turn.role === 'assistant') {
+          turn.personaLabel = speaker;
+        }
+      }
+    });
+
+    const search = renderWorkshopRecallSearch(await service.search({ query: 'reply' }), { now: NOW });
+    const read = renderWorkshopRecallRead(await service.read({ sessionId: savedSessionId }), { now: NOW });
+
+    expect(search.length).toBeLessThan(5_000);
+    expect(search).toContain(`${'P'.repeat(199)}…: A short reply`);
+    expect(read.content).toContain(`${'P'.repeat(199)}…]\nA short reply`);
+  });
+
+  it('rejects a window too small for the bounded header and footer, and the production budget clears it', () => {
+    const document = doc('s-1', [writerTurn('t-1', { content: 'Hello.' })]);
+
+    expect(() => renderWorkshopRecallRead(readOf(document), {
+      now: NOW,
+      readCharacters: WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS - 1
+    })).toThrow(RangeError);
+    expect(READ_CHARACTERS).toBeGreaterThanOrEqual(WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS);
+  });
+
+  it('keeps every supported budget within its window, and makes progress, with every header part at its bound', () => {
+    const saved = doc('i'.repeat(5_000), [
+      writerTurn('t-1', { content: `First. ${'salt '.repeat(2_000)}` }),
+      fixtureTurn('t-2', { content: `Second. ${'tide '.repeat(600)}` }),
+      writerTurn('t-3', { content: 'Third.' })
+    ], {
+      title: 'T'.repeat(5_000),
+      excerptLabel: `${'e'.repeat(5_000)}.md`,
+      contextLabels: Array.from({ length: 2_000 }, (_, index) => `${'c'.repeat(150)}-${index}.md`)
+    });
+    // Distinct names, so no deduplication shortens the list: the renderer bounds it on its own.
+    const document = {
+      ...saved,
+      header: {
+        ...saved.header,
+        host: 'H'.repeat(5_000),
+        participants: Array.from({ length: 10_000 }, (_, index) => `${'P'.repeat(300)}-${index}`)
+      }
+    };
+    const ranges = Array.from({ length: 40 }, (_, index) => ({ from: index * 3 + 1, to: index * 3 + 1 }));
+    // The fixture stresses the header: every part at its bound, near the whole header's cap.
+    const header = renderWorkshopRecallRead(readOf(document, ranges), { now: NOW }).content.split('\n\n')[0];
+    expect(header.length).toBeGreaterThan(3_000);
+    expect(header).toContain(', … and 9,');
+
+    for (let step = 0; step < 1_500; step += 1) {
+      const readCharacters = WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS + step * 3;
+      for (const request of [undefined, ranges]) {
+        const rendered = renderWorkshopRecallRead(readOf(document, request), { now: NOW, readCharacters });
+
+        expect([readCharacters, rendered.content.length <= readCharacters]).toEqual([readCharacters, true]);
+        expect([readCharacters, rendered.delivered.length > 0]).toEqual([readCharacters, true]);
+      }
     }
   });
 });
