@@ -28,6 +28,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as ts from 'typescript';
 import {
   persistedWorkshopWidgetLifecycleIds,
   type PersistedWorkshopWidgetId
@@ -827,11 +828,32 @@ interface WorkshopLegacyOwnershipException {
 const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS:
   readonly WorkshopLegacyOwnershipException[] = [];
 
+/** Session recall (ADR 2026-10-05): everything under it is capability code. */
+const WORKSHOP_RECALL_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'recall');
+const WORKSHOP_RECALL_MODULES = [
+  'WorkshopRecallDocument.ts',
+  'WorkshopRecallReadWindow.ts',
+  'WorkshopRecallTime.ts',
+  'WorkshopTranscriptRecallRenderer.ts',
+  'WorkshopTranscriptRecallResults.ts',
+  'WorkshopTranscriptRecallSearch.ts',
+  'WorkshopTranscriptRecallService.ts'
+];
+/**
+ * Recall may know the store and coordinator only as types, so its read-only
+ * ports, including `list(query: undefined)`, stay its only path to session
+ * files (runway F1, F2).
+ */
+const RECALL_TYPE_ONLY_MODULE = /(?:^|\/)(?:WorkshopSessionStore|WorkshopSessionPersistenceCoordinator)$/;
+/** These render thread-artifact bodies, which recall must never emit (runway F11). */
+const RECALL_FORBIDDEN_MODULE = /(?:^|\/)(?:WorkshopRoomFrameRenderer|WorkshopThreadArtifactFrame)$/;
+
 const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlCodec.ts'),
-  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts')
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),
+  ...collectSourceFiles(WORKSHOP_RECALL_ROOT)
 ];
 const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)|import\s+.*['"](?:vscode|react|@providers\/))/;
 
@@ -855,6 +877,51 @@ function collectSourceFiles(dir: string, acc: string[] = []): string[] {
     }
   }
   return acc;
+}
+
+interface ModuleImport {
+  readonly module: string;
+  /** Erased at compile time: `import type`, or only `{ type X }` bindings. */
+  readonly typeOnly: boolean;
+}
+
+/** Every module a source names: imports, re-exports, `import()`, and `require()`. */
+function moduleImports(fileName: string, source: string): ModuleImport[] {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
+  const imports: ModuleImport[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const clause = node.importClause;
+      const bindings = clause?.namedBindings;
+      const typeOnly = clause !== undefined && (
+        clause.isTypeOnly || (
+          clause.name === undefined &&
+          bindings !== undefined &&
+          ts.isNamedImports(bindings) &&
+          bindings.elements.length > 0 &&
+          bindings.elements.every((element) => element.isTypeOnly)
+        )
+      );
+      imports.push({ module: node.moduleSpecifier.text, typeOnly });
+    } else if (
+      ts.isExportDeclaration(node) &&
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      imports.push({ module: node.moduleSpecifier.text, typeOnly: node.isTypeOnly });
+    } else if (
+      ts.isCallExpression(node) &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === 'require')) &&
+      node.arguments.length > 0 &&
+      ts.isStringLiteralLike(node.arguments[0])
+    ) {
+      imports.push({ module: node.arguments[0].text, typeOnly: false });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return imports;
 }
 
 function importsFeature(source: string, featureReference: RegExp): boolean {
@@ -941,6 +1008,41 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('keeps session recall on its read-only ports and off the room-frame renderers (ADR 2026-10-05)', () => {
+    const recallFiles = collectSourceFiles(WORKSHOP_RECALL_ROOT);
+    const imports = recallFiles.flatMap((file) =>
+      moduleImports(file, fs.readFileSync(file, 'utf8'))
+        .map((entry) => ({ file: path.relative(SRC_ROOT, file), ...entry }))
+    );
+
+    // The witnesses below are only as good as the files they scan.
+    expect(recallFiles.map((file) => path.basename(file)))
+      .toEqual(expect.arrayContaining(WORKSHOP_RECALL_MODULES));
+    expect(WORKSHOP_CAPABILITY_BOUNDARY).toEqual(expect.arrayContaining(recallFiles));
+    expect(imports
+      .filter(({ module, typeOnly }) => RECALL_TYPE_ONLY_MODULE.test(module) && !typeOnly)
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+    expect(imports
+      .filter(({ module }) => RECALL_FORBIDDEN_MODULE.test(module))
+      .map(({ file, module }) => `${file} -> ${module}`)).toEqual([]);
+  });
+
+  it('tells a value import of a module from a type-only one', () => {
+    const source = [
+      "import type { A } from '@/x/WorkshopSessionStore';",
+      "import { type B, type C } from '@/x/WorkshopSessionStore';",
+      "import { WorkshopSessionStore } from '@/x/WorkshopSessionStore';",
+      "import { type D, E } from '@/x/WorkshopSessionStore';",
+      "export { F } from '@/x/WorkshopSessionStore';",
+      "export type { G } from '@/x/WorkshopSessionStore';",
+      "const lazy = () => import('@/x/WorkshopSessionStore');",
+      "const legacy = require('@/x/WorkshopSessionStore');"
+    ].join('\n');
+
+    expect(moduleImports('fixture.ts', source).map(({ typeOnly }) => typeOnly))
+      .toEqual([true, true, false, false, false, true, false, false]);
   });
 
   it('Workshop has one room-frame materializer and one offset-advance call site', () => {
