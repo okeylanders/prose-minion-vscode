@@ -5,13 +5,54 @@ import type {
 } from '@messages';
 import type { ContextPathGroup } from './context';
 
-export type WorkshopCapabilityOperation =
-  | 'dictionary.lookup'
-  | 'dictionary.full-entry'
-  | 'analysis.run'
-  | 'resource.catalog'
-  | 'resource.search'
-  | 'resource.read';
+/**
+ * The closed operation list. The union, the persisted codec's allowlist, and
+ * every exhaustive switch derive from it, so adding an operation here is the
+ * one edit that widens all of them (and forgetting a switch case fails to
+ * compile instead of failing a writer's save).
+ */
+export const WORKSHOP_CAPABILITY_OPERATIONS = [
+  'dictionary.lookup',
+  'dictionary.full-entry',
+  'analysis.run',
+  'resource.catalog',
+  'resource.search',
+  'resource.read'
+] as const;
+
+export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
+
+export const isWorkshopCapabilityOperation = (value: unknown): value is WorkshopCapabilityOperation =>
+  typeof value === 'string' &&
+  (WORKSHOP_CAPABILITY_OPERATIONS as readonly string[]).includes(value);
+
+/**
+ * A capability family owns its operations' writer-facing name, evidence
+ * framing, and rejected-request handling. Every consumer switches on the
+ * family exhaustively, so an operation without one fails to compile instead
+ * of borrowing another family's name through an implicit "otherwise".
+ */
+export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource';
+
+export function workshopCapabilityFamily(
+  operation: WorkshopCapabilityOperation
+): WorkshopCapabilityFamily {
+  switch (operation) {
+    case 'dictionary.lookup':
+    case 'dictionary.full-entry':
+      return 'dictionary';
+    case 'analysis.run':
+      return 'analysis';
+    case 'resource.catalog':
+    case 'resource.search':
+    case 'resource.read':
+      return 'resource';
+    default: {
+      const unhandled: never = operation;
+      throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
+    }
+  }
+}
 
 export type WorkshopAnalysisInputMode = 'inherit' | 'prepend' | 'replace' | 'omit';
 

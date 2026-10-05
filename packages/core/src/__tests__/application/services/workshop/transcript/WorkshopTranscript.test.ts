@@ -1,7 +1,8 @@
 import {
   countWorkshopTranscriptMessages,
-  projectWorkshopTranscript
-} from '@/application/services/workshop/export/WorkshopTranscript';
+  projectWorkshopTranscript,
+  projectWorkshopTranscriptTurn
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 import {
   FIXTURE_EPOCH,
   dividerTurn,
@@ -137,5 +138,16 @@ describe('projectWorkshopTranscript', () => {
       'Switched to open conversation',
       'Lexical Gravity installed'
     ]);
+  });
+
+  it('projects one turn exactly as the whole-transcript projection does', () => {
+    const turns = representativeRoom();
+    const byTurn = turns.flatMap((turn) => {
+      const entry = projectWorkshopTranscriptTurn(turn);
+      return entry ? [entry] : [];
+    });
+
+    expect(byTurn).toEqual(project(turns).entries);
+    expect(projectWorkshopTranscriptTurn(turns.find((turn) => turn.id === 'c-1')!)).toBeUndefined();
   });
 });

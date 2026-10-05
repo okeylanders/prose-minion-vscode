@@ -15,6 +15,7 @@ import {
   ConversationNotFoundError,
   withContextSourceSupersedeChain
 } from '@orchestration/ConversationManager';
+import { CONTEXT_SOURCE_KINDS } from '@shared/types';
 
 describe('ConversationManager', () => {
   let manager: ConversationManager;
@@ -490,6 +491,42 @@ describe('ConversationManager', () => {
 
       expect(outcomes[0]).toMatchObject({ key: 'host', status: 'imported' });
       expect(outcomes[1]).toMatchObject({ key: 'guest:margot', status: 'degraded' });
+    });
+
+    it.each(CONTEXT_SOURCE_KINDS)('imports an archive row of the listed kind %s', (kind) => {
+      const id = completeConversation(manager);
+      const entry = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
+      entry.contextSources = [{
+        kind, origin: 'host', label: 'Row', sizeChars: 4, isEstimate: true, deliveredAt: 22
+      }];
+
+      expect(new ConversationManager().importConversations([
+        { entry, systemMessage: 'Rebuilt current system prompt' }
+      ])[0]).toMatchObject({ key: 'host', status: 'imported' });
+    });
+
+    it('degrades an archive whose context source names an unlisted kind', () => {
+      // Archive kinds are checked only here, at reopen: the session codec keeps
+      // archives as opaque JSON. A kind the product writes without listing it
+      // here saves cleanly and then drops that participant's history on reopen.
+      const id = completeConversation(manager);
+      const entry = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
+      entry.contextSources = [{
+        kind: 'transcript',
+        origin: 'host',
+        label: '“Chapter 6-8” · turns 12–30',
+        sizeChars: 40,
+        isEstimate: true,
+        deliveredAt: 22
+      } as unknown as typeof entry.contextSources[number]];
+
+      expect(new ConversationManager().importConversations([
+        { entry, systemMessage: 'Rebuilt current system prompt' }
+      ])[0]).toMatchObject({
+        key: 'host',
+        status: 'degraded',
+        reason: expect.stringContaining('invalid context source')
+      });
     });
 
     it('rejects duplicate logical keys and artifact-counter regression', () => {

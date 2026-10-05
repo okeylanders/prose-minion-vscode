@@ -1,4 +1,4 @@
-import { ContextPathGroup, TokenUsage } from '@shared/types';
+import { ContextPathGroup, ContextSourceKind, TokenUsage } from '@shared/types';
 import type {
   OpenRouterReasoningOptions,
   OpenRouterWebSearchTool
@@ -61,7 +61,7 @@ export type AgentCapabilityInspection<Request, Rejection extends AgentCapability
  * Display-safe only — never an absolute path.
  */
 export interface CapabilityDeliveredSource {
-  readonly kind: 'resource' | 'tool-evidence' | 'dictionary';
+  readonly kind: Extract<ContextSourceKind, 'resource' | 'tool-evidence' | 'dictionary'>;
   readonly label: string;
   readonly configuredResource?: { readonly group: ContextPathGroup; readonly path: string };
   readonly sizeChars: number;

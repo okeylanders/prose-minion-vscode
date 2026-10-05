@@ -11,7 +11,7 @@ import {
   WorkshopTranscript,
   WorkshopTranscriptEntry,
   countWorkshopTranscriptMessages
-} from './WorkshopTranscript';
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 
 export const WORKSHOP_TRANSCRIPT_JSON_FORMAT = 'prose-minion.workshop-transcript';
 export const WORKSHOP_TRANSCRIPT_JSON_FORMAT_VERSION = 1;

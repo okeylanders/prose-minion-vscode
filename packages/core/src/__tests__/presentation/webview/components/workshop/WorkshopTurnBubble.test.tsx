@@ -811,6 +811,34 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(screen.queryByRole('button', { name: /talk directly/i })).toBeNull();
   });
 
+  it('names a token limit, not project-resource limits, for a truncated dictionary result', () => {
+    render(
+      <WorkshopTurnBubble
+        turn={{
+          ...assistantTurn('# liminal'),
+          reportTurnId: undefined,
+          capability: {
+            operation: 'dictionary.lookup',
+            status: 'partial',
+            requestSummary: 'liminal',
+            requestedByPersonaId: 'jill',
+            invokedBy: { kind: 'host' },
+            metadata: { truncated: true }
+          }
+        }}
+        quickActionToolId={null}
+        onQuickAction={jest.fn()}
+        onTalkDirectly={jest.fn()}
+        onCopy={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    const metadata = screen.getByLabelText('Capability metadata').textContent;
+    expect(metadata).toContain('Result reached its response-token limit');
+    expect(metadata).not.toContain('project-resource limits');
+  });
+
   it('distinguishes catalog-path search from file-content search', () => {
     render(
       <WorkshopTurnBubble

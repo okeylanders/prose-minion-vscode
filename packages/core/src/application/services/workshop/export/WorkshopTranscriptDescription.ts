@@ -1,6 +1,6 @@
 /** The one-line provenance summary every export format prints under its title. */
 
-import type { WorkshopTranscript } from './WorkshopTranscript';
+import type { WorkshopTranscript } from '@/application/services/workshop/transcript/WorkshopTranscript';
 
 export function formatWorkshopTranscriptDate(epochMs: number): string {
   return new Date(epochMs).toLocaleString(undefined, {

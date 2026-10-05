@@ -76,6 +76,7 @@ elsewhere.
 | Medium | [Release dependency audit](2026-10-02-release-dependency-audit-follow-up.md) | Deferred |
 | Low | [Mark grouping allocation](2026-10-02-workshop-mark-grouping-allocation.md) | Identified |
 | Low | [Rewind and Branch notice screenshot](2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) | Identified |
+| Low | [Session preview can show capability evidence](2026-10-05-workshop-session-preview-may-show-evidence.md) | Identified |
 
 ## Review Guidance
 

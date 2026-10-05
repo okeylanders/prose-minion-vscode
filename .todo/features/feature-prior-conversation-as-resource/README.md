@@ -1,8 +1,36 @@
 # Feature: A prior conversation is a resource, not a branch
 
-- **Status**: Idea captured — not scheduled
+- **Status**: Host-fetch path approved (ADR 2026-10-05, D1–D4 accepted); writer opt-in path still open
 - **Priority**: Low (unblocks nothing; improves an existing answer)
 - **Captured**: 2026-07-25 (Okey's design call)
+
+## Update 2026-10-05: host fetch is designed and approved
+
+The host-fetch path below is designed in
+[ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md)
+(D1–D4 accepted 2026-10-05), with evidence in its
+[architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
+and slices in [epic-workshop-session-recall-2026-10-05](../../epics/epic-workshop-session-recall-2026-10-05/README.md).
+
+It keeps this note's invariant — the persona reads a record, never inherits a
+history — but recommends a dedicated `transcript.*` capability family instead
+of a resource group: transcripts need turn addressing and record framing, and
+`ContextPathGroup` is settings vocabulary shared with the Context wizard and
+attachment picker. Its answers to the open questions below:
+
+- **Bounding:** `PROMPT_BUDGETS.workshopTranscriptRecall`; search returns
+  snippets, and reads are windowed by turn ranges.
+- **What counts as the transcript:** the export projection, unchanged —
+  writer and participant messages, attachment and widget labels, one-line
+  capability events, no context changes.
+- **Staleness:** recall reads saved files at call time; the artifact records
+  the session id, title, and turn ranges it read.
+- **Relationship to the persona chronicle:** verbatim records (`transcript.*`)
+  and derived memory (`memory.*`) are separate families with separate trust
+  classes.
+
+The **writer opt-in** path (attach a prior conversation to context) remains
+open and can reuse the same recall service.
 
 ## The idea
 
