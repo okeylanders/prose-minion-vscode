@@ -1,7 +1,8 @@
 /**
  * Markdown rendering of a Workshop transcript — the format meant for pasting
- * into another agent or a notes app. Message bodies stay verbatim: replies are
- * already Markdown, and the writer's text is exported exactly as typed.
+ * into another agent or a notes app. Message bodies stay verbatim, byte for
+ * byte: replies are already Markdown, and the writer's text is exported
+ * exactly as typed, edge whitespace included.
  *
  * Every entry opens with a horizontal rule. Replies carry their own headings
  * ("### Next steps"), so a speaker heading alone would not tell a reader —
@@ -41,8 +42,10 @@ function renderEntry(entry: WorkshopTranscriptEntry): string {
       if (entry.widget) {
         lines.push(`_Composed with ${escapeInline(entry.widget.label)} · ${escapeInline(entry.widget.detail)}_`);
       }
+      // Blank text (a widget-only message) adds no body; real text is never
+      // trimmed — leading indentation can be an indented code block.
       if (entry.content.trim()) {
-        lines.push(entry.content.trim());
+        lines.push(entry.content);
       }
       return lines.join('\n\n');
     }
@@ -55,7 +58,7 @@ function renderEntry(entry: WorkshopTranscriptEntry): string {
       if (entry.truncated) {
         lines.push('_Response hit the max-token limit and was truncated._');
       }
-      lines.push(entry.content.trim());
+      lines.push(entry.content);
       if (entry.sources.length > 0) {
         lines.push([
           '**Sources**',

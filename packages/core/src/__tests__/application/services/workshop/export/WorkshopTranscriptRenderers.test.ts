@@ -50,6 +50,37 @@ describe('renderWorkshopTranscriptMarkdown', () => {
     );
   });
 
+  it('keeps writer and reply bodies byte for byte, edge whitespace included', () => {
+    // Leading indentation is an indented code block; trailing spaces are the
+    // writer's own. Neither may be trimmed between the speaker delimiters.
+    const writerBody = '    const coin = pocket();\n\nShe said it twice.  \n';
+    const replyBody = '  An edge-spaced reply.\n\n    indented block\n  ';
+    const markdown = renderWorkshopTranscriptMarkdown(transcript([
+      writerTurn('u-1', { content: writerBody }),
+      fixtureTurn('a-1', { content: replyBody })
+    ]));
+
+    expect(markdown).toContain(`### Writer\n\n${writerBody}\n\n---\n\n### Jill`);
+    expect(markdown.endsWith(`### Jill\n\n${replyBody}\n`)).toBe(true);
+  });
+
+  it('adds no body for a widget-only writer message', () => {
+    const markdown = renderWorkshopTranscriptMarkdown(transcript([
+      writerTurn('u-1', {
+        content: '   ',
+        widgetCommit: {
+          widgetId: 'gesture-playground',
+          widgetConfigId: 'wc-1',
+          rail: 'thread-artifact',
+          artifactId: 'ta-2',
+          selectionCount: 1
+        }
+      })
+    ]));
+
+    expect(markdown.endsWith('### Writer\n\n_Composed with Gesture Playground · 1 direction_\n')).toBe(true);
+  });
+
   it('escapes inline syntax in labels so a title cannot restructure the document', () => {
     const markdown = renderWorkshopTranscriptMarkdown(transcript([], 'Draft_v2 *final* [ok]'));
 
