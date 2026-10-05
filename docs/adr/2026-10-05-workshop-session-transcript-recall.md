@@ -332,6 +332,74 @@ also showed where that guarantee is weakest. A switch whose return type admits
 `undefined` compiles with a case missing, so every such family switch carries
 an explicit `never` default.
 
+## Implementation note 2026-10-05: Slice 2
+
+The recall core has landed under `application/services/workshop/recall/`,
+dormant: nothing calls the service yet. Okey decided three questions this ADR
+left open:
+
+- **`recallScope()` fails closed before hydration.** Its reason union gains
+  `'not-ready'`, returned until `initialize()` completes. Before then the live
+  identity is a provisional id, so the saved copy of the room being restored
+  could appear in its own corpus. The rule otherwise mirrors
+  `assertAcceptedWorkspace`; both now read one private predicate, so they
+  cannot drift.
+- **Cold-parse bytes are estimated.** The store reports no file size, and §2
+  leaves the store unchanged. The service therefore charges `searchSourceBytes`
+  with the UTF-8 length of the session serialized the way the store writes it.
+  Decoding normalizes a few fields, so the estimate lands within a few percent
+  of the file. The budget is checked before each cold parse, so one call may
+  exceed it by at most one file. That file is still bounded by the store's
+  25 MiB exact-read limit.
+- **A query made only of stop words keeps its words.** "What did we do then"
+  searches those words, and the phrase bonus ranks the exact phrase first.
+
+Refinements within §4's rules:
+
+- **Normalization:** words fold case, diacritics, and compatibility forms. A
+  possessive "'s" is stripped, so "keeper's" finds "keeper", and other
+  apostrophes are dropped, so "dont" finds "don't".
+- **Ranking:** after matched terms and the phrase bonus, a term that matches a
+  whole word outranks one that matches only a prefix, so "tide" ranks "the
+  tide" above "tidewater". Ties then fall to the newer session and the earlier
+  turn, as §4 specifies.
+- **Lineage:** two turns merge only when both the turn id and the visible text
+  match. Ids are `turn-<counter>-<role>-<epochMs>`, so a collision is
+  improbable; when one happens, both turns still appear and neither is hidden.
+
+Responsibilities and file plan:
+
+- **Packing belongs to the renderer.** The service returns each requested range
+  resolved to its entries, with the first and last turn id. Only the renderer
+  knows what the text costs, so it packs the window and reports the delivered
+  ranges, with their turn ids, and the continuation ranges. Slice 3's
+  provenance metadata comes from the rendered read.
+- **Seven modules, not four.** Every file stays under the repo's 500-line
+  ceiling. The service's result types live in `WorkshopTranscriptRecallResults`.
+  The read window (packing, separators, entry text) and the session clock are
+  separate modules. The ports stay in the service. The renderer keeps its own
+  copy of the room frames' elapsed-time words, because it may not import the
+  room-frame renderer.
+- **The live room has its own answer.** A request naming the live session id
+  returns `unknown-session` with `liveSession: true`, and the text says that
+  this is the current session.
+
+What recall inherits from `store.list()`:
+
+- `list()` still summarizes `current.json` for the browser, from its index or
+  from a bounded parse of a legacy file. The corpus port's result type omits
+  `current`, so nothing from it reaches recall, and nothing is written.
+- A legacy named file without a search index is parsed by `list()` on every
+  call, and that parse is not counted in `parsedBytes`.
+- A legacy file larger than the browser's 5 MB bound is not listed at all.
+
+A read-only store method that lists named sessions alone would remove all
+three. Sessions saved by current builds carry indexes.
+
+Request validation stays with the Slice 3 codec: query length, session-id
+shape, and the range count. The service throws on an invalid turn range
+rather than repairing it.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**

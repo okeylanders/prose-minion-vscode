@@ -1,9 +1,9 @@
 # Epic: Workshop Session Recall
 
-**Status:** In progress — D1–D4 accepted 2026-10-05; Slices 0–1 done (behavior-preserving)
+**Status:** In progress — D1–D4 accepted 2026-10-05; Slices 0–1 done (behavior-preserving); Slice 2 in review (dormant recall core)
 **Priority:** Medium
 **Created:** 2026-10-05
-**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs from `claude/practical-ritchie-rx9n4t`
+**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs: Slices 0–1 from `claude/practical-ritchie-rx9n4t` (#125), Slice 2 from `claude/workshop-recall-core`
 **Decision:** [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (Accepted in part: D1–D4)
 **Evidence:** [Architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
 **Realizes:** the host-fetch half of [Feature: a prior conversation is a resource, not a branch](../../features/feature-prior-conversation-as-resource/README.md)
@@ -48,7 +48,7 @@ verification, and rollback seams.
 |---|---|---|---|
 | 0 | Characterize | Sentinel visibility tests over the projection; a test that an unknown capability operation fails to decode; per-family label assertions | Done — `83f2cf6` |
 | 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Done — `2e54b88`, `357f5bb`, `24ad18d`, `875f203` |
-| 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Not started |
+| 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, in review — `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8` |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root | Not started |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
@@ -65,6 +65,31 @@ verification, and rollback seams.
   compile, and caught one family switch that returned `undefined` silently; it
   now has an explicit `never` default. Rule for Slice 3: a family switch whose
   return type admits `undefined` needs that default.
+- **2026-10-05 — Slice 2 (dormant recall core).** Seven modules under
+  `recall/` (document, search, renderer, read window, clock, results, service),
+  coordinator `recallScope()`, and the budgets block with its exact-value pin.
+  Nothing calls the service yet. Okey decided three open questions: `recallScope()`
+  answers `not-ready` until hydration, cold-parse bytes are estimated by
+  re-serializing, and a query of only stop words keeps its words. The ADR's
+  Slice 2 note records these and every other refinement.
+  - Visibility: a real session saved through the real aggregate, coordinator,
+    and store is the witness. It carries markers in an attachment body,
+    persisted evidence, the evidence the real summary copied into `preview`,
+    the conversation archive, context bodies, the excerpt, and its identity.
+    None reaches recall's data or its rendered text. Mutating the header to
+    carry the preview, or the context labels to carry their bodies, fails the
+    witness.
+  - Boundaries: `recall/` may import the store and coordinator only as types,
+    and may not import the room-frame or thread-artifact renderers. Its files
+    joined the capability boundary. Each guard was mutation-checked.
+  - Verification: full suite 252 suites / 3,176 tests on both Node 22.22 and
+    Node 18.20 (baseline 247 / 3,085). Typecheck (core, webview, extension)
+    and the production build with `verify:bundle` pass. ESLint reports no
+    problems on the 18 changed TypeScript files.
+  - For Slice 3: the sub-adapter takes provenance turn ids from the rendered
+    read's `delivered` ranges. The codec owns query length, session-id shape,
+    and range count, because the service throws on an invalid range.
+    `resultLogSummary` needs its exhaustive recall case (PR #125 review F-01).
 
 ## Decisions (accepted 2026-10-05, as recommended)
 
