@@ -244,6 +244,19 @@ describe('WorkshopTranscriptRecallService', () => {
         .toEqual(['s4', 's3']);
     });
 
+    it('lists each participant once, however often a saved file repeats it (PR 126 re-review F-01)', async () => {
+      const session = numbered(1);
+      session.summary.participantPersonaIds = Array.from({ length: 10_000 }, (_, index) => (index % 3 ? 'jill' : 'cliff'));
+      store.sessions.push(session);
+
+      const catalog = await service.catalog({});
+
+      expect(catalog.available && catalog.outcome === 'catalog' && catalog.sessions[0]).toMatchObject({
+        participantPersonaIds: ['cliff', 'jill'],
+        participants: ['Cliff', 'Jill']
+      });
+    });
+
     it('never carries the summary preview or excerpt identity into a catalog', async () => {
       const session = numbered(1);
       session.summary.preview = 'HIDDEN-PREVIEW';

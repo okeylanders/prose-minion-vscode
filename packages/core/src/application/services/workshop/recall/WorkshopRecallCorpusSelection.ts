@@ -42,6 +42,8 @@ export function withParticipant(
 }
 
 export function catalogSession(summary: WorkshopRecallSessionSummary): WorkshopRecallCatalogSession {
+  // A saved file may repeat a participant; the codec accepts that (PR 126 re-review F-01).
+  const participantPersonaIds = [...new Set(summary.participantPersonaIds)];
   return {
     sessionId: summary.sessionId,
     title: summary.title,
@@ -49,8 +51,8 @@ export function catalogSession(summary: WorkshopRecallSessionSummary): WorkshopR
     timezone: summary.timezone,
     hostPersonaId: summary.hostPersonaId,
     host: workshopPersonaLabel(summary.hostPersonaId),
-    participantPersonaIds: [...summary.participantPersonaIds],
-    participants: summary.participantPersonaIds.map(workshopPersonaLabel),
+    participantPersonaIds,
+    participants: participantPersonaIds.map(workshopPersonaLabel),
     ...(summary.scope !== undefined ? { scope: summary.scope } : {}),
     ...(summary.excerptLabel ? { excerptLabel: summary.excerptLabel } : {}),
     lastTurn: summary.turnCount

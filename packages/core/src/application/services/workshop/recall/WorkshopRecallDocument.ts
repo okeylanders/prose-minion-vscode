@@ -148,6 +148,7 @@ function normalizeWord(word: string): string {
 function buildHeader(session: WorkshopPersistedSessionV2): WorkshopRecallHeader {
   const { summary, workshop } = session;
   const scope = workshop.scope !== undefined ? workshop.scope : summary.scope;
+  const participantPersonaIds = [...new Set(summary.participantPersonaIds)];
   return {
     sessionId: session.sessionId,
     title: session.title,
@@ -156,8 +157,9 @@ function buildHeader(session: WorkshopPersistedSessionV2): WorkshopRecallHeader 
     timezone: session.temporal.timezone,
     hostPersonaId: summary.hostPersonaId,
     host: workshopPersonaLabel(summary.hostPersonaId),
-    participantPersonaIds: [...summary.participantPersonaIds],
-    participants: summary.participantPersonaIds.map(workshopPersonaLabel),
+    // A saved file may repeat a participant; the codec accepts that (PR 126 re-review F-01).
+    participantPersonaIds,
+    participants: participantPersonaIds.map(workshopPersonaLabel),
     ...(scope !== undefined ? { scope } : {}),
     ...(summary.excerptLabel ? { excerptLabel: summary.excerptLabel } : {}),
     contextLabels: workshop.contextAttachments.map((attachment) => attachment.label),
