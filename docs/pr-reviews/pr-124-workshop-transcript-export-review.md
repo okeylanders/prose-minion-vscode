@@ -9,7 +9,7 @@
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | Markdown export changes message text at its boundaries | `WorkshopTranscriptMarkdown.ts:44-45,58`; projection and JSON preserve the original `content` | **Open** — fix before merge |
+| F-01 | 🟡 Standard | Markdown export changes message text at its boundaries | `WorkshopTranscriptMarkdown.ts:44-45,58`; projection and JSON preserve the original `content` | ✅ Fixed in `072ea62` (bodies written untrimmed; whitespace-only writer body still omitted; byte-exact regression tests for both roles fail against the trimming renderer) |
 
 **Verdict:** Request one focused correction before merging. The export boundary and write-once path otherwise look coherent in the inspected paths. No Blocking or High finding was identified in this quick review.
 
