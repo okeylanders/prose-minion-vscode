@@ -3,7 +3,7 @@
 **Status:** In progress — D1–D4 accepted 2026-10-05; Slices 0–1 done (behavior-preserving)
 **Priority:** Medium
 **Created:** 2026-10-05
-**Branch:** `claude/practical-ritchie-rx9n4t` (design)
+**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs from `claude/practical-ritchie-rx9n4t`
 **Decision:** [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (Accepted in part: D1–D4)
 **Evidence:** [Architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
 **Realizes:** the host-fetch half of [Feature: a prior conversation is a resource, not a branch](../../features/feature-prior-conversation-as-resource/README.md)
