@@ -154,6 +154,7 @@ export enum MessageType {
   WORKSHOP_DUPLICATE_SESSION = 'workshop_duplicate_session',
   WORKSHOP_REVEAL_SESSION = 'workshop_reveal_session',
   WORKSHOP_DELETE_SESSION = 'workshop_delete_session',
+  WORKSHOP_EXPORT_SESSION = 'workshop_export_session',
   WORKSHOP_TURN = 'workshop_turn',
   WORKSHOP_COMPOSER_DRAFT_RESTORED = 'workshop_composer_draft_restored',
   WORKSHOP_SESSION_STATE = 'workshop_session_state',

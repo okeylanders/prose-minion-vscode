@@ -54,6 +54,7 @@ export interface UseWorkshopSessionSurfacesOptions {
 export interface WorkshopSessionSurfacesState {
   sessionsMenuOpen: boolean;
   saveSessionModalOpen: boolean;
+  exportSessionModalOpen: boolean;
   sessionBrowserOpen: boolean;
   sessionConfirm: WorkshopSessionConfirm | null;
 }
@@ -62,6 +63,8 @@ export interface WorkshopSessionSurfacesActions {
   setSessionsMenuVisibility: (open: boolean) => void;
   openSaveSessionModal: () => void;
   closeSaveSessionModal: () => void;
+  openExportSessionModal: () => void;
+  closeExportSessionModal: () => void;
   openSessionBrowser: () => void;
   closeSessionBrowser: () => void;
   startNewSession: () => void;
@@ -103,6 +106,7 @@ export function useWorkshopSessionSurfaces({
 }: UseWorkshopSessionSurfacesOptions): UseWorkshopSessionSurfacesReturn {
   const [sessionsMenuOpen, setSessionsMenuOpen] = React.useState(false);
   const [saveSessionModalOpen, setSaveSessionModalOpen] = React.useState(false);
+  const [exportSessionModalOpen, setExportSessionModalOpen] = React.useState(false);
   const [sessionBrowserOpen, setSessionBrowserOpen] = React.useState(false);
   const [sessionConfirm, setSessionConfirm] = React.useState<WorkshopSessionConfirm | null>(null);
   const sessionListInitializedRef = React.useRef(false);
@@ -131,6 +135,9 @@ export function useWorkshopSessionSurfaces({
     if (sessionActionResult.ok && sessionActionResult.action === 'save') {
       setSaveSessionModalOpen(false);
     }
+    if (sessionActionResult.ok && sessionActionResult.action === 'export') {
+      setExportSessionModalOpen(false);
+    }
     if (
       sessionActionResult.ok && (
         sessionActionResult.action === 'open' ||
@@ -140,8 +147,11 @@ export function useWorkshopSessionSurfaces({
     ) {
       setSessionBrowserOpen(false);
     }
+    // Reveal and Export read sessions; neither changes the saved-session index.
     const sessionIndexChanged =
-      sessionActionResult.ok && sessionActionResult.action !== 'reveal';
+      sessionActionResult.ok &&
+      sessionActionResult.action !== 'reveal' &&
+      sessionActionResult.action !== 'export';
     const activeRoomIdentityChanged = sessionActionResult.ok && (
       sessionActionResult.action === 'save' ||
       sessionActionResult.action === 'open' ||
@@ -174,14 +184,25 @@ export function useWorkshopSessionSurfaces({
   const openSaveSessionModal = React.useCallback(() => {
     setSessionsMenuOpen(false);
     setSessionBrowserOpen(false);
+    setExportSessionModalOpen(false);
     setSaveSessionModalOpen(true);
   }, []);
 
   const closeSaveSessionModal = React.useCallback(() => setSaveSessionModalOpen(false), []);
 
+  const openExportSessionModal = React.useCallback(() => {
+    setSessionsMenuOpen(false);
+    setSessionBrowserOpen(false);
+    setSaveSessionModalOpen(false);
+    setExportSessionModalOpen(true);
+  }, []);
+
+  const closeExportSessionModal = React.useCallback(() => setExportSessionModalOpen(false), []);
+
   const openSessionBrowser = React.useCallback(() => {
     setSessionsMenuOpen(false);
     setSaveSessionModalOpen(false);
+    setExportSessionModalOpen(false);
     setSessionSearchQuery('');
     setSessionBrowserOpen(true);
   }, [setSessionSearchQuery]);
@@ -299,11 +320,14 @@ export function useWorkshopSessionSurfaces({
   return {
     sessionsMenuOpen,
     saveSessionModalOpen,
+    exportSessionModalOpen,
     sessionBrowserOpen,
     sessionConfirm,
     setSessionsMenuVisibility,
     openSaveSessionModal,
     closeSaveSessionModal,
+    openExportSessionModal,
+    closeExportSessionModal,
     openSessionBrowser,
     closeSessionBrowser,
     startNewSession,

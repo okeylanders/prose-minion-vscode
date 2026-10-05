@@ -47,6 +47,8 @@ import {
   WorkshopSessionTimeService,
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
+  WorkshopTranscriptExportService,
+  WorkshopTranscriptExportStore,
   GesturePlaygroundService,
   CreativeVariationsService,
   LexicalGravityModelService,
@@ -264,6 +266,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // until rolling recovery has either completed or deliberately fallen back.
   // Otherwise a fast webview message can race hydration and lose committed work.
   await workshopSessionPersistenceCoordinator.initialize();
+  // Transcript export reads the live room's full ledger and writes write-once
+  // documents under prose-minion/exports.
+  const workshopTranscriptExportService = new WorkshopTranscriptExportService(
+    workshopSessionService,
+    new WorkshopTranscriptExportStore(platform.fileSystem, platform.workspace)
+  );
 
   // Conversation Widgets (ADR 2026-07-22): Gesture Playground's one
   // quality-first model call, routed through the manager-owned `widget` scope.
@@ -327,6 +335,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopWriterProfileService,
     workshopSessionTimeService,
     workshopSessionPersistenceCoordinator,
+    workshopTranscriptExportService,
     gesturePlaygroundService,
     creativeVariationsService,
     lexicalGravityModelService,

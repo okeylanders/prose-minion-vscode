@@ -16,3 +16,19 @@ export const isHttpUrl = (value: unknown): value is string => {
     return false;
   }
 };
+
+/**
+ * Human label for a citation: its title, unless the provider supplied only a
+ * bare footnote number, in which case the host name says more.
+ */
+export const citationDisplayLabel = (citation: Pick<UrlCitation, 'url' | 'title'>): string => {
+  const title = citation.title?.trim();
+  if (title && !/^\d+$/.test(title)) {
+    return title;
+  }
+  try {
+    return new URL(citation.url).hostname || citation.url;
+  } catch {
+    return citation.url;
+  }
+};

@@ -715,6 +715,37 @@ export interface WorkshopDeleteSessionMessage extends MessageEnvelope<{
   type: MessageType.WORKSHOP_DELETE_SESSION;
 }
 
+/**
+ * File formats a Workshop transcript exports to. A transcript is the thread's
+ * visible conversation only — never the session codec, context bodies,
+ * attachment text, or widget payloads.
+ */
+export const WORKSHOP_TRANSCRIPT_EXPORT_FORMATS = ['markdown', 'json', 'html'] as const;
+export type WorkshopTranscriptExportFormat = typeof WORKSHOP_TRANSCRIPT_EXPORT_FORMATS[number];
+
+export const isWorkshopTranscriptExportFormat = (
+  value: unknown
+): value is WorkshopTranscriptExportFormat =>
+  typeof value === 'string' &&
+  (WORKSHOP_TRANSCRIPT_EXPORT_FORMATS as readonly string[]).includes(value);
+
+/** Longest export title accepted; it names both the document and its file. */
+export const WORKSHOP_TRANSCRIPT_EXPORT_TITLE_MAX_LENGTH = 160;
+
+/**
+ * Export the live room's transcript to a file under prose-minion/exports.
+ * The host reads its full ledger, so turns outside the webview's bounded
+ * snapshot window are included. Answered by WORKSHOP_SESSION_ACTION_RESULT
+ * with action `export`.
+ */
+export interface WorkshopExportSessionMessage extends MessageEnvelope<{
+  format: WorkshopTranscriptExportFormat;
+  /** Document title; the file name is derived from it. */
+  title: string;
+}> {
+  type: MessageType.WORKSHOP_EXPORT_SESSION;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Extension → webview
 // ─────────────────────────────────────────────────────────────────────────────
@@ -822,7 +853,8 @@ export type WorkshopSessionAction =
   | 'rename'
   | 'duplicate'
   | 'reveal'
-  | 'delete';
+  | 'delete'
+  | 'export';
 
 export interface WorkshopSessionActionResultMessage extends MessageEnvelope<{
   action: WorkshopSessionAction;

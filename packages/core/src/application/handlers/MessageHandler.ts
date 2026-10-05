@@ -181,6 +181,7 @@ export class MessageHandler {
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
+      workshopTranscriptExportService,
       gesturePlaygroundService,
       creativeVariationsService,
       lexicalGravityModelService,
@@ -316,6 +317,7 @@ export class MessageHandler {
       workshopConversationSettingsService,
       workshopSessionTimeService,
       workshopSessionPersistenceCoordinator,
+      workshopTranscriptExportService,
       {
         gesturePlayground: gesturePlaygroundService,
         creativeVariations: creativeVariationsService,

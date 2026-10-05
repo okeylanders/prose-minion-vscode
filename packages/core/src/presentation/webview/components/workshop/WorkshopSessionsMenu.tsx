@@ -30,6 +30,9 @@ interface WorkshopSessionsMenuProps {
   /** True when there is actually an excerpt or attachment to clear. */
   hasWorkingSet: boolean;
   onSaveSession: () => void;
+  /** Export reads the room; it needs only a conversation, not persistence. */
+  exportDisabled: boolean;
+  onExportSession: () => void;
   onBrowseSessions: () => void;
   onOpenSession: (session: WorkshopSessionSummary) => void;
 }
@@ -46,6 +49,8 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
   onFullResetSession,
   hasWorkingSet,
   onSaveSession,
+  exportDisabled,
+  onExportSession,
   onBrowseSessions,
   onOpenSession
 }) => {
@@ -168,6 +173,19 @@ export const WorkshopSessionsMenu: React.FC<WorkshopSessionsMenuProps> = ({
             <Icon name="save" size={15} />
             <span>Save session…</span>
             <kbd>⌘S</kbd>
+          </button>
+          <button
+            className="pm-ws-sessions-menu-item"
+            type="button"
+            role="menuitem"
+            disabled={exportDisabled}
+            title={exportDisabled
+              ? 'Nothing to export yet — the transcript starts with your first message'
+              : 'Save this conversation as Markdown, JSON, or styled HTML'}
+            onClick={() => invoke(onExportSession)}
+          >
+            <Icon name="share" size={15} />
+            <span>Export…</span>
           </button>
           <div className="pm-ws-sessions-menu-rule" />
           <button

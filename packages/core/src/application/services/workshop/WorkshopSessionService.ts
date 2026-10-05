@@ -1204,7 +1204,10 @@ export class WorkshopSessionService {
     };
   }
 
-  /** Full defensive ledger read used only for a new participant's snapshot. */
+  /**
+   * Full defensive ledger read: a new participant's snapshot, and the
+   * transcript export, which must include turns outside the snapshot window.
+   */
   readRoomLedger(): WorkshopTurn[] {
     return this.turnLedger.all();
   }

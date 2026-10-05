@@ -19,6 +19,9 @@ import {
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+import {
+  WorkshopTranscriptExportService
+} from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import type { FileSystem, LogSink, SettingsStore, ShellService, Workspace } from '@/platform';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import { ContextBudgetSnapshot, MessageType } from '@messages';
@@ -103,6 +106,13 @@ export interface WorkshopRouteTestHarness {
   }>;
   resourceProviderFactory: { createProvider: jest.Mock; };
   persistence: jest.Mocked<WorkshopSessionPersistenceCoordinator>;
+  /** The transcript export's disk seam; projection and rendering are real. */
+  transcriptFiles: {
+    writeNew: jest.Mock<
+      Promise<{ absolutePath: string; relativePath: string }>,
+      [string, string, string]
+    >;
+  };
   disposeStatusListener: jest.Mock;
   disposeSessionSaveStatusListener: jest.Mock;
   setTimeNow: (value: Date) => void;
@@ -274,6 +284,18 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     deleteNamed: jest.fn().mockResolvedValue(undefined)
   } as unknown as jest.Mocked<WorkshopSessionPersistenceCoordinator>;
   const roomDelivery = new WorkshopRoomDeliveryService(session);
+  // Real projection + renderers over the live session; only the disk is fake.
+  const transcriptFiles = {
+    writeNew: jest.fn(async (stem: string, extension: string, _content: string) => ({
+      absolutePath: `/workspace/prose-minion/exports/${stem}.${extension}`,
+      relativePath: `prose-minion/exports/${stem}.${extension}`
+    }))
+  };
+  const transcriptExport = new WorkshopTranscriptExportService(
+    session,
+    transcriptFiles,
+    () => Date.UTC(2026, 9, 5, 14, 30)
+  );
   const handler = new WorkshopRoomHandler(
     service,
     contextAssistant as never,
@@ -309,6 +331,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
       timezone: 'America/Chicago'
     }),
     persistence,
+    transcriptExport,
     widgetRuntime(
       { generateMenu: jest.fn(), generateMore: jest.fn() },
       creativeVariationsGenerate
@@ -366,6 +389,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     resourceFiles,
     resourceProviderFactory,
     persistence,
+    transcriptFiles,
     disposeStatusListener,
     disposeSessionSaveStatusListener,
     setTimeNow: (value: Date) => {

@@ -96,6 +96,9 @@ export { WorkshopPersonaCapabilityFactory } from '@/application/services/worksho
 export { WorkshopContextIntakeService } from '@/application/services/workshop/WorkshopContextIntakeService';
 export { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 export {
+  WorkshopTranscriptExportService
+} from '@/application/services/workshop/export/WorkshopTranscriptExportService';
+export {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,
   persistRejectedWidgetResponse,
@@ -152,6 +155,9 @@ export type {
   WorkshopSessionStoreUnavailableReason,
   WorkshopStoredSessionSummary
 } from '@/infrastructure/storage/WorkshopSessionStore';
+
+// --- Infrastructure: Workshop transcript exports ---
+export { WorkshopTranscriptExportStore } from '@/infrastructure/storage/WorkshopTranscriptExportStore';
 
 // --- Infrastructure: secrets ---
 export { SecretStorageService } from '@/infrastructure/secrets/SecretStorageService';
