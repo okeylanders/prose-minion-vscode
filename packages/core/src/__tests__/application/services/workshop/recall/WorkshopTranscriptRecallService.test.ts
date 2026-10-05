@@ -29,6 +29,7 @@ import {
 } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import type { WorkshopTurn } from '@messages';
+import type { Workspace } from '@/platform';
 
 const WRITE_METHODS = [
   'readCurrent',
@@ -161,6 +162,20 @@ describe('WorkshopTranscriptRecallService', () => {
       expect(JSON.stringify(search)).not.toContain('live room');
       expect(read).toEqual({ available: true, outcome: 'unknown-session', sessionId: 'live', liveSession: true });
       expect(store.readNamed.mock.calls.map(([id]) => id)).not.toContain('live');
+    });
+
+    it('refuses a call whose live room changed identity while it ran (PR 126 F-04)', async () => {
+      store.sessions.push(numbered(1));
+      const list = store.list.getMockImplementation()!;
+      store.list.mockImplementationOnce(async (query, signal) => {
+        const listing = await list(query, signal);
+        // The room that just opened is the saved session about to be read.
+        scope = { available: true, liveSessionId: 's1' };
+        return listing;
+      });
+
+      expect(await service.read({ sessionId: 's1' })).toEqual({ available: false, reason: 'not-ready' });
+      expect(store.readNamed).not.toHaveBeenCalled();
     });
 
     it('lists without a query, and the catalog reads no session file', async () => {
@@ -628,5 +643,111 @@ describe('WorkshopTranscriptRecallService over the real store and coordinator', 
       outcome: 'searched',
       bounds: { corpusSessions: 2, sessionsSearched: 0, unreadableSessions: 2 }
     });
+  });
+});
+
+describe('recall scope across asynchronous work (PR 126 review F-04)', () => {
+  const ROOT_A = '/workspace/novel-a';
+  const ROOT_B = '/workspace/novel-b';
+  let folders: Array<{ name: string; path: string }>;
+  const workspace: Workspace = {
+    workspaceFolders: () => folders,
+    extensionPath: '/extension',
+    asRelativePath: (value) => value,
+    findFiles: async () => []
+  };
+  const switchTo = (...roots: string[]) => {
+    folders = roots.map((root) => ({ name: root.split('/').pop()!, path: root }));
+  };
+
+  /** One saved session, `copied`, in root A; root B holds a copy with the same id and different text. */
+  async function copiedRoots() {
+    switchTo(ROOT_A);
+    const room = await saveRecallRoom('Copied', (session, advance) => {
+      session.setSessionScope('open');
+      session.beginPersonaMessage('run-1', 'Root A text about the lighthouse.');
+      advance(60_000);
+      session.completeRun('run-1', 'Root A reply.', undefined, false, 'runtime-host');
+    }, { workspace });
+    const copy = (await room.store.readNamed(room.savedSessionId))!;
+    copy.title = 'Copied in B';
+    copy.workshop.turns = copy.workshop.turns.map((turn) =>
+      turn.content === 'Root A text about the lighthouse.' ? { ...turn, content: 'Root B text about the lighthouse.' } : turn);
+    switchTo(ROOT_B);
+    await room.store.saveNamed(copy);
+    switchTo(ROOT_A);
+    return { ...room, service: new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log) };
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('refuses a warm read when a folder is added while its listing is pending', async () => {
+    const { store, service, savedSessionId } = await copiedRoots();
+    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ outcome: 'read' });
+    const list = store.list.bind(store);
+    jest.spyOn(store, 'list').mockImplementation(async (query, signal) => {
+      const listing = await list(query, signal);
+      switchTo(ROOT_A, ROOT_B);
+      return listing;
+    });
+
+    expect(await service.read({ sessionId: savedSessionId }))
+      .toEqual({ available: false, reason: 'workspace-changed' });
+    expect(await service.search({ query: 'lighthouse' }))
+      .toEqual({ available: false, reason: 'workspace-changed' });
+    expect(await service.catalog({}))
+      .toEqual({ available: false, reason: 'workspace-changed' });
+  });
+
+  it('never returns or caches a copied root’s session read after the root switched', async () => {
+    const { store, service, savedSessionId } = await copiedRoots();
+    const list = store.list.bind(store);
+    const listing = jest.spyOn(store, 'list').mockImplementation(async (query, signal) => {
+      const result = await list(query, signal);
+      switchTo(ROOT_B);
+      return result;
+    });
+
+    expect(await service.read({ sessionId: savedSessionId }))
+      .toEqual({ available: false, reason: 'workspace-changed' });
+
+    listing.mockRestore();
+    switchTo(ROOT_A);
+    const restored = await service.read({ sessionId: savedSessionId });
+    expect(JSON.stringify(restored)).toContain('Root A text');
+    expect(JSON.stringify(restored)).not.toContain('Root B text');
+  });
+
+  it('discards a read in flight when the scope changes, and keeps it out of the cache', async () => {
+    const { store, service, savedSessionId } = await copiedRoots();
+    const readNamed = store.readNamed.bind(store);
+    const reads = jest.spyOn(store, 'readNamed').mockImplementation(async (sessionId) => {
+      const session = await readNamed(sessionId);
+      switchTo(ROOT_B);
+      return session;
+    });
+
+    expect(await service.search({ query: 'lighthouse' }))
+      .toEqual({ available: false, reason: 'workspace-changed' });
+
+    reads.mockRestore();
+    switchTo(ROOT_A);
+    expect(await service.read({ sessionId: savedSessionId }))
+      .toMatchObject({ outcome: 'read', cacheHit: false });
+  });
+
+  it('keeps documents read under the accepted scope through a call refused at entry', async () => {
+    const { service, savedSessionId } = await copiedRoots();
+    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ cacheHit: false });
+    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ cacheHit: true });
+
+    switchTo(ROOT_B);
+    expect(await service.read({ sessionId: savedSessionId }))
+      .toEqual({ available: false, reason: 'workspace-changed' });
+    switchTo(ROOT_A);
+
+    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ cacheHit: true });
   });
 });

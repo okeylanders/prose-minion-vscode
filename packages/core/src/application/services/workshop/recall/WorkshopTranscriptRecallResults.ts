@@ -14,6 +14,11 @@ import type {
   WorkshopRecallSearchOutcome
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
 
+/**
+ * Why recall read nothing it could return. `not-ready` means the live room
+ * has no settled identity yet (still hydrating), or it changed identity
+ * while a call ran; `workspace-changed` holds until the host reloads.
+ */
 export type WorkshopRecallUnavailableReason =
   | 'no-workspace'
   | 'multi-root'

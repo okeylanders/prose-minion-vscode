@@ -23,7 +23,6 @@ import type { WorkshopPersonaId, WorkshopSessionScope } from '@messages';
 import type { LogSink } from '@/platform';
 import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import {
   buildWorkshopRecallDocument,
   WorkshopRecallDocument
@@ -36,17 +35,22 @@ import {
   parseWorkshopRecallQuery,
   searchWorkshopRecallDocuments
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
+import {
+  catalogSession,
+  normalizeTurnRanges,
+  recallableSessions,
+  resolveRange,
+  unknownSession,
+  withParticipant
+} from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
 import type {
   WorkshopRecallCatalogResult,
-  WorkshopRecallCatalogSession,
-  WorkshopRecallReadRange,
   WorkshopRecallReadResult,
   WorkshopRecallSearchBounds,
   WorkshopRecallSearchResult,
   WorkshopRecallTurnRange,
   WorkshopRecallUnavailable,
-  WorkshopRecallUnavailableReason,
-  WorkshopRecallUnknownSession
+  WorkshopRecallUnavailableReason
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 
 export const WORKSHOP_TRANSCRIPT_RECALL_LIMITS = Object.freeze({
@@ -110,8 +114,14 @@ export interface WorkshopTranscriptRecallServiceOptions {
   limits?: Partial<WorkshopTranscriptRecallLimits>;
 }
 
-interface RecallCorpus {
+/** The scope a call opened: who the live room was, and the cache generation then. */
+interface OpenScope {
   readonly liveSessionId: string;
+  readonly generation: number;
+}
+
+interface RecallCorpus {
+  readonly scope: OpenScope;
   readonly sessions: readonly WorkshopRecallSessionSummary[];
   readonly listingTruncated: boolean;
 }
@@ -129,6 +139,14 @@ type LoadedDocument =
   | { readonly document: WorkshopRecallDocument; readonly cacheHit: boolean; readonly parsedBytes: number }
   | { readonly document?: undefined };
 
+/** The scope a call opened stopped holding before the call finished. */
+class RecallScopeChangedError extends Error {
+  constructor(readonly unavailable: WorkshopRecallUnavailable) {
+    super(`Session recall scope changed (${unavailable.reason}).`);
+    this.name = 'RecallScopeChangedError';
+  }
+}
+
 export class WorkshopTranscriptRecallService {
   private readonly now: () => number;
   private readonly limits: WorkshopTranscriptRecallLimits;
@@ -145,83 +163,79 @@ export class WorkshopTranscriptRecallService {
     this.cache = new WorkshopRecallDocumentCache(this.limits);
   }
 
-  async catalog(
+  catalog(
     request: { personaId?: WorkshopPersonaId },
     signal?: AbortSignal
   ): Promise<WorkshopRecallCatalogResult> {
-    const corpus = await this.recallCorpus(signal);
-    if ('reason' in corpus) {
-      return corpus;
-    }
-    const matching = withParticipant(corpus.sessions, request.personaId);
-    return {
-      available: true,
-      outcome: 'catalog',
-      ...(request.personaId ? { personaId: request.personaId } : {}),
-      sessions: matching
-        .slice(0, PROMPT_BUDGETS.workshopTranscriptRecall.catalogSessions)
-        .map(catalogSession),
-      matchingSessions: matching.length,
-      listingTruncated: corpus.listingTruncated
-    };
+    return this.withCorpus(signal, async (corpus) => {
+      const matching = withParticipant(corpus.sessions, request.personaId);
+      return {
+        available: true,
+        outcome: 'catalog',
+        ...(request.personaId ? { personaId: request.personaId } : {}),
+        sessions: matching
+          .slice(0, PROMPT_BUDGETS.workshopTranscriptRecall.catalogSessions)
+          .map(catalogSession),
+        matchingSessions: matching.length,
+        listingTruncated: corpus.listingTruncated
+      };
+    });
   }
 
-  async search(
+  search(
     request: { query: string; sessionId?: string; personaId?: WorkshopPersonaId },
     signal?: AbortSignal
   ): Promise<WorkshopRecallSearchResult> {
     const started = this.now();
     const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
-    const corpus = await this.recallCorpus(signal);
-    if ('reason' in corpus) {
-      return corpus;
-    }
-    let candidates = withParticipant(corpus.sessions, request.personaId);
-    if (request.sessionId !== undefined) {
-      const named = corpus.sessions.find((session) => session.sessionId === request.sessionId);
-      if (!named) {
-        return unknownSession(request.sessionId, corpus.liveSessionId);
+    return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallSearchResult> => {
+      let candidates = withParticipant(corpus.sessions, request.personaId);
+      if (request.sessionId !== undefined) {
+        const named = corpus.sessions.find((session) => session.sessionId === request.sessionId);
+        if (!named) {
+          return unknownSession(request.sessionId, corpus.scope.liveSessionId);
+        }
+        candidates = candidates.filter((session) => session === named);
       }
-      candidates = candidates.filter((session) => session === named);
-    }
-    const scanned = candidates.slice(0, budgets.searchSessions);
-    const loaded = await this.loadDocuments(scanned, budgets.searchSourceBytes, signal);
-    const query = parseWorkshopRecallQuery(request.query);
-    const search = searchWorkshopRecallDocuments(loaded.documents, query, {
-      hits: budgets.searchHits,
-      hitsPerSession: budgets.searchHitsPerSession,
-      snippetCharacters: budgets.snippetCharacters
+      const scanned = candidates.slice(0, budgets.searchSessions);
+      const loaded = await this.loadDocuments(scanned, budgets.searchSourceBytes, corpus.scope, signal);
+      const query = parseWorkshopRecallQuery(request.query);
+      const search = searchWorkshopRecallDocuments(loaded.documents, query, {
+        hits: budgets.searchHits,
+        hitsPerSession: budgets.searchHitsPerSession,
+        snippetCharacters: budgets.snippetCharacters
+      });
+      const bounds: WorkshopRecallSearchBounds = {
+        corpusSessions: candidates.length,
+        sessionsSearched: loaded.documents.length,
+        notSearchedBySessionLimit: candidates.length - scanned.length,
+        notSearchedByByteBudget: loaded.notSearchedByByteBudget,
+        unreadableSessions: loaded.unreadableSessions,
+        listingTruncated: corpus.listingTruncated,
+        parsedBytes: loaded.parsedBytes,
+        unreadableBytesCharged: loaded.unreadableBytesCharged,
+        cacheHits: loaded.cacheHits
+      };
+      this.log(
+        `search terms=${query.terms.length} mode=${search.mode ?? 'none'} ` +
+        `sessions=${bounds.sessionsSearched}/${bounds.corpusSessions} ` +
+        `notSearched=${bounds.notSearchedBySessionLimit}+${bounds.notSearchedByByteBudget} ` +
+        `unreadable=${bounds.unreadableSessions} parsedBytes=${bounds.parsedBytes} ` +
+        `unreadableCharge=${bounds.unreadableBytesCharged} ` +
+        `cacheHits=${bounds.cacheHits} hits=${search.shownHits}/${search.matchedHits} ` +
+        `durationMs=${this.now() - started}`
+      );
+      return {
+        available: true,
+        outcome: 'searched',
+        queryText: request.query,
+        query,
+        ...(request.personaId ? { personaId: request.personaId } : {}),
+        ...(request.sessionId !== undefined ? { sessionId: request.sessionId } : {}),
+        search,
+        bounds
+      };
     });
-    const bounds: WorkshopRecallSearchBounds = {
-      corpusSessions: candidates.length,
-      sessionsSearched: loaded.documents.length,
-      notSearchedBySessionLimit: candidates.length - scanned.length,
-      notSearchedByByteBudget: loaded.notSearchedByByteBudget,
-      unreadableSessions: loaded.unreadableSessions,
-      listingTruncated: corpus.listingTruncated,
-      parsedBytes: loaded.parsedBytes,
-      unreadableBytesCharged: loaded.unreadableBytesCharged,
-      cacheHits: loaded.cacheHits
-    };
-    this.log(
-      `search terms=${query.terms.length} mode=${search.mode ?? 'none'} ` +
-      `sessions=${bounds.sessionsSearched}/${bounds.corpusSessions} ` +
-      `notSearched=${bounds.notSearchedBySessionLimit}+${bounds.notSearchedByByteBudget} ` +
-      `unreadable=${bounds.unreadableSessions} parsedBytes=${bounds.parsedBytes} ` +
-      `unreadableCharge=${bounds.unreadableBytesCharged} ` +
-      `cacheHits=${bounds.cacheHits} hits=${search.shownHits}/${search.matchedHits} ` +
-      `durationMs=${this.now() - started}`
-    );
-    return {
-      available: true,
-      outcome: 'searched',
-      queryText: request.query,
-      query,
-      ...(request.personaId ? { personaId: request.personaId } : {}),
-      ...(request.sessionId !== undefined ? { sessionId: request.sessionId } : {}),
-      search,
-      bounds
-    };
   }
 
   /**
@@ -229,47 +243,81 @@ export class WorkshopTranscriptRecallService {
    * when none are given. Packing into the read budget is the renderer's
    * job, because only it knows what the text costs.
    */
-  async read(
+  read(
     request: { sessionId: string; turns?: readonly WorkshopRecallTurnRange[] },
     signal?: AbortSignal
   ): Promise<WorkshopRecallReadResult> {
-    const corpus = await this.recallCorpus(signal);
-    if ('reason' in corpus) {
-      return corpus;
-    }
-    const summary = corpus.sessions.find((session) => session.sessionId === request.sessionId);
-    if (!summary) {
-      return unknownSession(request.sessionId, corpus.liveSessionId);
-    }
-    const loaded = await this.loadDocument(summary, signal);
-    if (!loaded.document) {
+    return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallReadResult> => {
+      const summary = corpus.sessions.find((session) => session.sessionId === request.sessionId);
+      if (!summary) {
+        return unknownSession(request.sessionId, corpus.scope.liveSessionId);
+      }
+      const loaded = await this.loadDocument(summary, corpus.scope, signal);
+      if (!loaded.document) {
+        return {
+          available: true,
+          outcome: 'unreadable',
+          sessionId: summary.sessionId,
+          title: summary.title
+        };
+      }
+      const { document } = loaded;
+      const fromStart = request.turns === undefined || request.turns.length === 0;
+      const ranges = fromStart
+        ? [{ from: 1, to: Math.max(1, document.header.turnCount) }]
+        : normalizeTurnRanges(request.turns!);
+      this.log(
+        `read ranges=${ranges.length} cacheHit=${loaded.cacheHit} parsedBytes=${loaded.parsedBytes}`
+      );
       return {
         available: true,
-        outcome: 'unreadable',
-        sessionId: summary.sessionId,
-        title: summary.title
+        outcome: 'read',
+        header: document.header,
+        fromStart,
+        ranges: ranges.map((range) => resolveRange(document, range)),
+        cacheHit: loaded.cacheHit
       };
-    }
-    const { document } = loaded;
-    const fromStart = request.turns === undefined || request.turns.length === 0;
-    const ranges = fromStart
-      ? [{ from: 1, to: Math.max(1, document.header.turnCount) }]
-      : normalizeTurnRanges(request.turns!);
-    this.log(
-      `read ranges=${ranges.length} cacheHit=${loaded.cacheHit} parsedBytes=${loaded.parsedBytes}`
-    );
-    return {
-      available: true,
-      outcome: 'read',
-      header: document.header,
-      fromStart,
-      ranges: ranges.map((range) => resolveRange(document, range)),
-      cacheHit: loaded.cacheHit
-    };
+    });
   }
 
-  private async recallCorpus(signal?: AbortSignal): Promise<RecallCorpus | WorkshopRecallUnavailable> {
+  /**
+   * Open the scope, list the corpus, and run `work` over it. The scope is
+   * checked again after the listing, around every cold read, and before the
+   * result is returned: the store resolves the workspace on every call, so
+   * a check at the entry alone would not bound what a call reads (PR 126
+   * review F-04). A call whose scope changed returns only the refusal.
+   */
+  private async withCorpus<T>(
+    signal: AbortSignal | undefined,
+    work: (corpus: RecallCorpus) => Promise<T>
+  ): Promise<T | WorkshopRecallUnavailable> {
     throwIfAborted(signal);
+    const current = this.currentScope();
+    if ('reason' in current) {
+      return current;
+    }
+    const scope: OpenScope = { liveSessionId: current.liveSessionId, generation: this.cache.generation };
+    try {
+      const listing = await this.corpus.list(undefined, signal);
+      throwIfAborted(signal);
+      this.assertScope(scope);
+      const result = await work({
+        scope,
+        sessions: recallableSessions(listing.sessions, scope.liveSessionId),
+        listingTruncated: listing.truncated
+      });
+      this.assertScope(scope);
+      return result;
+    } catch (error) {
+      if (error instanceof RecallScopeChangedError) {
+        return error.unavailable;
+      }
+      throw error;
+    }
+  }
+
+  /** The coordinator's scope, confirmed by the store's own availability. */
+  private currentScope(): { liveSessionId: string } | WorkshopRecallUnavailable {
     const scope = this.scope.recallScope();
     if (!scope.available) {
       return { available: false, reason: scope.reason };
@@ -278,20 +326,23 @@ export class WorkshopTranscriptRecallService {
     if (!availability.available) {
       return { available: false, reason: availability.reason };
     }
-    const listing = await this.corpus.list(undefined, signal);
-    throwIfAborted(signal);
-    const seen = new Set<string>();
-    const sessions = [...listing.sessions]
-      .sort(newestFirst)
-      .filter((session) => {
-        // The live room never recalls itself, and a duplicated id names one session.
-        if (session.sessionId === scope.liveSessionId || seen.has(session.sessionId)) {
-          return false;
-        }
-        seen.add(session.sessionId);
-        return true;
-      });
-    return { liveSessionId: scope.liveSessionId, sessions, listingTruncated: listing.truncated };
+    return { liveSessionId: scope.liveSessionId };
+  }
+
+  /**
+   * Throw when the scope a call opened no longer holds. Whatever the call
+   * already read is suspect, so the cache is emptied and its generation
+   * advanced: reads still in flight cannot repopulate it.
+   */
+  private assertScope(scope: OpenScope): void {
+    const current = this.currentScope();
+    if (!('reason' in current) && current.liveSessionId === scope.liveSessionId) {
+      return;
+    }
+    this.cache.invalidate();
+    this.log('Recall scope changed during a call; its results and the document cache were discarded');
+    // A different live room under the same workspace: the room is changing.
+    throw new RecallScopeChangedError('reason' in current ? current : { available: false, reason: 'not-ready' });
   }
 
   /**
@@ -301,6 +352,7 @@ export class WorkshopTranscriptRecallService {
   private async loadDocuments(
     sessions: readonly WorkshopRecallSessionSummary[],
     byteBudget: number,
+    scope: OpenScope,
     signal?: AbortSignal
   ): Promise<LoadedDocuments> {
     const documents: WorkshopRecallDocument[] = [];
@@ -321,7 +373,7 @@ export class WorkshopTranscriptRecallService {
         notSearchedByByteBudget += 1;
         continue;
       }
-      const loaded = await this.loadDocument(summary, signal);
+      const loaded = await this.loadDocument(summary, scope, signal);
       if (!loaded.document) {
         unreadableSessions += 1;
         unreadableBytesCharged += this.limits.unreadableSessionBytes;
@@ -335,12 +387,15 @@ export class WorkshopTranscriptRecallService {
 
   private async loadDocument(
     summary: WorkshopRecallSessionSummary,
+    scope: OpenScope,
     signal?: AbortSignal
   ): Promise<LoadedDocument> {
     const cached = this.cache.get(summary.sessionId, summary.updatedAt);
     if (cached) {
       return { document: cached, cacheHit: true, parsedBytes: 0 };
     }
+    // Never read under a scope that no longer holds, nor keep what such a read returned.
+    this.assertScope(scope);
     let session: WorkshopPersistedSessionV2 | undefined;
     try {
       session = await this.corpus.readNamed(summary.sessionId);
@@ -351,94 +406,19 @@ export class WorkshopTranscriptRecallService {
       return {};
     }
     throwIfAborted(signal);
+    this.assertScope(scope);
     if (!session || session.sessionId !== summary.sessionId) {
       this.log(`Skipped session ${summary.sessionId}: it was not found where the listing put it`);
       return {};
     }
     const document = buildWorkshopRecallDocument(session);
-    this.cache.remember(document);
+    this.cache.remember(document, scope.generation);
     return { document, cacheHit: false, parsedBytes: estimatedSourceBytes(session) };
   }
 
   private log(line: string): void {
     this.outputChannel.appendLine(`[WorkshopTranscriptRecall] ${line}`);
   }
-}
-
-function withParticipant(
-  sessions: readonly WorkshopRecallSessionSummary[],
-  personaId: WorkshopPersonaId | undefined
-): readonly WorkshopRecallSessionSummary[] {
-  return personaId === undefined
-    ? sessions
-    : sessions.filter((session) => session.participantPersonaIds.includes(personaId));
-}
-
-function catalogSession(summary: WorkshopRecallSessionSummary): WorkshopRecallCatalogSession {
-  return {
-    sessionId: summary.sessionId,
-    title: summary.title,
-    savedAt: summary.savedAt ?? summary.updatedAt,
-    timezone: summary.timezone,
-    hostPersonaId: summary.hostPersonaId,
-    host: workshopPersonaLabel(summary.hostPersonaId),
-    participantPersonaIds: [...summary.participantPersonaIds],
-    participants: summary.participantPersonaIds.map(workshopPersonaLabel),
-    ...(summary.scope !== undefined ? { scope: summary.scope } : {}),
-    ...(summary.excerptLabel ? { excerptLabel: summary.excerptLabel } : {}),
-    lastTurn: summary.turnCount
-  };
-}
-
-function unknownSession(sessionId: string, liveSessionId: string): WorkshopRecallUnknownSession {
-  return {
-    available: true,
-    outcome: 'unknown-session',
-    sessionId,
-    liveSession: sessionId === liveSessionId
-  };
-}
-
-/** Sort ascending and merge overlapping or adjacent ranges. */
-function normalizeTurnRanges(ranges: readonly WorkshopRecallTurnRange[]): WorkshopRecallTurnRange[] {
-  for (const range of ranges) {
-    if (!Number.isSafeInteger(range.from) || !Number.isSafeInteger(range.to) || range.from < 1 || range.to < range.from) {
-      throw new Error(`Invalid session-recall turn range ${range.from}-${range.to}.`);
-    }
-  }
-  const sorted = [...ranges].sort((left, right) => left.from - right.from || left.to - right.to);
-  const merged: Array<{ from: number; to: number }> = [];
-  for (const range of sorted) {
-    const last = merged.at(-1);
-    if (last && range.from <= last.to + 1) {
-      last.to = Math.max(last.to, range.to);
-    } else {
-      merged.push({ from: range.from, to: range.to });
-    }
-  }
-  return merged;
-}
-
-function resolveRange(
-  document: WorkshopRecallDocument,
-  range: WorkshopRecallTurnRange
-): WorkshopRecallReadRange {
-  const entries = document.entries.filter(
-    (entry) => entry.position >= range.from && entry.position <= range.to
-  );
-  return {
-    from: range.from,
-    to: range.to,
-    entries,
-    ...(entries.length > 0
-      ? { firstTurnId: entries[0].turnId, lastTurnId: entries[entries.length - 1].turnId }
-      : {})
-  };
-}
-
-function newestFirst(left: WorkshopRecallSessionSummary, right: WorkshopRecallSessionSummary): number {
-  return Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||
-    left.sessionId.localeCompare(right.sessionId);
 }
 
 /**

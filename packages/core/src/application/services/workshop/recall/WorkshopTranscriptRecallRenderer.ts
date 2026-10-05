@@ -374,9 +374,9 @@ function unavailableReason(reason: WorkshopRecallUnavailable['reason']): string 
       return 'Session recall needs a single-root workspace. No saved sessions were read.';
     case 'workspace-changed':
       return 'The workspace changed after this Workshop session loaded, so session recall is off ' +
-        'until the extension host reloads. No saved sessions were read.';
+        'until the extension host reloads. Nothing from saved sessions is shown.';
     case 'not-ready':
-      return 'The Workshop session is still loading. No saved sessions were read.';
+      return 'The Workshop session is loading or changing. Nothing from saved sessions is shown.';
     default:
       return assertNever(reason);
   }
