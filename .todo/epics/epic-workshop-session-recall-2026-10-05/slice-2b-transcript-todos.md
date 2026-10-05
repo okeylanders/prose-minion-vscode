@@ -1,6 +1,7 @@
 # Slice 2B plan: recall the writer's to-do lists (`transcript.todos`)
 
-**Status:** Proposed. Waiting on Okey's decisions D5–D7; build after
+**Status:** Decided. Okey settled D5–D7, the session count, and publication
+on 2026-10-05; build after
 [PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126) (Slice 2) merges
 **Date:** 2026-10-05
 **Epic:** [Workshop Session Recall](README.md)
@@ -82,26 +83,32 @@ persona names from flooding any-term matches. As a result, a tool report
 whose text never names its tool is found only by its run's event line. 2B
 indexes the speaker name for **tool** replies only.
 
-## Proposed decisions
+## Decisions (Okey, 2026-10-05)
 
 ### D5: To-dos join what recall may show (visibility, I1)
 
-**Shown, always together in one block:** text, status, priority, source label
-and kind, source tool or persona, "from turn N", source excerpt version, the
-stale marker (relative to the session's final excerpt version), and the
-created date in the session's timezone.
+**Shown, always together in one block:** the to-do id, text, status,
+priority, source label and kind, source tool or persona, "from turn N",
+source excerpt version, the stale marker (relative to the session's final
+excerpt version), and the created date in the session's timezone.
 
-**Never shown:** the to-do id, `findingKey`, and `writerEdit.originalText`.
+**Never shown:** `findingKey`, `findingText`, and `writerEdit.originalText`.
+The writer's current wording is the to-do; the original text stays out, and
+the persona can read the source turn at "turn N".
 
-**Recommended:** omit `findingText` too. The to-do text is the writer's
-current wording, and the persona can read the source turn at "turn N". Okey
-decides (open question 2).
+**Why the id is shown:** a later feature lets the writer tell the persona to
+mark recalled to-dos done. Without that, closed work keeps coming back in
+`open` lists. Closing one needs the session id and the to-do id together, so
+each item travels with both. 2B only shows them; recall stays read-only
+(see [Later](#later-what-2b-leaves-the-door-open-for)).
 
-The rationale: the writer sees all of this in the sidebar, and the live room
-already shows it to the host. None of it is a host-private body: no
-attachment, widget payload, evidence, archive, or context text.
+The rationale for the rest: the writer sees all of it in the sidebar, and the
+live room already shows it to the host. None of it is a host-private body: no
+attachment, widget payload, evidence, archive, or context text. Ids look like
+`todo-7-1759700000000`, unique within their session (the state integrity
+check rejects duplicates); they are clipped like every saved-file label.
 
-### D6: A dedicated `transcript.todos` operation (recommended)
+### D6: A dedicated `transcript.todos` operation
 
 Folding to-dos into `transcript.read` would make "the past three chats" cost a
 catalog call plus three reads, above `readsPerTurn: 2`. Each of the three asks
@@ -118,8 +125,9 @@ session, then `transcript.todos` lists that session's to-dos.
 </prose-minion-tool-call>
 ```
 
-- `<session>` and `<recent>` are exclusive. With neither, the query scans
-  newest first within `todoSessions`.
+- `<session>` and `<recent>` are exclusive. `<recent>` is at most
+  `todoSessions` (50). With neither, the query scans newest first within
+  `todoSessions`.
 - `<match>` uses the search module's session-level matching: the same
   tokenizer, prefix rule, and all-terms preference. It narrows sessions, not
   items.
@@ -128,19 +136,18 @@ session, then `transcript.todos` lists that session's to-dos.
 - `<persona>` (sessions a persona took part in) behaves as it does elsewhere
   in the family.
 
-The alternative is to fold to-dos into existing operations: to-do hits in
-search, a to-do section in read, and counts in the catalog. That needs no
-fourth operation, but it costs more calls and more read budget per ask. The
-catalog would also have to parse every session to count to-dos.
+Not chosen: folding to-dos into the existing operations (to-do hits in
+search, a to-do section in read, counts in the catalog). That needs no fourth
+operation, but it costs more calls and more read budget per ask, and the
+catalog would have to parse every session to count to-dos.
 
 ### D7: Status vocabulary
 
-The sidebar's own words are open, completed, and dismissed. The recommended
-default is `open`, which returns open items **including stale ones, each
-marked stale**. A writer asking "what's still open from 6-7" means everything
-not done, and an item stale against its own session's excerpt may still be
-live work. The alternative is to match the sidebar's count exactly and leave
-stale items out.
+The sidebar's own words are open, completed, and dismissed. The default is
+`open`, which returns open items **including stale ones, each marked stale**.
+A writer asking "what's still open from 6-7" means everything not done, and
+an item stale against its own session's excerpt may still be live work. (Not
+chosen: matching the sidebar's count exactly and leaving stale items out.)
 
 ## Result and rendering
 
@@ -159,24 +166,26 @@ To-dos (open, stale marked) from 3 sessions, newest first.
 
 “Chapter 6-7 stock signature” · id 6b0f… · saved Saturday, October 3, 2026, 9:12 PM (America/Chicago), 2 days ago
 - [open · medium] Convert the "raucous laughter" reaction into a prop-based event.
-  from Stock & Signature (tool report) · turn 41 · excerpt v3
+  id todo-7-1759700000000 · from Stock & Signature (tool report) · turn 41 · excerpt v3
 - [open · low · stale] Correct "shapped" to "shaped".
-  from Jill (host turn, report-derived) · turn 44 · excerpt v3 (session ended on v5)
+  id todo-9-1759700400000 · from Jill (host turn, report-derived) · turn 44 · excerpt v3 (session ended on v5)
 
 Scanned 3 of 3 recent sessions. 2 completed and 1 dismissed to-dos not shown (status: open).
 ```
 
-## Proposed budgets (in `PROMPT_BUDGETS.workshopTranscriptRecall`)
+## Budgets (in `PROMPT_BUDGETS.workshopTranscriptRecall`)
 
 | Key | Starting value | Why |
 |---|---|---|
-| `todoSessions` | 20 | The most sessions one call scans, and the largest `<recent>` allowed |
+| `todoSessions` | 50 | The most sessions one call scans, and the largest `<recent>` allowed; parity with `searchSessions` (Okey, 2026-10-05) |
 | `todoItems` | 60 | Five sessions' worth of a typical list |
 | `todoCharacters` | 16_000 | Under a third of `readCharacters`; a list is lookup, not reading |
 | `todoMatchCharacters` | 200 | Parity with `queryCharacters` |
 
 Cold parses share `searchSourceBytes`, and failed reads are charged as in
-F-02. The live pass (Slice 5) tunes these values.
+F-02, so 50 sessions stay inside the same 64 MiB scan budget as search. With
+more sessions scanned, `todoItems` and `todoCharacters` cut more often; the
+result says what they left out, and the live pass (Slice 5) tunes all four.
 
 ## Where it lands (Slice 2B, dormant like Slice 2)
 
@@ -186,13 +195,14 @@ F-02. The live pass (Slice 5) tunes these values.
 | `WorkshopTranscriptRecallSearch` | Export the session-label matcher for `<match>`, and index tool-reply speaker names |
 | `WorkshopTranscriptRecallService` | `todos(request, signal)` under `withCorpus`: the same scope revalidation, byte budget, failure charge, cache, and cancellation |
 | `WorkshopTranscriptRecallResults` | `WorkshopRecallTodosResult` and its bounds |
-| `WorkshopTranscriptRecallRenderer` (or a `WorkshopRecallTodoList` module if it would pass 500 lines) | The text above, with bounded labels and a hard character cap |
+| `WorkshopTranscriptRecallRenderer` (or a `WorkshopRecallTodoList` module if it would pass 500 lines) | The text above, with bounded labels and a hard character cap. The cap is a render option that defaults to `todoCharacters`, as `readCharacters` is for reads |
 | `PROMPT_BUDGETS` + `promptBudgets.test.ts` | The four keys, pinned |
 
 **Witnesses:**
 
-- **Visibility.** Sentinels in to-do ids, `findingKey`, and `writerEdit.originalText`
-  (and `findingText`, if D5 omits it) never appear. The D5 fields do.
+- **Visibility.** Sentinels in `findingKey`, `findingText`, and
+  `writerEdit.originalText` never appear. The D5 fields do, the to-do id
+  always beside its session id.
   Fixtures come from real to-dos promoted, edited, completed, and dismissed
   through `addTodoFromFinding`, `editTodo`, and `setTodoStatus`.
 - **Filters.** Status, `recent`, `session`, `match`, `source`, and `persona`,
@@ -212,28 +222,54 @@ F-02. The live pass (Slice 5) tunes these values.
 - The codec gains `transcriptTodosRequest`, with these rejections:
   `invalid-session-id`, `unknown-persona`, `unknown-source`,
   `conflicting-session-selection`, `invalid-recent`.
-- **Audience (recommended):** private discovery, like catalog and search. A
-  to-do list is lookup material the persona cites, and it is not
-  publishable evidence.
+- **Audience: shared with the room** (Okey, 2026-10-05). A successful or
+  partial `transcript.todos` is publishable evidence under `transcript.read`'s
+  rule: it becomes `room` audience when its invoker's reply commits. Whether
+  it reaches guests follows the ADR's open question 5 for `transcript.read`.
+  The manifest row (kind and label) is a Slice 3 detail.
 - The Slice 4 grammar file documents the operation beside the other three.
 
-## Open questions for Okey
+## Answers (Okey, 2026-10-05)
 
-1. **D5:** do the shown and never-shown field lists stand?
-2. **`findingText`:** omit it (recommended; the source turn holds it), or
-   show it when the writer edited the to-do, so the original finding travels
-   with the new wording?
-3. **D6:** a dedicated operation (recommended), or to-dos folded into the
-   existing operations?
-4. **D7:** should `open` include stale items with a marker (recommended), or
-   match the sidebar count?
-5. **Budgets:** are the starting values right before the live pass?
-6. **Publication:** private discovery (recommended), or publishable like
-   `transcript.read`?
+1. **D5:** the lists stand, with one change: the to-do id is shown, for the
+   later close-out feature.
+2. **`findingText`:** omitted. "Don't worry about the original text."
+3. **D6:** a dedicated operation.
+4. **D7:** `open` includes stale items, marked.
+5. **Budgets:** `todoSessions` rises to 50; the rest stand until the live
+   pass.
+6. **Publication:** shared with the room, like `transcript.read`.
+
+## Later: what 2B leaves the door open for
+
+Neither of these is in 2B. Each is tracked as its own feature and needs its
+own ADR.
+
+- **Closing recalled to-dos** ([feature](../../features/feature-workshop-recall-todo-closeout/README.md)).
+  The writer says "mark those done", and the persona asks a host service to
+  set the status in the saved session and re-save it, by session id and
+  to-do id. Recall's ports stay read-only; the write is a separate port with
+  its own checks.
+- **A recall subagent** ([feature](../../features/feature-workshop-subagents/README.md)).
+  A fast, inexpensive model absorbs a large result (around 100K characters
+  of hits or to-dos), keeps only what is relevant, and returns that shortlist
+  to the persona, so search-then-parse does not fill the persona's thread.
+
+2B already follows three rules that keep the subagent path cheap to add:
+
+- **Data first.** The service returns structured results and the renderer
+  is separate, so a subagent can take the data, or a larger rendering,
+  without a second service.
+- **Budgets are options.** Each renderer cap defaults to its
+  `PROMPT_BUDGETS` value but is passed in, so a subagent consumer can ask for
+  a bigger window than a persona gets.
+- **Ids travel with every item.** Session ids, turn ids, and to-do ids let a
+  shortlist be cited, read further, or acted on without a second search.
 
 ## Completion criteria
 
-- [ ] D5–D7 recorded in the ADR as an amendment, after #126 merges.
+- [ ] D5–D7, the session count, and publication recorded in the ADR as an
+      amendment, after #126 merges.
 - [ ] The epic table gains the 2B row.
 - [ ] A dormant core: document, service, renderer, and budgets, with the
       witnesses above.
