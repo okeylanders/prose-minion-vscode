@@ -19,7 +19,7 @@ import {
   WorkshopTranscript,
   countWorkshopTranscriptMessages,
   projectWorkshopTranscript
-} from './WorkshopTranscript';
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { renderWorkshopTranscriptHtml } from './WorkshopTranscriptHtml';
 import { renderWorkshopTranscriptJson } from './WorkshopTranscriptJson';
 import { renderWorkshopTranscriptMarkdown } from './WorkshopTranscriptMarkdown';

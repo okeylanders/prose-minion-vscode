@@ -1,7 +1,7 @@
 import {
   countWorkshopTranscriptMessages,
   projectWorkshopTranscript
-} from '@/application/services/workshop/export/WorkshopTranscript';
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 import {
   FIXTURE_EPOCH,
   dividerTurn,

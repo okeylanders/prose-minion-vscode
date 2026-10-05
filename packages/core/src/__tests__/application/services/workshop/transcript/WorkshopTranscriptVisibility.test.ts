@@ -5,7 +5,7 @@
  * may emit none of them, while the labels a reader does see survive.
  */
 
-import { projectWorkshopTranscript } from '@/application/services/workshop/export/WorkshopTranscript';
+import { projectWorkshopTranscript } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { WorkshopTurn } from '@messages';
 import { FIXTURE_EPOCH, dividerTurn, fixtureTurn, writerTurn } from './workshopTranscriptFixtures';
 

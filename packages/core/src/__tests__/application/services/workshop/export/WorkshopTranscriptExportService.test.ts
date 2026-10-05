@@ -3,7 +3,7 @@ import {
   WorkshopTranscriptExportService
 } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import { WORKSHOP_SNAPSHOT_TURN_WINDOW } from '@/application/services/workshop/WorkshopSessionService';
-import { FIXTURE_EPOCH, fixtureTurn, writerTurn } from './workshopTranscriptFixtures';
+import { FIXTURE_EPOCH, fixtureTurn, writerTurn } from '@/__tests__/application/services/workshop/transcript/workshopTranscriptFixtures';
 
 const files = () => ({
   writeNew: jest.fn(async (stem: string, extension: string, _content: string) => ({
