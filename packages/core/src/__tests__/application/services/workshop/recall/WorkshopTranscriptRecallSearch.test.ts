@@ -215,6 +215,16 @@ describe('searchWorkshopRecallDocuments', () => {
       expect(outcome.shownHits).toBe(3);
     });
 
+    it('keeps same-id turns apart when their visible text differs only in accents or punctuation (PR 126 F-05)', () => {
+      const accented = doc('accented', [say('turn-7-user-1', 'The café ending?')]);
+      const plain = doc('plain', [say('turn-7-user-1', 'The cafe ending!')]);
+
+      const outcome = search([accented, plain], 'cafe ending');
+
+      expect(turnHits(outcome)).toEqual([['accented', 1], ['plain', 1]]);
+      expect(outcome.lineageDuplicates).toBe(0);
+    });
+
     it('keeps two different turns that happen to share an id', () => {
       const other = doc('other', [say('turn-1-user-1', 'An unrelated lighthouse.')]);
 

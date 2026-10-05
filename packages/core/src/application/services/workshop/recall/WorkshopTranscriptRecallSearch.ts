@@ -14,8 +14,9 @@
  * - Title, excerpt-label, and context-label matches are session-level hits.
  * - Copies and branches repeat their source's turns with the same ids (runway
  *   F14). Each turn appears once, attributed to the newest session holding
- *   it; the others are named as "also in". A shared id only merges when the
- *   visible text is identical too, so an id collision never hides a turn.
+ *   it; the others are named as "also in". A shared id only merges when
+ *   everything visible is exactly equal too (not merely equal after search
+ *   normalization), so an id collision never hides a turn.
  */
 
 import type { WorkshopTranscriptEntry } from '@/application/services/workshop/transcript/WorkshopTranscript';
@@ -251,7 +252,9 @@ function foldLineage(candidates: readonly Candidate[]): { unique: Candidate[]; d
       unique.push(candidate);
       continue;
     }
-    const key = `${candidate.turn.turnId}\u0000${candidate.turn.searchText}`;
+    // The projected entry carries the turn id and everything visible: text,
+    // speaker, labels, sources, timestamp. Copies match it exactly.
+    const key = JSON.stringify(candidate.turn.entry);
     const holder = byTurn.get(key);
     if (holder) {
       holder.alsoIn.push({
