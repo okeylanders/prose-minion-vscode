@@ -1,8 +1,9 @@
 /**
  * The Workshop transcript: what a reader sees in the thread, as data.
  *
- * Export formats (Markdown, JSON, styled HTML) all render THIS projection, so
- * "what gets exported" is decided exactly once. The rule mirrors the thread
+ * Every reader of a past thread renders THIS projection — the export formats
+ * (Markdown, JSON, styled HTML) today, session recall next — so "what a reader
+ * may see" is decided exactly once. The rule mirrors the thread
  * bubble (WorkshopTurnBubble) minus its chrome:
  *
  * - Writer messages export their visible text. Attached files and widget
@@ -98,7 +99,7 @@ export function projectWorkshopTranscript(
   meta: WorkshopTranscriptMeta
 ): WorkshopTranscript {
   const entries = turns.flatMap((turn) => {
-    const entry = projectTurn(turn);
+    const entry = projectWorkshopTranscriptTurn(turn);
     return entry ? [entry] : [];
   });
   const participants: string[] = [];
@@ -120,7 +121,14 @@ export function countWorkshopTranscriptMessages(transcript: WorkshopTranscript):
   return transcript.entries.filter((entry) => entry.kind !== 'event').length;
 }
 
-function projectTurn(turn: WorkshopTurn): WorkshopTranscriptEntry | undefined {
+/**
+ * One turn's visible entry, or undefined when the thread shows nothing for it.
+ * Exposed so a reader that keeps its own position bookkeeping (session recall
+ * numbers turns by ledger position) applies exactly the same rule.
+ */
+export function projectWorkshopTranscriptTurn(
+  turn: WorkshopTurn
+): WorkshopTranscriptEntry | undefined {
   if (turn.artifact === 'context_change') {
     return undefined;
   }
