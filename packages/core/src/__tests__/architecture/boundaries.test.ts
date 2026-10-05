@@ -832,6 +832,7 @@ const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS:
 const WORKSHOP_RECALL_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'recall');
 const WORKSHOP_RECALL_MODULES = [
   'WorkshopRecallDocument.ts',
+  'WorkshopRecallDocumentCache.ts',
   'WorkshopRecallReadWindow.ts',
   'WorkshopRecallTime.ts',
   'WorkshopTranscriptRecallRenderer.ts',

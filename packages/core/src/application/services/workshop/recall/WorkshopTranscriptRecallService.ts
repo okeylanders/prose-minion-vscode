@@ -29,6 +29,10 @@ import {
   WorkshopRecallDocument
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import {
+  WorkshopRecallDocumentCache,
+  WorkshopRecallDocumentCacheLimits
+} from '@/application/services/workshop/recall/WorkshopRecallDocumentCache';
+import {
   parseWorkshopRecallQuery,
   searchWorkshopRecallDocuments
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
@@ -52,10 +56,7 @@ export const WORKSHOP_TRANSCRIPT_RECALL_LIMITS = Object.freeze({
   maximumCachedCharacters: 32 * 1024 * 1024
 });
 
-export interface WorkshopTranscriptRecallLimits {
-  maximumCachedDocuments: number;
-  maximumCachedCharacters: number;
-}
+export type WorkshopTranscriptRecallLimits = WorkshopRecallDocumentCacheLimits;
 
 export type WorkshopRecallScope =
   | { available: true; liveSessionId: string }
@@ -121,10 +122,7 @@ type LoadedDocument =
 
 export class WorkshopTranscriptRecallService {
   private readonly now: () => number;
-  private readonly limits: WorkshopTranscriptRecallLimits;
-  /** Insertion order is recency of use: the first key is evicted first. */
-  private readonly cache = new Map<string, WorkshopRecallDocument>();
-  private cachedCharacters = 0;
+  private readonly cache: WorkshopRecallDocumentCache;
 
   constructor(
     private readonly corpus: WorkshopRecallCorpusPort,
@@ -133,7 +131,7 @@ export class WorkshopTranscriptRecallService {
     options: WorkshopTranscriptRecallServiceOptions = {}
   ) {
     this.now = options.now ?? Date.now;
-    this.limits = options.limits ?? WORKSHOP_TRANSCRIPT_RECALL_LIMITS;
+    this.cache = new WorkshopRecallDocumentCache(options.limits ?? WORKSHOP_TRANSCRIPT_RECALL_LIMITS);
   }
 
   async catalog(
@@ -296,7 +294,7 @@ export class WorkshopTranscriptRecallService {
     let cacheHits = 0;
     for (const summary of sessions) {
       throwIfAborted(signal);
-      const cached = this.cachedDocument(summary);
+      const cached = this.cache.get(summary.sessionId, summary.updatedAt);
       if (cached) {
         documents.push(cached);
         cacheHits += 1;
@@ -321,7 +319,7 @@ export class WorkshopTranscriptRecallService {
     summary: WorkshopRecallSessionSummary,
     signal?: AbortSignal
   ): Promise<LoadedDocument> {
-    const cached = this.cachedDocument(summary);
+    const cached = this.cache.get(summary.sessionId, summary.updatedAt);
     if (cached) {
       return { document: cached, cacheHit: true, parsedBytes: 0 };
     }
@@ -338,47 +336,8 @@ export class WorkshopTranscriptRecallService {
       return {};
     }
     const document = buildWorkshopRecallDocument(session);
-    this.remember(document);
+    this.cache.remember(document);
     return { document, cacheHit: false, parsedBytes: estimatedSourceBytes(session) };
-  }
-
-  private cachedDocument(summary: WorkshopRecallSessionSummary): WorkshopRecallDocument | undefined {
-    const cached = this.cache.get(summary.sessionId);
-    if (!cached) {
-      return undefined;
-    }
-    this.forget(summary.sessionId);
-    if (cached.updatedAt !== summary.updatedAt) {
-      return undefined;
-    }
-    this.remember(cached);
-    return cached;
-  }
-
-  private remember(document: WorkshopRecallDocument): void {
-    this.forget(document.header.sessionId);
-    if (document.characters > this.limits.maximumCachedCharacters) {
-      return;
-    }
-    this.cache.set(document.header.sessionId, document);
-    this.cachedCharacters += document.characters;
-    for (const [sessionId] of this.cache) {
-      if (
-        this.cache.size <= this.limits.maximumCachedDocuments &&
-        this.cachedCharacters <= this.limits.maximumCachedCharacters
-      ) {
-        break;
-      }
-      this.forget(sessionId);
-    }
-  }
-
-  private forget(sessionId: string): void {
-    const cached = this.cache.get(sessionId);
-    if (cached) {
-      this.cache.delete(sessionId);
-      this.cachedCharacters -= cached.characters;
-    }
   }
 
   private log(line: string): void {
