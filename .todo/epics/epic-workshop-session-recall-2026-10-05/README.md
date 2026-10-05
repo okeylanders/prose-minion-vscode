@@ -1,6 +1,6 @@
 # Epic: Workshop Session Recall
 
-**Status:** Approved for implementation — D1–D4 accepted 2026-10-05; implementation not started
+**Status:** In progress — D1–D4 accepted 2026-10-05; Slices 0–1 done (behavior-preserving)
 **Priority:** Medium
 **Created:** 2026-10-05
 **Branch:** `claude/practical-ritchie-rx9n4t` (design)
@@ -46,12 +46,25 @@ verification, and rollback seams.
 
 | # | Slice | Outcome | Status |
 |---|---|---|---|
-| 0 | Characterize | Sentinel visibility tests over the projection; a test that an unknown capability operation fails to decode; per-family label assertions | Not started |
-| 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Not started |
+| 0 | Characterize | Sentinel visibility tests over the projection; a test that an unknown capability operation fails to decode; per-family label assertions | Done — `83f2cf6` |
+| 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Done — `2e54b88`, `357f5bb`, `24ad18d`, `875f203` |
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Not started |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root | Not started |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
+
+## Progress notes
+
+- **2026-10-05 — Slices 0–1.** Full suite 247 suites / 3,085 tests, typecheck,
+  lint (no new warnings), and production build pass. The lists landed before
+  the family helper, because rejected-request recording needs an
+  `isWorkshopCapabilityOperation` guard. Slice 0 added a stronger witness than
+  planned: the persisted codec's exact keys already refuse a message-attachment
+  body on a saved turn. A compile experiment (listing a new operation, then a
+  new family, without handling either) confirmed every consumer fails to
+  compile, and caught one family switch that returned `undefined` silently; it
+  now has an explicit `never` default. Rule for Slice 3: a family switch whose
+  return type admits `undefined` needs that default.
 
 ## Decisions (accepted 2026-10-05, as recommended)
 

@@ -314,6 +314,24 @@ exhaustive switch together, and forgetting a case becomes a compile error
 instead of an unsavable room. The turn artifact and context-source kind lists
 follow the same pattern.
 
+## Implementation note 2026-10-05: Slices 0–1
+
+The behavior-preserving groundwork has landed:
+
+- The projection lives in `application/services/workshop/transcript/` and
+  exports `projectWorkshopTranscriptTurn`.
+- `WORKSHOP_CAPABILITY_OPERATIONS`, `WORKSHOP_TURN_ARTIFACTS`, and
+  `CONTEXT_SOURCE_KINDS` are the single `as const` sources for their unions and
+  validators, following the existing `CONTEXT_PATH_GROUPS` pattern.
+- `workshopCapabilityFamily()` sits beside the operation list, and
+  `workshopCapabilityFamilyLabel()` beside the artifact label.
+
+A compile experiment confirmed §10: listing an operation without a family, or
+adding a family without handling it, fails to compile at every consumer. It
+also showed where that guarantee is weakest. A switch whose return type admits
+`undefined` compiles with a case missing, so every such family switch carries
+an explicit `never` default.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**
