@@ -139,6 +139,24 @@ describe('buildWorkshopRecallDocument', () => {
       .toEqual(full.entries.slice(0, copy.entries.length).map(({ position, turnId }) => ({ position, turnId })));
   });
 
+  it('charges every retained string, not only the searchable ones (PR 126 F-03)', () => {
+    const url = `https://example.com/${'u'.repeat(8_000)}`;
+    const document = buildWorkshopRecallDocument(recallSession({
+      sessionId: 's-urls',
+      title: 'T'.repeat(500),
+      contextLabels: ['L'.repeat(700)],
+      turns: [fixtureTurn('t-1', {
+        content: 'Cited.',
+        personaLabel: 'P'.repeat(300),
+        citations: [{ url, title: 'Source' }]
+      })]
+    }));
+    const retained = JSON.stringify({ header: document.header, entries: document.entries });
+
+    expect(document.characters).toBeGreaterThanOrEqual(retained.length);
+    expect(document.characters).toBeGreaterThan(url.length + 500 + 700 + 300);
+  });
+
   it('carries labels but no hidden body from a real saved session', async () => {
     const { store, savedSessionId } = await saveSentinelCorpus();
     const saved = await store.readNamed(savedSessionId);

@@ -57,7 +57,11 @@ export interface WorkshopRecallDocument {
   /** The session version this document was built from (cache validation). */
   readonly updatedAt: string;
   readonly entries: readonly WorkshopRecallEntry[];
-  /** Approximate in-memory text size, in UTF-16 code units (cache bounding). */
+  /**
+   * An upper bound on the text this document retains, in UTF-16 code units
+   * (cache bounding): every string it holds, citation URLs and labels
+   * included, not only the text search reads.
+   */
   readonly characters: number;
 }
 
@@ -73,19 +77,16 @@ export function buildWorkshopRecallDocument(
 ): WorkshopRecallDocument {
   const header = buildHeader(session);
   const entries: WorkshopRecallEntry[] = [];
-  let characters = header.title.length +
-    header.contextLabels.join('').length +
-    (header.excerptLabel?.length ?? 0);
   session.workshop.turns.forEach((turn, index) => {
     const entry = projectWorkshopTranscriptTurn(turn);
-    if (!entry) {
-      return;
+    if (entry) {
+      const searchText = normalizeWorkshopRecallText(workshopRecallEntryText(entry));
+      entries.push({ position: index + 1, turnId: turn.id, entry, searchText });
     }
-    const text = workshopRecallEntryText(entry);
-    const searchText = normalizeWorkshopRecallText(text);
-    characters += text.length + searchText.length;
-    entries.push({ position: index + 1, turnId: turn.id, entry, searchText });
   });
+  // Serializing counts every retained string, including fields added later;
+  // its quotes and keys only make the bound more conservative.
+  const characters = JSON.stringify({ header, entries }).length;
   return { header, updatedAt: session.updatedAt, entries, characters };
 }
 

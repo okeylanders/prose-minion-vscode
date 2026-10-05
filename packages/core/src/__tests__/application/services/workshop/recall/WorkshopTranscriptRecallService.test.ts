@@ -568,6 +568,29 @@ describe('WorkshopTranscriptRecallService over the real store and coordinator', 
     jest.restoreAllMocks();
   });
 
+  it('never caches a document whose retained text exceeds the cache (PR 126 F-03)', async () => {
+    const longUrl = `https://example.com/source?${'q'.repeat(8_200)}`;
+    const { store, coordinator, log, savedSessionId } = await saveRecallRoom('Cited', (session, advance) => {
+      session.setSessionScope('open');
+      session.beginPersonaMessage('run-1', 'Where is this from?');
+      advance(60_000);
+      session.completeRun('run-1', 'From a source.', undefined, false, 'runtime-host', [], [
+        { url: longUrl, title: 'Source' }
+      ]);
+    });
+    expect(longUrl.length).toBeGreaterThan(8_200);
+    const service = new WorkshopTranscriptRecallService(store, coordinator, log, {
+      limits: { maximumCachedDocuments: 10, maximumCachedCharacters: 1_000 }
+    });
+
+    const cold = await service.read({ sessionId: savedSessionId });
+    const again = await service.read({ sessionId: savedSessionId });
+
+    expect(JSON.stringify(cold)).toContain(longUrl);
+    expect(cold).toMatchObject({ outcome: 'read', cacheHit: false });
+    expect(again).toMatchObject({ outcome: 'read', cacheHit: false });
+  });
+
   it('counts a corrupt or oversized saved file without failing the search', async () => {
     const { fs, store, coordinator, savedSessionId } = await saveSentinelCorpus();
     const log = recallLog();
