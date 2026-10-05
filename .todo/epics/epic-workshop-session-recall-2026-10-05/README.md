@@ -1,10 +1,10 @@
 # Epic: Workshop Session Recall
 
-**Status:** Proposed — design ready for review; implementation not started
+**Status:** Approved for implementation — D1–D4 accepted 2026-10-05; implementation not started
 **Priority:** Medium
 **Created:** 2026-10-05
 **Branch:** `claude/practical-ritchie-rx9n4t` (design)
-**Decision:** [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (Proposed)
+**Decision:** [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (Accepted in part: D1–D4)
 **Evidence:** [Architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
 **Realizes:** the host-fetch half of [Feature: a prior conversation is a resource, not a branch](../../features/feature-prior-conversation-as-resource/README.md)
 
@@ -47,21 +47,19 @@ verification, and rollback seams.
 | # | Slice | Outcome | Status |
 |---|---|---|---|
 | 0 | Characterize | Sentinel visibility tests over the projection; a test that an unknown capability operation fails to decode; per-family label assertions | Not started |
-| 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks | Not started |
+| 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Not started |
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Not started |
-| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, four persisted allowlists, labels, Context Budget kind, composition root | Not started |
+| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root | Not started |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
 
-## Decisions needed (and the first slice that depends on each)
+## Decisions (accepted 2026-10-05, as recommended)
 
-- **D1** Family shape and name — recommended: dedicated `transcript.*`. Slice 3.
-- **D2** Corpus — recommended: named saved sessions, live room excluded. Slice 2.
-- **D3** Writer control in v1 — recommended: none beyond visible artifacts.
-  Slice 4.
-- **D4** Visibility edge cases — recommended: context-attachment labels in the
-  header, and private instrument exchanges marked private, as export does.
-  Slice 2.
+- **D1** Family shape and name: a dedicated `transcript.*` family.
+- **D2** Corpus: named saved sessions, live room excluded.
+- **D3** Writer control in v1: none beyond visible artifacts.
+- **D4** Visibility edge cases: context-attachment labels in the header, and
+  private instrument exchanges marked private, as export does.
 
 ## Measurements
 
@@ -75,15 +73,17 @@ verification, and rollback seams.
 
 ## Completion criteria
 
-- [ ] D1–D4 recorded in the ADR; ADR status Accepted.
+- [x] D1–D4 recorded in the ADR (accepted 2026-10-05).
+- [ ] ADR fully accepted after the live pass settles open questions 5–8.
 - [ ] A persona can catalog, search, and read saved sessions in host and guest
       conversations, including rooms reopened from before the change.
 - [ ] Sentinel tests prove no attachment, widget, evidence, context, archive,
       or summary-preview text reaches recall output.
 - [ ] Recall never writes, flushes, or reads `current.json`; the live room never
       appears in its own corpus; a changed workspace root disables recall.
-- [ ] A session containing every new persisted value round-trips through save
-      and load.
+- [ ] A session containing every new persisted value saves **and reopens**
+      with every participant's retained conversation imported (the archive kind
+      list is checked only at reopen).
 - [ ] A turn shared by a session, its copy, and a branch appears once in search
       results, attributed to the newest session, with the others named.
 - [ ] Bounds are disclosed in every truncated result; wall-clock search times

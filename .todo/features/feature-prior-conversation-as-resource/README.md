@@ -1,14 +1,14 @@
 # Feature: A prior conversation is a resource, not a branch
 
-- **Status**: Host-fetch path designed (Proposed ADR, 2026-10-05); writer opt-in path still open
+- **Status**: Host-fetch path approved (ADR 2026-10-05, D1–D4 accepted); writer opt-in path still open
 - **Priority**: Low (unblocks nothing; improves an existing answer)
 - **Captured**: 2026-07-25 (Okey's design call)
 
-## Update 2026-10-05: host fetch is designed
+## Update 2026-10-05: host fetch is designed and approved
 
 The host-fetch path below is designed in
 [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md)
-(Proposed), with evidence in its
+(D1–D4 accepted 2026-10-05), with evidence in its
 [architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
 and slices in [epic-workshop-session-recall-2026-10-05](../../epics/epic-workshop-session-recall-2026-10-05/README.md).
 

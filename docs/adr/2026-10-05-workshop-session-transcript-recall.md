@@ -1,6 +1,6 @@
 # ADR 2026-10-05: Workshop Personas Recall Saved Session Transcripts
 
-**Status:** Proposed — awaiting decisions D1–D4 (see *Open questions*)
+**Status:** Accepted in part (2026-10-05) — D1–D4 accepted as recommended; open questions 5–8 settle in the live verification pass
 **Date:** 2026-10-05
 **Extends:** [ADR 2026-07-10 — Agent-Run Engine and Resource Catalog Policies](2026-07-10-agent-run-engine-and-resource-catalogs.md); [ADR 2026-10-05 — Workshop Transcript Export](2026-10-05-workshop-transcript-export.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md)
 **Related:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md) (a prior conversation is read, never forked); [Feature: a prior conversation is a resource, not a branch](../../.todo/features/feature-prior-conversation-as-resource/README.md); [ADR 2026-07-29 — Workshop Measurement Capability](2026-07-29-workshop-measurement-capability.md) (digest, trust-class, and ceiling precedent); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md); [ADR 2026-09-10 — Workshop loading does not create author work](2026-09-10-workshop-read-only-session-loading.md); [ADR 2026-07-18 — Living Room Chronicle and Episodic Persona Memory](2026-07-18-workshop-living-room-chronicle-and-episodic-memory.md) (a different memory)
@@ -285,7 +285,7 @@ feeds the coordinator. Only the factory consumes the recall service, so
 `CoreServices` gains no field, and no IPC route is added. The core barrel exports
 the service.
 
-### 10. Family identity becomes exhaustive
+### 10. Family identity and persisted allowlists become exhaustive
 
 Four places infer a capability's family from its operation prefix, with silent
 fallbacks: the artifact label, the artifact's `toolLabel`, the evidence framing,
@@ -294,6 +294,25 @@ replaces them. Without it, a new family compiles and is labeled "Writer's
 Dictionary" — in the thread, and in guests' room frames, which render
 `${toolLabel} (report)`. This refactor is behavior-preserving for the existing
 families and lands first.
+
+The persisted allowlists get the same treatment. Today each is a hand-written
+string list (`enumAt(value, path, allowed: readonly string[])`, and a `Set` of
+strings in `ConversationManager`) that the compiler never compares with its
+TypeScript union. Each union is instead derived from one `as const` list that
+its validator reads:
+
+```ts
+export const WORKSHOP_CAPABILITY_OPERATIONS = [
+  'dictionary.lookup', 'dictionary.full-entry', 'analysis.run',
+  'resource.catalog', 'resource.search', 'resource.read'
+] as const;
+export type WorkshopCapabilityOperation = (typeof WORKSHOP_CAPABILITY_OPERATIONS)[number];
+```
+
+Adding an operation to the list then widens the union, the validator, and every
+exhaustive switch together, and forgetting a case becomes a compile error
+instead of an unsavable room. The turn artifact and context-source kind lists
+follow the same pattern.
 
 ## What this decides for memory, and what it leaves open
 
@@ -321,15 +340,23 @@ exists; any cross-workspace memory.
 
 ## Consequences
 
-- **Persisted allowlists widen:** the capability operation enum, the turn
-  artifact enum, the publishable-operation set, and the context-source kind (in
-  `inferenceContext.ts`, `AgentRunContracts.ts`, `ConversationManager.ts`, and
-  `WorkshopSessionStateV1Shape.ts`). All are checked on load **and** save, so
-  they widen together in one slice, proven by a round-trip test that contains
-  every new value. Following ADR 2026-07-30, widening is not a semantic change
-  and needs no `schemaVersion` bump. An older build cannot open a session that
-  contains the new values; this is the forward-only compatibility that ADR
-  already accepts.
+- **Persisted lists widen, and they fail differently.** The capability
+  operation enum and the turn artifact enum (`WorkshopSessionStateV1Shape.ts`)
+  are checked on load **and** save: a missed value makes the room unsavable.
+  The context-source kind (`inferenceContext.ts`, `AgentRunContracts.ts`,
+  `ContextBudget.tsx`, and the archive validator in `ConversationManager.ts`)
+  is checked only when a conversation archive is imported at reopen, because
+  the session codec checks only that `conversations` is an array: a missed kind
+  saves cleanly, then drops that participant's retained history when the room
+  reopens. The publishable set (`WorkshopRoomAudience.ts`) is policy, not a
+  decoder: omitting `transcript.read` keeps reads private. So the lists widen
+  together in one slice from single typed sources (§10), proven by a test that
+  saves **and reopens** a session containing every new value. The session-state
+  kind enum validates only `writerSources`, which never hold capability rows,
+  so recall does not touch it. Following ADR 2026-07-30, widening is not a
+  semantic change and needs no `schemaVersion` bump. An older build cannot open
+  a session that contains the new values; this is the forward-only
+  compatibility that ADR already accepts.
 - **Sessions grow with use.** A read's evidence persists in the artifact turn
   and in the retained conversation, as `resource.read` evidence does. Published
   reads also enter guests' catch-up frames, which multiplies context in rooms
@@ -377,17 +404,16 @@ exists; any cross-workspace memory.
 
 ## Open questions for review
 
-1. **D1 — family shape and name.** A dedicated `transcript.*` family (recommended),
-   a synthetic resource group, or a `session.*` / `memory.*` name?
-2. **D2 — corpus.** Named saved sessions with the live room excluded
-   (recommended)? Recalling the live room's own early turns belongs with context
+1. **D1 — family shape and name.** *Accepted 2026-10-05:* a dedicated
+   `transcript.*` family.
+2. **D2 — corpus.** *Accepted 2026-10-05:* named saved sessions with the live
+   room excluded. Recalling the live room's own early turns belongs with context
    compaction.
-3. **D3 — writer control in v1.** Nothing beyond visible artifacts (recommended),
-   a global setting, or per-session exclusion? Any persona may read any saved
-   session in the workspace.
-4. **D4 — visibility edge cases.** Include context-attachment labels in the
-   session header, and private instrument exchanges marked as private, as export
-   does (recommended)?
+3. **D3 — writer control in v1.** *Accepted 2026-10-05:* nothing beyond visible
+   artifacts; per-session exclusion arrives with the memory feature's controls.
+4. **D4 — visibility edge cases.** *Accepted 2026-10-05:* context-attachment
+   labels in the session header, and private instrument exchanges marked as
+   private, as export does.
 5. **Publication.** Should a published `transcript.read` reach guests, as
    `resource.read` does, given the context it adds to rooms with guests?
 6. **Budgets.** Are the starting values in §5 right before the live pass tunes

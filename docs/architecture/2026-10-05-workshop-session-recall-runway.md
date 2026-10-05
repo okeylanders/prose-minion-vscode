@@ -1,13 +1,13 @@
 # Workshop Session Recall — Architecture Change Runway
 
 **Date:** 2026-10-05
-**Status:** Ready for review
+**Status:** Approved for implementation (D1–D4 accepted 2026-10-05)
 **Decision owner:** Okey Landers
 **Prepared by:** Ada Forge (Claude Code)
-**Scope:** Workshop persona capabilities (contract, codec, adapter), a new read-only recall service over saved sessions, the transcript projection's home, four persisted capability/manifest allowlists, persona system prompts, and the composition root. No new IPC route.
+**Scope:** Workshop persona capabilities (contract, codec, adapter), a new read-only recall service over saved sessions, the transcript projection's home, the persisted capability and manifest allowlists, persona system prompts, and the composition root. No new IPC route.
 **Branch / issue / epic:** `claude/practical-ritchie-rx9n4t` · proposed epic [`epic-workshop-session-recall-2026-10-05`](../../.todo/epics/epic-workshop-session-recall-2026-10-05/README.md) · Proposed ADR [2026-10-05 — Workshop Session Transcript Recall](../adr/2026-10-05-workshop-session-transcript-recall.md)
 **Audience and reading budget:** Decision owner and implementer who have not traced how capability artifacts, the session store, and the transcript projection meet. 30 seconds (§0), 2 minutes (§1), 10 minutes (§2–3).
-**Implementation gate:** Conditional (§3.5)
+**Implementation gate:** Open (§3.5)
 
 Evidence labels: **[Declared]** ADR/requirement · **[Observed]** current code or tests · **[Inferred]** reasoned link · **[Unknown]** unsettled · **[Proposed]** does not exist yet · **[Analogy]** comparison, not proof. Terms are defined in the [Reader Terms Appendix](#5-reader-terms-appendix--fast-reference).
 
@@ -35,7 +35,7 @@ Evidence labels: **[Declared]** ADR/requirement · **[Observed]** current code o
 |---|---|---|---|
 | Visibility (projection) | Recall output must equal what the thread shows | A body the thread hides (attachment text, widget payload, capability evidence, or the summary `preview`) reaches a persona | HIGH |
 | Live room / persistence coordinator | Recall reads the directory the room autosaves into | A persona search flushes or writes a checkpoint mid-run, or recalls the live room's own stale copy | HIGH |
-| Persisted session codec | Operation, artifact, publishable, and context-source values are closed allowlists, checked on load **and** save | A room holding a recall artifact cannot save; an older build cannot open a newer session | HIGH (forward-only by design) |
+| Persisted session codec and archives | Operation and artifact values are closed lists checked on load **and** save; manifest kinds are checked only when a conversation archive is imported at reopen | A missed operation or artifact makes the room unsavable; a missed kind lets it save but drops a participant's retained history at reopen; an older build cannot open a newer session | HIGH (forward-only by design) |
 | Extension-host CPU and memory | Search parses saved session JSON on demand | A cold search over large sessions stalls the host | LOW — measured at about 11–13 ms per MiB (U1) |
 | Prompt honesty | Personas are currently told there is no durable history | A persona claims to "remember," claims presence in a session it never joined, or obeys a past request | MODERATE |
 
@@ -43,14 +43,14 @@ Evidence labels: **[Declared]** ADR/requirement · **[Observed]** current code o
 
 | # | Decision | Options | Recommendation | Needed by |
 |---|---|---|---|---|
-| D1 | Family shape and name | (a) dedicated `transcript.*`; (b) synthetic `sessions` resource group; (c) `session.*` or `memory.*` names | (a) — §2.7 | Slice 3 |
-| D2 | Recallable corpus | (a) named saved sessions, live room excluded; (b) also the live room's earlier turns; (c) also the rolling `current.json` | (a); (b) belongs with context compaction | Slice 2 |
-| D3 | Writer control in v1 | (a) none beyond visible artifacts; (b) a global on/off setting; (c) per-session exclusion | (a) for v1; (c) arrives with memory controls | Slice 4 |
-| D4 | Visibility edge cases | Context-attachment **labels** in the session header; private instrument exchanges | Include both as labels and markers only, matching export | Slice 2 |
+| D1 | Family shape and name | (a) dedicated `transcript.*`; (b) synthetic `sessions` resource group; (c) `session.*` or `memory.*` names | **Accepted:** (a) — §2.7 | Slice 3 |
+| D2 | Recallable corpus | (a) named saved sessions, live room excluded; (b) also the live room's earlier turns; (c) also the rolling `current.json` | **Accepted:** (a); (b) belongs with context compaction | Slice 2 |
+| D3 | Writer control in v1 | (a) none beyond visible artifacts; (b) a global on/off setting; (c) per-session exclusion | **Accepted:** (a) for v1; (c) arrives with memory controls | Slice 4 |
+| D4 | Visibility edge cases | Context-attachment **labels** in the session header; private instrument exchanges | **Accepted:** both, as labels and markers only, matching export | Slice 2 |
 
 ### Gate
 
-**State:** `READY FOR REVIEW`
+**State:** `APPROVED` — D1–D4 accepted as recommended on 2026-10-05
 **Blockers to implementation:** D1–D4 accepted. U1 was resolved on 2026-10-05: on-demand projection holds ([measurements](../../.todo/epics/epic-workshop-session-recall-2026-10-05/u1-measurements.md)).
 
 ---
@@ -130,7 +130,7 @@ packages/core/
     │   ├── [=] WorkshopResourceCapability.ts   # the precedent; unchanged
     │   ├── [~] WorkshopRoomAudience.ts         # transcript.read publishable (parity: resource.read)
     │   ├── [~] WorkshopSessionService.ts       # artifact mapping; label via family helper
-    │   ├── [~] WorkshopSessionStateV1Shape.ts  # accept new operation/artifact/kind values
+    │   ├── [~] WorkshopSessionStateV1Shape.ts  # accept new operation and artifact values
     │   ├── [~] WorkshopSessionPersistenceCoordinator.ts # + recallScope() (read-only query)
     │   ├── [>] transcript/WorkshopTranscript.ts # moved from export/; + projectWorkshopTranscriptTurn
     │   ├── [~] export/*                         # import path only
@@ -236,7 +236,7 @@ sequenceDiagram
 | Structure | Five new pure/service files; capability adapter, codec, labels | Composition-root order | Recall grows into a second coordinator | Boundary test: no coordinator class import, no store writes from `recall/` | MODERATE |
 | Runtime | New per-turn branch; cold parse of saved JSON | Engine rounds shared with other families | Host stall on large corpora | Bounds tests; U1 measurement | MODERATE |
 | Contract | +3 operations and request shapes, rejection reasons, prompt grammar | Guests' room frames render `${toolLabel} (report)` | Mislabeled family in thread and prompts | Exhaustive family helper; label tests | MODERATE |
-| Data / state | Four persisted allowlists widen | Archive import validation | A room holding a recall artifact cannot save | Round-trip test containing every new value | HIGH |
+| Data / state | Operation, artifact, and archive-kind lists widen | Archive import validation runs only at reopen | Unsavable room, or a participant's history dropped at reopen | Single-source typed lists; save-and-reopen test containing every new value | HIGH |
 | Operations / security | In-process reads of other session files | Workspace change; injected text inside past replies | Cross-project recall; a past request obeyed | `recallScope()` tests; escaped evidence; trust class | MODERATE |
 | Tests / docs | New suites; existing suites gain cases | `docs/ARCHITECTURE.md:200-203` is already stale | Silent-fallback regressions | Exhaustive switches; prompt sync test | LOW |
 | Coordination / evolution | Memory builds on the corpus/document seam | Context-compaction epic plans a persona "release" of agent-fetched evidence | Memory reinvents visibility | ADR invariant: every recall consumer renders the projection | LOW |
@@ -308,7 +308,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | I5 **Bounded and disclosed** — sessions, bytes, hits, snippets, read characters, reads per turn; truncation always stated | Resource family precedent | `PROMPT_BUDGETS.workshopTranscriptRecall` + renderer | New | Context blow-up; a partial result read as complete | Budget tests; `promptBudgets.test.ts` pin; prompt sync test |
 | I6 **Honest framing** — a quoted record; past requests are not current; no false presence; bounded absence is not absence | `formatEvidence` (two classes) | Third class, plus a one-line framing header inside the content so it travels with publication | Extended | A persona obeys or misattributes history | Evidence snapshot test; prompt sync test; qualitative pass |
 | I7 **Closed family dispatch** — every operation maps to a family exhaustively | Prefix checks (silent) | `workshopCapabilityFamily()` exhaustive switch | Changed | Mislabels in thread and guest prompts | Compile-time `never`; a label test per family |
-| I8 **Persisted acceptance** — new operation, artifact, publishable, and kind values accepted on load and save | Shape, integrity, `ConversationManager` | Same, widened | Widened (no schema bump) | A room cannot save; a session fails to open | Round-trip test; plus the missing test that an *unknown* operation still rejects |
+| I8 **Persisted acceptance** — new operation and artifact values accepted on load and save; the new manifest kind accepted at archive import | Shape (`WorkshopSessionStateV1Shape.ts`), `ConversationManager` | Same, widened, each derived from one typed list | Widened (no schema bump) | A room cannot save, or reopens with a participant's history dropped | Compile-time completeness of the typed lists; save-and-reopen test; plus the missing test that an *unknown* operation still rejects |
 | I9 **Publication parity** — a successful or partial `transcript.read` publishes with the invoker's reply; catalog and search stay private discovery | Audience policy (`WorkshopRoomAudience.ts:26-31`) | Same set plus `transcript.read` | Widened | Guests miss evidence the host cited, or see discovery noise | Audience `it.each` cases |
 | I10 **Positions** — "turn N" is the 1-based ledger index; gaps appear where the projection omits a turn. A per-read address, not a durable identity: artifact metadata records the first and last turn id of each delivered range | — | `WorkshopRecallDocument` | New | A read returns the wrong turns | A rewound copy keeps its prefix numbering (test); metadata carries range turn ids (test) |
 
@@ -329,7 +329,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | Structural | Five files in `recall/`; projection move; family helper | `extension.ts` construction order; barrel export | Recall imports the coordinator class, or `WorkshopRoomFrameRenderer` (which emits thread-artifact bodies) | `boundaries.test.ts`: `recall/` import bans; capability-boundary list (`:830-835`) gains recall files | `WorkshopRoomFrameRenderer.ts:105`; composition report | High | MODERATE |
 | Runtime | New per-turn branch; cold JSON parse; cache | Five engine rounds per turn shared with other families (`AgentRunPolicies.ts:28-33`) | Host stall; a recall spree crowds out dictionary or resource calls | Byte and session budgets; `readsPerTurn`; abort checks between files | `PROMPT_BUDGETS.workshopCapability.callsPerTurn` | Medium | MODERATE |
 | Contract | Unions, codec, grammar, artifact labels, manifest kind | Guests' room frames render `${toolLabel} (report)` | Mislabels; model confuses `resource.*` with `transcript.*` | Codec tests per shape and rejection; family tests; live model check | `WorkshopRoomFrameRenderer.ts:83-86`; `WorkshopSessionService.ts:1426-1429` | High | MODERATE |
-| Data / persistence | Four persisted allowlists widen | Save runs the strict codec (`WorkshopSessionStore.ts:919-923`) | A missed enum makes the room unsavable; a downgrade cannot open the file | Round-trip test with every new value; unknown-operation rejection test | `WorkshopSessionStateV1Shape.ts:494-498, 541-563, 729-740`; `ConversationManager.ts:618` | High | HIGH |
+| Data / persistence | Operation, artifact, and archive-kind lists widen | Save runs the strict workshop-state codec (`WorkshopSessionStore.ts:919-923`) but only checks that `conversations` is an array (`WorkshopPersistedSession.ts:227-229`); archive kinds are validated at import (`ConversationManager.ts:618`) | A missed operation or artifact makes the room unsavable; a missed kind saves cleanly and degrades that participant's conversation at reopen; a downgrade cannot open the file | Single-source typed lists; save-and-reopen test with every new value; unknown-operation rejection test | `WorkshopSessionStateV1Shape.ts:541-563, 729-740`; `ConversationManager.ts:618`; `WorkshopPersistedSession.ts:227-229, 258` | High | HIGH |
 | Operational / security | In-process reads of other session files; recalled text enters prompts | Workspace change; injection text inside past replies | Cross-project leak; a past instruction obeyed; a tool-call literal inside evidence | `recallScope()`; evidence body XML-escaped (`WorkshopPersonaCapability.ts:707-731`); trust class | ADR 2026-07-24; coordinator `:1738-1755` | Medium | MODERATE |
 | Verification | New suites; prompt sync test; persistence fixtures | Existing suites assert label strings | Silent-fallback regressions go unnoticed | Exhaustive switches; per-family label tests | Existing test map (§4.1) | High | LOW |
 | Historical / coordination | Touches files that Rewind/Branch and export just changed | Context compaction (planned) and `measure.run` (Proposed) edit the same switches | Merge churn in the coordinator and persona capability | Small slices; the coordinator change is one method | Debt 2026-10-01; compaction epic; ADR 2026-07-29 | Medium | LOW |
@@ -357,7 +357,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | Alternative | Architecture shape | Benefits | Costs / risks | Evidence needed | Verdict |
 |---|---|---|---|---|---|
 | Minimal patch | A synthetic `sessions` `ContextPathGroup`; saved transcripts rendered as fake files; personas use `resource.search/read` | No new operations, codec shapes, or persisted values; literal match for the declared "existing catalog" | Line windows instead of turns; literal-substring search; "untrusted project file" framing; `ContextPathGroup` is settings vocabulary shared with the Context wizard and attachment picker, so sessions would become attachable "files"; counts frozen in the first-turn contract | — | **Reject:** the abstraction would lie about what a transcript is |
-| **Recommended** | A dedicated `transcript.*` family shaped like the resource family; a read-only recall service; the shared projection; on-demand documents with a cache | Turn addressing; an honest trust class; one visibility rule; no new files or routes; a seam memory can grow from | Four persisted enum widenings; prompt edits in three files; cold-parse cost | U1, U2 | **Retain** |
+| **Recommended** | A dedicated `transcript.*` family shaped like the resource family; a read-only recall service; the shared projection; on-demand documents with a cache | Turn addressing; an honest trust class; one visibility rule; no new files or routes; a seam memory can grow from | Persisted list widenings (operation, artifact, archive kind); prompt edits in three files; cold-parse cost | U1, U2 | **Retain** |
 | More generalized | A `memory.*` engine with pluggable sources (sessions, exports, notes, digests), pluggable indexes (lexical, embeddings), and a persisted index in private storage | Future-shaped | One real source today; plugin discovery contradicts the closed-registry doctrine (ADR 2026-08-03 §3); needs the unbuilt `PrivateStorage` port and its storage decision (ADR 2026-07-18); blends verbatim records with model-authored summaries | A second source | **Reject now;** it grows out of the recall service later |
 | Variant: persisted index | A `<stem>.transcript.json` beside each named file, written on save | Fast cold search; parses only visible text | A new persisted format with versioning; write amplification on every autosave; Git churn (debt 2026-09-10); legacy files still need the on-demand path | U1 | **Defer** behind the same service, with the trigger in U1 |
 
@@ -381,7 +381,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 |---|---|---|---|---|---|
 | F1 | HIGH | The session browser's content search cannot back recall: it walks the serialized `workshop` and `conversations` trees, including provider archives, context bodies, and attachment text | `WorkshopSessionStore.ts:985-1004` | Recall calls `list()` without a query and searches only projected documents; type the port as `list(query: undefined, …)` | merge |
 | F2 | HIGH | The coordinator's browser entry point flushes the live room before listing, so routing recall through it would write checkpoints during a persona's run | `WorkshopSessionPersistenceCoordinator.ts:613-615` | Read through the store's read-only methods; the coordinator contributes only `recallScope()` | merge |
-| F3 | HIGH | Four closed allowlists persist capability facts (operation, artifact, publishable set, context-source kind), checked on load and save; missing one makes a room holding a recall artifact unsavable | `WorkshopSessionStateV1Shape.ts:494-498, 541-563, 729-740`; `WorkshopRoomAudience.ts:26-31`; `ConversationManager.ts:618`; `WorkshopSessionStore.ts:919-923` | Widen all four in the contract slice, with one round-trip test covering every new value | merge |
+| F3 | HIGH | Capability facts are checked against hand-written string lists the compiler never compares with the unions, and they fail differently: a missed operation or artifact value makes a room holding a recall artifact unsavable; a missed manifest kind saves cleanly, then drops that participant's retained history when the session reopens; a missed publishable entry keeps every read private | `WorkshopSessionStateV1Shape.ts:541-563, 729-740` and `persistedValidation.ts:177` (`readonly string[]`); `ConversationManager.ts:618` (import only); `WorkshopPersistedSession.ts:227-229`; `WorkshopRoomAudience.ts:26-31`; `WorkshopSessionStore.ts:919-923` | Derive each runtime list and its union from one `as const` array (Slice 1); widen them in the contract slice; add a save-and-reopen test with every new value | merge |
 | F4 | HIGH | No read-only accessor names the live room, so recall cannot exclude it; its saved copy may also lag the live room | `WorkshopSessionPersistenceCoordinator.ts:239-240` | Add `recallScope()` returning `{ available, liveSessionId }` | merge |
 | F5 | MEDIUM | Family identity is inferred by `startsWith` in four places; a new family compiles and is labeled "Writer's Dictionary" in the thread, in the artifact's `toolLabel`, and in guests' room frames | `WorkshopSessionService.ts:1418-1429`; `workshopCapabilityLabels.ts:15-19`; `WorkshopPersonaCapability.ts:719-721`; `WorkshopTurnBubble.tsx:214`; `WorkshopRoomFrameRenderer.ts:83-86` | One exhaustive `workshopCapabilityFamily()` replacing the four checks, behavior-preserving for existing families | merge |
 | F6 | MEDIUM | The summary `preview` is the last non-session turn's content, which can be a capability artifact's evidence body — text the projection hides | `WorkshopSessionPersistenceCoordinator.ts:1452-1467` | Recall never shows `summary.preview`; record browser-preview alignment as tech debt | merge (recall) |
@@ -408,7 +408,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | Slice | Architectural purpose | Files / owners | Contract or behavior change | Verification | Depends on | Rollback seam |
 |---|---|---|---|---|---|---|
 | 0 | Characterize | Projection, session codec, and label tests | None | Sentinel visibility test over the projection; unknown-operation rejection test (missing today); per-family label assertions | — | Revert tests |
-| 1 | Behavior-preserving ownership | `transcript/WorkshopTranscript.ts` (moved) and export imports; `workshopCapabilityFamily()` replacing four prefix checks | None — pure move and refactor | Export, bubble, session, and persona-capability suites pass unchanged | 0 | Revert commit |
+| 1 | Behavior-preserving ownership | `transcript/WorkshopTranscript.ts` (moved) and export imports; `workshopCapabilityFamily()` replacing four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists that the validators use | None — pure move and refactor | Export, bubble, session, and persona-capability suites pass unchanged | 0 | Revert commit |
 | 2 | Recall core (dormant) | `recall/` pure modules and service; coordinator `recallScope()`; budgets block | New library, unreachable from personas | Unit tests: exclusion, accepted workspace, bounds, cache, corrupt files, ranking, lineage de-duplication, rendering, sentinels | 1 | Unused code; revert |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, artifact/publishable/kind allowlists, labels, bubble, Context Budget, composition root, barrel | The codec accepts `transcript.*`; artifacts persist; no prompt advertises it yet | Codec shape and rejection tests; round-trip persistence; audience and delivered-source cases; boundary tests | 2 | Forward-only for sessions that contain recall artifacts |
 | 4 | Enable | `transcript-recall-capability.md`, path chain, `base.md`, `guest-base.md`, `interaction-contract.md`, the dynamic-contract pointer line, sync test, `AGENTS.md`, `docs/ARCHITECTURE.md` | Personas can use recall | Prompt-path tests; sync test; full suite, typecheck, lint, build | 3 | Revert prompts → dormant again |
@@ -444,7 +444,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | Tree ↔ responsibility ledger | The first draft routed recall through `coordinator.list()`, while the ledger promised "read-only" | Recall uses the store directly; the coordinator only answers `recallScope()` |
 | Flow ↔ contracts | The first draft put the grammar in the dynamic contract; F9 shows reopened rooms would never see it | The grammar moved to a system-prompt file |
 | Plan ↔ tests | The draft catalog showed `summary.preview`; the I1 sentinel test fails whenever the last turn is evidence | The catalog omits the preview |
-| Contracts ↔ persistence | The draft widened only the operation enum | All four allowlists widen in one slice |
+| Contracts ↔ persistence | The draft widened only the operation enum, and later treated every list as failing at save | Operation, artifact, and archive-kind lists widen in one slice from single typed sources; the archive kind fails only at reopen, so the test reopens |
 
 ### 3.2 Prospective failure review
 
@@ -453,7 +453,8 @@ Assume the implementation merged and failed six months later.
 | Failure story | Cause | Evidence or missing evidence | Prevention / witness |
 |---|---|---|---|
 | A writer's attachment text appears in another session's persona reply | Someone "improves" search with a fallback to `store.list(query)` when no projected hit is found | F1 | The `list(query: undefined)` port type, made the only path by a boundary test banning value imports of the store and coordinator in `recall/` |
-| Saves start failing after a recall | One allowlist (kind or publishable) was missed | F3 | A round-trip test covering every new value |
+| Saves start failing after a recall | The operation or artifact list was missed | F3 | Single-source typed lists; save test with every new value |
+| Reopened rooms quietly lose the host's history | The archive kind list was missed: save never checks it, import does | F3 | Single-source typed lists; a save-and-**reopen** test that imports the archive |
 | The Workshop freezes on "searching saved sessions" | Ten 20 MB sessions parsed cold | U1 | Byte budget, abort between files, and a measured trigger for the persisted index |
 | Jill says "As I remember from our chat…" about a Cliff session | Weak framing; prompt contract never amended | F10 | Trust class, prompt amendment, and a qualitative review |
 | The thread shows "Writer's Dictionary · lighthouse" for a recall | Prefix fallback | F5 | The exhaustive family helper |
@@ -482,7 +483,7 @@ A second variant — including the **live room's own early turns** once context 
 **Final plan:**
 
 1. The same family, but recall reads through the store's read-only methods behind consumer-owned ports, plus one coordinator query (`recallScope()`) for live-room exclusion and the accepted-workspace rule.
-2. The grammar lives in a system-prompt file (the analysis precedent); the catalog never shows `summary.preview`; four persisted allowlists widen together; one exhaustive family helper replaces the prefix checks.
+2. The grammar lives in a system-prompt file (the analysis precedent); the catalog never shows `summary.preview`; the persisted lists widen together from single typed sources; one exhaustive family helper replaces the prefix checks.
 3. Turns are addressed by 1-based ledger positions, and `transcript.read` publishes like `resource.read`.
 
 **What changed and why:** The coordinator path flushes the live room (F2) and cannot name it (F4); the dynamic contract is frozen across reopening (F9); `preview` can hold evidence (F6); prefix checks would mislabel the family (F5); ledger positions survive projection-rule changes.
@@ -501,9 +502,9 @@ A second variant — including the **live room's own early turns** once context 
 | Runtime flows owned and testable | Pass | §1.5; service and sub-adapter tests |
 | Negative-space and reproduction tests pass | Pass | §2.4; §3.3 |
 | Tree, responsibilities, contracts, and slices agree | Pass | §3.1 resolutions applied |
-| Human decisions and coordination assigned | Open | D1–D4 await Okey |
+| Human decisions and coordination assigned | Pass | D1–D4 accepted as recommended on 2026-10-05 |
 
-**Final gate:** `CONDITIONAL` — opens after D1–D4.
+**Final gate:** `OPEN` — D1–D4 accepted 2026-10-05; U1 resolved.
 
 ---
 
@@ -575,7 +576,10 @@ A second variant — including the **live room's own early turns** once context 
 
 #### Persisted allowlists — `[~]`
 
-- `session.ts` (artifact union), `WorkshopSessionStateV1Shape.ts` (artifact enum `:541-563`, operation enum `:729-740`, kind enum `:494-498`), `WorkshopRoomAudience.ts:26-31`, `ConversationManager.ts:618`, `inferenceContext.ts:14-20`, `AgentRunContracts.ts:63-68`, `ContextBudget.tsx:31-38`.
+- `session.ts` (artifact union) and `WorkshopSessionStateV1Shape.ts` (artifact enum `:541-563`, operation enum `:729-740`): checked on load and save.
+- `inferenceContext.ts:14-20`, `AgentRunContracts.ts:63-68`, `ContextBudget.tsx:31-38`, and `ConversationManager.ts:618`: the manifest kind. The archive copy is checked only at import, so a miss saves cleanly and degrades the conversation at reopen. The kind enum at `WorkshopSessionStateV1Shape.ts:494-498` validates only `writerSources`, which never hold capability rows, so recall does not need it.
+- `WorkshopRoomAudience.ts:26-31`: a policy set, not a decoder. Omitting `transcript.read` keeps reads private; adding it is safe, but removing a published operation later would fail the integrity check on sessions that already stamped one.
+- Slice 1 derives each union from one `as const` list (`export type WorkshopCapabilityOperation = (typeof WORKSHOP_CAPABILITY_OPERATIONS)[number]`) that the validator also reads, so a missed entry becomes a compile error.
 - No `schemaVersion` bump: widening is not a semantic change (ADR 2026-07-30). An older build cannot open a session containing the new values; this is the same forward-only stance that ADR takes for additive keys.
 
 #### Prompts — `[+]` / `[~]`
