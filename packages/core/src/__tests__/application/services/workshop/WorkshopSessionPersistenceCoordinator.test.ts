@@ -994,6 +994,84 @@ describe('WorkshopSessionPersistenceCoordinator', () => {
     expect(store.saveNamed).not.toHaveBeenCalled();
   });
 
+  describe('recallScope (session recall, ADR 2026-10-05 §2)', () => {
+    const workspaceB = {
+      available: true as const,
+      rootPath: '/workspace-b',
+      sessionsDirectory: '/workspace-b/prose-minion/sessions',
+      currentPath: '/workspace-b/prose-minion/sessions/current.json'
+    };
+
+    it('fails closed until hydration settles the live identity, without starting it', () => {
+      const coordinator = createCoordinator();
+
+      expect(coordinator.recallScope()).toEqual({ available: false, reason: 'not-ready' });
+      expect(store.readCurrentWithRecovery).not.toHaveBeenCalled();
+      expect(store.readCurrent).not.toHaveBeenCalled();
+      expect(store.writeCurrent).not.toHaveBeenCalled();
+    });
+
+    it('names the live room once initialized, and follows it into a named save', async () => {
+      const coordinator = createCoordinator();
+      await coordinator.initialize();
+
+      expect(coordinator.recallScope()).toEqual({ available: true, liveSessionId: 'session-1' });
+
+      const saved = await coordinator.saveNamed('Lighthouse');
+      expect(coordinator.recallScope()).toEqual({
+        available: true,
+        liveSessionId: saved.sessionId
+      });
+    });
+
+    it('answers synchronously: no flush, no write, and no wait on a session operation', async () => {
+      const coordinator = createCoordinator();
+      await coordinator.initialize();
+      await coordinator.flush();
+      const writes = store.writeCurrent.mock.calls.length;
+      const blocked = deferred();
+      store.saveNamed.mockImplementationOnce(async (next) => {
+        await blocked.promise;
+        named.push(next);
+        return summary(next);
+      });
+      session.setExcerpt({ text: 'Unsaved work in the live room.', source: { kind: 'manual' } });
+      coordinator.markDirty('pending autosave');
+      const pendingSave = coordinator.saveNamed('Held open');
+
+      const scope = coordinator.recallScope();
+
+      expect(scope).toEqual({ available: true, liveSessionId: 'session-1' });
+      expect(coordinator.hasPendingWrite()).toBe(true);
+      expect(store.writeCurrent.mock.calls.length).toBe(writes);
+      expect(store.list).not.toHaveBeenCalled();
+      blocked.resolve();
+      await pendingSave;
+    });
+
+    it('reports a changed root or a lost workspace as workspace-changed, never the new root', async () => {
+      const coordinator = createCoordinator();
+      await coordinator.initialize();
+
+      store.availability.mockReturnValue(workspaceB);
+      expect(coordinator.recallScope()).toEqual({ available: false, reason: 'workspace-changed' });
+
+      store.availability.mockReturnValue({ available: false, reason: 'multi-root' });
+      expect(coordinator.recallScope()).toEqual({ available: false, reason: 'workspace-changed' });
+    });
+
+    it('keeps an initially unavailable workspace unavailable, and a later root changed', async () => {
+      store.availability.mockReturnValue({ available: false, reason: 'no-workspace' });
+      const coordinator = createCoordinator();
+      await coordinator.initialize();
+
+      expect(coordinator.recallScope()).toEqual({ available: false, reason: 'no-workspace' });
+
+      store.availability.mockReturnValue(workspaceB);
+      expect(coordinator.recallScope()).toEqual({ available: false, reason: 'workspace-changed' });
+    });
+  });
+
   it('rolls back an open whose durable current promotion fails without retiring old history', async () => {
     const coordinator = createCoordinator();
     await coordinator.initialize();
