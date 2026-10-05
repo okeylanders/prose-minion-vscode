@@ -58,13 +58,14 @@ packages/core/src/
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
-│           └── workshop/                  # Room owner + 9 composed route owners
+│           └── workshop/                  # Room owner + 10 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
 │               ├── WorkshopContextHandler.ts
 │               ├── WorkshopExcerptScopeHandler.ts
 │               ├── WorkshopSessionMessageHandler.ts
+│               ├── WorkshopSessionExportHandler.ts   # Read-only transcript export
 │               ├── WorkshopStandingDirectiveHandler.ts
 │               ├── WorkshopTodoHandler.ts
 │               └── widgets/
@@ -715,7 +716,7 @@ npm run test:tier1
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's nine route owners
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's ten route owners
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):
@@ -841,6 +842,25 @@ touching retained histories or whole-room operations:
   unnamed room, a named room with unsaved work, and a room whose file on
   disk no longer matches it. It checks the file again at the commit that
   replaces `current.json`, through the store's `beforeCommit` seam.
+
+### Workshop Transcript Export
+
+Follow [ADR 2026-10-05](docs/adr/2026-10-05-workshop-transcript-export.md) when
+touching what the thread shows or how it is styled:
+
+- **One projection.** `projectWorkshopTranscript` alone decides what a
+  transcript contains; Markdown, JSON, and HTML only render it. A new turn
+  shape or bubble element gets an explicit include/omit decision there, with a
+  test. Host-private bodies (attachment text, widget payloads, capability
+  evidence, context details) never enter it.
+- **Full ledger, read-only.** Export reads `readRoomLedger()`, never the
+  snapshot window, and never writes session state. It waits out room
+  replacement instead of joining the mutation gate.
+- **Not the session codec.** The JSON export has its own `formatVersion`;
+  session-codec migrations do not apply to it.
+- **Mirrored styles.** The HTML export copies thread CSS rules verbatim and a
+  test pins them to their sources. Restyling the thread means regenerating the
+  mirror; export-only rules live in the page layer.
 
 ### Operational Tips
 

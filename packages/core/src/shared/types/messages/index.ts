@@ -172,6 +172,7 @@ import {
   WorkshopDuplicateSessionMessage,
   WorkshopRevealSessionMessage,
   WorkshopDeleteSessionMessage,
+  WorkshopExportSessionMessage,
   WorkshopTurnMessage,
   WorkshopComposerDraftRestoredMessage,
   WorkshopSessionStateMessage,
@@ -292,6 +293,7 @@ export type WebviewToExtensionMessage =
   | WorkshopDuplicateSessionMessage
   | WorkshopRevealSessionMessage
   | WorkshopDeleteSessionMessage
+  | WorkshopExportSessionMessage
   | WorkshopGesturePlaygroundGenerateMessage
   | CancelGesturePlaygroundGenerateRequestMessage
   | WorkshopCreativeVariationsGenerateMessage

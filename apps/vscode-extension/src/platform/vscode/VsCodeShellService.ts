@@ -59,4 +59,11 @@ export class VsCodeShellService implements ShellService {
   async revealFileInOS(filePath: string): Promise<void> {
     await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(filePath));
   }
+
+  async openFileInDefaultApp(filePath: string): Promise<void> {
+    const opened = await vscode.env.openExternal(vscode.Uri.file(filePath));
+    if (!opened) {
+      throw new Error(`The host declined to open ${filePath} in its default application.`);
+    }
+  }
 }

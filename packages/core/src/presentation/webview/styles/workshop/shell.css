@@ -3332,6 +3332,98 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Export transcript sheet: the Save-session sheet's frame with a format choice. */
+[data-pm-surface="workshop"] .pm-ws-export-session-modal {
+  width: min(760px, 100%);
+}
+[data-pm-surface="workshop"] .pm-ws-export-formats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-export-formats legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--pm-dim);
+  font: 10.5px var(--pm-mono);
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+[data-pm-surface="workshop"] .pm-ws-export-format {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  padding: 12px 13px;
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface-2);
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-surface="workshop"] .pm-ws-export-format input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+[data-pm-surface="workshop"] .pm-ws-export-format svg {
+  margin-top: 1px;
+  color: var(--pm-dim);
+}
+[data-pm-surface="workshop"] .pm-ws-export-format:hover {
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-export-format:focus-within {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 2px;
+}
+[data-pm-surface="workshop"] .pm-ws-export-format-selected {
+  border-color: var(--pm-accent);
+  background: color-mix(in srgb, var(--pm-accent-soft) 60%, var(--pm-surface-2));
+}
+[data-pm-surface="workshop"] .pm-ws-export-format-selected svg {
+  color: var(--pm-accent-hi);
+}
+[data-pm-surface="workshop"] .pm-ws-export-formats:disabled .pm-ws-export-format {
+  opacity: 0.55;
+  cursor: default;
+}
+[data-pm-surface="workshop"] .pm-ws-export-format-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-export-format-text strong {
+  color: var(--pm-text);
+  font-size: 13px;
+}
+[data-pm-surface="workshop"] .pm-ws-export-format-text span {
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+[data-pm-surface="workshop"] .pm-ws-export-left-out {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 2px 18px;
+  color: var(--pm-dim);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-export-left-out svg {
+  flex: none;
+  margin-top: 2px;
+}
+@media (max-width: 640px) {
+  [data-pm-surface="workshop"] .pm-ws-export-formats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 [data-pm-surface="workshop"] .pm-ws-session-sheet-foot {
   display: flex;
   align-items: center;

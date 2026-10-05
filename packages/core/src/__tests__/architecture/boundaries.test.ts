@@ -75,6 +75,8 @@ const WORKSHOP_SLICE_COMPOSITION_OWNER =
   'application/handlers/domain/workshop/WorkshopSliceComposition.ts';
 const WORKSHOP_SESSION_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopSessionMessageHandler.ts';
+const WORKSHOP_SESSION_EXPORT_HANDLER_OWNER =
+  'application/handlers/domain/workshop/WorkshopSessionExportHandler.ts';
 const WORKSHOP_TODO_HANDLER_OWNER =
   'application/handlers/domain/workshop/WorkshopTodoHandler.ts';
 const WORKSHOP_CONTEXT_HANDLER_OWNER =
@@ -187,6 +189,13 @@ const WORKSHOP_ROUTE_OWNERS = [
     ]
   },
   {
+    // Read-only: export never changes the room, so it bypasses the mutation
+    // gate and checks for an in-flight room replacement itself.
+    owner: WORKSHOP_SESSION_EXPORT_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: ['WORKSHOP_EXPORT_SESSION']
+  },
+  {
     owner: WORKSHOP_GESTURE_HANDLER_OWNER,
     registration: 'direct',
     messageTypes: [
@@ -266,6 +275,10 @@ const WORKSHOP_EXTRACTED_HANDLER_SLICES = [
   {
     file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopTodoHandler.ts'),
     reference: /WorkshopTodoHandler/
+  },
+  {
+    file: path.join(WORKSHOP_HANDLER_ROOT, 'WorkshopSessionExportHandler.ts'),
+    reference: /WorkshopSessionExportHandler/
   }
 ] as const;
 const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
@@ -274,6 +287,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopCreativeVariationsHandler',
   'WorkshopGesturePlaygroundHandler',
   'WorkshopLexicalGravityHandler',
+  'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
   'WorkshopStandingDirectiveHandler',
   'WorkshopTodoHandler',
@@ -1043,11 +1057,11 @@ describe('architectural boundaries', () => {
       );
     };
 
-    expect(expectedOwnerPairs).toHaveLength(53);
+    expect(expectedOwnerPairs).toHaveLength(54);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(37);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(16);
+      .toHaveLength(17);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -1094,7 +1108,7 @@ describe('architectural boundaries', () => {
    *
    * The scan covers HANDLERS_ROOT, so it proves that within the handler tree
    * only MessageHandler constructs the room owner and only
-   * WorkshopSliceComposition constructs the eight siblings. It cannot see a
+   * WorkshopSliceComposition constructs the ten siblings. It cannot see a
    * sibling built outside that tree — a factory under
    * `application/services/workshop/`, for instance — nor a construction that
    * evades the `new Workshop*Handler(` shape (aliased import, Reflect.construct,
@@ -1144,7 +1158,7 @@ describe('architectural boundaries', () => {
         );
     });
 
-    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(4);
+    expect(WORKSHOP_EXTRACTED_HANDLER_SLICES).toHaveLength(5);
     expect(offenders).toEqual([]);
   });
 

@@ -5,7 +5,7 @@
  * Owns the nine room/run routes, the single active-run slot, preemption,
  * transport envelopes, and the sole WORKSHOP_SESSION_STATE constructor.
  * WorkshopSliceComposition owns the shared mutation gate and composes the
- * eight sibling route handlers around this room owner. Session truth lives in
+ * sibling route handlers around this room owner. Session truth lives in
  * WorkshopSessionService and outlives both handler surfaces.
  *
  * Sprint 06B makes every tool run an isolated retained sidecar: the exact tool
@@ -104,6 +104,7 @@ import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '@handlers/MessageRouter';
 import type {
   WorkshopMutationRouteRegistrar,
+  WorkshopTranscriptExportPort,
   WorkshopWidgetRuntime
 } from '@handlers/domain/workshop/WorkshopRouteContracts';
 import { WorkshopSliceComposition } from '@handlers/domain/workshop/WorkshopSliceComposition';
@@ -227,6 +228,7 @@ export class WorkshopRoomHandler {
     private readonly conversationSettingsService: WorkshopConversationSettingsService,
     private readonly sessionTime: WorkshopSessionTimeService,
     private readonly sessionPersistence: WorkshopSessionPersistenceCoordinator,
+    transcriptExport: WorkshopTranscriptExportPort,
     widgetRuntime: WorkshopWidgetRuntime,
     private readonly outputChannel: LogSink
   ) {
@@ -258,6 +260,7 @@ export class WorkshopRoomHandler {
         shell,
         contextIntakeService,
         sessionPersistence: this.sessionPersistence,
+        transcriptExport,
         widgetRuntime,
         outputChannel: this.outputChannel
       },

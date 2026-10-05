@@ -18,7 +18,8 @@ import {
   WorkshopPersonaId,
   WorkshopToolId,
   WorkshopTurn,
-  WorkshopTurnRewindability
+  WorkshopTurnRewindability,
+  citationDisplayLabel
 } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
 import { workshopToolIcon } from './workshopToolIcons';
@@ -29,6 +30,7 @@ import {
   workshopWidgetSelectionUnitLabel
 } from '@shared/constants/workshopWidgets';
 import { workshopRewindUnavailableReason } from '@shared/constants/workshopRewind';
+import { workshopCapabilityArtifactLabel } from '@shared/constants/workshopCapabilityLabels';
 
 interface WorkshopTurnBubbleProps {
   turn: WorkshopTurn;
@@ -170,16 +172,6 @@ function widgetRecommendationMeta(
   }
 }
 
-const citationLabel = (citation: { url: string; title?: string }): string => {
-  const title = citation.title?.trim();
-  if (title && !/^\d+$/.test(title)) return title;
-  try {
-    return new URL(citation.url).hostname || citation.url;
-  } catch {
-    return citation.url;
-  }
-};
-
 export const parseVariations = (content: string): ParsedVariations | null => {
   const matches = [...content.matchAll(VARIATION_HEADING)];
   if (matches.length < 2) {
@@ -319,11 +311,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   );
 
   const capabilityLabel = turn.capability
-    ? `${turn.capability.operation.startsWith('dictionary.')
-      ? "Writer's Dictionary"
-      : turn.capability.operation.startsWith('resource.')
-        ? 'Project Resources'
-        : turn.toolLabel ?? 'Analysis'} · ${turn.capability.requestSummary} · requested by ${workshopPersonaLabel(turn.capability.requestedByPersonaId)}`
+    ? workshopCapabilityArtifactLabel(turn.capability, turn.toolLabel)
     : undefined;
   const capabilityMetadata = capabilityMetadataRows(turn);
   const citations = React.useMemo(() => {
@@ -644,11 +632,11 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
                   target="_blank"
                   rel="noreferrer"
                   title={citation.url}
-                  aria-label={`Open web source ${index + 1}: ${citationLabel(citation)}`}
+                  aria-label={`Open web source ${index + 1}: ${citationDisplayLabel(citation)}`}
                 >
                   <Icon name="link" size={12} />
                   <span className="pm-ws-turn-citation-number">{index + 1}</span>
-                  <span className="pm-ws-ctx-pill-label">{citationLabel(citation)}</span>
+                  <span className="pm-ws-ctx-pill-label">{citationDisplayLabel(citation)}</span>
                 </a>
               ))}
             </div>

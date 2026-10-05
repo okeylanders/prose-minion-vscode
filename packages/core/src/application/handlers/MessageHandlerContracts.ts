@@ -24,6 +24,7 @@ import type { WorkshopConversationSettingsService } from '@/application/services
 import type { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
 import type { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import type { WorkshopSessionPersistenceCoordinator } from '@/application/services/workshop/WorkshopSessionPersistenceCoordinator';
+import type { WorkshopTranscriptExportService } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import type { ContextAssistantService } from '@services/analysis/ContextAssistantService';
 import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -121,6 +122,8 @@ export interface CoreServices {
   workshopSessionTimeService: WorkshopSessionTimeService;
   /** Ordered aggregate + conversation archive persistence boundary. */
   workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator;
+  /** Full-ledger transcript export to prose-minion/exports (Markdown, JSON, HTML). */
+  workshopTranscriptExportService: WorkshopTranscriptExportService;
   /** Gesture Playground pre-commit dictionary + menu generation (ADR 2026-07-22). */
   gesturePlaygroundService: GesturePlaygroundService;
   /** Creative Variations' complete-set generation and strict response boundary. */

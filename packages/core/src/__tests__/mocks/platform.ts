@@ -124,6 +124,7 @@ export function createFakeShellService(overrides: Partial<ShellService> = {}): S
     readClipboard: async () => '',
     openFileInEditor: async () => undefined,
     revealFileInOS: async () => undefined,
+    openFileInDefaultApp: async () => undefined,
     pickFile: async () => undefined,
     ...overrides,
   };

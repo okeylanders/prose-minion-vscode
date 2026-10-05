@@ -155,6 +155,7 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
         }),
         resetSession: jest.fn().mockResolvedValue(undefined)
       } as unknown as WorkshopSessionPersistenceCoordinator,
+      { export: jest.fn() },
       {
         gesturePlayground: { generateMenu: jest.fn() },
         lexicalGravity: { model: {}, repository: {}, directives: {} }

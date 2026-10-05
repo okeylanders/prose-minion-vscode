@@ -13,6 +13,7 @@ import { MessageRouter } from '@handlers/MessageRouter';
 import { WorkshopContextHandler } from '@handlers/domain/workshop/WorkshopContextHandler';
 import { WorkshopExcerptScopeHandler } from '@handlers/domain/workshop/WorkshopExcerptScopeHandler';
 import { WorkshopSessionMessageHandler } from '@handlers/domain/workshop/WorkshopSessionMessageHandler';
+import { WorkshopSessionExportHandler } from '@handlers/domain/workshop/WorkshopSessionExportHandler';
 import { WorkshopStandingDirectiveHandler } from '@handlers/domain/workshop/WorkshopStandingDirectiveHandler';
 import { WorkshopTodoHandler } from '@handlers/domain/workshop/WorkshopTodoHandler';
 import { WorkshopWidgetHostHandler } from '@handlers/domain/workshop/widgets/WorkshopWidgetHostHandler';
@@ -49,6 +50,7 @@ import { MessageType } from '@messages';
 
 export class WorkshopSliceComposition {
   private readonly sessionMessageHandler: WorkshopSessionMessageHandler;
+  private readonly sessionExportHandler: WorkshopSessionExportHandler;
   private readonly gesturePlaygroundHandler: WorkshopGesturePlaygroundHandler;
   private readonly creativeVariationsHandler: WorkshopCreativeVariationsHandler;
   private readonly widgetHostHandler: WorkshopWidgetHostHandler;
@@ -69,6 +71,7 @@ export class WorkshopSliceComposition {
       shell,
       contextIntakeService,
       sessionPersistence,
+      transcriptExport,
       widgetRuntime,
       outputChannel
     } = dependencies;
@@ -122,6 +125,13 @@ export class WorkshopSliceComposition {
         activeRunLabel: host.activeRunLabel,
         rewindCutForBubble: (turnId) => session.rewindCutForBubble(turnId)
       }
+    );
+    this.sessionExportHandler = new WorkshopSessionExportHandler(
+      transcriptExport,
+      sessionPersistence,
+      shell,
+      postMessage,
+      outputChannel
     );
     this.gesturePlaygroundHandler = new WorkshopGesturePlaygroundHandler(
       session,
@@ -210,6 +220,7 @@ export class WorkshopSliceComposition {
       router,
       this.createMutationRegistrar(router, 'WorkshopSessionMessageHandler')
     );
+    this.sessionExportHandler.registerRoutes(router);
     this.gesturePlaygroundHandler.registerRoutes(router);
     this.creativeVariationsHandler.registerRoutes(router);
     this.widgetHostHandler.registerRoutes(

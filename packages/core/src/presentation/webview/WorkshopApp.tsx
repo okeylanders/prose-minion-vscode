@@ -79,6 +79,7 @@ import {
   WorkshopSaveSessionModal
 } from './components/workshop/WorkshopSaveSessionModal';
 import { WorkshopSessionsMenu } from './components/workshop/WorkshopSessionsMenu';
+import { WorkshopExportSessionModal } from './components/workshop/WorkshopExportSessionModal';
 import { WorkshopPathChooser } from './components/workshop/WorkshopPathChooser';
 import { WorkshopScopeStrip } from './components/workshop/WorkshopScopeStrip';
 import {
@@ -514,6 +515,9 @@ export const WorkshopApp: React.FC = () => {
     workshop.turns.length + workshop.hiddenTurns > 0 ||
     workshop.todos.length > 0 ||
     workshop.personaGuests.some((guest) => guest.liveness === 'live');
+  // Export reads the whole host ledger; turns outside the window count too.
+  const hasExportableTurns =
+    workshop.hiddenTurns > 0 || workshop.turns.some((turn) => turn.kind !== 'divider');
   const hasWorkingSet =
     !!workshop.excerpt ||
     !!workshop.shelvedExcerpt ||
@@ -549,11 +553,14 @@ export const WorkshopApp: React.FC = () => {
   const {
     sessionsMenuOpen,
     saveSessionModalOpen,
+    exportSessionModalOpen,
     sessionBrowserOpen,
     sessionConfirm,
     setSessionsMenuVisibility,
     openSaveSessionModal,
     closeSaveSessionModal,
+    openExportSessionModal,
+    closeExportSessionModal,
     openSessionBrowser,
     closeSessionBrowser,
     startNewSession,
@@ -973,6 +980,8 @@ export const WorkshopApp: React.FC = () => {
             onFullResetSession={startFullReset}
             hasWorkingSet={hasWorkingSet}
             onSaveSession={openSaveSessionModal}
+            exportDisabled={!workshop.sessionReady || sessionLoading || !hasExportableTurns}
+            onExportSession={openExportSessionModal}
             onBrowseSessions={openSessionBrowser}
             onOpenSession={openStoredSession}
           />
@@ -1657,6 +1666,14 @@ export const WorkshopApp: React.FC = () => {
         saving={workshopSessions.sessionActionPending === 'save'}
         onClose={closeSaveSessionModal}
         onSave={workshopSessions.saveSession}
+      />
+      <WorkshopExportSessionModal
+        open={exportSessionModalOpen}
+        available={workshop.persistenceUnavailableReason !== 'no-workspace'}
+        suggestedTitle={suggestedSessionTitle}
+        exporting={workshopSessions.sessionActionPending === 'export'}
+        onClose={closeExportSessionModal}
+        onExport={workshopSessions.exportSession}
       />
       <WorkshopSessionBrowserModal
         open={sessionBrowserOpen && !sessionLoading}

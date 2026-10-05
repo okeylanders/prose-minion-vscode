@@ -24,6 +24,10 @@ import type {
 import type {
   WorkshopOneShotWidgetRoomSend
 } from '@/application/services/workshop/widgets/WorkshopOneShotWidgetCommitCoordinator';
+import type {
+  WorkshopTranscriptExportRequest,
+  WorkshopTranscriptExportResult
+} from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 import type { LogSink, ShellService } from '@/platform';
 import type {
   ErrorSource,
@@ -87,6 +91,11 @@ export interface WorkshopWidgetRuntime {
   };
 }
 
+/** Transcript export seam; the composition root supplies the real service. */
+export interface WorkshopTranscriptExportPort {
+  export(request: WorkshopTranscriptExportRequest): Promise<WorkshopTranscriptExportResult>;
+}
+
 /** Stable dependencies owned by the Workshop-internal composition tier. */
 export interface WorkshopSliceCompositionDependencies {
   contextAssistantService: ContextAssistantService;
@@ -95,6 +104,7 @@ export interface WorkshopSliceCompositionDependencies {
   shell: ShellService;
   contextIntakeService: WorkshopContextIntakeService;
   sessionPersistence: WorkshopSessionPersistenceCoordinator;
+  transcriptExport: WorkshopTranscriptExportPort;
   widgetRuntime: WorkshopWidgetRuntime;
   outputChannel: LogSink;
 }

@@ -10,7 +10,8 @@ import {
   WorkshopSessionRecoveryNoticeMessage,
   WorkshopSessionSaveStatusMessage,
   WorkshopSessionSummary,
-  WorkshopSessionsDataMessage
+  WorkshopSessionsDataMessage,
+  WorkshopTranscriptExportFormat
 } from '@messages';
 import type {
   WorkshopRoomReplacementPort,
@@ -56,6 +57,8 @@ export interface WorkshopSessionsActions {
   duplicateSession: (sessionId: string, title?: string) => void;
   revealSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => void;
+  /** Export the live room's full transcript; answered by an `export` action result. */
+  exportSession: (format: WorkshopTranscriptExportFormat, title: string) => void;
   consumeSessionActionResult: () => void;
   handleSessionsData: (message: WorkshopSessionsDataMessage) => void;
   handleSessionActionResult: (message: WorkshopSessionActionResultMessage) => void;
@@ -193,6 +196,14 @@ export function useWorkshopSessions(
     post(MessageType.WORKSHOP_DELETE_SESSION, { sessionId });
   }, [post]);
 
+  const exportSession = React.useCallback(
+    (format: WorkshopTranscriptExportFormat, title: string) => {
+      setSessionActionPending('export');
+      post(MessageType.WORKSHOP_EXPORT_SESSION, { format, title });
+    },
+    [post]
+  );
+
   const consumeSessionActionResult = React.useCallback(() => {
     setSessionActionResult(undefined);
   }, []);
@@ -322,6 +333,7 @@ export function useWorkshopSessions(
     duplicateSession,
     revealSession,
     deleteSession,
+    exportSession,
     consumeSessionActionResult,
     handleSessionsData,
     handleSessionActionResult,

@@ -43,6 +43,8 @@ const renderMenu = (
     onFullResetSession: jest.fn(),
     hasWorkingSet: true,
     onSaveSession: jest.fn(),
+    exportDisabled: false,
+    onExportSession: jest.fn(),
     onBrowseSessions: jest.fn(),
     onOpenSession: jest.fn(),
     ...overrides
@@ -56,6 +58,7 @@ describe('WorkshopSessionsMenu', () => {
 
     expect(screen.getByRole('menuitem', { name: /^New session ⌘⇧N$/ })).not.toBeNull();
     expect(screen.getByRole('menuitem', { name: /Save session/ })).not.toBeNull();
+    expect(screen.getByRole('menuitem', { name: /^Export…$/ })).not.toBeNull();
     expect(screen.getByRole('menuitem', { name: /Open prior session/ })).not.toBeNull();
     expect(screen.getByRole('menuitem', { name: /Browse all sessions/ })).not.toBeNull();
     expect(screen.getByText('Pentecost — dialogue pass')).not.toBeNull();
@@ -82,15 +85,34 @@ describe('WorkshopSessionsMenu', () => {
     const { props } = renderMenu();
 
     fireEvent.click(screen.getByRole('menuitem', { name: /Save session/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Export…$/ }));
     fireEvent.click(screen.getByRole('menuitem', { name: /Pentecost — dialogue pass/ }));
     fireEvent.click(screen.getByRole('menuitem', { name: /Browse all sessions/ }));
 
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
     expect(props.onSaveSession).toHaveBeenCalledTimes(1);
+    expect(props.onExportSession).toHaveBeenCalledTimes(1);
     expect(props.onOpenSession).toHaveBeenCalledWith(
       expect.objectContaining({ sessionId: 'one' })
     );
     expect(props.onBrowseSessions).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps Export available in an unsaved room but not before the first message', () => {
+    renderMenu({ disabled: true });
+    const exportItem = screen.getByRole('menuitem', { name: /^Export…$/ }) as HTMLButtonElement;
+    expect(exportItem.disabled).toBe(false);
+  });
+
+  it('explains a disabled Export instead of hiding it', () => {
+    const { props } = renderMenu({ exportDisabled: true });
+    const exportItem = screen.getByRole('menuitem', { name: /^Export…$/ }) as HTMLButtonElement;
+
+    fireEvent.click(exportItem);
+
+    expect(exportItem.disabled).toBe(true);
+    expect(exportItem.title).toContain('Nothing to export yet');
+    expect(props.onExportSession).not.toHaveBeenCalled();
   });
 
   it('closes on Escape and outside click', () => {

@@ -197,6 +197,53 @@ describe('useWorkshopSessionSurfaces', () => {
     expect(props.consumeSessionActionResult).toHaveBeenCalledTimes(1);
   });
 
+  it('closes the export sheet on success without refreshing the session index', () => {
+    const props = options();
+    const { result, rerender } = renderHook(() => useWorkshopSessionSurfaces(props));
+    act(() => result.current.setSessionsMenuVisibility(true));
+    act(() => result.current.openExportSessionModal());
+    expect(result.current.sessionsMenuOpen).toBe(false);
+    expect(result.current.exportSessionModalOpen).toBe(true);
+    (props.requestSessions as jest.Mock).mockClear();
+
+    props.sessionActionResult = {
+      action: 'export',
+      ok: true,
+      message: 'Exported “Room” as Markdown to prose-minion/exports/room.md.'
+    };
+    rerender();
+
+    expect(result.current.exportSessionModalOpen).toBe(false);
+    expect(props.onResult).toHaveBeenCalledWith(props.sessionActionResult);
+    expect(props.requestSessions).not.toHaveBeenCalled();
+  });
+
+  it('keeps the export sheet open when the export fails', () => {
+    const props = options();
+    const { result, rerender } = renderHook(() => useWorkshopSessionSurfaces(props));
+    act(() => result.current.openExportSessionModal());
+
+    props.sessionActionResult = { action: 'export', ok: false, message: 'Could not export.' };
+    rerender();
+
+    expect(result.current.exportSessionModalOpen).toBe(true);
+    expect(props.onResult).toHaveBeenCalledWith(props.sessionActionResult);
+  });
+
+  it('shows one session sheet at a time', () => {
+    const props = options();
+    const { result } = renderHook(() => useWorkshopSessionSurfaces(props));
+
+    act(() => result.current.openExportSessionModal());
+    act(() => result.current.openSaveSessionModal());
+    expect(result.current.exportSessionModalOpen).toBe(false);
+    expect(result.current.saveSessionModalOpen).toBe(true);
+
+    act(() => result.current.openExportSessionModal());
+    expect(result.current.saveSessionModalOpen).toBe(false);
+    expect(result.current.exportSessionModalOpen).toBe(true);
+  });
+
   it.each(['open', 'new'] as const)(
     'keeps the browser open and preserves its filter when %s fails',
     (action) => {

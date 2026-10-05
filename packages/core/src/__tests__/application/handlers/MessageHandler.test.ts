@@ -207,7 +207,8 @@ function createTestAssembly(): TestAssembly {
         degradedConversationKeys: []
       }),
       resetSession: jest.fn().mockResolvedValue(undefined)
-    }
+    },
+    workshopTranscriptExportService: { export: jest.fn() }
   } as unknown as CoreServices;
 
   return {

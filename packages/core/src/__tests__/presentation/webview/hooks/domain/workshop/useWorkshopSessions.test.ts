@@ -106,6 +106,37 @@ describe('useWorkshopSessions', () => {
     expect(result.current.sessionActionResult).toEqual(settled.payload);
   });
 
+  it('posts an export without touching the room, and settles on its result', () => {
+    const replacement: WorkshopRoomReplacementPort = {
+      clearStatus: jest.fn(),
+      beginReplacement: jest.fn(() => ({ turns: [], totalTurns: 0, errorMessage: '' })),
+      restoreReplacement: jest.fn()
+    };
+    const { result } = renderHook(() => useWorkshopSessions(replacement));
+    const vscode = useVSCodeApi() as ReturnType<typeof createMockVSCode>;
+
+    act(() => result.current.exportSession('html', 'Dock scene'));
+
+    expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.WORKSHOP_EXPORT_SESSION,
+      source: 'webview.workshop',
+      payload: { format: 'html', title: 'Dock scene' }
+    }));
+    expect(replacement.clearStatus).not.toHaveBeenCalled();
+    expect(replacement.beginReplacement).not.toHaveBeenCalled();
+    expect(result.current.sessionActionPending).toBe('export');
+
+    const settled: WorkshopSessionActionResultMessage = {
+      type: MessageType.WORKSHOP_SESSION_ACTION_RESULT,
+      source: 'extension.workshop',
+      payload: { action: 'export', ok: true, message: 'Exported “Dock scene”.' },
+      timestamp: 1
+    };
+    act(() => result.current.handleSessionActionResult(settled));
+    expect(result.current.sessionActionPending).toBeUndefined();
+    expect(result.current.sessionActionResult).toEqual(settled.payload);
+  });
+
   it('restores the exact room snapshot when New Session is rejected', () => {
     const snapshot = {
       turns: [{ id: 'prior' } as never],

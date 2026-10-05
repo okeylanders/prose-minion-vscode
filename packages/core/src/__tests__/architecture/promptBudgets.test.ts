@@ -26,6 +26,9 @@ const NON_PROMPT_LIMITS = new Set([
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_TRIGRAMS_PER_BATCH',
   'presentation/webview/components/tabs/AnalysisTab.tsx:MAX_EXCERPT_LENGTH',
   'presentation/webview/components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityModal.tsx:PREVIEW_SOURCE_HEIGHT_CAP',
+  // Transcript export names files and documents; no prompt sees them.
+  'shared/constants/workshopTranscriptExport.ts:MAX_STEM_LENGTH',
+  'shared/types/messages/workshop/session.ts:WORKSHOP_TRANSCRIPT_EXPORT_TITLE_MAX_LENGTH',
   'shared/types/messages/ui.ts:WEBVIEW_ERROR_TEXT_MAX'
 ]);
 
