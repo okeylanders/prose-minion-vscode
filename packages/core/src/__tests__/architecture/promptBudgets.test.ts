@@ -96,6 +96,26 @@ describe('prompt budgets', () => {
     });
   });
 
+  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5)', () => {
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall).toEqual({
+      queryCharacters: 200,
+      sessionIdCharacters: 100,
+      turnSelectionCharacters: 200,
+      turnRanges: 10,
+      catalogSessions: 50,
+      searchSessions: 50,
+      searchSourceBytes: 64 * 1024 * 1024,
+      searchHits: 20,
+      searchHitsPerSession: 5,
+      snippetCharacters: 280,
+      readCharacters: 48_000,
+      readsPerTurn: 2
+    });
+    // Recall shares the per-turn call ceiling; its reads stay inside it.
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn)
+      .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+  });
+
   it('pins the model-facing Conversation Widget budgets and aggregate frame ceiling', () => {
     expect(PROMPT_BUDGETS.workshopWidgets).toEqual({
       gestureTargetPhraseCharacters: 300,

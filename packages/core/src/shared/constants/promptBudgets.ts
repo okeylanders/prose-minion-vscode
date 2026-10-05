@@ -43,6 +43,26 @@ export interface PromptBudgets {
     readSourceBytes: number;
     readBytes: number;
   }>;
+  /**
+   * Session Recall (`transcript.*`, ADR 2026-10-05 §5): request field
+   * lengths, how much of the saved-session corpus one call may scan, and how
+   * much visible transcript it may return. Starting points for the live pass.
+   */
+  readonly workshopTranscriptRecall: Readonly<{
+    queryCharacters: number;
+    sessionIdCharacters: number;
+    turnSelectionCharacters: number;
+    turnRanges: number;
+    catalogSessions: number;
+    searchSessions: number;
+    /** Cold parsing per call; cached documents cost nothing. */
+    searchSourceBytes: number;
+    searchHits: number;
+    searchHitsPerSession: number;
+    snippetCharacters: number;
+    readCharacters: number;
+    readsPerTurn: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -212,6 +232,20 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readDefaultLines: 400,
     readSourceBytes: 2 * 1024 * 1024,
     readBytes: 64 * 1024
+  },
+  workshopTranscriptRecall: {
+    queryCharacters: 200,
+    sessionIdCharacters: 100,
+    turnSelectionCharacters: 200,
+    turnRanges: 10,
+    catalogSessions: 50,
+    searchSessions: 50,
+    searchSourceBytes: 64 * 1024 * 1024,
+    searchHits: 20,
+    searchHitsPerSession: 5,
+    snippetCharacters: 280,
+    readCharacters: 48_000,
+    readsPerTurn: 2
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
