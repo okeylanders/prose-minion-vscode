@@ -36,7 +36,7 @@ Evidence labels: **[Declared]** ADR/requirement · **[Observed]** current code o
 | Visibility (projection) | Recall output must equal what the thread shows | A body the thread hides (attachment text, widget payload, capability evidence, or the summary `preview`) reaches a persona | HIGH |
 | Live room / persistence coordinator | Recall reads the directory the room autosaves into | A persona search flushes or writes a checkpoint mid-run, or recalls the live room's own stale copy | HIGH |
 | Persisted session codec | Operation, artifact, publishable, and context-source values are closed allowlists, checked on load **and** save | A room holding a recall artifact cannot save; an older build cannot open a newer session | HIGH (forward-only by design) |
-| Extension-host CPU and memory | Search parses saved session JSON on demand | A cold search over large sessions stalls the host | MODERATE — unknown U1 |
+| Extension-host CPU and memory | Search parses saved session JSON on demand | A cold search over large sessions stalls the host | LOW — measured at about 11–13 ms per MiB (U1) |
 | Prompt honesty | Personas are currently told there is no durable history | A persona claims to "remember," claims presence in a session it never joined, or obeys a past request | MODERATE |
 
 ### Human decisions required
@@ -51,7 +51,7 @@ Evidence labels: **[Declared]** ADR/requirement · **[Observed]** current code o
 ### Gate
 
 **State:** `READY FOR REVIEW`
-**Blockers to implementation:** D1–D4 accepted. U1 measured on a real workspace before Slice 4 enables the prompts.
+**Blockers to implementation:** D1–D4 accepted. U1 was resolved on 2026-10-05: on-demand projection holds ([measurements](../../.todo/epics/epic-workshop-session-recall-2026-10-05/u1-measurements.md)).
 
 ---
 
@@ -261,7 +261,8 @@ It does **not** own the definition of "visible" (the projection does), file acce
 | Live-room isolation | Loading must not create author work (ADR 2026-09-10) | `coordinator.list()` runs `initialize()` and `flush()` (`:613-615`); the live identity is private (`:239-240`) | Recall must bypass the browser path and ask the coordinator one read-only question | — |
 | Evidence honesty | Cross-participant material arrives as quoted text in the **user** message (ADR 2026-07-24) | The engine pushes the model's call as `assistant`, then evidence as `user` (`AgentRunEngine.ts:386-399`) | Recall is honest at the transport by construction; framing must still rule out "I remember" | Model compliance — qualitative check in Slice 5 |
 | Grammar placement | Schemas arrive "beside the first writer message" (`base.md:11`), except `analysis.run`, which lives in the system prompt | Archive import rebuilds only the system prompt; the first-message contract stays frozen (`ConversationManager.ts:64-79`) | A system-prompt file gives reopened older rooms recall too | — |
-| Session size | Exact reads bounded at 25 MiB (`WorkshopSessionStore.ts:57`) | Files carry every retained archive and context body; the only fixture has zero turns | Visible text is a small share of most files | Real size distribution — U1 |
+| Session size | Exact reads bounded at 25 MiB (`WorkshopSessionStore.ts:57`) | Okey's ten largest named sessions are 1.1–2.2 MB; synthetic sessions through the real codec show visible text at 8–16% of the file (U1 measurements) | On-demand projection is affordable | Total session count; wall-clock in VS Code (Slice 5) |
+| Lineage | Branch records no lineage in v1 (`WorkshopSessionBranch.ts`) | Duplicate spreads `...source.session` (`WorkshopSessionPersistenceCoordinator.ts`, `duplicateNamed`); Okey's workspace holds a `-copy`, a `-branch`, and five chapter 6-7 sessions | Copies and branches repeat turns, with their turn ids, across the corpus | — |
 
 ### 2.3 Contracts and invariants
 
@@ -345,6 +346,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | Isolation | Live room | A persona searches while the live room has a pending autosave | Named session open | Recall service | No flush, no write; the live session is excluded | The fake store records zero writes; the live id is absent from results |
 | Change | Developer | The projection gains an include/omit decision for a new turn shape | A later feature | Projection | Export and recall change together | One projection test changes; no recall code changes |
 | Honesty | A recalled session hosted by Cliff | Jill reads it | Live room hosted by Jill | Framing + prompt | Jill speaks of "your session with Cliff" as something she looked up | Qualitative review in Slice 5 |
+| Use | Corpus | A session, its copy, and a branch all contain the matching turn | Lineage-heavy workspace | Search | The turn appears once, attributed to the newest session, with the others named | One hit per turn id; duplicates never count against the hit caps |
 
 **Sensitivity points:** `readCharacters` (context per read, multiplied when a published read is delivered to several guests); `searchSourceBytes` (cold latency); the projection itself (one edit moves export and recall).
 **Tradeoff points:** On-demand projection keeps one authority and adds no files but spends CPU on cold parses; a derived index inverts that trade. Publishing `transcript.read` keeps guests honest about what the host cited but multiplies context in rooms with guests.
@@ -369,7 +371,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | Interface segregation | STRONG | A read-only corpus port; one coordinator query | — | Recall cannot write by construction | Port types | High |
 | Open/closed | ACCEPTABLE | Closed unions edited deliberately | Each new family edits about ten switches | Predictable and compiler-guided | Exhaustive `never` | High |
 | Aggregate integrity | STRONG | Only `recordCapabilityArtifact` touches the session aggregate | — | — | Existing session tests | High |
-| Performance | UNKNOWN | Budgets, cache, abort | Cold parse of large files | A possible stall | U1 measurement; budget tests | Low |
+| Performance | ACCEPTABLE | Budgets, cache, abort; measured 21 ms per 1.56 MiB session through the real codec | Cold parse cost grows with the corpus; disk and `workspace.fs` overhead unmeasured | About 0.5–1 s of CPU for 40–60 sessions of Okey's size | Budget tests; wall-clock check in Slice 5 | Medium |
 | Security / privacy | ACCEPTABLE | Projection, framing, escaping | Any persona may read any saved session (a writer-owned corpus); no opt-out in v1 (D3) | Writer surprise | Every recall is a visible artifact in the thread | Medium |
 | Evolvability | STRONG | Corpus/document seam; `memory.*` reserved | — | Memory work stays local | Reproduction test (§3.3) | Medium |
 
@@ -387,6 +389,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 | F8 | MEDIUM | The projection lives under `export/`, takes export-named meta (`exportedAt`), and discards the ledger positions recall needs for turn addressing | `export/WorkshopTranscript.ts:89-116` | Pure move to `transcript/`; export `projectWorkshopTranscriptTurn(turn)`; the recall document assigns positions | Slice 1 |
 | F9 | MEDIUM | Recall grammar in the dynamic contract would be invisible to reopened older rooms: their first-message contract is frozen while the system prompt is rebuilt | `ConversationManager.ts:64-79`; `AgentRunEngine.ts:291, 326` | A system-prompt file in the path chain (analysis precedent) with a numeric sync test | enable |
 | F10 | MEDIUM | Persona prompts tell personas there is no durable history and enumerate only three capability families | `interaction-contract.md` ("Persona improv before durable history"); `base.md:11`; `guest-base.md` | Amend: recall returns a looked-up record, never memory; enumerate the new family | enable |
+| F14 | MEDIUM | Copies and branches repeat turns, with their turn ids, across the corpus (Duplicate spreads the whole source session; Branch keeps the prefix and records no lineage), so one decision can return once per related session and crowd out other hits | `WorkshopSessionPersistenceCoordinator.ts` (`duplicateNamed`); `WorkshopSessionBranch.ts` header; Okey's filenames | De-duplicate search hits by turn id, attribute each to the newest session that contains it, and name the others | merge |
 | F11 | LOW | The guest-join renderer includes thread-artifact bodies — correct for a live guest, wrong for recall | `WorkshopRoomFrameRenderer.ts:73-106` | Recall renders only from the projection; a boundary test bans the import | merge |
 | F12 | LOW | Factory construction precedes the store and coordinator in the composition root | `extension.ts:211, 249, 254` | Construct store → coordinator → recall service → factory → tool side pass | Slice 3 |
 | F13 | LOW | `docs/ARCHITECTURE.md` says the codec recognizes only three persona operations | `docs/ARCHITECTURE.md:200-203` | Update with a family table | nothing |
@@ -406,9 +409,9 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 |---|---|---|---|---|---|---|
 | 0 | Characterize | Projection, session codec, and label tests | None | Sentinel visibility test over the projection; unknown-operation rejection test (missing today); per-family label assertions | — | Revert tests |
 | 1 | Behavior-preserving ownership | `transcript/WorkshopTranscript.ts` (moved) and export imports; `workshopCapabilityFamily()` replacing four prefix checks | None — pure move and refactor | Export, bubble, session, and persona-capability suites pass unchanged | 0 | Revert commit |
-| 2 | Recall core (dormant) | `recall/` pure modules and service; coordinator `recallScope()`; budgets block | New library, unreachable from personas | Unit tests: exclusion, accepted workspace, bounds, cache, corrupt files, ranking, rendering, sentinels | 1 | Unused code; revert |
+| 2 | Recall core (dormant) | `recall/` pure modules and service; coordinator `recallScope()`; budgets block | New library, unreachable from personas | Unit tests: exclusion, accepted workspace, bounds, cache, corrupt files, ranking, lineage de-duplication, rendering, sentinels | 1 | Unused code; revert |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, artifact/publishable/kind allowlists, labels, bubble, Context Budget, composition root, barrel | The codec accepts `transcript.*`; artifacts persist; no prompt advertises it yet | Codec shape and rejection tests; round-trip persistence; audience and delivered-source cases; boundary tests | 2 | Forward-only for sessions that contain recall artifacts |
-| 4 | Enable | `transcript-recall-capability.md`, path chain, `base.md`, `guest-base.md`, `interaction-contract.md`, the dynamic-contract pointer line, sync test, `AGENTS.md`, `docs/ARCHITECTURE.md` | Personas can use recall | Prompt-path tests; sync test; full suite, typecheck, lint, build | 3, U1 | Revert prompts → dormant again |
+| 4 | Enable | `transcript-recall-capability.md`, path chain, `base.md`, `guest-base.md`, `interaction-contract.md`, the dynamic-contract pointer line, sync test, `AGENTS.md`, `docs/ARCHITECTURE.md` | Personas can use recall | Prompt-path tests; sync test; full suite, typecheck, lint, build | 3 | Revert prompts → dormant again |
 | 5 | Verify live | Extension Development Host pass with real saved sessions; budget tuning; ADR → Accepted; memory-bank entry | Possibly budget values | U1 and U2 measured and recorded; honesty review | 4 | Revert budgets |
 
 ### 2.11 Coordination map
@@ -425,7 +428,7 @@ New codec rejection reasons: `invalid-session-id`, `invalid-turn-selection`, `un
 
 | Unknown | Why it matters | How to resolve | Owner | Decision impact |
 |---|---|---|---|---|
-| U1 Real saved-session sizes and cold-search time | On-demand projection could stall the host on a large corpus | Measure file sizes and visible-text share on a real workspace; time a cold search over the bounded corpus | Okey + implementer | If a cold search exceeds about 2 s or the 90th-percentile file exceeds 5 MB, add the persisted visible-transcript index (§2.7 variant) behind the same service before Slice 4 |
+| U1 Real saved-session sizes and cold-search time | On-demand projection could stall the host on a large corpus | **Resolved 2026-10-05** ([measurements](../../.todo/epics/epic-workshop-session-recall-2026-10-05/u1-measurements.md)): largest real file 2.2 MB; about 11–13 ms per MiB through the real codec; visible text 8–16% of a file | Okey + implementer | Neither trigger fires: keep on-demand projection. Slice 5 records wall-clock times and the session count |
 | U2 Model reliability copying UUID session ids | Garbled ids fail reads | A live check with the fastest supported model (the 2026-07-11 amendment found Haiku drifting on the resource wire) | Implementer | Accept unique prefixes of 8+ characters, or short per-call handles |
 | U3 Writer comfort with any persona reading any saved session | Privacy expectations | D3 | Okey | Adds a setting or per-session exclusion |
 | U4 Ledger positions stay stable for recallable sessions | Turn addressing | **Partly resolved.** Rewind keeps a prefix (`WorkshopSessionRewind.ts:153-154`). Rolling back a failed message run removes its writer turn but keeps that run's evidence turns (`WorkshopSessionService.ts:1762-1795`), renumbering the run's tail — only while the session is live, which recall never reads. Pin both with tests | Implementer | None expected; if a mid-ledger removal appears elsewhere, address by turn id with short per-session handles |
@@ -484,13 +487,15 @@ A second variant — including the **live room's own early turns** once context 
 
 **What changed and why:** The coordinator path flushes the live room (F2) and cannot name it (F4); the dynamic contract is frozen across reopening (F9); `preview` can hold evidence (F6); prefix checks would mislabel the family (F5); ledger positions survive projection-rule changes.
 **Evidence that caused the change:** `WorkshopSessionPersistenceCoordinator.ts:239-240, 613-615, 1452-1467`; `ConversationManager.ts:64-79`; `WorkshopSessionService.ts:1418-1429`; `WorkshopRoomAudience.ts:26-31`.
-**Remaining uncertainty:** U1 (cold-search cost) and U2 (UUID copying).
+**Remaining uncertainty:** U2 (UUID copying).
+
+**Addendum after measurement (2026-10-05):** Okey's session sizes and a synthetic benchmark through the real codec resolved U1 in favor of on-demand projection. His filenames exposed a gap the first plan missed: copies and branches repeat turns across the corpus (F14), so search now de-duplicates by turn id. The verdict stays `REFINED`.
 
 ### 3.5 Implementation gate
 
 | Gate condition | Pass / fail | Evidence |
 |---|---|---|
-| No unaccepted critical unknowns | Conditional | No CRITICAL rows; U1 has a measured trigger |
+| No unaccepted critical unknowns | Pass | No CRITICAL rows; U1 resolved by measurement |
 | Contract consumers, migration, and tests identified | Pass | §2.3; F3; Slice 3 |
 | Persistence failure and rescue defined | Pass | Widening without a schema bump (ADR 2026-07-30); forward-only compatibility accepted; unsavable rooms prevented by the round-trip test |
 | Runtime flows owned and testable | Pass | §1.5; service and sub-adapter tests |
@@ -498,7 +503,7 @@ A second variant — including the **live room's own early turns** once context 
 | Tree, responsibilities, contracts, and slices agree | Pass | §3.1 resolutions applied |
 | Human decisions and coordination assigned | Open | D1–D4 await Okey |
 
-**Final gate:** `CONDITIONAL` — opens after D1–D4; Slice 4 also waits on U1.
+**Final gate:** `CONDITIONAL` — opens after D1–D4.
 
 ---
 
@@ -536,7 +541,7 @@ A second variant — including the **live room's own early turns** once context 
 
 #### `application/services/workshop/recall/WorkshopTranscriptRecallSearch.ts` — `[+]`
 
-- **Primary responsibility:** Deterministic ranking. Query terms are Unicode words with stop words dropped (at most eight); word-prefix matching on normalized text; mode `all-terms`, falling back to `any-term` when nothing matches every term; a phrase bonus; ties broken by newest session, then position; per-session and total caps; a snippet window around the first match. Title, excerpt-label, and context-label matches produce session-level hits.
+- **Primary responsibility:** Deterministic ranking. Query terms are Unicode words with stop words dropped (at most eight); word-prefix matching on normalized text; mode `all-terms`, falling back to `any-term` when nothing matches every term; a phrase bonus; ties broken by newest session, then position; per-session and total caps; a snippet window around the first match. Title, excerpt-label, and context-label matches produce session-level hits. Hits are de-duplicated by turn id across sessions (copies and branches share turns, F14): each turn appears once, attributed to the newest session containing it, with the others named.
 - **LOC:** 150–220.
 
 #### `application/services/workshop/recall/WorkshopTranscriptRecallRenderer.ts` — `[+]`

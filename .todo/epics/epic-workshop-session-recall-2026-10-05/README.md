@@ -36,6 +36,8 @@ memory, so "like we decided last week" leaves them asking the writer to paste.
   by export and recall. "Turn N" is the 1-based ledger position.
 - Evidence framed as a quoted record, never memory. The grammar lives in a
   system-prompt file so reopened rooms gain it.
+- Search de-duplicates by turn id, because copies and branches repeat their
+  source's turns across the corpus.
 
 ## Sprints (implementation slices)
 
@@ -48,7 +50,7 @@ verification, and rollback seams.
 | 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks | Not started |
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Not started |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, four persisted allowlists, labels, Context Budget kind, composition root | Not started |
-| 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Blocked on U1 |
+| 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
 
 ## Decisions needed (and the first slice that depends on each)
@@ -61,14 +63,15 @@ verification, and rollback seams.
   header, and private instrument exchanges marked private, as export does.
   Slice 2.
 
-## Measurements needed before Slice 4
+## Measurements
 
-- **U1** Real saved-session sizes and cold-search time. If a cold search over
-  the bounded corpus takes more than about two seconds, or the 90th-percentile
-  named session exceeds 5 MB, add the persisted visible-transcript index behind
-  the same service first.
-- **U2** Whether the fastest supported model copies 36-character session ids
-  reliably.
+- **U1 — resolved 2026-10-05.** Okey's largest named sessions are 1.1–2.2 MB;
+  through the real codec a session costs about 11–13 ms per MiB, and visible
+  text is 8–16% of the file. On-demand projection holds; no persisted index for
+  v1. See [u1-measurements.md](u1-measurements.md), which includes the script
+  for rerunning it. Slice 5 still records wall-clock times and the session count.
+- **U2 — open.** Whether the fastest supported model copies 36-character
+  session ids reliably (Slice 5 live check).
 
 ## Completion criteria
 
@@ -81,8 +84,10 @@ verification, and rollback seams.
       appears in its own corpus; a changed workspace root disables recall.
 - [ ] A session containing every new persisted value round-trips through save
       and load.
-- [ ] Bounds are disclosed in every truncated result; U1 and U2 are measured and
-      recorded.
+- [ ] A turn shared by a session, its copy, and a branch appears once in search
+      results, attributed to the newest session, with the others named.
+- [ ] Bounds are disclosed in every truncated result; wall-clock search times
+      and U2 are measured and recorded.
 - [ ] Focused and full tests, typecheck, lint, build, and an Extension
       Development Host pass are recorded.
 

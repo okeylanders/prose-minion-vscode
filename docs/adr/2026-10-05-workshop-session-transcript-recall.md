@@ -147,6 +147,14 @@ exactly one include/omit decision, in the projection, with a test.
   total caps. Title, excerpt-label, and context-label matches return
   session-level hits. Optional `<session>` and `<persona>` filters narrow the
   corpus.
+- **Lineage de-duplication.** Duplicate copies a whole session and Branch copies
+  a prefix; both keep turn ids, and v1 records no lineage
+  (`WorkshopSessionBranch.ts`). A writer who branches and copies — five saved
+  sessions on one chapter is a real workspace — would otherwise see one
+  decision returned five times, with the duplicates eating the hit caps. Search
+  therefore shows each turn once, keyed by turn id, attributed to the newest
+  session that contains it, and names the other sessions that share it
+  ("also in …").
 - **Read** returns the requested turn ranges, or the transcript from turn 1 when
   `<turns>` is omitted. Entries are packed whole until the budget is spent; a
   single oversized entry is head-truncated with a notice. Day headers use the
@@ -193,6 +201,13 @@ path for older files. It is deferred behind the same service, with a measured
 trigger: add it before enabling the prompts if a cold search over the bounded
 corpus takes more than about two seconds on a real workspace, or if the
 90th-percentile named session exceeds 5 MB.
+
+Measured on 2026-10-05 ([U1 measurements](../../.todo/epics/epic-workshop-session-recall-2026-10-05/u1-measurements.md)):
+the writer's largest named sessions are 1.1–2.2 MB. Through the real codec, a
+1.56 MiB session costs about 21 ms and a 3.04 MiB session about 35 ms, roughly
+half of it the store's nesting-depth safety scan, and visible text is 8–16% of
+the file. Both prongs pass, so v1 projects on demand. The live pass still
+records wall-clock times on the real corpus.
 
 ### 6. Evidence is a quoted record — a third trust class
 
