@@ -50,6 +50,7 @@ import {
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
 import { isWorkshopToolId, workshopToolLabel } from '@shared/constants/workshopTools';
+import { workshopCapabilityFamilyLabel } from '@shared/constants/workshopCapabilityLabels';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { WorkshopContextDelivery } from '@/application/services/workshop/WorkshopContextDelivery';
@@ -1415,7 +1416,6 @@ export class WorkshopSessionService {
         default: return assertNever(input.details.operation);
       }
     })();
-    const isResource = input.details.operation.startsWith('resource.');
     const turn: WorkshopTurn = {
       id: turnId,
       role: 'assistant',
@@ -1423,10 +1423,10 @@ export class WorkshopSessionService {
       participant: 'tool',
       artifact,
       toolId: isAnalysis ? input.toolId : undefined,
-      toolLabel: isAnalysis && input.toolId
-        ? workshopToolLabel(input.toolId)
-        : isAnalysis ? 'Analysis'
-          : isResource ? 'Project Resources' : 'Writer\'s Dictionary',
+      toolLabel: workshopCapabilityFamilyLabel(
+        input.details.operation,
+        isAnalysis && input.toolId ? workshopToolLabel(input.toolId) : undefined
+      ),
       capability: cloneCapabilityDetails(input.details),
       content: input.result.content ?? input.result.error ?? 'No capability result was returned.',
       timestamp: this.now(),

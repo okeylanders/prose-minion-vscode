@@ -5,19 +5,37 @@
  * the same artifact the same way.
  */
 
-import type { WorkshopCapabilityArtifactDetails } from '@shared/types/workshopCapabilities';
+import {
+  workshopCapabilityFamily,
+  type WorkshopCapabilityArtifactDetails,
+  type WorkshopCapabilityOperation
+} from '@shared/types/workshopCapabilities';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 
 export function workshopCapabilityArtifactLabel(
   capability: WorkshopCapabilityArtifactDetails,
   toolLabel?: string
 ): string {
-  const family = capability.operation.startsWith('dictionary.')
-    ? "Writer's Dictionary"
-    : capability.operation.startsWith('resource.')
-      ? 'Project Resources'
-      : toolLabel ?? 'Analysis';
-  return `${family} · ${capability.requestSummary} · requested by ${
-    workshopPersonaLabel(capability.requestedByPersonaId)
-  }`;
+  return `${workshopCapabilityFamilyLabel(capability.operation, toolLabel)} · ${
+    capability.requestSummary
+  } · requested by ${workshopPersonaLabel(capability.requestedByPersonaId)}`;
+}
+
+/**
+ * The family name an artifact turn carries as its tool label — also what other
+ * participants read as `${toolLabel} (report)`. An analysis artifact is named
+ * after its tool; the other families name themselves.
+ */
+export function workshopCapabilityFamilyLabel(
+  operation: WorkshopCapabilityOperation,
+  toolLabel?: string
+): string {
+  switch (workshopCapabilityFamily(operation)) {
+    case 'dictionary':
+      return "Writer's Dictionary";
+    case 'resource':
+      return 'Project Resources';
+    case 'analysis':
+      return toolLabel ?? 'Analysis';
+  }
 }

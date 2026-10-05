@@ -26,6 +26,34 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
   typeof value === 'string' &&
   (WORKSHOP_CAPABILITY_OPERATIONS as readonly string[]).includes(value);
 
+/**
+ * A capability family owns its operations' writer-facing name, evidence
+ * framing, and rejected-request handling. Every consumer switches on the
+ * family exhaustively, so an operation without one fails to compile instead
+ * of borrowing another family's name through an implicit "otherwise".
+ */
+export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource';
+
+export function workshopCapabilityFamily(
+  operation: WorkshopCapabilityOperation
+): WorkshopCapabilityFamily {
+  switch (operation) {
+    case 'dictionary.lookup':
+    case 'dictionary.full-entry':
+      return 'dictionary';
+    case 'analysis.run':
+      return 'analysis';
+    case 'resource.catalog':
+    case 'resource.search':
+    case 'resource.read':
+      return 'resource';
+    default: {
+      const unhandled: never = operation;
+      throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);
+    }
+  }
+}
+
 export type WorkshopAnalysisInputMode = 'inherit' | 'prepend' | 'replace' | 'omit';
 
 export interface WorkshopAnalysisInputSelection {
