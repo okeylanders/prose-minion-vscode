@@ -6,13 +6,17 @@
  */
 
 import {
+  WORKSHOP_TRANSCRIPT_RECALL_LIMITS,
   WorkshopRecallCorpusPort,
   WorkshopRecallScope,
   WorkshopRecallSessionSummary,
   WorkshopTranscriptRecallService
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
-import { WorkshopSessionStore } from '@/infrastructure/storage/WorkshopSessionStore';
+import {
+  WORKSHOP_SESSION_STORE_LIMITS,
+  WorkshopSessionStore
+} from '@/infrastructure/storage/WorkshopSessionStore';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { fixtureTurn, writerTurn } from '@/__tests__/application/services/workshop/transcript/workshopTranscriptFixtures';
 import {
@@ -20,8 +24,10 @@ import {
   RECALL_WORKSPACE,
   recallLog,
   recallSession,
+  saveRecallRoom,
   saveSentinelCorpus
 } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import type { WorkshopTurn } from '@messages';
 
 const WRITE_METHODS = [
@@ -291,6 +297,38 @@ describe('WorkshopTranscriptRecallService', () => {
       expect(store.readNamed.mock.calls.map(([id]) => id)).toEqual(['s3', 's2']);
     });
 
+    it('charges a failed cold read the most it can cost, so failures spend the budget too (PR 126 F-02)', async () => {
+      const failureCharge = WORKSHOP_TRANSCRIPT_RECALL_LIMITS.unreadableSessionBytes;
+      for (const n of [1, 2, 3, 4, 5]) {
+        store.sessions.push(numbered(n));
+      }
+      await service.read({ sessionId: 's5' });
+      store.readNamed.mockClear();
+      store.failures.set('s4', new Error('Unsupported Workshop session schema: 99'));
+      store.failures.set('s2', new Error('Unsupported Workshop session schema: 99'));
+      // Room for one failure and a healthy file, but not for two failures.
+      replaceBudgets({ searchSourceBytes: failureCharge + 1_000_000 });
+
+      const result = await service.search({ query: 'lantern' });
+
+      expect(result).toMatchObject({
+        outcome: 'searched',
+        bounds: {
+          cacheHits: 1,
+          sessionsSearched: 2,
+          unreadableSessions: 2,
+          unreadableBytesCharged: 2 * failureCharge,
+          notSearchedByByteBudget: 1
+        }
+      });
+      expect(store.readNamed.mock.calls.map(([id]) => id)).toEqual(['s4', 's3', 's2']);
+    });
+
+    it('charges failures the store\u2019s exact-read ceiling, the most a failed read can cost', () => {
+      expect(WORKSHOP_TRANSCRIPT_RECALL_LIMITS.unreadableSessionBytes)
+        .toBe(WORKSHOP_SESSION_STORE_LIMITS.maximumExactFileBytes);
+    });
+
     it('checks for cancellation between files', async () => {
       for (const n of [1, 2, 3]) {
         store.sessions.push(numbered(n));
@@ -468,6 +506,50 @@ describe('WorkshopTranscriptRecallService over the real store and coordinator', 
     expect(cold).toMatchObject({ bounds: { cacheHits: 0 } });
     expect(warm).toMatchObject({ bounds: { parsedBytes: 0, cacheHits: 1 } });
     expect(savedSessionId).toBeTruthy();
+  });
+
+  it('stops reading unsupported files once their charge spends the budget (PR 126 F-02)', async () => {
+    const fs = new MemoryFileSystem();
+    const rooms = [];
+    for (const title of ['First', 'Second', 'Third']) {
+      rooms.push(await saveRecallRoom(title, (session) => {
+        session.setSessionScope('open');
+      }, { fs, idPrefix: title.toLowerCase() }));
+    }
+    const { store, coordinator, log } = rooms[2];
+    const directory = `${RECALL_ROOT}/prose-minion/sessions`;
+    const named = [...fs.files.keys()].filter((file) =>
+      file.startsWith(directory) && file.endsWith('.json') &&
+      !file.endsWith('.summary.json') && !file.endsWith('/current.json'));
+    expect(named).toHaveLength(3);
+    for (const file of named) {
+      // Valid JSON the codec refuses, beside an intact browser index.
+      fs.files.set(file, new TextEncoder().encode(JSON.stringify({
+        schemaVersion: 99,
+        padding: 'x'.repeat(128 * 1024)
+      })));
+    }
+    jest.replaceProperty(PROMPT_BUDGETS, 'workshopTranscriptRecall', {
+      ...PROMPT_BUDGETS.workshopTranscriptRecall,
+      searchSourceBytes: 64 * 1024
+    });
+    const reads = jest.spyOn(store, 'readNamed');
+
+    const result = await new WorkshopTranscriptRecallService(store, coordinator, log)
+      .search({ query: 'anything' });
+
+    expect(result).toMatchObject({
+      outcome: 'searched',
+      bounds: {
+        corpusSessions: 3,
+        sessionsSearched: 0,
+        unreadableSessions: 1,
+        notSearchedByByteBudget: 2,
+        parsedBytes: 0
+      }
+    });
+    expect(reads).toHaveBeenCalledTimes(1);
+    jest.restoreAllMocks();
   });
 
   it('counts a corrupt or oversized saved file without failing the search', async () => {

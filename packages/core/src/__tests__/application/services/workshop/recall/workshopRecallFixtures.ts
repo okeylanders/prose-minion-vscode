@@ -84,7 +84,7 @@ export interface SavedRecallRoom {
 export async function saveRecallRoom(
   title: string,
   populate: (session: WorkshopSessionService, advance: (milliseconds: number) => void) => void,
-  options: { workspace?: Workspace; fs?: MemoryFileSystem } = {}
+  options: { workspace?: Workspace; fs?: MemoryFileSystem; idPrefix?: string } = {}
 ): Promise<SavedRecallRoom> {
   const fs = options.fs ?? new MemoryFileSystem();
   const log = recallLog();
@@ -118,7 +118,11 @@ export async function saveRecallRoom(
     new WorkshopSessionTimeService({ now, timezone: 'America/Chicago' }),
     store,
     log,
-    { now, idFactory: () => `room-${++nextId}`, ensureAssistantReady: async () => undefined }
+    {
+      now,
+      idFactory: () => `${options.idPrefix ?? 'room'}-${++nextId}`,
+      ensureAssistantReady: async () => undefined
+    }
   );
   await coordinator.initialize();
   populate(session, (milliseconds) => {

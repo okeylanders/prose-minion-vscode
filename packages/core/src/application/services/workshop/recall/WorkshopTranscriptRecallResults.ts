@@ -78,8 +78,17 @@ export interface WorkshopRecallSearchBounds {
   readonly notSearchedByByteBudget: number;
   readonly unreadableSessions: number;
   readonly listingTruncated: boolean;
-  /** Source bytes parsed by this call; cached documents cost nothing. */
+  /**
+   * Source bytes this call parsed into documents, estimated from each
+   * decoded session; cached documents cost nothing.
+   */
   readonly parsedBytes: number;
+  /**
+   * Charged for cold reads that produced no document. A failed read reports
+   * no size, so each is charged the most it can have cost. Together with
+   * `parsedBytes` it spends `searchSourceBytes`.
+   */
+  readonly unreadableBytesCharged: number;
   readonly cacheHits: number;
 }
 

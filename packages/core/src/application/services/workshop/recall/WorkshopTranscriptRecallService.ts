@@ -53,10 +53,18 @@ export const WORKSHOP_TRANSCRIPT_RECALL_LIMITS = Object.freeze({
   /** Documents kept warm between calls: one full newest-first scan and some reads. */
   maximumCachedDocuments: 64,
   /** Cached text, in UTF-16 code units (about 64 MB). */
-  maximumCachedCharacters: 32 * 1024 * 1024
+  maximumCachedCharacters: 32 * 1024 * 1024,
+  /**
+   * What a cold read that produced no document is charged against the search
+   * budget. A failed read reports no size, so it is charged the most it can
+   * have cost: the store's exact-read ceiling (a test pins the two together).
+   */
+  unreadableSessionBytes: 25 * 1024 * 1024
 });
 
-export type WorkshopTranscriptRecallLimits = WorkshopRecallDocumentCacheLimits;
+export interface WorkshopTranscriptRecallLimits extends WorkshopRecallDocumentCacheLimits {
+  readonly unreadableSessionBytes: number;
+}
 
 export type WorkshopRecallScope =
   | { available: true; liveSessionId: string }
@@ -99,7 +107,7 @@ export interface WorkshopRecallCorpusPort {
 
 export interface WorkshopTranscriptRecallServiceOptions {
   now?: () => number;
-  limits?: WorkshopTranscriptRecallLimits;
+  limits?: Partial<WorkshopTranscriptRecallLimits>;
 }
 
 interface RecallCorpus {
@@ -113,6 +121,7 @@ interface LoadedDocuments {
   readonly notSearchedByByteBudget: number;
   readonly unreadableSessions: number;
   readonly parsedBytes: number;
+  readonly unreadableBytesCharged: number;
   readonly cacheHits: number;
 }
 
@@ -122,6 +131,7 @@ type LoadedDocument =
 
 export class WorkshopTranscriptRecallService {
   private readonly now: () => number;
+  private readonly limits: WorkshopTranscriptRecallLimits;
   private readonly cache: WorkshopRecallDocumentCache;
 
   constructor(
@@ -131,7 +141,8 @@ export class WorkshopTranscriptRecallService {
     options: WorkshopTranscriptRecallServiceOptions = {}
   ) {
     this.now = options.now ?? Date.now;
-    this.cache = new WorkshopRecallDocumentCache(options.limits ?? WORKSHOP_TRANSCRIPT_RECALL_LIMITS);
+    this.limits = { ...WORKSHOP_TRANSCRIPT_RECALL_LIMITS, ...options.limits };
+    this.cache = new WorkshopRecallDocumentCache(this.limits);
   }
 
   async catalog(
@@ -189,6 +200,7 @@ export class WorkshopTranscriptRecallService {
       unreadableSessions: loaded.unreadableSessions,
       listingTruncated: corpus.listingTruncated,
       parsedBytes: loaded.parsedBytes,
+      unreadableBytesCharged: loaded.unreadableBytesCharged,
       cacheHits: loaded.cacheHits
     };
     this.log(
@@ -196,6 +208,7 @@ export class WorkshopTranscriptRecallService {
       `sessions=${bounds.sessionsSearched}/${bounds.corpusSessions} ` +
       `notSearched=${bounds.notSearchedBySessionLimit}+${bounds.notSearchedByByteBudget} ` +
       `unreadable=${bounds.unreadableSessions} parsedBytes=${bounds.parsedBytes} ` +
+      `unreadableCharge=${bounds.unreadableBytesCharged} ` +
       `cacheHits=${bounds.cacheHits} hits=${search.shownHits}/${search.matchedHits} ` +
       `durationMs=${this.now() - started}`
     );
@@ -281,7 +294,10 @@ export class WorkshopTranscriptRecallService {
     return { liveSessionId: scope.liveSessionId, sessions, listingTruncated: listing.truncated };
   }
 
-  /** Newest first; cached documents are free, cold ones spend the byte budget. */
+  /**
+   * Newest first. Cached documents are free; a cold read spends the byte
+   * budget whether or not it produces a document.
+   */
   private async loadDocuments(
     sessions: readonly WorkshopRecallSessionSummary[],
     byteBudget: number,
@@ -291,6 +307,7 @@ export class WorkshopTranscriptRecallService {
     let notSearchedByByteBudget = 0;
     let unreadableSessions = 0;
     let parsedBytes = 0;
+    let unreadableBytesCharged = 0;
     let cacheHits = 0;
     for (const summary of sessions) {
       throwIfAborted(signal);
@@ -300,19 +317,20 @@ export class WorkshopTranscriptRecallService {
         cacheHits += 1;
         continue;
       }
-      if (parsedBytes >= byteBudget) {
+      if (parsedBytes + unreadableBytesCharged >= byteBudget) {
         notSearchedByByteBudget += 1;
         continue;
       }
       const loaded = await this.loadDocument(summary, signal);
       if (!loaded.document) {
         unreadableSessions += 1;
+        unreadableBytesCharged += this.limits.unreadableSessionBytes;
         continue;
       }
       parsedBytes += loaded.parsedBytes;
       documents.push(loaded.document);
     }
-    return { documents, notSearchedByByteBudget, unreadableSessions, parsedBytes, cacheHits };
+    return { documents, notSearchedByByteBudget, unreadableSessions, parsedBytes, unreadableBytesCharged, cacheHits };
   }
 
   private async loadDocument(

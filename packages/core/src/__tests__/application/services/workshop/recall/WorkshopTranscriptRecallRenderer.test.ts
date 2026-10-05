@@ -82,6 +82,7 @@ const BOUNDS: WorkshopRecallSearchBounds = {
   unreadableSessions: 0,
   listingTruncated: false,
   parsedBytes: 0,
+  unreadableBytesCharged: 0,
   cacheHits: 0
 };
 
