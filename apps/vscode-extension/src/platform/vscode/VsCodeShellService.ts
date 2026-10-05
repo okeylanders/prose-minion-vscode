@@ -10,6 +10,20 @@
 import * as vscode from 'vscode';
 import { PickedFile, ShellService } from '@prose-minion/core';
 
+/**
+ * Where a "beside" file opens: the second column when an editor is already
+ * showing (reuse it), else beside the webview. Never the group whose active
+ * tab is a webview panel: with the manuscript in column one and the Workshop
+ * in column two, "column two" would cover the Workshop the writer is using.
+ */
+function besideColumn(): vscode.ViewColumn {
+  const activeGroup = vscode.window.tabGroups.activeTabGroup;
+  const webviewPanelIsActive = activeGroup.activeTab?.input instanceof vscode.TabInputWebview;
+  const reuseSecondColumn = vscode.window.visibleTextEditors.length > 0
+    && !(webviewPanelIsActive && activeGroup.viewColumn === vscode.ViewColumn.Two);
+  return reuseSecondColumn ? vscode.ViewColumn.Two : vscode.ViewColumn.Beside;
+}
+
 export class VsCodeShellService implements ShellService {
   showInformationMessage(message: string, ...actions: string[]): Promise<string | undefined> {
     return Promise.resolve(vscode.window.showInformationMessage(message, ...actions));
@@ -46,11 +60,7 @@ export class VsCodeShellService implements ShellService {
     const uri = vscode.Uri.file(filePath);
     if (options?.beside) {
       const document = await vscode.workspace.openTextDocument(uri);
-      // Reuse the second column if any editor is open, else open beside the webview.
-      const targetColumn = vscode.window.visibleTextEditors.length > 0
-        ? vscode.ViewColumn.Two
-        : vscode.ViewColumn.Beside;
-      await vscode.window.showTextDocument(document, { preview: false, viewColumn: targetColumn });
+      await vscode.window.showTextDocument(document, { preview: false, viewColumn: besideColumn() });
     } else {
       await vscode.window.showTextDocument(uri, { preview: false });
     }

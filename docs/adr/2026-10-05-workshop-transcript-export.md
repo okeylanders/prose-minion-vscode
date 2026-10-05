@@ -71,9 +71,12 @@ folded, ASCII letters/digits/hyphens only), so a title cannot steer the write
 outside the directory. An export never replaces an earlier one: the shared
 `writeNumberedFile` helper (extracted from Save-to-notes' dictionary path)
 renames a temp file into the first free `stem`, `stem-2`, … with
-`overwrite: false`. Markdown and JSON open in the editor afterwards; HTML opens
-in the OS default application through a new `ShellService.openFileInDefaultApp`
-port. Opening is best effort; the write is the result.
+`overwrite: false`. Markdown and JSON open beside the Workshop afterwards —
+never in its own editor group, which would hide the retained panel; the first
+build did, and the panel returned shifted up with its header out of view.
+HTML opens in the OS default application through a new
+`ShellService.openFileInDefaultApp` port. Opening is best effort; the write is
+the result.
 
 ### 4. HTML is safe by construction, without a DOM
 

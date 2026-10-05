@@ -78,15 +78,17 @@ export class WorkshopSessionExportHandler {
   }
 
   /**
-   * Best effort, like Save to notes: the file is written either way. Markdown
-   * and JSON open beside the writer's work; HTML opens where it renders.
+   * Best effort, like Save to notes: the file is written either way. HTML
+   * opens where it renders. Markdown and JSON open BESIDE the Workshop, never
+   * in its editor group: replacing the panel there hid the retained webview
+   * mid-export, and it came back shifted up with its header out of view.
    */
   private async openExport(exported: WorkshopTranscriptExportResult): Promise<void> {
     try {
       if (exported.format === 'html') {
         await this.shell.openFileInDefaultApp(exported.absolutePath);
       } else {
-        await this.shell.openFileInEditor(exported.absolutePath);
+        await this.shell.openFileInEditor(exported.absolutePath, { beside: true });
       }
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);

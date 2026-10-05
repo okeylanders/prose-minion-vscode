@@ -42,13 +42,13 @@ const FORMAT_OPTIONS: Readonly<Record<WorkshopTranscriptExportFormat, FormatOpti
     label: 'Markdown',
     icon: 'doc',
     hint: 'Speaker headings and the replies as written. Best for pasting into another agent or your notes.',
-    opens: 'Opens in the editor when it’s written.'
+    opens: 'Opens beside the Workshop when it’s written.'
   },
   json: {
     label: 'JSON',
     icon: 'list',
     hint: 'Structured entries with speakers, roles, and timestamps. Best for scripts and agent pipelines.',
-    opens: 'Opens in the editor when it’s written.'
+    opens: 'Opens beside the Workshop when it’s written.'
   },
   html: {
     label: 'Styled HTML',

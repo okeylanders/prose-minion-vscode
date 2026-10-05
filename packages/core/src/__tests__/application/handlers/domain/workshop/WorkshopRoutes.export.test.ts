@@ -27,7 +27,7 @@ describe('Workshop composed routing — transcript export', () => {
     harness = createWorkshopRouteTestHarness();
   });
 
-  it('writes the full ledger as Markdown, opens it in the editor, and reports the path', async () => {
+  it('writes the full ledger as Markdown, opens it beside the Workshop, and reports the path', async () => {
     await holdConversation();
 
     await exportAs({ format: 'markdown', title: 'Dock scene' });
@@ -38,8 +38,11 @@ describe('Workshop composed routing — transcript export', () => {
     expect(content).toContain('# Dock scene');
     expect(content).toContain('### Writer\n\nIs the dock scene too long?');
     expect(content).not.toContain('A pinned excerpt.');
+    // Never in the Workshop's own editor group: covering the retained panel
+    // mid-export brought it back with its header shifted out of view.
     expect(harness.shell.openFileInEditor).toHaveBeenCalledWith(
-      '/workspace/prose-minion/exports/dock-scene.md'
+      '/workspace/prose-minion/exports/dock-scene.md',
+      { beside: true }
     );
     expect(exportResults()).toEqual([{
       action: 'export',
@@ -68,6 +71,10 @@ describe('Workshop composed routing — transcript export', () => {
 
     await exportAs({ format: 'json', title: 'Dock scene' });
 
+    expect(harness.shell.openFileInEditor).toHaveBeenCalledWith(
+      '/workspace/prose-minion/exports/dock-scene.json',
+      { beside: true }
+    );
     expect(exportResults()[0]).toMatchObject({ ok: true });
     expect(harness.log.appendLine).toHaveBeenCalledWith(
       expect.stringContaining('Exported but could not open')
