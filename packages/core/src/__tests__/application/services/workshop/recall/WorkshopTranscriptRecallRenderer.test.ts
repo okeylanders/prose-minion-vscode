@@ -31,7 +31,12 @@ import {
   fixtureTurn,
   writerTurn
 } from '@/__tests__/application/services/workshop/transcript/workshopTranscriptFixtures';
-import { recallSession, RecallSessionInput } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import {
+  recallSession,
+  RecallSessionInput,
+  saveRecallRoom
+} from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import type { WorkshopTurn } from '@messages';
 
 const NOW = Date.parse('2026-10-05T14:30:00.000Z');
@@ -416,5 +421,95 @@ describe('renderWorkshopRecallSearch', () => {
 describe('formatWorkshopRecallTurnRanges', () => {
   it('writes the <turns> grammar', () => {
     expect(formatWorkshopRecallTurnRanges([{ from: 38, to: 46 }, { from: 52, to: 52 }])).toBe('38-46, 52');
+  });
+});
+
+describe('the composite read bound (PR 126 review F-01)', () => {
+  const READ_CHARACTERS = PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters;
+
+  /** Every requested visible position is delivered or left to continue, never both. */
+  const expectAccounted = (
+    rendered: ReturnType<typeof renderWorkshopRecallRead>,
+    requested: number[]
+  ): void => {
+    const inRanges = (position: number, ranges: readonly WorkshopRecallTurnRange[]) =>
+      ranges.some((range) => position >= range.from && position <= range.to);
+    for (const position of requested) {
+      expect([position, inRanges(position, rendered.delivered) !== inRanges(position, rendered.continuation)])
+        .toEqual([position, true]);
+    }
+  };
+
+  it('holds through the real aggregate, coordinator, and store with oversized metadata', async () => {
+    const { store, coordinator, log, savedSessionId } = await saveRecallRoom('Normal title', (session, advance) => {
+      session.setSessionScope('open');
+      for (let index = 0; index < 1_300; index += 1) {
+        session.addContextAttachment({
+          kind: 'text',
+          origin: 'writer',
+          label: `context-note-${String(index).padStart(4, '0')}-${'x'.repeat(20)}.md`,
+          content: 'word',
+          words: 1
+        });
+      }
+      advance(60_000);
+      session.beginPersonaMessage('run-1', `Opening. ${'salt '.repeat(20_000)}`);
+      advance(60_000);
+      session.completeRun('run-1', 'A short reply.', undefined, false, 'runtime-host');
+    });
+    const service = new WorkshopTranscriptRecallService(store, coordinator, log);
+    const read = await service.read({ sessionId: savedSessionId, turns: [{ from: 2, to: 3 }] });
+    const whole = await service.read({ sessionId: savedSessionId });
+
+    const rendered = renderWorkshopRecallRead(read, { now: NOW });
+    const renderedWhole = renderWorkshopRecallRead(whole, { now: NOW });
+
+    expect(rendered.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
+    expect(renderedWhole.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
+    expect(rendered.content).toMatch(/Context attachments \(labels only\): context-note-0000-x+\.md, .*… and [\d,]+ more/);
+    expect(rendered.truncatedEntry).toMatchObject({ position: 2 });
+    expect(rendered.truncatedEntry!.shownCharacters).toBeLessThan(READ_CHARACTERS);
+    expect(rendered.delivered.map(({ from, to }) => [from, to])).toEqual([[2, 2]]);
+    expect(rendered.continuation).toEqual([{ from: 3, to: 3 }]);
+    expectAccounted(rendered, [2, 3]);
+  });
+
+  it('bounds every metadata label, so metadata alone cannot exceed the window', () => {
+    const document = doc('s'.repeat(5_000), [writerTurn('t-1', { content: 'Hello.' })], {
+      title: 'T'.repeat(60_000),
+      excerptLabel: `${'e'.repeat(60_000)}.md`,
+      contextLabels: Array.from({ length: 3_000 }, (_, index) => `label-${index}-${'y'.repeat(30)}`)
+    });
+
+    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW });
+
+    expect(rendered.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
+    expect(rendered.delivered).toEqual([{ from: 1, to: 1, firstTurnId: 't-1', lastTurnId: 't-1', entryCount: 1 }]);
+    expect(rendered.content).toContain('Hello.');
+  });
+
+  it('keeps every budget, from no room for an entry upward, within its window', () => {
+    const document = doc('s-1', [
+      writerTurn('t-1', { content: `First. ${'salt '.repeat(600)}` }),
+      fixtureTurn('t-2', { content: `Second. ${'tide '.repeat(300)}` }),
+      writerTurn('t-3', { content: 'Third.' })
+    ], { contextLabels: ['keeper-notes.md'] });
+    // The irreducible read: header and footer, with no room for any entry.
+    const floor = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 0 });
+    expect(floor.delivered).toEqual([]);
+    expect(floor.continuation).toEqual([{ from: 1, to: 3 }]);
+    expect(floor.content).toContain('No turn fit in this window.\nContinue with <turns>1-3</turns>.');
+
+    const budgets = [
+      // One character at a time through no room, 0-4 characters of room, and the first cut.
+      ...Array.from({ length: 900 }, (_, step) => floor.content.length + step),
+      ...Array.from({ length: 120 }, (_, step) => floor.content.length + 900 + step * 37)
+    ];
+    for (const readCharacters of budgets) {
+      const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters });
+
+      expect([readCharacters, rendered.content.length <= readCharacters]).toEqual([readCharacters, true]);
+      expectAccounted(rendered, [1, 2, 3]);
+    }
   });
 });

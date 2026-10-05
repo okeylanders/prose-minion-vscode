@@ -27,6 +27,8 @@ import type {
 
 /** The "[turn N cut here …]" notice. */
 const NOTICE_RESERVE = 120;
+/** A cut shorter than this reads as noise; the entry waits for the next window instead. */
+const MINIMUM_CUT_CHARACTERS = 200;
 /** Between header, entries, notices, and footer. */
 export const WORKSHOP_RECALL_BLOCK_SEPARATOR = '\n\n';
 
@@ -93,10 +95,12 @@ export function packWorkshopRecallReadWindow(
         previous = entry;
         continue;
       }
-      if (previous === undefined) {
+      const prefix = lead.map((line) => `${line}${WORKSHOP_RECALL_BLOCK_SEPARATOR}`).join('');
+      const cut = previous === undefined
+        ? headOf(text, budget - used - prefix.length - NOTICE_RESERVE - 2 * WORKSHOP_RECALL_BLOCK_SEPARATOR.length)
+        : '';
+      if (cut.length >= MINIMUM_CUT_CHARACTERS) {
         // Too large for an empty window: keep its head, and say so.
-        const prefix = lead.map((line) => `${line}${WORKSHOP_RECALL_BLOCK_SEPARATOR}`).join('');
-        const cut = headOf(text, budget - used - prefix.length - NOTICE_RESERVE - 2 * WORKSHOP_RECALL_BLOCK_SEPARATOR.length);
         window.blocks.push(
           `${prefix}${cut}`,
           `[turn ${entry.position} cut here: ${formatCount(cut.length)} of ` +
@@ -116,6 +120,7 @@ export function packWorkshopRecallReadWindow(
           window.continuation.push({ from: next.position, to: range.to });
         }
       } else {
+        // No room for this entry, or for a readable head of it: it opens the next window.
         window.continuation.push({ from: entry.position, to: range.to });
       }
       break;
@@ -199,14 +204,19 @@ function renderEntry(recall: WorkshopRecallEntry, clock: WorkshopRecallClock): s
   }
 }
 
-/** At most `limit` characters from the start, ending at a word boundary when one is near. */
+/**
+ * At most `budget` characters from the start (none when the budget is not
+ * positive), ending at a word boundary when one is near the limit.
+ */
 function headOf(text: string, budget: number): string {
-  const limit = Math.max(0, budget);
-  if (text.length <= limit) {
+  if (budget <= 0) {
+    return '';
+  }
+  if (text.length <= budget) {
     return text;
   }
-  const space = text.lastIndexOf(' ', limit);
-  return text.slice(0, space > limit - 40 ? space : limit).trimEnd();
+  const space = text.lastIndexOf(' ', budget);
+  return text.slice(0, space >= 0 && space > budget - 40 ? space : budget).trimEnd();
 }
 
 function formatCount(value: number): string {

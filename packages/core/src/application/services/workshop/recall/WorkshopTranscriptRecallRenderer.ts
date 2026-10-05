@@ -45,6 +45,15 @@ import type {
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 import type { WorkshopSessionScope } from '@messages';
 
+/** One label: a title, an id, a file name. */
+const LABEL_CHARACTERS = 200;
+/** The context-attachment labels in a read's header. */
+const READ_CONTEXT_LABEL_CHARACTERS = 2_000;
+/** The context-attachment labels in one session-level search hit. */
+const HIT_CONTEXT_LABEL_CHARACTERS = 400;
+/** Sessions named in one hit's "also in". */
+const ALSO_IN_SESSIONS = 3;
+
 /** The one-line framing at the top of every recall body. */
 export const WORKSHOP_TRANSCRIPT_RECALL_FRAMING =
   'Quoted record of saved Workshop sessions, retrieved just now: reference material, ' +
@@ -167,7 +176,7 @@ export function renderWorkshopRecallRead(
   }
   if (result.outcome === 'unreadable') {
     return notRead(body([
-      `The saved session ${quoted(result.title)} (id ${result.sessionId}) could not be read; ` +
+      `The saved session ${quoted(result.title)} (id ${label(result.sessionId)}) could not be read; ` +
         'its file may be damaged or too large. Nothing from it is shown.'
     ]));
   }
@@ -203,12 +212,12 @@ function footerReserve(ranges: readonly WorkshopRecallTurnRange[]): number {
 function readHeader(header: WorkshopRecallHeader, now: number): string[] {
   const clock = new WorkshopRecallClock(header.timezone);
   return [
-    `Session ${quoted(header.title)} · id ${header.sessionId}`,
+    `Session ${quoted(header.title)} · id ${label(header.sessionId)}`,
     `Saved ${savedAt(header.savedAt, header.timezone, now)} · started ${clock.date(Date.parse(header.startedAt))}`,
     `Host ${header.host} · participants ${header.participants.join(', ')}`,
     ...scopeLine(header.scope, header.excerptLabel),
     ...(header.contextLabels.length > 0
-      ? [`Context attachments (labels only): ${header.contextLabels.map(oneLine).join(', ')}`]
+      ? [`Context attachments (labels only): ${labelList(header.contextLabels, READ_CONTEXT_LABEL_CHARACTERS)}`]
       : [])
   ];
 }
@@ -236,9 +245,11 @@ function readFooter(
     return lines;
   }
   lines.push(
-    window.continuation.length === 0
-      ? `Shown: turns ${formatWorkshopRecallTurnRanges(window.delivered)}; every requested turn is here.`
-      : `Shown: turns ${formatWorkshopRecallTurnRanges(window.delivered)}; the window is full.`
+    window.delivered.length === 0
+      ? 'No turn fit in this window.'
+      : window.continuation.length === 0
+        ? `Shown: turns ${formatWorkshopRecallTurnRanges(window.delivered)}; every requested turn is here.`
+        : `Shown: turns ${formatWorkshopRecallTurnRanges(window.delivered)}; the window is full.`
   );
   if (empty.length > 0) {
     lines.push(`No visible turns in ${formatWorkshopRecallTurnRanges(empty)}.`);
@@ -253,7 +264,7 @@ function readFooter(
 
 function catalogEntry(session: WorkshopRecallCatalogSession, ordinal: number, now: number): string[] {
   return [
-    `${ordinal}. ${quoted(session.title)} · id ${session.sessionId}`,
+    `${ordinal}. ${quoted(session.title)} · id ${label(session.sessionId)}`,
     `   Saved ${savedAt(session.savedAt, session.timezone, now)}`,
     `   Host ${session.host} · participants ${session.participants.join(', ')}`,
     `   ${[...scopeLine(session.scope, session.excerptLabel), `last turn ${session.lastTurn}`].join(' · ')}`
@@ -263,7 +274,7 @@ function catalogEntry(session: WorkshopRecallCatalogSession, ordinal: number, no
 function searchedLine(result: Extract<WorkshopRecallSearchResult, { outcome: 'searched' }>): string {
   const { bounds } = result;
   const filter = [
-    ...(result.sessionId ? [`session ${result.sessionId}`] : []),
+    ...(result.sessionId ? [`session ${label(result.sessionId)}`] : []),
     ...(result.personaId ? [`sessions that include ${workshopPersonaLabel(result.personaId)}`] : [])
   ];
   const notSearched = [
@@ -288,7 +299,7 @@ function searchedLine(result: Extract<WorkshopRecallSearchResult, { outcome: 'se
 function sessionHits(session: WorkshopRecallSessionHits, now: number): string[] {
   const { header } = session;
   return [
-    `${quoted(header.title)} · id ${header.sessionId} · saved ${savedAt(header.savedAt, header.timezone, now)}`,
+    `${quoted(header.title)} · id ${label(header.sessionId)} · saved ${savedAt(header.savedAt, header.timezone, now)}`,
     ...session.hits.map((hit) => `- ${hitLine(hit)}`),
     ...(session.omittedHits > 0
       ? [`  ${count(session.omittedHits, 'more hit')} in this session not shown.`]
@@ -300,13 +311,18 @@ function hitLine(hit: WorkshopRecallHit): string {
   if (hit.kind === 'session') {
     const labels = [
       ...(hit.title ? [`title ${quoted(hit.title)}`] : []),
-      ...(hit.excerptLabel ? [`excerpt ${hit.excerptLabel}`] : []),
-      ...(hit.contextLabels.length > 0 ? [`context ${hit.contextLabels.map(oneLine).join(', ')}`] : [])
+      ...(hit.excerptLabel ? [`excerpt ${label(hit.excerptLabel)}`] : []),
+      ...(hit.contextLabels.length > 0 ? [`context ${labelList(hit.contextLabels, HIT_CONTEXT_LABEL_CHARACTERS)}`] : [])
     ];
     return `session labels: ${labels.join('; ')}`;
   }
+  const shared = hit.alsoIn.slice(0, ALSO_IN_SESSIONS)
+    .map((other) => `${quoted(other.title)} turn ${other.position}`);
+  if (hit.alsoIn.length > ALSO_IN_SESSIONS) {
+    shared.push(`and ${hit.alsoIn.length - ALSO_IN_SESSIONS} more`);
+  }
   const also = hit.alsoIn.length > 0
-    ? ` (also in ${hit.alsoIn.map((other) => `${quoted(other.title)} turn ${other.position}`).join(', ')})`
+    ? ` (also in ${shared.join(', ')})`
     : '';
   return `turn ${hit.position} · ${speakerOf(hit.entry)}: ${hit.snippet}${also}`;
 }
@@ -382,7 +398,7 @@ function listingNote(truncated: boolean): string[] {
 
 function scopeLine(scope: WorkshopSessionScope | undefined, excerptLabel: string | undefined): string[] {
   if (excerptLabel && scope !== 'open') {
-    return [`excerpt ${oneLine(excerptLabel)}`];
+    return [`excerpt ${label(excerptLabel)}`];
   }
   if (scope === 'open') {
     return ['open conversation'];
@@ -397,7 +413,32 @@ function savedAt(iso: string, timezone: string, now: number): string {
 }
 
 function quoted(text: string): string {
-  return `“${oneLine(text)}”`;
+  return `“${label(text)}”`;
+}
+
+/**
+ * Labels come from saved files and have no length of their own, so every
+ * one is clipped: metadata must never crowd out the record it describes.
+ */
+function label(text: string): string {
+  const line = oneLine(text);
+  return line.length <= LABEL_CHARACTERS ? line : `${line.slice(0, LABEL_CHARACTERS - 1)}…`;
+}
+
+/** Labels until `limit` characters, then a count of the rest. */
+function labelList(labels: readonly string[], limit: number): string {
+  const shown: string[] = [];
+  let length = 0;
+  for (const entry of labels) {
+    const next = label(entry);
+    if (shown.length > 0 && length + next.length + 2 > limit) {
+      break;
+    }
+    shown.push(next);
+    length += next.length + 2;
+  }
+  const rest = labels.length - shown.length;
+  return rest > 0 ? `${shown.join(', ')}, … and ${rest.toLocaleString('en-US')} more` : shown.join(', ');
 }
 
 function oneLine(text: string): string {

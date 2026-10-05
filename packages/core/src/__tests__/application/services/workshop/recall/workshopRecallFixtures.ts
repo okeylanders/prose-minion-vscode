@@ -68,22 +68,29 @@ export const recallLog = (): LogSink & { appendLine: jest.Mock } => ({
   show: jest.fn()
 });
 
-/**
- * Save one sentinel-laden room through the real aggregate, coordinator,
- * and store, then start a fresh live room so the saved one is recallable.
- */
-export async function saveSentinelCorpus(): Promise<{
+export interface SavedRecallRoom {
   fs: MemoryFileSystem;
   store: WorkshopSessionStore;
   coordinator: WorkshopSessionPersistenceCoordinator;
   log: LogSink & { appendLine: jest.Mock };
   savedSessionId: string;
-}> {
-  const fs = new MemoryFileSystem();
+}
+
+/**
+ * Build a room through the real aggregate, save it through the real
+ * coordinator and store, then start a fresh live room so the saved one is
+ * recallable. `populate` drives the aggregate; `advance` moves its clock.
+ */
+export async function saveRecallRoom(
+  title: string,
+  populate: (session: WorkshopSessionService, advance: (milliseconds: number) => void) => void,
+  options: { workspace?: Workspace; fs?: MemoryFileSystem } = {}
+): Promise<SavedRecallRoom> {
+  const fs = options.fs ?? new MemoryFileSystem();
   const log = recallLog();
   let clock = Date.parse('2026-10-03T19:00:00.000Z');
   const now = () => new Date(clock);
-  const store = new WorkshopSessionStore(fs, RECALL_WORKSPACE, log, now);
+  const store = new WorkshopSessionStore(fs, options.workspace ?? RECALL_WORKSPACE, log, now);
   const session = new WorkshopSessionService(() => clock);
   const assistant = {
     exportWorkshopConversationArchive: jest.fn(() => [{
@@ -114,65 +121,72 @@ export async function saveSentinelCorpus(): Promise<{
     { now, idFactory: () => `room-${++nextId}`, ensureAssistantReady: async () => undefined }
   );
   await coordinator.initialize();
-
-  session.setExcerpt({
-    text: `The tide came in. ${RECALL_SENTINELS.excerptText}`,
-    source: {
-      kind: 'file',
-      sourceUri: `file://${RECALL_ROOT}/drafts/${RECALL_SENTINELS.excerptIdentity}/chapter-6.md`,
-      relativePath: `drafts/${RECALL_SENTINELS.excerptIdentity}/${RECALL_VISIBLE_LABELS.excerpt}`
-    }
+  populate(session, (milliseconds) => {
+    clock += milliseconds;
   });
-  session.addContextAttachment({
-    kind: 'file',
-    origin: 'wizard',
-    label: RECALL_VISIBLE_LABELS.contextFile,
-    content: `The keeper rows out at dawn. ${RECALL_SENTINELS.contextFileBody}`,
-    words: 7,
-    sourceUri: `file://${RECALL_ROOT}/notes/keeper-notes.md`,
-    relativePath: 'notes/keeper-notes.md'
-  });
-  session.addContextAttachment({
-    kind: 'text',
-    origin: 'writer',
-    label: RECALL_VISIBLE_LABELS.contextNote,
-    content: `Tide tables for the cove. ${RECALL_SENTINELS.contextNoteBody}`,
-    words: 6
-  });
-
-  // A completed run: writer message with an attachment, persisted evidence, reply.
-  const attached = session.addMessageAttachment({
-    label: RECALL_VISIBLE_LABELS.attachment,
-    content: `Dear mother, ${RECALL_SENTINELS.threadArtifactBody}`,
-    words: 3,
-    relativePath: `drafts/${RECALL_SENTINELS.threadArtifactPath}/letters.md`,
-    sourceUri: `file://${RECALL_ROOT}/drafts/letters.md`
-  });
-  if (!attached.ok) {
-    throw new Error(`fixture attachment refused: ${attached.reason}`);
-  }
-  clock += 60_000;
-  session.beginPersonaMessage(
-    'run-1',
-    RECALL_VISIBLE_LABELS.writerText,
-    [messageAttachmentSnapshot(attached.attachment)]
-  );
-  recordEvidence(session, 'run-1', RECALL_SENTINELS.evidenceBody);
-  clock += 60_000;
-  session.completeRun('run-1', RECALL_VISIBLE_LABELS.reply, undefined, false, 'runtime-host');
-
-  // A failed run: rollback removes the writer turn but keeps its evidence,
-  // so the real summary's `preview` is that evidence (runway F6).
-  clock += 60_000;
-  session.beginPersonaMessage('run-2', 'Check the keeper profile.');
-  recordEvidence(session, 'run-2', RECALL_SENTINELS.previewEvidence);
-  session.rollbackMessageRun('run-2');
-
-  const saved = await coordinator.saveNamed(RECALL_VISIBLE_LABELS.title);
+  const saved = await coordinator.saveNamed(title);
   clock += 60 * 60_000;
   await coordinator.resetSession({ clearWorkingSet: true });
   await coordinator.flush();
   return { fs, store, coordinator, log, savedSessionId: saved.sessionId };
+}
+
+/** One sentinel-laden room: a marker in every body the thread hides. */
+export function saveSentinelCorpus(): Promise<SavedRecallRoom> {
+  return saveRecallRoom(RECALL_VISIBLE_LABELS.title, (session, advance) => {
+    session.setExcerpt({
+      text: `The tide came in. ${RECALL_SENTINELS.excerptText}`,
+      source: {
+        kind: 'file',
+        sourceUri: `file://${RECALL_ROOT}/drafts/${RECALL_SENTINELS.excerptIdentity}/chapter-6.md`,
+        relativePath: `drafts/${RECALL_SENTINELS.excerptIdentity}/${RECALL_VISIBLE_LABELS.excerpt}`
+      }
+    });
+    session.addContextAttachment({
+      kind: 'file',
+      origin: 'wizard',
+      label: RECALL_VISIBLE_LABELS.contextFile,
+      content: `The keeper rows out at dawn. ${RECALL_SENTINELS.contextFileBody}`,
+      words: 7,
+      sourceUri: `file://${RECALL_ROOT}/notes/keeper-notes.md`,
+      relativePath: 'notes/keeper-notes.md'
+    });
+    session.addContextAttachment({
+      kind: 'text',
+      origin: 'writer',
+      label: RECALL_VISIBLE_LABELS.contextNote,
+      content: `Tide tables for the cove. ${RECALL_SENTINELS.contextNoteBody}`,
+      words: 6
+    });
+
+    // A completed run: writer message with an attachment, persisted evidence, reply.
+    const attached = session.addMessageAttachment({
+      label: RECALL_VISIBLE_LABELS.attachment,
+      content: `Dear mother, ${RECALL_SENTINELS.threadArtifactBody}`,
+      words: 3,
+      relativePath: `drafts/${RECALL_SENTINELS.threadArtifactPath}/letters.md`,
+      sourceUri: `file://${RECALL_ROOT}/drafts/letters.md`
+    });
+    if (!attached.ok) {
+      throw new Error(`fixture attachment refused: ${attached.reason}`);
+    }
+    advance(60_000);
+    session.beginPersonaMessage(
+      'run-1',
+      RECALL_VISIBLE_LABELS.writerText,
+      [messageAttachmentSnapshot(attached.attachment)]
+    );
+    recordEvidence(session, 'run-1', RECALL_SENTINELS.evidenceBody);
+    advance(60_000);
+    session.completeRun('run-1', RECALL_VISIBLE_LABELS.reply, undefined, false, 'runtime-host');
+
+    // A failed run: rollback removes the writer turn but keeps its evidence,
+    // so the real summary's `preview` is that evidence (runway F6).
+    advance(60_000);
+    session.beginPersonaMessage('run-2', 'Check the keeper profile.');
+    recordEvidence(session, 'run-2', RECALL_SENTINELS.previewEvidence);
+    session.rollbackMessageRun('run-2');
+  });
 }
 
 function recordEvidence(session: WorkshopSessionService, requestId: string, body: string): void {
