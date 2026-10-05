@@ -15,6 +15,7 @@ import {
   ConversationNotFoundError,
   withContextSourceSupersedeChain
 } from '@orchestration/ConversationManager';
+import { CONTEXT_SOURCE_KINDS } from '@shared/types';
 
 describe('ConversationManager', () => {
   let manager: ConversationManager;
@@ -490,6 +491,18 @@ describe('ConversationManager', () => {
 
       expect(outcomes[0]).toMatchObject({ key: 'host', status: 'imported' });
       expect(outcomes[1]).toMatchObject({ key: 'guest:margot', status: 'degraded' });
+    });
+
+    it.each(CONTEXT_SOURCE_KINDS)('imports an archive row of the listed kind %s', (kind) => {
+      const id = completeConversation(manager);
+      const entry = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
+      entry.contextSources = [{
+        kind, origin: 'host', label: 'Row', sizeChars: 4, isEstimate: true, deliveredAt: 22
+      }];
+
+      expect(new ConversationManager().importConversations([
+        { entry, systemMessage: 'Rebuilt current system prompt' }
+      ])[0]).toMatchObject({ key: 'host', status: 'imported' });
     });
 
     it('degrades an archive whose context source names an unlisted kind', () => {

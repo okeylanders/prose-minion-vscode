@@ -11,6 +11,7 @@ import {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { messageAttachmentSnapshot } from '@/application/services/workshop/WorkshopSessionRecords';
+import { WORKSHOP_CAPABILITY_OPERATIONS } from '@shared/types/workshopCapabilities';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 
 const REQUEST = 'host-request';
@@ -96,6 +97,19 @@ describe('persisted Workshop turn guards', () => {
 
     expect(decodeWorkshopPersistedSessionCheckpoint(raw).session.workshop.turns).toHaveLength(3);
     expect(parseWorkshopPersistedSession(raw).workshop.turns).toHaveLength(3);
+  });
+
+  it.each(WORKSHOP_CAPABILITY_OPERATIONS)('accepts the listed operation %s on load and save', (operation) => {
+    const raw = editedRoom((turns) => {
+      const capability = capabilityTurn(turns).capability!;
+      capability.operation = operation;
+      // Catalog and search are never published, so an unpublished (private)
+      // artifact keeps this about the operation list, not publication.
+      delete capability.publishedWithTurnId;
+    });
+
+    expect(() => decodeWorkshopPersistedSessionCheckpoint(raw)).not.toThrow();
+    expect(() => parseWorkshopPersistedSession(raw)).not.toThrow();
   });
 
   it('rejects a capability operation outside the closed list on load and save', () => {

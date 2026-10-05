@@ -6,12 +6,15 @@
  */
 
 import {
+  CONTEXT_SOURCE_KINDS,
   isHttpUrl,
   isWorkshopInteractionMode,
   isWorkshopPersonaExpressionLevel,
   isWorkshopRelationalDepth,
-  isWorkshopSessionScope
+  isWorkshopSessionScope,
+  WORKSHOP_TURN_ARTIFACTS
 } from '@messages';
+import { WORKSHOP_CAPABILITY_OPERATIONS } from '@shared/types/workshopCapabilities';
 import { isContextPathGroup } from '@shared/types';
 import {
   isWorkshopPersonaId,
@@ -491,11 +494,7 @@ function assertContextSource(value: unknown, path: string): void {
       'artifactId'
     ]
   );
-  enumAt(
-    source.kind,
-    `${path}.kind`,
-    ['pin', 'attachment', 'message-attachment', 'resource', 'tool-evidence', 'dictionary']
-  );
+  enumAt(source.kind, `${path}.kind`, CONTEXT_SOURCE_KINDS);
   enumAt(source.origin, `${path}.origin`, ['writer', 'host', 'tool']);
   stringAt(source.label, `${path}.label`);
   numberAt(source.sizeChars, `${path}.sizeChars`);
@@ -538,29 +537,7 @@ function assertTurn(value: unknown, path: string, checkpoint: boolean): void {
   enumAt(turn.role, `${path}.role`, ['user', 'assistant', 'system']);
   enumAt(turn.kind, `${path}.kind`, ['tool_run', 'message', 'divider']);
   enumAt(turn.participant, `${path}.participant`, ['writer', 'host', 'guest', 'tool', 'session']);
-  enumAt(
-    turn.artifact,
-    `${path}.artifact`,
-    [
-      'tool_request',
-      'persona_message',
-      'tool_report',
-      'persona_synthesis',
-      'direct_tool_message',
-      'direct_tool_response',
-      'dictionary_lookup',
-      'dictionary_full_entry',
-      'resource_catalog',
-      'resource_search',
-      'resource_read',
-      'excerpt_revision',
-      'context_change',
-      'standing_directive_change',
-      'session_start',
-      'session_resume',
-      'scope_change'
-    ]
-  );
+  enumAt(turn.artifact, `${path}.artifact`, WORKSHOP_TURN_ARTIFACTS);
   numberAt(turn.excerptVersion, `${path}.excerptVersion`);
   stringAt(turn.content, `${path}.content`);
   numberAt(turn.timestamp, `${path}.timestamp`);
@@ -726,18 +703,7 @@ function assertCapability(value: unknown, path: string): void {
     ['operation', 'status', 'requestSummary', 'requestedByPersonaId'],
     ['metadata', 'invokedBy', 'publishedWithTurnId']
   );
-  enumAt(
-    capability.operation,
-    `${path}.operation`,
-    [
-      'dictionary.lookup',
-      'dictionary.full-entry',
-      'analysis.run',
-      'resource.catalog',
-      'resource.search',
-      'resource.read'
-    ]
-  );
+  enumAt(capability.operation, `${path}.operation`, WORKSHOP_CAPABILITY_OPERATIONS);
   enumAt(
     capability.status,
     `${path}.status`,

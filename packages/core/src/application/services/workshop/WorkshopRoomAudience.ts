@@ -12,6 +12,7 @@ import {
 } from '@messages';
 import {
   WorkshopCapabilityArtifactDetails,
+  WorkshopCapabilityOperation,
   WorkshopCapabilityPrincipal
 } from '@shared/types/workshopCapabilities';
 
@@ -23,7 +24,7 @@ export type WorkshopRoomAudience =
   | { kind: 'room' }
   | { kind: 'private'; principal: WorkshopRoomPrincipal };
 
-const PUBLISHABLE_CAPABILITY_OPERATIONS = new Set([
+const PUBLISHABLE_CAPABILITY_OPERATIONS: ReadonlySet<WorkshopCapabilityOperation> = new Set<WorkshopCapabilityOperation>([
   'dictionary.lookup',
   'dictionary.full-entry',
   'analysis.run',

@@ -5,13 +5,26 @@ import type {
 } from '@messages';
 import type { ContextPathGroup } from './context';
 
-export type WorkshopCapabilityOperation =
-  | 'dictionary.lookup'
-  | 'dictionary.full-entry'
-  | 'analysis.run'
-  | 'resource.catalog'
-  | 'resource.search'
-  | 'resource.read';
+/**
+ * The closed operation list. The union, the persisted codec's allowlist, and
+ * every exhaustive switch derive from it, so adding an operation here is the
+ * one edit that widens all of them (and forgetting a switch case fails to
+ * compile instead of failing a writer's save).
+ */
+export const WORKSHOP_CAPABILITY_OPERATIONS = [
+  'dictionary.lookup',
+  'dictionary.full-entry',
+  'analysis.run',
+  'resource.catalog',
+  'resource.search',
+  'resource.read'
+] as const;
+
+export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
+
+export const isWorkshopCapabilityOperation = (value: unknown): value is WorkshopCapabilityOperation =>
+  typeof value === 'string' &&
+  (WORKSHOP_CAPABILITY_OPERATIONS as readonly string[]).includes(value);
 
 export type WorkshopAnalysisInputMode = 'inherit' | 'prepend' | 'replace' | 'omit';
 

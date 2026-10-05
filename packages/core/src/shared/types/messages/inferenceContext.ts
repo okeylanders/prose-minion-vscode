@@ -11,13 +11,16 @@ export type ContextCompressionState = 'applied' | 'not-applied' | 'unknown';
  * `tool-evidence` = an analysis side-pass report; `dictionary` = Writer's
  * Dictionary evidence.
  */
-export type ContextSourceKind =
-  | 'pin'
-  | 'attachment'
-  | 'message-attachment'
-  | 'resource'
-  | 'tool-evidence'
-  | 'dictionary';
+export const CONTEXT_SOURCE_KINDS = [
+  'pin',
+  'attachment',
+  'message-attachment',
+  'resource',
+  'tool-evidence',
+  'dictionary'
+] as const;
+
+export type ContextSourceKind = typeof CONTEXT_SOURCE_KINDS[number];
 
 /** Who put the material into this participant's context. */
 export type ContextSourceOrigin = 'writer' | 'host' | 'tool';
