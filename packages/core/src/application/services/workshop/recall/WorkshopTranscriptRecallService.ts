@@ -345,6 +345,8 @@ export class WorkshopTranscriptRecallService {
     try {
       session = await this.corpus.readNamed(summary.sessionId);
     } catch (error) {
+      // A read that failed because the call was cancelled is a cancellation.
+      throwIfAborted(signal);
       this.log(`Skipped unreadable session ${summary.sessionId}: ${errorMessage(error)}`);
       return {};
     }

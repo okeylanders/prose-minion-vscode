@@ -329,6 +329,22 @@ describe('WorkshopTranscriptRecallService', () => {
         .toBe(WORKSHOP_SESSION_STORE_LIMITS.maximumExactFileBytes);
     });
 
+    it('lets cancellation win over a read that failed while it was cancelled', async () => {
+      // The failing read is the last file, so no later check can mask it.
+      store.sessions.push(numbered(1));
+      store.failures.set('s1', new Error('EIO: read interrupted'));
+      const calls = [
+        (signal: AbortSignal) => service.search({ query: 'lantern' }, signal),
+        (signal: AbortSignal) => service.read({ sessionId: 's1' }, signal)
+      ];
+
+      for (const call of calls) {
+        const controller = new AbortController();
+        store.onRead = () => controller.abort();
+        await expect(call(controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+      }
+    });
+
     it('checks for cancellation between files', async () => {
       for (const n of [1, 2, 3]) {
         store.sessions.push(numbered(n));
