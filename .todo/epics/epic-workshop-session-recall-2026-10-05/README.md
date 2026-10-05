@@ -48,7 +48,7 @@ verification, and rollback seams.
 |---|---|---|---|
 | 0 | Characterize | Sentinel visibility tests over the projection; a test that an unknown capability operation fails to decode; per-family label assertions | Done — `83f2cf6` |
 | 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Done — `2e54b88`, `357f5bb`, `24ad18d`, `875f203` |
-| 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, in review — `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8` |
+| 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, in review — `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8`; review fixes `f3779af`, `cce3889`, `b4cab1b`, `689f96e`, `65ea614`, `3b5b6e5`, `970ed75` |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root | Not started |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
@@ -90,6 +90,20 @@ verification, and rollback seams.
     read's `delivered` ranges. The codec owns query length, session-id shape,
     and range count, because the service throws on an invalid range.
     `resultLogSummary` needs its exhaustive recall case (PR #125 review F-01).
+- **2026-10-05 — PR #126 review fixes.** Okey's review requested changes on
+  four Standard findings and one nit, each reproduced against the real store.
+  - F-01: a read could exceed its budget three times over.
+  - F-02: failed cold reads spent nothing.
+  - F-03: the cache charge skipped citation URLs.
+  - F-04: the scope was checked only at entry.
+  - F-05: lineage folded on normalized text.
+
+  All five are fixed, each with witnesses that fail against the reviewed
+  head. A read that fails during cancellation now rejects as a cancellation.
+  The ledger in `docs/pr-reviews/pr-126-workshop-session-recall-core-review.md`
+  and the ADR's Slice 2 note record the details. Full suite 253 suites /
+  3,200 tests on Node 22 and Node 18; typecheck, build, and lint of the 21
+  changed TypeScript files are clean.
 
 ## Decisions (accepted 2026-10-05, as recommended)
 

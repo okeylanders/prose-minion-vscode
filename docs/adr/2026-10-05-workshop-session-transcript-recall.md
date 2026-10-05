@@ -348,9 +348,11 @@ left open:
   leaves the store unchanged. The service therefore charges `searchSourceBytes`
   with the UTF-8 length of the session serialized the way the store writes it.
   Decoding normalizes a few fields, so the estimate lands within a few percent
-  of the file. The budget is checked before each cold parse, so one call may
-  exceed it by at most one file. That file is still bounded by the store's
-  25 MiB exact-read limit.
+  of the file. A cold read that produces no document reports no size, so it
+  is charged `unreadableSessionBytes`: the store's 25 MiB exact-read ceiling,
+  the most it can have cost (PR 126 review F-02; a test pins the two
+  together). The budget is checked before each cold read, so one call may
+  exceed it by at most one file, which is still bounded by that ceiling.
 - **A query made only of stop words keeps its words.** "What did we do then"
   searches those words, and the phrase bonus ranks the exact phrase first.
 
@@ -363,9 +365,11 @@ Refinements within §4's rules:
   whole word outranks one that matches only a prefix, so "tide" ranks "the
   tide" above "tidewater". Ties then fall to the newer session and the earlier
   turn, as §4 specifies.
-- **Lineage:** two turns merge only when both the turn id and the visible text
-  match. Ids are `turn-<counter>-<role>-<epochMs>`, so a collision is
-  improbable; when one happens, both turns still appear and neither is hidden.
+- **Lineage:** two turns merge only when their projected entries are exactly
+  equal: turn id, text, speaker, labels, sources, and timestamp. Equality
+  after search normalization is not enough (PR 126 review F-05). Ids are
+  `turn-<counter>-<role>-<epochMs>`, so a collision is improbable; when one
+  happens, both turns still appear and neither is hidden.
 
 Responsibilities and file plan:
 
@@ -374,15 +378,42 @@ Responsibilities and file plan:
   knows what the text costs, so it packs the window and reports the delivered
   ranges, with their turn ids, and the continuation ranges. Slice 3's
   provenance metadata comes from the rendered read.
-- **Seven modules, not four.** Every file stays under the repo's 500-line
-  ceiling. The service's result types live in `WorkshopTranscriptRecallResults`.
-  The read window (packing, separators, entry text) and the session clock are
-  separate modules. The ports stay in the service. The renderer keeps its own
-  copy of the room frames' elapsed-time words, because it may not import the
-  room-frame renderer.
+- **Nine modules, not four.** Every file stays under the repo's 500-line
+  ceiling. The ports stay in the service. Alongside it:
+  - `WorkshopTranscriptRecallResults`: the result types.
+  - `WorkshopRecallCorpusSelection`: the pure listing, catalog, and range
+    helpers.
+  - `WorkshopRecallDocumentCache`: the LRU and its generations.
+  - The read window (packing, separators, entry text) and the session clock.
+
+  The renderer keeps its own copy of the room frames' elapsed-time words,
+  because it may not import the room-frame renderer.
 - **The live room has its own answer.** A request naming the live session id
   returns `unknown-session` with `liveSession: true`, and the text says that
   this is the current session.
+
+Bounds and scope, after the PR 126 review:
+
+- **A read never exceeds `readCharacters` (F-01).** Every saved-file label is
+  clipped to one 200-character line. The read header lists context labels up
+  to 2,000 characters and counts the rest; catalog and search apply the same
+  label bounds. A window with no room for a readable 200-character head of its
+  first entry delivers nothing, and that entry opens the continuation. A
+  sweep from the header-and-footer floor upward pins the bound.
+- **The cache charge is every retained string (F-03):** a document costs its
+  serialized length, citation URLs included.
+- **The scope holds for the whole call (F-04).** The scope a call opens (the
+  live session id, confirmed by the store's availability) is checked again:
+  after the listing, before and after every cold read, and before the result
+  returns. A change refuses the call, empties the cache, and advances its
+  generation, so reads in flight cannot repopulate it. A changed live
+  identity reports `not-ready`.
+  - Residual risk: a root that switches away and back within one read cannot
+    be seen from the ports. VS Code restarts the extension host when the
+    first workspace folder changes. Slice 3 validates the host lifecycle when
+    it wires the capability.
+- **Cancellation wins.** A read that fails while its call is cancelled
+  rejects with `AbortError` rather than counting as unreadable.
 
 What recall inherits from `store.list()`:
 
