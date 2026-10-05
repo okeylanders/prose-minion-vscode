@@ -16,13 +16,45 @@ Status legend: **Open** = recommended before integration · **Deferred** = expli
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | Read metadata can exhaust the output allowance | Original 152,617-character case now fits at 47,779; a separately accepted participant-list case still produces 60,451 / 48,000 characters | **Partially addressed** in `f3779af`; remaining bound gap independently verified at `c4527f4` |
+| F-01 | 🟡 Standard | Read metadata can exhaust the output allowance | Original 152,617-character case now fits at 47,779; a separately accepted participant-list case still produces 60,451 / 48,000 characters | **Partially addressed** in `f3779af`; remaining bound gap independently verified at `c4527f4`. Remainder fixed by the author in `17647eb` and `07de2c4` (see the author response below); awaiting re-review |
 | F-02 | 🟡 Standard | Failed cold parses never spend the search byte budget | One failed file now spends the disclosed 25 MiB charge; the next two cold files are skipped | **Addressed**, independently verified at `c4527f4`; fix `b4cab1b` |
 | F-03 | 🟡 Standard | Cached citation URLs are omitted from cache-size accounting | The 8,222-character URL no longer becomes warm under the 1,000-character limit | **Addressed**, independently verified at `c4527f4`; fix `65ea614` |
 | F-04 | 🟡 Standard | The accepted scope is sampled before asynchronous work and never revalidated | Original copied-root and warmed multi-root races now refuse; generation/publication probes pass | **Addressed**, independently verified at `c4527f4`; fixes `cce3889`, `970ed75`; documented host-lifecycle residual retained |
 | F-05 | 🔵 Nit | Lineage equality uses normalized search text rather than exact visible text | Original café/punctuation case now returns two hits, with no duplicate | **Addressed**, independently verified at `c4527f4`; fix `3b5b6e5` |
 
 **Current verdict at `c4527f4`: Request changes for the remaining F-01 bound gap.** F-02 through F-05 are independently verified addressed, and the cancellation observation is fixed. The original F-01 failure is repaired, but the complete read-output guarantee still fails on accepted externally edited participant metadata. This is one remaining Standard finding, not a new High-severity live incident. No additional independent Blocking, High, or Standard finding was established in the fix round.
+
+## Author response to the re-review (`17647eb`, `07de2c4`)
+
+These are the author's claims, offered for re-review. They are not verified findings.
+
+**F-01 remainder.** The fix has four parts:
+
+- **Participants appear once.** [`17647eb`](https://github.com/okeylanders/prose-minion-vscode/commit/17647eb) dedupes them in both the recall document header and the catalog. It keeps first-seen order.
+- **Header and footer have hard caps.** In [`07de2c4`](https://github.com/okeylanders/prose-minion-vscode/commit/07de2c4) the header is capped at 4,000 characters and the footer at 1,000. The window gets what is left, so its share is fixed before any metadata renders.
+- **Every metadata part is bounded.**
+  - Participant lists stop at 400 characters.
+  - Context labels stop at 2,000 characters and come last in the header.
+  - Range lists show at most twelve ranges.
+  - The largest header measured, with every part at its bound, is about 3,400 characters, so the 4,000 cap only matters if a field is added later. `recallBlock` has its own tests for that case.
+- **Witness.** The accepted-file reproduction from the re-review now runs through the real coordinator, store, and service: 10,000 `jill` entries in the authoritative file. It renders **607 characters**, the header is `Host Jill · participants Jill`, and turns 2–3 are delivered with no continuation.
+
+**Caveat 1: minimum budget.** `WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS` is 6,000: both caps plus 1,000 for one entry. Below it, `renderWorkshopRecallRead` throws a `RangeError`, and a test pins the production budget above the minimum. At every supported budget a read now delivers at least one entry, whole or as a head of at least 200 characters, so a continuation always makes progress. Two sweeps check the bound and the progress together:
+
+- from the minimum upward, through each packing outcome: first entry cut, first entry whole, two entries, all three;
+- from the minimum upward with every header part at its bound and 10,000 distinct participants, both for whole-session reads and for 40-range requests.
+
+**Caveat 2: speaker and private-tool labels.** All saved-file labels now go through one module, `WorkshopRecallText`, in search and in reads: reply speakers, the writer's private-with name, and attachment labels. The 100,000-character `personaLabel` probe, rerun through the real store, renders a **758-character** search result. Its read shows the speaker clipped to 200 characters.
+
+**Mutation check.** Each fix was reverted on its own against the new witnesses:
+
+- Six of seven reversions fail a witness: both dedupes, both speaker clips, the participant-list bound, and the minimum.
+- The seventh, removing the header cap, survives as expected. Every header part is bounded on its own, so the cap is unreachable today.
+
+**Verification at `07de2c4`:**
+
+- Full suite on Node 22.22.0 and Node 18.20.8: **254 suites / 3,215 tests**.
+- `npm run typecheck`, `npm run build` (including `verify:bundle`), ESLint on the changed files, and `git diff --check` are all clean.
 
 ## Fix re-review at c4527f4
 

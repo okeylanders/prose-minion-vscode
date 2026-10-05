@@ -104,6 +104,18 @@ verification, and rollback seams.
   and the ADR's Slice 2 note record the details. Full suite 253 suites /
   3,200 tests on Node 22 and Node 18; typecheck, build, and lint of the 21
   changed TypeScript files are clean.
+- **2026-10-05 — PR #126 re-review.** Okey verified F-02 through F-05 and
+  left part of F-01 open: a saved file listing one participant 10,000 times
+  rendered a 60,451-character read with no entries.
+  - Fixed in `17647eb` and `07de2c4`. Participants are listed once each.
+  - The read header and footer have hard caps; `readCharacters` has a
+    6,000-character minimum.
+  - Saved-file speaker and attachment labels are clipped in reads and
+    search.
+  - That reproduction now renders 607 characters and delivers turns 2-3.
+
+  Full suite 254 suites / 3,215 tests on Node 22 and Node 18; typecheck,
+  build, and lint of the changed files are clean.
 
 ## Decisions (accepted 2026-10-05, as recommended)
 

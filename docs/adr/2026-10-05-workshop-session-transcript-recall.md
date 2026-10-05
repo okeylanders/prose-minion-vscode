@@ -378,12 +378,13 @@ Responsibilities and file plan:
   knows what the text costs, so it packs the window and reports the delivered
   ranges, with their turn ids, and the continuation ranges. Slice 3's
   provenance metadata comes from the rendered read.
-- **Nine modules, not four.** Every file stays under the repo's 500-line
+- **Ten modules, not four.** Every file stays under the repo's 500-line
   ceiling. The ports stay in the service. Alongside it:
   - `WorkshopTranscriptRecallResults`: the result types.
   - `WorkshopRecallCorpusSelection`: the pure listing, catalog, and range
     helpers.
   - `WorkshopRecallDocumentCache`: the LRU and its generations.
+  - `WorkshopRecallText`: bounded labels, label lists, and capped blocks.
   - The read window (packing, separators, entry text) and the session clock.
 
   The renderer keeps its own copy of the room frames' elapsed-time words,
@@ -394,12 +395,26 @@ Responsibilities and file plan:
 
 Bounds and scope, after the PR 126 review:
 
-- **A read never exceeds `readCharacters` (F-01).** Every saved-file label is
-  clipped to one 200-character line. The read header lists context labels up
-  to 2,000 characters and counts the rest; catalog and search apply the same
-  label bounds. A window with no room for a readable 200-character head of its
-  first entry delivers nothing, and that entry opens the continuation. A
-  sweep from the header-and-footer floor upward pins the bound.
+- **A read never exceeds `readCharacters` (F-01).** A read is a header, a
+  window, and a footer.
+  - The header and the footer have hard caps of 4,000 and 1,000 characters,
+    so the window's share is known before any metadata renders.
+  - Every saved-file label is clipped to one 200-character line. That covers
+    titles, ids, file names, hosts, reply speakers, private-tool names, and
+    attachment labels, in reads and in search alike.
+  - Lists are bounded and count the rest: participants to 400 characters,
+    context labels to 2,000 (last in the header, so a header over its cap
+    loses them first), and range lists to twelve ranges.
+  - Participants are listed once each. The persisted codec accepts repeats,
+    so the recall document and the catalog deduplicate them.
+  - Every part is bounded on its own: the largest header measured is about
+    3,400 characters. The header cap is a backstop for a future field.
+- **`readCharacters` has a minimum: 6,000** (both caps, plus 1,000 for one
+  entry). The renderer throws a `RangeError` below it. At every supported
+  budget a read delivers at least one entry, whole or as a readable head of
+  200 characters or more, so following a continuation always makes progress.
+  A sweep from the minimum upward, with every header part at its bound, pins
+  the bound and the progress.
 - **The cache charge is every retained string (F-03):** a document costs its
   serialized length, citation URLs included.
 - **The scope holds for the whole call (F-04).** The scope a call opens (the
