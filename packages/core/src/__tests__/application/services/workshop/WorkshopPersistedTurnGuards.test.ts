@@ -123,7 +123,8 @@ describe('persisted Workshop turn guards', () => {
 
   it('rejects a turn artifact outside the closed list on load and save', () => {
     const raw = editedRoom((turns) => {
-      capabilityTurn(turns).artifact = 'transcript_read';
+      // 'memory_read' is reserved for derived material (ADR 2026-10-05) and listed nowhere.
+      capabilityTurn(turns).artifact = 'memory_read';
     });
 
     expect(() => decodeWorkshopPersistedSessionCheckpoint(raw)).toThrow(/artifact must be/);
