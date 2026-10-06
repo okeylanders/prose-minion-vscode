@@ -141,24 +141,53 @@ export interface WorkshopRecallReadRange extends WorkshopRecallTurnRange {
   readonly lastTurnId?: string;
 }
 
-export type WorkshopRecallReadResult =
-  | WorkshopRecallUnavailable
-  | WorkshopRecallUnknownSession
+/** One session a read names, with the ranges it asks for; none means from turn 1. */
+export interface WorkshopRecallReadSessionRequest {
+  readonly sessionId: string;
+  readonly turns?: readonly WorkshopRecallTurnRange[];
+}
+
+/**
+ * `transcript.read` (D9): one to `readSessions` distinct sessions, read in
+ * the order asked; one session is a one-item list.
+ */
+export interface WorkshopRecallReadRequest {
+  readonly sessions: readonly WorkshopRecallReadSessionRequest[];
+  /** Defaults to `discussion` when the read names several sessions, else `full` (D10). */
+  readonly detail?: WorkshopRecallReadDetail;
+}
+
+/** One session a read named: what was read, or why nothing was. */
+export type WorkshopRecallSessionRead =
+  | Omit<WorkshopRecallUnknownSession, 'available'>
+  | { readonly outcome: 'unreadable'; readonly sessionId: string; readonly title: string }
+  /** Earlier cold reads in this call spent `searchSourceBytes`. */
+  | { readonly outcome: 'not-read-by-byte-budget'; readonly sessionId: string; readonly title: string }
   | {
-      readonly available: true;
-      readonly outcome: 'unreadable';
-      readonly sessionId: string;
-      readonly title: string;
-    }
-  | {
-      readonly available: true;
       readonly outcome: 'read';
       readonly header: WorkshopRecallHeader;
-      /** The writer asked for no turns: the window starts at turn 1. */
+      /** The request named no turns: the window starts at turn 1. */
       readonly fromStart: boolean;
       /** Ascending and non-overlapping. */
       readonly ranges: readonly WorkshopRecallReadRange[];
       readonly cacheHit: boolean;
+    };
+
+export interface WorkshopRecallReadBounds extends WorkshopRecallScanBounds {
+  /** Named sessions left unread because earlier cold reads spent `searchSourceBytes`. */
+  readonly notReadByByteBudget: number;
+}
+
+export type WorkshopRecallReadResult =
+  | WorkshopRecallUnavailable
+  | {
+      readonly available: true;
+      readonly outcome: 'read';
+      /** As asked, else the default for how many sessions the read names. */
+      readonly detail: WorkshopRecallReadDetail;
+      /** One per session named, in the order asked. */
+      readonly sessions: readonly WorkshopRecallSessionRead[];
+      readonly bounds: WorkshopRecallReadBounds;
     };
 
 /** `<status>` (D7). `open` includes stale to-dos, each marked. */

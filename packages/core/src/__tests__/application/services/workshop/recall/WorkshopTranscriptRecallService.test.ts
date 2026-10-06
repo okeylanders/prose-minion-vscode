@@ -13,6 +13,10 @@ import {
   WorkshopTranscriptRecallService
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
+import type {
+  WorkshopRecallReadRequest,
+  WorkshopRecallTurnRange
+} from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 import {
   WORKSHOP_SESSION_STORE_LIMITS,
   WorkshopSessionStore
@@ -105,6 +109,10 @@ const summaryOf = (session: WorkshopPersistedSessionV2): WorkshopRecallSessionSu
 
 const say = (id: string, content: string): WorkshopTurn => writerTurn(id, { content });
 
+/** A read naming one session: a one-item list (D9). */
+const one = (sessionId: string, turns?: WorkshopRecallTurnRange[]): WorkshopRecallReadRequest =>
+  ({ sessions: [{ sessionId, ...(turns ? { turns } : {}) }] });
+
 const cloneSession = (
   session: WorkshopPersistedSessionV2 | undefined
 ): WorkshopPersistedSessionV2 | undefined =>
@@ -155,12 +163,18 @@ describe('WorkshopTranscriptRecallService', () => {
 
       const catalog = await service.catalog({});
       const search = await service.search({ query: 'lantern' });
-      const read = await service.read({ sessionId: 'live' });
+      const read = await service.read(one('live'));
 
       expect(catalog.available && catalog.outcome === 'catalog' && catalog.sessions.map((s) => s.sessionId))
         .toEqual(['s3', 's1']);
       expect(JSON.stringify(search)).not.toContain('live room');
-      expect(read).toEqual({ available: true, outcome: 'unknown-session', sessionId: 'live', liveSession: true });
+      expect(read).toEqual({
+        available: true,
+        outcome: 'read',
+        detail: 'full',
+        sessions: [{ outcome: 'unknown-session', sessionId: 'live', liveSession: true }],
+        bounds: expect.objectContaining({ unreadableSessions: 0, cacheHits: 0, parsedBytes: 0 })
+      });
       expect(store.readNamed.mock.calls.map(([id]) => id)).not.toContain('live');
     });
 
@@ -174,7 +188,7 @@ describe('WorkshopTranscriptRecallService', () => {
         return listing;
       });
 
-      expect(await service.read({ sessionId: 's1' })).toEqual({ available: false, reason: 'not-ready' });
+      expect(await service.read(one('s1'))).toEqual({ available: false, reason: 'not-ready' });
       expect(store.readNamed).not.toHaveBeenCalled();
     });
 
@@ -199,7 +213,7 @@ describe('WorkshopTranscriptRecallService', () => {
       for (const result of [
         await service.catalog({}),
         await service.search({ query: 'lantern' }),
-        await service.read({ sessionId: 's1' })
+        await service.read(one('s1'))
       ]) {
         expect(result).toEqual({ available: false, reason });
       }
@@ -330,7 +344,7 @@ describe('WorkshopTranscriptRecallService', () => {
       for (const n of [1, 2, 3, 4, 5]) {
         store.sessions.push(numbered(n));
       }
-      await service.read({ sessionId: 's5' });
+      await service.read(one('s5'));
       store.readNamed.mockClear();
       store.failures.set('s4', new Error('Unsupported Workshop session schema: 99'));
       store.failures.set('s2', new Error('Unsupported Workshop session schema: 99'));
@@ -363,7 +377,7 @@ describe('WorkshopTranscriptRecallService', () => {
       store.failures.set('s1', new Error('EIO: read interrupted'));
       const calls = [
         (signal: AbortSignal) => service.search({ query: 'lantern' }, signal),
-        (signal: AbortSignal) => service.read({ sessionId: 's1' }, signal)
+        (signal: AbortSignal) => service.read(one('s1'), signal)
       ];
 
       for (const call of calls) {
@@ -426,8 +440,8 @@ describe('WorkshopTranscriptRecallService', () => {
       expect(store.readNamed).toHaveBeenCalledTimes(3);
       expect(changed.available && changed.outcome === 'searched' && changed.search.matchedHits).toBe(1);
 
-      const read = await service.read({ sessionId: 's2' });
-      expect(read).toMatchObject({ outcome: 'read', cacheHit: true });
+      const read = await service.read(one('s2'));
+      expect(read).toMatchObject({ outcome: 'read', sessions: [{ outcome: 'read', cacheHit: true }] });
       expect(store.readNamed).toHaveBeenCalledTimes(3);
     });
 
@@ -435,13 +449,13 @@ describe('WorkshopTranscriptRecallService', () => {
       service = create({ maximumCachedDocuments: 2, maximumCachedCharacters: 1_000_000 });
       store.sessions.push(numbered(1), numbered(2), numbered(3));
 
-      await service.read({ sessionId: 's1' });
-      await service.read({ sessionId: 's2' });
-      await service.read({ sessionId: 's1' });
-      await service.read({ sessionId: 's3' });
+      await service.read(one('s1'));
+      await service.read(one('s2'));
+      await service.read(one('s1'));
+      await service.read(one('s3'));
       store.readNamed.mockClear();
-      await service.read({ sessionId: 's1' });
-      await service.read({ sessionId: 's2' });
+      await service.read(one('s1'));
+      await service.read(one('s2'));
 
       expect(store.readNamed.mock.calls.map(([id]) => id)).toEqual(['s2']);
     });
@@ -450,8 +464,8 @@ describe('WorkshopTranscriptRecallService', () => {
       service = create({ maximumCachedDocuments: 10, maximumCachedCharacters: 10 });
       store.sessions.push(numbered(1));
 
-      await service.read({ sessionId: 's1' });
-      await service.read({ sessionId: 's1' });
+      await service.read(one('s1'));
+      await service.read(one('s1'));
 
       expect(store.readNamed).toHaveBeenCalledTimes(2);
     });
@@ -469,13 +483,11 @@ describe('WorkshopTranscriptRecallService', () => {
     it('resolves sorted, merged ranges with the first and last turn id of each', async () => {
       store.sessions.push(numbered(1, turns));
 
-      const read = await service.read({
-        sessionId: 's1',
-        turns: [{ from: 5, to: 9 }, { from: 1, to: 2 }, { from: 2, to: 3 }]
-      });
+      const read = await service.read(one('s1', [{ from: 5, to: 9 }, { from: 1, to: 2 }, { from: 2, to: 3 }]));
 
-      expect(read).toMatchObject({ outcome: 'read', fromStart: false, cacheHit: false });
-      const ranges = read.available && read.outcome === 'read' ? read.ranges : [];
+      const session = read.available ? read.sessions[0] : undefined;
+      expect(session).toMatchObject({ outcome: 'read', fromStart: false, cacheHit: false });
+      const ranges = session?.outcome === 'read' ? session.ranges : [];
       expect(ranges.map(({ from, to, firstTurnId, lastTurnId, entries }) =>
         ({ from, to, firstTurnId, lastTurnId, positions: entries.map((entry) => entry.position) })
       )).toEqual([
@@ -487,10 +499,11 @@ describe('WorkshopTranscriptRecallService', () => {
     it('starts from turn 1 when no turns are named', async () => {
       store.sessions.push(numbered(1, turns));
 
-      const read = await service.read({ sessionId: 's1' });
+      const read = await service.read(one('s1'));
 
-      expect(read).toMatchObject({ outcome: 'read', fromStart: true });
-      expect(read.available && read.outcome === 'read' && read.ranges.map(({ from, to }) => [from, to]))
+      const session = read.available ? read.sessions[0] : undefined;
+      expect(session).toMatchObject({ outcome: 'read', fromStart: true });
+      expect(session?.outcome === 'read' && session.ranges.map(({ from, to }) => [from, to]))
         .toEqual([[1, 5]]);
     });
 
@@ -498,9 +511,12 @@ describe('WorkshopTranscriptRecallService', () => {
       store.sessions.push(numbered(1, turns), numbered(2));
       store.failures.set('s2', new Error('too large'));
 
-      expect(await service.read({ sessionId: 's2' }))
-        .toEqual({ available: true, outcome: 'unreadable', sessionId: 's2', title: 'Session 2' });
-      await expect(service.read({ sessionId: 's1', turns: [{ from: 4, to: 2 }] }))
+      expect(await service.read(one('s2'))).toMatchObject({
+        outcome: 'read',
+        sessions: [{ outcome: 'unreadable', sessionId: 's2', title: 'Session 2' }],
+        bounds: { unreadableSessions: 1 }
+      });
+      await expect(service.read(one('s1', [{ from: 4, to: 2 }])))
         .rejects.toThrow('Invalid session-recall turn range 4-2.');
     });
   });
@@ -525,9 +541,9 @@ describe('WorkshopTranscriptRecallService over the real store and coordinator', 
     await coordinator.openNamed(savedSessionId);
 
     expect(await service.catalog({})).toMatchObject({ outcome: 'catalog', sessions: [], matchingSessions: 0 });
-    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({
-      outcome: 'unknown-session',
-      liveSession: true
+    expect(await service.read(one(savedSessionId))).toMatchObject({
+      outcome: 'read',
+      sessions: [{ outcome: 'unknown-session', liveSession: true }]
     });
   });
 
@@ -611,12 +627,12 @@ describe('WorkshopTranscriptRecallService over the real store and coordinator', 
       limits: { maximumCachedDocuments: 10, maximumCachedCharacters: 1_000 }
     });
 
-    const cold = await service.read({ sessionId: savedSessionId });
-    const again = await service.read({ sessionId: savedSessionId });
+    const cold = await service.read(one(savedSessionId));
+    const again = await service.read(one(savedSessionId));
 
     expect(JSON.stringify(cold)).toContain(longUrl);
-    expect(cold).toMatchObject({ outcome: 'read', cacheHit: false });
-    expect(again).toMatchObject({ outcome: 'read', cacheHit: false });
+    expect(cold).toMatchObject({ sessions: [{ outcome: 'read', cacheHit: false }] });
+    expect(again).toMatchObject({ sessions: [{ outcome: 'read', cacheHit: false }] });
   });
 
   it('counts a corrupt or oversized saved file without failing the search', async () => {
@@ -698,7 +714,7 @@ describe('recall scope across asynchronous work (PR 126 review F-04)', () => {
 
   it('refuses a warm read when a folder is added while its listing is pending', async () => {
     const { store, service, savedSessionId } = await copiedRoots();
-    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ outcome: 'read' });
+    expect(await service.read(one(savedSessionId))).toMatchObject({ sessions: [{ outcome: 'read' }] });
     const list = store.list.bind(store);
     jest.spyOn(store, 'list').mockImplementation(async (query, signal) => {
       const listing = await list(query, signal);
@@ -706,7 +722,7 @@ describe('recall scope across asynchronous work (PR 126 review F-04)', () => {
       return listing;
     });
 
-    expect(await service.read({ sessionId: savedSessionId }))
+    expect(await service.read(one(savedSessionId)))
       .toEqual({ available: false, reason: 'workspace-changed' });
     expect(await service.search({ query: 'lighthouse' }))
       .toEqual({ available: false, reason: 'workspace-changed' });
@@ -723,12 +739,12 @@ describe('recall scope across asynchronous work (PR 126 review F-04)', () => {
       return result;
     });
 
-    expect(await service.read({ sessionId: savedSessionId }))
+    expect(await service.read(one(savedSessionId)))
       .toEqual({ available: false, reason: 'workspace-changed' });
 
     listing.mockRestore();
     switchTo(ROOT_A);
-    const restored = await service.read({ sessionId: savedSessionId });
+    const restored = await service.read(one(savedSessionId));
     expect(JSON.stringify(restored)).toContain('Root A text');
     expect(JSON.stringify(restored)).not.toContain('Root B text');
   });
@@ -747,20 +763,20 @@ describe('recall scope across asynchronous work (PR 126 review F-04)', () => {
 
     reads.mockRestore();
     switchTo(ROOT_A);
-    expect(await service.read({ sessionId: savedSessionId }))
-      .toMatchObject({ outcome: 'read', cacheHit: false });
+    expect(await service.read(one(savedSessionId)))
+      .toMatchObject({ sessions: [{ outcome: 'read', cacheHit: false }] });
   });
 
   it('keeps documents read under the accepted scope through a call refused at entry', async () => {
     const { service, savedSessionId } = await copiedRoots();
-    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ cacheHit: false });
-    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ cacheHit: true });
+    expect(await service.read(one(savedSessionId))).toMatchObject({ sessions: [{ cacheHit: false }] });
+    expect(await service.read(one(savedSessionId))).toMatchObject({ sessions: [{ cacheHit: true }] });
 
     switchTo(ROOT_B);
-    expect(await service.read({ sessionId: savedSessionId }))
+    expect(await service.read(one(savedSessionId)))
       .toEqual({ available: false, reason: 'workspace-changed' });
     switchTo(ROOT_A);
 
-    expect(await service.read({ sessionId: savedSessionId })).toMatchObject({ cacheHit: true });
+    expect(await service.read(one(savedSessionId))).toMatchObject({ sessions: [{ cacheHit: true }] });
   });
 });

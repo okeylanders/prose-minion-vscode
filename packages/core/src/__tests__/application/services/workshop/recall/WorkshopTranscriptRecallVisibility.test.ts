@@ -28,24 +28,33 @@ import {
 const NOW = Date.parse('2026-10-05T14:30:00.000Z');
 
 async function recallEverything(): Promise<{ data: string; text: string; savedPreview: string }> {
-  const { store, coordinator, log, savedSessionId } = await saveSentinelCorpus();
+  const first = await saveSentinelCorpus();
+  // A second sentinel room in the same workspace, so one read can name both.
+  const { store, coordinator, log, savedSessionId } = await saveSentinelCorpus({ fs: first.fs, idPrefix: 'second' });
   const service = new WorkshopTranscriptRecallService(store, coordinator, log);
   const catalog = await service.catalog({});
+  const matched = await service.catalog({ match: 'lighthouse' });
   const searches = await Promise.all(
     ['lighthouse', 'letters keeper', 'keeper-notes', 'tide tables', 'chapter', 'sentinel']
       .map((query) => service.search({ query }))
   );
-  const read = await service.read({ sessionId: savedSessionId });
-  const ranged = await service.read({ sessionId: savedSessionId, turns: [{ from: 1, to: 3 }, { from: 5, to: 99 }] });
+  const reads = await Promise.all([
+    service.read({ sessions: [{ sessionId: savedSessionId }] }),
+    service.read({ sessions: [{ sessionId: savedSessionId, turns: [{ from: 1, to: 3 }, { from: 5, to: 99 }] }] }),
+    // Several sessions (discussion detail by default), and one session in each detail.
+    service.read({ sessions: [{ sessionId: savedSessionId }, { sessionId: first.savedSessionId, turns: [{ from: 2, to: 9 }] }] }),
+    service.read({ sessions: [{ sessionId: first.savedSessionId }, { sessionId: savedSessionId }], detail: 'full' }),
+    service.read({ sessions: [{ sessionId: first.savedSessionId }], detail: 'discussion' })
+  ]);
   const todos = await service.todos({ status: 'all', match: 'lighthouse' });
   const savedPreview = (await store.readNamed(savedSessionId))!.summary.preview ?? '';
   return {
-    data: JSON.stringify([catalog, searches, read, ranged, todos]),
+    data: JSON.stringify([catalog, matched, searches, reads, todos]),
     text: [
       renderWorkshopRecallCatalog(catalog, { now: NOW }),
+      renderWorkshopRecallCatalog(matched, { now: NOW }),
       ...searches.map((search) => renderWorkshopRecallSearch(search, { now: NOW })),
-      renderWorkshopRecallRead(read, { now: NOW }).content,
-      renderWorkshopRecallRead(ranged, { now: NOW }).content,
+      ...reads.map((read) => renderWorkshopRecallRead(read, { now: NOW }).content),
       renderWorkshopRecallTodos(todos, { now: NOW }).content
     ].join('\n'),
     savedPreview
@@ -71,6 +80,12 @@ describe('session recall visibility', () => {
   it('finds nothing when searching for a hidden body’s words', () => {
     expect(recalled.text).toContain('Search: “sentinel”');
     expect(recalled.text).toMatch(/Search: “sentinel”[^\n]*\n[^\n]*\n\nNo visible turn or session label matched\./);
+  });
+
+  it('reads several sessions, and collapses the tool report in discussion detail', () => {
+    expect(recalled.text).toContain('Read of 2 saved sessions, in the order asked, in discussion detail');
+    expect(recalled.text).toMatch(/· Cliché report · 8 words · read it in full with <turns>\d+<\/turns>\]/);
+    expect(recalled.text).toContain(`[turn 3 · 2:01 PM · Cliché]\n${RECALL_VISIBLE_LABELS.toolReport}`);
   });
 
   it('still returns the labels and lines a reader sees', () => {

@@ -106,14 +106,18 @@ function reportAndSynthesis(
   return report;
 }
 
+/** Tool runs per report-heavy 6.7 chat. */
+export const EXCERPT_REPORT_PASSES = 5;
+
 /**
  * Save the four chats into one workspace. `reportWords` sizes every tool
- * report; four reports of 2,500 words each make one chat's full transcript
- * far longer than its fair share of a 150,000-character read.
+ * report: at the default, five 3,000-word reports make each report-heavy
+ * chat's full transcript about 80,000 characters, so the three 6.7 chats
+ * together overflow a 150,000-character read in full detail.
  */
 export async function saveExcerptCorpus(options: { reportWords?: number } = {}): Promise<RecallExcerptCorpus> {
   const fs = new MemoryFileSystem();
-  const words = options.reportWords ?? 2_500;
+  const words = options.reportWords ?? 3_000;
   const discussion = { stock: [] as string[], cliche: [] as string[], endings: [] as string[] };
   const reports = { stock: [] as Array<{ toolLabel: string; body: string }>, cliche: [] as Array<{ toolLabel: string; body: string }> };
   const todos: Partial<Record<keyof RecallExcerptCorpus['todos'], WorkshopTodoItem>> = {};
@@ -122,7 +126,7 @@ export async function saveExcerptCorpus(options: { reportWords?: number } = {}):
     pinExcerpt(session, 'drafts/chapter-6.7-draft.md', 'The laughter was raucous. He shapped the cup.');
     exchange(session, advance, 'ask-1', 'DISCUSSION-STOCK-1: where does the scene go generic?',
       'DISCUSSION-STOCK-2: the laughter and the cup both lean on stock beats.', discussion.stock);
-    for (const pass of [1, 2, 3, 4]) {
+    for (let pass = 1; pass <= EXCERPT_REPORT_PASSES; pass += 1) {
       const body = reportBody(`stock pass ${pass}`, words);
       const report = reportAndSynthesis(session, advance, 'stock-and-signature', `stock-${pass}`, body,
         `DISCUSSION-STOCK-SYNTHESIS-${pass}: pass ${pass} says start with the laughter.`, discussion.stock);
@@ -147,7 +151,7 @@ export async function saveExcerptCorpus(options: { reportWords?: number } = {}):
   const cliche = await saveRecallRoom('Chapter 6.7 cliché pass', (session, advance) => {
     advance(2 * DAY);
     pinExcerpt(session, 'drafts/chapter-6.7-draft.md', 'Cold as ice, she waited.');
-    for (const pass of [1, 2, 3, 4]) {
+    for (let pass = 1; pass <= EXCERPT_REPORT_PASSES; pass += 1) {
       const body = reportBody(`cliche pass ${pass}`, words);
       const report = reportAndSynthesis(session, advance, 'cliche', `cliche-${pass}`, body,
         `DISCUSSION-CLICHE-SYNTHESIS-${pass}: pass ${pass} flags the simile.`, discussion.cliche);

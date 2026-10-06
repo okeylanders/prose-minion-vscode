@@ -30,14 +30,23 @@ export interface WorkshopRecallReadScope {
   assertHolds(): void;
 }
 
+/** What became of one session the loader was given. */
+export type WorkshopRecallLoadOutcome =
+  | { readonly kind: 'loaded'; readonly document: WorkshopRecallDocument; readonly cacheHit: boolean }
+  | { readonly kind: 'unreadable' }
+  | { readonly kind: 'not-read-by-byte-budget' };
+
 export interface WorkshopRecallLoadedDocuments {
+  /** One per session given, in the same order. */
+  readonly outcomes: readonly WorkshopRecallLoadOutcome[];
+  /** The documents among them, in the same order. */
   readonly documents: WorkshopRecallDocument[];
   readonly notReadByByteBudget: number;
   /** What the reads cost, as every multi-session result reports it. */
   readonly cost: Omit<WorkshopRecallScanBounds, 'listingTruncated'>;
 }
 
-export type WorkshopRecallLoadedDocument =
+type LoadedDocument =
   | { readonly document: WorkshopRecallDocument; readonly cacheHit: boolean; readonly parsedBytes: number }
   | { readonly document?: undefined };
 
@@ -60,6 +69,7 @@ export class WorkshopRecallDocumentLoader {
     scope: WorkshopRecallReadScope,
     signal?: AbortSignal
   ): Promise<WorkshopRecallLoadedDocuments> {
+    const outcomes: WorkshopRecallLoadOutcome[] = [];
     const documents: WorkshopRecallDocument[] = [];
     let notReadByByteBudget = 0;
     let unreadableSessions = 0;
@@ -70,35 +80,40 @@ export class WorkshopRecallDocumentLoader {
       throwIfRecallAborted(signal);
       const cached = this.cache.get(summary.sessionId, summary.updatedAt);
       if (cached) {
+        outcomes.push({ kind: 'loaded', document: cached, cacheHit: true });
         documents.push(cached);
         cacheHits += 1;
         continue;
       }
       if (parsedBytes + unreadableBytesCharged >= byteBudget) {
+        outcomes.push({ kind: 'not-read-by-byte-budget' });
         notReadByByteBudget += 1;
         continue;
       }
       const loaded = await this.load(summary, scope, signal);
       if (!loaded.document) {
+        outcomes.push({ kind: 'unreadable' });
         unreadableSessions += 1;
         unreadableBytesCharged += this.unreadableSessionBytes;
         continue;
       }
+      outcomes.push({ kind: 'loaded', document: loaded.document, cacheHit: false });
       parsedBytes += loaded.parsedBytes;
       documents.push(loaded.document);
     }
     return {
+      outcomes,
       documents,
       notReadByByteBudget,
       cost: { unreadableSessions, parsedBytes, unreadableBytesCharged, cacheHits }
     };
   }
 
-  async load(
+  private async load(
     summary: WorkshopRecallSessionSummary,
     scope: WorkshopRecallReadScope,
     signal?: AbortSignal
-  ): Promise<WorkshopRecallLoadedDocument> {
+  ): Promise<LoadedDocument> {
     const cached = this.cache.get(summary.sessionId, summary.updatedAt);
     if (cached) {
       return { document: cached, cacheHit: true, parsedBytes: 0 };

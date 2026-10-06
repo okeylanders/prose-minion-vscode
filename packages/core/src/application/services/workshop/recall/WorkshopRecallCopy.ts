@@ -49,12 +49,15 @@ function unavailableReason(reason: WorkshopRecallUnavailable['reason']): string 
   }
 }
 
-export function recallUnknownSession(result: WorkshopRecallUnknownSession): string {
-  return recallBody([
-    result.liveSession
-      ? `Session ${recallLabel(result.sessionId)} is the current session. Session recall reads other saved sessions only.`
-      : `No saved session in this workspace has id ${recallLabel(result.sessionId)}. transcript.catalog lists the ids.`
-  ]);
+export function recallUnknownSession(result: Pick<WorkshopRecallUnknownSession, 'sessionId' | 'liveSession'>): string {
+  return recallBody([recallUnknownSessionLine(result)]);
+}
+
+/** Why an id named nothing recall may read: the live room, or an id outside the corpus. */
+export function recallUnknownSessionLine(result: Pick<WorkshopRecallUnknownSession, 'sessionId' | 'liveSession'>): string {
+  return result.liveSession
+    ? `Session ${recallLabel(result.sessionId)} is the current session. Session recall reads other saved sessions only.`
+    : `No saved session in this workspace has id ${recallLabel(result.sessionId)}. transcript.catalog lists the ids.`;
 }
 
 export function recallListingNote(truncated: boolean): string[] {

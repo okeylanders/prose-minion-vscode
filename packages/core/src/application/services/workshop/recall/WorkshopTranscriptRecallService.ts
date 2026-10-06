@@ -40,9 +40,9 @@ import {
   catalogSession,
   matchedSessions,
   narrowedSessions,
-  normalizeTurnRanges,
+  plannedReads,
+  readOfDocument,
   recallableSessions,
-  resolveRange,
   selectWorkshopRecallTodos,
   todoCandidates,
   unknownSession,
@@ -50,13 +50,14 @@ import {
 } from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
 import type {
   WorkshopRecallCatalogResult,
+  WorkshopRecallReadRequest,
   WorkshopRecallReadResult,
   WorkshopRecallSearchBounds,
+  WorkshopRecallSessionRead,
   WorkshopRecallSearchResult,
   WorkshopRecallTodosBounds,
   WorkshopRecallTodosRequest,
   WorkshopRecallTodosResult,
-  WorkshopRecallTurnRange,
   WorkshopRecallUnavailable,
   WorkshopRecallUnavailableReason
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
@@ -243,44 +244,46 @@ export class WorkshopTranscriptRecallService {
   }
 
   /**
-   * Resolve the requested turn ranges, or the whole transcript from turn 1
-   * when none are given. Packing into the read budget is the renderer's
-   * job, because only it knows what the text costs.
+   * Read one to `readSessions` sessions in the order asked (D9), each from
+   * its own ranges or from turn 1. Packing into fair shares is the
+   * renderer's job, because only it knows what the text costs. Cold reads
+   * spend `searchSourceBytes` in request order, a failed one charged as in
+   * search; an unknown, live, unreadable, or unaffordable session is
+   * reported in its place. Throws on a request the codec would refuse.
    */
-  read(
-    request: { sessionId: string; turns?: readonly WorkshopRecallTurnRange[] },
-    signal?: AbortSignal
-  ): Promise<WorkshopRecallReadResult> {
+  async read(request: WorkshopRecallReadRequest, signal?: AbortSignal): Promise<WorkshopRecallReadResult> {
+    const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
+    const planned = plannedReads(request, budgets.readSessions);
+    const detail = request.detail ?? (planned.length > 1 ? 'discussion' : 'full');
     return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallReadResult> => {
-      const summary = corpus.sessions.find((session) => session.sessionId === request.sessionId);
-      if (!summary) {
-        return unknownSession(request.sessionId, corpus.scope.liveSessionId);
-      }
-      const loaded = await this.loader.load(summary, corpus.scope, signal);
-      if (!loaded.document) {
-        return {
-          available: true,
-          outcome: 'unreadable',
-          sessionId: summary.sessionId,
-          title: summary.title
-        };
-      }
-      const { document } = loaded;
-      const fromStart = request.turns === undefined || request.turns.length === 0;
-      const ranges = fromStart
-        ? [{ from: 1, to: Math.max(1, document.header.turnCount) }]
-        : normalizeTurnRanges(request.turns!);
+      const summaries = planned.map(({ sessionId }) =>
+        corpus.sessions.find((session) => session.sessionId === sessionId));
+      const listed = summaries.filter((summary): summary is WorkshopRecallSessionSummary => summary !== undefined);
+      const loaded = await this.loader.loadAll(listed, budgets.searchSourceBytes, corpus.scope, signal);
+      const outcomes = [...loaded.outcomes];
+      const sessions = planned.map((wanted, index): WorkshopRecallSessionRead => {
+        const summary = summaries[index];
+        if (!summary) {
+          return { outcome: 'unknown-session', sessionId: wanted.sessionId, liveSession: wanted.sessionId === corpus.scope.liveSessionId };
+        }
+        const outcome = outcomes.shift()!;
+        switch (outcome.kind) {
+          case 'loaded':
+            return readOfDocument(outcome.document, wanted, outcome.cacheHit);
+          case 'unreadable':
+          case 'not-read-by-byte-budget':
+            return { outcome: outcome.kind, sessionId: summary.sessionId, title: summary.title };
+          default:
+            return assertNever(outcome);
+        }
+      });
+      const bounds = { notReadByByteBudget: loaded.notReadByByteBudget, listingTruncated: corpus.listingTruncated, ...loaded.cost };
       this.log(
-        `read ranges=${ranges.length} cacheHit=${loaded.cacheHit} parsedBytes=${loaded.parsedBytes}`
+        `read sessions=${planned.length} read=${loaded.documents.length} unknown=${planned.length - listed.length} ` +
+        `unreadable=${bounds.unreadableSessions} notRead=${bounds.notReadByByteBudget} detail=${detail} ` +
+        `parsedBytes=${bounds.parsedBytes} cacheHits=${bounds.cacheHits}`
       );
-      return {
-        available: true,
-        outcome: 'read',
-        header: document.header,
-        fromStart,
-        ranges: ranges.map((range) => resolveRange(document, range)),
-        cacheHit: loaded.cacheHit
-      };
+      return { available: true, outcome: 'read', detail, sessions, bounds };
     });
   }
 
@@ -402,4 +405,8 @@ export class WorkshopTranscriptRecallService {
   private log(line: string): void {
     this.outputChannel.appendLine(`[WorkshopTranscriptRecall] ${line}`);
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled session-recall value: ${JSON.stringify(value)}`);
 }

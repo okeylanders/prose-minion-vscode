@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRenderer';
+import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import {
   WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION

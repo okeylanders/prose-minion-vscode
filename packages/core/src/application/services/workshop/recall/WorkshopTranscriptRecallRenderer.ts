@@ -1,14 +1,16 @@
 /**
- * Model-facing text for session recall (ADR 2026-10-05 §4, §6): the catalog,
- * search hits grouped by session, and read windows. Pure: the caller supplies
- * the service's data and the clock.
+ * Model-facing text for session recall (ADR 2026-10-05 §4, §6, D9): the
+ * catalog, search hits grouped by session, and reads. Pure: the caller
+ * supplies the service's data and the clock.
  *
  * - The first line of every body is the one-line quoted-record framing
  *   (WorkshopRecallCopy), so it travels with the evidence when publication
- *   delivers it to others.
+ *   delivers it to others. A read of several sessions has it once.
  * - Search and catalog text state every bound the service disclosed.
- * - A read is a header, a packed window (WorkshopRecallReadWindow), and a
- *   footer naming what was shown and where to continue.
+ * - A read gives each session it names a fair share of its characters
+ *   (WorkshopRecallReadAllocation). Within its share each session reads as
+ *   a section of its own (WorkshopRecallReadSection): a header, a packed
+ *   window, and a footer naming what was shown and where to continue.
  *
  * This module renders the transcript projection only. It never imports the
  * room-frame renderer, whose output includes thread-artifact bodies (F11).
@@ -18,18 +20,15 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
 import { WORKSHOP_TRANSCRIPT_WRITER_LABEL } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import type { WorkshopTranscriptEntry } from '@/application/services/workshop/transcript/WorkshopTranscript';
-import type { WorkshopRecallHeader } from '@/application/services/workshop/recall/WorkshopRecallDocument';
+import { WORKSHOP_RECALL_BLOCK_SEPARATOR } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
+import { allocateWorkshopRecallReadShares } from '@/application/services/workshop/recall/WorkshopRecallReadAllocation';
 import {
-  formatWorkshopRecallTurnRanges,
-  packWorkshopRecallReadWindow,
-  WORKSHOP_RECALL_BLOCK_SEPARATOR,
-  WorkshopRecallDeliveredRange,
-  WorkshopRecallReadWindow,
-  WorkshopRecallTruncatedEntry
-} from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
-import { WorkshopRecallClock } from '@/application/services/workshop/recall/WorkshopRecallTime';
+  prepareWorkshopRecallReadSection,
+  RECALL_PARTICIPANT_CHARACTERS,
+  workshopRecallMinimumReadCharacters,
+  WorkshopRecallRenderedSection
+} from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import {
-  recallBlock,
   recallLabel,
   recallLabelList
 } from '@/application/services/workshop/recall/WorkshopRecallText';
@@ -42,7 +41,8 @@ import {
   recallSavedAt,
   recallScopeLine,
   recallUnavailable,
-  recallUnknownSession
+  recallUnknownSession,
+  WORKSHOP_TRANSCRIPT_RECALL_FRAMING
 } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import type {
   WorkshopRecallHit,
@@ -53,48 +53,40 @@ import type {
   WorkshopRecallCatalogSession,
   WorkshopRecallReadResult,
   WorkshopRecallSearchResult,
-  WorkshopRecallTurnRange
+  WorkshopRecallSessionRead
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 
-/** The context-attachment labels in a read's header. */
-const READ_CONTEXT_LABEL_CHARACTERS = 2_000;
 /** The context-attachment labels in one session-level search hit. */
 const HIT_CONTEXT_LABEL_CHARACTERS = 400;
-/** Participant names on one header or catalog line. */
-const PARTICIPANT_CHARACTERS = 400;
 /** Sessions named in one hit's "also in". */
 const ALSO_IN_SESSIONS = 3;
-/** Ranges one footer or header list names before counting the rest. */
-const LISTED_RANGES = 12;
-
-/**
- * A read's complete text is header + entries + footer. The header and the
- * footer each have a hard cap, so the entries' share is known before any
- * metadata is rendered, whatever a saved file holds (PR 126 review F-01).
- */
-const READ_HEADER_CHARACTERS = 4_000;
-const READ_FOOTER_CHARACTERS = 1_000;
-/**
- * The smallest supported `readCharacters`: both caps, plus room for a
- * readable head of one entry. A smaller window is a programming error.
- */
-export const WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS =
-  READ_HEADER_CHARACTERS + READ_FOOTER_CHARACTERS + 1_000;
+/** What discussion detail keeps and what it collapses (D10). */
+const DISCUSSION_DETAIL =
+  "each tool report is one line, and the writer's messages, persona replies, and events are whole";
 
 export interface WorkshopRecallRenderOptions {
   /** Epoch ms, for relative dates. */
   readonly now: number;
-  /** Defaults to PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters. */
+  /**
+   * The whole read's characters. Defaults to
+   * PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters; a caller may
+   * lower it, never below workshopRecallMinimumReadCharacters(sessions).
+   */
   readonly readCharacters?: number;
+}
+
+/** One named session's part of a rendered read, in the order asked, for provenance. */
+export interface WorkshopRecallRenderedSession extends Omit<WorkshopRecallRenderedSection, 'text'> {
+  readonly sessionId: string;
+  readonly outcome: WorkshopRecallSessionRead['outcome'];
+  /** The characters the allocation gave it, the separator before it included. */
+  readonly share: number;
 }
 
 export interface WorkshopRecallRenderedRead {
   readonly content: string;
-  /** Empty unless the result was a read. */
-  readonly delivered: readonly WorkshopRecallDeliveredRange[];
-  /** Requested turns the window did not reach; empty when it reached them all. */
-  readonly continuation: readonly WorkshopRecallTurnRange[];
-  readonly truncatedEntry?: WorkshopRecallTruncatedEntry;
+  /** One per named session, in the order asked; empty when recall was unavailable. */
+  readonly sessions: readonly WorkshopRecallRenderedSession[];
 }
 
 export function renderWorkshopRecallCatalog(
@@ -189,119 +181,75 @@ export function renderWorkshopRecallSearch(
   return recallBody(lines);
 }
 
+/**
+ * A read within `readCharacters`, whatever its saved files hold: each named
+ * session's section gets a fair share (D9), a share never smaller than the
+ * per-session minimum unless the section needs less, and the shares never
+ * sum past the budget. Throws a RangeError below the minimum for the
+ * number of sessions named.
+ */
 export function renderWorkshopRecallRead(
   result: WorkshopRecallReadResult,
   options: WorkshopRecallRenderOptions
 ): WorkshopRecallRenderedRead {
   if (!result.available) {
-    return notRead(recallUnavailable(result));
-  }
-  if (result.outcome === 'unknown-session') {
-    return notRead(recallUnknownSession(result));
-  }
-  if (result.outcome === 'unreadable') {
-    return notRead(recallBody([
-      `The saved session ${recallQuoted(result.title)} (id ${recallLabel(result.sessionId)}) could not be read; ` +
-        'its file may be damaged or too large. Nothing from it is shown.'
-    ]));
+    return { content: recallUnavailable(result), sessions: [] };
   }
   const budget = options.readCharacters ?? PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters;
-  if (budget < WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS) {
+  const minimum = workshopRecallMinimumReadCharacters(result.sessions.length);
+  if (budget < minimum) {
     throw new RangeError(
-      `A session-recall read needs at least ${WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS} characters; got ${budget}.`
+      `A session-recall read of ${recallCount(result.sessions.length, 'session')} needs at least ${minimum} characters; got ${budget}.`
     );
   }
-  const header = recallBlock(
-    recallBody([...readHeader(result.header, options.now), requestedLine(result), ...contextLine(result.header)]),
-    READ_HEADER_CHARACTERS,
-    '[header shortened to fit the window]'
-  );
-  // header + separator + blocks (each costed with its separator) + footer.
-  const window = packWorkshopRecallReadWindow(
-    result.ranges,
-    result.header.timezone,
-    budget - header.length - WORKSHOP_RECALL_BLOCK_SEPARATOR.length - READ_FOOTER_CHARACTERS,
-    'full'
-  );
-  const footer = recallBlock(
-    readFooter(result, window).join('\n'),
-    READ_FOOTER_CHARACTERS,
-    '[footer shortened]'
-  );
+  const count = result.sessions.length;
+  const sections = result.sessions.map((read, index) => prepareWorkshopRecallReadSection(read, {
+    now: options.now,
+    detail: result.detail,
+    opening: index === 0 ? readOpening(result) : [],
+    ...(count > 1 ? { ordinal: { index: index + 1, count } } : {})
+  }));
+  // Each share covers its section and the separator before it.
+  const separator = (index: number): number => (index > 0 ? WORKSHOP_RECALL_BLOCK_SEPARATOR.length : 0);
+  const shares = allocateWorkshopRecallReadShares(budget, sections.map((section, index) => section.need + separator(index)));
+  const rendered = sections.map((section, index) => section.render(shares[index] - separator(index)));
   return {
-    content: [header, ...window.blocks, footer].join(WORKSHOP_RECALL_BLOCK_SEPARATOR),
-    delivered: window.delivered,
-    continuation: window.continuation,
-    ...(window.truncatedEntry ? { truncatedEntry: window.truncatedEntry } : {})
+    content: rendered.map((section) => section.text).join(WORKSHOP_RECALL_BLOCK_SEPARATOR),
+    sessions: rendered.map(({ text: _text, ...section }, index) => ({
+      sessionId: sessionIdOf(result.sessions[index]),
+      outcome: result.sessions[index].outcome,
+      share: shares[index],
+      ...section
+    }))
   };
 }
 
-// ── Read windows ─────────────────────────────────────────────────────────────
+// ── Reads ────────────────────────────────────────────────────────────────────
 
-/** Context labels come last, so a header over its cap loses them first. */
-function readHeader(header: WorkshopRecallHeader, now: number): string[] {
-  const clock = new WorkshopRecallClock(header.timezone);
+/** The framing line, then, for several sessions or discussion detail, what the read is. */
+function readOpening(result: Extract<WorkshopRecallReadResult, { outcome: 'read' }>): string[] {
+  const count = result.sessions.length;
+  const unlisted = result.bounds.listingTruncated &&
+    result.sessions.some((read) => read.outcome === 'unknown-session' && !read.liveSession);
+  const listing = unlisted ? recallListingNote(true) : [];
+  if (count === 1) {
+    return [
+      WORKSHOP_TRANSCRIPT_RECALL_FRAMING,
+      ...(result.detail === 'discussion' ? [`Discussion detail: ${DISCUSSION_DETAIL}.`] : []),
+      ...listing
+    ];
+  }
   return [
-    `Session ${recallQuoted(header.title)} · id ${recallLabel(header.sessionId)}`,
-    `Saved ${recallSavedAt(header.savedAt, header.timezone, now)} · started ${clock.date(Date.parse(header.startedAt))}`,
-    `Host ${recallLabel(header.host)} · participants ${recallLabelList(header.participants, PARTICIPANT_CHARACTERS)}`,
-    ...recallScopeLine(header.scope, header.excerptLabel)
+    WORKSHOP_TRANSCRIPT_RECALL_FRAMING,
+    `Read of ${count} saved sessions, in the order asked, in ${result.detail} detail` +
+      `${result.detail === 'discussion' ? `: ${DISCUSSION_DETAIL}` : ''}. ` +
+      'Each session has an equal share of this read; one that needs less leaves the rest to the others.',
+    ...listing
   ];
 }
 
-function contextLine(header: WorkshopRecallHeader): string[] {
-  return header.contextLabels.length > 0
-    ? [`Context attachments (labels only): ${recallLabelList(header.contextLabels, READ_CONTEXT_LABEL_CHARACTERS)}`]
-    : [];
-}
-
-function requestedLine(result: Extract<WorkshopRecallReadResult, { outcome: 'read' }>): string {
-  const total = result.header.turnCount;
-  return result.fromStart
-    ? `Requested: the whole session from turn 1 (${recallCount(total, 'turn')}).`
-    : `Requested: turns ${listedRanges(result.ranges)} of ${total}.`;
-}
-
-/** At most LISTED_RANGES ranges in the `<turns>` grammar, then a count of the rest. */
-function listedRanges(ranges: readonly WorkshopRecallTurnRange[]): string {
-  const listed = formatWorkshopRecallTurnRanges(ranges.slice(0, LISTED_RANGES));
-  return ranges.length > LISTED_RANGES ? `${listed}, and ${ranges.length - LISTED_RANGES} more ranges` : listed;
-}
-
-function readFooter(
-  result: Extract<WorkshopRecallReadResult, { outcome: 'read' }>,
-  window: WorkshopRecallReadWindow
-): string[] {
-  const lines: string[] = [];
-  const empty = result.ranges.filter((range) => range.entries.length === 0);
-  if (window.delivered.length === 0 && empty.length === result.ranges.length) {
-    lines.push(
-      result.header.turnCount === 0
-        ? 'This session has no turns.'
-        : `No visible turns in ${listedRanges(empty)}; ` +
-          `this session ends at turn ${result.header.turnCount}.`
-    );
-    return lines;
-  }
-  lines.push(
-    window.delivered.length === 0
-      ? 'No turn fit in this window.'
-      : window.continuation.length === 0
-        ? `Shown: turns ${listedRanges(window.delivered)}; every requested turn is here.`
-        : `Shown: turns ${listedRanges(window.delivered)}; the window is full.`
-  );
-  if (empty.length > 0) {
-    lines.push(`No visible turns in ${listedRanges(empty)}.`);
-  }
-  if (window.continuation.length > 0) {
-    const next = window.continuation.slice(0, LISTED_RANGES);
-    const later = window.continuation.length - next.length;
-    lines.push(
-      `Continue with <turns>${formatWorkshopRecallTurnRanges(next)}</turns>` +
-        (later > 0 ? `, then the ${later} further ranges requested.` : '.')
-    );
-  }
-  return lines;
+function sessionIdOf(read: WorkshopRecallSessionRead): string {
+  return read.outcome === 'read' ? read.header.sessionId : read.sessionId;
 }
 
 // ── Catalog and search ───────────────────────────────────────────────────────
@@ -310,7 +258,7 @@ function catalogEntry(session: WorkshopRecallCatalogSession, ordinal: number, no
   return [
     `${ordinal}. ${recallQuoted(session.title)} · id ${recallLabel(session.sessionId)}`,
     `   Saved ${recallSavedAt(session.savedAt, session.timezone, now)}`,
-    `   Host ${recallLabel(session.host)} · participants ${recallLabelList(session.participants, PARTICIPANT_CHARACTERS)}`,
+    `   Host ${recallLabel(session.host)} · participants ${recallLabelList(session.participants, RECALL_PARTICIPANT_CHARACTERS)}`,
     `   ${[...recallScopeLine(session.scope, session.excerptLabel), `last turn ${session.lastTurn}`].join(' · ')}`
   ];
 }
@@ -397,10 +345,6 @@ function firstTurnHit(
 }
 
 // ── Shared copy ──────────────────────────────────────────────────────────────
-
-function notRead(content: string): WorkshopRecallRenderedRead {
-  return { content, delivered: [], continuation: [] };
-}
 
 function assertNever(value: never): never {
   throw new Error(`Unhandled session-recall value: ${JSON.stringify(value)}`);
