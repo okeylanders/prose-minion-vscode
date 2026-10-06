@@ -32,6 +32,13 @@ export type WorkshopRecallUnavailableReason =
   | 'workspace-changed'
   | 'not-ready';
 
+/**
+ * How much of each turn a read shows (D10). `discussion` collapses each tool
+ * report to one line and keeps everything else whole; `full` shows it all.
+ */
+export const WORKSHOP_RECALL_READ_DETAILS = ['full', 'discussion'] as const;
+export type WorkshopRecallReadDetail = (typeof WORKSHOP_RECALL_READ_DETAILS)[number];
+
 /** Inclusive, 1-based ledger positions. */
 export interface WorkshopRecallTurnRange {
   readonly from: number;

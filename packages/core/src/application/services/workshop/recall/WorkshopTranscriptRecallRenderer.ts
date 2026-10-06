@@ -220,7 +220,8 @@ export function renderWorkshopRecallRead(
   const window = packWorkshopRecallReadWindow(
     result.ranges,
     result.header.timezone,
-    budget - header.length - WORKSHOP_RECALL_BLOCK_SEPARATOR.length - READ_FOOTER_CHARACTERS
+    budget - header.length - WORKSHOP_RECALL_BLOCK_SEPARATOR.length - READ_FOOTER_CHARACTERS,
+    'full'
   );
   const footer = recallBlock(
     readFooter(result, window).join('\n'),
