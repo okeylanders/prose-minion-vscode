@@ -6,10 +6,13 @@
 
 import type {
   WorkshopPersonaId,
-  WorkshopSessionScope,
-  WorkshopTodoStatus,
-  WorkshopToolId
+  WorkshopSessionScope
 } from '@messages';
+import type {
+  WorkshopRecallReadDetail,
+  WorkshopRecallTodoSourceId,
+  WorkshopRecallTodoStatusFilter
+} from '@shared/types/workshopCapabilities';
 import type {
   WorkshopRecallEntry,
   WorkshopRecallHeader,
@@ -31,13 +34,6 @@ export type WorkshopRecallUnavailableReason =
   | 'multi-root'
   | 'workspace-changed'
   | 'not-ready';
-
-/**
- * How much of each turn a read shows (D10). `discussion` collapses each tool
- * report to one line and keeps everything else whole; `full` shows it all.
- */
-export const WORKSHOP_RECALL_READ_DETAILS = ['full', 'discussion'] as const;
-export type WorkshopRecallReadDetail = (typeof WORKSHOP_RECALL_READ_DETAILS)[number];
 
 /** Inclusive, 1-based ledger positions. */
 export interface WorkshopRecallTurnRange {
@@ -189,12 +185,6 @@ export type WorkshopRecallReadResult =
       readonly sessions: readonly WorkshopRecallSessionRead[];
       readonly bounds: WorkshopRecallReadBounds;
     };
-
-/** `<status>` (D7). `open` includes stale to-dos, each marked. */
-export type WorkshopRecallTodoStatusFilter = WorkshopTodoStatus | 'all';
-
-/** `<source>`: a tool id or a persona id. The two closed lists share no id. */
-export type WorkshopRecallTodoSourceId = WorkshopToolId | WorkshopPersonaId;
 
 interface WorkshopRecallTodoFilters {
   /** Defaults to `open`. */

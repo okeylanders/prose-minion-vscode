@@ -24,11 +24,10 @@ import type {
   WorkshopRecallTodoSession,
   WorkshopRecallTodosBounds,
   WorkshopRecallTodosRequest,
-  WorkshopRecallTodoSourceId,
-  WorkshopRecallTodoStatusFilter,
   WorkshopRecallTurnRange,
   WorkshopRecallUnknownSession
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallTodoSourceId, WorkshopRecallTodoStatusFilter } from '@shared/types/workshopCapabilities';
 import type { WorkshopRecallSessionSummary } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
 
 /** Newest first, the live room excluded, and one session per id. */

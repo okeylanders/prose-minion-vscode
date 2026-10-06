@@ -20,19 +20,48 @@ const ROOT = 'prose-minion-tool-call';
 
 type Rejection = Extract<WorkshopCapabilityInspection, { kind: 'invalid' }>;
 
-/** A parsed call: its operation name and each field's trimmed text. */
+/** One field element, in document order, its text trimmed. */
+export interface WorkshopCapabilityXmlField {
+  readonly name: string;
+  readonly attributes: Readonly<Record<string, string>>;
+  readonly value: string;
+}
+
+/**
+ * A parsed call: its operation name, each unique field's trimmed text, and
+ * every field element in order (a repeatable field appears once per element).
+ */
 export interface WorkshopCapabilityXmlCall {
   readonly kind: 'call';
   readonly operation: string | undefined;
   readonly fields: ReadonlyMap<string, string>;
+  readonly elements: readonly WorkshopCapabilityXmlField[];
 }
+
+/**
+ * Which fields of an operation may repeat, and which attributes a field may
+ * carry. Every other field is unique and bare, so the policy only ever
+ * admits more than the strict default.
+ */
+export interface WorkshopCapabilityXmlFieldPolicy {
+  repeatable(operation: string | undefined, field: string): boolean;
+  attributes(operation: string | undefined, field: string): readonly string[];
+}
+
+const BARE_FIELDS: WorkshopCapabilityXmlFieldPolicy = {
+  repeatable: () => false,
+  attributes: () => []
+};
 
 export type WorkshopCapabilityXmlDocument =
   | { readonly kind: 'none' }
   | Rejection
   | WorkshopCapabilityXmlCall;
 
-export function parseWorkshopCapabilityXmlDocument(candidate: string): WorkshopCapabilityXmlDocument {
+export function parseWorkshopCapabilityXmlDocument(
+  candidate: string,
+  policy: WorkshopCapabilityXmlFieldPolicy = BARE_FIELDS
+): WorkshopCapabilityXmlDocument {
   const source = candidate.trim();
   if (!source) {
     return { kind: 'none' };
@@ -85,8 +114,10 @@ export function parseWorkshopCapabilityXmlDocument(candidate: string): WorkshopC
   let rootCount = 0;
   let operation: string | undefined;
   let currentField: string | undefined;
+  let currentAttributes: Readonly<Record<string, string>> = {};
   let currentValue = '';
   const fields = new Map<string, string>();
+  const elements: WorkshopCapabilityXmlField[] = [];
   const parser = new SaxesParser();
 
   parser.on('error', () => reject('malformed-xml'));
@@ -105,13 +136,15 @@ export function parseWorkshopCapabilityXmlDocument(candidate: string): WorkshopC
       }
       operation = typeof tag.attributes.name === 'string' ? tag.attributes.name : undefined;
     } else if (depth === 1) {
-      if (Object.keys(tag.attributes).length !== 0) {
+      const allowed = policy.attributes(operation, tag.name);
+      if (Object.keys(tag.attributes).some((attribute) => !allowed.includes(attribute))) {
         reject('field-attributes', tag.name);
       }
-      if (fields.has(tag.name) || currentField === tag.name) {
+      if ((fields.has(tag.name) || currentField === tag.name) && !policy.repeatable(operation, tag.name)) {
         reject('duplicate-field', tag.name);
       }
       currentField = tag.name;
+      currentAttributes = { ...tag.attributes };
       currentValue = '';
     } else {
       reject('unexpected-field', tag.name);
@@ -129,7 +162,9 @@ export function parseWorkshopCapabilityXmlDocument(candidate: string): WorkshopC
   parser.on('closetag', () => {
     if (depth === 2 && currentField) {
       fields.set(currentField, currentValue.trim());
+      elements.push({ name: currentField, attributes: currentAttributes, value: currentValue.trim() });
       currentField = undefined;
+      currentAttributes = {};
       currentValue = '';
     }
     depth -= 1;
@@ -149,5 +184,5 @@ export function parseWorkshopCapabilityXmlDocument(candidate: string): WorkshopC
   if (rejection) {
     return operation ? { ...rejection, operation } : rejection;
   }
-  return { kind: 'call', operation, fields };
+  return { kind: 'call', operation, fields, elements };
 }

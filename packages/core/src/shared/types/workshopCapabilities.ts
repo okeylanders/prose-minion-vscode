@@ -1,6 +1,7 @@
 import type { TokenUsage } from './messages/tokenUsage';
 import type {
   WorkshopPersonaId,
+  WorkshopTodoStatus,
   WorkshopToolId
 } from '@messages';
 import type { ContextPathGroup } from './context';
@@ -63,6 +64,22 @@ export function workshopCapabilityFamily(
   }
 }
 
+/**
+ * How much of each turn a session-recall read shows (ADR 2026-10-05 D10).
+ * `discussion` collapses each tool report to one line and keeps everything
+ * else whole; `full` shows it all.
+ */
+export const WORKSHOP_RECALL_READ_DETAILS = ['full', 'discussion'] as const;
+export type WorkshopRecallReadDetail = (typeof WORKSHOP_RECALL_READ_DETAILS)[number];
+
+/** `<status>` on `transcript.todos` (D7). `open` includes stale to-dos, each marked. */
+export type WorkshopRecallTodoStatusFilter = WorkshopTodoStatus | 'all';
+export const WORKSHOP_RECALL_TODO_STATUS_FILTERS =
+  ['open', 'completed', 'dismissed', 'all'] as const satisfies readonly WorkshopRecallTodoStatusFilter[];
+
+/** `<source>` on `transcript.todos`: a tool id or a persona id. The two closed lists share no id. */
+export type WorkshopRecallTodoSourceId = WorkshopToolId | WorkshopPersonaId;
+
 export type WorkshopAnalysisInputMode = 'inherit' | 'prepend' | 'replace' | 'omit';
 
 export interface WorkshopAnalysisInputSelection {
@@ -113,6 +130,58 @@ export type WorkshopCapabilityRequest =
       startLine?: number;
       endLine?: number;
     };
+
+/** Inclusive, 1-based positions in a saved session's turn ledger: "turn N". */
+export interface WorkshopTranscriptTurnRange {
+  from: number;
+  to: number;
+}
+
+/** One session a `transcript.read` names, with its own ranges; none means from turn 1. */
+export interface WorkshopTranscriptReadSession {
+  sessionId: string;
+  turns?: WorkshopTranscriptTurnRange[];
+}
+
+/**
+ * `transcript.todos` (D6). `<recent>` and `<session>` are exclusive, so the
+ * type cannot hold both.
+ */
+export type WorkshopTranscriptTodosRequest = {
+  capability: 'transcript.todos';
+  status?: WorkshopRecallTodoStatusFilter;
+  match?: string;
+  source?: WorkshopRecallTodoSourceId;
+  personaId?: WorkshopPersonaId;
+} & (
+  | { recent?: number; sessionId?: undefined }
+  | { sessionId: string; recent?: undefined }
+);
+
+/**
+ * Session recall's requests (ADR 2026-10-05 §1, D6, D8–D10), as the codec
+ * validated them: every id has a safe shape, every persona is an id, and
+ * every bound the prompt budgets set holds.
+ */
+export type WorkshopTranscriptRecallRequest =
+  | {
+      capability: 'transcript.catalog';
+      personaId?: WorkshopPersonaId;
+      match?: string;
+    }
+  | {
+      capability: 'transcript.search';
+      query: string;
+      sessionId?: string;
+      personaId?: WorkshopPersonaId;
+    }
+  | {
+      capability: 'transcript.read';
+      /** One to `readSessions`, distinct, in the order asked. */
+      sessions: WorkshopTranscriptReadSession[];
+      detail?: WorkshopRecallReadDetail;
+    }
+  | WorkshopTranscriptTodosRequest;
 
 export type WorkshopCapabilityStatus =
   | 'success'

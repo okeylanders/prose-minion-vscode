@@ -42,9 +42,9 @@ import {
   recallUnknownSession
 } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import type {
-  WorkshopRecallTodosResult,
-  WorkshopRecallTodoStatusFilter
+  WorkshopRecallTodosResult
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallTodoStatusFilter } from '@shared/types/workshopCapabilities';
 
 /** The framing line, the summary, and the filters; every filter at its bound is near 1,310. */
 const TODO_HEADER_CHARACTERS = 1_500;

@@ -24,11 +24,11 @@ import {
   WORKSHOP_RECALL_BLOCK_SEPARATOR
 } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import type {
-  WorkshopRecallReadDetail,
   WorkshopRecallReadResult,
   WorkshopRecallSessionRead,
   WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallReadDetail } from '@shared/types/workshopCapabilities';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   dividerTurn,

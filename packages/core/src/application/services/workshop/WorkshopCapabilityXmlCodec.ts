@@ -30,7 +30,19 @@ export type WorkshopCapabilityRejectionReason =
   | 'unknown-resource-group'
   | 'invalid-resource-path'
   | 'invalid-line-range'
-  | 'oversized-input';
+  | 'oversized-input'
+  // Session recall (WorkshopTranscriptRecallXmlCodec).
+  | 'invalid-session-id'
+  | 'invalid-turn-selection'
+  | 'ambiguous-turns'
+  | 'too-many-sessions'
+  | 'duplicate-session'
+  | 'invalid-detail'
+  | 'unknown-persona'
+  | 'unknown-source'
+  | 'invalid-status'
+  | 'invalid-recent'
+  | 'conflicting-session-selection';
 
 export type WorkshopCapabilityInspection =
   | { readonly kind: 'none' }

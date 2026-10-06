@@ -31,10 +31,10 @@ import {
   workshopRecallTimeKnown
 } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import type {
-  WorkshopRecallReadDetail,
   WorkshopRecallReadRange,
   WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallReadDetail } from '@shared/types/workshopCapabilities';
 
 /** The "[turn N cut here …]" notice. */
 const NOTICE_RESERVE = 120;

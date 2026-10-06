@@ -39,10 +39,10 @@ import {
 } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import type { WorkshopRecallHeader } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import type {
-  WorkshopRecallReadDetail,
   WorkshopRecallSessionRead,
   WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallReadDetail } from '@shared/types/workshopCapabilities';
 
 /** The context-attachment labels in a read's header. */
 const READ_CONTEXT_LABEL_CHARACTERS = 2_000;

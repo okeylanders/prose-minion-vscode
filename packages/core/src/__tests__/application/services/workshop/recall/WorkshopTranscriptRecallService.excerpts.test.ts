@@ -16,12 +16,12 @@ import {
 import { renderWorkshopRecallTodos } from '@/application/services/workshop/recall/WorkshopRecallTodoList';
 import type {
   WorkshopRecallCatalogResult,
-  WorkshopRecallReadDetail,
   WorkshopRecallReadRequest,
   WorkshopRecallReadResult,
   WorkshopRecallSessionRead,
   WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallReadDetail } from '@shared/types/workshopCapabilities';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { countWords } from '@/utils/textUtils';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
