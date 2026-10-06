@@ -67,6 +67,28 @@ export interface CapabilityDeliveredSource {
   readonly sizeChars: number;
 }
 
+/**
+ * The room a model's context window has for one capability call's evidence,
+ * by the context preflight's own estimate (ADR 2026-10-05 D11). The engine
+ * supplies it when the model's live window is known; a capability that can
+ * deliver a lot may bound itself by it, and the rest ignore it.
+ */
+export interface CapabilityContextWindow {
+  /** The model's live context length, in tokens. */
+  readonly contextLength: number;
+  /**
+   * The next request before its evidence: retained history, this turn's
+   * messages, the call itself, and the evidence message's overhead.
+   */
+  readonly requestTokens: number;
+  /** Reserved for the reply: the run's maxTokens, else the preflight's default. */
+  readonly outputTokens: number;
+  /** The preflight's safety headroom. */
+  readonly headroomTokens: number;
+  /** What evidence can add before the next request fails the preflight; never below zero. */
+  readonly freeInputTokens: number;
+}
+
 export interface CapabilityFulfillment {
   readonly evidence: string;
   readonly artifacts: readonly CapabilityArtifact[];
@@ -93,7 +115,8 @@ export interface AgentCapability<
   /** Optional compact reminder added to each retained continuation turn. */
   appendTurnContract?(userMessage: string): Promise<string>;
   inspectRequest(candidate: string): AgentCapabilityInspection<Request, Rejection>;
-  fulfill(request: Request): Promise<CapabilityFulfillment>;
+  /** `window` is present when the model's live context window is known. */
+  fulfill(request: Request, window?: CapabilityContextWindow): Promise<CapabilityFulfillment>;
   stripToolCalls(content: string): string;
   statusMessage(request: Request): string;
   statusTicker?(request: Request): string | undefined;
