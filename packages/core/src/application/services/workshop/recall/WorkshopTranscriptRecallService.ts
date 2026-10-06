@@ -255,17 +255,19 @@ export class WorkshopTranscriptRecallService {
     const planned = plannedReads(request, budgets.readSessions);
     const detail = request.detail ?? (planned.length > 1 ? 'discussion' : 'full');
     return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallReadResult> => {
-      const summaries = planned.map(({ sessionId }) =>
-        corpus.sessions.find((session) => session.sessionId === sessionId));
-      const listed = summaries.filter((summary): summary is WorkshopRecallSessionSummary => summary !== undefined);
-      const loaded = await this.loader.loadAll(listed, budgets.searchSourceBytes, corpus.scope, signal);
-      const outcomes = [...loaded.outcomes];
+      // Each listed session keeps its place in the request, and its outcome pairs with it there.
+      const listed = planned.flatMap(({ sessionId }, index) => {
+        const summary = corpus.sessions.find((session) => session.sessionId === sessionId);
+        return summary ? [{ index, summary }] : [];
+      });
+      const loaded = await this.loader.loadAll(listed.map(({ summary }) => summary), budgets.searchSourceBytes, corpus.scope, signal);
+      const outcomes = new Map(listed.map(({ index, summary }, order) => [index, { summary, outcome: loaded.outcomes[order] }]));
       const sessions = planned.map((wanted, index): WorkshopRecallSessionRead => {
-        const summary = summaries[index];
-        if (!summary) {
+        const found = outcomes.get(index);
+        if (!found) {
           return { outcome: 'unknown-session', sessionId: wanted.sessionId, liveSession: wanted.sessionId === corpus.scope.liveSessionId };
         }
-        const outcome = outcomes.shift()!;
+        const { summary, outcome } = found;
         switch (outcome.kind) {
           case 'loaded':
             return readOfDocument(outcome.document, wanted, outcome.cacheHit);
