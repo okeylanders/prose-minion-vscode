@@ -931,6 +931,128 @@ For Slice 4:
 - **`docs/ARCHITECTURE.md` and `AGENTS.md`** gain the family, the new
   modules, and the engine's window seam.
 
+## Implementation note 2026-10-06: Slice 4
+
+The family is enabled. Host and guest personas carry
+`transcript-recall-capability.md` in their system prompt, right after
+`analysis-capability.md`, so rooms reopened from before this change learn
+it when archive import rebuilds their prompts. The live pass and budget
+tuning stay in Slice 5.
+
+Okey decided four questions the ADR and the notes left open:
+
+- **Decision 1: the numbers the grammar quotes.** Only those a persona acts
+  on: `readsPerTurn`, `readCharactersPerTurn`, `readSessions`, `turnRanges`,
+  and `todoSessions` (the largest `<recent>`, and the default). Byte
+  budgets, hit caps, the cache, input-length ceilings, and the per-session
+  minimum stay internal; results and refusals state them when they matter.
+  Recall calls "use one of the turn's capability calls" with no number,
+  because the dynamic contract owns `callsPerTurn`.
+- **Decision 2: the pointer line.** One unconditional line,
+  `The stable transcript.* grammar is in your system instructions.`,
+  beside the `analysis.run` line in both resource branches. The contract
+  freezes at the first message, and availability is a per-call fact each
+  result reports. Neither the turn reminder nor the resource-availability
+  text mentions recall: the reminder states the call allowance, and the
+  unavailable line names only `resource.*`.
+- **Decision 3: when to recall.** Only when the writer refers to an
+  earlier conversation, a past decision, "last time", or "the other chat",
+  or asks for a summary across chats or for open to-dos. Never routinely,
+  never to fill a gap the writer did not raise. A refinement of §8: when
+  earlier work looks plainly relevant but the writer has not raised it, a
+  persona may offer in one line ("I can look back at saved sessions if
+  that would help"), never call, and not repeat an offer the writer passed
+  over.
+- **Decision 4: guests.** The same grammar file for both bases, as §8
+  says. The guest charter said every capability result was "delivered
+  privately into this conversation, not to the room", which was never true
+  of published evidence (`WorkshopSessionService.ts:1690-1698` publishes a
+  guest's evidence when its reply commits, as it does the host's). The
+  paragraph was rewritten once rather than gaining a contradicting
+  sentence. Results arrive privately while the guest works. Dictionary
+  entries, analysis reports, resource reads, and saved-session reads and
+  to-do lists reach the room with the reply. Catalogs and searches stay
+  private. A witness ties that copy to `WorkshopRoomAudience` for every
+  operation.
+
+One runtime change, approved by Okey before coding:
+
+- **A one-session report hint names its detail.** Writing the
+  "followed together" rule surfaced a trap the Slice 3 decision 4 form
+  left open. In a one-session discussion read, a hint was
+  `<turns>12</turns>`, full only through the one-session default. Followed
+  together with that read's continuation,
+  `<turns>41-72</turns> <detail>discussion</detail>`, the codec merged the
+  ranges into one discussion read. The report collapsed again, silently,
+  and the read counted against `readsPerTurn`. The hint is now
+  `<turns>12</turns> <detail>full</detail>`, so that mix is a
+  `conflicting-detail` refusal, as it already was in a read of several
+  sessions. This changes D10's documented form. A collapsed line gains 22
+  characters and stays shorter than the several-session form, so the read
+  bounds are unchanged.
+
+The grammar doc teaches:
+
+- the four calls with every field;
+- `turns="…"` and the sibling `<turns>` rule;
+- `<detail>`, with discussion the default for several sessions;
+- personas by id or label;
+- `<match>6.7</match>` as the exhaustive short form (Slice 2C note);
+- the six continuation and hint forms the renderers emit;
+- following them as written: a form without `<session>` goes beside the
+  one session it came from, several go together when they name different
+  sessions and one detail, and hints naming one session combine their
+  ranges (PR 130 F-02);
+- the read limits, the window note, both minimum refusals, and the
+  unavailable and unknown-session results.
+
+Beyond §8, `interaction-contract.md` also says that improvised color found
+in a recalled transcript stays noncanonical: it belonged to that session.
+
+Witnesses:
+
+- `transcriptRecallPromptSync.test.ts` pins every number the prompt quotes
+  to `PROMPT_BUDGETS` and fails on any other number in its prose.
+- The same test decodes every XML example through the real codec: each
+  refused example gets the reason the prose names. It also matches the
+  taught forms against the renderers' output over real saved sessions,
+  both ways, and decodes each form, followed as taught, to the read it
+  promises.
+- A reopened room: a host and a guest archive whose frozen first-turn
+  contract never mentions `transcript.*` are imported through the real
+  `PromptLoader`, `ConversationManager`, and engine. Each rebuilt system
+  prompt carries the whole grammar, and each first message is unchanged.
+- Path-chain tests cover both bases. The codec test covers the pointer
+  line in both resource branches.
+
+Mutation check: each change was reverted on its own, and a witness failed
+each time. That covered the hint's detail, the path entry, the pointer
+line, the guest paragraph, the contract paragraph, a publishable
+operation, a budget value, a stray number, and a malformed example.
+
+Prompt cost and caches:
+
+- The grammar adds about 9,400 bytes, roughly 2,350 tokens by the
+  preflight's estimate, to every host and guest system prompt.
+- `base.md`, `guest-base.md`, and `interaction-contract.md` change too.
+  So every persona system prompt changes once: on upgrade, each persona
+  conversation's next request, new or reopened, misses the provider's
+  prompt cache once, then caches as before.
+- The pointer line changes only conversations started after the upgrade;
+  a retained conversation keeps its frozen first message.
+
+`docs/ARCHITECTURE.md` gains the family table and a Session Recall
+section. `AGENTS.md` gains a short Session Recall section.
+
+For Slice 5:
+
+- U2: whether fast models copy 36-character session ids.
+- Whether personas follow continuations and hints as written, and combine
+  same-session hints.
+- How often the decision 3 offer appears, and whether it becomes a tic.
+- Whether the 2,350-token grammar earns its place in every persona prompt.
+- Open questions 5–8.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**
