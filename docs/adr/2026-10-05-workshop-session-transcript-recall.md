@@ -998,7 +998,7 @@ The grammar doc teaches:
 - `<detail>`, with discussion the default for several sessions;
 - personas by id or label;
 - `<match>6.7</match>` as the exhaustive short form (Slice 2C note);
-- the six continuation and hint forms the renderers emit;
+- the seven continuation and hint forms the renderers emit;
 - following them as written: a form without `<session>` goes beside the
   one session it came from, several go together when they name different
   sessions and one detail, and hints naming one session combine their
@@ -1017,7 +1017,11 @@ Witnesses:
   refused example gets the reason the prose names. It also matches the
   taught forms against the renderers' output over real saved sessions,
   both ways, and decodes each form, followed as taught, to the read it
-  promises.
+  promises. The rendered corpus covers every combination the renderers
+  tell apart: one session or several, in every detail of
+  `WORKSHOP_RECALL_READ_DETAILS`. The first build sampled four reads and
+  missed the full-detail continuation of a read of several sessions, so
+  the prompt taught six forms of seven (PR 131 review F-01).
 - A reopened room: a host and a guest archive whose frozen first-turn
   contract never mentions `transcript.*` are imported through the real
   `PromptLoader`, `ConversationManager`, and engine. Each rebuilt system
@@ -1032,7 +1036,7 @@ operation, a budget value, a stray number, and a malformed example.
 
 Prompt cost and caches:
 
-- The grammar adds about 9,400 bytes, roughly 2,350 tokens by the
+- The grammar adds about 9,600 bytes, roughly 2,400 tokens by the
   preflight's estimate, to every host and guest system prompt.
 - `base.md`, `guest-base.md`, and `interaction-contract.md` change too.
   So every persona system prompt changes once: on upgrade, each persona
@@ -1050,7 +1054,7 @@ For Slice 5:
 - Whether personas follow continuations and hints as written, and combine
   same-session hints.
 - How often the decision 3 offer appears, and whether it becomes a tic.
-- Whether the 2,350-token grammar earns its place in every persona prompt.
+- Whether the 2,400-token grammar earns its place in every persona prompt.
 - Open questions 5–8.
 
 ## What this decides for memory, and what it leaves open

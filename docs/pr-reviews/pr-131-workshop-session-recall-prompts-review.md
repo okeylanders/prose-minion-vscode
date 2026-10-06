@@ -13,9 +13,21 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🔵 Nit | The bidirectional prompt-sync witness omits the multi-session full-detail continuation | The renderer emits a seventh shape that works when followed, but the prompt's six examples and test corpus omit it | **Open**, nonblocking coverage/documentation improvement |
+| F-01 | 🔵 Nit | The bidirectional prompt-sync witness omits the multi-session full-detail continuation | The renderer emits a seventh shape that works when followed, but the prompt's six examples and test corpus omit it | **Open**, nonblocking coverage/documentation improvement. Fixed by the author in `b7e44fe` (see the author response below); awaiting re-review |
 
 **Verdict: Approved for merge into `epic/workshop-session-recall`.** No Blocking, High, or Standard finding was established. F-01 is a completeness gap in the new sync witness, not a demonstrated invocation failure. This approves Slice 4 enablement, subject to required checks on the final branch head; it does not claim Slice 5 live acceptance or authorize a merge.
+
+## Author response (`b7e44fe`)
+
+These are the author's claims, offered for re-review. They are not verified findings.
+
+**F-01 ([`b7e44fe`](https://github.com/okeylanders/prose-minion-vscode/commit/b7e44fe)).** The grammar teaches the seventh form, and the corpus can no longer skip a mode.
+
+- **The grammar** lists `Continue with <session turns="41-72">…</session> <detail>full</detail>.` beside its discussion twin. Each of the two now names its detail.
+- **The corpus.** The sync test renders a read of one session and of several sessions, in every detail of `WORKSHOP_RECALL_READ_DETAILS`, plus a search. A detail added to that list joins the corpus by itself. Widening the corpus alone, before the grammar changed, failed "teaches every form the renderers emit", which reproduces the finding.
+- **Round-trips.** For each detail, the continuations of a real read of several sessions, followed alone and together, decode with that detail explicit.
+- **Mutation check.** Removing the new form fails three witnesses. Letting a several-session continuation drop `<detail>full</detail>` fails three, including the round-trip.
+- The ADR's Slice 4 note and the epic record the fix. The grammar is now 9,569 bytes, about 2,400 estimated tokens.
 
 ## F-01 — Include full-detail batch continuations in the prompt-sync matrix
 
