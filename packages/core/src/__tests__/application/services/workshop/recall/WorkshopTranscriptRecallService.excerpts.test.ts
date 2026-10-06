@@ -367,3 +367,79 @@ describe('transcript.read of several sessions (D9)', () => {
     expect(lines).not.toMatch(/Stock &|DISCUSSION-|Chapter 6/);
   });
 });
+
+describe('summarize the chats on chapter 6.7, and what is left (the use case, end to end)', () => {
+  let corpus: RecallExcerptCorpus;
+  let service: WorkshopTranscriptRecallService;
+  let ids: string[];
+  let read: Read;
+  let content: string;
+
+  beforeAll(async () => {
+    corpus = await saveExcerptCorpus();
+    service = recallOver(corpus);
+    // 1. Every chat on 6.7, by title or excerpt label.
+    ids = cataloged(await service.catalog({ match: 'chapter 6.7' })).sessions.map((session) => session.sessionId);
+    // 2. All of them in one read, discussion first.
+    read = readOf(await service.read({ sessions: ids.map((sessionId) => ({ sessionId })) }));
+    content = renderWorkshopRecallRead(read, { now: NOW }).content;
+  });
+
+  it('finds every 6.7 chat and not the 6.8 decoy', () => {
+    const { sessions } = corpus;
+    expect(ids).toEqual([sessions.endings, sessions.cliche, sessions.stock]);
+    expect(read.detail).toBe('discussion');
+    expect(content).not.toContain(EXCERPT_SENTINELS.decoy);
+  });
+
+  it('reads them all within one read’s budget, every chat complete', () => {
+    const rendered = renderWorkshopRecallRead(read, { now: NOW });
+
+    expect(content.length).toBeLessThanOrEqual(PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters);
+    expect(rendered.sessions.map((session) => [session.outcome, session.continuation])).toEqual([
+      ['read', []], ['read', []], ['read', []]
+    ]);
+  });
+
+  it('shows every chat’s discussion whole, and no tool report’s body', () => {
+    for (const said of [...corpus.discussion.stock, ...corpus.discussion.cliche, ...corpus.discussion.endings]) {
+      expect(content).toContain(said);
+    }
+    expect(content).not.toContain(EXCERPT_SENTINELS.toolReportBody);
+    expect(content).not.toContain('The beat lands on a stock gesture');
+  });
+
+  it('names each report’s turn and word count in its one line', () => {
+    const rendered = renderWorkshopRecallRead(read, { now: NOW });
+    for (const report of [...corpus.reports.stock, ...corpus.reports.cliche]) {
+      const words = countWords(report.body).toLocaleString('en-US');
+      expect(content).toMatch(new RegExp(
+        `\\[turn (\\d+) · \\d+:\\d\\d [AP]M · ${report.toolLabel.replace('&', '\\&')} report · ${words} words · ` +
+        'read it in full with <turns>\\1</turns>\\]'
+      ));
+    }
+    expect(rendered.sessions.map((session) => session.collapsed.length)).toEqual([0, EXCERPT_REPORT_PASSES, EXCERPT_REPORT_PASSES]);
+  });
+
+  it('would not fit in full detail: the same chats overflow the budget and continue', async () => {
+    const full = renderWorkshopRecallRead(
+      await service.read({ sessions: ids.map((sessionId) => ({ sessionId })), detail: 'full' }),
+      { now: NOW }
+    );
+
+    expect(full.content.length).toBeLessThanOrEqual(PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters);
+    expect(full.content).toContain(EXCERPT_SENTINELS.toolReportBody);
+    expect(full.sessions.some((session) => session.continuation.length > 0)).toBe(true);
+  });
+
+  it('then lists what is left on 6.7, and nothing from the decoy', async () => {
+    // 3. What is still open (Slice 2B), under the same <match> rule.
+    const todos = await service.todos({ match: 'chapter 6.7' });
+    const text = renderWorkshopRecallTodos(todos, { now: NOW }).content;
+
+    for (const todo of [corpus.todos.stock, corpus.todos.cliche, corpus.todos.endings]) {
+      expect(text).toContain(todo.text);
+    }
+    expect(text).not.toContain(corpus.todos.decoy.text);
+  });
+});
