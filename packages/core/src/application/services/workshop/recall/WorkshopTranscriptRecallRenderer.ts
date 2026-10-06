@@ -185,8 +185,8 @@ export function renderWorkshopRecallSearch(
  * A read within `readCharacters`, whatever its saved files hold: each named
  * session's section gets a fair share (D9), a share never smaller than the
  * per-session minimum unless the section needs less, and the shares never
- * sum past the budget. Throws a RangeError below the minimum for the
- * number of sessions named.
+ * sum past the budget. Throws a RangeError for a read that names no
+ * session, and below the minimum for the number of sessions named.
  */
 export function renderWorkshopRecallRead(
   result: WorkshopRecallReadResult,
@@ -194,6 +194,10 @@ export function renderWorkshopRecallRead(
 ): WorkshopRecallRenderedRead {
   if (!result.available) {
     return { content: recallUnavailable(result), sessions: [] };
+  }
+  if (result.sessions.length === 0) {
+    // The service refuses an empty read before reading anything; rendering one would be an empty body.
+    throw new RangeError('A session-recall read names at least one session; got none.');
   }
   const budget = options.readCharacters ?? PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters;
   const minimum = workshopRecallMinimumReadCharacters(result.sessions.length);

@@ -220,6 +220,10 @@ describe('a read of several sessions', () => {
     const { readCharacters, readSessions } = PROMPT_BUDGETS.workshopTranscriptRecall;
     expect(workshopRecallMinimumReadCharacters(readSessions)).toBeLessThanOrEqual(readCharacters);
   });
+
+  it('refuses a read that names no session, as the service and codec do, rather than render nothing', () => {
+    expect(() => renderWorkshopRecallRead(batch([]), { now: NOW })).toThrow(RangeError);
+  });
 });
 
 describe('the complete read bound across sessions, with every saved-file label at its maximum', () => {
