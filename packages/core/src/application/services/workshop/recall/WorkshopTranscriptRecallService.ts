@@ -1,6 +1,6 @@
 /**
- * Session recall's engine (ADR 2026-10-05 §2, §4–§5): catalog, search, and
- * read over the writer's other saved Workshop sessions. It returns data,
+ * Session recall's engine (ADR 2026-10-05 §2, §4–§5, D6): catalog, search,
+ * read, and to-dos over the writer's other saved Workshop sessions. It returns data,
  * never prose; the renderer writes the model-facing text, and a persona
  * capability is one consumer among several to come.
  *
@@ -37,17 +37,24 @@ import {
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
 import {
   catalogSession,
+  narrowedSessions,
   normalizeTurnRanges,
   recallableSessions,
   resolveRange,
+  selectWorkshopRecallTodos,
+  todoCandidates,
   unknownSession,
   withParticipant
 } from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
 import type {
   WorkshopRecallCatalogResult,
   WorkshopRecallReadResult,
+  WorkshopRecallScanBounds,
   WorkshopRecallSearchBounds,
   WorkshopRecallSearchResult,
+  WorkshopRecallTodosBounds,
+  WorkshopRecallTodosRequest,
+  WorkshopRecallTodosResult,
   WorkshopRecallTurnRange,
   WorkshopRecallUnavailable,
   WorkshopRecallUnavailableReason
@@ -128,11 +135,9 @@ interface RecallCorpus {
 
 interface LoadedDocuments {
   readonly documents: WorkshopRecallDocument[];
-  readonly notSearchedByByteBudget: number;
-  readonly unreadableSessions: number;
-  readonly parsedBytes: number;
-  readonly unreadableBytesCharged: number;
-  readonly cacheHits: number;
+  readonly notReadByByteBudget: number;
+  /** What the reads cost, as every multi-session result reports it. */
+  readonly cost: Omit<WorkshopRecallScanBounds, 'listingTruncated'>;
 }
 
 type LoadedDocument =
@@ -189,14 +194,11 @@ export class WorkshopTranscriptRecallService {
     const started = this.now();
     const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
     return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallSearchResult> => {
-      let candidates = withParticipant(corpus.sessions, request.personaId);
-      if (request.sessionId !== undefined) {
-        const named = corpus.sessions.find((session) => session.sessionId === request.sessionId);
-        if (!named) {
-          return unknownSession(request.sessionId, corpus.scope.liveSessionId);
-        }
-        candidates = candidates.filter((session) => session === named);
+      const narrowed = narrowedSessions(corpus.sessions, request, corpus.scope.liveSessionId);
+      if ('unknown' in narrowed) {
+        return narrowed.unknown;
       }
+      const candidates = narrowed.sessions;
       const scanned = candidates.slice(0, budgets.searchSessions);
       const loaded = await this.loadDocuments(scanned, budgets.searchSourceBytes, corpus.scope, signal);
       const query = parseWorkshopRecallQuery(request.query);
@@ -209,12 +211,9 @@ export class WorkshopTranscriptRecallService {
         corpusSessions: candidates.length,
         sessionsSearched: loaded.documents.length,
         notSearchedBySessionLimit: candidates.length - scanned.length,
-        notSearchedByByteBudget: loaded.notSearchedByByteBudget,
-        unreadableSessions: loaded.unreadableSessions,
+        notSearchedByByteBudget: loaded.notReadByByteBudget,
         listingTruncated: corpus.listingTruncated,
-        parsedBytes: loaded.parsedBytes,
-        unreadableBytesCharged: loaded.unreadableBytesCharged,
-        cacheHits: loaded.cacheHits
+        ...loaded.cost
       };
       this.log(
         `search terms=${query.terms.length} mode=${search.mode ?? 'none'} ` +
@@ -276,6 +275,55 @@ export class WorkshopTranscriptRecallService {
         fromStart,
         ranges: ranges.map((range) => resolveRange(document, range)),
         cacheHit: loaded.cacheHit
+      };
+    });
+  }
+
+  /**
+   * The writer's to-do lists (D6), newest session first. `<session>`,
+   * `<persona>`, and `<match>` choose sessions from the listing, which reads
+   * no file; `<recent>` (else `todoSessions`) caps how many are read. Status
+   * and source then filter each list, and `todoItems` caps the whole.
+   */
+  todos(request: WorkshopRecallTodosRequest, signal?: AbortSignal): Promise<WorkshopRecallTodosResult> {
+    const started = this.now();
+    const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
+    return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallTodosResult> => {
+      const chosen = todoCandidates(corpus.sessions, request, corpus.scope.liveSessionId, budgets.todoSessions);
+      if ('unknown' in chosen) {
+        return chosen.unknown;
+      }
+      const { candidates, scanned } = chosen;
+      const loaded = await this.loadDocuments(scanned, budgets.searchSourceBytes, corpus.scope, signal);
+      const status = request.status ?? 'open';
+      const selected = selectWorkshopRecallTodos(loaded.documents, { status, source: request.source }, budgets.todoItems);
+      const bounds: WorkshopRecallTodosBounds = {
+        corpusSessions: candidates.length,
+        sessionLimit: chosen.sessionLimit,
+        sessionsScanned: loaded.documents.length,
+        notScannedBySessionLimit: candidates.length - scanned.length,
+        notScannedByByteBudget: loaded.notReadByByteBudget,
+        listingTruncated: corpus.listingTruncated,
+        ...selected.omitted,
+        ...loaded.cost
+      };
+      this.log(
+        `todos status=${status} sessions=${bounds.sessionsScanned}/${bounds.corpusSessions} ` +
+        `notScanned=${bounds.notScannedBySessionLimit}+${bounds.notScannedByByteBudget} ` +
+        `unreadable=${bounds.unreadableSessions} parsedBytes=${bounds.parsedBytes} cacheHits=${bounds.cacheHits} ` +
+        `shown=${selected.kept} omitted=${bounds.omittedByItemLimit} durationMs=${this.now() - started}`
+      );
+      return {
+        available: true,
+        outcome: 'todos',
+        status,
+        ...(request.recent !== undefined ? { recent: request.recent } : {}),
+        ...(request.sessionId !== undefined ? { sessionId: request.sessionId } : {}),
+        ...(chosen.match ? { match: chosen.match } : {}),
+        ...(request.source ? { source: request.source } : {}),
+        ...(request.personaId ? { personaId: request.personaId } : {}),
+        sessions: selected.sessions,
+        bounds
       };
     });
   }
@@ -356,7 +404,7 @@ export class WorkshopTranscriptRecallService {
     signal?: AbortSignal
   ): Promise<LoadedDocuments> {
     const documents: WorkshopRecallDocument[] = [];
-    let notSearchedByByteBudget = 0;
+    let notReadByByteBudget = 0;
     let unreadableSessions = 0;
     let parsedBytes = 0;
     let unreadableBytesCharged = 0;
@@ -370,7 +418,7 @@ export class WorkshopTranscriptRecallService {
         continue;
       }
       if (parsedBytes + unreadableBytesCharged >= byteBudget) {
-        notSearchedByByteBudget += 1;
+        notReadByByteBudget += 1;
         continue;
       }
       const loaded = await this.loadDocument(summary, scope, signal);
@@ -382,7 +430,11 @@ export class WorkshopTranscriptRecallService {
       parsedBytes += loaded.parsedBytes;
       documents.push(loaded.document);
     }
-    return { documents, notSearchedByByteBudget, unreadableSessions, parsedBytes, unreadableBytesCharged, cacheHits };
+    return {
+      documents,
+      notReadByByteBudget,
+      cost: { unreadableSessions, parsedBytes, unreadableBytesCharged, cacheHits }
+    };
   }
 
   private async loadDocument(
