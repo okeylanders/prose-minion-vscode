@@ -16,8 +16,11 @@ import {
 import { renderWorkshopRecallTodos } from '@/application/services/workshop/recall/WorkshopRecallTodoList';
 import type {
   WorkshopRecallCatalogResult,
+  WorkshopRecallReadDetail,
+  WorkshopRecallReadRequest,
   WorkshopRecallReadResult,
-  WorkshopRecallSessionRead
+  WorkshopRecallSessionRead,
+  WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { countWords } from '@/utils/textUtils';
@@ -31,8 +34,10 @@ import {
   EXCERPT_REPORT_PASSES,
   EXCERPT_SENTINELS,
   RecallExcerptCorpus,
+  reportBody,
   saveExcerptCorpus
 } from '@/__tests__/application/services/workshop/recall/workshopRecallExcerptFixtures';
+import { reportWithFindings } from '@/__tests__/application/services/workshop/recall/workshopRecallTodoFixtures';
 
 const NOW = Date.parse('2026-10-08T14:30:00.000Z');
 
@@ -70,6 +75,24 @@ const replaceBudgets = (overrides: Partial<typeof PROMPT_BUDGETS.workshopTranscr
     ...PROMPT_BUDGETS.workshopTranscriptRecall,
     ...overrides
   });
+
+/**
+ * The read a rendered read's continuations ask for, taken from its text as
+ * written: every `<session turns>` it names, and the `<detail>` they carry.
+ */
+const followed = (content: string): WorkshopRecallReadRequest & { readonly details: readonly (string | undefined)[] } => {
+  const calls = [...content.matchAll(/Continue with <session turns="([^"]+)">([^<]+)<\/session>(?: <detail>(\w+)<\/detail>)?/g)];
+  const range = (text: string): WorkshopRecallTurnRange => {
+    const [from, to = from] = text.split('-').map(Number);
+    return { from, to };
+  };
+  const details = calls.map((call) => call[3]);
+  return {
+    sessions: calls.map(([, turns, sessionId]) => ({ sessionId, turns: turns.split(', ').map(range) })),
+    ...(details[0] ? { detail: details[0] as WorkshopRecallReadDetail } : {}),
+    details
+  };
+};
 
 /** The authoritative file of a saved session, found by its id. */
 const namedFile = (room: Pick<SavedRecallRoom, 'fs'>, sessionId: string): string => {
@@ -453,5 +476,73 @@ describe('summarize the chats on chapter 6.7, and what is left (the use case, en
       expect(text).toContain(todo.text);
     }
     expect(text).not.toContain(corpus.todos.decoy.text);
+  });
+});
+
+describe('a continuation followed as written keeps the read’s detail (PR 129 review F-01)', () => {
+  it('keeps discussion detail when only one session of a discussion batch continues', async () => {
+    const fs = new MemoryFileSystem();
+    await saveRecallRoom('Short chat', (session, advance) => {
+      session.setSessionScope('open');
+      advance(60_000);
+      session.beginPersonaMessage('short-1', 'Quick question about the ending?');
+      session.completeRun('short-1', 'Quick answer: end on the cup.', undefined, false, 'runtime-host');
+    }, { fs, idPrefix: 'short' });
+    const long = await saveRecallRoom('Long chat', (session, advance) => {
+      advance(60 * 60_000);
+      session.setExcerpt({
+        text: 'The laughter was raucous.',
+        source: { kind: 'file', sourceUri: `file://${RECALL_ROOT}/drafts/chapter-6.7.md`, relativePath: 'drafts/chapter-6.7.md' }
+      });
+      session.setSessionScope('excerpt');
+      for (let pass = 1; pass <= 5; pass += 1) {
+        advance(60_000);
+        const report = reportWithFindings(session, 'cliche', `pass-${pass}`, reportBody(`pass ${pass}`, 400), []);
+        session.beginPersonaSynthesis(`synthesis-${pass}`, report.id);
+        session.completeRun(`synthesis-${pass}`, `DISCUSSION-${pass}: ${'The laughter carries the scene. '.repeat(100)}`,
+          undefined, false, 'runtime-host');
+      }
+    }, { fs, idPrefix: 'long' });
+    const service = recallOver(long);
+    const sessionIds = cataloged(await service.catalog({})).sessions.map((session) => session.sessionId);
+
+    const first = renderWorkshopRecallRead(await service.read({ sessions: sessionIds.map((sessionId) => ({ sessionId })) }), {
+      now: NOW,
+      readCharacters: 12_000
+    });
+    const next = followed(first.content);
+    // The short chat finished; only the long one continues, and its line says discussion.
+    expect(first.sessions.map((session) => session.continuation.length > 0)).toEqual([true, false]);
+    expect(next.sessions).toHaveLength(1);
+    expect(next.details).toEqual(['discussion']);
+
+    const second = readOf(await service.read(next));
+    const rendered = renderWorkshopRecallRead(second, { now: NOW, readCharacters: 12_000 });
+    expect(second.detail).toBe('discussion');
+    expect(rendered.sessions[0].continuation).toEqual([]);
+    for (let pass = 1; pass <= 5; pass += 1) {
+      expect([pass, `${first.content}${rendered.content}`.includes(`DISCUSSION-${pass}:`)]).toEqual([pass, true]);
+    }
+    expect(rendered.content).not.toContain(EXCERPT_SENTINELS.toolReportBody);
+  });
+
+  it('keeps full detail when an explicit full batch’s continuations are followed together', async () => {
+    const corpus = await saveExcerptCorpus({ reportWords: 300 });
+    const service = recallOver(corpus);
+    const ids = [corpus.sessions.stock, corpus.sessions.cliche];
+
+    const first = renderWorkshopRecallRead(
+      await service.read({ sessions: ids.map((sessionId) => ({ sessionId })), detail: 'full' }),
+      { now: NOW, readCharacters: 12_000 }
+    );
+    const next = followed(first.content);
+    expect(next.sessions.map((session) => session.sessionId)).toEqual(ids);
+    expect(next.details).toEqual(['full', 'full']);
+
+    const second = readOf(await service.read(next));
+    const rendered = renderWorkshopRecallRead(second, { now: NOW });
+    expect(second.detail).toBe('full');
+    expect(rendered.sessions.every((session) => session.collapsed.length === 0)).toBe(true);
+    expect(rendered.content).toContain(EXCERPT_SENTINELS.toolReportBody);
   });
 });

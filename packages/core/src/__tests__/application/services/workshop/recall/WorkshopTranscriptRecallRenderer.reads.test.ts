@@ -160,9 +160,23 @@ describe('a read of several sessions', () => {
     const [a, c] = rendered.sessions;
 
     expect(a.continuation.at(-1)).toEqual({ from: 80, to: 90 });
-    expect(rendered.content).toContain(`Continue with <session turns="${formatWorkshopRecallTurnRanges(a.continuation)}">a</session>.`);
-    expect(rendered.content).toContain(`Continue with <session turns="${formatWorkshopRecallTurnRanges(c.continuation)}">c</session>.`);
+    expect(rendered.content).toContain(
+      `Continue with <session turns="${formatWorkshopRecallTurnRanges(a.continuation)}">a</session> <detail>discussion</detail>.`
+    );
+    expect(rendered.content).toContain(
+      `Continue with <session turns="${formatWorkshopRecallTurnRanges(c.continuation)}">c</session> <detail>discussion</detail>.`
+    );
     expect(rendered.content).not.toContain('Continue with <turns>');
+  });
+
+  it('keeps the read’s detail in every continuation but a one-session full read’s (PR 129 F-01)', () => {
+    // Followed together, several sessions default to discussion: a full batch says full.
+    const full = renderWorkshopRecallRead(batch([read(long('a')), read(long('c'))], 'full'), { now: NOW, readCharacters: 30_000 });
+    expect(full.content).toMatch(/Continue with <session turns="[\d, -]+">a<\/session> <detail>full<\/detail>\./);
+    expect(full.content).toMatch(/Continue with <session turns="[\d, -]+">c<\/session> <detail>full<\/detail>\./);
+    // Followed alone, one session defaults to full: a discussion read says discussion.
+    const one = renderWorkshopRecallRead(batch([read(long('a'))], 'discussion'), { now: NOW, readCharacters: 20_000 });
+    expect(one.content).toMatch(/Continue with <turns>\d+-100<\/turns> <detail>discussion<\/detail>\.$/);
   });
 
   it('reads one session as before: no ordinal, and a <turns> continuation', () => {

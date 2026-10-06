@@ -122,7 +122,7 @@ export function prepareWorkshopRecallReadSection(
     '[header shortened to fit the window]'
   );
   const assemble = (window: WorkshopRecallReadWindow): WorkshopRecallRenderedSection => {
-    const footer = recallBlock(footerLines(read, window, options.ordinal).join('\n'), READ_FOOTER_CHARACTERS, '[footer shortened]');
+    const footer = recallBlock(footerLines(read, window, options).join('\n'), READ_FOOTER_CHARACTERS, '[footer shortened]');
     return {
       text: [header, ...window.blocks, footer].join(WORKSHOP_RECALL_BLOCK_SEPARATOR),
       delivered: window.delivered,
@@ -195,7 +195,11 @@ function listedRanges(ranges: readonly WorkshopRecallTurnRange[]): string {
   return ranges.length > LISTED_RANGES ? `${listed}, and ${ranges.length - LISTED_RANGES} more ranges` : listed;
 }
 
-function footerLines(read: ReadSession, window: WorkshopRecallReadWindow, ordinal: Ordinal): string[] {
+function footerLines(
+  read: ReadSession,
+  window: WorkshopRecallReadWindow,
+  { detail, ordinal }: WorkshopRecallReadSectionOptions
+): string[] {
   const lines: string[] = [];
   const empty = read.ranges.filter((range) => range.entries.length === 0);
   if (window.delivered.length === 0 && empty.length === read.ranges.length) {
@@ -224,7 +228,12 @@ function footerLines(read: ReadSession, window: WorkshopRecallReadWindow, ordina
     const call = ordinal
       ? `<session turns="${next}">${recallLabel(read.header.sessionId)}</session>`
       : `<turns>${next}</turns>`;
-    lines.push(`Continue with ${call}${later > 0 ? `, then the ${later} further ranges requested.` : '.'}`);
+    // It keeps the read's detail too: the default turns on how many sessions
+    // a call names, so a continuation followed alone, or several followed
+    // together, could otherwise change it. Only a one-session read in full
+    // detail continues with the default (PR 129 review F-01).
+    const keep = ordinal || detail !== 'full' ? ` <detail>${detail}</detail>` : '';
+    lines.push(`Continue with ${call}${keep}${later > 0 ? `, then the ${later} further ranges requested.` : '.'}`);
   }
   return lines;
 }
