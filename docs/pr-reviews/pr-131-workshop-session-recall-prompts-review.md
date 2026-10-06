@@ -29,6 +29,11 @@ These are the author's claims, offered for re-review. They are not verified find
 - **Mutation check.** Removing the new form fails three witnesses. Letting a several-session continuation drop `<detail>full</detail>` fails three, including the round-trip.
 - The ADR's Slice 4 note and the epic record the fix. The grammar is now 9,569 bytes, about 2,400 estimated tokens.
 
+**Also since the review, at Okey's request after the first live pass** (no finding asked for these):
+
+- [`c1a552d`](https://github.com/okeylanders/prose-minion-vscode/commit/c1a552d): `readCharactersPerTurn` is 300,000, twice `readCharacters`, amending D11. A five-chat read had used 147,948 of 150,000 characters, leaving the turn's second read nothing. The window clamp still caps each read.
+- [`e2eb7e9`](https://github.com/okeylanders/prose-minion-vscode/commit/e2eb7e9): when a limit leaves turns unread, the persona answers from what it has, names what is left, and offers to read it next. The read refusals end the same way.
+
 ## F-01 — Include full-detail batch continuations in the prompt-sync matrix
 
 **Evidence:** [the renderer corpus at transcriptRecallPromptSync.test.ts:175–180](https://github.com/okeylanders/prose-minion-vscode/blob/34dda149917b07b5ed3582ec9821cfea07d4996c/packages/core/src/__tests__/architecture/transcriptRecallPromptSync.test.ts#L175-L180), [its completeness assertions at :188–201](https://github.com/okeylanders/prose-minion-vscode/blob/34dda149917b07b5ed3582ec9821cfea07d4996c/packages/core/src/__tests__/architecture/transcriptRecallPromptSync.test.ts#L188-L201), [the prompt's forms at :87–92](https://github.com/okeylanders/prose-minion-vscode/blob/34dda149917b07b5ed3582ec9821cfea07d4996c/packages/core/resources/system-prompts/workshop-personas/transcript-recall-capability.md#L87-L92), and [WorkshopRecallReadSection.ts:239–248](https://github.com/okeylanders/prose-minion-vscode/blob/34dda149917b07b5ed3582ec9821cfea07d4996c/packages/core/src/application/services/workshop/recall/WorkshopRecallReadSection.ts#L239-L248). **Confidence: High; priority: Low.**

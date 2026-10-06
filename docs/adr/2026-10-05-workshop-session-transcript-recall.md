@@ -494,7 +494,9 @@ once.
 - **D11: budgets and the context window.**
   - `readCharacters` is 150,000.
   - `readCharactersPerTurn` is 150,000, so two reads cannot add 300,000
-    characters to one turn.
+    characters to one turn. *Amended in Slice 4 after the first live pass:
+    300,000, twice `readCharacters`; see the [Slice 4
+    note](#implementation-note-2026-10-06-slice-4).*
   - `readSessions` is 10.
   - `todoSessions` is 50, `todoItems` 60, `todoCharacters` 16,000, and
     `todoMatchCharacters` 200.
@@ -1036,7 +1038,7 @@ operation, a budget value, a stray number, and a malformed example.
 
 Prompt cost and caches:
 
-- The grammar adds about 9,600 bytes, roughly 2,400 tokens by the
+- The grammar adds about 10,000 bytes, roughly 2,500 tokens by the
   preflight's estimate, to every host and guest system prompt.
 - `base.md`, `guest-base.md`, and `interaction-contract.md` change too.
   So every persona system prompt changes once: on upgrade, each persona
@@ -1048,13 +1050,42 @@ Prompt cost and caches:
 `docs/ARCHITECTURE.md` gains the family table and a Session Recall
 section. `AGENTS.md` gains a short Session Recall section.
 
+After the first live pass, Okey approved two more changes on this PR:
+
+- **D11 amended: `readCharactersPerTurn` is 300,000, twice
+  `readCharacters`.**
+  - The problem: when the turn's total equalled one read, the second read
+    in `readsPerTurn: 2` had room only after a small first read. On a
+    real workspace, a five-chat 6.8 discussion read used 147,948 of
+    150,000 characters, and the read of one chat's tail was refused with
+    2,052 left. The persona disclosed it, and the next turn read it.
+  - Why it is safe now: D11 chose 150K per turn before the window clamp
+    existed. The clamp now caps every read at half the free window, so
+    overflow stays covered. The total's remaining job is cost: a read's
+    evidence stays in the retained conversation, and the saved session,
+    for the rest of the room.
+  - The pin: `PROMPT_BUDGETS` pins the relationship, a total that holds
+    every read a turn allows at full size.
+  - The grammar now quotes `readCharacters` as well, since the two
+    numbers differ. That is one number beyond decision 1's list.
+- **Answer, then offer.** When a limit or refusal leaves turns unread,
+  the persona answers from what it has, names the sessions and turns
+  left, and offers to read them next. It does not stop to ask first. If
+  the unread turns are what the writer asked about, it says so up front.
+  The three read refusals end the same way, through one helper. The read
+  limit and the turn's total point to the next turn, since both reset
+  with the next writer message. The window refusals name what could not
+  be read, since the window does not reset.
+
 For Slice 5:
 
 - U2: whether fast models copy 36-character session ids.
 - Whether personas follow continuations and hints as written, and combine
   same-session hints.
 - How often the decision 3 offer appears, and whether it becomes a tic.
-- Whether the 2,400-token grammar earns its place in every persona prompt.
+- Whether the 2,500-token grammar earns its place in every persona prompt.
+- What two full reads per turn cost a conversation that keeps their
+  evidence, and whether personas plan their reads to fit the limits.
 - Open questions 5–8.
 
 ## What this decides for memory, and what it leaves open
@@ -1170,4 +1201,5 @@ exists; any cross-workspace memory.
    [amendment](#amendment-2026-10-06-to-dos-and-excerpt-summaries-d5d11).
    The D5 to-do id was added at Okey's request. In D10, discussion detail is
    the default for multi-session reads. D11 sets 150K per turn, not 2 × 150K,
-   plus the window clamp.
+   plus the window clamp. Slice 4 amended the per-turn total to 2 × 150K
+   once the clamp had landed.
