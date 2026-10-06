@@ -1,7 +1,7 @@
 # Slice 2C plan: summarize every chat on an excerpt
 
-**Status:** Built 2026-10-06 (dormant), in review in
-[PR #129](https://github.com/okeylanders/prose-minion-vscode/pull/129). Slice 2 merged in
+**Status:** Built 2026-10-06 (dormant), merged in
+[PR #129](https://github.com/okeylanders/prose-minion-vscode/pull/129) (`23b7779`). Slice 2 merged in
 [PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126) and
 Slice 2B in [PR #127](https://github.com/okeylanders/prose-minion-vscode/pull/127).
 The ADR's [Slice 2C note](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md#implementation-note-2026-10-06-slice-2c)
