@@ -92,6 +92,14 @@ export const WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH =
   'workshop-personas/relational-contract.md';
 export const WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH =
   'workshop-personas/analysis-capability.md';
+/**
+ * The stable `transcript.*` grammar (ADR 2026-10-05 §8). It lives in the
+ * system prompt, not the frozen first-turn contract, because archive import
+ * rebuilds the system prompt: a room reopened from before recall existed
+ * still learns the family.
+ */
+export const WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH =
+  'workshop-personas/transcript-recall-capability.md';
 
 export const WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS: Readonly<
   Record<WorkshopRelationalDepth, string>
@@ -123,13 +131,13 @@ export function workshopPersonaSystemPromptPaths(
     basePromptPath,
     persona.promptPath,
     // Sprint 13C (PR #89 review #2): guests carry the same bounded capability
-    // grammar as the host, so BOTH participant bases get the analysis
-    // capability resource — the injected protocol points at it, and a charter
-    // that denies capabilities while the run policy grants them ships two
-    // contradictory instructions.
+    // grammar as the host, so BOTH participant bases get the analysis and
+    // session-recall capability resources — the injected protocol points at
+    // them, and a charter that denies capabilities while the run policy
+    // grants them ships two contradictory instructions.
     ...(basePromptPath === WORKSHOP_HOST_BASE_PROMPT_PATH
       || basePromptPath === WORKSHOP_GUEST_BASE_PROMPT_PATH
-      ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH]
+      ? [WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH, WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH]
       : []),
     WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
     WORKSHOP_INTERACTION_MODE_PROMPT_PATHS[behavior.interactionMode],

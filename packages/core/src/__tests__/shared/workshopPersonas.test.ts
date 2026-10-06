@@ -10,6 +10,7 @@ import {
   WORKSHOP_PERSONA_CATALOG,
   WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
   WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS,
+  WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
@@ -92,6 +93,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -111,6 +113,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -133,6 +136,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -170,6 +174,25 @@ describe('Workshop persona catalog and packaged prompts', () => {
       }
     );
     expect(guestPaths).toContain(WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH);
+  });
+
+  it('gives host and guest the same session-recall grammar, right after the analysis grammar (ADR 2026-10-05 §8)', () => {
+    const behavior = { interactionMode: 'balanced', expressionLevel: 'full', relationalDepth: 'attuned' } as const;
+    for (const base of ['workshop-personas/base.md', 'workshop-personas/guest-base.md']) {
+      const paths = workshopPersonaSystemPromptPaths(base, WORKSHOP_PERSONA_CATALOG[0], behavior);
+      expect(paths.indexOf(WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH))
+        .toBe(paths.indexOf(WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH) + 1);
+    }
+    // Only the persona bases carry capability grammar.
+    expect(workshopPersonaSystemPromptPaths('workshop-personas/other.md', WORKSHOP_PERSONA_CATALOG[0], behavior))
+      .not.toContain(WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH);
+
+    const grammar = fs.readFileSync(path.resolve(PROMPTS_ROOT, WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH), 'utf8');
+    for (const operation of ['transcript.catalog', 'transcript.search', 'transcript.read', 'transcript.todos']) {
+      expect(grammar).toContain(`<prose-minion-tool-call name="${operation}">`);
+    }
+    expect(grammar).toContain('you do not remember it');
+    expect(grammar).toContain('I can look back at saved sessions');
   });
 
   it('never ships a guest charter that denies the capabilities the run policy grants (review #2)', () => {

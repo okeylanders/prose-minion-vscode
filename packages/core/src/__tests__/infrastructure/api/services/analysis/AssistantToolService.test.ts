@@ -16,7 +16,11 @@ import { AnalysisHandler } from '@handlers/domain/AnalysisHandler';
 import { MessageRouter } from '@handlers/MessageRouter';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
-import { createFakeSettings } from '@/__tests__/mocks/platform';
+import { createFakeFileSystem, createFakeSettings } from '@/__tests__/mocks/platform';
+import { PromptLoader } from '@/tools/shared/prompts';
+import { createWorkshopCapabilityInstruction } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
 } from '@/application/services/workshop/widgets/WorkshopWidgetRecommendationOperations';
@@ -162,6 +166,7 @@ describe('AssistantToolService — manager-owned generation binding', () => {
       'workshop-personas/base.md',
       'workshop-personas/quinn.md',
       'workshop-personas/analysis-capability.md',
+      'workshop-personas/transcript-recall-capability.md',
       'workshop-personas/interaction-contract.md',
       'workshop-personas/interaction-modes/balanced.md',
       'workshop-personas/relational-contract.md',
@@ -251,8 +256,9 @@ describe('AssistantToolService — manager-owned generation binding', () => {
     expect(loadPrompts).toHaveBeenCalledWith([
       'workshop-personas/guest-base.md',
       'workshop-personas/margot.md',
-      // 13C: guests carry the same capability grammar resource as the host.
+      // 13C: guests carry the same capability grammar resources as the host.
       'workshop-personas/analysis-capability.md',
+      'workshop-personas/transcript-recall-capability.md',
       'workshop-personas/interaction-contract.md',
       'workshop-personas/interaction-modes/conversational.md',
       'workshop-personas/relational-contract.md',
@@ -708,5 +714,79 @@ describe('AssistantToolService — real context-window refusal boundaries', () =
     expect(provider.createStreamingChatCompletion).not.toHaveBeenCalled();
     expect(createGuideCapability).not.toHaveBeenCalled();
     expect(conversations.getActiveConversationCount()).toBe(0);
+  });
+});
+
+describe('AssistantToolService — a room reopened from before session recall', () => {
+  // __dirname = packages/core/src/__tests__/infrastructure/api/services/analysis -> packages/core
+  const CORE_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..', '..');
+  const grammar = fs.readFileSync(
+    path.join(CORE_ROOT, 'resources', 'system-prompts', 'workshop-personas', 'transcript-recall-capability.md'),
+    'utf8'
+  );
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('rebuilds host and guest system prompts with the transcript.* grammar and keeps their frozen contracts verbatim (ADR 2026-10-05 §8)', async () => {
+    const conversations = new ConversationManager();
+    const engine = new AgentRunEngine({
+      getModel: jest.fn().mockReturnValue('test/model'),
+      createChatCompletion: jest.fn(),
+      createStreamingChatCompletion: jest.fn()
+    } as never, conversations);
+    const service = new AssistantToolService(
+      {
+        ensureInitialized: jest.fn().mockResolvedValue(undefined),
+        getEngine: jest.fn(() => engine),
+        setStatusCallback: jest.fn()
+      } as unknown as AIResourceManager,
+      {
+        getPromptLoader: () => new PromptLoader(CORE_ROOT, createFakeFileSystem({
+          readFile: async (file: string) => fs.promises.readFile(file)
+        }))
+      } as unknown as ResourceLoaderService,
+      { getOptions: jest.fn().mockReturnValue({ includeCraftGuides: false, temperature: 0.7, maxTokens: 1000 }) } as unknown as ToolOptionsProvider,
+      WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
+    );
+    await service.refreshConfiguration();
+    // The first-turn contract a room froze before recall existed: it never mentions transcript.*.
+    const frozen = `${createWorkshopCapabilityInstruction().split('\n').filter((line) => !line.includes('transcript.')).join('\n')}\n\nWriter turn`;
+    const entry = (key: string, toolName: string) => ({
+      key,
+      toolName,
+      messages: [
+        { role: 'user' as const, content: frozen },
+        { role: 'assistant' as const, content: 'Reply' }
+      ],
+      lastActivity: 1,
+      contextSources: [],
+      nextArtifactNumber: 0
+    });
+
+    const outcomes = await service.importWorkshopConversationArchive([
+      { entry: entry('host', 'workshop_persona_jill'), role: 'host', personaId: 'jill' },
+      { entry: entry('guest:margot', 'workshop_guest_margot'), role: 'guest', personaId: 'margot' }
+    ], {
+      behavior: {
+        interactionMode: 'balanced',
+        expressionLevel: 'subtle',
+        relationalDepth: 'attuned',
+        carryCuesThroughSession: true,
+        proactiveAssistance: true
+      },
+      writerProfile: DEFAULT_WORKSHOP_WRITER_PROFILE
+    });
+
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(['imported', 'imported']);
+    for (const outcome of outcomes) {
+      const [system, first] = conversations.getMessages((outcome as { conversationId: string }).conversationId);
+      expect(system.role).toBe('system');
+      expect(system.content).toContain(grammar.trim());
+      expect(first).toEqual({ role: 'user', content: frozen });
+      expect(first.content).not.toContain('transcript.');
+    }
+    engine.dispose();
   });
 });
