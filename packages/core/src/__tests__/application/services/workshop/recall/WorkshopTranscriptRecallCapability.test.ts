@@ -256,6 +256,22 @@ describe('a turn’s read limits', () => {
     );
   });
 
+  it('leaves a full second read after a large first read (D11, amended in Slice 4)', async () => {
+    // The live 6.8 pass: a batch read used 147,948 of the then 150,000-character total, and the tail's read was refused.
+    // With a total of one read, a large first read squeezes or refuses the second; now the second is a full read.
+    const capability = capabilityOver();
+    const batch = await capability.fulfill({
+      capability: 'transcript.read',
+      sessions: [{ sessionId: corpus.sessions.stock }, { sessionId: corpus.sessions.cliche }, { sessionId: corpus.sessions.endings }],
+      detail: 'full'
+    });
+    const tail = await capability.fulfill({ capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.stock, turns: [{ from: 10, to: 18 }] }] });
+
+    expect(batch.metadata).toMatchObject({ limitedBy: 'read-budget', truncated: true });
+    expect(batch.content!.length).toBeGreaterThan(PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters / 2);
+    expect(tail).toMatchObject({ status: 'success', metadata: { limitedBy: 'read-budget', readLimit: 150_000 } });
+  });
+
   it('refuses a read the turn’s total has no minimum share left for, naming what is left (decision 2)', async () => {
     replaceBudgets({ readCharacters: 15_000, readCharactersPerTurn: 20_000 });
     const capability = capabilityOver();

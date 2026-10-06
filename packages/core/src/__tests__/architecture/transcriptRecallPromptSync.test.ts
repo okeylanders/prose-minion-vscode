@@ -44,7 +44,8 @@ const prose = PROMPT.replace(/```[\s\S]*?```/g, '');
 describe('session-recall prompt ↔ PROMPT_BUDGETS', () => {
   const pinned: ReadonlyArray<readonly [RegExp, number[]]> = [
     [/at most ([\d,]+) `transcript\.read` calls in one user turn/, [budgets.readsPerTurn]],
-    [/All the reads in one user turn share ([\d,]+) characters/, [budgets.readCharactersPerTurn]],
+    [/One read holds at most ([\d,]+) characters, and all the reads in one user turn share ([\d,]+)\./,
+      [budgets.readCharacters, budgets.readCharactersPerTurn]],
     [/One read may name at most ([\d,]+) sessions/, [budgets.readSessions]],
     [/It takes at most ([\d,]+) ranges/, [budgets.turnRanges]],
     [/`<recent>` reads the newest N sessions that `<match>` and `<persona>` keep, at most ([\d,]+); without it, the newest ([\d,]+)\./,
