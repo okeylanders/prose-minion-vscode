@@ -862,6 +862,36 @@ touching what the thread shows or how it is styled:
   test pins them to their sources. Restyling the thread means regenerating the
   mirror; export-only rules live in the page layer.
 
+### Workshop Session Recall
+
+Follow [ADR 2026-10-05](docs/adr/2026-10-05-workshop-session-transcript-recall.md)
+when touching the `transcript.*` family or what a persona may read from saved
+sessions:
+
+- **One projection.** Recall shows a saved turn only through
+  `projectWorkshopTranscriptTurn`, the same rule export uses. It never defines
+  its own idea of what a persona may see, and never reads `preview`, context
+  bodies, attachment text, widget payloads, or conversation archives.
+- **Read-only ports.** `recall/` reaches session files only through the
+  service's ports (`availability()`, `list()` without a query, `readNamed()`)
+  and the coordinator's `recallScope()`. It imports the store and coordinator
+  as types only, never the room-frame renderers, and never writes or flushes.
+- **Exhaustive families.** A new operation joins
+  `WORKSHOP_CAPABILITY_OPERATIONS`; the compiler then requires a case in
+  `workshopCapabilityFamily()` and every family switch. A switch that can
+  return `undefined` carries an explicit `never` default.
+- **The engine's window seam.** `AgentCapability.fulfill(request, window?)`
+  is the one change outside the Workshop: the engine measures the free
+  context window with the preflight's estimator, and recall clamps each read
+  to half of it. Other capabilities ignore the window.
+- **Hints decode as written.** Every continuation and hint a renderer emits
+  must decode, exactly as written, through the codec, alone and followed
+  together. The grammar prompt teaches each form, and a sync test pins its
+  numbers to `PROMPT_BUDGETS` and its forms to the renderers' output.
+- **Boundary lists.** A new `recall/` module joins `WORKSHOP_RECALL_MODULES`
+  and the capability boundary in `boundaries.test.ts`, and stays under 500
+  lines. No handler constructs the recall service; one instance owns the cache.
+
 ### Operational Tips
 
 **Parallel Subagents**: For independent tasks (e.g., updating multiple components), launch multiple Task tool calls in a single message. 3-5x faster than sequential.

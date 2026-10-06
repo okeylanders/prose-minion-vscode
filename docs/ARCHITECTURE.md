@@ -197,14 +197,28 @@ inside quoted excerpts/evidence are encoded before prompt assembly.
 
 Persona-callable operations use the same isolated analysis boundary through
 `WorkshopAnalysisSidePass`, but remain inside the active host turn. A fresh
-`WorkshopPersonaCapability` is minted per user turn from the
-composition-root-owned factory. Its strict single-root XML codec recognizes
-only `dictionary.lookup`, `dictionary.full-entry`, and `analysis.run`; runtime
-validation rejects unknown fields/tools and oversized values before any
-service executes. Dictionary services and the analysis side-pass are injected
-directly—capabilities never route through handlers or fabricate webview
-messages. Completed evidence becomes a separately attributed, expandable,
-reload-safe artifact stamped with the excerpt version it observed.
+`WorkshopPersonaCapability` is minted per user turn, for the host and for each
+guest, from the composition-root-owned factory. Its strict single-root XML
+codec recognizes only the closed `WORKSHOP_CAPABILITY_OPERATIONS` list, and
+`workshopCapabilityFamily()` maps each operation to one of four families
+exhaustively:
+
+| Family (label) | Operations | Grammar lives in | Evidence framing | Published with the reply |
+|---|---|---|---|---|
+| Writer's Dictionary | `dictionary.lookup`, `dictionary.full-entry` | First-turn contract | Separately attributed capability output | Yes |
+| Analysis | `analysis.run` | `analysis-capability.md` (system prompt) | Separately attributed capability output | Yes |
+| Project Resources | `resource.catalog`, `resource.search`, `resource.read` | First-turn contract, only when configured files match | Untrusted project-file content | `resource.read` only |
+| Session Recall | `transcript.catalog`, `transcript.search`, `transcript.read`, `transcript.todos` | `transcript-recall-capability.md` (system prompt) | Quoted record of a saved session, never memory | `transcript.read` and `transcript.todos` only |
+
+Runtime validation rejects unknown fields/tools and oversized values before
+any service executes. Dictionary services, the analysis side-pass, and the
+recall service are injected directly—capabilities never route through
+handlers or fabricate webview messages. Resources and recall delegate to
+per-turn sub-adapters (`WorkshopResourceCapability`,
+`WorkshopTranscriptRecallCapability`). Completed evidence becomes a separately
+attributed, expandable, reload-safe artifact stamped with the excerpt version
+it observed; publishable evidence reaches the room when its invoker's reply
+commits (`WorkshopRoomAudience`).
 
 `AgentRunEngine` treats capability work as a per-turn concern for both initial
 and retained conversations. The initial turn appends the capability contract
@@ -337,6 +351,50 @@ reopens in its widget (`WORKSHOP_WIDGET_CONFIG_RESTORED`).
 
 **References**: [Workshop Session Persistence (2026-07-14)](adr/2026-07-14-workshop-session-persistence.md), [Workshop Rewind and Branch (2026-09-30)](adr/2026-09-30-workshop-rewind-and-branch.md)
 
+### 9. Workshop Session Recall
+
+Session Recall lets a host or guest persona look back at the writer's other
+saved sessions in the accepted workspace. It reads; it never writes, flushes,
+or reads `current.json`, and the live room is never in its own corpus.
+
+- **One projection.** `projectWorkshopTranscriptTurn`
+  (`application/services/workshop/transcript/`) decides what a recalled turn
+  shows, the same rule transcript export uses: writer text, replies, one-line
+  events, and attachment and widget labels, never their bodies.
+- **Read-only ports.** `WorkshopTranscriptRecallService` reads the store
+  through `availability()`, `list()` without a query, and `readNamed()`, and
+  asks the coordinator one question, `recallScope()`. The `recall/` modules
+  may import the store and coordinator only as types.
+- **Data, then text.** The service returns data; the renderers
+  (`WorkshopTranscriptRecallRenderer`, `WorkshopRecallReadSection`,
+  `WorkshopRecallReadWindow`, `WorkshopRecallTodoList`) write the
+  model-facing text. Every rendered continuation and hint decodes, exactly as
+  written, through the codec.
+- **The engine's window seam.** `AgentCapability.fulfill(request, window?)`
+  receives a `CapabilityContextWindow` that `AgentRunEngine` measures with the
+  preflight's own estimator. `WorkshopRecallWindowClamp` fits each read into
+  half of the free window; other capabilities ignore it.
+- **Composition.** `extension.ts` builds the store, the coordinator, one
+  `WorkshopTranscriptRecallService` (it owns the document cache), then the
+  persona-capability factory that consumes it. No handler constructs it.
+
+| Module (`application/services/workshop/`) | Job |
+|---|---|
+| `WorkshopTranscriptRecallXmlCodec` | Validates the four `transcript.*` requests and their bounds |
+| `recall/WorkshopTranscriptRecallCapability` | Per-turn sub-adapter: read limits, the window clamp, provenance, manifest rows |
+| `recall/WorkshopTranscriptRecallService` | Corpus, scope checks, the document cache, and the four queries |
+| `recall/WorkshopRecallDocument`, `WorkshopRecallDocumentLoader`, `WorkshopRecallDocumentCache` | Recall documents from saved sessions, loaded within a byte budget and cached |
+| `recall/WorkshopTranscriptRecallSearch`, `WorkshopRecallCorpusSelection` | Ranked lexical search, `<match>`, and session selection |
+| `recall/WorkshopTranscriptRecallRenderer`, `WorkshopRecallReadAllocation`, `WorkshopRecallReadSection`, `WorkshopRecallReadWindow`, `WorkshopRecallTodoList` | Model-facing text, fair shares across sessions, and continuations |
+| `recall/WorkshopRecallWindowClamp` | Fits a read into half the free context window |
+| `recall/WorkshopRecallCopy`, `WorkshopRecallText`, `WorkshopRecallTime`, `WorkshopTranscriptRecallRequestCopy`, `WorkshopTranscriptRecallResults` | Shared copy, bounded labels, clocks, status lines, and result types |
+
+The grammar lives in `transcript-recall-capability.md` in the system prompt,
+not the frozen first-turn contract, so a room reopened from before recall
+existed learns it when archive import rebuilds its system prompt.
+
+**References**: [Workshop Personas Recall Saved Session Transcripts (2026-10-05)](adr/2026-10-05-workshop-session-transcript-recall.md), [Workshop Transcript Export (2026-10-05)](adr/2026-10-05-workshop-transcript-export.md)
+
 ---
 
 ## Settings Architecture
@@ -387,5 +445,6 @@ The VS Code adapter uses **dual webpack** (`apps/vscode-extension/webpack.config
 - [Lightweight Testing Framework (2025-11-15)](adr/2025-11-15-lightweight-testing-framework.md)
 - [Workshop Persona Host, Tool Sidecars, and Capabilities (2026-07-09)](adr/2026-07-09-workshop-persona-hosted-conversations.md)
 - [Workshop Rewind and Branch (2026-09-30)](adr/2026-09-30-workshop-rewind-and-branch.md)
+- [Workshop Personas Recall Saved Session Transcripts (2026-10-05)](adr/2026-10-05-workshop-session-transcript-recall.md)
 
 See [TESTING.md](TESTING.md) for the test strategy, [CONFIGURATION.md](CONFIGURATION.md) for settings, and [TOOLS.md](TOOLS.md) for the tool inventory.
