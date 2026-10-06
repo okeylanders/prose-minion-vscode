@@ -49,7 +49,7 @@ verification, and rollback seams.
 | 0 | Characterize | Sentinel visibility tests over the projection; a test that an unknown capability operation fails to decode; per-family label assertions | Done — `83f2cf6` |
 | 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Done — `2e54b88`, `357f5bb`, `24ad18d`, `875f203` |
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, merged in #126 (`57d097a`). Build: `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8`. Review fixes: `f3779af`, `cce3889`, `b4cab1b`, `689f96e`, `65ea614`, `3b5b6e5`, `970ed75`. Re-review fixes: `17647eb`, `07de2c4` |
-| 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Built, in review in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127): `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95` |
+| 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Built, in review in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127): `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95`. Review fixes: `f6c3bef`, `84b1977` |
 | 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Decided; not started |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Not started |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
@@ -138,6 +138,18 @@ verification, and rollback seams.
     Node 18.20.8 (baseline 254 / 3,215). Typecheck, the production build with
     `verify:bundle`, ESLint on the 21 changed TypeScript files, and
     `git diff --check` are clean.
+
+- **2026-10-06 — PR #127 review fixes.** Okey's review requested one
+  Standard change and one nit, each reproduced against the real store.
+  - F-01: a `<match>` with more than eight terms said "every term" while
+    ignoring the ninth. The filters line now names the evaluated terms and
+    those past the limit (`f6c3bef`).
+  - F-02: sessions emptied only by the item limit were reported as having no
+    to-do. A new bound counts filter-emptied sessions before the cap
+    (`84b1977`).
+
+  Full suite 256 suites / 3,271 tests on Node 22 and Node 18; typecheck,
+  build, and lint of the changed files are clean.
 
 ## Decisions (accepted 2026-10-05, as recommended)
 

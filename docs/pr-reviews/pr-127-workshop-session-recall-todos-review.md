@@ -13,10 +13,41 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | The to-do renderer claims every `<match>` term matched while silently ignoring terms after the eighth | A valid 54-character request returns three tasks from a session that does not match `lighthouse`, then describes the complete nine-word request as “every term” | **Open** |
-| F-02 | 🔵 Nit | Sessions whose matching tasks were omitted by the item limit are counted as having no to-do to show | Four scanned sessions with 60 newer tasks and five older tasks produce “3 scanned sessions had no to-do to show” alongside the five-item omission notice | **Open**, nonblocking |
+| F-01 | 🟡 Standard | The to-do renderer claims every `<match>` term matched while silently ignoring terms after the eighth | A valid 54-character request returns three tasks from a session that does not match `lighthouse`, then describes the complete nine-word request as “every term” | **Open**. Fixed by the author in `f6c3bef` (see the author response below); awaiting re-review |
+| F-02 | 🔵 Nit | Sessions whose matching tasks were omitted by the item limit are counted as having no to-do to show | Four scanned sessions with 60 newer tasks and five older tasks produce “3 scanned sessions had no to-do to show” alongside the five-item omission notice | **Open**, nonblocking. Fixed by the author in `84b1977` (see the author response below); awaiting re-review |
 
 **Verdict at `6ea1f0c`: Request changes for F-01 before integrating Slice 2B.** Its result text overstates the session-selection guarantee for an ordinary valid request, violating the explicit disclosure contract. F-02 is lower-priority misleading omission wording. No Blocking or High finding, newly demonstrated privacy breach, data corruption, scope regression, or output-cap failure was established. This remains a **dormant core**, not a claim about a currently enabled persona capability.
+
+## Author response (`f6c3bef`, `84b1977`)
+
+These are the author's claims, offered for re-review. They are not verified findings.
+
+**F-01 ([`f6c3bef`](https://github.com/okeylanders/prose-minion-vscode/commit/f6c3bef)).** Disclosure only; D8's matching rule is unchanged.
+
+- The filters line now names the terms `<match>` was evaluated on and, when there are more than eight, the terms it never evaluated. It mirrors search's wording:
+
+  > Filters: title or excerpt label matching “alpha beta gamma delta epsilon zeta eta theta lighthouse” (terms: alpha, beta, gamma, delta, epsilon, zeta, eta, theta; every evaluated term matched; not evaluated, past the eight-term limit: lighthouse).
+
+- With overflow, all-terms reads “every evaluated term matched”. Without it, “every term matched”. The any-term and no-match wordings gain the same terms and overflow parts.
+- **Witnesses.** The review's reproduction runs through the real store: `store.renameNamed()` to eight words, then a 54-character, nine-term match. It covers all-terms, any-term fallback, and no match, and each must name `lighthouse` as not evaluated. A fourth witness pins the no-overflow wording.
+- **Bounds.** Each term list is bounded at 300 characters with a count of the rest. The cap sweep now carries forty distinct 300-character terms. At every cap it asserts that the output stays within the cap and that the filters line survives whole, overflow disclosure included, never “[filters shortened]”.
+- **Header cap unchanged.** The 1,500-character cap stays because the measured worst case is about 1,310 characters. That case has every filter at the largest its type allows: `<source>` and `<persona>` are closed-list ids. Lowering the cap to 1,200 fails the sweep.
+
+**F-02 ([`84b1977`](https://github.com/okeylanders/prose-minion-vscode/commit/84b1977)).**
+
+- `WorkshopRecallTodosBounds` gains `sessionsWithoutMatchingTodos`. Selection counts it before `todoItems` applies: a scanned session none of whose to-dos the source and status filters admitted.
+- The footer uses that count and reads “had no to-do matching the filters”. `omittedByItemLimit` stays separate.
+- **Witness.** It follows the review's normal-use reproduction at the default budgets. A newer room promotes 60 findings from 20 real host replies beside the corpus's five open to-dos, saved through the real coordinator and store. The service reports `sessionsScanned: 4`, `omittedByItemLimit: 5`, `sessionsWithoutMatchingTodos: 0`. The default-cap rendering shows 60 to-dos with no character omission and says only “5 more to-dos past the 60-item limit.” With `status: completed`, three sessions really have none and are reported as such.
+
+**Mutation check.** Each fix was reverted against the new witnesses:
+
+- F-01: dropping the overflow disclosure fails four witnesses, and printing “every term matched” despite overflow fails one.
+- F-02: putting back the derived count fails two, and counting after the cap instead of before fails two.
+
+**Verification at `84b1977`:**
+
+- Full suite on Node 22.22.0 and Node 18.20.8: **256 suites / 3,271 tests** (3,265 at the reviewed head, plus six witnesses).
+- `npm run typecheck`, `npm run build` (including `verify:bundle`), ESLint on the six changed TypeScript files, and `git diff --check` are all clean.
 
 ## F-01 — Disclose ignored `<match>` terms
 

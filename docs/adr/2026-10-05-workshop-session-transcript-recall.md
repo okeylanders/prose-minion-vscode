@@ -533,7 +533,9 @@ How a call chooses:
   which reads no file. `<recent>` (else `todoSessions`) then caps how many
   are read, and it counts sessions, including those with nothing to show.
 - `<source>`, then status, then `todoItems` filter the items. Each item left
-  out is counted by the rule that left it out.
+  out is counted by the rule that left it out. A scanned session counts as
+  having no matching to-do only when the filters emptied it, not the item
+  limit (PR 127 review F-02).
 - The service throws on a `<recent>` outside 1–`todoSessions` and on
   `<recent>` with `<session>`. The request type also forbids that pair at
   compile time. The Slice 3 codec refuses all of these first, along with a
@@ -550,6 +552,10 @@ How the text is built:
   every item, and the plan's sample showed the session id only once.
 - A to-do without a priority shows none, and an open session's to-dos show
   `excerpt v0`.
+- A `<match>` names the terms it was evaluated on and any past the
+  eight-term limit, which were never evaluated. With overflow, it says "every
+  evaluated term matched", never "every term" (PR 127 review F-01). Slice
+  2C's catalog `<match>` should disclose the same way.
 - Hard caps: header 1,500 characters, footer 1,500, session line 1,000, and
   item 1,500, with the item's text giving way to its metadata. Below the
   minimum supported `todoCharacters`, 5,505, the renderer throws a
