@@ -129,7 +129,8 @@ export type WorkshopCapabilityRequest =
       path: string;
       startLine?: number;
       endLine?: number;
-    };
+    }
+  | WorkshopTranscriptRecallRequest;
 
 /** Inclusive, 1-based positions in a saved session's turn ledger: "turn N". */
 export interface WorkshopTranscriptTurnRange {

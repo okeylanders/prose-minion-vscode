@@ -47,6 +47,7 @@ import {
   WorkshopSessionTimeService,
   WorkshopSessionStore,
   WorkshopSessionPersistenceCoordinator,
+  WorkshopTranscriptRecallService,
   WorkshopTranscriptExportService,
   WorkshopTranscriptExportStore,
   GesturePlaygroundService,
@@ -245,15 +246,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ensureAssistantReady: () => aiResourceManager.ensureInitialized()
     }
   );
-  // Persona capabilities are minted per turn by this factory. It is built
-  // after the store and the coordinator, the order session recall needs
-  // (ADR 2026-10-05 §9); neither of those constructors uses it.
+  // Session recall reads the writer's other saved sessions through the
+  // store's read-only methods; the coordinator tells it which room is live
+  // and whether the workspace still holds (ADR 2026-10-05 §2, §9). Only the
+  // persona capability factory consumes it, so it needs no CoreServices
+  // field and no route.
+  const workshopTranscriptRecallService = new WorkshopTranscriptRecallService(
+    workshopSessionStore,
+    workshopSessionPersistenceCoordinator,
+    outputChannel
+  );
+  // Persona capabilities are minted per turn by this factory, after the
+  // store, the coordinator, and the recall service built from them.
   const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
     dictionaryService,
     workshopAnalysisSidePass,
     contextResourceResolver,
     workshopSessionService,
-    outputChannel
+    outputChannel,
+    workshopTranscriptRecallService
   );
   const workshopToolSidePass = new RunWorkshopToolSidePass(
     assistantToolService,

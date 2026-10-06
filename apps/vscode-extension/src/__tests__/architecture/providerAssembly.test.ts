@@ -182,4 +182,26 @@ describe('app-shell provider assembly', () => {
     );
     expect(workshopSource).toContain('new MessageHandler(');
   });
+
+  it('builds session recall from the store and coordinator, before the factory that alone consumes it (ADR 2026-10-05 §9)', () => {
+    const source = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const at = (needle: string): number => {
+      const index = source.indexOf(needle);
+      expect(index).toBeGreaterThan(-1);
+      return index;
+    };
+    const recall = source.slice(at('new WorkshopTranscriptRecallService('));
+    const recallArgs = recall.slice(0, recall.indexOf(');'));
+    const factory = source.slice(at('new WorkshopPersonaCapabilityFactory('));
+    const factoryArgs = factory.slice(0, factory.indexOf(');'));
+
+    expect(recallArgs).toMatch(/\(\s*workshopSessionStore,\s*workshopSessionPersistenceCoordinator,\s*outputChannel\s*$/);
+    expect(factoryArgs).toMatch(/workshopTranscriptRecallService\s*$/);
+    expect(at('new WorkshopSessionStore(')).toBeLessThan(at('new WorkshopSessionPersistenceCoordinator('));
+    expect(at('new WorkshopSessionPersistenceCoordinator(')).toBeLessThan(at('new WorkshopTranscriptRecallService('));
+    expect(at('new WorkshopTranscriptRecallService(')).toBeLessThan(at('new WorkshopPersonaCapabilityFactory('));
+    expect(at('new WorkshopPersonaCapabilityFactory(')).toBeLessThan(at('new RunWorkshopToolSidePass('));
+    // One consumer: no CoreServices field carries it.
+    expect(source.match(/workshopTranscriptRecallService/g)).toHaveLength(2);
+  });
 });

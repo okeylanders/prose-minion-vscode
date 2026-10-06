@@ -872,9 +872,11 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 
 // WorkshopSessionService is in the net (PR #67 review #14): it is the
 // composition-root-owned reload-safety aggregate — a handler `new`-ing its
-// own copy would silently fork the session per webview.
+// own copy would silently fork the session per webview. Session recall's
+// service is too: one instance owns the document cache and its generations
+// (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService)\b`
 );
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {

@@ -6,6 +6,10 @@ import {
 } from '@shared/types/workshopCapabilities';
 import { ContextPathGroup, isContextPathGroup } from '@shared/types';
 import { parseWorkshopCapabilityXmlDocument } from '@/application/services/workshop/WorkshopCapabilityXmlDocument';
+import {
+  inspectWorkshopTranscriptRecallCall,
+  WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY
+} from '@/application/services/workshop/WorkshopTranscriptRecallXmlCodec';
 import { countWords } from '@/utils/textUtils';
 import * as path from 'path';
 
@@ -148,7 +152,7 @@ export const createWorkshopCapabilityInstruction = (
 /** Strict single-root decoder for the closed Workshop operation set. */
 export class WorkshopCapabilityXmlCodec {
   inspect(candidate: string): WorkshopCapabilityInspection {
-    const document = parseWorkshopCapabilityXmlDocument(candidate);
+    const document = parseWorkshopCapabilityXmlDocument(candidate, WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY);
     if (document.kind !== 'call') return document;
     const { operation, fields } = document;
     switch (operation) {
@@ -163,6 +167,11 @@ export class WorkshopCapabilityXmlCodec {
         return this.resourceSearchRequest(fields);
       case 'resource.read':
         return this.resourceReadRequest(fields);
+      case 'transcript.catalog':
+      case 'transcript.search':
+      case 'transcript.read':
+      case 'transcript.todos':
+        return inspectWorkshopTranscriptRecallCall(operation, document);
       default:
         return { kind: 'invalid', reason: 'unknown-capability' };
     }
