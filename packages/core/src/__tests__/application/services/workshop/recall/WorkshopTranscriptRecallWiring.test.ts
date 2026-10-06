@@ -27,6 +27,7 @@ import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabiliti
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { saveExcerptCorpus, RecallExcerptCorpus } from '@/__tests__/application/services/workshop/recall/workshopRecallExcerptFixtures';
 import {
+  RECALL_ROOT,
   RECALL_SENTINELS,
   RECALL_VISIBLE_LABELS,
   saveRecallRoom,
@@ -280,7 +281,7 @@ describe('continuations and hints, followed together exactly as written', () => 
   it('two collapsed reports of a one-session read, beside their session, read in full', async () => {
     const first = await invoke(wire(corpus), call('transcript.read',
       `<session>${corpus.sessions.stock}</session><detail>discussion</detail>`));
-    const written = [...readable(first.fulfillment.evidence).matchAll(/read it in full with (<turns>\d+<\/turns>)\]/g)]
+    const written = [...readable(first.fulfillment.evidence).matchAll(/read it in full with (<turns>\d+<\/turns> <detail>full<\/detail>)\]/g)]
       .slice(0, 2).map(([, hint]) => hint);
     expect(written).toHaveLength(2);
 
@@ -288,6 +289,42 @@ describe('continuations and hints, followed together exactly as written', () => 
     expect(next.fulfillment.evidence).not.toContain('read it in full with');
     expect(next.fulfillment.evidence).toContain(corpus.reports.stock[0].body.slice(0, 200));
     expect(next.fulfillment.evidence).toContain(corpus.reports.stock[1].body.slice(0, 200));
+  });
+
+  it('a one-session hint and that read’s discussion continuation, followed together, are refused rather than collapsing the report again', async () => {
+    // A report, then more discussion than one 8,000-character read holds.
+    const report = `LONG-CHAT-REPORT ${'The beat lands on a stock gesture. '.repeat(40)}`;
+    const long = await saveRecallRoom('Long chat', (session, advance) => {
+      session.setExcerpt({
+        text: 'The laughter was raucous.',
+        source: { kind: 'file', sourceUri: `file://${RECALL_ROOT}/drafts/long.md`, relativePath: 'drafts/long.md' }
+      });
+      session.setSessionScope('excerpt');
+      advance(60_000);
+      session.beginToolRun('stock-and-signature', 'long-report');
+      session.completeToolReport('long-report', report, 'conv-long-report', undefined, false, []);
+      for (let reply = 1; reply <= 6; reply += 1) {
+        advance(60_000);
+        session.beginPersonaMessage(`long-${reply}`, `Question ${reply}?`);
+        advance(60_000);
+        session.completeRun(`long-${reply}`, `LONG-CHAT-REPLY-${reply} ${'word '.repeat(400)}`, undefined, false, 'runtime-long');
+      }
+    }, { idPrefix: 'long' });
+    jest.replaceProperty(PROMPT_BUDGETS, 'workshopTranscriptRecall', { ...PROMPT_BUDGETS.workshopTranscriptRecall, readCharacters: 8_000 });
+    const session = `<session>${long.savedSessionId}</session>`;
+    const first = readable((await invoke(wire(long), call('transcript.read', `${session}<detail>discussion</detail>`))).fulfillment.evidence);
+    const hint = /read it in full with (<turns>\d+<\/turns> <detail>full<\/detail>)\]/.exec(first)![1];
+    const continuation = /Continue with (<turns>[^<]+<\/turns> <detail>discussion<\/detail>)\./.exec(first)![1];
+
+    // Together they ask for two details; the codec refuses that instead of reading the report collapsed again.
+    expect(wire(long).capability.inspectRequest(call('transcript.read', `${session}${hint} ${continuation}`)))
+      .toEqual({ kind: 'invalid', reason: 'conflicting-detail', field: 'detail', operation: 'transcript.read' });
+    // Each followed in its own read works as written.
+    const whole = await invoke(wire(long), call('transcript.read', `${session}${hint}`));
+    expect(whole.fulfillment.evidence).toContain('LONG-CHAT-REPORT The beat lands');
+    const next = readable((await invoke(wire(long), call('transcript.read', `${session}${continuation}`))).fulfillment.evidence);
+    expect(next).toContain('Discussion detail:');
+    expect(next).toMatch(/LONG-CHAT-REPLY-\d/);
   });
 });
 

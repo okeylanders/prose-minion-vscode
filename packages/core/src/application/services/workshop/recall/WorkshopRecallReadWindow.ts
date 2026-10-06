@@ -243,14 +243,19 @@ function toolReport(entry: WorkshopRecallEntry['entry']): WorkshopTranscriptRepl
 
 /**
  * "[turn 12 · 10:42 AM · Stock & Signature report · 2,431 words · read it in
- * full with <turns>12</turns>]": a discussion-detail read's whole report.
- * Short enough never to be cut, and it shows nothing of the report's body.
+ * full with <turns>12</turns> <detail>full</detail>]": a discussion-detail
+ * read's whole report. Short enough never to be cut, and it shows nothing of
+ * the report's body.
  *
- * Its hint must work followed exactly as written. One session followed
- * alone defaults to full detail (D10). In a read of several sessions, though,
- * a bare `<turns>` names no session, and two such hints followed together
- * would default to discussion and collapse again (as PR 129 F-01 found for
- * continuations), so there the hint names its session and full detail.
+ * Its hint must work followed exactly as written, and every hint names full
+ * detail. In a read of several sessions a bare `<turns>` names no session,
+ * and two such hints followed together would default to discussion and
+ * collapse again (as PR 129 F-01 found for continuations), so there the hint
+ * names its session too. A one-session read's hint names its detail as well:
+ * followed together with that read's continuation, which names discussion,
+ * it would otherwise merge into a discussion read and collapse the report
+ * again, silently. Naming it makes that mix a `conflicting-detail` refusal,
+ * as it already is in a read of several sessions (ADR 2026-10-05, Slice 4).
  */
 function collapsedReport(
   position: number,
@@ -259,12 +264,12 @@ function collapsedReport(
   sessionId: string | undefined
 ): string {
   const words = countWords(report.content);
-  const call = sessionId === undefined
+  const turns = sessionId === undefined
     ? `<turns>${position}</turns>`
-    : `<session turns="${position}">${recallLabel(sessionId)}</session> <detail>full</detail>`;
+    : `<session turns="${position}">${recallLabel(sessionId)}</session>`;
   return `[turn ${position} · ${clock.time(report.timestamp)} · ${recallLabel(report.speaker)} report` +
     `${report.privateWith ? ' · private' : ''} · ${formatCount(words)} ${words === 1 ? 'word' : 'words'} · ` +
-    `read it in full with ${call}]`;
+    `read it in full with ${turns} <detail>full</detail>]`;
 }
 
 /**
