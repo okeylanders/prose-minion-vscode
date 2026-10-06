@@ -13,6 +13,8 @@
  *   the newer session, then the earlier turn.
  * - Title, excerpt-label, and context-label matches are session-level hits.
  *   A tool reply also matches its speaker ("Cliché"); persona names do not.
+ * - `<match>` (matchWorkshopRecallSessions) applies these rules to a session's
+ *   title and excerpt label only, to narrow the sessions a call reads.
  * - Copies and branches repeat their source's turns with the same ids (runway
  *   F14). Each turn appears once, attributed to the newest session holding
  *   it; the others are named as "also in". A shared id only merges when
@@ -162,6 +164,51 @@ export function searchWorkshopRecallDocuments(
     sessionsWithOnlyOmittedHits: [...omittedBySession.keys()]
       .filter((recency) => !shownBySession.has(recency)).length,
     lineageDuplicates: duplicates
+  };
+}
+
+/** The labels `<match>` reads (ADR 2026-10-05 D8): both are in the store's listing. */
+export interface WorkshopRecallMatchLabels {
+  readonly title: string;
+  readonly excerptLabel?: string;
+}
+
+export interface WorkshopRecallSessionMatch<T> {
+  /** Absent when nothing matched. */
+  readonly mode?: WorkshopRecallMatchMode;
+  /** The sessions that match, in the order given. */
+  readonly sessions: readonly T[];
+}
+
+/**
+ * `<match>` for the whole transcript family (D8): the sessions whose title or
+ * excerpt label match, under search's own rules (the same terms, prefix
+ * matching, and all-terms preference). It narrows sessions and keeps their
+ * order. Context labels never count: they stay a search feature, and the
+ * listing does not hold them, so matching parses no session file.
+ */
+export function matchWorkshopRecallSessions<T extends WorkshopRecallMatchLabels>(
+  sessions: readonly T[],
+  query: WorkshopRecallQuery
+): WorkshopRecallSessionMatch<T> {
+  if (query.terms.length === 0) {
+    return { sessions: [] };
+  }
+  const matcher = new QueryMatcher(query);
+  const ranked = sessions.map((session) => ({
+    session,
+    matchedTerms: matcher.rank(normalized([session.title, session.excerptLabel ?? ''].join('\n'))).matchedTerms
+  }));
+  const best = ranked.reduce((most, entry) => Math.max(most, entry.matchedTerms), 0);
+  if (best === 0) {
+    return { sessions: [] };
+  }
+  const mode: WorkshopRecallMatchMode = best === query.terms.length ? 'all-terms' : 'any-term';
+  return {
+    mode,
+    sessions: ranked
+      .filter((entry) => (mode === 'all-terms' ? entry.matchedTerms === best : entry.matchedTerms > 0))
+      .map((entry) => entry.session)
   };
 }
 
