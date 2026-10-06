@@ -110,13 +110,13 @@ describe('discussion detail (D10)', () => {
 
   it('collapses each tool report to one line naming its turn, speaker, and word count', () => {
     expect(text).toContain(
-      '[turn 2 · 9:30 AM · Stock & Signature report · 2,431 words · read it in full with <turns>2</turns>]'
+      '[turn 2 · 9:30 AM · Stock & Signature report · 2,431 words · read it in full with <turns>2</turns> <detail>full</detail>]'
     );
     // A private instrument reply keeps its marker; a saved-file speaker is clipped.
     expect(text).toContain(
-      '[turn 7 · 9:30 AM · Prose Assistant report · private · 2 words · read it in full with <turns>7</turns>]'
+      '[turn 7 · 9:30 AM · Prose Assistant report · private · 2 words · read it in full with <turns>7</turns> <detail>full</detail>]'
     );
-    expect(text).toContain(`[turn 8 · 9:30 AM · ${'P'.repeat(199)}… report · 1 word · read it in full with <turns>8</turns>]`);
+    expect(text).toContain(`[turn 8 · 9:30 AM · ${'P'.repeat(199)}… report · 1 word · read it in full with <turns>8</turns> <detail>full</detail>]`);
     expect(discussion.collapsed).toEqual([
       { position: 2, turnId: 't-2' },
       { position: 7, turnId: 't-7' },

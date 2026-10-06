@@ -86,7 +86,7 @@ describe('session recall visibility', () => {
     expect(recalled.text).toContain('Read of 2 saved sessions, in the order asked, in discussion detail');
     // In a read of several sessions, its hint names the session; alone, the session is implied.
     expect(recalled.text).toMatch(/· Cliché report · 8 words · read it in full with <session turns="\d+">second-[^<]+<\/session> <detail>full<\/detail>\]/);
-    expect(recalled.text).toMatch(/· Cliché report · 8 words · read it in full with <turns>\d+<\/turns>\]/);
+    expect(recalled.text).toMatch(/· Cliché report · 8 words · read it in full with <turns>\d+<\/turns> <detail>full<\/detail>\]/);
     expect(recalled.text).toContain(`[turn 3 · 2:01 PM · Cliché]\n${RECALL_VISIBLE_LABELS.toolReport}`);
   });
 

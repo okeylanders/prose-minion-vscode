@@ -111,7 +111,7 @@ describe('prompt budgets', () => {
       snippetCharacters: 280,
       readCharacters: 150_000,
       readSessions: 10,
-      readCharactersPerTurn: 150_000,
+      readCharactersPerTurn: 300_000,
       readsPerTurn: 2,
       todoSessions: 50,
       todoItems: 60,
@@ -124,11 +124,12 @@ describe('prompt budgets', () => {
   });
 
   it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {
-    const { readCharacters, readSessions, readCharactersPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
+    const { readCharacters, readSessions, readCharactersPerTurn, readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
 
     expect(readSessions * WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS).toBeLessThanOrEqual(readCharacters);
-    // One read never needs more than the turn's total.
-    expect(readCharacters).toBeLessThanOrEqual(readCharactersPerTurn);
+    // The turn's total holds every read it allows at full size. When it equalled
+    // one read, a large first read left the second nothing (D11, amended in Slice 4).
+    expect(readCharactersPerTurn).toBe(readsPerTurn * readCharacters);
   });
 
   it('pins the model-facing Conversation Widget budgets and aggregate frame ceiling', () => {

@@ -1,9 +1,9 @@
 # Epic: Workshop Session Recall
 
-**Status:** In progress — D1–D4 accepted 2026-10-05, D5–D11 2026-10-06; Slices 0–2C merged (Slices 2, 2B, and 2C are the dormant recall core); Slice 3 built and in review
+**Status:** In progress — D1–D4 accepted 2026-10-05, D5–D11 2026-10-06; Slices 0–3 merged (Slices 2, 2B, and 2C are the recall core; Slice 3 wires it, dormant to models); Slice 4 (enable) built and in review
 **Priority:** Medium
 **Created:** 2026-10-05
-**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs: Slices 0–1 from `claude/practical-ritchie-rx9n4t` (#125), Slice 2 from `claude/workshop-recall-core` (#126), Slice 2B from `claude/workshop-recall-todos` (#127), Slice 2C from `claude/workshop-recall-excerpts` (#129), Slice 3 from `claude/workshop-recall-wiring` (#130)
+**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs: Slices 0–1 from `claude/practical-ritchie-rx9n4t` (#125), Slice 2 from `claude/workshop-recall-core` (#126), Slice 2B from `claude/workshop-recall-todos` (#127), Slice 2C from `claude/workshop-recall-excerpts` (#129), Slice 3 from `claude/workshop-recall-wiring` (#130), Slice 4 from `claude/workshop-recall-prompts` (#131)
 **Decision:** [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (Accepted in part: D1–D11)
 **Evidence:** [Architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
 **Realizes:** the host-fetch half of [Feature: a prior conversation is a resource, not a branch](../../features/feature-prior-conversation-as-resource/README.md)
@@ -51,8 +51,8 @@ verification, and rollback seams.
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, merged in #126 (`57d097a`). Build: `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8`. Review fixes: `f3779af`, `cce3889`, `b4cab1b`, `689f96e`, `65ea614`, `3b5b6e5`, `970ed75`. Re-review fixes: `17647eb`, `07de2c4` |
 | 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Done, merged in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127) (`ababfde`). Build: `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95`. Review fixes: `f6c3bef`, `84b1977` |
 | 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Done, merged in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129) (`23b7779`). Build: `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17`. Review fixes: `fe4c150`, `f93f309` |
-| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Built, in review in [#130](https://github.com/okeylanders/prose-minion-vscode/pull/130). PR #129 follow-ups: `922ff59`, `a96d09d`, `91e9728`, `58ec000`, `70b9ba6`. Build: `6e87259`, `b4dfaa2`, `7897c0d`, `ebde98e`, `ba599d4`, `509cbc8`, `34f6ac4`, `364b5c5`, `41ee820`, `91466c1`, `214c446`, `a53aaeb`. Docs: `7131981`. Review fixes: `3f2d255`, `994b234` |
-| 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
+| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Done, merged in [#130](https://github.com/okeylanders/prose-minion-vscode/pull/130) (`b2fe8dd`). PR #129 follow-ups: `922ff59`, `a96d09d`, `91e9728`, `58ec000`, `70b9ba6`. Build: `6e87259`, `b4dfaa2`, `7897c0d`, `ebde98e`, `ba599d4`, `509cbc8`, `34f6ac4`, `364b5c5`, `41ee820`, `91466c1`, `214c446`, `a53aaeb`. Docs: `7131981`. Review fixes: `3f2d255`, `994b234` |
+| 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Built, in review in [#131](https://github.com/okeylanders/prose-minion-vscode/pull/131). Epic table: `5a96d42`. Hint detail: `761f8ad`. Grammar and path chain: `656741e`. Sync test: `f4d5c13`. Pointer line: `7666ab2`. Charters and contract: `99018db`. Docs: `6e169e6`. Lint: `ef6b4fd`. Review fix: `b7e44fe`. After the live pass: `c1a552d`, `e2eb7e9`, `c20e4c0` |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
 
 ## Progress notes
@@ -235,6 +235,58 @@ verification, and rollback seams.
 
   Full suite 265 suites / 3,487 tests on Node 22 and Node 18; typecheck,
   build, and lint of the changed files are clean.
+
+- **2026-10-06 — Slice 4 (enable).** Host and guest personas carry the
+  `transcript.*` grammar in their system prompt, after the analysis
+  grammar, so reopened rooms learn it too. The ADR's Slice 4 note records
+  the details.
+  - Okey decided four questions:
+    - The grammar quotes only the numbers a persona acts on.
+    - The first-turn contract gains one unconditional pointer line.
+    - A persona recalls only when the writer refers to earlier work, and
+      otherwise may offer once, in one line.
+    - Guests share the grammar file. Their charter's paragraph on where
+      results go was corrected, since it was already wrong about
+      published evidence.
+  - One approved runtime change: a one-session report hint names
+    `<detail>full</detail>`. Followed together with a discussion
+    continuation, it is now a `conflicting-detail` refusal instead of a
+    silent re-collapse that spent a read.
+  - Witnesses:
+    - A sync test pins every quoted number, decodes every XML example
+      through the real codec, and matches the taught hint forms against
+      real renderer output, both ways.
+    - A reopened host and guest get the grammar through the real
+      `PromptLoader`, `ConversationManager`, and engine, with their frozen
+      contracts untouched.
+    - The guest charter's sharing claim is tied to `WorkshopRoomAudience`.
+    - Each change, reverted on its own, fails a witness.
+  - Verification: full suite 266 suites / 3,514 tests on Node 22.22.0 and
+    Node 18.20.8 (baseline 265 / 3,487). Typecheck, the production build
+    with `verify:bundle`, and `git diff --check` are clean. ESLint on the
+    10 changed TypeScript files adds no warnings to any file.
+
+- **2026-10-06 — PR #131 review fix.** Okey's review approved Slice 4
+  with one nit. F-01: the sync test never rendered a read of several
+  sessions in full detail, so the grammar missed that read's continuation,
+  a seventh form. The grammar teaches it now. The test renders one
+  session or several in every detail, and checks that each detail's
+  continuations stay explicit when followed alone and together.
+
+- **2026-10-06 — After the first live pass (Slice 4, on #131).** Okey
+  ran recall on a real workspace: catalog `<match>6.8</match>`, a
+  five-chat discussion read, then a refused read of one chat's tail with
+  2,052 characters left of the turn's 150,000. He approved two changes:
+  - `readCharactersPerTurn` is 300,000, twice `readCharacters`, so a large
+    first read leaves room for a full second one. This amends D11; the
+    window clamp still caps every read.
+  - When a limit leaves turns unread, the persona answers from what it
+    has, names what is left, and offers to read it next, instead of
+    stopping to ask. The read refusals say the same.
+  - At Okey's request, a real-store test of recalling a session that
+    itself recalled and committed a widget. Neither the nested transcript
+    nor the widget payload comes back; the Session Recall line, the
+    commit's visible line, and the replies do (`c20e4c0`).
 
 ## Decisions (accepted 2026-10-05, as recommended)
 

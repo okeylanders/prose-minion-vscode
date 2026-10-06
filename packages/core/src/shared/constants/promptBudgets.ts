@@ -68,7 +68,11 @@ export interface PromptBudgets {
     readCharacters: number;
     /** The most sessions one `transcript.read` names (D9); each share clears the minimum. */
     readSessions: number;
-    /** All recall reads in one persona turn together (D11); Slice 3 enforces it. */
+    /**
+     * All recall reads in one persona turn together (D11, amended in Slice 4):
+     * room for every read the turn allows at full size, so a large first read
+     * still leaves the second one. The context-window clamp bounds each read.
+     */
     readCharactersPerTurn: number;
     readsPerTurn: number;
     /** `transcript.todos` (D6): the most sessions one call scans, and the largest `<recent>`. */
@@ -261,7 +265,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     snippetCharacters: 280,
     readCharacters: 150_000,
     readSessions: 10,
-    readCharactersPerTurn: 150_000,
+    readCharactersPerTurn: 300_000,
     readsPerTurn: 2,
     todoSessions: 50,
     todoItems: 60,

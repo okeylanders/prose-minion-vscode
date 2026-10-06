@@ -494,7 +494,9 @@ once.
 - **D11: budgets and the context window.**
   - `readCharacters` is 150,000.
   - `readCharactersPerTurn` is 150,000, so two reads cannot add 300,000
-    characters to one turn.
+    characters to one turn. *Amended in Slice 4 after the first live pass:
+    300,000, twice `readCharacters`; see the [Slice 4
+    note](#implementation-note-2026-10-06-slice-4).*
   - `readSessions` is 10.
   - `todoSessions` is 50, `todoItems` 60, `todoCharacters` 16,000, and
     `todoMatchCharacters` 200.
@@ -931,6 +933,183 @@ For Slice 4:
 - **`docs/ARCHITECTURE.md` and `AGENTS.md`** gain the family, the new
   modules, and the engine's window seam.
 
+## Implementation note 2026-10-06: Slice 4
+
+The family is enabled. Host and guest personas carry
+`transcript-recall-capability.md` in their system prompt, right after
+`analysis-capability.md`, so rooms reopened from before this change learn
+it when archive import rebuilds their prompts. The live pass and budget
+tuning stay in Slice 5.
+
+Okey decided four questions the ADR and the notes left open:
+
+- **Decision 1: the numbers the grammar quotes.** Only those a persona acts
+  on: `readsPerTurn`, `readCharactersPerTurn`, `readSessions`, `turnRanges`,
+  and `todoSessions` (the largest `<recent>`, and the default). Byte
+  budgets, hit caps, the cache, input-length ceilings, and the per-session
+  minimum stay internal; results and refusals state them when they matter.
+  Recall calls "use one of the turn's capability calls" with no number,
+  because the dynamic contract owns `callsPerTurn`.
+- **Decision 2: the pointer line.** One unconditional line,
+  `The stable transcript.* grammar is in your system instructions.`,
+  beside the `analysis.run` line in both resource branches. The contract
+  freezes at the first message, and availability is a per-call fact each
+  result reports. Neither the turn reminder nor the resource-availability
+  text mentions recall: the reminder states the call allowance, and the
+  unavailable line names only `resource.*`.
+- **Decision 3: when to recall.** Only when the writer refers to an
+  earlier conversation, a past decision, "last time", or "the other chat",
+  or asks for a summary across chats or for open to-dos. Never routinely,
+  never to fill a gap the writer did not raise. A refinement of §8: when
+  earlier work looks plainly relevant but the writer has not raised it, a
+  persona may offer in one line ("I can look back at saved sessions if
+  that would help"), never call, and not repeat an offer the writer passed
+  over.
+- **Decision 4: guests.** The same grammar file for both bases, as §8
+  says. The guest charter said every capability result was "delivered
+  privately into this conversation, not to the room", which was never true
+  of published evidence (`WorkshopSessionService.ts:1690-1698` publishes a
+  guest's evidence when its reply commits, as it does the host's). The
+  paragraph was rewritten once rather than gaining a contradicting
+  sentence. Results arrive privately while the guest works. Dictionary
+  entries, analysis reports, resource reads, and saved-session reads and
+  to-do lists reach the room with the reply. Catalogs and searches stay
+  private. A witness ties that copy to `WorkshopRoomAudience` for every
+  operation.
+
+One runtime change, approved by Okey before coding:
+
+- **A one-session report hint names its detail.** Writing the
+  "followed together" rule surfaced a trap the Slice 3 decision 4 form
+  left open. In a one-session discussion read, a hint was
+  `<turns>12</turns>`, full only through the one-session default. Followed
+  together with that read's continuation,
+  `<turns>41-72</turns> <detail>discussion</detail>`, the codec merged the
+  ranges into one discussion read. The report collapsed again, silently,
+  and the read counted against `readsPerTurn`. The hint is now
+  `<turns>12</turns> <detail>full</detail>`, so that mix is a
+  `conflicting-detail` refusal, as it already was in a read of several
+  sessions. This changes D10's documented form. A collapsed line gains 22
+  characters and stays shorter than the several-session form, so the read
+  bounds are unchanged.
+
+The grammar doc teaches:
+
+- the four calls with every field;
+- `turns="…"` and the sibling `<turns>` rule;
+- `<detail>`, with discussion the default for several sessions;
+- personas by id or label;
+- `<match>6.7</match>` as the exhaustive short form (Slice 2C note);
+- the seven continuation and hint forms the renderers emit;
+- following them as written: a form without `<session>` goes beside the
+  one session it came from, several go together when they name different
+  sessions and one detail, and hints naming one session combine their
+  ranges (PR 130 F-02);
+- the read limits, the window note, both minimum refusals, and the
+  unavailable and unknown-session results.
+
+Beyond §8, `interaction-contract.md` also says that improvised color found
+in a recalled transcript stays noncanonical: it belonged to that session.
+
+Witnesses:
+
+- `transcriptRecallPromptSync.test.ts` pins every number the prompt quotes
+  to `PROMPT_BUDGETS` and fails on any other number in its prose.
+- The same test decodes every XML example through the real codec: each
+  refused example gets the reason the prose names. It also matches the
+  taught forms against the renderers' output over real saved sessions,
+  both ways, and decodes each form, followed as taught, to the read it
+  promises. The rendered corpus covers every combination the renderers
+  tell apart: one session or several, in every detail of
+  `WORKSHOP_RECALL_READ_DETAILS`. The first build sampled four reads and
+  missed the full-detail continuation of a read of several sessions, so
+  the prompt taught six forms of seven (PR 131 review F-01).
+- A reopened room: a host and a guest archive whose frozen first-turn
+  contract never mentions `transcript.*` are imported through the real
+  `PromptLoader`, `ConversationManager`, and engine. Each rebuilt system
+  prompt carries the whole grammar, and each first message is unchanged.
+- Path-chain tests cover both bases. The codec test covers the pointer
+  line in both resource branches.
+- Recall of a recall (`WorkshopTranscriptRecallNested.test.ts`).
+  - The setup: a saved session reads another through the real capability
+    and commits a real Gesture Playground draft, with markers in A's
+    reply and in the widget's payload.
+  - The check: recalled later, that session shows the one-line Session
+    Recall event, the commit's visible line and widget label, and the
+    replies, and none of the markers. §3's one projection makes this
+    true for every capability family; the witness pins the two cases a
+    writer relies on.
+  - Mutation check: projecting recall evidence, or reading the stored
+    widget artifact or draft, fails it.
+
+Mutation check: each change was reverted on its own, and a witness failed
+each time. That covered the hint's detail, the path entry, the pointer
+line, the guest paragraph, the contract paragraph, a publishable
+operation, a budget value, a stray number, and a malformed example.
+
+Prompt cost and caches:
+
+- The grammar adds about 10,000 bytes, roughly 2,500 tokens by the
+  preflight's estimate, to every host and guest system prompt.
+- `base.md`, `guest-base.md`, and `interaction-contract.md` change too.
+  So every persona system prompt changes once: on upgrade, each persona
+  conversation's next request, new or reopened, misses the provider's
+  prompt cache once, then caches as before.
+- The pointer line changes only conversations started after the upgrade;
+  a retained conversation keeps its frozen first message.
+
+`docs/ARCHITECTURE.md` gains the family table and a Session Recall
+section. `AGENTS.md` gains a short Session Recall section.
+
+After the first live pass, Okey approved two more changes on this PR:
+
+- **D11 amended: `readCharactersPerTurn` is 300,000, twice
+  `readCharacters`.**
+  - The problem: when the turn's total equalled one read, the second read
+    in `readsPerTurn: 2` had room only after a small first read. On a
+    real workspace, a five-chat 6.8 discussion read used 147,948 of
+    150,000 characters, and the read of one chat's tail was refused with
+    2,052 left. The persona disclosed it, and the next turn read it.
+  - Why it is safe now: D11 chose 150K per turn before the window clamp
+    existed. When the model's context length is known, the clamp caps
+    every read at half the free window, measured again after each read.
+    The total's remaining job there is cost: a read's evidence stays in
+    the retained conversation, and the saved session, for the rest of
+    the room.
+  - The qualification (PR 131 re-review): when the context length is
+    unknown, there is no clamp, and only the character limits apply, as
+    before. Characters are not tokens. The re-review measured a
+    300,000-character read of XML-heavy text at about 223,500 estimated
+    tokens once escaped. The ordinary request preflight still runs, but
+    nothing local guarantees such a model can take two full reads.
+    Slice 5 should decide whether an unknown window falls back to one
+    read's worth per turn.
+  - The pin: `PROMPT_BUDGETS` pins the relationship, a total that holds
+    every read a turn allows at full size.
+  - The grammar now quotes `readCharacters` as well, since the two
+    numbers differ. That is one number beyond decision 1's list.
+- **Answer, then offer.** When a limit or refusal leaves turns unread,
+  the persona answers from what it has, names the sessions and turns
+  left, and offers to read them next. It does not stop to ask first. If
+  the unread turns are what the writer asked about, it says so up front.
+  The three read refusals end the same way, through one helper. The read
+  limit and the turn's total point to the next turn, since both reset
+  with the next writer message. The window refusals name what could not
+  be read, since the window does not reset. The prompt's offer follows
+  the same line (PR 131 re-review): a later turn when a turn's limit
+  stopped the read, a narrower read when the context window did.
+
+For Slice 5:
+
+- U2: whether fast models copy 36-character session ids.
+- Whether personas follow continuations and hints as written, and combine
+  same-session hints.
+- How often the decision 3 offer appears, and whether it becomes a tic.
+- Whether the 2,500-token grammar earns its place in every persona prompt.
+- What two full reads per turn cost a conversation that keeps their
+  evidence, and whether personas plan their reads to fit the limits.
+- Open questions 5–8.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**
@@ -1044,4 +1223,5 @@ exists; any cross-workspace memory.
    [amendment](#amendment-2026-10-06-to-dos-and-excerpt-summaries-d5d11).
    The D5 to-do id was added at Okey's request. In D10, discussion detail is
    the default for multi-session reads. D11 sets 150K per turn, not 2 × 150K,
-   plus the window clamp.
+   plus the window clamp. Slice 4 amended the per-turn total to 2 × 150K
+   once the clamp had landed.

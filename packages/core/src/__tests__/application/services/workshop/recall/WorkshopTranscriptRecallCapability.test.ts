@@ -233,7 +233,8 @@ describe('a turn’s read limits', () => {
     expect(reading).toHaveBeenCalledTimes(2);
     expect(third).toMatchObject({
       status: 'rejected',
-      error: 'Only 2 transcript reads are allowed per user turn. Answer from the reads you have.',
+      error: 'Only 2 transcript reads are allowed per user turn. Answer from the reads you have, ' +
+        'and tell the writer which sessions and turns are left for your next turn.',
       metadata: { rejectionReason: 'recall-read-limit' }
     });
   });
@@ -254,6 +255,22 @@ describe('a turn’s read limits', () => {
       `This read was limited to ${(40_000 - used).toLocaleString('en-US')} characters: earlier reads this turn used ` +
         `${used.toLocaleString('en-US')} of the 40,000-character total.`
     );
+  });
+
+  it('leaves a full second read after a large first read (D11, amended in Slice 4)', async () => {
+    // The live 6.8 pass: a batch read used 147,948 of the then 150,000-character total, and the tail's read was refused.
+    // With a total of one read, a large first read squeezes or refuses the second; now the second is a full read.
+    const capability = capabilityOver();
+    const batch = await capability.fulfill({
+      capability: 'transcript.read',
+      sessions: [{ sessionId: corpus.sessions.stock }, { sessionId: corpus.sessions.cliche }, { sessionId: corpus.sessions.endings }],
+      detail: 'full'
+    });
+    const tail = await capability.fulfill({ capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.stock, turns: [{ from: 10, to: 18 }] }] });
+
+    expect(batch.metadata).toMatchObject({ limitedBy: 'read-budget', truncated: true });
+    expect(batch.content!.length).toBeGreaterThan(PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters / 2);
+    expect(tail).toMatchObject({ status: 'success', metadata: { limitedBy: 'read-budget', readLimit: 150_000 } });
   });
 
   it('refuses a read the turn’s total has no minimum share left for, naming what is left (decision 2)', async () => {
@@ -277,7 +294,8 @@ describe('a turn’s read limits', () => {
     expect(second.error).toBe(
       `This read names 2 saved sessions and needs at least 12,000 characters (6,000 per session), but only ` +
         `${left.toLocaleString('en-US')} are left: earlier reads this turn used ${first.content!.length.toLocaleString('en-US')} ` +
-        'of the 20,000-character total. Read fewer sessions at once, or answer from what you have.'
+        'of the 20,000-character total. Read fewer sessions at once, or answer from what you have ' +
+        'and tell the writer which sessions and turns are left for your next turn.'
     );
     // A refusal before the service spends no read: with room again, the turn's second read still runs.
     replaceBudgets({ readCharacters: 15_000, readCharactersPerTurn: 100_000 });
@@ -394,7 +412,8 @@ describe('the context window clamp (D11)', () => {
     });
     expect(result.error).toBe(
       'This read names 3 saved sessions and needs at least 18,000 characters (6,000 per session), but only 16,000 ' +
-        'are left: half the room left in your context window. Read fewer sessions at once, or answer from what you have.'
+        'are left: half the room left in your context window. Read fewer sessions at once, or answer from what you have ' +
+        'and tell the writer which sessions and turns you could not read.'
     );
   });
 
@@ -427,7 +446,8 @@ describe('the context window clamp (D11)', () => {
     expect(result.error).toBe(
       'This read names 1 saved session and needs at least 6,000 characters (6,000 per session), but half the room ' +
         `left in your context window holds only about ${charactersLeft.toLocaleString('en-US')} characters of these ` +
-        `sessions: the minimum read measured ${minimumTokens.toLocaleString('en-US')} tokens against 1,600. Answer from what you have.`
+        `sessions: the minimum read measured ${minimumTokens.toLocaleString('en-US')} tokens against 1,600. Answer from what you have, ` +
+        'and tell the writer which sessions and turns you could not read.'
     );
   });
 });
