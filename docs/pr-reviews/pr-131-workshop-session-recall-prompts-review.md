@@ -3,19 +3,76 @@
 **Author:** okeylanders · **PR:** [#131](https://github.com/okeylanders/prose-minion-vscode/pull/131) (open at review)
 **Branches:** `claude/workshop-recall-prompts` → `epic/workshop-session-recall`
 **Verified base / merge-base:** `b2fe8ddb6b2fa32cb33ba0f870342157076dc165`
-**Reviewed code head:** `34dda149917b07b5ed3582ec9821cfea07d4996c`
-**Scope:** 18 files · +873 / −39 · 10 commits
-**Reviewed:** 2026-10-06 · **Mode:** fresh thorough review, three independent specialist passes (prompt/codec/runtime contracts; privacy/publication/reopen compatibility; lifecycle/budgets/packaging), integration review, independent probes, and full automated verification
+**Initial reviewed code head:** `34dda149917b07b5ed3582ec9821cfea07d4996c`
+**Final re-review head:** `c56c58fdca7b62e5d2a2f7c6983f355e7f516bf7`
+**Initial scope:** 18 files · +873 / −39 · 10 commits
+**Re-review scope:** 10 files · +180 / −31 · 5 commits after the first report `5d5194d`
+**Reviewed:** 2026-10-06 · **Mode:** fresh thorough review with three independent specialist passes; final re-review with two fresh independent passes (sequential-read budgets/engine/persistence; follow-up guidance/continuation contracts), original privacy/lifecycle regression probes, and all automated gates rerun
 
 ## Resolution ledger
 
-Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. No deferral is accepted on the author's behalf.
+Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. No deferral is accepted on the author's behalf. This ledger records the independently verified state at `c56c58f`; the original evidence below remains pinned to `34dda149`.
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🔵 Nit | The bidirectional prompt-sync witness omits the multi-session full-detail continuation | The renderer emits a seventh shape that works when followed, but the prompt's six examples and test corpus omit it | **Open**, nonblocking coverage/documentation improvement. Fixed by the author in `b7e44fe` (see the author response below); awaiting re-review |
+| F-01 | 🔵 Nit | The bidirectional prompt-sync witness omits the multi-session full-detail continuation | The seventh form is now taught; all declared details are sampled, and generated continuations preserve exact identities/ranges/detail | **Addressed**, independently verified at `c56c58f`; fix `b7e44fe` |
 
-**Verdict: Approved for merge into `epic/workshop-session-recall`.** No Blocking, High, or Standard finding was established. F-01 is a completeness gap in the new sync witness, not a demonstrated invocation failure. This approves Slice 4 enablement, subject to required checks on the final branch head; it does not claim Slice 5 live acceptance or authorize a merge.
+**Verdict: Approved for merge into `epic/workshop-session-recall`.** F-01 is independently verified addressed at `c56c58f`. No new Blocking, High, or Standard finding was established in the final re-review. This approval includes the 300,000-character per-turn allowance and answer-then-offer changes, subject to required checks on the final branch head. It does not declare every Slice 5 acceptance criterion complete or authorize a merge.
+
+## Final re-review at c56c58f
+
+The reviewed branch is still PR #131, targeting the same epic base. The five follow-up commits contain the F-01 fix, its author response, the increased total read allowance, the follow-up guidance/refusal copy, and the corresponding tests/ADR/epic records. The author's existing report additions are preserved below.
+
+### F-01 is addressed
+
+The [seventh prompt form](https://github.com/okeylanders/prose-minion-vscode/blob/c56c58fdca7b62e5d2a2f7c6983f355e7f516bf7/packages/core/resources/system-prompts/workshop-personas/transcript-recall-capability.md#L87-L93) is now explicit. The [sync corpus](https://github.com/okeylanders/prose-minion-vscode/blob/c56c58fdca7b62e5d2a2f7c6983f355e7f516bf7/packages/core/src/__tests__/architecture/transcriptRecallPromptSync.test.ts#L186-L201) samples one/multiple sessions in every declared detail, and the new round-trips follow generated batch continuations alone and together.
+
+Independent probes additionally used **one, two, and three sessions, full/discussion detail, and discontiguous ranges**. They verified exact session identities and remaining ranges, not only wildcard session counts. Following the decoded requests through the real service retained the effective detail. Partial, empty-range, and all-unknown results produced no invented continuations. The original coverage gap is closed.
+
+### The larger total preserves per-read bounds and fresh-window accounting
+
+The [budget change](https://github.com/okeylanders/prose-minion-vscode/blob/c56c58fdca7b62e5d2a2f7c6983f355e7f516bf7/packages/core/src/shared/constants/promptBudgets.ts#L266-L269) is **150,000 characters per read, 300,000 across the turn, and two reads**. It does not enlarge an individual read, remove the minimum share, or bypass the existing estimator/clamp. The relationship test makes the intended two-full-read allowance explicit.
+
+Independent real-engine probes exercised the persona factory, recall service/store, retained messages, session save/reopen, and a subsequent user turn, with mocked provider transport. Plain, CJK, and XML-escape-heavy content were checked at **32K, 64K, 200K, and 1M context windows**. The second window was recomputed from the actual first call/evidence, rather than reusing the initial allowance; the next provider request passed the ordinary preflight in the sampled known-window cases.
+
+- At a **64K** plain-text window, successive free-window measurements were **54,363 → 27,145 → 13,533 tokens**. The two reads delivered **88,585 + 44,059 characters**, reflecting the shrinking context.
+- At **200K** with plain text, both 150K read limits remained available and delivered **149,001 + 148,996 characters**, within the 300K total. A third read remained refused.
+- Save/reopen retained both evidence messages. A fresh user turn reset the per-turn counters while still charging the earlier retained evidence against its context window.
+
+**Important qualification:** the clamp requires model context metadata. The inherited no-window path still applies character limits without a local provider-capacity guarantee. An XML-heavy unknown-window probe delivered **297,992 characters**, costing approximately **223,528 estimated evidence tokens** after escaping. Thus “300K characters” is neither a universal 75K-token ceiling nor a guarantee that an unknown model can accept the result. This is the existing fallback policy with a larger authorized allowance, not a newly bypassed known-window check. The ADR's broad “overflow stays covered” explanation should be read as conditional on available metadata and the preflight estimator; making that qualification explicit would improve the documentation. The increased retained-history and future-request cost is real and is appropriately recorded for continued live tuning.
+
+### Answer-then-offer guidance is consistent with bounded answers
+
+The prompt now says to answer from available evidence, identify the unread sessions/turns, and offer the next step, while leading with the limitation if the missing turns are central to the writer's question. It does not authorize invented content or unrequested routine recall. The [runtime advice](https://github.com/okeylanders/prose-minion-vscode/blob/c56c58fdca7b62e5d2a2f7c6983f355e7f516bf7/packages/core/src/application/services/workshop/recall/WorkshopTranscriptRecallCapability.ts#L285-L330) distinguishes resettable turn caps from pre-read and measured context-window refusals: the latter say what could not be read without claiming the window resets.
+
+One **nonblocking wording observation**, not a demonstrated model failure: the system paragraph's offer to read the remainder “next” is most accurate when capacity permits. At **2,999 free input tokens**, a one-session request has a 5,996-character guess against the fixed 6,000-character minimum; a fresh turn or narrower turn range at the same/lower window still refuses. A multi-session refusal can sometimes recover by naming fewer sessions. An offer is not a guarantee, but explicitly qualifying it by available capacity would make the prompt match the runtime distinction even more clearly.
+
+### Live evidence and remaining acceptance
+
+The writer reports that live testing looked good. The ADR records a real five-chat 6.8 read that used 147,948 characters and a subsequent tail refusal under the old total; the implemented increase directly addresses that allowance problem. This report treats those observations as **writer/author-reported live evidence**, not as a replay independently witnessed by the reviewer or completion of every acceptance criterion.
+
+No paid calls or live Extension Development Host run were made during this re-review. Natural answer quality, offer frequency, UUID copying across supported models, long-room cost, and real-corpus performance still require the applicable live checks. The earlier separate guest-to-do persistence limitation remains outside this diff.
+
+### Final re-review verification
+
+All checks below target **`c56c58fdca7b62e5d2a2f7c6983f355e7f516bf7`**, before the report update. Local runtime remains **Node v24.19.0 / npm 11.9.0**, with the same dependency tree and unchanged lockfile.
+
+| Check | Result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **266 suites / 3,518 tests / 2 snapshots passed**, 98.474 seconds |
+| `npm run typecheck` | Core, webview, extension passed |
+| ESLint over all six changed TypeScript files | **0 errors / 0 warnings** |
+| Full repository ESLint, excluding independent probes | **0 errors / 1,085 warnings**; unchanged from the independently checked epic base, including per-file counts |
+| `npm run build`, including `verify:bundle` | Passed; same three webpack size/performance warnings |
+| `git diff --check 5d5194d..c56c58f` | Passed |
+| Independent sequential-read/runtime probes | **19 passed**, covering known/unknown windows, fresh second-window accounting, low-window refusals, read charging, save/reopen, and retained next-turn context |
+| Independent continuation/guidance probes | **9 passed**, including exact generated request round-trips and refusal/recovery controls |
+| Original privacy/lifecycle probes, rerun unchanged | **4 passed**; includes the 648-combination prompt matrix, fresh/reopened mocked-provider delivery, and hostile-record/publication checks |
+| Consolidated independent-probe rerun | **4 suites / 32 tests passed**, 10.665 seconds |
+| Prompt measurement | Latest grammar: **9,951 bytes / 2,488 estimated tokens**; source-chain delta versus epic base **+2,655–2,656 host / +2,637 guest tokens**, excluding the separate first-turn pointer |
+| GitHub CI for reviewed code head | **Success** for [PR run 37492975542](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37492975542) and [push run 37492964932](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37492964932) |
+
+No implementation changes are part of this report update. The initial-review sections below are historical and remain scoped to `34dda149`, including their former 150K per-turn budget. Exact report-head CI is checked separately after publication.
 
 ## Author response (`b7e44fe`)
 
