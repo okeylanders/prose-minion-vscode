@@ -503,6 +503,97 @@ once.
     when it did. Render caps stay options with `PROMPT_BUDGETS` defaults, so
     the clamp, and a later subagent consumer, need no change to the core.
 
+## Implementation note 2026-10-06: Slice 2B
+
+The `transcript.todos` core has landed under `recall/`, dormant like Slice 2:
+nothing calls `todos()` or its renderer yet. These choices fill gaps the
+amendment and the [plan](../../.todo/epics/epic-workshop-session-recall-2026-10-05/slice-2b-transcript-todos.md)
+left open.
+
+What the document holds:
+
+- **Hidden fields are never copied.** The recall document builds each to-do
+  field by field, so `findingKey`, `findingText`, and `writerEdit` are absent
+  from its data, not only from the text.
+- **Two fields beyond D5's list:** the source turn id, kept as data for
+  provenance and never rendered, and `reportDerived` on a host source, shown
+  as "report-derived".
+- **Positions.** "Turn N" comes from the ledger, so it counts turns the
+  projection omits, as reads do. The codec refuses a to-do whose turn is
+  gone, so a position is always present for a decoded session. The type still
+  makes it optional, and the text says "source turn not in this session" if
+  one is ever missing.
+- **The header** gains the excerpt version the session ended on, plus open
+  (stale included, per D7) and completed counts. Read rendering does not show
+  them yet.
+
+How a call chooses:
+
+- `<session>`, `<persona>`, and `<match>` choose sessions from the listing,
+  which reads no file. `<recent>` (else `todoSessions`) then caps how many
+  are read, and it counts sessions, including those with nothing to show.
+- `<source>`, then status, then `todoItems` filter the items. Each item left
+  out is counted by the rule that left it out. A scanned session counts as
+  having no matching to-do only when the filters emptied it, not the item
+  limit (PR 127 review F-02).
+- The service throws on a `<recent>` outside 1–`todoSessions` and on
+  `<recent>` with `<session>`. The request type also forbids that pair at
+  compile time. The Slice 3 codec refuses all of these first, along with a
+  `<match>` over `todoMatchCharacters`, as it does for search queries.
+- **`<match>`** is `matchWorkshopRecallSessions` in the search module. It is
+  generic over a title and an optional excerpt label, so the 2C catalog can
+  pass its listing rows. A match with no words matches nothing, and the
+  result reports the parsed terms and the mode.
+
+How the text is built:
+
+- Each to-do's metadata line names its session id beside its own id, in
+  addition to the session line above it. D5 wants the pair to travel with
+  every item, and the plan's sample showed the session id only once.
+- A to-do without a priority shows none, and an open session's to-dos show
+  `excerpt v0`.
+- A `<match>` names the terms it was evaluated on and any past the
+  eight-term limit, which were never evaluated. With overflow, it says "every
+  evaluated term matched", never "every term" (PR 127 review F-01). Slice
+  2C's catalog `<match>` should disclose the same way.
+- Hard caps: header 1,500 characters, footer 1,500, session line 1,000, and
+  item 1,500, with the item's text giving way to its metadata. Below the
+  minimum supported `todoCharacters`, 5,505, the renderer throws a
+  `RangeError`. At or above it, any list with a to-do shows at least one,
+  whole. A date a saved file makes impossible renders as "an unknown date".
+- The renderer returns the session and to-do id pairs it showed, plus how
+  many did not fit, for Slice 3's provenance.
+
+Speaker indexing lives in the document's search text, not in the search
+module, so snippets stay visible text and never repeat the speaker.
+
+Modules: twelve now, each under 500 lines.
+
+- `WorkshopRecallTodoList` renders the list.
+- `WorkshopRecallCopy` takes the framing line, refusals, saved dates, and
+  quoting from the renderer, unchanged, so the two renderers share them. The
+  renderer drops to 402 lines.
+- `WorkshopRecallCorpusSelection` gains the to-do choice and selection, plus
+  one session-narrowing helper that search now shares.
+- The service passes each call's read costs as one record under a shared
+  `WorkshopRecallScanBounds` base. That keeps it at 496 lines.
+- A refused session id is now clipped like every other label. Only ids over
+  200 characters change, and the codec already refuses ids over 100.
+
+Found while building the fixtures:
+
+- A to-do promoted from a guest's finding makes its room unsavable. The
+  ledger writes `upstreamReportTurnId: undefined` on guest sources, and the
+  store's exact-key check refuses the key.
+- It is tracked as High-priority
+  [tech debt](../../.todo/tech-debt/2026-10-06-workshop-guest-todo-unsavable.md).
+  It is outside this slice, so recall's guest source is witnessed with a
+  synthetic session until it is fixed.
+
+For Slice 3: the codec's `<recent>` and `<match>` bounds above; provenance
+from the rendered list's shown pairs; and a `resultLogSummary` case for
+`transcript.todos`.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**

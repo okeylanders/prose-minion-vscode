@@ -62,6 +62,12 @@ export interface PromptBudgets {
     snippetCharacters: number;
     readCharacters: number;
     readsPerTurn: number;
+    /** `transcript.todos` (D6): the most sessions one call scans, and the largest `<recent>`. */
+    todoSessions: number;
+    todoItems: number;
+    /** The rendered list's hard cap; the renderer takes it as an overridable option. */
+    todoCharacters: number;
+    todoMatchCharacters: number;
   }>;
   readonly workshopTodos: Readonly<{
     items: number;
@@ -245,7 +251,11 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     searchHitsPerSession: 5,
     snippetCharacters: 280,
     readCharacters: 48_000,
-    readsPerTurn: 2
+    readsPerTurn: 2,
+    todoSessions: 50,
+    todoItems: 60,
+    todoCharacters: 16_000,
+    todoMatchCharacters: 200
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {

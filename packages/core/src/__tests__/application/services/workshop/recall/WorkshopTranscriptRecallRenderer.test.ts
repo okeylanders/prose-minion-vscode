@@ -15,9 +15,9 @@ import {
   renderWorkshopRecallCatalog,
   renderWorkshopRecallRead,
   renderWorkshopRecallSearch,
-  WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS,
-  WORKSHOP_TRANSCRIPT_RECALL_FRAMING
+  WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRenderer';
+import { WORKSHOP_TRANSCRIPT_RECALL_FRAMING } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import type {
   WorkshopRecallCatalogResult,

@@ -9,6 +9,7 @@ import {
   workshopRecallWords
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import { rewindWorkshopSession } from '@/application/services/workshop/session/WorkshopSessionRewind';
+import type { WorkshopStoredTodoItemV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
   dividerTurn,
   fixtureTurn,
@@ -21,6 +22,10 @@ import {
   recallSession,
   saveSentinelCorpus
 } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
+import {
+  saveTodoCorpus,
+  TODO_SENTINELS
+} from '@/__tests__/application/services/workshop/recall/workshopRecallTodoFixtures';
 
 describe('buildWorkshopRecallDocument', () => {
   it('addresses each visible turn by its 1-based ledger position, skipping omitted turns', () => {
@@ -70,7 +75,10 @@ describe('buildWorkshopRecallDocument', () => {
       scope: 'excerpt',
       excerptLabel: 'chapter-6-8.md',
       contextLabels: ['keeper-notes.md', 'Tide tables'],
-      turnCount: 1
+      turnCount: 1,
+      excerptVersion: 0,
+      openTodos: 0,
+      completedTodos: 0
     });
     expect(document.updatedAt).toBe('2026-10-04T02:12:00.000Z');
     const serialized = JSON.stringify(document);
@@ -115,6 +123,28 @@ describe('buildWorkshopRecallDocument', () => {
     expect(document.entries[0].searchText)
       .toBe('cafe scene dont rush it letters md creative variations explorer 2 variations');
     expect(document.entries[1].searchText).toBe('slow it down tide atlas');
+  });
+
+  it('indexes a tool reply’s speaker, never a persona’s (Slice 2B)', () => {
+    const document = buildWorkshopRecallDocument(recallSession({
+      sessionId: 's-speakers',
+      turns: [
+        fixtureTurn('t-tool', {
+          participant: 'tool',
+          artifact: 'tool_report',
+          toolId: 'cliche',
+          toolLabel: 'Cliché',
+          personaId: undefined,
+          personaLabel: undefined,
+          content: 'Three stock phrases.'
+        }),
+        fixtureTurn('t-host', { content: 'Agreed.' }),
+        fixtureTurn('t-guest', { participant: 'guest', personaId: 'felix', personaLabel: 'Felix', content: 'Mostly.' })
+      ]
+    }));
+
+    expect(document.entries.map((entry) => entry.searchText))
+      .toEqual(['cliche three stock phrases', 'agreed', 'mostly']);
   });
 
   it('keeps every position a rewound copy retains (U4)', () => {
@@ -177,6 +207,105 @@ describe('buildWorkshopRecallDocument', () => {
     expect(serialized).toContain(RECALL_VISIBLE_LABELS.reply);
   });
 });
+
+describe('the recall document’s to-dos (Slice 2B, D5)', () => {
+  it('copies what the sidebar shows, resolves each source turn, and marks staleness against the final excerpt', async () => {
+    const { store, sessionIds, todos } = await saveTodoCorpus();
+    const saved = (await store.readNamed(sessionIds[0]))!;
+    const document = buildWorkshopRecallDocument(saved);
+    const positionOf = (turnId: string) => saved.workshop.turns.findIndex((turn) => turn.id === turnId) + 1;
+
+    expect(saved.workshop.revisions.excerpt).toBe(2);
+    expect(document.header).toMatchObject({ excerptVersion: 2, openTodos: 3, completedTodos: 1 });
+    expect(document.todos).toEqual([
+      {
+        id: todos.laughter.id,
+        text: 'Convert the "raucous laughter" reaction into a prop-based event.',
+        status: 'open',
+        priority: 'medium',
+        source: { kind: 'tool_report', label: 'Stock & Signature', toolId: 'stock-and-signature' },
+        turnId: todos.laughter.source.turnId,
+        position: positionOf(todos.laughter.source.turnId),
+        excerptVersion: 1,
+        stale: true,
+        createdAt: todos.laughter.createdAt
+      },
+      expect.objectContaining({ id: todos.shapped.id, status: 'open', priority: 'low', excerptVersion: 1, stale: true }),
+      expect.objectContaining({
+        id: todos.very.id,
+        text: 'Cut the second "very".',
+        status: 'completed',
+        source: { kind: 'host_turn', label: 'Jill', personaId: 'jill', reportDerived: true },
+        stale: true
+      }),
+      expect.objectContaining({
+        id: todos.cadence.id,
+        status: 'open',
+        source: { kind: 'host_turn', label: 'Jill', personaId: 'jill', reportDerived: false },
+        excerptVersion: 2,
+        stale: false
+      }),
+      expect.objectContaining({ id: todos.semicolon.id, status: 'dismissed', stale: false })
+    ]);
+    expect(document.todos.map((todo) => todo.position))
+      .toEqual(document.todos.map((todo) => positionOf(todo.turnId)));
+    expect(document.todos.find((todo) => todo.id === todos.cadence.id)).not.toHaveProperty('priority');
+  });
+
+  it('keeps no finding key, finding text, or original wording', async () => {
+    const { store, sessionIds } = await saveTodoCorpus();
+    const documents = await Promise.all(sessionIds.map(async (id) => buildWorkshopRecallDocument((await store.readNamed(id))!)));
+
+    // The fixture really holds the sentinels the document must leave behind.
+    const raw = JSON.stringify((await store.readNamed(sessionIds[0]))!.workshop.todos);
+    expect(raw).toContain(TODO_SENTINELS.findingKey);
+    expect(raw).toContain(`"originalText":"${TODO_SENTINELS.findingText}`);
+    for (const document of documents) {
+      expect(JSON.stringify(document)).not.toMatch(/SENTINEL-FINDING|findingKey|findingText|originalText|writerEdit/);
+    }
+  });
+
+  it('names a guest source, and leaves a to-do whose turn is gone without a position', () => {
+    const document = buildWorkshopRecallDocument(recallSession({
+      sessionId: 's-guest',
+      excerptVersion: 1,
+      turns: [fixtureTurn('t-guest', { participant: 'guest', personaId: 'margot', personaLabel: 'Margot' })],
+      todos: [
+        guestTodo('todo-1-1', 't-guest'),
+        guestTodo('todo-2-2', 't-missing')
+      ]
+    }));
+
+    expect(document.todos).toEqual([
+      expect.objectContaining({
+        id: 'todo-1-1',
+        source: { kind: 'guest_turn', label: 'Margot', personaId: 'margot' },
+        position: 1,
+        stale: false
+      }),
+      expect.not.objectContaining({ position: expect.anything() })
+    ]);
+    expect(document.header).toMatchObject({ excerptVersion: 1, openTodos: 2, completedTodos: 0 });
+  });
+});
+
+function guestTodo(id: string, turnId: string): WorkshopStoredTodoItemV1 {
+  return {
+    id,
+    text: 'Let her wait one beat longer.',
+    status: 'open',
+    source: {
+      kind: 'guest_turn',
+      turnId,
+      participantLabel: 'Margot',
+      personaId: 'margot',
+      findingKey: 'finding-1',
+      findingText: 'Let her wait one beat longer.',
+      excerptVersion: 1
+    },
+    createdAt: 0
+  };
+}
 
 describe('recall words', () => {
   it('folds case, diacritics, compatibility forms, possessives, and apostrophes', () => {

@@ -8,6 +8,7 @@ import {
   WorkshopRecallDocument
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import {
+  matchWorkshopRecallSessions,
   parseWorkshopRecallQuery,
   searchWorkshopRecallDocuments,
   WorkshopRecallSearchLimits,
@@ -70,6 +71,30 @@ describe('parseWorkshopRecallQuery', () => {
 });
 
 describe('searchWorkshopRecallDocuments', () => {
+  it('finds a tool reply by its speaker, and no reply by a persona’s name (Slice 2B)', () => {
+    const documents = [doc('s', [
+      say('t-1', 'Run the pass.'),
+      fixtureTurn('t-2', {
+        participant: 'tool',
+        artifact: 'tool_report',
+        toolId: 'stock-and-signature',
+        toolLabel: 'Stock & Signature',
+        personaId: undefined,
+        personaLabel: undefined,
+        content: 'Three reactions lean on familiar gestures.'
+      }),
+      fixtureTurn('t-3', { content: 'I would start with the laughter.' }),
+      fixtureTurn('t-4', { participant: 'guest', personaId: 'felix', personaLabel: 'Felix', content: 'Agreed.' })
+    ])];
+
+    const bySpeaker = search(documents, 'stock signature');
+    expect(turnHits(bySpeaker)).toEqual([['s', 2]]);
+    // The snippet is the visible text; the speaker leads the hit line instead.
+    expect(bySpeaker.sessions[0].hits[0]).toMatchObject({ snippet: 'Three reactions lean on familiar gestures.' });
+    expect(turnHits(search(documents, 'jill'))).toEqual([]);
+    expect(turnHits(search(documents, 'felix'))).toEqual([]);
+  });
+
   it('matches word prefixes, never the middle of a word', () => {
     const documents = [doc('s', [
       say('t-1', 'The lighthouse keeper.'),
@@ -231,5 +256,38 @@ describe('searchWorkshopRecallDocuments', () => {
       expect(turnHits(search([other, source], 'lighthouse')))
         .toEqual([['other', 1], ['source', 1], ['source', 2]]);
     });
+  });
+});
+
+describe('matchWorkshopRecallSessions (D8)', () => {
+  const sessions = [
+    { sessionId: 'a', title: 'Cliché pass', excerptLabel: 'chapter-6-7.md' },
+    { sessionId: 'b', title: 'Chapter 6-7 stock signature', excerptLabel: 'chapter-6-7.md' },
+    { sessionId: 'c', title: 'Open chat about endings' },
+    { sessionId: 'd', title: 'Keeper backstory', excerptLabel: 'chapter-12.md', contextLabels: ['chapter-6-7-notes.md'] }
+  ];
+  const match = (query: string) => {
+    const outcome = matchWorkshopRecallSessions(sessions, parseWorkshopRecallQuery(query));
+    return { mode: outcome.mode, ids: outcome.sessions.map((session) => session.sessionId) };
+  };
+
+  it('matches title and excerpt label together, by word prefix, keeping the order given', () => {
+    expect(match('chapter 6-7')).toEqual({ mode: 'all-terms', ids: ['a', 'b'] });
+    expect(match('chap 6 7 cliche')).toEqual({ mode: 'all-terms', ids: ['a'] });
+    expect(match('end')).toEqual({ mode: 'all-terms', ids: ['c'] });
+    expect(match('apter')).toEqual({ mode: undefined, ids: [] });
+  });
+
+  it('prefers sessions matching every term, and falls back to any term', () => {
+    expect(match('stock signature chapter')).toEqual({ mode: 'all-terms', ids: ['b'] });
+    expect(match('signature endings lighthouse')).toEqual({ mode: 'any-term', ids: ['b', 'c'] });
+  });
+
+  it('never reads context labels', () => {
+    expect(match('notes')).toEqual({ mode: undefined, ids: [] });
+  });
+
+  it('matches nothing when the query has no words', () => {
+    expect(match(' — ')).toEqual({ mode: undefined, ids: [] });
   });
 });

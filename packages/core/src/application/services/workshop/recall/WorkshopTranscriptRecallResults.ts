@@ -4,12 +4,19 @@
  * or a memory feature later. Nothing here is prose.
  */
 
-import type { WorkshopPersonaId, WorkshopSessionScope } from '@messages';
+import type {
+  WorkshopPersonaId,
+  WorkshopSessionScope,
+  WorkshopTodoStatus,
+  WorkshopToolId
+} from '@messages';
 import type {
   WorkshopRecallEntry,
-  WorkshopRecallHeader
+  WorkshopRecallHeader,
+  WorkshopRecallTodo
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import type {
+  WorkshopRecallMatchMode,
   WorkshopRecallQuery,
   WorkshopRecallSearchOutcome
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
@@ -75,12 +82,8 @@ export type WorkshopRecallCatalogResult =
       readonly listingTruncated: boolean;
     };
 
-export interface WorkshopRecallSearchBounds {
-  /** Recallable sessions the filters admitted. */
-  readonly corpusSessions: number;
-  readonly sessionsSearched: number;
-  readonly notSearchedBySessionLimit: number;
-  readonly notSearchedByByteBudget: number;
+/** What reading many sessions cost a call, and what it could not read. */
+export interface WorkshopRecallScanBounds {
   readonly unreadableSessions: number;
   readonly listingTruncated: boolean;
   /**
@@ -95,6 +98,14 @@ export interface WorkshopRecallSearchBounds {
    */
   readonly unreadableBytesCharged: number;
   readonly cacheHits: number;
+}
+
+export interface WorkshopRecallSearchBounds extends WorkshopRecallScanBounds {
+  /** Recallable sessions the filters admitted. */
+  readonly corpusSessions: number;
+  readonly sessionsSearched: number;
+  readonly notSearchedBySessionLimit: number;
+  readonly notSearchedByByteBudget: number;
 }
 
 export type WorkshopRecallSearchResult =
@@ -139,4 +150,90 @@ export type WorkshopRecallReadResult =
       /** Ascending and non-overlapping. */
       readonly ranges: readonly WorkshopRecallReadRange[];
       readonly cacheHit: boolean;
+    };
+
+/** `<status>` (D7). `open` includes stale to-dos, each marked. */
+export type WorkshopRecallTodoStatusFilter = WorkshopTodoStatus | 'all';
+
+/** `<source>`: a tool id or a persona id. The two closed lists share no id. */
+export type WorkshopRecallTodoSourceId = WorkshopToolId | WorkshopPersonaId;
+
+interface WorkshopRecallTodoFilters {
+  /** Defaults to `open`. */
+  readonly status?: WorkshopRecallTodoStatusFilter;
+  /** Sessions whose title or excerpt label match (D8). */
+  readonly match?: string;
+  readonly source?: WorkshopRecallTodoSourceId;
+  /** Sessions this persona took part in. */
+  readonly personaId?: WorkshopPersonaId;
+}
+
+/**
+ * `transcript.todos` (D6). `<recent>` (the newest N sessions, at most
+ * `todoSessions`) and `<session>` are exclusive; with neither, the newest
+ * `todoSessions` sessions are scanned.
+ */
+export type WorkshopRecallTodosRequest = WorkshopRecallTodoFilters & (
+  | { readonly recent?: number; readonly sessionId?: undefined }
+  | { readonly sessionId: string; readonly recent?: undefined }
+);
+
+/** `<match>` as written, its terms, and how sessions matched (`mode` is absent when none did). */
+export interface WorkshopRecallSessionMatchResult {
+  readonly text: string;
+  readonly query: WorkshopRecallQuery;
+  readonly mode?: WorkshopRecallMatchMode;
+}
+
+export interface WorkshopRecallTodoCounts {
+  readonly open: number;
+  readonly completed: number;
+  readonly dismissed: number;
+}
+
+/** One session's to-dos that the filters admitted, in the session's own order. */
+export interface WorkshopRecallTodoSession {
+  readonly header: WorkshopRecallHeader;
+  /** Never empty: a scanned session with nothing to show is left out. */
+  readonly todos: readonly WorkshopRecallTodo[];
+}
+
+export interface WorkshopRecallTodosBounds extends WorkshopRecallScanBounds {
+  /** Recallable sessions the session filters admitted: persona, match, or the one named. */
+  readonly corpusSessions: number;
+  /** The most sessions this call scans: `recent`, else `todoSessions`. */
+  readonly sessionLimit: number;
+  readonly sessionsScanned: number;
+  /** Older admitted sessions past `sessionLimit`. */
+  readonly notScannedBySessionLimit: number;
+  readonly notScannedByByteBudget: number;
+  /** To-dos the filters admitted past `todoItems`, newest session first. */
+  readonly omittedByItemLimit: number;
+  /** To-dos in scanned sessions the status filter left out, by their status. */
+  readonly notShownByStatus: WorkshopRecallTodoCounts;
+  /** To-dos in scanned sessions from another source than `<source>`. */
+  readonly notShownBySource: number;
+  /**
+   * Scanned sessions none of whose to-dos the source and status filters
+   * admitted. Counted before `todoItems`, so a session the item limit
+   * emptied is not one of them (PR 127 review F-02).
+   */
+  readonly sessionsWithoutMatchingTodos: number;
+}
+
+export type WorkshopRecallTodosResult =
+  | WorkshopRecallUnavailable
+  | WorkshopRecallUnknownSession
+  | {
+      readonly available: true;
+      readonly outcome: 'todos';
+      readonly status: WorkshopRecallTodoStatusFilter;
+      readonly recent?: number;
+      readonly sessionId?: string;
+      readonly match?: WorkshopRecallSessionMatchResult;
+      readonly source?: WorkshopRecallTodoSourceId;
+      readonly personaId?: WorkshopPersonaId;
+      /** Newest first; only sessions with a to-do to show. */
+      readonly sessions: readonly WorkshopRecallTodoSession[];
+      readonly bounds: WorkshopRecallTodosBounds;
     };

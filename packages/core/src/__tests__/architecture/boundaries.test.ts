@@ -831,12 +831,14 @@ const WORKSHOP_LEGACY_OWNERSHIP_EXCEPTIONS:
 /** Session recall (ADR 2026-10-05): everything under it is capability code. */
 const WORKSHOP_RECALL_ROOT = path.join(SRC_ROOT, 'application', 'services', 'workshop', 'recall');
 const WORKSHOP_RECALL_MODULES = [
+  'WorkshopRecallCopy.ts',
   'WorkshopRecallCorpusSelection.ts',
   'WorkshopRecallDocument.ts',
   'WorkshopRecallDocumentCache.ts',
   'WorkshopRecallReadWindow.ts',
   'WorkshopRecallText.ts',
   'WorkshopRecallTime.ts',
+  'WorkshopRecallTodoList.ts',
   'WorkshopTranscriptRecallRenderer.ts',
   'WorkshopTranscriptRecallResults.ts',
   'WorkshopTranscriptRecallSearch.ts',

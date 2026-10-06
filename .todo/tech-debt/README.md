@@ -77,6 +77,7 @@ elsewhere.
 | Low | [Mark grouping allocation](2026-10-02-workshop-mark-grouping-allocation.md) | Identified |
 | Low | [Rewind and Branch notice screenshot](2026-10-01-workshop-rewind-and-branch-notice-screenshot.md) | Identified |
 | Low | [Session preview can show capability evidence](2026-10-05-workshop-session-preview-may-show-evidence.md) | Identified |
+| High | [A guest's to-do makes the room unsavable](2026-10-06-workshop-guest-todo-unsavable.md) | Identified |
 
 ## Review Guidance
 
