@@ -279,5 +279,5 @@ own ADR.
 - [x] Tool-reply speaker names indexed, with a witness that persona names
       stay out.
 - [x] Full suite on Node 22 and Node 18, typecheck, build, and lint.
-- [ ] Slice 3's single widening includes `transcript.todos` and
+- [x] Slice 3's single widening includes `transcript.todos` and
       `transcript_todos`.

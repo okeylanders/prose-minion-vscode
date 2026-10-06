@@ -2,7 +2,9 @@ import {
   AgentRunEngine,
   AgentRunUnavailableError
 } from '@orchestration/AgentRunEngine';
-import { AgentCapability } from '@orchestration/AgentRunContracts';
+import { AgentCapability, CapabilityContextWindow } from '@orchestration/AgentRunContracts';
+import { measureContextWindow } from '@orchestration/RequestContextPreflight';
+import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ConversationManager } from '@orchestration/ConversationManager';
 import { ResourceRequestGate } from '@orchestration/capabilities/ResourceRequestGate';
@@ -147,6 +149,57 @@ describe('AgentRunEngine', () => {
       policy: AGENT_RUN_POLICIES.workshopHost, capability
     })).rejects.toMatchObject({ name: 'AgentRunUnavailableError', reason: 'context-window-exceeded' });
     expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells a capability how much room its evidence has, by the preflight’s own measure', async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    client.createChatCompletion.mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValue({ content: 'Final' });
+    let room = 0;
+    const fulfill = jest.fn(async (_request: unknown, window?: CapabilityContextWindow) => {
+      room = window!.freeInputTokens;
+      // Evidence that fills the room, less a token for the artifact address's rounding.
+      return { evidence: 'a'.repeat(4 * (room - 1)), artifacts: [], deliveredItems: [] };
+    });
+    const result = await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(fulfill),
+      options: { maxTokens: 2_000 }
+    });
+
+    const [, window] = fulfill.mock.calls[0];
+    const sent = conversations.getMessages(result.conversationId!);
+    const expected = measureContextWindow(
+      [...sent.slice(0, 3), { role: 'user', content: wrapAgentFetchedArtifactEvidence('art-1', '') }],
+      50_000,
+      2_000
+    );
+    expect(sent[2]).toEqual({ role: 'assistant', content: PERSONA_REQUEST });
+    expect(window).toEqual(expected);
+    expect(room).toBeGreaterThan(30_000);
+    expect(result.content).toBe('Final');
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses the next request when evidence outgrows the room it was told of', async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(50_000);
+    client.createChatCompletion.mockResolvedValue({ content: PERSONA_REQUEST });
+    const fulfill = jest.fn(async (_request: unknown, window?: CapabilityContextWindow) =>
+      ({ evidence: 'a'.repeat(4 * (window!.freeInputTokens + 2)), artifacts: [], deliveredItems: [] }));
+    await expect(engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability: personaCapability(fulfill)
+    })).rejects.toMatchObject({ name: 'AgentRunUnavailableError', reason: 'context-window-exceeded' });
+    expect(client.createChatCompletion).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives a capability no window when the model’s live window is unknown', async () => {
+    jest.spyOn(OpenRouterModels, 'getCachedContextLength').mockReturnValue(undefined);
+    client.createChatCompletion.mockResolvedValueOnce({ content: PERSONA_REQUEST })
+      .mockResolvedValue({ content: 'Final' });
+    const capability = personaCapability();
+    await engine.runInitial({ toolName: 'host', systemMessage: 'System', userMessage: 'Hello',
+      policy: AGENT_RUN_POLICIES.workshopHost, capability });
+
+    expect(capability.fulfill.mock.calls[0]).toHaveLength(1);
   });
 
   it('keeps provider validation when live window metadata is unavailable', async () => {

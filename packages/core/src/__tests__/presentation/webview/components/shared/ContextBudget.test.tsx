@@ -107,13 +107,14 @@ describe('ContextBudget', () => {
         { kind: 'attachment', origin: 'writer', label: 'Mara note…', sizeChars: 120, isEstimate: true, deliveredAt: 3 },
         { kind: 'message-attachment', origin: 'writer', label: 'raven.md', sizeChars: 900, isEstimate: true, deliveredAt: 4 },
         { kind: 'resource', origin: 'host', label: 'Characters/raven.md', configuredResource: { group: 'characters', path: 'Characters/raven.md' }, sizeChars: 460, promptTokensDelta: 120, isEstimate: false, deliveredAt: 5 },
-        { kind: 'tool-evidence', origin: 'host', label: 'Dialogue & Beats', sizeChars: 8000, promptTokensDelta: 2100, isEstimate: true, deliveredAt: 6 }
+        { kind: 'tool-evidence', origin: 'host', label: 'Dialogue & Beats', sizeChars: 8000, promptTokensDelta: 2100, isEstimate: true, deliveredAt: 6 },
+        { kind: 'transcript', origin: 'host', label: '“Chapter 6.7 stock pass” · turns 1-12', sizeChars: 14_000, isEstimate: true, deliveredAt: 7 }
       ]}
     />);
 
     expect(screen.getByText('In context')).toBeTruthy();
     const rows = document.querySelectorAll('.pm-context-source');
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(7);
 
     // Stale prior pin dims and carries its tag; the live pin does not.
     expect(rows[0].className).toContain('pm-context-source-stale');
@@ -128,6 +129,10 @@ describe('ContextBudget', () => {
     expect(rows[3].textContent).toContain('(message attachment)');
     expect(rows[4].textContent).toContain('(project resource)');
     expect(rows[5].textContent).toContain('(tool report)');
+    // A session-recall read (ADR 2026-10-05 §7).
+    expect(rows[6].textContent).toContain('“Chapter 6.7 stock pass” · turns 1-12');
+    expect(rows[6].textContent).toContain('(past session)');
+    expect(rows[6].textContent).toContain('requested by Jill');
 
     // Origin attribution: writer rows vs host-requested rows.
     expect(rows[2].textContent).toContain('added by you');

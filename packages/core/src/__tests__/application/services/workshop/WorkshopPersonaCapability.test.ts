@@ -5,6 +5,15 @@ import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { LogSink } from '@/platform';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import type { WorkshopTranscriptRecallPort } from '@/application/services/workshop/recall/WorkshopTranscriptRecallCapability';
+
+/** These tests exercise other families; session recall has its own suite. */
+const unusedRecall: WorkshopTranscriptRecallPort = {
+  catalog: () => Promise.reject(new Error('recall is not under test here')),
+  search: () => Promise.reject(new Error('recall is not under test here')),
+  read: () => Promise.reject(new Error('recall is not under test here')),
+  todos: () => Promise.reject(new Error('recall is not under test here'))
+};
 
 const usage = { promptTokens: 4, completionTokens: 6, totalTokens: 10, costUsd: 0.001 };
 const inheritedAnalysisRequest = {
@@ -84,7 +93,8 @@ describe('WorkshopPersonaCapability', () => {
     analysis,
     resourceProviderFactory,
     session,
-    log
+    log,
+    unusedRecall
   ).create({
     requestId: 'host-request',
     excerptVersion: session.getExcerptVersion(),
@@ -109,7 +119,8 @@ describe('WorkshopPersonaCapability', () => {
       analysis,
       resourceProviderFactory,
       openSession,
-      log
+      log,
+      unusedRecall
     ).create({
       requestId: 'open-request',
       excerptVersion: openSession.getExcerptVersion(),

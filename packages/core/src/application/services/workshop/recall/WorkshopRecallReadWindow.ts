@@ -31,10 +31,10 @@ import {
   workshopRecallTimeKnown
 } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import type {
-  WorkshopRecallReadDetail,
   WorkshopRecallReadRange,
   WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallReadDetail } from '@shared/types/workshopCapabilities';
 
 /** The "[turn N cut here …]" notice. */
 const NOTICE_RESERVE = 120;
@@ -84,13 +84,15 @@ export function formatWorkshopRecallTurnRanges(ranges: readonly WorkshopRecallTu
 /**
  * Pack whole entries in ledger order until `budget` characters are spent,
  * counting each block's separator. Only the first entry of an empty window
- * may be cut.
+ * may be cut. `sessionId` is given in a read of several sessions, so each
+ * collapsed report names the session its turn belongs to.
  */
 export function packWorkshopRecallReadWindow(
   ranges: readonly WorkshopRecallReadRange[],
   timezone: string,
   budget: number,
-  detail: WorkshopRecallReadDetail
+  detail: WorkshopRecallReadDetail,
+  sessionId?: string
 ): WorkshopRecallReadWindow {
   const clock = new WorkshopRecallClock(timezone);
   const window: WorkshopRecallReadWindow = { blocks: [], delivered: [], continuation: [], collapsed: [] };
@@ -108,7 +110,7 @@ export function packWorkshopRecallReadWindow(
     for (const [index, entry] of range.entries.entries()) {
       const lead = leadIn(previous, entry, index === 0, clock);
       const report = detail === 'discussion' ? toolReport(entry.entry) : undefined;
-      const text = report ? collapsedReport(entry.position, report, clock) : renderEntry(entry, clock);
+      const text = report ? collapsedReport(entry.position, report, clock, sessionId) : renderEntry(entry, clock);
       const block = [...lead, text].join(WORKSHOP_RECALL_BLOCK_SEPARATOR);
       const cost = block.length + WORKSHOP_RECALL_BLOCK_SEPARATOR.length;
       if (used + cost <= budget) {
@@ -243,12 +245,26 @@ function toolReport(entry: WorkshopRecallEntry['entry']): WorkshopTranscriptRepl
  * "[turn 12 · 10:42 AM · Stock & Signature report · 2,431 words · read it in
  * full with <turns>12</turns>]": a discussion-detail read's whole report.
  * Short enough never to be cut, and it shows nothing of the report's body.
+ *
+ * Its hint must work followed exactly as written. One session followed
+ * alone defaults to full detail (D10). In a read of several sessions, though,
+ * a bare `<turns>` names no session, and two such hints followed together
+ * would default to discussion and collapse again (as PR 129 F-01 found for
+ * continuations), so there the hint names its session and full detail.
  */
-function collapsedReport(position: number, report: WorkshopTranscriptReplyEntry, clock: WorkshopRecallClock): string {
+function collapsedReport(
+  position: number,
+  report: WorkshopTranscriptReplyEntry,
+  clock: WorkshopRecallClock,
+  sessionId: string | undefined
+): string {
   const words = countWords(report.content);
+  const call = sessionId === undefined
+    ? `<turns>${position}</turns>`
+    : `<session turns="${position}">${recallLabel(sessionId)}</session> <detail>full</detail>`;
   return `[turn ${position} · ${clock.time(report.timestamp)} · ${recallLabel(report.speaker)} report` +
     `${report.privateWith ? ' · private' : ''} · ${formatCount(words)} ${words === 1 ? 'word' : 'words'} · ` +
-    `read it in full with <turns>${position}</turns>]`;
+    `read it in full with ${call}]`;
 }
 
 /**

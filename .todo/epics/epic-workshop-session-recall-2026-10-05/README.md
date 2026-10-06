@@ -1,9 +1,9 @@
 # Epic: Workshop Session Recall
 
-**Status:** In progress — D1–D4 accepted 2026-10-05, D5–D11 2026-10-06; Slices 0–2B merged (Slices 2 and 2B are the dormant recall core); Slice 2C built and in review
+**Status:** In progress — D1–D4 accepted 2026-10-05, D5–D11 2026-10-06; Slices 0–2C merged (Slices 2, 2B, and 2C are the dormant recall core); Slice 3 built and in review
 **Priority:** Medium
 **Created:** 2026-10-05
-**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs: Slices 0–1 from `claude/practical-ritchie-rx9n4t` (#125), Slice 2 from `claude/workshop-recall-core` (#126), Slice 2B from `claude/workshop-recall-todos` (#127), Slice 2C from `claude/workshop-recall-excerpts` (#129)
+**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs: Slices 0–1 from `claude/practical-ritchie-rx9n4t` (#125), Slice 2 from `claude/workshop-recall-core` (#126), Slice 2B from `claude/workshop-recall-todos` (#127), Slice 2C from `claude/workshop-recall-excerpts` (#129), Slice 3 from `claude/workshop-recall-wiring` (#130)
 **Decision:** [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (Accepted in part: D1–D11)
 **Evidence:** [Architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
 **Realizes:** the host-fetch half of [Feature: a prior conversation is a resource, not a branch](../../features/feature-prior-conversation-as-resource/README.md)
@@ -50,8 +50,8 @@ verification, and rollback seams.
 | 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Done — `2e54b88`, `357f5bb`, `24ad18d`, `875f203` |
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, merged in #126 (`57d097a`). Build: `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8`. Review fixes: `f3779af`, `cce3889`, `b4cab1b`, `689f96e`, `65ea614`, `3b5b6e5`, `970ed75`. Re-review fixes: `17647eb`, `07de2c4` |
 | 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Done, merged in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127) (`ababfde`). Build: `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95`. Review fixes: `f6c3bef`, `84b1977` |
-| 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Built, in review in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129): `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17`. Review fixes: `fe4c150`, `f93f309` |
-| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Not started |
+| 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Done, merged in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129) (`23b7779`). Build: `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17`. Review fixes: `fe4c150`, `f93f309` |
+| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Built, in review in [#130](https://github.com/okeylanders/prose-minion-vscode/pull/130). PR #129 follow-ups: `922ff59`, `a96d09d`, `91e9728`, `58ec000`, `70b9ba6`. Build: `6e87259`, `b4dfaa2`, `7897c0d`, `ebde98e`, `ba599d4`, `509cbc8`, `34f6ac4`, `364b5c5`, `41ee820`, `91466c1`, `214c446`, `a53aaeb`. Docs: `7131981`. Review fixes: `3f2d255`, `994b234` |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
 
@@ -195,6 +195,47 @@ verification, and rollback seams.
   Full suite 259 suites / 3,326 tests on Node 22 and Node 18; typecheck,
   build, and lint of the changed files are clean.
 
+- **2026-10-06 — Slice 3 (contract, persistence, wiring).** The
+  `transcript.*` family works end to end and stays dormant to models.
+  The ADR's Slice 3 note records the details.
+  - Okey decided six questions: a sibling `<turns>` only beside one bare
+    session; a read below the minimum is a recorded refusal naming what
+    is left; one to-do manifest row per call; a hint in a read of several
+    sessions names its session and full detail; the engine passes the
+    capability a context window; and the free window subtracts the
+    preflight's headroom.
+  - Room first: call parsing left the 516-line codec, and result logging
+    left the persona capability, each with no change in behavior.
+  - One change outside the Workshop: `AgentCapability.fulfill(request,
+    window?)`, measured by the preflight's own estimator.
+  - Found while testing the "followed as written" rule against rendered
+    text: two continuations or hints followed together carried two
+    `<detail>` elements, which the codec refused. A read may now repeat
+    `<detail>` when every copy agrees, and repeat the sibling `<turns>`.
+  - Witnesses run over real saved sessions: every operation from XML to
+    evidence, the read limits, the clamp (including a measured re-render
+    of dense text), both refusals, provenance, rows, publication,
+    cancellation, the sentinel suite through the evidence, a tool-call
+    literal arriving escaped, and save and reopen through the real
+    engine, coordinator, and store with a host and a guest conversation.
+    A compile experiment and a mutation check of every guard pass.
+  - The F-04 residual is closed by the host lifecycle: changing the first
+    workspace folder restarts the extension host.
+
+- **2026-10-06 — PR #130 review fixes.** Okey's review requested
+  changes for one Standard finding and one nit.
+  - F-01: the window clamp refused a mixed-density read that fit, after
+    four proportional re-renders. `WorkshopRecallWindowClamp` now keeps the
+    largest read it measured to fit: a first guess, one proportional
+    step, the minimum, then interpolation, at most six renders. Only a
+    minimum that measures over half the window is refused (`3f2d255`).
+  - F-02: two hints naming one session of a batch name it twice. The rule
+    stays; the ADR teaches combining their ranges, with a witness
+    (`994b234`).
+
+  Full suite 265 suites / 3,487 tests on Node 22 and Node 18; typecheck,
+  build, and lint of the changed files are clean.
+
 ## Decisions (accepted 2026-10-05, as recommended)
 
 - **D1** Family shape and name: a dedicated `transcript.*` family.
@@ -223,9 +264,10 @@ verification, and rollback seams.
       or summary-preview text reaches recall output.
 - [ ] Recall never writes, flushes, or reads `current.json`; the live room never
       appears in its own corpus; a changed workspace root disables recall.
-- [ ] A session containing every new persisted value saves **and reopens**
+- [x] A session containing every new persisted value saves **and reopens**
       with every participant's retained conversation imported (the archive kind
-      list is checked only at reopen).
+      list is checked only at reopen). Slice 3, through the real engine,
+      coordinator, and store.
 - [ ] A turn shared by a session, its copy, and a branch appears once in search
       results, attributed to the newest session, with the others named.
 - [ ] Bounds are disclosed in every truncated result; wall-clock search times

@@ -210,6 +210,8 @@ const capabilityTruncationNote = (operation: WorkshopCapabilityOperation | undef
   switch (workshopCapabilityFamily(operation)) {
     case 'resource':
       return 'Result was bounded by the project-resource limits';
+    case 'transcript':
+      return 'Result was bounded by the session-recall limits';
     case 'dictionary':
     case 'analysis':
       return 'Result reached its response-token limit';

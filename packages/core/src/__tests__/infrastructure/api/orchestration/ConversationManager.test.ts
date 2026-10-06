@@ -511,10 +511,11 @@ describe('ConversationManager', () => {
       // here saves cleanly and then drops that participant's history on reopen.
       const id = completeConversation(manager);
       const entry = manager.exportConversations([{ key: 'host' as const, conversationId: id }])[0];
+      // 'memory' is reserved for derived material (ADR 2026-10-05) and listed nowhere.
       entry.contextSources = [{
-        kind: 'transcript',
+        kind: 'memory',
         origin: 'host',
-        label: '“Chapter 6-8” · turns 12–30',
+        label: '“Chapter 6-8” · digest',
         sizeChars: 40,
         isEstimate: true,
         deliveredAt: 22

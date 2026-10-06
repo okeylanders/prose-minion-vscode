@@ -28,8 +28,7 @@ import { WORKSHOP_RECALL_BLOCK_SEPARATOR } from '@/application/services/workshop
 import { WorkshopRecallClock } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import {
   recallBlock,
-  recallLabel,
-  recallLabelList
+  recallLabel
 } from '@/application/services/workshop/recall/WorkshopRecallText';
 import {
   recallBody,
@@ -43,9 +42,9 @@ import {
   recallUnknownSession
 } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import type {
-  WorkshopRecallTodosResult,
-  WorkshopRecallTodoStatusFilter
+  WorkshopRecallTodosResult
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+import type { WorkshopRecallTodoStatusFilter } from '@shared/types/workshopCapabilities';
 
 /** The framing line, the summary, and the filters; every filter at its bound is near 1,310. */
 const TODO_HEADER_CHARACTERS = 1_500;

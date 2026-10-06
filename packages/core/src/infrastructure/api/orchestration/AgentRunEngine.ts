@@ -22,6 +22,7 @@ import {
   AnyAgentCapability,
   CapabilityArtifact,
   CapabilityDeliveredSource,
+  CapabilityFulfillment,
   ContinuationRunRequest,
   ExecutionResult,
   InitialRunRequest,
@@ -31,7 +32,11 @@ import { findExecutableMarkerIndex } from './ResourceReadXmlCodec';
 import { wrapAgentFetchedArtifactEvidence } from '@/utils/workshopPromptFrames';
 import { coerceClaudeCacheTtl } from '@messages';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
-import { AgentContextWindowExceededError, assertRequestFitsContext } from '@orchestration/RequestContextPreflight';
+import {
+  AgentContextWindowExceededError,
+  assertRequestFitsContext,
+  measureContextWindow
+} from '@orchestration/RequestContextPreflight';
 import {
   ContextBudgetSnapshot,
   ContextSourceEntry,
@@ -442,7 +447,14 @@ export class AgentRunEngine {
         // delta between this round's observation and the next one belongs
         // to the evidence delivered between them.
         const promptTokensBeforeEvidence = latestObservation?.promptTokens;
-        const fulfillment = await capability.fulfill(request);
+        const fulfillment = await this.fulfillCapability(
+          capability,
+          request,
+          provider,
+          [...currentMessages(), { role: 'assistant', content: last.content }],
+          policy.retention === 'retain',
+          runOptions
+        );
         totalUsage = this.addUsage(totalUsage, fulfillment.usage);
         artifacts.push(...fulfillment.artifacts);
         if (capability.catalog === 'guides') usedGuides.push(...fulfillment.deliveredItems);
@@ -709,6 +721,35 @@ export class AgentRunEngine {
       );
     }
     return request.capability;
+  }
+
+  /**
+   * Fulfill one call, telling the capability how much room its evidence has
+   * when the model's live window is known. `messages` is the next request
+   * up to the call itself. The evidence message is counted empty, inside the
+   * artifact frame a retained run wraps it in; its address grows by a digit
+   * now and then, which the preflight's rounding can feel by a token.
+   */
+  private fulfillCapability(
+    capability: AnyAgentCapability,
+    request: unknown,
+    provider: OpenRouterClient,
+    messages: OpenRouterMessage[],
+    retained: boolean,
+    options: AgentRunOptions
+  ): Promise<CapabilityFulfillment> {
+    const contextLength = OpenRouterModels.getCachedContextLength(provider.getModel?.() ?? this.model);
+    if (contextLength === undefined) {
+      return capability.fulfill(request);
+    }
+    const frame = retained ? wrapAgentFetchedArtifactEvidence('art-1', '') : '';
+    const window = measureContextWindow(
+      [...messages, { role: 'user', content: frame }],
+      contextLength,
+      options.maxTokens,
+      options.tools
+    );
+    return capability.fulfill(request, window);
   }
 
   private async executeTurn(
