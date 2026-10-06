@@ -122,7 +122,7 @@ describe('renderWorkshopRecallTodos over real to-dos', () => {
     expect(content).toContain('Completed to-dos from 1 session, newest first.');
     expect(content).toContain(
       'Filters: sessions that include Jill; title or excerpt label matching “chapter 6-7 lighthouse” ' +
-      '(no session matched every term; these match some); from source jill.'
+      '(terms: chapter, 6, 7, lighthouse; no session matched every term; these match some); from source jill.'
     );
     expect(content).toContain('- [completed · high · stale] Cut the second "very".');
     expect(content).toContain('from Jill (persona jill, host turn, report-derived) · turn 4');
@@ -151,6 +151,69 @@ describe('renderWorkshopRecallTodos over real to-dos', () => {
     expect(rendered.content).toContain(`from ${'P'.repeat(199)}… (tool stock-and-signature, tool report)`);
     expect(rendered.content).toMatch(/- \[open · medium · stale\] (word ){99}word…\n/);
     expectPaired(rendered.content, rendered.shown);
+  });
+});
+
+describe('<match> terms past the eight-term limit (PR 127 review F-01)', () => {
+  const NINE_TERMS = 'alpha beta gamma delta epsilon zeta eta theta lighthouse';
+  let service: WorkshopTranscriptRecallService;
+  let renamed: string;
+
+  beforeAll(async () => {
+    const corpus = await saveTodoCorpus();
+    renamed = corpus.sessionIds[0];
+    // A real rename through the store: no saved file is edited by hand.
+    await corpus.store.renameNamed(renamed, 'alpha beta gamma delta epsilon zeta eta theta');
+    service = new WorkshopTranscriptRecallService(corpus.store, corpus.coordinator, corpus.log);
+  });
+
+  const filtersFor = async (match: string) => {
+    const result = await service.todos({ match });
+    const content = renderWorkshopRecallTodos(result, { now: NOW }).content;
+    return { result, filters: content.split('\n').find((line) => line.startsWith('Filters: ')) };
+  };
+
+  it('names the term it never evaluated, and says every evaluated term matched', async () => {
+    expect(NINE_TERMS.length).toBeLessThan(PROMPT_BUDGETS.workshopTranscriptRecall.todoMatchCharacters);
+
+    const { result, filters } = await filtersFor(NINE_TERMS);
+
+    expect(result).toMatchObject({
+      outcome: 'todos',
+      match: { mode: 'all-terms', query: { overflowTerms: ['lighthouse'] } },
+      sessions: [{ header: { sessionId: renamed } }]
+    });
+    expect(filters).toBe(
+      `Filters: title or excerpt label matching “${NINE_TERMS}” ` +
+      '(terms: alpha, beta, gamma, delta, epsilon, zeta, eta, theta; every evaluated term matched; ' +
+      'not evaluated, past the eight-term limit: lighthouse).'
+    );
+  });
+
+  it('names the term it never evaluated when sessions match only some terms', async () => {
+    const { result, filters } = await filtersFor('alpha beta gamma delta epsilon zeta eta cliche lighthouse');
+
+    expect(result).toMatchObject({ match: { mode: 'any-term', query: { overflowTerms: ['lighthouse'] } } });
+    expect(filters).toContain(
+      '(terms: alpha, beta, gamma, delta, epsilon, zeta, eta, cliche; no session matched every term; these match some; ' +
+      'not evaluated, past the eight-term limit: lighthouse).'
+    );
+  });
+
+  it('names the term it never evaluated when no session matched', async () => {
+    const { result, filters } = await filtersFor('one two three four five six seven eight lighthouse');
+
+    expect(result).toMatchObject({ sessions: [], match: { query: { overflowTerms: ['lighthouse'] } } });
+    expect(filters).toContain(
+      '(terms: one, two, three, four, five, six, seven, eight; no session matched; ' +
+      'not evaluated, past the eight-term limit: lighthouse).'
+    );
+  });
+
+  it('lists the terms it matched on when nothing was left out', async () => {
+    const { filters } = await filtersFor('chapter 6-7');
+
+    expect(filters).toBe('Filters: title or excerpt label matching “chapter 6-7” (terms: chapter, 6, 7; every term matched).');
   });
 });
 
@@ -208,7 +271,7 @@ describe('renderWorkshopRecallTodos disclosure', () => {
     expect(content.split('\n')).toEqual([
       WORKSHOP_TRANSCRIPT_RECALL_FRAMING,
       'No to-dos of every status (stale ones marked) to show.',
-      'Filters: title or excerpt label matching “lighthouse” (no session matched).',
+      'Filters: title or excerpt label matching “lighthouse” (terms: lighthouse; no session matched).',
       '',
       'Scanned 0 of 0 saved sessions the filters admitted; the current session is never listed.'
     ]);
@@ -238,6 +301,8 @@ describe('renderWorkshopRecallTodos disclosure', () => {
 
 describe('the to-do list bound, with every saved-file label at its maximum', () => {
   const HUGE = 20_000;
+  /** Forty distinct 300-character words: both of `<match>`'s term lists at their bounds. */
+  const MANY_TERMS = Array.from({ length: 40 }, (_, index) => `w${index}${'m'.repeat(300)}`).join(' ');
 
   /** Thirty sessions of three to-dos each, every label and number from a saved file at its worst. */
   function maxedOut(): Listed {
@@ -276,7 +341,7 @@ describe('the to-do list bound, with every saved-file label at its maximum', () 
       sessionId: 'S'.repeat(HUGE),
       recent: 50,
       personaId: 'margot',
-      match: { text: 'M '.repeat(HUGE), query: parseWorkshopRecallQuery('M '.repeat(HUGE)), mode: 'any-term' },
+      match: { text: MANY_TERMS, query: parseWorkshopRecallQuery(MANY_TERMS), mode: 'any-term' },
       source: 'stock-and-signature',
       sessions,
       bounds: {
@@ -314,6 +379,9 @@ describe('the to-do list bound, with every saved-file label at its maximum', () 
       expect(shown.length + notShownForSpace).toBe(total);
       expectPaired(content, shown);
       expect(content).not.toMatch(/SENTINEL-FINDING/);
+      // The filters survive whole, the never-evaluated terms included (PR 127 review F-01).
+      expect(content).not.toContain('[filters shortened]');
+      expect(content).toMatch(/; not evaluated, past the eight-term limit: w8m+…, .+ and \d+ more\); from source stock-and-signature\.\n/);
     }
     expect(renderWorkshopRecallTodos(result, { now: NOW, todoCharacters: 1_000_000 }).notShownForSpace).toBe(0);
   });

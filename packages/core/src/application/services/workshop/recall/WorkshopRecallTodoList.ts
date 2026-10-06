@@ -26,7 +26,11 @@ import type {
 } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import { WORKSHOP_RECALL_BLOCK_SEPARATOR } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import { WorkshopRecallClock } from '@/application/services/workshop/recall/WorkshopRecallTime';
-import { recallBlock, recallLabel } from '@/application/services/workshop/recall/WorkshopRecallText';
+import {
+  recallBlock,
+  recallLabel,
+  recallLabelList
+} from '@/application/services/workshop/recall/WorkshopRecallText';
 import {
   recallBody,
   recallCount,
@@ -42,8 +46,10 @@ import type {
   WorkshopRecallTodoStatusFilter
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 
-/** The framing line, the summary, and the filters. */
+/** The framing line, the summary, and the filters; every filter at its bound is near 1,310. */
 const TODO_HEADER_CHARACTERS = 1_500;
+/** Each of `<match>`'s term lists: the terms it evaluated, and those past the eight-term limit. */
+const MATCH_TERMS_CHARACTERS = 300;
 /** What was scanned, what was left out, and how to narrow. */
 const TODO_FOOTER_CHARACTERS = 1_500;
 /** One session's line; bounded labels keep it near 850. */
@@ -166,15 +172,26 @@ function statusWords(status: WorkshopRecallTodoStatusFilter): string {
   }
 }
 
+/**
+ * The match as written, the terms it was evaluated on, how sessions matched,
+ * and any terms past the eight-term limit, which were never evaluated (PR
+ * 127 review F-01): "every term" never claims a term nobody checked.
+ */
 function matchWords(match: NonNullable<Listed['match']>): string {
-  const how = match.query.terms.length === 0
-    ? 'it has no words to match'
-    : match.mode === 'all-terms'
-      ? 'every term'
-      : match.mode === 'any-term'
-        ? 'no session matched every term; these match some'
-        : 'no session matched';
-  return `title or excerpt label matching ${recallQuoted(match.text)} (${how})`;
+  const { terms, overflowTerms } = match.query;
+  const matching = `title or excerpt label matching ${recallQuoted(match.text)}`;
+  if (terms.length === 0) {
+    return `${matching} (it has no words to match)`;
+  }
+  const how = match.mode === 'all-terms'
+    ? overflowTerms.length > 0 ? 'every evaluated term matched' : 'every term matched'
+    : match.mode === 'any-term'
+      ? 'no session matched every term; these match some'
+      : 'no session matched';
+  const ignored = overflowTerms.length > 0
+    ? `; not evaluated, past the eight-term limit: ${recallLabelList(overflowTerms, MATCH_TERMS_CHARACTERS)}`
+    : '';
+  return `${matching} (terms: ${recallLabelList(terms, MATCH_TERMS_CHARACTERS)}; ${how}${ignored})`;
 }
 
 /** “Title” · id … · saved … · excerpt … · 3 open, 1 completed */
