@@ -16,6 +16,7 @@ import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop
 import type { WorkshopStoredTodoItemV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
+import type { ArchivedConversationMessage } from '@orchestration/ConversationManager';
 import {
   DEFAULT_WORKSHOP_WRITER_PROFILE,
   WorkshopPersonaId,
@@ -81,12 +82,24 @@ export interface SavedRecallRoom {
 /**
  * Build a room through the real aggregate, save it through the real
  * coordinator and store, then start a fresh live room so the saved one is
- * recallable. `populate` drives the aggregate; `advance` moves its clock.
+ * recallable. `populate` drives the aggregate; `advance` moves its clock;
+ * `room` is the live room's own store and coordinator, for a populate that
+ * recalls other saved sessions. `archiveMessages` replaces the host's
+ * retained conversation the save exports.
  */
 export async function saveRecallRoom(
   title: string,
-  populate: (session: WorkshopSessionService, advance: (milliseconds: number) => void) => void,
-  options: { workspace?: Workspace; fs?: MemoryFileSystem; idPrefix?: string } = {}
+  populate: (
+    session: WorkshopSessionService,
+    advance: (milliseconds: number) => void,
+    room: Pick<SavedRecallRoom, 'store' | 'coordinator' | 'log'>
+  ) => void | Promise<void>,
+  options: {
+    workspace?: Workspace;
+    fs?: MemoryFileSystem;
+    idPrefix?: string;
+    archiveMessages?: ArchivedConversationMessage[];
+  } = {}
 ): Promise<SavedRecallRoom> {
   const fs = options.fs ?? new MemoryFileSystem();
   const log = recallLog();
@@ -98,7 +111,7 @@ export async function saveRecallRoom(
     exportWorkshopConversationArchive: jest.fn(() => [{
       key: 'host',
       toolName: 'workshop-persona',
-      messages: [
+      messages: options.archiveMessages ?? [
         { role: 'user', content: `Context: ${RECALL_SENTINELS.conversationArchive}` },
         { role: 'assistant', content: `Noted ${RECALL_SENTINELS.conversationArchive}.` }
       ],
@@ -127,9 +140,9 @@ export async function saveRecallRoom(
     }
   );
   await coordinator.initialize();
-  populate(session, (milliseconds) => {
+  await populate(session, (milliseconds) => {
     clock += milliseconds;
-  });
+  }, { store, coordinator, log });
   const saved = await coordinator.saveNamed(title);
   clock += 60 * 60_000;
   await coordinator.resetSession({ clearWorkingSet: true });
