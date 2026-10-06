@@ -28,8 +28,7 @@ import { WORKSHOP_RECALL_BLOCK_SEPARATOR } from '@/application/services/workshop
 import { WorkshopRecallClock } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import {
   recallBlock,
-  recallLabel,
-  recallLabelList
+  recallLabel
 } from '@/application/services/workshop/recall/WorkshopRecallText';
 import {
   recallBody,

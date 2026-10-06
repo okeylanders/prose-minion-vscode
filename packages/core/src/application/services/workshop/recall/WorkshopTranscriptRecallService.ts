@@ -45,7 +45,6 @@ import {
   recallableSessions,
   selectWorkshopRecallTodos,
   todoCandidates,
-  unknownSession,
   withParticipant
 } from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
 import type {
