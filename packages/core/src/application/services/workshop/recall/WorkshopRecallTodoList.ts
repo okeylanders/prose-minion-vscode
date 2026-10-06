@@ -35,6 +35,7 @@ import {
   recallBody,
   recallCount,
   recallListingNote,
+  recallMatchWords,
   recallQuoted,
   recallSavedAt,
   recallScopeLine,
@@ -48,8 +49,6 @@ import type {
 
 /** The framing line, the summary, and the filters; every filter at its bound is near 1,310. */
 const TODO_HEADER_CHARACTERS = 1_500;
-/** Each of `<match>`'s term lists: the terms it evaluated, and those past the eight-term limit. */
-const MATCH_TERMS_CHARACTERS = 300;
 /** What was scanned, what was left out, and how to narrow. */
 const TODO_FOOTER_CHARACTERS = 1_500;
 /** One session's line; bounded labels keep it near 850. */
@@ -151,7 +150,7 @@ function headerLines(result: Listed): string[] {
     ...(result.sessionId !== undefined ? [`session ${recallLabel(result.sessionId)}`] : []),
     ...(result.recent !== undefined ? [`the ${recallCount(result.recent, 'most recent session')}`] : []),
     ...(result.personaId ? [`sessions that include ${workshopPersonaLabel(result.personaId)}`] : []),
-    ...(result.match ? [matchWords(result.match)] : []),
+    ...(result.match ? [recallMatchWords(result.match)] : []),
     ...(result.source ? [`from source ${recallLabel(result.source)}`] : [])
   ];
   return [summary, ...(filters.length > 0 ? [`Filters: ${filters.join('; ')}.`] : [])];
@@ -170,28 +169,6 @@ function statusWords(status: WorkshopRecallTodoStatusFilter): string {
     default:
       return assertNever(status);
   }
-}
-
-/**
- * The match as written, the terms it was evaluated on, how sessions matched,
- * and any terms past the eight-term limit, which were never evaluated (PR
- * 127 review F-01): "every term" never claims a term nobody checked.
- */
-function matchWords(match: NonNullable<Listed['match']>): string {
-  const { terms, overflowTerms } = match.query;
-  const matching = `title or excerpt label matching ${recallQuoted(match.text)}`;
-  if (terms.length === 0) {
-    return `${matching} (it has no words to match)`;
-  }
-  const how = match.mode === 'all-terms'
-    ? overflowTerms.length > 0 ? 'every evaluated term matched' : 'every term matched'
-    : match.mode === 'any-term'
-      ? 'no session matched every term; these match some'
-      : 'no session matched';
-  const ignored = overflowTerms.length > 0
-    ? `; not evaluated, past the eight-term limit: ${recallLabelList(overflowTerms, MATCH_TERMS_CHARACTERS)}`
-    : '';
-  return `${matching} (terms: ${recallLabelList(terms, MATCH_TERMS_CHARACTERS)}; ${how}${ignored})`;
 }
 
 /** “Title” · id … · saved … · excerpt … · 3 open, 1 completed */
