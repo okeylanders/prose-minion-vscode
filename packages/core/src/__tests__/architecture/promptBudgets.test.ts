@@ -96,7 +96,7 @@ describe('prompt budgets', () => {
     });
   });
 
-  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5)', () => {
+  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos, D11)', () => {
     expect(PROMPT_BUDGETS.workshopTranscriptRecall).toEqual({
       queryCharacters: 200,
       sessionIdCharacters: 100,
@@ -109,7 +109,11 @@ describe('prompt budgets', () => {
       searchHitsPerSession: 5,
       snippetCharacters: 280,
       readCharacters: 48_000,
-      readsPerTurn: 2
+      readsPerTurn: 2,
+      todoSessions: 50,
+      todoItems: 60,
+      todoCharacters: 16_000,
+      todoMatchCharacters: 200
     });
     // Recall shares the per-turn call ceiling; its reads stay inside it.
     expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn)
