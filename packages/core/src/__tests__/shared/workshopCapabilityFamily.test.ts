@@ -17,18 +17,24 @@ describe('workshopCapabilityFamily', () => {
       ['analysis.run', 'analysis'],
       ['resource.catalog', 'resource'],
       ['resource.search', 'resource'],
-      ['resource.read', 'resource']
+      ['resource.read', 'resource'],
+      ['transcript.catalog', 'transcript'],
+      ['transcript.search', 'transcript'],
+      ['transcript.read', 'transcript'],
+      ['transcript.todos', 'transcript']
     ]);
   });
 
   it('refuses an operation outside the list rather than guessing a family', () => {
-    expect(() => workshopCapabilityFamily('transcript.read' as WorkshopCapabilityOperation))
-      .toThrow('Unhandled Workshop capability operation: transcript.read');
+    // `memory.*` is reserved for derived material (ADR 2026-10-05) and listed nowhere.
+    expect(() => workshopCapabilityFamily('memory.read' as WorkshopCapabilityOperation))
+      .toThrow('Unhandled Workshop capability operation: memory.read');
   });
 
   it('recognizes only listed operations', () => {
     expect(WORKSHOP_CAPABILITY_OPERATIONS.every(isWorkshopCapabilityOperation)).toBe(true);
-    expect(isWorkshopCapabilityOperation('transcript.read')).toBe(false);
+    expect(isWorkshopCapabilityOperation('memory.read')).toBe(false);
+    expect(isWorkshopCapabilityOperation('transcript')).toBe(false);
     expect(isWorkshopCapabilityOperation(undefined)).toBe(false);
   });
 
@@ -37,5 +43,6 @@ describe('workshopCapabilityFamily', () => {
     expect(workshopCapabilityFamilyLabel('analysis.run')).toBe('Analysis');
     expect(workshopCapabilityFamilyLabel('dictionary.lookup', 'Continuity')).toBe("Writer's Dictionary");
     expect(workshopCapabilityFamilyLabel('resource.read', 'Continuity')).toBe('Project Resources');
+    expect(workshopCapabilityFamilyLabel('transcript.read', 'Continuity')).toBe('Session Recall');
   });
 });

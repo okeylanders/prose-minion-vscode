@@ -35,4 +35,26 @@ describe('a persona capability’s completion log metrics, by family', () => {
         'truncated=false;rejection=analysis-run-limit:n/a'
     );
   });
+
+  it('counts a session-recall result, and never its titles or text', () => {
+    expect(workshopCapabilityResultLogSummary(result({
+      capability: 'transcript.read',
+      metadata: {
+        outcome: 'read', sessionsRead: 3, parsedBytes: 4_096, cacheHits: 1, unreadableSessions: 0,
+        characters: 52_000, truncated: true, limitedBy: 'context-window',
+        sessions: [{ title: 'Chapter 6.7 stock pass' }]
+      }
+    }))).toBe(
+      'recallMetrics=outcome=read;sessions=3;parsedBytes=4096;cacheHits=1;unreadable=0;' +
+        'characters=52000;truncated=true;limitedBy=context-window;rejection=none'
+    );
+    expect(workshopCapabilityResultLogSummary(result({
+      capability: 'transcript.todos',
+      status: 'rejected',
+      metadata: { rejectionReason: 'conflicting-session-selection' }
+    }))).toBe(
+      'recallMetrics=outcome=n/a;sessions=n/a;parsedBytes=n/a;cacheHits=n/a;unreadable=n/a;' +
+        'characters=n/a;truncated=false;limitedBy=n/a;rejection=conflicting-session-selection'
+    );
+  });
 });

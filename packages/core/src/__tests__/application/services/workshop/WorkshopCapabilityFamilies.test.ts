@@ -44,7 +44,11 @@ describe('capability family names', () => {
     ['analysis.run', undefined, 'Analysis'],
     ['resource.catalog', undefined, 'Project Resources'],
     ['resource.search', undefined, 'Project Resources'],
-    ['resource.read', undefined, 'Project Resources']
+    ['resource.read', undefined, 'Project Resources'],
+    ['transcript.catalog', undefined, 'Session Recall'],
+    ['transcript.search', undefined, 'Session Recall'],
+    ['transcript.read', undefined, 'Session Recall'],
+    ['transcript.todos', undefined, 'Session Recall']
   ] as const)('names a %s artifact (tool %s) as %s', (operation, toolId, family) => {
     const turn = recordArtifact(operation, toolId);
 

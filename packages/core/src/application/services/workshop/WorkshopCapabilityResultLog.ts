@@ -18,6 +18,8 @@ export function workshopCapabilityResultLogSummary(result: WorkshopCapabilityRes
       return analysisMetrics(result);
     case 'resource':
       return resourceMetrics(result.metadata);
+    case 'transcript':
+      return recallMetrics(result);
     case 'dictionary':
       // The dictionary's metadata is its own log's business; the line keeps its old shape.
       return 'resourceMetrics=none';
@@ -44,6 +46,32 @@ function analysisMetrics(result: WorkshopCapabilityResult): string {
       : result.status === 'rejected' ? 'unspecified' : 'none'}`
   ];
   return `analysisMetrics=${values.join(';')}`;
+}
+
+/**
+ * Counts only: a session title or transcript text never reaches the log.
+ * The keys are the ones WorkshopTranscriptRecallCapability writes.
+ */
+function recallMetrics(result: WorkshopCapabilityResult): string {
+  const metadata = result.metadata;
+  const count = (key: string): number | 'n/a' =>
+    typeof metadata?.[key] === 'number' ? metadata[key] as number : 'n/a';
+  const word = (key: string): string =>
+    typeof metadata?.[key] === 'string' ? metadata[key] as string : 'n/a';
+  const values = [
+    `outcome=${word('outcome')}`,
+    `sessions=${count('sessionsRead')}`,
+    `parsedBytes=${count('parsedBytes')}`,
+    `cacheHits=${count('cacheHits')}`,
+    `unreadable=${count('unreadableSessions')}`,
+    `characters=${count('characters')}`,
+    `truncated=${metadata?.truncated === true}`,
+    `limitedBy=${word('limitedBy')}`,
+    `rejection=${typeof metadata?.rejectionReason === 'string'
+      ? metadata.rejectionReason
+      : result.status === 'rejected' ? 'unspecified' : 'none'}`
+  ];
+  return `recallMetrics=${values.join(';')}`;
 }
 
 function resourceMetrics(metadata: WorkshopCapabilityResult['metadata']): string {

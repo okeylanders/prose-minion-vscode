@@ -1413,6 +1413,10 @@ export class WorkshopSessionService {
         case 'resource.catalog': return 'resource_catalog';
         case 'resource.search': return 'resource_search';
         case 'resource.read': return 'resource_read';
+        case 'transcript.catalog': return 'transcript_catalog';
+        case 'transcript.search': return 'transcript_search';
+        case 'transcript.read': return 'transcript_read';
+        case 'transcript.todos': return 'transcript_todos';
         default: return assertNever(input.details.operation);
       }
     })();

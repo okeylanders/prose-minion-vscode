@@ -35,6 +35,8 @@ export function workshopCapabilityFamilyLabel(
       return "Writer's Dictionary";
     case 'resource':
       return 'Project Resources';
+    case 'transcript':
+      return 'Session Recall';
     case 'analysis':
       return toolLabel ?? 'Analysis';
   }

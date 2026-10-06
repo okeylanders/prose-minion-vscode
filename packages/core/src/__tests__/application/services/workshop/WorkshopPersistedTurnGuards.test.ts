@@ -11,13 +11,22 @@ import {
 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { messageAttachmentSnapshot } from '@/application/services/workshop/WorkshopSessionRecords';
-import { WORKSHOP_CAPABILITY_OPERATIONS } from '@shared/types/workshopCapabilities';
+import {
+  WORKSHOP_CAPABILITY_OPERATIONS,
+  type WorkshopCapabilityOperation
+} from '@shared/types/workshopCapabilities';
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
+import type { WorkshopConversationLogicalKey } from '@/application/services/workshop/WorkshopSessionStateV1';
+import { ConversationArchiveEntryV1, ConversationManager } from '@orchestration/ConversationManager';
 
 const REQUEST = 'host-request';
 
-/** A saved room with one writer message (one attachment) and one capability artifact. */
-const savedRoom = (): WorkshopPersistedSessionV2 => {
+/**
+ * A saved room with one writer message (one attachment) and one capability
+ * artifact, plus an artifact for each of `recalled`, recorded by the real
+ * aggregate as the capability records it.
+ */
+const savedRoom = (recalled: readonly WorkshopCapabilityOperation[] = []): WorkshopPersistedSessionV2 => {
   const workshop = new WorkshopSessionService(() => Date.parse('2026-10-05T14:00:00.000Z'));
   workshop.setExcerpt({ text: 'The tide came in.', source: { kind: 'manual' } });
   const added = workshop.addMessageAttachment({
@@ -49,6 +58,20 @@ const savedRoom = (): WorkshopPersistedSessionV2 => {
       content: 'Raven keeps the lighthouse.'
     }
   });
+  for (const operation of recalled) {
+    workshop.recordCapabilityArtifact({
+      requestId: REQUEST,
+      excerptVersion: workshop.getExcerptVersion(),
+      details: {
+        operation,
+        status: 'success',
+        requestSummary: '“Chapter 6.7” · turns 1-12',
+        requestedByPersonaId: 'jill',
+        invokedBy: { kind: 'host' }
+      },
+      result: { capability: operation, status: 'success', requestSummary: '“Chapter 6.7” · turns 1-12', content: 'Quoted record.' }
+    });
+  }
   workshop.completeRun(REQUEST, 'They are about the tide.', undefined, false, 'runtime-host');
   const state = workshop.exportCommittedState();
   const temporal = new WorkshopSessionTimeService({
@@ -112,9 +135,55 @@ describe('persisted Workshop turn guards', () => {
     expect(() => parseWorkshopPersistedSession(raw)).not.toThrow();
   });
 
+  it('saves and reopens every session-recall operation, artifact, and Past session row (ADR 2026-10-05 §10)', () => {
+    const recall = [
+      ['transcript.catalog', 'transcript_catalog'],
+      ['transcript.search', 'transcript_search'],
+      ['transcript.read', 'transcript_read'],
+      ['transcript.todos', 'transcript_todos']
+    ] as const;
+    const raw = JSON.parse(JSON.stringify(savedRoom(recall.map(([operation]) => operation)))) as {
+      workshop: { turns: MutableTurn[] };
+      conversations: ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[];
+    };
+    // Archive kinds are checked only at reopen (ADR 2026-10-05 Consequences): every participant carries a row.
+    const row = (deliveredAt: number) => ({
+      kind: 'transcript' as const,
+      origin: 'host' as const,
+      label: '“Chapter 6.7” · turns 1-12',
+      sizeChars: 14_000,
+      isEstimate: true,
+      deliveredAt
+    });
+    raw.conversations = (['host', 'guest:cliff'] as const).map((key, index) => ({
+      key,
+      toolName: key === 'host' ? 'workshop-persona' : 'workshop-guest',
+      messages: [
+        { role: 'user', content: 'Pick up the 6.7 chats.' },
+        { role: 'assistant', content: 'Here is what we decided.' }
+      ],
+      lastActivity: 10 + index,
+      contextSources: [row(20 + index)],
+      nextArtifactNumber: 2
+    }));
+
+    const saved = parseWorkshopPersistedSession(raw);
+    const reopened = decodeWorkshopPersistedSessionCheckpoint(JSON.parse(JSON.stringify(saved))).session;
+    expect(reopened.workshop.turns.map((turn) => turn.artifact)).toEqual(expect.arrayContaining(recall.map(([, artifact]) => artifact)));
+    expect(reopened.workshop.turns.filter((turn) => turn.toolLabel === 'Session Recall')).toHaveLength(4);
+    expect(reopened.workshop.turns.map((turn) => turn.capability?.operation))
+      .toEqual(expect.arrayContaining(recall.map(([operation]) => operation)));
+    const imported = new ConversationManager().importConversations(
+      (reopened.conversations as ConversationArchiveEntryV1<WorkshopConversationLogicalKey>[])
+        .map((entry) => ({ entry, systemMessage: `${entry.toolName} system` }))
+    );
+    expect(imported.map((outcome) => [outcome.key, outcome.status])).toEqual([['host', 'imported'], ['guest:cliff', 'imported']]);
+  });
+
   it('rejects a capability operation outside the closed list on load and save', () => {
     const raw = editedRoom((turns) => {
-      capabilityTurn(turns).capability!.operation = 'transcript.read';
+      // 'memory.read' is reserved for derived material (ADR 2026-10-05) and listed nowhere.
+      capabilityTurn(turns).capability!.operation = 'memory.read';
     });
 
     expect(() => decodeWorkshopPersistedSessionCheckpoint(raw)).toThrow(/capability\.operation must be/);

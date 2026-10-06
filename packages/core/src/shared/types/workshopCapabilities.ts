@@ -17,7 +17,11 @@ export const WORKSHOP_CAPABILITY_OPERATIONS = [
   'analysis.run',
   'resource.catalog',
   'resource.search',
-  'resource.read'
+  'resource.read',
+  'transcript.catalog',
+  'transcript.search',
+  'transcript.read',
+  'transcript.todos'
 ] as const;
 
 export type WorkshopCapabilityOperation = typeof WORKSHOP_CAPABILITY_OPERATIONS[number];
@@ -32,7 +36,7 @@ export const isWorkshopCapabilityOperation = (value: unknown): value is Workshop
  * family exhaustively, so an operation without one fails to compile instead
  * of borrowing another family's name through an implicit "otherwise".
  */
-export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource';
+export type WorkshopCapabilityFamily = 'dictionary' | 'analysis' | 'resource' | 'transcript';
 
 export function workshopCapabilityFamily(
   operation: WorkshopCapabilityOperation
@@ -47,6 +51,11 @@ export function workshopCapabilityFamily(
     case 'resource.search':
     case 'resource.read':
       return 'resource';
+    case 'transcript.catalog':
+    case 'transcript.search':
+    case 'transcript.read':
+    case 'transcript.todos':
+      return 'transcript';
     default: {
       const unhandled: never = operation;
       throw new Error(`Unhandled Workshop capability operation: ${String(unhandled)}`);

@@ -28,7 +28,11 @@ const PUBLISHABLE_CAPABILITY_OPERATIONS: ReadonlySet<WorkshopCapabilityOperation
   'dictionary.lookup',
   'dictionary.full-entry',
   'analysis.run',
-  'resource.read'
+  'resource.read',
+  // Reads and to-do lists of saved sessions are evidence the room may share
+  // (ADR 2026-10-05 §7, D6); the catalog and search stay private discovery.
+  'transcript.read',
+  'transcript.todos'
 ]);
 
 /**
