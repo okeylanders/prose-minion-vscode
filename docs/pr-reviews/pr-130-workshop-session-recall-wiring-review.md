@@ -13,10 +13,42 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | The bounded clamp can refuse a feasible mixed-density read and misreport the minimum | A real CJK/English batch succeeds with 60K free tokens but is refused with 66K; the refusal reports 66,896 characters left against a 12,000-character minimum | **Open**, recommended before integration |
-| F-02 | 🔵 Nit | Two collapsed-report hints from the same session of a batch cannot be followed together literally | The two emitted session fragments get `duplicate-session`; consolidating their ranges returns both reports | **Open**, nonblocking guidance/test improvement |
+| F-01 | 🟡 Standard | The bounded clamp can refuse a feasible mixed-density read and misreport the minimum | A real CJK/English batch succeeds with 60K free tokens but is refused with 66K; the refusal reports 66,896 characters left against a 12,000-character minimum | **Open**, recommended before integration. Fixed by the author in `3f2d255` (see the author response below); awaiting re-review |
+| F-02 | 🔵 Nit | Two collapsed-report hints from the same session of a batch cannot be followed together literally | The two emitted session fragments get `duplicate-session`; consolidating their ranges returns both reports | **Open**, nonblocking guidance/test improvement. Addressed by the author in `994b234` (see the author response below); awaiting re-review |
 
 **Verdict: Request changes for F-01.** The ordinary mixed-density read has a legal smaller rendering but the clamp discards it after its iteration limit. No Blocking or High finding was established. F-02 concerns generated guidance, not the deliberate duplicate-session validation rule. This review covers Slice 3's dormant-to-models runtime, not Slice 4 prompting or live persona acceptance, and does not authorize a merge.
+
+## Author response (`3f2d255`, `994b234`)
+
+These are the author's claims, offered for re-review. They are not verified findings.
+
+**F-01 ([`3f2d255`](https://github.com/okeylanders/prose-minion-vscode/commit/3f2d255)).** Running out of renders no longer refuses a read that fits.
+
+- The search moved to a pure module, `WorkshopRecallWindowClamp`, and keeps the largest read it measured to fit. The four-render bound became six:
+  1. the first guess;
+  2. one proportional step;
+  3. if the step misses, the minimum, which settles whether any read fits;
+  4. then interpolation between the largest fit and the smallest miss by their measured costs, stopping once a fit uses 98% of half the window.
+- The search stops early when the first guess fits, or when a fit is close enough. It never refuses a fit it measured.
+- **Refusal.** Only a minimum that measures over half the window is refused now, as you suggested. The copy says so in numbers: about how many characters of these sessions half the window holds, and what the minimum read measured against it. Metadata adds `minimumTokens` and `halfWindowTokens`. The refusal before reading (a first guess already below the minimum) is unchanged.
+- **Witnesses:**
+  - **Your reproduction.** A saved Chinese session and an English session, read together at turn 2 in full detail. The 66,000-token window now succeeds, fits, and delivers at least what the 60,000-token control did.
+  - **Sweeps** from 20,000 to 80,000 free tokens in steps of 4,000, beside English and beside escape-heavy text. Every read succeeds, fits half the window, and delivers turns from both sessions. Before the fix the English sweep failed at 68,000.
+  - **Synthetic cost curves.** Even density takes two renders. A dense section kept whole still fits. Across 2,000 random curves with a density change and a fixed overhead, the search never exceeds six renders, delivers a fit exactly when the minimum fits, and delivers the largest fit it measured.
+  - **The measured refusal**, its numbers and its copy, with real saved CJK text.
+- **Mutation check.** Each of these reversions fails at least one witness: no minimum fallback, keeping the first fit, no room tolerance, and proportional steps only.
+- The sub-adapter returns to 474 lines.
+
+**F-02 ([`994b234`](https://github.com/okeylanders/prose-minion-vscode/commit/994b234)).** The rule stays: one call names a session once.
+
+- **The witness.** It takes the first two stock-session hints from a real batch's rendered evidence. Written side by side, they are refused as `duplicate-session`. Combined into `<session turns="5, 8">…</session> <detail>full</detail>`, they read both reports in full.
+- **The guidance.** The ADR's Slice 3 note now qualifies "several at once, as written" to hints that name different sessions. It tells Slice 4's grammar doc to teach combining the ranges of hints that name the same one.
+
+**Verification at `994b234`:**
+
+- Full suite on Node 22.22.0 and Node 18.20.8: **265 suites / 3,487 tests**. The reviewed head had 264 / 3,478; the difference is the new clamp suite and the witnesses above.
+- `npm run typecheck`, `npm run build` (including `verify:bundle`), and `git diff --check` are all clean.
+- ESLint over the changed TypeScript files: 0 errors, and no file gains a warning against the epic base.
 
 ## F-01 — Retain a feasible read when proportional clamp refinement exhausts its attempts
 

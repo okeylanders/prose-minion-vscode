@@ -51,7 +51,7 @@ verification, and rollback seams.
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, merged in #126 (`57d097a`). Build: `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8`. Review fixes: `f3779af`, `cce3889`, `b4cab1b`, `689f96e`, `65ea614`, `3b5b6e5`, `970ed75`. Re-review fixes: `17647eb`, `07de2c4` |
 | 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Done, merged in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127) (`ababfde`). Build: `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95`. Review fixes: `f6c3bef`, `84b1977` |
 | 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Done, merged in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129) (`23b7779`). Build: `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17`. Review fixes: `fe4c150`, `f93f309` |
-| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Built, in review in [#130](https://github.com/okeylanders/prose-minion-vscode/pull/130). PR #129 follow-ups: `922ff59`, `a96d09d`, `91e9728`, `58ec000`, `70b9ba6`. Build: `6e87259`, `b4dfaa2`, `7897c0d`, `ebde98e`, `ba599d4`, `509cbc8`, `34f6ac4`, `364b5c5`, `41ee820`, `91466c1`, `214c446`, `a53aaeb`. Docs: `7131981` |
+| 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Built, in review in [#130](https://github.com/okeylanders/prose-minion-vscode/pull/130). PR #129 follow-ups: `922ff59`, `a96d09d`, `91e9728`, `58ec000`, `70b9ba6`. Build: `6e87259`, `b4dfaa2`, `7897c0d`, `ebde98e`, `ba599d4`, `509cbc8`, `34f6ac4`, `364b5c5`, `41ee820`, `91466c1`, `214c446`, `a53aaeb`. Docs: `7131981`. Review fixes: `3f2d255`, `994b234` |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
 
@@ -221,6 +221,20 @@ verification, and rollback seams.
     A compile experiment and a mutation check of every guard pass.
   - The F-04 residual is closed by the host lifecycle: changing the first
     workspace folder restarts the extension host.
+
+- **2026-10-06 — PR #130 review fixes.** Okey's review requested
+  changes for one Standard finding and one nit.
+  - F-01: the window clamp refused a mixed-density read that fit, after
+    four proportional re-renders. `WorkshopRecallWindowClamp` now keeps the
+    largest read it measured to fit: a first guess, one proportional
+    step, the minimum, then interpolation, at most six renders. Only a
+    minimum that measures over half the window is refused (`3f2d255`).
+  - F-02: two hints naming one session of a batch name it twice. The rule
+    stays; the ADR teaches combining their ranges, with a witness
+    (`994b234`).
+
+  Full suite 265 suites / 3,487 tests on Node 22 and Node 18; typecheck,
+  build, and lint of the changed files are clean.
 
 ## Decisions (accepted 2026-10-05, as recommended)
 
