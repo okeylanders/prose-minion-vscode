@@ -14,6 +14,8 @@ import {
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
+import { WORKSHOP_CAPABILITY_OPERATIONS, WorkshopCapabilityOperation } from '@shared/types/workshopCapabilities';
+import { isWorkshopPublishableCapabilityEvidence } from '@/application/services/workshop/WorkshopRoomAudience';
 
 const PROMPTS_ROOT = path.resolve(__dirname, '..', '..', '..', 'resources', 'system-prompts');
 const EXPECTED_IDS = ['jill', 'agnes', 'cliff', 'dev', 'edna', 'felix', 'harper', 'margot', 'penny', 'quinn', 'theo', 'wren'];
@@ -202,6 +204,60 @@ describe('Workshop persona catalog and packaged prompts', () => {
     );
     expect(guestBase).not.toMatch(/no tools or Workshop capabilities/i);
     expect(guestBase).toContain('capability calls documented in your instructions');
+  });
+
+  it('tells guests which evidence the room receives, exactly as the audience policy decides (ADR 2026-10-05 §7)', () => {
+    const guestBase = fs.readFileSync(path.resolve(PROMPTS_ROOT, 'workshop-personas/guest-base.md'), 'utf8')
+      .replace(/\s+/g, ' ');
+    const sharedList = /When your reply commits, the evidence it drew on is shared with the room along with it: ([^.]+)\./
+      .exec(guestBase)?.[1];
+    expect(sharedList).toBeDefined();
+    expect(guestBase).toContain('Catalogs and searches stay private.');
+    expect(guestBase).toContain('saved-session recall');
+    // The old charter said every result stayed out of the room, which was never true of published evidence.
+    expect(guestBase).not.toContain('not to the room');
+
+    // How the guest charter names each operation's evidence; false: private discovery.
+    const named: Record<WorkshopCapabilityOperation, string | false> = {
+      'dictionary.lookup': 'dictionary entries',
+      'dictionary.full-entry': 'dictionary entries',
+      'analysis.run': 'analysis reports',
+      'resource.catalog': false,
+      'resource.search': false,
+      'resource.read': 'resource reads',
+      'transcript.catalog': false,
+      'transcript.search': false,
+      'transcript.read': 'saved-session reads',
+      'transcript.todos': 'to-do lists'
+    };
+    for (const operation of WORKSHOP_CAPABILITY_OPERATIONS) {
+      const published = isWorkshopPublishableCapabilityEvidence({
+        operation,
+        status: 'success',
+        requestSummary: operation,
+        requestedByPersonaId: 'margot',
+        invokedBy: { kind: 'personaGuest', personaId: 'margot' }
+      });
+      expect([operation, published]).toEqual([operation, named[operation] !== false]);
+      const phrase = named[operation];
+      if (phrase) {
+        expect(sharedList).toContain(phrase);
+      } else {
+        expect(operation).toMatch(/\.(catalog|search)$/);
+      }
+    }
+  });
+
+  it('frames recall as a looked-up record in the host charter and the interaction contract, never as memory', () => {
+    const base = fs.readFileSync(path.resolve(PROMPTS_ROOT, 'workshop-personas/base.md'), 'utf8');
+    expect(base).toContain('Saved Workshop sessions returned through session recall are quoted records you looked up, not memories.');
+    expect(base).toContain('you may also look back at the writer\'s other saved Workshop sessions');
+
+    const contract = fs.readFileSync(path.resolve(PROMPTS_ROOT, WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH), 'utf8');
+    const improv = contract.slice(contract.indexOf('## Persona improv before durable history'));
+    expect(improv).toContain('A transcript returned by `transcript.*` is a record you looked up, never a memory and never persona state.');
+    expect(improv).toContain('You still must not promise to remember anything across sessions');
+    expect(improv).toContain('"I can look back at saved sessions."');
   });
 
   it('gives every persona a complete relational signature without selecting a level', () => {
