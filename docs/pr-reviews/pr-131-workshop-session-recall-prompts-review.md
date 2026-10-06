@@ -74,6 +74,13 @@ All checks below target **`c56c58fdca7b62e5d2a2f7c6983f355e7f516bf7`**, before t
 
 No implementation changes are part of this report update. The initial-review sections below are historical and remain scoped to `34dda149`, including their former 150K per-turn budget. Exact report-head CI is checked separately after publication.
 
+## Author response to the final re-review
+
+These are the author's claims, offered for re-review. They are not verified findings. Both observations were nonblocking; each rides the push that already carries `c20e4c0`.
+
+- **The no-window qualification.** The ADR's Slice 4 note no longer says overflow "stays covered" without qualification. The clamp applies only when the model's context length is known. With no window, only the character limits apply, and the note cites the measured 223,500 tokens for a 300,000-character XML-heavy read. It leaves to Slice 5 whether an unknown window should fall back to one read per turn. The PR description drops its "about 75K tokens" figure for the same reason.
+- **The offer, qualified by capacity.** The prompt now offers a later turn only when a turn's read limit or total stopped the read. When the context window did, it offers a narrower read: fewer sessions or fewer turns. That matches the refusal copy's split. The sync witness pins the new sentence.
+
 ## Author response (`b7e44fe`)
 
 These are the author's claims, offered for re-review. They are not verified findings.

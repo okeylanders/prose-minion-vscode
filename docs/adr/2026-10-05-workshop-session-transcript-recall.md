@@ -1071,10 +1071,19 @@ After the first live pass, Okey approved two more changes on this PR:
     150,000 characters, and the read of one chat's tail was refused with
     2,052 left. The persona disclosed it, and the next turn read it.
   - Why it is safe now: D11 chose 150K per turn before the window clamp
-    existed. The clamp now caps every read at half the free window, so
-    overflow stays covered. The total's remaining job is cost: a read's
-    evidence stays in the retained conversation, and the saved session,
-    for the rest of the room.
+    existed. When the model's context length is known, the clamp caps
+    every read at half the free window, measured again after each read.
+    The total's remaining job there is cost: a read's evidence stays in
+    the retained conversation, and the saved session, for the rest of
+    the room.
+  - The qualification (PR 131 re-review): when the context length is
+    unknown, there is no clamp, and only the character limits apply, as
+    before. Characters are not tokens. The re-review measured a
+    300,000-character read of XML-heavy text at about 223,500 estimated
+    tokens once escaped. The ordinary request preflight still runs, but
+    nothing local guarantees such a model can take two full reads.
+    Slice 5 should decide whether an unknown window falls back to one
+    read's worth per turn.
   - The pin: `PROMPT_BUDGETS` pins the relationship, a total that holds
     every read a turn allows at full size.
   - The grammar now quotes `readCharacters` as well, since the two
@@ -1086,7 +1095,9 @@ After the first live pass, Okey approved two more changes on this PR:
   The three read refusals end the same way, through one helper. The read
   limit and the turn's total point to the next turn, since both reset
   with the next writer message. The window refusals name what could not
-  be read, since the window does not reset.
+  be read, since the window does not reset. The prompt's offer follows
+  the same line (PR 131 re-review): a later turn when a turn's limit
+  stopped the read, a narrower read when the context window did.
 
 For Slice 5:
 
