@@ -407,4 +407,3 @@ describe('cancellation', () => {
       .rejects.toMatchObject({ name: 'AbortError' });
   });
 });
-
