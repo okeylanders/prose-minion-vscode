@@ -328,6 +328,58 @@ describe('the context window clamp (D11)', () => {
     expect(result.content).toContain('界界界');
   });
 
+  describe('sessions of different density, read together (PR 130 review F-01)', () => {
+    const CHINESE = '灯塔守护者在黎明时分划船出海，海水冰冷而平静。';
+    const ENGLISH = 'The keeper rows out at dawn, and the lighthouse lamp turns over the cold, flat water. ';
+    const ESCAPED = '<keeper id="a&b">dawn</keeper> & <lamp>turns</lamp> ';
+    let ids: { dense: string; plain: string; markup: string };
+    let recall: WorkshopTranscriptRecallService;
+
+    beforeAll(async () => {
+      const save = (title: string, prefix: string, text: string) => saveRecallRoom(title, (session, advance) => {
+        session.setSessionScope('open');
+        advance(60_000);
+        session.beginPersonaMessage(`${prefix}-1`, text);
+        advance(60_000);
+        session.completeRun(`${prefix}-1`, `${title}: noted.`, undefined, false, 'runtime-host');
+      }, { fs: corpus.fs, idPrefix: prefix });
+      const dense = await save('Dense chapter', 'mixed-dense', CHINESE.repeat(Math.ceil(33_000 / CHINESE.length)).slice(0, 33_000));
+      const plain = await save('Plain chapter', 'mixed-plain', ENGLISH.repeat(1_400));
+      const markup = await save('Markup chapter', 'mixed-markup', ESCAPED.repeat(2_000));
+      ids = { dense: dense.savedSessionId, plain: plain.savedSessionId, markup: markup.savedSessionId };
+      recall = new WorkshopTranscriptRecallService(markup.store, markup.coordinator, markup.log);
+    });
+
+    const both = (second: string): WorkshopTranscriptRecallRequest => ({
+      capability: 'transcript.read',
+      sessions: [{ sessionId: ids.dense, turns: [{ from: 2, to: 2 }] }, { sessionId: second, turns: [{ from: 2, to: 2 }] }],
+      detail: 'full'
+    });
+
+    it('never refuses a read a smaller window could deliver', async () => {
+      const control = await capabilityOver(recall).fulfill(both(ids.plain), windowOf(60_000));
+      const larger = await capabilityOver(recall).fulfill(both(ids.plain), windowOf(66_000));
+
+      expect(control.status).toBe('success');
+      expect(evidenceTokens(control)).toBeLessThanOrEqual(30_000);
+      expect(larger.status).toBe('success');
+      expect(evidenceTokens(larger)).toBeLessThanOrEqual(33_000);
+      expect(larger.content!.length).toBeGreaterThanOrEqual(control.content!.length);
+    });
+
+    it.each([
+      ['English', 'plain'],
+      ['escape-heavy', 'markup']
+    ] as const)('delivers a fitting read beside %s text at every window from 20K to 80K free tokens', async (_label, second) => {
+      for (let free = 20_000; free <= 80_000; free += 4_000) {
+        const result = await capabilityOver(recall).fulfill(both(ids[second]), windowOf(free));
+        expect({ free, status: result.status }).toEqual({ free, status: 'success' });
+        expect(evidenceTokens(result)).toBeLessThanOrEqual(Math.floor(free / 2));
+        expect((result.metadata!.sessions as Array<{ delivered: unknown[] }>).every((session) => session.delivered.length > 0)).toBe(true);
+      }
+    });
+  });
+
   it('refuses a read whose window leaves less than a minimum share per session, before reading (decision 2)', async () => {
     const reading = jest.spyOn(service, 'read');
     const result = await capabilityOver().fulfill(
@@ -364,8 +416,19 @@ describe('the context window clamp (D11)', () => {
     }, windowOf(3_200));
 
     expect(reading).toHaveBeenCalledTimes(1);
-    expect(result).toMatchObject({ status: 'rejected', metadata: { rejectionReason: 'recall-context-window', minimumCharacters: 6_000 } });
-    expect(result.metadata!.charactersLeft as number).toBeLessThan(6_000);
+    expect(result).toMatchObject({
+      status: 'rejected',
+      metadata: { rejectionReason: 'recall-context-window', minimumCharacters: 6_000, halfWindowTokens: 1_600 }
+    });
+    // Measured, the minimum itself costs more than half the window: the refusal says so, in numbers.
+    const { charactersLeft, minimumTokens } = result.metadata as { charactersLeft: number; minimumTokens: number };
+    expect(minimumTokens).toBeGreaterThan(1_600);
+    expect(charactersLeft).toBe(Math.floor(6_000 * (1_600 / minimumTokens)));
+    expect(result.error).toBe(
+      'This read names 1 saved session and needs at least 6,000 characters (6,000 per session), but half the room ' +
+        `left in your context window holds only about ${charactersLeft.toLocaleString('en-US')} characters of these ` +
+        `sessions: the minimum read measured ${minimumTokens.toLocaleString('en-US')} tokens against 1,600. Answer from what you have.`
+    );
   });
 });
 

@@ -9,8 +9,9 @@
  * - Characters per turn: all reads together deliver at most
  *   `readCharactersPerTurn`.
  * - The window clamp: a read takes at most half the room the model's
- *   context window has for evidence, by the preflight's own estimate. When
- *   the window is unknown the budget stands.
+ *   context window has for evidence, by the preflight's own estimate of
+ *   what was rendered (WorkshopRecallWindowClamp). When the window is
+ *   unknown the budget stands.
  * - A read whose limit leaves less than a minimum share per session named
  *   is refused, with the characters left and the minimum. It is never
  *   narrowed silently, and the renderer is never asked for less.
@@ -22,7 +23,6 @@
 import type { LogSink } from '@/platform';
 import type { WorkshopPersonaId } from '@messages';
 import type { CapabilityContextWindow, CapabilityDeliveredSource } from '@orchestration/AgentRunContracts';
-import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type {
   WorkshopCapabilityResult,
@@ -41,6 +41,12 @@ import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 import { recallCount, recallQuoted } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import { workshopTranscriptRecallRequestSummary } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
+import {
+  fitWorkshopRecallReadToWindow,
+  workshopRecallEvidenceTokens,
+  WorkshopRecallMeasuredRead,
+  WorkshopRecallWindowFit
+} from '@/application/services/workshop/recall/WorkshopRecallWindowClamp';
 import type { WorkshopRecallReadResult } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 
 /** The service's four questions; satisfied by WorkshopTranscriptRecallService. */
@@ -66,8 +72,6 @@ interface ReadLimit {
 const LISTED_RANGES = 12;
 /** Session titles in a to-do list's manifest label. */
 const TODO_LABEL_TITLES = 400;
-/** Re-renders a clamped read may take to fit the window it was measured against. */
-const CLAMP_ATTEMPTS = 4;
 
 export class WorkshopTranscriptRecallCapability {
   private reads = 0;
@@ -174,26 +178,26 @@ export class WorkshopTranscriptRecallCapability {
     this.reads += 1;
     const result = await this.recall.read({ sessions: request.sessions, detail: request.detail }, this.turn.signal);
     this.throwIfAborted();
-    // Under a window, measure what was rendered with the preflight's own
-    // estimate, and render again smaller until it fits half the room.
+    // Below the first guess, only the window limits a read.
+    const render = (characters: number): WorkshopRecallMeasuredRead => {
+      const readLimit: ReadLimit = characters === limit.characters ? limit : { characters, by: 'context-window' };
+      const rendered = renderWorkshopRecallRead(result, { now: this.now(), readCharacters: characters, notes: this.limitNotes(readLimit) });
+      const outcome = this.readOutcome(request, result, rendered, readLimit);
+      return { characters, outcome, tokens: window ? workshopRecallEvidenceTokens(outcome) : 0 };
+    };
     const half = window ? Math.floor(window.freeInputTokens / 2) : undefined;
-    for (let attempt = 1; ; attempt += 1) {
-      const rendered = renderWorkshopRecallRead(result, { now: this.now(), readCharacters: limit.characters, notes: this.limitNotes(limit) });
-      const outcome = this.readOutcome(request, result, rendered, limit);
-      const tokens = half === undefined ? 0 : evidenceTokens(outcome);
-      if (half === undefined || tokens <= half) {
-        this.readCharacters += rendered.content.length;
-        this.log(`read sessions=${request.sessions.length} limit=${limit.characters} by=${limit.by} ` +
-          `characters=${rendered.content.length} turnTotal=${this.readCharacters}` +
-          (half === undefined ? '' : ` tokens=${tokens} halfWindow=${half}`));
-        return outcome;
-      }
-      const smaller = Math.floor(limit.characters * (half / tokens) * 0.98);
-      limit = { characters: Math.min(smaller, limit.characters - 1), by: 'context-window' };
-      if (limit.characters < minimum || attempt >= CLAMP_ATTEMPTS) {
-        return this.tooSmall(request, { characters: Math.max(0, limit.characters), by: 'context-window' }, minimum);
-      }
+    const fitted: WorkshopRecallWindowFit = half === undefined
+      ? { fit: render(limit.characters), renders: 1 }
+      : fitWorkshopRecallReadToWindow(render, limit.characters, half, minimum);
+    if (!fitted.fit) {
+      return this.windowTooSmall(request, minimum, half!, fitted.minimum);
     }
+    const { outcome, tokens } = fitted.fit;
+    this.readCharacters += outcome.content!.length;
+    this.log(`read sessions=${request.sessions.length} limit=${fitted.fit.characters} by=${String(outcome.metadata!.limitedBy)} ` +
+      `characters=${outcome.content!.length} turnTotal=${this.readCharacters}` +
+      (half === undefined ? '' : ` tokens=${tokens} halfWindow=${half} renders=${fitted.renders}`));
+    return outcome;
   }
 
   private async todos(request: Request<'transcript.todos'>): Promise<WorkshopCapabilityResult> {
@@ -288,6 +292,38 @@ export class WorkshopTranscriptRecallCapability {
         `(${count(minimum / Math.max(1, named))} per session), but only ${count(limit.characters)} are left: ${why}. ` +
         (named > 1 ? 'Read fewer sessions at once, or answer from what you have.' : 'Answer from what you have.'),
       { charactersLeft: limit.characters, minimumCharacters: minimum, sessionsNamed: named }
+    );
+  }
+
+  /**
+   * Decision 2 after measuring: even the minimum read costs more than half
+   * the window. The characters left are what that half holds of this text,
+   * at the density the minimum read measured.
+   */
+  private windowTooSmall(
+    request: Request<'transcript.read'>,
+    minimum: number,
+    half: number,
+    measured: WorkshopRecallMeasuredRead | undefined
+  ): WorkshopCapabilityResult {
+    const tokens = measured?.tokens ?? Number.POSITIVE_INFINITY;
+    const characters = Number.isFinite(tokens) && tokens > 0 ? Math.floor(minimum * (half / tokens)) : 0;
+    const named = request.sessions.length;
+    return this.rejected(
+      request,
+      'recall-context-window',
+      `This read names ${recallCount(named, 'saved session')} and needs at least ${count(minimum)} characters ` +
+        `(${count(minimum / Math.max(1, named))} per session), but half the room left in your context window holds ` +
+        `only about ${count(characters)} characters of these sessions: the minimum read measured ` +
+        `${Number.isFinite(tokens) ? count(tokens) : 'more'} tokens against ${count(half)}. ` +
+        (named > 1 ? 'Read fewer sessions at once, or answer from what you have.' : 'Answer from what you have.'),
+      {
+        charactersLeft: characters,
+        minimumCharacters: minimum,
+        sessionsNamed: named,
+        ...(Number.isFinite(tokens) ? { minimumTokens: tokens } : {}),
+        halfWindowTokens: half
+      }
     );
   }
 
@@ -427,12 +463,6 @@ function readSummary(request: Request<'transcript.read'>, titles: readonly strin
 function listedRanges(ranges: ReadonlyArray<{ readonly from: number; readonly to: number }>): string {
   const listed = formatWorkshopRecallTurnRanges(ranges.slice(0, LISTED_RANGES));
   return ranges.length > LISTED_RANGES ? `${listed}, and ${ranges.length - LISTED_RANGES} more` : listed;
-}
-
-/** What the result costs as evidence: its text and metadata, escaped as formatEvidence escapes them. */
-function evidenceTokens(result: WorkshopCapabilityResult): number {
-  const escaped = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return estimateTextTokens(escaped(result.content ?? '')) + estimateTextTokens(escaped(JSON.stringify(result.metadata ?? {})));
 }
 
 function count(value: number): string {
