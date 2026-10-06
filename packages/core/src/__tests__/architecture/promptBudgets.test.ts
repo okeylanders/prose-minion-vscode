@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRenderer';
 import {
   WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
@@ -96,7 +97,7 @@ describe('prompt budgets', () => {
     });
   });
 
-  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos, D11)', () => {
+  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos and reads, D11)', () => {
     expect(PROMPT_BUDGETS.workshopTranscriptRecall).toEqual({
       queryCharacters: 200,
       sessionIdCharacters: 100,
@@ -108,7 +109,9 @@ describe('prompt budgets', () => {
       searchHits: 20,
       searchHitsPerSession: 5,
       snippetCharacters: 280,
-      readCharacters: 48_000,
+      readCharacters: 150_000,
+      readSessions: 10,
+      readCharactersPerTurn: 150_000,
       readsPerTurn: 2,
       todoSessions: 50,
       todoItems: 60,
@@ -118,6 +121,14 @@ describe('prompt budgets', () => {
     // Recall shares the per-turn call ceiling; its reads stay inside it.
     expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn)
       .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+  });
+
+  it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {
+    const { readCharacters, readSessions, readCharactersPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
+
+    expect(readSessions * WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS).toBeLessThanOrEqual(readCharacters);
+    // One read never needs more than the turn's total.
+    expect(readCharacters).toBeLessThanOrEqual(readCharactersPerTurn);
   });
 
   it('pins the model-facing Conversation Widget budgets and aggregate frame ceiling', () => {

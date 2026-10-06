@@ -457,7 +457,8 @@ describe('the composite read bound (PR 126 review F-01)', () => {
         });
       }
       advance(60_000);
-      session.beginPersonaMessage('run-1', `Opening. ${'salt '.repeat(20_000)}`);
+      // Longer than the whole read budget, so only its head can fit.
+      session.beginPersonaMessage('run-1', `Opening. ${'salt '.repeat(READ_CHARACTERS / 3)}`);
       advance(60_000);
       session.completeRun('run-1', 'A short reply.', undefined, false, 'runtime-host');
     });

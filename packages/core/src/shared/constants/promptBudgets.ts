@@ -60,7 +60,16 @@ export interface PromptBudgets {
     searchHits: number;
     searchHitsPerSession: number;
     snippetCharacters: number;
+    /**
+     * One read's text, shared fairly among its sessions (D9, D11). The
+     * renderer takes it as an option, so a caller may lower it (Slice 3's
+     * context-window clamp), never below the per-session minimum.
+     */
     readCharacters: number;
+    /** The most sessions one `transcript.read` names (D9); each share clears the minimum. */
+    readSessions: number;
+    /** All recall reads in one persona turn together (D11); Slice 3 enforces it. */
+    readCharactersPerTurn: number;
     readsPerTurn: number;
     /** `transcript.todos` (D6): the most sessions one call scans, and the largest `<recent>`. */
     todoSessions: number;
@@ -250,7 +259,9 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     searchHits: 20,
     searchHitsPerSession: 5,
     snippetCharacters: 280,
-    readCharacters: 48_000,
+    readCharacters: 150_000,
+    readSessions: 10,
+    readCharactersPerTurn: 150_000,
     readsPerTurn: 2,
     todoSessions: 50,
     todoItems: 60,
