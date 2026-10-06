@@ -97,6 +97,10 @@ export const createWorkshopCapabilityInstruction = (
     '</prose-minion-tool-call>',
     '',
     'The stable analysis.run grammar and its validation rules are in your system instructions. The reserved analysis-scope frame beside this writer turn reports only the current inherited inputs.',
+    // Unconditional (ADR 2026-10-05 §8): this contract freezes at the first
+    // message, and whether recall is available is a per-call fact each
+    // transcript.* result reports.
+    'The stable transcript.* grammar is in your system instructions.',
     `Dictionary input ceilings are word ${budgets.wordCharacters} characters, context ${budgets.contextCharacters}, ` +
       `and purpose ${budgets.purposeCharacters}. Do not split or truncate an input to evade a ceiling.`,
     'After evidence is returned, use it honestly. The dictionary and analysis agents remain separately attributed; never claim their report as your own.'
