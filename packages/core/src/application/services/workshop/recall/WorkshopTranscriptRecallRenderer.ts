@@ -37,6 +37,7 @@ import {
   recallBody,
   recallCount,
   recallListingNote,
+  recallMatchWords,
   recallQuoted,
   recallSavedAt,
   recallScopeLine,
@@ -103,13 +104,16 @@ export function renderWorkshopRecallCatalog(
   if (!result.available) {
     return recallUnavailable(result);
   }
-  const who = result.personaId ? ` that include ${workshopPersonaLabel(result.personaId)}` : '';
+  const which = [
+    ...(result.personaId ? [` that include ${workshopPersonaLabel(result.personaId)}`] : []),
+    ...(result.match ? [` with a ${recallMatchWords(result.match)}`] : [])
+  ].join(',');
   if (result.sessions.length === 0) {
-    return recallBody([`No other saved Workshop sessions in this workspace${who}.`, ...recallListingNote(result.listingTruncated)]);
+    return recallBody([`No other saved Workshop sessions in this workspace${which}.`, ...recallListingNote(result.listingTruncated)]);
   }
   const shown = result.sessions.length;
   return recallBody([
-    `Saved Workshop sessions in this workspace${who}, newest first. ` +
+    `Saved Workshop sessions in this workspace${which}, newest first. ` +
       `The current session is never listed.`,
     '',
     ...result.sessions.flatMap((session, index) => [
@@ -117,7 +121,7 @@ export function renderWorkshopRecallCatalog(
       ...catalogEntry(session, index + 1, options.now)
     ]),
     ...(shown < result.matchingSessions
-      ? ['', `Showing ${shown} of ${result.matchingSessions} sessions; the rest are older.`]
+      ? ['', `Showing ${shown} of ${result.matchingSessions} ${result.match ? 'matching ' : ''}sessions; the rest are older.`]
       : []),
     ...recallListingNote(result.listingTruncated)
   ]);

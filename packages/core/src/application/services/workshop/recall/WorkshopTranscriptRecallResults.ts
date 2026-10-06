@@ -74,9 +74,11 @@ export type WorkshopRecallCatalogResult =
       readonly available: true;
       readonly outcome: 'catalog';
       readonly personaId?: WorkshopPersonaId;
+      /** `<match>` on title and excerpt label (D8), and how sessions matched. */
+      readonly match?: WorkshopRecallSessionMatchResult;
       /** Newest first, at most `catalogSessions`. */
       readonly sessions: readonly WorkshopRecallCatalogSession[];
-      /** Recallable sessions matching the filter, shown or not. */
+      /** Recallable sessions matching every filter, shown or not. */
       readonly matchingSessions: number;
       /** The store's directory listing stopped at its own file bound. */
       readonly listingTruncated: boolean;

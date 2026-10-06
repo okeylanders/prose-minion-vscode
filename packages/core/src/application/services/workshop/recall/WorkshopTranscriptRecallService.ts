@@ -38,6 +38,7 @@ import {
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
 import {
   catalogSession,
+  matchedSessions,
   narrowedSessions,
   normalizeTurnRanges,
   recallableSessions,
@@ -163,16 +164,25 @@ export class WorkshopTranscriptRecallService {
     );
   }
 
+  /**
+   * Recallable sessions, newest first. `<persona>` and `<match>` (D8) filter
+   * the listing alone, so a catalog reads no session file and spends no
+   * byte budget, and its count covers every session that matched.
+   */
   catalog(
-    request: { personaId?: WorkshopPersonaId },
+    request: { personaId?: WorkshopPersonaId; match?: string },
     signal?: AbortSignal
   ): Promise<WorkshopRecallCatalogResult> {
     return this.withCorpus(signal, async (corpus) => {
-      const matching = withParticipant(corpus.sessions, request.personaId);
+      const { sessions: matching, match } = matchedSessions(
+        withParticipant(corpus.sessions, request.personaId),
+        request.match
+      );
       return {
         available: true,
         outcome: 'catalog',
         ...(request.personaId ? { personaId: request.personaId } : {}),
+        ...(match ? { match } : {}),
         sessions: matching
           .slice(0, PROMPT_BUDGETS.workshopTranscriptRecall.catalogSessions)
           .map(catalogSession),
