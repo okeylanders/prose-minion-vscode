@@ -4,6 +4,7 @@ import {
   WorkshopPersonaAnalysisRunInputs
 } from '@/application/services/workshop/WorkshopAnalysisInputs';
 import { buildWorkshopAnalysisScopeFrame } from '@/application/services/workshop/WorkshopPromptBuilder';
+import { workshopCapabilityResultLogSummary } from '@/application/services/workshop/WorkshopCapabilityResultLog';
 import { WorkshopResourceCapability } from '@/application/services/workshop/WorkshopResourceCapability';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
 import { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
@@ -184,7 +185,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       `capability=${request.capability} input=${this.requestLogSummary(request)} ` +
       `outcome=${completedTurn ? result.status : 'refused'} ` +
       `capabilityOutcome=${result.status} durationMs=${duration} partialFailures=${partialFailures} ` +
-      this.resultLogSummary(result)
+      workshopCapabilityResultLogSummary(result)
     );
     return {
       evidence: this.formatEvidence(result, this.turn.excerptVersion),
@@ -763,39 +764,6 @@ export class WorkshopPersonaCapability implements AgentCapability<
 
   private isAbortError(error: unknown): boolean {
     return error instanceof Error && error.name === 'AbortError';
-  }
-
-  private resultLogSummary(result: WorkshopCapabilityResult): string {
-    const metadata = result.metadata;
-    if (workshopCapabilityFamily(result.capability) === 'analysis') {
-      const inputs = metadata?.analysisInputs as
-        | WorkshopPersonaAnalysisRunInputs['provenance']
-        | undefined;
-      const values = [
-        `excerptMode=${inputs?.excerpt.mode ?? 'n/a'}`,
-        `excerptWords=${inputs?.excerpt.words ?? 'n/a'}`,
-        `contextMode=${inputs?.context.mode ?? 'n/a'}`,
-        `contextWords=${inputs?.context.words ?? 'n/a'}`,
-        `truncated=${metadata?.truncated === true}`,
-        `rejection=${typeof metadata?.rejectionReason === 'string'
-          ? `${metadata.rejectionReason}:${String(metadata.rejectionField ?? 'n/a')}`
-          : result.status === 'rejected' ? 'unspecified' : 'none'}`
-      ];
-      return `analysisMetrics=${values.join(';')}`;
-    }
-    if (!metadata || workshopCapabilityFamily(result.capability) !== 'resource') return 'resourceMetrics=none';
-    const values = [
-      `group=${typeof metadata.group === 'string' ? metadata.group : 'n/a'}`,
-      `path=${typeof metadata.path === 'string' ? JSON.stringify(metadata.path) : 'n/a'}`,
-      `lines=${typeof metadata.startLine === 'number' ? metadata.startLine : 'n/a'}-${typeof metadata.endLine === 'number' ? metadata.endLine : 'n/a'}`,
-      `searchMode=${typeof metadata.searchMode === 'string' ? metadata.searchMode : 'n/a'}`,
-      `catalogEntries=${typeof metadata.catalogEntriesScanned === 'number' ? metadata.catalogEntriesScanned : 'n/a'}`,
-      `files=${typeof metadata.filesScanned === 'number' ? metadata.filesScanned : typeof metadata.fileCount === 'number' ? metadata.fileCount : 'n/a'}`,
-      `matches=${typeof metadata.matchCount === 'number' ? metadata.matchCount : 'n/a'}`,
-      `bytes=${typeof metadata.bytes === 'number' ? metadata.bytes : typeof metadata.bytesScanned === 'number' ? metadata.bytesScanned : 'n/a'}`,
-      `truncated=${metadata.truncated === true}`
-    ];
-    return `resourceMetrics=${values.join(';')}`;
   }
 
   private assertNever(request: never): never {
