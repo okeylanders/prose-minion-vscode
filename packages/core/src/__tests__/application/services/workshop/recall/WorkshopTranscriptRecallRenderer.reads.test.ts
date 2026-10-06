@@ -19,7 +19,10 @@ import {
   workshopRecallMinimumReadCharacters
 } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import { WORKSHOP_TRANSCRIPT_RECALL_FRAMING } from '@/application/services/workshop/recall/WorkshopRecallCopy';
-import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
+import {
+  formatWorkshopRecallTurnRanges,
+  WORKSHOP_RECALL_BLOCK_SEPARATOR
+} from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import type {
   WorkshopRecallReadDetail,
   WorkshopRecallReadResult,
@@ -235,6 +238,19 @@ describe('a read of several sessions', () => {
     expect(shortSection.need).toBe(complete.text.length);
     expect(complete.continuation).toEqual([]);
     expect(shortSection.render(shortSection.need)).toBe(complete);
+  });
+
+  it('puts a caller’s notes after the framing, inside the budget, and counts each section’s characters', () => {
+    const note = 'This read was limited to 12,000 characters.';
+    const two = batch([read(long('a')), read(short)]);
+    const rendered = renderWorkshopRecallRead(two, { now: NOW, readCharacters: 12_000, notes: [note] });
+    const lines = rendered.content.split('\n');
+
+    expect(lines[0]).toBe(WORKSHOP_TRANSCRIPT_RECALL_FRAMING);
+    expect(lines.slice(1, 4)).toContain(note);
+    expect(rendered.content.length).toBeLessThanOrEqual(12_000);
+    expect(sum(rendered.sessions.map((session) => session.characters)) + WORKSHOP_RECALL_BLOCK_SEPARATOR.length)
+      .toBe(rendered.content.length);
   });
 
   it('refuses a read that names no session, as the service and codec do, rather than render nothing', () => {

@@ -73,6 +73,12 @@ export interface WorkshopRecallRenderOptions {
    * lower it, never below workshopRecallMinimumReadCharacters(sessions).
    */
   readonly readCharacters?: number;
+  /**
+   * Lines a caller adds to a read's opening, after the framing: a limit it
+   * applied, say. They sit inside the first section's header cap, so they
+   * never push a read past its budget.
+   */
+  readonly notes?: readonly string[];
 }
 
 /** One named session's part of a rendered read, in the order asked, for provenance. */
@@ -81,6 +87,8 @@ export interface WorkshopRecallRenderedSession extends Omit<WorkshopRecallRender
   readonly outcome: WorkshopRecallSessionRead['outcome'];
   /** The characters the allocation gave it, the separator before it included. */
   readonly share: number;
+  /** The characters its text took, the read's opening included on the first. */
+  readonly characters: number;
 }
 
 export interface WorkshopRecallRenderedRead {
@@ -211,7 +219,7 @@ export function renderWorkshopRecallRead(
     now: options.now,
     budget,
     detail: result.detail,
-    opening: index === 0 ? readOpening(result) : [],
+    opening: index === 0 ? [...readOpening(result), ...(options.notes ?? [])] : [],
     ...(count > 1 ? { ordinal: { index: index + 1, count } } : {})
   }));
   // Each share covers its section and the separator before it.
@@ -220,10 +228,11 @@ export function renderWorkshopRecallRead(
   const rendered = sections.map((section, index) => section.render(shares[index] - separator(index)));
   return {
     content: rendered.map((section) => section.text).join(WORKSHOP_RECALL_BLOCK_SEPARATOR),
-    sessions: rendered.map(({ text: _text, ...section }, index) => ({
+    sessions: rendered.map(({ text, ...section }, index) => ({
       sessionId: sessionIdOf(result.sessions[index]),
       outcome: result.sessions[index].outcome,
       share: shares[index],
+      characters: text.length,
       ...section
     }))
   };
