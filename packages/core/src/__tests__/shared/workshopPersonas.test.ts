@@ -218,17 +218,25 @@ describe('Workshop persona catalog and packaged prompts', () => {
     expect(guestBase).not.toContain('not to the room');
 
     // How the guest charter names each operation's evidence; false: private discovery.
-    const named: Record<WorkshopCapabilityOperation, string | false> = {
-      'dictionary.lookup': 'dictionary entries',
-      'dictionary.full-entry': 'dictionary entries',
-      'analysis.run': 'analysis reports',
-      'resource.catalog': false,
-      'resource.search': false,
-      'resource.read': 'resource reads',
-      'transcript.catalog': false,
-      'transcript.search': false,
-      'transcript.read': 'saved-session reads',
-      'transcript.todos': 'to-do lists'
+    const named = (operation: WorkshopCapabilityOperation): string | false => {
+      switch (operation) {
+        case 'dictionary.lookup':
+        case 'dictionary.full-entry':
+          return 'dictionary entries';
+        case 'analysis.run':
+          return 'analysis reports';
+        case 'resource.read':
+          return 'resource reads';
+        case 'transcript.read':
+          return 'saved-session reads';
+        case 'transcript.todos':
+          return 'to-do lists';
+        case 'resource.catalog':
+        case 'resource.search':
+        case 'transcript.catalog':
+        case 'transcript.search':
+          return false;
+      }
     };
     for (const operation of WORKSHOP_CAPABILITY_OPERATIONS) {
       const published = isWorkshopPublishableCapabilityEvidence({
@@ -238,8 +246,8 @@ describe('Workshop persona catalog and packaged prompts', () => {
         requestedByPersonaId: 'margot',
         invokedBy: { kind: 'personaGuest', personaId: 'margot' }
       });
-      expect([operation, published]).toEqual([operation, named[operation] !== false]);
-      const phrase = named[operation];
+      const phrase = named(operation);
+      expect([operation, published]).toEqual([operation, phrase !== false]);
       if (phrase) {
         expect(sharedList).toContain(phrase);
       } else {
