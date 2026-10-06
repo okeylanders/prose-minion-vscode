@@ -3,20 +3,60 @@
 **Author:** okeylanders · **PR:** [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127) (open at review)
 **Branches:** `claude/workshop-recall-todos` → `epic/workshop-session-recall`
 **Verified base / merge-base:** `5eede3218cc2a282c2e8a8f115ae113320f8327a`
-**Reviewed code head:** `6ea1f0c6e624e444b8bbf03f63e1b8dbc400a081`
-**Scope:** 26 files · +2,226 / −168 · 10 commits
+**Initial reviewed code head:** `6ea1f0c6e624e444b8bbf03f63e1b8dbc400a081`
+**Fix re-review head:** `3e8ff9d69c50013adc70920120e914ca2c397525`
+**Initial scope:** 26 files · +2,226 / −168 · 10 commits
+**Fix-round scope:** 9 files · +243 / −26 · 3 commits after the first review commit `7fc6945`
 **Reviewed:** 2026-10-06 · **Mode:** fresh thorough review, with three independent specialist passes (projection/matching/domain semantics; renderer/bounds/provenance; service/scope/concurrency), integration review, adversarial reproductions, and full automated verification
 
 ## Resolution ledger
 
-Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. No deferral is accepted on the author's behalf.
+Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. No deferral is accepted on the author's behalf. Current statuses below are independently verified at `3e8ff9d`; original evidence remains pinned to `6ea1f0c`.
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | The to-do renderer claims every `<match>` term matched while silently ignoring terms after the eighth | A valid 54-character request returns three tasks from a session that does not match `lighthouse`, then describes the complete nine-word request as “every term” | **Open**. Fixed by the author in `f6c3bef` (see the author response below); awaiting re-review |
-| F-02 | 🔵 Nit | Sessions whose matching tasks were omitted by the item limit are counted as having no to-do to show | Four scanned sessions with 60 newer tasks and five older tasks produce “3 scanned sessions had no to-do to show” alongside the five-item omission notice | **Open**, nonblocking. Fixed by the author in `84b1977` (see the author response below); awaiting re-review |
+| F-01 | 🟡 Standard | The to-do renderer claims every `<match>` term matched while silently ignoring terms after the eighth | The original 54-character request now names its eight evaluated terms and explicitly states that `lighthouse` was not evaluated | **Addressed**, independently verified at `3e8ff9d`; fix `f6c3bef` |
+| F-02 | 🔵 Nit | Sessions whose matching tasks were omitted by the item limit are counted as having no to-do to show | The normal 60-newer / five-older-task reproduction now reports zero sessions without matching tasks, while retaining the five-item omission | **Addressed**, independently verified at `3e8ff9d`; fix `84b1977` |
 
-**Verdict at `6ea1f0c`: Request changes for F-01 before integrating Slice 2B.** Its result text overstates the session-selection guarantee for an ordinary valid request, violating the explicit disclosure contract. F-02 is lower-priority misleading omission wording. No Blocking or High finding, newly demonstrated privacy breach, data corruption, scope regression, or output-cap failure was established. This remains a **dormant core**, not a claim about a currently enabled persona capability.
+**Current verdict at `3e8ff9d`: Approve for integration into `epic/workshop-session-recall`, subject to required checks on the final branch head.** Both F-01 and F-02 are independently verified addressed. No new actionable finding was established in the fix round. This approves the dormant Slice 2B core; it does not establish live persona acceptance or authorize a merge.
+
+## Fix re-review at `3e8ff9d`
+
+The three follow-up commits were reviewed against the first report commit `7fc6945`. Two new independent specialist passes examined match disclosure/header bounds and pre-cap omission accounting, alongside integration review and full automated verification. The author's response below was treated as a set of claims to verify, not as prior reviewer approval. Its text is retained for history.
+
+### F-01 is addressed
+
+[WorkshopRecallTodoList.ts:180–194](https://github.com/okeylanders/prose-minion-vscode/blob/3e8ff9d69c50013adc70920120e914ca2c397525/packages/core/src/application/services/workshop/recall/WorkshopRecallTodoList.ts#L180-L194) now prints the effective terms, qualifies an all-terms result as “every evaluated term matched” when overflow exists, and identifies the terms beyond the eight-term limit as not evaluated. The tokenizer, admitted sessions, and D8 matching policy are unchanged.
+
+The original independent real-store nine-term regression probe was rerun **unchanged** and passes. The session still correctly contributes its three tasks under the accepted eight-term policy, but the rendered evidence explicitly names `lighthouse` as unevaluated. The new repository regressions for all-terms, any-term fallback, no-match, and no-overflow wording also pass. Evaluated and ignored term lists are each bounded at 300 characters; the header's 1,500-character cap remains intact. Independent real-store checks include an exactly 200-character query with 100 distinct Unicode words, correctly disclosing eight evaluated terms and 92 overflow terms. Accepted oversized saved to-do text/source labels preserve disclosure and pairing through 77 cap settings. A separate 96-render dense-term stress matrix, deliberately exceeding the future input-length limit while keeping valid source/persona IDs and exclusive session selectors, observed a largest header of **1,391 characters** with no shortened filters.
+
+### F-02 is addressed
+
+[WorkshopRecallCorpusSelection.ts:210–251](https://github.com/okeylanders/prose-minion-vscode/blob/3e8ff9d69c50013adc70920120e914ca2c397525/packages/core/src/application/services/workshop/recall/WorkshopRecallCorpusSelection.ts#L210-L251) now counts source/status matches before deciding whether each item fits `todoItems`. The dedicated `sessionsWithoutMatchingTodos` count therefore excludes sessions emptied only by the item cap. [The footer at :268–273](https://github.com/okeylanders/prose-minion-vscode/blob/3e8ff9d69c50013adc70920120e914ca2c397525/packages/core/src/application/services/workshop/recall/WorkshopRecallTodoList.ts#L268-L273) uses that count and says “had no to-do matching the filters.”
+
+The normal-use 60-newer / five-older-task case, promoted and saved through the aggregate/coordinator/store, now has `sessionsScanned: 4`, `omittedByItemLimit: 5`, and `sessionsWithoutMatchingTodos: 0`. The independent default-cap reproduction emits **11,660 characters**, shows all 60 newer items, and has zero character omissions; it retains the five-item omission notice and no longer claims the older sessions lack tasks. With `status: completed`, the three genuinely nonmatching sessions are counted. Per-item source/status/item-limit attribution is preserved by the refactored loop. A 140-case selection matrix verifies exact order and conservation across four statuses, five sources, and seven item limits. Further service probes distinguish truly empty sessions from persona/recent exclusions, unreadable sessions, cold-byte omissions, and warm-cache progression. The renderer's 217-cap sweep preserves output bounds and each item's session/to-do provenance.
+
+### Fix-round verification actually run
+
+All code checks here target **`3e8ff9d69c50013adc70920120e914ca2c397525`**, before the report-only re-review commit. Local runtime remains **Node v24.19.0 / npm 11.9.0**. Repository instructions and dependency manifests/lockfile are unchanged; installed dependencies were reused in an isolated worktree. No fresh local `npm ci` was run.
+
+| Check | Result |
+| --- | --- |
+| `npm test -- --runInBand` | **256 suites / 3,271 tests / 2 snapshots passed**, 90.508 seconds |
+| `npm run typecheck` | Core, webview, and extension passed |
+| ESLint over six fix-round TypeScript files, and separately all 21 changed TypeScript files versus the epic base | **0 errors / 0 warnings** |
+| Full repository ESLint, excluding independent probes | Exit 0; **0 errors / 1,097 warnings** |
+| `npm run build` | Both production bundles and `verify:bundle` passed; three webpack size/performance warnings |
+| `git diff --check 7fc6945...3e8ff9d` | Passed |
+| Original F-01 independent regression | Passed unchanged; formerly failed on missing overflow disclosure |
+| Independent match/bounds verification | Two affected suites / 42 tests passed; six independent probes passed, covering 180 renders, exact-200-character input, all three matching outcomes, oversized accepted saved metadata, and dense term packing |
+| Independent omission-accounting verification | 145 independent probe tests passed: 140 source/status/item-limit cases plus five integration probes; 217 supported-cap renders passed provenance, progress, and count conservation |
+| Exact fix-head GitHub CI | Both runs passed: [PR run 37399378495](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37399378495), [push run 37399373752](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37399373752) |
+
+Focused tests overlap the full suite. Independent probes remain outside the published change. The author's Node 18/22 local runs and mutation counts were not independently repeated; the exact-head GitHub workflow uses Node 18. No live model, paid-provider, Extension Development Host, packaging, or release validation was performed. The guest-save issue and later-slice boundaries remain as qualified below.
+
+**Publication:** the base and head are rechecked before updating the branch, and this re-review changes only this existing report. Concurrent author changes, including the response below, are preserved. The resulting documentation commit needs its own exact-commit CI verification; no source fix or merge is included.
+
 
 ## Author response (`f6c3bef`, `84b1977`)
 
@@ -48,6 +88,10 @@ These are the author's claims, offered for re-review. They are not verified find
 
 - Full suite on Node 22.22.0 and Node 18.20.8: **256 suites / 3,271 tests** (3,265 at the reviewed head, plus six witnesses).
 - `npm run typecheck`, `npm run build` (including `verify:bundle`), ESLint on the six changed TypeScript files, and `git diff --check` are all clean.
+
+## Initial review evidence retained for history
+
+The sections below record the initial findings at `6ea1f0c`, before the fixes. The initial verdict was **Request changes for F-01**, with F-02 a nonblocking nit. The current ledger and fix re-review above supersede that verdict and the original requested actions.
 
 ## F-01 — Disclose ignored `<match>` terms
 
@@ -100,7 +144,7 @@ This is a nit because the adjacent five-item limit notice still discloses that t
 - **Output caps and provenance held.** The renderer reserves bounded header/footer space and admits each item's text and metadata together. Every shown item carries its session/to-do ID pair, and returned `shown`/`notShownForSpace` accounting matched the text. Existing tests exercise oversized persisted metadata and the 5,505-character minimum; the independent packing sweep covered supported caps from 5,505 through 29,913 with no cap or progress failure. The shared-copy extraction preserves prior framing, dates, and refusals, with the intended refusal-ID clipping improvement.
 - **Architecture remains contained.** The twelve recall production modules stay below the repository's 500-line threshold. The new modules join the boundary guards; no composition-root wiring, capability operation, persistence-enum widening, prompt enablement, or provider call was added.
 
-## Verification actually run
+## Initial verification actually run
 
 All production-code checks target **`6ea1f0c6e624e444b8bbf03f63e1b8dbc400a081`**, before this documentation-only report. Local runtime: **Node v24.19.0 / npm 11.9.0**. Installed dependencies were copied from the existing cloud checkout after a byte-identical lockfile comparison; no fresh local `npm ci` was run.
 
@@ -131,4 +175,4 @@ This slice supplies the **formal saved to-do** half of questions such as “what
 
 The known guest-to-do save failure is inherited and separately tracked in [the new tech-debt record](../../.todo/tech-debt/2026-10-06-workshop-guest-todo-unsavable.md). The guest source witness remains synthetic; this review does not claim guest-promotion/save round-trip acceptance. The prior slice's documented legacy-listing work, approximate cold-byte accounting/one-file overshoot, and host-lifecycle scope limitations also remain qualifications, not newly introduced findings.
 
-**Next action:** correct F-01 with a bounded overflow-disclosure regression, consider F-02's omission wording, then rerun verification at the new head. This review publishes only this report under `docs/pr-reviews`. Publication changes the PR head, so its resulting report-only commit requires a separate exact-commit CI check before any integration; no implementation fix or merge is part of this review.
+**Initial requested action (historical at `6ea1f0c`):** correct F-01 with a bounded overflow-disclosure regression, consider F-02's omission wording, then rerun verification at the new head. This review publishes only this report under `docs/pr-reviews`. Publication changes the PR head, so its resulting report-only commit requires a separate exact-commit CI check before any integration; no implementation fix or merge is part of this review.
