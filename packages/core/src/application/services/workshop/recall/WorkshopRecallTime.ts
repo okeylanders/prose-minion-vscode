@@ -5,9 +5,18 @@
  */
 
 /**
+ * Whether a Date can represent `at`. A saved turn's time only has to be
+ * finite, so a file can hold one past any Date (PR 129 review F-02).
+ */
+export function workshopRecallTimeKnown(at: number): boolean {
+  return Number.isFinite(new Date(at).getTime());
+}
+
+/**
  * Dates and times in one session's timezone, assembled from parts so the
  * text does not drift with the ICU version (newer ICU puts a narrow
- * no-break space before "PM").
+ * no-break space before "PM"). A time no Date can hold reads as unknown,
+ * so one saved turn cannot abort a whole read.
  */
 export class WorkshopRecallClock {
   private readonly dateFormat: Intl.DateTimeFormat;
@@ -28,18 +37,27 @@ export class WorkshopRecallClock {
 
   /** "Thursday, October 1, 2026" */
   date(at: number): string {
+    if (!workshopRecallTimeKnown(at)) {
+      return 'an unknown date';
+    }
     const part = parts(this.dateFormat, at);
     return `${part.weekday}, ${part.month} ${part.day}, ${part.year}`;
   }
 
   /** "2:14 PM" */
   time(at: number): string {
+    if (!workshopRecallTimeKnown(at)) {
+      return 'an unknown time';
+    }
     const part = parts(this.timeFormat, at);
     return `${part.hour}:${part.minute} ${part.dayPeriod}`;
   }
 
   /** A calendar-day key in this timezone. */
   day(at: number): string {
+    if (!workshopRecallTimeKnown(at)) {
+      return 'unknown';
+    }
     const part = parts(this.dayFormat, at);
     return `${part.year}-${part.month}-${part.day}`;
   }

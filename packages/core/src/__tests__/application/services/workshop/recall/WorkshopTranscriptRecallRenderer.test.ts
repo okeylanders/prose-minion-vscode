@@ -42,6 +42,7 @@ import {
   saveRecallRoom
 } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import type { WorkshopTurn } from '@messages';
 
 const NOW = Date.parse('2026-10-05T14:30:00.000Z');
@@ -652,5 +653,55 @@ describe('the complete read bound for accepted, edited metadata (PR 126 re-revie
         expect([readCharacters, rendered.delivered.length > 0]).toEqual([readCharacters, true]);
       }
     }
+  });
+});
+
+describe('a saved time no date can hold (PR 129 review F-02)', () => {
+  it('renders as unknown, never aborting a read, alone or beside a healthy session', async () => {
+    const fs = new MemoryFileSystem();
+    const healthy = await saveRecallRoom('Healthy', (session, advance) => {
+      session.setSessionScope('open');
+      advance(60_000);
+      session.beginPersonaMessage('run-1', 'A short question.');
+      session.completeRun('run-1', 'A short answer.', undefined, false, 'runtime-host');
+    }, { fs, idPrefix: 'healthy' });
+    const room = await saveRecallRoom('Far future', (session, advance) => {
+      session.setSessionScope('open');
+      for (let n = 1; n <= 4; n += 1) {
+        advance(60_000);
+        session.beginPersonaMessage(`run-${n}`, `Question ${n}. ${'salt '.repeat(400)}`);
+        advance(60_000);
+        session.completeRun(`run-${n}`, `Answer ${n}.`, undefined, false, 'runtime-host');
+      }
+    }, { fs, idPrefix: 'far' });
+    // Only the final turn's time changes: finite, so the codec accepts it, but past any Date.
+    const file = [...fs.files.keys()].find((name) =>
+      name.startsWith(`${RECALL_ROOT}/prose-minion/sessions`) && name.endsWith('.json') &&
+      !name.endsWith('.summary.json') && !name.endsWith('/current.json') &&
+      new TextDecoder().decode(fs.files.get(name)!).includes(`"sessionId": "${room.savedSessionId}"`))!;
+    const saved = JSON.parse(new TextDecoder().decode(fs.files.get(file)));
+    saved.workshop.turns.at(-1).timestamp = Number.MAX_SAFE_INTEGER;
+    fs.files.set(file, new TextEncoder().encode(JSON.stringify(saved, undefined, 2)));
+    const last = saved.workshop.turns.length;
+    expect((await room.store.readNamed(room.savedSessionId))!.workshop.turns.at(-1)!.timestamp).toBe(Number.MAX_SAFE_INTEGER);
+    const service = new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log);
+    const alone = await service.read({ sessions: [{ sessionId: room.savedSessionId }] });
+
+    // A first window that never reaches the tail reads as it did before sizing the whole read.
+    const first = renderOne(alone, { now: NOW, readCharacters: WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS });
+    expect(first.content.length).toBeLessThanOrEqual(WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS);
+    expect(first.delivered.length).toBe(1);
+    expect(first.continuation.at(-1)!.to).toBe(last);
+    // The whole read shows the turn, its time unknown, with no gap measured to it.
+    const whole = renderOne(alone, { now: NOW }).content;
+    expect(whole).toContain(`── an unknown date ──\n\n[turn ${last} · an unknown time · Jill]\nAnswer 4.`);
+    expect(whole).not.toMatch(/\d{4,} days later/);
+    // Beside a healthy session, both are read.
+    const both = renderWorkshopRecallRead(
+      await service.read({ sessions: [{ sessionId: room.savedSessionId }, { sessionId: healthy.savedSessionId }] }),
+      { now: NOW, readCharacters: 2 * WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS }
+    );
+    expect(both.sessions.map((session) => [session.outcome, session.delivered.length > 0])).toEqual([['read', true], ['read', true]]);
+    expect(both.content).toContain('A short answer.');
   });
 });

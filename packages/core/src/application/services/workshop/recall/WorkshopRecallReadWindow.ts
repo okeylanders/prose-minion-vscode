@@ -27,7 +27,8 @@ import type { WorkshopRecallEntry } from '@/application/services/workshop/recall
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 import {
   WorkshopRecallClock,
-  workshopRecallDuration
+  workshopRecallDuration,
+  workshopRecallTimeKnown
 } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import type {
   WorkshopRecallReadDetail,
@@ -182,7 +183,10 @@ function leadIn(
     const to = entry.position - 1;
     lead.push(from === to ? `[turn ${from} not shown]` : `[turns ${from}-${to} not shown]`);
   }
-  const gap = previous ? entry.entry.timestamp - previous.entry.timestamp : 0;
+  // No gap is measured to or from a time no Date can hold.
+  const gap = previous && workshopRecallTimeKnown(previous.entry.timestamp) && workshopRecallTimeKnown(entry.entry.timestamp)
+    ? entry.entry.timestamp - previous.entry.timestamp
+    : 0;
   if (previous && gap > PROMPT_BUDGETS.workshopRoom.gapMilliseconds) {
     lead.push(`[${workshopRecallDuration(gap)} later]`);
   }
