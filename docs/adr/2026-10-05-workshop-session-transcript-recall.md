@@ -1,6 +1,6 @@
 # ADR 2026-10-05: Workshop Personas Recall Saved Session Transcripts
 
-**Status:** Accepted in part (2026-10-05) — D1–D4 accepted as recommended; open questions 5–8 settle in the live verification pass
+**Status:** Accepted in part — D1–D4 accepted 2026-10-05 as recommended; D5–D11 accepted 2026-10-06 ([amendment](#amendment-2026-10-06-to-dos-and-excerpt-summaries-d5d11)); open questions 5–8 settle in the live verification pass
 **Date:** 2026-10-05
 **Extends:** [ADR 2026-07-10 — Agent-Run Engine and Resource Catalog Policies](2026-07-10-agent-run-engine-and-resource-catalogs.md); [ADR 2026-10-05 — Workshop Transcript Export](2026-10-05-workshop-transcript-export.md); [ADR 2026-07-24 — The Workshop Room Ledger and Delivery Offsets](2026-07-24-workshop-room-ledger-and-delivery-offsets.md)
 **Related:** [ADR 2026-07-25 — Workshop Scope Immutability](2026-07-25-workshop-scope-immutability.md) (a prior conversation is read, never forked); [Feature: a prior conversation is a resource, not a branch](../../.todo/features/feature-prior-conversation-as-resource/README.md); [ADR 2026-07-29 — Workshop Measurement Capability](2026-07-29-workshop-measurement-capability.md) (digest, trust-class, and ceiling precedent); [ADR 2026-07-30 — Workshop Session Codec Evolution](2026-07-30-workshop-session-codec-evolution.md); [ADR 2026-09-10 — Workshop loading does not create author work](2026-09-10-workshop-read-only-session-loading.md); [ADR 2026-07-18 — Living Room Chronicle and Episodic Persona Memory](2026-07-18-workshop-living-room-chronicle-and-episodic-memory.md) (a different memory)
@@ -45,7 +45,8 @@ Four facts shape it:
 ### 1. A `transcript.*` capability family
 
 `WorkshopCapabilityOperation` gains three operations, granted uniformly to host
-and guest personas, as every existing family is:
+and guest personas, as every existing family is. (The 2026-10-06 amendment adds a
+fourth, `transcript.todos`, and widens catalog and read.)
 
 ```xml
 <prose-minion-tool-call name="transcript.catalog">
@@ -186,6 +187,10 @@ workshopTranscriptRecall: {
   readsPerTurn: 2                    // under the shared callsPerTurn: 5
 }
 ```
+
+*Amended 2026-10-06 (D11):* `readCharacters` is 150,000, with a
+150,000-character total per turn and a clamp to the model's free context
+window. The amendment lists the added keys.
 
 The recall service keeps an in-memory cache of recall documents keyed by
 session id and validated against the summary's `updatedAt`. Its memory bounds
@@ -446,6 +451,58 @@ Request validation stays with the Slice 3 codec: query length, session-id
 shape, and the range count. The service throws on an invalid turn range
 rather than repairing it.
 
+## Amendment 2026-10-06: to-dos and excerpt summaries (D5–D11)
+
+Okey accepted these after Slice 2 merged
+([PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126)).
+Two plans hold the detail, the witnesses, and the module changes:
+[Slice 2B, to-dos](../../.todo/epics/epic-workshop-session-recall-2026-10-05/slice-2b-transcript-todos.md)
+and
+[Slice 2C, excerpt summaries](../../.todo/epics/epic-workshop-session-recall-2026-10-05/slice-2c-excerpt-summaries.md).
+Both land dormant, before Slice 3, so the persisted lists and the codec widen
+once.
+
+- **D5: the to-do list joins what recall may show.** Each item shows:
+  - its id, always beside its session id;
+  - its text, status, and priority;
+  - its source: label and kind, tool or persona, "from turn N", and excerpt
+    version;
+  - a stale marker against the session's final excerpt version;
+  - its creation date.
+
+  `findingKey`, `findingText`, and `writerEdit.originalText` are never
+  shown. Ids are shown for a later feature that closes recalled to-dos;
+  recall itself stays read-only.
+- **D6: a fourth operation, `transcript.todos`.** It filters by status, by
+  `<recent>` N sessions (at most 50) or one `<session>`, by `<match>`, by
+  `<source>`, and by `<persona>`. Like `transcript.read`, its result is
+  publishable evidence shared with the room.
+- **D7: `open` includes stale items, each marked.**
+- **D8: one `<match>` rule for the family.** It matches session title and
+  excerpt label, which the store's listing already holds, so matching is
+  exhaustive and parses nothing. The catalog gains `<match>`, and
+  `transcript.todos` uses the same rule. Context-attachment labels stay a
+  search feature.
+- **D9: one read, up to 10 sessions.** Each `<session>` may carry its own
+  ranges. Sessions share the budget fairly: each is offered an equal share,
+  and leftovers go to the others. Each session keeps its own header, window,
+  footer, and continuation. One multi-session call counts as one read.
+- **D10: discussion detail.** `<detail>discussion</detail>` keeps writer
+  messages, persona replies, and events in full, and collapses each tool
+  reply to one line naming its turn and word count. It is the default when a
+  read names more than one session; `full` stays the default for one.
+- **D11: budgets and the context window.**
+  - `readCharacters` is 150,000.
+  - `readCharactersPerTurn` is 150,000, so two reads cannot add 300,000
+    characters to one turn.
+  - `readSessions` is 10.
+  - `todoSessions` is 50, `todoItems` 60, `todoCharacters` 16,000, and
+    `todoMatchCharacters` 200.
+  - In Slice 3, the capability adapter clamps each read to half the model's
+    free input window, using the context preflight's own estimate, and says
+    when it did. Render caps stay options with `PROMPT_BUDGETS` defaults, so
+    the clamp, and a later subagent consumer, need no change to the core.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**
@@ -555,3 +612,8 @@ exists; any cross-workspace memory.
    per-call handles?
 8. **Default read window.** Start at turn 1 (recommended; the catalog shows each
    session's last turn so the tail is one request away), or at the newest turns?
+9. **D5–D11.** *Accepted 2026-10-06:* see the
+   [amendment](#amendment-2026-10-06-to-dos-and-excerpt-summaries-d5d11).
+   The D5 to-do id was added at Okey's request. In D10, discussion detail is
+   the default for multi-session reads. D11 sets 150K per turn, not 2 × 150K,
+   plus the window clamp.

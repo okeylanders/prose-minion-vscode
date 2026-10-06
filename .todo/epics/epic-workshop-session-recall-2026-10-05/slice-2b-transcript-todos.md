@@ -1,8 +1,8 @@
 # Slice 2B plan: recall the writer's to-do lists (`transcript.todos`)
 
-**Status:** Decided. Okey settled D5–D7, the session count, and publication
-on 2026-10-05; build after
-[PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126) (Slice 2) merges
+**Status:** Decided, ready to build. Okey settled D5–D7, the session count,
+and publication on 2026-10-05, and D8's `<match>` rule on 2026-10-06; Slice 2
+merged in [PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126)
 **Date:** 2026-10-05
 **Epic:** [Workshop Session Recall](README.md)
 **Extends:** [ADR 2026-10-05: Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md)
@@ -10,9 +10,9 @@ on 2026-10-05; build after
 and persistence), so the persisted operation and artifact lists widen only
 once.
 
-This plan is its own file so it cannot conflict with PR #126, which edits the
-epic README and the ADR. When #126 merges, the epic table gains a 2B row and
-the ADR gains an amendment that records D5–D7 as decided.
+The epic table carries the 2B row, and the ADR's
+[2026-10-06 amendment](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md#amendment-2026-10-06-to-dos-and-excerpt-summaries-d5d11)
+records D5–D8 as decided.
 
 ## Why
 
@@ -120,7 +120,7 @@ session, then `transcript.todos` lists that session's to-dos.
 <prose-minion-tool-call name="transcript.todos">
   <status>open</status>          <!-- open (default) | completed | dismissed | all -->
   <recent>3</recent>             <!-- the newest N sessions; or <session>id</session> -->
-  <match>chapter 6-7</match>     <!-- sessions whose title, excerpt, or context labels match -->
+  <match>chapter 6-7</match>     <!-- sessions whose title or excerpt label matches (D8) -->
   <source>cliche</source>        <!-- optional: from one tool id or persona id -->
 </prose-minion-tool-call>
 ```
@@ -130,8 +130,9 @@ session, then `transcript.todos` lists that session's to-dos.
   `todoSessions`.
 - `<match>` uses the search module's session-level matching: the same
   tokenizer, prefix rule, and all-terms preference. It narrows sessions, not
-  items. [Slice 2C's D8](slice-2c-excerpt-summaries.md#d8-the-catalog-gains-match)
-  proposes one `<match>` rule for the family: title and excerpt label only.
+  items. Per [D8](slice-2c-excerpt-summaries.md#d8-the-catalog-gains-match),
+  one rule serves the whole family: session title and excerpt label only.
+  Both are in the store's listing, so matching parses nothing.
 - `<source>` accepts a tool id or a persona id. Both are closed lists, so the
   codec validates them.
 - `<persona>` (sessions a persona took part in) behaves as it does elsewhere
@@ -269,9 +270,9 @@ own ADR.
 
 ## Completion criteria
 
-- [ ] D5–D7, the session count, and publication recorded in the ADR as an
-      amendment, after #126 merges.
-- [ ] The epic table gains the 2B row.
+- [x] D5–D7, the session count, and publication recorded in the ADR's
+      2026-10-06 amendment.
+- [x] The epic table gains the 2B row.
 - [ ] A dormant core: document, service, renderer, and budgets, with the
       witnesses above.
 - [ ] Tool-reply speaker names indexed, with a witness that persona names

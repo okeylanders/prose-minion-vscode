@@ -1,8 +1,7 @@
 # Slice 2C plan: summarize every chat on an excerpt
 
-**Status:** Proposed. Waiting on Okey's decisions D8–D11; build with Slice 2B
-after [PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126)
-(Slice 2) merges
+**Status:** Decided 2026-10-06; build after Slice 2B. Slice 2 merged in
+[PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126)
 **Date:** 2026-10-05
 **Epic:** [Workshop Session Recall](README.md)
 **Extends:** [ADR 2026-10-05: Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md)
@@ -66,7 +65,7 @@ fairly, and a way to read the discussion without every report's full text.
 The persona then writes the summary. Every call stays under the shared
 `callsPerTurn: 5`.
 
-## Proposed decisions
+## Decisions (Okey, 2026-10-06)
 
 ### D8: The catalog gains `<match>`
 
@@ -127,17 +126,17 @@ and that stays in full. Promoted findings reach the persona through 2B's
 to-do list. This mode shows strictly less than full detail, so it needs no
 new visibility decision.
 
-- **Defaults (recommended):** `discussion` when a read names more than one
-  session, and `full` for a single session. A read across several chats is
-  a survey, while a single-session read is for depth. The persona can always
-  name the detail it wants.
-- The alternative is `full` everywhere, with the grammar doc (Slice 4)
-  teaching personas to ask for `discussion` when they summarize. That rests
-  the main use case on the persona remembering to ask.
+- **Defaults:** `discussion` when a read names more than one session, and
+  `full` for a single session. A read across several chats is a survey,
+  while a single-session read is for depth. The persona can always name the
+  detail it wants.
+- Not chosen: `full` everywhere, with the grammar doc (Slice 4) teaching
+  personas to ask for `discussion` when they summarize. That would rest the
+  main use case on the persona remembering to ask.
 
 ### D11: Budgets, and the persona's context window
 
-| Key | Today | Proposed | Why |
+| Key | Before | Decided | Why |
 |---|---|---|---|
 | `readCharacters` | 48,000 | **150,000** | Okey: about 25,000 words, or 37,000 tokens. Room for several chats' discussion in one read |
 | `readSessions` | (new) | 10 | Each share stays at 15,000 or more at the full budget |
@@ -225,23 +224,19 @@ from breaking the turn, or the turns after it.
 - **The manifest** gets one "Past session" context-source row per session
   read.
 
-## Open questions for Okey
+## Answers (Okey, 2026-10-06)
 
-1. **D8:** `<match>` on title and excerpt label, with 2B's to-do `<match>`
-   narrowed to the same rule?
-2. **D9:** up to 10 sessions per read, with fair shares and leftovers
-   redistributed?
-3. **D10:** discussion detail that collapses tool reports? Should it be the
-   default for multi-session reads (recommended), or `full` everywhere?
-4. **D11:** 150K per read, with a 150K per-turn total rather than 300K, plus
-   the Slice 3 window clamp?
-5. **Placement:** keep #126 unchanged while its re-review runs, and land 2C
-   with 2B? Or raise `readCharacters` inside #126 now?
+1. **D8:** yes. One `<match>` rule (title and excerpt label), including
+   for 2B's to-dos.
+2. **D9:** yes. Up to 10 sessions, each with a fair share.
+3. **D10:** yes. Discussion detail is the default for multi-session reads.
+4. **D11:** 150K per turn, plus the window clamp.
+5. **Placement:** #126 merged unchanged, and 2C follows 2B.
 
 ## Completion criteria
 
-- [ ] D8–D11 recorded in the ADR as an amendment, after #126 merges.
-- [ ] The epic table gains the 2C row (with 2B's).
+- [x] D8–D11 recorded in the ADR's 2026-10-06 amendment.
+- [x] The epic table gains the 2C row (with 2B's).
 - [ ] A dormant core: catalog match, multi-session read, discussion detail,
       allocation, and budgets, with the witnesses above.
 - [ ] Full suite on Node 22 and Node 18, typecheck, build, and lint.
