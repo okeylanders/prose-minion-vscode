@@ -1,6 +1,6 @@
 # Slice 2B plan: recall the writer's to-do lists (`transcript.todos`)
 
-**Status:** Decided, ready to build. Okey settled D5–D7, the session count,
+**Status:** Built 2026-10-06, in review (see the ADR's Slice 2B note). Decided earlier: Okey settled D5–D7, the session count,
 and publication on 2026-10-05, and D8's `<match>` rule on 2026-10-06; Slice 2
 merged in [PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126)
 **Date:** 2026-10-05
@@ -273,10 +273,11 @@ own ADR.
 - [x] D5–D7, the session count, and publication recorded in the ADR's
       2026-10-06 amendment.
 - [x] The epic table gains the 2B row.
-- [ ] A dormant core: document, service, renderer, and budgets, with the
-      witnesses above.
-- [ ] Tool-reply speaker names indexed, with a witness that persona names
+- [x] A dormant core: document, service, renderer, and budgets, with the
+      witnesses above (2026-10-06; the guest source is witnessed
+      synthetically until the guest-to-do save failure is fixed).
+- [x] Tool-reply speaker names indexed, with a witness that persona names
       stay out.
-- [ ] Full suite on Node 22 and Node 18, typecheck, build, and lint.
+- [x] Full suite on Node 22 and Node 18, typecheck, build, and lint.
 - [ ] Slice 3's single widening includes `transcript.todos` and
       `transcript_todos`.
