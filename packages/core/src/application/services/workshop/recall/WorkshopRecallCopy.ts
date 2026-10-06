@@ -5,15 +5,19 @@
  */
 
 import type { WorkshopSessionScope } from '@messages';
-import { recallLabel } from '@/application/services/workshop/recall/WorkshopRecallText';
+import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 import {
   WorkshopRecallClock,
   workshopRecallDuration
 } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import type {
+  WorkshopRecallSessionMatchResult,
   WorkshopRecallUnavailable,
   WorkshopRecallUnknownSession
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+
+/** Each of `<match>`'s term lists: the terms it evaluated, and those past the eight-term limit. */
+const MATCH_TERMS_CHARACTERS = 300;
 
 /** The one-line framing at the top of every recall body. */
 export const WORKSHOP_TRANSCRIPT_RECALL_FRAMING =
@@ -45,12 +49,15 @@ function unavailableReason(reason: WorkshopRecallUnavailable['reason']): string 
   }
 }
 
-export function recallUnknownSession(result: WorkshopRecallUnknownSession): string {
-  return recallBody([
-    result.liveSession
-      ? `Session ${recallLabel(result.sessionId)} is the current session. Session recall reads other saved sessions only.`
-      : `No saved session in this workspace has id ${recallLabel(result.sessionId)}. transcript.catalog lists the ids.`
-  ]);
+export function recallUnknownSession(result: Pick<WorkshopRecallUnknownSession, 'sessionId' | 'liveSession'>): string {
+  return recallBody([recallUnknownSessionLine(result)]);
+}
+
+/** Why an id named nothing recall may read: the live room, or an id outside the corpus. */
+export function recallUnknownSessionLine(result: Pick<WorkshopRecallUnknownSession, 'sessionId' | 'liveSession'>): string {
+  return result.liveSession
+    ? `Session ${recallLabel(result.sessionId)} is the current session. Session recall reads other saved sessions only.`
+    : `No saved session in this workspace has id ${recallLabel(result.sessionId)}. transcript.catalog lists the ids.`;
 }
 
 export function recallListingNote(truncated: boolean): string[] {
@@ -74,6 +81,29 @@ export function recallSavedAt(iso: string, timezone: string, now: number): strin
   const at = Date.parse(iso);
   const clock = new WorkshopRecallClock(timezone);
   return `${clock.date(at)}, ${clock.time(at)} (${timezone}), ${workshopRecallDuration(now - at)} ago`;
+}
+
+/**
+ * `<match>` as written, the terms it was evaluated on, how sessions matched,
+ * and any terms past the eight-term limit, which were never evaluated (PR
+ * 127 review F-01): "every term" never claims a term nobody checked. The
+ * to-do list and the catalog share it, so the family discloses one way.
+ */
+export function recallMatchWords(match: WorkshopRecallSessionMatchResult): string {
+  const { terms, overflowTerms } = match.query;
+  const matching = `title or excerpt label matching ${recallQuoted(match.text)}`;
+  if (terms.length === 0) {
+    return `${matching} (it has no words to match)`;
+  }
+  const how = match.mode === 'all-terms'
+    ? overflowTerms.length > 0 ? 'every evaluated term matched' : 'every term matched'
+    : match.mode === 'any-term'
+      ? 'no session matched every term; these match some'
+      : 'no session matched';
+  const ignored = overflowTerms.length > 0
+    ? `; not evaluated, past the eight-term limit: ${recallLabelList(overflowTerms, MATCH_TERMS_CHARACTERS)}`
+    : '';
+  return `${matching} (terms: ${recallLabelList(terms, MATCH_TERMS_CHARACTERS)}; ${how}${ignored})`;
 }
 
 export function recallQuoted(text: string): string {

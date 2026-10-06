@@ -1,7 +1,11 @@
 # Slice 2C plan: summarize every chat on an excerpt
 
-**Status:** Decided 2026-10-06; build after Slice 2B. Slice 2 merged in
-[PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126)
+**Status:** Built 2026-10-06 (dormant), in review in
+[PR #129](https://github.com/okeylanders/prose-minion-vscode/pull/129). Slice 2 merged in
+[PR #126](https://github.com/okeylanders/prose-minion-vscode/pull/126) and
+Slice 2B in [PR #127](https://github.com/okeylanders/prose-minion-vscode/pull/127).
+The ADR's [Slice 2C note](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md#implementation-note-2026-10-06-slice-2c)
+records the build's choices.
 **Date:** 2026-10-05
 **Epic:** [Workshop Session Recall](README.md)
 **Extends:** [ADR 2026-10-05: Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md)
@@ -237,8 +241,8 @@ from breaking the turn, or the turns after it.
 
 - [x] D8–D11 recorded in the ADR's 2026-10-06 amendment.
 - [x] The epic table gains the 2C row (with 2B's).
-- [ ] A dormant core: catalog match, multi-session read, discussion detail,
+- [x] A dormant core: catalog match, multi-session read, discussion detail,
       allocation, and budgets, with the witnesses above.
-- [ ] Full suite on Node 22 and Node 18, typecheck, build, and lint.
+- [x] Full suite on Node 22 and Node 18, typecheck, build, and lint.
 - [ ] Slice 3's single widening includes the codec, the clamp, and the
       per-turn total.

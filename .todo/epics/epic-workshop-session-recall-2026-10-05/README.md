@@ -1,9 +1,9 @@
 # Epic: Workshop Session Recall
 
-**Status:** In progress — D1–D4 accepted 2026-10-05, D5–D11 2026-10-06; Slices 0–2 merged (Slice 2 is the dormant recall core); Slice 2B built and in review; Slice 2C planned
+**Status:** In progress — D1–D4 accepted 2026-10-05, D5–D11 2026-10-06; Slices 0–2B merged (Slices 2 and 2B are the dormant recall core); Slice 2C built and in review
 **Priority:** Medium
 **Created:** 2026-10-05
-**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs: Slices 0–1 from `claude/practical-ritchie-rx9n4t` (#125), Slice 2 from `claude/workshop-recall-core` (#126), Slice 2B from `claude/workshop-recall-todos` (#127)
+**Integration branch:** `epic/workshop-session-recall` (from `main` at `30b5236`); work arrives by reviewed PRs: Slices 0–1 from `claude/practical-ritchie-rx9n4t` (#125), Slice 2 from `claude/workshop-recall-core` (#126), Slice 2B from `claude/workshop-recall-todos` (#127), Slice 2C from `claude/workshop-recall-excerpts` (#129)
 **Decision:** [ADR 2026-10-05 — Workshop Personas Recall Saved Session Transcripts](../../../docs/adr/2026-10-05-workshop-session-transcript-recall.md) (Accepted in part: D1–D11)
 **Evidence:** [Architecture change runway](../../../docs/architecture/2026-10-05-workshop-session-recall-runway.md)
 **Realizes:** the host-fetch half of [Feature: a prior conversation is a resource, not a branch](../../features/feature-prior-conversation-as-resource/README.md)
@@ -49,8 +49,8 @@ verification, and rollback seams.
 | 0 | Characterize | Sentinel visibility tests over the projection; a test that an unknown capability operation fails to decode; per-family label assertions | Done — `83f2cf6` |
 | 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Done — `2e54b88`, `357f5bb`, `24ad18d`, `875f203` |
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, merged in #126 (`57d097a`). Build: `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8`. Review fixes: `f3779af`, `cce3889`, `b4cab1b`, `689f96e`, `65ea614`, `3b5b6e5`, `970ed75`. Re-review fixes: `17647eb`, `07de2c4` |
-| 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Built, in review in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127): `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95`. Review fixes: `f6c3bef`, `84b1977` |
-| 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Decided; not started |
+| 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Done, merged in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127) (`ababfde`). Build: `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95`. Review fixes: `f6c3bef`, `84b1977` |
+| 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Built, in review in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129): `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17`. Review fixes: `fe4c150`, `f93f309` |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Not started |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
@@ -149,6 +149,50 @@ verification, and rollback seams.
     (`84b1977`).
 
   Full suite 256 suites / 3,271 tests on Node 22 and Node 18; typecheck,
+  build, and lint of the changed files are clean.
+
+- **2026-10-06 — Slice 2C (dormant excerpt summaries).** Catalog
+  `<match>`, reads of up to ten sessions with fair shares, discussion
+  detail, and the D11 budgets. Nothing calls them yet. The ADR's Slice 2C
+  note records the choices the plan left open and two departures: a section
+  module beside the renderer, and refusing an empty read.
+  - Room first: document loading moved out of the 496-line service, with
+    no change in behavior (`0b5a19d`).
+  - Witnesses use real chats saved through the real aggregate,
+    coordinator, and store. The use case runs end to end over three 6.7
+    chats and a 6.8 decoy. The catalog finds every 6.7 chat and not the
+    decoy. One read of all three fits 150,000 characters with every chat
+    complete, every writer message and persona reply whole, and no tool
+    report's body. The same read in full detail overflows and continues.
+    `transcript.todos` lists the 6.7 to-dos.
+  - Also witnessed: title-only and excerpt-only hits, punctuation variants,
+    55 sessions past the catalog cap, the live room, and overflow terms.
+    Fair shares: a short chat's leftover, a failing session's share, and
+    allocation over 400 generated cases. A sweep covers one to ten sessions,
+    25 budgets each, and both details, with every saved-file label at its
+    maximum. The visibility suite covers reads of several sessions and
+    discussion reads, as data and as text.
+  - Mutation check: each guard was reverted on its own. Two reversions
+    survive, both equivalent today, and the ADR note explains them. The
+    check found two unwitnessed paths, now covered (`f6e8c17`).
+  - For Slice 3, the codec should also refuse an empty `transcript.read`.
+    And `<match>chapter 6.7</match>` drops an open conversation titled only
+    "6.7 …" whenever another session matches every term. The grammar doc
+    should teach `<match>6.7</match>` as the exhaustive form.
+  - Verification: full suite 259 suites / 3,322 tests on Node 22.22.0 and
+    Node 18.20.8 (baseline 256 / 3,271). Typecheck, the production build
+    with `verify:bundle`, ESLint on the 22 changed TypeScript files, and
+    `git diff --check` are clean.
+
+- **2026-10-06 — PR #129 review fixes.** Okey's review approved Slice 2C
+  with two nits, each reproduced against the real store.
+  - F-01: a continuation did not carry the read's detail, so following one
+    could change it. Every continuation now names it (`fe4c150`), except
+    that of a one-session read in full detail.
+  - F-02: a saved time past any Date aborted the whole read once Slice 2C
+    sized it. Such a time now renders as unknown (`f93f309`).
+
+  Full suite 259 suites / 3,326 tests on Node 22 and Node 18; typecheck,
   build, and lint of the changed files are clean.
 
 ## Decisions (accepted 2026-10-05, as recommended)

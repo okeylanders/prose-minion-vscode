@@ -1,8 +1,8 @@
 /**
  * What one session-recall call selects: the recallable sessions in a
- * listing, the catalog rows, a read's turn ranges resolved against a
- * document, and the to-dos a filter admits. Pure; the service owns scope,
- * reads, and the cache.
+ * listing, the catalog rows, a read's sessions and their turn ranges
+ * resolved against each document, and the to-dos a filter admits. Pure; the
+ * service owns scope, reads, and the cache.
  */
 
 import type { WorkshopPersonaId } from '@messages';
@@ -18,6 +18,8 @@ import {
 import type {
   WorkshopRecallCatalogSession,
   WorkshopRecallReadRange,
+  WorkshopRecallReadRequest,
+  WorkshopRecallSessionRead,
   WorkshopRecallSessionMatchResult,
   WorkshopRecallTodoSession,
   WorkshopRecallTodosBounds,
@@ -138,7 +140,50 @@ export function normalizeTurnRanges(ranges: readonly WorkshopRecallTurnRange[]):
   return merged;
 }
 
-export function resolveRange(
+/** One session a read will look up: its id, and its ranges sorted and merged (none: from turn 1). */
+export interface WorkshopRecallPlannedRead {
+  readonly sessionId: string;
+  readonly ranges?: readonly WorkshopRecallTurnRange[];
+}
+
+/**
+ * A read request's sessions, in the order asked, each with its ranges
+ * normalized (D9). Throws on no session, more than `readSessions`, a session
+ * named twice, or an invalid range: the Slice 3 codec refuses each of these
+ * first, so any of them is a programming error here.
+ */
+export function plannedReads(request: WorkshopRecallReadRequest, readSessions: number): WorkshopRecallPlannedRead[] {
+  const count = request.sessions.length;
+  if (count < 1 || count > readSessions) {
+    throw new Error(`A session-recall read names 1-${readSessions} sessions; got ${count}.`);
+  }
+  const named = new Set<string>();
+  return request.sessions.map(({ sessionId, turns }) => {
+    if (named.has(sessionId)) {
+      throw new Error(`A session-recall read names session ${sessionId} twice.`);
+    }
+    named.add(sessionId);
+    return turns === undefined || turns.length === 0 ? { sessionId } : { sessionId, ranges: normalizeTurnRanges(turns) };
+  });
+}
+
+/** One session's read: its ranges resolved against its document, or the whole transcript from turn 1. */
+export function readOfDocument(
+  document: WorkshopRecallDocument,
+  planned: WorkshopRecallPlannedRead,
+  cacheHit: boolean
+): Extract<WorkshopRecallSessionRead, { outcome: 'read' }> {
+  const ranges = planned.ranges ?? [{ from: 1, to: Math.max(1, document.header.turnCount) }];
+  return {
+    outcome: 'read',
+    header: document.header,
+    fromStart: planned.ranges === undefined,
+    ranges: ranges.map((range) => resolveRange(document, range)),
+    cacheHit
+  };
+}
+
+function resolveRange(
   document: WorkshopRecallDocument,
   range: WorkshopRecallTurnRange
 ): WorkshopRecallReadRange {

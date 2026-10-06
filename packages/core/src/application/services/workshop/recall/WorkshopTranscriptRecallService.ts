@@ -24,23 +24,25 @@ import type { LogSink } from '@/platform';
 import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
-  buildWorkshopRecallDocument,
-  WorkshopRecallDocument
-} from '@/application/services/workshop/recall/WorkshopRecallDocument';
-import {
   WorkshopRecallDocumentCache,
   WorkshopRecallDocumentCacheLimits
 } from '@/application/services/workshop/recall/WorkshopRecallDocumentCache';
+import {
+  throwIfRecallAborted,
+  WorkshopRecallDocumentLoader,
+  WorkshopRecallReadScope
+} from '@/application/services/workshop/recall/WorkshopRecallDocumentLoader';
 import {
   parseWorkshopRecallQuery,
   searchWorkshopRecallDocuments
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
 import {
   catalogSession,
+  matchedSessions,
   narrowedSessions,
-  normalizeTurnRanges,
+  plannedReads,
+  readOfDocument,
   recallableSessions,
-  resolveRange,
   selectWorkshopRecallTodos,
   todoCandidates,
   unknownSession,
@@ -48,14 +50,14 @@ import {
 } from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
 import type {
   WorkshopRecallCatalogResult,
+  WorkshopRecallReadRequest,
   WorkshopRecallReadResult,
-  WorkshopRecallScanBounds,
   WorkshopRecallSearchBounds,
+  WorkshopRecallSessionRead,
   WorkshopRecallSearchResult,
   WorkshopRecallTodosBounds,
   WorkshopRecallTodosRequest,
   WorkshopRecallTodosResult,
-  WorkshopRecallTurnRange,
   WorkshopRecallUnavailable,
   WorkshopRecallUnavailableReason
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
@@ -122,9 +124,8 @@ export interface WorkshopTranscriptRecallServiceOptions {
 }
 
 /** The scope a call opened: who the live room was, and the cache generation then. */
-interface OpenScope {
+interface OpenScope extends WorkshopRecallReadScope {
   readonly liveSessionId: string;
-  readonly generation: number;
 }
 
 interface RecallCorpus {
@@ -132,17 +133,6 @@ interface RecallCorpus {
   readonly sessions: readonly WorkshopRecallSessionSummary[];
   readonly listingTruncated: boolean;
 }
-
-interface LoadedDocuments {
-  readonly documents: WorkshopRecallDocument[];
-  readonly notReadByByteBudget: number;
-  /** What the reads cost, as every multi-session result reports it. */
-  readonly cost: Omit<WorkshopRecallScanBounds, 'listingTruncated'>;
-}
-
-type LoadedDocument =
-  | { readonly document: WorkshopRecallDocument; readonly cacheHit: boolean; readonly parsedBytes: number }
-  | { readonly document?: undefined };
 
 /** The scope a call opened stopped holding before the call finished. */
 class RecallScopeChangedError extends Error {
@@ -156,6 +146,7 @@ export class WorkshopTranscriptRecallService {
   private readonly now: () => number;
   private readonly limits: WorkshopTranscriptRecallLimits;
   private readonly cache: WorkshopRecallDocumentCache;
+  private readonly loader: WorkshopRecallDocumentLoader;
 
   constructor(
     private readonly corpus: WorkshopRecallCorpusPort,
@@ -166,18 +157,33 @@ export class WorkshopTranscriptRecallService {
     this.now = options.now ?? Date.now;
     this.limits = { ...WORKSHOP_TRANSCRIPT_RECALL_LIMITS, ...options.limits };
     this.cache = new WorkshopRecallDocumentCache(this.limits);
+    this.loader = new WorkshopRecallDocumentLoader(
+      corpus,
+      this.cache,
+      this.limits.unreadableSessionBytes,
+      (line) => this.log(line)
+    );
   }
 
+  /**
+   * Recallable sessions, newest first. `<persona>` and `<match>` (D8) filter
+   * the listing alone, so a catalog reads no session file and spends no
+   * byte budget, and its count covers every session that matched.
+   */
   catalog(
-    request: { personaId?: WorkshopPersonaId },
+    request: { personaId?: WorkshopPersonaId; match?: string },
     signal?: AbortSignal
   ): Promise<WorkshopRecallCatalogResult> {
     return this.withCorpus(signal, async (corpus) => {
-      const matching = withParticipant(corpus.sessions, request.personaId);
+      const { sessions: matching, match } = matchedSessions(
+        withParticipant(corpus.sessions, request.personaId),
+        request.match
+      );
       return {
         available: true,
         outcome: 'catalog',
         ...(request.personaId ? { personaId: request.personaId } : {}),
+        ...(match ? { match } : {}),
         sessions: matching
           .slice(0, PROMPT_BUDGETS.workshopTranscriptRecall.catalogSessions)
           .map(catalogSession),
@@ -200,7 +206,7 @@ export class WorkshopTranscriptRecallService {
       }
       const candidates = narrowed.sessions;
       const scanned = candidates.slice(0, budgets.searchSessions);
-      const loaded = await this.loadDocuments(scanned, budgets.searchSourceBytes, corpus.scope, signal);
+      const loaded = await this.loader.loadAll(scanned, budgets.searchSourceBytes, corpus.scope, signal);
       const query = parseWorkshopRecallQuery(request.query);
       const search = searchWorkshopRecallDocuments(loaded.documents, query, {
         hits: budgets.searchHits,
@@ -238,44 +244,46 @@ export class WorkshopTranscriptRecallService {
   }
 
   /**
-   * Resolve the requested turn ranges, or the whole transcript from turn 1
-   * when none are given. Packing into the read budget is the renderer's
-   * job, because only it knows what the text costs.
+   * Read one to `readSessions` sessions in the order asked (D9), each from
+   * its own ranges or from turn 1. Packing into fair shares is the
+   * renderer's job, because only it knows what the text costs. Cold reads
+   * spend `searchSourceBytes` in request order, a failed one charged as in
+   * search; an unknown, live, unreadable, or unaffordable session is
+   * reported in its place. Throws on a request the codec would refuse.
    */
-  read(
-    request: { sessionId: string; turns?: readonly WorkshopRecallTurnRange[] },
-    signal?: AbortSignal
-  ): Promise<WorkshopRecallReadResult> {
+  async read(request: WorkshopRecallReadRequest, signal?: AbortSignal): Promise<WorkshopRecallReadResult> {
+    const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
+    const planned = plannedReads(request, budgets.readSessions);
+    const detail = request.detail ?? (planned.length > 1 ? 'discussion' : 'full');
     return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallReadResult> => {
-      const summary = corpus.sessions.find((session) => session.sessionId === request.sessionId);
-      if (!summary) {
-        return unknownSession(request.sessionId, corpus.scope.liveSessionId);
-      }
-      const loaded = await this.loadDocument(summary, corpus.scope, signal);
-      if (!loaded.document) {
-        return {
-          available: true,
-          outcome: 'unreadable',
-          sessionId: summary.sessionId,
-          title: summary.title
-        };
-      }
-      const { document } = loaded;
-      const fromStart = request.turns === undefined || request.turns.length === 0;
-      const ranges = fromStart
-        ? [{ from: 1, to: Math.max(1, document.header.turnCount) }]
-        : normalizeTurnRanges(request.turns!);
+      const summaries = planned.map(({ sessionId }) =>
+        corpus.sessions.find((session) => session.sessionId === sessionId));
+      const listed = summaries.filter((summary): summary is WorkshopRecallSessionSummary => summary !== undefined);
+      const loaded = await this.loader.loadAll(listed, budgets.searchSourceBytes, corpus.scope, signal);
+      const outcomes = [...loaded.outcomes];
+      const sessions = planned.map((wanted, index): WorkshopRecallSessionRead => {
+        const summary = summaries[index];
+        if (!summary) {
+          return { outcome: 'unknown-session', sessionId: wanted.sessionId, liveSession: wanted.sessionId === corpus.scope.liveSessionId };
+        }
+        const outcome = outcomes.shift()!;
+        switch (outcome.kind) {
+          case 'loaded':
+            return readOfDocument(outcome.document, wanted, outcome.cacheHit);
+          case 'unreadable':
+          case 'not-read-by-byte-budget':
+            return { outcome: outcome.kind, sessionId: summary.sessionId, title: summary.title };
+          default:
+            return assertNever(outcome);
+        }
+      });
+      const bounds = { notReadByByteBudget: loaded.notReadByByteBudget, listingTruncated: corpus.listingTruncated, ...loaded.cost };
       this.log(
-        `read ranges=${ranges.length} cacheHit=${loaded.cacheHit} parsedBytes=${loaded.parsedBytes}`
+        `read sessions=${planned.length} read=${loaded.documents.length} unknown=${planned.length - listed.length} ` +
+        `unreadable=${bounds.unreadableSessions} notRead=${bounds.notReadByByteBudget} detail=${detail} ` +
+        `parsedBytes=${bounds.parsedBytes} cacheHits=${bounds.cacheHits}`
       );
-      return {
-        available: true,
-        outcome: 'read',
-        header: document.header,
-        fromStart,
-        ranges: ranges.map((range) => resolveRange(document, range)),
-        cacheHit: loaded.cacheHit
-      };
+      return { available: true, outcome: 'read', detail, sessions, bounds };
     });
   }
 
@@ -294,7 +302,7 @@ export class WorkshopTranscriptRecallService {
         return chosen.unknown;
       }
       const { candidates, scanned } = chosen;
-      const loaded = await this.loadDocuments(scanned, budgets.searchSourceBytes, corpus.scope, signal);
+      const loaded = await this.loader.loadAll(scanned, budgets.searchSourceBytes, corpus.scope, signal);
       const status = request.status ?? 'open';
       const selected = selectWorkshopRecallTodos(loaded.documents, { status, source: request.source }, budgets.todoItems);
       const bounds: WorkshopRecallTodosBounds = {
@@ -339,15 +347,16 @@ export class WorkshopTranscriptRecallService {
     signal: AbortSignal | undefined,
     work: (corpus: RecallCorpus) => Promise<T>
   ): Promise<T | WorkshopRecallUnavailable> {
-    throwIfAborted(signal);
+    throwIfRecallAborted(signal);
     const current = this.currentScope();
     if ('reason' in current) {
       return current;
     }
-    const scope: OpenScope = { liveSessionId: current.liveSessionId, generation: this.cache.generation };
+    const opened = { liveSessionId: current.liveSessionId, generation: this.cache.generation };
+    const scope: OpenScope = { ...opened, assertHolds: () => this.assertScope(opened) };
     try {
       const listing = await this.corpus.list(undefined, signal);
-      throwIfAborted(signal);
+      throwIfRecallAborted(signal);
       this.assertScope(scope);
       const result = await work({
         scope,
@@ -382,7 +391,7 @@ export class WorkshopTranscriptRecallService {
    * already read is suspect, so the cache is emptied and its generation
    * advanced: reads still in flight cannot repopulate it.
    */
-  private assertScope(scope: OpenScope): void {
+  private assertScope(scope: { readonly liveSessionId: string }): void {
     const current = this.currentScope();
     if (!('reason' in current) && current.liveSessionId === scope.liveSessionId) {
       return;
@@ -393,104 +402,11 @@ export class WorkshopTranscriptRecallService {
     throw new RecallScopeChangedError('reason' in current ? current : { available: false, reason: 'not-ready' });
   }
 
-  /**
-   * Newest first. Cached documents are free; a cold read spends the byte
-   * budget whether or not it produces a document.
-   */
-  private async loadDocuments(
-    sessions: readonly WorkshopRecallSessionSummary[],
-    byteBudget: number,
-    scope: OpenScope,
-    signal?: AbortSignal
-  ): Promise<LoadedDocuments> {
-    const documents: WorkshopRecallDocument[] = [];
-    let notReadByByteBudget = 0;
-    let unreadableSessions = 0;
-    let parsedBytes = 0;
-    let unreadableBytesCharged = 0;
-    let cacheHits = 0;
-    for (const summary of sessions) {
-      throwIfAborted(signal);
-      const cached = this.cache.get(summary.sessionId, summary.updatedAt);
-      if (cached) {
-        documents.push(cached);
-        cacheHits += 1;
-        continue;
-      }
-      if (parsedBytes + unreadableBytesCharged >= byteBudget) {
-        notReadByByteBudget += 1;
-        continue;
-      }
-      const loaded = await this.loadDocument(summary, scope, signal);
-      if (!loaded.document) {
-        unreadableSessions += 1;
-        unreadableBytesCharged += this.limits.unreadableSessionBytes;
-        continue;
-      }
-      parsedBytes += loaded.parsedBytes;
-      documents.push(loaded.document);
-    }
-    return {
-      documents,
-      notReadByByteBudget,
-      cost: { unreadableSessions, parsedBytes, unreadableBytesCharged, cacheHits }
-    };
-  }
-
-  private async loadDocument(
-    summary: WorkshopRecallSessionSummary,
-    scope: OpenScope,
-    signal?: AbortSignal
-  ): Promise<LoadedDocument> {
-    const cached = this.cache.get(summary.sessionId, summary.updatedAt);
-    if (cached) {
-      return { document: cached, cacheHit: true, parsedBytes: 0 };
-    }
-    // Never read under a scope that no longer holds, nor keep what such a read returned.
-    this.assertScope(scope);
-    let session: WorkshopPersistedSessionV2 | undefined;
-    try {
-      session = await this.corpus.readNamed(summary.sessionId);
-    } catch (error) {
-      // A read that failed because the call was cancelled is a cancellation.
-      throwIfAborted(signal);
-      this.log(`Skipped unreadable session ${summary.sessionId}: ${errorMessage(error)}`);
-      return {};
-    }
-    throwIfAborted(signal);
-    this.assertScope(scope);
-    if (!session || session.sessionId !== summary.sessionId) {
-      this.log(`Skipped session ${summary.sessionId}: it was not found where the listing put it`);
-      return {};
-    }
-    const document = buildWorkshopRecallDocument(session);
-    this.cache.remember(document, scope.generation);
-    return { document, cacheHit: false, parsedBytes: estimatedSourceBytes(session) };
-  }
-
   private log(line: string): void {
     this.outputChannel.appendLine(`[WorkshopTranscriptRecall] ${line}`);
   }
 }
 
-/**
- * The bytes a cold parse cost, estimated by serializing the session the way
- * the store writes it. The store reports no size, and the ADR leaves it
- * unchanged. Decoding normalizes a few fields, so this lands within a few
- * percent of the file for sessions the current build wrote.
- */
-function estimatedSourceBytes(session: WorkshopPersistedSessionV2): number {
-  return Buffer.byteLength(JSON.stringify(session, undefined, 2), 'utf8');
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted) {
-    const error = new Error('Session recall was cancelled.');
-    error.name = 'AbortError';
-    throw error;
-  }
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+function assertNever(value: never): never {
+  throw new Error(`Unhandled session-recall value: ${JSON.stringify(value)}`);
 }

@@ -15,15 +15,18 @@ import {
   renderWorkshopRecallCatalog,
   renderWorkshopRecallRead,
   renderWorkshopRecallSearch,
-  WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS
+  WorkshopRecallRenderOptions
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRenderer';
+import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import { WORKSHOP_TRANSCRIPT_RECALL_FRAMING } from '@/application/services/workshop/recall/WorkshopRecallCopy';
 import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import type {
   WorkshopRecallCatalogResult,
+  WorkshopRecallReadBounds,
   WorkshopRecallReadResult,
   WorkshopRecallSearchBounds,
   WorkshopRecallSearchResult,
+  WorkshopRecallSessionRead,
   WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -39,6 +42,7 @@ import {
   saveRecallRoom
 } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 import { WorkshopTranscriptRecallService } from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import type { WorkshopTurn } from '@messages';
 
 const NOW = Date.parse('2026-10-05T14:30:00.000Z');
@@ -50,11 +54,32 @@ const doc = (
   extra: Partial<RecallSessionInput> = {}
 ): WorkshopRecallDocument => buildWorkshopRecallDocument(recallSession({ sessionId, turns, ...extra }));
 
-const readOf = (
-  document: WorkshopRecallDocument,
-  ranges?: WorkshopRecallTurnRange[]
+const READ_BOUNDS: WorkshopRecallReadBounds = {
+  notReadByByteBudget: 0,
+  unreadableSessions: 0,
+  listingTruncated: false,
+  parsedBytes: 0,
+  unreadableBytesCharged: 0,
+  cacheHits: 0
+};
+
+/** A read naming these sessions, in full detail unless told otherwise. */
+const readResult = (
+  sessions: WorkshopRecallSessionRead[],
+  detail: 'full' | 'discussion' = 'full'
 ): Extract<WorkshopRecallReadResult, { outcome: 'read' }> => ({
   available: true,
+  outcome: 'read',
+  detail,
+  sessions,
+  bounds: READ_BOUNDS
+});
+
+/** One session's read of a document: these ranges, or the whole session from turn 1. */
+const sessionRead = (
+  document: WorkshopRecallDocument,
+  ranges?: WorkshopRecallTurnRange[]
+): Extract<WorkshopRecallSessionRead, { outcome: 'read' }> => ({
   outcome: 'read',
   header: document.header,
   fromStart: ranges === undefined,
@@ -68,6 +93,15 @@ const readOf = (
   }),
   cacheHit: false
 });
+
+const readOf = (document: WorkshopRecallDocument, ranges?: WorkshopRecallTurnRange[]) =>
+  readResult([sessionRead(document, ranges)]);
+
+/** A one-session read's text, with that session's provenance beside it. */
+const renderOne = (result: WorkshopRecallReadResult, options: WorkshopRecallRenderOptions) => {
+  const rendered = renderWorkshopRecallRead(result, options);
+  return { content: rendered.content, ...rendered.sessions[0] };
+};
 
 /** n writer turns of `size` characters, one minute apart. */
 const longRoom = (n: number, size: number): WorkshopTurn[] =>
@@ -120,7 +154,7 @@ describe('session-recall framing', () => {
       { now: NOW }
     )],
     ['unreadable', renderWorkshopRecallRead(
-      { available: true, outcome: 'unreadable', sessionId: 's-9', title: 'Broken' },
+      readResult([{ outcome: 'unreadable', sessionId: 's-9', title: 'Broken' }]),
       { now: NOW }
     ).content]
   ])('opens the %s body with the quoted-record framing', (_kind, content) => {
@@ -136,7 +170,7 @@ describe('session-recall framing', () => {
 
   it('names the live room as the current session instead of reading it', () => {
     const content = renderWorkshopRecallRead(
-      { available: true, outcome: 'unknown-session', sessionId: 'live', liveSession: true },
+      readResult([{ outcome: 'unknown-session', sessionId: 'live', liveSession: true }]),
       { now: NOW }
     ).content;
 
@@ -153,7 +187,7 @@ describe('renderWorkshopRecallRead', () => {
       writerTurn('t-3', { content: 'Morning.', timestamp: at('2026-10-04T08:30:00.000Z') })
     ], { timezone: 'America/Chicago' });
 
-    const content = renderWorkshopRecallRead(readOf(document), { now: NOW }).content;
+    const content = renderOne(readOf(document), { now: NOW }).content;
 
     expect(content).toContain('── Saturday, October 3, 2026 ──\n\n[turn 1 · 11:30 PM · Writer]\nLate question.');
     expect(content).toContain('── Sunday, October 4, 2026 ──\n\n[turn 2 · 12:30 AM · Jill]\nLate answer.');
@@ -171,7 +205,7 @@ describe('renderWorkshopRecallRead', () => {
       contextLabels: ['keeper-notes.md', 'Tide tables']
     });
 
-    expect(renderWorkshopRecallRead(readOf(document), { now: NOW }).content.split('\n').slice(1, 7)).toEqual([
+    expect(renderOne(readOf(document), { now: NOW }).content.split('\n').slice(1, 7)).toEqual([
       'Session “Lighthouse at dusk” · id s-1',
       'Saved Saturday, October 3, 2026, 2:03 PM (America/Chicago), 2 days ago · started Thursday, October 1, 2026',
       'Host Jill · participants Jill, Cliff',
@@ -213,7 +247,7 @@ describe('renderWorkshopRecallRead', () => {
       dividerTurn('t-4', 'session_resume', 'Session resumed.')
     ]);
 
-    const content = renderWorkshopRecallRead(readOf(document), { now: NOW }).content;
+    const content = renderOne(readOf(document), { now: NOW }).content;
 
     expect(content).toContain(
       '[turn 1 · 9:30 AM · Writer]\nAttached: letters.md\nComposed with Creative Variations Explorer · 2 variations\nRead these.'
@@ -228,7 +262,7 @@ describe('renderWorkshopRecallRead', () => {
 
   it('packs whole entries, ends with a continuation, and reports what it delivered', () => {
     const document = doc('s-1', longRoom(40, 900));
-    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 12_000 });
+    const rendered = renderOne(readOf(document), { now: NOW, readCharacters: 12_000 });
 
     expect(rendered.content.length).toBeLessThanOrEqual(12_000);
     expect(rendered.truncatedEntry).toBeUndefined();
@@ -251,7 +285,7 @@ describe('renderWorkshopRecallRead', () => {
 
   it('fits the default read budget', () => {
     const document = doc('s-1', longRoom(200, 2_000));
-    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW });
+    const rendered = renderOne(readOf(document), { now: NOW });
 
     expect(rendered.content.length).toBeLessThanOrEqual(PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters);
     expect(rendered.continuation.length).toBe(1);
@@ -262,7 +296,7 @@ describe('renderWorkshopRecallRead', () => {
       writerTurn('t-1', { content: `Opening line. ${'salt '.repeat(5_000)}` }),
       writerTurn('t-2', { content: 'Short.' })
     ]);
-    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 6_000 });
+    const rendered = renderOne(readOf(document), { now: NOW, readCharacters: 6_000 });
 
     expect(rendered.content.length).toBeLessThanOrEqual(6_000);
     expect(rendered.content).toContain('Opening line. salt salt');
@@ -278,7 +312,7 @@ describe('renderWorkshopRecallRead', () => {
       writerTurn('t-1', { content: 'Short.' }),
       writerTurn('t-2', { content: 'salt '.repeat(5_000) })
     ]);
-    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters: 6_000 });
+    const rendered = renderOne(readOf(document), { now: NOW, readCharacters: 6_000 });
 
     expect(rendered.truncatedEntry).toBeUndefined();
     expect(rendered.delivered.map(({ from, to }) => [from, to])).toEqual([[1, 1]]);
@@ -287,7 +321,7 @@ describe('renderWorkshopRecallRead', () => {
 
   it('reads requested ranges, marks the jump between them, and continues across them', () => {
     const document = doc('s-1', longRoom(60, 900));
-    const rendered = renderWorkshopRecallRead(
+    const rendered = renderOne(
       readOf(document, [{ from: 2, to: 3 }, { from: 10, to: 30 }, { from: 50, to: 52 }]),
       { now: NOW, readCharacters: 9_000 }
     );
@@ -306,11 +340,11 @@ describe('renderWorkshopRecallRead', () => {
       dividerTurn('t-2', 'context_change', 'Context updated.')
     ]);
 
-    expect(renderWorkshopRecallRead(readOf(document, [{ from: 2, to: 2 }, { from: 9, to: 12 }]), { now: NOW }).content)
+    expect(renderOne(readOf(document, [{ from: 2, to: 2 }, { from: 9, to: 12 }]), { now: NOW }).content)
       .toContain('No visible turns in 2, 9-12; this session ends at turn 2.');
-    expect(renderWorkshopRecallRead(readOf(document, [{ from: 1, to: 1 }, { from: 9, to: 12 }]), { now: NOW }).content)
+    expect(renderOne(readOf(document, [{ from: 1, to: 1 }, { from: 9, to: 12 }]), { now: NOW }).content)
       .toContain('Shown: turns 1; every requested turn is here.\nNo visible turns in 9-12.');
-    expect(renderWorkshopRecallRead(readOf(doc('s-2', [])), { now: NOW }).content)
+    expect(renderOne(readOf(doc('s-2', [])), { now: NOW }).content)
       .toContain('This session has no turns.');
   });
 });
@@ -433,7 +467,7 @@ describe('the composite read bound (PR 126 review F-01)', () => {
 
   /** Every requested visible position is delivered or left to continue, never both. */
   const expectAccounted = (
-    rendered: ReturnType<typeof renderWorkshopRecallRead>,
+    rendered: { readonly delivered: readonly WorkshopRecallTurnRange[]; readonly continuation: readonly WorkshopRecallTurnRange[] },
     requested: number[]
   ): void => {
     const inRanges = (position: number, ranges: readonly WorkshopRecallTurnRange[]) =>
@@ -457,16 +491,17 @@ describe('the composite read bound (PR 126 review F-01)', () => {
         });
       }
       advance(60_000);
-      session.beginPersonaMessage('run-1', `Opening. ${'salt '.repeat(20_000)}`);
+      // Longer than the whole read budget, so only its head can fit.
+      session.beginPersonaMessage('run-1', `Opening. ${'salt '.repeat(READ_CHARACTERS / 3)}`);
       advance(60_000);
       session.completeRun('run-1', 'A short reply.', undefined, false, 'runtime-host');
     });
     const service = new WorkshopTranscriptRecallService(store, coordinator, log);
-    const read = await service.read({ sessionId: savedSessionId, turns: [{ from: 2, to: 3 }] });
-    const whole = await service.read({ sessionId: savedSessionId });
+    const read = await service.read({ sessions: [{ sessionId: savedSessionId, turns: [{ from: 2, to: 3 }] }] });
+    const whole = await service.read({ sessions: [{ sessionId: savedSessionId }] });
 
-    const rendered = renderWorkshopRecallRead(read, { now: NOW });
-    const renderedWhole = renderWorkshopRecallRead(whole, { now: NOW });
+    const rendered = renderOne(read, { now: NOW });
+    const renderedWhole = renderOne(whole, { now: NOW });
 
     expect(rendered.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
     expect(renderedWhole.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
@@ -485,7 +520,7 @@ describe('the composite read bound (PR 126 review F-01)', () => {
       contextLabels: Array.from({ length: 3_000 }, (_, index) => `label-${index}-${'y'.repeat(30)}`)
     });
 
-    const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW });
+    const rendered = renderOne(readOf(document), { now: NOW });
 
     expect(rendered.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
     expect(rendered.delivered).toEqual([{ from: 1, to: 1, firstTurnId: 't-1', lastTurnId: 't-1', entryCount: 1 }]);
@@ -496,7 +531,9 @@ describe('the composite read bound (PR 126 review F-01)', () => {
     const document = doc('s-1', [
       writerTurn('t-1', { content: `First. ${'salt '.repeat(1_200)}` }),
       fixtureTurn('t-2', { content: `Second. ${'tide '.repeat(300)}` }),
-      writerTurn('t-3', { content: 'Third.' })
+      // Longer than the footer's unused reserve: a share that fits two entries
+      // with the reserve does not fit the complete text, so "2" is reachable.
+      writerTurn('t-3', { content: `Third. ${'gull '.repeat(300)}` })
     ], { contextLabels: ['keeper-notes.md'] });
     const budgets = [
       // One character at a time from the minimum through the first entry's cut...
@@ -506,7 +543,7 @@ describe('the composite read bound (PR 126 review F-01)', () => {
     ];
     const outcomes = new Set<string>();
     for (const readCharacters of budgets) {
-      const rendered = renderWorkshopRecallRead(readOf(document), { now: NOW, readCharacters });
+      const rendered = renderOne(readOf(document), { now: NOW, readCharacters });
 
       expect([readCharacters, rendered.content.length <= readCharacters]).toEqual([readCharacters, true]);
       expect([readCharacters, rendered.delivered.length]).toEqual([readCharacters, 1]);
@@ -544,10 +581,10 @@ describe('the complete read bound for accepted, edited metadata (PR 126 re-revie
       session.summary.participantPersonaIds = Array.from({ length: 10_000 }, () => 'jill');
     });
 
-    const read = await service.read({ sessionId: savedSessionId, turns: [{ from: 2, to: 3 }] });
-    const rendered = renderWorkshopRecallRead(read, { now: NOW });
+    const read = await service.read({ sessions: [{ sessionId: savedSessionId, turns: [{ from: 2, to: 3 }] }] });
+    const rendered = renderOne(read, { now: NOW });
 
-    expect(read).toMatchObject({ outcome: 'read', header: { participants: ['Jill'] } });
+    expect(read).toMatchObject({ outcome: 'read', sessions: [{ outcome: 'read', header: { participants: ['Jill'] } }] });
     expect(rendered.content.length).toBeLessThanOrEqual(READ_CHARACTERS);
     expect(rendered.delivered.map(({ from, to }) => [from, to])).toEqual([[2, 3]]);
     expect(rendered.continuation).toEqual([]);
@@ -565,7 +602,7 @@ describe('the complete read bound for accepted, edited metadata (PR 126 re-revie
     });
 
     const search = renderWorkshopRecallSearch(await service.search({ query: 'reply' }), { now: NOW });
-    const read = renderWorkshopRecallRead(await service.read({ sessionId: savedSessionId }), { now: NOW });
+    const read = renderOne(await service.read({ sessions: [{ sessionId: savedSessionId }] }), { now: NOW });
 
     expect(search.length).toBeLessThan(5_000);
     expect(search).toContain(`${'P'.repeat(199)}…: A short reply`);
@@ -575,7 +612,7 @@ describe('the complete read bound for accepted, edited metadata (PR 126 re-revie
   it('rejects a window too small for the bounded header and footer, and the production budget clears it', () => {
     const document = doc('s-1', [writerTurn('t-1', { content: 'Hello.' })]);
 
-    expect(() => renderWorkshopRecallRead(readOf(document), {
+    expect(() => renderOne(readOf(document), {
       now: NOW,
       readCharacters: WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS - 1
     })).toThrow(RangeError);
@@ -603,18 +640,68 @@ describe('the complete read bound for accepted, edited metadata (PR 126 re-revie
     };
     const ranges = Array.from({ length: 40 }, (_, index) => ({ from: index * 3 + 1, to: index * 3 + 1 }));
     // The fixture stresses the header: every part at its bound, near the whole header's cap.
-    const header = renderWorkshopRecallRead(readOf(document, ranges), { now: NOW }).content.split('\n\n')[0];
+    const header = renderOne(readOf(document, ranges), { now: NOW }).content.split('\n\n')[0];
     expect(header.length).toBeGreaterThan(3_000);
     expect(header).toContain(', … and 9,');
 
     for (let step = 0; step < 1_500; step += 1) {
       const readCharacters = WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS + step * 3;
       for (const request of [undefined, ranges]) {
-        const rendered = renderWorkshopRecallRead(readOf(document, request), { now: NOW, readCharacters });
+        const rendered = renderOne(readOf(document, request), { now: NOW, readCharacters });
 
         expect([readCharacters, rendered.content.length <= readCharacters]).toEqual([readCharacters, true]);
         expect([readCharacters, rendered.delivered.length > 0]).toEqual([readCharacters, true]);
       }
     }
+  });
+});
+
+describe('a saved time no date can hold (PR 129 review F-02)', () => {
+  it('renders as unknown, never aborting a read, alone or beside a healthy session', async () => {
+    const fs = new MemoryFileSystem();
+    const healthy = await saveRecallRoom('Healthy', (session, advance) => {
+      session.setSessionScope('open');
+      advance(60_000);
+      session.beginPersonaMessage('run-1', 'A short question.');
+      session.completeRun('run-1', 'A short answer.', undefined, false, 'runtime-host');
+    }, { fs, idPrefix: 'healthy' });
+    const room = await saveRecallRoom('Far future', (session, advance) => {
+      session.setSessionScope('open');
+      for (let n = 1; n <= 4; n += 1) {
+        advance(60_000);
+        session.beginPersonaMessage(`run-${n}`, `Question ${n}. ${'salt '.repeat(400)}`);
+        advance(60_000);
+        session.completeRun(`run-${n}`, `Answer ${n}.`, undefined, false, 'runtime-host');
+      }
+    }, { fs, idPrefix: 'far' });
+    // Only the final turn's time changes: finite, so the codec accepts it, but past any Date.
+    const file = [...fs.files.keys()].find((name) =>
+      name.startsWith(`${RECALL_ROOT}/prose-minion/sessions`) && name.endsWith('.json') &&
+      !name.endsWith('.summary.json') && !name.endsWith('/current.json') &&
+      new TextDecoder().decode(fs.files.get(name)!).includes(`"sessionId": "${room.savedSessionId}"`))!;
+    const saved = JSON.parse(new TextDecoder().decode(fs.files.get(file)));
+    saved.workshop.turns.at(-1).timestamp = Number.MAX_SAFE_INTEGER;
+    fs.files.set(file, new TextEncoder().encode(JSON.stringify(saved, undefined, 2)));
+    const last = saved.workshop.turns.length;
+    expect((await room.store.readNamed(room.savedSessionId))!.workshop.turns.at(-1)!.timestamp).toBe(Number.MAX_SAFE_INTEGER);
+    const service = new WorkshopTranscriptRecallService(room.store, room.coordinator, room.log);
+    const alone = await service.read({ sessions: [{ sessionId: room.savedSessionId }] });
+
+    // A first window that never reaches the tail reads as it did before sizing the whole read.
+    const first = renderOne(alone, { now: NOW, readCharacters: WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS });
+    expect(first.content.length).toBeLessThanOrEqual(WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS);
+    expect(first.delivered.length).toBe(1);
+    expect(first.continuation.at(-1)!.to).toBe(last);
+    // The whole read shows the turn, its time unknown, with no gap measured to it.
+    const whole = renderOne(alone, { now: NOW }).content;
+    expect(whole).toContain(`── an unknown date ──\n\n[turn ${last} · an unknown time · Jill]\nAnswer 4.`);
+    expect(whole).not.toMatch(/\d{4,} days later/);
+    // Beside a healthy session, both are read.
+    const both = renderWorkshopRecallRead(
+      await service.read({ sessions: [{ sessionId: room.savedSessionId }, { sessionId: healthy.savedSessionId }] }),
+      { now: NOW, readCharacters: 2 * WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS }
+    );
+    expect(both.sessions.map((session) => [session.outcome, session.delivered.length > 0])).toEqual([['read', true], ['read', true]]);
+    expect(both.content).toContain('A short answer.');
   });
 });

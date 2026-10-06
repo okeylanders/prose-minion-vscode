@@ -52,7 +52,8 @@ export const RECALL_VISIBLE_LABELS = {
   contextNote: 'Tide tables',
   excerpt: 'chapter-6.md',
   writerText: 'Read the letters before you answer about the lighthouse.',
-  reply: 'The letters circle the lighthouse keeper and his mother.'
+  reply: 'The letters circle the lighthouse keeper and his mother.',
+  toolReport: 'The tide imagery repeats in the second paragraph.'
 } as const;
 
 export const RECALL_ROOT = '/workspace/novel';
@@ -136,8 +137,13 @@ export async function saveRecallRoom(
   return { fs, store, coordinator, log, savedSessionId: saved.sessionId };
 }
 
-/** One sentinel-laden room: a marker in every body the thread hides. */
-export function saveSentinelCorpus(): Promise<SavedRecallRoom> {
+/**
+ * One sentinel-laden room: a marker in every body the thread hides. Pass
+ * the `fs` of another to save a second one beside it.
+ */
+export function saveSentinelCorpus(
+  options: { fs?: MemoryFileSystem; idPrefix?: string } = {}
+): Promise<SavedRecallRoom> {
   return saveRecallRoom(RECALL_VISIBLE_LABELS.title, (session, advance) => {
     session.setExcerpt({
       text: `The tide came in. ${RECALL_SENTINELS.excerptText}`,
@@ -163,6 +169,11 @@ export function saveSentinelCorpus(): Promise<SavedRecallRoom> {
       content: `Tide tables for the cove. ${RECALL_SENTINELS.contextNoteBody}`,
       words: 6
     });
+
+    // A tool report: visible, though a discussion-detail read shows it as one line.
+    advance(60_000);
+    session.beginToolRun('cliche', 'report-1');
+    session.completeToolReport('report-1', RECALL_VISIBLE_LABELS.toolReport, 'conv-report-1');
 
     // A completed run: writer message with an attachment, persisted evidence, reply.
     const attached = session.addMessageAttachment({
@@ -191,7 +202,7 @@ export function saveSentinelCorpus(): Promise<SavedRecallRoom> {
     session.beginPersonaMessage('run-2', 'Check the keeper profile.');
     recordEvidence(session, 'run-2', RECALL_SENTINELS.previewEvidence);
     session.rollbackMessageRun('run-2');
-  });
+  }, options);
 }
 
 function recordEvidence(session: WorkshopSessionService, requestId: string, body: string): void {

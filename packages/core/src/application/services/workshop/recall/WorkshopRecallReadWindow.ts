@@ -5,6 +5,10 @@
  * - Each entry opens with "[turn N · time · speaker]"; attachments and
  *   widgets use export phrasing, and a private instrument exchange carries
  *   a "private" marker, as export does.
+ * - Discussion detail (D10) collapses each tool report (a reply whose
+ *   participant is the tool) to one line naming its turn and word count.
+ *   The writer's messages, host and guest persona replies, and events stay
+ *   whole: the discussion of a report is usually the reply after it.
  * - Day headers use the session's timezone; elapsed gaps get the room
  *   frames' "[N hours later]" markers; a jump to the next requested range
  *   is marked.
@@ -14,14 +18,20 @@
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { WORKSHOP_TRANSCRIPT_WRITER_LABEL } from '@/application/services/workshop/transcript/WorkshopTranscript';
+import { countWords } from '@/utils/textUtils';
+import {
+  WORKSHOP_TRANSCRIPT_WRITER_LABEL,
+  WorkshopTranscriptReplyEntry
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 import type { WorkshopRecallEntry } from '@/application/services/workshop/recall/WorkshopRecallDocument';
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 import {
   WorkshopRecallClock,
-  workshopRecallDuration
+  workshopRecallDuration,
+  workshopRecallTimeKnown
 } from '@/application/services/workshop/recall/WorkshopRecallTime';
 import type {
+  WorkshopRecallReadDetail,
   WorkshopRecallReadRange,
   WorkshopRecallTurnRange
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
@@ -44,6 +54,12 @@ export interface WorkshopRecallDeliveredRange {
   readonly entryCount: number;
 }
 
+/** A tool report a discussion-detail window showed as one line. */
+export interface WorkshopRecallCollapsedEntry {
+  readonly position: number;
+  readonly turnId: string;
+}
+
 /** The one entry cut to fit an empty window. */
 export interface WorkshopRecallTruncatedEntry {
   readonly position: number;
@@ -53,8 +69,10 @@ export interface WorkshopRecallTruncatedEntry {
 
 export interface WorkshopRecallReadWindow {
   blocks: string[];
+  /** Includes the tool reports shown as one line; `collapsed` names them. */
   delivered: WorkshopRecallDeliveredRange[];
   continuation: WorkshopRecallTurnRange[];
+  collapsed: WorkshopRecallCollapsedEntry[];
   truncatedEntry?: WorkshopRecallTruncatedEntry;
 }
 
@@ -71,10 +89,11 @@ export function formatWorkshopRecallTurnRanges(ranges: readonly WorkshopRecallTu
 export function packWorkshopRecallReadWindow(
   ranges: readonly WorkshopRecallReadRange[],
   timezone: string,
-  budget: number
+  budget: number,
+  detail: WorkshopRecallReadDetail
 ): WorkshopRecallReadWindow {
   const clock = new WorkshopRecallClock(timezone);
-  const window: WorkshopRecallReadWindow = { blocks: [], delivered: [], continuation: [] };
+  const window: WorkshopRecallReadWindow = { blocks: [], delivered: [], continuation: [], collapsed: [] };
   let used = 0;
   let previous: WorkshopRecallEntry | undefined;
 
@@ -88,13 +107,17 @@ export function packWorkshopRecallReadWindow(
     const shown: WorkshopRecallEntry[] = [];
     for (const [index, entry] of range.entries.entries()) {
       const lead = leadIn(previous, entry, index === 0, clock);
-      const text = renderEntry(entry, clock);
+      const report = detail === 'discussion' ? toolReport(entry.entry) : undefined;
+      const text = report ? collapsedReport(entry.position, report, clock) : renderEntry(entry, clock);
       const block = [...lead, text].join(WORKSHOP_RECALL_BLOCK_SEPARATOR);
       const cost = block.length + WORKSHOP_RECALL_BLOCK_SEPARATOR.length;
       if (used + cost <= budget) {
         window.blocks.push(block);
         used += cost;
         shown.push(entry);
+        if (report) {
+          window.collapsed.push({ position: entry.position, turnId: entry.turnId });
+        }
         previous = entry;
         continue;
       }
@@ -160,7 +183,10 @@ function leadIn(
     const to = entry.position - 1;
     lead.push(from === to ? `[turn ${from} not shown]` : `[turns ${from}-${to} not shown]`);
   }
-  const gap = previous ? entry.entry.timestamp - previous.entry.timestamp : 0;
+  // No gap is measured to or from a time no Date can hold.
+  const gap = previous && workshopRecallTimeKnown(previous.entry.timestamp) && workshopRecallTimeKnown(entry.entry.timestamp)
+    ? entry.entry.timestamp - previous.entry.timestamp
+    : 0;
   if (previous && gap > PROMPT_BUDGETS.workshopRoom.gapMilliseconds) {
     lead.push(`[${workshopRecallDuration(gap)} later]`);
   }
@@ -206,6 +232,23 @@ function renderEntry(recall: WorkshopRecallEntry, clock: WorkshopRecallClock): s
     default:
       return assertNever(entry);
   }
+}
+
+/** A reply from a tool, rather than a persona: what discussion detail collapses. */
+function toolReport(entry: WorkshopRecallEntry['entry']): WorkshopTranscriptReplyEntry | undefined {
+  return entry.kind === 'reply' && entry.participant === 'tool' ? entry : undefined;
+}
+
+/**
+ * "[turn 12 · 10:42 AM · Stock & Signature report · 2,431 words · read it in
+ * full with <turns>12</turns>]": a discussion-detail read's whole report.
+ * Short enough never to be cut, and it shows nothing of the report's body.
+ */
+function collapsedReport(position: number, report: WorkshopTranscriptReplyEntry, clock: WorkshopRecallClock): string {
+  const words = countWords(report.content);
+  return `[turn ${position} · ${clock.time(report.timestamp)} · ${recallLabel(report.speaker)} report` +
+    `${report.privateWith ? ' · private' : ''} · ${formatCount(words)} ${words === 1 ? 'word' : 'words'} · ` +
+    `read it in full with <turns>${position}</turns>]`;
 }
 
 /**

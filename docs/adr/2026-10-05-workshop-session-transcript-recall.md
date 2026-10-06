@@ -594,6 +594,139 @@ For Slice 3: the codec's `<recent>` and `<match>` bounds above; provenance
 from the rendered list's shown pairs; and a `resultLogSummary` case for
 `transcript.todos`.
 
+## Implementation note 2026-10-06: Slice 2C
+
+The excerpt-summary core has landed under `recall/`, dormant like Slices 2
+and 2B: nothing calls the catalog's `<match>`, the multi-session read, or
+discussion detail yet. These notes record what the amendment and the
+[plan](../../.todo/epics/epic-workshop-session-recall-2026-10-05/slice-2c-excerpt-summaries.md)
+left open, and where the build departs from the plan.
+
+Making room first:
+
+- **Document loading moved out of the service** in its own
+  behavior-preserving commit (`0b5a19d`). `WorkshopRecallDocumentLoader`
+  holds cold reads, the byte budget, the failed-read charge, cancellation,
+  and the scope checks around each read. The service keeps the scope and
+  the cache's generations. It went from 496 to 395 lines, and is 412 with
+  the wider `read()`.
+- **A section module, beyond the plan's table.** The plan put the
+  multi-session text in the renderer. Instead, `WorkshopRecallReadSection`
+  renders one session's header, window, and footer within a share, or one
+  notice line. The renderer keeps the opening, the allocation, and the
+  assembly, and drops from 402 to 351 lines.
+  `WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS` moved with the caps that define
+  it, beside `workshopRecallMinimumReadCharacters(sessions)`.
+- Modules: fifteen, each under 500 lines. The three new ones (loader,
+  allocation, section) joined `WORKSHOP_RECALL_MODULES`.
+
+Catalog `<match>` (D8):
+
+- It filters the listing alone, so it reads no session file and spends no
+  byte budget. `matchingSessions` counts every match; the text says
+  "Showing 50 of 52 matching sessions".
+- The disclosure is the to-do list's, moved to `WorkshopRecallCopy` as
+  `recallMatchWords`: the evaluated terms, any past the eight-term limit,
+  and the mode.
+- **An observation for Slice 4.** The plan says "chapter 6.7" finds "a
+  session titled 6.7 cliché pass". Under D8's all-terms preference, that is
+  true only if the session also matches "chapter", for example through its
+  excerpt label, or if no session matches all three terms. An open
+  conversation titled "6.7 cliché pass" is left out whenever any other
+  session matches all three. `<match>6.7</match>` is the exhaustive form.
+  The rule is unchanged here; the grammar doc should teach the short form.
+
+Multi-session reads (D9):
+
+- **Request.** `read({ sessions: [{ sessionId, turns? }], detail? })`.
+  Detail defaults to `discussion` when the read names more than one session,
+  else `full`. `WORKSHOP_RECALL_READ_DETAILS` is the `as const` list for the
+  codec's `invalid-detail` rejection.
+- **Refusals.** The service validates before it reads anything. It throws on
+  a duplicate session, more than `readSessions`, an invalid range, and,
+  beyond the plan, an empty list. The codec must refuse an empty
+  `transcript.read` too.
+- **Byte budget.** Cold reads spend `searchSourceBytes` in request order,
+  and a failed read is charged as in search. A session left unread by the
+  budget is its own outcome, `not-read-by-byte-budget`, with its own notice
+  and count; it is never reported as unreadable. A single session is always
+  read, as before, because the first cold read is always affordable.
+- **Fair shares.** Each section's need is the length of its complete text,
+  plus the separator before it. `WorkshopRecallReadAllocation` water-fills
+  the needs. A section whose complete text fits its share is shown complete.
+  This is a refinement: a single-session read whose text fit only without
+  the footer's full reserve used to stop a turn short.
+- **Shares never fall below the minimum.** A share smaller than its section's
+  need is at least floor(budget / sessions). The read's opening sits inside
+  the first section's header cap, and each separator inside its own share.
+  So `readSessions × 6,000 ≤ readCharacters`, the pin the plan asked for,
+  is exactly the condition that every short share clears the minimum. The
+  renderer throws below `workshopRecallMinimumReadCharacters(sessions)`.
+- **Text.** One framing line opens the read, followed by one line naming
+  the number of sessions, the order, the detail, and the fair share. A read
+  naming an id the listing may have cut off adds the listing note. Sections
+  are numbered "Session 2 of 3 · …", a refinement.
+- **Continuation.** In a read of several sessions, each footer continues
+  with `<session turns="12-40">id</session> <detail>discussion</detail>`.
+  Every continuation names the read's detail, because the default depends
+  on how many sessions a call names: one continuation followed alone, or
+  several followed together, would otherwise change it (PR 129 review
+  F-01). The one exception is a single-session read in full detail. Its
+  continuation gets that detail by default, so it still says
+  `<turns>12-40</turns>`. The collapsed report line keeps
+  `<turns>N</turns>` as D10 specifies, inside its numbered section.
+- **Provenance.** The rendered read reports, for each session in request
+  order: its outcome, share, delivered ranges with their turn ids,
+  continuation, collapsed reports, and any cut entry. This replaces the
+  top-level `delivered` and `continuation`.
+
+Discussion detail (D10):
+
+- Every reply whose participant is the tool collapses, including a private
+  instrument reply. That line keeps the "private" marker, as D4 marks the
+  full reply.
+- The word count is the app's whitespace `countWords`. A collapsed report's
+  truncation notice and sources go with its body.
+- The window reports each collapsed turn's position and id.
+
+Saved times: a turn's time only has to be finite, so a saved file can
+hold one past anything a Date represents. Such a time renders as "an
+unknown time" under "an unknown date", and no gap is measured to or from
+it. Sizing a read formats every requested turn, so without this fallback
+one such turn aborted the whole read (PR 129 review F-02).
+
+Budgets (D11): as decided, each pinned. Two more pins: every share of the
+largest read clears the minimum, and `readCharacters ≤ readCharactersPerTurn`.
+
+Mutation check: every guard added here was reverted on its own. Each
+reversion fails a witness except two, both equivalent today:
+
+- **The scope check after each cold read** (Slice 2, F-04). The call's
+  final scope check still refuses the call and empties the cache. It stays
+  as defense in depth.
+- **Charging each section's separator to its share.** The largest footer,
+  measured with every part at its bound, is 929 characters, including the
+  continuation's `<detail>`. The 1,000-character reserve always absorbs the
+  2 characters. The charge stays, so the bound
+  holds by arithmetic rather than by slack.
+
+The check also found two gaps, now witnessed: cancellation during the only
+read of a one-session read, and the listing note.
+
+For Slice 3:
+
+- **The codec.** Repeated `<session>` elements, each with an optional
+  `turns="…"`; `<detail>` from `WORKSHOP_RECALL_READ_DETAILS`; and
+  `<match>` on the catalog, bounded like `todoMatchCharacters`.
+- **Refusals.** Empty, duplicate, and too-many session lists.
+- **The window clamp.** It must not go below
+  `workshopRecallMinimumReadCharacters` for the sessions named. If it
+  would, the adapter refuses or narrows the read.
+- **The per-turn total**, beside the call ceilings.
+- **Manifest rows** for each rendered session whose outcome is `read`.
+- **Provenance** from each rendered session's `delivered` and `collapsed`.
+- **`resultLogSummary`** for the wider read.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**
