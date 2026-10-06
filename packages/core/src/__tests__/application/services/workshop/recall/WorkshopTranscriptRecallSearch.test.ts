@@ -70,6 +70,30 @@ describe('parseWorkshopRecallQuery', () => {
 });
 
 describe('searchWorkshopRecallDocuments', () => {
+  it('finds a tool reply by its speaker, and no reply by a persona’s name (Slice 2B)', () => {
+    const documents = [doc('s', [
+      say('t-1', 'Run the pass.'),
+      fixtureTurn('t-2', {
+        participant: 'tool',
+        artifact: 'tool_report',
+        toolId: 'stock-and-signature',
+        toolLabel: 'Stock & Signature',
+        personaId: undefined,
+        personaLabel: undefined,
+        content: 'Three reactions lean on familiar gestures.'
+      }),
+      fixtureTurn('t-3', { content: 'I would start with the laughter.' }),
+      fixtureTurn('t-4', { participant: 'guest', personaId: 'felix', personaLabel: 'Felix', content: 'Agreed.' })
+    ])];
+
+    const bySpeaker = search(documents, 'stock signature');
+    expect(turnHits(bySpeaker)).toEqual([['s', 2]]);
+    // The snippet is the visible text; the speaker leads the hit line instead.
+    expect(bySpeaker.sessions[0].hits[0]).toMatchObject({ snippet: 'Three reactions lean on familiar gestures.' });
+    expect(turnHits(search(documents, 'jill'))).toEqual([]);
+    expect(turnHits(search(documents, 'felix'))).toEqual([]);
+  });
+
   it('matches word prefixes, never the middle of a word', () => {
     const documents = [doc('s', [
       say('t-1', 'The lighthouse keeper.'),

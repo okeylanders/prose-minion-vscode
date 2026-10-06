@@ -12,6 +12,7 @@
  *   order, the last one as a prefix), then terms matched as whole words, then
  *   the newer session, then the earlier turn.
  * - Title, excerpt-label, and context-label matches are session-level hits.
+ *   A tool reply also matches its speaker ("Cliché"); persona names do not.
  * - Copies and branches repeat their source's turns with the same ids (runway
  *   F14). Each turn appears once, attributed to the newest session holding
  *   it; the others are named as "also in". A shared id only merges when

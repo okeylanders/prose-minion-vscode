@@ -48,7 +48,7 @@ export interface WorkshopRecallEntry {
   readonly position: number;
   readonly turnId: string;
   readonly entry: WorkshopTranscriptEntry;
-  /** Normalized words of the entry's visible text, one space apart. */
+  /** Normalized words of the entry's visible text (and a tool reply's speaker), one space apart. */
   readonly searchText: string;
 }
 
@@ -80,7 +80,7 @@ export function buildWorkshopRecallDocument(
   session.workshop.turns.forEach((turn, index) => {
     const entry = projectWorkshopTranscriptTurn(turn);
     if (entry) {
-      const searchText = normalizeWorkshopRecallText(workshopRecallEntryText(entry));
+      const searchText = normalizeWorkshopRecallText(searchableText(entry));
       entries.push({ position: index + 1, turnId: turn.id, entry, searchText });
     }
   });
@@ -109,6 +109,18 @@ export function workshopRecallEntryText(entry: WorkshopTranscriptEntry): string 
     default:
       return assertNever(entry);
   }
+}
+
+/**
+ * What search indexes: the visible text, plus a tool reply's speaker. A tool
+ * report seldom names its own tool, so without it "cliche" finds only the
+ * run's event line. Persona names stay out: they would match every reply a
+ * persona wrote and flood any-term results. Snippets still come from the
+ * visible text alone, so the speaker is never shown twice.
+ */
+function searchableText(entry: WorkshopTranscriptEntry): string {
+  const text = workshopRecallEntryText(entry);
+  return entry.kind === 'reply' && entry.participant === 'tool' ? `${entry.speaker}\n${text}` : text;
 }
 
 /**

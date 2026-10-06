@@ -117,6 +117,28 @@ describe('buildWorkshopRecallDocument', () => {
     expect(document.entries[1].searchText).toBe('slow it down tide atlas');
   });
 
+  it('indexes a tool reply’s speaker, never a persona’s (Slice 2B)', () => {
+    const document = buildWorkshopRecallDocument(recallSession({
+      sessionId: 's-speakers',
+      turns: [
+        fixtureTurn('t-tool', {
+          participant: 'tool',
+          artifact: 'tool_report',
+          toolId: 'cliche',
+          toolLabel: 'Cliché',
+          personaId: undefined,
+          personaLabel: undefined,
+          content: 'Three stock phrases.'
+        }),
+        fixtureTurn('t-host', { content: 'Agreed.' }),
+        fixtureTurn('t-guest', { participant: 'guest', personaId: 'felix', personaLabel: 'Felix', content: 'Mostly.' })
+      ]
+    }));
+
+    expect(document.entries.map((entry) => entry.searchText))
+      .toEqual(['cliche three stock phrases', 'agreed', 'mostly']);
+  });
+
   it('keeps every position a rewound copy retains (U4)', () => {
     const room = runCanonicalScriptedRoom();
     const workshop = room.session.exportCommittedState();
