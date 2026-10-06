@@ -209,6 +209,7 @@ export function renderWorkshopRecallRead(
   const count = result.sessions.length;
   const sections = result.sessions.map((read, index) => prepareWorkshopRecallReadSection(read, {
     now: options.now,
+    budget,
     detail: result.detail,
     opening: index === 0 ? readOpening(result) : [],
     ...(count > 1 ? { ordinal: { index: index + 1, count } } : {})

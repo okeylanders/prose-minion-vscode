@@ -14,6 +14,7 @@ import {
   WorkshopRecallRenderedRead
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRenderer';
 import {
+  prepareWorkshopRecallReadSection,
   WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS,
   workshopRecallMinimumReadCharacters
 } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
@@ -219,6 +220,21 @@ describe('a read of several sessions', () => {
       .toHaveLength(3);
     const { readCharacters, readSessions } = PROMPT_BUDGETS.workshopTranscriptRecall;
     expect(workshopRecallMinimumReadCharacters(readSessions)).toBeLessThanOrEqual(readCharacters);
+  });
+
+  it('sizes a section only up to the read’s budget, never packing a long chat whole to measure it', () => {
+    const budget = 12_000;
+    const options = { now: NOW, budget, detail: 'full' as const, opening: [] };
+    const longSection = prepareWorkshopRecallReadSection(read(long('a')), options);
+    const shortSection = prepareWorkshopRecallReadSection(read(short), options);
+
+    // About 200,000 characters of text; any need past the budget allocates alike.
+    expect(longSection.need).toBe(budget + 1);
+    expect(longSection.render(budget).text.length).toBeLessThanOrEqual(budget);
+    const complete = shortSection.render(budget);
+    expect(shortSection.need).toBe(complete.text.length);
+    expect(complete.continuation).toEqual([]);
+    expect(shortSection.render(shortSection.need)).toBe(complete);
   });
 
   it('refuses a read that names no session, as the service and codec do, rather than render nothing', () => {

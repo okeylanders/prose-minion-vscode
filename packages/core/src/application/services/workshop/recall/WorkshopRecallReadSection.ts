@@ -73,6 +73,8 @@ export function workshopRecallMinimumReadCharacters(sessions: number): number {
 export interface WorkshopRecallReadSectionOptions {
   /** Epoch ms, for relative dates. */
   readonly now: number;
+  /** The whole read's characters: no share is larger, so no need is measured past it. */
+  readonly budget: number;
   readonly detail: WorkshopRecallReadDetail;
   /** Lines above the section's own: the read's opening, on the first section only. */
   readonly opening: readonly string[];
@@ -92,7 +94,11 @@ export interface WorkshopRecallRenderedSection {
 }
 
 export interface WorkshopRecallReadSection {
-  /** The length of its complete text: no share needs to be larger. */
+  /**
+   * The length of its complete text: no share needs to be larger. A section
+   * whose text cannot fit the whole read needs `budget + 1`, more than any
+   * share, so it is never packed past the read's budget to be measured.
+   */
   readonly need: number;
   /**
    * Its text within `share` characters. A share below the need must be at
@@ -132,11 +138,16 @@ export function prepareWorkshopRecallReadSection(
     };
   };
   const pack = (room: number) => packWorkshopRecallReadWindow(read.ranges, read.header.timezone, room, options.detail);
-  const complete = assemble(pack(Number.POSITIVE_INFINITY));
+  // Text that fits the read's budget packs whole within one character more,
+  // and packing is greedy, so a window that holds every entry there is the
+  // complete text. Otherwise the need is "more than the budget", and nothing
+  // past the budget is formatted to learn by how much (PR 129 follow-up).
+  const measured = pack(options.budget + 1 - header.length - WORKSHOP_RECALL_BLOCK_SEPARATOR.length);
+  const complete = measured.continuation.length === 0 && !measured.truncatedEntry ? assemble(measured) : undefined;
   return {
-    need: complete.text.length,
+    need: complete ? complete.text.length : options.budget + 1,
     // header + separator + blocks (each costed with its separator) + footer, the footer reserved at its cap.
-    render: (share) => complete.text.length <= share
+    render: (share) => complete && complete.text.length <= share
       ? complete
       : assemble(pack(share - header.length - WORKSHOP_RECALL_BLOCK_SEPARATOR.length - READ_FOOTER_CHARACTERS))
   };
