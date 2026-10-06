@@ -22,6 +22,7 @@ import { fixtureTurn } from '@/__tests__/application/services/workshop/transcrip
 import { RECALL_ROOT, recallSession } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 import {
   RecallTodoCorpus,
+  saveBusyRoom,
   saveTodoCorpus,
   TODO_SENTINELS
 } from '@/__tests__/application/services/workshop/recall/workshopRecallTodoFixtures';
@@ -40,6 +41,7 @@ const NO_BOUNDS: WorkshopRecallTodosBounds = {
   omittedByItemLimit: 0,
   notShownByStatus: { open: 0, completed: 0, dismissed: 0 },
   notShownBySource: 0,
+  sessionsWithoutMatchingTodos: 0,
   unreadableSessions: 0,
   listingTruncated: false,
   parsedBytes: 0,
@@ -154,6 +156,23 @@ describe('renderWorkshopRecallTodos over real to-dos', () => {
   });
 });
 
+describe('sessions the item cap emptied (PR 127 review F-02)', () => {
+  it('reports only sessions without a matching to-do as having none, at the default cap', async () => {
+    const corpus = await saveTodoCorpus();
+    const busy = await saveBusyRoom(corpus, 20);
+    const service = new WorkshopTranscriptRecallService(busy.store, busy.coordinator, busy.log);
+
+    const open = renderWorkshopRecallTodos(await service.todos({}), { now: NOW });
+    expect(open.shown).toHaveLength(60);
+    expect(open.notShownForSpace).toBe(0);
+    expect(open.content).not.toMatch(/had no to-do/);
+    expect(open.content).toContain(`5 more to-dos past the ${PROMPT_BUDGETS.workshopTranscriptRecall.todoItems}-item limit.`);
+
+    const completed = renderWorkshopRecallTodos(await service.todos({ status: 'completed' }), { now: NOW });
+    expect(completed.content).toContain('3 scanned sessions had no to-do matching the filters.');
+  });
+});
+
 describe('<match> terms past the eight-term limit (PR 127 review F-01)', () => {
   const NINE_TERMS = 'alpha beta gamma delta epsilon zeta eta theta lighthouse';
   let service: WorkshopTranscriptRecallService;
@@ -240,7 +259,8 @@ describe('renderWorkshopRecallTodos disclosure', () => {
         listingTruncated: true,
         omittedByItemLimit: 7,
         notShownByStatus: { open: 0, completed: 2, dismissed: 1 },
-        notShownBySource: 4
+        notShownBySource: 4,
+        sessionsWithoutMatchingTodos: 1
       }
     }), { now: NOW, todoCharacters: WORKSHOP_RECALL_MINIMUM_TODO_CHARACTERS + 1_000 });
 
@@ -251,7 +271,7 @@ describe('renderWorkshopRecallTodos disclosure', () => {
       'Not scanned: 5 older past <recent>4</recent>; 1 past this call\'s reading budget.',
       '1 session could not be read and was skipped.',
       'This workspace holds more session files than one listing reads; the oldest were not listed.',
-      '1 scanned session had no to-do to show.',
+      '1 scanned session had no to-do matching the filters.',
       '2 completed and 1 dismissed to-dos not shown (status: open).',
       '4 to-dos from other sources not shown (source: cliche).',
       `7 more to-dos past the ${PROMPT_BUDGETS.workshopTranscriptRecall.todoItems}-item limit.`,
@@ -353,6 +373,7 @@ describe('the to-do list bound, with every saved-file label at its maximum', () 
         omittedByItemLimit: big,
         notShownByStatus: { open: big, completed: big, dismissed: big },
         notShownBySource: big,
+        sessionsWithoutMatchingTodos: big,
         unreadableSessions: big,
         listingTruncated: true,
         parsedBytes: big,

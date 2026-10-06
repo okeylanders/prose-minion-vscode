@@ -18,6 +18,7 @@ import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { RECALL_ROOT } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 import {
   RecallTodoCorpus,
+  saveBusyRoom,
   saveTodoCorpus
 } from '@/__tests__/application/services/workshop/recall/workshopRecallTodoFixtures';
 import { ScriptedWorkshopRoom } from '@/__tests__/application/services/workshop/session/ScriptedWorkshopRoom';
@@ -82,6 +83,7 @@ describe('WorkshopTranscriptRecallService.todos filters', () => {
       omittedByItemLimit: 0,
       notShownByStatus: { open: 0, completed: 1, dismissed: 1 },
       notShownBySource: 0,
+      sessionsWithoutMatchingTodos: 0,
       unreadableSessions: 0,
       listingTruncated: false,
       parsedBytes: expect.any(Number),
@@ -268,6 +270,19 @@ describe('to-do bounds and failures', () => {
 
     expect(shown(result).map(([title, ids]) => [title, ids.length])).toEqual([['Endings chat', 1], ['Cliché pass', 1]]);
     expect(result.bounds.omittedByItemLimit).toBe(3);
+  });
+
+  it('counts a session without a matching to-do before the item cap, so one the cap emptied is not one (PR 127 F-02)', async () => {
+    // Defaults throughout: sixty newer to-dos reach todoItems through ordinary use.
+    const busy = await saveBusyRoom(corpus, 20);
+
+    const open = listed(await recallOver(busy).todos({}));
+    expect(shown(open).map(([title, ids]) => [title, ids.length])).toEqual([['Busy room', 60]]);
+    expect(open.bounds).toMatchObject({ sessionsScanned: 4, omittedByItemLimit: 5, sessionsWithoutMatchingTodos: 0 });
+
+    const completed = listed(await recallOver(busy).todos({ status: 'completed' }));
+    expect(shown(completed).map(([title]) => title)).toEqual(['Chapter 6-7 stock signature']);
+    expect(completed.bounds).toMatchObject({ sessionsScanned: 4, omittedByItemLimit: 0, sessionsWithoutMatchingTodos: 3 });
   });
 
   it('stops cold reads at the byte budget, newest first, and reads cached sessions free', async () => {

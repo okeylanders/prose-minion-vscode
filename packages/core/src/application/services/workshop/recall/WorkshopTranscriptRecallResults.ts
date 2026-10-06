@@ -213,6 +213,12 @@ export interface WorkshopRecallTodosBounds extends WorkshopRecallScanBounds {
   readonly notShownByStatus: WorkshopRecallTodoCounts;
   /** To-dos in scanned sessions from another source than `<source>`. */
   readonly notShownBySource: number;
+  /**
+   * Scanned sessions none of whose to-dos the source and status filters
+   * admitted. Counted before `todoItems`, so a session the item limit
+   * emptied is not one of them (PR 127 review F-02).
+   */
+  readonly sessionsWithoutMatchingTodos: number;
 }
 
 export type WorkshopRecallTodosResult =

@@ -255,7 +255,6 @@ function footerLines(result: Listed, notShownForSpace: number, firstCut: string 
       : []),
     ...(bounds.notScannedByByteBudget > 0 ? [`${bounds.notScannedByByteBudget} past this call's reading budget`] : [])
   ];
-  const quiet = bounds.sessionsScanned - result.sessions.length;
   const byStatus = (['open', 'completed', 'dismissed'] as const)
     .filter((status) => bounds.notShownByStatus[status] > 0)
     .map((status) => `${bounds.notShownByStatus[status]} ${status}`);
@@ -269,7 +268,9 @@ function footerLines(result: Listed, notShownForSpace: number, firstCut: string 
       ? [`${recallCount(bounds.unreadableSessions, 'session')} could not be read and ${bounds.unreadableSessions === 1 ? 'was' : 'were'} skipped.`]
       : []),
     ...recallListingNote(bounds.listingTruncated),
-    ...(quiet > 0 ? [`${recallCount(quiet, 'scanned session')} had no to-do to show.`] : []),
+    ...(bounds.sessionsWithoutMatchingTodos > 0
+      ? [`${recallCount(bounds.sessionsWithoutMatchingTodos, 'scanned session')} had no to-do matching the filters.`]
+      : []),
     ...(byStatus.length > 0 ? [`${listed(byStatus)} to-dos not shown (status: ${result.status}).`] : []),
     ...(bounds.notShownBySource > 0
       ? [`${recallCount(bounds.notShownBySource, 'to-do')} from other sources not shown (source: ${recallLabel(result.source ?? '')}).`]

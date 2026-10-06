@@ -171,3 +171,25 @@ export async function saveTodoCorpus(): Promise<RecallTodoCorpus> {
     todos: todos as RecallTodoCorpus['todos']
   };
 }
+
+/**
+ * A room newer than the whole corpus holding `replies` host replies with
+ * three promoted findings each, saved into the corpus's workspace: enough
+ * to-dos to reach `todoItems` through ordinary use alone.
+ */
+export async function saveBusyRoom(corpus: RecallTodoCorpus, replies: number): Promise<SavedRecallRoom> {
+  return saveRecallRoom('Busy room', (session, advance) => {
+    advance(3 * DAY);
+    session.setSessionScope('open');
+    for (let reply = 1; reply <= replies; reply += 1) {
+      const turn = hostReplyWithFindings(session, `busy-${reply}`, `Pass ${reply}?`, findings([
+        { text: `Pass ${reply}: tighten the first line.` },
+        { text: `Pass ${reply}: cut a filter word.` },
+        { text: `Pass ${reply}: check the last beat.` }
+      ]));
+      for (const finding of turn.actionableFindings!) {
+        session.addTodoFromFinding(turn.id, finding.key);
+      }
+    }
+  }, { fs: corpus.fs, idPrefix: 'busy' });
+}

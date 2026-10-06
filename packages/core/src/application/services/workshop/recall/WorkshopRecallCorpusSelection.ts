@@ -195,13 +195,17 @@ export interface WorkshopRecallTodoSelection {
   /** To-dos in `sessions`. */
   readonly kept: number;
   /** Each to-do left out, counted by the rule that left it out. */
-  readonly omitted: Pick<WorkshopRecallTodosBounds, 'omittedByItemLimit' | 'notShownByStatus' | 'notShownBySource'>;
+  readonly omitted: Pick<
+    WorkshopRecallTodosBounds,
+    'omittedByItemLimit' | 'notShownByStatus' | 'notShownBySource' | 'sessionsWithoutMatchingTodos'
+  >;
 }
 
 /**
  * Each document's to-dos, filtered by source and then by status, until
  * `itemLimit` are kept; documents come newest first, and every to-do left
- * out is counted by the rule that left it out.
+ * out is counted by the rule that left it out. A session counts as without
+ * matching to-dos only when the filters, not the item limit, emptied it.
  */
 export function selectWorkshopRecallTodos(
   documents: readonly WorkshopRecallDocument[],
@@ -211,27 +215,41 @@ export function selectWorkshopRecallTodos(
   const notShownByStatus = { open: 0, completed: 0, dismissed: 0 };
   let notShownBySource = 0;
   let omittedByItemLimit = 0;
+  let sessionsWithoutMatchingTodos = 0;
   let kept = 0;
   const sessions: WorkshopRecallTodoSession[] = [];
   for (const document of documents) {
     const todos: WorkshopRecallTodo[] = [];
+    let matching = 0;
     for (const todo of document.todos) {
       if (filters.source !== undefined && todoSourceId(todo) !== filters.source) {
         notShownBySource += 1;
-      } else if (filters.status !== 'all' && todo.status !== filters.status) {
+        continue;
+      }
+      if (filters.status !== 'all' && todo.status !== filters.status) {
         notShownByStatus[todo.status] += 1;
-      } else if (kept >= itemLimit) {
+        continue;
+      }
+      matching += 1;
+      if (kept >= itemLimit) {
         omittedByItemLimit += 1;
       } else {
         todos.push(todo);
         kept += 1;
       }
     }
+    if (matching === 0) {
+      sessionsWithoutMatchingTodos += 1;
+    }
     if (todos.length > 0) {
       sessions.push({ header: document.header, todos });
     }
   }
-  return { sessions, kept, omitted: { omittedByItemLimit, notShownByStatus, notShownBySource } };
+  return {
+    sessions,
+    kept,
+    omitted: { omittedByItemLimit, notShownByStatus, notShownBySource, sessionsWithoutMatchingTodos }
+  };
 }
 
 /** The tool or persona a to-do came from. */
