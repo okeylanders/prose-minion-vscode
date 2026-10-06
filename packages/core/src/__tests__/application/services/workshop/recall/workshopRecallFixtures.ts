@@ -13,6 +13,7 @@ import { WorkshopSessionService } from '@/application/services/workshop/Workshop
 import { WorkshopSessionTimeService } from '@/application/services/workshop/WorkshopSessionTimeService';
 import { messageAttachmentSnapshot } from '@/application/services/workshop/WorkshopSessionRecords';
 import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
+import type { WorkshopStoredTodoItemV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import type { WorkshopConversationSettingsService } from '@/application/services/workshop/WorkshopConversationSettingsService';
 import type { AssistantToolService } from '@services/analysis/AssistantToolService';
 import {
@@ -226,6 +227,10 @@ export interface RecallSessionInput {
   scope?: WorkshopSessionScope;
   contextLabels?: string[];
   turns: WorkshopTurn[];
+  /** The excerpt version the session ended on. */
+  excerptVersion?: number;
+  /** Stored to-dos; real ones come from workshopRecallTodoFixtures. */
+  todos?: WorkshopStoredTodoItemV1[];
 }
 
 /** A synthetic saved session: enough envelope for recall, not a codec fixture. */
@@ -269,7 +274,9 @@ export function recallSession(input: RecallSessionInput): WorkshopPersistedSessi
         content: `SYNTHETIC-CONTEXT-BODY ${label}`,
         addedAt: 0
       })),
-      turns: input.turns
+      turns: input.turns,
+      revisions: { ...state.revisions, excerpt: input.excerptVersion ?? state.revisions.excerpt },
+      todos: input.todos ?? []
     },
     conversations: []
   };

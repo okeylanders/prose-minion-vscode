@@ -11,11 +11,23 @@
  * projection omits a turn, so they survive projection-rule changes. A
  * position is a per-read address; the turn id is the durable identity.
  *
+ * To-dos are the writer's list (D5): what the sidebar shows, each with its
+ * source turn's position and its staleness against the session's final
+ * excerpt version. A finding's key and original text, and a writer edit's
+ * original wording, are never copied in.
+ *
  * Pure: the caller supplies an already-decoded session.
  */
 
-import type { WorkshopPersonaId, WorkshopSessionScope } from '@messages';
+import type {
+  WorkshopPersonaId,
+  WorkshopSessionScope,
+  WorkshopTodoPriority,
+  WorkshopTodoStatus,
+  WorkshopToolId
+} from '@messages';
 import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
+import type { WorkshopStoredTodoItemV1 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
   projectWorkshopTranscriptTurn,
   WorkshopTranscriptEntry
@@ -41,6 +53,11 @@ export interface WorkshopRecallHeader {
   readonly contextLabels: readonly string[];
   /** Ledger length: the last position "turn N" can name. */
   readonly turnCount: number;
+  /** The excerpt version the session ended on; a to-do promoted on another is stale. */
+  readonly excerptVersion: number;
+  /** Open to-dos, stale ones included (D7), unlike the sidebar's count. */
+  readonly openTodos: number;
+  readonly completedTodos: number;
 }
 
 export interface WorkshopRecallEntry {
@@ -52,11 +69,49 @@ export interface WorkshopRecallEntry {
   readonly searchText: string;
 }
 
+/** Where a to-do came from: the participant, never the finding itself (D5). */
+export type WorkshopRecallTodoSource =
+  | { readonly kind: 'tool_report'; readonly label: string; readonly toolId: WorkshopToolId }
+  | {
+      readonly kind: 'host_turn';
+      readonly label: string;
+      readonly personaId: WorkshopPersonaId;
+      /** The host proposed it while synthesizing a tool report. */
+      readonly reportDerived: boolean;
+    }
+  | { readonly kind: 'guest_turn'; readonly label: string; readonly personaId: WorkshopPersonaId };
+
+/** One item of the writer's to-do list, as the sidebar holds it, plus what recall derives. */
+export interface WorkshopRecallTodo {
+  readonly id: string;
+  /** The writer's current wording. */
+  readonly text: string;
+  readonly status: WorkshopTodoStatus;
+  readonly priority?: WorkshopTodoPriority;
+  readonly source: WorkshopRecallTodoSource;
+  /** The turn it was promoted from. */
+  readonly turnId: string;
+  /**
+   * That turn's 1-based ledger position ("turn N"). The codec refuses a
+   * to-do whose turn is gone, so this is absent only for a session that
+   * never passed it.
+   */
+  readonly position?: number;
+  /** The excerpt version it was promoted on. */
+  readonly excerptVersion: number;
+  /** Promoted on another excerpt version than the session ended on (WorkshopTodoLedger's rule). */
+  readonly stale: boolean;
+  /** Epoch ms. */
+  readonly createdAt: number;
+}
+
 export interface WorkshopRecallDocument {
   readonly header: WorkshopRecallHeader;
   /** The session version this document was built from (cache validation). */
   readonly updatedAt: string;
   readonly entries: readonly WorkshopRecallEntry[];
+  /** The writer's to-do list, in the session's own order. */
+  readonly todos: readonly WorkshopRecallTodo[];
   /**
    * An upper bound on the text this document retains, in UTF-16 code units
    * (cache bounding): every string it holds, citation URLs and labels
@@ -77,17 +132,59 @@ export function buildWorkshopRecallDocument(
 ): WorkshopRecallDocument {
   const header = buildHeader(session);
   const entries: WorkshopRecallEntry[] = [];
+  const positions = new Map<string, number>();
   session.workshop.turns.forEach((turn, index) => {
+    positions.set(turn.id, index + 1);
     const entry = projectWorkshopTranscriptTurn(turn);
     if (entry) {
       const searchText = normalizeWorkshopRecallText(searchableText(entry));
       entries.push({ position: index + 1, turnId: turn.id, entry, searchText });
     }
   });
+  const todos = session.workshop.todos.map((todo) => recallTodo(todo, positions, header.excerptVersion));
   // Serializing counts every retained string, including fields added later;
   // its quotes and keys only make the bound more conservative.
-  const characters = JSON.stringify({ header, entries }).length;
-  return { header, updatedAt: session.updatedAt, entries, characters };
+  const characters = JSON.stringify({ header, entries, todos }).length;
+  return { header, updatedAt: session.updatedAt, entries, todos, characters };
+}
+
+/** Copies only what the writer sees in the sidebar, field by field (D5). */
+function recallTodo(
+  todo: WorkshopStoredTodoItemV1,
+  positions: ReadonlyMap<string, number>,
+  finalExcerptVersion: number
+): WorkshopRecallTodo {
+  const position = positions.get(todo.source.turnId);
+  return {
+    id: todo.id,
+    text: todo.text,
+    status: todo.status,
+    ...(todo.priority ? { priority: todo.priority } : {}),
+    source: recallTodoSource(todo.source),
+    turnId: todo.source.turnId,
+    ...(position !== undefined ? { position } : {}),
+    excerptVersion: todo.source.excerptVersion,
+    stale: todo.source.excerptVersion !== finalExcerptVersion,
+    createdAt: todo.createdAt
+  };
+}
+
+function recallTodoSource(source: WorkshopStoredTodoItemV1['source']): WorkshopRecallTodoSource {
+  switch (source.kind) {
+    case 'tool_report':
+      return { kind: source.kind, label: source.participantLabel, toolId: source.toolId };
+    case 'host_turn':
+      return {
+        kind: source.kind,
+        label: source.participantLabel,
+        personaId: source.personaId,
+        reportDerived: source.upstreamReportTurnId !== undefined
+      };
+    case 'guest_turn':
+      return { kind: source.kind, label: source.participantLabel, personaId: source.personaId };
+    default:
+      return assertNever(source);
+  }
 }
 
 /**
@@ -175,10 +272,13 @@ function buildHeader(session: WorkshopPersistedSessionV2): WorkshopRecallHeader 
     ...(scope !== undefined ? { scope } : {}),
     ...(summary.excerptLabel ? { excerptLabel: summary.excerptLabel } : {}),
     contextLabels: workshop.contextAttachments.map((attachment) => attachment.label),
-    turnCount: workshop.turns.length
+    turnCount: workshop.turns.length,
+    excerptVersion: workshop.revisions.excerpt,
+    openTodos: workshop.todos.filter((todo) => todo.status === 'open').length,
+    completedTodos: workshop.todos.filter((todo) => todo.status === 'completed').length
   };
 }
 
-function assertNever(entry: never): never {
-  throw new Error(`Unhandled Workshop transcript entry: ${JSON.stringify(entry)}`);
+function assertNever(value: never): never {
+  throw new Error(`Unhandled session-recall value: ${JSON.stringify(value)}`);
 }
