@@ -48,8 +48,8 @@ function unavailableReason(reason: WorkshopRecallUnavailable['reason']): string 
 export function recallUnknownSession(result: WorkshopRecallUnknownSession): string {
   return recallBody([
     result.liveSession
-      ? `Session ${result.sessionId} is the current session. Session recall reads other saved sessions only.`
-      : `No saved session in this workspace has id ${result.sessionId}. transcript.catalog lists the ids.`
+      ? `Session ${recallLabel(result.sessionId)} is the current session. Session recall reads other saved sessions only.`
+      : `No saved session in this workspace has id ${recallLabel(result.sessionId)}. transcript.catalog lists the ids.`
   ]);
 }
 

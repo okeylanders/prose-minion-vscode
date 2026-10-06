@@ -838,6 +838,7 @@ const WORKSHOP_RECALL_MODULES = [
   'WorkshopRecallReadWindow.ts',
   'WorkshopRecallText.ts',
   'WorkshopRecallTime.ts',
+  'WorkshopRecallTodoList.ts',
   'WorkshopTranscriptRecallRenderer.ts',
   'WorkshopTranscriptRecallResults.ts',
   'WorkshopTranscriptRecallSearch.ts',

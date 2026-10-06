@@ -9,12 +9,12 @@
 /** One label: a title, an id, a file name, a speaker. */
 export const RECALL_LABEL_CHARACTERS = 200;
 
-/** One line, at most RECALL_LABEL_CHARACTERS, marked with "…" when cut. */
-export function recallLabel(text: string): string {
+/** One line, at most `limit` characters, marked with "…" when cut. */
+export function recallLabel(text: string, limit = RECALL_LABEL_CHARACTERS): string {
   const line = text.replace(/\s+/g, ' ').trim();
-  return line.length <= RECALL_LABEL_CHARACTERS
+  return line.length <= limit
     ? line
-    : `${line.slice(0, RECALL_LABEL_CHARACTERS - 1)}…`;
+    : `${line.slice(0, limit - 1)}…`;
 }
 
 /** Labels, comma-separated, until `limit` characters; then a count of the rest. */

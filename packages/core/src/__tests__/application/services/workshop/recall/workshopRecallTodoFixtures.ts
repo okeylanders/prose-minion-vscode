@@ -115,7 +115,14 @@ export async function saveTodoCorpus(): Promise<RecallTodoCorpus> {
     todos.very = session.editTodo(todos.very.id, 'Cut the second "very".');
     todos.very = session.setTodoStatus(todos.very.id, 'completed');
     advance(60_000);
-    session.replaceExcerpt({ text: 'The laughter was a bark. He shaped the cup.', source: { kind: 'manual' } });
+    session.replaceExcerpt({
+      text: 'The laughter was a bark. He shaped the cup.',
+      source: {
+        kind: 'file',
+        sourceUri: `file://${RECALL_ROOT}/drafts/chapter-6-7.md`,
+        relativePath: 'drafts/chapter-6-7.md'
+      }
+    });
     advance(60_000);
     const reply = hostReplyWithFindings(session, 'cadence', 'What now?', findings([
       { text: 'Vary the cadence of the last paragraph.' },

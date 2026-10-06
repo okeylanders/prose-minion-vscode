@@ -16,6 +16,11 @@ describe('recallLabel', () => {
     expect(label).toHaveLength(RECALL_LABEL_CHARACTERS);
     expect(label.endsWith('…')).toBe(true);
   });
+
+  it('clips to a longer limit when one is given, as a to-do’s text is', () => {
+    expect(recallLabel('word '.repeat(1_000), 500)).toHaveLength(500);
+    expect(recallLabel('short text', 500)).toBe('short text');
+  });
 });
 
 describe('recallLabelList', () => {
