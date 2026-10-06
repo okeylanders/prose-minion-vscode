@@ -860,6 +860,7 @@ const WORKSHOP_CAPABILITY_BOUNDARY = [
   path.join(SRC_ROOT, 'shared', 'types', 'workshopCapabilities.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopAnalysisSidePass.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlCodec.ts'),
+  path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopCapabilityXmlDocument.ts'),
   path.join(SRC_ROOT, 'application', 'services', 'workshop', 'WorkshopPersonaCapability.ts'),
   ...collectSourceFiles(WORKSHOP_RECALL_ROOT)
 ];
