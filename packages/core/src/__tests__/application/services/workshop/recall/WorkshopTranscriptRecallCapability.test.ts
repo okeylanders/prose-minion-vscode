@@ -233,7 +233,8 @@ describe('a turn’s read limits', () => {
     expect(reading).toHaveBeenCalledTimes(2);
     expect(third).toMatchObject({
       status: 'rejected',
-      error: 'Only 2 transcript reads are allowed per user turn. Answer from the reads you have.',
+      error: 'Only 2 transcript reads are allowed per user turn. Answer from the reads you have, ' +
+        'and tell the writer which sessions and turns are left for your next turn.',
       metadata: { rejectionReason: 'recall-read-limit' }
     });
   });
@@ -293,7 +294,8 @@ describe('a turn’s read limits', () => {
     expect(second.error).toBe(
       `This read names 2 saved sessions and needs at least 12,000 characters (6,000 per session), but only ` +
         `${left.toLocaleString('en-US')} are left: earlier reads this turn used ${first.content!.length.toLocaleString('en-US')} ` +
-        'of the 20,000-character total. Read fewer sessions at once, or answer from what you have.'
+        'of the 20,000-character total. Read fewer sessions at once, or answer from what you have ' +
+        'and tell the writer which sessions and turns are left for your next turn.'
     );
     // A refusal before the service spends no read: with room again, the turn's second read still runs.
     replaceBudgets({ readCharacters: 15_000, readCharactersPerTurn: 100_000 });
@@ -410,7 +412,8 @@ describe('the context window clamp (D11)', () => {
     });
     expect(result.error).toBe(
       'This read names 3 saved sessions and needs at least 18,000 characters (6,000 per session), but only 16,000 ' +
-        'are left: half the room left in your context window. Read fewer sessions at once, or answer from what you have.'
+        'are left: half the room left in your context window. Read fewer sessions at once, or answer from what you have ' +
+        'and tell the writer which sessions and turns you could not read.'
     );
   });
 
@@ -443,7 +446,8 @@ describe('the context window clamp (D11)', () => {
     expect(result.error).toBe(
       'This read names 1 saved session and needs at least 6,000 characters (6,000 per session), but half the room ' +
         `left in your context window holds only about ${charactersLeft.toLocaleString('en-US')} characters of these ` +
-        `sessions: the minimum read measured ${minimumTokens.toLocaleString('en-US')} tokens against 1,600. Answer from what you have.`
+        `sessions: the minimum read measured ${minimumTokens.toLocaleString('en-US')} tokens against 1,600. Answer from what you have, ` +
+        'and tell the writer which sessions and turns you could not read.'
     );
   });
 });

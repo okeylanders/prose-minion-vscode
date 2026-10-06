@@ -182,7 +182,10 @@ describe('transcript.* through the persona capability', () => {
     const reads = wired.session.readRoomLedger().filter((turn) => turn.artifact === 'transcript_read');
 
     expect(reads.map((turn) => turn.capability!.status)).toEqual(['success', 'success', 'rejected']);
-    expect(reads[2].content).toBe('Only 2 transcript reads are allowed per user turn. Answer from the reads you have.');
+    expect(reads[2].content).toBe(
+      'Only 2 transcript reads are allowed per user turn. Answer from the reads you have, ' +
+        'and tell the writer which sessions and turns are left for your next turn.'
+    );
   });
 
   it('passes the engine’s window to the clamp', async () => {

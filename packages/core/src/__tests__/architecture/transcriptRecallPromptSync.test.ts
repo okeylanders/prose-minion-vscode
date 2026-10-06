@@ -117,6 +117,13 @@ describe('session-recall prompt examples, through the real codec', () => {
     }
   });
 
+  it('teaches answering from a bounded read, then naming and offering what is left', () => {
+    expect(prose).toContain('When a limit or a refusal leaves turns unread, answer from what you have, then tell the writer ' +
+      'which sessions and turns are left and offer to read them next.');
+    expect(prose).toContain('Do not stop to ask first');
+    expect(prose).toContain('instead of presenting a partial answer as complete');
+  });
+
   it('teaches the to-do statuses the codec accepts', () => {
     for (const status of ['open', 'completed', 'dismissed', 'all']) {
       expect(PROMPT).toContain(`\`${status}\``);

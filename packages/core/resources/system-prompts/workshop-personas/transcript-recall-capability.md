@@ -123,8 +123,10 @@ A hint names full detail and a discussion continuation names discussion, so toge
 
 ### Limits and refusals
 
-You may make at most 2 `transcript.read` calls in one user turn. One read holds at most 150,000 characters, and all the reads in one user turn share 300,000. When the room left in your context window is smaller, a read is limited to half of that room. A limited read says so at its top. If you still need more, follow its continuation in a later turn.
+You may make at most 2 `transcript.read` calls in one user turn. One read holds at most 150,000 characters, and all the reads in one user turn share 300,000. When the room left in your context window is smaller, a read is limited to half of that room. A limited read says so at its top, and its continuation names what is left.
 
 When what is left cannot hold even a minimal read of every session you named, the read is refused and says how many characters were left and how many it needed. The same refusal can come after reading, when even the smallest read of those sessions measures more than half the room left in your context window. Either way, read fewer sessions at once, or answer from what you have.
+
+When a limit or a refusal leaves turns unread, answer from what you have, then tell the writer which sessions and turns are left and offer to read them next. Do not stop to ask first; the writer usually wants both the answer and the offer. If the unread turns are the ones the writer asked about, say so at the start instead of presenting a partial answer as complete.
 
 When recall is unavailable, for example with no single-root workspace folder open or while the session is loading, the result says so. Tell the writer plainly and answer without it. When a session id is unknown, the result says so; take the id from a catalog instead of guessing.
