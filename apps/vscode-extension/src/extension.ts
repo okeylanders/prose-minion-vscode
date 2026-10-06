@@ -208,13 +208,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopSessionService,
     outputChannel
   );
-  const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
-    dictionaryService,
-    workshopAnalysisSidePass,
-    contextResourceResolver,
-    workshopSessionService,
-    outputChannel
-  );
   const workshopWriterProfileService = new WorkshopWriterProfileService(
     platform.settings,
     outputChannel
@@ -229,16 +222,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const workshopStandingDirectiveService = new WorkshopStandingDirectiveService(
     workshopSessionService,
     workshopConversationSettingsService
-  );
-  const workshopToolSidePass = new RunWorkshopToolSidePass(
-    assistantToolService,
-    workshopAnalysisSidePass,
-    workshopSessionService,
-    workshopRoomDeliveryService,
-    workshopPersonaCapabilityFactory,
-    outputChannel,
-    workshopWriterProfileService,
-    () => workshopConversationSettingsService.getWebResearch().enabled
   );
   const workshopContextIntakeService = new WorkshopContextIntakeService(
     contextResourceResolver,
@@ -261,6 +244,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     {
       ensureAssistantReady: () => aiResourceManager.ensureInitialized()
     }
+  );
+  // Persona capabilities are minted per turn by this factory. It is built
+  // after the store and the coordinator, the order session recall needs
+  // (ADR 2026-10-05 §9); neither of those constructors uses it.
+  const workshopPersonaCapabilityFactory = new WorkshopPersonaCapabilityFactory(
+    dictionaryService,
+    workshopAnalysisSidePass,
+    contextResourceResolver,
+    workshopSessionService,
+    outputChannel
+  );
+  const workshopToolSidePass = new RunWorkshopToolSidePass(
+    assistantToolService,
+    workshopAnalysisSidePass,
+    workshopSessionService,
+    workshopRoomDeliveryService,
+    workshopPersonaCapabilityFactory,
+    outputChannel,
+    workshopWriterProfileService,
+    () => workshopConversationSettingsService.getWebResearch().enabled
   );
   // Workshop handlers must not observe or mutate the fresh in-memory aggregate
   // until rolling recovery has either completed or deliberately fallen back.
