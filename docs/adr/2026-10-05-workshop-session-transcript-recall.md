@@ -805,6 +805,12 @@ The codec, beyond the plans:
   text; a witness concatenates real continuations and hints and runs them
   back through the codec and the capability. Okey may prefer another
   answer for the disagreeing case.
+- **One session, named once (PR 130 review F-02).** "Several at once, as
+  written" holds for continuations and hints that name different
+  sessions. Two hints naming the same session of a batch, written side by
+  side, name it twice, and a read refuses that as `duplicate-session`,
+  deliberately. Such hints combine their ranges into one `turns="5, 8"`;
+  a witness takes two from rendered text and shows both forms.
 - `<persona>` takes an id or a display label, in any case and spacing,
   and becomes the id. `<source>` takes a tool id, as the to-do list shows
   it, or a persona the same way.
@@ -825,12 +831,24 @@ The sub-adapter:
   or the window at first guess) spends no read.
 - **The clamp.** A read starts from four characters a token of half the
   free window, then measures the rendered evidence, escaped as
-  `formatEvidence` escapes it, metadata included, and renders smaller
-  until it fits, at most four times. Dense text, such as CJK, costs about
-  0.75 tokens a character under the estimator, so it re-renders. If the
-  measured limit falls below the minimum, the read is refused after
-  reading, and that read counts. A witness drives both paths with real
-  saved CJK sessions.
+  `formatEvidence` escapes it, metadata included. Dense text, such as
+  CJK, costs about 0.75 tokens a character under the estimator, so it
+  re-renders. `WorkshopRecallWindowClamp` searches for the largest read
+  that fits, in at most six renders: the first guess, one proportional
+  step, then the minimum, which settles whether any read fits, then
+  interpolation between the largest fit and the smallest miss. It keeps
+  the largest fit it measured, and stops once a fit uses 98% of half the
+  window. A read is refused after reading only when the minimum itself
+  measures over half the window, and that read counts. The refusal names
+  about how many characters of these sessions half the window holds, and
+  what the minimum read measured (`minimumTokens`, `halfWindowTokens`).
+  - PR 130 review F-01: the first build took four proportional steps and,
+    out of attempts, refused with the below-minimum copy. Sessions of
+    different density defeat proportional steps, because fair shares move
+    text between them as the limit shrinks, so a CJK and English batch
+    that fit at 60,000 free tokens was refused at 66,000. Witnesses now
+    sweep mixed batches from 20,000 to 80,000 free tokens, and 2,000
+    synthetic cost curves.
 - **Disclosure.** A read limited by the turn's total or the window says
   so in its opening, after the framing line. The note sits inside the
   first section's header cap (a new `notes` render option), so it never
@@ -890,7 +908,8 @@ Mutation check: every guard was reverted on its own, and each reversion
 fails a witness. That covers the read count, the turn total, the window
 guess, the measurement, rows only for delivered sessions, the archive
 kind, the publishable set, repeatable `<detail>` and `<turns>`, the
-conflict check, the window's call message and headroom, the outcome
+conflict check, the search's minimum fallback, largest fit, room
+tolerance, and single proportional step, the window's call message and headroom, the outcome
 pairing, the empty-read guard, the bounded need, and the hint's session
 and detail.
 
@@ -903,9 +922,10 @@ For Slice 4:
 
 - **The grammar doc** teaches the four calls; `turns="…"` and the
   sibling `<turns>` rule; `<detail>`; following continuations and hints
-  as written, several at once; the read limits and both refusals; persona
-  by label; and `<match>6.7</match>` as the exhaustive form (Slice 2C
-  note).
+  as written, several at once when they name different sessions, and
+  combining the ranges of hints that name the same one (F-02); the read
+  limits and both refusals; persona by label; and `<match>6.7</match>`
+  as the exhaustive form (Slice 2C note).
 - **The dynamic contract** gains its pointer line in
   `createWorkshopCapabilityInstruction`.
 - **`docs/ARCHITECTURE.md` and `AGENTS.md`** gain the family, the new

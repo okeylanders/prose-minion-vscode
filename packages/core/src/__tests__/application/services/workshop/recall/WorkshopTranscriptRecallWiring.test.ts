@@ -257,6 +257,26 @@ describe('continuations and hints, followed together exactly as written', () => 
     expect(next.fulfillment.evidence).toContain(corpus.reports.cliche[0].body.slice(0, 200));
   });
 
+  it('two hints naming one session of a batch combine their ranges; written side by side, they name it twice (PR 130 F-02)', async () => {
+    const first = await invoke(wire(corpus), call('transcript.read',
+      `<session>${corpus.sessions.stock}</session><session>${corpus.sessions.cliche}</session>`));
+    const stock = [...readable(first.fulfillment.evidence).matchAll(/read it in full with (<session turns="(\d+)">([^<]+)<\/session> <detail>full<\/detail>)\]/g)]
+      .filter(([, , , sessionId]) => sessionId === corpus.sessions.stock)
+      .slice(0, 2);
+    expect(stock).toHaveLength(2);
+
+    // Each names its session; one call names a session once, so the literal pair is refused.
+    expect(wire(corpus).capability.inspectRequest(call('transcript.read', stock.map(([, written]) => written).join('\n'))))
+      .toEqual({ kind: 'invalid', reason: 'duplicate-session', field: 'session', operation: 'transcript.read' });
+    // Combined into one session with both ranges, it reads both reports in full.
+    const turns = stock.map(([, , turn]) => turn).join(', ');
+    const next = await invoke(wire(corpus), call('transcript.read',
+      `<session turns="${turns}">${corpus.sessions.stock}</session> <detail>full</detail>`));
+    expect(next.fulfillment.evidence).not.toContain('read it in full with');
+    expect(next.fulfillment.evidence).toContain(corpus.reports.stock[0].body.slice(0, 200));
+    expect(next.fulfillment.evidence).toContain(corpus.reports.stock[1].body.slice(0, 200));
+  });
+
   it('two collapsed reports of a one-session read, beside their session, read in full', async () => {
     const first = await invoke(wire(corpus), call('transcript.read',
       `<session>${corpus.sessions.stock}</session><detail>discussion</detail>`));
