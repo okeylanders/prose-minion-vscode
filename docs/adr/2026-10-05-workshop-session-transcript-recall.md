@@ -727,6 +727,190 @@ For Slice 3:
 - **Provenance** from each rendered session's `delivered` and `collapsed`.
 - **`resultLogSummary`** for the wider read.
 
+## Implementation note 2026-10-06: Slice 3
+
+The `transcript.*` family now works end to end: codec, persona
+capability, recall service, evidence, recorded, persisted, and reopened.
+It stays dormant to models: no prompt advertises it until Slice 4.
+
+Okey decided six questions this ADR and the plans left open:
+
+- **Decision 1: `<turns>` beside `turns="…"`.** A sibling `<turns>` is
+  valid only with exactly one `<session>` that has no `turns` attribute.
+  Otherwise the call is refused as `ambiguous-turns`.
+- **Decision 2: a read below the minimum.** When the turn's remaining
+  total, or the clamped window, is below
+  `workshopRecallMinimumReadCharacters(sessions named)`, the read is
+  refused with a recorded, bounded rejection naming the characters left
+  and the per-session minimum. The renderer never throws, and the session
+  list is never narrowed silently.
+- **Decision 3: to-dos in the manifest.** One `'transcript'` row per
+  `transcript.todos` call, labeled with the sessions it listed, since D6
+  makes the list publishable evidence.
+- **Decision 4: hints in a read of several sessions.** A collapsed
+  report's hint takes the continuation's form:
+  `read it in full with <session turns="12">id</session> <detail>full</detail>`.
+  A bare `<turns>` names no session there, and two such hints followed
+  together would default to discussion and collapse again (the PR 129
+  F-01 trap). A one-session read keeps D10's `<turns>12</turns>`.
+- **The clamp's seam.** Only the engine holds the in-flight request:
+  retained history, this turn's earlier rounds (which may already carry a
+  150K read), and the call itself. So `AgentCapability.fulfill(request,
+  window?)` takes an optional `CapabilityContextWindow` that the engine
+  measures with the preflight's own estimator when the model's live
+  context length is known. The evidence message is counted empty, inside
+  the artifact frame a retained run wraps it in. Other capabilities
+  ignore it. This is the one change outside the Workshop.
+- **The free window subtracts the preflight's headroom.** `free =
+  context_length − estimate(request) − reserved output − headroom`, the
+  room `assertRequestFitsContext` would still admit, so a read clamped to
+  half of it can never by itself fail the next request's preflight.
+  `measureContextWindow` and the preflight share one formula.
+
+Making room first, each in its own behavior-preserving commit:
+
+- **Call parsing** moved out of `WorkshopCapabilityXmlCodec` into
+  `WorkshopCapabilityXmlDocument` (516 → 422 lines, now 444). The parser
+  takes a field policy: every operation's fields stay unique and bare
+  except the ones `transcript.read` may repeat.
+- **Result logging** moved out of `WorkshopPersonaCapability` into
+  `WorkshopCapabilityResultLog`, as an exhaustive family switch (PR #125
+  review F-01). The persona capability went from 804 to 772 lines, and
+  is 826 with recall's delegation branches.
+- **The composition root** builds the factory and the tool side pass after
+  the coordinator.
+
+Modules:
+
+- `WorkshopTranscriptRecallXmlCodec` validates the four requests.
+- `recall/WorkshopTranscriptRecallCapability` is the sub-adapter (444
+  lines), and `recall/WorkshopTranscriptRecallRequestCopy` holds the
+  status line, ticker, log input, and fallback summary it delegates.
+- The read-detail list and the to-do status and source types moved to
+  `shared/types/workshopCapabilities.ts`, where the request types need
+  them.
+- Every new module joined the capability boundary, and the recall ones
+  `WORKSHOP_RECALL_MODULES`. No handler may construct the recall service:
+  one instance owns the document cache.
+
+The codec, beyond the plans:
+
+- **Followed together, exactly as written.** Each continuation of a read
+  of several sessions ends with its `<detail>`, and so does each hint.
+  Two of them followed together carried two `<detail>` elements, which
+  the strict codec refused. A read may now repeat `<detail>` when every
+  copy agrees (copies that disagree are `conflicting-detail`), and repeat
+  the sibling `<turns>` beside its one bare session, merging the ranges
+  under the `turnRanges` cap. Found by testing the rule against rendered
+  text; a witness concatenates real continuations and hints and runs them
+  back through the codec and the capability. Okey may prefer another
+  answer for the disagreeing case.
+- `<persona>` takes an id or a display label, in any case and spacing,
+  and becomes the id. `<source>` takes a tool id, as the to-do list shows
+  it, or a persona the same way.
+- `<detail>` and `<status>` are matched without regard to case.
+- An optional field that is present but empty is `empty-field`, and an
+  empty read is `missing-field: session`.
+- A bad `<status>` is `invalid-status`, a name the plans did not give.
+- The catalog's `<match>` is bounded by `todoMatchCharacters`, as Okey
+  asked, rather than by `queryCharacters`; both are 200.
+- Session ids are at most `sessionIdCharacters` from
+  `[A-Za-z0-9][A-Za-z0-9._:-]*`. A saved file whose id falls outside that
+  shape can be listed but not read; the store mints UUIDs.
+
+The sub-adapter:
+
+- **Reads per turn.** A read that reached the service counts, whatever
+  became of it. A refusal before the service (the read limit, the total,
+  or the window at first guess) spends no read.
+- **The clamp.** A read starts from four characters a token of half the
+  free window, then measures the rendered evidence, escaped as
+  `formatEvidence` escapes it, metadata included, and renders smaller
+  until it fits, at most four times. Dense text, such as CJK, costs about
+  0.75 tokens a character under the estimator, so it re-renders. If the
+  measured limit falls below the minimum, the read is refused after
+  reading, and that read counts. A witness drives both paths with real
+  saved CJK sessions.
+- **Disclosure.** A read limited by the turn's total or the window says
+  so in its opening, after the framing line. The note sits inside the
+  first section's header cap (a new `notes` render option), so it never
+  pushes a read past its budget or changes the minimum.
+- **Status.** Catalog, search, and to-dos succeed, or fail plainly when
+  recall is unavailable or a named session is unknown. A read is a
+  success when every named session was read, partial when some were, and
+  a failure when none were. No `usage`.
+- **Provenance** comes from the rendered text: each session's outcome,
+  delivered ranges (at most twelve) with first and last turn ids, its
+  continuation, its collapsed-report count, and any cut turn; a to-do
+  list's shown session and to-do id pairs. Every saved-file string in
+  metadata is clipped like a label. The renderer reports each section's
+  `characters` for its row's size.
+- **Rows.** A read gives one Past session row per session that delivered
+  turns, labeled with its title and delivered ranges. A session whose
+  requested turns hold nothing visible gets none. A to-do list gives its
+  one row only when it showed a to-do. The Context Budget names the kind
+  "(past session)", lowercase like its siblings.
+
+Persistence and publication:
+
+- No `schemaVersion` bump: the lists widen (ADR 2026-07-30).
+- **Save and reopen** run through the real engine, completion boundary,
+  coordinator, and store. A host turn uses all four operations, and a
+  guest join reads a session. The room saves, reopens, and imports both
+  conversations with their Past session rows. Dropping `'transcript'`
+  from the archive validator, or `transcript.read` from the publishable
+  set, fails it.
+- Slice 0's characterization tests used transcript values as their
+  example of an unlisted operation, artifact, and kind. They now use the
+  reserved `memory` family.
+
+The F-04 residual and the host lifecycle: the store resolves the
+workspace on every call, and `VsCodeWorkspace` reads
+`vscode.workspace.workspaceFolders` live. VS Code terminates and restarts
+the extension host when the first workspace folder is added, removed, or
+changed, and in some transitions from one folder to several
+(`@types/vscode`, `workspace.onDidChangeWorkspaceFolders` and
+`updateWorkspaceFolders`). Adding or removing a later folder makes the
+store report `multi-root`, which recall refuses. So a root cannot switch
+away and back within one read without the host restarting, and that
+kills the read. Accepted as closed; no in-host witness is possible
+without an Extension Development Host.
+
+Compile experiment, each run against all three typecheck projects:
+
+- An operation listed without a family fails at the family switch and at
+  the session's artifact mapping.
+- A new family no consumer handles fails at the labels, the bubble, the
+  evidence framing, the rejected-call copy, the result log, and the
+  artifact mapping.
+- A request shape nobody handles fails at the sub-adapter and the request
+  copy.
+
+Mutation check: every guard was reverted on its own, and each reversion
+fails a witness. That covers the read count, the turn total, the window
+guess, the measurement, rows only for delivered sessions, the archive
+kind, the publishable set, repeatable `<detail>` and `<turns>`, the
+conflict check, the window's call message and headroom, the outcome
+pairing, the empty-read guard, the bounded need, and the hint's session
+and detail.
+
+PR #129 follow-ups, each its own commit: the two dead imports; read
+outcomes paired by request position; the loader's unreachable cache
+branch; `renderWorkshopRecallRead` throws on an empty session list; and a
+section's need packs at most `budget + 1` characters.
+
+For Slice 4:
+
+- **The grammar doc** teaches the four calls; `turns="…"` and the
+  sibling `<turns>` rule; `<detail>`; following continuations and hints
+  as written, several at once; the read limits and both refusals; persona
+  by label; and `<match>6.7</match>` as the exhaustive form (Slice 2C
+  note).
+- **The dynamic contract** gains its pointer line in
+  `createWorkshopCapabilityInstruction`.
+- **`docs/ARCHITECTURE.md` and `AGENTS.md`** gain the family, the new
+  modules, and the engine's window seam.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**

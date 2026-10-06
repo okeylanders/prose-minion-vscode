@@ -244,5 +244,5 @@ from breaking the turn, or the turns after it.
 - [x] A dormant core: catalog match, multi-session read, discussion detail,
       allocation, and budgets, with the witnesses above.
 - [x] Full suite on Node 22 and Node 18, typecheck, build, and lint.
-- [ ] Slice 3's single widening includes the codec, the clamp, and the
+- [x] Slice 3's single widening includes the codec, the clamp, and the
       per-turn total.
