@@ -22,6 +22,7 @@ import {
 } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRenderer';
 import type { WorkshopCapabilityInspection } from '@/application/services/workshop/WorkshopCapabilityXmlCodec';
 import type { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
+import { WORKSHOP_RECALL_READ_DETAILS, type WorkshopRecallReadDetail } from '@shared/types/workshopCapabilities';
 import { RECALL_ROOT, saveRecallRoom } from '@/__tests__/application/services/workshop/recall/workshopRecallFixtures';
 
 const PROMPT = fs.readFileSync(path.resolve(__dirname,
@@ -160,6 +161,8 @@ describe('session-recall prompt hints, against the renderers', () => {
   };
 
   let emitted: string[];
+  /** Each read's rendered text, by its session count and detail. */
+  const reads = new Map<string, string>();
 
   beforeAll(async () => {
     const first = await saveRecallRoom('First chat', (session, advance) => chat(session, advance, 'first'), { idPrefix: 'first' });
@@ -168,14 +171,19 @@ describe('session-recall prompt hints, against the renderers', () => {
     const recall = new WorkshopTranscriptRecallService(second.store, second.coordinator, second.log);
     const signal = new AbortController().signal;
     const now = Date.parse('2026-10-06T12:00:00.000Z');
-    const read = async (sessionIds: string[], detail: 'full' | 'discussion') => renderWorkshopRecallRead(
+    const read = async (sessionIds: string[], detail: WorkshopRecallReadDetail) => renderWorkshopRecallRead(
       await recall.read({ sessions: sessionIds.map((sessionId) => ({ sessionId })), detail }, signal),
       { now, readCharacters: 6_000 * sessionIds.length + 2_000 }
     ).content;
+    // Every combination the renderers tell apart, one session or several, in
+    // every detail, so no read's forms go unsampled (PR 131 review F-01).
+    for (const sessionIds of [[first.savedSessionId], [first.savedSessionId, second.savedSessionId]]) {
+      for (const detail of WORKSHOP_RECALL_READ_DETAILS) {
+        reads.set(`${sessionIds.length}:${detail}`, await read(sessionIds, detail));
+      }
+    }
     const outputs = [
-      await read([first.savedSessionId], 'full'),
-      await read([first.savedSessionId], 'discussion'),
-      await read([first.savedSessionId, second.savedSessionId], 'discussion'),
+      ...reads.values(),
       renderWorkshopRecallSearch(await recall.search({ query: 'lighthouse scene' }, signal), { now })
     ];
     emitted = outputs.flatMap((output) => [
@@ -185,8 +193,8 @@ describe('session-recall prompt hints, against the renderers', () => {
     ].map(([form]) => form));
   });
 
-  it('teaches six forms', () => {
-    expect(taught).toHaveLength(6);
+  it('teaches seven forms', () => {
+    expect(taught).toHaveLength(7);
   });
 
   it('teaches only forms the renderers emit', () => {
@@ -221,8 +229,23 @@ describe('session-recall prompt hints, against the renderers', () => {
         kind: 'request',
         request: { capability: 'transcript.read', sessions: [{ sessionId: A, turns: [{ from: 41, to: 72 }] }], detail: 'discussion' }
       },
+      { kind: 'request', request: { capability: 'transcript.read', sessions: [{ sessionId: A, turns: [{ from: 41, to: 72 }] }], detail: 'full' } },
       { kind: 'request', request: { capability: 'transcript.read', sessions: [{ sessionId: A, turns: [{ from: 12, to: 12 }] }], detail: 'full' } },
       { kind: 'request', request: { capability: 'transcript.read', sessions: [{ sessionId: A, turns: [{ from: 10, to: 15 }] }] } }
     ]);
   });
+
+  it.each(WORKSHOP_RECALL_READ_DETAILS)(
+    'keeps %s detail explicit when a read of several sessions’ continuations are followed alone or together',
+    (detail) => {
+      const continuations = [...reads.get(`2:${detail}`)!.matchAll(/Continue with (<session turns="[^"]+">[^<]+<\/session> <detail>\w+<\/detail>)\./g)]
+        .map(([, written]) => written);
+      expect(continuations).toHaveLength(2);
+      for (const written of continuations) {
+        expect(codec.inspect(call(written))).toMatchObject({ kind: 'request', request: { sessions: [expect.anything()], detail } });
+      }
+      expect(codec.inspect(call(continuations.join(' '))))
+        .toMatchObject({ kind: 'request', request: { sessions: [expect.anything(), expect.anything()], detail } });
+    }
+  );
 });

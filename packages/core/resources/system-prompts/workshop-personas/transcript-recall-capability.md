@@ -87,7 +87,8 @@ A read that does not show everything it was asked for ends with a continuation, 
 - `Continue with <turns>41-72</turns>.` ends a read of one session in full detail.
 - `Continue with <turns>41-72</turns> <detail>discussion</detail>.` ends a read of one session in discussion detail.
 - `read it in full with <turns>12</turns> <detail>full</detail>` marks a report in a read of one session.
-- `Continue with <session turns="41-72">6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10</session> <detail>discussion</detail>.` ends one session's part of a read of several.
+- `Continue with <session turns="41-72">6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10</session> <detail>discussion</detail>.` ends one session's part of a read of several in discussion detail.
+- `Continue with <session turns="41-72">6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10</session> <detail>full</detail>.` ends one session's part of a read of several in full detail.
 - `read it in full with <session turns="12">6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10</session> <detail>full</detail>` marks a report in a read of several.
 - `Read around a hit with transcript.read, for example <session>6b0f3c9e-5d2a-4c71-9f3e-2a8d1b7c4e10</session> <turns>10-15</turns>.` follows a search.
 
