@@ -339,6 +339,18 @@ describe('transcript.read of several sessions (D9)', () => {
     expect(reads).toHaveBeenCalledTimes(1);
   });
 
+  it('lets cancellation win over the last read, too', async () => {
+    const controller = new AbortController();
+    const readNamed = corpus.store.readNamed.bind(corpus.store);
+    jest.spyOn(corpus.store, 'readNamed').mockImplementation(async (sessionId) => {
+      controller.abort();
+      return readNamed(sessionId);
+    });
+
+    await expect(recallOver(corpus).read({ sessions: [{ sessionId: corpus.sessions.stock }] }, controller.signal))
+      .rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('reads warm sessions free from the cache, and writes nothing', async () => {
     const before = new Map([...corpus.fs.files].map(([file, bytes]) => [file, Buffer.from(bytes).toString('base64')]));
     const writes = (['writeCurrent', 'saveNamed', 'updateNamed', 'renameNamed', 'duplicateNamed', 'deleteNamed'] as const)

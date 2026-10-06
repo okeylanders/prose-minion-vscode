@@ -172,6 +172,22 @@ describe('a read of several sessions', () => {
     expect(rendered.content).toMatch(/Continue with <turns>\d+-100<\/turns>\.$/);
   });
 
+  it('says the listing stopped short when a named id may be among the files it did not list', () => {
+    const truncated = (sessions: WorkshopRecallSessionRead[]): WorkshopRecallReadResult => {
+      const result = batch(sessions);
+      return result.available ? { ...result, bounds: { ...result.bounds, listingTruncated: true } } : result;
+    };
+    const note = 'This workspace holds more session files than one listing reads; the oldest were not listed.';
+
+    expect(renderWorkshopRecallRead(truncated([read(short), { outcome: 'unknown-session', sessionId: 'old', liveSession: false }]), { now: NOW }).content)
+      .toContain(`${note}\nSession 1 of 2 · “Short chat”`);
+    // The live room's id was never missing from the listing.
+    expect(renderWorkshopRecallRead(truncated([read(short), { outcome: 'unknown-session', sessionId: 'live', liveSession: true }]), { now: NOW }).content)
+      .not.toContain(note);
+    expect(renderWorkshopRecallRead(batch([read(short), { outcome: 'unknown-session', sessionId: 'old', liveSession: false }]), { now: NOW }).content)
+      .not.toContain(note);
+  });
+
   it('says so when a one-session read asks for discussion detail', () => {
     const rendered = renderWorkshopRecallRead(batch([read(short)], 'discussion'), { now: NOW });
 
