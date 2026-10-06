@@ -42,6 +42,7 @@ export type WorkshopCapabilityRejectionReason =
   | 'too-many-sessions'
   | 'duplicate-session'
   | 'invalid-detail'
+  | 'conflicting-detail'
   | 'unknown-persona'
   | 'unknown-source'
   | 'invalid-status'

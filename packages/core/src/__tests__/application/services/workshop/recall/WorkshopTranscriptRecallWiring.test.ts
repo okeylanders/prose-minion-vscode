@@ -24,6 +24,7 @@ import type { DictionaryService } from '@services/dictionary/DictionaryService';
 import type { ContextResourceProviderFactory } from '@/domain/models/ContextGeneration';
 import type { CapabilityContextWindow } from '@orchestration/AgentRunContracts';
 import type { WorkshopCapabilityRequest } from '@shared/types/workshopCapabilities';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { saveExcerptCorpus, RecallExcerptCorpus } from '@/__tests__/application/services/workshop/recall/workshopRecallExcerptFixtures';
 import {
   RECALL_SENTINELS,
@@ -208,6 +209,65 @@ describe('transcript.* through the persona capability', () => {
     const codec = new WorkshopCapabilityXmlCodec();
     expect(codec.inspect(call('transcript.delete', '<session>a</session>'))).toEqual({ kind: 'invalid', reason: 'unknown-capability' });
     expect(codec.inspect(call('memory.read', '<session>a</session>'))).toEqual({ kind: 'invalid', reason: 'unknown-capability' });
+  });
+});
+
+describe('continuations and hints, followed together exactly as written', () => {
+  let corpus: RecallExcerptCorpus;
+
+  beforeAll(async () => {
+    corpus = await saveExcerptCorpus();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  /** The evidence's text as the model reads it: unescaped. */
+  const readable = (evidence: string): string =>
+    evidence.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
+  it('every continuation of a read of several sessions, in one call, keeps its detail and continues', async () => {
+    jest.replaceProperty(PROMPT_BUDGETS, 'workshopTranscriptRecall', { ...PROMPT_BUDGETS.workshopTranscriptRecall, readCharacters: 24_000 });
+    const first = await invoke(wire(corpus), call('transcript.read',
+      `<session>${corpus.sessions.stock}</session><session>${corpus.sessions.cliche}</session><detail>full</detail>`));
+    const continuations = [...readable(first.fulfillment.evidence).matchAll(/Continue with (<session turns="[^"]+">[^<]+<\/session> <detail>\w+<\/detail>)/g)]
+      .map(([, written]) => written);
+    expect(continuations).toHaveLength(2);
+
+    const next = await invoke(wire(corpus), call('transcript.read', continuations.join(' ')));
+    expect(next.request).toMatchObject({ capability: 'transcript.read', detail: 'full' });
+    expect(next.fulfillment.evidence).toContain('status="success"');
+    expect(next.fulfillment.evidence).toContain('Read of 2 saved sessions, in the order asked, in full detail.');
+    // Each continues at its first unread report, shown in full rather than collapsed.
+    expect(next.fulfillment.evidence).toContain(corpus.reports.stock[0].body.slice(0, 200));
+    expect(next.fulfillment.evidence).toContain(corpus.reports.cliche[0].body.slice(0, 200));
+  });
+
+  it('two chats’ collapsed reports, in one call, read in full', async () => {
+    const first = await invoke(wire(corpus), call('transcript.read',
+      `<session>${corpus.sessions.stock}</session><session>${corpus.sessions.cliche}</session>`));
+    const hints = [...readable(first.fulfillment.evidence).matchAll(/read it in full with (<session turns="\d+">([^<]+)<\/session> <detail>full<\/detail>)\]/g)];
+    const written = [corpus.sessions.stock, corpus.sessions.cliche].map((id) => hints.find(([, , sessionId]) => sessionId === id)![1]);
+
+    const next = await invoke(wire(corpus), call('transcript.read', written.join('\n')));
+    expect(next.request).toMatchObject({ detail: 'full' });
+    expect(next.fulfillment.evidence).not.toContain('read it in full with');
+    expect(next.fulfillment.evidence).toContain(corpus.reports.stock[0].body.slice(0, 200));
+    expect(next.fulfillment.evidence).toContain(corpus.reports.cliche[0].body.slice(0, 200));
+  });
+
+  it('two collapsed reports of a one-session read, beside their session, read in full', async () => {
+    const first = await invoke(wire(corpus), call('transcript.read',
+      `<session>${corpus.sessions.stock}</session><detail>discussion</detail>`));
+    const written = [...readable(first.fulfillment.evidence).matchAll(/read it in full with (<turns>\d+<\/turns>)\]/g)]
+      .slice(0, 2).map(([, hint]) => hint);
+    expect(written).toHaveLength(2);
+
+    const next = await invoke(wire(corpus), call('transcript.read', `<session>${corpus.sessions.stock}</session>${written.join(' ')}`));
+    expect(next.fulfillment.evidence).not.toContain('read it in full with');
+    expect(next.fulfillment.evidence).toContain(corpus.reports.stock[0].body.slice(0, 200));
+    expect(next.fulfillment.evidence).toContain(corpus.reports.stock[1].body.slice(0, 200));
   });
 });
 

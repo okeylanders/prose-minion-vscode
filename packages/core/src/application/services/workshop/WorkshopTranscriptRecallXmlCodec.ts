@@ -14,6 +14,11 @@
  *   optional `turns="…"`; a sibling `<turns>` is accepted only beside
  *   exactly one session that carries none (otherwise which session it
  *   meant is ambiguous);
+ * - continuations and collapsed-report hints must work followed together
+ *   exactly as written, and each carries its own `<detail>` (and, from a
+ *   one-session read, its own `<turns>`). So a read may repeat `<detail>`
+ *   when every copy agrees, and repeat the sibling `<turns>`, whose ranges
+ *   merge under the same `turnRanges` cap;
  * - a persona may be named by id or display label and becomes its id.
  *
  * Every rejection names its operation, so the persona capability can leave
@@ -61,9 +66,15 @@ const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 const TURN_ITEM = /^([1-9]\d{0,5})(?:\s*-\s*([1-9]\d{0,5}))?$/;
 const RECENT = /^[1-9]\d{0,5}$/;
 
-/** `transcript.read` alone repeats a field: `<session>`, each with an optional `turns`. */
+/**
+ * `transcript.read` alone repeats fields: `<session>`, each with an
+ * optional `turns`, and the `<detail>` and `<turns>` that followed hints
+ * and continuations each bring along.
+ */
+const READ_REPEATABLE_FIELDS: readonly string[] = ['session', 'detail', 'turns'];
+
 export const WORKSHOP_TRANSCRIPT_RECALL_FIELD_POLICY: WorkshopCapabilityXmlFieldPolicy = {
-  repeatable: (operation, field) => operation === 'transcript.read' && field === 'session',
+  repeatable: (operation, field) => operation === 'transcript.read' && READ_REPEATABLE_FIELDS.includes(field),
   attributes: (operation, field) => (operation === 'transcript.read' && field === 'session' ? ['turns'] : [])
 };
 
@@ -141,18 +152,26 @@ class TranscriptRequestValidator {
         const turns = element.attributes.turns;
         return turns === undefined ? { sessionId } : { sessionId, turns: this.turnSelection(turns) };
       });
-      const sibling = this.call.fields.get('turns');
-      if (sibling !== undefined) {
+      const siblings = this.values('turns');
+      if (siblings.length > 0) {
         // `<turns>` belongs to a session only when exactly one is named, with no ranges of its own.
         if (sessions.length !== 1 || sessions[0].turns !== undefined) {
           throw new Refusal('ambiguous-turns', 'turns');
         }
-        sessions[0] = { ...sessions[0], turns: this.turnSelection(sibling) };
+        const turns = siblings.flatMap((sibling) => this.turnSelection(sibling));
+        if (turns.length > this.budgets.turnRanges) {
+          throw new Refusal('invalid-turn-selection', 'turns');
+        }
+        sessions[0] = { ...sessions[0], turns };
+      }
+      const details = [...new Set(this.values('detail').map(readDetail))];
+      if (details.length > 1) {
+        throw new Refusal('conflicting-detail', 'detail');
       }
       return {
         capability: 'transcript.read',
         sessions,
-        ...this.optional('detail', (value) => ({ detail: readDetail(value) }))
+        ...(details.length === 1 ? { detail: details[0] } : {})
       };
     });
   }
@@ -208,6 +227,11 @@ class TranscriptRequestValidator {
       }
       throw error;
     }
+  }
+
+  /** Every value a field was given, in document order. */
+  private values(field: string): string[] {
+    return this.call.elements.filter((element) => element.name === field).map((element) => element.value);
   }
 
   private optional<T>(field: string, read: (value: string) => T): T | Record<string, never> {

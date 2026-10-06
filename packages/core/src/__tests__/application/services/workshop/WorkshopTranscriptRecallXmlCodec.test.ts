@@ -76,6 +76,24 @@ describe('transcript.* requests the codec accepts', () => {
     });
   });
 
+  // Continuations and hints followed together, exactly as written, each bring their <detail> (and <turns>).
+  it.each([
+    [
+      `<session turns="10-16">${SESSION}</session> <detail>discussion</detail> <session turns="3">${OTHER}</session> <detail>discussion</detail>`,
+      { sessions: [{ sessionId: SESSION, turns: [{ from: 10, to: 16 }] }, { sessionId: OTHER, turns: [{ from: 3, to: 3 }] }], detail: 'discussion' }
+    ],
+    [
+      `<session turns="12">${SESSION}</session> <detail>full</detail><session turns="7">${OTHER}</session> <detail>Full</detail>`,
+      { sessions: [{ sessionId: SESSION, turns: [{ from: 12, to: 12 }] }, { sessionId: OTHER, turns: [{ from: 7, to: 7 }] }], detail: 'full' }
+    ],
+    [
+      `<session>${SESSION}</session><turns>12</turns> <turns>15</turns>`,
+      { sessions: [{ sessionId: SESSION, turns: [{ from: 12, to: 12 }, { from: 15, to: 15 }] }] }
+    ]
+  ])('a read that follows several hints or continuations together: %s', (body, expected) => {
+    expect(request('transcript.read', body)).toEqual({ capability: 'transcript.read', ...expected });
+  });
+
   it('a read of the most sessions one call may name, in the order asked', () => {
     const ids = Array.from({ length: budgets.readSessions }, (_, index) => `session-${index}`);
     expect(request('transcript.read', ids.map((id) => `<session>${id}</session>`).join('')))
@@ -118,7 +136,11 @@ describe('transcript.* requests the codec refuses', () => {
     ['transcript.search', '<query> </query>', 'empty-field', 'query'],
     ['transcript.catalog', '<match></match>', 'empty-field', 'match'],
     ['transcript.read', `<session>${SESSION}</session><session> </session>`, 'empty-field', 'session'],
-    ['transcript.read', `<session>${SESSION}</session><detail>full</detail><detail>full</detail>`, 'duplicate-field', 'detail'],
+    ['transcript.read', `<session>${SESSION}</session><detail>full</detail><detail>discussion</detail>`, 'conflicting-detail', 'detail'],
+    ['transcript.read', `<session>${SESSION}</session><turns>1-2</turns><turns>${Array.from({ length: budgets.turnRanges }, (_, index) => index + 5).join(',')}</turns>`,
+      'invalid-turn-selection', 'turns'],
+    ['transcript.read', `<session>${SESSION}</session><session>${OTHER}</session><turns>3</turns><turns>4</turns>`, 'ambiguous-turns', 'turns'],
+    ['transcript.catalog', '<persona>jill</persona><persona>cliff</persona>', 'duplicate-field', 'persona'],
     ['transcript.search', '<query>a</query><query>b</query>', 'duplicate-field', 'query'],
     ['transcript.todos', `<session>${SESSION}</session><session>${OTHER}</session>`, 'duplicate-field', 'session'],
     ['transcript.search', `<query>tide</query><session turns="1">${SESSION}</session>`, 'field-attributes', 'session'],
