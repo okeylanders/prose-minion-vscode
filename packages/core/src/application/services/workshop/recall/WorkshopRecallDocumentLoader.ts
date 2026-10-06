@@ -47,7 +47,7 @@ export interface WorkshopRecallLoadedDocuments {
 }
 
 type LoadedDocument =
-  | { readonly document: WorkshopRecallDocument; readonly cacheHit: boolean; readonly parsedBytes: number }
+  | { readonly document: WorkshopRecallDocument; readonly parsedBytes: number }
   | { readonly document?: undefined };
 
 export class WorkshopRecallDocumentLoader {
@@ -109,15 +109,12 @@ export class WorkshopRecallDocumentLoader {
     };
   }
 
+  /** A cold read: `loadAll` has already looked in the cache, with nothing awaited since. */
   private async load(
     summary: WorkshopRecallSessionSummary,
     scope: WorkshopRecallReadScope,
     signal?: AbortSignal
   ): Promise<LoadedDocument> {
-    const cached = this.cache.get(summary.sessionId, summary.updatedAt);
-    if (cached) {
-      return { document: cached, cacheHit: true, parsedBytes: 0 };
-    }
     // Never read under a scope that no longer holds, nor keep what such a read returned.
     scope.assertHolds();
     let session: WorkshopPersistedSessionV2 | undefined;
@@ -137,7 +134,7 @@ export class WorkshopRecallDocumentLoader {
     }
     const document = buildWorkshopRecallDocument(session);
     this.cache.remember(document, scope.generation);
-    return { document, cacheHit: false, parsedBytes: estimatedSourceBytes(session) };
+    return { document, parsedBytes: estimatedSourceBytes(session) };
   }
 }
 
