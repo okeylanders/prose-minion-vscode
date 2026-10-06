@@ -60,7 +60,7 @@ function recallMetrics(result: WorkshopCapabilityResult): string {
     typeof metadata?.[key] === 'string' ? metadata[key] as string : 'n/a';
   const values = [
     `outcome=${word('outcome')}`,
-    `sessions=${count('sessionsRead')}`,
+    `sessions=${count('sessionCount')}`,
     `parsedBytes=${count('parsedBytes')}`,
     `cacheHits=${count('cacheHits')}`,
     `unreadable=${count('unreadableSessions')}`,

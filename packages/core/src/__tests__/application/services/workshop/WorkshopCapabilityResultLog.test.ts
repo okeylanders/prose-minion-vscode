@@ -40,7 +40,7 @@ describe('a persona capability’s completion log metrics, by family', () => {
     expect(workshopCapabilityResultLogSummary(result({
       capability: 'transcript.read',
       metadata: {
-        outcome: 'read', sessionsRead: 3, parsedBytes: 4_096, cacheHits: 1, unreadableSessions: 0,
+        outcome: 'read', sessionCount: 3, parsedBytes: 4_096, cacheHits: 1, unreadableSessions: 0,
         characters: 52_000, truncated: true, limitedBy: 'context-window',
         sessions: [{ title: 'Chapter 6.7 stock pass' }]
       }
