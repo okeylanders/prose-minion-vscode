@@ -148,6 +148,9 @@ describe('WorkshopSessionService committed persistence', () => {
       [{ key: 'finding-1', ordinal: 1, text: 'Restore the breath.', priority: 'high' }]
     )!;
     session.addTodoFromFinding(guestTurn.id, 'finding-1');
+    // The store validates the live export before serializing it; JSON would
+    // drop an undefined-valued key the codec refuses.
+    expect(() => parseWorkshopSessionStateV1(session.exportCommittedState())).not.toThrow();
 
     const restored = new WorkshopSessionService(() => 2);
     restored.hydrateCommittedState(

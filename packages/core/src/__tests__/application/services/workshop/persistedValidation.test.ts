@@ -1,9 +1,27 @@
 import {
   boundedArrayAt,
+  exactKeys,
   nullableBoundedStringAt
 } from '@/application/services/workshop/persistedValidation';
 
 describe('persistedValidation', () => {
+  describe('exactKeys', () => {
+    it('accepts an optional key whose value is undefined', () => {
+      expect(() => exactKeys({ kind: 'a', note: undefined }, 'draft', ['kind'], ['note']))
+        .not.toThrow();
+    });
+
+    it('rejects an unknown key by name', () => {
+      expect(() => exactKeys({ kind: 'a', extra: 'x' }, 'draft', ['kind']))
+        .toThrow('draft contains unknown field extra.');
+    });
+
+    it('says when an unknown key holds undefined, since no saved file shows it', () => {
+      expect(() => exactKeys({ kind: 'a', extra: undefined }, 'draft', ['kind']))
+        .toThrow('draft contains unknown field extra (its value is undefined).');
+    });
+  });
+
   describe('boundedArrayAt', () => {
     it.each([
       ['minimum', ['one']],

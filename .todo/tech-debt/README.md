@@ -88,6 +88,8 @@ elsewhere.
 
 ## Recently resolved
 
+- [Guest to-do makes the room unsavable](../archive/tech-debt/2026-10-06-workshop-guest-todo-unsavable.md): guest sources no longer carry the host-only `upstreamReportTurnId`; a real-store witness covers autosave, Save-as-named, and reopen. Fixed on 2026-10-06.
+
 - [Rewind and Branch main smoke](../archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md): all checks confirmed by Okey on 2026-10-02.
 
 - [Rewind and Branch release preparation](../archive/tech-debt/2026-10-01-workshop-rewind-and-branch-release-preparation.md): v2.7.0 published on 2026-10-02.

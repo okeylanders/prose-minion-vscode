@@ -30,7 +30,10 @@ export function exactKeys(
   const allowed = new Set([...required, ...optional]);
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) {
-      throw new Error(`${label} contains unknown field ${key}.`);
+      // JSON never yields undefined, so an undefined value here means a live
+      // object is being validated for a write: the key is in no saved file.
+      const note = value[key] === undefined ? ' (its value is undefined)' : '';
+      throw new Error(`${label} contains unknown field ${key}${note}.`);
     }
   }
   for (const key of required) {
