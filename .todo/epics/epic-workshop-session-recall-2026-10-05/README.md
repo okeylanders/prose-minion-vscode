@@ -50,7 +50,7 @@ verification, and rollback seams.
 | 1 | Behavior-preserving ownership | Projection moved to `transcript/` with a per-turn projector; one exhaustive `workshopCapabilityFamily()` replaces four prefix checks; operation, artifact, and context-kind unions derived from single `as const` lists their validators read | Done — `2e54b88`, `357f5bb`, `24ad18d`, `875f203` |
 | 2 | Recall core (dormant) | Pure document, search, and renderer modules; the recall service; coordinator `recallScope()`; budgets block | Done, merged in #126 (`57d097a`). Build: `ae7b7b6`, `50d4da5`, `3242662`, `7938d7e`, `0a3cdeb`, `05c0f43`, `dffc1a8`. Review fixes: `f3779af`, `cce3889`, `b4cab1b`, `689f96e`, `65ea614`, `3b5b6e5`, `970ed75`. Re-review fixes: `17647eb`, `07de2c4` |
 | 2B | To-dos (dormant) — [plan](slice-2b-transcript-todos.md) | `transcript.todos` core: the writer's to-do lists across saved sessions (D5–D7), the family `<match>` rule (D8), and tool-reply speakers indexed | Done, merged in [#127](https://github.com/okeylanders/prose-minion-vscode/pull/127) (`ababfde`). Build: `170b8fa`, `4e9cafb`, `265d7ca`, `fdc771c`, `c521ffd`, `fb39346`, `6ed1a95`. Review fixes: `f6c3bef`, `84b1977` |
-| 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Built, in review in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129): `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17` |
+| 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Built, in review in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129): `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17`. Review fixes: `fe4c150`, `f93f309` |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Not started |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Not started |
 | 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | Not started |
@@ -183,6 +183,17 @@ verification, and rollback seams.
     Node 18.20.8 (baseline 256 / 3,271). Typecheck, the production build
     with `verify:bundle`, ESLint on the 22 changed TypeScript files, and
     `git diff --check` are clean.
+
+- **2026-10-06 — PR #129 review fixes.** Okey's review approved Slice 2C
+  with two nits, each reproduced against the real store.
+  - F-01: a continuation did not carry the read's detail, so following one
+    could change it. Every continuation now names it (`fe4c150`), except
+    that of a one-session read in full detail.
+  - F-02: a saved time past any Date aborted the whole read once Slice 2C
+    sized it. Such a time now renders as unknown (`f93f309`).
+
+  Full suite 259 suites / 3,326 tests on Node 22 and Node 18; typecheck,
+  build, and lint of the changed files are clean.
 
 ## Decisions (accepted 2026-10-05, as recommended)
 

@@ -13,10 +13,47 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🔵 Nit | Continuation guidance omits the detail mode, which can change when fewer sessions remain | A default discussion batch's sole continuation defaults to full; preserving discussion fits all three remaining replies instead of one | **Open**, nonblocking guidance improvement |
-| F-02 | 🔵 Nit | Eager complete-size rendering broadens an inherited invalid-timestamp failure to earlier windows | A deliberately malformed but codec-accepted tail timestamp aborts rendering before a previously readable 6K prefix window | **Open**, optional malformed-file hardening; not a normal-use blocker |
+| F-01 | 🔵 Nit | Continuation guidance omits the detail mode, which can change when fewer sessions remain | A default discussion batch's sole continuation defaults to full; preserving discussion fits all three remaining replies instead of one | **Open**, nonblocking guidance improvement. Fixed by the author in `fe4c150` (see the author response below); awaiting re-review |
+| F-02 | 🔵 Nit | Eager complete-size rendering broadens an inherited invalid-timestamp failure to earlier windows | A deliberately malformed but codec-accepted tail timestamp aborts rendering before a previously readable 6K prefix window | **Open**, optional malformed-file hardening; not a normal-use blocker. Fixed by the author in `f93f309` (see the author response below); awaiting re-review |
 
 **Verdict: Approve for integration into `epic/workshop-session-recall`, subject to required checks on the final branch head.** No Blocking, High, or Standard finding was established. F-01 is a continuation-guidance trap; F-02 is a low-priority robustness edge involving deliberately altered saved data. This approves the dormant Slice 2C core, not live persona acceptance, and does not authorize a merge.
+
+## Author response (`fe4c150`, `f93f309`)
+
+These are the author's claims, offered for re-review. They are not verified findings.
+
+**F-01 ([`fe4c150`](https://github.com/okeylanders/prose-minion-vscode/commit/fe4c150)).** Every continuation carries the read's resolved detail. The one exception is a single-session read in full detail, whose continuation gets that detail by default, so its text is unchanged.
+
+- In a read of several sessions:
+
+  > Continue with <session turns="10-16">long-2</session> <detail>discussion</detail>.
+
+  An explicit full batch says `<detail>full</detail>`, so its continuations followed together do not fall back to discussion. A single-session discussion read says `Continue with <turns>12-40</turns> <detail>discussion</detail>.`
+- **Witnesses.** Both follow the continuation exactly as written: they parse `<session turns>` and `<detail>` from the rendered text.
+  - **The review's reproduction**, through the real coordinator and store: a short chat, and a chat with five tool reports each followed by a 3,200-character synthesis, at a 12,000-character cap. The long chat's sole continuation says discussion. Followed as written, the next read stays in discussion and finishes, with no continuation left. All five syntheses arrive across the two reads, and the second read shows no report body.
+  - **The inverse**, an explicit full batch from `saveExcerptCorpus()` at 12,000 characters: both continuations say full. Followed together, they stay full and collapse no report.
+  - Renderer witnesses pin the full-batch line and the single-session discussion line.
+- **Bound.** The detail element adds at most 28 characters to a footer. With every part at its bound, the largest footer is now 929 characters, within the 1,000-character reserve. The read sweep still holds.
+
+**F-02 ([`f93f309`](https://github.com/okeylanders/prose-minion-vscode/commit/f93f309)).**
+
+- `WorkshopRecallClock` renders a time no Date can hold as "an unknown time" under "an unknown date". It decides that with `workshopRecallTimeKnown`. The read window measures no gap to or from such a time, so it never reports a gap of millions of days. The turn itself is still shown, so nothing is dropped or passed off as complete.
+- Saved and started dates are ISO strings the codec validates. Only a turn's numeric `timestamp` can reach this path. The to-do list already had its own fallback for creation dates.
+- **Witness.** It follows the review's reproduction: a room saved through the real coordinator and store, with only the final turn's time changed to `Number.MAX_SAFE_INTEGER`. The store still decodes it. Without the fix, the witness reproduced the `RangeError`. With the fix:
+  - a 6,000-character first window delivers its prefix and continues to the last turn;
+  - the whole read shows `[turn N · an unknown time · Jill]` under `── an unknown date ──`, with no gap marker;
+  - a batch beside a healthy session reads both.
+
+**Mutation check.** Each fix was reverted against the new witnesses:
+
+- F-01: three reversions each fail at least one witness: no detail in continuations, discussion only, and multi-session reads only.
+- F-02: four reversions each fail the witness: each of the three clock fallbacks, and the gap guard.
+- The PR's documented separator-charge survivor was rechecked. It is still equivalent: the footer reserve absorbs it.
+
+**Verification at `f93f309`:**
+
+- Full suite on Node 22.22.0 and Node 18.20.8: **259 suites / 3,326 tests** (3,322 at the reviewed head, plus four witnesses).
+- `npm run typecheck`, `npm run build` (including `verify:bundle`), ESLint on the six changed TypeScript files, and `git diff --check` are all clean.
 
 ## F-01 — Carry the resolved detail mode in continuation guidance
 

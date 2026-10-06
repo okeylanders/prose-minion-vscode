@@ -667,8 +667,13 @@ Multi-session reads (D9):
   naming an id the listing may have cut off adds the listing note. Sections
   are numbered "Session 2 of 3 · …", a refinement.
 - **Continuation.** In a read of several sessions, each footer continues
-  with `<session turns="12-40">id</session>`. A single-session read still
-  says `<turns>12-40</turns>`. The collapsed report line keeps
+  with `<session turns="12-40">id</session> <detail>discussion</detail>`.
+  Every continuation names the read's detail, because the default depends
+  on how many sessions a call names: one continuation followed alone, or
+  several followed together, would otherwise change it (PR 129 review
+  F-01). The one exception is a single-session read in full detail. Its
+  continuation gets that detail by default, so it still says
+  `<turns>12-40</turns>`. The collapsed report line keeps
   `<turns>N</turns>` as D10 specifies, inside its numbered section.
 - **Provenance.** The rendered read reports, for each session in request
   order: its outcome, share, delivered ranges with their turn ids,
@@ -684,6 +689,12 @@ Discussion detail (D10):
   truncation notice and sources go with its body.
 - The window reports each collapsed turn's position and id.
 
+Saved times: a turn's time only has to be finite, so a saved file can
+hold one past anything a Date represents. Such a time renders as "an
+unknown time" under "an unknown date", and no gap is measured to or from
+it. Sizing a read formats every requested turn, so without this fallback
+one such turn aborted the whole read (PR 129 review F-02).
+
 Budgets (D11): as decided, each pinned. Two more pins: every share of the
 largest read clears the minimum, and `readCharacters ≤ readCharactersPerTurn`.
 
@@ -694,8 +705,9 @@ reversion fails a witness except two, both equivalent today:
   final scope check still refuses the call and empties the cache. It stays
   as defense in depth.
 - **Charging each section's separator to its share.** The largest footer,
-  measured with every part at its bound, is 901 characters. The 1,000-character
-  reserve always absorbs the 2 characters. The charge stays, so the bound
+  measured with every part at its bound, is 929 characters, including the
+  continuation's `<detail>`. The 1,000-character reserve always absorbs the
+  2 characters. The charge stays, so the bound
   holds by arithmetic rather than by slack.
 
 The check also found two gaps, now witnessed: cancellation during the only
