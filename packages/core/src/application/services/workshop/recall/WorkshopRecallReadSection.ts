@@ -12,7 +12,7 @@
  *   share delivers at least one entry, whole or as a readable head, so
  *   following a continuation always makes progress.
  * - In a read of several sessions each section is numbered, and its
- *   continuation names its own session with its own ranges.
+ *   continuation, like each collapsed report's hint, names its own session.
  */
 
 import { WorkshopRecallClock } from '@/application/services/workshop/recall/WorkshopRecallTime';
@@ -137,7 +137,8 @@ export function prepareWorkshopRecallReadSection(
       ...(window.truncatedEntry ? { truncatedEntry: window.truncatedEntry } : {})
     };
   };
-  const pack = (room: number) => packWorkshopRecallReadWindow(read.ranges, read.header.timezone, room, options.detail);
+  const named = options.ordinal ? read.header.sessionId : undefined;
+  const pack = (room: number) => packWorkshopRecallReadWindow(read.ranges, read.header.timezone, room, options.detail, named);
   // Text that fits the read's budget packs whole within one character more,
   // and packing is greedy, so a window that holds every entry there is the
   // complete text. Otherwise the need is "more than the budget", and nothing

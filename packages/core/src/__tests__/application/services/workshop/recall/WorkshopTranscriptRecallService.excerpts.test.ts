@@ -444,16 +444,35 @@ describe('summarize the chats on chapter 6.7, and what is left (the use case, en
     expect(content).not.toContain('The beat lands on a stock gesture');
   });
 
-  it('names each report’s turn and word count in its one line', () => {
+  it('names each report’s turn, word count, and session in its one line', () => {
     const rendered = renderWorkshopRecallRead(read, { now: NOW });
-    for (const report of [...corpus.reports.stock, ...corpus.reports.cliche]) {
+    const reports = [
+      ...corpus.reports.stock.map((report) => ({ ...report, sessionId: corpus.sessions.stock })),
+      ...corpus.reports.cliche.map((report) => ({ ...report, sessionId: corpus.sessions.cliche }))
+    ];
+    for (const report of reports) {
       const words = countWords(report.body).toLocaleString('en-US');
       expect(content).toMatch(new RegExp(
         `\\[turn (\\d+) · \\d+:\\d\\d [AP]M · ${report.toolLabel.replace('&', '\\&')} report · ${words} words · ` +
-        'read it in full with <turns>\\1</turns>\\]'
+        `read it in full with <session turns="\\1">${report.sessionId}</session> <detail>full</detail>\\]`
       ));
     }
     expect(rendered.sessions.map((session) => session.collapsed.length)).toEqual([0, EXCERPT_REPORT_PASSES, EXCERPT_REPORT_PASSES]);
+  });
+
+  it('reads two chats’ reports in full when their hints are followed together, exactly as written', async () => {
+    const hints = [...content.matchAll(/read it in full with <session turns="(\d+)">([^<]+)<\/session> <detail>(\w+)<\/detail>\]/g)];
+    const stock = hints.find(([, , sessionId]) => sessionId === corpus.sessions.stock)!;
+    const cliche = hints.find(([, , sessionId]) => sessionId === corpus.sessions.cliche)!;
+    // Both hints, as one call: without its <detail>, two sessions would default to discussion.
+    const again = renderWorkshopRecallRead(readOf(await service.read({
+      sessions: [stock, cliche].map(([, turn, sessionId]) => ({ sessionId, turns: [{ from: Number(turn), to: Number(turn) }] })),
+      detail: stock[3] as WorkshopRecallReadDetail
+    })), { now: NOW });
+
+    expect(again.sessions.map((session) => session.collapsed)).toEqual([[], []]);
+    expect(again.content).toContain(corpus.reports.stock[0].body);
+    expect(again.content).toContain(corpus.reports.cliche[0].body);
   });
 
   it('would not fit in full detail: the same chats overflow the budget and continue', async () => {

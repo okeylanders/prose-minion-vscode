@@ -124,6 +124,16 @@ describe('discussion detail (D10)', () => {
     ]);
   });
 
+  it('names the session and full detail in each hint when the read names several sessions', () => {
+    const named = windowText(packWorkshopRecallReadWindow([range], 'America/Chicago', 1_000_000, 'discussion', 'session-b').blocks);
+
+    expect(named).toContain(
+      '[turn 2 · 9:30 AM · Stock & Signature report · 2,431 words · ' +
+        'read it in full with <session turns="2">session-b</session> <detail>full</detail>]'
+    );
+    expect(named).not.toContain('<turns>');
+  });
+
   it('keeps the writer’s messages, host and guest replies, and events whole', () => {
     expect(text).toContain('[turn 1 · 9:30 AM · Writer]\nRun the report, then tell me what you think.');
     expect(text).toContain('[turn 3 · 9:30 AM · Jill]\nStart with the laughter; the cup can wait.');
