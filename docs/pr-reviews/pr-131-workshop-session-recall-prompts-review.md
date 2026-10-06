@@ -33,6 +33,7 @@ These are the author's claims, offered for re-review. They are not verified find
 
 - [`c1a552d`](https://github.com/okeylanders/prose-minion-vscode/commit/c1a552d): `readCharactersPerTurn` is 300,000, twice `readCharacters`, amending D11. A five-chat read had used 147,948 of 150,000 characters, leaving the turn's second read nothing. The window clamp still caps each read.
 - [`e2eb7e9`](https://github.com/okeylanders/prose-minion-vscode/commit/e2eb7e9): when a limit leaves turns unread, the persona answers from what it has, names what is left, and offers to read it next. The read refusals end the same way.
+- [`c20e4c0`](https://github.com/okeylanders/prose-minion-vscode/commit/c20e4c0): a real-store test of recalling a session that itself read another session and committed a Gesture Playground draft. The nested transcript and the widget payload never come back; the one-line Session Recall event, the commit's visible line, and the replies do.
 
 ## F-01 — Include full-detail batch continuations in the prompt-sync matrix
 

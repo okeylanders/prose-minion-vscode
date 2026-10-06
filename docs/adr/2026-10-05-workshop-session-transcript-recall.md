@@ -1030,6 +1030,17 @@ Witnesses:
   prompt carries the whole grammar, and each first message is unchanged.
 - Path-chain tests cover both bases. The codec test covers the pointer
   line in both resource branches.
+- Recall of a recall (`WorkshopTranscriptRecallNested.test.ts`).
+  - The setup: a saved session reads another through the real capability
+    and commits a real Gesture Playground draft, with markers in A's
+    reply and in the widget's payload.
+  - The check: recalled later, that session shows the one-line Session
+    Recall event, the commit's visible line and widget label, and the
+    replies, and none of the markers. §3's one projection makes this
+    true for every capability family; the witness pins the two cases a
+    writer relies on.
+  - Mutation check: projecting recall evidence, or reading the stored
+    widget artifact or draft, fails it.
 
 Mutation check: each change was reverted on its own, and a witness failed
 each time. That covered the hint's detail, the path entry, the pointer
