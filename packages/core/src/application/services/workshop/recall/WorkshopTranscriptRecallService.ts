@@ -1,0 +1,444 @@
+/**
+ * Session recall's engine (ADR 2026-10-05 §2, §4–§5): catalog, search, and
+ * read over the writer's other saved Workshop sessions. It returns data,
+ * never prose; the renderer writes the model-facing text, and a persona
+ * capability is one consumer among several to come.
+ *
+ * Corpus rules, all here:
+ * - Named sessions only. The live room is excluded by the coordinator's
+ *   `recallScope()`, which also refuses a changed workspace (F4, F7).
+ * - Read-only, through consumer-owned ports. The corpus port has no writer,
+ *   and its `list` takes no query: the store's content search walks private
+ *   bodies (F1). Nothing here initializes, flushes, or touches current.json.
+ * - Every bound is disclosed: sessions searched and not searched (by the
+ *   session cap or the byte budget), unreadable files, and the listing cap.
+ *   One unreadable file is counted, never fatal.
+ *
+ * Documents are cached by session id and trusted only while the listing's
+ * `updatedAt` matches. The cache's memory bounds are module-local limits no
+ * prompt sees, like WORKSHOP_SESSION_STORE_LIMITS.
+ */
+
+import type { WorkshopPersonaId, WorkshopSessionScope } from '@messages';
+import type { LogSink } from '@/platform';
+import type { WorkshopPersistedSessionV2 } from '@/application/services/workshop/WorkshopPersistedSession';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  buildWorkshopRecallDocument,
+  WorkshopRecallDocument
+} from '@/application/services/workshop/recall/WorkshopRecallDocument';
+import {
+  WorkshopRecallDocumentCache,
+  WorkshopRecallDocumentCacheLimits
+} from '@/application/services/workshop/recall/WorkshopRecallDocumentCache';
+import {
+  parseWorkshopRecallQuery,
+  searchWorkshopRecallDocuments
+} from '@/application/services/workshop/recall/WorkshopTranscriptRecallSearch';
+import {
+  catalogSession,
+  normalizeTurnRanges,
+  recallableSessions,
+  resolveRange,
+  unknownSession,
+  withParticipant
+} from '@/application/services/workshop/recall/WorkshopRecallCorpusSelection';
+import type {
+  WorkshopRecallCatalogResult,
+  WorkshopRecallReadResult,
+  WorkshopRecallSearchBounds,
+  WorkshopRecallSearchResult,
+  WorkshopRecallTurnRange,
+  WorkshopRecallUnavailable,
+  WorkshopRecallUnavailableReason
+} from '@/application/services/workshop/recall/WorkshopTranscriptRecallResults';
+
+export const WORKSHOP_TRANSCRIPT_RECALL_LIMITS = Object.freeze({
+  /** Documents kept warm between calls: one full newest-first scan and some reads. */
+  maximumCachedDocuments: 64,
+  /** Cached text, in UTF-16 code units (about 64 MB). */
+  maximumCachedCharacters: 32 * 1024 * 1024,
+  /**
+   * What a cold read that produced no document is charged against the search
+   * budget. A failed read reports no size, so it is charged the most it can
+   * have cost: the store's exact-read ceiling (a test pins the two together).
+   */
+  unreadableSessionBytes: 25 * 1024 * 1024
+});
+
+export interface WorkshopTranscriptRecallLimits extends WorkshopRecallDocumentCacheLimits {
+  readonly unreadableSessionBytes: number;
+}
+
+export type WorkshopRecallScope =
+  | { available: true; liveSessionId: string }
+  | { available: false; reason: WorkshopRecallUnavailableReason };
+
+/** Satisfied by WorkshopSessionPersistenceCoordinator. */
+export interface WorkshopRecallScopePort {
+  recallScope(): WorkshopRecallScope;
+}
+
+/**
+ * The listing fields recall may read. `preview` and `excerptIdentity` are
+ * deliberately absent, so no recall code can reach them (F6).
+ */
+export interface WorkshopRecallSessionSummary {
+  readonly sessionId: string;
+  readonly title: string;
+  readonly updatedAt: string;
+  readonly savedAt?: string;
+  readonly timezone: string;
+  readonly hostPersonaId: WorkshopPersonaId;
+  readonly participantPersonaIds: readonly WorkshopPersonaId[];
+  readonly turnCount: number;
+  readonly scope?: WorkshopSessionScope;
+  readonly excerptLabel?: string;
+}
+
+/** Satisfied by WorkshopSessionStore: three read methods and nothing else. */
+export interface WorkshopRecallCorpusPort {
+  availability():
+    | { available: true }
+    | { available: false; reason: 'no-workspace' | 'multi-root' };
+  /** Always called without a query: content search reads private bodies (F1). */
+  list(
+    query: undefined,
+    signal?: AbortSignal
+  ): Promise<{ sessions: readonly WorkshopRecallSessionSummary[]; truncated: boolean }>;
+  readNamed(sessionId: string): Promise<WorkshopPersistedSessionV2 | undefined>;
+}
+
+export interface WorkshopTranscriptRecallServiceOptions {
+  now?: () => number;
+  limits?: Partial<WorkshopTranscriptRecallLimits>;
+}
+
+/** The scope a call opened: who the live room was, and the cache generation then. */
+interface OpenScope {
+  readonly liveSessionId: string;
+  readonly generation: number;
+}
+
+interface RecallCorpus {
+  readonly scope: OpenScope;
+  readonly sessions: readonly WorkshopRecallSessionSummary[];
+  readonly listingTruncated: boolean;
+}
+
+interface LoadedDocuments {
+  readonly documents: WorkshopRecallDocument[];
+  readonly notSearchedByByteBudget: number;
+  readonly unreadableSessions: number;
+  readonly parsedBytes: number;
+  readonly unreadableBytesCharged: number;
+  readonly cacheHits: number;
+}
+
+type LoadedDocument =
+  | { readonly document: WorkshopRecallDocument; readonly cacheHit: boolean; readonly parsedBytes: number }
+  | { readonly document?: undefined };
+
+/** The scope a call opened stopped holding before the call finished. */
+class RecallScopeChangedError extends Error {
+  constructor(readonly unavailable: WorkshopRecallUnavailable) {
+    super(`Session recall scope changed (${unavailable.reason}).`);
+    this.name = 'RecallScopeChangedError';
+  }
+}
+
+export class WorkshopTranscriptRecallService {
+  private readonly now: () => number;
+  private readonly limits: WorkshopTranscriptRecallLimits;
+  private readonly cache: WorkshopRecallDocumentCache;
+
+  constructor(
+    private readonly corpus: WorkshopRecallCorpusPort,
+    private readonly scope: WorkshopRecallScopePort,
+    private readonly outputChannel: LogSink,
+    options: WorkshopTranscriptRecallServiceOptions = {}
+  ) {
+    this.now = options.now ?? Date.now;
+    this.limits = { ...WORKSHOP_TRANSCRIPT_RECALL_LIMITS, ...options.limits };
+    this.cache = new WorkshopRecallDocumentCache(this.limits);
+  }
+
+  catalog(
+    request: { personaId?: WorkshopPersonaId },
+    signal?: AbortSignal
+  ): Promise<WorkshopRecallCatalogResult> {
+    return this.withCorpus(signal, async (corpus) => {
+      const matching = withParticipant(corpus.sessions, request.personaId);
+      return {
+        available: true,
+        outcome: 'catalog',
+        ...(request.personaId ? { personaId: request.personaId } : {}),
+        sessions: matching
+          .slice(0, PROMPT_BUDGETS.workshopTranscriptRecall.catalogSessions)
+          .map(catalogSession),
+        matchingSessions: matching.length,
+        listingTruncated: corpus.listingTruncated
+      };
+    });
+  }
+
+  search(
+    request: { query: string; sessionId?: string; personaId?: WorkshopPersonaId },
+    signal?: AbortSignal
+  ): Promise<WorkshopRecallSearchResult> {
+    const started = this.now();
+    const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
+    return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallSearchResult> => {
+      let candidates = withParticipant(corpus.sessions, request.personaId);
+      if (request.sessionId !== undefined) {
+        const named = corpus.sessions.find((session) => session.sessionId === request.sessionId);
+        if (!named) {
+          return unknownSession(request.sessionId, corpus.scope.liveSessionId);
+        }
+        candidates = candidates.filter((session) => session === named);
+      }
+      const scanned = candidates.slice(0, budgets.searchSessions);
+      const loaded = await this.loadDocuments(scanned, budgets.searchSourceBytes, corpus.scope, signal);
+      const query = parseWorkshopRecallQuery(request.query);
+      const search = searchWorkshopRecallDocuments(loaded.documents, query, {
+        hits: budgets.searchHits,
+        hitsPerSession: budgets.searchHitsPerSession,
+        snippetCharacters: budgets.snippetCharacters
+      });
+      const bounds: WorkshopRecallSearchBounds = {
+        corpusSessions: candidates.length,
+        sessionsSearched: loaded.documents.length,
+        notSearchedBySessionLimit: candidates.length - scanned.length,
+        notSearchedByByteBudget: loaded.notSearchedByByteBudget,
+        unreadableSessions: loaded.unreadableSessions,
+        listingTruncated: corpus.listingTruncated,
+        parsedBytes: loaded.parsedBytes,
+        unreadableBytesCharged: loaded.unreadableBytesCharged,
+        cacheHits: loaded.cacheHits
+      };
+      this.log(
+        `search terms=${query.terms.length} mode=${search.mode ?? 'none'} ` +
+        `sessions=${bounds.sessionsSearched}/${bounds.corpusSessions} ` +
+        `notSearched=${bounds.notSearchedBySessionLimit}+${bounds.notSearchedByByteBudget} ` +
+        `unreadable=${bounds.unreadableSessions} parsedBytes=${bounds.parsedBytes} ` +
+        `unreadableCharge=${bounds.unreadableBytesCharged} ` +
+        `cacheHits=${bounds.cacheHits} hits=${search.shownHits}/${search.matchedHits} ` +
+        `durationMs=${this.now() - started}`
+      );
+      return {
+        available: true,
+        outcome: 'searched',
+        queryText: request.query,
+        query,
+        ...(request.personaId ? { personaId: request.personaId } : {}),
+        ...(request.sessionId !== undefined ? { sessionId: request.sessionId } : {}),
+        search,
+        bounds
+      };
+    });
+  }
+
+  /**
+   * Resolve the requested turn ranges, or the whole transcript from turn 1
+   * when none are given. Packing into the read budget is the renderer's
+   * job, because only it knows what the text costs.
+   */
+  read(
+    request: { sessionId: string; turns?: readonly WorkshopRecallTurnRange[] },
+    signal?: AbortSignal
+  ): Promise<WorkshopRecallReadResult> {
+    return this.withCorpus(signal, async (corpus): Promise<WorkshopRecallReadResult> => {
+      const summary = corpus.sessions.find((session) => session.sessionId === request.sessionId);
+      if (!summary) {
+        return unknownSession(request.sessionId, corpus.scope.liveSessionId);
+      }
+      const loaded = await this.loadDocument(summary, corpus.scope, signal);
+      if (!loaded.document) {
+        return {
+          available: true,
+          outcome: 'unreadable',
+          sessionId: summary.sessionId,
+          title: summary.title
+        };
+      }
+      const { document } = loaded;
+      const fromStart = request.turns === undefined || request.turns.length === 0;
+      const ranges = fromStart
+        ? [{ from: 1, to: Math.max(1, document.header.turnCount) }]
+        : normalizeTurnRanges(request.turns!);
+      this.log(
+        `read ranges=${ranges.length} cacheHit=${loaded.cacheHit} parsedBytes=${loaded.parsedBytes}`
+      );
+      return {
+        available: true,
+        outcome: 'read',
+        header: document.header,
+        fromStart,
+        ranges: ranges.map((range) => resolveRange(document, range)),
+        cacheHit: loaded.cacheHit
+      };
+    });
+  }
+
+  /**
+   * Open the scope, list the corpus, and run `work` over it. The scope is
+   * checked again after the listing, around every cold read, and before the
+   * result is returned: the store resolves the workspace on every call, so
+   * a check at the entry alone would not bound what a call reads (PR 126
+   * review F-04). A call whose scope changed returns only the refusal.
+   */
+  private async withCorpus<T>(
+    signal: AbortSignal | undefined,
+    work: (corpus: RecallCorpus) => Promise<T>
+  ): Promise<T | WorkshopRecallUnavailable> {
+    throwIfAborted(signal);
+    const current = this.currentScope();
+    if ('reason' in current) {
+      return current;
+    }
+    const scope: OpenScope = { liveSessionId: current.liveSessionId, generation: this.cache.generation };
+    try {
+      const listing = await this.corpus.list(undefined, signal);
+      throwIfAborted(signal);
+      this.assertScope(scope);
+      const result = await work({
+        scope,
+        sessions: recallableSessions(listing.sessions, scope.liveSessionId),
+        listingTruncated: listing.truncated
+      });
+      this.assertScope(scope);
+      return result;
+    } catch (error) {
+      if (error instanceof RecallScopeChangedError) {
+        return error.unavailable;
+      }
+      throw error;
+    }
+  }
+
+  /** The coordinator's scope, confirmed by the store's own availability. */
+  private currentScope(): { liveSessionId: string } | WorkshopRecallUnavailable {
+    const scope = this.scope.recallScope();
+    if (!scope.available) {
+      return { available: false, reason: scope.reason };
+    }
+    const availability = this.corpus.availability();
+    if (!availability.available) {
+      return { available: false, reason: availability.reason };
+    }
+    return { liveSessionId: scope.liveSessionId };
+  }
+
+  /**
+   * Throw when the scope a call opened no longer holds. Whatever the call
+   * already read is suspect, so the cache is emptied and its generation
+   * advanced: reads still in flight cannot repopulate it.
+   */
+  private assertScope(scope: OpenScope): void {
+    const current = this.currentScope();
+    if (!('reason' in current) && current.liveSessionId === scope.liveSessionId) {
+      return;
+    }
+    this.cache.invalidate();
+    this.log('Recall scope changed during a call; its results and the document cache were discarded');
+    // A different live room under the same workspace: the room is changing.
+    throw new RecallScopeChangedError('reason' in current ? current : { available: false, reason: 'not-ready' });
+  }
+
+  /**
+   * Newest first. Cached documents are free; a cold read spends the byte
+   * budget whether or not it produces a document.
+   */
+  private async loadDocuments(
+    sessions: readonly WorkshopRecallSessionSummary[],
+    byteBudget: number,
+    scope: OpenScope,
+    signal?: AbortSignal
+  ): Promise<LoadedDocuments> {
+    const documents: WorkshopRecallDocument[] = [];
+    let notSearchedByByteBudget = 0;
+    let unreadableSessions = 0;
+    let parsedBytes = 0;
+    let unreadableBytesCharged = 0;
+    let cacheHits = 0;
+    for (const summary of sessions) {
+      throwIfAborted(signal);
+      const cached = this.cache.get(summary.sessionId, summary.updatedAt);
+      if (cached) {
+        documents.push(cached);
+        cacheHits += 1;
+        continue;
+      }
+      if (parsedBytes + unreadableBytesCharged >= byteBudget) {
+        notSearchedByByteBudget += 1;
+        continue;
+      }
+      const loaded = await this.loadDocument(summary, scope, signal);
+      if (!loaded.document) {
+        unreadableSessions += 1;
+        unreadableBytesCharged += this.limits.unreadableSessionBytes;
+        continue;
+      }
+      parsedBytes += loaded.parsedBytes;
+      documents.push(loaded.document);
+    }
+    return { documents, notSearchedByByteBudget, unreadableSessions, parsedBytes, unreadableBytesCharged, cacheHits };
+  }
+
+  private async loadDocument(
+    summary: WorkshopRecallSessionSummary,
+    scope: OpenScope,
+    signal?: AbortSignal
+  ): Promise<LoadedDocument> {
+    const cached = this.cache.get(summary.sessionId, summary.updatedAt);
+    if (cached) {
+      return { document: cached, cacheHit: true, parsedBytes: 0 };
+    }
+    // Never read under a scope that no longer holds, nor keep what such a read returned.
+    this.assertScope(scope);
+    let session: WorkshopPersistedSessionV2 | undefined;
+    try {
+      session = await this.corpus.readNamed(summary.sessionId);
+    } catch (error) {
+      // A read that failed because the call was cancelled is a cancellation.
+      throwIfAborted(signal);
+      this.log(`Skipped unreadable session ${summary.sessionId}: ${errorMessage(error)}`);
+      return {};
+    }
+    throwIfAborted(signal);
+    this.assertScope(scope);
+    if (!session || session.sessionId !== summary.sessionId) {
+      this.log(`Skipped session ${summary.sessionId}: it was not found where the listing put it`);
+      return {};
+    }
+    const document = buildWorkshopRecallDocument(session);
+    this.cache.remember(document, scope.generation);
+    return { document, cacheHit: false, parsedBytes: estimatedSourceBytes(session) };
+  }
+
+  private log(line: string): void {
+    this.outputChannel.appendLine(`[WorkshopTranscriptRecall] ${line}`);
+  }
+}
+
+/**
+ * The bytes a cold parse cost, estimated by serializing the session the way
+ * the store writes it. The store reports no size, and the ADR leaves it
+ * unchanged. Decoding normalizes a few fields, so this lands within a few
+ * percent of the file for sessions the current build wrote.
+ */
+function estimatedSourceBytes(session: WorkshopPersistedSessionV2): number {
+  return Buffer.byteLength(JSON.stringify(session, undefined, 2), 'utf8');
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    const error = new Error('Session recall was cancelled.');
+    error.name = 'AbortError';
+    throw error;
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

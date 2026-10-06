@@ -332,6 +332,120 @@ also showed where that guarantee is weakest. A switch whose return type admits
 `undefined` compiles with a case missing, so every such family switch carries
 an explicit `never` default.
 
+## Implementation note 2026-10-05: Slice 2
+
+The recall core has landed under `application/services/workshop/recall/`,
+dormant: nothing calls the service yet. Okey decided three questions this ADR
+left open:
+
+- **`recallScope()` fails closed before hydration.** Its reason union gains
+  `'not-ready'`, returned until `initialize()` completes. Before then the live
+  identity is a provisional id, so the saved copy of the room being restored
+  could appear in its own corpus. The rule otherwise mirrors
+  `assertAcceptedWorkspace`; both now read one private predicate, so they
+  cannot drift.
+- **Cold-parse bytes are estimated.** The store reports no file size, and §2
+  leaves the store unchanged. The service therefore charges `searchSourceBytes`
+  with the UTF-8 length of the session serialized the way the store writes it.
+  Decoding normalizes a few fields, so the estimate lands within a few percent
+  of the file. A cold read that produces no document reports no size, so it
+  is charged `unreadableSessionBytes`: the store's 25 MiB exact-read ceiling,
+  the most it can have cost (PR 126 review F-02; a test pins the two
+  together). The budget is checked before each cold read, so one call may
+  exceed it by at most one file, which is still bounded by that ceiling.
+- **A query made only of stop words keeps its words.** "What did we do then"
+  searches those words, and the phrase bonus ranks the exact phrase first.
+
+Refinements within §4's rules:
+
+- **Normalization:** words fold case, diacritics, and compatibility forms. A
+  possessive "'s" is stripped, so "keeper's" finds "keeper", and other
+  apostrophes are dropped, so "dont" finds "don't".
+- **Ranking:** after matched terms and the phrase bonus, a term that matches a
+  whole word outranks one that matches only a prefix, so "tide" ranks "the
+  tide" above "tidewater". Ties then fall to the newer session and the earlier
+  turn, as §4 specifies.
+- **Lineage:** two turns merge only when their projected entries are exactly
+  equal: turn id, text, speaker, labels, sources, and timestamp. Equality
+  after search normalization is not enough (PR 126 review F-05). Ids are
+  `turn-<counter>-<role>-<epochMs>`, so a collision is improbable; when one
+  happens, both turns still appear and neither is hidden.
+
+Responsibilities and file plan:
+
+- **Packing belongs to the renderer.** The service returns each requested range
+  resolved to its entries, with the first and last turn id. Only the renderer
+  knows what the text costs, so it packs the window and reports the delivered
+  ranges, with their turn ids, and the continuation ranges. Slice 3's
+  provenance metadata comes from the rendered read.
+- **Ten modules, not four.** Every file stays under the repo's 500-line
+  ceiling. The ports stay in the service. Alongside it:
+  - `WorkshopTranscriptRecallResults`: the result types.
+  - `WorkshopRecallCorpusSelection`: the pure listing, catalog, and range
+    helpers.
+  - `WorkshopRecallDocumentCache`: the LRU and its generations.
+  - `WorkshopRecallText`: bounded labels, label lists, and capped blocks.
+  - The read window (packing, separators, entry text) and the session clock.
+
+  The renderer keeps its own copy of the room frames' elapsed-time words,
+  because it may not import the room-frame renderer.
+- **The live room has its own answer.** A request naming the live session id
+  returns `unknown-session` with `liveSession: true`, and the text says that
+  this is the current session.
+
+Bounds and scope, after the PR 126 review:
+
+- **A read never exceeds `readCharacters` (F-01).** A read is a header, a
+  window, and a footer.
+  - The header and the footer have hard caps of 4,000 and 1,000 characters,
+    so the window's share is known before any metadata renders.
+  - Every saved-file label is clipped to one 200-character line. That covers
+    titles, ids, file names, hosts, reply speakers, private-tool names, and
+    attachment labels, in reads and in search alike.
+  - Lists are bounded and count the rest: participants to 400 characters,
+    context labels to 2,000 (last in the header, so a header over its cap
+    loses them first), and range lists to twelve ranges.
+  - Participants are listed once each. The persisted codec accepts repeats,
+    so the recall document and the catalog deduplicate them.
+  - Every part is bounded on its own: the largest header measured is about
+    3,400 characters. The header cap is a backstop for a future field.
+- **`readCharacters` has a minimum: 6,000** (both caps, plus 1,000 for one
+  entry). The renderer throws a `RangeError` below it. At every supported
+  budget a read delivers at least one entry, whole or as a readable head of
+  200 characters or more, so following a continuation always makes progress.
+  A sweep from the minimum upward, with every header part at its bound, pins
+  the bound and the progress.
+- **The cache charge is every retained string (F-03):** a document costs its
+  serialized length, citation URLs included.
+- **The scope holds for the whole call (F-04).** The scope a call opens (the
+  live session id, confirmed by the store's availability) is checked again:
+  after the listing, before and after every cold read, and before the result
+  returns. A change refuses the call, empties the cache, and advances its
+  generation, so reads in flight cannot repopulate it. A changed live
+  identity reports `not-ready`.
+  - Residual risk: a root that switches away and back within one read cannot
+    be seen from the ports. VS Code restarts the extension host when the
+    first workspace folder changes. Slice 3 validates the host lifecycle when
+    it wires the capability.
+- **Cancellation wins.** A read that fails while its call is cancelled
+  rejects with `AbortError` rather than counting as unreadable.
+
+What recall inherits from `store.list()`:
+
+- `list()` still summarizes `current.json` for the browser, from its index or
+  from a bounded parse of a legacy file. The corpus port's result type omits
+  `current`, so nothing from it reaches recall, and nothing is written.
+- A legacy named file without a search index is parsed by `list()` on every
+  call, and that parse is not counted in `parsedBytes`.
+- A legacy file larger than the browser's 5 MB bound is not listed at all.
+
+A read-only store method that lists named sessions alone would remove all
+three. Sessions saved by current builds carry indexes.
+
+Request validation stays with the Slice 3 codec: query length, session-id
+shape, and the range count. The service throws on an invalid turn range
+rather than repairing it.
+
 ## What this decides for memory, and what it leaves open
 
 **Decided here:**
