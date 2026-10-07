@@ -1139,7 +1139,7 @@ Okey decided four questions before phase A:
   no window, a turn's reads share `readCharacters` (150,000) instead of
   `readCharactersPerTurn` (300,000). Reads per turn stay at 2, and
   `PROMPT_BUDGETS` gains no key.
-  - A limited read's note, and a refused read's text, end with "one read's
+  - A limited read's note, and a refused read's text, say "one read's
     worth, because the size of your context window is unknown". `limitedBy`
     stays `per-turn-total`. The read's log line ends with `window=unknown`.
   - The refusal points to the next turn, since the total resets there.
