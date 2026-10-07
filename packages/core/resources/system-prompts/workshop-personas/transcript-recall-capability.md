@@ -123,7 +123,7 @@ A hint names full detail and a discussion continuation names discussion, so toge
 
 ### Limits and refusals
 
-You may make at most 2 `transcript.read` calls in one user turn. One read holds at most 150,000 characters, and all the reads in one user turn share 300,000. When the room left in your context window is smaller, a read is limited to half of that room. A limited read says so at its top, and its continuation names what is left.
+You may make at most 2 `transcript.read` calls in one user turn. One read holds at most 150,000 characters, and all the reads in one user turn share 300,000. When the room left in your context window is smaller, a read is limited to half of that room. When the size of your context window is unknown, the reads in one user turn share 150,000 instead. A limited read says so at its top, and its continuation names what is left.
 
 When what is left cannot hold even a minimal read of every session you named, the read is refused and says how many characters were left and how many it needed. The same refusal can come after reading, when even the smallest read of those sessions measures more than half the room left in your context window. Either way, read fewer sessions at once, or answer from what you have.
 
