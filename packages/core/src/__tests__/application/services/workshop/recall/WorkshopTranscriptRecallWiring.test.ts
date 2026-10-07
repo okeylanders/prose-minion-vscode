@@ -111,7 +111,9 @@ describe('transcript.* through the persona capability', () => {
       { kind: 'transcript', label: expect.stringMatching(/^“Chapter 6\.7 endings” · turns 1-\d+$/), sizeChars: expect.any(Number) }
     ]);
     expect(wired.log.appendLine.mock.calls.map(([line]) => String(line)).join('\n'))
-      .toMatch(/capability=transcript\.read input=sessions=1; ranges=0; detail=default .*recallMetrics=outcome=read;sessions=1;/);
+      .toMatch(new RegExp(
+        `capability=transcript\\.read input=sessions=1; ids=${corpus.sessions.endings}; ranges=0; detail=default .*recallMetrics=outcome=read;sessions=1;`
+      ));
   });
 
   it('runs every operation, and publishes only reads and to-do lists with the committed reply', async () => {
@@ -147,7 +149,7 @@ describe('transcript.* through the persona capability', () => {
 
     expect(capability.statusMessage(read)).toBe('Jill is reading 3 saved sessions…');
     expect(capability.statusTicker(read)).toBe('Recall · 3 sessions');
-    expect(capability.requestLogSummary(read)).toBe('sessions=3; ranges=0; detail=default');
+    expect(capability.requestLogSummary(read)).toBe('sessions=3; ids=a,b,c; ranges=0; detail=default');
     expect(capability.statusMessage({ capability: 'transcript.search', query: 'tide' }))
       .toBe('Jill is searching saved Workshop sessions for “tide”…');
     expect(capability.statusTicker({ capability: 'transcript.todos', status: 'all' })).toBe('Recall · all to-dos');

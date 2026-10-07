@@ -42,7 +42,7 @@ export function workshopTranscriptRecallStatusTicker(request: WorkshopTranscript
   }
 }
 
-/** Counts and ids only; a query is bounded by the codec and quoted as JSON. */
+/** Counts and ids only; ids and a query are bounded by the codec, and a query is quoted as JSON. */
 export function workshopTranscriptRecallRequestLogSummary(request: WorkshopTranscriptRecallRequest): string {
   switch (request.capability) {
     case 'transcript.catalog':
@@ -50,7 +50,8 @@ export function workshopTranscriptRecallRequestLogSummary(request: WorkshopTrans
     case 'transcript.search':
       return `query=${JSON.stringify(request.query)}; session=${request.sessionId ?? 'any'}; persona=${request.personaId ?? 'any'}`;
     case 'transcript.read':
-      return `sessions=${request.sessions.length}; ` +
+      // Ids as the persona wrote them, so a live pass can tell a garbled id from a shortened one (U2).
+      return `sessions=${request.sessions.length}; ids=${request.sessions.map(({ sessionId }) => sessionId).join(',')}; ` +
         `ranges=${request.sessions.reduce((total, session) => total + (session.turns?.length ?? 0), 0)}; ` +
         `detail=${request.detail ?? 'default'}`;
     case 'transcript.todos':
