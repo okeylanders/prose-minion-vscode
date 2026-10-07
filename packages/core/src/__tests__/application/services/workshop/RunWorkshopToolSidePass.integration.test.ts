@@ -200,6 +200,12 @@ describe('RunWorkshopToolSidePass — handler to agent engine', () => {
     });
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('verbatim engine report');
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-room-catch-up>');
+    // The frame's size, so a live pass can see what published evidence adds to a catch-up (recall Slice 5, Q5).
+    const frame = /<workshop-room-catch-up>[\s\S]*<\/workshop-room-catch-up>/
+      .exec(engine.runInitial.mock.calls[1][0].userMessage)![0];
+    expect(output.appendLine).toHaveBeenCalledWith(expect.stringMatching(
+      new RegExp(`^\\[RunWorkshopToolSidePass\\] Room catch-up prepared for synthesis: \\d+ whole turns included, 0 deferred, characters=${frame.length}$`)
+    ));
     expect(engine.runInitial.mock.calls[1][0].userMessage).toContain('<workshop-interaction');
     expect(promptLoader.loadPrompts.mock.calls[1][0]).toContain(
       'workshop-personas/interaction-modes/balanced.md'

@@ -1496,6 +1496,12 @@ describe('WorkshopRoomHandler routing — room and run owner', () => {
       expect(log.appendLine).toHaveBeenCalledWith(
         expect.stringContaining('status=conversational')
       );
+      // The frame's size, so a live pass can see what published evidence adds to a catch-up (recall Slice 5, Q5).
+      const hostMessage = service.startWorkshopPersonaConversation.mock.calls.at(-1)![0].message;
+      const frame = /<workshop-room-catch-up>[\s\S]*<\/workshop-room-catch-up>/.exec(hostMessage)![0];
+      expect(log.appendLine).toHaveBeenCalledWith(
+        expect.stringContaining(`2 whole turns included, 0 deferred, characters=${frame.length}, status=conversational`)
+      );
     });
   });
 });
