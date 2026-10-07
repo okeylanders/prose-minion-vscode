@@ -42,6 +42,9 @@ const replaceBudgets = (overrides: Partial<typeof PROMPT_BUDGETS.workshopTranscr
     ...overrides
   });
 
+/** A window with room for any read: the clamp runs and never binds. */
+const ROOMY = windowOf(1_000_000);
+
 const read = (...sessionIds: string[]): WorkshopTranscriptRecallRequest => ({
   capability: 'transcript.read',
   sessions: sessionIds.map((sessionId) => ({ sessionId }))
@@ -55,6 +58,18 @@ const evidenceTokens = (result: WorkshopCapabilityResult): number => {
 
 let corpus: RecallExcerptCorpus;
 let service: WorkshopTranscriptRecallService;
+
+/** Three chats in full detail: about 130,000 characters, the shape of the live 6.8 read. */
+const largeBatch = (): WorkshopTranscriptRecallRequest => ({
+  capability: 'transcript.read',
+  sessions: [{ sessionId: corpus.sessions.stock }, { sessionId: corpus.sessions.cliche }, { sessionId: corpus.sessions.endings }],
+  detail: 'full'
+});
+/** One chat's tail, read after the batch. */
+const stockTail = (): WorkshopTranscriptRecallRequest => ({
+  capability: 'transcript.read',
+  sessions: [{ sessionId: corpus.sessions.stock, turns: [{ from: 10, to: 18 }] }]
+});
 
 beforeAll(async () => {
   corpus = await saveExcerptCorpus();
@@ -242,9 +257,11 @@ describe('a turn’s read limits', () => {
   it('limits a second read to what the turn’s total has left, and says so', async () => {
     replaceBudgets({ readCharacters: 30_000, readCharactersPerTurn: 40_000 });
     const capability = capabilityOver();
-    const first = await capability.fulfill({ capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.stock }], detail: 'full' });
+    const first = await capability.fulfill(
+      { capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.stock }], detail: 'full' }, ROOMY);
     const used = first.content!.length;
-    const second = await capability.fulfill({ capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.cliche }], detail: 'full' });
+    const second = await capability.fulfill(
+      { capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.cliche }], detail: 'full' }, ROOMY);
 
     expect(first.metadata).toMatchObject({ limitedBy: 'read-budget', truncated: true });
     expect(used).toBeLessThanOrEqual(30_000);
@@ -257,16 +274,12 @@ describe('a turn’s read limits', () => {
     );
   });
 
-  it('leaves a full second read after a large first read (D11, amended in Slice 4)', async () => {
+  it('leaves a full second read after a large first read when the window is known (D11, amended in Slice 4)', async () => {
     // The live 6.8 pass: a batch read used 147,948 of the then 150,000-character total, and the tail's read was refused.
     // With a total of one read, a large first read squeezes or refuses the second; now the second is a full read.
     const capability = capabilityOver();
-    const batch = await capability.fulfill({
-      capability: 'transcript.read',
-      sessions: [{ sessionId: corpus.sessions.stock }, { sessionId: corpus.sessions.cliche }, { sessionId: corpus.sessions.endings }],
-      detail: 'full'
-    });
-    const tail = await capability.fulfill({ capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.stock, turns: [{ from: 10, to: 18 }] }] });
+    const batch = await capability.fulfill(largeBatch(), ROOMY);
+    const tail = await capability.fulfill(stockTail(), ROOMY);
 
     expect(batch.metadata).toMatchObject({ limitedBy: 'read-budget', truncated: true });
     expect(batch.content!.length).toBeGreaterThan(PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters / 2);
@@ -279,10 +292,10 @@ describe('a turn’s read limits', () => {
     // From the first report, so the read's one entry is cut to fill its window.
     const first = await capability.fulfill({
       capability: 'transcript.read', sessions: [{ sessionId: corpus.sessions.stock, turns: [{ from: 5, to: 18 }] }], detail: 'full'
-    });
+    }, ROOMY);
     const left = 20_000 - first.content!.length;
     const reading = jest.spyOn(service, 'read');
-    const second = await capability.fulfill(read(corpus.sessions.cliche, corpus.sessions.endings));
+    const second = await capability.fulfill(read(corpus.sessions.cliche, corpus.sessions.endings), ROOMY);
 
     expect(left).toBeLessThan(12_000);
     expect(reading).not.toHaveBeenCalled();
@@ -299,7 +312,54 @@ describe('a turn’s read limits', () => {
     );
     // A refusal before the service spends no read: with room again, the turn's second read still runs.
     replaceBudgets({ readCharacters: 15_000, readCharactersPerTurn: 100_000 });
-    expect((await capability.fulfill(read(corpus.sessions.endings))).status).toBe('success');
+    expect((await capability.fulfill(read(corpus.sessions.endings), ROOMY)).status).toBe('success');
+  });
+});
+
+describe('an unknown context window (Slice 5 decision 1)', () => {
+  // With no window there is no clamp and no preflight, so the turn's reads share one read's worth.
+  const unknownWindowWords = (used: number) =>
+    `earlier reads this turn used ${used.toLocaleString('en-US')} of the 150,000-character total, ` +
+    'one read\'s worth, because the size of your context window is unknown';
+
+  it('limits a second read to what one read’s worth has left, and says why', async () => {
+    const capability = capabilityOver();
+    const batch = await capability.fulfill(largeBatch());
+    const used = batch.content!.length;
+    const tail = await capability.fulfill(stockTail());
+
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall.readCharacters).toBe(150_000);
+    expect(batch.metadata).toMatchObject({ limitedBy: 'read-budget', readLimit: 150_000 });
+    expect(tail).toMatchObject({ status: 'success', metadata: { limitedBy: 'per-turn-total', readLimit: 150_000 - used } });
+    expect(used + tail.content!.length).toBeLessThanOrEqual(150_000);
+    expect(tail.content!.split('\n').slice(1, 3)).toContain(
+      `This read was limited to ${(150_000 - used).toLocaleString('en-US')} characters: ${unknownWindowWords(used)}.`
+    );
+    expect(corpus.log.appendLine.mock.calls.at(-1)![0]).toMatch(/ read sessions=1 limit=\d+ by=per-turn-total characters=\d+ turnTotal=\d+ window=unknown$/);
+  });
+
+  it('refuses a read one read’s worth has no minimum share left for, saying why and pointing to the next turn', async () => {
+    const capability = capabilityOver();
+    const used = (await capability.fulfill(largeBatch())).content!.length;
+    const reading = jest.spyOn(service, 'read');
+    const four = read(corpus.sessions.stock, corpus.sessions.cliche, corpus.sessions.endings, corpus.sessions.decoy);
+    const refused = await capability.fulfill(four);
+
+    expect(150_000 - used).toBeLessThan(24_000);
+    expect(reading).not.toHaveBeenCalled();
+    expect(refused).toMatchObject({
+      status: 'rejected',
+      metadata: { rejectionReason: 'recall-read-total', charactersLeft: 150_000 - used, minimumCharacters: 24_000, sessionsNamed: 4 }
+    });
+    expect(refused.error).toBe(
+      `This read names 4 saved sessions and needs at least 24,000 characters (6,000 per session), but only ` +
+        `${(150_000 - used).toLocaleString('en-US')} are left: ${unknownWindowWords(used)}. Read fewer sessions at once, ` +
+        'or answer from what you have and tell the writer which sessions and turns are left for your next turn.'
+    );
+    // The same read, with a known window, has the rest of the 300,000-character total.
+    const known = capabilityOver();
+    await known.fulfill(largeBatch(), ROOMY);
+    expect((await known.fulfill(four, ROOMY)).metadata).toMatchObject({ limitedBy: 'read-budget', readLimit: 150_000 });
   });
 });
 
