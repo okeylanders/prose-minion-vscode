@@ -89,7 +89,8 @@ Assistant model setting between runs, never mid-room.
     is one line per read. It ends with `tokens=… halfWindow=… renders=…` when
     the window is known and `window=unknown` when it is not.
   - `[WorkshopTranscriptRecallCapability] … refused transcript.read reason=…`
-  - `[WorkshopTranscriptRecall] search|read|todos … durationMs=…`
+  - `[WorkshopTranscriptRecall] search|todos … cacheHits=… durationMs=…`, and
+    `[WorkshopTranscriptRecall] read … unknown=… cacheHits=…` (no duration)
   - `[WorkshopRoomHandler] Room catch-up prepared (host): … characters=…`
   - `[AgentRunEngine] Context preflight unavailable…` and `[OpenRouterModels] …`
 - **Export the transcript** (Markdown) of each run's room at the end. It
