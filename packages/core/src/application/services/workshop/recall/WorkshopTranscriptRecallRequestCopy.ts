@@ -1,8 +1,9 @@
 /**
  * How a session-recall request reads before it runs: the live status line
- * and ticker, the log line's input, and the summary a refused or failed
- * call records in the thread. A request has passed the codec, so every
- * field is bounded; titles are known only after a read and are never here.
+ * and ticker, the log line's input, the summary a refused or failed call
+ * records in the thread, and the advice a refused read ends with. A request
+ * has passed the codec, so every field is bounded; titles are known only
+ * after a read and are never here.
  */
 
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
@@ -90,6 +91,20 @@ export function workshopTranscriptRecallRequestSummary(request: WorkshopTranscri
     default:
       return assertNever(request);
   }
+}
+
+/**
+ * How a refused read ends: answer from what the turn holds, then tell the
+ * writer what is left, so a bounded answer never passes for a complete one.
+ * Only a turn's total promises room next turn; the window may not.
+ */
+export function workshopTranscriptRecallRefusedReadAdvice(named: number, left: 'next-turn' | 'unread'): string {
+  const tell = left === 'next-turn'
+    ? 'tell the writer which sessions and turns are left for your next turn'
+    : 'tell the writer which sessions and turns you could not read';
+  return named > 1
+    ? `Read fewer sessions at once, or answer from what you have and ${tell}.`
+    : `Answer from what you have, and ${tell}.`;
 }
 
 function assertNever(value: never): never {

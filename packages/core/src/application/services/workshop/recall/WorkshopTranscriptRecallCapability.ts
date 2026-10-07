@@ -40,7 +40,10 @@ import { workshopRecallMinimumReadCharacters } from '@/application/services/work
 import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 import { recallCount, recallQuoted } from '@/application/services/workshop/recall/WorkshopRecallCopy';
-import { workshopTranscriptRecallRequestSummary } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
+import {
+  workshopTranscriptRecallRefusedReadAdvice,
+  workshopTranscriptRecallRequestSummary
+} from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
 import {
   fitWorkshopRecallReadToWindow,
   workshopRecallEvidenceTokens,
@@ -292,7 +295,7 @@ export class WorkshopTranscriptRecallCapability {
       `This read names ${recallCount(named, 'saved session')} and needs at least ${count(minimum)} characters ` +
         `(${count(minimum / Math.max(1, named))} per session), but only ${count(limit.characters)} are left: ${why}. ` +
         // The turn's total resets with the next writer message; the window does not.
-        refusedReadAdvice(named, limit.by === 'context-window' ? 'unread' : 'next-turn'),
+        workshopTranscriptRecallRefusedReadAdvice(named, limit.by === 'context-window' ? 'unread' : 'next-turn'),
       { charactersLeft: limit.characters, minimumCharacters: minimum, sessionsNamed: named }
     );
   }
@@ -318,7 +321,7 @@ export class WorkshopTranscriptRecallCapability {
         `(${count(minimum / Math.max(1, named))} per session), but half the room left in your context window holds ` +
         `only about ${count(characters)} characters of these sessions: the minimum read measured ` +
         `${Number.isFinite(tokens) ? count(tokens) : 'more'} tokens against ${count(half)}. ` +
-        refusedReadAdvice(named, 'unread'),
+        workshopTranscriptRecallRefusedReadAdvice(named, 'unread'),
       {
         charactersLeft: characters,
         minimumCharacters: minimum,
@@ -465,20 +468,6 @@ function readSummary(request: Request<'transcript.read'>, titles: readonly strin
 function listedRanges(ranges: ReadonlyArray<{ readonly from: number; readonly to: number }>): string {
   const listed = formatWorkshopRecallTurnRanges(ranges.slice(0, LISTED_RANGES));
   return ranges.length > LISTED_RANGES ? `${listed}, and ${ranges.length - LISTED_RANGES} more` : listed;
-}
-
-/**
- * How a refused read ends: answer from what the turn holds, then tell the
- * writer what is left, so a bounded answer never passes for a complete one.
- * Only a turn's total promises room next turn; the window may not.
- */
-function refusedReadAdvice(named: number, left: 'next-turn' | 'unread'): string {
-  const tell = left === 'next-turn'
-    ? 'tell the writer which sessions and turns are left for your next turn'
-    : 'tell the writer which sessions and turns you could not read';
-  return named > 1
-    ? `Read fewer sessions at once, or answer from what you have and ${tell}.`
-    : `Answer from what you have, and ${tell}.`;
 }
 
 function count(value: number): string {
