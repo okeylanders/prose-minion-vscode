@@ -883,7 +883,8 @@ sessions:
 - **The engine's window seam.** `AgentCapability.fulfill(request, window?)`
   is the one change outside the Workshop: the engine measures the free
   context window with the preflight's estimator, and recall clamps each read
-  to half of it. Other capabilities ignore the window.
+  to half of it. Other capabilities ignore the window. With no window (an
+  unknown context length), a turn's reads share one read's worth.
 - **Hints decode as written.** Every continuation and hint a renderer emits
   must decode, exactly as written, through the codec, alone and followed
   together. The grammar prompt teaches each form, and a sync test pins its

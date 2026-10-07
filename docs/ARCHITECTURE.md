@@ -373,7 +373,10 @@ or reads `current.json`, and the live room is never in its own corpus.
 - **The engine's window seam.** `AgentCapability.fulfill(request, window?)`
   receives a `CapabilityContextWindow` that `AgentRunEngine` measures with the
   preflight's own estimator. `WorkshopRecallWindowClamp` fits each read into
-  half of the free window; other capabilities ignore it.
+  half of the free window; other capabilities ignore it. When the model's
+  context length is unknown, the engine passes no window and runs no
+  preflight, so a turn's reads share one read's worth (`readCharacters`)
+  instead of two.
 - **Composition.** `extension.ts` builds the store, the coordinator, one
   `WorkshopTranscriptRecallService` (it owns the document cache), then the
   persona-capability factory that consumes it. No handler constructs it.

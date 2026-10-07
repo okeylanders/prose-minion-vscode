@@ -53,7 +53,7 @@ verification, and rollback seams.
 | 2C | Excerpt summaries (dormant) — [plan](slice-2c-excerpt-summaries.md) | Catalog `<match>`, multi-session reads with fair shares (D9), discussion detail (D10), 150K read and per-turn budgets (D11) | Done, merged in [#129](https://github.com/okeylanders/prose-minion-vscode/pull/129) (`23b7779`). Build: `0b5a19d`, `2f92684`, `69f39dd`, `7515c2e`, `d2cb265`, `39cf8f9`, `83a72e7`, `ead6a5a`, `f6e8c17`. Review fixes: `fe4c150`, `f93f309` |
 | 3 | Contract, persistence, wiring (dormant to models) | Unions, codec, sub-adapter, persona-capability branches, persisted operation, artifact, and archive-kind lists, labels, Context Budget kind, composition root. Also widens for 2B and 2C: `transcript.todos`, multi-session read and `<match>` codecs, the context-window clamp, and the per-turn read total | Done, merged in [#130](https://github.com/okeylanders/prose-minion-vscode/pull/130) (`b2fe8dd`). PR #129 follow-ups: `922ff59`, `a96d09d`, `91e9728`, `58ec000`, `70b9ba6`. Build: `6e87259`, `b4dfaa2`, `7897c0d`, `ebde98e`, `ba599d4`, `509cbc8`, `34f6ac4`, `364b5c5`, `41ee820`, `91466c1`, `214c446`, `a53aaeb`. Docs: `7131981`. Review fixes: `3f2d255`, `994b234` |
 | 4 | Enable | `transcript-recall-capability.md`, prompt path chain, `base.md` / `guest-base.md` / `interaction-contract.md` amendments, sync test, docs | Done, merged in [#131](https://github.com/okeylanders/prose-minion-vscode/pull/131) (`2a391e2`). Epic table: `5a96d42`. Hint detail: `761f8ad`. Grammar and path chain: `656741e`. Sync test: `f4d5c13`. Pointer line: `7666ab2`. Charters and contract: `99018db`. Docs: `6e169e6`. Lint: `ef6b4fd`. Review fix: `b7e44fe`. After the live pass: `c1a552d`, `e2eb7e9`, `c20e4c0` |
-| 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | In progress on `claude/workshop-recall-live` |
+| 5 | Verify live | Extension Development Host pass on real saved sessions; budgets tuned; ADR accepted; memory-bank entry | In progress on `claude/workshop-recall-live`. Epic table: `9fbb8f6`. Phase A: room first `263336a`; unknown-window fallback `38ecd32`; grammar `14329bf`; log fields `93576c0`, `144097a`; [protocol](slice-5-live-pass.md) `ac87764` |
 
 ## Progress notes
 
@@ -287,6 +287,20 @@ verification, and rollback seams.
     itself recalled and committed a widget. Neither the nested transcript
     nor the widget payload comes back; the Session Recall line, the
     commit's visible line, and the replies do (`c20e4c0`).
+
+- **2026-10-07 — Slice 5, phase A (verify live).** Okey decided four
+  questions before coding. The ADR's Slice 5 note records them.
+  - An unknown model window holds a turn's reads to one read's worth,
+    150,000 characters. With no window there is no clamp and no preflight.
+  - The pass runs three times on the fastest supported model and once on
+    the default for behavior, and once on the default for mechanics.
+  - Any garbled id in the fast runs fails U2. The remedy is a taught unique
+    prefix of 8 or more characters.
+  - Budgets change only on cited evidence, with a coverage map.
+  - Landed: the fallback, its grammar sentence, and two log fields for the
+    pass: the catch-up frame's size (Q5) and a read's session ids (U2).
+    Each has a witness and was mutation-checked.
+  - Okey runs the [protocol](slice-5-live-pass.md) next.
 
 ## Decisions (accepted 2026-10-05, as recommended)
 
