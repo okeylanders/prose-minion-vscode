@@ -5,8 +5,9 @@
  * release's new features lead the tour (ADR 2026-09-30, Sprint 03 kickoff
  * decision 5): every machine sees the whole box again after a version bump,
  * so what changed comes first. The tour is also the writer's full guide, so
- * a previous release's `new` pages stay on as `primer` pages after the
- * standing tour, never retire.
+ * a previous release's `new` pages never retire: they stay on as `primer`
+ * pages right after the newest, newest release first and in their original
+ * order, ahead of the standing tour.
  *
  * Layout is two columns: an annotated media well on the left (screenshots of
  * the real controls, with numbered call-out boxes and a matching legend) and
@@ -123,11 +124,104 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: prompt caching, with a cache clock',
+    title: 'New: export a conversation',
     tag: 'new',
     body: (
       <>
-        Workshop now asks Claude, and supported Alibaba/Qwen routes, to cache retained
+        Use <b>Sessions &rarr; Export&hellip;</b> to save a Workshop conversation as a file:{' '}
+        <b>Markdown</b> to paste into another agent or your notes, <b>JSON</b> for scripts, or{' '}
+        <b>styled HTML</b> to share or print to PDF. It holds your messages and every reply,
+        including older turns the thread no longer shows. Files land in{' '}
+        <b>prose-minion/exports/</b>, and an earlier export is never replaced: if the name is
+        taken, a number is added. Markdown and JSON open beside the Workshop; HTML opens in your
+        browser.
+      </>
+    ),
+    note: (
+      <>
+        Exports leave out the excerpt text, context and attachment contents, widget payloads,
+        tool evidence, and token usage. Attachments and widgets appear by name only.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'sessions-menu-export',
+        alt: 'The Sessions menu, opened from the session name, with Export… highlighted',
+        maxWidthPx: 280,
+        ratio: '692 / 530',
+        callouts: [
+          { label: '1', leftPercent: 15.6, topPercent: 1.9, widthPercent: 69.1, heightPercent: 16.9 },
+          { label: '2', leftPercent: 4.6, topPercent: 78.5, widthPercent: 90.8, heightPercent: 16.6 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'export-transcript-formats',
+        alt: 'Export transcript: Markdown, JSON, and Styled HTML, the export name, and its path under prose-minion/exports',
+        maxWidthPx: 480,
+        ratio: '1428 / 586',
+        callouts: [
+          { label: '3', leftPercent: 1.5, topPercent: 10.5, widthPercent: 96.9, heightPercent: 41.6 },
+          { label: '4', leftPercent: 1.7, topPercent: 82.7, widthPercent: 96.6, heightPercent: 14.5 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Sessions menu', detail: 'opens from the session name in the header.' },
+      { label: '2', term: 'Export…', detail: 'saves this conversation as a file.' },
+      { label: '3', term: 'Format', detail: 'Markdown, JSON, or styled HTML.' },
+      { label: '4', term: 'prose-minion/exports/', detail: 'where the file lands; an earlier export is never replaced.' }
+    ]
+  },
+  {
+    title: 'New: personas can read your saved sessions',
+    tag: 'new',
+    body: (
+      <>
+        Ask about earlier work, like a decision from last week or a to-do still open, and your
+        host or a guest can look it up in the other sessions you&rsquo;ve saved by name in this
+        project. They can list and search those sessions, read the turns that matter, and find
+        to-dos. Each look-up shows in the thread as a <b>Session Recall</b> card, and the reply
+        names the session and turns it used. They&rsquo;re reading saved records, not
+        remembering, so check the cited turns before relying on an answer. Attachment contents,
+        widget payloads, and hidden tool evidence stay out.
+      </>
+    ),
+    note: (
+      <>
+        <b>Updating:</b> sessions that contain recall activity can&rsquo;t be opened by earlier
+        versions of Prose Minion. If you sync sessions through Git, update every machine first.{' '}
+        <b>Also fixed:</b> adding a guest persona&rsquo;s finding to the To-do List no longer
+        stops the session from saving.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'recall-card-and-reply',
+        alt: 'A Session Recall card reading turns 12-19 of a saved session, above Jill’s reply citing that session and turns 14–17',
+        maxWidthPx: 460,
+        ratio: '1168 / 762',
+        callouts: [
+          { label: '1', leftPercent: 5.5, topPercent: 16.4, widthPercent: 79.8, heightPercent: 13.6 },
+          { label: '2', leftPercent: 2, topPercent: 65.1, widthPercent: 78.6, heightPercent: 6.8 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Session Recall', detail: 'what a persona looked up, and in which saved session.' },
+      { label: '2', term: 'Citation', detail: 'the reply names the session and turns, so you can check them.' }
+    ]
+  },
+  {
+    title: 'Prompt caching, with a cache clock',
+    tag: 'primer',
+    body: (
+      <>
+        Workshop asks Claude, and supported Alibaba/Qwen routes, to cache retained
         conversations, so later turns can reuse what the model has already read. Other providers
         keep their own caching. Once the provider reports cache activity, a clock beside the
         composer estimates how much of the cache window is left. It is an estimate, not a
@@ -181,22 +275,16 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: room for more context',
-    tag: 'new',
+    title: 'Room for more context',
+    tag: 'primer',
     body: (
       <>
-        Standing context now holds up to <b>100,000 words</b>, and a single message can carry up
+        Standing context holds up to <b>100,000 words</b>, and a single message can carry up
         to <b>seven attachments</b> of up to 10,000 words each. When you change standing context,
         Workshop sends only what you added, changed, or removed, not the whole list again. Your
         model still needs room for the excerpt, the conversation, and its reply: if a send is
         estimated to overflow a known model&rsquo;s window, Workshop stops before sending and gives
         you your draft back.
-      </>
-    ),
-    note: (
-      <>
-        Sessions saved by this version can&rsquo;t be opened by earlier versions of Prose Minion.
-        If you sync sessions through Git, update Prose Minion on every machine first.
       </>
     ),
     wellTitle: 'Where to look',
@@ -238,6 +326,144 @@ const PAGES: readonly NoticePage[] = [
       { label: '2', term: 'Add to standing context', detail: 'stays with every message for the whole session.' },
       { label: '3', term: 'Remaining slots', detail: 'up to seven attachments per message, 10,000 words each.' },
       { label: '4', term: 'Attachment intake limit', detail: '100,000 words of standing context.' }
+    ]
+  },
+  {
+    title: 'Rewind, edit, and branch',
+    tag: 'primer',
+    body: (
+      <>
+        Replies and your own messages have actions underneath. <b>Rewind to here</b> returns
+        the room to a reply: the thread, and what every participant remembers, go back to that
+        point, and everything after it is removed. On a message you sent, <b>Edit from here</b>{' '}
+        removes it and everything after it, then puts it back in the composer (or reopens its
+        widget) so you can change it and send it again. <b>Branch from here</b> leaves this
+        conversation as it is and opens a new saved session that starts from that point, so you
+        can try another direction. Save the session before you branch. Your excerpt and context
+        always stay as they are now.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'actions',
+        caption: 'Under a reply',
+        actions: [
+          { label: 'Copy', icon: 'copy' },
+          { label: 'Rewind to here', icon: 'history', callout: '1' },
+          { label: 'Branch from here', icon: 'branch', callout: '3' }
+        ]
+      },
+      {
+        kind: 'actions',
+        caption: 'Under a message you sent',
+        actions: [
+          { label: 'Edit from here', icon: 'history', callout: '2' },
+          { label: 'Branch from here', icon: 'branch' }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Rewind to here', detail: 'keep this reply; remove everything after it.' },
+      { label: '2', term: 'Edit from here', detail: 'your message comes back to edit and send again.' },
+      { label: '3', term: 'Branch from here', detail: 'a new saved session from this point; this one stays.' }
+    ]
+  },
+  {
+    title: 'Craft Steering',
+    tag: 'primer',
+    /* "creative variations" stays lower case on purpose: in title case it is a
+       Workshop widget's name, which the feature-boundary guard in
+       boundaries.test.ts reserves for that widget's own family. */
+    body: (
+      <>
+        An analysis tool under <b>Craft &amp; Voice</b>, inspired by Ursula K. Le Guin&rsquo;s{' '}
+        <i>Steering the Craft</i>. It listens to sound, rhythm, and how each sentence carries you
+        into the next. The report names what to preserve, audits sound and narrative control, and
+        traces the handoffs between sentences. Its sample revisions and creative variations each
+        explain what they gain and what they cost. Pauses, repetition, and fragments you meant
+        are judged by their effect, not smoothed away. Run it from{' '}
+        <b>Tools</b> on a pinned excerpt, or ask your host or a guest to run it on a passage from
+        the conversation.
+      </>
+    ),
+    note: (
+      <>
+        Craft Steering is in the sidebar&rsquo;s Writing Tools too, under Craft &amp; Voice.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'composer-controls',
+        alt: 'The composer control bar, with Tools highlighted',
+        maxWidthPx: 560,
+        ratio: '1320 / 338',
+        callouts: [
+          { label: '1', leftPercent: 77.2, topPercent: 52.5, widthPercent: 11.2, heightPercent: 22 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'tools-craft-steering',
+        alt: 'The Tools picker, with the Craft Steering card selected',
+        maxWidthPx: 460,
+        ratio: '1242 / 364',
+        callouts: [
+          { label: '2', leftPercent: 2.7, topPercent: 9.3, widthPercent: 46.9, heightPercent: 81.4 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Tools', detail: 'runs a tool directly on the pinned excerpt.' },
+      { label: '2', term: 'Craft Steering', detail: 'under Craft & Voice; one run, and the report lands in the thread.' }
+    ]
+  },
+  {
+    title: 'Topic & Related Lexicon',
+    tag: 'primer',
+    body: (
+      <>
+        Dictionary entries can end with an encyclopedia entry: the topics a word belongs to,
+        related vocabulary, examples for your writing, and possible reference books for each
+        topic. Turn it on or off with the <b>Topic &amp; Related Lexicon</b> switch above the
+        lookup buttons in the sidebar&rsquo;s <b>Dictionary</b> tab. It starts on and remembers
+        your choice for both standard and Fast lookups.
+      </>
+    ),
+    note: (
+      <>
+        When a host or guest looks up a word for you in the Workshop, the encyclopedia entry is
+        left out.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'dictionary-topic-switch',
+        alt: 'The Topic & Related Lexicon switch in the Dictionary tab, turned on',
+        maxWidthPx: 420,
+        ratio: '948 / 208',
+        callouts: [
+          { label: '1', leftPercent: 80.6, topPercent: 32.2, widthPercent: 16, heightPercent: 35.6 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'dictionary-topic-entry',
+        alt: 'The start of a Topic & Related Lexicon entry for "fricative"',
+        maxWidthPx: 360,
+        ratio: '964 / 696',
+        callouts: [
+          { label: '2', leftPercent: 4.4, topPercent: 4.9, widthPercent: 52.9, heightPercent: 10.3 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Topic & Related Lexicon', detail: 'the switch above the lookup buttons; on by default.' },
+      { label: '2', term: 'Encyclopedia entry', detail: 'added at the end: topics, related vocabulary, examples, and possible reference books.' }
     ]
   },
   {
@@ -450,144 +676,6 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'Craft Steering',
-    tag: 'primer',
-    /* "creative variations" stays lower case on purpose: in title case it is a
-       Workshop widget's name, which the feature-boundary guard in
-       boundaries.test.ts reserves for that widget's own family. */
-    body: (
-      <>
-        An analysis tool under <b>Craft &amp; Voice</b>, inspired by Ursula K. Le Guin&rsquo;s{' '}
-        <i>Steering the Craft</i>. It listens to sound, rhythm, and how each sentence carries you
-        into the next. The report names what to preserve, audits sound and narrative control, and
-        traces the handoffs between sentences. Its sample revisions and creative variations each
-        explain what they gain and what they cost. Pauses, repetition, and fragments you meant
-        are judged by their effect, not smoothed away. Run it from{' '}
-        <b>Tools</b> on a pinned excerpt, or ask your host or a guest to run it on a passage from
-        the conversation.
-      </>
-    ),
-    note: (
-      <>
-        Craft Steering is in the sidebar&rsquo;s Writing Tools too, under Craft &amp; Voice.
-      </>
-    ),
-    wellTitle: 'Where to look',
-    media: [
-      {
-        kind: 'figure',
-        shot: 'composer-controls',
-        alt: 'The composer control bar, with Tools highlighted',
-        maxWidthPx: 560,
-        ratio: '1320 / 338',
-        callouts: [
-          { label: '1', leftPercent: 77.2, topPercent: 52.5, widthPercent: 11.2, heightPercent: 22 }
-        ]
-      },
-      {
-        kind: 'figure',
-        shot: 'tools-craft-steering',
-        alt: 'The Tools picker, with the Craft Steering card selected',
-        maxWidthPx: 460,
-        ratio: '1242 / 364',
-        callouts: [
-          { label: '2', leftPercent: 2.7, topPercent: 9.3, widthPercent: 46.9, heightPercent: 81.4 }
-        ]
-      }
-    ],
-    legend: [
-      { label: '1', term: 'Tools', detail: 'runs a tool directly on the pinned excerpt.' },
-      { label: '2', term: 'Craft Steering', detail: 'under Craft & Voice; one run, and the report lands in the thread.' }
-    ]
-  },
-  {
-    title: 'Topic & Related Lexicon',
-    tag: 'primer',
-    body: (
-      <>
-        Dictionary entries can end with an encyclopedia entry: the topics a word belongs to,
-        related vocabulary, examples for your writing, and possible reference books for each
-        topic. Turn it on or off with the <b>Topic &amp; Related Lexicon</b> switch above the
-        lookup buttons in the sidebar&rsquo;s <b>Dictionary</b> tab. It starts on and remembers
-        your choice for both standard and Fast lookups.
-      </>
-    ),
-    note: (
-      <>
-        When a host or guest looks up a word for you in the Workshop, the encyclopedia entry is
-        left out.
-      </>
-    ),
-    wellTitle: 'Where to look',
-    media: [
-      {
-        kind: 'figure',
-        shot: 'dictionary-topic-switch',
-        alt: 'The Topic & Related Lexicon switch in the Dictionary tab, turned on',
-        maxWidthPx: 420,
-        ratio: '948 / 208',
-        callouts: [
-          { label: '1', leftPercent: 80.6, topPercent: 32.2, widthPercent: 16, heightPercent: 35.6 }
-        ]
-      },
-      {
-        kind: 'figure',
-        shot: 'dictionary-topic-entry',
-        alt: 'The start of a Topic & Related Lexicon entry for "fricative"',
-        maxWidthPx: 360,
-        ratio: '964 / 696',
-        callouts: [
-          { label: '2', leftPercent: 4.4, topPercent: 4.9, widthPercent: 52.9, heightPercent: 10.3 }
-        ]
-      }
-    ],
-    legend: [
-      { label: '1', term: 'Topic & Related Lexicon', detail: 'the switch above the lookup buttons; on by default.' },
-      { label: '2', term: 'Encyclopedia entry', detail: 'added at the end: topics, related vocabulary, examples, and possible reference books.' }
-    ]
-  },
-  {
-    title: 'Rewind, edit, and branch',
-    tag: 'primer',
-    body: (
-      <>
-        Replies and your own messages have actions underneath. <b>Rewind to here</b> returns
-        the room to a reply: the thread, and what every participant remembers, go back to that
-        point, and everything after it is removed. On a message you sent, <b>Edit from here</b>{' '}
-        removes it and everything after it, then puts it back in the composer (or reopens its
-        widget) so you can change it and send it again. <b>Branch from here</b> leaves this
-        conversation as it is and opens a new saved session that starts from that point, so you
-        can try another direction. Save the session before you branch. Your excerpt and context
-        always stay as they are now.
-      </>
-    ),
-    wellTitle: 'Where to look',
-    media: [
-      {
-        kind: 'actions',
-        caption: 'Under a reply',
-        actions: [
-          { label: 'Copy', icon: 'copy' },
-          { label: 'Rewind to here', icon: 'history', callout: '1' },
-          { label: 'Branch from here', icon: 'branch', callout: '3' }
-        ]
-      },
-      {
-        kind: 'actions',
-        caption: 'Under a message you sent',
-        actions: [
-          { label: 'Edit from here', icon: 'history', callout: '2' },
-          { label: 'Branch from here', icon: 'branch' }
-        ]
-      }
-    ],
-    legend: [
-      { label: '1', term: 'Rewind to here', detail: 'keep this reply; remove everything after it.' },
-      { label: '2', term: 'Edit from here', detail: 'your message comes back to edit and send again.' },
-      { label: '3', term: 'Branch from here', detail: 'a new saved session from this point; this one stays.' }
-    ]
-  },
-  {
     title: 'Agents can work with your project',
     tag: 'primer',
     body: (
@@ -595,8 +683,8 @@ const PAGES: readonly NoticePage[] = [
         With project paths configured, hosts and guests can <b>find and read relevant project
         files</b> when the conversation calls for them — you do not need to attach every file by
         hand. They can also use the dictionary, run analyses, and inspect a particular variation
-        without derailing the main conversation. The <b>Widgets</b> browser is a preview of tools
-        still to come; it does not launch widgets yet.
+        without derailing the main conversation. The <b>Widgets</b> browser opens the widgets that
+        are ready now and previews the ones still to come.
       </>
     ),
     wellTitle: 'Where to look',
@@ -613,7 +701,7 @@ const PAGES: readonly NoticePage[] = [
       }
     ],
     legend: [
-      { label: '1', term: 'Widgets', detail: 'a preview browser; nothing launches yet.' }
+      { label: '1', term: 'Widgets', detail: 'ready-now widgets open here; the rest are previews.' }
     ],
     guideLink: {
       lead: 'Project-file reading depends on the paths set in',

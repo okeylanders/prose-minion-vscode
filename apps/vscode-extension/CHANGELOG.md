@@ -2,6 +2,25 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.9.0] - 2026-10-08
+
+### Added
+
+- Claude Haiku 5.5 and Mistral Large 4 are available as opt-in text model choices for writing tools, Workshop, and Category Search. Existing model defaults and saved selections are unchanged; prose quality has not been evaluated in this release.
+- Export the current Workshop conversation from the Sessions menu as Markdown, JSON, or styled HTML. Exports include the full visible thread, even when older turns have scrolled out of the webview. Files are saved under `prose-minion/exports/` with numbered names so an earlier export is never replaced. Markdown and JSON open beside Workshop; HTML opens in your default browser.
+- Workshop personas can look back at other named sessions in the same workspace when you ask about an earlier conversation or past to-dos. They can list sessions, search visible transcript text, read selected turns, and list to-dos. Replies identify the saved session and cite turns where useful. The current room is excluded; private attachment bodies, widget payloads, and hidden tool evidence are not exposed through recall.
+- The Workshop's startup tour opens once more and begins with transcript export and saved-session recall.
+
+### Fixed
+
+- Promoting a guest persona's finding to a to-do no longer makes Workshop autosave and named saves fail. The to-do survives reopening the session.
+- Markdown transcript exports preserve leading and trailing message whitespace. Exported Markdown and JSON open beside Workshop so the panel stays visible.
+
+### Upgrade notes
+
+- Existing saved sessions remain readable. Sessions containing the new recall activity cannot be opened by earlier Prose Minion versions. If you sync sessions through Git, update every machine before opening rooms saved with recall activity.
+- Saved-session recall has extensive automated coverage and a reviewed live-test protocol. Its full Extension Development Host pass on real saved sessions remains open; do not treat a persona's recalled answer as independently verified memory. Review the cited session and turns for consequential decisions.
+
 ## [2.8.0] - 2026-10-04
 
 ### Added

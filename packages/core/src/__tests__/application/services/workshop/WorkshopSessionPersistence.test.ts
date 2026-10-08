@@ -11,6 +11,7 @@ import {
   WorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import { WorkshopConversationBehavior } from '@messages';
+import { setupCoordinator } from '@/__tests__/application/services/workshop/session/WorkshopCoordinatorHarness';
 
 const currentBehavior: WorkshopConversationBehavior = {
   interactionMode: 'conversational',
@@ -166,6 +167,45 @@ describe('WorkshopSessionService committed persistence', () => {
           turnId: guestTurn.id,
           personaId: 'felix',
           participantLabel: 'Felix'
+        })
+      })
+    ]);
+  });
+
+  it('saves and reopens a guest finding promoted to a to-do through the coordinator and store', async () => {
+    const { coordinator, manager, session, store } = setupCoordinator();
+    await coordinator.initialize();
+    session.setExcerpt({ text: 'Pinned.', source: { kind: 'manual' } });
+    const conversationId = manager.startConversation('workshop_felix', 'Felix system');
+    session.adoptPersonaGuest('felix', conversationId, []);
+    session.beginPersonaGuestMessage('felix', 'felix-run', 'What should change?');
+    const guestTurn = session.completeRun(
+      'felix-run',
+      'Review.',
+      undefined,
+      false,
+      conversationId,
+      [{ key: 'finding-1', ordinal: 1, text: 'Restore the breath.', priority: 'high' }]
+    )!;
+    manager.addMessage(conversationId, { role: 'user', content: 'What should change?' });
+    manager.addMessage(conversationId, { role: 'assistant', content: 'Review.' });
+    session.addTodoFromFinding(guestTurn.id, 'finding-1');
+
+    coordinator.markDirty('guest task promoted');
+    await coordinator.flush();
+    expect((await store.readCurrent())?.workshop.todos[0].source.kind).toBe('guest_turn');
+
+    const saved = await coordinator.saveNamed('Guest tasks');
+    await coordinator.resetSession();
+    await coordinator.openNamed(saved.sessionId);
+
+    expect(session.getSnapshot().todos).toEqual([
+      expect.objectContaining({
+        text: 'Restore the breath.',
+        source: expect.objectContaining({
+          kind: 'guest_turn',
+          turnId: guestTurn.id,
+          personaId: 'felix'
         })
       })
     ]);

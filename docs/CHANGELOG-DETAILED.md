@@ -5,6 +5,113 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-10-08 — Workshop transcript export and saved-session recall
+
+### Overview
+
+This minor release adds two ways to use Workshop conversations beyond the
+current room. [PR #124](https://github.com/okeylanders/prose-minion-vscode/pull/124)
+exports the visible thread. [PR #133](https://github.com/okeylanders/prose-minion-vscode/pull/133)
+integrates the reviewed [session-recall epic](../.todo/epics/epic-workshop-session-recall-2026-10-05/README.md),
+whose slices arrived through PRs #125–#132. The release branch also fixes a
+pre-existing guest to-do persistence failure found during release review.
+
+### Transcript export
+
+- The Sessions menu's Export action writes Markdown, structured JSON, or styled
+  HTML under `prose-minion/exports/`. Numbered, write-once filenames preserve
+  every previous export. Markdown and JSON open beside Workshop; HTML opens in
+  the default browser.
+- The host projects the full ledger through one visible-transcript boundary,
+  including turns older than the webview's snapshot. Attachment and widget
+  labels remain visible, while private bodies and collapsed capability
+  evidence do not enter the export. HTML escapes untrusted content, restricts
+  links, and carries a restrictive content security policy.
+- Markdown now retains message bodies byte for byte at their boundaries,
+  resolving the finding in the [PR #124 review](pr-reviews/pr-124-workshop-transcript-export-review.md).
+  See the [transcript export ADR](adr/2026-10-05-workshop-transcript-export.md).
+
+### Saved-session recall
+
+- The `transcript.catalog`, `transcript.search`, `transcript.read`, and
+  `transcript.todos` capability family lets a persona inspect other named
+  sessions in the accepted workspace when the writer raises earlier work.
+  The current room is excluded. One shared transcript projection limits recall
+  to visible text and labels; results identify their session and turns.
+- Search de-duplicates turns shared by copies and branches. Reads use bounded
+  character and context-window budgets, can cover several sessions, and
+  disclose limits with continuation hints. To-do results preserve source,
+  status, and staleness. Prompt copy tells personas to present a read as a
+  saved record rather than personal memory.
+- The [recall ADR](adr/2026-10-05-workshop-session-transcript-recall.md),
+  [epic](../.todo/epics/epic-workshop-session-recall-2026-10-05/README.md),
+  and PR #126–#132 reviews record the privacy, budget, persistence, and
+  refusal proofs. The final Slice 5 review approved its code delta but did not
+  run the [live-pass protocol](../.todo/epics/epic-workshop-session-recall-2026-10-05/slice-5-live-pass.md).
+  That real-session Extension Development Host pass and the ADR's open
+  questions remain pending.
+
+### Persistence fix and compatibility
+
+- `WorkshopTodoLedger` now emits `upstreamReportTurnId` only for a host finding
+  with a defined source report. A guest to-do no longer carries an
+  undefined-valued host-only key that the exact-key store validator rejected.
+  A new regression proves autosave, named save, and reopen through the real
+  coordinator and store. The remaining synthetic recall fixture follow-up is
+  tracked in [guest to-do debt](../.todo/tech-debt/2026-10-06-workshop-guest-todo-unsavable.md).
+- Older sessions load in v2.9.0. Recall widens persisted operation, artifact,
+  and context-source lists without a session schema bump. An older extension
+  rejects a session containing the new values; update Git-synced machines
+  together before using recall across them.
+
+### Release verification and handoff
+
+- Claude Haiku 5.5 (`anthropic/claude-haiku-5.5`) and Mistral Large 4
+  (`mistralai/mistral-large-4-0`) join the shared text-model catalog and
+  Category Search. Their OpenRouter catalog and endpoint contracts were checked
+  on 2026-10-08. Defaults remain unchanged; no paid inference or prose-quality
+  qualification was performed. Mistral's model page and live catalog reported
+  different context lengths, so the curated description omits a numeric limit;
+  runtime preflight uses live model metadata when available.
+- Baseline at release preparation: 267 suites / 3,528 tests / two snapshots;
+  86.55% statement and 79.07% branch coverage; three typechecks, production
+  build and bundle sentinel passed. Final branch validation and VSIX identity
+  are recorded in the release preparation checkpoint.
+- The refreshed [dependency audit follow-up](../.todo/tech-debt/2026-10-02-release-dependency-audit-follow-up.md)
+  records 43 high, eight moderate, one low, and zero critical affected package
+  names. All high/moderate lockfile nodes are development dependencies; no
+  blanket forced upgrade was applied. Audit risk remains open for focused
+  tooling maintenance.
+- The VSIX was rebuilt after the Workshop tour, README artwork, and model
+  catalog updates. Its identity is recorded in the final release checkpoint;
+  a manual acceptance check remains required before merge.
+
+### Workshop tour and README artwork
+
+- The startup notice moves to `v7` and leads with two pages: transcript export,
+  and personas reading saved sessions. The recall page presents look-ups as
+  reading saved records, not memory, and carries the Git-sync upgrade warning
+  and the guest to-do fix. Its three screenshots (`sessions-menu-export`,
+  `export-transcript-formats`, `recall-card-and-reply`) are 2× captures of the
+  real webview bundle with demo content.
+- Earlier releases' pages follow the new ones as primers, newest release
+  first and in their original order: v2.8.0's "Prompt caching, with a cache
+  clock" and "Room for more context", then v2.7.0's "Rewind, edit, and
+  branch", Craft Steering, and Topic & Related Lexicon. The standing tour
+  follows. The v2.8.0 Git-sync note is removed. The Agents page no longer says
+  the Widgets browser launches nothing; it opens the widgets that are ready
+  now. The tour is thirteen pages.
+- The README's v2.9.0 section gains two composites,
+  `workshop-export-transcript.png` and `workshop-session-recall.png`.
+- The README's v2.7.0 highlights get back the Craft Steering and Topic &
+  Related Lexicon images and paragraphs that v2.8.0 had moved out. The copies
+  in The Assistant and Dictionary sections stay, so both images outlive the
+  release list. The note under the Writing Tools grid points at the card
+  below it.
+- The v2.7.0 highlights gain their first Rewind, edit, and branch image,
+  `workshop-rewind-branch.png`. It shows the thread's action rows and the
+  "Rewind to here?" confirmation, captured from the real webview bundle.
+
 ## [2.8.0] - 2026-10-04 — Provider caching and acknowledged Workshop context
 
 ### Overview

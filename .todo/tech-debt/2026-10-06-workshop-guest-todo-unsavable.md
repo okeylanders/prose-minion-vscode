@@ -1,9 +1,9 @@
 # A guest's to-do makes the Workshop room unsavable
 
 **Date Identified**: 2026-10-06
-**Reviewed**: 2026-10-06
-**Status**: Identified
-**Priority**: High
+**Reviewed**: 2026-10-08
+**Status**: Save failure fixed on release branch; recall fixture follow-up open
+**Priority**: Low (remaining fixture coverage)
 **Estimated Effort**: Small (one ledger line, plus save-and-reopen tests)
 **Found by**: Workshop Session Recall Slice 2B, building real to-do fixtures through the coordinator and store
 
@@ -58,6 +58,20 @@ holds the bad key.
 
 ## Completion Criteria
 
-- [ ] A room holding a guest's to-do autosaves, saves by name, and reopens
+- [x] A room holding a guest's to-do autosaves, saves by name, and reopens
       through the real coordinator and store.
 - [ ] The recall to-do fixture promotes a real guest finding.
+
+## Release preparation fix — 2026-10-08
+
+`WorkshopTodoLedger.addFromFinding` now adds `upstreamReportTurnId` only for a
+host turn with a defined report id. Guest sources no longer carry the
+undefined-valued key that the exact-key store validator rejected. A regression
+drives a guest finding through the real coordinator and store: autosave to
+`current.json`, named save, then reopen. It failed at the store's
+`state.todos[0].source` check before the fix and passes afterward. The ledger's
+host and guest provenance expectations pass too.
+
+The existing recall to-do corpus still uses a synthetic guest source. Replace
+that fixture in focused recall test work; it is no longer needed to establish
+that a real guest to-do can persist.

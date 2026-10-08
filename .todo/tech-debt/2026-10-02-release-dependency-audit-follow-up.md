@@ -1,7 +1,7 @@
 # Release dependency audit follow-up
 
 **Date Identified**: 2026-10-02
-**Reviewed**: 2026-10-04
+**Reviewed**: 2026-10-08
 **Status**: Deferred — no applicable runtime exploit identified; renewed tooling audit findings recorded below
 **Priority**: Medium
 **Estimated Effort**: Small, focused dependency maintenance
@@ -130,3 +130,36 @@ tooling update separately. Refresh this disposition before publication.
 | secretlint | 10.2.2 | high | globby | Defer tooling refresh |
 | tailwindcss | 3.4.18 | high | chokidar, fast-glob, micromatch | Defer tooling refresh |
 | ts-loader | 9.5.4 | high | micromatch | Defer tooling refresh |
+
+## Rechecked during release preparation — 2026-10-08
+
+`npm audit --json --registry=https://registry.npmjs.org` and
+`npm audit --audit-level=high --registry=https://registry.npmjs.org` report 52
+affected package names: 43 high, eight moderate, one low, and zero critical.
+This is transitive severity propagation, not 52 separate vulnerabilities.
+Every high or moderate affected node is marked `dev: true` in the lockfile;
+the VSIX bundles application code rather than this development dependency tree.
+`npm audit --omit=dev --json` confirms the runtime dependency subset has only
+the low DOMPurify finding, with zero moderate, high, or critical findings.
+The existing high/moderate rows above retain their reachability and deferred
+tooling-refresh disposition. Newly affected rows are:
+
+| Package | Locked version | Severity | Advisory or affected child | Action |
+|---|---|---|---|---|
+| @istanbuljs/load-nyc-config | 1.1.0 | Moderate | js-yaml | Defer Jest/coverage tooling refresh |
+| argparse | 1.0.10 | Moderate | [unbounded precision through sprintf-js](https://github.com/advisories/GHSA-hp3w-g68c-fv3c) | Defer Jest/coverage tooling refresh |
+| babel-plugin-istanbul | 6.1.1 | Moderate | @istanbuljs/load-nyc-config | Defer Jest/coverage tooling refresh |
+| js-yaml | 3.15.2 | Moderate | argparse | Defer Jest/coverage tooling refresh |
+| postcss-nested | 6.2.0 | Moderate | postcss-selector-parser | Defer Tailwind/build tooling refresh |
+| postcss-selector-parser | 6.1.4 | Moderate | [quadratic selector parsing](https://github.com/advisories/GHSA-rj75-hqrm-r3gf) | Defer Tailwind/build tooling refresh |
+| source-map-js | 1.2.1 | High | [indexed source-map offset denial of service](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) | Defer build tooling refresh |
+| sprintf-js | 1.0.3 | Moderate | [unbounded precision](https://github.com/advisories/GHSA-hp3w-g68c-fv3c) | Defer Jest/coverage tooling refresh |
+
+Ordinary tests and builds exercise these tools but do not prove resistance to
+hostile patterns or source maps. No application import or shipped runtime
+dependency path was found for the high/moderate nodes. DOMPurify remains the
+one low runtime finding and now has a second advisory,
+[GHSA-6688-9rhm-gjv2](https://github.com/advisories/GHSA-6688-9rhm-gjv2);
+both reported cases require `IN_PLACE`, which the current string-sanitizing
+caller does not use. Keep the focused dependency update separate from release
+preparation and audit again before public publication.

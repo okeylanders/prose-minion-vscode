@@ -24,7 +24,26 @@
 
 ---
 
-## What's new in v2.8.0 — Cache-aware Workshop conversations
+## What's new in v2.9.0 — Workshop transcripts across sessions
+
+**Export a conversation.** Use **Sessions → Export…** to save a Workshop conversation as Markdown for another agent or your notes, JSON for scripts, or styled HTML to share or print to PDF. The export holds your messages and every reply, including older turns the thread no longer shows. Files land in `prose-minion/exports/`, and an earlier export is never replaced.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-export-transcript.png" alt="Left: the Workshop Sessions menu with Export… highlighted. Right: the Export transcript dialog offering Markdown, JSON, and Styled HTML, with the file path under prose-minion/exports" width="100%"/>
+</p>
+
+**Ask about earlier work.** When you ask about a past conversation or an open to-do, your host or a guest can list and search your other named sessions in this workspace, read the turns that matter, and find to-dos. Each look-up appears in the thread as a **Session Recall** card, and the reply names the saved session and turns so you can check the source. Personas are reading saved records, not remembering. The current room, attachment contents, widget payloads, and hidden tool evidence stay out of recall.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-session-recall.png" alt="A writer asks Jill what they decided about a scene in an earlier session. Two Session Recall cards show Jill searching saved sessions for “night market” and reading turns 12-19 of one, and her reply cites that session and turns 14–17" width="100%"/>
+</p>
+
+- **Guest to-dos no longer block saving** — adding a guest persona's finding to the To-do List keeps autosave and named saves working, and the to-do survives reopening.
+- **Update Git-synced machines together** — sessions that contain recall activity can't be opened by earlier Prose Minion versions. Existing sessions still open in v2.9.0.
+
+Saved-session recall is backed by automated tests. Its full live pass on real saved sessions is still in progress.
+
+### Also in v2.8.0 — Cache-aware Workshop conversations
 
 - **Request reuse for retained conversations** — Workshop enables prompt caching for Claude and supported Alibaba/Qwen routes while preserving other providers' native behavior. Provider-reported cached-token counts show actual reuse.
 - **Choose Claude's cache duration** — General settings offers five minutes (default) or one hour. Cold writes cost more than ordinary input, and one-hour writes cost more than five-minute writes; choose for your working rhythm.
@@ -52,6 +71,24 @@ Live Claude/Qwen cache-hit and duration acceptance remain pending.
 - **Listen to your prose with Craft Steering** — examine sound, rhythm, sentence handoffs, and narrative control in the sidebar or Workshop, with revision experiments that preserve your passage's intent.
 - **Explore a word's wider world** — the optional Dictionary encyclopedia entry, **Topic & Related Lexicon**, adds topic explanations, related vocabulary, writing examples, and possible reference books. Its switch remembers your choice for standard and Fast generation; persona calls leave it out.
 - **Update every Git-synced machine first** — sessions saved by v2.7.0 cannot be opened by earlier Prose Minion versions. Older sessions still open; Rewind and Branch become available from their reopen point onward.
+
+**Rewind, edit, and branch.** Under each reply and each message you sent, the thread offers a way back. Rewind to a reply, edit an earlier message and send it again, or branch into a new saved session and leave this one as it is. Rewind asks before it removes anything.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-rewind-branch.png" alt="Top: a Workshop reply with Rewind to here and Branch from here, and a writer message with Edit from here and Branch from here. Bottom: the Rewind to here? dialog, which says two turns will be removed and points to Branch for keeping the conversation" width="100%"/>
+</p>
+
+**Craft Steering** sits under **Craft & Voice** in the sidebar's Writing Tools and in the Workshop's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it listens to how each sentence carries you into the next, and it judges the pauses, repetition, and fragments you meant by their effect instead of smoothing them away.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/craft-steering.png" alt="Craft Steering in the sidebar's Writing Tools picker under Craft and Voice, and selected in the Workshop's Tools picker with its Run Craft Steering button" width="100%"/>
+</p>
+
+**Topic & Related Lexicon** turns a dictionary entry outward: the topics a word belongs to, the vocabulary around it, how to use it on the page, and suggested reading. One switch in the Dictionary tab turns it on or off.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-topic-lexicon.png" alt="Left: the Dictionary tab looking up 'Fricative' with the Topic and Related Lexicon switch on. Right: the resulting encyclopedia entry, covering phonetics and phonology, related vocabulary, a writing example, and two reference books" width="100%"/>
+</p>
 
 ### Also in v2.6.2 — GPT-6.1 Sol choices
 
@@ -175,7 +212,7 @@ Focused passes, from Dialogue & Beats to Continuity — each one a single, opini
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/writing-tools-grid.png" alt="The Writing Tools picker: analysis passes across Primary, Dialogue, Craft & Voice, and Technical groups" width="100%"/>
 </p>
 
-*This overview image predates Craft Steering; the current card is shown in the v2.7.0 highlights above.*
+*This overview image predates Craft Steering; its card is shown below.*
 
 **Craft Steering** appears under **Craft & Voice** in both the sidebar's Writing Tools picker and the Workshop tab's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it examines sound, rhythm, and how each sentence leads into the next. Its report identifies what to preserve, audits sound and narrative control, and traces sentence handoffs. Sample revisions show small changes; Creative Variations explore distinct treatments of a selected passage; Bound Creative Variations isolate particular craft choices. Each revision explains its gains and costs, followed by a fidelity check and optional read-aloud practice. Intentional pauses, repetition, fragments, and lyrical swells are assessed for their effect. You can also ask a Workshop persona to run Craft Steering on a passage in the conversation.
 
