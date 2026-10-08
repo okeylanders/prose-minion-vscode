@@ -8,7 +8,9 @@
  */
 
 import {
+  WorkshopActionableFinding,
   WorkshopTodoItem,
+  WorkshopTodoSource,
   WorkshopTurn
 } from '@messages';
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
@@ -39,6 +41,59 @@ const cloneTodo = (
   stale: todo.source.excerptVersion !== excerptVersion
 });
 
+/**
+ * Provenance for a task promoted from one turn's finding, or undefined when
+ * the turn cannot source a task. Each kind is its own literal so the compiler
+ * checks it against its own union member: one literal shared by host and
+ * guest once wrote the host-only `upstreamReportTurnId` onto guest sources,
+ * and the strict session codec refused to save the room.
+ */
+function findingSource(
+  turn: WorkshopTurn,
+  finding: WorkshopActionableFinding
+): WorkshopTodoSource | undefined {
+  if (turn.artifact === 'tool_report' && turn.toolId) {
+    return {
+      kind: 'tool_report',
+      turnId: turn.id,
+      participantLabel: turn.toolLabel ?? workshopToolLabel(turn.toolId),
+      toolId: turn.toolId,
+      findingKey: finding.key,
+      findingText: finding.text,
+      excerptVersion: turn.excerptVersion
+    };
+  }
+  if (!turn.personaId) {
+    return undefined;
+  }
+  const participantLabel = turn.personaLabel ?? workshopPersonaLabel(turn.personaId);
+  if (turn.participant === 'host') {
+    return {
+      kind: 'host_turn',
+      turnId: turn.id,
+      participantLabel,
+      personaId: turn.personaId,
+      // Absent rather than undefined, so the live source matches its saved form.
+      ...(turn.reportTurnId === undefined ? {} : { upstreamReportTurnId: turn.reportTurnId }),
+      findingKey: finding.key,
+      findingText: finding.text,
+      excerptVersion: turn.excerptVersion
+    };
+  }
+  if (turn.participant === 'guest') {
+    return {
+      kind: 'guest_turn',
+      turnId: turn.id,
+      participantLabel,
+      personaId: turn.personaId,
+      findingKey: finding.key,
+      findingText: finding.text,
+      excerptVersion: turn.excerptVersion
+    };
+  }
+  return undefined;
+}
+
 export class WorkshopTodoLedger {
   private counter = 0;
   private todos: WorkshopStoredTodoItemV1[] = [];
@@ -53,11 +108,8 @@ export class WorkshopTodoLedger {
     const finding = sourceTurn?.actionableFindings?.find(
       (candidate) => candidate.key === findingKey
     );
-    const isToolReport = sourceTurn?.artifact === 'tool_report' && !!sourceTurn.toolId;
-    const isPersonaTurn =
-      (sourceTurn?.participant === 'host' || sourceTurn?.participant === 'guest')
-      && !!sourceTurn.personaId;
-    if (!sourceTurn || (!isToolReport && !isPersonaTurn) || !finding) {
+    const source = sourceTurn && finding ? findingSource(sourceTurn, finding) : undefined;
+    if (!sourceTurn || !finding || !source) {
       throw new Error('Cannot add a task from an unknown actionable finding');
     }
     if (sourceTurn.excerptVersion !== excerptVersion) {
@@ -73,27 +125,6 @@ export class WorkshopTodoLedger {
       throw new Error(`Workshop task list is limited to ${WORKSHOP_TODO_BOUNDS.items} items`);
     }
 
-    const source: WorkshopTodoItem['source'] = isToolReport
-      ? {
-          kind: 'tool_report',
-          turnId: sourceTurn.id,
-          participantLabel: sourceTurn.toolLabel ?? workshopToolLabel(sourceTurn.toolId!),
-          toolId: sourceTurn.toolId!,
-          findingKey,
-          findingText: finding.text,
-          excerptVersion: sourceTurn.excerptVersion
-        }
-      : {
-          kind: sourceTurn.participant === 'host' ? 'host_turn' : 'guest_turn',
-          turnId: sourceTurn.id,
-          participantLabel:
-            sourceTurn.personaLabel ?? workshopPersonaLabel(sourceTurn.personaId!),
-          personaId: sourceTurn.personaId!,
-          upstreamReportTurnId: sourceTurn.reportTurnId,
-          findingKey,
-          findingText: finding.text,
-          excerptVersion: sourceTurn.excerptVersion
-        };
     const todo: WorkshopStoredTodoItemV1 = {
       id: `todo-${++this.counter}-${this.now()}`,
       text: finding.text,

@@ -725,4 +725,51 @@ describe('Workshop persistence with the real store', () => {
     expect(secondScan).toHaveBeenCalledTimes(1);
     expect(coordinator.isSessionOperationPending()).toBe(false);
   });
+
+  // The store validates the live object before serializing it, so this must
+  // run through the real coordinator and store rather than a JSON round trip.
+  it('autosaves, saves by name, and reopens a room holding a guest to-do', async () => {
+    const { store, session, coordinator, log } = setup();
+    const statuses: Array<{ status: string; error?: string }> = [];
+    coordinator.addSessionSaveStatusListener((status) => statuses.push(status));
+    await coordinator.initialize();
+    session.setExcerpt({ text: 'Pinned.', source: { kind: 'manual' } });
+    session.adoptPersonaGuest('felix', 'conv-felix', []);
+    session.beginPersonaGuestMessage('felix', 'run', 'What should change?');
+    const guestTurn = session.completeRun(
+      'run', 'Review.', undefined, false, 'conv-felix',
+      [{ key: 'finding-1', ordinal: 1, text: 'Restore the breath.' }]
+    )!;
+    session.addTodoFromFinding(guestTurn.id, 'finding-1');
+    const guestSource = {
+      kind: 'guest_turn', turnId: guestTurn.id, participantLabel: 'Felix', personaId: 'felix',
+      findingKey: 'finding-1', findingText: 'Restore the breath.', excerptVersion: 1
+    };
+
+    coordinator.markDirty('task added');
+    await coordinator.flush();
+    expect(statuses.at(-1)).toEqual({ sessionId: expect.any(String), status: 'saved' });
+    expect(coordinator.hasPendingWrite()).toBe(false);
+    expect((await store.readCurrent())?.workshop.todos[0].source).toStrictEqual(guestSource);
+
+    const saved = await coordinator.saveNamed('Guest notes');
+    expect((await store.readNamed(saved.sessionId))?.workshop.todos[0].source).toStrictEqual(guestSource);
+
+    session.editTodo(session.getSnapshot().todos[0].id, 'Restore the breath at the turn.');
+    coordinator.markDirty('task edited');
+    await coordinator.flush();
+    expect(statuses.at(-1)?.status).toBe('saved');
+    expect((await store.readNamed(saved.sessionId))?.workshop.todos[0].text)
+      .toBe('Restore the breath at the turn.');
+
+    await coordinator.resetSession({ clearWorkingSet: true });
+    expect(session.getSnapshot().todos).toEqual([]);
+    await coordinator.openNamed(saved.sessionId);
+    expect(session.getSnapshot().todos).toEqual([expect.objectContaining({
+      text: 'Restore the breath at the turn.',
+      source: guestSource,
+      stale: false
+    })]);
+    expect(log.appendLine).not.toHaveBeenCalledWith(expect.stringContaining('Autosave failed'));
+  });
 });

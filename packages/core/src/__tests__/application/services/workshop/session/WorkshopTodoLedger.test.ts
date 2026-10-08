@@ -59,6 +59,8 @@ describe('WorkshopTodoLedger', () => {
     expect(ledger.list(3)).toHaveLength(1);
   });
 
+  // Strict equality: the session codec refuses an unexpected key even when its
+  // value is undefined, and toEqual would not notice one.
   it('preserves host and guest finding provenance with catalog labels', () => {
     const ledger = new WorkshopTodoLedger(() => 10);
     const hostTurn = turn({
@@ -78,10 +80,11 @@ describe('WorkshopTodoLedger', () => {
       artifact: 'persona_message',
       toolId: undefined,
       personaId: 'felix',
+      reportTurnId: 'turn-report',
       actionableFindings: [finding('guest-finding', 'Restore the breath.')]
     });
 
-    expect(ledger.addFromFinding(hostTurn, 'host-finding', 3).source).toEqual({
+    expect(ledger.addFromFinding(hostTurn, 'host-finding', 3).source).toStrictEqual({
       kind: 'host_turn',
       turnId: 'turn-host',
       participantLabel: 'Jill',
@@ -91,16 +94,31 @@ describe('WorkshopTodoLedger', () => {
       findingText: 'Keep the question open.',
       excerptVersion: 3
     });
-    expect(ledger.addFromFinding(guestTurn, 'guest-finding', 3).source).toEqual({
+    expect(ledger.addFromFinding(guestTurn, 'guest-finding', 3).source).toStrictEqual({
       kind: 'guest_turn',
       turnId: 'turn-guest',
       participantLabel: 'Felix',
       personaId: 'felix',
-      upstreamReportTurnId: undefined,
       findingKey: 'guest-finding',
       findingText: 'Restore the breath.',
       excerptVersion: 3
     });
+  });
+
+  it('omits the upstream report from a host source that synthesized none', () => {
+    const ledger = new WorkshopTodoLedger(() => 10);
+    const hostTurn = turn({
+      id: 'turn-host',
+      kind: 'message',
+      participant: 'host',
+      artifact: 'persona_message',
+      toolId: undefined,
+      personaId: 'jill',
+      actionableFindings: [finding('host-finding', 'Keep the question open.')]
+    });
+
+    expect(ledger.addFromFinding(hostTurn, 'host-finding', 3).source)
+      .not.toHaveProperty('upstreamReportTurnId');
   });
 
   it('rejects unknown findings, ineligible turns, and stale source turns', () => {
