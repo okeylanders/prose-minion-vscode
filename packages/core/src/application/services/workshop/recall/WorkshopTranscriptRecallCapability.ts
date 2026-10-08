@@ -7,11 +7,13 @@
  * - Reads per turn: at most `readsPerTurn`, beside the shared call ceiling.
  *   A read that reached the service counts, whatever became of it.
  * - Characters per turn: all reads together deliver at most
- *   `readCharactersPerTurn`.
+ *   `readCharactersPerTurn`, two full reads, when the window is known.
  * - The window clamp: a read takes at most half the room the model's
  *   context window has for evidence, by the preflight's own estimate of
- *   what was rendered (WorkshopRecallWindowClamp). When the window is
- *   unknown the budget stands.
+ *   what was rendered (WorkshopRecallWindowClamp).
+ * - An unknown window: no clamp, and no preflight either, so nothing local
+ *   checks what a read costs. The turn's reads then share one read's worth,
+ *   `readCharacters`, and a limited or refused read says why (Slice 5).
  * - A read whose limit leaves less than a minimum share per session named
  *   is refused, with the characters left and the minimum. It is never
  *   narrowed silently, and the renderer is never asked for less.
@@ -40,7 +42,10 @@ import { workshopRecallMinimumReadCharacters } from '@/application/services/work
 import { formatWorkshopRecallTurnRanges } from '@/application/services/workshop/recall/WorkshopRecallReadWindow';
 import { recallLabel, recallLabelList } from '@/application/services/workshop/recall/WorkshopRecallText';
 import { recallCount, recallQuoted } from '@/application/services/workshop/recall/WorkshopRecallCopy';
-import { workshopTranscriptRecallRequestSummary } from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
+import {
+  workshopTranscriptRecallRefusedReadAdvice,
+  workshopTranscriptRecallRequestSummary
+} from '@/application/services/workshop/recall/WorkshopTranscriptRecallRequestCopy';
 import {
   fitWorkshopRecallReadToWindow,
   workshopRecallEvidenceTokens,
@@ -174,7 +179,7 @@ export class WorkshopTranscriptRecallCapability {
     const minimum = workshopRecallMinimumReadCharacters(request.sessions.length);
     let limit = this.readLimit(window);
     if (limit.characters < minimum) {
-      return this.tooSmall(request, limit, minimum);
+      return this.tooSmall(request, limit, minimum, window);
     }
     this.reads += 1;
     const result = await this.recall.read({ sessions: request.sessions, detail: request.detail }, this.turn.signal);
@@ -182,7 +187,7 @@ export class WorkshopTranscriptRecallCapability {
     // Below the first guess, only the window limits a read.
     const render = (characters: number): WorkshopRecallMeasuredRead => {
       const readLimit: ReadLimit = characters === limit.characters ? limit : { characters, by: 'context-window' };
-      const rendered = renderWorkshopRecallRead(result, { now: this.now(), readCharacters: characters, notes: this.limitNotes(readLimit) });
+      const rendered = renderWorkshopRecallRead(result, { now: this.now(), readCharacters: characters, notes: this.limitNotes(readLimit, window) });
       const outcome = this.readOutcome(request, result, rendered, readLimit);
       return { characters, outcome, tokens: window ? workshopRecallEvidenceTokens(outcome) : 0 };
     };
@@ -197,7 +202,7 @@ export class WorkshopTranscriptRecallCapability {
     this.readCharacters += outcome.content!.length;
     this.log(`read sessions=${request.sessions.length} limit=${fitted.fit.characters} by=${String(outcome.metadata!.limitedBy)} ` +
       `characters=${outcome.content!.length} turnTotal=${this.readCharacters}` +
-      (half === undefined ? '' : ` tokens=${tokens} halfWindow=${half} renders=${fitted.renders}`));
+      (half === undefined ? ' window=unknown' : ` tokens=${tokens} halfWindow=${half} renders=${fitted.renders}`));
     return outcome;
   }
 
@@ -250,7 +255,7 @@ export class WorkshopTranscriptRecallCapability {
   private readLimit(window: CapabilityContextWindow | undefined): ReadLimit {
     const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
     let limit: ReadLimit = { characters: budgets.readCharacters, by: 'read-budget' };
-    const left = budgets.readCharactersPerTurn - this.readCharacters;
+    const left = turnTotal(window) - this.readCharacters;
     if (left < limit.characters) {
       limit = { characters: Math.max(0, left), by: 'per-turn-total' };
     }
@@ -264,12 +269,12 @@ export class WorkshopTranscriptRecallCapability {
     return limit;
   }
 
-  private limitNotes(limit: ReadLimit): string[] {
+  private limitNotes(limit: ReadLimit, window: CapabilityContextWindow | undefined): string[] {
     switch (limit.by) {
       case 'read-budget':
         return [];
       case 'per-turn-total':
-        return [`This read was limited to ${count(limit.characters)} characters: ${this.turnTotalWords()}.`];
+        return [`This read was limited to ${count(limit.characters)} characters: ${this.turnTotalWords(window)}.`];
       case 'context-window':
         return [`This read was limited to ${count(limit.characters)} characters, half the room left in your context window.`];
       default:
@@ -277,22 +282,27 @@ export class WorkshopTranscriptRecallCapability {
     }
   }
 
-  private turnTotalWords(): string {
-    return `earlier reads this turn used ${count(this.readCharacters)} of the ` +
-      `${count(PROMPT_BUDGETS.workshopTranscriptRecall.readCharactersPerTurn)}-character total`;
+  private turnTotalWords(window: CapabilityContextWindow | undefined): string {
+    return `earlier reads this turn used ${count(this.readCharacters)} of the ${count(turnTotal(window))}-character total` +
+      (window ? '' : ", one read's worth, because the size of your context window is unknown");
   }
 
   /** Decision 2: a bounded, recorded refusal naming what is left and what the read needs. */
-  private tooSmall(request: Request<'transcript.read'>, limit: ReadLimit, minimum: number): WorkshopCapabilityResult {
+  private tooSmall(
+    request: Request<'transcript.read'>,
+    limit: ReadLimit,
+    minimum: number,
+    window: CapabilityContextWindow | undefined
+  ): WorkshopCapabilityResult {
     const named = request.sessions.length;
-    const why = limit.by === 'context-window' ? 'half the room left in your context window' : this.turnTotalWords();
+    const why = limit.by === 'context-window' ? 'half the room left in your context window' : this.turnTotalWords(window);
     return this.rejected(
       request,
       limit.by === 'context-window' ? 'recall-context-window' : 'recall-read-total',
       `This read names ${recallCount(named, 'saved session')} and needs at least ${count(minimum)} characters ` +
         `(${count(minimum / Math.max(1, named))} per session), but only ${count(limit.characters)} are left: ${why}. ` +
         // The turn's total resets with the next writer message; the window does not.
-        refusedReadAdvice(named, limit.by === 'context-window' ? 'unread' : 'next-turn'),
+        workshopTranscriptRecallRefusedReadAdvice(named, limit.by === 'context-window' ? 'unread' : 'next-turn'),
       { charactersLeft: limit.characters, minimumCharacters: minimum, sessionsNamed: named }
     );
   }
@@ -318,7 +328,7 @@ export class WorkshopTranscriptRecallCapability {
         `(${count(minimum / Math.max(1, named))} per session), but half the room left in your context window holds ` +
         `only about ${count(characters)} characters of these sessions: the minimum read measured ` +
         `${Number.isFinite(tokens) ? count(tokens) : 'more'} tokens against ${count(half)}. ` +
-        refusedReadAdvice(named, 'unread'),
+        workshopTranscriptRecallRefusedReadAdvice(named, 'unread'),
       {
         charactersLeft: characters,
         minimumCharacters: minimum,
@@ -450,6 +460,16 @@ function scanCosts(bounds: {
   };
 }
 
+/**
+ * What a turn's reads may deliver together: two full reads when the window
+ * clamp measures each one, and one read's worth when the window is unknown,
+ * since then nothing local checks what a read costs (Slice 5 decision 1).
+ */
+function turnTotal(window: CapabilityContextWindow | undefined): number {
+  const budgets = PROMPT_BUDGETS.workshopTranscriptRecall;
+  return window ? budgets.readCharactersPerTurn : budgets.readCharacters;
+}
+
 /** “Title” · turns 38-46, or the titles a read of several sessions read. */
 function readSummary(request: Request<'transcript.read'>, titles: readonly string[]): string {
   if (titles.length === 0) {
@@ -465,20 +485,6 @@ function readSummary(request: Request<'transcript.read'>, titles: readonly strin
 function listedRanges(ranges: ReadonlyArray<{ readonly from: number; readonly to: number }>): string {
   const listed = formatWorkshopRecallTurnRanges(ranges.slice(0, LISTED_RANGES));
   return ranges.length > LISTED_RANGES ? `${listed}, and ${ranges.length - LISTED_RANGES} more` : listed;
-}
-
-/**
- * How a refused read ends: answer from what the turn holds, then tell the
- * writer what is left, so a bounded answer never passes for a complete one.
- * Only a turn's total promises room next turn; the window may not.
- */
-function refusedReadAdvice(named: number, left: 'next-turn' | 'unread'): string {
-  const tell = left === 'next-turn'
-    ? 'tell the writer which sessions and turns are left for your next turn'
-    : 'tell the writer which sessions and turns you could not read';
-  return named > 1
-    ? `Read fewer sessions at once, or answer from what you have and ${tell}.`
-    : `Answer from what you have, and ${tell}.`;
 }
 
 function count(value: number): string {

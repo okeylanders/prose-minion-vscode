@@ -46,6 +46,8 @@ describe('session-recall prompt ↔ PROMPT_BUDGETS', () => {
     [/at most ([\d,]+) `transcript\.read` calls in one user turn/, [budgets.readsPerTurn]],
     [/One read holds at most ([\d,]+) characters, and all the reads in one user turn share ([\d,]+)\./,
       [budgets.readCharacters, budgets.readCharactersPerTurn]],
+    // With no window the clamp cannot measure a read, so a turn's reads share one read's worth (Slice 5 decision 1).
+    [/When the size of your context window is unknown, the reads in one user turn share ([\d,]+) instead\./, [budgets.readCharacters]],
     [/One read may name at most ([\d,]+) sessions/, [budgets.readSessions]],
     [/It takes at most ([\d,]+) ranges/, [budgets.turnRanges]],
     [/`<recent>` reads the newest N sessions that `<match>` and `<persona>` keep, at most ([\d,]+); without it, the newest ([\d,]+)\./,

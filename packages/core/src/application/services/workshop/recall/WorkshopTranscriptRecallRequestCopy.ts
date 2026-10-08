@@ -1,8 +1,9 @@
 /**
  * How a session-recall request reads before it runs: the live status line
- * and ticker, the log line's input, and the summary a refused or failed
- * call records in the thread. A request has passed the codec, so every
- * field is bounded; titles are known only after a read and are never here.
+ * and ticker, the log line's input, the summary a refused or failed call
+ * records in the thread, and the advice a refused read ends with. A request
+ * has passed the codec, so every field is bounded; titles are known only
+ * after a read and are never here.
  */
 
 import { workshopPersonaLabel } from '@shared/constants/workshopPersonas';
@@ -41,7 +42,7 @@ export function workshopTranscriptRecallStatusTicker(request: WorkshopTranscript
   }
 }
 
-/** Counts and ids only; a query is bounded by the codec and quoted as JSON. */
+/** Counts and ids only; ids and a query are bounded by the codec, and a query is quoted as JSON. */
 export function workshopTranscriptRecallRequestLogSummary(request: WorkshopTranscriptRecallRequest): string {
   switch (request.capability) {
     case 'transcript.catalog':
@@ -49,7 +50,8 @@ export function workshopTranscriptRecallRequestLogSummary(request: WorkshopTrans
     case 'transcript.search':
       return `query=${JSON.stringify(request.query)}; session=${request.sessionId ?? 'any'}; persona=${request.personaId ?? 'any'}`;
     case 'transcript.read':
-      return `sessions=${request.sessions.length}; ` +
+      // Ids as the persona wrote them, so a live pass can tell a garbled id from a shortened one (U2).
+      return `sessions=${request.sessions.length}; ids=${request.sessions.map(({ sessionId }) => sessionId).join(',')}; ` +
         `ranges=${request.sessions.reduce((total, session) => total + (session.turns?.length ?? 0), 0)}; ` +
         `detail=${request.detail ?? 'default'}`;
     case 'transcript.todos':
@@ -90,6 +92,20 @@ export function workshopTranscriptRecallRequestSummary(request: WorkshopTranscri
     default:
       return assertNever(request);
   }
+}
+
+/**
+ * How a refused read ends: answer from what the turn holds, then tell the
+ * writer what is left, so a bounded answer never passes for a complete one.
+ * Only a turn's total promises room next turn; the window may not.
+ */
+export function workshopTranscriptRecallRefusedReadAdvice(named: number, left: 'next-turn' | 'unread'): string {
+  const tell = left === 'next-turn'
+    ? 'tell the writer which sessions and turns are left for your next turn'
+    : 'tell the writer which sessions and turns you could not read';
+  return named > 1
+    ? `Read fewer sessions at once, or answer from what you have and ${tell}.`
+    : `Answer from what you have, and ${tell}.`;
 }
 
 function assertNever(value: never): never {

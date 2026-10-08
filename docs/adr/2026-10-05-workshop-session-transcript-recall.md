@@ -496,7 +496,9 @@ once.
   - `readCharactersPerTurn` is 150,000, so two reads cannot add 300,000
     characters to one turn. *Amended in Slice 4 after the first live pass:
     300,000, twice `readCharacters`; see the [Slice 4
-    note](#implementation-note-2026-10-06-slice-4).*
+    note](#implementation-note-2026-10-06-slice-4). Amended in Slice 5:
+    150,000 again when the model's context window is unknown; see the
+    [Slice 5 note](#implementation-note-2026-10-07-slice-5).*
   - `readSessions` is 10.
   - `todoSessions` is 50, `todoItems` 60, `todoCharacters` 16,000, and
     `todoMatchCharacters` 200.
@@ -1082,8 +1084,10 @@ After the first live pass, Okey approved two more changes on this PR:
     300,000-character read of XML-heavy text at about 223,500 estimated
     tokens once escaped. The ordinary request preflight still runs, but
     nothing local guarantees such a model can take two full reads.
-    Slice 5 should decide whether an unknown window falls back to one
-    read's worth per turn.
+    *Corrected in Slice 5: no request preflight runs either.
+    `AgentRunEngine.executeTurn` checks only a known window, and logs
+    "Context preflight unavailable" otherwise.* Slice 5 should decide
+    whether an unknown window falls back to one read's worth per turn.
   - The pin: `PROMPT_BUDGETS` pins the relationship, a total that holds
     every read a turn allows at full size.
   - The grammar now quotes `readCharacters` as well, since the two
@@ -1109,6 +1113,93 @@ For Slice 5:
 - What two full reads per turn cost a conversation that keeps their
   evidence, and whether personas plan their reads to fit the limits.
 - Open questions 5–8.
+
+## Implementation note 2026-10-07: Slice 5
+
+Slice 5 verifies recall live, in three phases:
+
+- **A.** Land the live-pass protocol and any change the pass should
+  exercise.
+- **B.** Okey runs the protocol on an F5 build of
+  `claude/workshop-recall-live`.
+- **C.** Record the evidence, make the evidence-driven changes, settle open
+  questions 5–8, and accept this ADR.
+
+This note records phase A. Phase C completes it. The protocol, with its
+scenarios and result tables, is
+[slice-5-live-pass.md](../../.todo/epics/epic-workshop-session-recall-2026-10-05/slice-5-live-pass.md).
+
+Okey decided four questions before phase A:
+
+- **Decision 1: an unknown window holds a turn to one read's worth.** When
+  the model's context length is unknown, the engine passes recall no window,
+  so nothing clamps a read. It also runs no request preflight (the Slice 4
+  note said it did; corrected there). The PR 131 re-review measured a
+  300,000-character XML-heavy read at about 223,500 estimated tokens. So with
+  no window, a turn's reads share `readCharacters` (150,000) instead of
+  `readCharactersPerTurn` (300,000). Reads per turn stay at 2, and
+  `PROMPT_BUDGETS` gains no key.
+  - A limited read's note, and a refused read's text, say "one read's
+    worth, because the size of your context window is unknown". `limitedBy`
+    stays `per-turn-total`. The read's log line ends with `window=unknown`.
+  - The refusal points to the next turn, since the total resets there.
+  - The grammar's Limits paragraph gains one sentence: "When the size of your
+    context window is unknown, the reads in one user turn share 150,000
+    instead." Without it, the prompt's 300,000 would be false in that case.
+    It adds 99 bytes, about 25 tokens. The sync test pins the number to
+    `readCharacters`.
+- **Decision 2: models and trials.**
+  - Models: the default host model and the fastest supported model.
+  - Behavioral scenarios run three times on the fast model and once on the
+    default. Mechanical ones (cost, latency, the guest catch-up, the
+    reopened room, the unknown window) run once on the default.
+  - Every run starts in a fresh room on the same corpus.
+- **Decision 3: U2's bar and remedy.** Any garbled id in the fast-model
+  runs fails U2. The remedy is open question 7's first option:
+  - An exact id wins. Otherwise a prefix of 8 or more characters resolves
+    against the listing and the live id.
+  - One match resolves; the live room's gets the current-session answer.
+    Several matches are refused, naming them. Under 8 characters is refused.
+  - The rule applies to every `<session>`: search, read, and to-dos.
+  - The grammar teaches it in place of "never shorten". That also helps
+    when a model corrupts characters, since there is less to copy.
+  - Results keep full ids. No per-call handles.
+  - It lands only if U2 fails.
+- **Decision 4: budgets.** A `PROMPT_BUDGETS` value changes only when a
+  scenario shows a concrete failure or waste, cited here. Otherwise the
+  value is accepted.
+  - Phase C maps each number a persona acts on to the scenario that
+    exercised it. A number no scenario reached is "accepted, not exercised
+    live".
+  - The grammar's ~2,500 tokens get the same test: a trim needs evidence,
+    or it goes to `.todo` with what the pass showed.
+
+Phase A, commit by commit:
+
+- **Room first** (`263336a`). The capability adapter was 490 lines. The
+  advice a refused read ends with is copy, so it moved to
+  `WorkshopTranscriptRecallRequestCopy` unchanged. The adapter is 496 lines
+  with the fallback.
+- **The fallback** (`38ecd32`) and **its grammar sentence** (`14329bf`).
+  - Witnesses: with no window, a 130,010-character batch read leaves its
+    tail 19,990 characters, and a four-session read is refused before the
+    service runs. With a known window, the same reads get a full read. The
+    per-turn tests that assumed 300,000 now pass a roomy window.
+  - Mutation check: reverting the fallback, its wording, or the log field
+    each fails a witness, and so does applying the fallback to known
+    windows. Dropping the grammar sentence, or quoting 300,000 in it, fails
+    the sync test.
+- **Two measurement aids,** beyond the decisions. Both only add a log
+  field, so Okey may drop either.
+  - `93576c0`, for Q5. A guest's published read reaches the host's next
+    catch-up frame whole: a capability turn's content is its evidence body,
+    and the frame is bounded only by the 1,000,000-character runaway guard.
+    Both "Room catch-up prepared" lines now end with `characters=N`.
+  - `144097a`, for U2. A read's log input lists the session ids as the
+    persona wrote them (`ids=`), as search and to-dos already log their
+    `session=`. Decision 3's remedy fits a shortened id, not a substituted
+    one, so phase C needs the exact string.
+  - A witness pins each field, and removing it fails the witness.
 
 ## What this decides for memory, and what it leaves open
 
