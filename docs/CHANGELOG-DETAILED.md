@@ -87,10 +87,13 @@ pre-existing guest to-do persistence failure found during release review.
   and the guest to-do fix. Its three screenshots (`sessions-menu-export`,
   `export-transcript-formats`, `recall-card-and-reply`) are 2× captures of the
   real webview bundle with demo content.
-- v2.8.0's pages stay on as primers, "Room for more context" and "Prompt
-  caching, with a cache clock", ahead of Rewind. The v2.8.0 Git-sync note is
-  removed. The Agents page no longer says the Widgets browser launches
-  nothing; it opens the widgets that are ready now. The tour is thirteen pages.
+- Earlier releases' pages follow the new ones as primers, newest release
+  first and in their original order: v2.8.0's "Prompt caching, with a cache
+  clock" and "Room for more context", then v2.7.0's "Rewind, edit, and
+  branch", Craft Steering, and Topic & Related Lexicon. The standing tour
+  follows. The v2.8.0 Git-sync note is removed. The Agents page no longer says
+  the Widgets browser launches nothing; it opens the widgets that are ready
+  now. The tour is thirteen pages.
 - The README's v2.9.0 section gains two composites,
   `workshop-export-transcript.png` and `workshop-session-recall.png`.
 
