@@ -72,6 +72,12 @@ Live Claude/Qwen cache-hit and duration acceptance remain pending.
 - **Explore a word's wider world** — the optional Dictionary encyclopedia entry, **Topic & Related Lexicon**, adds topic explanations, related vocabulary, writing examples, and possible reference books. Its switch remembers your choice for standard and Fast generation; persona calls leave it out.
 - **Update every Git-synced machine first** — sessions saved by v2.7.0 cannot be opened by earlier Prose Minion versions. Older sessions still open; Rewind and Branch become available from their reopen point onward.
 
+**Rewind, edit, and branch.** Under each reply and each message you sent, the thread offers a way back. Rewind to a reply, edit an earlier message and send it again, or branch into a new saved session and leave this one as it is. Rewind asks before it removes anything.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-rewind-branch.png" alt="Top: a Workshop reply with Rewind to here and Branch from here, and a writer message with Edit from here and Branch from here. Bottom: the Rewind to here? dialog, which says two turns will be removed and points to Branch for keeping the conversation" width="100%"/>
+</p>
+
 **Craft Steering** sits under **Craft & Voice** in the sidebar's Writing Tools and in the Workshop's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it listens to how each sentence carries you into the next, and it judges the pauses, repetition, and fragments you meant by their effect instead of smoothing them away.
 
 <p align="center">

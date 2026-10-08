@@ -101,6 +101,9 @@ pre-existing guest to-do persistence failure found during release review.
   in The Assistant and Dictionary sections stay, so both images outlive the
   release list. The note under the Writing Tools grid points at the card
   below it.
+- The v2.7.0 highlights gain their first Rewind, edit, and branch image,
+  `workshop-rewind-branch.png`. It shows the thread's action rows and the
+  "Rewind to here?" confirmation, captured from the real webview bundle.
 
 ## [2.8.0] - 2026-10-04 — Provider caching and acknowledged Workshop context
 
