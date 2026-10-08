@@ -97,9 +97,10 @@ pre-existing guest to-do persistence failure found during release review.
 - The README's v2.9.0 section gains two composites,
   `workshop-export-transcript.png` and `workshop-session-recall.png`.
 - The README's v2.7.0 highlights get back the Craft Steering and Topic &
-  Related Lexicon images and paragraphs that v2.8.0 moved into The Assistant
-  and Dictionary sections. Those copies are removed, so each image appears
-  once.
+  Related Lexicon images and paragraphs that v2.8.0 had moved out. The copies
+  in The Assistant and Dictionary sections stay, so both images outlive the
+  release list. The note under the Writing Tools grid points at the card
+  below it.
 
 ## [2.8.0] - 2026-10-04 — Provider caching and acknowledged Workshop context
 
