@@ -89,7 +89,9 @@ export class WorkshopTodoLedger {
           participantLabel:
             sourceTurn.personaLabel ?? workshopPersonaLabel(sourceTurn.personaId!),
           personaId: sourceTurn.personaId!,
-          upstreamReportTurnId: sourceTurn.reportTurnId,
+          ...(sourceTurn.participant === 'host' && sourceTurn.reportTurnId !== undefined
+            ? { upstreamReportTurnId: sourceTurn.reportTurnId }
+            : {}),
           findingKey,
           findingText: finding.text,
           excerptVersion: sourceTurn.excerptVersion

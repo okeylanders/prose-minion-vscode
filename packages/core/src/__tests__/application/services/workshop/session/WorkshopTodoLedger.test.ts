@@ -96,7 +96,6 @@ describe('WorkshopTodoLedger', () => {
       turnId: 'turn-guest',
       participantLabel: 'Felix',
       personaId: 'felix',
-      upstreamReportTurnId: undefined,
       findingKey: 'guest-finding',
       findingText: 'Restore the breath.',
       excerptVersion: 3
