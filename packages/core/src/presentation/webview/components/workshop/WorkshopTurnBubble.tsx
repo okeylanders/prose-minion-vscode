@@ -31,6 +31,10 @@ import {
 } from '@shared/constants/workshopWidgets';
 import { workshopRewindUnavailableReason } from '@shared/constants/workshopRewind';
 import { workshopCapabilityArtifactLabel } from '@shared/constants/workshopCapabilityLabels';
+import {
+  workshopCapabilityFamily,
+  type WorkshopCapabilityOperation
+} from '@shared/types/workshopCapabilities';
 
 interface WorkshopTurnBubbleProps {
   turn: WorkshopTurn;
@@ -198,6 +202,22 @@ export const parseVariations = (content: string): ParsedVariations | null => {
   };
 };
 
+/** Each family names what cut its result short. */
+const capabilityTruncationNote = (operation: WorkshopCapabilityOperation | undefined): string => {
+  if (!operation) {
+    return 'Result reached its response-token limit';
+  }
+  switch (workshopCapabilityFamily(operation)) {
+    case 'resource':
+      return 'Result was bounded by the project-resource limits';
+    case 'transcript':
+      return 'Result was bounded by the session-recall limits';
+    case 'dictionary':
+    case 'analysis':
+      return 'Result reached its response-token limit';
+  }
+};
+
 const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
   const metadata = turn.capability?.metadata;
   const rows: string[] = [];
@@ -211,9 +231,7 @@ const capabilityMetadataRows = (turn: WorkshopTurn): string[] => {
     rows.push(`Partial failures: ${metadata.partialFailures.join(', ')}`);
   }
   if (metadata?.truncated === true) {
-    rows.push(turn.capability?.operation.startsWith('resource.')
-      ? 'Result was bounded by the project-resource limits'
-      : 'Result reached its response-token limit');
+    rows.push(capabilityTruncationNote(turn.capability?.operation));
   }
   const analysisInputs = metadata?.analysisInputs ?? turn.analysisInputs;
   if (analysisInputs && typeof analysisInputs === 'object') {

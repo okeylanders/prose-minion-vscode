@@ -99,6 +99,9 @@ export {
   WorkshopTranscriptExportService
 } from '@/application/services/workshop/export/WorkshopTranscriptExportService';
 export {
+  WorkshopTranscriptRecallService
+} from '@/application/services/workshop/recall/WorkshopTranscriptRecallService';
+export {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,
   persistRejectedWidgetResponse,

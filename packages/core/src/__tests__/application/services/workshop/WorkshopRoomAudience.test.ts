@@ -97,6 +97,38 @@ describe('workshopTurnAudience', () => {
       principal: { kind: 'host' }
     });
   });
+
+  // Reads and to-do lists of saved sessions publish as resource.read does;
+  // the catalog and search are private discovery (ADR 2026-10-05 §7, D6).
+  it.each([
+    ['transcript.read', 'transcript_read', 'success', true],
+    ['transcript.read', 'transcript_read', 'partial', true],
+    ['transcript.todos', 'transcript_todos', 'success', true],
+    ['transcript.todos', 'transcript_todos', 'partial', true],
+    ['transcript.read', 'transcript_read', 'failed', false],
+    ['transcript.read', 'transcript_read', 'rejected', false],
+    ['transcript.todos', 'transcript_todos', 'cancelled', false],
+    ['transcript.catalog', 'transcript_catalog', 'success', false],
+    ['transcript.search', 'transcript_search', 'success', false]
+  ] as const)('a published %s (%s, %s) reaches the room: %s', (operation, artifact, status, room) => {
+    const recalled = turn({
+      participant: 'tool',
+      artifact,
+      capability: {
+        operation,
+        status,
+        requestSummary: '“Chapter 6.7” · turns 1-12',
+        requestedByPersonaId: 'felix',
+        invokedBy: { kind: 'personaGuest', personaId: 'felix' },
+        publishedWithTurnId: 'turn-2'
+      }
+    });
+    const guest = { kind: 'private', principal: { kind: 'personaGuest', personaId: 'felix' } };
+
+    expect(workshopTurnAudience(recalled)).toEqual(room ? { kind: 'room' } : guest);
+    expect(workshopTurnAudience({ ...recalled, capability: { ...recalled.capability!, publishedWithTurnId: undefined } }))
+      .toEqual(guest);
+  });
 });
 
 describe('isWorkshopTurnAlreadyVisibleToPrincipal', () => {

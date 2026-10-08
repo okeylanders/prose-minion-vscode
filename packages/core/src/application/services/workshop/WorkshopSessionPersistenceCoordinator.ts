@@ -50,6 +50,7 @@ import {
   WorkshopSessionStore,
   WorkshopSessionStoreAvailability,
   WorkshopSessionStoreUnavailableError,
+  WorkshopSessionStoreUnavailableReason,
   WorkshopStoredSessionSummary
 } from '@/infrastructure/storage/WorkshopSessionStore';
 import { ConversationArchiveEntryV1 } from '@orchestration/ConversationManager';
@@ -188,6 +189,19 @@ export interface WorkshopSessionListData {
 }
 
 /**
+ * Whether session recall may read saved sessions now, and which one is the
+ * live room (ADR 2026-10-05 §2). `not-ready` holds until hydration settles
+ * the live identity; before that, the room being restored could appear in
+ * its own corpus under a provisional id.
+ */
+export type WorkshopSessionRecallScope =
+  | { available: true; liveSessionId: string }
+  | {
+      available: false;
+      reason: WorkshopSessionStoreUnavailableReason | 'workspace-changed' | 'not-ready';
+    };
+
+/**
  * What a reset actually destroyed. Empty for an ordinary new session, which
  * preserves the working set; populated only for a full reset, and captured
  * before the aggregate is mutated so the caller can log specifics.
@@ -287,6 +301,25 @@ export class WorkshopSessionPersistenceCoordinator {
 
   availability(): WorkshopSessionStoreAvailability {
     return this.store.availability();
+  }
+
+  /**
+   * A read-only query for session recall, which runs inside a participant
+   * turn: it never initializes, flushes, or joins the session-operation gate.
+   * It applies the accepted-workspace rule without throwing, so a changed
+   * root cannot surface another project's sessions.
+   */
+  recallScope(): WorkshopSessionRecallScope {
+    if (!this.initialized) {
+      return { available: false, reason: 'not-ready' };
+    }
+    if (this.workspaceChangedSinceLoad()) {
+      return { available: false, reason: 'workspace-changed' };
+    }
+    const availability = this.store.availability();
+    return availability.available
+      ? { available: true, liveSessionId: this.identity.sessionId }
+      : { available: false, reason: availability.reason };
   }
 
   hasPendingWrite(): boolean {
@@ -1736,23 +1769,21 @@ export class WorkshopSessionPersistenceCoordinator {
    * autosave; the extension host must be reloaded to establish a new owner.
    */
   private assertAcceptedWorkspace(): void {
-    const current = this.store.availability();
-    if (this.acceptedWorkspaceRoot !== undefined) {
-      if (!current.available || current.rootPath !== this.acceptedWorkspaceRoot) {
-        throw new Error(
-          'The Workshop workspace changed after this session was loaded. Reload the extension host before saving or opening sessions.'
-        );
-      }
-      return;
-    }
-    if (
-      this.initialUnavailableReason !== undefined &&
-      (current.available || current.reason !== this.initialUnavailableReason)
-    ) {
+    if (this.workspaceChangedSinceLoad()) {
       throw new Error(
         'The Workshop workspace changed after this session was loaded. Reload the extension host before saving or opening sessions.'
       );
     }
+  }
+
+  /** The one accepted-workspace rule, shared by every operation and `recallScope()`. */
+  private workspaceChangedSinceLoad(): boolean {
+    const current = this.store.availability();
+    if (this.acceptedWorkspaceRoot !== undefined) {
+      return !current.available || current.rootPath !== this.acceptedWorkspaceRoot;
+    }
+    return this.initialUnavailableReason !== undefined &&
+      (current.available || current.reason !== this.initialUnavailableReason);
   }
 
   private protectCurrentCheckpoint(error: unknown, reason: string): void {

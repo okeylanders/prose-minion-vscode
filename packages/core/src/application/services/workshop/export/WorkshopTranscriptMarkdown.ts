@@ -14,7 +14,7 @@ import {
   WorkshopTranscript,
   WorkshopTranscriptEntry,
   countWorkshopTranscriptMessages
-} from './WorkshopTranscript';
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 
 export function renderWorkshopTranscriptMarkdown(transcript: WorkshopTranscript): string {

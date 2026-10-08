@@ -37,6 +37,16 @@ describe('WorkshopCapabilityXmlCodec', () => {
     expect(instruction).not.toContain('name="resource.catalog"');
   });
 
+  it('points at the session-recall grammar in the system instructions, with or without project resources', () => {
+    for (const instruction of [
+      createWorkshopCapabilityInstruction(),
+      createWorkshopCapabilityInstruction([{ group: 'characters', fileCount: 4 }])
+    ]) {
+      expect(instruction).toContain('The stable transcript.* grammar is in your system instructions.');
+      expect(instruction).not.toContain('name="transcript.');
+    }
+  });
+
   it('documents resource operations only with an honest configured catalog', () => {
     const instruction = createWorkshopCapabilityInstruction([
       { group: 'characters', fileCount: 4 },

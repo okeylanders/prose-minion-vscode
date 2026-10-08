@@ -6,6 +6,7 @@
 import { LogSink } from '@/platform';
 import { OpenRouterMessage } from '@providers/OpenRouterClient';
 import {
+  CONTEXT_SOURCE_KINDS,
   ContextBudgetSnapshot,
   ContextSourceEntry,
   isContextPathGroup
@@ -615,7 +616,7 @@ export class ConversationManager {
     if (!Array.isArray(sources)) {
       throw new Error(`Conversation ${key} has invalid context sources`);
     }
-    const kinds = new Set(['pin', 'attachment', 'message-attachment', 'resource', 'tool-evidence', 'dictionary']);
+    const kinds: ReadonlySet<string> = new Set(CONTEXT_SOURCE_KINDS);
     const origins = new Set(['writer', 'host', 'tool']);
     sources.forEach((source, index) => {
       if (

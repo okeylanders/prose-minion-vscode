@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import {
   WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION
@@ -94,6 +95,41 @@ describe('prompt budgets', () => {
       readSourceBytes: 2 * 1024 * 1024,
       readBytes: 64 * 1024
     });
+  });
+
+  it('pins the Session Recall starting budgets (ADR 2026-10-05 §5; to-dos and reads, D11)', () => {
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall).toEqual({
+      queryCharacters: 200,
+      sessionIdCharacters: 100,
+      turnSelectionCharacters: 200,
+      turnRanges: 10,
+      catalogSessions: 50,
+      searchSessions: 50,
+      searchSourceBytes: 64 * 1024 * 1024,
+      searchHits: 20,
+      searchHitsPerSession: 5,
+      snippetCharacters: 280,
+      readCharacters: 150_000,
+      readSessions: 10,
+      readCharactersPerTurn: 300_000,
+      readsPerTurn: 2,
+      todoSessions: 50,
+      todoItems: 60,
+      todoCharacters: 16_000,
+      todoMatchCharacters: 200
+    });
+    // Recall shares the per-turn call ceiling; its reads stay inside it.
+    expect(PROMPT_BUDGETS.workshopTranscriptRecall.readsPerTurn)
+      .toBeLessThan(PROMPT_BUDGETS.workshopCapability.callsPerTurn);
+  });
+
+  it('gives every session of the largest read a share that clears the per-session minimum (D9)', () => {
+    const { readCharacters, readSessions, readCharactersPerTurn, readsPerTurn } = PROMPT_BUDGETS.workshopTranscriptRecall;
+
+    expect(readSessions * WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS).toBeLessThanOrEqual(readCharacters);
+    // The turn's total holds every read it allows at full size. When it equalled
+    // one read, a large first read left the second nothing (D11, amended in Slice 4).
+    expect(readCharactersPerTurn).toBe(readsPerTurn * readCharacters);
   });
 
   it('pins the model-facing Conversation Widget budgets and aggregate frame ceiling', () => {

@@ -172,7 +172,7 @@ export class RunWorkshopToolSidePass {
       const roomCatchUp = pendingRoomDelivery.frame;
       if (roomCatchUp) {
         this.outputChannel.appendLine(
-          `[RunWorkshopToolSidePass] Room catch-up prepared for synthesis: ${pendingRoomDelivery.deliveredTurnIds.length} whole turns included, ${pendingRoomDelivery.deferredTurns} deferred`
+          `[RunWorkshopToolSidePass] Room catch-up prepared for synthesis: ${pendingRoomDelivery.deliveredTurnIds.length} whole turns included, ${pendingRoomDelivery.deferredTurns} deferred, characters=${roomCatchUp.length}`
         );
       }
       const synthesisRequestId = createRequestId(`workshop_${toolId}_synthesis`);

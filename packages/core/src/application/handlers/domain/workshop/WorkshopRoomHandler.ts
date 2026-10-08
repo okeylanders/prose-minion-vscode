@@ -1003,7 +1003,7 @@ export class WorkshopRoomHandler {
     }
     if (roomDelivery && roomDelivery.deliveredTurnIds.length > 0) {
       this.outputChannel.appendLine(
-        `[WorkshopRoomHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred, status=${hasConversationalCatchUp ? 'conversational' : 'lifecycle-only'}`
+        `[WorkshopRoomHandler] Room catch-up prepared (${roomReader?.kind === 'host' ? 'host' : `guest=${roomReader?.personaId}`}): ${roomDelivery.deliveredTurnIds.length} whole turns included, ${roomDelivery.deferredTurns} deferred, characters=${roomCatchUp?.length ?? 0}, status=${hasConversationalCatchUp ? 'conversational' : 'lifecycle-only'}`
       );
     }
     const { conversationId, label, requestType, toolId, guestPersonaId } = targetPlan;

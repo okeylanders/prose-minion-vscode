@@ -10,9 +10,12 @@ import {
   WORKSHOP_PERSONA_CATALOG,
   WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
   WORKSHOP_RELATIONAL_DEPTH_PROMPT_PATHS,
+  WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
   workshopPersonaSystemPromptPaths,
   workshopPersonaLabel
 } from '@shared/constants/workshopPersonas';
+import { WORKSHOP_CAPABILITY_OPERATIONS, WorkshopCapabilityOperation } from '@shared/types/workshopCapabilities';
+import { isWorkshopPublishableCapabilityEvidence } from '@/application/services/workshop/WorkshopRoomAudience';
 
 const PROMPTS_ROOT = path.resolve(__dirname, '..', '..', '..', 'resources', 'system-prompts');
 const EXPECTED_IDS = ['jill', 'agnes', 'cliff', 'dev', 'edna', 'felix', 'harper', 'margot', 'penny', 'quinn', 'theo', 'wren'];
@@ -92,6 +95,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -111,6 +115,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -133,6 +138,7 @@ describe('Workshop persona catalog and packaged prompts', () => {
         'workshop-personas/base.md',
         persona.promptPath,
         WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH,
+        WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH,
         WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH,
         WORKSHOP_INTERACTION_MODE_PROMPT_PATHS.conversational,
         WORKSHOP_RELATIONAL_CONTRACT_PROMPT_PATH,
@@ -172,6 +178,25 @@ describe('Workshop persona catalog and packaged prompts', () => {
     expect(guestPaths).toContain(WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH);
   });
 
+  it('gives host and guest the same session-recall grammar, right after the analysis grammar (ADR 2026-10-05 §8)', () => {
+    const behavior = { interactionMode: 'balanced', expressionLevel: 'full', relationalDepth: 'attuned' } as const;
+    for (const base of ['workshop-personas/base.md', 'workshop-personas/guest-base.md']) {
+      const paths = workshopPersonaSystemPromptPaths(base, WORKSHOP_PERSONA_CATALOG[0], behavior);
+      expect(paths.indexOf(WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH))
+        .toBe(paths.indexOf(WORKSHOP_ANALYSIS_CAPABILITY_PROMPT_PATH) + 1);
+    }
+    // Only the persona bases carry capability grammar.
+    expect(workshopPersonaSystemPromptPaths('workshop-personas/other.md', WORKSHOP_PERSONA_CATALOG[0], behavior))
+      .not.toContain(WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH);
+
+    const grammar = fs.readFileSync(path.resolve(PROMPTS_ROOT, WORKSHOP_TRANSCRIPT_RECALL_CAPABILITY_PROMPT_PATH), 'utf8');
+    for (const operation of ['transcript.catalog', 'transcript.search', 'transcript.read', 'transcript.todos']) {
+      expect(grammar).toContain(`<prose-minion-tool-call name="${operation}">`);
+    }
+    expect(grammar).toContain('you do not remember it');
+    expect(grammar).toContain('I can look back at saved sessions');
+  });
+
   it('never ships a guest charter that denies the capabilities the run policy grants (review #2)', () => {
     const guestBase = fs.readFileSync(
       path.resolve(PROMPTS_ROOT, 'workshop-personas/guest-base.md'),
@@ -179,6 +204,68 @@ describe('Workshop persona catalog and packaged prompts', () => {
     );
     expect(guestBase).not.toMatch(/no tools or Workshop capabilities/i);
     expect(guestBase).toContain('capability calls documented in your instructions');
+  });
+
+  it('tells guests which evidence the room receives, exactly as the audience policy decides (ADR 2026-10-05 §7)', () => {
+    const guestBase = fs.readFileSync(path.resolve(PROMPTS_ROOT, 'workshop-personas/guest-base.md'), 'utf8')
+      .replace(/\s+/g, ' ');
+    const sharedList = /When your reply commits, the evidence it drew on is shared with the room along with it: ([^.]+)\./
+      .exec(guestBase)?.[1];
+    expect(sharedList).toBeDefined();
+    expect(guestBase).toContain('Catalogs and searches stay private.');
+    expect(guestBase).toContain('saved-session recall');
+    // The old charter said every result stayed out of the room, which was never true of published evidence.
+    expect(guestBase).not.toContain('not to the room');
+
+    // How the guest charter names each operation's evidence; false: private discovery.
+    const named = (operation: WorkshopCapabilityOperation): string | false => {
+      switch (operation) {
+        case 'dictionary.lookup':
+        case 'dictionary.full-entry':
+          return 'dictionary entries';
+        case 'analysis.run':
+          return 'analysis reports';
+        case 'resource.read':
+          return 'resource reads';
+        case 'transcript.read':
+          return 'saved-session reads';
+        case 'transcript.todos':
+          return 'to-do lists';
+        case 'resource.catalog':
+        case 'resource.search':
+        case 'transcript.catalog':
+        case 'transcript.search':
+          return false;
+      }
+    };
+    for (const operation of WORKSHOP_CAPABILITY_OPERATIONS) {
+      const published = isWorkshopPublishableCapabilityEvidence({
+        operation,
+        status: 'success',
+        requestSummary: operation,
+        requestedByPersonaId: 'margot',
+        invokedBy: { kind: 'personaGuest', personaId: 'margot' }
+      });
+      const phrase = named(operation);
+      expect([operation, published]).toEqual([operation, phrase !== false]);
+      if (phrase) {
+        expect(sharedList).toContain(phrase);
+      } else {
+        expect(operation).toMatch(/\.(catalog|search)$/);
+      }
+    }
+  });
+
+  it('frames recall as a looked-up record in the host charter and the interaction contract, never as memory', () => {
+    const base = fs.readFileSync(path.resolve(PROMPTS_ROOT, 'workshop-personas/base.md'), 'utf8');
+    expect(base).toContain('Saved Workshop sessions returned through session recall are quoted records you looked up, not memories.');
+    expect(base).toContain('you may also look back at the writer\'s other saved Workshop sessions');
+
+    const contract = fs.readFileSync(path.resolve(PROMPTS_ROOT, WORKSHOP_INTERACTION_CONTRACT_PROMPT_PATH), 'utf8');
+    const improv = contract.slice(contract.indexOf('## Persona improv before durable history'));
+    expect(improv).toContain('A transcript returned by `transcript.*` is a record you looked up, never a memory and never persona state.');
+    expect(improv).toContain('You still must not promise to remember anything across sessions');
+    expect(improv).toContain('"I can look back at saved sessions."');
   });
 
   it('gives every persona a complete relational signature without selecting a level', () => {

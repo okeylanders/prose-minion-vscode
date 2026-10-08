@@ -1,4 +1,4 @@
-import { projectWorkshopTranscript } from '@/application/services/workshop/export/WorkshopTranscript';
+import { projectWorkshopTranscript } from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { renderWorkshopTranscriptMarkdown } from '@/application/services/workshop/export/WorkshopTranscriptMarkdown';
 import {
   WORKSHOP_TRANSCRIPT_JSON_FORMAT,
@@ -11,7 +11,7 @@ import {
   safeLinkDestination
 } from '@/application/services/workshop/export/WorkshopTranscriptHtml';
 import { formatWorkshopTranscriptDate } from '@/application/services/workshop/export/WorkshopTranscriptDescription';
-import { FIXTURE_EPOCH, fixtureTurn, representativeRoom, writerTurn } from './workshopTranscriptFixtures';
+import { FIXTURE_EPOCH, fixtureTurn, representativeRoom, writerTurn } from '@/__tests__/application/services/workshop/transcript/workshopTranscriptFixtures';
 
 const transcript = (turns = representativeRoom(), title = 'Dock scene') =>
   projectWorkshopTranscript(turns, { title, exportedAt: FIXTURE_EPOCH });

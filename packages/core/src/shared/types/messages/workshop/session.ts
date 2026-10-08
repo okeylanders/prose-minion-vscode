@@ -130,31 +130,42 @@ export type WorkshopTurnParticipant = 'writer' | 'host' | 'guest' | 'tool' | 'se
  * Semantic artifact carried by a turn. `kind` remains the coarse interaction
  * shape; this field keeps report, synthesis, and direct exchanges honest.
  */
-export type WorkshopTurnArtifact =
-  | 'tool_request'
-  | 'persona_message'
-  | 'tool_report'
-  | 'persona_synthesis'
-  | 'direct_tool_message'
-  | 'direct_tool_response'
-  | 'dictionary_lookup'
-  | 'dictionary_full_entry'
-  | 'resource_catalog'
-  | 'resource_search'
-  | 'resource_read'
-  | 'excerpt_revision'
-  | 'context_change'
-  | 'standing_directive_change'
-  | 'session_start'
-  | 'session_resume'
-  /**
+/**
+ * The closed turn-artifact list; the union and the persisted codec's
+ * allowlist both derive from it.
+ */
+export const WORKSHOP_TURN_ARTIFACTS = [
+  'tool_request',
+  'persona_message',
+  'tool_report',
+  'persona_synthesis',
+  'direct_tool_message',
+  'direct_tool_response',
+  'dictionary_lookup',
+  'dictionary_full_entry',
+  'resource_catalog',
+  'resource_search',
+  'resource_read',
+  'transcript_catalog',
+  'transcript_search',
+  'transcript_read',
+  'transcript_todos',
+  'excerpt_revision',
+  'context_change',
+  'standing_directive_change',
+  'session_start',
+  'session_resume',
+  /*
    * LEGACY (Sprint 13A, retired by ADR 2026-07-25). A mid-conversation
    * session-scope transition. Scope is now immutable once the room has a
    * memory, so no new turn of this artifact is ever minted — but real
    * transcripts written before the lock contain them, and they must keep
    * parsing and rendering as the history they are.
    */
-  | 'scope_change';
+  'scope_change'
+] as const;
+
+export type WorkshopTurnArtifact = typeof WORKSHOP_TURN_ARTIFACTS[number];
 
 /**
  * Truncation provenance for a file-seeded excerpt: the host pinned a

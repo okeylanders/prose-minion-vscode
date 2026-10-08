@@ -26,7 +26,7 @@ import {
   WorkshopTranscriptReplyEntry,
   WorkshopTranscriptWriterEntry,
   countWorkshopTranscriptMessages
-} from './WorkshopTranscript';
+} from '@/application/services/workshop/transcript/WorkshopTranscript';
 import { describeWorkshopTranscript } from './WorkshopTranscriptDescription';
 import { WORKSHOP_TRANSCRIPT_HTML_CSS } from './WorkshopTranscriptHtmlStyles';
 

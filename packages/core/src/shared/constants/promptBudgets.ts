@@ -43,6 +43,45 @@ export interface PromptBudgets {
     readSourceBytes: number;
     readBytes: number;
   }>;
+  /**
+   * Session Recall (`transcript.*`, ADR 2026-10-05 §5): request field
+   * lengths, how much of the saved-session corpus one call may scan, and how
+   * much visible transcript it may return. Starting points for the live pass.
+   */
+  readonly workshopTranscriptRecall: Readonly<{
+    queryCharacters: number;
+    sessionIdCharacters: number;
+    turnSelectionCharacters: number;
+    turnRanges: number;
+    catalogSessions: number;
+    searchSessions: number;
+    /** Cold parsing per call; cached documents cost nothing. */
+    searchSourceBytes: number;
+    searchHits: number;
+    searchHitsPerSession: number;
+    snippetCharacters: number;
+    /**
+     * One read's text, shared fairly among its sessions (D9, D11). The
+     * renderer takes it as an option, so a caller may lower it (Slice 3's
+     * context-window clamp), never below the per-session minimum.
+     */
+    readCharacters: number;
+    /** The most sessions one `transcript.read` names (D9); each share clears the minimum. */
+    readSessions: number;
+    /**
+     * All recall reads in one persona turn together (D11, amended in Slice 4):
+     * room for every read the turn allows at full size, so a large first read
+     * still leaves the second one. The context-window clamp bounds each read.
+     */
+    readCharactersPerTurn: number;
+    readsPerTurn: number;
+    /** `transcript.todos` (D6): the most sessions one call scans, and the largest `<recent>`. */
+    todoSessions: number;
+    todoItems: number;
+    /** The rendered list's hard cap; the renderer takes it as an overridable option. */
+    todoCharacters: number;
+    todoMatchCharacters: number;
+  }>;
   readonly workshopTodos: Readonly<{
     items: number;
     characters: number;
@@ -212,6 +251,26 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     readDefaultLines: 400,
     readSourceBytes: 2 * 1024 * 1024,
     readBytes: 64 * 1024
+  },
+  workshopTranscriptRecall: {
+    queryCharacters: 200,
+    sessionIdCharacters: 100,
+    turnSelectionCharacters: 200,
+    turnRanges: 10,
+    catalogSessions: 50,
+    searchSessions: 50,
+    searchSourceBytes: 64 * 1024 * 1024,
+    searchHits: 20,
+    searchHitsPerSession: 5,
+    snippetCharacters: 280,
+    readCharacters: 150_000,
+    readSessions: 10,
+    readCharactersPerTurn: 300_000,
+    readsPerTurn: 2,
+    todoSessions: 50,
+    todoItems: 60,
+    todoCharacters: 16_000,
+    todoMatchCharacters: 200
   },
   workshopTodos: { items: 12, characters: 12_000, headerAllowanceCharacters: 600 },
   guestJoinSnapshot: {
