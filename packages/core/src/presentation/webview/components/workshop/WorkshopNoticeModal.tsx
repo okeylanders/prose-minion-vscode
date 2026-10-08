@@ -123,121 +123,96 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: prompt caching, with a cache clock',
+    title: 'New: export a conversation',
     tag: 'new',
     body: (
       <>
-        Workshop now asks Claude, and supported Alibaba/Qwen routes, to cache retained
-        conversations, so later turns can reuse what the model has already read. Other providers
-        keep their own caching. Once the provider reports cache activity, a clock beside the
-        composer estimates how much of the cache window is left. It is an estimate, not a
-        promise: the <b>cached</b> count on a reply is what shows real reuse. For Claude, choose a
-        five-minute (default) or one-hour cache in Prose Minion Settings under <b>General</b>.
+        Use <b>Sessions &rarr; Export&hellip;</b> to save a Workshop conversation as a file:{' '}
+        <b>Markdown</b> to paste into another agent or your notes, <b>JSON</b> for scripts, or{' '}
+        <b>styled HTML</b> to share or print to PDF. It holds your messages and every reply,
+        including older turns the thread no longer shows. Files land in{' '}
+        <b>prose-minion/exports/</b>, and an earlier export is never replaced: if the name is
+        taken, a number is added. Markdown and JSON open beside the Workshop; HTML opens in your
+        browser.
       </>
     ),
     note: (
       <>
-        Cache writes cost more than ordinary input, and one-hour writes cost more than five-minute
-        writes. Pick the window that fits how long you pause between messages.
+        Exports leave out the excerpt text, context and attachment contents, widget payloads,
+        tool evidence, and token usage. Attachments and widgets appear by name only.
       </>
     ),
     wellTitle: 'Where to look',
     media: [
       {
         kind: 'figure',
-        shot: 'composer-cache-clock',
-        alt: 'The Workshop composer, showing Est. Cache Time Remaining: 30 min',
-        maxWidthPx: 460,
-        ratio: '1144 / 376',
+        shot: 'sessions-menu-export',
+        alt: 'The Sessions menu, opened from the session name, with Export… highlighted',
+        maxWidthPx: 280,
+        ratio: '692 / 530',
         callouts: [
-          { label: '1', leftPercent: 35.5, topPercent: 50.3, widthPercent: 36.7, heightPercent: 13.8 }
+          { label: '1', leftPercent: 15.6, topPercent: 1.9, widthPercent: 69.1, heightPercent: 16.9 },
+          { label: '2', leftPercent: 4.6, topPercent: 78.5, widthPercent: 90.8, heightPercent: 16.6 }
         ]
       },
       {
         kind: 'figure',
-        shot: 'reply-cached-badge',
-        alt: 'A reply header: 125,922 processed, 118,842 cached',
-        maxWidthPx: 320,
-        ratio: '525 / 100',
+        shot: 'export-transcript-formats',
+        alt: 'Export transcript: Markdown, JSON, and Styled HTML, the export name, and its path under prose-minion/exports',
+        maxWidthPx: 480,
+        ratio: '1428 / 586',
         callouts: [
-          { label: '2', leftPercent: 51.1, topPercent: 20.1, widthPercent: 42, heightPercent: 59.8 }
-        ]
-      },
-      {
-        kind: 'figure',
-        shot: 'settings-cache-duration',
-        alt: 'The Claude Cache Duration setting, set to 1 hour',
-        maxWidthPx: 420,
-        ratio: '1174 / 286',
-        callouts: [
-          { label: '3', leftPercent: 3.1, topPercent: 20.5, widthPercent: 37, heightPercent: 38.3 }
+          { label: '3', leftPercent: 1.5, topPercent: 10.5, widthPercent: 96.9, heightPercent: 41.6 },
+          { label: '4', leftPercent: 1.7, topPercent: 82.7, widthPercent: 96.6, heightPercent: 14.5 }
         ]
       }
     ],
     legend: [
-      { label: '1', term: 'Est. Cache Time Remaining', detail: 'time left in the estimated cache window; not a guaranteed hit.' },
-      { label: '2', term: 'cached', detail: 'prompt tokens the provider reported reading from cache.' },
-      { label: '3', term: 'Claude Cache Duration', detail: 'five minutes (default) or one hour, in General settings.' }
+      { label: '1', term: 'Sessions menu', detail: 'opens from the session name in the header.' },
+      { label: '2', term: 'Export…', detail: 'saves this conversation as a file.' },
+      { label: '3', term: 'Format', detail: 'Markdown, JSON, or styled HTML.' },
+      { label: '4', term: 'prose-minion/exports/', detail: 'where the file lands; an earlier export is never replaced.' }
     ]
   },
   {
-    title: 'New: room for more context',
+    title: 'New: personas can read your saved sessions',
     tag: 'new',
     body: (
       <>
-        Standing context now holds up to <b>100,000 words</b>, and a single message can carry up
-        to <b>seven attachments</b> of up to 10,000 words each. When you change standing context,
-        Workshop sends only what you added, changed, or removed, not the whole list again. Your
-        model still needs room for the excerpt, the conversation, and its reply: if a send is
-        estimated to overflow a known model&rsquo;s window, Workshop stops before sending and gives
-        you your draft back.
+        Ask about earlier work, like a decision from last week or a to-do still open, and your
+        host or a guest can look it up in the other sessions you&rsquo;ve saved by name in this
+        project. They can list and search those sessions, read the turns that matter, and find
+        to-dos. Each look-up shows in the thread as a <b>Session Recall</b> card, and the reply
+        names the session and turns it used. They&rsquo;re reading saved records, not
+        remembering, so check the cited turns before relying on an answer. Attachment contents,
+        widget payloads, and hidden tool evidence stay out.
       </>
     ),
     note: (
       <>
-        Sessions saved by this version can&rsquo;t be opened by earlier versions of Prose Minion.
-        If you sync sessions through Git, update Prose Minion on every machine first.
+        <b>Updating:</b> sessions that contain recall activity can&rsquo;t be opened by earlier
+        versions of Prose Minion. If you sync sessions through Git, update every machine first.{' '}
+        <b>Also fixed:</b> adding a guest persona&rsquo;s finding to the To-do List no longer
+        stops the session from saving.
       </>
     ),
     wellTitle: 'Where to look',
     media: [
       {
         kind: 'figure',
-        shot: 'attach-menu',
-        alt: 'The composer + menu: Attach to this message, or Add to standing context',
-        maxWidthPx: 260,
-        ratio: '544 / 409',
+        shot: 'recall-card-and-reply',
+        alt: 'A Session Recall card reading turns 12-19 of a saved session, above Jill’s reply citing that session and turns 14–17',
+        maxWidthPx: 460,
+        ratio: '1168 / 762',
         callouts: [
-          { label: '1', leftPercent: 7.4, topPercent: 9.8, widthPercent: 85.3, heightPercent: 32.8 },
-          { label: '2', leftPercent: 7.4, topPercent: 43.6, widthPercent: 85.3, heightPercent: 26.1 }
-        ]
-      },
-      {
-        kind: 'figure',
-        shot: 'message-attachment-slots',
-        alt: 'The message attachment picker: 1 of 7 remaining slots',
-        maxWidthPx: 180,
-        ratio: '301 / 136',
-        callouts: [
-          { label: '3', leftPercent: 8, topPercent: 38, widthPercent: 84, heightPercent: 43.2 }
-        ]
-      },
-      {
-        kind: 'figure',
-        shot: 'context-intake-meter',
-        alt: 'The context meter: 37,342 of 100,000 words, Attachment intake limit',
-        maxWidthPx: 360,
-        ratio: '682 / 256',
-        callouts: [
-          { label: '4', leftPercent: 52.5, topPercent: 10.2, widthPercent: 45.7, heightPercent: 23 }
+          { label: '1', leftPercent: 5.5, topPercent: 16.4, widthPercent: 79.8, heightPercent: 13.6 },
+          { label: '2', leftPercent: 2, topPercent: 65.1, widthPercent: 78.6, heightPercent: 6.8 }
         ]
       }
     ],
     legend: [
-      { label: '1', term: 'Attach to this message', detail: 'files ride one message, then become history.' },
-      { label: '2', term: 'Add to standing context', detail: 'stays with every message for the whole session.' },
-      { label: '3', term: 'Remaining slots', detail: 'up to seven attachments per message, 10,000 words each.' },
-      { label: '4', term: 'Attachment intake limit', detail: '100,000 words of standing context.' }
+      { label: '1', term: 'Session Recall', detail: 'what a persona looked up, and in which saved session.' },
+      { label: '2', term: 'Citation', detail: 'the reply names the session and turns, so you can check them.' }
     ]
   },
   {
@@ -547,6 +522,118 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
+    title: 'Room for more context',
+    tag: 'primer',
+    body: (
+      <>
+        Standing context holds up to <b>100,000 words</b>, and a single message can carry up
+        to <b>seven attachments</b> of up to 10,000 words each. When you change standing context,
+        Workshop sends only what you added, changed, or removed, not the whole list again. Your
+        model still needs room for the excerpt, the conversation, and its reply: if a send is
+        estimated to overflow a known model&rsquo;s window, Workshop stops before sending and gives
+        you your draft back.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'attach-menu',
+        alt: 'The composer + menu: Attach to this message, or Add to standing context',
+        maxWidthPx: 260,
+        ratio: '544 / 409',
+        callouts: [
+          { label: '1', leftPercent: 7.4, topPercent: 9.8, widthPercent: 85.3, heightPercent: 32.8 },
+          { label: '2', leftPercent: 7.4, topPercent: 43.6, widthPercent: 85.3, heightPercent: 26.1 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'message-attachment-slots',
+        alt: 'The message attachment picker: 1 of 7 remaining slots',
+        maxWidthPx: 180,
+        ratio: '301 / 136',
+        callouts: [
+          { label: '3', leftPercent: 8, topPercent: 38, widthPercent: 84, heightPercent: 43.2 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'context-intake-meter',
+        alt: 'The context meter: 37,342 of 100,000 words, Attachment intake limit',
+        maxWidthPx: 360,
+        ratio: '682 / 256',
+        callouts: [
+          { label: '4', leftPercent: 52.5, topPercent: 10.2, widthPercent: 45.7, heightPercent: 23 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Attach to this message', detail: 'files ride one message, then become history.' },
+      { label: '2', term: 'Add to standing context', detail: 'stays with every message for the whole session.' },
+      { label: '3', term: 'Remaining slots', detail: 'up to seven attachments per message, 10,000 words each.' },
+      { label: '4', term: 'Attachment intake limit', detail: '100,000 words of standing context.' }
+    ]
+  },
+  {
+    title: 'Prompt caching, with a cache clock',
+    tag: 'primer',
+    body: (
+      <>
+        Workshop asks Claude, and supported Alibaba/Qwen routes, to cache retained
+        conversations, so later turns can reuse what the model has already read. Other providers
+        keep their own caching. Once the provider reports cache activity, a clock beside the
+        composer estimates how much of the cache window is left. It is an estimate, not a
+        promise: the <b>cached</b> count on a reply is what shows real reuse. For Claude, choose a
+        five-minute (default) or one-hour cache in Prose Minion Settings under <b>General</b>.
+      </>
+    ),
+    note: (
+      <>
+        Cache writes cost more than ordinary input, and one-hour writes cost more than five-minute
+        writes. Pick the window that fits how long you pause between messages.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'composer-cache-clock',
+        alt: 'The Workshop composer, showing Est. Cache Time Remaining: 30 min',
+        maxWidthPx: 460,
+        ratio: '1144 / 376',
+        callouts: [
+          { label: '1', leftPercent: 35.5, topPercent: 50.3, widthPercent: 36.7, heightPercent: 13.8 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'reply-cached-badge',
+        alt: 'A reply header: 125,922 processed, 118,842 cached',
+        maxWidthPx: 320,
+        ratio: '525 / 100',
+        callouts: [
+          { label: '2', leftPercent: 51.1, topPercent: 20.1, widthPercent: 42, heightPercent: 59.8 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'settings-cache-duration',
+        alt: 'The Claude Cache Duration setting, set to 1 hour',
+        maxWidthPx: 420,
+        ratio: '1174 / 286',
+        callouts: [
+          { label: '3', leftPercent: 3.1, topPercent: 20.5, widthPercent: 37, heightPercent: 38.3 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Est. Cache Time Remaining', detail: 'time left in the estimated cache window; not a guaranteed hit.' },
+      { label: '2', term: 'cached', detail: 'prompt tokens the provider reported reading from cache.' },
+      { label: '3', term: 'Claude Cache Duration', detail: 'five minutes (default) or one hour, in General settings.' }
+    ]
+  },
+  {
     title: 'Rewind, edit, and branch',
     tag: 'primer',
     body: (
@@ -595,8 +682,8 @@ const PAGES: readonly NoticePage[] = [
         With project paths configured, hosts and guests can <b>find and read relevant project
         files</b> when the conversation calls for them — you do not need to attach every file by
         hand. They can also use the dictionary, run analyses, and inspect a particular variation
-        without derailing the main conversation. The <b>Widgets</b> browser is a preview of tools
-        still to come; it does not launch widgets yet.
+        without derailing the main conversation. The <b>Widgets</b> browser opens the widgets that
+        are ready now and previews the ones still to come.
       </>
     ),
     wellTitle: 'Where to look',
@@ -613,7 +700,7 @@ const PAGES: readonly NoticePage[] = [
       }
     ],
     legend: [
-      { label: '1', term: 'Widgets', detail: 'a preview browser; nothing launches yet.' }
+      { label: '1', term: 'Widgets', detail: 'ready-now widgets open here; the rest are previews.' }
     ],
     guideLink: {
       lead: 'Project-file reading depends on the paths set in',

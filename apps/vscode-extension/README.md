@@ -26,10 +26,20 @@
 
 ## What's new in v2.9.0 — Workshop transcripts across sessions
 
-- **Take a conversation with you** — use **Sessions → Export…** to save the full visible Workshop thread as Markdown for another agent, JSON for scripts, or styled HTML for sharing and printing. Exports land in `prose-minion/exports/` and never replace an earlier file.
-- **Ask about earlier work** — Workshop personas can list and search your other named sessions, read relevant turns, and bring forward open to-dos when you ask. They name the saved session and cite turns so you can check the source. The current room and hidden attachment, widget, and capability bodies stay out of recall.
-- **Keep guest to-dos safe** — promoting a guest persona's finding no longer blocks autosave or named saves.
-- **Update Git-synced machines together** — older versions cannot open sessions that contain the new recall activity. Existing sessions remain readable in v2.9.0.
+**Export a conversation.** Use **Sessions → Export…** to save a Workshop conversation as Markdown for another agent or your notes, JSON for scripts, or styled HTML to share or print to PDF. The export holds your messages and every reply, including older turns the thread no longer shows. Files land in `prose-minion/exports/`, and an earlier export is never replaced.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-export-transcript.png" alt="Left: the Workshop Sessions menu with Export… highlighted. Right: the Export transcript dialog offering Markdown, JSON, and Styled HTML, with the file path under prose-minion/exports" width="100%"/>
+</p>
+
+**Ask about earlier work.** When you ask about a past conversation or an open to-do, your host or a guest can list and search your other named sessions in this workspace, read the turns that matter, and find to-dos. Each look-up appears in the thread as a **Session Recall** card, and the reply names the saved session and turns so you can check the source. Personas are reading saved records, not remembering. The current room, attachment contents, widget payloads, and hidden tool evidence stay out of recall.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-session-recall.png" alt="A writer asks Jill what they decided about a scene in an earlier session. Two Session Recall cards show Jill searching saved sessions for “night market” and reading turns 12-19 of one, and her reply cites that session and turns 14–17" width="100%"/>
+</p>
+
+- **Guest to-dos no longer block saving** — adding a guest persona's finding to the To-do List keeps autosave and named saves working, and the to-do survives reopening.
+- **Update Git-synced machines together** — sessions that contain recall activity can't be opened by earlier Prose Minion versions. Existing sessions still open in v2.9.0.
 
 Saved-session recall is backed by automated tests. Its full live pass on real saved sessions is still in progress.
 
@@ -184,7 +194,7 @@ Focused passes, from Dialogue & Beats to Continuity — each one a single, opini
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/writing-tools-grid.png" alt="The Writing Tools picker: analysis passes across Primary, Dialogue, Craft & Voice, and Technical groups" width="100%"/>
 </p>
 
-*This overview image predates Craft Steering; the current card is shown in the v2.7.0 highlights above.*
+*This overview image predates Craft Steering; its card is shown below.*
 
 **Craft Steering** appears under **Craft & Voice** in both the sidebar's Writing Tools picker and the Workshop tab's Tools picker. Inspired by Ursula K. Le Guin's *Steering the Craft*, it examines sound, rhythm, and how each sentence leads into the next. Its report identifies what to preserve, audits sound and narrative control, and traces sentence handoffs. Sample revisions show small changes; Creative Variations explore distinct treatments of a selected passage; Bound Creative Variations isolate particular craft choices. Each revision explains its gains and costs, followed by a fidelity check and optional read-aloud practice. Intentional pauses, repetition, fragments, and lyrical swells are assessed for their effect. You can also ask a Workshop persona to run Craft Steering on a passage in the conversation.
 

@@ -26,59 +26,66 @@ describe('WorkshopNoticeModal', () => {
   /** The media well's legend, which repeats the control names as call-outs. */
   const legend = () => document.querySelector('.pm-ws-notice-legend') as HTMLElement;
 
-  it('opens on the newest notice, page one of eleven, with prev disabled', () => {
+  it('opens on the newest notice, page one of thirteen, with prev disabled', () => {
     renderModal();
-    expect(screen.getByText(/1 \/ 11/)).toBeTruthy();
-    expect(screen.getByText('New: prompt caching, with a cache clock')).toBeTruthy();
+    expect(screen.getByText(/1 \/ 13/)).toBeTruthy();
+    expect(screen.getByText('New: export a conversation')).toBeTruthy();
     const prev = screen.getByRole('button', { name: 'Previous notice' }) as HTMLButtonElement;
     expect(prev.disabled).toBe(true);
   });
 
   /* ADR 2026-09-30, Sprint 03 kickoff decision 5: the release's new pages lead. */
-  it('introduces prompt caching first: the clock is an estimate, the cached count is evidence', () => {
+  it('introduces transcript export first: three formats, saved under prose-minion/exports', () => {
     renderModal();
 
-    expect(screen.getByText(/1 \/ 11/).parentElement?.textContent).toBe('1 / 11 · new');
-    expect(within(copy()).getByText(/supported Alibaba\/Qwen routes/)).toBeTruthy();
-    expect(within(copy()).getByText(/Other providers\s+keep their own caching/)).toBeTruthy();
-    expect(within(copy()).getByText(/It is an estimate, not a\s+promise/)).toBeTruthy();
-    expect(within(copy()).getByText(/five-minute \(default\) or one-hour cache/)).toBeTruthy();
+    expect(screen.getByText(/1 \/ 13/).parentElement?.textContent).toBe('1 / 13 · new');
+    expect(within(copy()).getByText('Sessions → Export…')).toBeTruthy();
+    expect(within(copy()).getByText('Markdown')).toBeTruthy();
+    expect(within(copy()).getByText('JSON')).toBeTruthy();
+    expect(within(copy()).getByText('styled HTML')).toBeTruthy();
+    expect(within(copy()).getByText(/older turns the thread no longer shows/)).toBeTruthy();
+    expect(within(copy()).getByText('prose-minion/exports/')).toBeTruthy();
+    expect(within(copy()).getByText(/an earlier export is never replaced/)).toBeTruthy();
+    /* What an export omits mirrors the dialog's own disclosure. */
     expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
-      'Cache writes cost more than ordinary input, and one-hour writes cost more than five-minute ' +
-      'writes. Pick the window that fits how long you pause between messages.'
-    );
-
-    const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
-    expect(callouts.map((node) => node.textContent)).toEqual(['1', '2', '3']);
-    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
-      '1Est. Cache Time Remaining — time left in the estimated cache window; not a guaranteed hit.',
-      '2cached — prompt tokens the provider reported reading from cache.',
-      '3Claude Cache Duration — five minutes (default) or one hour, in General settings.'
-    ]);
-  });
-
-  it('introduces the larger context budgets second, with the Git-sync upgrade warning', () => {
-    renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
-
-    expect(screen.getByText(/2 \/ 11/).parentElement?.textContent).toBe('2 / 11 · new');
-    expect(screen.getByText('New: room for more context')).toBeTruthy();
-    expect(within(copy()).getByText('100,000 words')).toBeTruthy();
-    expect(within(copy()).getByText('seven attachments')).toBeTruthy();
-    expect(within(copy()).getByText(/sends only what you added, changed, or removed/)).toBeTruthy();
-    expect(within(copy()).getByText(/stops before sending and gives\s+you your draft back/)).toBeTruthy();
-    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
-      'Sessions saved by this version can’t be opened by earlier versions of Prose Minion. ' +
-      'If you sync sessions through Git, update Prose Minion on every machine first.'
+      'Exports leave out the excerpt text, context and attachment contents, widget payloads, ' +
+      'tool evidence, and token usage. Attachments and widgets appear by name only.'
     );
 
     const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
     expect(callouts.map((node) => node.textContent)).toEqual(['1', '2', '3', '4']);
     expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
-      '1Attach to this message — files ride one message, then become history.',
-      '2Add to standing context — stays with every message for the whole session.',
-      '3Remaining slots — up to seven attachments per message, 10,000 words each.',
-      '4Attachment intake limit — 100,000 words of standing context.'
+      '1Sessions menu — opens from the session name in the header.',
+      '2Export… — saves this conversation as a file.',
+      '3Format — Markdown, JSON, or styled HTML.',
+      '4prose-minion/exports/ — where the file lands; an earlier export is never replaced.'
+    ]);
+  });
+
+  it('introduces session recall second as reading saved records, with the upgrade warning', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+
+    expect(screen.getByText(/2 \/ 13/).parentElement?.textContent).toBe('2 / 13 · new');
+    expect(screen.getByText('New: personas can read your saved sessions')).toBeTruthy();
+    expect(within(copy()).getByText(/other sessions you’ve saved by\s+name in this project/)).toBeTruthy();
+    expect(within(copy()).getByText(/list and search those sessions, read the turns that matter/)).toBeTruthy();
+    expect(within(copy()).getByText('Session Recall')).toBeTruthy();
+    /* Recall reads saved records; the copy must not promise memory. */
+    expect(within(copy()).getByText(/reading saved records, not\s+remembering/)).toBeTruthy();
+    expect(within(copy()).getByText(/check the cited turns/)).toBeTruthy();
+    expect(within(copy()).queryByText(/remembers/)).toBeNull();
+    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
+      'Updating: sessions that contain recall activity can’t be opened by earlier versions of ' +
+      'Prose Minion. If you sync sessions through Git, update every machine first. Also fixed: ' +
+      'adding a guest persona’s finding to the To-do List no longer stops the session from saving.'
+    );
+
+    const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
+    expect(callouts.map((node) => node.textContent)).toEqual(['1', '2']);
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Session Recall — what a persona looked up, and in which saved session.',
+      '2Citation — the reply names the session and turns, so you can check them.'
     ]);
   });
 
@@ -87,7 +94,7 @@ describe('WorkshopNoticeModal', () => {
     renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Notice 8' }));
 
-    expect(screen.getByText(/8 \/ 11/).parentElement?.textContent).toBe('8 / 11 · primer');
+    expect(screen.getByText(/8 \/ 13/).parentElement?.textContent).toBe('8 / 13 · primer');
     expect(screen.getByText('Craft Steering', { selector: 'h2' })).toBeTruthy();
     expect(within(copy()).getByText('Steering the Craft')).toBeTruthy();
     expect(within(copy()).getByText(/judged by their effect, not smoothed away/)).toBeTruthy();
@@ -109,7 +116,7 @@ describe('WorkshopNoticeModal', () => {
     renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
 
-    expect(screen.getByText(/9 \/ 11/).parentElement?.textContent).toBe('9 / 11 · primer');
+    expect(screen.getByText(/9 \/ 13/).parentElement?.textContent).toBe('9 / 13 · primer');
     expect(screen.getByText('Topic & Related Lexicon', { selector: 'h2' })).toBeTruthy();
     expect(within(copy()).getByText(/Dictionary entries can end with an encyclopedia entry/)).toBeTruthy();
     expect(within(copy()).getByText(/possible reference books for each\s+topic/)).toBeTruthy();
@@ -126,11 +133,65 @@ describe('WorkshopNoticeModal', () => {
     ]);
   });
 
-  it('keeps rewind, edit, and branch as a primer, without the old release note', () => {
+  it('keeps the larger context budgets as a primer, without the v2.8.0 upgrade note', () => {
     renderModal();
     fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
 
-    expect(screen.getByText(/10 \/ 11/).parentElement?.textContent).toBe('10 / 11 · primer');
+    expect(screen.getByText(/10 \/ 13/).parentElement?.textContent).toBe('10 / 13 · primer');
+    expect(screen.getByText('Room for more context')).toBeTruthy();
+    expect(within(copy()).getByText('100,000 words')).toBeTruthy();
+    expect(within(copy()).getByText('seven attachments')).toBeTruthy();
+    expect(within(copy()).getByText(/sends only what you added, changed, or removed/)).toBeTruthy();
+    expect(within(copy()).getByText(/stops before sending and gives\s+you your draft back/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-notice-note')).toBeNull();
+
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Attach to this message — files ride one message, then become history.',
+      '2Add to standing context — stays with every message for the whole session.',
+      '3Remaining slots — up to seven attachments per message, 10,000 words each.',
+      '4Attachment intake limit — 100,000 words of standing context.'
+    ]);
+  });
+
+  it('keeps prompt caching as a primer: the clock is an estimate, the cached count is evidence', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+
+    expect(screen.getByText(/11 \/ 13/).parentElement?.textContent).toBe('11 / 13 · primer');
+    expect(screen.getByText('Prompt caching, with a cache clock')).toBeTruthy();
+    expect(within(copy()).getByText(/supported Alibaba\/Qwen routes/)).toBeTruthy();
+    expect(within(copy()).getByText(/Other providers\s+keep their own caching/)).toBeTruthy();
+    expect(within(copy()).getByText(/It is an estimate, not a\s+promise/)).toBeTruthy();
+    expect(within(copy()).getByText(/five-minute \(default\) or one-hour cache/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
+      'Cache writes cost more than ordinary input, and one-hour writes cost more than five-minute ' +
+      'writes. Pick the window that fits how long you pause between messages.'
+    );
+
+    const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
+    expect(callouts.map((node) => node.textContent)).toEqual(['1', '2', '3']);
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Est. Cache Time Remaining — time left in the estimated cache window; not a guaranteed hit.',
+      '2cached — prompt tokens the provider reported reading from cache.',
+      '3Claude Cache Duration — five minutes (default) or one hour, in General settings.'
+    ]);
+  });
+
+  /* Every page title after the two lead pages drops "New:". */
+  it('marks only the two lead pages as new', () => {
+    renderModal();
+    const tags = Array.from({ length: 13 }, (_, index) => {
+      fireEvent.click(screen.getByRole('button', { name: `Notice ${index + 1}` }));
+      return screen.getByText(new RegExp(`^${index + 1} / 13`)).parentElement?.textContent;
+    });
+    expect(tags.filter((tag) => tag?.endsWith('· new'))).toEqual(['1 / 13 · new', '2 / 13 · new']);
+  });
+
+  it('keeps rewind, edit, and branch as a primer, without the old release note', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 12' }));
+
+    expect(screen.getByText(/12 \/ 13/).parentElement?.textContent).toBe('12 / 13 · primer');
     expect(screen.getByText('Rewind, edit, and branch')).toBeTruthy();
     expect(within(copy()).getByText('Rewind to here')).toBeTruthy();
     expect(within(copy()).getByText('Edit from here')).toBeTruthy();
@@ -142,7 +203,7 @@ describe('WorkshopNoticeModal', () => {
 
   it('draws the thread\'s own actions, called out to match the legend', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 12' }));
 
     const rows = Array.from(document.querySelectorAll('.pm-ws-notice-actions'));
     expect(rows.map((row) => row.querySelector('.pm-ws-notice-actions-caption')?.textContent))
@@ -166,23 +227,26 @@ describe('WorkshopNoticeModal', () => {
     renderModal();
     const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
     fireEvent.click(next);
-    expect(screen.getByText(/2 \/ 11/)).toBeTruthy();
-    expect(screen.getByText('New: room for more context')).toBeTruthy();
+    expect(screen.getByText(/2 \/ 13/)).toBeTruthy();
+    expect(screen.getByText('New: personas can read your saved sessions')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
-    expect(screen.getByText(/3 \/ 11/)).toBeTruthy();
+    expect(screen.getByText(/3 \/ 13/)).toBeTruthy();
     expect(screen.getByText('Welcome to the Workshop beta')).toBeTruthy();
     expect(screen.getByText(/never changes project files on its own/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
-    expect(screen.getByText(/4 \/ 11/)).toBeTruthy();
+    expect(screen.getByText(/4 \/ 13/)).toBeTruthy();
     expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     expect(within(copy()).getByText(/Prose Minion Settings/)).toBeTruthy();
     expect(within(copy()).getByText(/individual chapter files/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
     expect(screen.getByText('Agents can work with your project')).toBeTruthy();
     expect(screen.getByText(/do not need to attach every file by hand/)).toBeTruthy();
+    /* Widgets ship; the browser no longer claims nothing launches. */
+    expect(within(copy()).getByText(/opens the widgets that\s+are ready now/)).toBeTruthy();
+    expect(within(legend()).getByText(/ready-now widgets open here/)).toBeTruthy();
     expect(next.disabled).toBe(true);
   });
 
@@ -229,10 +293,12 @@ describe('WorkshopNoticeModal', () => {
     });
 
     it.each([
-      ['Notice 1', ['composer-cache-clock', 'reply-cached-badge', 'settings-cache-duration']],
-      ['Notice 2', ['attach-menu', 'message-attachment-slots', 'context-intake-meter']],
+      ['Notice 1', ['sessions-menu-export', 'export-transcript-formats']],
+      ['Notice 2', ['recall-card-and-reply']],
       ['Notice 8', ['composer-controls', 'tools-craft-steering']],
-      ['Notice 9', ['dictionary-topic-switch', 'dictionary-topic-entry']]
+      ['Notice 9', ['dictionary-topic-switch', 'dictionary-topic-entry']],
+      ['Notice 10', ['attach-menu', 'message-attachment-slots', 'context-intake-meter']],
+      ['Notice 11', ['composer-cache-clock', 'reply-cached-badge', 'settings-cache-duration']]
     ])('shows the feature screenshots on %s', (dot, names) => {
       window.proseMinionAssets = {
         noticeShots: Object.fromEntries(
@@ -329,13 +395,13 @@ describe('WorkshopNoticeModal', () => {
       expect(screen.queryByText('Start with an open project folder')).toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/4 \/ 11/)).toBeTruthy();
+      expect(screen.getByText(/4 \/ 13/)).toBeTruthy();
       expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     });
 
     it('is reachable from the agents notice and returns to the LAST page', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
 
       fireEvent.click(screen.getByRole('button', { name: /Project Resource Locations/ }));
       expect(screen.getByRole('dialog', { name: 'How to configure your project' })).toBeTruthy();
@@ -343,7 +409,7 @@ describe('WorkshopNoticeModal', () => {
       /* The boundary page is where an index-reset or PAGES.length - 1 off-by-one
          hides while passing on an interior page (PR #94 review, Cal). */
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/11 \/ 11/)).toBeTruthy();
+      expect(screen.getByText(/13 \/ 13/)).toBeTruthy();
       expect(screen.getByText('Agents can work with your project')).toBeTruthy();
       const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
       expect(next.disabled).toBe(true);
@@ -362,7 +428,7 @@ describe('WorkshopNoticeModal', () => {
         'Then follow How to configure your project for the whole walkthrough.'
       );
 
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
       expect(document.querySelector('.pm-ws-notice-guide-note')?.textContent).toBe(
         'Project-file reading depends on the paths set in Project Resource Locations.'
       );

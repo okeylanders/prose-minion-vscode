@@ -75,9 +75,24 @@ pre-existing guest to-do persistence failure found during release review.
   names. All high/moderate lockfile nodes are development dependencies; no
   blanket forced upgrade was applied. Audit risk remains open for focused
   tooling maintenance.
-- The Workshop startup notice and release artwork are reserved for the next
-  design pass. Any subsequent changes to packaged assets or UI require a new
-  VSIX build and manual check before merge.
+- Packaged assets and UI changed after the intermediate VSIX (see Workshop
+  tour and README artwork below), so a new VSIX build and manual check are
+  required before merge.
+
+### Workshop tour and README artwork
+
+- The startup notice moves to `v7` and leads with two pages: transcript export,
+  and personas reading saved sessions. The recall page presents look-ups as
+  reading saved records, not memory, and carries the Git-sync upgrade warning
+  and the guest to-do fix. Its three screenshots (`sessions-menu-export`,
+  `export-transcript-formats`, `recall-card-and-reply`) are 2× captures of the
+  real webview bundle with demo content.
+- v2.8.0's pages stay on as primers, "Room for more context" and "Prompt
+  caching, with a cache clock", ahead of Rewind. The v2.8.0 Git-sync note is
+  removed. The Agents page no longer says the Widgets browser launches
+  nothing; it opens the widgets that are ready now. The tour is thirteen pages.
+- The README's v2.9.0 section gains two composites,
+  `workshop-export-transcript.png` and `workshop-session-recall.png`.
 
 ## [2.8.0] - 2026-10-04 — Provider caching and acknowledged Workshop context
 

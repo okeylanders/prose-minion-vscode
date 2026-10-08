@@ -8,6 +8,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 - Export the current Workshop conversation from the Sessions menu as Markdown, JSON, or styled HTML. Exports include the full visible thread, even when older turns have scrolled out of the webview. Files are saved under `prose-minion/exports/` with numbered names so an earlier export is never replaced. Markdown and JSON open beside Workshop; HTML opens in your default browser.
 - Workshop personas can look back at other named sessions in the same workspace when you ask about an earlier conversation or past to-dos. They can list sessions, search visible transcript text, read selected turns, and list to-dos. Replies identify the saved session and cite turns where useful. The current room is excluded; private attachment bodies, widget payloads, and hidden tool evidence are not exposed through recall.
+- The Workshop's startup tour opens once more and begins with transcript export and saved-session recall.
 
 ### Fixed
 
