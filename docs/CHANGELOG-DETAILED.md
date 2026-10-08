@@ -96,6 +96,10 @@ pre-existing guest to-do persistence failure found during release review.
   now. The tour is thirteen pages.
 - The README's v2.9.0 section gains two composites,
   `workshop-export-transcript.png` and `workshop-session-recall.png`.
+- The README's v2.7.0 highlights get back the Craft Steering and Topic &
+  Related Lexicon images and paragraphs that v2.8.0 moved into The Assistant
+  and Dictionary sections. Those copies are removed, so each image appears
+  once.
 
 ## [2.8.0] - 2026-10-04 — Provider caching and acknowledged Workshop context
 
