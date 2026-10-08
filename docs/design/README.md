@@ -49,10 +49,24 @@ styles, scripts, and assets — no build step.
   **Conversation Widgets Spread 07 pulled 2026-08-10** (Sprint 03 design
   source of truth: new files
   `Prose Minion - Creative Variations Explorer.html`, `pm-cvx.css`,
-  `pm-cvx.js`. The page also links `pm-svt.css` (Spread 04's stylesheet, not
-  yet pulled); that link is dead here but harmless — `pm-svt.css` defines only
-  `svt-*` classes and Show-vs-Tell-scoped modal overrides, none of which the
-  Creative Variations page renders).
+  `pm-cvx.js`. The page also links `pm-svt.css` (Spread 04's stylesheet); that
+  link was dead until the 2026-10-08 pull below and was harmless either way —
+  `pm-svt.css` defines only `svt-*` classes and Show-vs-Tell-scoped modal
+  overrides, none of which the Creative Variations page renders);
+  **Conversation Widgets Spread 04 pulled 2026-10-08** (Sprint 05 design
+  source of truth: new files `Prose Minion - Show vs Tell.html`,
+  `pm-svt.css`, `pm-svt.js`, taken from a Claude Design handoff bundle rather
+  than `DesignSync`. **Only those three files were copied.** The bundle's
+  copies of the shared files the spread loads were checked first:
+  `icons.js`, `pm-mock.css`, `pm-fulltab.css` and `pm-widgets.css` are
+  byte-identical; the bundle's `pm-widgets.js` and `pm-gravity.css` are *older*
+  than the repo's (they predate the 02B-A pass above: payment-metaphor
+  lifecycle notes, and none of the `lg-preview-*` / `lg-or` rules), so the
+  repo copies were kept. The spread only needs `cwIc` / `cwOpen` / `cwClose` /
+  `cwXBtn` / `cwEsc` from `pm-widgets.js`, all present. Other drifted files in
+  that bundle — Conversation Behavior, Persona Schematic, Notice Modal,
+  `pm-sessions.js`, `pm-wk-*`, `pm-gravity.js` — were left alone for the same
+  reason; they need their own re-pull and review).
 - **Sync policy:** this folder is a snapshot, kept in sync by re-pulling from
   the design project (never hand-edit these files to change the design — edit
   in Claude Design, then re-pull). Local hand-edits are allowed only for
@@ -74,6 +88,7 @@ styles, scripts, and assets — no build step.
 | `Prose Minion - Gesture Playground.html` | **Historical interactive prototype** — Conversation Widgets **Spread 01, Gesture Playground** (Sprint 01): lifecycle and visual posture for the pre-commit surface, committed one-shot `<thread-artifact kind="widget:gesture-playground">` frame, presentation-only chip, and persona **recommend + prefill** path. The shipped generation contract has since been amended to `{targetPhrase, writerInstructions, contextText, characterNotes}` → one quality-first composite Gesture Dictionary + menu call; see the Conversation Widgets ADR. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.css` + `icons.js`. | **Approved visual reference — runtime contract superseded by ADR** |
 | `Prose Minion - Lexical Gravity.html` | **Interactive prototype** — Conversation Widgets **Spread 02, Lexical Gravity** (Sprint 02B): the first **standing** widget, where commit installs a passage-scoped `<prose-directive family="lexical-gravity">` that every persona and mode honors uniformly, consulted only when prose is written. Four sections: the live standing lifecycle (install → amber active strip → **edit-in-place** → `shifted X → Y` marker → one-click kill); the four-value pre-commit panel (lens · weight · reach · metaphor pull) with deterministic word-field / gradient / substitution / cliché tabs and an explicit `Preview the Effect` model seam; the lens library (`Build lens` drafts several takes, the writer selects one or more, and all selected lenses persist as individual `prose-minion/lenses/<name>.json` project resources in one action); and the reserved-frame + invariants card. Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.*` + `icons.js`. | **Approved — Sprint 02B source of truth** |
 | `Prose Minion - Creative Variations Explorer.html` | **Interactive prototype** — Conversation Widgets **Spread 07, Creative Variations Explorer** (Sprint 03): the reusable passage-variation comparison studio on the one-shot rail. Six sections: the live lifecycle (recommend → aim → generate → compare → keep → commit → chip → clone-and-recommit); the seed + two declared invariant fields (`Must survive` / `Must not change`) with honest pasted-vs-selected provenance labeling; two ways to aim the sampling (open four-distance dial `Familiar · Adjacent · Tail · Far tail`, or a bound four-menu frame); the measured workup (cards with named approach, prose, gains/costs tradeoff, invariant flags, per-card `distinct` scores, set-distinctness strip, collapsed-pair failure state with pair regeneration); the scale ladder + report-handoff card; and the commit spread (thread-artifact frame, payload ceiling meter, presentation-only chip). **Prototype-only behaviors (fixture scores, set averages, bound frame, partial regeneration, prose-default carry) are design evidence, not runtime contract — Sprint 03 + the implementation runway govern behavior.** Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.css` + `pm-cvx.*` + `icons.js` (plus a dead `pm-svt.css` link — see Source note). | **Approved visual reference — Sprint 03; runtime contract per sprint + runway** |
+| `Prose Minion - Show vs Tell.html` | **Interactive prototype** — Conversation Widgets **Spread 04, Show vs. Tell Playground** (Sprint 05): one selected beat moved along a five-position continuum (`State it · Summarize · Hinge · Evidence · Inhabit`) from *compress / explain* to *dramatize / embody*, on the one-shot rail. Five sections: the live lifecycle (Jill's recommend chip → panel → generate → keep → commit → chip → clone-and-recommit, plus a Learner-prefilled launch banner); the two continuum ends side by side with the seven-dimension tradeoff readout (no score, no good/bad colouring; *ambiguity* and *reader work* peak at Evidence); the grouped workup (Told cleanly / Shown as evidence / Shown from inside / Mixed, a gains/costs note and word count per variant, multi-select keep, per-variant **prose vs. direction-only** carry, 600-character payload ceiling meter); the one-vocabulary / three-lifetimes card with the pinned continuum → Prose Controller ch. 06 mapping; and the commit spread (`widget:show-vs-tell` thread-artifact frame, presentation-only chip, thrown-away workup, invariants). **Fixture variants, readout weights and the static generation delay are design evidence, not runtime contract — Sprint 05 governs behavior.** Loads `pm-mock.css` + `pm-fulltab.css` + `pm-widgets.*` + `pm-gravity.css` + `pm-svt.*` + `icons.js`. | **Approved visual reference — Sprint 05; runtime contract per sprint** |
 | `Prose Minion - Notice Modal.html` | **Spec sheet + interactive prototype** for the first-run Workshop notice, redesigned wide and with pictures. Three parts: the published copy of all six notices beside annotated screenshots of the control each one points at; the full **How to configure your project** walkthrough referenced by notice 2 (three steps, a well-aligned example project beside the settings pane, and the field → glob mapping table); and a clickable prototype of the widened notice widget (media well left, copy right, docked footer). Loads `pm-mock.css` + `uploads/`. The shipped notice itself is `pm-wk-notify.js` + the notice block of `pm-wk-pins.css`. | **Implemented 2026-07-27** — `WorkshopNoticeModal` + `WorkshopConfigureGuide`; notice version `v3` |
 
 ## Support files
@@ -141,6 +156,17 @@ styles, scripts, and assets — no build step.
   and `mountGravityFrame()` for the static mounts. Depends on `pm-widgets.js`
   for `cwIc` / `cwOpen` / `cwClose` / `cwXBtn` and `buildWidgetBrowser()`, and
   on the `orbit` glyph in that file's `CWX` (it is **not** in `icons.js`).
+- `pm-svt.css` / `pm-svt.js` — **Show vs. Tell Playground** (`svt-` prefix),
+  pulled 2026-10-08 with Spread 04. The JS holds the fixture beat and passage
+  (`SVT_BEAT`, close third on Daniel), the five continuum positions with their
+  seven-dimension readout weights (`SVT_POS`, `SVT_DIMS`), the five channels and
+  three-step length budget, the seven grouped fixture variants (`SVT_VARS`,
+  each with prose, a shorter direction-only form, gains/costs and a word
+  count), `buildSvtPanel()` (the pre-commit surface, live or static, including
+  the payload meter against the 600-character `SVT_CEIL`),
+  `mountSvtFlow()` (the one-shot lifecycle stage) and `mountSvtFrame()` for
+  the static mounts. Depends on `pm-widgets.js` for `cwIc` / `cwOpen` /
+  `cwClose` / `cwXBtn` / `cwEsc`.
 - `pm-wk-notify.js` — **startup beta notices** (`window.PMNotify`): a six-page
   dismissible "Workshop · beta" modal opened 400ms after load (welcome, project
   folder setup, hosts & guests, conversation controller, tools, agents), with
@@ -227,7 +253,7 @@ these back.
 
 ## Present on remote, not pulled yet (this epic, later sprints)
 
-The Conversation Widgets epic started 2026-07-29; Spreads 00 + 01 + 02 + 07 are
+The Conversation Widgets epic started 2026-07-29; Spreads 00 + 01 + 02 + 04 + 07 are
 pulled above. The remote project has since grown **one page per widget**
 (Spread 00 indexes them all). Still deliberately left out of this snapshot until
 their sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
@@ -235,7 +261,6 @@ their sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
 - `Prose Minion - Prose Controller.html` + `pm-controller.css` /
   `pm-controller.js` — Spread 03 (Sprint 03): the seven-chapter craft control
   surface.
-- `Prose Minion - Show vs Tell.html` + `pm-svt.*` — Spread 04 (concept spring).
 - `Prose Minion - Learner Storytelling Craft.html` /
   `Prose Minion - Learner English.html` + `pm-learner.*` / `pm-english.*` —
   Spreads 05 / 06 (concept springs, shared Learner shell).
@@ -248,10 +273,11 @@ their sprint (or concept spring) starts — re-pull with `DesignSync get_file`:
   frame, not a standalone prototype.
 
 **Expected consequence:** each spread's header and footer link to its
-neighbours, so the pulled spreads carry dead links to the pages above — 6 from
-Spread 00 (it indexes every widget), 2 each from Spreads 01 and 02, and 6 from
-Spread 07 (its kicker walks the whole spring: Spreads 03–06 + 08, plus the
-`pm-svt.css` stylesheet link noted in Source). That is the
+neighbours, so the pulled spreads carry dead links to the pages above. As of
+the 2026-10-08 Spread 04 pull, counted as distinct missing pages: 4 from
+Spread 00 (it indexes every widget), 1 each from Spreads 01 and 02, 4 from
+Spread 07 (its kicker walks the whole spring), and 2 from Spread 04
+(Spread 03 and Spread 05). Spread 07's `pm-svt.css` link now resolves. That is the
 staged-pull policy working, not a bad pull; the links resolve as each spread
 lands. Everything a pulled spread actually *renders* (stylesheets, scripts,
 images) is present.

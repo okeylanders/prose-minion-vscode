@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prose Minion — Show vs. Tell Playground · Spread 04</title>
+<link rel="stylesheet" href="pm-mock.css">
+<link rel="stylesheet" href="pm-fulltab.css">
+<link rel="stylesheet" href="pm-widgets.css">
+<link rel="stylesheet" href="pm-gravity.css">
+<link rel="stylesheet" href="pm-svt.css">
+<style>a{color:var(--accent-hi)}a:hover{color:var(--text)}</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#15110d"/><rect x="18" y="48" width="64" height="4" rx="2" fill="#3a2c1f"/><circle cx="26" cy="50" r="6" fill="#2b2017" stroke="#4d3a28"/><circle cx="50" cy="50" r="9" fill="#e0673a"/><circle cx="74" cy="50" r="6" fill="#e2b24a"/><rect x="18" y="28" width="26" height="5" rx="2.5" fill="#2b2017"/><rect x="56" y="68" width="26" height="5" rx="2.5" fill="#36281b"/></svg>
+</template>
+</head>
+<body>
+<div class="canvas">
+
+  <div class="canvas-head">
+    <div class="canvas-kicker">Prose Minion · Conversation Widgets — Concept Spring · Spread 04 · <a href="Prose Minion - Prose Controller.html">← Spread 03 · Prose Controller</a> · <a href="Prose Minion - Lexical Gravity.html">02</a> · <a href="Prose Minion - Gesture Playground.html">01</a> · <a href="Prose Minion - Conversation Widgets.html">Spread 00 · The system</a> · <a href="Prose Minion - Learner Storytelling Craft.html">Spread 05 · Learner →</a></div>
+    <h1>Show vs. Tell Playground — one beat, five distances</h1>
+    <p>Back on the <b>cheap rail</b>. Gravity and the Controller install standing state; this is <a href="Prose Minion - Gesture Playground.html">Gesture Playground</a>'s shape — select a beat, generate a bounded workup, keep what's useful, commit one turn. What's new is the <b>control</b>: a continuum from <i>compress / explain</i> to <i>dramatize / embody</i> with a tradeoff readout under it. <b>It is not a morality slider.</b> Telling is a tool; the UI names what each position buys and what it costs, and never labels an end bad writing.</p>
+    <p class="note"><b>It's interactive:</b> in §1, open the playground from Jill's chip or <b>Widgets</b>, drag the beat along the continuum and watch the readout re-weigh, generate the workup, then keep variants — each kept variant can ride as <b>prose</b> or as <b>direction only</b>, and the payload strip counts characters against a hard ceiling. Commit lands a chip that re-opens the exact draft.</p>
+  </div>
+
+  <div class="sec" data-screen-label="01 One-shot rail, live">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The one-shot rail, live</h2><p>recommend → play → keep → commit → chip → clone-and-recommit</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Workshop thread + composer</span><span class="frame-tag accent">Interactive</span><span class="d">thread-artifact lifecycle, end to end</span></div>
+        <div class="cw-stage" id="svtStage"></div>
+      </div>
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">What this frame decides</span></div>
+        <ul class="annot">
+          <li><b>Nothing new on the rail.</b> This widget reuses Sprint 01 wholesale — one-shot thread-artifact, chip, clone-and-recommit. The novelty is entirely in the pre-commit surface, which is the cheapest possible way to add a craft control.</li>
+          <li><b>Comparison <i>is</i> the product.</b> Auto-commit is deliberately out of scope: variations are only valuable because the writer sets them beside each other before choosing. A persona may recommend and prefill; it never picks.</li>
+          <li><b>It never touches editor text.</b> No insert, no silent replace. Commit hands the room a directive and the variants the writer kept — the persona still writes the prose.</li>
+          <li><b>Jill's chip carries a diagnosis, not a verdict</b> — "this line buys a year in nine words" is the same vocabulary the panel uses, so the recommendation and the control teach one model.</li>
+          <li><b>Clone-and-recommit</b>, exactly as Spread 01: the chip re-hydrates the full draft — continuum position, channels, kept variants, carry modes — and committing again creates a new turn at the head.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="02 The continuum">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The continuum, and why it isn't a slider of virtue</h2><p>same beat, opposite ends — the readout re-weighs, it doesn't improve</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Position 1 — State it</span><span class="d">the told end, on purpose</span></div>
+        <div class="cw-framebox svt" id="svtPos1"></div>
+      </div>
+      <div class="frame">
+        <div class="frame-label"><span class="t">Position 5 — Inhabit</span><span class="d">full scene time</span></div>
+        <div class="cw-framebox svt" id="svtPos5"></div>
+      </div>
+      <div class="frame" style="max-width:360px">
+        <div class="frame-label"><span class="t">Decisions</span></div>
+        <ul class="annot">
+          <li><b>Five named positions, not a percentage.</b> <i>State it · Summarize · Hinge · Evidence · Inhabit</i> — teachable, diffable, and speakable in a thread marker. Same conviction as the Controller's discrete levers.</li>
+          <li><b>The readout is the anti-morality device.</b> Seven dimensions, one accent colour, no green-good/red-bad: moving right trades speed and fact clarity for intimacy, emphasis and scene time. Nothing gets a score.</li>
+          <li><b>Two dimensions deliberately break monotonicity</b> — <i>ambiguity</i> and <i>reader work</i> peak at <b>Evidence</b>, not at Inhabit. Full dramatization can over-explain; pure evidence is the most open position. That's a craft claim the readout is allowed to make.</li>
+          <li><b>"Must survive" is the invariant</b>, not a style note: it's the fact, emotion, or turn every variation has to carry, and it's the first line of the committed payload.</li>
+          <li><b>POV is a constraint, not a channel.</b> Close third on him means <i>interiority</i> can only be his inference about her. The panel says so and the generation is told so — otherwise "show more interiority" quietly breaks the POV.</li>
+          <li><b>Every control here is deterministic and free.</b> Position, channels, budget, readout: instant. The single model seam is <b>Generate the workup</b>.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="03 The workup">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The workup</h2><p>one generation · grouped alternatives · a craft note per variant · multi-select</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">After the model call</span><span class="d">Hinge · 2 kept, one as direction only</span></div>
+        <div class="cw-framebox svt" id="svtMenu"></div>
+      </div>
+      <div class="frame" style="max-width:400px">
+        <div class="frame-label"><span class="t">Decisions</span></div>
+        <ul class="annot">
+          <li><b>Grouped by kind, not ranked.</b> Told cleanly / shown as evidence / shown from inside / mixed. No "best" badge, no ordering that implies improvement — the groups are the taxonomy the lesson teaches.</li>
+          <li><b>Every variant carries its tradeoff in its own words</b> — a gains/costs line, plus a word count so the length budget is visible rather than theoretical. This is what makes the widget a teaching surface instead of a rewrite button.</li>
+          <li><b>Carry mode answers the promotion question, live.</b> Each kept variant rides as a <b>prose variant</b> (the exact words, quoted) or as a <b>direction only</b> (the abstraction — around half the characters, and reusable on the next beat). Both, under one ceiling — the writer chooses per variant.</li>
+          <li><b>A hard size ceiling, shown as you spend it.</b> The payload strip counts characters against 600 and turns red past it. Keeping seven variants as prose is possible and expensive; the UI makes the cost legible before the commit, not after.</li>
+          <li><b>The workup is thrown away.</b> Seven variants, notes, readout, channels — none of it rides. What commits is the beat, the position, the invariant, the kept items, and an optional note.</li>
+          <li><b>The mixed group exists because it's usually the answer</b> — tell the bridge, show the fulcrum. Its craft note says so, and then says to distrust it once.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="04 One vocabulary three lifetimes">
+    <div class="sec-head"><span class="sec-num">04</span><h2>One vocabulary, three lifetimes</h2><p>the playground, the standing lever, and the lesson must teach the same model</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">Where show/tell lives across the product</span><span class="d">same words, different lifetimes</span></div>
+        <div class="cw-railcard" style="width:520px">
+          <div class="cap">the distinction is one model, surfaced three ways</div>
+          <div class="svt-lt">
+            <div class="svt-ltr"><span class="ic" id="svtLtA"></span><span class="bt"><span class="nm">Show vs. Tell Playground <span class="cw-rail oneshot">one-shot</span></span><span class="lf">lifetime: one turn · local to this selection</span><span class="bl">Experiment with <i>this</i> beat now. Bounded workup, compared side by side, committed once.</span></span></div>
+            <div class="svt-ltr st"><span class="ic" id="svtLtB"></span><span class="bt"><span class="nm">Prose Controller · ch. 06 <span class="cw-rail standing">standing</span></span><span class="lf">lifetime: until killed · passage-scoped</span><span class="bl">A broad standing bias — <i>scene only / mixed / summary allowed</i> — across all generated prose for the passage. No selection, no variants.</span></span></div>
+            <div class="svt-ltr"><span class="ic" id="svtLtC"></span><span class="bt"><span class="nm"><a href="Prose Minion - Learner Storytelling Craft.html" style="text-decoration:none">Learner — The Storytelling Craft</a> <span class="cw-rail oneshot">one-shot</span></span><span class="lf">lifetime: the lesson, then the drill</span><span class="bl">Teaches the distinction, then launches this playground <b>prefilled</b> from the drill. The lesson is where the vocabulary is learned; the playground is where it's spent.</span></span></div>
+          </div>
+          <div class="svt-map">
+            <div class="cap">continuum → controller lever · the shared vocabulary, stated</div>
+            <div class="svt-mrow"><span class="p">State it</span><span class="a">→</span><span class="c">show : tell = summary allowed</span></div>
+            <div class="svt-mrow"><span class="p">Summarize</span><span class="a">→</span><span class="c">show : tell = summary allowed</span></div>
+            <div class="svt-mrow"><span class="p">Hinge</span><span class="a">→</span><span class="c">show : tell = mixed</span></div>
+            <div class="svt-mrow"><span class="p">Evidence</span><span class="a">→</span><span class="c">show : tell = scene only</span></div>
+            <div class="svt-mrow"><span class="p">Inhabit</span><span class="a">→</span><span class="c">show : tell = scene only</span></div>
+          </div>
+          <p class="under">Five positions map onto the Controller's three, never the reverse — the local surface may be finer-grained than the standing one, because it's arguing about one sentence rather than a whole passage. The ADR should fix this table, not leave each surface to invent its own words.</p>
+        </div>
+      </div>
+      <div class="frame" style="max-width:380px">
+        <div class="frame-label"><span class="t">Boundaries this keeps</span></div>
+        <ul class="annot">
+          <li><b>Lifetimes stay different on purpose.</b> A local experiment must not quietly become a standing bias, and a standing bias must not be re-litigated per selection. Two rails, one vocabulary.</li>
+          <li><b>The Learner launches, never commits.</b> A drill can prefill the playground — beat, invariant, target position — and stop there. Committing is always the writer's move.</li>
+          <li><b>If both are live, they don't fight.</b> The Controller's standing lever is a default for prose it has no local instruction about; a committed playground artifact is a local instruction about one beat, and rides one turn. Local wins for that beat, and only that beat.</li>
+          <li><b>"Promote to standing" is a tempting fourth surface</b> — a kept direction becoming a Controller shift. Explicitly out of the first slice; note it as the obvious next ask.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec" data-screen-label="05 What commits">
+    <div class="sec-head"><span class="sec-num">05</span><h2>What actually commits</h2><p>the model sees a bounded frame; the writer sees a chip</p></div>
+    <div class="row">
+      <div class="frame">
+        <div class="frame-label"><span class="t">What the model sees</span><span class="d">one-shot thread-artifact frame</span></div>
+        <div class="cw-railcard">
+          <div class="cap">rides exactly one turn · never re-shipped</div>
+          <div class="cw-code"><span class="tag">&lt;thread-artifact id="ta-11" kind="widget:show-vs-tell"&gt;</span>
+<span class="k">beat:</span> "She hadn't trusted him since the funeral."
+<span class="k">position:</span> hinge · tell the bridge, show the fulcrum
+<span class="k">must survive:</span> the distrust is old and funeral-rooted —
+and she never says it out loud
+<span class="k">keep:</span> "Since the funeral she had volunteered nothing.
+Tonight she took the mug with her left hand and left the
+right one on the doorframe."
+<span class="k">direction:</span> route it through his inference — what he has
+learned to measure in her
+<span class="k">note:</span> the tell can stay if the fulcrum is shown
+<span class="tag">&lt;/thread-artifact&gt;</span></div>
+          <p class="under">Staged through the existing rail — <span style="font-family:var(--mono);font-size:10.5px">pendingMessageAttachments → buildWorkshopThreadArtifactFrame</span> — under a hard character ceiling — the panel counts it as you spend it, and direction-only mode is how a writer who kept five variants still fits inside it.</p>
+        </div>
+      </div>
+      <div class="frame">
+        <div class="frame-label"><span class="t">What the writer sees</span><span class="d">presentation-only chip</span></div>
+        <div class="cw-railcard">
+          <div class="cap">layered over the transcript · zero model context</div>
+          <div class="cw-chipdemo"><button class="cw-chip" id="svtChip"><span id="svtChipIco"></span> Show vs. Tell <span class="m">2 kept · 1 as direction · re-open</span></button></div>
+          <p class="under">Re-hydrates the whole draft — position, channels, budget, kept variants <i>and their carry modes</i>. Try it: this one is live.</p>
+          <div class="cap" style="margin-top:18px">thrown away at commit</div>
+          <div class="cw-code">7 variants · 7 craft notes · tradeoff readout
+channel emphasis · length budget · POV constraint
+<span class="tag">→ exploration scaffold, persisted host-side, never shipped</span></div>
+        </div>
+      </div>
+      <div class="frame" style="max-width:360px">
+        <div class="frame-label"><span class="t">Invariants</span></div>
+        <ul class="annot">
+          <li><b>Never rewrites the writer's text.</b> No insert, no replace, no "apply to editor" in the first slice — the widget produces directions, the room produces prose.</li>
+          <li><b>Bounded payload, always.</b> A hard ceiling with a visible counter; direction-only mode exists so a writer who keeps five variants still fits.</li>
+          <li><b>Config, not just output, persists</b> — the full draft by stable id in <span style="font-family:var(--mono);font-size:11px">WorkshopSessionService</span>, so the chip re-opens authoring state rather than a summary.</li>
+          <li><b>New reserved frame registers with the neutralizer</b> in the same change it ships.</li>
+          <li><b>Never a knob on the participant.</b> Show/tell is a property of the work — no persona identity, lens, mode, or behavior is touched.</li>
+          <li><b>Core stays host-agnostic</b>; only the composer mount touches the extension.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-foot">
+    <p class="muted"><b>Promotion questions, as staked here:</b> commit carries <i>both</i> prose variants and abstract directions, chosen per variant under one visible ceiling; context is the surrounding passage plus an explicit POV constraint and an invariant line — enough to preserve meaning, deliberately short of a rewrite tool; and the continuum vocabulary is pinned to the Controller's <i>narrative handling</i> chapter by the table in §4. Still open: whether a kept direction may ever be <b>promoted to standing</b> — which would need the Controller's shift marker, not this rail.</p>
+  </div>
+
+</div>
+
+<script src="icons.js"></script>
+<script src="pm-widgets.js"></script>
+<script src="pm-svt.js"></script>
+<script>
+const svtFlow = mountSvtFlow('svtStage');
+mountSvtFrame('svtPos1', {pos:0});
+mountSvtFrame('svtPos5', {pos:4, channels:['action','sense','dialogue'], budget:3});
+const svtKeep=['Since the funeral she had volunteered nothing. Tonight she took the mug with her left hand and left the right one on the doorframe.','He had learned the pause before she answered him. Since March it had been three seconds long.'];
+const svtCarry={'3-0':'prose','2-0':'dir'};
+mountSvtFrame('svtMenu', {state:'menu', pos:2, preselect:svtKeep, carry:svtCarry, note:'the tell can stay if the fulcrum is shown'});
+document.getElementById('svtChipIco').innerHTML = cwIc('eye',{size:13,sw:1.8});
+document.getElementById('svtChip').addEventListener('click',()=> svtFlow.open({state:'menu',banner:'clone',pos:2,preselect:svtKeep,carry:svtCarry,note:'the tell can stay if the fulcrum is shown'}));
+document.getElementById('svtLtA').innerHTML = cwIc('eye',{size:14,sw:1.7});
+document.getElementById('svtLtB').innerHTML = cwIc('sliders',{size:14,sw:1.7});
+document.getElementById('svtLtC').innerHTML = cwIc('book',{size:14,sw:1.7});
+</script>
+</body>
+</html>

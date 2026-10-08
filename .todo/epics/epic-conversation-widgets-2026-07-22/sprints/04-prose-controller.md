@@ -124,7 +124,7 @@ switch, both consulted at prose-generation time.
   mutation.
 - **Show/tell has two honest lifetimes.** Narrative handling supplies a broad
   standing scene/summary/evidence bias. The separate
-  [Show vs. Tell Playground](05-show-v-tell.md) is a local,
+  [Show vs. Tell Playground](05-show-vs-tell.md) is a local,
   one-shot experiment for a selected beat. They share vocabulary, not state.
 - **Show/tell is not Lexical Gravity application gear.** Lexical/Interpret/
   Recompose chooses whether the semantic field stays superficial, sharpens the
