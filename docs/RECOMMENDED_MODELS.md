@@ -248,6 +248,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
   - OpenRouter: https://openrouter.ai/mistralai/mistral-large-2407
   - Mistral AI: https://mistral.ai/
 
+### Mistral Large 4 — Long-Context Analysis
+
+- **Best For:** Complex critique, multilingual prose, and structured editorial work
+- **Description:** Opt-in Mistral Large model with text and image input, reasoning, tool use, and structured output on OpenRouter. Its prose quality has not been evaluated in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/mistralai/mistral-large-4-0
+  - Mistral AI: https://mistral.ai/
+
 ### GLM 5.2 — Long-Horizon Reasoning
 
 - **Best For:** Manuscript-scale critique, structured category matching, and reliable multi-step prose analysis
@@ -511,6 +519,14 @@ OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains ava
 - **Description:** Perfect for quick grammar checks and style flag detection
 - **Links:**
   - OpenRouter: https://openrouter.ai/anthropic/claude-haiku-4.5
+  - Anthropic: https://www.anthropic.com
+
+### Claude Haiku 5.5 — Responsive Editorial Tasks
+
+- **Best For:** Quick checks, dictionary work, and high-volume editorial tasks
+- **Description:** Opt-in 1M-context Anthropic model with text, image, and file input and adjustable reasoning on OpenRouter. Its prose quality has not been evaluated in this extension
+- **Links:**
+  - OpenRouter: https://openrouter.ai/anthropic/claude-haiku-5.5
   - Anthropic: https://www.anthropic.com
 
 ### Gemini 2.5 Flash — Batch Processing

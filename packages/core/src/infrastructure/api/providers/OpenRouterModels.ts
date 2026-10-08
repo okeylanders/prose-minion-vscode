@@ -94,6 +94,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Anthropic\'s fastest and most efficient model with frontier-level capabilities'
   },
   {
+    id: 'anthropic/claude-haiku-5.5',
+    name: 'Claude Haiku 5.5',
+    family: 'Claude Haiku',
+    description: 'Fast 1M-context Anthropic model with adjustable reasoning for responsive category matching'
+  },
+  {
     id: 'anthropic/claude-opus-4.5',
     name: 'Claude Opus 4.5',
     family: 'Claude Opus',
@@ -358,6 +364,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Available 131K-context Mistral Large checkpoint for multilingual category matching'
   },
   {
+    id: 'mistralai/mistral-large-4-0',
+    name: 'Mistral Large 4',
+    family: 'Mistral Large',
+    description: 'Long-context Mistral model with text and image input, reasoning, and structured output for complex category matching'
+  },
+  {
     id: 'z-ai/glm-4.7',
     name: 'GLM 4.7',
     family: 'GLM 4',
@@ -460,6 +472,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Claude Haiku 4.5',
     family: 'Claude Haiku',
     description: 'Anthropic\'s fastest efficient model. Perfect for quick grammar checks, style flag detection, and word frequency analysis.'
+  },
+  {
+    id: 'anthropic/claude-haiku-5.5',
+    name: 'Claude Haiku 5.5',
+    family: 'Claude Haiku',
+    description: 'Fast 1M-context Anthropic model with adjustable reasoning. An opt-in choice for quick checks, dictionary work, and high-volume editorial tasks.'
   },
   {
     id: 'anthropic/claude-sonnet-4.5',
@@ -982,6 +1000,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Mistral Large 2407',
     family: 'Mistral Large',
     description: 'Available 131K-context Mistral Large checkpoint for multilingual prose and structured critique.'
+  },
+  {
+    id: 'mistralai/mistral-large-4-0',
+    name: 'Mistral Large 4',
+    family: 'Mistral Large',
+    description: 'Long-context Mistral model with text and image input, reasoning, and structured output. An opt-in choice for complex editorial analysis.'
   },
   {
     id: 'mistralai/mistral-medium-3.1',

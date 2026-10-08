@@ -66,6 +66,13 @@ pre-existing guest to-do persistence failure found during release review.
 
 ### Release verification and handoff
 
+- Claude Haiku 5.5 (`anthropic/claude-haiku-5.5`) and Mistral Large 4
+  (`mistralai/mistral-large-4-0`) join the shared text-model catalog and
+  Category Search. Their OpenRouter catalog and endpoint contracts were checked
+  on 2026-10-08. Defaults remain unchanged; no paid inference or prose-quality
+  qualification was performed. Mistral's model page and live catalog reported
+  different context lengths, so the curated description omits a numeric limit;
+  runtime preflight uses live model metadata when available.
 - Baseline at release preparation: 267 suites / 3,528 tests / two snapshots;
   86.55% statement and 79.07% branch coverage; three typechecks, production
   build and bundle sentinel passed. Final branch validation and VSIX identity
@@ -75,9 +82,9 @@ pre-existing guest to-do persistence failure found during release review.
   names. All high/moderate lockfile nodes are development dependencies; no
   blanket forced upgrade was applied. Audit risk remains open for focused
   tooling maintenance.
-- Packaged assets and UI changed after the intermediate VSIX (see Workshop
-  tour and README artwork below), so a new VSIX build and manual check are
-  required before merge.
+- The VSIX was rebuilt after the Workshop tour, README artwork, and model
+  catalog updates. Its identity is recorded in the final release checkpoint;
+  a manual acceptance check remains required before merge.
 
 ### Workshop tour and README artwork
 
