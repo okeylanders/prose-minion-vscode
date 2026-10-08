@@ -1,9 +1,9 @@
 # Sprint 05: Show vs. Tell Playground
 
-**Status**: Planned
+**Status**: Slice 0 complete (contract frozen 2026-10-08) — ready for Slice 1
 **Priority**: Medium
 **Branch**: `sprint/conversation-widgets-05-show-vs-tell` -> PR into `epic/conversation-widgets`
-**Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md) proving the bounded one-shot variation workup, and [Sprint 04 — Prose Controller](04-prose-controller.md) establishing the durable narrative-handling vocabulary
+**Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
 **Concept**: [Show vs. Tell Playground](../concepts/show-v-tell-playground.md)
 **Design source**: [Spread 04 — Show vs. Tell Playground](../../../../docs/design/Prose%20Minion%20-%20Show%20vs%20Tell.html) (`pm-svt.css` / `pm-svt.js`, pulled 2026-10-08; see [docs/design/README.md](../../../../docs/design/README.md)). The page is the approved visual reference. Its fixture variants, readout table, and simulated generation delay are design evidence; this sprint governs runtime behavior where the two differ (see [Design reconciliation](#design-reconciliation)).
 
@@ -52,19 +52,19 @@ continuum, a deterministic tradeoff readout, and a workup grouped by kind.
 - **Five named positions, not a percentage.** The control is a five-step
   segmented continuum between the end labels `compress / explain` and
   `dramatize / embody`. Each step shows its name and subtitle; the selected step
-  shows a one-line tradeoff sentence beneath. Copy is fixed by the design:
+  shows a one-line tradeoff sentence beneath. Copy is frozen (Slice 0):
 
-  | # | Position | Subtitle | Tradeoff line | Controller lever |
-  |---|---|---|---|---|
-  | 1 | **State it** | direct tell | Gets the reader across the room in nine words. Spends nothing, teaches nothing. | summary allowed |
-  | 2 | **Summarize** | compressed narrative | Buys a year in a clause — right when the beat is a bridge to somewhere else. | summary allowed |
-  | 3 | **Hinge** | tell the bridge, show the fulcrum | Tells the year, shows the second. Usually the working answer — so distrust it once. | mixed |
-  | 4 | **Evidence** | observable action & sense | Nothing is claimed, so nothing can be argued with. The most ambiguous position, on purpose. | scene only |
-  | 5 | **Inhabit** | full scene time | The room becomes the argument. Costs the most page of anything here. | scene only |
+  | # | Id | Position | Subtitle | Tradeoff line (shipped copy) | Controller lever |
+  |---|---|---|---|---|---|
+  | 1 | `state-it` | **State it** | direct tell | Gets the fact across in the fewest words. Spends nothing, teaches nothing. | `summary-allowed` |
+  | 2 | `summarize` | **Summarize** | compressed narrative | Buys a stretch of time in a clause — right when the beat is a bridge to somewhere else. | `summary-allowed` |
+  | 3 | `hinge` | **Hinge** | tell the bridge, show the fulcrum | Tells the bridge, shows the moment that turns. Usually the working answer — so distrust it once. | `mixed` |
+  | 4 | `evidence` | **Evidence** | observable action & sense | Nothing is claimed, so nothing can be argued with. The most ambiguous position, on purpose. | `scene-only` |
+  | 5 | `inhabit` | **Inhabit** | full scene time | The scene becomes the argument. Costs the most page of anything here. | `scene-only` |
 
-  The tradeoff lines in the design quote the fixture beat ("nine words", "a
-  year"). The shipped lines must be generic or explicitly illustrative;
-  settle the final copy at kickoff. New drafts default to **Hinge**.
+  The tradeoff lines are generic, so they read true for any beat. The design's
+  lines quoted its fixture ("nine words", "a year") and stay in the design
+  file as illustration only. New drafts default to **Hinge**.
 
 - **Deterministic seven-dimension tradeoff readout.** Under the continuum, a
   table of seven dimensions, each a four-segment bar in **one accent colour**.
@@ -94,9 +94,21 @@ continuum, a deterministic tradeoff readout, and a workup grouped by kind.
   shared constant that both surfaces import. Neither surface invents its own
   words.
 
+  **Owner and location.** This sprint creates
+  `packages/core/src/shared/constants/narrativeHandlingVocabulary.ts` in
+  Slice 1. It is named after the shared concept, not after either widget, and
+  exports exactly three things: the five position ids, the three Controller
+  show:tell values (`summary-allowed | mixed | scene-only`, with their display
+  labels `summary allowed | mixed | scene only`), and the total, frozen
+  position → value mapping. Position names, subtitles, tradeoff lines, and the
+  readout are **not** shared. They stay feature-owned, because Prose Controller
+  teaches the lever in its own words. Sprint 04 imports the values and mapping
+  from this file and must not redeclare them.
+
 ### Inputs
 
-- **Selected beat** (required). A single-line field seeded from the editor
+- **Selected beat** (required, at most 160 characters). A beat, not a passage:
+  passages and paragraphs belong in Creative Variations. A single-line field seeded from the editor
   selection or a persona/Learner prefill, labelled with honest provenance
   (`seeded from selection`, persona custody, or pasted). Uses Sprint 03's
   `dispatchWorkshopSelectionData` intake and display-safe provenance rules.
@@ -107,9 +119,15 @@ continuum, a deterministic tradeoff readout, and a workup grouped by kind.
   third · his`). POV is a **constraint, not a channel**. The generation is told
   that interiority may only be the POV character's own perception and
   inference, never another character's mind. The panel says so in a hint under
-  the channels. A writer-editable POV field (mode plus optional focal character,
-  defaulting to unspecified) is staked here. Whether it can be pre-seeded from
-  excerpt metadata is a kickoff question.
+  the channels. The POV field is writer-editable: a mode (`unspecified`,
+  `first`, `close third`, `distant third`, `second`, `omniscient`) plus an
+  optional focal character, defaulting to `unspecified`. With `unspecified`,
+  the prompt still forbids head-hopping but names no focal character, and the
+  interiority sub-label reads *POV character's inference only*. A persona
+  recommendation seed may prefill the field (it shows as persona-prepared
+  until the writer edits it). Excerpts have no POV metadata today, so seeding
+  from excerpt metadata is deferred to
+  [tech debt](../../../tech-debt/2026-10-08-excerpt-pov-metadata.md).
 - **Must survive every variation** (required). The fact, emotion, or turn that
   every variant has to carry. This is the invariant, not a style note, and it
   is the first constraint line of the committed payload. Unlike Creative
@@ -154,8 +172,10 @@ the readout and changes what commits, without discarding the workup.
   *within* groups; they do not remove the told end. The bound is 1–2 variants
   per group and 4–8 in total; the design fixture has seven (2 · 2 · 2 · 1).
 - **Typed variant shape.** Each variant carries: proposed prose (multi-line
-  allowed for dialogue), the channel(s) it uses, a **gains / costs** craft note,
-  and a **direction**: an abstract, reusable instruction that is strictly
+  allowed for dialogue), the channel(s) it uses (one or two of the five), a
+  **gains / costs** craft note as two separate plain-text fields (`gains`,
+  `costs`; no Markdown or HTML, and the UI supplies the bold labels), and a
+  **direction**: an abstract, reusable instruction that is strictly
   shorter than the prose (the design fixture runs 0.36–0.66 of the prose
   length). Word count is computed host-side for display (`N w`), not supplied by
   the model. Ids are host-minted after validation, never supplied by the model.
@@ -192,6 +212,21 @@ the readout and changes what commits, without discarding the workup.
   still fits. Count against the same deterministic artifact projection the
   host compiles (Sprint 03's `CreativeVariationsArtifact` pattern), not an
   approximation.
+- **What the 600 counts (frozen at Slice 0).** The counted string is the
+  artifact body exactly as compiled: the `beat:`, `position:`, `must survive:`,
+  optional `must not change:`, `keep:`/`direction:`, and optional `note:`
+  lines, with their keys, joined by `\n`. It uses the same character measure
+  as `CreativeVariationsArtifact`. Two things are **not** counted: the
+  host-minted `<thread-artifact …>` envelope, and the host-appended invariant
+  warning lines. Warnings have their own fixed bound (flags per variant × flag
+  note length). The writer cannot shorten a model's warning, so it must never
+  be the reason commit is blocked. The webview meter imports the host's
+  projection function rather than re-implementing it.
+- **Fit guarantee.** Field limits are set so that a maximal beat, a maximal
+  must survive, a maximal must not change, the longest position line, and
+  **one** maximal direction-only variant still fit under 600. A Slice 1 budget
+  test pins this arithmetic, so a later budget change cannot make commit
+  impossible.
 - **Commit requires at least one kept variant.** Footer shows `N kept ·`.
   Buttons: `Cancel`, plus `Commit to thread` (or `Commit as new turn` when
   re-opened from a chip).
@@ -256,7 +291,7 @@ the readout and changes what commits, without discarding the workup.
   … she proposes and prefills, you decide what commits.*, with pronouns
   derived from the persona, not hard-coded). The seed is **input-only**:
   beat, optional surrounding context source, must survive, optional must not
-  change, and optionally a suggested position, channels, and budget. It never
+  change, and optionally a suggested POV, position, channels, and budget. It never
   carries a workup, selections, or a note, and opening it never auto-generates.
 - **Diagnosis, not verdict.** The recommendation prompt teaches personas to
   frame a told beat as a choice in the panel's vocabulary (design: *"It isn't a
@@ -267,8 +302,11 @@ the readout and changes what commits, without discarding the workup.
   as shown alternatives…*) treats showing as the destination, which breaks the
   "not a morality slider" rule. Replace it with neutral copy, for example
   *Move one beat between telling and showing — see what each distance gains
-  and costs, keep what lands.* Decide the Host-preparation door at kickoff,
-  matching Creative Variations.
+  and costs, keep what lands.*
+- **Host-preparation door: enabled, matching Creative Variations.** The
+  Widgets browser's Host-preparation door seeds an editable request to the
+  Host that expressly forbids generating, selecting, or committing. The Host
+  may only return a recommendation frame.
 
 ## Scope / deliverables
 
@@ -297,25 +335,119 @@ the readout and changes what commits, without discarding the workup.
    complements Prose Controller's narrative-handling chapter without sharing
    state.
 
-## Implementation slices (proposed)
+## Budgets (frozen at Slice 0)
 
-Mirrors Sprint 03's review-gated slices; finalize at kickoff.
+Add these to `PROMPT_BUDGETS` in
+`packages/core/src/shared/constants/promptBudgets.ts` with a `showVsTell`
+prefix, as Sprint 03 did with `creative*`. A slice may tighten a limit. To
+loosen one, re-run the fit-guarantee arithmetic and update this table in the
+same commit.
 
-| Slice | Review boundary |
-|---|---|
-| 0 | Freeze the contract; pin the design reconciliation decisions below; confirm Sprint 04's narrative-handling lever values. |
-| 1 | Contracts, budgets, codec, lifecycle arm, and integrity. Shared continuum/readout/vocabulary constants. |
-| 2 | Prompt bundle, strict four-group response codec, cancellation, and correlation. |
-| 3 | Intake, authoring controller, continuum, readout, grouped cards, carry, and payload meter. Catalog goes live for hands-on testing. |
-| 4 | Commit, chip, reopen, and clone-and-recommit. |
-| 5 | Persona recommendation and prefill. |
-| 6 | Architecture witnesses, production-policy route matrix, full verification, and docs. |
+| Budget | Value | Why |
+|---|---|---|
+| `showVsTellBeatCharacters` | 160 | A beat, not a passage. The writer-turn preview is the whole beat |
+| `showVsTellContextCharacters` | 250,000 | Parity with `creativeContextCharacters` (room excerpt) |
+| `showVsTellProvenancePathCharacters` | 500 | Parity with Creative Variations |
+| `showVsTellPovFocalCharacterCharacters` | 80 | A name, not a description |
+| `showVsTellMustSurviveCharacters` | 120 | Rides the artifact; the fixture is 76 |
+| `showVsTellMustNotChangeCharacters` | 80 | Rides the artifact when non-blank; the fixture is 51 |
+| `showVsTellNoteCharacters` | 160 | Writer-controlled; the blocker tells the writer to shorten it |
+| `showVsTellWorkupIdCharacters` | 64 | Parity with Creative Variations |
+| `showVsTellVariantsPerGroupMinimum` / `showVsTellVariantsPerGroup` | 1 / 2 | Confirmed |
+| `showVsTellVariantsMinimum` / `showVsTellVariants` | 4 / 8 | Confirmed; four groups always present |
+| `showVsTellChannelsPerVariant` | 2 (minimum 1) | The fixture's richest variant is `summary + action` |
+| `showVsTellProseCharacters` | 1,200 | Covers the `+1 paragraph` budget |
+| `showVsTellDirectionCharacters` | 120 | Also strictly shorter than its prose; the fixture's longest is about 60 |
+| `showVsTellGainsCharacters` / `showVsTellCostsCharacters` | 160 / 160 | One sentence each |
+| `showVsTellFlagsPerVariant` / `showVsTellFlagNoteCharacters` | 4 / 160 | Bounds the uncounted warning lines |
+| `showVsTellOutputTokens` | 16,000 | Eight variants is about 13k characters of payload, plus headroom |
+| `showVsTellResponseCharacters` | 48,000 | Closed-parser ceiling |
+| `showVsTellArtifactCharacters` | 600 | The writer-visible ceiling (see *What the 600 counts*) |
+| `showVsTellRecommendationSubjectCharacters` | 60 | The chip's `{short subject}` |
+| `showVsTellRecommendationFrameAllowanceCharacters` | 1,200 | A seed is input-only and small |
+
+Fit-guarantee arithmetic (Slice 1 pins it): `beat: "…"` 168 + the longest
+position line (`position: hinge · tell the bridge, show the fulcrum`) 51 +
+`must survive: …` 134 + `must not change: …` 97 + one `direction: …` 131 +
+4 newlines = **585 ≤ 600**.
+
+## Implementation slices
+
+Follows Sprint 03's review-gated slices. Every slice lands on
+`sprint/conversation-widgets-05-show-vs-tell` and stops at its boundary for
+review before the next slice begins. **Branch from `epic/conversation-widgets`
+after it has been fast-forwarded to `main`**, so the branch includes Slice 0.
+
+| Slice | Review boundary | Model | Opus review focus |
+|---|---|---|---|
+| 0 | ✅ Contract frozen; kickoff decisions recorded; design reconciliation accepted; Sprint 04 adopts the shared vocabulary; baseline recorded. | Opus | — |
+| 1 | Contracts, budgets (with the fit-guarantee test), feature-local draft codec, lifecycle registry arm, and integrity. The shared `narrativeHandlingVocabulary.ts` and the feature-owned continuum and readout constants, with tests pinning the two non-monotonic readout rows. | **Opus** | — |
+| 2 | **2a — prompt bundle** (`system-prompts/show-vs-tell/`). **2b — strict four-group response codec, cancellation, and stale-result correlation.** | 2a **Opus**; 2b **Sonnet** | Correlation tests; the direction-shorter-than-prose rule; group-membership rejection |
+| 3 | Intake, authoring controller, continuum, readout, POV field, channels, budget, grouped cards, carry, note, and payload meter. **The catalog goes live here, intentionally, for hands-on testing on the sprint branch only.** Commit stays disabled until Slice 4 wires it, and the sprint branch does not PR into the epic before Slice 4 lands. | **Sonnet** | The meter imports the host projection; moving the position does not invalidate the workup, but every other generation input does; no score, rank, or good/bad colour anywhere |
+| 4 | Commit through the shared Sprint 03 coordinator; host re-check of the 600 ceiling; `widget:show-vs-tell` registered with the prompt-delimiter neutralizer; chip, exact reopen, and clone-and-recommit. | **Sonnet** | Host ceiling re-check; neutralizer registration; nothing touches the editor |
+| 5 | Persona recommendation codec and prefill (Host and Guest), the Host-preparation door, and neutral browser copy. | **Sonnet** (mechanics); **Opus** writes the recommendation prompt's "diagnosis, not verdict" copy | Seed is input-only; opening never auto-generates; pronouns are derived |
+| 6 | Architecture witnesses, the production-policy route matrix, full verification, and current-state docs. Shared-vocabulary tests (deliverable 7). | **Sonnet**; **Haiku** for docs, inventory counts, and verification summaries | Independence from Lexical Gravity's gear and evidence mode |
+
+**Model routing rule.** Sonnet slices treat [Locked decisions](#locked-decisions)
+and [Design reconciliation](#design-reconciliation) as a **divergence list**
+from Creative Variations. Mirror Creative Variations' mechanics, never its
+vocabulary. In particular, Show vs. Tell has no `aim`, no sampling distance,
+no textual-overlap readout, and no advisory-risk acceptance gate. Its warnings
+are passive.
+
+### Implementation map
+
+Each Creative Variations file is the template for its Show vs. Tell
+counterpart. Folder: `showVsTell/`; type and file prefix: `ShowVsTell`;
+widget id: `show-vs-tell`.
+
+| Layer | Creative Variations template | Show vs. Tell file | Slice |
+|---|---|---|---|
+| Contracts | `shared/types/messages/workshop/creativeVariations.ts` | `…/workshop/showVsTell.ts` (+ the `workshop/index.ts` barrel) | 1 |
+| Shared vocabulary | — | `shared/constants/narrativeHandlingVocabulary.ts` | 1 |
+| Codec / integrity / derivations | `application/services/workshop/widgets/creativeVariations/CreativeVariations{ConfigCodec,ConfigIntegrity,Derivations,WorkupId}.ts` | `…/widgets/showVsTell/ShowVsTell{ConfigCodec,ConfigIntegrity,Derivations,WorkupId}.ts` | 1 |
+| Readout and continuum constants | — | `…/widgets/showVsTell/ShowVsTellContinuum.ts` (feature-owned, versioned) | 1 |
+| Prompts | `resources/system-prompts/creative-variations/` | `resources/system-prompts/show-vs-tell/` | 2a |
+| Service and response codec | `infrastructure/api/services/widgets/creativeVariations/CreativeVariations{Service,ResponseCodec}.ts` | `…/widgets/showVsTell/ShowVsTell{Service,ResponseCodec}.ts` | 2b |
+| Handler | `handlers/domain/workshop/widgets/creativeVariations/WorkshopCreativeVariationsHandler.ts` | `…/widgets/showVsTell/WorkshopShowVsTellHandler.ts` | 2b–4 |
+| Hooks | `hooks/domain/workshop/widgets/creativeVariations/useCreativeVariations.ts`; `…/controllers/creativeVariations/useCreativeVariationsAuthoring.ts` | `…/widgets/showVsTell/useShowVsTell.ts`; `…/controllers/showVsTell/useShowVsTellAuthoring.ts` | 3 |
+| Components | `components/workshop/widgets/creativeVariations/*` | `…/widgets/showVsTell/` (modal, continuum, readout, grouped card, payload meter, CSS) | 3 |
+| Artifact and commit | `CreativeVariations{Artifact,CommitEligibility,OneShotCommit}.ts` | `ShowVsTell{Artifact,CommitEligibility,OneShotCommit}.ts` | 4 |
+| Recommendation | `CreativeVariationsRecommendation.ts` | `ShowVsTellRecommendation.ts` | 5 |
+
+**Closed registries and shared touch points** (each already has a
+`creative-variations` arm; add the `show-vs-tell` arm beside it): `index.ts`
+barrel; `shared/streamingCancelMessages.ts`; `messages/index.ts`,
+`messages/workshop/{index,widgets,recovery}.ts`;
+`constants/workshopWidgets.ts` (catalog, `live` flip, browser copy);
+`MessageHandler.ts`, `MessageHandlerContracts.ts`,
+`WorkshopSliceComposition.ts`, `WorkshopRouteContracts.ts`;
+`WorkshopSessionStateV1Shape.ts`, `WorkshopSessionRecords.ts`,
+`WorkshopRunCompletion.ts`;
+`widgets/Workshop{WidgetRecommendationOperations,OneShotWidgetCommitOperations,WidgetConfigOperations,WidgetPersistenceLifecycle,WidgetConfigLedger}.ts`;
+`utils/workshopPromptFrames.ts` (neutralizer); webview
+`WorkshopApp.tsx`, `WorkshopTurnBubble.tsx`, `workshopWidgetIcons.ts`,
+`workshopWidgetAskPrefill.ts`, `useWorkshopAppMessageRouter.ts`,
+`dispatchWorkshop{WidgetActionResult,SelectionData}.ts`,
+`useWorkshopWidgetOpening.ts`; the composition root
+`apps/vscode-extension/src/extension.ts`. Architecture guards that list
+Creative Variations: `__tests__/architecture/{boundaries,promptBudgets,workshopStyles,workshopWidgetPersistenceLifecycle}.test.ts`.
+Existing tests that use `show-vs-tell` as the example of an *unavailable*
+widget (`WorkshopRoomHandler.seams`, `WorkshopWidgetRecommendationOperations`,
+`WorkshopWidgetConfigs`, `workshopWidgetAskPrefill`) must switch to another
+non-live widget id when the catalog flips in Slice 3.
+
+### Baseline witness (Slice 0, `main` @ `7031b7ee`)
+
+`npx jest`: **267 suites / 3,535 tests / 2 snapshots, all passing** (50 s).
+Jest reports one known worker that fails to exit gracefully. It predates this
+sprint, so it is not a regression signal.
 
 ## Design reconciliation
 
 Spread 04 was drawn before Sprint 03 shipped. Where the prototype and Sprint 03's
-accepted rules disagree, this sprint follows Sprint 03 unless kickoff decides
-otherwise:
+accepted rules disagree, this sprint follows Sprint 03. **Every row below was
+accepted at Slice 0 (2026-10-08).**
 
 | Prototype behavior | Sprint 05 contract | Why |
 |---|---|---|
@@ -342,20 +474,32 @@ otherwise:
   semantics.
 - Lens-stack behavior; Lexical Gravity selection remains Sprint 06 work.
 
-## Open questions for kickoff
+## Kickoff decisions (Slice 0, 2026-10-08)
 
-- **Sprint 04 vocabulary.** The design pins `show : tell = summary allowed |
-  mixed | scene only` as Controller ch. 06 values. Sprint 04 currently
-  describes narrative handling as scene ↔ summary and related axes, but names
-  no such three values. Either Sprint 04 adopts these three values, or this
-  mapping is re-drawn to whatever Sprint 04 ships. Do not let the two surfaces
-  diverge.
-- **Tradeoff-line copy.** Keep the fixture-flavoured lines as illustrative
-  examples, or write generic ones?
-- **POV source.** Is the POV field writer-only, persona-prefillable, or seeded
-  from excerpt metadata?
-- **Variant bounds.** Confirm 1–2 per group and 4–8 in total, and the
-  per-field character limits.
+The four open kickoff questions are closed:
+
+- **Sprint 04 vocabulary → Sprint 05 owns it, Sprint 04 adopts it.** Prose
+  Controller is not built yet. Sprint 05 creates
+  `narrativeHandlingVocabulary.ts` with the show:tell values `summary-allowed
+  | mixed | scene-only`. [Sprint 04](04-prose-controller.md) now records that
+  its narrative-handling chapter imports that constant. Sprint 04 is
+  therefore no longer a build dependency of this sprint.
+- **Tradeoff-line copy → generic.** The shipped lines are frozen in the
+  continuum table above.
+- **POV source → writer-editable, persona-prefillable.** Excerpt-metadata
+  seeding is deferred to
+  [tech debt](../../../tech-debt/2026-10-08-excerpt-pov-metadata.md).
+- **Variant bounds → 1–2 per group, 4–8 in total, confirmed.** Per-field
+  limits are frozen in [Budgets](#budgets-frozen-at-slice-0).
+
+Also decided at Slice 0:
+
+- **Catalog flip stays at Slice 3**, intentionally and on the sprint branch
+  only (see the slice table).
+- **The Host-preparation door is enabled**, matching Creative Variations.
+- **The 600 ceiling counts the artifact body only.** The envelope and warning
+  lines are excluded, and a fit guarantee is pinned by a test.
+- **Gains and costs are two plain-text fields**, not one Markdown note.
 
 ## Completion criteria
 

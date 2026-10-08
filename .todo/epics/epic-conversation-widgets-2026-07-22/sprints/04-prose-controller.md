@@ -126,6 +126,16 @@ switch, both consulted at prose-generation time.
   standing scene/summary/evidence bias. The separate
   [Show vs. Tell Playground](05-show-vs-tell.md) is a local,
   one-shot experiment for a selected beat. They share vocabulary, not state.
+- **Show:tell lever values are adopted from Sprint 05 (decided 2026-10-08).**
+  The narrative-handling chapter's show:tell lever has exactly three values,
+  `summary-allowed | mixed | scene-only` (displayed as *summary allowed ·
+  mixed · scene only*). They are imported, along with the Playground's
+  five-position mapping, from
+  `packages/core/src/shared/constants/narrativeHandlingVocabulary.ts`, which
+  Sprint 05 creates. This chapter writes its own teaching copy for the lever
+  but must not redeclare the values or the mapping. If Prose Controller needs
+  a different value set, change the shared constant and both surfaces in one
+  change.
 - **Show/tell is not Lexical Gravity application gear.** Lexical/Interpret/
   Recompose chooses whether the semantic field stays superficial, sharpens the
   existing arrangement, or may reorganize it. LG now owns a separate evidence

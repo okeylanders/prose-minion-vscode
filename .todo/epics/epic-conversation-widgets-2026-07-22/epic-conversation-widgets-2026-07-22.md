@@ -8,8 +8,11 @@ the Workshop Architecture Refactor completed Phases 0-7. Sprint 01 merged
 02D merged through [PR #111](https://github.com/okeylanders/prose-minion-vscode/pull/111)
 on 2026-08-08, establishing the persistence grammar/integrity family boundary
 before Creative Variations or any other persisted widget begins. Sprint 03
-Creative Variations is active, followed by Prose Controller, Show vs. Tell, and
-the later Lexical Gravity model-selected stack.
+Creative Variations merged through PR #112. Sprint 05 Show vs. Tell is next:
+its Slice 0 contract was frozen on 2026-10-08, and it now owns the shared
+narrative-handling vocabulary that Sprint 04 adopts, so it no longer waits on
+Prose Controller. Prose Controller and the later Lexical Gravity
+model-selected stack follow.
 **Progress**: ADR authored and accepted 2026-07-29 (architecture-lane review
 folded in). Sprint 01 merged through [PR #96](https://github.com/okeylanders/prose-minion-vscode/pull/96)
 into `epic/conversation-widgets`:
