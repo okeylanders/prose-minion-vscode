@@ -2,9 +2,12 @@
 
 **Date**: 2026-10-08
 **Sprint**: [Sprint 05 — Show vs. Tell](../.todo/epics/epic-conversation-widgets-2026-07-22/sprints/05-show-vs-tell.md)
-**Branch**: committed directly on `main` (docs only). Slice 1 onward runs on
-`sprint/conversation-widgets-05-show-vs-tell`, branched from
-`epic/conversation-widgets` after the epic is fast-forwarded to `main`.
+**Branch**: committed directly on `main` (docs only), then
+`epic/conversation-widgets` was fast-forwarded to `main`. From Slice 1 on,
+each slice gets its own branch,
+`epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, cut from the epic and
+merged back into it by PR. A `/` after `conversation-widgets` isn't possible
+because Git can't nest refs under an existing branch name.
 
 ## Decisions (writer-confirmed)
 
@@ -17,9 +20,8 @@
   doc.
 - **POV** is writer-editable and persona-prefillable. Excerpt-metadata seeding
   is deferred to `.todo/tech-debt/2026-10-08-excerpt-pov-metadata.md`.
-- **Catalog flips live at Slice 3**, intentionally and on the sprint branch
-  only. Commit stays disabled until Slice 4, and there is no PR into the epic
-  before Slice 4.
+- **Catalog flips live at Slice 3**, intentionally. Commit stays disabled until
+  Slice 4, and the epic does not merge into `main` until Slice 4 lands.
 
 ## Decisions (Ada, derived from locked constraints; the writer may override)
 

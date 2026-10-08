@@ -2,7 +2,7 @@
 
 **Status**: Slice 0 complete (contract frozen 2026-10-08) — ready for Slice 1
 **Priority**: Medium
-**Branch**: `sprint/conversation-widgets-05-show-vs-tell` -> PR into `epic/conversation-widgets`
+**Branches**: one per slice, `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, each cut from `epic/conversation-widgets` and merged back into it by PR (see [Branching](#branching))
 **Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
 **Concept**: [Show vs. Tell Playground](../concepts/show-v-tell-playground.md)
 **Design source**: [Spread 04 — Show vs. Tell Playground](../../../../docs/design/Prose%20Minion%20-%20Show%20vs%20Tell.html) (`pm-svt.css` / `pm-svt.js`, pulled 2026-10-08; see [docs/design/README.md](../../../../docs/design/README.md)). The page is the approved visual reference. Its fixture variants, readout table, and simulated generation delay are design evidence; this sprint governs runtime behavior where the two differ (see [Design reconciliation](#design-reconciliation)).
@@ -373,17 +373,41 @@ position line (`position: hinge · tell the bridge, show the fulcrum`) 51 +
 
 ## Implementation slices
 
-Follows Sprint 03's review-gated slices. Every slice lands on
-`sprint/conversation-widgets-05-show-vs-tell` and stops at its boundary for
-review before the next slice begins. **Branch from `epic/conversation-widgets`
-after it has been fast-forwarded to `main`**, so the branch includes Slice 0.
+Follows Sprint 03's review-gated slices. Each slice gets its own branch, and
+its PR into the epic **is** that slice's review gate.
+
+### Branching
+
+```text
+main ─────────────────────────────────────────────●  (releases)
+  └─ epic/conversation-widgets  (integration; fast-forwarded to main at Slice 0)
+       ├─ epic/conversation-widgets-sprint-05-slice-1-contracts   → PR → epic
+       ├─ epic/conversation-widgets-sprint-05-slice-2-generation  → PR → epic
+       ├─ … one branch per slice, each cut from the epic *after* the previous slice merged
+       └─ epic/conversation-widgets → main   (when the epic or a release is ready)
+```
+
+- **Name**: `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`. A `/`
+  after `conversation-widgets` is impossible because Git cannot nest refs
+  under an existing branch name.
+- **Cut each slice from the current epic**, after the previous slice's PR has
+  merged. Slices are sequential, and no slice branches off another slice
+  branch.
+- **One PR per slice into `epic/conversation-widgets`.** Open it, don't merge
+  it. The writer merges after review (Opus review for Sonnet slices). Prefer a
+  merge commit or rebase over squash, so the slice's commit-by-commit history
+  survives for review.
+- **The epic never merges into `main` mid-sprint between Slices 3 and 4.**
+  Slice 3 flips the catalog live while commit is still disabled.
+- **Keeping the epic current**: if `main` moves (a release or hotfix), merge
+  `main` into the epic *between* slices, never while a slice branch is open.
 
 | Slice | Review boundary | Model | Opus review focus |
 |---|---|---|---|
 | 0 | ✅ Contract frozen; kickoff decisions recorded; design reconciliation accepted; Sprint 04 adopts the shared vocabulary; baseline recorded. | Opus | — |
 | 1 | Contracts, budgets (with the fit-guarantee test), feature-local draft codec, lifecycle registry arm, and integrity. The shared `narrativeHandlingVocabulary.ts` and the feature-owned continuum and readout constants, with tests pinning the two non-monotonic readout rows. | **Opus** | — |
 | 2 | **2a — prompt bundle** (`system-prompts/show-vs-tell/`). **2b — strict four-group response codec, cancellation, and stale-result correlation.** | 2a **Opus**; 2b **Sonnet** | Correlation tests; the direction-shorter-than-prose rule; group-membership rejection |
-| 3 | Intake, authoring controller, continuum, readout, POV field, channels, budget, grouped cards, carry, note, and payload meter. **The catalog goes live here, intentionally, for hands-on testing on the sprint branch only.** Commit stays disabled until Slice 4 wires it, and the sprint branch does not PR into the epic before Slice 4 lands. | **Sonnet** | The meter imports the host projection; moving the position does not invalidate the workup, but every other generation input does; no score, rank, or good/bad colour anywhere |
+| 3 | Intake, authoring controller, continuum, readout, POV field, channels, budget, grouped cards, carry, note, and payload meter. **The catalog goes live here, intentionally, for hands-on testing.** Commit stays disabled until Slice 4 wires it, and the epic does not merge into `main` until Slice 4 has landed. | **Sonnet** | The meter imports the host projection; moving the position does not invalidate the workup, but every other generation input does; no score, rank, or good/bad colour anywhere |
 | 4 | Commit through the shared Sprint 03 coordinator; host re-check of the 600 ceiling; `widget:show-vs-tell` registered with the prompt-delimiter neutralizer; chip, exact reopen, and clone-and-recommit. | **Sonnet** | Host ceiling re-check; neutralizer registration; nothing touches the editor |
 | 5 | Persona recommendation codec and prefill (Host and Guest), the Host-preparation door, and neutral browser copy. | **Sonnet** (mechanics); **Opus** writes the recommendation prompt's "diagnosis, not verdict" copy | Seed is input-only; opening never auto-generates; pronouns are derived |
 | 6 | Architecture witnesses, the production-policy route matrix, full verification, and current-state docs. Shared-vocabulary tests (deliverable 7). | **Sonnet**; **Haiku** for docs, inventory counts, and verification summaries | Independence from Lexical Gravity's gear and evidence mode |
@@ -494,8 +518,10 @@ The four open kickoff questions are closed:
 
 Also decided at Slice 0:
 
-- **Catalog flip stays at Slice 3**, intentionally and on the sprint branch
-  only (see the slice table).
+- **Catalog flip stays at Slice 3**, intentionally. The epic stays off
+  `main` until Slice 4 lands (see the slice table).
+- **One branch per slice**, cut from the epic and PR'd back into it (see
+  [Branching](#branching)).
 - **The Host-preparation door is enabled**, matching Creative Variations.
 - **The 600 ceiling counts the artifact body only.** The envelope and warning
   lines are excluded, and a fit guarantee is pinned by a test.
