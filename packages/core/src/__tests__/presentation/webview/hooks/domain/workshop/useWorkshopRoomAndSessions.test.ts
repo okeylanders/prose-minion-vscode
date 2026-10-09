@@ -59,6 +59,8 @@ const sessionState = (session: Partial<WorkshopSessionSnapshot>): WorkshopSessio
         participantSubjectReady: true,
         excerptVersion: 0,
         replacementCount: 0,
+        roomRevision: 1,
+        contextRevision: 0,
         contextAttachments: [],
         pendingMessageAttachments: [],
         widgetConfigs: [],

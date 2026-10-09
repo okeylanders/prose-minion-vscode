@@ -57,10 +57,11 @@ export interface UseShowVsTellAuthoringOptions {
   activeExcerpt: WorkshopExcerptSnapshot | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   /**
-   * Identity of what the room's source references resolve to. A change while
-   * the sheet is open discards in-flight replies (and a workup that was
-   * grounded on a source reference), because the reply no longer describes
-   * the room the writer is looking at.
+   * Host revision of what the room's source references resolve to (room
+   * generation, context revision, excerpt version). A change while the sheet
+   * is open cancels and discards an in-flight reply, and clears a settled
+   * workup, when a source reference grounded them: they no longer describe the
+   * room the writer is looking at.
    */
   roomKey: string;
   /** Host-owned effective widget model; changes invalidate dependent transient work. */
@@ -474,18 +475,21 @@ export function useShowVsTellAuthoring({
     }
     previousRoomKeyRef.current = roomKey;
     const current = draftRef.current;
+    // Only work grounded on a source reference depends on the room: a beat
+    // generated with no source is the same request in any room.
+    if (current.surroundingContext.sourceReferences.length === 0) {
+      return;
+    }
     const hadActiveGeneration = activeTokenRef.current !== undefined;
-    // A workup is room-bound only when a source reference grounded it.
-    const groundedWork = current.surroundingContext.sourceReferences.length > 0
-      && hasSettledWork(current);
-    if (!hadActiveGeneration && !groundedWork) {
+    const hadWork = hasSettledWork(current);
+    if (!hadActiveGeneration && !hadWork) {
       return;
     }
     cancelActiveGeneration();
-    if (groundedWork) {
+    if (hadWork) {
       setDraft({ ...current, workup: null, kept: [] });
     }
-    setInvalidationNotice(changedWorkNotice('room', hadActiveGeneration, groundedWork));
+    setInvalidationNotice(changedWorkNotice('room', hadActiveGeneration, hadWork));
   }, [cancelActiveGeneration, open, roomKey, setDraft]);
 
   const availableSources = React.useMemo<ShowVsTellAvailableSource[]>(() => [

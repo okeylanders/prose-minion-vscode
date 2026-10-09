@@ -303,12 +303,14 @@ export const WorkshopApp: React.FC = () => {
     opening: widgetOpening.showVsTellOpening,
     activeExcerpt: workshop.excerpt,
     contextAttachments: workshop.contextAttachments,
-    // What a source reference resolves to: a different excerpt version or
-    // attachment set means an in-flight reply no longer describes this room.
+    // The host's own revisions: a replaced room, an edited or refreshed
+    // attachment body, or a new excerpt version each change this key. Display
+    // labels, word counts, and ids are not revisions.
     roomKey: [
-      workshop.excerpt?.version ?? 'none',
-      ...workshop.contextAttachments.map((attachment) => attachment.id)
-    ].join('|'),
+      workshop.roomRevision,
+      workshop.contextRevision,
+      workshop.excerpt?.version ?? 'none'
+    ].join(':'),
     widgetModelId: effectiveWidgetModelId,
     generationProgress: showVsTell.generationProgress,
     generationResult: showVsTell.generationResult,

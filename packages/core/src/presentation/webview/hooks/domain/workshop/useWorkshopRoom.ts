@@ -119,6 +119,10 @@ export interface WorkshopRoomState {
   /** Attachment bodies fetched on demand for the Edit/Preview sheet. */
   attachmentContent: WorkshopAttachmentContentState | null;
   contextAttachments: WorkshopContextAttachmentSnapshot[];
+  /** Host identity of this room generation; changes when the room is replaced. */
+  roomRevision: number;
+  /** Host count of prompt-bearing context changes in this room; never content. */
+  contextRevision: number;
   /** Staged one-shot attachments for the writer's next message (Phase 6B). */
   pendingMessageAttachments: WorkshopMessageAttachmentSnapshot[];
   /** Active host-owned prose directives for the standing rail. */
@@ -291,6 +295,8 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
   const [attachmentContent, setAttachmentContent] =
     React.useState<WorkshopAttachmentContentState | null>(null);
   const [contextAttachments, setContextAttachments] = React.useState<WorkshopContextAttachmentSnapshot[]>([]);
+  const [roomRevision, setRoomRevision] = React.useState(0);
+  const [contextRevision, setContextRevision] = React.useState(0);
   const [pendingMessageAttachments, setPendingMessageAttachments] = React.useState<WorkshopMessageAttachmentSnapshot[]>([]);
   const [standingDirectives, setStandingDirectives] =
     React.useState<WorkshopStandingDirectiveSummary[]>([]);
@@ -634,6 +640,8 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
       setShelvedExcerpt(session.shelvedExcerpt ?? null);
       setRoomHasMemory(session.roomHasMemory);
       setContextAttachments(session.contextAttachments ?? []);
+      setRoomRevision(session.roomRevision ?? 0);
+      setContextRevision(session.contextRevision ?? 0);
       setPendingMessageAttachments(session.pendingMessageAttachments ?? []);
       setStandingDirectives(session.standingDirectives ?? []);
       setContextPending(session.pendingHostUpdate?.context ?? false);
@@ -796,6 +804,8 @@ export const useWorkshopRoom = (): UseWorkshopRoomReturn => {
     roomHasMemory,
     attachmentContent,
     contextAttachments,
+    roomRevision,
+    contextRevision,
     pendingMessageAttachments,
     standingDirectives,
     contextPending,
