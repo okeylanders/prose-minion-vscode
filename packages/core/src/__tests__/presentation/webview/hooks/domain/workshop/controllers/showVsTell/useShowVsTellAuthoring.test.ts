@@ -72,7 +72,7 @@ function setup(initial: Partial<UseShowVsTellAuthoringOptions> = {}): Harness {
   let tokenIndex = 0;
   const options = {
     requestBeatSelection: jest.fn(),
-    requestPassageSelection: jest.fn(),
+    requestPassageSelection: jest.fn(() => 'psel-1'),
     generate: jest.fn((_input: unknown) => `token-${++tokenIndex}`),
     cancelGeneration: jest.fn(),
     commit: jest.fn(),
@@ -190,9 +190,12 @@ describe('useShowVsTellAuthoring', () => {
       ['beat selection', (h) => h.result.current.handleBeatSelection(selection({ content: 'Another beat.' }))],
       ['context source', (h) => h.result.current.toggleSourceReference({ kind: 'active-excerpt' })],
       ['passage text', (h) => h.result.current.changePassageText('He set the mug down.')],
-      ['passage selection', (h) => h.result.current.handlePassageSelection(selection({
-        target: 'workshop_show_vs_tell_passage', content: 'He set the mug down.'
-      }))],
+      ['passage selection', (h) => {
+        h.result.current.requestPassageSelection();
+        h.result.current.handlePassageSelection(selection({
+          target: 'workshop_show_vs_tell_passage', requestId: 'psel-1', content: 'He set the mug down.'
+        }));
+      }],
       ['POV mode', (h) => h.result.current.changePovMode('close-third')],
       ['must survive', (h) => h.result.current.changeMustSurvive('Something else survives.')],
       ['must not change', (h) => h.result.current.changeMustNotChange('No flashback.')],

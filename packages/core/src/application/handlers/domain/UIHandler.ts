@@ -322,7 +322,7 @@ export class UIHandler {
 
   async handleSelectionRequest(message: RequestSelectionMessage): Promise<void> {
     try {
-      const { target } = message.payload;
+      const { target, requestId } = message.payload;
       const selection = this.editor.getActiveSelection();
 
       let content: string | undefined;
@@ -357,6 +357,9 @@ export class UIHandler {
         source: 'extension.ui',
         payload: {
           target,
+          // Echoed only when the requester correlated the ask, so the shape of
+          // every uncorrelated reply is unchanged.
+          ...(requestId !== undefined ? { requestId } : {}),
           content,
           sourceUri,
           relativePath,

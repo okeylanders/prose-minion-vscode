@@ -136,12 +136,42 @@ no Show vs. Tell repair).
 ## Verification
 
 - `npm run typecheck`: core, webview, ext clean.
-- `npm run lint`: 0 errors, 1,115 warnings (baseline 1,112; see above).
-- `npm test`: **298 suites / 4,249 tests / 2 snapshots, all passing**
-  (Slice 6: 296 / 4,190 / 2).
+- `npm run lint`: 0 errors, 1,116 warnings (baseline 1,112; see above; the
+  one added after review is the sibling-pattern `PmLogo` mock name in the new
+  passage-intake full-app test).
+- `npm test`: **299 suites / 4,249 tests / 2 snapshots, all passing**
+  (Slice 6: 296 / 4,190 / 2; after the F-01 fix and D5: 299 / 4,249 / 2).
 - `npm run build`: compiled; `verify-bundle` OK.
 - `git diff --check`: clean.
 - `grep -rn "from 'vscode'" packages/core/src`: no source hits.
+
+## Review fixes (Astra, PR #140)
+
+Report: `docs/pr-reviews/pr-140-show-vs-tell-slice-7-review.md`. One finding.
+
+- **F-01: a stale passage-selection reply could replace a newer draft and
+  discard its workup.** `Use selection` sent only the target, and the host's
+  clipboard fallback can settle long after the ask; the intake accepted any
+  reply for the target while the sheet was open and idle. Fix:
+  - The selection wire gains an optional `requestId` on
+    `RequestSelectionPayload`, echoed on `SelectionDataPayload` exactly when
+    the request carried one. `UIHandler` echoes it; every other consumer is
+    unchanged (the beat lane still asks uncorrelated, as Astra scoped).
+  - `useShowVsTell.requestPassageSelection()` mints one id per ask and
+    returns it. `useShowVsTellIntake` holds the one live id and accepts only a
+    reply that matches it, once. The id is dropped when another ask
+    supersedes it, on a writer edit of the box or Use excerpt, on open or
+    close (the controller's open effect calls `resetIntake`), on a room
+    change, and whenever a generation or a commit begins; the drop is
+    permanent, so a reply after the transition settles is still rejected.
+  - Full-app regressions (`WorkshopApp.showVsTellPassageIntake.test.tsx`)
+    drive the real `UIHandler` with a deferred clipboard port and deliver its
+    reply into the real `WorkshopApp`: Astra's four witnesses (superseded by
+    later work, across close and reopen, reversed replies, across a room
+    replacement), plus an ask invalidated by a generation or a pending commit
+    that stays rejected after it settles, and the passing control of current
+    asynchronous intake. Controller-level tests cover the same rules without
+    the UI, and a `UIHandler` unit test pins the echo and its absence.
 
 ## Open follow-ups
 

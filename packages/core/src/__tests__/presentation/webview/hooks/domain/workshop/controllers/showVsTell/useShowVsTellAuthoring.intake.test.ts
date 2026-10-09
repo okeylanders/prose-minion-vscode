@@ -31,18 +31,19 @@ const excerpt = (text = 'He set the mug down. She hadn’t trusted him since the
 const attachment = (id: string, label: string): WorkshopContextAttachmentSnapshot =>
   ({ id, kind: 'text', origin: 'writer', label, words: 3 } as unknown as WorkshopContextAttachmentSnapshot);
 
-const passageSelection = (content: string): SelectionDataMessage => ({
+const passageSelection = (content: string, requestId?: string): SelectionDataMessage => ({
   type: MessageType.SELECTION_DATA,
   source: 'extension.ui',
   timestamp: 1,
-  payload: { target: 'workshop_show_vs_tell_passage', content }
+  payload: { target: 'workshop_show_vs_tell_passage', ...(requestId ? { requestId } : {}), content }
 });
 
 function mount(initial: Partial<UseShowVsTellAuthoringOptions> = {}) {
   let tokenIndex = 0;
+  let passageRequestIndex = 0;
   const options = {
     requestBeatSelection: jest.fn(),
-    requestPassageSelection: jest.fn(),
+    requestPassageSelection: jest.fn(() => `psel-${++passageRequestIndex}`),
     generate: jest.fn((_input: unknown) => `token-${++tokenIndex}`),
     cancelGeneration: jest.fn(),
     commit: jest.fn(),
@@ -126,10 +127,89 @@ describe('useShowVsTellAuthoring surrounding passage (D2)', () => {
     expect(h.options.requestPassageSelection).toHaveBeenCalledTimes(1);
     expect(h.options.requestBeatSelection).not.toHaveBeenCalled();
 
-    act(() => h.result.current.handlePassageSelection(passageSelection('From the editor.\nSecond line.')));
+    act(() => h.result.current.handlePassageSelection(passageSelection('From the editor.\nSecond line.', 'psel-1')));
 
     expect(h.result.current.draft.surroundingContext.writerText).toBe('From the editor.\nSecond line.');
     expect(h.result.current.draft.beat.text).toBe('');
+  });
+
+  describe('a reply is bound to its request and to the authoring lifetime (PR #140, F-01)', () => {
+    const reply = (h: ReturnType<typeof mount>, content: string, requestId?: string) =>
+      act(() => h.result.current.handlePassageSelection(passageSelection(content, requestId)));
+    const box = (h: ReturnType<typeof mount>) => h.result.current.draft.surroundingContext.writerText;
+
+    it('ignores a reply with no id, a foreign id, or no outstanding ask, and accepts the live one once', () => {
+      const h = mount();
+      reply(h, 'Unasked.');
+      act(() => h.result.current.requestPassageSelection());
+      reply(h, 'No id.');
+      reply(h, 'Foreign id.', 'psel-99');
+      expect(box(h)).toBe('');
+
+      reply(h, 'Live.', 'psel-1');
+      expect(box(h)).toBe('Live.');
+      reply(h, 'Replayed.', 'psel-1');
+      expect(box(h)).toBe('Live.');
+    });
+
+    it('lets a newer ask supersede an older one: reversed replies leave the newer selection', () => {
+      const h = mount();
+      act(() => h.result.current.requestPassageSelection());
+      act(() => h.result.current.requestPassageSelection());
+
+      reply(h, 'Second.', 'psel-2');
+      reply(h, 'First.', 'psel-1');
+
+      expect(box(h)).toBe('Second.');
+    });
+
+    it('is invalidated by a writer edit of the box and by Use excerpt', () => {
+      const h = mount({ activeExcerpt: excerpt('Excerpt text.') });
+      act(() => h.result.current.requestPassageSelection());
+      act(() => h.result.current.changePassageText('Typed later.'));
+      reply(h, 'Old clipboard.', 'psel-1');
+      expect(box(h)).toBe('Typed later.');
+
+      act(() => h.result.current.requestPassageSelection());
+      act(() => h.result.current.usePassageFromExcerpt());
+      reply(h, 'Old clipboard.', 'psel-2');
+      expect(box(h)).toBe('Excerpt text.');
+    });
+
+    it('is invalidated by closing and reopening the sheet, and by a room change', () => {
+      const h = mount();
+      act(() => h.result.current.requestPassageSelection());
+      h.rerender({ opening: null });
+      h.rerender({ opening: { kind: 'new' } });
+      reply(h, 'From before the reopen.', 'psel-1');
+      expect(box(h)).toBe('');
+
+      act(() => h.result.current.requestPassageSelection());
+      h.rerender({ roomKey: 'room-2' });
+      reply(h, 'From the old room.', 'psel-2');
+      expect(box(h)).toBe('');
+    });
+
+    it('is invalidated permanently by a generation or a commit transition, even after it settles', () => {
+      const h = mount();
+      act(() => h.result.current.changeBeatText('A beat.'));
+      act(() => h.result.current.requestPassageSelection());
+      act(() => h.result.current.generateWorkup());
+      h.rerender({ generationResult: settled(h.options.generate.mock.results[0].value as string) });
+      expect(h.result.current.generation.kind).toBe('idle');
+      expect(h.result.current.draft.workup).not.toBeNull();
+
+      reply(h, 'Settled late.', 'psel-1');
+      expect(box(h)).toBe('');
+      expect(h.result.current.draft.workup).not.toBeNull();
+
+      act(() => h.result.current.requestPassageSelection());
+      h.rerender({ commitPending: true });
+      h.rerender({ commitPending: false, commitOutcome: { ok: false, message: 'Refused.' } });
+      reply(h, 'After the refusal.', 'psel-2');
+      expect(box(h)).toBe('');
+      expect(h.result.current.draft.workup).not.toBeNull();
+    });
   });
 
   it('ignores a passage reply for another target, and drops one that lands while generating', () => {
@@ -141,8 +221,9 @@ describe('useShowVsTellAuthoring surrounding passage (D2)', () => {
     expect(h.result.current.draft.surroundingContext.writerText).toBe('');
 
     act(() => h.result.current.changeBeatText('A beat.'));
+    act(() => h.result.current.requestPassageSelection());
     act(() => h.result.current.generateWorkup());
-    act(() => h.result.current.handlePassageSelection(passageSelection('Late.')));
+    act(() => h.result.current.handlePassageSelection(passageSelection('Late.', 'psel-1')));
 
     expect(h.result.current.draft.surroundingContext.writerText).toBe('');
     expect(h.result.current.generation.kind).toBe('generating');

@@ -62,6 +62,14 @@ export interface OpenResourceMessage extends MessageEnvelope<OpenResourcePayload
 
 export interface RequestSelectionPayload {
   target: SelectionTarget;
+  /**
+   * Optional correlation token minted by the requester. The host echoes it
+   * on the matching `SELECTION_DATA`, so a consumer can bind a reply to the
+   * request that asked for it and drop replies for requests it no longer
+   * holds (a clipboard read can settle long after the ask). Consumers that
+   * omit it keep today's uncorrelated behaviour.
+   */
+  requestId?: string;
 }
 
 export interface RequestSelectionMessage extends MessageEnvelope<RequestSelectionPayload> {
@@ -70,6 +78,8 @@ export interface RequestSelectionMessage extends MessageEnvelope<RequestSelectio
 
 export interface SelectionDataPayload {
   target: SelectionTarget;
+  /** Echo of the request's `requestId`, present exactly when the request carried one. */
+  requestId?: string;
   content: string;
   sourceUri?: string;
   relativePath?: string;

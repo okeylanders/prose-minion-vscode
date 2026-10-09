@@ -7,8 +7,8 @@
  * The rule that shapes everything here: every generation input EXCEPT the
  * continuum position invalidates the workup and clears kept variants and
  * carry modes. The position re-weighs the readout and changes what commits,
- * but keeps the workup and the kept variants. The surrounding passage text and
- * the context sources (Slice 7, D2) are generation inputs like any other.
+ * but keeps the workup and the kept variants (the passage and the context
+ * sources, Slice 7 D2, are generation inputs like any other).
  */
 
 import * as React from 'react';
@@ -88,8 +88,8 @@ export interface UseShowVsTellAuthoringOptions {
   generationProgress: WorkshopShowVsTellGenerationProgressPayload | null;
   generationResult: WorkshopShowVsTellResultPayload | null;
   requestBeatSelection: () => void;
-  /** Asks the host for the editor selection on the surrounding-passage target. */
-  requestPassageSelection: () => void;
+  /** Asks the host for the editor selection on the surrounding-passage target; returns the echoed correlation id. */
+  requestPassageSelection: () => string;
   generate: (input: ShowVsTellGenerationInput) => string;
   cancelGeneration: (token?: string) => void;
   /** Host truth about the room, so Commit explains why it is unavailable. */
@@ -289,12 +289,15 @@ export function useShowVsTellAuthoring({
   const intake = useShowVsTellIntake({
     open,
     activeExcerpt,
+    roomKey,
+    generationActive: generation.kind === 'generating',
+    commitPending,
     requestBeatSelection,
     requestPassageSelection,
     isIntakeLocked,
     updateGenerationInput
   });
-  const { resetNotices } = intake;
+  const { resetIntake } = intake;
 
   React.useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -304,14 +307,14 @@ export function useShowVsTellAuthoring({
       setDraft(createShowVsTellOpeningDraft(opening));
       setGeneration({ kind: 'idle' });
       setInvalidationNotice(null);
-      resetNotices();
+      resetIntake();
     } else if (!open && wasOpenRef.current) {
       // Closing discards any reply still in flight: its token is no longer ours.
       activeTokenRef.current = undefined;
       seededCloneConfigIdRef.current = undefined;
     }
     wasOpenRef.current = open;
-  }, [open, opening, resetNotices, setDraft]);
+  }, [open, opening, resetIntake, setDraft]);
 
   const changePovMode = React.useCallback((mode: WorkshopShowVsTellPovMode) => {
     updateGenerationInput('point of view', (current) => withShowVsTellPovMode(current, mode));
@@ -411,9 +414,7 @@ export function useShowVsTellAuthoring({
     setGeneration({ kind: 'generating', detail: 'Requesting the workup' });
   }, [cancelActiveGeneration, generate, generateBlockers.length, setDraft]);
 
-  const cancelGenerate = React.useCallback(() => {
-    cancelActiveGeneration();
-  }, [cancelActiveGeneration]);
+  const cancelGenerate = cancelActiveGeneration;
 
   const toggleKeep = React.useCallback((variantId: string) => {
     editDraft((current) => toggledShowVsTellKeep(current, variantId));

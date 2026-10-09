@@ -49,7 +49,7 @@ function mount(initial: Partial<UseShowVsTellAuthoringOptions> = {}) {
     generationProgress: null,
     generationResult: null,
     requestBeatSelection: jest.fn(),
-    requestPassageSelection: jest.fn(),
+    requestPassageSelection: jest.fn(() => 'psel-1'),
     generate: jest.fn(() => 'token-1'),
     cancelGeneration: jest.fn(),
     roomRunActive: false,

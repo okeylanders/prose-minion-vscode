@@ -10,6 +10,15 @@
  * gate, so it invalidates the workup exactly as any other generation input
  * does, and is refused while a commit is pending.
  *
+ * A passage selection reply is bound to the request that asked for it
+ * (PR #140 review, F-01): the transport mints a correlation id per ask, the
+ * host echoes it, and only the one live id is accepted. The live id is
+ * dropped when another ask supersedes it, when the writer edits the box or
+ * uses the excerpt, when the sheet opens or closes, when the room changes,
+ * and when a generation or a commit begins; a dropped id stays dropped after
+ * the generation or commit settles, so a clipboard read that outlives any of
+ * those can never overwrite newer work.
+ *
  * Transport-free by contract: the selection requests are injected callbacks.
  */
 
@@ -39,8 +48,14 @@ const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 export interface UseShowVsTellIntakeOptions {
   open: boolean;
   activeExcerpt: WorkshopExcerptSnapshot | null;
+  /** Host revision of the room; a change invalidates any outstanding passage request. */
+  roomKey: string;
+  /** A generation or commit transition invalidates any outstanding passage request. */
+  generationActive: boolean;
+  commitPending: boolean;
   requestBeatSelection: () => void;
-  requestPassageSelection: () => void;
+  /** Asks the host for the editor selection and returns the correlation id it will echo. */
+  requestPassageSelection: () => string;
   /** True while an attempt is in flight or a commit is pending: intake replies are dropped. */
   isIntakeLocked: () => boolean;
   /** The controller's one gate for generation inputs. */
@@ -68,8 +83,8 @@ export interface ShowVsTellIntakeActions {
   requestPassageSelection: () => void;
   handlePassageSelection: (message: SelectionDataMessage) => void;
   toggleSourceReference: (reference: WorkshopWidgetSourceReference) => void;
-  /** Clears both notices; the controller calls it when the sheet opens. */
-  resetNotices: () => void;
+  /** Clears both notices and any outstanding passage request; the controller calls it when the sheet opens. */
+  resetIntake: () => void;
 }
 
 /** Explicitly empty: the host owns durable truth. */
@@ -85,6 +100,9 @@ export type UseShowVsTellIntakeReturn = ShowVsTellIntakeState &
 export function useShowVsTellIntake({
   open,
   activeExcerpt,
+  roomKey,
+  generationActive,
+  commitPending,
   requestBeatSelection,
   requestPassageSelection,
   isIntakeLocked,
@@ -92,6 +110,19 @@ export function useShowVsTellIntake({
 }: UseShowVsTellIntakeOptions): UseShowVsTellIntakeReturn {
   const [intakeNotice, setIntakeNotice] = React.useState<string | null>(null);
   const [passageNotice, setPassageNotice] = React.useState<string | null>(null);
+  /** The one passage request whose reply is still wanted; undefined when none is. */
+  const livePassageRequestRef = React.useRef<string>();
+
+  // Every lifecycle edge that makes an outstanding ask stale drops its id.
+  // The drop is permanent: nothing restores an id once a transition began.
+  React.useEffect(() => {
+    livePassageRequestRef.current = undefined;
+  }, [open, roomKey]);
+  React.useEffect(() => {
+    if (generationActive || commitPending) {
+      livePassageRequestRef.current = undefined;
+    }
+  }, [commitPending, generationActive]);
 
   const handleBeatSelection = React.useCallback((message: SelectionDataMessage) => {
     /* Normal delivery is target-routed; retain the check for direct hook consumers. */
@@ -120,25 +151,43 @@ export function useShowVsTellIntake({
       withShowVsTellPassageText(current, text));
   }, [updateGenerationInput]);
 
+  /** A writer edit of the box makes any outstanding ask stale. */
+  const changePassageText = React.useCallback((raw: string) => {
+    livePassageRequestRef.current = undefined;
+    applyPassage(raw);
+  }, [applyPassage]);
+
   const usePassageFromExcerpt = React.useCallback(() => {
     if (!activeExcerpt || isIntakeLocked()) {
       return;
     }
+    livePassageRequestRef.current = undefined;
     applyPassage(activeExcerpt.text);
   }, [activeExcerpt, applyPassage, isIntakeLocked]);
 
+  /** A new ask supersedes the previous one: only the newest id is ever live. */
   const requestSelection = React.useCallback(() => {
     if (!isIntakeLocked()) {
-      requestPassageSelection();
+      livePassageRequestRef.current = requestPassageSelection();
     }
   }, [isIntakeLocked, requestPassageSelection]);
 
   const handlePassageSelection = React.useCallback((message: SelectionDataMessage) => {
-    // A late reply during an attempt or a pending commit is dropped, never
-    // queued (Slice 4, F-01): the writer can ask again once the host answers.
-    if (!open || isIntakeLocked() || message.payload.target !== 'workshop_show_vs_tell_passage') {
+    // Only the reply to the live ask, while the sheet is open and idle, fills
+    // the box. Anything else is dropped, never queued (Slice 4, F-01; PR #140
+    // F-01): the writer can ask again once the host answers.
+    const { target, requestId } = message.payload;
+    const live = livePassageRequestRef.current;
+    if (
+      !open
+      || isIntakeLocked()
+      || target !== 'workshop_show_vs_tell_passage'
+      || live === undefined
+      || requestId !== live
+    ) {
       return;
     }
+    livePassageRequestRef.current = undefined;
     applyPassage(message.payload.content);
   }, [applyPassage, isIntakeLocked, open]);
 
@@ -147,7 +196,8 @@ export function useShowVsTellIntake({
       withShowVsTellSourceReferenceToggled(current, reference));
   }, [updateGenerationInput]);
 
-  const resetNotices = React.useCallback(() => {
+  const resetIntake = React.useCallback(() => {
+    livePassageRequestRef.current = undefined;
     setIntakeNotice(null);
     setPassageNotice(null);
   }, []);
@@ -159,12 +209,12 @@ export function useShowVsTellIntake({
     requestBeatSelection,
     handleBeatSelection,
     changeBeatText,
-    changePassageText: applyPassage,
+    changePassageText,
     usePassageFromExcerpt,
     requestPassageSelection: requestSelection,
     handlePassageSelection,
     toggleSourceReference,
-    resetNotices,
+    resetIntake,
     persistedState: {}
   };
 }
