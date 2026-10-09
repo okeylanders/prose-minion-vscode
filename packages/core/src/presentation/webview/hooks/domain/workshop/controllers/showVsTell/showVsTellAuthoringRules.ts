@@ -17,9 +17,14 @@ import type {
   WorkshopShowVsTellChannel,
   WorkshopShowVsTellDraft,
   WorkshopShowVsTellGenerationProgressPayload,
+  WorkshopPersonaId,
   WorkshopShowVsTellPovMode,
+  WorkshopShowVsTellRecommendationSeed,
   WorkshopWidgetSourceReference
 } from '@messages';
+import type {
+  WorkshopShowVsTellOpening
+} from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   SHOW_VS_TELL_CHANNELS,
@@ -58,6 +63,51 @@ export function createShowVsTellAuthoringDraft(): WorkshopShowVsTellDraft {
     kept: [],
     note: ''
   };
+}
+
+/**
+ * The draft a persona recommendation opens: the seed's inputs and nothing
+ * else. Anything the persona left out opens on the feature defaults, and the
+ * draft carries no workup, kept variants, or note. POV is plain writer input
+ * from here on (Q3), so only the beat keeps persona custody.
+ */
+export function createShowVsTellSeededDraft(
+  seed: WorkshopShowVsTellRecommendationSeed,
+  personaId: WorkshopPersonaId
+): WorkshopShowVsTellDraft {
+  const fresh = createShowVsTellAuthoringDraft();
+  return {
+    ...fresh,
+    beat: {
+      text: seed.beatText,
+      provenance: { kind: 'persona-prefill', personaId, editedByWriter: false }
+    },
+    surroundingContext: {
+      sourceReferences: seed.sourceReferences.map((reference) => ({ ...reference }))
+    },
+    pov: seed.pov ? { ...seed.pov } : fresh.pov,
+    invariants: {
+      mustSurvive: seed.mustSurvive,
+      mustNotChange: seed.mustNotChange ?? ''
+    },
+    channels: seed.channels ? [...seed.channels] : fresh.channels,
+    lengthBudget: seed.lengthBudget ?? fresh.lengthBudget,
+    position: seed.position ?? fresh.position
+  };
+}
+
+/** The one mapping from an opening to the draft the sheet starts with. */
+export function createShowVsTellOpeningDraft(
+  opening: WorkshopShowVsTellOpening | null
+): WorkshopShowVsTellDraft {
+  switch (opening?.kind) {
+    case 'clone':
+      return opening.config.draft;
+    case 'seed':
+      return createShowVsTellSeededDraft(opening.seed, opening.personaId);
+    default:
+      return createShowVsTellAuthoringDraft();
+  }
 }
 
 const LINE_BREAK_RUN = /\s*(?:\r\n|[\r\n\u2028\u2029])+\s*/gu;

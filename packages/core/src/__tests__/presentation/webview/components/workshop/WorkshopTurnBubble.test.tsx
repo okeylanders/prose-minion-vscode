@@ -658,6 +658,68 @@ describe('WorkshopTurnBubble variation cards', () => {
     );
   });
 
+  describe('Show vs. Tell recommendation chip', () => {
+    const renderChip = (seed: Partial<{ subject: string }>) => {
+      const onOpenWidgetRecommendation = jest.fn();
+      const recommendation = {
+        widgetId: 'show-vs-tell' as const,
+        seed: {
+          beatText: 'She hadn’t trusted him since the funeral.',
+          sourceReferences: [],
+          mustSurvive: 'The distrust is old.',
+          ...seed
+        }
+      };
+      render(
+        <WorkshopTurnBubble
+          turn={{
+            ...assistantTurn('That line carries a year in nine words.'),
+            kind: 'message',
+            participant: 'guest',
+            artifact: 'persona_message',
+            toolId: undefined,
+            toolLabel: undefined,
+            personaId: 'margot',
+            personaLabel: 'Margot',
+            widgetRecommendation: recommendation
+          }}
+          quickActionToolId={null}
+          onQuickAction={jest.fn()}
+          onTalkDirectly={jest.fn()}
+          onCopy={jest.fn()}
+          onSave={jest.fn()}
+          onOpenWidgetRecommendation={onOpenWidgetRecommendation}
+        />
+      );
+      return { onOpenWidgetRecommendation, recommendation };
+    };
+
+    it('reads "prefilled · {subject}" under the widget label and opens with the exact persona', () => {
+      const { onOpenWidgetRecommendation, recommendation } = renderChip({
+        subject: 'the funeral line'
+      });
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell Playground/ });
+
+      expect(chip.textContent).toContain('Show vs. Tell Playground');
+      expect(chip.textContent).toContain('prefilled · the funeral line');
+      fireEvent.click(chip);
+      expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Margot', 'margot');
+    });
+
+    it('falls back to a bare "prefilled" when the persona wrote no subject', () => {
+      renderChip({});
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell Playground/ });
+      expect(chip.querySelector('.pm-ws-widget-chip-meta')?.textContent).toBe('prefilled');
+    });
+
+    it('never shows the beat or the must-survive on the chip', () => {
+      renderChip({ subject: 'the funeral line' });
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell Playground/ });
+      expect(chip.textContent).not.toContain('trusted him');
+      expect(chip.textContent).not.toContain('distrust');
+    });
+  });
+
   it('labels logical-turn traffic as processed across provider calls', () => {
     render(
       <WorkshopTurnBubble

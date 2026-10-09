@@ -577,7 +577,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
     reason: 'closed writer-ask prefill registry',
-    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|creative-aim)/
+    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|show-vs-tell|creative-aim)/
   },
   {
     file: 'shared/constants/promptBudgets.ts',

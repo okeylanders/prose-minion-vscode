@@ -32,27 +32,31 @@ describe('buildWorkshopWidgetAskPrefill', () => {
     expect(canBuildWorkshopWidgetAskPrefill('gesture-playground')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('lexical-gravity')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('creative-variations')).toBe(true);
+    expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('topic-relationship')).toBe(false);
     expect(() => buildWorkshopWidgetAskPrefill('topic-relationship', 'Jill'))
       .toThrow('has no Host-preparation prompt');
   });
 
-  it('keeps every launchable widget either Host-preparable or explicitly deferred', () => {
+  it('asks the Host for an input-only Show vs. Tell seed and forbids acting on it', () => {
+    const prefill = buildWorkshopWidgetAskPrefill('show-vs-tell', 'Jill');
+    expect(prefill).toContain('Hey Jill! Please prepare Show vs. Tell Playground');
+    expect(prefill).toContain('Seed the exact beat');
+    expect(prefill).toContain('any surrounding source');
+    expect(prefill).toContain('the “must survive” fact that the beat already carries');
+    expect(prefill).toContain('any constraint I have actually stated');
+    expect(prefill).toContain('what the line buys and what it spends where it stands, rather than judging it');
+    expect(prefill).toContain('Do not generate, keep, carry, or commit anything.');
+    expect(prefill).not.toMatch(/\b(weak|lazy|flat|wrong)\b/);
+  });
+
+  it('leaves no live widget without a Host-preparation door', () => {
     const liveWidgetsWithoutHostPrefill = WORKSHOP_WIDGET_CATALOG
       .flatMap((group) => group.items)
       .filter((widget) => widget.live)
       .filter((widget) => !canBuildWorkshopWidgetAskPrefill(widget.id))
       .map((widget) => widget.id);
 
-    // Show vs. Tell is live for hands-on testing, but its Host-preparation door
-    // is Slice 5: a persona may not prepare it until its recommendation codec
-    // and seed exist, so it is deferred explicitly rather than by accident.
-    expect(liveWidgetsWithoutHostPrefill).toEqual(['show-vs-tell']);
-  });
-
-  it('keeps the Show vs. Tell Host-preparation door closed until Slice 5', () => {
-    expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(false);
-    expect(() => buildWorkshopWidgetAskPrefill('show-vs-tell', 'Jill'))
-      .toThrow('has no Host-preparation prompt');
+    expect(liveWidgetsWithoutHostPrefill).toEqual([]);
   });
 });

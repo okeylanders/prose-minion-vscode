@@ -636,6 +636,22 @@ describe('WorkshopShowVsTellModal', () => {
       expect(screen.getByRole('button', { name: 'Commit as new turn' })).toBeTruthy();
     });
 
+    it('names the persona on the seed banner without any pronoun, and commits to the thread', () => {
+      renderModal({
+        draft: keptDraft([[3, 'direction']]),
+        commitBlockers: [],
+        banner: { kind: 'seed', personaLabel: 'Margot' }
+      });
+
+      const text = document.querySelector('.pm-ws-svt-banner-seed')!.textContent!;
+      expect(text).toBe(
+        'Recommended and prefilled by Margot. Margot spotted a told beat worth testing — proposing and prefilling is as far as a persona goes; you decide what commits.'
+      );
+      expect(text).not.toMatch(/\b(she|he|her|his|him|hers|they|them|their)\b/i);
+      expect(screen.getByRole('button', { name: 'Commit to thread' })).toBeTruthy();
+      expect(document.querySelector('.pm-ws-svt-banner-clone')).toBeNull();
+    });
+
     it('shows no banner for a fresh draft', () => {
       renderModal();
 

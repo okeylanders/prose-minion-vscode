@@ -1597,7 +1597,12 @@ export const WorkshopApp: React.FC = () => {
                     ? 'rewound-message'
                     : 'committed-turn'
                 }
-              : { kind: 'none' }
+              : widgetOpening.showVsTellOpening.kind === 'seed'
+                ? {
+                    kind: 'seed',
+                    personaLabel: widgetOpening.showVsTellOpening.personaLabel
+                  }
+                : { kind: 'none' }
           }
           draft={showVsTellAuthoring.draft}
           generation={showVsTellAuthoring.generation}

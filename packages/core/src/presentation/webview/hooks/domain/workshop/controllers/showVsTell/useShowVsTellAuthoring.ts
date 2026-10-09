@@ -46,6 +46,7 @@ import {
   changedWorkNotice,
   collapseShowVsTellLineBreaks,
   createShowVsTellAuthoringDraft,
+  createShowVsTellOpeningDraft,
   deriveShowVsTellAvailableSources,
   deriveShowVsTellCommitBlockers,
   deriveShowVsTellGenerateBlockers,
@@ -211,10 +212,9 @@ export function useShowVsTellAuthoring({
   React.useEffect(() => {
     if (open && !wasOpenRef.current) {
       activeTokenRef.current = undefined;
-      // The one place a draft is seeded: a chip reopens the exact committed
-      // draft, anything else starts fresh.
+      // The one place a draft is seeded: clone, prefill (inputs only), or fresh.
       seededCloneConfigIdRef.current = opening?.kind === 'clone' ? opening.config.id : undefined;
-      setDraft(opening?.kind === 'clone' ? opening.config.draft : createShowVsTellAuthoringDraft());
+      setDraft(createShowVsTellOpeningDraft(opening));
       setGeneration({ kind: 'idle' });
       setInvalidationNotice(null);
       setIntakeNotice(null);

@@ -49,5 +49,7 @@ export interface ShowVsTellArtifactUsage {
 /** Display posture of the current opening; mapped from the opening controller. */
 export type ShowVsTellBanner =
   | { kind: 'none' }
+  /** A persona prefilled the inputs; the banner names the persona and no pronoun. */
+  | { kind: 'seed'; personaLabel: string }
   /** A rewound message released its commit, so no chip is left behind (ADR 2026-09-30). */
   | { kind: 'clone'; from: 'committed-turn' | 'rewound-message' };

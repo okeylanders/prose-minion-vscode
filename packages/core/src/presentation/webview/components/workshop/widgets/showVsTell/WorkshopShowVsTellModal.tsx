@@ -218,6 +218,16 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
             useful directions back to the room. <b>Both ends are tools</b> — nothing here calls
             telling bad writing.
           </p>
+          {banner.kind === 'seed' && (
+            <div className="pm-ws-svt-banner pm-ws-svt-banner-seed">
+              <Icon name="sparkle" size={13} />
+              <span>
+                <b>Recommended and prefilled by {banner.personaLabel}.</b> {banner.personaLabel}{' '}
+                spotted a told beat worth testing — proposing and prefilling is as far as a
+                persona goes; you decide what commits.
+              </span>
+            </div>
+          )}
           {banner.kind === 'clone' && (
             <div className="pm-ws-svt-banner pm-ws-svt-banner-clone">
               <Icon name="refresh" size={13} />
