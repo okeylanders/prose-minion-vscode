@@ -89,7 +89,10 @@ unavailable-widget example.
    one-based across the whole workup in group order; flag
    `${variantId}:flag-N`. Integrity requires the exact derived values.
 6. **Duplicates.** Integrity rejects exact normalized duplicate prose
-   (`showVsTellProseComparisonKey`: NFKC, lowercase, `[\p{L}\p{N}]+` tokens).
+   (`showVsTellProseComparisonKey`: NFKC, lowercase, U+2018/U+2019/U+02BC
+   folded to `'`, then `[\p{L}\p{N}]+` tokens). The apostrophe fold landed after
+   review finding F-01 ([review](../docs/pr-reviews/pr-134-show-vs-tell-slice-1-review.md)):
+   U+02BC is a letter and otherwise stayed inside its token.
    This is parity with Creative Variations, whose integrity rejects duplicates
    through its overlap recomputation.
 7. **Shorter-than-prose** compares trimmed UTF-16 `.length`, the artifact's
