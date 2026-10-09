@@ -67,6 +67,13 @@ Three code commits, each green on its own, then this docs commit.
      `ShowVsTellSurroundingPanel` holds the passage box and the context list.
    - Channels: no lock, no `aria-disabled`, no dimming; a "No emphasis" hint
      shows at zero; the POV-constraint hint stays.
+   - **D2a** (relayed by the orchestrator after the PR opened): the Context
+     list is a bordered, inset, vertically scrolling well capped at five rows.
+     The cap is CSS arithmetic over `--pm-ws-svt-source-row` (48px rows,
+     fixed because names truncate), the gap, and the well padding. The well
+     has no `tabindex`; focus scrolls natively. jsdom cannot compute layout,
+     so `WorkshopShowVsTellModal.test.tsx` pins the class contract by reading
+     the stylesheet.
 
 ## The checkpoint normalization
 
@@ -127,7 +134,7 @@ no Show vs. Tell repair).
 
 - `npm run typecheck`: core, webview, ext clean.
 - `npm run lint`: 0 errors, 1,115 warnings (baseline 1,112; see above).
-- `npm test`: **298 suites / 4,247 tests / 2 snapshots, all passing**
+- `npm test`: **298 suites / 4,249 tests / 2 snapshots, all passing**
   (Slice 6: 296 / 4,190 / 2).
 - `npm run build`: compiled; `verify-bundle` OK.
 - `git diff --check`: clean.

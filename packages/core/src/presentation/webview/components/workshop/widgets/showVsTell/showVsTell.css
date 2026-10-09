@@ -225,8 +225,18 @@
   color: var(--pm-faint);
 }
 
-/* ---- source references (Gesture-proven pattern) ---- */
+/* ---- context sources (D2a): a scrollable well, at most five rows tall ----
+   The cap is derived from the row height, not a magic pixel number: five rows
+   plus the four gaps between them plus the well's own padding. Rows are a
+   fixed height because their text truncates rather than wraps, so five rows
+   is always the same height. The well scrolls vertically only; it is not a
+   tab stop (no tabindex), and focusing a checkbox inside it scrolls it into
+   view natively. */
 [data-pm-surface="workshop"] .pm-ws-svt-sources {
+  --pm-ws-svt-source-row: 48px;
+  --pm-ws-svt-source-gap: 6px;
+  --pm-ws-svt-source-well-pad: 6px;
+  --pm-ws-svt-source-well-rows: 5;
   min-width: 0;
   margin: 14px 0 0;
   padding: 0;
@@ -238,14 +248,30 @@
 }
 [data-pm-surface="workshop"] .pm-ws-svt-source-list {
   display: grid;
-  gap: 6px;
+  align-content: start;
+  gap: var(--pm-ws-svt-source-gap);
+  box-sizing: border-box;
+  max-height: calc(
+    var(--pm-ws-svt-source-well-rows) * var(--pm-ws-svt-source-row)
+    + (var(--pm-ws-svt-source-well-rows) - 1) * var(--pm-ws-svt-source-gap)
+    + 2 * var(--pm-ws-svt-source-well-pad)
+  );
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-padding: var(--pm-ws-svt-source-well-pad);
+  padding: var(--pm-ws-svt-source-well-pad);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-r-input);
+  background: var(--pm-inset);
 }
 [data-pm-surface="workshop"] .pm-ws-svt-source {
   min-width: 0;
+  box-sizing: border-box;
+  height: var(--pm-ws-svt-source-row);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 9px;
-  padding: 8px 10px;
+  padding: 0 10px;
   border: 1px solid var(--pm-border);
   border-radius: var(--pm-r-input);
   background: var(--pm-surface-2);
@@ -254,7 +280,7 @@
 }
 [data-pm-surface="workshop"] .pm-ws-svt-source input {
   flex: none;
-  margin: 2px 0 0;
+  margin: 0;
   accent-color: var(--pm-accent);
 }
 [data-pm-surface="workshop"] .pm-ws-svt-source > span {

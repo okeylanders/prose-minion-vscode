@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import * as React from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import {
@@ -401,6 +403,63 @@ describe('WorkshopShowVsTellModal', () => {
       expect(budgets[1].getAttribute('aria-checked')).toBe('true');
       fireEvent.click(budgets[3]);
       expect(budgetProps.onLengthBudgetChange).toHaveBeenCalledWith('plus-one-paragraph');
+    });
+  });
+
+  describe('context well (D2a)', () => {
+    const STYLESHEET = path.resolve(
+      __dirname,
+      '../../../../../../../presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css'
+    );
+    const rule = (css: string, selector: string): string => {
+      const start = css.indexOf(`${selector} {`);
+      expect(start).toBeGreaterThan(-1);
+      return css.slice(start, css.indexOf('}', start));
+    };
+
+    it('renders the context list as one labelled group whose well is not a tab stop', () => {
+      renderModal({
+        availableSources: Array.from({ length: 7 }, (_, index) => ({
+          reference: { kind: 'context-attachment' as const, attachmentId: `ctx-${index + 1}` },
+          label: `Note ${index + 1}`,
+          detail: 'Workshop text · 12 words'
+        }))
+      });
+      const group = screen.getByRole('group', { name: /Context/ });
+      const well = group.querySelector('.pm-ws-svt-source-list')!;
+
+      expect(well.getAttribute('data-pm-ws-svt-source-well')).toBe('five-rows');
+      expect(well.hasAttribute('tabindex')).toBe(false);
+      expect(within(group).getAllByRole('checkbox')).toHaveLength(7);
+      for (const box of within(group).getAllByRole('checkbox')) {
+        expect(well.contains(box)).toBe(true);
+        expect((box as HTMLInputElement).tabIndex).toBe(0);
+      }
+    });
+
+    it('caps the well at five rows derived from the row height, scrolls vertically only, and truncates names', () => {
+      // jsdom does not compute stylesheet layout, so this pins the class contract.
+      const css = fs.readFileSync(STYLESHEET, 'utf8');
+      const sources = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-sources');
+      const well = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-source-list');
+      const row = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-source');
+
+      expect(sources).toMatch(/--pm-ws-svt-source-well-rows:\s*5;/);
+      expect(sources).toMatch(/--pm-ws-svt-source-row:\s*\d+px;/);
+      expect(well.replace(/\s+/g, ' ')).toContain(
+        'max-height: calc( var(--pm-ws-svt-source-well-rows) * var(--pm-ws-svt-source-row) + (var(--pm-ws-svt-source-well-rows) - 1) * var(--pm-ws-svt-source-gap) + 2 * var(--pm-ws-svt-source-well-pad) )'
+      );
+      expect(well).toMatch(/overflow-y:\s*auto;/);
+      expect(well).toMatch(/overflow-x:\s*hidden;/);
+      expect(well).toMatch(/border: 1px solid var\(--pm-border-soft\);/);
+      expect(well).toMatch(/background: var\(--pm-inset\);/);
+      expect(well).not.toMatch(/(^|\s)height:/m);
+      expect(row).toMatch(/height: var\(--pm-ws-svt-source-row\);/);
+      for (const part of ['.pm-ws-svt-source b', '.pm-ws-svt-source small']) {
+        const text = rule(css, `[data-pm-surface="workshop"] ${part}`);
+        expect(text).toMatch(/text-overflow: ellipsis;/);
+        expect(text).toMatch(/white-space: nowrap;/);
+      }
     });
   });
 

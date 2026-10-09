@@ -614,6 +614,17 @@ the Slice 6 merge `16320d6`).
     invalidates the workup. Position still does not. An unavailable
     reference stays as committed and still blocks Generate.
   - Neither rides the commit. The artifact projection is unchanged.
+  - **D2a (relayed 2026-10-09): the Context list is a scrollable well, at
+    most five rows tall.** The checkbox list sits in a bordered, inset well
+    matching the sheet's other wells; it grows with its content up to five
+    rows, then holds and scrolls vertically; with fewer sources it shrinks to
+    fit; it never scrolls horizontally, and long names and paths truncate
+    with an ellipsis. The list stays a labelled group, every checkbox stays
+    reachable by Tab with the well scrolling to follow focus, and the well
+    adds no tab stop of its own. The cap is derived from the row height
+    (`--pm-ws-svt-source-well-rows` × `--pm-ws-svt-source-row` plus gaps and
+    padding), not a magic pixel number; jsdom cannot compute it, so a test
+    pins the class contract.
   - The recommendation frame gains an optional `surrounding-context` field
     (tag already reserved; capped by the new
     `showVsTellRecommendationContextCharacters`, 20,000) and allows several
@@ -638,8 +649,9 @@ the encoded direction margin of 4, the pronoun-free seed banner, the Slice 4
 commit rail, and the host ceiling re-check.
 
 Rendered from the production webview bundle at Slice 7 (headless Chromium,
-zero channels, blank must survive, excerpt copied into the passage, two
-context sources): [assets/05-show-vs-tell-slice7-sheet.png](assets/05-show-vs-tell-slice7-sheet.png).
+zero channels, blank must survive, excerpt copied into the passage, two of
+eight room sources ticked, the five-row Context well scrolled to keyboard
+focus): [assets/05-show-vs-tell-slice7-sheet.png](assets/05-show-vs-tell-slice7-sheet.png).
 
 **Saved-session safety.** Okey's live sessions hold drafts and seeds in the
 old shape (no `writerText`, at most one reference, must survive required, at

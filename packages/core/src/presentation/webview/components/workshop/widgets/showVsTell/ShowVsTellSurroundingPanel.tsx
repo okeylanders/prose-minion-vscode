@@ -7,7 +7,9 @@
  * it is a generation input, and it never rides the commit. The context is a
  * multi-select of the room's sources; the host resolves their text when the
  * writer generates, so source text is never stored here. Both mirror
- * Creative Variations' mechanics. Controlled presentation only.
+ * Creative Variations' mechanics. The context list is a scrollable well at
+ * most five rows tall (D2a): the cap lives in the stylesheet, derived from the
+ * row height, and the well is not a tab stop. Controlled presentation only.
  */
 
 import * as React from 'react';
@@ -113,7 +115,7 @@ export const ShowVsTellSurroundingPanel: React.FC<ShowVsTellSurroundingPanelProp
             read by the host when you generate · never stored here
           </em>
         </legend>
-        <div className="pm-ws-svt-source-list">
+        <div className="pm-ws-svt-source-list" data-pm-ws-svt-source-well="five-rows">
           {availableSources.map(({ reference, label, detail }) => {
             const key = showVsTellSourceReferenceKey(reference);
             const selected = selectedKeys.has(key);
