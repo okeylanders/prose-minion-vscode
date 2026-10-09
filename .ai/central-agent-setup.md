@@ -109,6 +109,7 @@ packages/core/src/
                 ├── creativeVariations.ts
                 ├── gesturePlayground.ts
                 ├── lexicalGravity.ts
+                ├── showVsTell.ts
                 ├── recovery.ts
                 └── settings.ts
 ```

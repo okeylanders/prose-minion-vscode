@@ -299,6 +299,7 @@ workshop/
 ├── creativeVariations.ts    # Creative authoring, workup, overlap, and selection grammar
 ├── gesturePlayground.ts     # Gesture draft, generation, and commit contracts
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
+├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
 ├── recovery.ts              # Rejected response repair-contract registry
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
