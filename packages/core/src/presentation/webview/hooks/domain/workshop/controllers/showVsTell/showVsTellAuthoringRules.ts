@@ -29,6 +29,10 @@ import {
 import {
   buildShowVsTellArtifact
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellArtifact';
+import {
+  showVsTellCommitIssues,
+  type ShowVsTellCommitIssueCode
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellCommitEligibility';
 import type {
   ShowVsTellArtifactUsage,
   ShowVsTellAvailableSource,
@@ -281,29 +285,51 @@ export function projectShowVsTellArtifact(
   }
 }
 
-/** Why Commit is unavailable, most important first; `commit-not-wired` ends the list until Slice 4. */
+/* eslint-disable @typescript-eslint/naming-convention -- Issue codes are stable domain literals. */
+const ELIGIBILITY_BLOCKERS: Record<ShowVsTellCommitIssueCode, ShowVsTellCommitBlocker> = {
+  'no-workup': 'no-workup',
+  'no-keep': 'no-keep',
+  // The sheet cannot produce these three; if one arrives the kept list no
+  // longer describes the workup, which regenerating repairs.
+  'kept-not-in-workup': 'artifact-compilation-failed',
+  'kept-out-of-order': 'artifact-compilation-failed',
+  'kept-duplicated': 'artifact-compilation-failed',
+  'artifact-compilation-failed': 'artifact-compilation-failed',
+  'over-artifact-budget': 'over-artifact-budget'
+};
+/* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * Why Commit is unavailable, most important first. The draft's own gates come
+ * from the commit-eligibility module the host validates with, so the button
+ * is enabled exactly when the host would accept the draft.
+ */
 export function deriveShowVsTellCommitBlockers(input: {
   generating: boolean;
+  commitPending: boolean;
+  roomRunActive: boolean;
+  toolTargetActive: boolean;
   draft: WorkshopShowVsTellDraft;
-  projection: ShowVsTellArtifactProjection;
 }): ShowVsTellCommitBlocker[] {
-  const { generating, draft, projection } = input;
+  const { generating, commitPending, roomRunActive, toolTargetActive, draft } = input;
   const blockers: ShowVsTellCommitBlocker[] = [];
   if (generating) {
     blockers.push('generation-in-flight');
   }
-  if (!draft.workup) {
-    blockers.push('no-workup');
-  } else if (draft.kept.length === 0) {
-    blockers.push('no-keep');
+  if (commitPending) {
+    blockers.push('commit-in-flight');
   }
-  if (projection.error !== null) {
-    blockers.push('artifact-compilation-failed');
+  if (roomRunActive) {
+    blockers.push('room-run-active');
   }
-  if (projection.usage && projection.usage.characters > projection.usage.budget) {
-    blockers.push('over-artifact-budget');
+  if (toolTargetActive) {
+    blockers.push('tool-target');
   }
-  // Slice 4 wires the commit route and removes this entry.
-  blockers.push('commit-not-wired');
+  for (const issue of showVsTellCommitIssues(draft)) {
+    const blocker = ELIGIBILITY_BLOCKERS[issue.code];
+    if (!blockers.includes(blocker)) {
+      blockers.push(blocker);
+    }
+  }
   return blockers;
 }

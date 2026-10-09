@@ -23,7 +23,11 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionContextScan: jest.fn(),
     handleSessionRecoveryNotice: jest.fn()
   } as never,
-  widgetHost: { handleWidgetConfigData: jest.fn(), handleWidgetConfigRestored: jest.fn() } as never,
+  widgetHost: {
+    handleWidgetConfigData: jest.fn(),
+    handleWidgetConfigRestored: jest.fn(),
+    handleSessionState: jest.fn()
+  } as never,
   gesturePlayground: {
     handleWidgetMenuResult: jest.fn(),
     handleWidgetGenerationProgress: jest.fn(),
@@ -46,7 +50,8 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   } as never,
   showVsTell: {
     handleGenerationProgress: jest.fn(),
-    handleGenerationResult: jest.fn()
+    handleGenerationResult: jest.fn(),
+    handleCommitResult: jest.fn()
   } as never,
   showVsTellAuthoring: {
     handleBeatSelection: jest.fn()
@@ -94,8 +99,20 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.widgetHost.handleWidgetConfigData).toHaveBeenCalledWith(configMessage);
     expect(deps.gesturePlayground.handleWidgetActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.creativeVariations.handleCommitResult).toHaveBeenCalledWith(actionMessage);
+    expect(deps.showVsTell.handleCommitResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.lexicalGravity.handleActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
+  });
+
+  it('mirrors each session snapshot to the room and to the generic widget host', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const message = { type: MessageType.WORKSHOP_SESSION_STATE, payload: {} } as never;
+
+    routes[MessageType.WORKSHOP_SESSION_STATE]!(message);
+
+    expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.widgetHost.handleSessionState).toHaveBeenCalledWith(message);
   });
 
   it('routes Show vs. Tell progress and result to its transport and beat intake to its controller', () => {

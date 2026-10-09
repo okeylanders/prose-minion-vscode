@@ -46,7 +46,10 @@ const renderModal = (
     invalidationNotice: null,
     intakeNotice: null,
     generateBlockers: [],
-    commitBlockers: ['no-workup', 'commit-not-wired'],
+    commitBlockers: ['no-workup'],
+    commitPending: false,
+    commitError: null,
+    banner: { kind: 'none' },
     artifactUsage: null,
     availableSources: [],
     excerptText: null,
@@ -65,6 +68,7 @@ const renderModal = (
     onToggleKeep: jest.fn(),
     onCarryModeChange: jest.fn(),
     onNoteChange: jest.fn(),
+    onCommit: jest.fn(),
     widgetModelOptions: widgetModels,
     selectedWidgetModel: 'anthropic/claude-sonnet-5',
     onWidgetModelChange: jest.fn(),
@@ -497,7 +501,7 @@ describe('WorkshopShowVsTellModal', () => {
     it('prints the projection’s exact lines and a count equal to its length', () => {
       const draft = generatedShowVsTellDraft();
       const usage = usageFor(draft);
-      renderModal({ draft, artifactUsage: usage, commitBlockers: ['commit-not-wired'] });
+      renderModal({ draft, artifactUsage: usage, commitBlockers: [] });
 
       const lines = screen.getByLabelText('Artifact lines that would commit');
       expect(lines.textContent).toBe(buildShowVsTellArtifact(draft));
@@ -514,7 +518,7 @@ describe('WorkshopShowVsTellModal', () => {
       renderModal({
         draft,
         artifactUsage: over,
-        commitBlockers: ['over-artifact-budget', 'commit-not-wired']
+        commitBlockers: ['over-artifact-budget']
       });
 
       const counter = screen.getByText('640 / 600 chars');
@@ -529,25 +533,120 @@ describe('WorkshopShowVsTellModal', () => {
       expect(meter.getAttribute('aria-describedby')).toBe(blocker.id);
     });
 
-    it('keeps Commit disabled and always names why', () => {
+    it('keeps Commit disabled while any blocker stands, and names the first', () => {
       const props = renderModal({
         draft: keptDraft([[3, 'direction']]),
         artifactUsage: usageFor(keptDraft([[3, 'direction']])),
-        commitBlockers: ['commit-not-wired']
+        commitBlockers: ['room-run-active', 'tool-target']
       });
       const commit = screen.getByRole('button', { name: 'Commit to thread' }) as HTMLButtonElement;
 
       expect(commit.disabled).toBe(true);
-      expect(commit.getAttribute('aria-describedby')).toBe(screen.getByText('Commit arrives in Slice 4.').id);
+      expect(commit.getAttribute('aria-describedby')).toBe(
+        screen.getByText('Wait for the current Workshop response to finish before committing.').id
+      );
       fireEvent.click(commit);
+      expect(props.onCommit).not.toHaveBeenCalled();
+    });
+
+    it('enables Commit exactly when no blocker stands, and commits once per click', () => {
+      const props = renderModal({
+        draft: keptDraft([[3, 'direction']]),
+        artifactUsage: usageFor(keptDraft([[3, 'direction']])),
+        commitBlockers: []
+      });
+      const commit = screen.getByRole('button', { name: 'Commit to thread' }) as HTMLButtonElement;
+
+      expect(commit.disabled).toBe(false);
+      expect(commit.getAttribute('aria-describedby')).toBeNull();
+      fireEvent.click(commit);
+      expect(props.onCommit).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['generation-in-flight', 'Generation is still running.'],
+      ['room-run-active', 'Wait for the current Workshop response to finish before committing.'],
+      ['tool-target', 'Switch to a persona target before committing — tool sidecars do not take craft directions.'],
+      ['no-workup', 'Generate a workup before committing.'],
+      ['no-keep', 'Keep at least one variant to commit.']
+    ] as const)('explains the %s blocker', (blocker, copy) => {
+      renderModal({ commitBlockers: [blocker] });
+
+      expect(screen.getByText(copy)).toBeTruthy();
+      expect((screen.getByRole('button', { name: 'Commit to thread' }) as HTMLButtonElement).disabled)
+        .toBe(true);
+    });
+
+    it('locks the sheet while a commit is in flight and says so on the button', () => {
+      const props = renderModal({
+        draft: keptDraft([[3, 'direction']]),
+        commitBlockers: ['commit-in-flight'],
+        commitPending: true
+      });
+
+      const commit = screen.getByRole('button', { name: 'Committing…' }) as HTMLButtonElement;
+      expect(commit.disabled).toBe(true);
+      expect(commit.getAttribute('aria-describedby')).toBeNull();
+      expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole('button', { name: 'Regenerate the workup' }) as HTMLButtonElement).disabled)
+        .toBe(true);
+      expect(screen.queryByText('Committing…', { selector: 'span' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(props.onClose).not.toHaveBeenCalled();
+    });
+
+    it('shows the host refusal and keeps the draft in view', () => {
+      renderModal({
+        draft: keptDraft([[3, 'direction']]),
+        commitBlockers: [],
+        commitError: 'The commit payload is over its 600-character ceiling.'
+      });
+
+      expect(screen.getByRole('alert').textContent).toBe(
+        'The commit payload is over its 600-character ceiling.'
+      );
+      expect((screen.getByRole('button', { name: 'Commit to thread' }) as HTMLButtonElement).disabled)
+        .toBe(false);
+    });
+
+    it('labels the button Commit as new turn when reopened from a chip, with the committed-turn banner', () => {
+      renderModal({
+        draft: keptDraft([[3, 'direction']]),
+        commitBlockers: [],
+        banner: { kind: 'clone', from: 'committed-turn' }
+      });
+
+      expect(screen.queryByRole('button', { name: 'Commit to thread' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Commit as new turn' })).toBeTruthy();
+      expect(document.querySelector('.pm-ws-svt-banner-clone')!.textContent).toBe(
+        'Re-opened from a committed turn. The old chip stays as history — committing again creates a new turn at the head.'
+      );
+    });
+
+    it('shows the rewound-message banner and the same new-turn label', () => {
+      renderModal({
+        draft: keptDraft([[3, 'direction']]),
+        commitBlockers: [],
+        banner: { kind: 'clone', from: 'rewound-message' }
+      });
+
+      expect(document.querySelector('.pm-ws-svt-banner-clone')!.textContent).toBe(
+        'Reopened from a message you rewound. Adjust it, then commit to send it again as a new turn at the head.'
+      );
+      expect(screen.getByRole('button', { name: 'Commit as new turn' })).toBeTruthy();
+    });
+
+    it('shows no banner for a fresh draft', () => {
+      renderModal();
+
+      expect(document.querySelector('.pm-ws-svt-banner')).toBeNull();
     });
 
     it('names the over-ceiling fix as the commit reason when that is the first blocker', () => {
       renderModal({
         draft: keptDraft([[3, 'direction']]),
         artifactUsage: { text: 'x'.repeat(601), characters: 601, budget: 600 },
-        commitBlockers: ['over-artifact-budget', 'commit-not-wired']
+        commitBlockers: ['over-artifact-budget']
       });
 
       expect(document.getElementById('pm-ws-svt-commit-reason')!.textContent)
@@ -555,7 +654,7 @@ describe('WorkshopShowVsTellModal', () => {
     });
 
     it('summarises the kept count in the footer', () => {
-      renderModal({ draft: keptDraft([[3, 'direction'], [7, 'prose']]), commitBlockers: ['commit-not-wired'] });
+      renderModal({ draft: keptDraft([[3, 'direction'], [7, 'prose']]), commitBlockers: [] });
 
       expect(screen.getByText('· 2 kept · 1 as direction')).toBeTruthy();
     });

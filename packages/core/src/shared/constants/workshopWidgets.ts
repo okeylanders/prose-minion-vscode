@@ -248,7 +248,8 @@ const WIDGETS_BY_ID: ReadonlyMap<WorkshopWidgetId, WorkshopWidgetDescriptor> = n
 
 const WIDGET_SELECTION_UNIT_LABELS: ReadonlyMap<WorkshopWidgetId, string> = new Map([
   ['gesture-playground', 'direction'],
-  ['creative-variations', 'variation']
+  ['creative-variations', 'variation'],
+  ['show-vs-tell', 'kept variant']
 ]);
 
 /** Descriptor lookup; undefined for ids this build does not know. */

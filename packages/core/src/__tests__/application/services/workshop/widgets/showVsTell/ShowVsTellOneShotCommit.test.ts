@@ -1,9 +1,13 @@
-import type {
-  WorkshopShowVsTellCommitPayload,
-  WorkshopShowVsTellDraft,
-  WorkshopShowVsTellVariant
+import {
+  DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR,
+  SHOW_VS_TELL_ARTIFACT_LINE_KEYS,
+  type WorkshopShowVsTellCommitPayload,
+  type WorkshopShowVsTellDraft,
+  type WorkshopShowVsTellVariant
 } from '@messages';
-import { SHOW_VS_TELL_ARTIFACT_LINE_KEYS } from '@messages';
+import {
+  parseWorkshopSessionStateV1
+} from '@/application/services/workshop/WorkshopSessionStateV1';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import { WorkshopSessionService } from '@/application/services/workshop/WorkshopSessionService';
@@ -652,6 +656,57 @@ describe('Show vs. Tell one-shot commit', () => {
 
       expect(outcome).toMatchObject({ status: 'failed' });
       expect(session.getWidgetConfig('wc-2')).toBeUndefined();
+    });
+
+    it('round-trips a committed draft with every field set through export and hydration, and feeds the chip counts', async () => {
+      const { session, coordinator } = harness();
+      const draft = generatedShowVsTellDraft();
+      draft.surroundingContext = { sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-2' }] };
+      draft.invariants.mustSurvive = 'The distrust is old.\nShe never says it.';
+      draft.pov = { mode: 'close-third', focalCharacter: 'Daniel' };
+      draft.channels = ['observable-action', 'interiority'];
+      draft.lengthBudget = 'plus-one-paragraph';
+      draft.position = 'evidence';
+      draft.kept = [
+        { variantId: fixtureVariantId(3), carryMode: 'direction' },
+        { variantId: fixtureVariantId(6), carryMode: 'prose' },
+        { variantId: fixtureVariantId(7), carryMode: 'direction' }
+      ];
+
+      const outcome = await coordinator.commit(plan(draft), { kind: 'host' }, jest.fn());
+
+      expect(outcome).toMatchObject({ status: 'accepted', widgetConfigId: 'wc-1' });
+      const restored = new WorkshopSessionService(() => 900);
+      restored.hydrateCommittedState(
+        parseWorkshopSessionStateV1(session.exportCommittedState()),
+        {},
+        DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR
+      );
+      const reopened = restored.getWidgetConfig('wc-1');
+      expect(reopened).toMatchObject({ widgetId: 'show-vs-tell', draft });
+
+      // The chip reads `{N} kept · {M} as direction` from the bounded summary.
+      expect(restored.getSnapshot().widgetConfigs).toEqual([
+        expect.objectContaining({
+          id: 'wc-1',
+          widgetId: 'show-vs-tell',
+          beatPreview: 'She hadn’t trusted him since the funeral.',
+          keptCount: 3,
+          directionCount: 2
+        })
+      ]);
+    });
+
+    it('summarises zero direction variants so the chip can omit that clause', async () => {
+      const { session, coordinator } = harness();
+      const draft = generatedShowVsTellDraft();
+      draft.kept = [{ variantId: fixtureVariantId(7), carryMode: 'prose' }];
+
+      await coordinator.commit(plan(draft), { kind: 'host' }, jest.fn());
+
+      expect(session.getSnapshot().widgetConfigs).toEqual([
+        expect.objectContaining({ keptCount: 1, directionCount: 0 })
+      ]);
     });
   });
 });

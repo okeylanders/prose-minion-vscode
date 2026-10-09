@@ -9,6 +9,7 @@ import {
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopPersonaId,
+  WorkshopShowVsTellWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary,
   WorkshopTurn,
   WorkshopWidgetConfigSnapshot,
@@ -37,8 +38,10 @@ export type WorkshopCreativeVariationsOpening =
     }
   | { kind: 'clone'; config: WorkshopCreativeVariationsWidgetConfigSnapshot };
 
-/** Slice 3 opens fresh drafts only; chip reopen and recommendation seeds are Slice 4 and 5. */
-export type WorkshopShowVsTellOpening = { kind: 'new' };
+/** A chip reopens its exact committed draft; recommendation seeds arrive with Slice 5. */
+export type WorkshopShowVsTellOpening =
+  | { kind: 'new' }
+  | { kind: 'clone'; config: WorkshopShowVsTellWidgetConfigSnapshot };
 
 export interface WorkshopWidgetOpeningHost {
   widgetConfigData: WorkshopWidgetConfigSnapshot | null;
@@ -235,8 +238,10 @@ export function useWorkshopWidgetOpening({
 
   const closeShowVsTell = React.useCallback(() => {
     setShowVsTellOpening(null);
+    setPendingWidgetConfigId(null);
+    host.clearWidgetConfigData();
     onCloseShowVsTell();
-  }, [onCloseShowVsTell]);
+  }, [host.clearWidgetConfigData, onCloseShowVsTell]);
 
   React.useEffect(() => {
     if (!pendingWidgetConfigId || host.widgetConfigResponseId !== pendingWidgetConfigId) {
@@ -256,6 +261,14 @@ export function useWorkshopWidgetOpening({
           );
         } else {
           setCreativeVariationsOpening({ kind: 'clone', config });
+        }
+      } else if (config.widgetId === 'show-vs-tell') {
+        if (showVsTellOpening) {
+          onError(
+            'Close the current widget sheet before reopening a committed configuration.'
+          );
+        } else {
+          setShowVsTellOpening({ kind: 'clone', config });
         }
       } else if (config.widgetId === 'lexical-gravity') {
         const active = standingDirectives.some(
@@ -285,6 +298,7 @@ export function useWorkshopWidgetOpening({
     host.widgetConfigError,
     host.widgetConfigResponseId,
     creativeVariationsOpening,
+    showVsTellOpening,
     onError,
     pendingWidgetConfigId,
     standingDirectives

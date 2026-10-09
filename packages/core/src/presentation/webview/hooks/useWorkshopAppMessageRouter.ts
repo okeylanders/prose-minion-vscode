@@ -101,7 +101,10 @@ export function buildWorkshopAppMessageRoutes(
   } = deps;
 
   return {
-    [MessageType.WORKSHOP_SESSION_STATE]: workshopRoom.handleSessionState,
+    [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
+      workshopRoom.handleSessionState(message);
+      widgetHost.handleSessionState(message);
+    },
     [MessageType.WORKSHOP_TURN]: workshopRoom.handleTurn,
     [MessageType.WORKSHOP_COMPOSER_DRAFT_RESTORED]:
       workshopRoom.handleComposerDraftRestored,
@@ -139,6 +142,7 @@ export function buildWorkshopAppMessageRoutes(
       dispatchWorkshopWidgetActionResult(message, {
         handleGestureActionResult: gesturePlayground.handleWidgetActionResult,
         handleCreativeVariationsActionResult: creativeVariations.handleCommitResult,
+        handleShowVsTellActionResult: showVsTell.handleCommitResult,
         handleLexicalActionResult: lexicalGravity.handleActionResult,
         handleStandingDirectiveActionResult: standingDirectives.handleActionResult
       });

@@ -4,6 +4,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useShowVsTell } from '@hooks/domain/workshop/widgets/showVsTell/useShowVsTell';
 import {
   MessageType,
+  type WorkshopWidgetActionResultMessage,
   type WorkshopShowVsTellGenerationProgressMessage,
   type WorkshopShowVsTellResultMessage
 } from '@messages';
@@ -240,5 +241,123 @@ describe('useShowVsTell', () => {
     act(() => result.current.cancelGeneration('some-other-token'));
 
     expect(vscode.postMessage).not.toHaveBeenCalled();
+  });
+
+  describe('commit', () => {
+    const commitResult = (
+      requestToken: string,
+      overrides: Partial<Extract<WorkshopWidgetActionResultMessage['payload'], { action: 'commit' }>> = {}
+    ): WorkshopWidgetActionResultMessage => ({
+      type: MessageType.WORKSHOP_WIDGET_ACTION_RESULT,
+      source: 'extension.workshop.widget',
+      timestamp: 1,
+      payload: {
+        action: 'commit',
+        requestToken,
+        widgetId: 'show-vs-tell',
+        ok: true,
+        widgetConfigId: 'wc-2',
+        turnId: 'turn-2',
+        ...overrides
+      } as never
+    });
+
+    it('posts the draft unchanged under a fresh token and refuses a duplicate while pending', () => {
+      const draft = generatedShowVsTellDraft();
+      const { result } = renderHook(() => useShowVsTell());
+      let first: string | undefined;
+      let duplicate: string | undefined;
+      act(() => {
+        first = result.current.commit({ widgetId: 'show-vs-tell', draft });
+        duplicate = result.current.commit({ widgetId: 'show-vs-tell', draft });
+      });
+
+      expect(first).toEqual(expect.any(String));
+      expect(duplicate).toBeUndefined();
+      expect(result.current.commitPending).toBe(true);
+      expect(vscode.postMessage).toHaveBeenCalledTimes(1);
+      expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.WORKSHOP_COMMIT_WIDGET,
+        source: 'webview.workshop.show-vs-tell',
+        payload: { widgetId: 'show-vs-tell', requestToken: first, draft }
+      }));
+    });
+
+    it('carries the clone lineage and mints a new token per attempt', () => {
+      const draft = generatedShowVsTellDraft();
+      const { result } = renderHook(() => useShowVsTell());
+      let first = '';
+      act(() => { first = result.current.commit({ widgetId: 'show-vs-tell', draft })!; });
+      act(() => result.current.handleCommitResult(commitResult(first, { ok: false, message: 'Try again.' } as never)));
+      let second: string | undefined;
+      act(() => {
+        second = result.current.commit({
+          widgetId: 'show-vs-tell',
+          draft,
+          clonedFromConfigId: 'wc-1'
+        });
+      });
+
+      expect(second).toEqual(expect.any(String));
+      expect(second).not.toBe(first);
+      expect(vscode.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+        payload: expect.objectContaining({ clonedFromConfigId: 'wc-1', requestToken: second })
+      }));
+    });
+
+    it('ignores stale-token and wrong-widget results, then accepts the exact one', () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const { result } = renderHook(() => useShowVsTell());
+      let token = '';
+      act(() => { token = result.current.commit({ widgetId: 'show-vs-tell', draft: generatedShowVsTellDraft() })!; });
+
+      act(() => result.current.handleCommitResult(commitResult(`${token}-stale`)));
+      act(() => result.current.handleCommitResult(commitResult(token, { widgetId: 'creative-variations' })));
+      expect(result.current.commitPending).toBe(true);
+      expect(result.current.commitResult).toBeNull();
+
+      act(() => result.current.handleCommitResult(commitResult(token)));
+      expect(result.current.commitPending).toBe(false);
+      expect(result.current.commitResult).toEqual(expect.objectContaining({
+        ok: true,
+        widgetConfigId: 'wc-2',
+        turnId: 'turn-2'
+      }));
+      act(() => result.current.clearCommitResult());
+      expect(result.current.commitResult).toBeNull();
+      warn.mockRestore();
+    });
+
+    it('resets a lost acknowledgement before a new sheet starts', () => {
+      const { result } = renderHook(() => useShowVsTell());
+      act(() => { result.current.commit({ widgetId: 'show-vs-tell', draft: generatedShowVsTellDraft() }); });
+      expect(result.current.commitPending).toBe(true);
+
+      act(() => result.current.resetCommitState());
+
+      expect(result.current.commitPending).toBe(false);
+      let retry: string | undefined;
+      act(() => { retry = result.current.commit({ widgetId: 'show-vs-tell', draft: generatedShowVsTellDraft() }); });
+      expect(retry).toEqual(expect.any(String));
+    });
+  });
+
+  it('posts no editor mutation on any path: intake, generate, cancel, and commit', () => {
+    const { result } = renderHook(() => useShowVsTell());
+    act(() => {
+      result.current.requestBeatSelection();
+      result.current.generate(input);
+    });
+    act(() => result.current.cancelGeneration());
+    act(() => { result.current.commit({ widgetId: 'show-vs-tell', draft: generatedShowVsTellDraft() }); });
+
+    const posted = vscode.postMessage.mock.calls.map(([message]: [{ type: string }]) => message.type);
+    expect(posted.sort()).toEqual([
+      MessageType.CANCEL_SHOW_VS_TELL_GENERATE_REQUEST,
+      MessageType.REQUEST_SELECTION,
+      MessageType.WORKSHOP_COMMIT_WIDGET,
+      MessageType.WORKSHOP_SHOW_VS_TELL_GENERATE
+    ].sort());
+    expect(posted.join(' ')).not.toMatch(/edit|insert|apply|replace|write/i);
   });
 });

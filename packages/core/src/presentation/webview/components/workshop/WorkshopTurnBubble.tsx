@@ -12,13 +12,15 @@
  */
 
 import * as React from 'react';
-import { Icon } from '@components/shared/Icon';
+import { Icon, type IconName } from '@components/shared/Icon';
 import { MarkdownRenderer } from '@components/shared/MarkdownRenderer';
 import {
   WorkshopPersonaId,
+  WorkshopThreadArtifactWidgetCommit,
   WorkshopToolId,
   WorkshopTurn,
   WorkshopTurnRewindability,
+  WorkshopWidgetConfigSummary,
   citationDisplayLabel
 } from '@messages';
 import { WorkshopQuickActionBar } from './WorkshopQuickActionBar';
@@ -54,6 +56,12 @@ interface WorkshopTurnBubbleProps {
    * sees the chip.
    */
   onOpenWidgetConfig?: (widgetConfigId: string) => void;
+  /**
+   * The bounded identity of this turn's committed config, when the visible
+   * window carries one. A chip reads display counts from it; the persisted
+   * turn stays exactly as it was.
+   */
+  widgetConfigSummary?: WorkshopWidgetConfigSummary;
   /** Persona recommend chip: opens the widget seeded from the parsed prefill. */
   onOpenWidgetRecommendation?: (
     recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
@@ -176,6 +184,41 @@ function widgetRecommendationMeta(
   }
 }
 
+interface WidgetCommitChipFace {
+  icon: IconName;
+  name: string;
+  meta: string;
+}
+
+/**
+ * What a committed-widget chip reads. Presentation-only: the model never sees
+ * the chip. Show vs. Tell names its kept variants and how many ride as
+ * direction (the clause is omitted at zero); every other widget keeps the
+ * shared `{n} {unit}` wording.
+ */
+function widgetCommitChipFace(
+  commit: WorkshopThreadArtifactWidgetCommit,
+  summary: WorkshopWidgetConfigSummary | undefined
+): WidgetCommitChipFace {
+  if (commit.widgetId === 'show-vs-tell') {
+    const directionCount = summary?.widgetId === 'show-vs-tell' ? summary.directionCount : 0;
+    return {
+      icon: WORKSHOP_WIDGET_ICONS['show-vs-tell'],
+      name: 'Show vs. Tell',
+      meta: `${commit.selectionCount} kept${
+        directionCount > 0 ? ` · ${directionCount} as direction` : ''
+      } · re-open`
+    };
+  }
+  return {
+    icon: 'hand',
+    name: workshopWidgetLabel(commit.widgetId),
+    meta: `${commit.selectionCount} ${
+      workshopWidgetSelectionUnitLabel(commit.widgetId, commit.selectionCount)
+    } · re-open`
+  };
+}
+
 export const parseVariations = (content: string): ParsedVariations | null => {
   const matches = [...content.matchAll(VARIATION_HEADING)];
   if (matches.length < 2) {
@@ -293,6 +336,7 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
   onCopy,
   onSave,
   onOpenWidgetConfig,
+  widgetConfigSummary,
   onOpenWidgetRecommendation,
   rewindability,
   rewindPausedReason,
@@ -446,25 +490,22 @@ export const WorkshopTurnBubble: React.FC<WorkshopTurnBubbleProps> = React.memo(
             </span>
           )}
           <div className="pm-ws-turn-message">{turn.content}</div>
-          {widgetCommit && onOpenWidgetConfig && (
-            <div className="pm-ws-widget-chipwrap">
-              <button
-                type="button"
-                className="pm-ws-widget-chip"
-                title="Presentation-only — the model never sees this chip"
-                onClick={() => onOpenWidgetConfig(widgetCommit.widgetConfigId)}
-              >
-                <Icon name="hand" size={13} /> {workshopWidgetLabel(widgetCommit.widgetId)}{' '}
-                <span className="pm-ws-widget-chip-meta">
-                  {widgetCommit.selectionCount}{' '}
-                  {workshopWidgetSelectionUnitLabel(
-                    widgetCommit.widgetId,
-                    widgetCommit.selectionCount
-                  )} · re-open
-                </span>
-              </button>
-            </div>
-          )}
+          {widgetCommit && onOpenWidgetConfig && (() => {
+            const face = widgetCommitChipFace(widgetCommit, widgetConfigSummary);
+            return (
+              <div className="pm-ws-widget-chipwrap">
+                <button
+                  type="button"
+                  className="pm-ws-widget-chip"
+                  title="Presentation-only — the model never sees this chip"
+                  onClick={() => onOpenWidgetConfig(widgetCommit.widgetConfigId)}
+                >
+                  <Icon name={face.icon} size={13} /> {face.name}{' '}
+                  <span className="pm-ws-widget-chip-meta">{face.meta}</span>
+                </button>
+              </div>
+            );
+          })()}
           {(rewindAction || branchAction) && (
             <div className="pm-ws-turn-actions pm-ws-turn-actions-writer">
               {rewindAction}
