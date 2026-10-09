@@ -1,12 +1,15 @@
 /**
  * Show vs. Tell Playground feature contracts (Sprint 05).
  *
- * Slice 1 declares only what persistence needs: the exact authoring draft and
- * the generated workup it stores. Generation, commit, and recommendation
- * message contracts arrive with the slices that ship those routes.
+ * Slice 1 declared the exact authoring draft and the generated workup it
+ * stores. Slice 2 adds the generate, cancel, progress, and result messages.
+ * Commit and recommendation message contracts arrive with the slices that
+ * ship those routes.
  */
 
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
+import { MessageType, type MessageEnvelope } from '../base';
+import type { CancelRequestPayload } from '../streaming';
 import type { WorkshopWidgetSourceReference } from './context';
 import type { WorkshopPersonaId } from './participants';
 
@@ -190,4 +193,74 @@ export interface WorkshopShowVsTellDraft {
   kept: WorkshopShowVsTellKeptVariant[];
   /** Optional single-line note to the room. */
   note: string;
+}
+
+/**
+ * Complete transient authoring input for one workup generation attempt. The
+ * surrounding passage crosses as a source reference only: the host resolves
+ * its text at generation time. The position steers the variants, but moving
+ * it afterwards never discards a workup, so it is not an invalidating input
+ * (every other field here is).
+ */
+export interface WorkshopShowVsTellGeneratePayload {
+  widgetId: 'show-vs-tell';
+  /** Webview-minted correlation token; never reused for a regenerate. */
+  token: string;
+  beat: WorkshopShowVsTellBeat;
+  surroundingContext: WorkshopShowVsTellSurroundingContext;
+  pov: WorkshopShowVsTellPov;
+  invariants: WorkshopShowVsTellInvariants;
+  channels: WorkshopShowVsTellChannel[];
+  lengthBudget: WorkshopShowVsTellLengthBudget;
+  position: NarrativeHandlingPosition;
+}
+
+export interface WorkshopShowVsTellGenerateMessage
+  extends MessageEnvelope<WorkshopShowVsTellGeneratePayload> {
+  type: MessageType.WORKSHOP_SHOW_VS_TELL_GENERATE;
+}
+
+export interface CancelShowVsTellGenerateRequestMessage
+  extends MessageEnvelope<CancelRequestPayload> {
+  type: MessageType.CANCEL_SHOW_VS_TELL_GENERATE_REQUEST;
+}
+
+export interface WorkshopShowVsTellGenerationProgressPayload {
+  widgetId: 'show-vs-tell';
+  token: string;
+  /** Host-minted for this attempt; cancelled and failed ids are never reused. */
+  workupId: string;
+  /** `completed` and `cancelled` are terminal: no later progress follows. */
+  phase: 'started' | 'streaming' | 'completed' | 'cancelled';
+  stage: 'requesting' | 'workup' | 'validating';
+  outputCharacters: number;
+  estimatedOutputTokens: number;
+  completionTokens?: number;
+  outputTokenLimit: number;
+}
+
+export interface WorkshopShowVsTellGenerationProgressMessage
+  extends MessageEnvelope<WorkshopShowVsTellGenerationProgressPayload> {
+  type: MessageType.WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS;
+}
+
+interface WorkshopShowVsTellResultBasePayload {
+  widgetId: 'show-vs-tell';
+  token: string;
+  workupId: string;
+}
+
+export type WorkshopShowVsTellResultPayload =
+  | (WorkshopShowVsTellResultBasePayload & {
+      ok: true;
+      workup: WorkshopShowVsTellWorkup;
+    })
+  | (WorkshopShowVsTellResultBasePayload & {
+      ok: false;
+      error: string;
+    });
+
+export interface WorkshopShowVsTellResultMessage
+  extends MessageEnvelope<WorkshopShowVsTellResultPayload> {
+  type: MessageType.WORKSHOP_SHOW_VS_TELL_RESULT;
 }

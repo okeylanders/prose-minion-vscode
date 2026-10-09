@@ -8,6 +8,9 @@ import type {
   WorkshopCreativeVariationsServicePort
 } from '@handlers/domain/workshop/widgets/creativeVariations/WorkshopCreativeVariationsHandler';
 import type {
+  WorkshopShowVsTellServicePort
+} from '@handlers/domain/workshop/widgets/showVsTell/WorkshopShowVsTellHandler';
+import type {
   WorkshopLexicalGravityModelPort,
   WorkshopLexicalGravityRepositoryPort
 } from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
@@ -84,6 +87,7 @@ export interface WorkshopRunGate {
 export interface WorkshopWidgetRuntime {
   gesturePlayground: WorkshopGesturePlaygroundServicePort;
   creativeVariations: WorkshopCreativeVariationsServicePort;
+  showVsTell: WorkshopShowVsTellServicePort;
   standingDirectives: WorkshopStandingDirectiveServicePort;
   lexicalGravity: {
     model: WorkshopLexicalGravityModelPort;
