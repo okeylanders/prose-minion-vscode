@@ -4,6 +4,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  SHOW_VS_TELL_DIRECTION_MARGIN
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
 import { WORKSHOP_RECALL_MINIMUM_READ_CHARACTERS } from '@/application/services/workshop/recall/WorkshopRecallReadSection';
 import {
   WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS,
@@ -326,7 +329,7 @@ describe('prompt budgets', () => {
     const budget = PROMPT_BUDGETS.workshopWidgets;
     for (const fragment of [
       `\`prose\` ≤ ${budget.showVsTellProseCharacters.toLocaleString('en-US')} characters`,
-      `\`direction\` ≤ ${budget.showVsTellDirectionCharacters} characters, and strictly shorter than that variant's \`prose\``,
+      `\`direction\` ≤ ${budget.showVsTellDirectionCharacters} characters, and at least ${SHOW_VS_TELL_DIRECTION_MARGIN} characters shorter than that variant's \`prose\` (each line break counts as one character)`,
       `\`gains\` and \`costs\` ≤ ${budget.showVsTellGainsCharacters} characters each`,
       `\`channels\` holds 1–${budget.showVsTellChannelsPerVariant} channel ids, without repeats`,
       `At most ${budget.showVsTellFlagsPerVariant} \`invariantFlags\` per variant`,

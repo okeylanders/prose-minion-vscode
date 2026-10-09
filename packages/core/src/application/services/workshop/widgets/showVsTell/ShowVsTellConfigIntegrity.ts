@@ -12,7 +12,8 @@ import {
   SHOW_VS_TELL_GROUPS
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 import {
-  isShowVsTellDirectionShorterThanProse,
+  isShowVsTellDirectionShortEnough,
+  SHOW_VS_TELL_DIRECTION_MARGIN,
   showVsTellFlagId,
   showVsTellProseComparisonKey,
   showVsTellSourceReferenceKey,
@@ -153,8 +154,11 @@ function assertVariantIntegrity(
   if (new Set(variant.channels).size !== variant.channels.length) {
     shapeError(`${path}.channels`, 'channels without duplicates');
   }
-  if (!isShowVsTellDirectionShorterThanProse(variant.direction, variant.prose)) {
-    shapeError(`${path}.direction`, 'strictly shorter than its prose');
+  if (!isShowVsTellDirectionShortEnough(variant.direction, variant.prose)) {
+    shapeError(
+      `${path}.direction`,
+      `at least ${SHOW_VS_TELL_DIRECTION_MARGIN} characters shorter than its prose, as the artifact counts them`
+    );
   }
 
   for (const [flagIndex, flag] of variant.invariantFlags.entries()) {

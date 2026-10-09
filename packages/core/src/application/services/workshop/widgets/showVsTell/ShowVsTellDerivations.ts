@@ -5,8 +5,9 @@
  * derive from these, so a rule cannot drift between generation and reopen.
  */
 
-import type {
-  WorkshopShowVsTellDraft,
+import {
+  SHOW_VS_TELL_ARTIFACT_LINE_KEYS,
+  type WorkshopShowVsTellDraft,
   WorkshopShowVsTellVariant,
   WorkshopShowVsTellWorkup,
   WorkshopWidgetSourceReference
@@ -40,15 +41,54 @@ export function showVsTellWorkupVariants(
   return workup.groups.flatMap((group) => group.variants);
 }
 
+/** What one line break (`\r\n`, `\r`, `\n`, U+2028, U+2029) becomes inside an artifact value. */
+export const SHOW_VS_TELL_ARTIFACT_LINE_BREAK = '\u21b5';
+
+const LINE_BREAK_SEQUENCE = /\r\n|[\r\n\u2028\u2029]/gu;
+
 /**
- * A direction is an abstraction of its prose, so it must be strictly shorter.
- * Both sides are measured trimmed, in the same UTF-16 units as the artifact.
+ * Trims a value and replaces each line-break sequence with one `↵`. The
+ * artifact is line-keyed, so a multi-line value must stay on its own line, and
+ * a one-for-one replacement never lengthens a value (`\r\n` shrinks by one),
+ * which keeps the frozen 585 ≤ 600 fit guarantee true for any content.
+ *
+ * This is the single encoder: the projection writes values with it, and the
+ * direction rule below measures with it, so what is validated is what is counted.
  */
-export function isShowVsTellDirectionShorterThanProse(
+export function encodeShowVsTellArtifactValue(value: string): string {
+  return value.trim().replace(LINE_BREAK_SEQUENCE, SHOW_VS_TELL_ARTIFACT_LINE_BREAK);
+}
+
+/**
+ * How many encoded characters a direction must be shorter than its prose so
+ * that carrying it as direction always lowers the counted body.
+ *
+ * Prose is counted as `keep: "<prose>"` (key, one space, two quotes) and a
+ * direction as `direction: <direction>` (key, one space), so
+ *   keep line      = prose + keepKey + 1 + 2
+ *   direction line = direction + directionKey + 1
+ * and the direction line is strictly shorter exactly when
+ *   direction + (directionKey - keepKey - 2) < prose,
+ * i.e. direction + margin <= prose with margin = directionKey - keepKey - 1.
+ * Derived from the frozen line keys, so a key change cannot silently
+ * re-open the gap.
+ */
+export const SHOW_VS_TELL_DIRECTION_MARGIN =
+  SHOW_VS_TELL_ARTIFACT_LINE_KEYS.direction.length
+  - SHOW_VS_TELL_ARTIFACT_LINE_KEYS.keep.length
+  - 1;
+
+/**
+ * A direction is an abstraction of its prose, and switching a kept variant to
+ * direction-only carry must always lower the count. Both sides are measured
+ * exactly as the artifact encodes them (trimmed, line breaks as one `↵`).
+ */
+export function isShowVsTellDirectionShortEnough(
   direction: string,
   prose: string
 ): boolean {
-  return direction.trim().length < prose.trim().length;
+  return encodeShowVsTellArtifactValue(direction).length + SHOW_VS_TELL_DIRECTION_MARGIN
+    <= encodeShowVsTellArtifactValue(prose).length;
 }
 
 /**

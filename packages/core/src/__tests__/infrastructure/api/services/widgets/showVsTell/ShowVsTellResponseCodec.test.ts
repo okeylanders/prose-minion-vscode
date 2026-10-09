@@ -234,46 +234,47 @@ describe('decodeShowVsTellResponse', () => {
     });
   });
 
-  describe('the direction is strictly shorter than its prose', () => {
-    it('rejects a direction exactly as long as its prose', () => {
-      const content = mutated((wire) => {
+  describe('the direction is at least four encoded characters shorter than its prose', () => {
+    const withLengths = (prose: string, direction: string): string =>
+      mutated((wire) => {
         const variant = wire.groups[0].variants[0];
-        variant.prose = 'She waited by the door.';
-        variant.direction = 'Hold her at the door ';
-        variant.direction = variant.direction.padEnd(variant.prose.length, 'x');
+        variant.prose = prose;
+        variant.direction = direction;
       });
 
-      expect(() => decode(content)).toThrow(/strictly shorter than its prose/);
+    it.each([0, 1, 2, 3])('rejects a direction %i characters shorter than its prose', (margin) => {
+      const prose = 'p'.repeat(40);
+
+      expect(() => decode(withLengths(prose, 'd'.repeat(40 - margin))))
+        .toThrow(/at least 4 characters shorter than its prose/);
+    });
+
+    it('accepts a direction exactly four characters shorter', () => {
+      expect(() => decode(withLengths('p'.repeat(40), 'd'.repeat(36)))).not.toThrow();
     });
 
     it('rejects a direction longer than its prose', () => {
-      const content = mutated((wire) => {
-        const variant = wire.groups[0].variants[0];
-        variant.prose = 'She waited.';
-        variant.direction = 'Hold her still at the door and let the silence do the telling.';
-      });
-
-      expect(() => decode(content)).toThrow(/strictly shorter than its prose/);
+      expect(() => decode(withLengths(
+        'She waited.',
+        'Hold her still at the door and let the silence do the telling.'
+      ))).toThrow(/at least 4 characters shorter than its prose/);
     });
 
     it('measures both sides trimmed, so padding cannot make a direction pass', () => {
-      const content = mutated((wire) => {
-        const variant = wire.groups[0].variants[0];
-        variant.prose = 'She waited.';
-        variant.direction = `  ${'x'.repeat(11)}  `;
-      });
-
-      expect(() => decode(content)).toThrow(/strictly shorter than its prose/);
+      expect(() => decode(withLengths('p'.repeat(40), `  ${'d'.repeat(37)}  `)))
+        .toThrow(/at least 4 characters shorter/);
+      expect(() => decode(withLengths(`  ${'p'.repeat(30)}  `, 'd'.repeat(27))))
+        .toThrow(/at least 4 characters shorter/);
     });
 
-    it('accepts a direction one character shorter than its prose', () => {
-      const content = mutated((wire) => {
-        const variant = wire.groups[0].variants[0];
-        variant.prose = 'She waited by the door.';
-        variant.direction = 'x'.repeat(variant.prose.length - 1);
-      });
+    it('measures after line-break encoding: CRLF in the prose collapses to one character', () => {
+      // Raw lengths 124 vs 120 pass a raw margin of 4, but the prose encodes to 120.
+      const prose = ['p'.repeat(24), 'p'.repeat(23), 'p'.repeat(23), 'p'.repeat(23), 'p'.repeat(23)]
+        .join('\r\n');
 
-      expect(() => decode(content)).not.toThrow();
+      expect(prose.length).toBe(124);
+      expect(() => decode(withLengths(prose, 'd'.repeat(120))))
+        .toThrow(/at least 4 characters shorter than its prose/);
     });
   });
 
@@ -281,9 +282,9 @@ describe('decodeShowVsTellResponse', () => {
     const withSecondProse = (first: string, second: string): string =>
       mutated((wire) => {
         wire.groups[0].variants[0].prose = first;
-        wire.groups[0].variants[0].direction = 'Say it plainly.';
+        wire.groups[0].variants[0].direction = 'Say it plain.';
         wire.groups[1].variants[0].prose = second;
-        wire.groups[1].variants[0].direction = 'Say it plainly.';
+        wire.groups[1].variants[0].direction = 'Say it plain.';
       });
 
     it('rejects the exact same prose in two groups', () => {

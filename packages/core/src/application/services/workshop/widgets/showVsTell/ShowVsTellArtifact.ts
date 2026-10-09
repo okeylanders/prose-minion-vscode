@@ -22,8 +22,16 @@ import {
   type WorkshopShowVsTellDraft
 } from '@messages';
 import {
+  encodeShowVsTellArtifactValue,
   showVsTellPositionArtifactValue,
   showVsTellWorkupVariants
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
+
+// The encoder is owned by the Derivations so the direction rule measures with
+// the very function the projection writes with; re-exported for callers of the projection.
+export {
+  SHOW_VS_TELL_ARTIFACT_LINE_BREAK,
+  encodeShowVsTellArtifactValue
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
 
 /** The authored fields the projection reads; a draft satisfies it structurally. */
@@ -31,21 +39,6 @@ export type ShowVsTellArtifactSource = Pick<
   WorkshopShowVsTellDraft,
   'beat' | 'position' | 'invariants' | 'workup' | 'kept' | 'note'
 >;
-
-/** What one line break (`\r\n`, `\r`, `\n`, U+2028, U+2029) becomes inside a value. */
-export const SHOW_VS_TELL_ARTIFACT_LINE_BREAK = '\u21b5';
-
-const LINE_BREAK_SEQUENCE = /\r\n|[\r\n\u2028\u2029]/gu;
-
-/**
- * Trims a value and replaces each line-break sequence with one `↵`. The
- * artifact is line-keyed, so a multi-line value must stay on its own line, and
- * a one-for-one replacement never lengthens a value (`\r\n` shrinks by one),
- * which keeps the frozen 585 ≤ 600 fit guarantee true for any content.
- */
-export function encodeShowVsTellArtifactValue(value: string): string {
-  return value.trim().replace(LINE_BREAK_SEQUENCE, SHOW_VS_TELL_ARTIFACT_LINE_BREAK);
-}
 
 const line = (key: string, value: string): string => `${key} ${value}`;
 

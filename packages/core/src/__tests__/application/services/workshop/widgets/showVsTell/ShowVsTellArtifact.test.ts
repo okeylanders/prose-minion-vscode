@@ -5,6 +5,8 @@ import {
   showVsTellArtifactLength
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellArtifact';
 import {
+  SHOW_VS_TELL_DIRECTION_MARGIN,
+  isShowVsTellDirectionShortEnough,
   showVsTellWordCount,
   showVsTellWorkupVariants
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
@@ -145,40 +147,82 @@ describe('direction-only carry against the counted length', () => {
     }
   });
 
-  it('never raises the count when the direction is at least three shorter than its prose', () => {
-    // `keep: "…"` costs prose + 8; `direction: …` costs direction + 11. A margin
-    // of three therefore guarantees the swap cannot grow the body.
-    for (const margin of [3, 4, 10]) {
-      const prose = 'p'.repeat(40);
-      const variant = {
-        ...variants[0],
-        prose,
-        direction: 'd'.repeat(prose.length - margin)
-      };
-      const workup = {
-        ...draft.workup!,
-        groups: [{ kind: 'told-cleanly' as const, variants: [variant] }]
-      };
-      const lengthFor = (carryMode: 'prose' | 'direction'): number => showVsTellArtifactLength(
-        draftWith({ workup, kept: [{ variantId: variant.id, carryMode }], note: '' })
-      );
+  /** A one-variant workup whose only variant has exactly this prose and direction. */
+  const countFor = (prose: string, direction: string, carryMode: 'prose' | 'direction'): number => {
+    const variant = { ...variants[0], prose, direction };
+    const workup = { ...draft.workup!, groups: [{ kind: 'told-cleanly' as const, variants: [variant] }] };
+    return showVsTellArtifactLength(
+      draftWith({ workup, kept: [{ variantId: variant.id, carryMode }], note: '' })
+    );
+  };
 
-      expect(lengthFor('direction')).toBeLessThanOrEqual(lengthFor('prose'));
+  it('prices the swap exactly: keep costs prose + 8, direction costs direction + 11', () => {
+    const base = countFor('p'.repeat(40), 'd'.repeat(10), 'prose')
+      - countFor('p'.repeat(40), 'd'.repeat(10), 'direction');
+
+    // keep: "…" = prose + 8; direction: … = direction + 11 → 48 − 21 = 27.
+    expect(base).toBe(27);
+    expect(SHOW_VS_TELL_DIRECTION_MARGIN).toBe(4);
+  });
+
+  it.each([4, 5, 12])('a raw margin of %i always lowers the count', (margin) => {
+    const prose = 'p'.repeat(60);
+    const direction = 'd'.repeat(60 - margin);
+
+    expect(isShowVsTellDirectionShortEnough(direction, prose)).toBe(true);
+    expect(countFor(prose, direction, 'direction')).toBeLessThan(countFor(prose, direction, 'prose'));
+  });
+
+  it.each([0, 1, 3])('a raw margin of %i is rejected because it cannot be guaranteed to lower the count', (margin) => {
+    const prose = 'p'.repeat(60);
+    const direction = 'd'.repeat(60 - margin);
+
+    expect(isShowVsTellDirectionShortEnough(direction, prose)).toBe(false);
+  });
+
+  it('margin 3 only ties and margin 1 raises the count, which is why four is the floor', () => {
+    const prose = 'p'.repeat(60);
+
+    expect(countFor(prose, 'd'.repeat(57), 'direction')).toBe(countFor(prose, 'd'.repeat(57), 'prose'));
+    expect(countFor(prose, 'd'.repeat(59), 'direction')).toBeGreaterThan(countFor(prose, 'd'.repeat(59), 'prose'));
+  });
+
+  it('holds after line-break encoding: any pair the rule accepts lowers the count', () => {
+    const breaks = ['\n', '\r\n', '\r', '\u2028', '\u2029'];
+    for (const proseBreak of breaks) {
+      for (const directionBreak of breaks) {
+        for (let proseLines = 1; proseLines <= 5; proseLines += 1) {
+          const prose = Array.from({ length: proseLines }, () => 'p'.repeat(12)).join(proseBreak);
+          for (let directionLength = 4; directionLength <= 70; directionLength += 1) {
+            const direction = ('d'.repeat(directionLength) + directionBreak + 'e').slice(0, directionLength);
+            if (!isShowVsTellDirectionShortEnough(direction, prose)) {
+              continue;
+            }
+            expect(countFor(prose, direction, 'direction'))
+              .toBeLessThan(countFor(prose, direction, 'prose'));
+          }
+        }
+      }
     }
   });
 
-  it('documents the contract edge: a direction only 1–2 shorter than its prose can cost up to 2 more', () => {
-    // The Slice 1 integrity rule is "strictly shorter", so the gates accept a
-    // direction one character shorter than its prose. Flagged in the Slice 3
-    // handoff; real directions run a fraction of their prose.
-    const prose = 'p'.repeat(40);
-    const edge = { ...variants[0], prose, direction: 'd'.repeat(39) };
-    const workup = { ...draft.workup!, groups: [{ kind: 'told-cleanly' as const, variants: [edge] }] };
-    const lengthFor = (carryMode: 'prose' | 'direction'): number => showVsTellArtifactLength(
-      draftWith({ workup, kept: [{ variantId: edge.id, carryMode }], note: '' })
-    );
+  it('is impossible to reach the 600 → 603 witness: a CRLF prose is measured after encoding', () => {
+    // Raw lengths 124 / 120 once passed a raw margin; encoded they are 120 / 120.
+    const prose = ['p'.repeat(24), 'p'.repeat(23), 'p'.repeat(23), 'p'.repeat(23), 'p'.repeat(23)]
+      .join('\r\n');
+    const direction = 'd'.repeat(120);
 
-    expect(lengthFor('direction') - lengthFor('prose')).toBe(2);
+    expect(prose.length).toBe(124);
+    expect(encodeShowVsTellArtifactValue(prose).length).toBe(120);
+    expect(isShowVsTellDirectionShortEnough(direction, prose)).toBe(false);
+    // The count would indeed have risen by three, so the rule must reject it.
+    expect(countFor(prose, direction, 'direction') - countFor(prose, direction, 'prose')).toBe(3);
+  });
+
+  it('trims both sides before measuring', () => {
+    expect(isShowVsTellDirectionShortEnough(`  ${'d'.repeat(36)}  `, 'p'.repeat(40))).toBe(true);
+    expect(isShowVsTellDirectionShortEnough('d'.repeat(37), `  ${'p'.repeat(40)}  `)).toBe(false);
+    expect(isShowVsTellDirectionShortEnough('d'.repeat(37), 'p'.repeat(40))).toBe(false);
   });
 });
 
