@@ -219,7 +219,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
 
   it('rejects widget ids that are not live and host-addressable', () => {
     expect(
-      inspectWithCatalog(recommendationFrame({ widgetId: 'show-vs-tell' }))
+      inspectWithCatalog(recommendationFrame({ widgetId: 'topic-relationship' }))
     ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
     expect(
       inspectWithCatalog(recommendationFrame({ widgetId: 'made-up-widget' }))

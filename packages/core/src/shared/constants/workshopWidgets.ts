@@ -74,10 +74,10 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         rail: 'oneshot',
         railLabel: 'one-shot',
         group: 'Playgrounds',
-        tag: 'concept',
+        tag: 'Sprint 05',
         lifecycleNote: ONE_SHOT_LIFECYCLE,
-        blurb: 'Recast a told beat as shown alternatives; keep the ones that land.',
-        live: false
+        blurb: 'Move one beat between telling and showing — see what each distance gains and costs, keep what lands.',
+        live: true
       },
       {
         id: 'creative-variations',

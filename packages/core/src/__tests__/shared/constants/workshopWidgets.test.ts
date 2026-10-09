@@ -38,7 +38,8 @@ describe('workshopWidgets registry', () => {
 
   it('marks the implemented widgets live for integrated testing', () => {
     expect(allWidgets.filter((widget) => widget.live).map((widget) => widget.id))
-      .toEqual(['gesture-playground', 'creative-variations', 'lexical-gravity']);
+      .toEqual(['gesture-playground', 'show-vs-tell', 'creative-variations', 'lexical-gravity']);
+    expect(isLiveWorkshopWidgetId('show-vs-tell')).toBe(true);
     expect(isLiveWorkshopWidgetId('gesture-playground')).toBe(true);
     expect(isLiveWorkshopWidgetId('creative-variations')).toBe(true);
     expect(isLiveWorkshopWidgetId('lexical-gravity')).toBe(true);
@@ -53,6 +54,18 @@ describe('workshopWidgets registry', () => {
       lifecycleNote: 'play first · commit adds one turn'
     });
     expect(creative?.blurb).toContain('under any invariants you declare');
+  });
+
+  it('ships Show vs. Tell live with neutral copy that does not treat showing as the destination', () => {
+    const showVsTell = workshopWidgetDescriptor('show-vs-tell');
+
+    expect(showVsTell).toMatchObject({
+      live: true,
+      tag: 'Sprint 05',
+      group: 'Playgrounds',
+      blurb: 'Move one beat between telling and showing — see what each distance gains and costs, keep what lands.'
+    });
+    expect(showVsTell?.blurb).not.toMatch(/recast|alternatives|better|fix|improve/iu);
   });
 
   it('derives frame kinds mechanically and round-trips them', () => {

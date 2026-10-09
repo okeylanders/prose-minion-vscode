@@ -49,14 +49,15 @@ export const message = (type: MessageType, payload: unknown) => ({
 
 const widgetRuntime = (
   gesturePlayground: WorkshopWidgetRuntime['gesturePlayground'],
-  creativeVariationsGenerate: jest.Mock
+  creativeVariationsGenerate: jest.Mock,
+  showVsTellGenerate: jest.Mock
 ): WorkshopWidgetRuntime => ({
   gesturePlayground,
   creativeVariations: {
     generate: creativeVariationsGenerate
   },
   showVsTell: {
-    generate: jest.fn()
+    generate: showVsTellGenerate
   },
   standingDirectives: {
     apply: jest.fn(),
@@ -124,6 +125,7 @@ export interface WorkshopRouteTestHarness {
   pin: () => Promise<void>;
   runProse: () => Promise<void>;
   creativeVariationsGenerate: jest.Mock;
+  showVsTellGenerate: jest.Mock;
 }
 
 export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
@@ -184,6 +186,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     })
   };
   const creativeVariationsGenerate = jest.fn();
+  const showVsTellGenerate = jest.fn();
   const shell = createFakeShellService({
     revealFileInOS: jest.fn().mockResolvedValue(undefined),
     openFileInEditor: jest.fn().mockResolvedValue(undefined)
@@ -337,7 +340,8 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     transcriptExport,
     widgetRuntime(
       { generateMenu: jest.fn(), generateMore: jest.fn() },
-      creativeVariationsGenerate
+      creativeVariationsGenerate,
+      showVsTellGenerate
     ),
     log
   );
@@ -402,6 +406,7 @@ export const createWorkshopRouteTestHarness = (): WorkshopRouteTestHarness => {
     storeContext,
     pin,
     runProse,
-    creativeVariationsGenerate
+    creativeVariationsGenerate,
+    showVsTellGenerate
   };
 };

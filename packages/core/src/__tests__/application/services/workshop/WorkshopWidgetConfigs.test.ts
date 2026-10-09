@@ -534,7 +534,7 @@ describe('WorkshopSessionService — widget configs', () => {
     const unavailableRecommendation = unavailableState.turns.find(
       (turn) => turn.widgetRecommendation
     )!.widgetRecommendation!;
-    (unavailableRecommendation as { widgetId: string }).widgetId = 'show-vs-tell';
+    (unavailableRecommendation as { widgetId: string }).widgetId = 'topic-relationship';
     expect(() => parseWorkshopSessionStateV1(unavailableState))
       .toThrow(/live Conversation Widget id/);
   });
