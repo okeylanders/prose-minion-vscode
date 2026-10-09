@@ -1,6 +1,6 @@
 # Sprint 05: Show vs. Tell Playground
 
-**Status**: Slice 2 ready for review. Slice 1 merged (#134); 2a (prompt bundle, frozen response protocol) and 2b (response codec, service, handler, cancellation, stale-result correlation) are on one branch and one PR. Slice 3 is next.
+**Status**: Slice 3 ready for review. Slices 1 (#134) and 2 (#135) merged. Slice 3 (authoring surface, artifact projection, catalog flip) is on one branch and one PR; commit stays disabled until Slice 4, so the epic must not merge into `main` before it.
 **Priority**: Medium
 **Branches**: one per slice, `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, each cut from `epic/conversation-widgets` and merged back into it by PR (see [Branching](#branching))
 **Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
