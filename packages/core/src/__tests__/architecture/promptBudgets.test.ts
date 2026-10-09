@@ -177,6 +177,8 @@ describe('prompt budgets', () => {
       creativeRecommendationFrameAllowanceCharacters: 2_500,
       showVsTellBeatCharacters: 160,
       showVsTellContextCharacters: 250_000,
+      showVsTellSourceReferences: 1,
+      showVsTellSourceReferenceCharacters: 500,
       showVsTellProvenancePathCharacters: 500,
       showVsTellPovFocalCharacterCharacters: 80,
       showVsTellMustSurviveCharacters: 120,

@@ -7,6 +7,7 @@
  */
 
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
+import type { WorkshopWidgetSourceReference } from './context';
 import type { WorkshopPersonaId } from './participants';
 
 export const SHOW_VS_TELL_GENERATION_PROTOCOL_VERSION = 1 as const;
@@ -158,13 +159,25 @@ export interface WorkshopShowVsTellKeptVariant {
 }
 
 /**
+ * Which room source grounds POV and meaning for generation. Only the
+ * reference persists: the host resolves the passage text at generation time,
+ * so the text never crosses from the webview, is never stored, and never
+ * rides the commit.
+ */
+export interface WorkshopShowVsTellSurroundingContext {
+  /** Zero or one reference; empty means no surrounding passage. */
+  sourceReferences: WorkshopWidgetSourceReference[];
+}
+
+/**
  * Exact authoring truth, stored by config id so a chip reopens the whole
- * draft. The surrounding passage is read-only room context: it grounds
- * generation, never rides the commit, and is not part of the draft. Focus,
- * scroll, and the busy state are presentation state.
+ * draft. The surrounding passage is read-only room context: its source
+ * reference is part of the draft, its text is not. Focus, scroll, and the busy
+ * state are presentation state.
  */
 export interface WorkshopShowVsTellDraft {
   beat: WorkshopShowVsTellBeat;
+  surroundingContext: WorkshopShowVsTellSurroundingContext;
   pov: WorkshopShowVsTellPov;
   invariants: WorkshopShowVsTellInvariants;
   /** At least one channel, in the fixed channel order. */

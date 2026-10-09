@@ -267,7 +267,9 @@ the readout and changes what commits, without discarding the workup.
 
 - **Config, not just output, persists.** The full draft is stored by stable id
   in `WorkshopSessionService`: beat + provenance, POV constraint, both
-  invariant fields, channels, budget, position, the generated workup, kept
+  invariant fields, the surrounding-passage source reference (a reference only;
+  the passage text is never stored), channels, budget, position, the generated
+  workup, kept
   variants **and their carry modes**, and the note. Focus, scroll, and the busy
   state are ephemeral. (The prototype's reopen drops channels and budget. That
   is a prototype gap, not the contract.)
@@ -347,6 +349,8 @@ same commit.
 |---|---|---|
 | `showVsTellBeatCharacters` | 160 | A beat, not a passage. The writer-turn preview is the whole beat |
 | `showVsTellContextCharacters` | 250,000 | Parity with `creativeContextCharacters` (room excerpt) |
+| `showVsTellSourceReferences` | 1 | One surrounding passage; zero means none (Q1, Slice 2b) |
+| `showVsTellSourceReferenceCharacters` | 500 | Parity with `creativeSourceReferenceCharacters` (a `ctx-N` id bound) |
 | `showVsTellProvenancePathCharacters` | 500 | Parity with Creative Variations |
 | `showVsTellPovFocalCharacterCharacters` | 80 | A name, not a description |
 | `showVsTellMustSurviveCharacters` | 120 | Rides the artifact; the fixture is 76 |

@@ -62,6 +62,7 @@ export function assertShowVsTellDraftShape(value: unknown, path: string): void {
   const budget = PROMPT_BUDGETS.workshopWidgets;
   const draft = exactObject(value, path, [
     'beat',
+    'surroundingContext',
     'pov',
     'invariants',
     'channels',
@@ -73,6 +74,7 @@ export function assertShowVsTellDraftShape(value: unknown, path: string): void {
   ]);
 
   assertBeatShape(draft.beat, `${path}.beat`);
+  assertSurroundingContextShape(draft.surroundingContext, `${path}.surroundingContext`);
 
   const pov = exactObject(draft.pov, `${path}.pov`, ['mode', 'focalCharacter']);
   enumAt(pov.mode, `${path}.pov.mode`, POV_MODE_IDS);
@@ -129,6 +131,38 @@ function singleLineStringAt(
   if (LINE_BREAK.test(value as string)) {
     shapeError(path, 'a single line without line breaks');
   }
+}
+
+/** Shape of the one-or-none surrounding source; the host resolves its text later. */
+export function assertShowVsTellSourceReferencesShape(value: unknown, path: string): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  boundedArrayAt(value, path, 0, budget.showVsTellSourceReferences, 'source references');
+  arrayOf(value, path, (referenceValue, referencePath) => {
+    const reference = objectAt(referenceValue, referencePath);
+    if (reference.kind === 'active-excerpt') {
+      exactKeys(reference, referencePath, ['kind']);
+      return;
+    }
+    if (reference.kind === 'context-attachment') {
+      exactKeys(reference, referencePath, ['kind', 'attachmentId']);
+      boundedStringAt(
+        reference.attachmentId,
+        `${referencePath}.attachmentId`,
+        budget.showVsTellSourceReferenceCharacters,
+        false
+      );
+      if (!/^ctx-[1-9]\d*$/.test(reference.attachmentId as string)) {
+        shapeError(`${referencePath}.attachmentId`, 'a ctx-<n> attachment id');
+      }
+      return;
+    }
+    shapeError(`${referencePath}.kind`, 'active-excerpt | context-attachment');
+  });
+}
+
+function assertSurroundingContextShape(value: unknown, path: string): void {
+  const context = exactObject(value, path, ['sourceReferences']);
+  assertShowVsTellSourceReferencesShape(context.sourceReferences, `${path}.sourceReferences`);
 }
 
 function assertBeatShape(value: unknown, path: string): void {
@@ -281,6 +315,11 @@ export function cloneShowVsTellDraft(draft: WorkshopShowVsTellDraft): WorkshopSh
     beat: {
       text: draft.beat.text,
       provenance: { ...draft.beat.provenance }
+    },
+    surroundingContext: {
+      sourceReferences: draft.surroundingContext.sourceReferences.map(
+        (reference) => ({ ...reference })
+      )
     },
     pov: { ...draft.pov },
     invariants: { ...draft.invariants },

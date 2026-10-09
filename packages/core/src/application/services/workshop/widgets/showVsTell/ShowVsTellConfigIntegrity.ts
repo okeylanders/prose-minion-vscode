@@ -15,6 +15,7 @@ import {
   isShowVsTellDirectionShorterThanProse,
   showVsTellFlagId,
   showVsTellProseComparisonKey,
+  showVsTellSourceReferenceKey,
   showVsTellVariantId,
   showVsTellWorkupVariants
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
@@ -32,6 +33,7 @@ export function assertShowVsTellDraftIntegrity(
   path: string
 ): void {
   assertProvenanceIntegrity(draft, path);
+  assertSourceReferenceIntegrity(draft, path);
   assertPovIntegrity(draft, path);
   assertChannelsIntegrity(draft, path);
 
@@ -66,6 +68,17 @@ function assertProvenanceIntegrity(draft: WorkshopShowVsTellDraft, path: string)
     )
   ) {
     shapeError(`${path}.beat.provenance`, 'a valid 1-based inclusive line range');
+  }
+}
+
+function assertSourceReferenceIntegrity(draft: WorkshopShowVsTellDraft, path: string): void {
+  const keys = new Set<string>();
+  for (const reference of draft.surroundingContext.sourceReferences) {
+    const key = showVsTellSourceReferenceKey(reference);
+    if (keys.has(key)) {
+      shapeError(`${path}.surroundingContext.sourceReferences`, 'source references without duplicates');
+    }
+    keys.add(key);
   }
 }
 

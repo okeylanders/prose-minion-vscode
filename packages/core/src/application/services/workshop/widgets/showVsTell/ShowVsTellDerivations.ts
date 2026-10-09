@@ -7,7 +7,8 @@
 
 import type {
   WorkshopShowVsTellVariant,
-  WorkshopShowVsTellWorkup
+  WorkshopShowVsTellWorkup,
+  WorkshopWidgetSourceReference
 } from '@messages';
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
 import {
@@ -71,4 +72,11 @@ export function showVsTellPositionArtifactValue(position: NarrativeHandlingPosit
     throw new Error(`Unknown Show vs. Tell position: ${String(position)}`);
   }
   return `${descriptor.name.toLowerCase()} · ${descriptor.subtitle}`;
+}
+
+/** Identity of a surrounding-passage source, for duplicate and order checks. */
+export function showVsTellSourceReferenceKey(reference: WorkshopWidgetSourceReference): string {
+  return reference.kind === 'active-excerpt'
+    ? reference.kind
+    : `${reference.kind}:${reference.attachmentId}`;
 }

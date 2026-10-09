@@ -172,6 +172,9 @@ export interface PromptBudgets {
     creativeRecommendationFrameAllowanceCharacters: number;
     showVsTellBeatCharacters: number;
     showVsTellContextCharacters: number;
+    /** Zero to this many surrounding-passage sources; the host resolves their text at generation. */
+    showVsTellSourceReferences: number;
+    showVsTellSourceReferenceCharacters: number;
     showVsTellProvenancePathCharacters: number;
     showVsTellPovFocalCharacterCharacters: number;
     showVsTellMustSurviveCharacters: number;
@@ -364,6 +367,8 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     creativeRecommendationFrameAllowanceCharacters: 2_500,
     showVsTellBeatCharacters: 160,
     showVsTellContextCharacters: 250_000,
+    showVsTellSourceReferences: 1,
+    showVsTellSourceReferenceCharacters: 500,
     showVsTellProvenancePathCharacters: 500,
     showVsTellPovFocalCharacterCharacters: 80,
     showVsTellMustSurviveCharacters: 120,
