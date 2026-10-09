@@ -710,13 +710,21 @@ optional, so no seed repair exists. This is not a version migration and
   "never silently canon" wording has no dedicated witness. It rests on the
   prompt copy and the Slice 2 and Slice 4 reviews. Missing: a test or witness
   that names the canon rule directly.
-- [x] The payload meter matches the host's artifact projection exactly. An
-  over-ceiling draft cannot commit, and switching a variant to direction only
-  always lowers the count.
-  *Evidence:* `ShowVsTellArtifact.test.ts`, `ShowVsTellBudgets.test.ts` (fit
-  guarantee, 585 ≤ 600), `ShowVsTellCommitEligibility.test.ts`, and the
-  over-600 refusal row in `WorkshopRoomHandler.showVsTellMatrix.test.ts`; the
-  encoded-margin rule is in the PR #136 review.
+- [x] The payload meter matches the host's artifact projection exactly and
+  shows each carry's exact cost (`direction + 11` against `prose + 8`). An
+  over-ceiling draft cannot commit, and the one-direction fit guarantee
+  (585 ≤ 600) holds.
+  > **Superseded by D5 (2026-10-09):** this criterion used to read "switching
+  > a variant to direction only always lowers the count", guaranteed by the
+  > encoded-margin rule (PR #136 review). With no relative-length rejection, a
+  > direction carry can save nothing or raise the count (a multiline prose of
+  > raw length 124 / encoded length 120 with a 120-character direction goes
+  > from 600 as prose to 603 as direction, and the host's separate
+  > 600-character gate refuses it).
+  *Evidence:* `ShowVsTellArtifact.test.ts` (exact pricing, the 600 → 603
+  case), `ShowVsTellBudgets.test.ts` (fit guarantee, 585 ≤ 600),
+  `ShowVsTellCommitEligibility.test.ts`, and the over-600 refusal row in
+  `WorkshopRoomHandler.showVsTellMatrix.test.ts`.
 - [x] Commit never touches editor text. The persisted draft reopens exactly, and
   recommitting a reopened draft mints a new config, artifact, and turn.
   *Evidence:* `ShowVsTellOneShotCommit.test.ts`, `ShowVsTellPersistence.test.ts`,
