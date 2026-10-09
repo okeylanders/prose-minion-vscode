@@ -5,7 +5,9 @@
 **Verified base / merge-base:** `9ce728f483dc011f492e1243bce7d31b35cdce11`
 **Reviewed implementation/docs head:** `2c4709cc84b6b97e9193c3a7937ab705ddb1663a`
 **Additional reviewed docs-only head:** `0592cb1018acce9e58a9a58c6906cf6a4fbfabfb`
-**Scope:** 15 files · +1,344 / −19 · 6 commits
+**Independently re-reviewed fix head:** `bf55d848c5488a4fd9d8a794626e24dda51ed4e0`
+**Initial scope:** 15 files · +1,344 / −19 · 6 commits
+**Fix scope:** 2 documentation files · +40 / −14; no product code or test changes
 **Reviewed:** 2026-10-09 · **Reviewer:** Astra · **Mode:** independent source/spec and witness review, exhaustive channel-order probes, retained authoring regressions, and full deterministic verification
 
 ## Resolution ledger
@@ -14,11 +16,11 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | Minor / P3 | The new live-provider follow-up conflates response validation with the selected-artifact ceiling | Follow-up lines 12–14 and 36–37; a valid 700-character prose variant decodes, its over-budget prose artifact refuses at commit, and direction-only carry succeeds | **Open** |
+| F-01 | Minor / P3 | The new live-provider follow-up conflated response validation with the selected-artifact ceiling | Corrected in `bf55d848`; complete docs delta inspected and parser/commit witness rerun | **Addressed** |
 
-**Verdict: One minor documentation correction requested; approval pending F-01.** No runtime or architecture blocker was established. The implementation, full gates, and independent regressions pass. This finding is about the accuracy of the new quality-pass instructions, not a defect in the runtime budget enforcement.
+**Verdict: Approved for merge into `epic/conversation-widgets`.** F-01 is addressed at `bf55d848`, with no open review finding. The correction accurately separates response validation from selected-artifact fit; the initial finding was documentation-only, not a runtime enforcement defect. Approval remains subject to required checks on the final report-only branch head. This does not mark the broader unrun checks below complete or authorize a main merge/release.
 
-## F-01 — Separate generation validation from the writer-selected artifact budget
+## F-01 — Separate generation validation from the writer-selected artifact budget (addressed)
 
 **Location:** [live-provider quality-pass follow-up, lines 12–14](https://github.com/okeylanders/prose-minion-vscode/blob/2c4709cc84b6b97e9193c3a7937ab705ddb1663a/.todo/tech-debt/2026-10-09-show-vs-tell-live-provider-quality-pass.md#L12-L14), with the same distinction needed in [completion criteria, lines 36–37](https://github.com/okeylanders/prose-minion-vscode/blob/2c4709cc84b6b97e9193c3a7937ab705ddb1663a/.todo/tech-debt/2026-10-09-show-vs-tell-live-provider-quality-pass.md#L36-L37).
 
@@ -33,6 +35,8 @@ Evidence:
 
 **Requested change:** Separate parser acceptance/response-contract checks from selected-artifact fit. Record the tested kept set and carry modes, check the meter and host refusal for an over-budget selection, and check a fitting selection such as the guaranteed one-direction case. Do not describe the response parser as enforcing 600 or require all generated prose to fit at once. No runtime code change is requested.
 
+**Resolution verified:** [The fix](https://github.com/okeylanders/prose-minion-vscode/commit/bf55d848c5488a4fd9d8a794626e24dda51ed4e0) now names the 1,200-character prose limit and encoded margin, explicitly says the parser does not enforce 600, and separates response outcomes from a named kept set/carry selection. It calls for both over-budget meter/host refusal and a fitting direction-only selection, without requiring the whole generation to fit. I inspected both changed documents, confirmed product/test trees are identical to the fully reviewed implementation, and reran the independent parser-versus-commit witness successfully.
+
 ## Verified implementation and witness quality
 
 - **Narrow source change.** The only product-code delta is `ShowVsTellConfigCodec.ts:106–117`: persisted recommendation channels must be distinct and in canonical order. Enum and cardinality checks run first. This addresses the optional import-boundary observation from PR #138 without changing normal producer output or adding a migration for the unshipped arm.
@@ -46,24 +50,25 @@ Evidence:
 
 The current sprint says **Slice 6 ready for review**, and explicitly leaves three broader completion criteria open: interactive readout comprehension, a dedicated “never silently canon” witness, and the future Controller consumer. Native VS Code/browser checks and live-provider quality are expressly unrun and tracked. This review does not tick those criteria, accept a waiver, or authorize a release/main merge.
 
-The completion-note title “Sprint 05 complete” is broader than its qualified body; “Slice 6 verification and remaining checks” would be clearer. Likewise, its August inventory of 189 suites / 1,937 tests / 1 snapshot is older history, not the recorded Slice 0 baseline of **267 / 3,535 / 2** at `7031b7ee`. These are optional wording nits, separate from F-01.
+The fix also resolves both optional wording nits: the completion note is now titled “Slice 6 verification and remaining checks” and identifies the actual Slice 0 baseline of **267 suites / 3,535 tests / 2 snapshots** at `7031b7ee`.
 
 ## Verification actually run
 
-Full gates and independent probes below target **`2c4709cc84b6b97e9193c3a7937ab705ddb1663a`**. During review, **`0592cb10`** amended only the sprint's readout-test citations. I inspected that complete delta, verified the cited tests, reran the modal and architecture witness suites (**64 tests**, 7.883 seconds), and reran `git diff --check` at the amended head. Product code and test files are unchanged. Both heads precede this report-only commit. Runtime: Node **24.19.0** / npm **11.9.0**. The isolated worktree reused the prior lockfile-installed dependency tree; the lockfile is unchanged and source aliases resolve into this worktree.
+All full gates were repeated at **`bf55d848c5488a4fd9d8a794626e24dda51ed4e0`**, before this approval-report update. The initial full pass at `2c4709cc` was 296 suites / 4,190 tests / 2 snapshots in 213.216 seconds. During that review, `0592cb10` amended only readout-test citations; its complete delta was inspected and the modal/architecture witness suites passed again (64 tests, 7.883 seconds). The exhaustive channel audit and retained UI probes below ran at `2c4709cc`; product code and tests are byte-identical at the fix head. The parser-versus-commit witness was also rerun at the fix head. Runtime: Node **24.19.0** / npm **11.9.0**; unchanged lockfile-installed dependencies, isolated worktree source aliases.
 
 | Check | Result |
 | --- | --- |
-| Full `npm test -- --runInBand` | **296 suites / 4,190 tests / 2 snapshots passed**, 213.216 seconds |
+| Full `npm test -- --runInBand` | **296 suites / 4,190 tests / 2 snapshots passed**, 119.05 seconds |
 | `npm run typecheck` | Core, webview, and extension passed |
 | Full `npm run lint` | **0 errors / 1,112 warnings**, unchanged baseline |
 | `npm run build`, including `verify:bundle` | Passed; existing webpack size/performance warnings |
-| `git diff --check 9ce728f4..2c4709cc` | Passed |
+| `git diff --check 9ce728f4..bf55d848` | Passed |
 | Focused route/independence/persistence/witness suites | **5 suites / 46 tests passed**; overlap with full suite, not extra inventory |
 | Independent exhaustive channel-order audit | **2 tests passed**, 9.728 seconds; enumerated cases described above |
-| Independent parser-versus-commit budget witness | **1 test passed**, 5.826 seconds |
+| Independent parser-versus-commit budget witness | **1 test passed**, 5.826 seconds initially and 3.126 seconds at the fix head |
 | Retained independent seed-specific UI probes | **17 tests passed**, 19.664 seconds |
 | Retained independent Slice 3/4 UI/controller probes | **3 suites / 63 tests passed**, 79.616 seconds |
-| Reviewed-head GitHub CI | **Success**, [run 37978105790](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37978105790) |
+| Original reviewed-head GitHub CI | **Success**, [run 37978105790](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37978105790) |
+| Fix-head GitHub CI | **Success**, [run 37979476395](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37979476395) |
 
 Native rendering/traversal, interactive VS Code Extension Development Host behavior, and live/billable providers were **not** independently exercised. JSDOM and synthetic ports establish deterministic behavior, not visual fidelity or provider prose quality. No real manuscript, clipboard, or editor data was used; this review makes no functional edit, real-room commit, merge, or release.
