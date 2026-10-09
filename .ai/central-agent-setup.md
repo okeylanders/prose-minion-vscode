@@ -719,7 +719,7 @@ npm run test:tier1
 ```
 
 **Test Inventory** (measured 2026-10-09, Sprint 05 Slice 7):
-- 298 suites / 4,249 tests / 2 snapshots
+- 299 suites / 4,249 tests / 2 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

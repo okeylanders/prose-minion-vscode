@@ -234,7 +234,7 @@ describe('decodeShowVsTellResponse', () => {
     });
   });
 
-  describe('the direction is at least four encoded characters shorter than its prose', () => {
+  describe('direction length is bounded on its own, never relative to the prose (D5)', () => {
     const withLengths = (prose: string, direction: string): string =>
       mutated((wire) => {
         const variant = wire.groups[0].variants[0];
@@ -242,39 +242,20 @@ describe('decodeShowVsTellResponse', () => {
         variant.direction = direction;
       });
 
-    it.each([0, 1, 2, 3])('rejects a direction %i characters shorter than its prose', (margin) => {
-      const prose = 'p'.repeat(40);
-
-      expect(() => decode(withLengths(prose, 'd'.repeat(40 - margin))))
-        .toThrow(/at least 4 characters shorter than its prose/);
+    it.each([0, 1, 3, 4])('accepts a direction %i characters shorter than its prose', (margin) => {
+      expect(() => decode(withLengths('p'.repeat(40), 'd'.repeat(40 - margin)))).not.toThrow();
     });
 
-    it('accepts a direction exactly four characters shorter', () => {
-      expect(() => decode(withLengths('p'.repeat(40), 'd'.repeat(36)))).not.toThrow();
-    });
-
-    it('rejects a direction longer than its prose', () => {
+    it('accepts a direction longer than its prose, as a short told variant often has', () => {
       expect(() => decode(withLengths(
         'She waited.',
         'Hold her still at the door and let the silence do the telling.'
-      ))).toThrow(/at least 4 characters shorter than its prose/);
+      ))).not.toThrow();
     });
 
-    it('measures both sides trimmed, so padding cannot make a direction pass', () => {
-      expect(() => decode(withLengths('p'.repeat(40), `  ${'d'.repeat(37)}  `)))
-        .toThrow(/at least 4 characters shorter/);
-      expect(() => decode(withLengths(`  ${'p'.repeat(30)}  `, 'd'.repeat(27))))
-        .toThrow(/at least 4 characters shorter/);
-    });
-
-    it('measures after line-break encoding: CRLF in the prose collapses to one character', () => {
-      // Raw lengths 124 vs 120 pass a raw margin of 4, but the prose encodes to 120.
-      const prose = ['p'.repeat(24), 'p'.repeat(23), 'p'.repeat(23), 'p'.repeat(23), 'p'.repeat(23)]
-        .join('\r\n');
-
-      expect(prose.length).toBe(124);
-      expect(() => decode(withLengths(prose, 'd'.repeat(120))))
-        .toThrow(/at least 4 characters shorter than its prose/);
+    it('still rejects a direction over its own ceiling', () => {
+      expect(() => decode(withLengths('p'.repeat(40), 'd'.repeat(budget.showVsTellDirectionCharacters + 1))))
+        .toThrow(/direction/);
     });
   });
 

@@ -45,6 +45,15 @@ describe('ShowVsTellConfigIntegrity', () => {
     expect(() => assertValid(value)).not.toThrow();
   });
 
+  it('accepts a direction as long as or longer than its prose (D5: no length rule between them)', () => {
+    const value = generatedShowVsTellDraft();
+    const variant = value.workup!.groups[0].variants[0];
+    variant.prose = 'She left.';
+    variant.direction = 'keep the flat tell and let the exit carry the mood';
+
+    expect(() => assertValid(value)).not.toThrow();
+  });
+
   it.each<{ label: string; mutate: Mutation; message: RegExp }>([
     {
       label: 'a partial excerpt line range',
@@ -111,41 +120,6 @@ describe('ShowVsTellConfigIntegrity', () => {
         value.workup!.groups[3].variants[0].channels = ['observable-action', 'observable-action'];
       },
       message: /groups\[3\]\.variants\[0\]\.channels must be channels without duplicates/
-    },
-    {
-      label: 'a direction as long as its prose',
-      mutate: (value) => {
-        const variant = value.workup!.groups[0].variants[0];
-        variant.direction = 'x'.repeat(variant.prose.length);
-      },
-      message: /direction must be at least 4 characters shorter than its prose/
-    },
-    {
-      label: 'a direction longer than its prose',
-      mutate: (value) => {
-        const variant = value.workup!.groups[0].variants[0];
-        variant.prose = 'She left.';
-        variant.direction = 'keep the flat tell';
-      },
-      message: /direction must be at least 4 characters shorter than its prose/
-    },
-    {
-      label: 'a direction only three characters shorter than its prose',
-      mutate: (value) => {
-        const variant = value.workup!.groups[0].variants[0];
-        variant.prose = 'p'.repeat(40);
-        variant.direction = 'd'.repeat(37);
-      },
-      message: /direction must be at least 4 characters shorter than its prose/
-    },
-    {
-      label: 'a direction whose raw margin is four but whose CRLF prose encodes to equal length (600 → 603)',
-      mutate: (value) => {
-        const variant = value.workup!.groups[0].variants[0];
-        variant.prose = [24, 23, 23, 23, 23].map((n) => 'p'.repeat(n)).join('\r\n');
-        variant.direction = 'd'.repeat(120);
-      },
-      message: /direction must be at least 4 characters shorter than its prose/
     },
     {
       label: 'an exact normalized duplicate',

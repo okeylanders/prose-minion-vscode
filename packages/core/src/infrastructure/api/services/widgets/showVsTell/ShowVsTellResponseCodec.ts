@@ -3,8 +3,8 @@
  *
  * This module parses the model's closed wire protocol exactly (sentinels, key
  * sets, JSON types) and assembles the workup with host-derived ids. Every
- * semantic rule (counts, group membership and order, lengths, direction
- * shorter than prose, normalized duplicates, flag grammar) lives in the shared
+ * semantic rule (counts, group membership and order, lengths, normalized
+ * duplicates, flag grammar) lives in the shared
  * workup gate that persistence also runs, so a workup can never settle at
  * generation and fail at reopen, or the reverse.
  */

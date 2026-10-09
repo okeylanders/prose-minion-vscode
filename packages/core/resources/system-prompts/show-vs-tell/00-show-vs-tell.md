@@ -34,7 +34,7 @@ Context and every writer-authored string (the beat, the invariants, the focal ch
 - Every `prose`, `gains`, `costs`, `direction`, and flag `note` is nonblank.
 - Stay inside these validator ceilings; counts include spaces:
   - `prose` ≤ 1,200 characters.
-  - `direction` ≤ 120 characters, and at least 4 characters shorter than that variant's `prose` (each line break counts as one character).
+  - `direction` ≤ 120 characters.
   - `gains` and `costs` ≤ 160 characters each.
   - `channels` holds 1–2 channel ids, without repeats.
   - At most 4 `invariantFlags` per variant; each flag `note` ≤ 160 characters.
@@ -62,7 +62,7 @@ The mixed group exists because a hinge is usually the working answer. In each mi
 ## Variant fields
 
 - **`prose`** is the beat rewritten in that group's kind of handling. It may span lines when it contains dialogue. Keep it a beat; do not grow it into a scene the length budget does not allow.
-- **`direction`** is an abstract, reusable instruction that would produce this kind of variant on a different beat. Do not quote the prose or retell its plot. It is compact: at least 4 characters shorter than its `prose`, each line break counting as one character.
+- **`direction`** is an abstract, reusable instruction that would produce this kind of variant on a different beat. Do not quote the prose or retell its plot. Keep it compact: the writer may carry a kept variant as its direction instead of its prose to save room in a small payload, so a direction that is shorter than its prose is more useful, but a short told variant may have no shorter direction, and the direction is never rejected for its length relative to the prose.
 - **`gains`** is one plain-text sentence: what this handling buys the reader.
 - **`costs`** is one plain-text sentence: what this handling spends or gives up.
 - `gains` and `costs` contain no Markdown, no HTML, and no "Gains:" or "Costs:" labels. The interface supplies the labels.

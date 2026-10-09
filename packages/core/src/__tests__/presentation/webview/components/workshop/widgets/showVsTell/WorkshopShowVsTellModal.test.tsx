@@ -670,7 +670,7 @@ describe('WorkshopShowVsTellModal', () => {
       expect(meter.getAttribute('aria-valuenow')).toBe('600');
       const blocker = screen.getByRole('alert');
       expect(blocker.textContent).toBe(
-        'Over the 600-character ceiling by 40. Switch kept variants to direction only, keep fewer, or shorten the note.'
+        'Over the 600-character ceiling by 40. Carry kept variants as direction where that is shorter, keep fewer, or shorten the note.'
       );
       expect(meter.getAttribute('aria-describedby')).toBe(blocker.id);
     });
@@ -808,7 +808,7 @@ describe('WorkshopShowVsTellModal', () => {
       });
 
       expect(document.getElementById('pm-ws-svt-commit-reason')!.textContent)
-        .toBe('The commit payload is over its 600-character ceiling — switch variants to direction only, keep fewer, or shorten the note.');
+        .toBe('The commit payload is over its 600-character ceiling — carry variants as direction where that is shorter, keep fewer, or shorten the note.');
     });
 
     it('summarises the kept count in the footer', () => {

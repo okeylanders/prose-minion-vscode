@@ -60,8 +60,8 @@ export const ShowVsTellPayloadStrip: React.FC<ShowVsTellPayloadStripProps> = ({ 
               <Icon name="alert" size={12} />
               <span>
                 Over the {usage.budget.toLocaleString()}-character ceiling by{' '}
-                {(usage.characters - usage.budget).toLocaleString()}. Switch kept variants to
-                direction only, keep fewer, or shorten the note.
+                {(usage.characters - usage.budget).toLocaleString()}. Carry kept variants as
+                direction where that is shorter, keep fewer, or shorten the note.
               </span>
             </p>
           )}

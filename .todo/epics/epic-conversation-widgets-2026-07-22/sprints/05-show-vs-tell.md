@@ -198,6 +198,11 @@ the readout and changes what commits, without discarding the workup.
   As in Sprint 03, a closed parser validates counts, group membership, character
   limits, and the shorter-than-prose rule atomically, and an exact normalized
   duplicate rejects the whole workup.
+  > **Superseded by D5 (2026-10-09).** The shorter-than-prose rule rejected
+  > about half of Okey's live workups: a short told variant rarely has a
+  > shorter direction. A direction is now bounded only by its own 120-character
+  > ceiling. The meter still prices a direction-only carry honestly, so the
+  > writer sees when it does not help.
 - **The mixed group exists because it is usually the answer**, and its craft
   note says so and then says to distrust it once. The generation prompt
   requires this framing.
@@ -345,7 +350,7 @@ the readout and changes what commits, without discarding the workup.
    tradeoff line, the deterministic seven-dimension readout, and the Controller
    vocabulary line.
 3. One cancellable, typed generation with a closed four-group response schema,
-   atomic validation (count, groups, lengths, direction-shorter-than-prose,
+   atomic validation (count, groups, lengths, ~~direction-shorter-than-prose~~ (dropped by D5),
    exact duplicates, flag grammar), progress and failure states, and
    stale-result correlation.
 4. Grouped workup cards with gains/costs notes and word counts, multi-select
@@ -387,7 +392,7 @@ same commit.
 | `showVsTellVariantsMinimum` / `showVsTellVariants` | 4 / 8 | Confirmed; four groups always present |
 | `showVsTellChannelsPerVariant` | 2 (minimum 1) | The fixture's richest variant is `summary + action` |
 | `showVsTellProseCharacters` | 1,200 | Covers the `+1 paragraph` budget |
-| `showVsTellDirectionCharacters` | 120 | Also at least 4 encoded characters shorter than its prose, so direction-only carry always lowers the count; the fixture's longest is about 60 |
+| `showVsTellDirectionCharacters` | 120 | Bounded on its own since D5 (the earlier 4-character margin against the prose is gone); the fixture's longest is about 60 |
 | `showVsTellGainsCharacters` / `showVsTellCostsCharacters` | 160 / 160 | One sentence each |
 | `showVsTellFlagsPerVariant` / `showVsTellFlagNoteCharacters` | 4 / 160 | Bounds the uncounted warning lines |
 | `showVsTellOutputTokens` | 16,000 | Eight variants is about 13k characters of payload, plus headroom |
@@ -437,7 +442,7 @@ main ─────────────────────────
 |---|---|---|---|
 | 0 | ✅ Contract frozen; kickoff decisions recorded; design reconciliation accepted; Sprint 04 adopts the shared vocabulary; baseline recorded. | Opus | — |
 | 1 | Contracts, budgets (with the fit-guarantee test), feature-local draft codec, lifecycle registry arm, and integrity. The shared `narrativeHandlingVocabulary.ts` and the feature-owned continuum and readout constants, with tests pinning the two non-monotonic readout rows. | **Opus** | — |
-| 2 | **2a — prompt bundle** (`system-prompts/show-vs-tell/`). **2b — strict four-group response codec, cancellation, and stale-result correlation.** | 2a **Opus**; 2b **Sonnet** | Correlation tests; the direction-shorter-than-prose rule; group-membership rejection |
+| 2 | **2a — prompt bundle** (`system-prompts/show-vs-tell/`). **2b — strict four-group response codec, cancellation, and stale-result correlation.** | 2a **Opus**; 2b **Sonnet** | Correlation tests; ~~the direction-shorter-than-prose rule~~ (dropped by D5); group-membership rejection |
 | 3 | Intake, authoring controller, continuum, readout, POV field, channels, budget, grouped cards, carry, note, and payload meter. **The catalog goes live here, intentionally, for hands-on testing.** Commit stays disabled until Slice 4 wires it, and the epic does not merge into `main` until Slice 4 has landed. | **Sonnet** | The meter imports the host projection; moving the position does not invalidate the workup, but every other generation input does; no score, rank, or good/bad colour anywhere |
 | 4 | Commit through the shared Sprint 03 coordinator; host re-check of the 600 ceiling; `widget:show-vs-tell` registered with the prompt-delimiter neutralizer; chip, exact reopen, and clone-and-recommit. | **Sonnet** | Host ceiling re-check; neutralizer registration; nothing touches the editor |
 | 5 | Persona recommendation codec and prefill (Host and Guest), the Host-preparation door, and neutral browser copy. | **Sonnet** (mechanics); **Opus** writes the recommendation prompt's "diagnosis, not verdict" copy | Seed is input-only; opening never auto-generates; pronouns are derived |
@@ -584,8 +589,9 @@ The three questions raised in the [Slice 1 handoff](../../../../.memory-bank/202
 
 ### Design edits (writer decisions, 2026-10-09)
 
-After hands-on testing of Slices 1–6, Okey revised four decisions. They
-supersede the earlier text where marked above and landed as **Slice 7**
+After hands-on testing of Slices 1–6, Okey revised four decisions, then a
+fifth during Slice 7 review. They supersede the earlier text where marked
+above and landed as **Slice 7**
 (branch `epic/conversation-widgets-sprint-05-slice-7-design-edits`, cut from
 the Slice 6 merge `16320d6`).
 
@@ -643,10 +649,20 @@ the Slice 6 merge `16320d6`).
   pinned by a prompt-sync test). `SHOW_VS_TELL_DEFAULTS.channels` is
   unchanged. Persisted channels stay unique and in canonical order, and the
   seed's optional channels keep their meaning: absent opens on the defaults.
+- **D5: no direction-versus-prose length rule.** Live generation failed about
+  half the time with *"direction must be at least 4 characters shorter than
+  its prose"*: a short told variant (`She left.`) almost never has a shorter
+  reusable direction. The rule is gone from the response codec, the draft
+  integrity gate, and the prompt; `direction` is bounded only by its own
+  120-character ceiling. The artifact meter still counts a direction-only
+  carry exactly (`direction + 11` against `prose + 8`), so a carry that does
+  not save room shows as such, and the over-ceiling copy now says "carry
+  variants as direction where that is shorter". Old data is valid under D5
+  because it only relaxes a rule.
 
 **Unchanged:** Q2 (multi-line values, `↵`), Q3 (POV is plain writer input),
-the encoded direction margin of 4, the pronoun-free seed banner, the Slice 4
-commit rail, and the host ceiling re-check.
+the pronoun-free seed banner, the Slice 4 commit rail, and the host ceiling
+re-check.
 
 Rendered from the production webview bundle at Slice 7 (headless Chromium,
 zero channels, blank must survive, excerpt copied into the passage, two of
@@ -656,7 +672,7 @@ focus): [assets/05-show-vs-tell-slice7-sheet.png](assets/05-show-vs-tell-slice7-
 **Saved-session safety.** Okey's live sessions hold drafts and seeds in the
 old shape (no `writerText`, at most one reference, must survive required, at
 least one channel). D3 and D4 only relax rules, so old data is valid under
-them. D2 adds a required draft field, so per
+them, and so does D5. D2 adds a required draft field, so per
 [ADR 2026-07-30](../../../../docs/adr/2026-07-30-workshop-session-codec-evolution.md)
 the Show vs. Tell codec gained the narrowly named checkpoint repair
 `defaulted-widget-show-vs-tell-surrounding-passage-text`, which fills
@@ -681,10 +697,11 @@ optional, so no seed repair exists. This is not a version migration and
   "a writer can understand the tradeoffs" half, which needs the interactive VS
   Code smoke test (see Open follow-ups).
 - [x] A generated workup always spans all four groups. Every variant shows its
-  gains/costs note, word count, and a direction shorter than its prose.
+  gains/costs note, word count, and a direction ~~shorter than its prose~~
+  (length rule dropped by D5; bounded by its own ceiling).
   *Evidence:* `infrastructure/api/services/widgets/showVsTell/ShowVsTellResponseCodec.test.ts`
-  (group membership and atomic validation); direction-shorter rule encoded with
-  margin 4 (PR #136 review); `WorkshopShowVsTellModal.test.tsx` (card fields).
+  (group membership and atomic validation, and the D5 acceptance cases);
+  `WorkshopShowVsTellModal.test.tsx` (card fields).
 - [ ] All generated and committed variants preserve the declared constraints or
   show a visible warning the writer can weigh. No variation is silently treated
   as canon, and no model warning vetoes the writer's choice.

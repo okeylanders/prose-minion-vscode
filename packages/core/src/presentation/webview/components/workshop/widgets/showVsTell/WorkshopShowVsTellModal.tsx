@@ -118,7 +118,7 @@ const COMMIT_BLOCKER_COPY: Record<ShowVsTellCommitBlocker, string> = {
   'artifact-compilation-failed':
     'The kept variants no longer match this workup. Regenerate before committing.',
   'over-artifact-budget':
-    'The commit payload is over its 600-character ceiling — switch variants to direction only, keep fewer, or shorten the note.'
+    'The commit payload is over its 600-character ceiling — carry variants as direction where that is shorter, keep fewer, or shorten the note.'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

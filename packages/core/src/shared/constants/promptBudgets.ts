@@ -191,7 +191,6 @@ export interface PromptBudgets {
     /** Maximum channels one variant uses; every variant uses at least one. */
     showVsTellChannelsPerVariant: number;
     showVsTellProseCharacters: number;
-    /** Also shorter than its own prose by the artifact's encoded direction margin. */
     showVsTellDirectionCharacters: number;
     showVsTellGainsCharacters: number;
     showVsTellCostsCharacters: number;

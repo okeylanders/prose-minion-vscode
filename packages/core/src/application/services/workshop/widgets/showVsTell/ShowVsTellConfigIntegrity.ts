@@ -13,8 +13,6 @@ import {
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 import {
   compareShowVsTellSourceReferences,
-  isShowVsTellDirectionShortEnough,
-  SHOW_VS_TELL_DIRECTION_MARGIN,
   showVsTellFlagId,
   showVsTellProseComparisonKey,
   showVsTellSourceReferenceKey,
@@ -163,12 +161,9 @@ function assertVariantIntegrity(
   if (new Set(variant.channels).size !== variant.channels.length) {
     shapeError(`${path}.channels`, 'channels without duplicates');
   }
-  if (!isShowVsTellDirectionShortEnough(variant.direction, variant.prose)) {
-    shapeError(
-      `${path}.direction`,
-      `at least ${SHOW_VS_TELL_DIRECTION_MARGIN} characters shorter than its prose, as the artifact counts them`
-    );
-  }
+  // No direction-versus-prose length rule (writer decision D5, 2026-10-09):
+  // a told variant can be shorter than any honest direction for it, and the
+  // meter already shows the real cost of either carry.
 
   for (const [flagIndex, flag] of variant.invariantFlags.entries()) {
     const flagPath = `${path}.invariantFlags[${flagIndex}]`;

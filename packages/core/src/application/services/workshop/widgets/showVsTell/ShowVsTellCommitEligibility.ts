@@ -38,7 +38,7 @@ export type ShowVsTellCommitSource = ShowVsTellArtifactSource;
 export function showVsTellArtifactOverBudgetMessage(): string {
   const budget = PROMPT_BUDGETS.workshopWidgets.showVsTellArtifactCharacters;
   return `The commit payload is over its ${budget.toLocaleString()}-character ceiling — `
-    + 'switch variants to direction only, keep fewer, or shorten the note.';
+    + 'carry variants as direction where that is shorter, keep fewer, or shorten the note.';
 }
 
 /**

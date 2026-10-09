@@ -140,7 +140,7 @@ export interface WorkshopShowVsTellVariant {
   gains: string;
   /** Plain text; the UI supplies the bold label. */
   costs: string;
-  /** Abstract, reusable instruction, strictly shorter than `prose`. */
+  /** Abstract, reusable instruction; bounded on its own, never relative to `prose` (D5). */
   direction: string;
   invariantFlags: WorkshopShowVsTellInvariantFlag[];
 }

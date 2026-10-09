@@ -610,7 +610,7 @@ describe('WorkshopWidgetHostHandler', () => {
         payload: expect.objectContaining({
           widgetId: 'show-vs-tell',
           ok: false,
-          message: expect.stringMatching(/600-character ceiling.*direction only.*keep fewer.*shorten the note/)
+          message: expect.stringMatching(/600-character ceiling.*as direction where that is shorter.*keep fewer.*shorten the note/)
         })
       }));
     });

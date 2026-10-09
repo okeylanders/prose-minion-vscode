@@ -173,6 +173,27 @@ Report: `docs/pr-reviews/pr-140-show-vs-tell-slice-7-review.md`. One finding.
     asynchronous intake. Controller-level tests cover the same rules without
     the UI, and a `UIHandler` unit test pins the echo and its absence.
 
+## D5: the direction-versus-prose rule is gone (2026-10-09)
+
+Okey reported during Slice 7 review that about half of his live generations
+failed with *"direction must be at least 4 characters shorter than its prose,
+as the artifact counts them"*. The rule was sound for the meter (a
+direction-only carry always lowered the count) but wrong for the model: a
+short told variant such as `She left.` almost never has a shorter reusable
+direction, and one bad variant rejected the whole four-group workup.
+
+- Removed `SHOW_VS_TELL_DIRECTION_MARGIN` and `isShowVsTellDirectionShortEnough`
+  from `ShowVsTellDerivations`; the response codec and the draft integrity
+  gate no longer compare `direction` to `prose`. `direction` keeps its own
+  120-character ceiling (`PROMPT_BUDGETS.workshopWidgets.showVsTellDirectionCharacters`).
+- The prompt now declares only `direction ≤ 120 characters` and teaches
+  compactness as guidance, never as a rejection; the prompt-sync pin follows.
+- The artifact meter is unchanged and still exact (`direction + 11` versus
+  `prose + 8`), so a carry that saves nothing shows as such. Tests pin the
+  honest pricing in place of the old margin proofs. The over-ceiling copy now
+  reads "carry variants as direction where that is shorter".
+- Relaxes a rule only, so no checkpoint normalization and no schema change.
+
 ## Open follow-ups
 
 - The live-provider quality pass and the interactive smoke test filed at Slice
