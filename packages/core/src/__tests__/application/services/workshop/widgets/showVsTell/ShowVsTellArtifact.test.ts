@@ -39,6 +39,22 @@ describe('buildShowVsTellArtifact', () => {
     expect(buildShowVsTellArtifact(reversed)).toBe(buildShowVsTellArtifact(draft));
   });
 
+  it('omits must survive when blank (D3), leaving the frozen line keys and order intact', () => {
+    const body = buildShowVsTellArtifact({
+      ...generatedShowVsTellDraft(),
+      invariants: { mustSurvive: ' \n ', mustNotChange: 'No flashback.' }
+    });
+    const lines = body.split('\n');
+
+    expect(lines.some((line) => line.startsWith('must survive:'))).toBe(false);
+    expect(lines.slice(0, 3)).toEqual([
+      'beat: "She hadn’t trusted him since the funeral."',
+      'position: hinge · tell the bridge, show the fulcrum',
+      'must not change: No flashback.'
+    ]);
+    expect(body.length).toBeLessThan(buildShowVsTellArtifact(generatedShowVsTellDraft()).length);
+  });
+
   it('omits must not change and note when blank', () => {
     const draft = draftWith({
       invariants: { mustSurvive: 'the distrust', mustNotChange: '   ' },

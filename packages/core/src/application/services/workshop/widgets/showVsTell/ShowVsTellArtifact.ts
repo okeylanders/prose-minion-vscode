@@ -8,13 +8,14 @@
  * no workup-id factory (which pulls in `node:crypto`).
  *
  * What it counts is frozen by the sprint: the `beat:`, `position:`,
- * `must survive:`, optional `must not change:`, one `keep:` or `direction:`
- * line per kept variant in workup order, and an optional `note:`, each with
- * its key, joined by `\n`. It excludes the host-minted `<thread-artifact>`
+ * optional `must survive:` (D3: omitted when blank, like `must not change:`),
+ * optional `must not change:`, one `keep:` or `direction:` line per kept
+ * variant in workup order, and an optional `note:`, each with its key, joined
+ * by `\n`. It excludes the host-minted `<thread-artifact>`
  * envelope and the host-appended invariant warning lines (the writer cannot
  * shorten a model's warning, so it must never be why commit is blocked), and it
  * never carries unkept variants, craft notes, the readout, channels, length
- * budget, POV, or the surrounding passage.
+ * budget, POV, the surrounding passage, or the context sources.
  */
 
 import {
@@ -47,9 +48,13 @@ export function buildShowVsTellArtifact(draft: ShowVsTellArtifactSource): string
   const keys = SHOW_VS_TELL_ARTIFACT_LINE_KEYS;
   const lines = [
     line(keys.beat, `"${encodeShowVsTellArtifactValue(draft.beat.text)}"`),
-    line(keys.position, showVsTellPositionArtifactValue(draft.position)),
-    line(keys.mustSurvive, encodeShowVsTellArtifactValue(draft.invariants.mustSurvive))
+    line(keys.position, showVsTellPositionArtifactValue(draft.position))
   ];
+  // Blank declares no constraint, so neither invariant line is written for it.
+  const mustSurvive = encodeShowVsTellArtifactValue(draft.invariants.mustSurvive);
+  if (mustSurvive.length > 0) {
+    lines.push(line(keys.mustSurvive, mustSurvive));
+  }
   const mustNotChange = encodeShowVsTellArtifactValue(draft.invariants.mustNotChange);
   if (mustNotChange.length > 0) {
     lines.push(line(keys.mustNotChange, mustNotChange));

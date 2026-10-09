@@ -612,7 +612,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/types/messages/ui.ts',
     reason: 'closed host selection-target wire union',
-    allowedToken: /(?:workshop_creative_variations_subject|workshop_show_vs_tell_beat)/
+    allowedToken: /(?:workshop_creative_variations_subject|workshop_show_vs_tell_(?:beat|passage))/
   },
   {
     file: 'shared/types/messages/streaming.ts',

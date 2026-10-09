@@ -83,7 +83,7 @@ describe('useShowVsTellAuthoring recommendation seed', () => {
         text: 'She hadn’t trusted him since the funeral.',
         provenance: { kind: 'persona-prefill', personaId: 'jill', editedByWriter: false }
       },
-      surroundingContext: { sourceReferences: [] },
+      surroundingContext: { writerText: '', sourceReferences: [] },
       pov: { ...SHOW_VS_TELL_DEFAULTS.pov },
       invariants: { mustSurvive: 'The distrust is old and funeral-rooted.', mustNotChange: '' },
       channels: [...SHOW_VS_TELL_DEFAULTS.channels],

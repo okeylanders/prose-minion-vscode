@@ -180,7 +180,8 @@ describe('prompt budgets', () => {
       creativeRecommendationFrameAllowanceCharacters: 2_500,
       showVsTellBeatCharacters: 160,
       showVsTellContextCharacters: 250_000,
-      showVsTellSourceReferences: 1,
+      showVsTellRecommendationContextCharacters: 20_000,
+      showVsTellSourceReferences: 8,
       showVsTellSourceReferenceCharacters: 500,
       showVsTellProvenancePathCharacters: 500,
       showVsTellPovFocalCharacterCharacters: 80,
@@ -249,11 +250,15 @@ describe('prompt budgets', () => {
       lexicalPreviewOutputTokens: 5_000,
       lexicalDirectiveCharacters: 16_000
     });
+    // The aggregate is the largest single frame (Creative Variations). Show vs.
+    // Tell's own frame grew to 25,700 at Slice 7 (D2) and stays under it.
     expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(51_500);
   });
 
   it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(12_523);
+    // 12,523 → 13,098 at Slice 7: the optional surrounding-context field, the
+    // multi-reference rule, and the optional must-survive wording.
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(13_098);
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {

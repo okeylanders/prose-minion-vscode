@@ -38,7 +38,7 @@ const message = (
     widgetId: 'show-vs-tell',
     token: 'tok-1',
     beat: { text: 'She hadn’t trusted him since the funeral.', provenance: { kind: 'pasted' } },
-    surroundingContext: { sourceReferences: [] },
+    surroundingContext: { writerText: '', sourceReferences: [] },
     pov: { mode: 'close-third', focalCharacter: 'Nora' },
     invariants: { ...SVT_EXAMPLE_INVARIANTS },
     channels: ['observable-action', 'sensory-evidence'],
@@ -222,7 +222,7 @@ describe('WorkshopShowVsTellHandler', () => {
       );
 
       await handler.handleGenerate(message({
-        surroundingContext: { sourceReferences: [{ kind: 'active-excerpt' }] }
+        surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
       }));
 
       expect(generate).toHaveBeenCalledTimes(1);
@@ -244,13 +244,61 @@ describe('WorkshopShowVsTellHandler', () => {
     });
   });
 
-  describe('surrounding passage (Q1): resolved on the host, from the reference only', () => {
+  describe('surrounding passage (D2): writer text travels as a named field; sources resolve on the host', () => {
+    it('resolves several references in order and hands the writer text through untouched', async () => {
+      const { handler, session, generate } = build();
+      session.setExcerpt({ text: 'Current excerpt body.', source: { kind: 'manual' } });
+      session.addContextAttachment({
+        kind: 'text', origin: 'writer', label: 'Character notes', words: 3, content: 'Nora hides fear.'
+      });
+      session.addContextAttachment({
+        kind: 'text', origin: 'writer', label: 'Kitchen', words: 4, content: 'Lilies on the sill.'
+      });
+
+      await handler.handleGenerate(message({
+        surroundingContext: {
+          writerText: 'He set the mug down.',
+          sourceReferences: [
+            { kind: 'active-excerpt' },
+            { kind: 'context-attachment', attachmentId: 'ctx-1' },
+            { kind: 'context-attachment', attachmentId: 'ctx-2' }
+          ]
+        }
+      }));
+
+      expect(generate).toHaveBeenCalledTimes(1);
+      const request = generate.mock.calls[0][0];
+      expect(request.surroundingContext.writerText).toBe('He set the mug down.');
+      expect(request.sourceMaterials.map((source: { label: string }) => source.label))
+        .toEqual(['Active excerpt v1', 'Character notes', 'Kitchen']);
+    });
+
+    it('blocks the whole attempt, with no spend, when one of several references is unavailable', async () => {
+      const { handler, session, generate, results } = build();
+      session.setExcerpt({ text: 'Current excerpt body.', source: { kind: 'manual' } });
+
+      await handler.handleGenerate(message({
+        surroundingContext: {
+          writerText: 'He set the mug down.',
+          sourceReferences: [
+            { kind: 'active-excerpt' },
+            { kind: 'context-attachment', attachmentId: 'ctx-4' }
+          ]
+        }
+      }));
+
+      expect(generate).not.toHaveBeenCalled();
+      expect(results()).toEqual([expect.objectContaining({
+        ok: false, error: expect.stringMatching(/ctx-4.*no longer available/i)
+      })]);
+    });
+
     it('resolves the active excerpt and a context attachment from current session truth', async () => {
       const { handler, session, generate } = build();
       session.setExcerpt({ text: 'Current excerpt body.', source: { kind: 'manual' } });
 
       await handler.handleGenerate(message({
-        surroundingContext: { sourceReferences: [{ kind: 'active-excerpt' }] }
+        surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
       }));
       session.addContextAttachment({
         kind: 'text', origin: 'writer', label: 'Character notes', words: 3, content: 'Nora hides fear.'
@@ -258,6 +306,7 @@ describe('WorkshopShowVsTellHandler', () => {
       await handler.handleGenerate(message({
         token: 'tok-2',
         surroundingContext: {
+          writerText: '',
           sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-1' }]
         }
       }));
@@ -274,18 +323,19 @@ describe('WorkshopShowVsTellHandler', () => {
       }]);
     });
 
-    it('never forwards passage text a webview smuggles in beside the reference', async () => {
+    it('never forwards text under any key but the named writer text', async () => {
       const { handler, generate } = build();
       const payload = message().payload as unknown as Record<string, unknown>;
-      payload.surroundingContext = { sourceReferences: [], writerText: 'Webview-supplied passage.' };
-      payload.passage = 'Webview-supplied passage.';
+      payload.surroundingContext = { writerText: '', sourceReferences: [] };
+      payload.passage = 'Smuggled under another key.';
+      payload.resolvedSources = [{ content: 'Smuggled under another key.' }];
 
       await handler.handleGenerate({ ...message(), payload } as never);
 
       expect(generate).toHaveBeenCalledTimes(1);
       const request = generate.mock.calls[0][0];
       expect(JSON.stringify({ ...request, signal: undefined, onToken: undefined }))
-        .not.toContain('Webview-supplied passage.');
+        .not.toContain('Smuggled under another key.');
       expect(request.sourceMaterials).toEqual([]);
     });
 
@@ -293,7 +343,7 @@ describe('WorkshopShowVsTellHandler', () => {
       const { handler, generate, results } = build();
 
       await handler.handleGenerate(message({
-        surroundingContext: { sourceReferences: [{ kind: 'active-excerpt' }] }
+        surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
       }));
 
       expect(generate).not.toHaveBeenCalled();
@@ -306,7 +356,7 @@ describe('WorkshopShowVsTellHandler', () => {
       const { handler, generate, results, progress } = build();
 
       await handler.handleGenerate(message({
-        surroundingContext: { sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-9' }] }
+        surroundingContext: { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-9' }] }
       }));
 
       expect(generate).not.toHaveBeenCalled();
@@ -320,11 +370,11 @@ describe('WorkshopShowVsTellHandler', () => {
     it('rejects an invalid request without calling the service', async () => {
       const { handler, generate, results } = build();
 
-      await handler.handleGenerate(message({ invariants: { mustSurvive: '', mustNotChange: '' } }));
+      await handler.handleGenerate(message({ channels: ['interiority', 'observable-action'] }));
 
       expect(generate).not.toHaveBeenCalled();
       expect(results()[0]).toEqual(expect.objectContaining({
-        ok: false, error: expect.stringMatching(/mustSurvive/)
+        ok: false, error: expect.stringMatching(/fixed channel order/)
       }));
     });
   });

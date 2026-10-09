@@ -79,22 +79,70 @@ describe('ShowVsTellConfigCodec', () => {
     });
   });
 
-  describe('surrounding-context source reference (Q1)', () => {
-    it('round-trips zero and one reference, and never stores passage text', () => {
+  describe('surrounding passage and context sources (D2)', () => {
+    it('round-trips zero to eight canonical references beside the writer text', () => {
       for (const sourceReferences of [
         [],
         [{ kind: 'active-excerpt' }],
-        [{ kind: 'context-attachment', attachmentId: 'ctx-3' }]
+        [{ kind: 'context-attachment', attachmentId: 'ctx-3' }],
+        [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-2' }],
+        [
+          { kind: 'context-attachment', attachmentId: 'ctx-2' },
+          { kind: 'context-attachment', attachmentId: 'ctx-10' }
+        ],
+        Array.from({ length: budget.showVsTellSourceReferences }, (_, index) => (
+          { kind: 'context-attachment', attachmentId: `ctx-${index + 1}` }
+        ))
       ] as WorkshopShowVsTellDraft['surroundingContext']['sourceReferences'][]) {
         const value = mutated((draft) => {
-          draft.surroundingContext.sourceReferences = sourceReferences;
+          draft.surroundingContext = {
+            writerText: 'He set the mug down.\nShe did not look up.',
+            sourceReferences
+          };
         });
         const decoded = JSON.parse(JSON.stringify(value)) as WorkshopShowVsTellDraft;
 
         expect(() => assertValid(decoded)).not.toThrow();
         expect(cloneShowVsTellDraft(decoded).surroundingContext).toEqual(value.surroundingContext);
-        expect(Object.keys(decoded.surroundingContext)).toEqual(['sourceReferences']);
+        expect(Object.keys(decoded.surroundingContext)).toEqual(['writerText', 'sourceReferences']);
       }
+    });
+
+    it('accepts writer text at its budget and rejects one character more', () => {
+      const atBudget = mutated((draft) => {
+        draft.surroundingContext.writerText = 'p'.repeat(budget.showVsTellContextCharacters);
+      });
+      expect(() => assertValid(atBudget)).not.toThrow();
+
+      const over = mutated((draft) => {
+        draft.surroundingContext.writerText = 'p'.repeat(budget.showVsTellContextCharacters + 1);
+      });
+      expect(() => assertShowVsTellDraftShape(over, 'draft'))
+        .toThrow(/writerText must be a string of at most 250000 characters/);
+    });
+
+    it.each([
+      ['a duplicate reference', [{ kind: 'active-excerpt' }, { kind: 'active-excerpt' }], /without duplicates/],
+      ['a duplicate attachment', [
+        { kind: 'context-attachment', attachmentId: 'ctx-1' },
+        { kind: 'context-attachment', attachmentId: 'ctx-1' }
+      ], /without duplicates/],
+      ['the excerpt after an attachment', [
+        { kind: 'context-attachment', attachmentId: 'ctx-1' },
+        { kind: 'active-excerpt' }
+      ], /canonical order/],
+      ['attachments out of ordinal order', [
+        { kind: 'context-attachment', attachmentId: 'ctx-10' },
+        { kind: 'context-attachment', attachmentId: 'ctx-2' }
+      ], /canonical order/]
+    ])('rejects %s at the integrity gate', (_label, references, message) => {
+      const value = mutated((draft) => {
+        draft.surroundingContext.sourceReferences =
+          references as WorkshopShowVsTellDraft['surroundingContext']['sourceReferences'];
+      });
+
+      expect(() => assertShowVsTellDraftShape(value, 'draft')).not.toThrow();
+      expect(() => assertShowVsTellDraftIntegrity(value, 'draft')).toThrow(message);
     });
 
     it('clones references so a copy cannot alias the draft', () => {
@@ -110,7 +158,9 @@ describe('ShowVsTellConfigCodec', () => {
     });
 
     it.each([
-      ['two references', [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-1' }]],
+      ['nine references', Array.from({ length: 9 }, (_, index) => (
+        { kind: 'context-attachment', attachmentId: `ctx-${index + 1}` }
+      ))],
       ['an unknown kind', [{ kind: 'pasted-text' }]],
       ['a malformed ctx id', [{ kind: 'context-attachment', attachmentId: 'ctx-0' }]],
       ['a non-ctx id', [{ kind: 'context-attachment', attachmentId: 'attachment-1' }]],
@@ -126,19 +176,61 @@ describe('ShowVsTellConfigCodec', () => {
       expect(() => assertShowVsTellDraftShape(value, 'draft')).toThrow();
     });
 
-    it('rejects a missing context object or passage text beside the references', () => {
+    it('rejects a missing context object, a missing writer text, or resolved text beside the references', () => {
       const missing = generatedShowVsTellDraft() as unknown as Record<string, unknown>;
       delete missing.surroundingContext;
       expect(() => assertShowVsTellDraftShape(missing, 'draft')).toThrow();
 
-      const withText = generatedShowVsTellDraft() as unknown as Record<string, unknown>;
-      withText.surroundingContext = { sourceReferences: [], writerText: 'passage' };
-      expect(() => assertShowVsTellDraftShape(withText, 'draft')).toThrow();
+      const withoutText = generatedShowVsTellDraft() as unknown as Record<string, unknown>;
+      withoutText.surroundingContext = { sourceReferences: [] };
+      expect(() => assertShowVsTellDraftShape(withoutText, 'draft')).toThrow(/writerText/);
+
+      const withResolved = generatedShowVsTellDraft() as unknown as Record<string, unknown>;
+      withResolved.surroundingContext = { writerText: '', sourceReferences: [], resolvedSources: [] };
+      expect(() => assertShowVsTellDraftShape(withResolved, 'draft')).toThrow();
     });
 
-    it('stays within the one-reference budget', () => {
-      expect(budget.showVsTellSourceReferences).toBe(1);
+    it('matches Creative Variations\u2019 reference budgets', () => {
+      expect(budget.showVsTellSourceReferences).toBe(budget.creativeSourceReferences);
+      expect(budget.showVsTellSourceReferences).toBe(8);
       expect(budget.showVsTellSourceReferenceCharacters).toBe(500);
+      expect(budget.showVsTellContextCharacters).toBe(budget.creativeContextCharacters);
+    });
+  });
+
+  describe('a draft saved before Slice 7 (checkpoint repair, ADR 2026-07-30)', () => {
+    const oldShape = (): Record<string, unknown> => {
+      const draft = generatedShowVsTellDraft() as unknown as Record<string, unknown>;
+      draft.surroundingContext = { sourceReferences: [{ kind: 'active-excerpt' }] };
+      return draft;
+    };
+
+    it('fills a blank passage text, names the repair, and hands back the current shape', () => {
+      const recovered = normalizeShowVsTellDraftForHydration(oldShape());
+
+      expect(recovered.normalizations).toEqual(['defaulted-widget-show-vs-tell-surrounding-passage-text']);
+      expect(recovered.notices).toEqual([]);
+      expect(recovered.draft).toEqual({
+        ...generatedShowVsTellDraft(),
+        surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
+      });
+      expect(() => assertValid(recovered.draft)).not.toThrow();
+    });
+
+    it('is deterministic and repairs nothing on a current-shape draft', () => {
+      expect(normalizeShowVsTellDraftForHydration(generatedShowVsTellDraft()).normalizations).toEqual([]);
+      expect(normalizeShowVsTellDraftForHydration(ungeneratedShowVsTellDraft()).normalizations).toEqual([]);
+    });
+
+    it('accepts the old shape only at the checkpoint boundary, never the strict one', () => {
+      expect(() => assertShowVsTellDraftCheckpointShape(oldShape(), 'draft')).not.toThrow();
+      expect(() => assertShowVsTellDraftShape(oldShape(), 'draft')).toThrow(/writerText/);
+    });
+
+    it('still rejects any other drift at the checkpoint boundary', () => {
+      const drifted = oldShape();
+      (drifted.surroundingContext as Record<string, unknown>).passage = 'smuggled';
+      expect(() => normalizeShowVsTellDraftForHydration(drifted)).toThrow();
     });
   });
 
@@ -231,11 +323,6 @@ describe('ShowVsTellConfigCodec', () => {
       message: /focalCharacter must be a single line/
     },
     {
-      label: 'a blank must survive',
-      mutate: (value) => { value.invariants.mustSurvive = ''; },
-      message: /mustSurvive must be a non-empty string/
-    },
-    {
       label: 'an oversized must survive',
       mutate: (value) => {
         value.invariants.mustSurvive = 's'.repeat(budget.showVsTellMustSurviveCharacters + 1);
@@ -248,11 +335,6 @@ describe('ShowVsTellConfigCodec', () => {
         value.invariants.mustNotChange = 'n'.repeat(budget.showVsTellMustNotChangeCharacters + 1);
       },
       message: /mustNotChange must be a string of at most 80 characters/
-    },
-    {
-      label: 'zero channels',
-      mutate: (value) => { value.channels = []; },
-      message: /channels must be an array of 1–5 channels/
     },
     {
       label: 'an unknown channel',
@@ -445,6 +527,36 @@ describe('ShowVsTellConfigCodec', () => {
 
     expect(() => assertShowVsTellDraftShape(value, 'draft')).toThrow(message);
     expect(() => normalizeShowVsTellDraftForHydration(value)).toThrow(message);
+  });
+
+  it('accepts a blank must survive: blank declares no constraint (D3)', () => {
+    const value = mutated((draft) => {
+      draft.invariants.mustSurvive = '';
+      // The fixture's variant 3 flags must survive; a blank invariant cannot carry a flag.
+      draft.workup!.groups[1].variants[0].invariantFlags = [];
+    });
+    expect(() => assertValid(value)).not.toThrow();
+    // A flag against the blank invariant is still refused by the integrity gate.
+    const flagged = mutated((draft) => {
+      draft.invariants.mustSurvive = '';
+      draft.workup!.groups[1].variants[0].invariantFlags = [{
+        id: fixtureFlagId(3, 1),
+        invariantField: 'must-survive',
+        kind: 'advisory-risk',
+        note: 'The guard may read as fear.'
+      }];
+    });
+    expect(() => assertShowVsTellDraftIntegrity(flagged, 'draft'))
+      .toThrow(/writer-declared nonblank invariant field/);
+  });
+
+  it('accepts zero channels: no emphasis (D4)', () => {
+    const value = mutated((draft) => { draft.channels = []; });
+    expect(() => assertValid(value)).not.toThrow();
+    expect(() => assertShowVsTellDraftShape(
+      mutated((draft) => { draft.channels = Array(6).fill('interiority') as never; }),
+      'draft'
+    )).toThrow(/channels must be an array of at most 5 channels/);
   });
 
   it('mints fresh injectable host identities and recognizes only their exact form', () => {

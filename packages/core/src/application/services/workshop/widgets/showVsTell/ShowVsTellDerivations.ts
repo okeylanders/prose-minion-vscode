@@ -125,11 +125,44 @@ export function showVsTellWordCount(prose: string): number {
   return trimmed.length === 0 ? 0 : trimmed.split(/\s+/u).length;
 }
 
-/** Identity of a surrounding-passage source, for duplicate and order checks. */
+/** Identity of a context source, for duplicate and order checks. */
 export function showVsTellSourceReferenceKey(reference: WorkshopWidgetSourceReference): string {
   return reference.kind === 'active-excerpt'
     ? reference.kind
     : `${reference.kind}:${reference.attachmentId}`;
+}
+
+/**
+ * Canonical order of context sources (D2): the active excerpt first, then
+ * context attachments by ascending `ctx-N` ordinal. A selection is a set, so
+ * one order gives it one persisted representation whatever the writer or a
+ * persona clicked or listed first. Integrity rejects any other order; the
+ * controller and the recommendation parser sort with this comparator.
+ */
+export function compareShowVsTellSourceReferences(
+  left: WorkshopWidgetSourceReference,
+  right: WorkshopWidgetSourceReference
+): number {
+  if (left.kind !== right.kind) {
+    return left.kind === 'active-excerpt' ? -1 : 1;
+  }
+  if (left.kind === 'active-excerpt' || right.kind === 'active-excerpt') {
+    return 0;
+  }
+  return attachmentOrdinal(left.attachmentId) - attachmentOrdinal(right.attachmentId);
+}
+
+/** A new array in canonical order; the input is never mutated. */
+export function sortShowVsTellSourceReferences(
+  references: readonly WorkshopWidgetSourceReference[]
+): WorkshopWidgetSourceReference[] {
+  return [...references].sort(compareShowVsTellSourceReferences);
+}
+
+/** The N of a `ctx-N` id; a malformed id (rejected by the shape gate) sorts last. */
+function attachmentOrdinal(attachmentId: string): number {
+  const ordinal = Number(attachmentId.slice('ctx-'.length));
+  return Number.isSafeInteger(ordinal) ? ordinal : Number.MAX_SAFE_INTEGER;
 }
 
 /** The authored inputs of one generation attempt; a workup and its selections are outputs. */
@@ -149,6 +182,7 @@ export function showVsTellGenerationDraft(
   return {
     beat: { text: input.beat.text, provenance: { ...input.beat.provenance } },
     surroundingContext: {
+      writerText: input.surroundingContext.writerText,
       sourceReferences: input.surroundingContext.sourceReferences.map(
         (reference) => ({ ...reference })
       )

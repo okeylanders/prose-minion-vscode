@@ -260,7 +260,7 @@ describe('WorkshopShowVsTellModal', () => {
   describe('surrounding passage', () => {
     const excerptDraft = (): WorkshopShowVsTellDraft => ({
       ...ungeneratedShowVsTellDraft(),
-      surroundingContext: { sourceReferences: [{ kind: 'active-excerpt' }] }
+      surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
     });
     const sources = [{
       reference: { kind: 'active-excerpt' as const },
@@ -295,7 +295,7 @@ describe('WorkshopShowVsTellModal', () => {
 
     it('marks an unavailable selected source and never shows context text it does not have', () => {
       renderModal({
-        draft: { ...ungeneratedShowVsTellDraft(), surroundingContext: { sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-9' }] } },
+        draft: { ...ungeneratedShowVsTellDraft(), surroundingContext: { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-9' }] } },
         generateBlockers: ['source-unavailable']
       });
 

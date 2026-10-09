@@ -50,10 +50,44 @@ describe('Show vs. Tell recommendation persistence', () => {
     expect(turn?.widgetRecommendation).toEqual(recommendation());
   });
 
+  it('round-trips a seed saved before Slice 7: required must survive, one reference, no context text', () => {
+    const old: ShowVsTellRecommendation = {
+      widgetId: 'show-vs-tell',
+      seed: { beatText: 'A beat.', sourceReferences: [{ kind: 'active-excerpt' }], mustSurvive: 'The fact.' }
+    };
+    const parsed = parseWorkshopSessionStateV1(sessionWith(old));
+    const restored = new WorkshopSessionService(() => 2);
+    const result = restored.hydrateCommittedState(parsed, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+    // No widget repair runs: the seed's new field is optional (ADR 2026-07-30).
+    expect(result.normalizations.filter((name) => name.includes('show-vs-tell'))).toEqual([]);
+    expect(restored.getSnapshot().turns.find((entry) => entry.widgetRecommendation)
+      ?.widgetRecommendation).toEqual(old);
+  });
+
+  it('round-trips a seed with context text, several canonical references, and no must survive (D2, D3)', () => {
+    const edited: ShowVsTellRecommendation = {
+      widgetId: 'show-vs-tell',
+      seed: {
+        beatText: 'A beat.',
+        contextText: 'He set the mug down.\nShe did not look up.',
+        sourceReferences: [
+          { kind: 'active-excerpt' },
+          { kind: 'context-attachment', attachmentId: 'ctx-2' },
+          { kind: 'context-attachment', attachmentId: 'ctx-10' }
+        ]
+      }
+    };
+    const parsed = parseWorkshopSessionStateV1(sessionWith(edited));
+    const restored = new WorkshopSessionService(() => 2);
+    restored.hydrateCommittedState(parsed, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+    expect(restored.getSnapshot().turns.find((entry) => entry.widgetRecommendation)
+      ?.widgetRecommendation).toEqual(edited);
+  });
+
   it('round-trips the minimal seed with no optional suggestions', () => {
     const minimal: ShowVsTellRecommendation = {
       widgetId: 'show-vs-tell',
-      seed: { beatText: 'A beat.', sourceReferences: [], mustSurvive: 'The fact.' }
+      seed: { beatText: 'A beat.', sourceReferences: [] }
     };
     const parsed = parseWorkshopSessionStateV1(sessionWith(minimal));
     const restored = new WorkshopSessionService(() => 2);
@@ -79,12 +113,34 @@ describe('Show vs. Tell recommendation persistence', () => {
     ['a multi-line beat', (r: ShowVsTellRecommendation) => ({
       ...r, seed: { ...r.seed, beatText: 'one\ntwo' }
     })],
-    ['a blank must-survive', (r: ShowVsTellRecommendation) => ({
-      ...r, seed: { ...r.seed, mustSurvive: '  ' }
+    ['an over-long must-survive', (r: ShowVsTellRecommendation) => ({
+      ...r, seed: { ...r.seed, mustSurvive: 'x'.repeat(121) }
     })],
-    ['two source references', (r: ShowVsTellRecommendation) => ({
+    ['an over-long context text', (r: ShowVsTellRecommendation) => ({
+      ...r, seed: { ...r.seed, contextText: 'x'.repeat(20_001) }
+    })],
+    ['nine source references', (r: ShowVsTellRecommendation) => ({
+      ...r,
+      seed: {
+        ...r.seed,
+        sourceReferences: Array.from({ length: 9 }, (_, index) => (
+          { kind: 'context-attachment', attachmentId: `ctx-${index + 1}` }
+        ))
+      }
+    })],
+    ['duplicate source references', (r: ShowVsTellRecommendation) => ({
       ...r,
       seed: { ...r.seed, sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'active-excerpt' }] }
+    })],
+    ['source references out of canonical order', (r: ShowVsTellRecommendation) => ({
+      ...r,
+      seed: {
+        ...r.seed,
+        sourceReferences: [
+          { kind: 'context-attachment', attachmentId: 'ctx-2' },
+          { kind: 'context-attachment', attachmentId: 'ctx-1' }
+        ]
+      }
     })],
     ['a focal character under an unspecified mode', (r: ShowVsTellRecommendation) => ({
       ...r, seed: { ...r.seed, pov: { mode: 'unspecified', focalCharacter: 'Mara' } }

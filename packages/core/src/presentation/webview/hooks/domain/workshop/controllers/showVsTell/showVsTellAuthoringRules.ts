@@ -53,7 +53,7 @@ const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 export function createShowVsTellAuthoringDraft(): WorkshopShowVsTellDraft {
   return {
     beat: { text: '', provenance: { kind: 'pasted' } },
-    surroundingContext: { sourceReferences: [] },
+    surroundingContext: { writerText: '', sourceReferences: [] },
     pov: { ...SHOW_VS_TELL_DEFAULTS.pov },
     invariants: { mustSurvive: '', mustNotChange: '' },
     channels: [...SHOW_VS_TELL_DEFAULTS.channels],
@@ -83,11 +83,12 @@ export function createShowVsTellSeededDraft(
       provenance: { kind: 'persona-prefill', personaId, editedByWriter: false }
     },
     surroundingContext: {
+      writerText: seed.contextText ?? '',
       sourceReferences: seed.sourceReferences.map((reference) => ({ ...reference }))
     },
     pov: seed.pov ? { ...seed.pov } : fresh.pov,
     invariants: {
-      mustSurvive: seed.mustSurvive,
+      mustSurvive: seed.mustSurvive ?? '',
       mustNotChange: seed.mustNotChange ?? ''
     },
     channels: seed.channels ? [...seed.channels] : fresh.channels,
@@ -279,7 +280,10 @@ export function withShowVsTellSourceReference(
     ? draft
     : {
         ...draft,
-        surroundingContext: { sourceReferences: reference === null ? [] : [{ ...reference }] }
+        surroundingContext: {
+          ...draft.surroundingContext,
+          sourceReferences: reference === null ? [] : [{ ...reference }]
+        }
       };
 }
 

@@ -24,6 +24,7 @@ export type SelectionTarget =
   | 'workshop_excerpt_verify'   // Workshop panel's own verify lane (Sprint 12) - same compare-only contract
   | 'workshop_creative_variations_subject'
   | 'workshop_show_vs_tell_beat'
+  | 'workshop_show_vs_tell_passage'  // Fills the writer's surrounding-passage box; never a reference
   | 'dictionary_word'
   | 'dictionary_context';
 

@@ -12,6 +12,7 @@ import {
   SHOW_VS_TELL_GROUPS
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 import {
+  compareShowVsTellSourceReferences,
   isShowVsTellDirectionShortEnough,
   SHOW_VS_TELL_DIRECTION_MARGIN,
   showVsTellFlagId,
@@ -72,14 +73,22 @@ function assertProvenanceIntegrity(draft: WorkshopShowVsTellDraft, path: string)
   }
 }
 
+/** Context sources are a set: unique, and in the one canonical order (D2). */
 function assertSourceReferenceIntegrity(draft: WorkshopShowVsTellDraft, path: string): void {
   const keys = new Set<string>();
-  for (const reference of draft.surroundingContext.sourceReferences) {
+  const references = draft.surroundingContext.sourceReferences;
+  for (const [index, reference] of references.entries()) {
     const key = showVsTellSourceReferenceKey(reference);
     if (keys.has(key)) {
       shapeError(`${path}.surroundingContext.sourceReferences`, 'source references without duplicates');
     }
     keys.add(key);
+    if (index > 0 && compareShowVsTellSourceReferences(references[index - 1], reference) > 0) {
+      shapeError(
+        `${path}.surroundingContext.sourceReferences`,
+        'source references in canonical order (active excerpt first, then attachments by ctx ordinal)'
+      );
+    }
   }
 }
 
@@ -90,7 +99,7 @@ function assertPovIntegrity(draft: WorkshopShowVsTellDraft, path: string): void 
   }
 }
 
-/** Channel emphasis is a set; one canonical order gives it one representation. */
+/** Channel emphasis is a set (possibly empty, D4); one canonical order gives it one representation. */
 function assertChannelsIntegrity(draft: WorkshopShowVsTellDraft, path: string): void {
   let previous = -1;
   for (const channel of draft.channels) {

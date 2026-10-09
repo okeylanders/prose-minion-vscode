@@ -68,7 +68,7 @@ function mount(initial: Partial<UseShowVsTellAuthoringOptions> = {}) {
 const richDraft = (): WorkshopShowVsTellDraft => {
   const draft = generatedShowVsTellDraft();
   draft.beat.provenance = { kind: 'excerpt', relativePath: 'chapters/four.md', startLine: 12, endLine: 12 };
-  draft.surroundingContext = { sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-3' }] };
+  draft.surroundingContext = { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-3' }] };
   draft.pov = { mode: 'close-third', focalCharacter: 'Daniel' };
   draft.invariants = {
     mustSurvive: 'The distrust is old.\nShe never says it out loud.',
@@ -271,7 +271,7 @@ describe('useShowVsTellAuthoring commit', () => {
       act(() => h.result.current.commitDraft());
       expect(h.options.commit).toHaveBeenCalledWith(
         expect.objectContaining({
-          surroundingContext: { sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-3' }] }
+          surroundingContext: { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-3' }] }
         }),
         'wc-4'
       );

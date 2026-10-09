@@ -1,4 +1,4 @@
-import { MessageType } from '@messages';
+import { DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR, MessageType } from '@messages';
 import {
   analysisResult,
   createWorkshopRouteTestHarness,
@@ -38,6 +38,7 @@ const showVsTellFrame = (): string => [
   '<widget-id>', 'show-vs-tell', '</widget-id>',
   '<told-beat>', 'She hadn’t trusted him since the funeral.', '</told-beat>',
   '<chip-subject>', 'the funeral line', '</chip-subject>',
+  '<surrounding-context>', '', '</surrounding-context>',
   '<source-references>', 'none', '</source-references>',
   '<must-survive>', 'The distrust is old and funeral-rooted.', '</must-survive>',
   '<must-not-change>', '', '</must-not-change>',
@@ -168,6 +169,40 @@ describe('Show vs. Tell — production-policy route matrix', () => {
           })
         })
       ]);
+    });
+
+    it('reopens a session saved before Slice 7 and clone-recommits its repaired draft (saved-session safety)', async () => {
+      // Author and commit under the current shape, then rewrite the saved file
+      // into the pre-Slice-7 shape: no writerText, one source, must survive set.
+      h.session.setSessionScope('open');
+      await commitRoute('svt-original', generatedShowVsTellDraft());
+      const saved = h.session.exportCommittedState();
+      const savedDraft = saved.widgetConfigs![0].draft as unknown as Record<string, unknown>;
+      savedDraft.surroundingContext = { sourceReferences: [{ kind: 'active-excerpt' }] };
+
+      const parsed = parseWorkshopSessionStateV1(saved);
+      const hydration = h.session.hydrateCommittedState(parsed, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+      expect(hydration.normalizations).toContain('defaulted-widget-show-vs-tell-surrounding-passage-text');
+      const reopened = h.session.getWidgetConfig('wc-1')!;
+      expect(reopened.draft).toEqual({
+        ...generatedShowVsTellDraft(),
+        surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
+      });
+
+      // The chip reopens exactly this draft; committing again is a clone of wc-1.
+      await commitRoute('svt-clone', reopened.draft, 'wc-1');
+
+      expect(h.session.getWidgetConfig('wc-2')).toMatchObject({
+        widgetId: 'show-vs-tell',
+        clonedFromConfigId: 'wc-1',
+        artifactId: 'ta-2',
+        draft: reopened.draft
+      });
+      expect(lastActionResult()).toMatchObject({
+        payload: { requestToken: 'svt-clone', ok: true, widgetConfigId: 'wc-2' }
+      });
+      expect(() => parseWorkshopSessionStateV1(h.session.exportCommittedState())).not.toThrow();
+      expect(h.showVsTellGenerate).not.toHaveBeenCalled();
     });
 
     it('refuses a crafted over-600 payload on the host and leaves state unchanged and exportable', async () => {
