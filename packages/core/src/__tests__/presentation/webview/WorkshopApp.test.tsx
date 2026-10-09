@@ -22,6 +22,7 @@ jest.mock('../../../presentation/webview/styles/workshop/session.css', () => ({}
 jest.mock('../../../presentation/webview/components/workshop/widgets/gesturePlayground/gesturePlayground.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/lexicalGravity/lexicalGravity.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/widgets/creativeVariations/creativeVariations.css', () => ({}));
+jest.mock('../../../presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/standingDirectiveRail.css', () => ({}));
 jest.mock('../../../presentation/webview/components/workshop/schematic/schematic.css', () => ({}));
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));

@@ -37,6 +37,9 @@ export type WorkshopCreativeVariationsOpening =
     }
   | { kind: 'clone'; config: WorkshopCreativeVariationsWidgetConfigSnapshot };
 
+/** Slice 3 opens fresh drafts only; chip reopen and recommendation seeds are Slice 4 and 5. */
+export type WorkshopShowVsTellOpening = { kind: 'new' };
+
 export interface WorkshopWidgetOpeningHost {
   widgetConfigData: WorkshopWidgetConfigSnapshot | null;
   widgetConfigResponseId: string | null;
@@ -55,12 +58,14 @@ export interface UseWorkshopWidgetOpeningOptions {
   onCloseGesturePlayground: () => void;
   onCloseLexicalGravity: () => void;
   onCloseCreativeVariations: () => void;
+  onCloseShowVsTell: () => void;
 }
 
 export interface WorkshopWidgetOpeningState {
   gesturePlaygroundOpening: WorkshopGesturePlaygroundOpening | null;
   lexicalGravityOpening: WorkshopLexicalGravityOpening | null;
   creativeVariationsOpening: WorkshopCreativeVariationsOpening | null;
+  showVsTellOpening: WorkshopShowVsTellOpening | null;
   pendingWidgetConfigId: string | null;
 }
 
@@ -75,6 +80,7 @@ export interface WorkshopWidgetOpeningActions {
   closeGesturePlayground: () => void;
   closeLexicalGravity: () => void;
   closeCreativeVariations: () => void;
+  closeShowVsTell: () => void;
 }
 
 export interface WorkshopWidgetOpeningPersistence {
@@ -92,7 +98,8 @@ export function useWorkshopWidgetOpening({
   onError,
   onCloseGesturePlayground,
   onCloseLexicalGravity,
-  onCloseCreativeVariations
+  onCloseCreativeVariations,
+  onCloseShowVsTell
 }: UseWorkshopWidgetOpeningOptions): UseWorkshopWidgetOpeningReturn {
   const [gesturePlaygroundOpening, setGesturePlaygroundOpening] =
     React.useState<WorkshopGesturePlaygroundOpening | null>(null);
@@ -100,6 +107,8 @@ export function useWorkshopWidgetOpening({
     React.useState<WorkshopLexicalGravityOpening | null>(null);
   const [creativeVariationsOpening, setCreativeVariationsOpening] =
     React.useState<WorkshopCreativeVariationsOpening | null>(null);
+  const [showVsTellOpening, setShowVsTellOpening] =
+    React.useState<WorkshopShowVsTellOpening | null>(null);
   const [pendingWidgetConfigId, setPendingWidgetConfigId] = React.useState<string | null>(null);
 
   const openWidgetConfig = React.useCallback((widgetConfigId: string) => {
@@ -130,6 +139,10 @@ export function useWorkshopWidgetOpening({
     }
     if (widgetId === 'creative-variations') {
       setCreativeVariationsOpening({ kind: 'new' });
+      return;
+    }
+    if (widgetId === 'show-vs-tell') {
+      setShowVsTellOpening({ kind: 'new' });
       return;
     }
     if (widgetId === 'lexical-gravity') {
@@ -220,6 +233,11 @@ export function useWorkshopWidgetOpening({
     onCloseCreativeVariations();
   }, [host.clearWidgetConfigData, onCloseCreativeVariations]);
 
+  const closeShowVsTell = React.useCallback(() => {
+    setShowVsTellOpening(null);
+    onCloseShowVsTell();
+  }, [onCloseShowVsTell]);
+
   React.useEffect(() => {
     if (!pendingWidgetConfigId || host.widgetConfigResponseId !== pendingWidgetConfigId) {
       return;
@@ -276,6 +294,7 @@ export function useWorkshopWidgetOpening({
     gesturePlaygroundOpening,
     lexicalGravityOpening,
     creativeVariationsOpening,
+    showVsTellOpening,
     pendingWidgetConfigId,
     openWidgetConfig,
     launchWidget,
@@ -283,6 +302,7 @@ export function useWorkshopWidgetOpening({
     closeGesturePlayground,
     closeLexicalGravity,
     closeCreativeVariations,
+    closeShowVsTell,
     persistedState: {}
   };
 }

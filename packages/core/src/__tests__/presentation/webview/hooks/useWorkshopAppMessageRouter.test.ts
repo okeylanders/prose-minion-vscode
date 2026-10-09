@@ -44,6 +44,13 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   creativeVariationsAuthoring: {
     handleSubjectSelection: jest.fn()
   } as never,
+  showVsTell: {
+    handleGenerationProgress: jest.fn(),
+    handleGenerationResult: jest.fn()
+  } as never,
+  showVsTellAuthoring: {
+    handleBeatSelection: jest.fn()
+  } as never,
   standingDirectives: { handleActionResult: jest.fn() } as never,
   excerptVerify: { handleSelectionData: jest.fn() } as never,
   modelsSettings: { handleModelData: jest.fn(), handleSettingsData: jest.fn() } as never,
@@ -89,6 +96,38 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.creativeVariations.handleCommitResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.lexicalGravity.handleActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
+  });
+
+  it('routes Show vs. Tell progress and result to its transport and beat intake to its controller', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const progress = {
+      type: MessageType.WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: { widgetId: 'show-vs-tell', token: 't', workupId: 'w', phase: 'started' }
+    } as const;
+    const result = {
+      type: MessageType.WORKSHOP_SHOW_VS_TELL_RESULT,
+      source: 'extension.workshop',
+      timestamp: 2,
+      payload: { widgetId: 'show-vs-tell', token: 't', workupId: 'w', ok: false, error: 'x' }
+    } as const;
+    const selection = {
+      type: MessageType.SELECTION_DATA,
+      source: 'extension.ui',
+      timestamp: 3,
+      payload: { target: 'workshop_show_vs_tell_beat', content: 'A beat.' }
+    } as const;
+
+    routes[MessageType.WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS]!(progress as never);
+    routes[MessageType.WORKSHOP_SHOW_VS_TELL_RESULT]!(result as never);
+    routes[MessageType.SELECTION_DATA]!(selection as never);
+
+    expect(deps.showVsTell.handleGenerationProgress).toHaveBeenCalledWith(progress);
+    expect(deps.showVsTell.handleGenerationResult).toHaveBeenCalledWith(result);
+    expect(deps.showVsTellAuthoring.handleBeatSelection).toHaveBeenCalledWith(selection);
+    expect(deps.creativeVariationsAuthoring.handleSubjectSelection).not.toHaveBeenCalled();
   });
 
   it('routes consume-once checkpoint recovery notices to the session owner', () => {
