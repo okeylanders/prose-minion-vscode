@@ -32,8 +32,8 @@ describe('buildWorkshopWidgetAskPrefill', () => {
     expect(canBuildWorkshopWidgetAskPrefill('gesture-playground')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('lexical-gravity')).toBe(true);
     expect(canBuildWorkshopWidgetAskPrefill('creative-variations')).toBe(true);
-    expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(false);
-    expect(() => buildWorkshopWidgetAskPrefill('show-vs-tell', 'Jill'))
+    expect(canBuildWorkshopWidgetAskPrefill('topic-relationship')).toBe(false);
+    expect(() => buildWorkshopWidgetAskPrefill('topic-relationship', 'Jill'))
       .toThrow('has no Host-preparation prompt');
   });
 
@@ -44,6 +44,15 @@ describe('buildWorkshopWidgetAskPrefill', () => {
       .filter((widget) => !canBuildWorkshopWidgetAskPrefill(widget.id))
       .map((widget) => widget.id);
 
-    expect(liveWidgetsWithoutHostPrefill).toEqual([]);
+    // Show vs. Tell is live for hands-on testing, but its Host-preparation door
+    // is Slice 5: a persona may not prepare it until its recommendation codec
+    // and seed exist, so it is deferred explicitly rather than by accident.
+    expect(liveWidgetsWithoutHostPrefill).toEqual(['show-vs-tell']);
+  });
+
+  it('keeps the Show vs. Tell Host-preparation door closed until Slice 5', () => {
+    expect(canBuildWorkshopWidgetAskPrefill('show-vs-tell')).toBe(false);
+    expect(() => buildWorkshopWidgetAskPrefill('show-vs-tell', 'Jill'))
+      .toThrow('has no Host-preparation prompt');
   });
 });

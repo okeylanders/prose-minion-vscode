@@ -11,6 +11,13 @@ import {
   generatedDraft
 } from '@/__tests__/presentation/webview/components/workshop/widgets/creativeVariations/creativeVariationsFixtures';
 import {
+  generatedShowVsTellDraft,
+  ungeneratedShowVsTellDraft
+} from '@/__tests__/application/services/workshop/widgets/showVsTell/showVsTellFixtures';
+import {
+  WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+} from '@/application/services/workshop/widgets/WorkshopWidgetAvailabilityPolicy';
+import {
   parseWorkshopSessionStateV1
 } from '@/application/services/workshop/WorkshopSessionStateV1';
 import {
@@ -28,6 +35,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
   let pin: WorkshopRouteTestHarness['pin'];
   let runProse: WorkshopRouteTestHarness['runProse'];
   let creativeVariationsGenerate: WorkshopRouteTestHarness['creativeVariationsGenerate'];
+  let showVsTellGenerate: WorkshopRouteTestHarness['showVsTellGenerate'];
 
   beforeEach(() => {
     ({
@@ -40,7 +48,8 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       posted,
       pin,
       runProse,
-      creativeVariationsGenerate
+      creativeVariationsGenerate,
+      showVsTellGenerate
     } = createWorkshopRouteTestHarness());
   });
 
@@ -70,6 +79,8 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(router.hasHandler(MessageType.WORKSHOP_COMMIT_WIDGET)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_CREATIVE_VARIATIONS_GENERATE)).toBe(true);
     expect(router.hasHandler(MessageType.CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST)).toBe(true);
+    expect(router.hasHandler(MessageType.WORKSHOP_SHOW_VS_TELL_GENERATE)).toBe(true);
+    expect(router.hasHandler(MessageType.CANCEL_SHOW_VS_TELL_GENERATE_REQUEST)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_REWIND_SESSION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_BRANCH_SESSION)).toBe(true);
     expect(router.hasHandler(MessageType.WORKSHOP_EXPORT_SESSION)).toBe(true);
@@ -146,9 +157,52 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
     expect(result!.payload.workupId).toMatch(/^cvw-/);
   });
 
+  it('routes Show vs. Tell generation through the real production catalog policy with exact correlation', async () => {
+    const draft = ungeneratedShowVsTellDraft();
+    showVsTellGenerate.mockImplementationOnce(async ({ workupId }) => ({
+      cancelled: false,
+      workup: { ...generatedShowVsTellDraft().workup!, workupId },
+      truncated: false
+    }));
+
+    await router.route(message(MessageType.WORKSHOP_SHOW_VS_TELL_GENERATE, {
+      widgetId: 'show-vs-tell',
+      token: 'show-vs-tell-live-route',
+      beat: draft.beat,
+      surroundingContext: draft.surroundingContext,
+      pov: draft.pov,
+      invariants: draft.invariants,
+      channels: draft.channels,
+      lengthBudget: draft.lengthBudget,
+      position: draft.position
+    }) as any);
+
+    expect(WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY.isAvailable('show-vs-tell')).toBe(true);
+    expect(showVsTellGenerate).toHaveBeenCalledTimes(1);
+    expect(showVsTellGenerate).toHaveBeenCalledWith(expect.objectContaining({
+      workupId: expect.stringMatching(/^svtw-/),
+      position: 'hinge',
+      signal: expect.any(AbortSignal)
+    }));
+    const result = posted(MessageType.WORKSHOP_SHOW_VS_TELL_RESULT).at(-1);
+    expect(result).toMatchObject({
+      payload: {
+        widgetId: 'show-vs-tell',
+        token: 'show-vs-tell-live-route',
+        ok: true,
+        workup: { workupId: expect.stringMatching(/^svtw-/) }
+      }
+    });
+    expect(result.payload.workup.workupId).toBe(result.payload.workupId);
+    const phases = posted(MessageType.WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS)
+      .map((entry) => entry.payload.phase);
+    expect(phases[0]).toBe('started');
+    expect(phases.at(-1)).toBe('completed');
+  });
+
   it('refuses a dormant widget through the real production catalog policy', async () => {
     await router.route(message(MessageType.WORKSHOP_COMMIT_WIDGET, {
-      widgetId: 'show-vs-tell',
+      widgetId: 'topic-relationship',
       requestToken: 'commit-dormant-widget',
       draft: {}
     }) as any);
@@ -157,7 +211,7 @@ describe('WorkshopRoomHandler routing — cross-owner seams', () => {
       payload: {
         action: 'commit',
         requestToken: 'commit-dormant-widget',
-        widgetId: 'show-vs-tell',
+        widgetId: 'topic-relationship',
         ok: false,
         message: 'That widget is not available yet.'
       }

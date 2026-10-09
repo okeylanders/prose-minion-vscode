@@ -118,7 +118,7 @@ describe('ShowVsTellConfigIntegrity', () => {
         const variant = value.workup!.groups[0].variants[0];
         variant.direction = 'x'.repeat(variant.prose.length);
       },
-      message: /direction must be strictly shorter than its prose/
+      message: /direction must be at least 4 characters shorter than its prose/
     },
     {
       label: 'a direction longer than its prose',
@@ -127,7 +127,25 @@ describe('ShowVsTellConfigIntegrity', () => {
         variant.prose = 'She left.';
         variant.direction = 'keep the flat tell';
       },
-      message: /direction must be strictly shorter than its prose/
+      message: /direction must be at least 4 characters shorter than its prose/
+    },
+    {
+      label: 'a direction only three characters shorter than its prose',
+      mutate: (value) => {
+        const variant = value.workup!.groups[0].variants[0];
+        variant.prose = 'p'.repeat(40);
+        variant.direction = 'd'.repeat(37);
+      },
+      message: /direction must be at least 4 characters shorter than its prose/
+    },
+    {
+      label: 'a direction whose raw margin is four but whose CRLF prose encodes to equal length (600 → 603)',
+      mutate: (value) => {
+        const variant = value.workup!.groups[0].variants[0];
+        variant.prose = [24, 23, 23, 23, 23].map((n) => 'p'.repeat(n)).join('\r\n');
+        variant.direction = 'd'.repeat(120);
+      },
+      message: /direction must be at least 4 characters shorter than its prose/
     },
     {
       label: 'an exact normalized duplicate',

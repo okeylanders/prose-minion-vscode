@@ -113,14 +113,25 @@ describe('WorkshopShowVsTellHandler', () => {
       })]);
     });
 
-    it('refuses through the production catalog policy while show-vs-tell is not live', async () => {
+    it('runs through the production catalog policy now that show-vs-tell is live', async () => {
       const { handler, generate, results } = build({
         policy: WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
       });
 
       await handler.handleGenerate(message());
 
-      expect(WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY.isAvailable('show-vs-tell')).toBe(false);
+      expect(WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY.isAvailable('show-vs-tell')).toBe(true);
+      expect(generate).toHaveBeenCalledTimes(1);
+      expect(results()).toEqual([expect.objectContaining({ ok: true })]);
+    });
+
+    it('still refuses a widget id the production policy does not make live', async () => {
+      const { handler, generate, results } = build({
+        policy: WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY
+      });
+
+      await handler.handleGenerate(message({ widgetId: 'topic-relationship' } as never));
+
       expect(generate).not.toHaveBeenCalled();
       expect(results()).toEqual([expect.objectContaining({
         ok: false, error: 'That widget is not available yet.'

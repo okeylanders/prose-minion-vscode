@@ -12,6 +12,10 @@ import { SHOW_VS_TELL_ARTIFACT_LINE_KEYS } from '@messages';
 import { NARRATIVE_HANDLING_POSITIONS } from '@shared/constants/narrativeHandlingVocabulary';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
+  buildShowVsTellArtifact,
+  type ShowVsTellArtifactSource
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellArtifact';
+import {
   SHOW_VS_TELL_GROUPS
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 import {
@@ -50,20 +54,37 @@ describe('Show vs. Tell budgets', () => {
     expect(Math.max(...positionLines.map((candidate) => candidate.length))).toBe(51);
   });
 
-  it('fits the worst-case required lines and one maximal direction under 600 (585)', () => {
-    const longestPositionLine = NARRATIVE_HANDLING_POSITIONS
-      .map((position) => line(keys.position, showVsTellPositionArtifactValue(position)))
-      .reduce((longest, candidate) => candidate.length > longest.length ? candidate : longest);
-    const worstCaseLines = [
-      line(keys.beat, `"${'b'.repeat(budget.showVsTellBeatCharacters)}"`),
-      longestPositionLine,
-      line(keys.mustSurvive, 's'.repeat(budget.showVsTellMustSurviveCharacters)),
-      line(keys.mustNotChange, 'n'.repeat(budget.showVsTellMustNotChangeCharacters)),
-      line(keys.direction, 'd'.repeat(budget.showVsTellDirectionCharacters))
-    ];
-    const body = worstCaseLines.join('\n');
+  it('fits the real projection of a worst-case draft under 600 (585)', () => {
+    const draft: ShowVsTellArtifactSource = {
+      beat: { text: 'b'.repeat(budget.showVsTellBeatCharacters), provenance: { kind: 'pasted' } },
+      // Hinge has the longest position line.
+      position: 'hinge',
+      invariants: {
+        mustSurvive: 's'.repeat(budget.showVsTellMustSurviveCharacters),
+        mustNotChange: 'n'.repeat(budget.showVsTellMustNotChangeCharacters)
+      },
+      workup: {
+        workupId: 'svtw-worst-case',
+        generationProtocolVersion: 1,
+        groups: [{
+          kind: 'told-cleanly',
+          variants: [{
+            id: 'svtw-worst-case:variant-1',
+            prose: 'p'.repeat(budget.showVsTellProseCharacters),
+            channels: ['summary-exposition'],
+            gains: 'g',
+            costs: 'c',
+            direction: 'd'.repeat(budget.showVsTellDirectionCharacters),
+            invariantFlags: []
+          }]
+        }]
+      },
+      kept: [{ variantId: 'svtw-worst-case:variant-1', carryMode: 'direction' }],
+      note: ''
+    };
+    const body = buildShowVsTellArtifact(draft);
 
-    expect(worstCaseLines.map((candidate) => candidate.length)).toEqual([168, 51, 134, 97, 131]);
+    expect(body.split('\n').map((candidate) => candidate.length)).toEqual([168, 51, 134, 97, 131]);
     expect(body.length).toBe(585);
     expect(budget.showVsTellArtifactCharacters).toBe(600);
     expect(body.length).toBeLessThanOrEqual(budget.showVsTellArtifactCharacters);

@@ -59,6 +59,9 @@ import {
 import {
   WorkshopCreativeVariationsModal
 } from '@components/workshop/widgets/creativeVariations/WorkshopCreativeVariationsModal';
+import {
+  WorkshopShowVsTellModal
+} from '@components/workshop/widgets/showVsTell/WorkshopShowVsTellModal';
 import { WorkshopStandingDirectiveRail } from './components/workshop/WorkshopStandingDirectiveRail';
 import {
   stripWorkshopWidgetRecommendationControl
@@ -127,6 +130,10 @@ import {
 import {
   useCreativeVariationsAuthoring
 } from '@hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring';
+import { useShowVsTell } from '@hooks/domain/workshop/widgets/showVsTell/useShowVsTell';
+import {
+  useShowVsTellAuthoring
+} from '@hooks/domain/workshop/controllers/showVsTell/useShowVsTellAuthoring';
 import {
   useWorkshopStandingDirectives
 } from '@hooks/domain/workshop/useWorkshopStandingDirectives';
@@ -156,6 +163,7 @@ import './styles/workshop/session.css';
 import './components/workshop/widgets/gesturePlayground/gesturePlayground.css';
 import './components/workshop/widgets/lexicalGravity/lexicalGravity.css';
 import './components/workshop/widgets/creativeVariations/creativeVariations.css';
+import './components/workshop/widgets/showVsTell/showVsTell.css';
 import './components/workshop/standingDirectiveRail.css';
 import './components/workshop/schematic/schematic.css';
 
@@ -222,6 +230,7 @@ export const WorkshopApp: React.FC = () => {
   const gesturePlayground = useGesturePlayground();
   const lexicalGravity = useLexicalGravity();
   const creativeVariations = useCreativeVariations();
+  const showVsTell = useShowVsTell();
   const excerptVerify = useWorkshopExcerptVerify();
   const modelsSettings = useModelsSettings();
   const tokenTracking = useTokenTracking();
@@ -246,6 +255,9 @@ export const WorkshopApp: React.FC = () => {
     creativeVariations.cancelGeneration();
     creativeVariations.resetCommitState();
   }, [creativeVariations.cancelGeneration, creativeVariations.resetCommitState]);
+  const clearShowVsTellTransientState = React.useCallback(() => {
+    showVsTell.cancelGeneration();
+  }, [showVsTell.cancelGeneration]);
   const handleWidgetOpeningError = React.useCallback(
     (message: string) => showToast({ message, icon: 'x', tone: 'error' }),
     [showToast]
@@ -256,7 +268,8 @@ export const WorkshopApp: React.FC = () => {
     onError: handleWidgetOpeningError,
     onCloseGesturePlayground: gesturePlayground.consumeWidgetActionResult,
     onCloseLexicalGravity: lexicalGravity.clearTransientResults,
-    onCloseCreativeVariations: clearCreativeVariationsTransientState
+    onCloseCreativeVariations: clearCreativeVariationsTransientState,
+    onCloseShowVsTell: clearShowVsTellTransientState
   });
   const creativeVariationsAuthoring = useCreativeVariationsAuthoring({
     opening: widgetOpening.creativeVariationsOpening,
@@ -283,6 +296,27 @@ export const WorkshopApp: React.FC = () => {
     clearCommitResult: creativeVariations.clearCommitResult,
     resetCommitState: creativeVariations.resetCommitState,
     onCommitAccepted: widgetOpening.closeCreativeVariations
+  });
+  const effectiveWidgetModelId =
+    modelsSettings.modelSelections.widget ?? modelsSettings.settings.widgetModel;
+  const showVsTellAuthoring = useShowVsTellAuthoring({
+    opening: widgetOpening.showVsTellOpening,
+    activeExcerpt: workshop.excerpt,
+    contextAttachments: workshop.contextAttachments,
+    // The host's own revisions: a replaced room, an edited or refreshed
+    // attachment body, or a new excerpt version each change this key. Display
+    // labels, word counts, and ids are not revisions.
+    roomKey: [
+      workshop.roomRevision,
+      workshop.contextRevision,
+      workshop.excerpt?.version ?? 'none'
+    ].join(':'),
+    widgetModelId: effectiveWidgetModelId,
+    generationProgress: showVsTell.generationProgress,
+    generationResult: showVsTell.generationResult,
+    requestBeatSelection: showVsTell.requestBeatSelection,
+    generate: showVsTell.generate,
+    cancelGeneration: showVsTell.cancelGeneration
   });
 
   React.useEffect(() => {
@@ -369,6 +403,8 @@ export const WorkshopApp: React.FC = () => {
     lexicalGravity,
     creativeVariations,
     creativeVariationsAuthoring,
+    showVsTell,
+    showVsTellAuthoring,
     standingDirectives,
     excerptVerify,
     modelsSettings,
@@ -391,6 +427,8 @@ export const WorkshopApp: React.FC = () => {
     ...lexicalGravity.persistedState,
     ...creativeVariations.persistedState,
     ...creativeVariationsAuthoring.persistedState,
+    ...showVsTell.persistedState,
+    ...showVsTellAuthoring.persistedState,
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
     ...modelsSettings.persistedState,
@@ -1534,6 +1572,41 @@ export const WorkshopApp: React.FC = () => {
             modelsSettings.setModelSelection('widget', modelId)}
           onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
           onClose={widgetOpening.closeCreativeVariations}
+        />
+      )}
+      {widgetOpening.showVsTellOpening && (
+        <WorkshopShowVsTellModal
+          open
+          draft={showVsTellAuthoring.draft}
+          generation={showVsTellAuthoring.generation}
+          invalidationNotice={showVsTellAuthoring.invalidationNotice}
+          intakeNotice={showVsTellAuthoring.intakeNotice}
+          generateBlockers={showVsTellAuthoring.generateBlockers}
+          commitBlockers={showVsTellAuthoring.commitBlockers}
+          artifactUsage={showVsTellAuthoring.artifactUsage}
+          availableSources={showVsTellAuthoring.availableSources}
+          excerptText={workshop.excerpt?.text ?? null}
+          onUseSelection={showVsTellAuthoring.requestBeatSelection}
+          onBeatTextChange={showVsTellAuthoring.changeBeatText}
+          onSelectSource={showVsTellAuthoring.selectSourceReference}
+          onPovModeChange={showVsTellAuthoring.changePovMode}
+          onPovFocalCharacterChange={showVsTellAuthoring.changePovFocalCharacter}
+          onMustSurviveChange={showVsTellAuthoring.changeMustSurvive}
+          onMustNotChangeChange={showVsTellAuthoring.changeMustNotChange}
+          onToggleChannel={showVsTellAuthoring.toggleChannel}
+          onLengthBudgetChange={showVsTellAuthoring.changeLengthBudget}
+          onPositionChange={showVsTellAuthoring.changePosition}
+          onGenerate={showVsTellAuthoring.generateWorkup}
+          onCancelGenerate={showVsTellAuthoring.cancelGenerate}
+          onToggleKeep={showVsTellAuthoring.toggleKeep}
+          onCarryModeChange={showVsTellAuthoring.changeCarryMode}
+          onNoteChange={showVsTellAuthoring.changeNote}
+          widgetModelOptions={modelsSettings.modelOptions}
+          selectedWidgetModel={effectiveWidgetModelId}
+          onWidgetModelChange={(modelId) =>
+            modelsSettings.setModelSelection('widget', modelId)}
+          onOpenWidgetModelBrowser={() => modelsSettings.requestModelData(true)}
+          onClose={widgetOpening.closeShowVsTell}
         />
       )}
       {/* Gesture Playground (ADR 2026-07-22): the Draft remains mounted until

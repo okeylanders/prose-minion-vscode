@@ -99,7 +99,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground,
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations
+      onCloseCreativeVariations,
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('gesture-playground'));
@@ -156,7 +157,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('lexical-gravity'));
@@ -193,7 +195,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
     expect(host.requestWidgetConfig).not.toHaveBeenCalled();
 
@@ -224,7 +227,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig('wc-missing'));
@@ -251,7 +255,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('creative-variations'));
@@ -286,7 +291,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig(creativeConfig.id));
@@ -316,7 +322,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('creative-variations'));
@@ -340,7 +347,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig(creativeConfig.id));
@@ -365,7 +373,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetRecommendation({
@@ -389,7 +398,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig('wc-prose'));
@@ -425,7 +435,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetRecommendation({
@@ -439,5 +450,28 @@ describe('useWorkshopWidgetOpening', () => {
       "[Workshop] prose-controller recommendation can't be opened in this version."
     );
     warn.mockRestore();
+  });
+
+  it('opens a fresh Show vs. Tell draft and closes it without touching other sheets', () => {
+    const onCloseShowVsTell = jest.fn();
+    const onCloseCreativeVariations = jest.fn();
+    const { result } = renderHook(() => useWorkshopWidgetOpening({
+      host: emptyHost(),
+      standingDirectives: [],
+      onError: jest.fn(),
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations,
+      onCloseShowVsTell
+    }));
+
+    act(() => result.current.launchWidget('show-vs-tell'));
+    expect(result.current.showVsTellOpening).toEqual({ kind: 'new' });
+    expect(result.current.creativeVariationsOpening).toBeNull();
+
+    act(() => result.current.closeShowVsTell());
+    expect(result.current.showVsTellOpening).toBeNull();
+    expect(onCloseShowVsTell).toHaveBeenCalledTimes(1);
+    expect(onCloseCreativeVariations).not.toHaveBeenCalled();
   });
 });

@@ -33,6 +33,12 @@ import type {
   UseCreativeVariationsAuthoringReturn
 } from '@hooks/domain/workshop/controllers/creativeVariations/useCreativeVariationsAuthoring';
 import type {
+  UseShowVsTellReturn
+} from '@hooks/domain/workshop/widgets/showVsTell/useShowVsTell';
+import type {
+  UseShowVsTellAuthoringReturn
+} from '@hooks/domain/workshop/controllers/showVsTell/useShowVsTellAuthoring';
+import type {
   UseWorkshopStandingDirectivesReturn
 } from '@hooks/domain/workshop/useWorkshopStandingDirectives';
 import {
@@ -51,6 +57,8 @@ export interface WorkshopAppMessageRouterDeps {
   lexicalGravity: UseLexicalGravityReturn;
   creativeVariations: UseCreativeVariationsReturn;
   creativeVariationsAuthoring: UseCreativeVariationsAuthoringReturn;
+  showVsTell: UseShowVsTellReturn;
+  showVsTellAuthoring: UseShowVsTellAuthoringReturn;
   standingDirectives: UseWorkshopStandingDirectivesReturn;
   excerptVerify: UseWorkshopExcerptVerifyReturn;
   modelsSettings: UseModelsSettingsReturn;
@@ -76,6 +84,8 @@ export function buildWorkshopAppMessageRoutes(
     lexicalGravity,
     creativeVariations,
     creativeVariationsAuthoring,
+    showVsTell,
+    showVsTellAuthoring,
     standingDirectives,
     excerptVerify,
     modelsSettings,
@@ -105,7 +115,8 @@ export function buildWorkshopAppMessageRoutes(
       dispatchWorkshopSelectionData(message, {
         handleExcerptVerification: excerptVerify.handleSelectionData,
         handleCreativeVariationsSubject:
-          creativeVariationsAuthoring.handleSubjectSelection
+          creativeVariationsAuthoring.handleSubjectSelection,
+        handleShowVsTellBeat: showVsTellAuthoring.handleBeatSelection
       });
     },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,
@@ -121,6 +132,9 @@ export function buildWorkshopAppMessageRoutes(
       creativeVariations.handleGenerationProgress,
     [MessageType.WORKSHOP_CREATIVE_VARIATIONS_RESULT]:
       creativeVariations.handleGenerationResult,
+    [MessageType.WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS]:
+      showVsTell.handleGenerationProgress,
+    [MessageType.WORKSHOP_SHOW_VS_TELL_RESULT]: showVsTell.handleGenerationResult,
     [MessageType.WORKSHOP_WIDGET_ACTION_RESULT]: (message) => {
       dispatchWorkshopWidgetActionResult(message, {
         handleGestureActionResult: gesturePlayground.handleWidgetActionResult,
