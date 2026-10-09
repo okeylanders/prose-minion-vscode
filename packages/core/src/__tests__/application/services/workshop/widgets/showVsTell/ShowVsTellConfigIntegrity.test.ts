@@ -8,6 +8,9 @@ import {
   assertShowVsTellWorkupIntegrity
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigIntegrity';
 import {
+  showVsTellProseComparisonKey
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
+import {
   SHOW_VS_TELL_FIXTURE_WORKUP_ID,
   fixtureFlagId,
   fixtureVariantId,
@@ -189,5 +192,57 @@ describe('ShowVsTellConfigIntegrity', () => {
     )).toThrow(
       /workup\.groups\[1\]\.variants\[1\]\.invariantFlags\[0\]\.invariantField must be a writer-declared nonblank invariant field/
     );
+  });
+});
+
+describe('ShowVsTellConfigIntegrity normalized duplicate prose', () => {
+  const APOSTROPHES = [
+    { label: 'ASCII apostrophe', mark: "'" },
+    { label: 'U+2018', mark: '\u2018' },
+    { label: 'U+2019', mark: '\u2019' },
+    { label: 'U+02BC', mark: '\u02bc' }
+  ];
+  const told = (mark: string): string => `She hadn${mark}t trusted him since the funeral.`;
+  const APOSTROPHE_PAIRS = APOSTROPHES.flatMap((left, index) =>
+    APOSTROPHES.slice(index + 1).map((right) => ({ left, right }))
+  );
+
+  /** Puts two prose texts into the two told-cleanly variants of the fixture. */
+  const withToldPair = (first: string, second: string): WorkshopShowVsTellDraft =>
+    mutated((value) => {
+      const [left, right] = value.workup!.groups[0].variants;
+      left.prose = first;
+      right.prose = second;
+      right.direction = 'keep it';
+    });
+
+  it('folds every supported apostrophe to one comparison key', () => {
+    expect(new Set(APOSTROPHES.map(({ mark }) => showVsTellProseComparisonKey(told(mark)))))
+      .toEqual(new Set(['she hadn t trusted him since the funeral']));
+  });
+
+  it.each(APOSTROPHE_PAIRS)(
+    'rejects prose differing only by $left.label vs $right.label at the draft and workup gates',
+    ({ left, right }) => {
+      const value = withToldPair(told(left.mark), told(right.mark));
+      const duplicate = /groups\[0\]\.variants\[1\]\.prose must be prose distinct from .*groups\[0\]\.variants\[0\] after normalization/;
+
+      assertShowVsTellDraftShape(value, 'draft');
+      expect(() => assertShowVsTellDraftIntegrity(value, 'draft')).toThrow(duplicate);
+      expect(() => assertShowVsTellWorkupIntegrity(value.workup!, value.invariants, 'workup'))
+        .toThrow(duplicate);
+    }
+  );
+
+  it('rejects canonically equivalent composed and decomposed accents', () => {
+    const value = withToldPair('She left the café at dawn.', 'She left the cafe\u0301 at dawn.');
+
+    expect(() => assertValid(value)).toThrow(/prose distinct from/);
+  });
+
+  it('keeps genuinely distinct prose that shares an apostrophe form', () => {
+    const value = withToldPair(told('\u02bc'), 'She hadnʼt trusted him since the wedding.');
+
+    expect(() => assertValid(value)).not.toThrow();
   });
 });

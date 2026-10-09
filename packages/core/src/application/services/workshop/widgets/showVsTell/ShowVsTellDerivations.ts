@@ -15,6 +15,12 @@ import {
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 
 const COMPARISON_TOKEN_PATTERN = /[\p{L}\p{N}]+/gu;
+/**
+ * U+02BC is a Unicode letter, so unfolded it would stay inside a token while
+ * every other apostrophe splits one. Fold the same variants as Creative
+ * Variations so "hadn’t" and "hadnʼt" compare equal.
+ */
+const APOSTROPHE_VARIANTS = /[\u2018\u2019\u02bc]/g;
 
 /** `workupOrdinal` is one-based across all groups, in workup order. */
 export function showVsTellVariantId(workupId: string, workupOrdinal: number): string {
@@ -45,10 +51,17 @@ export function isShowVsTellDirectionShorterThanProse(
 
 /**
  * Key for the exact-normalized-duplicate rule: two variants whose prose has
- * the same NFKC-folded, lowercased letter and number tokens are one variant.
+ * the same NFKC-folded, lowercased, apostrophe-folded letter and number
+ * tokens are one variant.
  */
 export function showVsTellProseComparisonKey(prose: string): string {
-  return (prose.normalize('NFKC').toLowerCase().match(COMPARISON_TOKEN_PATTERN) ?? []).join(' ');
+  return (
+    prose
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(APOSTROPHE_VARIANTS, "'")
+      .match(COMPARISON_TOKEN_PATTERN) ?? []
+  ).join(' ');
 }
 
 /** The value of the artifact's `position:` line, e.g. `hinge · tell the bridge, show the fulcrum`. */
