@@ -22,9 +22,6 @@ import {
   optionalBoundedStringAt,
   shapeError
 } from '@/application/services/workshop/persistedValidation';
-import type {
-  WorkshopWidgetDraftRecoveryResult
-} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 import {
   SHOW_VS_TELL_CHANNELS,
   SHOW_VS_TELL_GROUPS,
@@ -44,18 +41,6 @@ export interface ShowVsTellDraftSummary {
   keptCount: number;
   directionCount: number;
 }
-
-/**
- * Development-checkpoint repairs (ADR 2026-07-30), never version migrations.
- *
- * `defaulted-widget-show-vs-tell-surrounding-passage-text`: Slice 7 (D2)
- * added the required `surroundingContext.writerText`. A draft saved by an
- * earlier slice has only `sourceReferences`; it opens with a blank passage.
- * The recommendation seed's new `contextText` is optional, so a seed saved
- * before Slice 7 needs no repair.
- */
-export type ShowVsTellCheckpointNormalization =
-  | 'defaulted-widget-show-vs-tell-surrounding-passage-text';
 
 const CHANNEL_IDS = SHOW_VS_TELL_CHANNELS.map(({ id }) => id);
 const GROUP_KINDS = SHOW_VS_TELL_GROUPS.map(({ kind }) => kind);
@@ -483,32 +468,5 @@ export function summarizeShowVsTellDraft(draft: WorkshopShowVsTellDraft): ShowVs
     beatPreview: draft.beat.text.slice(0, PROMPT_BUDGETS.workshopWidgets.showVsTellBeatCharacters),
     keptCount: draft.kept.length,
     directionCount: draft.kept.filter((kept) => kept.carryMode === 'direction').length
-  };
-}
-
-export function normalizeShowVsTellDraftForHydration(
-  value: unknown
-): WorkshopWidgetDraftRecoveryResult<
-  WorkshopShowVsTellDraft,
-  ShowVsTellCheckpointNormalization
-> {
-  assertShowVsTellDraftCheckpointShape(value, 'Show vs. Tell checkpoint draft');
-  const draft = value as WorkshopShowVsTellDraft;
-  const normalizations: ShowVsTellCheckpointNormalization[] = [];
-  const defaultedPassageText = typeof draft.surroundingContext.writerText !== 'string';
-  if (defaultedPassageText) {
-    normalizations.push('defaulted-widget-show-vs-tell-surrounding-passage-text');
-  }
-  const normalized: WorkshopShowVsTellDraft = defaultedPassageText
-    ? {
-        ...draft,
-        surroundingContext: { ...draft.surroundingContext, writerText: '' }
-      }
-    : draft;
-  assertShowVsTellDraftShape(normalized, 'Recovered Show vs. Tell draft');
-  return {
-    draft: cloneShowVsTellDraft(normalized),
-    normalizations,
-    notices: []
   };
 }

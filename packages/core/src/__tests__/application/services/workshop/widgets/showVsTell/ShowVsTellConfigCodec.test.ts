@@ -5,9 +5,11 @@ import {
   assertShowVsTellDraftIntegrity,
   assertShowVsTellDraftShape,
   cloneShowVsTellDraft,
-  normalizeShowVsTellDraftForHydration,
   summarizeShowVsTellDraft
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigCodec';
+import {
+  normalizeShowVsTellDraftForHydration
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellCheckpointNormalization';
 import {
   createShowVsTellWorkupIdFactory,
   isShowVsTellWorkupId

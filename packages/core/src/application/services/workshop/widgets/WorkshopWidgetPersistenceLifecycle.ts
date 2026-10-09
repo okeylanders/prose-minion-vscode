@@ -25,10 +25,12 @@ import {
 import {
   assertShowVsTellDraftCheckpointShape,
   assertShowVsTellDraftIntegrity,
-  assertShowVsTellDraftShape,
+  assertShowVsTellDraftShape
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigCodec';
+import {
   normalizeShowVsTellDraftForHydration,
   type ShowVsTellCheckpointNormalization
-} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigCodec';
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellCheckpointNormalization';
 import type {
   WorkshopWidgetDraftRecoveryResult,
   WorkshopWidgetRecoveryNotice

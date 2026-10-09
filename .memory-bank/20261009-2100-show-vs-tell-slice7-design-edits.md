@@ -77,7 +77,10 @@ Three code commits, each green on its own, then this docs commit.
 
 ## The checkpoint normalization
 
-Okey's saved sessions hold Show vs. Tell drafts in the pre-Slice-7 shape:
+The repair lives in its own sibling module, `ShowVsTellCheckpointNormalization.ts`
+(the codec stays the public owner of the exact shape; the split keeps the
+codec under the 500-line guard). Okey's saved sessions hold Show vs. Tell
+drafts in the pre-Slice-7 shape:
 `surroundingContext: { sourceReferences }` with no `writerText`, at most one
 reference, must survive non-blank, at least one channel. D3 and D4 only relax
 rules, so that data is valid under them. D2 adds a required field, so the

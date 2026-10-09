@@ -72,10 +72,10 @@ const featureFiles = [
   CONTRACT_FILE
 ];
 
-// The commit, warning, codec, integrity, workup-id, and recommendation-parser
-// modules are host-only.
+// The commit, warning, codec, checkpoint-repair, integrity, workup-id, and
+// recommendation-parser modules are host-only.
 const HOST_ONLY_MODULE =
-  /ShowVsTell(?:ConfigCodec|ConfigIntegrity|WorkupId|OneShotCommit|ArtifactWarnings|Recommendation)|node:crypto|from 'crypto'/;
+  /ShowVsTell(?:ConfigCodec|CheckpointNormalization|ConfigIntegrity|WorkupId|OneShotCommit|ArtifactWarnings|Recommendation)|node:crypto|from 'crypto'/;
 
 const FORBIDDEN_COMPONENT_TOKENS = [
   'useVSCodeApi',

@@ -392,8 +392,8 @@ const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] 
       String.raw`\b(?:focalCharacter|lengthBudget|told-cleanly|shown-as-evidence|shown-from-inside|observable-action|sensory-evidence|dialogue-subtext|summary-exposition|plus-one-sentence|plus-one-paragraph|svtw)\b`
     ],
     // Slice 7 added ShowVsTellConstraintsPanel, ShowVsTellSheetHeader,
-    // showVsTellSourceRules, and useShowVsTellIntake.
-    minimumSourceFiles: 32
+    // ShowVsTellCheckpointNormalization, showVsTellSourceRules, and useShowVsTellIntake.
+    minimumSourceFiles: 33
   }
 ];
 
