@@ -1,4 +1,4 @@
-# Show vs. Tell — Sprint 05 complete (Slice 6b docs)
+# Show vs. Tell — Slice 6 verification and remaining checks
 
 **Date:** 2026-10-09 19:15 UTC
 
@@ -54,7 +54,7 @@ commits on top of `f4c0c4f`.
 - Not run: any native-browser, Extension Development Host, or live-provider check.
 
 Slice 5 tip (for the delta): 292 suites / 4,160 tests / 2 snapshots. Slice 6a
-added 4 suites and 30 tests. Pre-Show-vs-Tell baseline (2026-08-06): 189 / 1,937 / 1.
+added 4 suites and 30 tests. Slice 0 baseline (`main` at `7031b7ee`): **267 suites / 3,535 tests / 2 snapshots**.
 
 ## Sprint 05 completion
 
