@@ -582,7 +582,7 @@
   place-items: center;
   color: transparent;
 }
-[data-pm-surface="workshop"] .pm-ws-svt-card-select[aria-pressed="true"] .pm-ws-svt-card-bx {
+[data-pm-surface="workshop"] .pm-ws-svt-card-select[aria-checked="true"] .pm-ws-svt-card-bx {
   background: var(--pm-accent);
   border-color: var(--pm-accent-lo);
   color: #fff;
