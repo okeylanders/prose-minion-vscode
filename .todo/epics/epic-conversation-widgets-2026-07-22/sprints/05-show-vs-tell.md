@@ -560,10 +560,13 @@ The three questions raised in the [Slice 1 handoff](../../../../.memory-bank/202
   or inhabitation and understand the pacing, clarity, intimacy, ambiguity, and
   scene-time tradeoffs from the deterministic readout. Nothing on the surface
   scores, ranks, or colour-codes either end as better.
-  *Not ticked.* The no-score rule is stated in source (`showVsTell.css` header,
-  `ShowVsTellReadout.tsx`) and reviewed in PR #136, but no test asserts it, and
-  no interactive run has confirmed that the readout is understandable. Missing:
-  the interactive VS Code smoke test (see Open follow-ups).
+  *Not ticked.* The no-score, no-rank, one-accent half is evidenced by
+  `WorkshopShowVsTellModal.test.tsx`: `renders the pinned seven-row table for %s
+  with one accent colour` (pinned readout rows, one accent class) and `carries
+  the frozen caption and no score, rank, or verdict language` (verdict-word scan
+  over the continuum and workup; no rank, best, or score class). Missing: the
+  "a writer can understand the tradeoffs" half, which needs the interactive VS
+  Code smoke test (see Open follow-ups).
 - [x] A generated workup always spans all four groups. Every variant shows its
   gains/costs note, word count, and a direction shorter than its prose.
   *Evidence:* `infrastructure/api/services/widgets/showVsTell/ShowVsTellResponseCodec.test.ts`
