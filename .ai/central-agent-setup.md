@@ -151,7 +151,13 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopWidgetHost.ts
 │           ├── useWorkshopStandingDirectives.ts
 │           ├── controllers/            # Transient modal/surface state machines
+│           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
+│           │   └── showVsTell/         # useShowVsTellAuthoring, CommitFlow, InvalidationWatch
 │           └── widgets/                # Named feature transport/correlation hooks
+│               ├── creativeVariations/useCreativeVariations.ts
+│               ├── showVsTell/useShowVsTell.ts
+│               ├── useGesturePlayground.ts
+│               └── useLexicalGravity.ts
 ```
 
 Patterns and conventions:
@@ -159,9 +165,10 @@ Patterns and conventions:
 - Persistence: Each hook exposes `persistedState`; App composes them into `usePersistence` to sync `vscode.setState`.
 - Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
   retired `useWorkshop` facade. Generic widget mechanics use explicit closed
-  registries; Gesture Playground, Creative Variations, and Lexical Gravity keep
-  feature-specific contracts, handlers, codecs, prompts, and presentation hooks
-  in named slices.
+  registries; Gesture Playground, Creative Variations, Lexical Gravity, and Show
+  vs. Tell keep feature-specific contracts, handlers, codecs, prompts, and
+  presentation hooks in named slices. Show vs. Tell's five-position → Controller
+  mapping lives only in `shared/constants/narrativeHandlingVocabulary.ts`.
 - Message enums: Use `STATUS` for status messages, `MODEL_DATA`/`REQUEST_MODEL_DATA` for model options, and `SET_MODEL_SELECTION` for user selection. Avoid ad-hoc enums like `STATUS_MESSAGE`, `MODEL_OPTIONS_DATA`, or `SET_MODEL`.
 - UI settings: Toggle UI prefs (e.g., token widget) via `UPDATE_SETTING` with nested keys like `ui.showTokenWidget`.
 - Metrics: Provide `setPathText` and `clearSubtoolResult` so subtools can refresh independently.
@@ -682,7 +689,7 @@ The project uses **Jest** with **ts-jest** for automated testing. Tests follow a
 ```
 packages/core/src/__tests__/   # All tests in a separate dir mirroring the source tree
 ├── setup.ts           # VSCode API mocks and global test setup
-├── architecture/      # Boundary/contract guards (e.g. boundaries.test.ts)
+├── architecture/      # Boundary/contract guards (e.g. boundaries.test.ts, showVsTellWitnesses.test.ts)
 ├── application/
 │   ├── handlers/      # MessageRouter + domain handler tests
 │   └── services/      # Application service tests
@@ -711,8 +718,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-08-06):
-- 189 suites / 1,937 tests / 1 snapshot
+**Test Inventory** (measured 2026-10-09):
+- 296 suites / 4,190 tests / 2 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 

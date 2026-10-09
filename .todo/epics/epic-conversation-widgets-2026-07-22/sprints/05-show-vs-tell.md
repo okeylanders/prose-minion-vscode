@@ -1,6 +1,6 @@
 # Sprint 05: Show vs. Tell Playground
 
-**Status**: Slice 5 ready for review. Slices 1 (#134), 2 (#135), 3 (#136), and 4 (#137) are merged. Slice 5 (the strict recommendation frame and parser for Host and Guest turns, the input-only seed, the chip, the pronoun-free seed banner, a prefilled sheet that never auto-generates, and the Host-preparation door) is on one branch and one PR. Slice 6 remains (witnesses and docs).
+**Status**: Slice 6 ready for review. Slices 1–5 merged (#134–#138).
 **Priority**: Medium
 **Branches**: one per slice, `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, each cut from `epic/conversation-widgets` and merged back into it by PR (see [Branching](#branching))
 **Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
@@ -556,24 +556,68 @@ The three questions raised in the [Slice 1 handoff](../../../../.memory-bank/202
 
 ## Completion criteria
 
-- A writer can intentionally choose explanation, summary, a hinge, evidence,
+- [ ] A writer can intentionally choose explanation, summary, a hinge, evidence,
   or inhabitation and understand the pacing, clarity, intimacy, ambiguity, and
   scene-time tradeoffs from the deterministic readout. Nothing on the surface
   scores, ranks, or colour-codes either end as better.
-- A generated workup always spans all four groups. Every variant shows its
+  *Not ticked.* The no-score rule is stated in source (`showVsTell.css` header,
+  `ShowVsTellReadout.tsx`) and reviewed in PR #136, but no test asserts it, and
+  no interactive run has confirmed that the readout is understandable. Missing:
+  the interactive VS Code smoke test (see Open follow-ups).
+- [x] A generated workup always spans all four groups. Every variant shows its
   gains/costs note, word count, and a direction shorter than its prose.
-- All generated and committed variants preserve the declared constraints or
+  *Evidence:* `infrastructure/api/services/widgets/showVsTell/ShowVsTellResponseCodec.test.ts`
+  (group membership and atomic validation); direction-shorter rule encoded with
+  margin 4 (PR #136 review); `WorkshopShowVsTellModal.test.tsx` (card fields).
+- [ ] All generated and committed variants preserve the declared constraints or
   show a visible warning the writer can weigh. No variation is silently treated
   as canon, and no model warning vetoes the writer's choice.
-- The payload meter matches the host's artifact projection exactly. An
+  *Not ticked.* Warning visibility and no-veto commit are covered by
+  `ShowVsTellCommitEligibility.test.ts` and the commit-flow tests, but the
+  "never silently canon" wording has no dedicated witness. It rests on the
+  prompt copy and the Slice 2 and Slice 4 reviews. Missing: a test or witness
+  that names the canon rule directly.
+- [x] The payload meter matches the host's artifact projection exactly. An
   over-ceiling draft cannot commit, and switching a variant to direction only
   always lowers the count.
-- Commit never touches editor text. The persisted draft reopens exactly, and
+  *Evidence:* `ShowVsTellArtifact.test.ts`, `ShowVsTellBudgets.test.ts` (fit
+  guarantee, 585 ≤ 600), `ShowVsTellCommitEligibility.test.ts`, and the
+  over-600 refusal row in `WorkshopRoomHandler.showVsTellMatrix.test.ts`; the
+  encoded-margin rule is in the PR #136 review.
+- [x] Commit never touches editor text. The persisted draft reopens exactly, and
   recommitting a reopened draft mints a new config, artifact, and turn.
-- The five-position → Controller mapping is one shared constant, pinned by a
+  *Evidence:* `ShowVsTellOneShotCommit.test.ts`, `ShowVsTellPersistence.test.ts`,
+  the clone-recommit row in `WorkshopRoomHandler.showVsTellMatrix.test.ts`, and
+  the no-editor-write claim 4 in `showVsTellPresentationBoundaries.test.ts`.
+- [ ] The five-position → Controller mapping is one shared constant, pinned by a
   test that both surfaces depend on.
-- The feature reuses only truthful mechanical variation seams and remains a
+  *Not ticked.* The constant exists and is pinned: `narrativeHandlingVocabulary.test.ts`
+  and `architecture/showVsTellWitnesses.test.ts` (a). Show vs. Tell imports it.
+  Prose Controller is not built, so no second surface consumes it yet. Sprint
+  04's adoption is a doc-level assertion only. Missing: Sprint 04's build.
+- [x] The feature reuses only truthful mechanical variation seams and remains a
   separately named, independently testable widget slice. Creative Variations
   does not learn continuum or channel vocabulary.
-- Architecture witnesses, focused tests, typechecks, lint, build, and
+  *Evidence:* `showVsTellWitnesses.test.ts` (b) and (c); `boundaries.test.ts`
+  sibling guards; the independence tests `WorkshopRoomHandler.showVsTellIndependence.test.ts`
+  and `useWorkshopWidgetOpening.showVsTellIndependence.test.ts`.
+- [x] Architecture witnesses, focused tests, typechecks, lint, build, and
   `git diff --check` pass.
+  *Evidence:* Slice 6a verification at `a5f3118` (typecheck clean; lint 0 errors
+  and 1,112 warnings, the baseline; build and `verify-bundle` OK; `git diff --check`
+  clean). Slice 6b changed no code (`git diff --stat f4c0c4f` lists only `.md`
+  files) and reran `npm test` at the docs head. See the 6b memory-bank note for
+  the counts.
+
+## Open follow-ups
+
+- **Persona pronoun metadata.** The catalog holds no pronoun data, so the seed
+  banner names the persona and uses no pronoun (writer decision, 2026-10-09).
+  Filed: [tech-debt 2026-10-09 persona pronoun metadata](../../../tech-debt/2026-10-09-persona-pronoun-metadata.md).
+- **Live-provider quality pass.** No live, billable provider call has been run
+  for generation or recommendation. Prompt quality is unverified against a real
+  model. Filed: [tech-debt 2026-10-09 show-vs-tell live-provider quality pass](../../../tech-debt/2026-10-09-show-vs-tell-live-provider-quality-pass.md).
+- **Interactive VS Code smoke test.** No Extension Development Host or native
+  browser run has covered the authoring, commit, reopen, or recommend flows.
+  This is also the missing evidence for the readout-comprehension criterion.
+  Filed: [tech-debt 2026-10-09 show-vs-tell interactive smoke test](../../../tech-debt/2026-10-09-show-vs-tell-interactive-smoke-test.md).
