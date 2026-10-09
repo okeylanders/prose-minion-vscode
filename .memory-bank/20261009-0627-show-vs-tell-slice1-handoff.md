@@ -194,7 +194,7 @@ At the slice tip:
   registry key, matching its three sibling arms; the new files lint clean.
 - `npm test` at the tip: **273 suites / 3,626 tests / 2 snapshots, all
   passing** (baseline 267 / 3,535 / 2). Jest's known worker-exit warning
-  predates this sprint.
+  did not appear in the baseline or tip runs.
 - Per commit: typecheck clean and the full suite passing at every one of the
   five code commits (3,540 → 3,540 → 3,548 → 3,621 → 3,626 tests).
 - `npm run build`: compiled, with the three existing webpack asset-size
