@@ -13,9 +13,12 @@ import type {
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,
   WorkshopShowVsTellBeat,
+  WorkshopShowVsTellCarryMode,
   WorkshopShowVsTellChannel,
   WorkshopShowVsTellDraft,
-  WorkshopShowVsTellGenerationProgressPayload
+  WorkshopShowVsTellGenerationProgressPayload,
+  WorkshopShowVsTellPovMode,
+  WorkshopWidgetSourceReference
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
@@ -209,6 +212,49 @@ export function toggledShowVsTellKeep(
     kept: [...kept].sort(
       (left, right) => (order.get(left.variantId) ?? 0) - (order.get(right.variantId) ?? 0)
     )
+  };
+}
+
+/** Zero or one surrounding-passage source; the same draft comes back when nothing changes. */
+export function withShowVsTellSourceReference(
+  draft: WorkshopShowVsTellDraft,
+  reference: WorkshopWidgetSourceReference | null
+): WorkshopShowVsTellDraft {
+  const existing = draft.surroundingContext.sourceReferences[0];
+  const unchanged = reference === null
+    ? existing === undefined
+    : existing !== undefined
+      && showVsTellSourceReferenceKey(existing) === showVsTellSourceReferenceKey(reference);
+  return unchanged
+    ? draft
+    : {
+        ...draft,
+        surroundingContext: { sourceReferences: reference === null ? [] : [{ ...reference }] }
+      };
+}
+
+/** `unspecified` names no focal character, so the character is blanked with it. */
+export function withShowVsTellPovMode(
+  draft: WorkshopShowVsTellDraft,
+  mode: WorkshopShowVsTellPovMode
+): WorkshopShowVsTellDraft {
+  return mode === draft.pov.mode
+    ? draft
+    : {
+        ...draft,
+        pov: { mode, focalCharacter: mode === 'unspecified' ? '' : draft.pov.focalCharacter }
+      };
+}
+
+/** Sets one kept variant's carry mode; an unkept variant leaves the draft as it was. */
+export function withShowVsTellCarryMode(
+  draft: WorkshopShowVsTellDraft,
+  variantId: string,
+  carryMode: WorkshopShowVsTellCarryMode
+): WorkshopShowVsTellDraft {
+  return {
+    ...draft,
+    kept: draft.kept.map((entry) => entry.variantId === variantId ? { ...entry, carryMode } : entry)
   };
 }
 

@@ -309,7 +309,11 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
             </div>
           </div>
 
-          <ShowVsTellContinuumControl position={draft.position} onPositionChange={onPositionChange} />
+          <ShowVsTellContinuumControl
+            position={draft.position}
+            onPositionChange={onPositionChange}
+            disabled={commitPending}
+          />
 
           {generating ? (
             <div className="pm-ws-svt-progress">

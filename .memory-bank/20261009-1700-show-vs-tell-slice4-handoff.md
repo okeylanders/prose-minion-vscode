@@ -166,3 +166,37 @@ Two commits, each green on its own.
   builder; its test asserts the deferred set is exactly `['show-vs-tell']`. Slice 5
   adds the builder (the request expressly forbids generating, selecting, or
   committing) and removes the entry from the deferred set.
+
+## Review fixes (Astra, PR #137)
+
+Report: `docs/pr-reviews/pr-137-show-vs-tell-slice-4-review.md`. One finding.
+
+- **F-01: a pending commit accepted draft changes.** The continuum and a late
+  editor-selection reply bypassed the commit lock, so the displayed draft could
+  diverge from the submitted one (a position edit lost on success; a rewritten
+  beat and cleared workup after a refusal). A pending commit now owns the draft:
+  - The controller holds a `commitPendingRef` and refuses every writer-driven
+    edit while it is set: position, keep, carry, note, every generation input
+    (through `updateGenerationInput`), selection intake, and Generate. The
+    guard lives in the controller, not only the UI.
+  - The continuum is disabled for the same span (pointer and keyboard). It stays
+    editable **during generation**, the intentional exception.
+  - **A late selection reply is dropped, not queued.** Queuing would apply a
+    request the writer made before submitting to a draft they have since
+    submitted; dropping is the safe choice. The writer can click Use editor
+    selection again once the host answers.
+  - A refusal therefore leaves the exact submitted draft, and the retry sends
+    it unchanged under a new token. Source and model invalidation are unchanged
+    (a room change mid-commit still clears grounded work).
+  - To stay under 500 lines (498), three pure rules moved into
+    `showVsTellAuthoringRules`: `withShowVsTellSourceReference`,
+    `withShowVsTellPovMode`, `withShowVsTellCarryMode`. No new file, so the
+    existing guards cover the delta.
+- **Tests.** Full-`WorkshopApp` regressions for pointer and keyboard position
+  input during a pending commit, a delayed selection reply, refusal then retry
+  with the exact draft, edit-after-refusal, and the generation-time position
+  control. Controller-level tests cover the same guards without the UI. Both
+  witnesses were confirmed to fail with the fix reverted.
+- **Verification.** typecheck clean; lint 0 errors / 1,105 warnings (unchanged);
+  `npm test` 288 suites / 4,062 tests; build and `verify-bundle` OK; `git diff
+  --check` clean.

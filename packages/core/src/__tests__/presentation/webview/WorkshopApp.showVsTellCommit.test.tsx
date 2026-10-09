@@ -262,4 +262,134 @@ describe('Show vs. Tell commit, chip, and clone-and-recommit', () => {
     expect(sheet()!.textContent).toContain('Reopened from a message you rewound.');
     expect(screen.getByRole('button', { name: 'Commit as new turn' })).not.toBeNull();
   });
+
+  describe('a pending commit owns the draft', () => {
+    /** Reopen the committed Hinge draft from its chip and press Commit as new turn. */
+    const reopenAndCommit = () => {
+      const committed = generatedShowVsTellDraft();
+      const { service, configId } = roomWithCommittedTurn(committed);
+      render(<WorkshopApp />);
+      deliver(room(service));
+      fireEvent.click(screen.getByRole('button', { name: /Show vs\. Tell/ }));
+      deliver({
+        type: MessageType.WORKSHOP_WIDGET_CONFIG_DATA,
+        source: 'extension.workshop.widget',
+        timestamp: 3,
+        payload: { configId, config: service.getWidgetConfig(configId) }
+      });
+      return { committed, configId };
+    };
+    const lastCommit = () => sent(MessageType.WORKSHOP_COMMIT_WIDGET).at(-1)!.payload;
+    const radio = (name: RegExp) => screen.getByRole('radio', { name }) as HTMLButtonElement;
+
+    it('locks the continuum against pointer and keyboard input, and the submitted position wins', () => {
+      reopenAndCommit();
+      fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
+      const submitted = lastCommit();
+      expect(submitted.draft.position).toBe('hinge');
+
+      const stateIt = radio(/State it/);
+      const hinge = radio(/Hinge/);
+      expect(stateIt.disabled).toBe(true);
+      fireEvent.click(stateIt);
+      fireEvent.keyDown(hinge, { key: 'ArrowLeft' });
+      fireEvent.keyDown(hinge, { key: 'Home' });
+      fireEvent.keyDown(hinge, { key: 'End' });
+
+      expect(hinge.getAttribute('aria-checked')).toBe('true');
+      expect(stateIt.getAttribute('aria-checked')).toBe('false');
+      // Every step is disabled, so none can take focus or a key.
+      expect(screen.getAllByRole('radio', { name: /State it|Summarize|Hinge|Evidence|Inhabit/ })
+        .every((step) => (step as HTMLButtonElement).disabled)).toBe(true);
+      expect(sent(MessageType.WORKSHOP_COMMIT_WIDGET)).toHaveLength(1);
+
+      commitResult(submitted.requestToken, { ok: true, widgetConfigId: 'wc-2', turnId: 'turn-2' });
+      expect(sheet()).toBeNull();
+    });
+
+    it('drops a selection reply that lands during a pending commit, and a refusal keeps the exact draft to retry', () => {
+      const { committed } = reopenAndCommit();
+      const dialog = sheet()!;
+      // The editor has no selection, so the host is still waiting on the clipboard.
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Use editor selection' }));
+      expect(sent(MessageType.REQUEST_SELECTION).at(-1)!.payload).toEqual({ target: 'workshop_show_vs_tell_beat' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Commit as new turn' }));
+      const first = lastCommit();
+
+      deliver({
+        type: MessageType.SELECTION_DATA,
+        source: 'extension.ui',
+        timestamp: 7,
+        payload: { target: 'workshop_show_vs_tell_beat', content: 'A different beat from the clipboard.' }
+      });
+
+      expect((within(dialog).getByRole('textbox', { name: /Selected beat/ }) as HTMLInputElement).value)
+        .toBe(committed.beat.text);
+      expect(screen.queryByRole('region', { name: 'Generated workup' })).not.toBeNull();
+
+      commitResult(first.requestToken, { ok: false, message: 'The room did not accept the commit.' });
+
+      // Nothing was rewritten, so Commit is still available and retries the exact submitted draft.
+      expect(screen.getByRole('alert').textContent).toBe('The room did not accept the commit.');
+      const retry = screen.getByRole('button', { name: 'Commit as new turn' }) as HTMLButtonElement;
+      expect(retry.disabled).toBe(false);
+      fireEvent.click(retry);
+      const second = lastCommit();
+      expect(second.requestToken).not.toBe(first.requestToken);
+      expect(second.draft).toEqual(first.draft);
+      expect(second.draft).toEqual(committed);
+      expect(second.clonedFromConfigId).toBe('wc-1');
+    });
+
+    it('lets the writer edit again after a refusal and retries with the edit', () => {
+      reopenAndCommit();
+      fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
+      commitResult(lastCommit().requestToken, { ok: false, message: 'Try again.' });
+
+      fireEvent.click(radio(/State it/));
+      fireEvent.click(screen.getByRole('button', { name: 'Commit as new turn' }));
+
+      expect(radio(/State it/).getAttribute('aria-checked')).toBe('true');
+      expect(lastCommit().draft.position).toBe('state-it');
+    });
+  });
+
+  describe('the position exception outside a pending commit', () => {
+    const startGeneration = () => {
+      const service = new WorkshopSessionService(() => 1);
+      service.setSessionScope('open');
+      render(<WorkshopApp />);
+      deliver(room(service));
+      fireEvent.click(screen.getByRole('button', { name: 'Widgets' }));
+      fireEvent.click(screen.getAllByRole('button', { name: /Show vs\. Tell Playground/ })[0]);
+      fireEvent.click(screen.getByRole('button', { name: 'Open widget' }));
+      fireEvent.change(screen.getByRole('textbox', { name: /Selected beat/ }), {
+        target: { value: 'She hadn’t trusted him since the funeral.' }
+      });
+      fireEvent.change(screen.getByRole('textbox', { name: /Must survive every variation/ }), {
+        target: { value: 'The distrust is old.' }
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Generate the workup/ }));
+      return sent(MessageType.WORKSHOP_SHOW_VS_TELL_GENERATE).at(-1)!.payload.token as string;
+    };
+
+    it('still moves the position during generation without discarding the workup that arrives', () => {
+      const token = startGeneration();
+      const workup = generatedShowVsTellDraft().workup!;
+      const evidence = screen.getByRole('radio', { name: /Evidence/ }) as HTMLButtonElement;
+      expect(evidence.disabled).toBe(false);
+
+      fireEvent.click(evidence);
+      expect(evidence.getAttribute('aria-checked')).toBe('true');
+      deliver({
+        type: MessageType.WORKSHOP_SHOW_VS_TELL_RESULT,
+        source: 'extension.workshop',
+        timestamp: 5,
+        payload: { widgetId: 'show-vs-tell', token, workupId: workup.workupId, ok: true, workup }
+      });
+
+      expect(screen.queryByRole('region', { name: 'Generated workup' })).not.toBeNull();
+      expect(screen.getByRole('radio', { name: /Evidence/ }).getAttribute('aria-checked')).toBe('true');
+    });
+  });
 });

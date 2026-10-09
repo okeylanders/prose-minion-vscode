@@ -55,6 +55,9 @@ import {
   sameBeat,
   toggledShowVsTellChannels,
   toggledShowVsTellKeep,
+  withShowVsTellCarryMode,
+  withShowVsTellPovMode,
+  withShowVsTellSourceReference,
   type ShowVsTellInputLabel
 } from './showVsTellAuthoringRules';
 import { useShowVsTellInvalidationWatch } from './useShowVsTellInvalidationWatch';
@@ -180,6 +183,20 @@ export function useShowVsTellAuthoring({
   const [intakeNotice, setIntakeNotice] = React.useState<string | null>(null);
   const activeTokenRef = React.useRef<string>();
   const wasOpenRef = React.useRef(false);
+  /**
+   * While a commit is pending the draft is what was submitted. Every
+   * writer-driven edit and every late intake reply is refused, so a refusal
+   * leaves the exact draft to retry and a success discards nothing visible.
+   */
+  const commitPendingRef = React.useRef(commitPending);
+  commitPendingRef.current = commitPending;
+  const editDraft = React.useCallback((
+    update: (current: WorkshopShowVsTellDraft) => WorkshopShowVsTellDraft
+  ) => {
+    if (!commitPendingRef.current) {
+      setDraft(update);
+    }
+  }, [setDraft]);
   /** Set only when the sheet opened from a committed config; recommit records it as lineage. */
   const seededCloneConfigIdRef = React.useRef<string>();
   const commitFlow = useShowVsTellCommitFlow({
@@ -259,7 +276,7 @@ export function useShowVsTellAuthoring({
   ) => {
     const current = draftRef.current;
     const next = update(current);
-    if (next === current) {
+    if (next === current || commitPendingRef.current) {
       return;
     }
     const hadActiveGeneration = activeTokenRef.current !== undefined;
@@ -274,7 +291,7 @@ export function useShowVsTellAuthoring({
 
   const handleBeatSelection = React.useCallback((message: SelectionDataMessage) => {
     /* Normal delivery is target-routed; retain the check for direct hook consumers. */
-    if (!open || activeTokenRef.current !== undefined
+    if (!open || activeTokenRef.current !== undefined || commitPendingRef.current
       || message.payload.target !== 'workshop_show_vs_tell_beat') {
       return;
     }
@@ -299,26 +316,12 @@ export function useShowVsTellAuthoring({
   const selectSourceReference = React.useCallback((
     reference: WorkshopWidgetSourceReference | null
   ) => {
-    updateGenerationInput('surrounding passage source', (current) => {
-      const existing = current.surroundingContext.sourceReferences[0];
-      const unchanged = reference === null
-        ? existing === undefined
-        : existing !== undefined
-          && showVsTellSourceReferenceKey(existing) === showVsTellSourceReferenceKey(reference);
-      return unchanged
-        ? current
-        : {
-            ...current,
-            surroundingContext: { sourceReferences: reference === null ? [] : [{ ...reference }] }
-          };
-    });
+    updateGenerationInput('surrounding passage source', (current) =>
+      withShowVsTellSourceReference(current, reference));
   }, [updateGenerationInput]);
 
   const changePovMode = React.useCallback((mode: WorkshopShowVsTellPovMode) => {
-    updateGenerationInput('point of view', (current) => mode === current.pov.mode
-      ? current
-      // `unspecified` names no focal character, so the character is blanked with it.
-      : { ...current, pov: { mode, focalCharacter: mode === 'unspecified' ? '' : current.pov.focalCharacter } });
+    updateGenerationInput('point of view', (current) => withShowVsTellPovMode(current, mode));
   }, [updateGenerationInput]);
 
   const changePovFocalCharacter = React.useCallback((raw: string) => {
@@ -359,12 +362,15 @@ export function useShowVsTellAuthoring({
       : { ...current, lengthBudget });
   }, [updateGenerationInput]);
 
-  /** The one exception: moving the position keeps the workup, the kept variants, and any attempt. */
+  /**
+   * The one exception: moving the position keeps the workup, the kept
+   * variants, and any attempt. It is still refused while a commit is pending.
+   */
   const changePosition = React.useCallback((position: NarrativeHandlingPosition) => {
     if (position !== draftRef.current.position) {
-      setDraft((current) => ({ ...current, position }));
+      editDraft((current) => ({ ...current, position }));
     }
-  }, [setDraft]);
+  }, [editDraft]);
 
   const clearSettledWork = React.useCallback(
     (current: WorkshopShowVsTellDraft) => setDraft({ ...current, workup: null, kept: [] }),
@@ -393,7 +399,7 @@ export function useShowVsTellAuthoring({
 
   const generateWorkup = React.useCallback(() => {
     const current = draftRef.current;
-    if (generateBlockers.length > 0) {
+    if (generateBlockers.length > 0 || commitPendingRef.current) {
       return;
     }
     cancelActiveGeneration();
@@ -417,25 +423,20 @@ export function useShowVsTellAuthoring({
   }, [cancelActiveGeneration]);
 
   const toggleKeep = React.useCallback((variantId: string) => {
-    setDraft((current) => toggledShowVsTellKeep(current, variantId));
-  }, [setDraft]);
+    editDraft((current) => toggledShowVsTellKeep(current, variantId));
+  }, [editDraft]);
 
   const changeCarryMode = React.useCallback((
     variantId: string,
     carryMode: WorkshopShowVsTellCarryMode
   ) => {
-    setDraft((current) => ({
-      ...current,
-      kept: current.kept.map((entry) => entry.variantId === variantId
-        ? { ...entry, carryMode }
-        : entry)
-    }));
-  }, [setDraft]);
+    editDraft((current) => withShowVsTellCarryMode(current, variantId, carryMode));
+  }, [editDraft]);
 
   const changeNote = React.useCallback((raw: string) => {
     const note = collapseShowVsTellLineBreaks(raw).slice(0, BUDGET.showVsTellNoteCharacters);
-    setDraft((current) => note === current.note ? current : { ...current, note });
-  }, [setDraft]);
+    editDraft((current) => note === current.note ? current : { ...current, note });
+  }, [editDraft]);
 
   const artifactProjection = React.useMemo(() => projectShowVsTellArtifact(draft), [draft]);
   const artifactUsage = artifactProjection.usage;

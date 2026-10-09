@@ -116,12 +116,13 @@ describe('useShowVsTellAuthoring commit', () => {
   });
 
   it('puts a running generation ahead of everything else', () => {
-    const h = mount({ commitPending: true, roomRunActive: true });
+    const h = mount();
     act(() => {
       h.result.current.changeBeatText('A beat.');
       h.result.current.changeMustSurvive('The turn.');
     });
     act(() => h.result.current.generateWorkup());
+    h.rerender({ commitPending: true, roomRunActive: true });
 
     expect(h.result.current.commitBlockers.slice(0, 3)).toEqual([
       'generation-in-flight',
@@ -300,6 +301,76 @@ describe('useShowVsTellAuthoring commit', () => {
         'Generated workup cleared because the room changed.'
       );
       expect(h.result.current.commitBlockers).toEqual(['no-workup']);
+    });
+  });
+
+  describe('while a commit is pending the draft is what was submitted', () => {
+    const pending = () => {
+      const h = mount({ opening: { kind: 'clone', config: cloneConfig(richDraft()) } });
+      h.rerender({ commitPending: true });
+      return h;
+    };
+
+    it('refuses a position change in the controller, not only in the UI', () => {
+      const h = pending();
+
+      act(() => h.result.current.changePosition('state-it'));
+
+      expect(h.result.current.draft).toEqual(richDraft());
+    });
+
+    it('drops a late selection reply and keeps the workup and keeps', () => {
+      const h = pending();
+
+      act(() => h.result.current.handleBeatSelection({
+        type: 'select' as never,
+        source: 'extension.ui',
+        timestamp: 1,
+        payload: { target: 'workshop_show_vs_tell_beat', content: 'A different beat.' }
+      } as never));
+
+      expect(h.result.current.draft).toEqual(richDraft());
+      expect(h.result.current.invalidationNotice).toBeNull();
+    });
+
+    it('refuses every other writer edit, and Generate', () => {
+      const h = pending();
+
+      act(() => {
+        h.result.current.changeBeatText('Another beat.');
+        h.result.current.changeMustSurvive('Another truth.');
+        h.result.current.toggleKeep(fixtureVariantId(1));
+        h.result.current.changeCarryMode(fixtureVariantId(3), 'prose');
+        h.result.current.changeNote('another note');
+        h.result.current.generateWorkup();
+      });
+
+      expect(h.result.current.draft).toEqual(richDraft());
+      expect(h.options.generate).not.toHaveBeenCalled();
+    });
+
+    it('accepts edits again once the commit is no longer pending', () => {
+      const h = pending();
+      h.rerender({ commitPending: false });
+
+      act(() => h.result.current.changePosition('state-it'));
+
+      expect(h.result.current.draft.position).toBe('state-it');
+      expect(h.result.current.draft.workup).not.toBeNull();
+    });
+
+    it('still lets the position move during generation, keeping the attempt', () => {
+      const h = mount({ opening: { kind: 'new' } });
+      act(() => {
+        h.result.current.changeBeatText('A beat.');
+        h.result.current.changeMustSurvive('The turn.');
+      });
+      act(() => h.result.current.generateWorkup());
+
+      act(() => h.result.current.changePosition('inhabit'));
+
+      expect(h.result.current.draft.position).toBe('inhabit');
+      expect(h.result.current.generation.kind).toBe('generating');
     });
   });
 
