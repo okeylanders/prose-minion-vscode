@@ -95,11 +95,34 @@ describe('Show vs. Tell recommendation persistence', () => {
     ['a repeated channel', (r: ShowVsTellRecommendation) => ({
       ...r, seed: { ...r.seed, channels: ['interiority', 'interiority'] }
     })],
+    ['channels in a non-canonical order', (r: ShowVsTellRecommendation) => ({
+      ...r, seed: { ...r.seed, channels: ['interiority', 'observable-action'] }
+    })],
     ['an over-long subject', (r: ShowVsTellRecommendation) => ({
       ...r, seed: { ...r.seed, subject: 'x'.repeat(61) }
     })]
   ])('rejects %s on parse', (_label, mutate) => {
     expect(() => parseWorkshopSessionStateV1(sessionWith(mutate(recommendation())))).toThrow();
+  });
+
+  it('fails closed at hydration on a hand-altered channel order, and names the rule', () => {
+    const altered = recommendation();
+    altered.seed.channels = ['interiority', 'observable-action'];
+
+    expect(() => parseWorkshopSessionStateV1(sessionWith(altered)))
+      .toThrow(/channels.*distinct channels in the fixed channel order/);
+  });
+
+  it('accepts every canonical subset the parser can emit, in any size', () => {
+    const canonical = ['observable-action', 'sensory-evidence', 'interiority', 'dialogue-subtext', 'summary-exposition'] as const;
+    for (let size = 1; size <= canonical.length; size += 1) {
+      const subset = recommendation();
+      subset.seed.channels = canonical.slice(0, size) as unknown as typeof subset.seed.channels;
+      expect(() => parseWorkshopSessionStateV1(sessionWith(subset))).not.toThrow();
+    }
+    const sparse = recommendation();
+    sparse.seed.channels = ['sensory-evidence', 'summary-exposition'];
+    expect(() => parseWorkshopSessionStateV1(sessionWith(sparse))).not.toThrow();
   });
 
   it('deep-copies every nested seed value when cloning', () => {
