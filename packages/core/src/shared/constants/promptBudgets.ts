@@ -121,6 +121,8 @@ export interface PromptBudgets {
    * the rail — only selections and the writer's note influence the turn.
    * Creative Variations adds bounded passage/context inputs, typed card and
    * risk fields, the complete provider envelope, and the compact artifact.
+   * Show vs. Tell (Sprint 05, frozen at Slice 0) bounds a one-line beat, the
+   * four-group workup, and a 600-character artifact sized to always fit.
    */
   readonly workshopWidgets: Readonly<{
     gestureTargetPhraseCharacters: number;
@@ -168,6 +170,37 @@ export interface PromptBudgets {
     creativeResponseCharacters: number;
     creativeArtifactCharacters: number;
     creativeRecommendationFrameAllowanceCharacters: number;
+    showVsTellBeatCharacters: number;
+    showVsTellContextCharacters: number;
+    showVsTellProvenancePathCharacters: number;
+    showVsTellPovFocalCharacterCharacters: number;
+    showVsTellMustSurviveCharacters: number;
+    showVsTellMustNotChangeCharacters: number;
+    showVsTellNoteCharacters: number;
+    showVsTellWorkupIdCharacters: number;
+    showVsTellVariantsPerGroupMinimum: number;
+    showVsTellVariantsPerGroup: number;
+    showVsTellVariantsMinimum: number;
+    showVsTellVariants: number;
+    /** Maximum channels one variant uses; every variant uses at least one. */
+    showVsTellChannelsPerVariant: number;
+    showVsTellProseCharacters: number;
+    /** Also strictly shorter than its own prose. */
+    showVsTellDirectionCharacters: number;
+    showVsTellGainsCharacters: number;
+    showVsTellCostsCharacters: number;
+    showVsTellFlagsPerVariant: number;
+    showVsTellFlagNoteCharacters: number;
+    showVsTellOutputTokens: number;
+    showVsTellResponseCharacters: number;
+    /**
+     * Writer-visible ceiling on the compiled artifact body. Field limits keep a
+     * maximal beat, both invariants, the longest position line, and one
+     * direction-only variant under it (585); a test pins that arithmetic.
+     */
+    showVsTellArtifactCharacters: number;
+    showVsTellRecommendationSubjectCharacters: number;
+    showVsTellRecommendationFrameAllowanceCharacters: number;
     lexicalRecommendationFrameCharacters: number;
     lexicalLensNameCharacters: number;
     lexicalLensSlugCharacters: number;
@@ -329,6 +362,30 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     creativeResponseCharacters: 140_000,
     creativeArtifactCharacters: 20_000,
     creativeRecommendationFrameAllowanceCharacters: 2_500,
+    showVsTellBeatCharacters: 160,
+    showVsTellContextCharacters: 250_000,
+    showVsTellProvenancePathCharacters: 500,
+    showVsTellPovFocalCharacterCharacters: 80,
+    showVsTellMustSurviveCharacters: 120,
+    showVsTellMustNotChangeCharacters: 80,
+    showVsTellNoteCharacters: 160,
+    showVsTellWorkupIdCharacters: 64,
+    showVsTellVariantsPerGroupMinimum: 1,
+    showVsTellVariantsPerGroup: 2,
+    showVsTellVariantsMinimum: 4,
+    showVsTellVariants: 8,
+    showVsTellChannelsPerVariant: 2,
+    showVsTellProseCharacters: 1_200,
+    showVsTellDirectionCharacters: 120,
+    showVsTellGainsCharacters: 160,
+    showVsTellCostsCharacters: 160,
+    showVsTellFlagsPerVariant: 4,
+    showVsTellFlagNoteCharacters: 160,
+    showVsTellOutputTokens: 16_000,
+    showVsTellResponseCharacters: 48_000,
+    showVsTellArtifactCharacters: 600,
+    showVsTellRecommendationSubjectCharacters: 60,
+    showVsTellRecommendationFrameAllowanceCharacters: 1_200,
     lexicalRecommendationFrameCharacters: 1_000,
     lexicalLensNameCharacters: 80,
     lexicalLensSlugCharacters: 64,
