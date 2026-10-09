@@ -75,6 +75,16 @@ export function showVsTellPositionArtifactValue(position: NarrativeHandlingPosit
   return `${descriptor.name.toLowerCase()} · ${descriptor.subtitle}`;
 }
 
+/**
+ * Deterministic word count for the card's `N w` label. The model never
+ * supplies it: it is whitespace-separated runs of the trimmed prose, and a
+ * blank string has zero words.
+ */
+export function showVsTellWordCount(prose: string): number {
+  const trimmed = prose.trim();
+  return trimmed.length === 0 ? 0 : trimmed.split(/\s+/u).length;
+}
+
 /** Identity of a surrounding-passage source, for duplicate and order checks. */
 export function showVsTellSourceReferenceKey(reference: WorkshopWidgetSourceReference): string {
   return reference.kind === 'active-excerpt'
