@@ -17,6 +17,7 @@ import {
   SHOW_VS_TELL_LENGTH_BUDGETS,
   SHOW_VS_TELL_POV_MODES
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
+import { ShowVsTellRadioGroup } from './ShowVsTellRadioGroup';
 
 export interface ShowVsTellChannelsBudgetProps {
   channels: readonly WorkshopShowVsTellChannel[];
@@ -84,25 +85,18 @@ export const ShowVsTellChannelsBudget: React.FC<ShowVsTellChannelsBudgetProps> =
       </div>
       <div className="pm-ws-svt-field">
         <span className="pm-ws-svt-flabel" id="pm-ws-svt-budget-label">Length budget</span>
-        <div
+        <ShowVsTellRadioGroup
           className="pm-ws-svt-chs"
-          role="radiogroup"
-          aria-labelledby="pm-ws-svt-budget-label"
-        >
-          {SHOW_VS_TELL_LENGTH_BUDGETS.map((budget) => (
-            <button
-              key={budget.id}
-              type="button"
-              role="radio"
-              aria-checked={lengthBudget === budget.id}
-              className="pm-ws-svt-ch"
-              disabled={disabled}
-              onClick={() => onLengthBudgetChange(budget.id)}
-            >
-              {budget.label}
-            </button>
-          ))}
-        </div>
+          ariaLabelledBy="pm-ws-svt-budget-label"
+          value={lengthBudget}
+          onChange={onLengthBudgetChange}
+          disabled={disabled}
+          optionClassName={() => 'pm-ws-svt-ch'}
+          options={SHOW_VS_TELL_LENGTH_BUDGETS.map((budget) => ({
+            id: budget.id,
+            content: budget.label
+          }))}
+        />
       </div>
     </>
   );

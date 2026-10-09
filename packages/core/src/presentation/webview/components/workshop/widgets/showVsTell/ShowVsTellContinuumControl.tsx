@@ -13,6 +13,7 @@ import {
   SHOW_VS_TELL_CONTINUUM_END_LABELS,
   SHOW_VS_TELL_POSITIONS
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
+import { ShowVsTellRadioGroup } from './ShowVsTellRadioGroup';
 import { ShowVsTellReadout } from './ShowVsTellReadout';
 
 export interface ShowVsTellContinuumControlProps {
@@ -32,21 +33,22 @@ export const ShowVsTellContinuumControl: React.FC<ShowVsTellContinuumControlProp
         <span>{SHOW_VS_TELL_CONTINUUM_END_LABELS.tell}</span>
         <span>{SHOW_VS_TELL_CONTINUUM_END_LABELS.show}</span>
       </div>
-      <div className="pm-ws-svt-steps" role="radiogroup" aria-label="Position on the continuum">
-        {SHOW_VS_TELL_POSITIONS.map((step) => (
-          <button
-            key={step.id}
-            type="button"
-            role="radio"
-            aria-checked={step.id === position}
-            className={`pm-ws-svt-step${step.id === position ? ' pm-ws-svt-step-on' : ''}`}
-            onClick={() => onPositionChange(step.id)}
-          >
-            <span className="pm-ws-svt-step-n">{step.name}</span>
-            <span className="pm-ws-svt-step-s">{step.subtitle}</span>
-          </button>
-        ))}
-      </div>
+      <ShowVsTellRadioGroup
+        className="pm-ws-svt-steps"
+        ariaLabel="Position on the continuum"
+        value={position}
+        onChange={onPositionChange}
+        optionClassName={(selected) => `pm-ws-svt-step${selected ? ' pm-ws-svt-step-on' : ''}`}
+        options={SHOW_VS_TELL_POSITIONS.map((step) => ({
+          id: step.id,
+          content: (
+            <>
+              <span className="pm-ws-svt-step-n">{step.name}</span>
+              <span className="pm-ws-svt-step-s">{step.subtitle}</span>
+            </>
+          )
+        }))}
+      />
       <p className="pm-ws-svt-continuum-line" aria-live="polite">
         {selected?.tradeoff}
       </p>

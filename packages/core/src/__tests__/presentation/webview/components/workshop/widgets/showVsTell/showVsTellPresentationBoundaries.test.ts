@@ -59,6 +59,7 @@ describe('showVsTell presentation boundaries', () => {
       'ShowVsTellChannelsBudget.tsx',
       'ShowVsTellContinuumControl.tsx',
       'ShowVsTellPayloadStrip.tsx',
+      'ShowVsTellRadioGroup.tsx',
       'ShowVsTellReadout.tsx',
       'ShowVsTellSurroundingPanel.tsx',
       'ShowVsTellVariantCard.tsx',
