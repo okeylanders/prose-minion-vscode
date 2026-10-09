@@ -1,6 +1,6 @@
 /**
  * Negative-space witness for the Show vs. Tell presentation slice
- * (Sprint 05, Slices 3 and 4).
+ * (Sprint 05, Slices 3, 4, and 7).
  *
  * Five claims (the fifth, added in Slice 5, pins the recommendation seed):
  *  1. The component directory is controlled presentation only: no VS Code
@@ -72,10 +72,10 @@ const featureFiles = [
   CONTRACT_FILE
 ];
 
-// The commit, warning, codec, integrity, workup-id, and recommendation-parser
-// modules are host-only.
+// The commit, warning, codec, checkpoint-repair, integrity, workup-id, and
+// recommendation-parser modules are host-only.
 const HOST_ONLY_MODULE =
-  /ShowVsTell(?:ConfigCodec|ConfigIntegrity|WorkupId|OneShotCommit|ArtifactWarnings|Recommendation)|node:crypto|from 'crypto'/;
+  /ShowVsTell(?:ConfigCodec|CheckpointNormalization|ConfigIntegrity|WorkupId|OneShotCommit|ArtifactWarnings|Recommendation)|node:crypto|from 'crypto'/;
 
 const FORBIDDEN_COMPONENT_TOKENS = [
   'useVSCodeApi',
@@ -93,10 +93,12 @@ describe('showVsTell presentation boundaries', () => {
   it('contains exactly the named presentation files', () => {
     expect(componentFiles.sort()).toEqual([
       'ShowVsTellChannelsBudget.tsx',
+      'ShowVsTellConstraintsPanel.tsx',
       'ShowVsTellContinuumControl.tsx',
       'ShowVsTellPayloadStrip.tsx',
       'ShowVsTellRadioGroup.tsx',
       'ShowVsTellReadout.tsx',
+      'ShowVsTellSheetHeader.tsx',
       'ShowVsTellSurroundingPanel.tsx',
       'ShowVsTellVariantCard.tsx',
       'WorkshopShowVsTellModal.tsx',
@@ -126,8 +128,10 @@ describe('showVsTell presentation boundaries', () => {
   it('splits the authoring controller into exactly the named transport-free files', () => {
     expect(CONTROLLER_FILES.map((file) => path.basename(file)).sort()).toEqual([
       'showVsTellAuthoringRules.ts',
+      'showVsTellSourceRules.ts',
       'useShowVsTellAuthoring.ts',
       'useShowVsTellCommitFlow.ts',
+      'useShowVsTellIntake.ts',
       'useShowVsTellInvalidationWatch.ts'
     ]);
   });
@@ -188,6 +192,17 @@ describe('showVsTell presentation boundaries', () => {
       'WORKSHOP_SHOW_VS_TELL_RESULT'
     ]);
     expect(names.join(' ')).not.toMatch(/EDIT|INSERT|APPLY|REPLACE|WRITE/);
+  });
+
+  it('lets the surrounding passage reach the host only as the named writer text, never as a resolved source', () => {
+    const transport = read(TRANSPORT);
+    // Two selection targets, both read-only requests; no Show vs. Tell file names resolved source text.
+    expect(transport).toContain("target: 'workshop_show_vs_tell_beat'");
+    expect(transport).toContain("target: 'workshop_show_vs_tell_passage'");
+    for (const file of webviewFiles) {
+      expect({ file: path.relative(SRC, file), found: /resolvedSources|sourceMaterials/.test(read(file)) })
+        .toEqual({ file: path.relative(SRC, file), found: false });
+    }
   });
 
   it('lets a commit travel only on the generic widget commit message', () => {

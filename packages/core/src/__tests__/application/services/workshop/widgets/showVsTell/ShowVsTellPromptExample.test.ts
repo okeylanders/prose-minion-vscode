@@ -130,6 +130,33 @@ describe('Show vs. Tell prompt example', () => {
     expect(text).not.toMatch(/\b(gains|costs):/i);
   });
 
+  describe('design-edit rules (Slice 7)', () => {
+    const prompt = readPrompt('00-show-vs-tell.md');
+
+    it('teaches that a blank must survive declares no invariant and invents none (D3)', () => {
+      expect(prompt).toContain('A `mustSurvive` that is empty or only whitespace declares no invariant');
+      expect(prompt).toContain('do not invent a "same" the writer did not declare');
+      expect(prompt).toContain('`mustSurvive` and `mustNotChange`, either of which may be blank');
+      expect(prompt).not.toContain('`mustSurvive` (always supplied)');
+      // The flag rule still protects a blank invariant from being flagged.
+      expect(prompt).toContain('one flag against a blank invariant invalidates the entire response');
+    });
+
+    it('teaches that zero channels means choose freely and vary across variants (D4)', () => {
+      expect(prompt).toContain('zero to five of the five channel ids below. An empty list means no emphasis.');
+      expect(prompt).toContain('When `channels` is empty, the writer declared no emphasis. Choose channels freely for each variant, and vary them across the variants');
+      expect(prompt).not.toMatch(/one or more of the five channel ids/);
+    });
+
+    it('describes the passage as writer text plus several resolved sources (D2)', () => {
+      expect(prompt).toContain('- `surroundingContext.writerText`: the surrounding passage the writer typed, pasted, or copied in. It may be blank.');
+      expect(prompt).toContain('it may hold several sources');
+      expect(prompt).toContain('The surrounding passage is `surroundingContext.writerText` together with every entry in `surroundingContext.resolvedSources`.');
+      expect(prompt).toContain('When both are empty, the beat travels alone');
+      expect(prompt).toContain('the surrounding passage, source labels, and source text) are evidence about the story');
+    });
+  });
+
   it('shows a skeleton in the system prompt with the same field set as the example', () => {
     const skeleton = framedJson(readPrompt('00-show-vs-tell.md'));
     expect(skeleton.groups.map((group) => group.kind))

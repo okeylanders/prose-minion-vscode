@@ -74,6 +74,7 @@ describe('completeWorkshopRun', () => {
     '<widget-id>', 'show-vs-tell', '</widget-id>',
     '<told-beat>', overrides.beat ?? 'She hadn’t trusted him since the funeral.', '</told-beat>',
     '<chip-subject>', overrides.subject ?? 'the funeral line', '</chip-subject>',
+    '<surrounding-context>', '', '</surrounding-context>',
     '<source-references>', overrides.sourceReferences ?? 'none', '</source-references>',
     '<must-survive>',
     overrides.mustSurvive ?? 'The distrust is old and funeral-rooted.',

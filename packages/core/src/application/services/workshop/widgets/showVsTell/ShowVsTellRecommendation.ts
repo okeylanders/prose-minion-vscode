@@ -18,6 +18,9 @@ import {
   SHOW_VS_TELL_POV_MODES
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 import {
+  sortShowVsTellSourceReferences
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
+import {
   inspectExactWorkshopWidgetRecommendationFrame,
   WorkshopWidgetRecommendationEntry,
   WorkshopWidgetRecommendationInspection,
@@ -35,6 +38,9 @@ const TOLD_BEAT_START = '<told-beat>';
 const TOLD_BEAT_END = '</told-beat>';
 const CHIP_SUBJECT_START = '<chip-subject>';
 const CHIP_SUBJECT_END = '</chip-subject>';
+// Shared with Creative Variations' frame and already reserved by the neutralizer.
+const SURROUNDING_CONTEXT_START = '<surrounding-context>';
+const SURROUNDING_CONTEXT_END = '</surrounding-context>';
 const SOURCE_REFERENCES_START = '<source-references>';
 const SOURCE_REFERENCES_END = '</source-references>';
 const MUST_SURVIVE_START = '<must-survive>';
@@ -60,6 +66,8 @@ export const SHOW_VS_TELL_RECOMMENDATION_MARKERS = [
   TOLD_BEAT_END,
   CHIP_SUBJECT_START,
   CHIP_SUBJECT_END,
+  SURROUNDING_CONTEXT_START,
+  SURROUNDING_CONTEXT_END,
   SOURCE_REFERENCES_START,
   SOURCE_REFERENCES_END,
   MUST_SURVIVE_START,
@@ -87,6 +95,7 @@ type ShowVsTellRecommendation = Extract<
 export type ShowVsTellRecommendationField =
   | 'beatText'
   | 'subject'
+  | 'contextText'
   | 'sourceReferences'
   | 'mustSurvive'
   | 'mustNotChange'
@@ -117,6 +126,7 @@ const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 export const SHOW_VS_TELL_RECOMMENDATION_FRAME_CHARACTERS =
   BUDGET.showVsTellBeatCharacters
   + BUDGET.showVsTellRecommendationSubjectCharacters
+  + BUDGET.showVsTellRecommendationContextCharacters
   + BUDGET.showVsTellSourceReferences * BUDGET.showVsTellSourceReferenceCharacters
   + BUDGET.showVsTellMustSurviveCharacters
   + BUDGET.showVsTellMustNotChangeCharacters
@@ -147,8 +157,9 @@ export const SHOW_VS_TELL_RECOMMENDATION_INSTRUCTION = [
   SHOW_VS_TELL_DIAGNOSIS_COPY,
   `- \`told-beat\`: copy exactly one told beat from material the writer supplied: a single line of at most ${BUDGET.showVsTellBeatCharacters} characters. Never paraphrase, trim it mid-sentence, or invent it.`,
   `- \`chip-subject\`: optionally, a short label for the chip, at most ${BUDGET.showVsTellRecommendationSubjectCharacters} characters on one line, naming the beat the way you would to the writer (for example \`the funeral line\`). It is shown, never sent to generation. Leave it empty when no label helps.`,
-  `- \`source-references\`: \`none\`, or at most ${BUDGET.showVsTellSourceReferences} exact \`active-excerpt\` or \`context-attachment:ctx-N\` identifier shown in the supplied Workshop material, when generation should read that passage for POV and meaning. Never invent an identifier.`,
-  `- \`must-survive\`: the fact, feeling, or turn the beat already carries, which every distance must keep (for example \`the distrust is old and funeral-rooted\`), within ${BUDGET.showVsTellMustSurviveCharacters} characters. Take it from the beat and the writer's words, and add no new story.`,
+  `- \`surrounding-context\`: optionally copy useful consecutive prose around the beat from the supplied material, without summary or invention, within ${BUDGET.showVsTellRecommendationContextCharacters.toLocaleString('en-US')} characters. It opens as the writer's surrounding passage. Leave it empty when none should travel.`,
+  `- \`source-references\`: \`none\`, or at most ${BUDGET.showVsTellSourceReferences} exact \`active-excerpt\` or \`context-attachment:ctx-N\` identifiers shown in the supplied Workshop material, one per line in any order and none repeated, when generation should read those sources for POV and meaning. Never invent an identifier; the complete field may contain at most ${(BUDGET.showVsTellSourceReferences * BUDGET.showVsTellSourceReferenceCharacters).toLocaleString('en-US')} characters.`,
+  `- \`must-survive\`: optionally, the fact, feeling, or turn the beat already carries, which every distance must keep (for example \`the distrust is old and funeral-rooted\`), within ${BUDGET.showVsTellMustSurviveCharacters} characters. Take it from the beat and the writer's words, and add no new story. Do not infer a constraint merely because it seems prudent; leave the field empty when the writer declared none.`,
   `- \`must-not-change\`: optionally, a hard boundary the writer actually declared, within ${BUDGET.showVsTellMustNotChangeCharacters} characters. Leave it empty otherwise.`,
   `- \`pov-mode\`: the POV mode the passage already uses, exactly one of ${SHOW_VS_TELL_POV_MODES
     .filter(({ id }) => id !== 'unspecified')
@@ -164,7 +175,7 @@ export const SHOW_VS_TELL_RECOMMENDATION_INSTRUCTION = [
   `- \`length-allowance\`: optionally, exactly one of ${SHOW_VS_TELL_LENGTH_BUDGETS
     .map(({ id }) => `\`${id}\``)
     .join(', ')}. Suggest it only when the writer has said how long the beat may grow; otherwise leave it empty.`,
-  'Every tag is required. Only told-beat, source-references, and must-survive must have content; every other field may be empty. Everything remains editable and nothing runs until the writer presses Generate. Do not explain widget mechanics in prose—the chip and prefilled form do that.',
+  'Every tag is required. Only told-beat and source-references must have content; every other field may be empty. Everything remains editable and nothing runs until the writer presses Generate. Do not explain widget mechanics in prose—the chip and prefilled form do that.',
   '### Try a widget',
   WIDGET_RECOMMENDATION_FRAME_START,
   WIDGET_RECOMMENDATION_ID_START,
@@ -176,11 +187,14 @@ export const SHOW_VS_TELL_RECOMMENDATION_INSTRUCTION = [
   CHIP_SUBJECT_START,
   '[short chip label, or empty]',
   CHIP_SUBJECT_END,
+  SURROUNDING_CONTEXT_START,
+  '[optional exact surrounding prose, or empty]',
+  SURROUNDING_CONTEXT_END,
   SOURCE_REFERENCES_START,
   'none',
   SOURCE_REFERENCES_END,
   MUST_SURVIVE_START,
-  '[what the beat already carries that every distance must keep]',
+  '[optional: what the beat already carries that every distance must keep, or empty]',
   MUST_SURVIVE_END,
   MUST_NOT_CHANGE_START,
   '[optional declared hard boundary, or empty]',
@@ -214,6 +228,7 @@ export function inspectShowVsTellRecommendation(
     workshopWidgetRecommendationField(sectionLines, inspected, start, end);
   const beatText = field(TOLD_BEAT_START, TOLD_BEAT_END);
   const subject = field(CHIP_SUBJECT_START, CHIP_SUBJECT_END);
+  const contextText = field(SURROUNDING_CONTEXT_START, SURROUNDING_CONTEXT_END);
   const sourceReferenceText = field(SOURCE_REFERENCES_START, SOURCE_REFERENCES_END);
   const mustSurvive = field(MUST_SURVIVE_START, MUST_SURVIVE_END);
   const mustNotChange = field(MUST_NOT_CHANGE_START, MUST_NOT_CHANGE_END);
@@ -223,10 +238,10 @@ export function inspectShowVsTellRecommendation(
   const channelsText = field(EMPHASIS_CHANNELS_START, EMPHASIS_CHANNELS_END);
   const lengthBudgetText = field(LENGTH_ALLOWANCE_START, LENGTH_ALLOWANCE_END);
 
+  // Must survive is optional (D3), so only the beat and the source field must have content.
   const requiredFields = [
     { field: 'beatText' as const, value: beatText },
-    { field: 'sourceReferences' as const, value: sourceReferenceText },
-    { field: 'mustSurvive' as const, value: mustSurvive }
+    { field: 'sourceReferences' as const, value: sourceReferenceText }
   ];
   const emptyField = requiredFields.find(({ value }) => value.length === 0);
   if (emptyField) {
@@ -248,6 +263,11 @@ export function inspectShowVsTellRecommendation(
       field: 'subject',
       value: subject,
       maximum: BUDGET.showVsTellRecommendationSubjectCharacters
+    },
+    {
+      field: 'contextText',
+      value: contextText,
+      maximum: BUDGET.showVsTellRecommendationContextCharacters
     },
     {
       field: 'sourceReferences',
@@ -328,8 +348,9 @@ export function inspectShowVsTellRecommendation(
       seed: {
         beatText,
         ...(subject ? { subject } : {}),
+        ...(contextText ? { contextText } : {}),
         sourceReferences,
-        mustSurvive,
+        ...(mustSurvive ? { mustSurvive } : {}),
         ...(mustNotChange ? { mustNotChange } : {}),
         ...(povMode !== 'unspecified'
           ? { pov: { mode: povMode, focalCharacter: povFocalCharacter } }
@@ -367,8 +388,15 @@ function parseSourceReferences(value: string): WorkshopWidgetSourceReference[] |
     return undefined;
   }
 
+  // Like channels: repeats reject the frame, and the seed stores the canonical
+  // order whatever order the persona listed, so integrity accepts it on hydration.
+  const seen = new Set<string>();
   const references: WorkshopWidgetSourceReference[] = [];
   for (const line of lines) {
+    if (seen.has(line)) {
+      return undefined;
+    }
+    seen.add(line);
     if (line === 'active-excerpt') {
       references.push({ kind: 'active-excerpt' });
       continue;
@@ -379,7 +407,7 @@ function parseSourceReferences(value: string): WorkshopWidgetSourceReference[] |
     }
     references.push({ kind: 'context-attachment', attachmentId: match[1] });
   }
-  return references;
+  return sortShowVsTellSourceReferences(references);
 }
 
 /** Empty means "no suggestion"; otherwise known, unrepeated ids in the fixed channel order. */

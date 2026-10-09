@@ -50,7 +50,7 @@ export const generatedShowVsTellDraft = (): WorkshopShowVsTellDraft => ({
       endLine: 12
     }
   },
-  surroundingContext: { sourceReferences: [{ kind: 'active-excerpt' }] },
+  surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] },
   pov: { mode: 'close-third', focalCharacter: 'Daniel' },
   invariants: {
     mustSurvive: 'The distrust is old and funeral-rooted — and she never says it out loud.',
@@ -157,7 +157,7 @@ export const ungeneratedShowVsTellDraft = (): WorkshopShowVsTellDraft => ({
     text: 'She hadn’t trusted him since the funeral.',
     provenance: { kind: 'pasted' }
   },
-  surroundingContext: { sourceReferences: [] },
+  surroundingContext: { writerText: '', sourceReferences: [] },
   pov: { mode: 'unspecified', focalCharacter: '' },
   invariants: {
     mustSurvive: 'The distrust is old and funeral-rooted.',

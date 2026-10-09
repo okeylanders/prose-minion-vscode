@@ -3,7 +3,8 @@
 import {
   SHOW_VS_TELL_GENERATION_PROTOCOL_VERSION,
   WorkshopShowVsTellDraft,
-  WorkshopShowVsTellVariant
+  WorkshopShowVsTellVariant,
+  WorkshopWidgetSourceReference
 } from '@messages';
 import { NARRATIVE_HANDLING_POSITIONS } from '@shared/constants/narrativeHandlingVocabulary';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -21,15 +22,16 @@ import {
   optionalBoundedStringAt,
   shapeError
 } from '@/application/services/workshop/persistedValidation';
-import type {
-  WorkshopWidgetDraftRecoveryResult
-} from '@/application/services/workshop/widgets/WorkshopWidgetCheckpointRecoveryContracts';
 import {
   SHOW_VS_TELL_CHANNELS,
   SHOW_VS_TELL_GROUPS,
   SHOW_VS_TELL_LENGTH_BUDGETS,
   SHOW_VS_TELL_POV_MODES
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
+import {
+  compareShowVsTellSourceReferences,
+  showVsTellSourceReferenceKey
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
 export {
   assertShowVsTellDraftIntegrity
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigIntegrity';
@@ -39,9 +41,6 @@ export interface ShowVsTellDraftSummary {
   keptCount: number;
   directionCount: number;
 }
-
-/** Show vs. Tell has never shipped, so no checkpoint repairs exist. */
-export type ShowVsTellCheckpointNormalization = never;
 
 const CHANNEL_IDS = SHOW_VS_TELL_CHANNELS.map(({ id }) => id);
 const GROUP_KINDS = SHOW_VS_TELL_GROUPS.map(({ kind }) => kind);
@@ -65,8 +64,8 @@ export function assertShowVsTellRecommendationSeedShape(value: unknown, path: st
   const seed = exactObject(
     value,
     path,
-    ['beatText', 'sourceReferences', 'mustSurvive'],
-    ['subject', 'mustNotChange', 'pov', 'position', 'channels', 'lengthBudget']
+    ['beatText', 'sourceReferences'],
+    ['subject', 'contextText', 'mustSurvive', 'mustNotChange', 'pov', 'position', 'channels', 'lengthBudget']
   );
   singleLineStringAt(seed.beatText, `${path}.beatText`, budget.showVsTellBeatCharacters, false);
   if (seed.subject !== undefined) {
@@ -76,12 +75,22 @@ export function assertShowVsTellRecommendationSeedShape(value: unknown, path: st
       budget.showVsTellRecommendationSubjectCharacters
     );
   }
+  optionalBoundedStringAt(
+    seed.contextText,
+    `${path}.contextText`,
+    budget.showVsTellRecommendationContextCharacters
+  );
   assertShowVsTellSourceReferencesShape(seed.sourceReferences, `${path}.sourceReferences`);
-  boundedStringAt(
+  // The parser emits unique references in canonical order, as it does channels;
+  // any other arrangement could only have been altered by hand.
+  assertShowVsTellSourceReferencesCanonical(
+    seed.sourceReferences as WorkshopWidgetSourceReference[],
+    `${path}.sourceReferences`
+  );
+  optionalBoundedStringAt(
     seed.mustSurvive,
     `${path}.mustSurvive`,
-    budget.showVsTellMustSurviveCharacters,
-    false
+    budget.showVsTellMustSurviveCharacters
   );
   optionalBoundedStringAt(
     seed.mustNotChange,
@@ -121,11 +130,20 @@ export function assertShowVsTellRecommendationSeedShape(value: unknown, path: st
   }
 }
 
+/** The current shape, plus the pre-Slice-7 surrounding context without `writerText`. */
 export function assertShowVsTellDraftCheckpointShape(value: unknown, path: string): void {
-  assertShowVsTellDraftShape(value, path);
+  assertShowVsTellDraftShapeInternal(value, path, true);
 }
 
 export function assertShowVsTellDraftShape(value: unknown, path: string): void {
+  assertShowVsTellDraftShapeInternal(value, path, false);
+}
+
+function assertShowVsTellDraftShapeInternal(
+  value: unknown,
+  path: string,
+  allowCheckpointDefaults: boolean
+): void {
   const budget = PROMPT_BUDGETS.workshopWidgets;
   const draft = exactObject(value, path, [
     'beat',
@@ -141,7 +159,11 @@ export function assertShowVsTellDraftShape(value: unknown, path: string): void {
   ]);
 
   assertBeatShape(draft.beat, `${path}.beat`);
-  assertSurroundingContextShape(draft.surroundingContext, `${path}.surroundingContext`);
+  assertSurroundingContextShape(
+    draft.surroundingContext,
+    `${path}.surroundingContext`,
+    allowCheckpointDefaults
+  );
 
   const pov = exactObject(draft.pov, `${path}.pov`, ['mode', 'focalCharacter']);
   enumAt(pov.mode, `${path}.pov.mode`, POV_MODE_IDS);
@@ -156,11 +178,11 @@ export function assertShowVsTellDraftShape(value: unknown, path: string): void {
     `${path}.invariants`,
     ['mustSurvive', 'mustNotChange']
   );
+  // Both invariants are optional (D3): blank declares no constraint.
   boundedStringAt(
     invariants.mustSurvive,
     `${path}.invariants.mustSurvive`,
-    budget.showVsTellMustSurviveCharacters,
-    false
+    budget.showVsTellMustSurviveCharacters
   );
   boundedStringAt(
     invariants.mustNotChange,
@@ -168,7 +190,8 @@ export function assertShowVsTellDraftShape(value: unknown, path: string): void {
     budget.showVsTellMustNotChangeCharacters
   );
 
-  boundedArrayAt(draft.channels, `${path}.channels`, 1, CHANNEL_IDS.length, 'channels');
+  // Zero channels is "no emphasis" (D4); the seed keeps 1–5 because its parser omits an empty list.
+  boundedArrayAt(draft.channels, `${path}.channels`, 0, CHANNEL_IDS.length, 'channels');
   arrayOf(draft.channels, `${path}.channels`, (channel, channelPath) =>
     enumAt(channel, channelPath, CHANNEL_IDS)
   );
@@ -200,7 +223,7 @@ function singleLineStringAt(
   }
 }
 
-/** Shape of the one-or-none surrounding source; the host resolves its text later. */
+/** Shape of the zero-to-N context sources; the host resolves their text at generation. */
 export function assertShowVsTellSourceReferencesShape(value: unknown, path: string): void {
   const budget = PROMPT_BUDGETS.workshopWidgets;
   boundedArrayAt(value, path, 0, budget.showVsTellSourceReferences, 'source references');
@@ -227,8 +250,36 @@ export function assertShowVsTellSourceReferencesShape(value: unknown, path: stri
   });
 }
 
-function assertSurroundingContextShape(value: unknown, path: string): void {
-  const context = exactObject(value, path, ['sourceReferences']);
+/** Unique references in canonical order; the draft runs the same rule in its integrity gate. */
+function assertShowVsTellSourceReferencesCanonical(
+  references: readonly WorkshopWidgetSourceReference[],
+  path: string
+): void {
+  const keys = new Set<string>();
+  for (const [index, reference] of references.entries()) {
+    const key = showVsTellSourceReferenceKey(reference);
+    if (keys.has(key)) {
+      shapeError(path, 'source references without duplicates');
+    }
+    keys.add(key);
+    if (index > 0 && compareShowVsTellSourceReferences(references[index - 1], reference) > 0) {
+      shapeError(path, 'source references in canonical order');
+    }
+  }
+}
+
+function assertSurroundingContextShape(
+  value: unknown,
+  path: string,
+  allowMissingWriterText: boolean
+): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  const context = allowMissingWriterText
+    ? exactObject(value, path, ['sourceReferences'], ['writerText'])
+    : exactObject(value, path, ['writerText', 'sourceReferences']);
+  if (context.writerText !== undefined || !allowMissingWriterText) {
+    boundedStringAt(context.writerText, `${path}.writerText`, budget.showVsTellContextCharacters);
+  }
   assertShowVsTellSourceReferencesShape(context.sourceReferences, `${path}.sourceReferences`);
 }
 
@@ -384,6 +435,7 @@ export function cloneShowVsTellDraft(draft: WorkshopShowVsTellDraft): WorkshopSh
       provenance: { ...draft.beat.provenance }
     },
     surroundingContext: {
+      writerText: draft.surroundingContext.writerText,
       sourceReferences: draft.surroundingContext.sourceReferences.map(
         (reference) => ({ ...reference })
       )
@@ -416,19 +468,5 @@ export function summarizeShowVsTellDraft(draft: WorkshopShowVsTellDraft): ShowVs
     beatPreview: draft.beat.text.slice(0, PROMPT_BUDGETS.workshopWidgets.showVsTellBeatCharacters),
     keptCount: draft.kept.length,
     directionCount: draft.kept.filter((kept) => kept.carryMode === 'direction').length
-  };
-}
-
-export function normalizeShowVsTellDraftForHydration(
-  value: unknown
-): WorkshopWidgetDraftRecoveryResult<
-  WorkshopShowVsTellDraft,
-  ShowVsTellCheckpointNormalization
-> {
-  assertShowVsTellDraftCheckpointShape(value, 'Show vs. Tell checkpoint draft');
-  return {
-    draft: cloneShowVsTellDraft(value as WorkshopShowVsTellDraft),
-    normalizations: [],
-    notices: []
   };
 }

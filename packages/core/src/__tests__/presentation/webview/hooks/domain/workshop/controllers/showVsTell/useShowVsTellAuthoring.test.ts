@@ -61,7 +61,7 @@ const selection = (
 interface Harness {
   options: jest.Mocked<Pick<
     UseShowVsTellAuthoringOptions,
-    'requestBeatSelection' | 'generate' | 'cancelGeneration' | 'commit'
+    'requestBeatSelection' | 'requestPassageSelection' | 'generate' | 'cancelGeneration' | 'commit'
     | 'clearCommitResult' | 'resetCommitState' | 'onCommitAccepted'
   >>;
   result: { current: ReturnType<typeof useShowVsTellAuthoring> };
@@ -72,6 +72,7 @@ function setup(initial: Partial<UseShowVsTellAuthoringOptions> = {}): Harness {
   let tokenIndex = 0;
   const options = {
     requestBeatSelection: jest.fn(),
+    requestPassageSelection: jest.fn(() => 'psel-1'),
     generate: jest.fn((_input: unknown) => `token-${++tokenIndex}`),
     cancelGeneration: jest.fn(),
     commit: jest.fn(),
@@ -136,21 +137,21 @@ describe('useShowVsTellAuthoring', () => {
       expect(h.result.current.persistedState).toEqual({});
     });
 
-    it('requires a non-blank beat and must survive before generation', () => {
+    it('requires a non-blank beat before generation; must survive is optional (D3)', () => {
       const h = setup();
 
-      expect(h.result.current.generateBlockers).toEqual(['beat-required', 'must-survive-required']);
+      expect(h.result.current.generateBlockers).toEqual(['beat-required']);
       act(() => h.result.current.generateWorkup());
       expect(h.options.generate).not.toHaveBeenCalled();
 
       act(() => h.result.current.changeBeatText('A beat.'));
       act(() => h.result.current.changeMustSurvive('   '));
-      expect(h.result.current.generateBlockers).toEqual(['must-survive-required']);
-
-      act(() => h.result.current.changeMustSurvive('The turn.'));
       expect(h.result.current.generateBlockers).toEqual([]);
       act(() => h.result.current.generateWorkup());
       expect(h.options.generate).toHaveBeenCalledTimes(1);
+      expect(h.options.generate).toHaveBeenCalledWith(expect.objectContaining({
+        invariants: { mustSurvive: '   ', mustNotChange: '' }
+      }));
     });
 
     it('sends exactly the generation inputs and no workup, kept, or note', () => {
@@ -173,7 +174,7 @@ describe('useShowVsTellAuthoring', () => {
       act(() => {
         h.result.current.changeBeatText('A beat.');
         h.result.current.changeMustSurvive('The turn.');
-        h.result.current.selectSourceReference({ kind: 'active-excerpt' });
+        h.result.current.toggleSourceReference({ kind: 'active-excerpt' });
       });
       expect(h.result.current.generateBlockers).toEqual([]);
 
@@ -187,7 +188,14 @@ describe('useShowVsTellAuthoring', () => {
     const everyInvalidatingInput: Array<[string, (h: Harness) => void]> = [
       ['beat text', (h) => h.result.current.changeBeatText('A different beat.')],
       ['beat selection', (h) => h.result.current.handleBeatSelection(selection({ content: 'Another beat.' }))],
-      ['source reference', (h) => h.result.current.selectSourceReference({ kind: 'active-excerpt' })],
+      ['context source', (h) => h.result.current.toggleSourceReference({ kind: 'active-excerpt' })],
+      ['passage text', (h) => h.result.current.changePassageText('He set the mug down.')],
+      ['passage selection', (h) => {
+        h.result.current.requestPassageSelection();
+        h.result.current.handlePassageSelection(selection({
+          target: 'workshop_show_vs_tell_passage', requestId: 'psel-1', content: 'He set the mug down.'
+        }));
+      }],
       ['POV mode', (h) => h.result.current.changePovMode('close-third')],
       ['must survive', (h) => h.result.current.changeMustSurvive('Something else survives.')],
       ['must not change', (h) => h.result.current.changeMustNotChange('No flashback.')],
@@ -275,7 +283,7 @@ describe('useShowVsTellAuthoring', () => {
 
     it('a room change clears work grounded on a source reference but not an ungrounded one', () => {
       const grounded = setup({ activeExcerpt: { text: 'x', version: 1, pinnedAt: 1, source: { kind: 'manual' } } as never });
-      act(() => grounded.result.current.selectSourceReference({ kind: 'active-excerpt' }));
+      act(() => grounded.result.current.toggleSourceReference({ kind: 'active-excerpt' }));
       settleWorkup(grounded);
       grounded.rerender({ roomKey: 'room-2' });
       expect(grounded.result.current.draft.workup).toBeNull();
@@ -364,7 +372,7 @@ describe('useShowVsTellAuthoring', () => {
       act(() => {
         h.result.current.changeBeatText('A beat.');
         h.result.current.changeMustSurvive('The turn.');
-        h.result.current.selectSourceReference({ kind: 'active-excerpt' });
+        h.result.current.toggleSourceReference({ kind: 'active-excerpt' });
       });
       act(() => h.result.current.generateWorkup());
       const token = h.options.generate.mock.results.at(-1)!.value as string;
@@ -421,14 +429,18 @@ describe('useShowVsTellAuthoring', () => {
   });
 
   describe('channels', () => {
-    it('keeps the last selected channel on', () => {
+    it('turns the last selected channel off, down to zero (D4), and still generates', () => {
       const h = setup();
       act(() => h.result.current.toggleChannel('sensory-evidence'));
       expect(h.result.current.draft.channels).toEqual(['observable-action']);
 
       act(() => h.result.current.toggleChannel('observable-action'));
 
-      expect(h.result.current.draft.channels).toEqual(['observable-action']);
+      expect(h.result.current.draft.channels).toEqual([]);
+      act(() => h.result.current.changeBeatText('A beat.'));
+      expect(h.result.current.generateBlockers).toEqual([]);
+      act(() => h.result.current.generateWorkup());
+      expect(h.options.generate).toHaveBeenCalledWith(expect.objectContaining({ channels: [] }));
     });
 
     it('stores channels in the fixed channel order whatever order they were clicked', () => {

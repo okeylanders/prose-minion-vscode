@@ -4,7 +4,9 @@
  * Slice 1 declared the exact authoring draft and the generated workup it
  * stores. Slice 2 adds the generate, cancel, progress, and result messages.
  * Slice 4 adds the commit payload. Slice 5 adds the input-only persona
- * recommendation seed.
+ * recommendation seed. Slice 7 (design edits, writer decisions 2026-10-09)
+ * makes the surrounding passage writer text plus a multi-select of room
+ * sources (D2), must survive optional (D3), and channels zero to five (D4).
  */
 
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
@@ -75,7 +77,11 @@ export interface WorkshopShowVsTellPov {
 }
 
 export interface WorkshopShowVsTellInvariants {
-  /** Required: the fact, emotion, or turn every variant has to carry. */
+  /**
+   * Optional (D3): the fact, emotion, or turn every variant has to carry.
+   * Blank declares no constraint, exactly like must not change, and the
+   * artifact omits its line.
+   */
   mustSurvive: string;
   /** Optional hard boundary; blank declares no constraint. */
   mustNotChange: string;
@@ -134,7 +140,7 @@ export interface WorkshopShowVsTellVariant {
   gains: string;
   /** Plain text; the UI supplies the bold label. */
   costs: string;
-  /** Abstract, reusable instruction, strictly shorter than `prose`. */
+  /** Abstract, reusable instruction; bounded on its own, never relative to `prose` (D5). */
   direction: string;
   invariantFlags: WorkshopShowVsTellInvariantFlag[];
 }
@@ -162,20 +168,24 @@ export interface WorkshopShowVsTellKeptVariant {
 }
 
 /**
- * Which room source grounds POV and meaning for generation. Only the
- * reference persists: the host resolves the passage text at generation time,
- * so the text never crosses from the webview, is never stored, and never
+ * What grounds POV and meaning for generation (D2, mirroring Creative
+ * Variations): a writer-authored surrounding passage, typed, pasted, or
+ * copied in from the excerpt or the editor selection, plus the room sources
+ * the host resolves to text at generation time. The writer text persists in
+ * the draft; source text never does. Both are generation inputs, and neither
  * rides the commit.
  */
 export interface WorkshopShowVsTellSurroundingContext {
-  /** Zero or one reference; empty means no surrounding passage. */
+  /** At most `showVsTellContextCharacters`; blank means no written passage. */
+  writerText: string;
+  /** Zero to `showVsTellSourceReferences` references, unique and in canonical order. */
   sourceReferences: WorkshopWidgetSourceReference[];
 }
 
 /**
  * Exact authoring truth, stored by config id so a chip reopens the whole
- * draft. The surrounding passage is read-only room context: its source
- * reference is part of the draft, its text is not. Focus, scroll, and the busy
+ * draft. The surrounding passage text and the context source references are
+ * part of the draft; resolved source text is not. Focus, scroll, and the busy
  * state are presentation state.
  */
 export interface WorkshopShowVsTellDraft {
@@ -183,7 +193,11 @@ export interface WorkshopShowVsTellDraft {
   surroundingContext: WorkshopShowVsTellSurroundingContext;
   pov: WorkshopShowVsTellPov;
   invariants: WorkshopShowVsTellInvariants;
-  /** At least one channel, in the fixed channel order. */
+  /**
+   * Zero to five channels, unique and in the fixed channel order (D4). Empty
+   * means no emphasis: the generation chooses channels freely and varies them
+   * across variants.
+   */
   channels: WorkshopShowVsTellChannel[];
   lengthBudget: WorkshopShowVsTellLengthBudget;
   /** Moving it re-weighs the readout and changes what commits; it keeps the workup. */
@@ -209,10 +223,16 @@ export interface WorkshopShowVsTellRecommendationSeed {
    * chip only: it never reaches generation, the draft, or a commit.
    */
   subject?: string;
-  /** Zero or one reference; the passage text never travels with the seed. */
+  /**
+   * Optional surrounding prose the persona copied from supplied material, at
+   * most `showVsTellRecommendationContextCharacters`. It opens as the writer
+   * passage text.
+   */
+  contextText?: string;
+  /** Zero to `showVsTellSourceReferences` references; source text never travels with the seed. */
   sourceReferences: WorkshopWidgetSourceReference[];
-  /** Required: generation has no meaning without a declared "same". */
-  mustSurvive: string;
+  /** Optional (D3); absent or blank opens with no declared "same". */
+  mustSurvive?: string;
   mustNotChange?: string;
   /** Persona-suggested POV; with a focal character only for a declared mode. */
   pov?: WorkshopShowVsTellPov;
@@ -236,10 +256,10 @@ export interface WorkshopShowVsTellCommitPayload {
 
 /**
  * Complete transient authoring input for one workup generation attempt. The
- * surrounding passage crosses as a source reference only: the host resolves
- * its text at generation time. The position steers the variants, but moving
- * it afterwards never discards a workup, so it is not an invalidating input
- * (every other field here is).
+ * surrounding passage crosses as the writer's text plus source references;
+ * the host resolves each reference's text at generation time. The position
+ * steers the variants, but moving it afterwards never discards a workup, so
+ * it is not an invalidating input (every other field here is).
  */
 export interface WorkshopShowVsTellGeneratePayload {
   widgetId: 'show-vs-tell';

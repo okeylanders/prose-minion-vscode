@@ -15,10 +15,11 @@ kinds of limit separately.
 
 **(a) Response-contract checks, enforced by the strict parser.** A model
 response is rejected for: a missing or extra group, the wrong variant count,
-per-field limits (each variant's prose may run up to 1,200 characters), a
-direction that is not shorter than its prose by the encoded margin of 4,
-duplicate variants, or a malformed flag. The parser does **not** enforce the
-600-character artifact ceiling. Several long variants can be valid.
+per-field limits (each variant's prose may run up to 1,200 characters and
+its direction up to 120, with **no** rejection for a direction's length
+relative to its prose, per writer decision D5), duplicate variants, or a
+malformed flag. The parser does **not** enforce the 600-character artifact
+ceiling. Several long variants can be valid.
 
 **(b) Selected-artifact fit, enforced later.** The 600-character limit applies
 to the writer's selected artifact body, after keeps and carry modes are chosen.
@@ -51,7 +52,8 @@ unreviewed against real output.
 
 - **(a) Response contract.** Each fixed beat has a recorded parser outcome:
   accepted, or rejected with the reason. Accepted responses show the four-group
-  shape, the per-field limits, the direction rule (encoded margin 4), no
+  shape, the per-field limits (direction ≤ 120 characters on its own; a
+  direction as long as or longer than its prose is accepted since D5), no
   duplicates, and valid flags.
 - **(b) Selected-artifact fit.** For each beat, record the tested kept set and
   each variant's carry mode. Check that:

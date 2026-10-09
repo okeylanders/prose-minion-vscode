@@ -266,12 +266,11 @@ describe('Show vs. Tell one-shot commit', () => {
     });
 
     it('refuses a workup whose integrity no longer holds', () => {
-      const draft = withVariants(generatedShowVsTellDraft(), (variant, ordinal) => ordinal === 3
-        ? { direction: `${variant.prose} and more` }
+      // A repeated channel passes the shape gate (each entry is a valid id) and only
+      // integrity catches it. A direction longer than its prose is valid since D5.
+      const draft = withVariants(generatedShowVsTellDraft(), (_variant, ordinal) => ordinal === 3
+        ? { channels: ['observable-action', 'observable-action'] as const }
         : {});
-      // The longer direction is still within the field limit, so only integrity can catch it.
-      expect(showVsTellWorkupVariants(draft.workup!)[2].direction.length)
-        .toBeLessThanOrEqual(PROMPT_BUDGETS.workshopWidgets.showVsTellDirectionCharacters);
 
       expect(rejection(draft)).toMatch(/no longer matches its authored inputs/);
     });
@@ -308,7 +307,7 @@ describe('Show vs. Tell one-shot commit', () => {
       if (!result.ok) {
         expect(result.reason).toBe('invalid-draft');
         expect(result.message).toMatch(/600-character ceiling/);
-        expect(result.message).toMatch(/direction only/);
+        expect(result.message).toMatch(/as direction where that is shorter/);
         expect(result.message).toMatch(/keep fewer/);
         expect(result.message).toMatch(/shorten the note/);
       }
@@ -661,7 +660,7 @@ describe('Show vs. Tell one-shot commit', () => {
     it('round-trips a committed draft with every field set through export and hydration, and feeds the chip counts', async () => {
       const { session, coordinator } = harness();
       const draft = generatedShowVsTellDraft();
-      draft.surroundingContext = { sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-2' }] };
+      draft.surroundingContext = { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-2' }] };
       draft.invariants.mustSurvive = 'The distrust is old.\nShe never says it.';
       draft.pov = { mode: 'close-third', focalCharacter: 'Daniel' };
       draft.channels = ['observable-action', 'interiority'];

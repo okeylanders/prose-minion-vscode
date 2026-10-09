@@ -12,10 +12,9 @@ export type ShowVsTellGenerationPhase =
   | { kind: 'generating'; detail?: string }
   | { kind: 'failed'; message: string };
 
-/** Why Generate is unavailable, most important first. */
+/** Why Generate is unavailable, most important first. Must survive is optional (D3). */
 export type ShowVsTellGenerateBlocker =
   | 'beat-required'
-  | 'must-survive-required'
   | 'source-unavailable';
 
 /**

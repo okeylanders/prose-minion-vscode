@@ -57,6 +57,7 @@ const showVsTellFrame = (): string => [
   '<widget-id>', 'show-vs-tell', '</widget-id>',
   '<told-beat>', 'She hadn’t trusted him since the funeral.', '</told-beat>',
   '<chip-subject>', '', '</chip-subject>',
+  '<surrounding-context>', '', '</surrounding-context>',
   '<source-references>', 'none', '</source-references>',
   '<must-survive>', 'The distrust is old and funeral-rooted.', '</must-survive>',
   '<must-not-change>', '', '</must-not-change>',

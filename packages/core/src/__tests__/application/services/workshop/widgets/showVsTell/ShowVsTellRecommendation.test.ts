@@ -19,6 +19,7 @@ const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 interface RecommendationFields {
   beat: string;
   subject: string;
+  contextText: string;
   sourceReferences: string;
   mustSurvive: string;
   mustNotChange: string;
@@ -32,8 +33,9 @@ interface RecommendationFields {
 const MINIMAL: RecommendationFields = {
   beat: 'She hadn’t trusted him since the funeral.',
   subject: '',
+  contextText: '',
   sourceReferences: 'none',
-  mustSurvive: 'The distrust is old and funeral-rooted.',
+  mustSurvive: '',
   mustNotChange: '',
   povMode: '',
   povFocalCharacter: '',
@@ -45,7 +47,8 @@ const MINIMAL: RecommendationFields = {
 const COMPLETE: RecommendationFields = {
   beat: 'She hadn’t trusted him since the funeral.',
   subject: 'the funeral line',
-  sourceReferences: 'active-excerpt',
+  contextText: 'He set the mug down.\nShe hadn’t trusted him since the funeral.',
+  sourceReferences: 'context-attachment:ctx-2\nactive-excerpt',
   mustSurvive: 'The distrust is old and funeral-rooted.\nIt predates tonight.',
   mustNotChange: 'No flashback; stay in the kitchen.',
   povMode: 'close-third',
@@ -62,6 +65,7 @@ function section(overrides: Partial<RecommendationFields> = {}): string[] {
     '<widget-id>', 'show-vs-tell', '</widget-id>',
     '<told-beat>', f.beat, '</told-beat>',
     '<chip-subject>', f.subject, '</chip-subject>',
+    '<surrounding-context>', f.contextText, '</surrounding-context>',
     '<source-references>', f.sourceReferences, '</source-references>',
     '<must-survive>', f.mustSurvive, '</must-survive>',
     '<must-not-change>', f.mustNotChange, '</must-not-change>',
@@ -91,20 +95,20 @@ describe('ShowVsTellRecommendation parser', () => {
         widgetId: 'show-vs-tell',
         seed: {
           beatText: 'She hadn’t trusted him since the funeral.',
-          sourceReferences: [],
-          mustSurvive: 'The distrust is old and funeral-rooted.'
+          sourceReferences: []
         }
       }
     });
     const seed = inspected.outcome === 'accepted' && inspected.recommendation.widgetId === 'show-vs-tell'
       ? inspected.recommendation.seed
       : undefined;
-    for (const absent of ['subject', 'mustNotChange', 'pov', 'position', 'channels', 'lengthBudget']) {
+    // Must survive is optional (D3): a blank field opens with no declared "same".
+    for (const absent of ['subject', 'contextText', 'mustSurvive', 'mustNotChange', 'pov', 'position', 'channels', 'lengthBudget']) {
       expect(seed).not.toHaveProperty(absent);
     }
   });
 
-  it('accepts every optional field and canonicalizes channel order', () => {
+  it('accepts every optional field and canonicalizes channel and source order', () => {
     expect(inspectShowVsTellRecommendation(section(COMPLETE))).toEqual({
       outcome: 'accepted',
       recommendation: {
@@ -112,7 +116,11 @@ describe('ShowVsTellRecommendation parser', () => {
         seed: {
           beatText: 'She hadn’t trusted him since the funeral.',
           subject: 'the funeral line',
-          sourceReferences: [{ kind: 'active-excerpt' }],
+          contextText: 'He set the mug down.\nShe hadn’t trusted him since the funeral.',
+          sourceReferences: [
+            { kind: 'active-excerpt' },
+            { kind: 'context-attachment', attachmentId: 'ctx-2' }
+          ],
           mustSurvive: 'The distrust is old and funeral-rooted.\nIt predates tonight.',
           mustNotChange: 'No flashback; stay in the kitchen.',
           pov: { mode: 'close-third', focalCharacter: 'Mara' },
@@ -145,9 +153,46 @@ describe('ShowVsTellRecommendation parser', () => {
     });
   });
 
+  it('accepts up to eight references, in any order, and stores them canonically (D2)', () => {
+    const listed = [
+      'context-attachment:ctx-10',
+      'context-attachment:ctx-3',
+      'active-excerpt',
+      'context-attachment:ctx-7',
+      'context-attachment:ctx-1',
+      'context-attachment:ctx-2',
+      'context-attachment:ctx-9',
+      'context-attachment:ctx-4'
+    ];
+    expect(listed).toHaveLength(BUDGET.showVsTellSourceReferences);
+    expect(inspectShowVsTellRecommendation(section({ sourceReferences: listed.join('\n') })))
+      .toMatchObject({
+        outcome: 'accepted',
+        recommendation: {
+          seed: {
+            sourceReferences: [
+              { kind: 'active-excerpt' },
+              { kind: 'context-attachment', attachmentId: 'ctx-1' },
+              { kind: 'context-attachment', attachmentId: 'ctx-2' },
+              { kind: 'context-attachment', attachmentId: 'ctx-3' },
+              { kind: 'context-attachment', attachmentId: 'ctx-4' },
+              { kind: 'context-attachment', attachmentId: 'ctx-7' },
+              { kind: 'context-attachment', attachmentId: 'ctx-9' },
+              { kind: 'context-attachment', attachmentId: 'ctx-10' }
+            ]
+          }
+        }
+      });
+  });
+
+  it('accepts a blank must survive and omits it from the seed (D3)', () => {
+    const inspected = inspectShowVsTellRecommendation(section({ mustSurvive: '   ' }));
+    expect(inspected.outcome).toBe('accepted');
+    expect(inspected.recommendation).not.toHaveProperty('seed.mustSurvive');
+  });
+
   it.each([
     ['beatText', { beat: '  ' }],
-    ['mustSurvive', { mustSurvive: '' }],
     ['sourceReferences', { sourceReferences: '' }]
   ] as const)('rejects a blank required %s', (field, overrides) => {
     expect(inspectShowVsTellRecommendation(section(overrides))).toEqual({
@@ -202,6 +247,7 @@ describe('ShowVsTellRecommendation parser', () => {
   it.each([
     ['beatText', 'beat', BUDGET.showVsTellBeatCharacters],
     ['subject', 'subject', BUDGET.showVsTellRecommendationSubjectCharacters],
+    ['contextText', 'contextText', BUDGET.showVsTellRecommendationContextCharacters],
     ['mustSurvive', 'mustSurvive', BUDGET.showVsTellMustSurviveCharacters],
     ['mustNotChange', 'mustNotChange', BUDGET.showVsTellMustNotChangeCharacters]
   ] as const)('accepts %s at its exact bound and rejects one more', (field, key, maximum) => {
@@ -233,7 +279,7 @@ describe('ShowVsTellRecommendation parser', () => {
     });
   });
 
-  it('bounds the source-reference field at one reference of the declared length', () => {
+  it('bounds the source-reference field at the declared count of references of the declared length', () => {
     const maximum = BUDGET.showVsTellSourceReferences * BUDGET.showVsTellSourceReferenceCharacters;
     expect(inspectShowVsTellRecommendation(section({
       sourceReferences: `context-attachment:ctx-${'9'.repeat(maximum)}`
@@ -293,8 +339,9 @@ describe('ShowVsTellRecommendation parser', () => {
   });
 
   it.each([
-    ['more than one reference', 'active-excerpt\ncontext-attachment:ctx-2'],
+    ['more than eight references', Array.from({ length: 9 }, (_, index) => `context-attachment:ctx-${index + 1}`).join('\n')],
     ['a repeated reference', 'active-excerpt\nactive-excerpt'],
+    ['a repeated attachment', 'context-attachment:ctx-2\ncontext-attachment:ctx-2'],
     ['an invented identifier', 'attachment-7'],
     ['a malformed attachment id', 'context-attachment:ctx-0'],
     ['a blank line between references', 'active-excerpt\n\ncontext-attachment:ctx-1'],
@@ -312,9 +359,13 @@ describe('ShowVsTellRecommendation parser', () => {
     const fullest = section({
       beat: 'b'.repeat(BUDGET.showVsTellBeatCharacters),
       subject: 's'.repeat(BUDGET.showVsTellRecommendationSubjectCharacters),
-      sourceReferences: `context-attachment:ctx-${'9'.repeat(
-        BUDGET.showVsTellSourceReferenceCharacters - 'context-attachment:ctx-'.length
-      )}`,
+      contextText: 'c'.repeat(BUDGET.showVsTellRecommendationContextCharacters),
+      // Eight distinct ids, each exactly at the per-reference ceiling.
+      sourceReferences: Array.from({ length: BUDGET.showVsTellSourceReferences }, (_, index) => {
+        const ordinal = String(index + 1);
+        const digits = BUDGET.showVsTellSourceReferenceCharacters - 'ctx-'.length - ordinal.length;
+        return `context-attachment:ctx-${ordinal}${'9'.repeat(digits)}`;
+      }).join('\n'),
       mustSurvive: 'm'.repeat(BUDGET.showVsTellMustSurviveCharacters),
       mustNotChange: 'n'.repeat(BUDGET.showVsTellMustNotChangeCharacters),
       povMode: 'distant-third',
@@ -325,9 +376,11 @@ describe('ShowVsTellRecommendation parser', () => {
     });
     const characters = fullest.join('\n').length;
     expect(characters).toBeLessThanOrEqual(SHOW_VS_TELL_RECOMMENDATION_FRAME_CHARACTERS);
+    expect(SHOW_VS_TELL_RECOMMENDATION_FRAME_CHARACTERS).toBe(25_700);
     expect(SHOW_VS_TELL_RECOMMENDATION_FRAME_CHARACTERS).toBe(
       BUDGET.showVsTellBeatCharacters
       + BUDGET.showVsTellRecommendationSubjectCharacters
+      + BUDGET.showVsTellRecommendationContextCharacters
       + BUDGET.showVsTellSourceReferences * BUDGET.showVsTellSourceReferenceCharacters
       + BUDGET.showVsTellMustSurviveCharacters
       + BUDGET.showVsTellMustNotChangeCharacters
@@ -397,6 +450,15 @@ describe('Show vs. Tell recommendation prompt copy', () => {
     expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION).toContain(FROZEN_DIAGNOSIS);
   });
 
+  it('teaches the optional must survive, the optional surrounding context, and multiple references (D2, D3)', () => {
+    const text = SHOW_VS_TELL_RECOMMENDATION_INSTRUCTION;
+    expect(text).toContain('Only told-beat and source-references must have content');
+    expect(text).toContain('- `must-survive`: optionally,');
+    expect(text).toContain('leave the field empty when the writer declared none');
+    expect(text).toContain('- `surrounding-context`: optionally copy useful consecutive prose around the beat');
+    expect(text).toContain('identifiers shown in the supplied Workshop material, one per line in any order and none repeated');
+  });
+
   it('forbids generating, keeping, and committing, and never hands out a verdict', () => {
     expect(SHOW_VS_TELL_RECOMMENDATION_INSTRUCTION).toContain(
       'Prepare inputs only: never generate the workup, keep a variant, choose how a variant is carried, write the note, or commit for the writer.'
@@ -412,6 +474,8 @@ describe('Show vs. Tell recommendation prompt copy', () => {
     expect(text).toContain(`at most ${BUDGET.showVsTellBeatCharacters} characters`);
     expect(text).toContain(`at most ${BUDGET.showVsTellRecommendationSubjectCharacters} characters`);
     expect(text).toContain(`at most ${BUDGET.showVsTellSourceReferences} exact`);
+    expect(text).toContain(`within ${BUDGET.showVsTellRecommendationContextCharacters.toLocaleString('en-US')} characters`);
+    expect(text).toContain(`at most ${(BUDGET.showVsTellSourceReferences * BUDGET.showVsTellSourceReferenceCharacters).toLocaleString('en-US')} characters`);
     expect(text).toContain(`within ${BUDGET.showVsTellMustSurviveCharacters} characters`);
     expect(text).toContain(`within ${BUDGET.showVsTellMustNotChangeCharacters} characters`);
     expect(text).toContain(`within ${BUDGET.showVsTellPovFocalCharacterCharacters} characters`);
@@ -437,6 +501,8 @@ describe('Show vs. Tell recommendation prompt copy', () => {
       outcome: 'accepted',
       recommendation: { widgetId: 'show-vs-tell', seed: { sourceReferences: [] } }
     });
+    expect(example).toContain('<surrounding-context>');
+    expect(example).toContain('[optional: what the beat already carries that every distance must keep, or empty]');
     // The example is also the exact marker list, in order, once each.
     expect(example.filter((line) => (SHOW_VS_TELL_RECOMMENDATION_MARKERS as readonly string[])
       .includes(line))).toEqual([...SHOW_VS_TELL_RECOMMENDATION_MARKERS]);

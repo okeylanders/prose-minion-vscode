@@ -52,43 +52,11 @@ const LINE_BREAK_SEQUENCE = /\r\n|[\r\n\u2028\u2029]/gu;
  * a one-for-one replacement never lengthens a value (`\r\n` shrinks by one),
  * which keeps the frozen 585 ≤ 600 fit guarantee true for any content.
  *
- * This is the single encoder: the projection writes values with it, and the
- * direction rule below measures with it, so what is validated is what is counted.
+ * This is the single encoder: the projection writes values with it, so what
+ * the meter shows is what the host counts.
  */
 export function encodeShowVsTellArtifactValue(value: string): string {
   return value.trim().replace(LINE_BREAK_SEQUENCE, SHOW_VS_TELL_ARTIFACT_LINE_BREAK);
-}
-
-/**
- * How many encoded characters a direction must be shorter than its prose so
- * that carrying it as direction always lowers the counted body.
- *
- * Prose is counted as `keep: "<prose>"` (key, one space, two quotes) and a
- * direction as `direction: <direction>` (key, one space), so
- *   keep line      = prose + keepKey + 1 + 2
- *   direction line = direction + directionKey + 1
- * and the direction line is strictly shorter exactly when
- *   direction + (directionKey - keepKey - 2) < prose,
- * i.e. direction + margin <= prose with margin = directionKey - keepKey - 1.
- * Derived from the frozen line keys, so a key change cannot silently
- * re-open the gap.
- */
-export const SHOW_VS_TELL_DIRECTION_MARGIN =
-  SHOW_VS_TELL_ARTIFACT_LINE_KEYS.direction.length
-  - SHOW_VS_TELL_ARTIFACT_LINE_KEYS.keep.length
-  - 1;
-
-/**
- * A direction is an abstraction of its prose, and switching a kept variant to
- * direction-only carry must always lower the count. Both sides are measured
- * exactly as the artifact encodes them (trimmed, line breaks as one `↵`).
- */
-export function isShowVsTellDirectionShortEnough(
-  direction: string,
-  prose: string
-): boolean {
-  return encodeShowVsTellArtifactValue(direction).length + SHOW_VS_TELL_DIRECTION_MARGIN
-    <= encodeShowVsTellArtifactValue(prose).length;
 }
 
 /**
@@ -125,11 +93,44 @@ export function showVsTellWordCount(prose: string): number {
   return trimmed.length === 0 ? 0 : trimmed.split(/\s+/u).length;
 }
 
-/** Identity of a surrounding-passage source, for duplicate and order checks. */
+/** Identity of a context source, for duplicate and order checks. */
 export function showVsTellSourceReferenceKey(reference: WorkshopWidgetSourceReference): string {
   return reference.kind === 'active-excerpt'
     ? reference.kind
     : `${reference.kind}:${reference.attachmentId}`;
+}
+
+/**
+ * Canonical order of context sources (D2): the active excerpt first, then
+ * context attachments by ascending `ctx-N` ordinal. A selection is a set, so
+ * one order gives it one persisted representation whatever the writer or a
+ * persona clicked or listed first. Integrity rejects any other order; the
+ * controller and the recommendation parser sort with this comparator.
+ */
+export function compareShowVsTellSourceReferences(
+  left: WorkshopWidgetSourceReference,
+  right: WorkshopWidgetSourceReference
+): number {
+  if (left.kind !== right.kind) {
+    return left.kind === 'active-excerpt' ? -1 : 1;
+  }
+  if (left.kind === 'active-excerpt' || right.kind === 'active-excerpt') {
+    return 0;
+  }
+  return attachmentOrdinal(left.attachmentId) - attachmentOrdinal(right.attachmentId);
+}
+
+/** A new array in canonical order; the input is never mutated. */
+export function sortShowVsTellSourceReferences(
+  references: readonly WorkshopWidgetSourceReference[]
+): WorkshopWidgetSourceReference[] {
+  return [...references].sort(compareShowVsTellSourceReferences);
+}
+
+/** The N of a `ctx-N` id; a malformed id (rejected by the shape gate) sorts last. */
+function attachmentOrdinal(attachmentId: string): number {
+  const ordinal = Number(attachmentId.slice('ctx-'.length));
+  return Number.isSafeInteger(ordinal) ? ordinal : Number.MAX_SAFE_INTEGER;
 }
 
 /** The authored inputs of one generation attempt; a workup and its selections are outputs. */
@@ -149,6 +150,7 @@ export function showVsTellGenerationDraft(
   return {
     beat: { text: input.beat.text, provenance: { ...input.beat.provenance } },
     surroundingContext: {
+      writerText: input.surroundingContext.writerText,
       sourceReferences: input.surroundingContext.sourceReferences.map(
         (reference) => ({ ...reference })
       )

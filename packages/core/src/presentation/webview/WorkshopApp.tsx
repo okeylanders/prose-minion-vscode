@@ -316,6 +316,7 @@ export const WorkshopApp: React.FC = () => {
     generationProgress: showVsTell.generationProgress,
     generationResult: showVsTell.generationResult,
     requestBeatSelection: showVsTell.requestBeatSelection,
+    requestPassageSelection: showVsTell.requestPassageSelection,
     generate: showVsTell.generate,
     cancelGeneration: showVsTell.cancelGeneration,
     roomRunActive: workshop.isRunning,
@@ -1608,16 +1609,20 @@ export const WorkshopApp: React.FC = () => {
           generation={showVsTellAuthoring.generation}
           invalidationNotice={showVsTellAuthoring.invalidationNotice}
           intakeNotice={showVsTellAuthoring.intakeNotice}
+          passageNotice={showVsTellAuthoring.passageNotice}
           generateBlockers={showVsTellAuthoring.generateBlockers}
           commitBlockers={showVsTellAuthoring.commitBlockers}
           commitPending={showVsTell.commitPending}
           commitError={showVsTellAuthoring.commitError}
           artifactUsage={showVsTellAuthoring.artifactUsage}
           availableSources={showVsTellAuthoring.availableSources}
-          excerptText={workshop.excerpt?.text ?? null}
+          canUsePassageFromExcerpt={showVsTellAuthoring.canUsePassageFromExcerpt}
           onUseSelection={showVsTellAuthoring.requestBeatSelection}
           onBeatTextChange={showVsTellAuthoring.changeBeatText}
-          onSelectSource={showVsTellAuthoring.selectSourceReference}
+          onPassageTextChange={showVsTellAuthoring.changePassageText}
+          onUsePassageFromExcerpt={showVsTellAuthoring.usePassageFromExcerpt}
+          onUsePassageFromSelection={showVsTellAuthoring.requestPassageSelection}
+          onToggleSourceReference={showVsTellAuthoring.toggleSourceReference}
           onPovModeChange={showVsTellAuthoring.changePovMode}
           onPovFocalCharacterChange={showVsTellAuthoring.changePovFocalCharacter}
           onMustSurviveChange={showVsTellAuthoring.changeMustSurvive}

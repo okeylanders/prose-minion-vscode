@@ -171,8 +171,11 @@ export interface PromptBudgets {
     creativeArtifactCharacters: number;
     creativeRecommendationFrameAllowanceCharacters: number;
     showVsTellBeatCharacters: number;
+    /** Maximum surrounding passage: the writer's text plus every resolved source, together. */
     showVsTellContextCharacters: number;
-    /** Zero to this many surrounding-passage sources; the host resolves their text at generation. */
+    /** Maximum surrounding prose a persona may copy into a recommendation prefill. */
+    showVsTellRecommendationContextCharacters: number;
+    /** Zero to this many context sources; the host resolves their text at generation. */
     showVsTellSourceReferences: number;
     showVsTellSourceReferenceCharacters: number;
     showVsTellProvenancePathCharacters: number;
@@ -188,7 +191,6 @@ export interface PromptBudgets {
     /** Maximum channels one variant uses; every variant uses at least one. */
     showVsTellChannelsPerVariant: number;
     showVsTellProseCharacters: number;
-    /** Also shorter than its own prose by the artifact's encoded direction margin. */
     showVsTellDirectionCharacters: number;
     showVsTellGainsCharacters: number;
     showVsTellCostsCharacters: number;
@@ -367,7 +369,8 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     creativeRecommendationFrameAllowanceCharacters: 2_500,
     showVsTellBeatCharacters: 160,
     showVsTellContextCharacters: 250_000,
-    showVsTellSourceReferences: 1,
+    showVsTellRecommendationContextCharacters: 20_000,
+    showVsTellSourceReferences: 8,
     showVsTellSourceReferenceCharacters: 500,
     showVsTellProvenancePathCharacters: 500,
     showVsTellPovFocalCharacterCharacters: 80,

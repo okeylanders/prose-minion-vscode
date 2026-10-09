@@ -64,8 +64,8 @@ export function prepareShowVsTellOneShotCommit(
     return reject(issue.message);
   }
 
-  // This binds host-derived ids, cardinality, direction margins, and flag
-  // grammar. Generated text stays immutable through the authoring UI; it is
+  // This binds host-derived ids, cardinality, per-field ceilings, and flag
+  // grammar (no direction-versus-prose rule since D5). Generated text stays immutable through the authoring UI; it is
   // not cryptographically bound.
   try {
     assertShowVsTellDraftIntegrity(draft, 'Show vs. Tell commit draft');

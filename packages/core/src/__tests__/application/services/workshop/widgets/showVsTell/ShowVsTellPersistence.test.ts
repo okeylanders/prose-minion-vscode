@@ -17,6 +17,10 @@ import {
 } from '@/application/services/workshop/widgets/WorkshopWidgetConfigOperations';
 import { workshopWidgetArtifactKind } from '@shared/constants/workshopWidgets';
 import {
+  assertShowVsTellDraftCheckpointShape,
+  assertShowVsTellDraftShape
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigCodec';
+import {
   fixtureVariantId,
   generatedShowVsTellDraft,
   ungeneratedShowVsTellDraft
@@ -105,9 +109,50 @@ describe('Show vs. Tell persistence integration', () => {
     const session = new WorkshopSessionService(() => 100);
     session.createWidgetConfig({ widgetId: 'show-vs-tell', draft: ungeneratedShowVsTellDraft() });
     const state = session.exportCommittedState();
-    showVsTellConfig(state.widgetConfigs![0]).draft.channels = [];
+    (showVsTellConfig(state.widgetConfigs![0]).draft.channels as string[]) = ['scent'];
 
-    expect(() => parseWorkshopSessionStateV1(state)).toThrow(/channels must be an array of 1–5/);
+    expect(() => parseWorkshopSessionStateV1(state)).toThrow(/channels\[0\] must be observable-action/);
+  });
+
+  describe('a session saved before Slice 7 (design edits)', () => {
+    /**
+     * The pre-Slice-7 draft: no `surroundingContext.writerText`, at most one
+     * source, a required must survive, at least one channel. D3 and D4 only
+     * relax rules, so the one repair is the missing passage text (ADR 2026-07-30).
+     */
+    const oldShapeState = () => {
+      const session = new WorkshopSessionService(() => 100);
+      session.createWidgetConfig({ widgetId: 'show-vs-tell', draft: generatedShowVsTellDraft() });
+      const state = session.exportCommittedState();
+      const draft = showVsTellConfig(state.widgetConfigs![0]).draft as unknown as Record<string, unknown>;
+      draft.surroundingContext = { sourceReferences: [{ kind: 'active-excerpt' }] };
+      return state;
+    };
+
+    it('normalizes the missing passage text, logs it by name, and hydrates the rest exactly', () => {
+      const parsed = parseWorkshopSessionStateV1(oldShapeState());
+      const restored = new WorkshopSessionService(() => 200);
+
+      const result = restored.hydrateCommittedState(parsed, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+
+      expect(result.normalizations).toContain('defaulted-widget-show-vs-tell-surrounding-passage-text');
+      const restoredDraft = showVsTellConfig(restored.getWidgetConfig('wc-1')).draft;
+      expect(restoredDraft).toEqual({
+        ...generatedShowVsTellDraft(),
+        surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
+      });
+      // Written back in the current shape only: a second hydration repairs nothing.
+      const rewritten = parseWorkshopSessionStateV1(restored.exportCommittedState());
+      const again = new WorkshopSessionService(() => 300)
+        .hydrateCommittedState(rewritten, {}, DEFAULT_WORKSHOP_CONVERSATION_BEHAVIOR);
+      expect(again.normalizations).not.toContain('defaulted-widget-show-vs-tell-surrounding-passage-text');
+    });
+
+    it('refuses the old shape at the strict current-shape boundary', () => {
+      const draft = showVsTellConfig(oldShapeState().widgetConfigs![0]).draft;
+      expect(() => assertShowVsTellDraftShape(draft, 'draft')).toThrow(/writerText/);
+      expect(() => assertShowVsTellDraftCheckpointShape(draft, 'draft')).not.toThrow();
+    });
   });
 
   it('fails hydration closed when a persisted draft breaks semantic integrity', () => {

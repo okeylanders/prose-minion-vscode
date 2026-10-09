@@ -2,8 +2,11 @@
  * Channels to emphasize and the length budget (Sprint 05; design Spread 04).
  *
  * POV is a constraint, not a channel: the interiority chip names the POV
- * limit, and the hint says the generation is told so. At least one channel
- * stays selected. Controlled presentation only.
+ * limit, and the hint says the generation is told so. Zero to five channels
+ * may be selected (Slice 7, D4): with none, the generation chooses channels
+ * freely and varies them across variants, and the panel says so. A selected
+ * chip always reads as selected, never as locked or dimmed. Controlled
+ * presentation only.
  */
 
 import * as React from 'react';
@@ -54,15 +57,12 @@ export const ShowVsTellChannelsBudget: React.FC<ShowVsTellChannelsBudgetProps> =
         <div className="pm-ws-svt-chs" role="group" aria-labelledby="pm-ws-svt-channels-label">
           {SHOW_VS_TELL_CHANNELS.map((channel) => {
             const selected = channels.includes(channel.id);
-            const lastSelected = selected && channels.length === 1;
             return (
               <button
                 key={channel.id}
                 type="button"
                 className="pm-ws-svt-ch"
                 aria-pressed={selected}
-                aria-disabled={lastSelected || undefined}
-                title={lastSelected ? 'At least one channel stays selected.' : undefined}
                 disabled={disabled}
                 onClick={() => onToggleChannel(channel.id)}
               >
@@ -74,6 +74,12 @@ export const ShowVsTellChannelsBudget: React.FC<ShowVsTellChannelsBudgetProps> =
             );
           })}
         </div>
+        {channels.length === 0 && (
+          <p className="pm-ws-svt-hint pm-ws-svt-hint-emphasis" role="status">
+            <b>No emphasis:</b> the generation chooses channels freely and varies them across
+            the variants.
+          </p>
+        )}
         <p className="pm-ws-svt-hint">
           <b>POV constraint:</b> point of view is {povLabel}
           {pov.mode !== 'unspecified' && pov.focalCharacter.trim().length > 0

@@ -54,7 +54,8 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleCommitResult: jest.fn()
   } as never,
   showVsTellAuthoring: {
-    handleBeatSelection: jest.fn()
+    handleBeatSelection: jest.fn(),
+    handlePassageSelection: jest.fn()
   } as never,
   standingDirectives: { handleActionResult: jest.fn() } as never,
   excerptVerify: { handleSelectionData: jest.fn() } as never,
@@ -145,6 +146,14 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.showVsTell.handleGenerationResult).toHaveBeenCalledWith(result);
     expect(deps.showVsTellAuthoring.handleBeatSelection).toHaveBeenCalledWith(selection);
     expect(deps.creativeVariationsAuthoring.handleSubjectSelection).not.toHaveBeenCalled();
+
+    const passage = {
+      ...selection,
+      payload: { target: 'workshop_show_vs_tell_passage', content: 'A passage.' }
+    } as const;
+    routes[MessageType.SELECTION_DATA]!(passage as never);
+    expect(deps.showVsTellAuthoring.handlePassageSelection).toHaveBeenCalledWith(passage);
+    expect(deps.showVsTellAuthoring.handleBeatSelection).toHaveBeenCalledTimes(1);
   });
 
   it('routes consume-once checkpoint recovery notices to the session owner', () => {

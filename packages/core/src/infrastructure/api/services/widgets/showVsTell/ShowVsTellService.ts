@@ -116,7 +116,7 @@ export class ShowVsTellService {
         content,
         result,
         `response reached the ${BUDGET.showVsTellOutputTokens.toLocaleString('en-US')}-token output ceiling`,
-        'Shorten the beat or choose a tighter length budget before generating again.'
+        'Shorten the surrounding passage or choose a tighter length budget before generating again.'
       );
     }
     try {
@@ -161,13 +161,13 @@ export class ShowVsTellService {
         );
       }
     }
-    const totalContextCharacters = request.sourceMaterials.reduce(
-      (total, source) => total + source.content.length,
-      0
-    );
+    // The passage the model reads is the writer's text plus every resolved
+    // source, so the one allowance bounds their sum (D2, as Creative Variations).
+    const totalContextCharacters = draft.surroundingContext.writerText.length
+      + request.sourceMaterials.reduce((total, source) => total + source.content.length, 0);
     if (totalContextCharacters > BUDGET.showVsTellContextCharacters) {
       throw new Error(
-        `Surrounding context exceeds ${BUDGET.showVsTellContextCharacters} characters`
+        `Combined surrounding context exceeds ${BUDGET.showVsTellContextCharacters} characters`
       );
     }
     return draft;
@@ -185,6 +185,7 @@ export class ShowVsTellService {
     const task = {
       beat: { text: draft.beat.text },
       surroundingContext: {
+        writerText: draft.surroundingContext.writerText,
         resolvedSources: request.sourceMaterials.map((source) => ({
           reference: showVsTellSourceReferenceKey(source.reference),
           label: source.label,
