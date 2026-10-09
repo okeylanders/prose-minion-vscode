@@ -3,22 +3,70 @@
 **Author:** okeylanders · **PR:** [#136](https://github.com/okeylanders/prose-minion-vscode/pull/136) (open, unmerged at review)
 **Branches:** `epic/conversation-widgets-sprint-05-slice-3-authoring` → `epic/conversation-widgets`
 **Verified base / merge-base:** `7cdfb7792b78a4c50cbd7093b9d44ec88ba40a67`
-**Reviewed code head:** `3dda78a0b11115094a9d2e39fe0002c6aee7d900`
-**Scope:** 41 files · +5,623 / −53 · 5 commits
-**Reviewed:** 2026-10-09 · **Reviewer:** Astra · **Mode:** independent code/spec review, full application/hook/component regression probes, artifact-boundary probes, and full deterministic verification
+**Initial reviewed code head:** `3dda78a0b11115094a9d2e39fe0002c6aee7d900`
+**Final re-review head:** `233f2c669c6785653d40542a9afdd70317a2841d`
+**Initial scope:** 41 files · +5,623 / −53 · 5 commits
+**Fix-round scope:** 29 files · +1,259 / −436 · 5 commits after the first report `684df7bf`
+**Reviewed:** 2026-10-09 · **Reviewer:** Astra · **Mode:** independent code/spec review, full application/hook/component regression probes, artifact-boundary probes, and full deterministic verification; full fix-delta re-review with independent lifecycle/transaction, encoded-cost, and keyboard/controller challenges
 
 ## Resolution ledger
 
-Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. A handoff calling an issue nonblocking does not establish the writer's acceptance of a deferral.
+Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. No deferral is accepted on the author's behalf. This ledger records the independently verified state at `233f2c66`; original evidence below remains pinned to `3dda78a0`.
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | Room/source fingerprint misses replacements and in-place context edits, retaining stale work | Three full-`WorkshopApp` witnesses with real session snapshots; version-change and close/reopen controls pass | **Open** |
-| F-02 | 🟡 Standard | Direction carry can increase the exact payload from 600 to 603 characters | Codec-valid CRLF variant; real controller adds `over-artifact-budget` after changing carry | **Open** |
-| F-03 | 🟡 Standard | Custom radio groups omit expected keyboard navigation and single-tab-stop behavior | ArrowRight changes neither focus nor selection in both groups; click controls work | **Open** |
-| N-01 | 🟢 Nit | New authoring controller exceeds the repository's explicit file-size review guard | 663-line controller versus the 500-line checklist | **Open** |
+| F-01 | 🟡 Standard | Room/source fingerprint misses replacements and in-place context edits, retaining stale work | Original witnesses now assert corrected behavior; 29 independent full-app, aggregate, and coordinator checks pass | **Addressed** at `233f2c66`; fix `2bd040a8` |
+| F-02 | 🟡 Standard | Direction carry can increase the exact payload from 600 to 603 characters | Both integrity gates reject the original witness; corrected case projects 600→599; 49 named and 2,593 cross-encoding cases pass | **Addressed** at `233f2c66`; fix `28813109` |
+| F-03 | 🟡 Standard | Custom radio groups omit expected keyboard navigation and single-tab-stop behavior | Both groups pass keyboard/focus/tab-eligibility checks; integrated controller retains work across position changes | **Addressed** at `233f2c66`; fix `68bb2c75` |
+| N-01 | 🟢 Nit | New authoring controller exceeds the repository's explicit file-size review guard | Controller is 486 lines; pure-rule module is 309 lines; ownership and tripartite interface preserved | **Addressed** at `233f2c66`; refactor `52a68b1b` |
 
-**Verdict: Changes requested before merge into `epic/conversation-widgets`.** The existing automated suite and CI are green, but F-01–F-03 are independently reproduced behavior gaps in the authoring surface now made live. No functional correction or merge was performed by this review. The epic must remain off `main` until Slice 4 has landed.
+**Verdict: Approved for merge into `epic/conversation-widgets`.** F-01–F-03 and N-01 are independently verified addressed at `233f2c66`. No open Blocking, High, Standard, or Nit finding remains. The full deterministic gates and code-head CI pass. Approval remains subject to required checks on the final report-only branch head. This report does not merge the PR. **The epic must remain off `main` until Slice 4 has landed**, because Commit is intentionally disabled in this slice.
+
+## Final re-review at 233f2c66
+
+The entire five-commit fix delta was inspected, including shared snapshot contracts, host lifecycle changes, webview state, validation/prompt alignment, radio presentation, helper extraction, tests, architecture guards, and documentation. The [developer response](https://github.com/okeylanders/prose-minion-vscode/pull/136#issuecomment-6084055321) was checked against independent execution rather than treated as evidence by itself.
+
+### F-01 is addressed
+
+- `WorkshopSessionService` now mints a process-unique live room revision at construction, reset, and successful hydration. Snapshots also expose the existing authoritative context revision. `useWorkshopRoom` delivers both to the actual `WorkshopApp` authoring key; no attachment body is added to that snapshot contract or the persistence codec.
+- All three original full-app witnesses now pass with protective assertions: same-version room replacement clears grounded work; same-id/same-word-count file refresh clears grounded work; in-place text edits cancel pending generation and reject its late result.
+- The independent matrix passes **15 full-application lifecycle cases and 14 aggregate/coordinator cases**. It covers settled and in-flight work, source changes/removal, unchanged snapshots, ungrounded work, original token/reopen controls, and authoritative revision behavior.
+- Real New, Open, Rewind, and Branch operations mint fresh identities. Injected write failures restore the exact committed source state under a fresh identity, so rollback does not reuse a potentially stale authoring key. Invalid hydration and rejected attachment operations preserve the installed state/revisions.
+- Context add/edit/refresh/remove advance the source revision. The invalidation is deliberately conservative: even a change to another attachment clears source-grounded work. Ungrounded generation does not depend on these room sources and remains intact. This is a documented tradeoff, not an unresolved stale-source gap.
+
+### F-02 is addressed
+
+- A single shared encoder now serves both projection and the shared integrity rule. The required encoded margin is derived from the frozen line keys and equals **4**. Both generation decoding and persisted-draft integrity call that same rule.
+- The original CRLF witness is rejected through both gates. Reducing its direction from 120 to 116 encoded characters makes it valid; the actual artifact and live controller now change **600→599**, with only `commit-not-wired` remaining.
+- **49 named cases and 2,593 cross-encoding cases** passed through both gates with actual projection arithmetic. Coverage includes insufficient/exact/surplus margins, CRLF/LF/CR/U+2028/U+2029, mixed line breaks, and trimming. Every accepted matrix case strictly reduces the body when changed to direction carry.
+- The prompt, current sprint, and resolved/archived debt record agree on the encoded four-character rule. The separate 585-character absolute fit guarantee remains intact.
+
+### F-03 and N-01 are addressed
+
+- Both controls use the same controlled custom-radio implementation: forward/backward horizontal and vertical arrows wrap, move focus, and select; Home/End select the endpoints; only the selected option is a tab stop. Tab/Shift+Tab and modified shortcuts are not captured. Disabled length controls ignore interaction and expose no eligible tab stops; re-enabling restores the selected stop.
+- Independent integrated keyboard/controller checks preserve the current workup, keeps, and carry modes when moving position. An in-flight attempt also remains current and accepts its matching reply after a position change.
+- The controller is now **486 lines**, with **309 lines** of coherent pure rules extracted beside it. Inspection found no additional transport ownership or changed persistence behavior from the extraction.
+- Keyboard probes used JSDOM, including focus updates, tab eligibility, and event passthrough. **Native browser Tab traversal and visual rendering were not independently verified.** The earlier browser limitation below is not converted into a passing test.
+
+### Final re-review verification
+
+All checks below target **`233f2c669c6785653d40542a9afdd70317a2841d`**, before this report-only update. Runtime: Node **24.19.0** / npm **11.9.0**; unchanged lockfile from the initial review.
+
+| Check | Result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **284 suites / 3,955 tests / 2 snapshots passed**, 131.146 seconds |
+| `npm run typecheck` | Core, webview, and extension passed |
+| Full `npm run lint` | **0 errors / 1,104 warnings** |
+| `npm run build`, including `verify:bundle` | Passed; existing webpack size/performance warnings |
+| `git diff --check` over the fix delta and complete PR delta | Passed |
+| Independent lifecycle/transaction regressions | **2 suites / 29 tests passed**, 51.832 seconds |
+| Independent encoded-cost matrix | **49 named + 2,593 cross-encoding cases passed** through response decoding and persisted integrity |
+| Independent keyboard/controller probes | Both radio groups, disabled/re-enabled state, workup/in-flight retention, and 600→599 corrected ceiling case passed |
+| Fix-head GitHub CI | **Success**, [PR run 37952595726](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37952595726) |
+
+No live/billable provider call, real-manuscript transmission, interactive VS Code Extension Development Host test, functional repository edit, widget commit, merge, or release was performed by this review. The original findings and initial verification below are retained as historical evidence, not claims about the fixed head.
+
+## Original findings at 3dda78a0
 
 ## F-01 — Invalidate on actual room/source changes, not reused ids
 
@@ -113,7 +161,7 @@ This is a maintainability nit, not evidence of runtime failure or a request for 
 - Gains/costs render as escaped text. Flags are passive, and new keeps default to direction carry. Selection intake visibly reports truncation and drops the raw editor URI.
 - The tested 585-character bound, fixed line keys, and nonexpanding line-break encoding are correct.
 
-## Verification actually run
+## Initial verification actually run
 
 All checks target **`3dda78a0b11115094a9d2e39fe0002c6aee7d900`**, before this report-only commit. Runtime: Node **24.19.0** / npm **11.9.0**; fresh lockfile-based `npm ci` after cloud execution recovery. GitHub CI uses Node 18.
 
@@ -133,4 +181,4 @@ All checks target **`3dda78a0b11115094a9d2e39fe0002c6aee7d900`**, before this re
 
 A passing bug-witness test above means the test confirmed the undesirable behavior; it does not mean that regression is fixed. The existing green suite lacks these protective assertions. The author's reported Chromium render was not counted as independent visual verification.
 
-No live/billable provider calls, real-manuscript transmission, interactive VS Code Extension Development Host test, functional repository edits, widget commit, merge, or release occurred. After the developer's fixes, rerun the witness cases as corrected-behavior regressions and all affected/full gates, then update this ledger and check CI for the exact final report head.
+The initial review performed no live/billable provider calls, real-manuscript transmission, interactive VS Code Extension Development Host test, functional repository edits, widget commit, merge, or release. The final re-review above supersedes the original changes-requested verdict.
