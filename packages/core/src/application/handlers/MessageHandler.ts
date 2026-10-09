@@ -184,6 +184,7 @@ export class MessageHandler {
       workshopTranscriptExportService,
       gesturePlaygroundService,
       creativeVariationsService,
+      showVsTellService,
       lexicalGravityModelService,
       lexicalGravityLensRepository,
       workshopStandingDirectiveService
@@ -321,6 +322,7 @@ export class MessageHandler {
       {
         gesturePlayground: gesturePlaygroundService,
         creativeVariations: creativeVariationsService,
+        showVsTell: showVsTellService,
         standingDirectives: workshopStandingDirectiveService,
         lexicalGravity: {
           model: lexicalGravityModelService,

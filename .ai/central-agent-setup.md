@@ -58,7 +58,7 @@ packages/core/src/
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
-│           └── workshop/                  # Room owner + 10 composed route owners
+│           └── workshop/                  # Room owner + 11 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -72,7 +72,8 @@ packages/core/src/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
 │                   ├── gesturePlayground/WorkshopGesturePlaygroundHandler.ts
-│                   └── lexicalGravity/WorkshopLexicalGravityHandler.ts
+│                   ├── lexicalGravity/WorkshopLexicalGravityHandler.ts
+│                   └── showVsTell/WorkshopShowVsTellHandler.ts
 ├── domain/            # Domain layer (business logic)
 │   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
@@ -717,7 +718,7 @@ npm run test:tier1
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's ten route owners
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's eleven route owners
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):

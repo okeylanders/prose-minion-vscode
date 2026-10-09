@@ -17,6 +17,11 @@ export const RECOVERABLE_WIDGET_RESPONSE_CONTRACTS = {
     intendedContentType: 'application/json',
     protocol: 'First-line ===CREATIVE_VARIATIONS_V1===, then JSON {version: 1, cards: [{position, approach, direction, prose, tradeoff: {gain, cost}, invariantFlags: [{invariantField, kind, note}]}]}, then final-line ===END_CREATIVE_VARIATIONS_V1===.'
   },
+  'show-vs-tell': {
+    id: 'show-vs-tell-v1',
+    intendedContentType: 'application/json',
+    protocol: 'First-line ===SHOW_VS_TELL_V1===, then JSON {version: 1, groups: [four {kind, variants: [1-2 {prose, channels, gains, costs, direction, invariantFlags: [{invariantField, kind, note}]}]}] in fixed kind order}, then final-line ===END_SHOW_VS_TELL_V1===.'
+  },
   'lexical-gravity-build': {
     id: 'lexical-gravity-lenses-v2',
     intendedContentType: 'application/json',

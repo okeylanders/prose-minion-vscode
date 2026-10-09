@@ -38,6 +38,7 @@ import type { GesturePlaygroundService } from '@services/widgets/GesturePlaygrou
 import type {
   CreativeVariationsService
 } from '@services/widgets/creativeVariations/CreativeVariationsService';
+import type { ShowVsTellService } from '@services/widgets/showVsTell/ShowVsTellService';
 import type { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 import type { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
@@ -128,6 +129,8 @@ export interface CoreServices {
   gesturePlaygroundService: GesturePlaygroundService;
   /** Creative Variations' complete-set generation and strict response boundary. */
   creativeVariationsService: CreativeVariationsService;
+  /** Show vs. Tell's one-call workup generation and strict response boundary. */
+  showVsTellService: ShowVsTellService;
   /** Lexical Gravity's two explicit model seams: preview and lens building. */
   lexicalGravityModelService: LexicalGravityModelService;
   /** Project-owned reusable lexical fields under prose-minion/lenses. */

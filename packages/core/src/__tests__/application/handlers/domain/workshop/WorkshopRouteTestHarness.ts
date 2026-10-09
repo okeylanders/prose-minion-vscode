@@ -55,6 +55,9 @@ const widgetRuntime = (
   creativeVariations: {
     generate: creativeVariationsGenerate
   },
+  showVsTell: {
+    generate: jest.fn()
+  },
   standingDirectives: {
     apply: jest.fn(),
     remove: jest.fn()

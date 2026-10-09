@@ -6,8 +6,10 @@
  */
 
 import type {
+  WorkshopShowVsTellDraft,
   WorkshopShowVsTellVariant,
-  WorkshopShowVsTellWorkup
+  WorkshopShowVsTellWorkup,
+  WorkshopWidgetSourceReference
 } from '@messages';
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
 import {
@@ -71,4 +73,43 @@ export function showVsTellPositionArtifactValue(position: NarrativeHandlingPosit
     throw new Error(`Unknown Show vs. Tell position: ${String(position)}`);
   }
   return `${descriptor.name.toLowerCase()} · ${descriptor.subtitle}`;
+}
+
+/** Identity of a surrounding-passage source, for duplicate and order checks. */
+export function showVsTellSourceReferenceKey(reference: WorkshopWidgetSourceReference): string {
+  return reference.kind === 'active-excerpt'
+    ? reference.kind
+    : `${reference.kind}:${reference.attachmentId}`;
+}
+
+/** The authored inputs of one generation attempt; a workup and its selections are outputs. */
+export type ShowVsTellGenerationInput = Pick<
+  WorkshopShowVsTellDraft,
+  'beat' | 'surroundingContext' | 'pov' | 'invariants' | 'channels' | 'lengthBudget' | 'position'
+>;
+
+/**
+ * The transient draft a generation request validates against. Running the
+ * persisted shape and integrity gates on it means a request the host spends
+ * money on is one the writer could also have saved.
+ */
+export function showVsTellGenerationDraft(
+  input: ShowVsTellGenerationInput
+): WorkshopShowVsTellDraft {
+  return {
+    beat: { text: input.beat.text, provenance: { ...input.beat.provenance } },
+    surroundingContext: {
+      sourceReferences: input.surroundingContext.sourceReferences.map(
+        (reference) => ({ ...reference })
+      )
+    },
+    pov: { ...input.pov },
+    invariants: { ...input.invariants },
+    channels: [...input.channels],
+    lengthBudget: input.lengthBudget,
+    position: input.position,
+    workup: null,
+    kept: [],
+    note: ''
+  };
 }

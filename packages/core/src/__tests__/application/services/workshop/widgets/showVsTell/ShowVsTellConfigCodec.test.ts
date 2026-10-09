@@ -79,6 +79,69 @@ describe('ShowVsTellConfigCodec', () => {
     });
   });
 
+  describe('surrounding-context source reference (Q1)', () => {
+    it('round-trips zero and one reference, and never stores passage text', () => {
+      for (const sourceReferences of [
+        [],
+        [{ kind: 'active-excerpt' }],
+        [{ kind: 'context-attachment', attachmentId: 'ctx-3' }]
+      ] as WorkshopShowVsTellDraft['surroundingContext']['sourceReferences'][]) {
+        const value = mutated((draft) => {
+          draft.surroundingContext.sourceReferences = sourceReferences;
+        });
+        const decoded = JSON.parse(JSON.stringify(value)) as WorkshopShowVsTellDraft;
+
+        expect(() => assertValid(decoded)).not.toThrow();
+        expect(cloneShowVsTellDraft(decoded).surroundingContext).toEqual(value.surroundingContext);
+        expect(Object.keys(decoded.surroundingContext)).toEqual(['sourceReferences']);
+      }
+    });
+
+    it('clones references so a copy cannot alias the draft', () => {
+      const value = generatedShowVsTellDraft();
+      const copy = cloneShowVsTellDraft(value);
+
+      expect(copy.surroundingContext.sourceReferences).not.toBe(
+        value.surroundingContext.sourceReferences
+      );
+      expect(copy.surroundingContext.sourceReferences[0]).not.toBe(
+        value.surroundingContext.sourceReferences[0]
+      );
+    });
+
+    it.each([
+      ['two references', [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-1' }]],
+      ['an unknown kind', [{ kind: 'pasted-text' }]],
+      ['a malformed ctx id', [{ kind: 'context-attachment', attachmentId: 'ctx-0' }]],
+      ['a non-ctx id', [{ kind: 'context-attachment', attachmentId: 'attachment-1' }]],
+      ['a missing attachment id', [{ kind: 'context-attachment' }]],
+      ['an id on the excerpt reference', [{ kind: 'active-excerpt', attachmentId: 'ctx-1' }]],
+      ['writer text smuggled onto the reference', [{ kind: 'active-excerpt', text: 'passage' }]]
+    ])('rejects %s', (_label, references) => {
+      const value = mutated((draft) => {
+        draft.surroundingContext.sourceReferences =
+          references as WorkshopShowVsTellDraft['surroundingContext']['sourceReferences'];
+      });
+
+      expect(() => assertShowVsTellDraftShape(value, 'draft')).toThrow();
+    });
+
+    it('rejects a missing context object or passage text beside the references', () => {
+      const missing = generatedShowVsTellDraft() as unknown as Record<string, unknown>;
+      delete missing.surroundingContext;
+      expect(() => assertShowVsTellDraftShape(missing, 'draft')).toThrow();
+
+      const withText = generatedShowVsTellDraft() as unknown as Record<string, unknown>;
+      withText.surroundingContext = { sourceReferences: [], writerText: 'passage' };
+      expect(() => assertShowVsTellDraftShape(withText, 'draft')).toThrow();
+    });
+
+    it('stays within the one-reference budget', () => {
+      expect(budget.showVsTellSourceReferences).toBe(1);
+      expect(budget.showVsTellSourceReferenceCharacters).toBe(500);
+    });
+  });
+
   it('defensively clones every nested record and summarizes the chip counts', () => {
     const source = generatedShowVsTellDraft();
     const clone = cloneShowVsTellDraft(source);

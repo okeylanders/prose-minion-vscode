@@ -24,6 +24,9 @@ import {
   WorkshopCreativeVariationsHandler
 } from '@handlers/domain/workshop/widgets/creativeVariations/WorkshopCreativeVariationsHandler';
 import {
+  WorkshopShowVsTellHandler
+} from '@handlers/domain/workshop/widgets/showVsTell/WorkshopShowVsTellHandler';
+import {
   WorkshopLexicalGravityHandler
 } from '@handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler';
 import {
@@ -38,6 +41,9 @@ import {
 import {
   createCreativeVariationsWorkupIdFactory
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsWorkupId';
+import {
+  createShowVsTellWorkupIdFactory
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellWorkupId';
 import type {
   WorkshopMutationRouteOwner,
   WorkshopMutationRouteRegistrar,
@@ -53,6 +59,7 @@ export class WorkshopSliceComposition {
   private readonly sessionExportHandler: WorkshopSessionExportHandler;
   private readonly gesturePlaygroundHandler: WorkshopGesturePlaygroundHandler;
   private readonly creativeVariationsHandler: WorkshopCreativeVariationsHandler;
+  private readonly showVsTellHandler: WorkshopShowVsTellHandler;
   private readonly widgetHostHandler: WorkshopWidgetHostHandler;
   private readonly standingDirectiveHandler: WorkshopStandingDirectiveHandler;
   private readonly lexicalGravityHandler: WorkshopLexicalGravityHandler;
@@ -148,6 +155,14 @@ export class WorkshopSliceComposition {
       postMessage,
       outputChannel
     );
+    this.showVsTellHandler = new WorkshopShowVsTellHandler(
+      session,
+      widgetRuntime.showVsTell,
+      createShowVsTellWorkupIdFactory(),
+      WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY,
+      postMessage,
+      outputChannel
+    );
     const oneShotCommitCoordinator = new WorkshopOneShotWidgetCommitCoordinator(
       session,
       outputChannel,
@@ -157,10 +172,13 @@ export class WorkshopSliceComposition {
         markDirty
       }
     );
+    // The show-vs-tell arm joins the one-shot id type when its commit lands, so
+    // the key set is widened here until then.
     const oneShotGenerationActivity = {
       'gesture-playground': () => this.gesturePlaygroundHandler.isGenerationActive(),
-      'creative-variations': () => this.creativeVariationsHandler.isGenerationActive()
-    } satisfies Record<WorkshopOneShotWidgetId, () => boolean>;
+      'creative-variations': () => this.creativeVariationsHandler.isGenerationActive(),
+      'show-vs-tell': () => this.showVsTellHandler.isGenerationActive()
+    } satisfies Record<WorkshopOneShotWidgetId | 'show-vs-tell', () => boolean>;
     this.widgetHostHandler = new WorkshopWidgetHostHandler(
       session,
       oneShotCommitCoordinator,
@@ -223,6 +241,7 @@ export class WorkshopSliceComposition {
     this.sessionExportHandler.registerRoutes(router);
     this.gesturePlaygroundHandler.registerRoutes(router);
     this.creativeVariationsHandler.registerRoutes(router);
+    this.showVsTellHandler.registerRoutes(router);
     this.widgetHostHandler.registerRoutes(
       router,
       this.createMutationRegistrar(router, 'WorkshopWidgetHostHandler')
@@ -254,6 +273,7 @@ export class WorkshopSliceComposition {
     // work, active room run, context work, then the final persistence flush.
     this.gesturePlaygroundHandler.dispose();
     this.creativeVariationsHandler.dispose();
+    this.showVsTellHandler.dispose();
     this.lexicalGravityHandler.dispose();
     this.host.disposeRoomSubscriptions();
     this.sessionMessageHandler.dispose();

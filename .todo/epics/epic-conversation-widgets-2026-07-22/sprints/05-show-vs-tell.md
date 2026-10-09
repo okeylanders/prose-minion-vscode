@@ -1,6 +1,6 @@
 # Sprint 05: Show vs. Tell Playground
 
-**Status**: Slice 1 ready for review.
+**Status**: Slice 2 ready for review. Slice 1 merged (#134); 2a (prompt bundle, frozen response protocol) and 2b (response codec, service, handler, cancellation, stale-result correlation) are on one branch and one PR. Slice 3 is next.
 **Priority**: Medium
 **Branches**: one per slice, `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, each cut from `epic/conversation-widgets` and merged back into it by PR (see [Branching](#branching))
 **Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
@@ -267,7 +267,9 @@ the readout and changes what commits, without discarding the workup.
 
 - **Config, not just output, persists.** The full draft is stored by stable id
   in `WorkshopSessionService`: beat + provenance, POV constraint, both
-  invariant fields, channels, budget, position, the generated workup, kept
+  invariant fields, the surrounding-passage source reference (a reference only;
+  the passage text is never stored), channels, budget, position, the generated
+  workup, kept
   variants **and their carry modes**, and the note. Focus, scroll, and the busy
   state are ephemeral. (The prototype's reopen drops channels and budget. That
   is a prototype gap, not the contract.)
@@ -347,6 +349,8 @@ same commit.
 |---|---|---|
 | `showVsTellBeatCharacters` | 160 | A beat, not a passage. The writer-turn preview is the whole beat |
 | `showVsTellContextCharacters` | 250,000 | Parity with `creativeContextCharacters` (room excerpt) |
+| `showVsTellSourceReferences` | 1 | One surrounding passage; zero means none (Q1, Slice 2b) |
+| `showVsTellSourceReferenceCharacters` | 500 | Parity with `creativeSourceReferenceCharacters` (a `ctx-N` id bound) |
 | `showVsTellProvenancePathCharacters` | 500 | Parity with Creative Variations |
 | `showVsTellPovFocalCharacterCharacters` | 80 | A name, not a description |
 | `showVsTellMustSurviveCharacters` | 120 | Rides the artifact; the fixture is 76 |
@@ -526,6 +530,24 @@ Also decided at Slice 0:
 - **The 600 ceiling counts the artifact body only.** The envelope and warning
   lines are excluded, and a fit guarantee is pinned by a test.
 - **Gains and costs are two plain-text fields**, not one Markdown note.
+
+### Slice 1 contract questions (writer decisions, 2026-10-09)
+
+The three questions raised in the [Slice 1 handoff](../../../../.memory-bank/20261009-0627-show-vs-tell-slice1-handoff.md#contract-questions-also-in-the-pr):
+
+- **Q1, surrounding passage → persist a source now.** Slice 2b adds
+  `surroundingContext: { sourceReferences }` to the draft and the generate
+  payload. The host resolves the source's text at generation time; passage
+  text never crosses from the webview, is never persisted, and never rides
+  the commit. **Implemented in 2b.**
+- **Q2, line breaks → multi-line allowed.** No validator rejects line breaks
+  in `direction`, `gains`, `costs`, flag notes, or the invariants. The 2a
+  prompt does not forbid them; it still asks for one sentence each in
+  `gains` and `costs` and a compact `direction`. **Slice 4's artifact
+  projection must define a continuation-line format for multi-line values**
+  and redo the fit-guarantee arithmetic if that format adds characters.
+- **Q3, POV custody → open.** Whether "persona-prepared" survives reopen is
+  decided at Slice 5.
 
 ## Completion criteria
 
