@@ -316,6 +316,29 @@ describe('prompt budgets', () => {
     expect(prompt).toContain("Target 60–100% of the subject's length");
   });
 
+  it('declares every Show vs. Tell response ceiling to the model', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(SRC_ROOT, '..', 'resources', 'system-prompts', 'show-vs-tell', '00-show-vs-tell.md'),
+      'utf8'
+    );
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    for (const fragment of [
+      `\`prose\` ≤ ${budget.showVsTellProseCharacters.toLocaleString('en-US')} characters`,
+      `\`direction\` ≤ ${budget.showVsTellDirectionCharacters} characters, and strictly shorter than that variant's \`prose\``,
+      `\`gains\` and \`costs\` ≤ ${budget.showVsTellGainsCharacters} characters each`,
+      `\`channels\` holds 1–${budget.showVsTellChannelsPerVariant} channel ids, without repeats`,
+      `At most ${budget.showVsTellFlagsPerVariant} \`invariantFlags\` per variant`,
+      `flag \`note\` ≤ ${budget.showVsTellFlagNoteCharacters} characters`,
+      `${budget.showVsTellVariantsPerGroupMinimum}–${budget.showVsTellVariantsPerGroup} variants per group`,
+      `${budget.showVsTellVariantsMinimum}–${budget.showVsTellVariants} variants in total`,
+      `The whole response ≤ ${budget.showVsTellResponseCharacters.toLocaleString('en-US')} characters`
+    ]) {
+      expect(prompt).toContain(fragment);
+    }
+    // Gains and costs share one stated ceiling, so the two budgets must agree.
+    expect(budget.showVsTellCostsCharacters).toBe(budget.showVsTellGainsCharacters);
+  });
+
   it('recognizes mutable, field, and suffix-style budget declarations', () => {
     const source = [
       'let MAX_WORDS = 10;',
