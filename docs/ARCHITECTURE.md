@@ -421,8 +421,10 @@ one-shot rail: play first, then commit one config, turn, and artifact.
 - **Recommendation registry.** `WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES` in
   `WorkshopWidgetRecommendationOperations.ts` maps each recommendable widget to
   its own parser. Show vs. Tell's entry produces an input-only seed: the beat,
-  optional context, the constraints, and suggested settings. It never carries a
-  workup, selections, or a note, and opening the seed never auto-generates.
+  optional surrounding-context text and up to eight context sources, the
+  optional constraints (must survive is optional since the 2026-10-09 design
+  edits), and suggested settings. It never carries a workup, selections, or a
+  note, and opening the seed never auto-generates.
 - **Shared narrative-handling vocabulary.** `shared/constants/narrativeHandlingVocabulary.ts`
   owns the five continuum positions, the three Controller values, their labels,
   and the position → value mapping. Show vs. Tell imports it; Prose Controller
@@ -430,7 +432,11 @@ one-shot rail: play first, then commit one config, turn, and artifact.
   copy, and the readout stay feature-owned.
 - **Persistence lifecycle.** `WorkshopWidgetPersistenceLifecycle.ts` is the closed
   registry of persisted widget-config arms. Show vs. Tell has its own arm beside
-  Gesture Playground, Creative Variations, and Lexical Gravity.
+  Gesture Playground, Creative Variations, and Lexical Gravity. Its draft
+  stores the writer's surrounding passage text and 0–8 canonical context
+  references (resolved source text never persists), optional invariants, and
+  0–5 channels; a checkpoint repair fills a blank passage text on drafts saved
+  before those design edits, per ADR 2026-07-30.
 
 Show vs. Tell's gear and evidence-mode independence from Lexical Gravity is pinned
 by architecture witnesses (`architecture/showVsTellWitnesses.test.ts`) and by the

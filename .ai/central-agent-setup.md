@@ -152,7 +152,7 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopStandingDirectives.ts
 │           ├── controllers/            # Transient modal/surface state machines
 │           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
-│           │   └── showVsTell/         # useShowVsTellAuthoring, CommitFlow, InvalidationWatch
+│           │   └── showVsTell/         # useShowVsTellAuthoring, Intake, CommitFlow, InvalidationWatch
 │           └── widgets/                # Named feature transport/correlation hooks
 │               ├── creativeVariations/useCreativeVariations.ts
 │               ├── showVsTell/useShowVsTell.ts
@@ -718,8 +718,8 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-10-09):
-- 296 suites / 4,190 tests / 2 snapshots
+**Test Inventory** (measured 2026-10-09, Sprint 05 Slice 7):
+- 298 suites / 4,247 tests / 2 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
