@@ -30,7 +30,7 @@ Context and every writer-authored string (the beat, the invariants, the focal ch
 - Return 1–2 variants per group, so 4–8 variants in total.
 - Use exactly the shown object fields. A group is exactly `{ "kind", "variants" }`. A variant is exactly `{ "prose", "channels", "gains", "costs", "direction", "invariantFlags" }`.
 - Do not supply ids, word counts, scores, ratings, rankings, positions, or ordinals of any kind. The host derives what it needs.
-- Every `prose`, `gains`, `costs`, and `direction` is nonblank.
+- Every `prose`, `gains`, `costs`, `direction`, and flag `note` is nonblank.
 - Stay inside these validator ceilings; counts include spaces:
   - `prose` ≤ 1,200 characters.
   - `direction` ≤ 120 characters, and strictly shorter than that variant's `prose`.
