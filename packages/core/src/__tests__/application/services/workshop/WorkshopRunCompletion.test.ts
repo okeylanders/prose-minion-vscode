@@ -63,6 +63,30 @@ describe('completeWorkshopRun', () => {
     '</workshop-widget-recommendation>'
   ].join('\n');
 
+  const showVsTellRecommendationFrame = (overrides: {
+    beat?: string;
+    sourceReferences?: string;
+    mustSurvive?: string;
+    subject?: string;
+  } = {}): string => [
+    '### Try a widget',
+    '<workshop-widget-recommendation version="1">',
+    '<widget-id>', 'show-vs-tell', '</widget-id>',
+    '<told-beat>', overrides.beat ?? 'She hadn’t trusted him since the funeral.', '</told-beat>',
+    '<chip-subject>', overrides.subject ?? 'the funeral line', '</chip-subject>',
+    '<source-references>', overrides.sourceReferences ?? 'none', '</source-references>',
+    '<must-survive>',
+    overrides.mustSurvive ?? 'The distrust is old and funeral-rooted.',
+    '</must-survive>',
+    '<must-not-change>', '', '</must-not-change>',
+    '<pov-mode>', 'close-third', '</pov-mode>',
+    '<pov-focal-character>', 'Mara', '</pov-focal-character>',
+    '<handling-position>', 'hinge', '</handling-position>',
+    '<emphasis-channels>', '', '</emphasis-channels>',
+    '<length-allowance>', '', '</length-allowance>',
+    '</workshop-widget-recommendation>'
+  ].join('\n');
+
   const creativeRecommendationFrame = (overrides: {
     subjectText?: string;
     contextText?: string;
@@ -396,6 +420,130 @@ describe('completeWorkshopRun', () => {
     expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
       "Jill's Creative Variations Explorer setup could not be prepared.",
       expect.stringContaining('context-attachment:ctx-999')
+    );
+  });
+
+  it('attaches a Show vs. Tell prefill to a Host turn, input-only, under the production policy', () => {
+    session.beginPersonaMessage('req-1', 'Should I carry the funeral line at a distance?');
+    const turn = settle({
+      requestId: 'req-1',
+      result: result([
+        'That line carries a year in nine words — it buys time and spends the moment.',
+        '',
+        showVsTellRecommendationFrame()
+      ].join('\n'), { conversationId: 'host-conv' })
+    })!;
+
+    expect(turn.widgetRecommendation).toEqual({
+      widgetId: 'show-vs-tell',
+      seed: {
+        beatText: 'She hadn’t trusted him since the funeral.',
+        subject: 'the funeral line',
+        sourceReferences: [],
+        mustSurvive: 'The distrust is old and funeral-rooted.',
+        pov: { mode: 'close-third', focalCharacter: 'Mara' },
+        position: 'hinge'
+      }
+    });
+    expect(turn.content).toBe(
+      'That line carries a year in nine words — it buys time and spends the moment.'
+    );
+    expect(log).toHaveBeenCalledWith('Widget recommendation accepted (Jill; widget=show-vs-tell)');
+  });
+
+  it('attaches a Show vs. Tell prefill to the exact invited Guest persona turn', () => {
+    session.adoptPersonaGuest('margot', 'margot-conv', []);
+    session.beginPersonaGuestMessage('margot', 'req-1', 'Is this line telling too much?');
+
+    const turn = completeWorkshopRun({
+      session,
+      requestId: 'req-1',
+      label: 'Margot',
+      result: result(
+        `Where it stands, the line trades weight for pace.\n\n${showVsTellRecommendationFrame()}`,
+        { conversationId: 'margot-conv' }
+      ),
+      aborted: false,
+      createsRetainedConversation: false,
+      copy: workshopMessageCompletionCopy('Margot'),
+      discardConversation,
+      readRetainedHistory,
+      log,
+      events
+    })!;
+
+    expect(turn).toMatchObject({
+      participant: 'guest',
+      personaId: 'margot',
+      widgetRecommendation: {
+        widgetId: 'show-vs-tell',
+        seed: { beatText: 'She hadn’t trusted him since the funeral.' }
+      }
+    });
+  });
+
+  it('keeps a Show vs. Tell prefill persona-only on a direct tool completion', () => {
+    session.beginToolRun('prose', 'tool-1');
+    session.completeToolReport('tool-1', 'Initial report.', 'tool-conv');
+    session.beginDirectToolMessage('prose', 'req-1', 'Prepare the widget.');
+
+    const turn = settle({
+      requestId: 'req-1',
+      createsRetainedConversation: false,
+      result: result(showVsTellRecommendationFrame(), { conversationId: 'tool-conv' })
+    })!;
+
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected '
+      + '(Jill; widget=show-vs-tell; reason=participant_not_persona)'
+    );
+  });
+
+  it('rejects a Show vs. Tell prefill whose source address is no longer available', () => {
+    session.beginPersonaMessage('req-1', 'Prepare the beat.');
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(
+        showVsTellRecommendationFrame({ sourceReferences: 'context-attachment:ctx-999' }),
+        { conversationId: 'host-conv' }
+      )
+    })!;
+
+    expect(turn.widgetRecommendation).toBeUndefined();
+    expect(log).toHaveBeenCalledWith(
+      'Widget recommendation rejected (Jill; widget=show-vs-tell; '
+      + 'reason=unavailable_source_reference:context-attachment:ctx-999)'
+    );
+  });
+
+  it('accepts a Show vs. Tell prefill whose active excerpt is live', () => {
+    session.beginPersonaMessage('req-1', 'Prepare the beat.');
+    const turn = settle({
+      requestId: 'req-1',
+      result: result(
+        showVsTellRecommendationFrame({ sourceReferences: 'active-excerpt' }),
+        { conversationId: 'host-conv' }
+      )
+    })!;
+    expect(turn.widgetRecommendation).toMatchObject({
+      widgetId: 'show-vs-tell',
+      seed: { sourceReferences: [{ kind: 'active-excerpt' }] }
+    });
+  });
+
+  it('explains a rejected Show vs. Tell field in the writer-facing notice', () => {
+    session.beginPersonaMessage('req-1', 'Prepare the beat.');
+    settle({
+      requestId: 'req-1',
+      result: result(
+        showVsTellRecommendationFrame({ beat: 'First line.\nSecond line.' }),
+        { conversationId: 'host-conv' }
+      )
+    });
+    expect(events.widgetRecommendationRejected).toHaveBeenCalledWith(
+      "Jill's Show vs. Tell Playground setup could not be prepared.",
+      'Told beat was not a single line. Ask Jill to try again.'
     );
   });
 

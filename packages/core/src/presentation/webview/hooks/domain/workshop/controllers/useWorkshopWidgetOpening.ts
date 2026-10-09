@@ -9,6 +9,7 @@ import {
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopPersonaId,
+  WorkshopShowVsTellRecommendationSeed,
   WorkshopShowVsTellWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary,
   WorkshopTurn,
@@ -38,9 +39,18 @@ export type WorkshopCreativeVariationsOpening =
     }
   | { kind: 'clone'; config: WorkshopCreativeVariationsWidgetConfigSnapshot };
 
-/** A chip reopens its exact committed draft; recommendation seeds arrive with Slice 5. */
+/**
+ * A chip reopens its exact committed draft; a persona recommendation prefills
+ * the inputs only and never generates.
+ */
 export type WorkshopShowVsTellOpening =
   | { kind: 'new' }
+  | {
+      kind: 'seed';
+      seed: WorkshopShowVsTellRecommendationSeed;
+      personaId: WorkshopPersonaId;
+      personaLabel: string;
+    }
   | { kind: 'clone'; config: WorkshopShowVsTellWidgetConfigSnapshot };
 
 export interface WorkshopWidgetOpeningHost {
@@ -202,6 +212,26 @@ export function useWorkshopWidgetOpening({
             personaLabel: personaLabel ?? 'the persona'
           });
           return;
+        case 'show-vs-tell':
+          if (pendingWidgetConfigId) {
+            onError('Wait for the requested widget configuration before opening a prefill.');
+            return;
+          }
+          if (showVsTellOpening) {
+            onError('Close the current Show vs. Tell sheet before opening a prefill.');
+            return;
+          }
+          if (!personaId) {
+            onError('That Show vs. Tell prefill has no persona identity and cannot open.');
+            return;
+          }
+          setShowVsTellOpening({
+            kind: 'seed',
+            seed: recommendation.seed,
+            personaId,
+            personaLabel: personaLabel ?? 'the persona'
+          });
+          return;
         default: {
           const exhaustive: never = recommendation;
           console.warn(
@@ -212,7 +242,7 @@ export function useWorkshopWidgetOpening({
         }
       }
     },
-    [creativeVariationsOpening, onError, pendingWidgetConfigId]
+    [creativeVariationsOpening, onError, pendingWidgetConfigId, showVsTellOpening]
   );
 
   const closeGesturePlayground = React.useCallback(() => {

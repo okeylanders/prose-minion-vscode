@@ -129,7 +129,14 @@ const WIDGET_FIELD_LABELS = Object.freeze({
   lensSlug: 'Lens',
   weight: 'Weight',
   reach: 'Reach',
-  metaphorPull: 'Metaphor pull'
+  metaphorPull: 'Metaphor pull',
+  beatText: 'Told beat',
+  subject: 'Chip subject',
+  povMode: 'POV mode',
+  povFocalCharacter: 'POV focal character',
+  position: 'Handling position',
+  channels: 'Emphasis channels',
+  lengthBudget: 'Length allowance'
 });
 
 const INVALID_WIDGET_FIELD_COPY = Object.freeze({
@@ -141,7 +148,13 @@ const INVALID_WIDGET_FIELD_COPY = Object.freeze({
   unsupported_lens: 'named a lens that personas are not allowed to seed',
   invalid_weight: 'was outside the allowed weight steps',
   invalid_reach: 'was outside the allowed reach values',
-  invalid_metaphor_pull: 'was not true or false'
+  invalid_metaphor_pull: 'was not true or false',
+  multiline: 'was not a single line',
+  invalid_pov_mode: 'was outside the allowed POV modes',
+  invalid_focal_character: 'named a focal character without a declared POV mode',
+  invalid_position: 'was outside the allowed handling positions',
+  invalid_channels: 'named an unknown or repeated channel',
+  invalid_length_budget: 'was outside the allowed length allowances'
 });
 
 function widgetRecommendationRejectionReason(
@@ -381,6 +394,9 @@ function unavailableWidgetSourceReference(
     case 'gesture-playground':
     case 'creative-variations':
       references = recommendation.seed?.sourceReferences ?? [];
+      break;
+    case 'show-vs-tell':
+      references = recommendation.seed.sourceReferences;
       break;
     case 'lexical-gravity':
       references = [];

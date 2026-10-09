@@ -258,6 +258,20 @@ export function cloneWidgetRecommendation(
             }
           : undefined
       };
+    case 'show-vs-tell':
+      return {
+        widgetId: recommendation.widgetId,
+        seed: {
+          ...recommendation.seed,
+          sourceReferences: recommendation.seed.sourceReferences.map(
+            (reference) => ({ ...reference })
+          ),
+          ...(recommendation.seed.pov ? { pov: { ...recommendation.seed.pov } } : {}),
+          ...(recommendation.seed.channels
+            ? { channels: [...recommendation.seed.channels] }
+            : {})
+        }
+      };
     default:
       return assertNever(recommendation);
   }

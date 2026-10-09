@@ -130,7 +130,8 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
     expect(entries.map(({ widgetId }) => widgetId)).toEqual([
       'gesture-playground',
       'lexical-gravity',
-      'creative-variations'
+      'creative-variations',
+      'show-vs-tell'
     ]);
     expect(new Set(entries.map(({ catalogOrder }) => catalogOrder)).size).toBe(entries.length);
     expect(new Set(entries.map(({ instructionOrder }) => instructionOrder)).size).toBe(

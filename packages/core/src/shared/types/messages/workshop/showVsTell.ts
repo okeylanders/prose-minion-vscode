@@ -3,8 +3,8 @@
  *
  * Slice 1 declared the exact authoring draft and the generated workup it
  * stores. Slice 2 adds the generate, cancel, progress, and result messages.
- * Slice 4 adds the commit payload. The recommendation message contract
- * arrives with the slice that ships that route.
+ * Slice 4 adds the commit payload. Slice 5 adds the input-only persona
+ * recommendation seed.
  */
 
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
@@ -193,6 +193,32 @@ export interface WorkshopShowVsTellDraft {
   kept: WorkshopShowVsTellKeptVariant[];
   /** Optional single-line note to the room. */
   note: string;
+}
+
+/**
+ * Input-only persona recommendation seed. It names a beat and the inputs a
+ * persona may suggest; it cannot represent a workup, kept variants, a carry
+ * mode, a note, or provenance. Opening it prefills the sheet and never
+ * generates. Optional suggestions left absent open on the feature defaults.
+ */
+export interface WorkshopShowVsTellRecommendationSeed {
+  /** Exact told beat copied from supplied material: one line, at most 160 characters. */
+  beatText: string;
+  /**
+   * Persona-written chip label, at most 60 characters, single line. Shown on the
+   * chip only: it never reaches generation, the draft, or a commit.
+   */
+  subject?: string;
+  /** Zero or one reference; the passage text never travels with the seed. */
+  sourceReferences: WorkshopWidgetSourceReference[];
+  /** Required: generation has no meaning without a declared "same". */
+  mustSurvive: string;
+  mustNotChange?: string;
+  /** Persona-suggested POV; with a focal character only for a declared mode. */
+  pov?: WorkshopShowVsTellPov;
+  position?: NarrativeHandlingPosition;
+  channels?: WorkshopShowVsTellChannel[];
+  lengthBudget?: WorkshopShowVsTellLengthBudget;
 }
 
 /**
