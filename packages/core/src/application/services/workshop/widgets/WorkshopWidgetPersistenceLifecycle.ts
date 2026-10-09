@@ -22,6 +22,13 @@ import {
   normalizeLexicalGravityDraftForHydration,
   type LexicalGravityCheckpointNormalization
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
+import {
+  assertShowVsTellDraftCheckpointShape,
+  assertShowVsTellDraftIntegrity,
+  assertShowVsTellDraftShape,
+  normalizeShowVsTellDraftForHydration,
+  type ShowVsTellCheckpointNormalization
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigCodec';
 import type {
   WorkshopWidgetDraftRecoveryResult,
   WorkshopWidgetRecoveryNotice
@@ -36,7 +43,8 @@ export interface WorkshopWidgetConfigRecoveryResult {
 export type WorkshopWidgetCheckpointNormalization =
   | GesturePlaygroundCheckpointNormalization
   | LexicalGravityCheckpointNormalization
-  | CreativeVariationsCheckpointNormalization;
+  | CreativeVariationsCheckpointNormalization
+  | ShowVsTellCheckpointNormalization;
 
 export type PersistedWorkshopWidgetId = WorkshopWidgetConfigSnapshot['widgetId'];
 type PersistedWorkshopWidgetDraft<Id extends PersistedWorkshopWidgetId> =
@@ -96,6 +104,12 @@ const WORKSHOP_WIDGET_PERSISTENCE_LIFECYCLES = {
     normalizeForHydration: normalizeCreativeVariationsDraftForHydration,
     assertCurrentShape: assertCreativeVariationsDraftShape,
     assertIntegrity: assertCreativeVariationsDraftIntegrity
+  },
+  'show-vs-tell': {
+    assertCheckpointShape: assertShowVsTellDraftCheckpointShape,
+    normalizeForHydration: normalizeShowVsTellDraftForHydration,
+    assertCurrentShape: assertShowVsTellDraftShape,
+    assertIntegrity: assertShowVsTellDraftIntegrity
   }
 } satisfies WorkshopWidgetPersistenceLifecycleRegistry;
 

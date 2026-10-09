@@ -27,6 +27,10 @@ import {
   cloneLexicalGravityDraft,
   summarizeLexicalGravityDraft
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityConfigCodec';
+import {
+  cloneShowVsTellDraft,
+  summarizeShowVsTellDraft
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigCodec';
 
 const unsupportedConfig = (value: never): never => {
   throw new Error(`Unsupported Workshop widget config: ${JSON.stringify(value)}`);
@@ -62,6 +66,12 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
           widgetId: input.widgetId,
           draft: cloneCreativeVariationsDraft(input.draft)
         };
+      case 'show-vs-tell':
+        return {
+          ...identity,
+          widgetId: input.widgetId,
+          draft: cloneShowVsTellDraft(input.draft)
+        };
       default:
         return unsupportedConfig(input);
     }
@@ -91,6 +101,12 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
           widgetId: input.widgetId,
           draft: cloneCreativeVariationsDraft(input.draft)
         };
+      case 'show-vs-tell':
+        return {
+          ...identity,
+          widgetId: input.widgetId,
+          draft: cloneShowVsTellDraft(input.draft)
+        };
       default:
         return unsupportedConfig(input);
     }
@@ -104,6 +120,8 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
         return { ...config, draft: cloneLexicalGravityDraft(config.draft) };
       case 'creative-variations':
         return { ...config, draft: cloneCreativeVariationsDraft(config.draft) };
+      case 'show-vs-tell':
+        return { ...config, draft: cloneShowVsTellDraft(config.draft) };
       default:
         return unsupportedConfig(config);
     }
@@ -122,6 +140,10 @@ export const WORKSHOP_WIDGET_CONFIG_OPERATIONS: WorkshopWidgetConfigOperations =
       case 'creative-variations': {
         const { draft, ...identity } = config;
         return { ...identity, ...summarizeCreativeVariationsDraft(draft) };
+      }
+      case 'show-vs-tell': {
+        const { draft, ...identity } = config;
+        return { ...identity, ...summarizeShowVsTellDraft(draft) };
       }
       default:
         return unsupportedConfig(config);

@@ -17,6 +17,7 @@ import {
   WorkshopLexicalGravityReach,
   WorkshopLexicalGravityRecommendationSeed
 } from './lexicalGravity';
+import { WorkshopShowVsTellDraft } from './showVsTell';
 import { WorkshopStandingWidgetCommit } from './standingDirectives';
 
 /**
@@ -81,11 +82,18 @@ export interface WorkshopCreativeVariationsWidgetConfigSnapshot
   draft: WorkshopCreativeVariationsDraft;
 }
 
+export interface WorkshopShowVsTellWidgetConfigSnapshot
+  extends WorkshopWidgetConfigSnapshotBase {
+  widgetId: 'show-vs-tell';
+  draft: WorkshopShowVsTellDraft;
+}
+
 /** Earned persisted union: each widget owns its exact authoring-state codec. */
 export type WorkshopWidgetConfigSnapshot =
   | WorkshopGesturePlaygroundWidgetConfigSnapshot
   | WorkshopLexicalGravityWidgetConfigSnapshot
-  | WorkshopCreativeVariationsWidgetConfigSnapshot;
+  | WorkshopCreativeVariationsWidgetConfigSnapshot
+  | WorkshopShowVsTellWidgetConfigSnapshot;
 
 /**
  * Bounded config identity carried in ordinary session snapshots. The full
@@ -115,10 +123,20 @@ export type WorkshopCreativeVariationsWidgetConfigSummary =
     selectionCount: number;
   };
 
+/** The beat is bounded at 160 characters, so its preview is the whole beat. */
+export type WorkshopShowVsTellWidgetConfigSummary =
+  Omit<WorkshopShowVsTellWidgetConfigSnapshot, 'draft'> & {
+    beatPreview: string;
+    keptCount: number;
+    /** Kept variants carried as direction only (the chip's `{M} as direction`). */
+    directionCount: number;
+  };
+
 export type WorkshopWidgetConfigSummary =
   | WorkshopGesturePlaygroundWidgetConfigSummary
   | WorkshopLexicalGravityWidgetConfigSummary
-  | WorkshopCreativeVariationsWidgetConfigSummary;
+  | WorkshopCreativeVariationsWidgetConfigSummary
+  | WorkshopShowVsTellWidgetConfigSummary;
 
 /**
  * Display-safe widget-commit decoration on a normal user message turn —
