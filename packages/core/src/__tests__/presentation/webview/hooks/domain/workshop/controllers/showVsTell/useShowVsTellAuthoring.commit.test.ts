@@ -22,6 +22,7 @@ const baseOptions = (): UseShowVsTellAuthoringOptions => ({
   generationProgress: null,
   generationResult: null,
   requestBeatSelection: jest.fn(),
+  requestPassageSelection: jest.fn(),
   generate: jest.fn(() => 'token-1'),
   cancelGeneration: jest.fn(),
   roomRunActive: false,
@@ -68,7 +69,10 @@ function mount(initial: Partial<UseShowVsTellAuthoringOptions> = {}) {
 const richDraft = (): WorkshopShowVsTellDraft => {
   const draft = generatedShowVsTellDraft();
   draft.beat.provenance = { kind: 'excerpt', relativePath: 'chapters/four.md', startLine: 12, endLine: 12 };
-  draft.surroundingContext = { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-3' }] };
+  draft.surroundingContext = {
+    writerText: 'He set the mug down.\nShe did not look up.',
+    sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-3' }]
+  };
   draft.pov = { mode: 'close-third', focalCharacter: 'Daniel' };
   draft.invariants = {
     mustSurvive: 'The distrust is old.\nShe never says it out loud.',
@@ -213,9 +217,10 @@ describe('useShowVsTellAuthoring commit', () => {
       expect(draft.beat.provenance).toEqual({
         kind: 'excerpt', relativePath: 'chapters/four.md', startLine: 12, endLine: 12
       });
-      expect(draft.surroundingContext.sourceReferences).toEqual([
-        { kind: 'context-attachment', attachmentId: 'ctx-3' }
-      ]);
+      expect(draft.surroundingContext).toEqual({
+        writerText: 'He set the mug down.\nShe did not look up.',
+        sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-3' }]
+      });
       expect(draft.pov).toEqual({ mode: 'close-third', focalCharacter: 'Daniel' });
       expect(draft.invariants.mustSurvive).toBe('The distrust is old.\nShe never says it out loud.');
       expect(draft.invariants.mustNotChange).toBe('No flashback.\nStay in tonight.');
@@ -261,18 +266,14 @@ describe('useShowVsTellAuthoring commit', () => {
       // The active excerpt is gone from the room and attachment ctx-3 was removed.
       const h = mount({ opening: { kind: 'clone', config: cloneConfig(richDraft()) } });
 
-      expect(h.result.current.draft.surroundingContext.sourceReferences).toEqual([
-        { kind: 'context-attachment', attachmentId: 'ctx-3' }
-      ]);
+      expect(h.result.current.draft.surroundingContext).toEqual(richDraft().surroundingContext);
       expect(h.result.current.availableSources).toEqual([]);
       expect(h.result.current.generateBlockers).toContain('source-unavailable');
       expect(h.result.current.commitBlockers).toEqual([]);
 
       act(() => h.result.current.commitDraft());
       expect(h.options.commit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          surroundingContext: { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-3' }] }
-        }),
+        expect.objectContaining({ surroundingContext: richDraft().surroundingContext }),
         'wc-4'
       );
     });
@@ -330,6 +331,31 @@ describe('useShowVsTellAuthoring commit', () => {
       } as never));
 
       expect(h.result.current.draft).toEqual(richDraft());
+      expect(h.result.current.invalidationNotice).toBeNull();
+    });
+
+    it('drops a late passage selection reply and refuses Use excerpt and a source toggle (D2)', () => {
+      const h = mount({
+        opening: { kind: 'clone', config: cloneConfig(richDraft()) },
+        activeExcerpt: { text: 'Excerpt text.', version: 1, pinnedAt: 1, source: { kind: 'manual' } } as never
+      });
+      h.rerender({ commitPending: true });
+
+      act(() => {
+        h.result.current.handlePassageSelection({
+          type: 'select' as never,
+          source: 'extension.ui',
+          timestamp: 1,
+          payload: { target: 'workshop_show_vs_tell_passage', content: 'A late passage.' }
+        } as never);
+        h.result.current.usePassageFromExcerpt();
+        h.result.current.requestPassageSelection();
+        h.result.current.changePassageText('Typed while pending.');
+        h.result.current.toggleSourceReference({ kind: 'active-excerpt' });
+      });
+
+      expect(h.result.current.draft).toEqual(richDraft());
+      expect(h.options.requestPassageSelection).not.toHaveBeenCalled();
       expect(h.result.current.invalidationNotice).toBeNull();
     });
 

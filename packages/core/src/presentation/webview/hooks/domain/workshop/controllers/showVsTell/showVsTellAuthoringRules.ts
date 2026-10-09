@@ -2,16 +2,15 @@
  * Pure rules and derived state for the Show vs. Tell authoring controller.
  *
  * Everything here is a deterministic function of its arguments: notices,
- * intake normalization, source and blocker derivation, keep ordering, and the
- * payload projection. The controller owns the state machine and the
+ * beat intake normalization, keep ordering, and the payload projection. The
+ * surrounding passage and context-source rules live beside this file in
+ * `showVsTellSourceRules.ts`. The controller owns the state machine and the
  * transport-free effects; it composes these so each rule can be audited and
  * tested on its own.
  */
 
 import type {
   SelectionDataPayload,
-  WorkshopContextAttachmentSnapshot,
-  WorkshopExcerptSnapshot,
   WorkshopShowVsTellBeat,
   WorkshopShowVsTellCarryMode,
   WorkshopShowVsTellChannel,
@@ -19,8 +18,7 @@ import type {
   WorkshopShowVsTellGenerationProgressPayload,
   WorkshopPersonaId,
   WorkshopShowVsTellPovMode,
-  WorkshopShowVsTellRecommendationSeed,
-  WorkshopWidgetSourceReference
+  WorkshopShowVsTellRecommendationSeed
 } from '@messages';
 import type {
   WorkshopShowVsTellOpening
@@ -31,7 +29,6 @@ import {
   SHOW_VS_TELL_DEFAULTS
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 import {
-  showVsTellSourceReferenceKey,
   showVsTellWorkupVariants
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
 import {
@@ -43,9 +40,7 @@ import {
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellCommitEligibility';
 import type {
   ShowVsTellArtifactUsage,
-  ShowVsTellAvailableSource,
-  ShowVsTellCommitBlocker,
-  ShowVsTellGenerateBlocker
+  ShowVsTellCommitBlocker
 } from '@components/workshop/widgets/showVsTell/showVsTellAuthoringTypes';
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
@@ -67,9 +62,11 @@ export function createShowVsTellAuthoringDraft(): WorkshopShowVsTellDraft {
 
 /**
  * The draft a persona recommendation opens: the seed's inputs and nothing
- * else. Anything the persona left out opens on the feature defaults, and the
- * draft carries no workup, kept variants, or note. POV is plain writer input
- * from here on (Q3), so only the beat keeps persona custody.
+ * else. Anything the persona left out opens on the feature defaults (a blank
+ * must survive declares no constraint, D3), and the draft carries no workup,
+ * kept variants, or note. POV is plain writer input from here on (Q3), so
+ * only the beat keeps persona custody. The seed's context text opens as the
+ * writer's surrounding passage (D2).
  */
 export function createShowVsTellSeededDraft(
   seed: WorkshopShowVsTellRecommendationSeed,
@@ -120,7 +117,8 @@ export function collapseShowVsTellLineBreaks(text: string): string {
 
 export type ShowVsTellInputLabel =
   | 'beat'
-  | 'surrounding passage source'
+  | 'surrounding passage'
+  | 'context sources'
   | 'point of view'
   | '“Must survive” constraint'
   | '“Must not change” constraint'
@@ -221,8 +219,8 @@ export function beatWithEditedText(beat: WorkshopShowVsTellBeat, text: string): 
 }
 
 /**
- * Toggles one channel. The last selected channel cannot be turned off (the
- * same array comes back), and the result is stored in the fixed channel order
+ * Toggles one channel. Any channel may be turned off, down to zero (D4: zero
+ * means no emphasis), and the result is stored in the fixed channel order
  * whatever order the writer clicked.
  */
 export function toggledShowVsTellChannels(
@@ -230,9 +228,6 @@ export function toggledShowVsTellChannels(
   channel: WorkshopShowVsTellChannel
 ): WorkshopShowVsTellChannel[] {
   const selected = channels.includes(channel);
-  if (selected && channels.length === 1) {
-    return channels as WorkshopShowVsTellChannel[];
-  }
   const wanted = selected
     ? channels.filter((candidate) => candidate !== channel)
     : [...channels, channel];
@@ -266,27 +261,6 @@ export function toggledShowVsTellKeep(
   };
 }
 
-/** Zero or one surrounding-passage source; the same draft comes back when nothing changes. */
-export function withShowVsTellSourceReference(
-  draft: WorkshopShowVsTellDraft,
-  reference: WorkshopWidgetSourceReference | null
-): WorkshopShowVsTellDraft {
-  const existing = draft.surroundingContext.sourceReferences[0];
-  const unchanged = reference === null
-    ? existing === undefined
-    : existing !== undefined
-      && showVsTellSourceReferenceKey(existing) === showVsTellSourceReferenceKey(reference);
-  return unchanged
-    ? draft
-    : {
-        ...draft,
-        surroundingContext: {
-          ...draft.surroundingContext,
-          sourceReferences: reference === null ? [] : [{ ...reference }]
-        }
-      };
-}
-
 /** `unspecified` names no focal character, so the character is blanked with it. */
 export function withShowVsTellPovMode(
   draft: WorkshopShowVsTellDraft,
@@ -310,52 +284,6 @@ export function withShowVsTellCarryMode(
     ...draft,
     kept: draft.kept.map((entry) => entry.variantId === variantId ? { ...entry, carryMode } : entry)
   };
-}
-
-/** The room sources a writer may ground the beat on: the active excerpt and each attachment. */
-export function deriveShowVsTellAvailableSources(
-  activeExcerpt: WorkshopExcerptSnapshot | null,
-  contextAttachments: readonly WorkshopContextAttachmentSnapshot[]
-): ShowVsTellAvailableSource[] {
-  return [
-    ...(activeExcerpt
-      ? [{
-          reference: { kind: 'active-excerpt' } as const,
-          label: 'Active excerpt',
-          detail: activeExcerpt.source.kind === 'manual'
-            ? `Pasted Workshop passage · version ${activeExcerpt.version}`
-            : `${activeExcerpt.source.relativePath} · version ${activeExcerpt.version}`
-        }]
-      : []),
-    ...contextAttachments.map((attachment) => ({
-      reference: { kind: 'context-attachment' as const, attachmentId: attachment.id },
-      label: attachment.label,
-      detail: `${attachment.kind === 'file' ? attachment.relativePath ?? 'Project file' : 'Workshop text'} · ${attachment.words.toLocaleString()} words`
-    }))
-  ];
-}
-
-/** Why Generate is unavailable: a blank beat or must survive, or a source the room no longer offers. */
-export function deriveShowVsTellGenerateBlockers(
-  draft: WorkshopShowVsTellDraft,
-  availableSources: readonly ShowVsTellAvailableSource[]
-): ShowVsTellGenerateBlocker[] {
-  const blockers: ShowVsTellGenerateBlocker[] = [];
-  if (draft.beat.text.trim().length === 0) {
-    blockers.push('beat-required');
-  }
-  if (draft.invariants.mustSurvive.trim().length === 0) {
-    blockers.push('must-survive-required');
-  }
-  const reference = draft.surroundingContext.sourceReferences[0];
-  if (
-    reference !== undefined
-    && !availableSources.some((source) =>
-      showVsTellSourceReferenceKey(source.reference) === showVsTellSourceReferenceKey(reference))
-  ) {
-    blockers.push('source-unavailable');
-  }
-  return blockers;
 }
 
 export interface ShowVsTellArtifactProjection {

@@ -45,6 +45,7 @@ const renderModal = (
     generation: { kind: 'idle' },
     invalidationNotice: null,
     intakeNotice: null,
+    passageNotice: null,
     generateBlockers: [],
     commitBlockers: ['no-workup'],
     commitPending: false,
@@ -52,10 +53,13 @@ const renderModal = (
     banner: { kind: 'none' },
     artifactUsage: null,
     availableSources: [],
-    excerptText: null,
+    canUsePassageFromExcerpt: false,
     onUseSelection: jest.fn(),
     onBeatTextChange: jest.fn(),
-    onSelectSource: jest.fn(),
+    onPassageTextChange: jest.fn(),
+    onUsePassageFromExcerpt: jest.fn(),
+    onUsePassageFromSelection: jest.fn(),
+    onToggleSourceReference: jest.fn(),
     onPovModeChange: jest.fn(),
     onPovFocalCharacterChange: jest.fn(),
     onMustSurviveChange: jest.fn(),
@@ -227,13 +231,14 @@ describe('WorkshopShowVsTellModal', () => {
       expect(props.onUseSelection).toHaveBeenCalledTimes(1);
     });
 
-    it('marks must survive required and must not change optional, both multi-line', () => {
+    it('marks must survive optional (D3) and must not change optional, both multi-line', () => {
       const props = renderModal();
-      const survive = screen.getByRole('textbox', { name: /Must survive every variation required/ });
+      const survive = screen.getByRole('textbox', { name: /Must survive every variation optional/ });
       const hold = screen.getByRole('textbox', { name: /Must not change optional/ });
 
       expect(survive.tagName).toBe('TEXTAREA');
-      expect(survive.getAttribute('aria-required')).toBe('true');
+      expect(survive.getAttribute('aria-required')).toBeNull();
+      expect(screen.queryByText(/needs a declared/)).toBeNull();
       expect(hold.tagName).toBe('TEXTAREA');
       fireEvent.change(hold, { target: { value: 'no flashback\nno new scene' } });
       expect(props.onMustNotChangeChange).toHaveBeenCalledWith('no flashback\nno new scene');
@@ -257,50 +262,99 @@ describe('WorkshopShowVsTellModal', () => {
     });
   });
 
-  describe('surrounding passage', () => {
-    const excerptDraft = (): WorkshopShowVsTellDraft => ({
-      ...ungeneratedShowVsTellDraft(),
-      surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }] }
-    });
-    const sources = [{
-      reference: { kind: 'active-excerpt' as const },
-      label: 'Active excerpt',
-      detail: 'chapters/four.md · version 3'
-    }];
+  describe('layout (D1)', () => {
+    it('orders the beat, then POV + invariants beside channels + budget, then the full-width passage, the full-width context, and the continuum', () => {
+      renderModal({ availableSources: [{ reference: { kind: 'active-excerpt' }, label: 'Active excerpt', detail: 'v3' }] });
+      const body = document.querySelector('.pm-ws-svt-body')!;
+      const order = [
+        screen.getByRole('textbox', { name: /Selected beat/ }),
+        screen.getByRole('combobox', { name: 'POV mode' }),
+        screen.getByRole('textbox', { name: /Must survive every variation/ }),
+        screen.getByRole('textbox', { name: /Must not change/ }),
+        screen.getByRole('textbox', { name: /Surrounding passage/ }),
+        screen.getByRole('checkbox', { name: /Active excerpt/ }),
+        screen.getByRole('radiogroup', { name: 'Position on the continuum' })
+      ];
+      const positions = order.map((element) =>
+        Array.from(body.querySelectorAll('*')).indexOf(element));
+      expect(positions.every((position) => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
 
-    it('shows the passage read-only with the beat highlighted and its source labelled', () => {
-      renderModal({
-        draft: excerptDraft(),
-        availableSources: sources,
-        excerptText: 'He set the mug down. She hadn’t trusted him since the funeral. “You kept the plants alive.”'
+      // Channels and the length budget sit in the grid beside the constraints,
+      // above the full-width passage.
+      const grid = body.querySelector('.pm-ws-svt-grid')!;
+      expect(grid.contains(screen.getByRole('group', { name: 'Channels to emphasize' }))).toBe(true);
+      expect(grid.contains(screen.getByRole('radiogroup', { name: 'Length budget' }))).toBe(true);
+      expect(grid.contains(screen.getByRole('combobox', { name: 'POV mode' }))).toBe(true);
+      expect(grid.contains(screen.getByRole('textbox', { name: /Surrounding passage/ }))).toBe(false);
+      expect(screen.getByRole('textbox', { name: /Surrounding passage/ }).closest('.pm-ws-svt-field-wide')).not.toBeNull();
+      expect(screen.getByRole('checkbox', { name: /Active excerpt/ }).closest('.pm-ws-svt-field-wide')).not.toBeNull();
+    });
+  });
+
+  describe('surrounding passage (D2)', () => {
+    const sources = [
+      { reference: { kind: 'active-excerpt' as const }, label: 'Active excerpt', detail: 'chapters/four.md · version 3' },
+      { reference: { kind: 'context-attachment' as const, attachmentId: 'ctx-1' }, label: 'Character notes', detail: 'Workshop text · 12 words' },
+      { reference: { kind: 'context-attachment' as const, attachmentId: 'ctx-2' }, label: 'kitchen.md', detail: 'scenes/kitchen.md · 410 words' }
+    ];
+
+    it('is a full-width text box with its own counter, Use excerpt, and Use selection', () => {
+      const props = renderModal({
+        draft: { ...ungeneratedShowVsTellDraft(), surroundingContext: { writerText: 'He set the mug down.', sourceReferences: [] } },
+        canUsePassageFromExcerpt: true
       });
-      const region = screen.getByRole('region', { name: /Surrounding passage/ });
+      const passage = screen.getByRole('textbox', { name: /Surrounding passage/ }) as HTMLTextAreaElement;
 
-      expect(within(region).getByText('She hadn’t trusted him since the funeral.').tagName).toBe('MARK');
-      expect(region.textContent).toContain('He set the mug down.');
-      expect(screen.getByText('from active excerpt')).toBeTruthy();
-      expect(region.querySelector('textarea, input')).toBeNull();
+      expect(passage.tagName).toBe('TEXTAREA');
+      expect(passage.value).toBe('He set the mug down.');
+      expect(passage.getAttribute('maxLength')).toBe('250000');
+      expect(screen.getByText('20 / 250,000 chars')).toBeTruthy();
+      fireEvent.change(passage, { target: { value: 'He set the mug down.\nShe did not look up.' } });
+      expect(props.onPassageTextChange).toHaveBeenCalledWith('He set the mug down.\nShe did not look up.');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Use excerpt' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Use selection' }));
+      expect(props.onUsePassageFromExcerpt).toHaveBeenCalledTimes(1);
+      expect(props.onUsePassageFromSelection).toHaveBeenCalledTimes(1);
+      expect(props.onUseSelection).not.toHaveBeenCalled();
+      expect(screen.queryByRole('mark')).toBeNull();
     });
 
-    it('writes the reference through the source choice and offers none', () => {
-      const props = renderModal({ availableSources: sources });
-      fireEvent.click(screen.getByRole('radio', { name: /Active excerpt/ }));
-      expect(props.onSelectSource).toHaveBeenCalledWith({ kind: 'active-excerpt' });
+    it('disables Use excerpt without an active excerpt and shows the honest truncation notice', () => {
+      renderModal({ canUsePassageFromExcerpt: false, passageNotice: 'That passage was longer than 250,000 characters, so the box holds its first 250,000.' });
 
-      cleanup();
-      const chosen = renderModal({ draft: excerptDraft(), availableSources: sources });
-      fireEvent.click(screen.getByRole('radio', { name: /No surrounding passage/ }));
-      expect(chosen.onSelectSource).toHaveBeenCalledWith(null);
+      expect((screen.getByRole('button', { name: 'Use excerpt' }) as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByText(/longer than 250,000 characters/)).toBeTruthy();
+      expect(screen.getByText('none · beat travels alone')).toBeTruthy();
     });
 
-    it('marks an unavailable selected source and never shows context text it does not have', () => {
+    it('offers the context as a multi-select of room sources and toggles each through the callback', () => {
+      const props = renderModal({
+        draft: { ...ungeneratedShowVsTellDraft(), surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-2' }] } },
+        availableSources: sources
+      });
+      const boxes = within(screen.getByRole('group', { name: /Context/ })).getAllByRole('checkbox') as HTMLInputElement[];
+
+      expect(boxes.map((box) => box.checked)).toEqual([true, false, true]);
+      expect(screen.queryByRole('radio', { name: /No surrounding passage/ })).toBeNull();
+      fireEvent.click(boxes[1]);
+      expect(props.onToggleSourceReference).toHaveBeenCalledWith({ kind: 'context-attachment', attachmentId: 'ctx-1' });
+      fireEvent.click(boxes[0]);
+      expect(props.onToggleSourceReference).toHaveBeenCalledWith({ kind: 'active-excerpt' });
+      expect(screen.getByText('read by the host when you generate · never stored here')).toBeTruthy();
+    });
+
+    it('marks an unavailable selected source among the others and names the fix', () => {
       renderModal({
-        draft: { ...ungeneratedShowVsTellDraft(), surroundingContext: { writerText: '', sourceReferences: [{ kind: 'context-attachment', attachmentId: 'ctx-9' }] } },
+        draft: { ...ungeneratedShowVsTellDraft(), surroundingContext: { writerText: '', sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-9' }] } },
+        availableSources: sources,
         generateBlockers: ['source-unavailable']
       });
 
       expect(screen.getByText('Context attachment ctx-9 — unavailable')).toBeTruthy();
-      expect(screen.getByText('Choose another surrounding-passage source before generating.')).toBeTruthy();
+      expect((screen.getByRole('checkbox', { name: /ctx-9 — unavailable/ }) as HTMLInputElement).checked).toBe(true);
+      expect(screen.getByText('Untick the unavailable context source before generating.')).toBeTruthy();
     });
   });
 
@@ -318,7 +372,7 @@ describe('WorkshopShowVsTellModal', () => {
       expect(screen.getByText(/never another character’s mind/)).toBeTruthy();
     });
 
-    it('toggles channels, marks the last one, and picks one of four budgets', () => {
+    it('toggles channels with no lock on the last one, and picks one of four budgets (D4)', () => {
       const props = renderModal();
       const action = screen.getByRole('button', { name: 'observable action' });
       const sense = screen.getByRole('button', { name: 'sensory evidence' });
@@ -330,9 +384,14 @@ describe('WorkshopShowVsTellModal', () => {
       expect(props.onToggleChannel).toHaveBeenCalledWith('sensory-evidence');
 
       cleanup();
-      renderModal({ draft: { ...ungeneratedShowVsTellDraft(), channels: ['observable-action'] } });
-      expect(screen.getByRole('button', { name: 'observable action' }).getAttribute('aria-disabled'))
-        .toBe('true');
+      const single = renderModal({ draft: { ...ungeneratedShowVsTellDraft(), channels: ['observable-action'] } });
+      const last = screen.getByRole('button', { name: 'observable action' }) as HTMLButtonElement;
+      expect(last.getAttribute('aria-pressed')).toBe('true');
+      expect(last.getAttribute('aria-disabled')).toBeNull();
+      expect(last.disabled).toBe(false);
+      expect(last.title).toBe('');
+      fireEvent.click(last);
+      expect(single.onToggleChannel).toHaveBeenCalledWith('observable-action');
 
       cleanup();
       const budgetProps = renderModal();
@@ -345,9 +404,33 @@ describe('WorkshopShowVsTellModal', () => {
     });
   });
 
+  describe('zero channels and no must survive (D3, D4)', () => {
+    it('says no emphasis, keeps every chip unlocked, and lets Generate fire with a blank must survive', () => {
+      const props = renderModal({
+        draft: {
+          ...ungeneratedShowVsTellDraft(),
+          channels: [],
+          invariants: { mustSurvive: '', mustNotChange: '' }
+        },
+        generateBlockers: []
+      });
+
+      expect(screen.getByText(/No emphasis:/)).toBeTruthy();
+      for (const chip of within(screen.getByRole('group', { name: 'Channels to emphasize' })).getAllByRole('button')) {
+        expect(chip.getAttribute('aria-pressed')).toBe('false');
+        expect((chip as HTMLButtonElement).disabled).toBe(false);
+      }
+      const generate = screen.getByRole('button', { name: /Generate the workup/ }) as HTMLButtonElement;
+      expect(generate.disabled).toBe(false);
+      fireEvent.click(generate);
+      expect(props.onGenerate).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/never another character’s mind/)).toBeTruthy();
+    });
+  });
+
   describe('generation', () => {
     it('shows the seam copy and Generate before a workup, with a written reason when blocked', () => {
-      renderModal({ generateBlockers: ['beat-required', 'must-survive-required'] });
+      renderModal({ generateBlockers: ['beat-required'] });
       const generate = screen.getByRole('button', { name: /Generate the workup/ });
 
       expect((generate as HTMLButtonElement).disabled).toBe(true);

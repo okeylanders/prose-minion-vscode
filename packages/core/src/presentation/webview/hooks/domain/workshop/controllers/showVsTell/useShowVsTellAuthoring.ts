@@ -7,7 +7,8 @@
  * The rule that shapes everything here: every generation input EXCEPT the
  * continuum position invalidates the workup and clears kept variants and
  * carry modes. The position re-weighs the readout and changes what commits,
- * but keeps the workup and the kept variants.
+ * but keeps the workup and the kept variants. The surrounding passage text and
+ * the context sources (Slice 7, D2) are generation inputs like any other.
  */
 
 import * as React from 'react';
@@ -26,9 +27,8 @@ import type {
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
-import {
-  showVsTellSourceReferenceKey,
-  type ShowVsTellGenerationInput
+import type {
+  ShowVsTellGenerationInput
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
 import type {
   ShowVsTellArtifactUsage,
@@ -41,27 +41,26 @@ import type {
   WorkshopShowVsTellOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
 import {
-  beatFromSelection,
-  beatWithEditedText,
   changedWorkNotice,
   collapseShowVsTellLineBreaks,
   createShowVsTellAuthoringDraft,
   createShowVsTellOpeningDraft,
-  deriveShowVsTellAvailableSources,
   deriveShowVsTellCommitBlockers,
-  deriveShowVsTellGenerateBlockers,
   generationDetail,
   hasSettledWork,
   projectShowVsTellArtifact,
-  sameBeat,
   toggledShowVsTellChannels,
   toggledShowVsTellKeep,
   withShowVsTellCarryMode,
   withShowVsTellPovMode,
-  withShowVsTellSourceReference,
   type ShowVsTellInputLabel
 } from './showVsTellAuthoringRules';
+import {
+  deriveShowVsTellAvailableSources,
+  deriveShowVsTellGenerateBlockers
+} from './showVsTellSourceRules';
 import { useShowVsTellInvalidationWatch } from './useShowVsTellInvalidationWatch';
+import { useShowVsTellIntake } from './useShowVsTellIntake';
 import {
   useShowVsTellCommitFlow,
   type ShowVsTellCommitOutcome
@@ -89,6 +88,8 @@ export interface UseShowVsTellAuthoringOptions {
   generationProgress: WorkshopShowVsTellGenerationProgressPayload | null;
   generationResult: WorkshopShowVsTellResultPayload | null;
   requestBeatSelection: () => void;
+  /** Asks the host for the editor selection on the surrounding-passage target. */
+  requestPassageSelection: () => void;
   generate: (input: ShowVsTellGenerationInput) => string;
   cancelGeneration: (token?: string) => void;
   /** Host truth about the room, so Commit explains why it is unavailable. */
@@ -108,6 +109,10 @@ export interface ShowVsTellAuthoringState {
   invalidationNotice: string | null;
   /** Visible explanation when intake had to shorten a selection into a beat. */
   intakeNotice: string | null;
+  /** Visible explanation when intake had to shorten text to the passage allowance. */
+  passageNotice: string | null;
+  /** Whether Use excerpt has anything to copy into the passage box. */
+  canUsePassageFromExcerpt: boolean;
   /** The host's refusal or a transport failure; the exact draft stays open. */
   commitError: string | null;
   generateBlockers: readonly ShowVsTellGenerateBlocker[];
@@ -121,7 +126,11 @@ export interface ShowVsTellAuthoringActions {
   requestBeatSelection: () => void;
   handleBeatSelection: (message: SelectionDataMessage) => void;
   changeBeatText: (text: string) => void;
-  selectSourceReference: (reference: WorkshopWidgetSourceReference | null) => void;
+  changePassageText: (text: string) => void;
+  usePassageFromExcerpt: () => void;
+  requestPassageSelection: () => void;
+  handlePassageSelection: (message: SelectionDataMessage) => void;
+  toggleSourceReference: (reference: WorkshopWidgetSourceReference) => void;
   changePovMode: (mode: WorkshopShowVsTellPovMode) => void;
   changePovFocalCharacter: (text: string) => void;
   changeMustSurvive: (text: string) => void;
@@ -156,6 +165,7 @@ export function useShowVsTellAuthoring({
   generationProgress,
   generationResult,
   requestBeatSelection,
+  requestPassageSelection,
   generate,
   cancelGeneration,
   roomRunActive,
@@ -181,7 +191,6 @@ export function useShowVsTellAuthoring({
   }, []);
   const [generation, setGeneration] = React.useState<ShowVsTellGenerationPhase>({ kind: 'idle' });
   const [invalidationNotice, setInvalidationNotice] = React.useState<string | null>(null);
-  const [intakeNotice, setIntakeNotice] = React.useState<string | null>(null);
   const activeTokenRef = React.useRef<string>();
   const wasOpenRef = React.useRef(false);
   /**
@@ -208,23 +217,6 @@ export function useShowVsTellAuthoring({
     resetCommitState,
     onCommitAccepted
   });
-
-  React.useEffect(() => {
-    if (open && !wasOpenRef.current) {
-      activeTokenRef.current = undefined;
-      // The one place a draft is seeded: clone, prefill (inputs only), or fresh.
-      seededCloneConfigIdRef.current = opening?.kind === 'clone' ? opening.config.id : undefined;
-      setDraft(createShowVsTellOpeningDraft(opening));
-      setGeneration({ kind: 'idle' });
-      setInvalidationNotice(null);
-      setIntakeNotice(null);
-    } else if (!open && wasOpenRef.current) {
-      // Closing discards any reply still in flight: its token is no longer ours.
-      activeTokenRef.current = undefined;
-      seededCloneConfigIdRef.current = undefined;
-    }
-    wasOpenRef.current = open;
-  }, [open, opening, setDraft]);
 
   React.useEffect(() => {
     const token = activeTokenRef.current;
@@ -289,36 +281,37 @@ export function useShowVsTellAuthoring({
     }
   }, [cancelActiveGeneration, setDraft]);
 
-  const handleBeatSelection = React.useCallback((message: SelectionDataMessage) => {
-    /* Normal delivery is target-routed; retain the check for direct hook consumers. */
-    if (!open || activeTokenRef.current !== undefined || commitPendingRef.current
-      || message.payload.target !== 'workshop_show_vs_tell_beat') {
-      return;
+  /** Intake replies are dropped while an attempt is in flight or a commit is pending. */
+  const isIntakeLocked = React.useCallback(
+    () => activeTokenRef.current !== undefined || commitPendingRef.current,
+    []
+  );
+  const intake = useShowVsTellIntake({
+    open,
+    activeExcerpt,
+    requestBeatSelection,
+    requestPassageSelection,
+    isIntakeLocked,
+    updateGenerationInput
+  });
+  const { resetNotices } = intake;
+
+  React.useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      activeTokenRef.current = undefined;
+      // The one place a draft is seeded: clone, prefill (inputs only), or fresh.
+      seededCloneConfigIdRef.current = opening?.kind === 'clone' ? opening.config.id : undefined;
+      setDraft(createShowVsTellOpeningDraft(opening));
+      setGeneration({ kind: 'idle' });
+      setInvalidationNotice(null);
+      resetNotices();
+    } else if (!open && wasOpenRef.current) {
+      // Closing discards any reply still in flight: its token is no longer ours.
+      activeTokenRef.current = undefined;
+      seededCloneConfigIdRef.current = undefined;
     }
-    const { beat, notice } = beatFromSelection(message.payload);
-    setIntakeNotice(notice);
-    updateGenerationInput('beat', (current) => sameBeat(beat, current.beat)
-      ? current
-      : { ...current, beat });
-  }, [open, updateGenerationInput]);
-
-  const changeBeatText = React.useCallback((raw: string) => {
-    const text = collapseShowVsTellLineBreaks(raw).slice(0, BUDGET.showVsTellBeatCharacters);
-    setIntakeNotice(null);
-    updateGenerationInput('beat', (current) => {
-      if (text === current.beat.text) {
-        return current;
-      }
-      return { ...current, beat: beatWithEditedText(current.beat, text) };
-    });
-  }, [updateGenerationInput]);
-
-  const selectSourceReference = React.useCallback((
-    reference: WorkshopWidgetSourceReference | null
-  ) => {
-    updateGenerationInput('surrounding passage source', (current) =>
-      withShowVsTellSourceReference(current, reference));
-  }, [updateGenerationInput]);
+    wasOpenRef.current = open;
+  }, [open, opening, resetNotices, setDraft]);
 
   const changePovMode = React.useCallback((mode: WorkshopShowVsTellPovMode) => {
     updateGenerationInput('point of view', (current) => withShowVsTellPovMode(current, mode));
@@ -470,16 +463,22 @@ export function useShowVsTellAuthoring({
     draft,
     generation,
     invalidationNotice,
-    intakeNotice,
+    intakeNotice: intake.intakeNotice,
+    passageNotice: intake.passageNotice,
+    canUsePassageFromExcerpt: intake.canUsePassageFromExcerpt,
     commitError: commitFlow.commitError,
     generateBlockers,
     commitBlockers,
     artifactUsage,
     availableSources,
-    requestBeatSelection,
-    handleBeatSelection,
-    changeBeatText,
-    selectSourceReference,
+    requestBeatSelection: intake.requestBeatSelection,
+    handleBeatSelection: intake.handleBeatSelection,
+    changeBeatText: intake.changeBeatText,
+    changePassageText: intake.changePassageText,
+    usePassageFromExcerpt: intake.usePassageFromExcerpt,
+    requestPassageSelection: intake.requestPassageSelection,
+    handlePassageSelection: intake.handlePassageSelection,
+    toggleSourceReference: intake.toggleSourceReference,
     changePovMode,
     changePovFocalCharacter,
     changeMustSurvive,

@@ -119,7 +119,8 @@ export function buildWorkshopAppMessageRoutes(
         handleExcerptVerification: excerptVerify.handleSelectionData,
         handleCreativeVariationsSubject:
           creativeVariationsAuthoring.handleSubjectSelection,
-        handleShowVsTellBeat: showVsTellAuthoring.handleBeatSelection
+        handleShowVsTellBeat: showVsTellAuthoring.handleBeatSelection,
+        handleShowVsTellPassage: showVsTellAuthoring.handlePassageSelection
       });
     },
     [MessageType.WORKSHOP_CONTEXT_CATALOG]: workshopRoom.handleContextCatalog,

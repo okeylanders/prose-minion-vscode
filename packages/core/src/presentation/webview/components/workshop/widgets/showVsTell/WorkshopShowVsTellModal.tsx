@@ -11,6 +11,11 @@
  * live in the authoring controller; this component renders what it is given
  * and raises semantic callbacks. Commit is enabled exactly when the controller
  * reports no blockers, and a disabled Commit always names why.
+ *
+ * Layout (Slice 7 design edits, D1): the beat; then the constraints (POV, the
+ * optional must survive, must not change) beside the channels and length
+ * budget; then the full-width surrounding passage; then the full-width
+ * context multi-select; then the continuum.
  */
 
 import * as React from 'react';
@@ -35,6 +40,8 @@ import {
   SHOW_VS_TELL_POV_MODES
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
 import { ShowVsTellChannelsBudget } from './ShowVsTellChannelsBudget';
+import { ShowVsTellSheetHeader } from './ShowVsTellSheetHeader';
+import { ShowVsTellConstraintsPanel } from './ShowVsTellConstraintsPanel';
 import { ShowVsTellContinuumControl } from './ShowVsTellContinuumControl';
 import { ShowVsTellPayloadStrip } from './ShowVsTellPayloadStrip';
 import { ShowVsTellSurroundingPanel } from './ShowVsTellSurroundingPanel';
@@ -56,6 +63,8 @@ export interface WorkshopShowVsTellModalProps {
   generation: ShowVsTellGenerationPhase;
   invalidationNotice: string | null;
   intakeNotice: string | null;
+  /** Honest notice when intake had to shorten the surrounding passage. */
+  passageNotice: string | null;
   generateBlockers: readonly ShowVsTellGenerateBlocker[];
   commitBlockers: readonly ShowVsTellCommitBlocker[];
   /** True while the host has not yet answered a commit; the sheet is locked. */
@@ -65,11 +74,14 @@ export interface WorkshopShowVsTellModalProps {
   banner: ShowVsTellBanner;
   artifactUsage: ShowVsTellArtifactUsage | null;
   availableSources: readonly ShowVsTellAvailableSource[];
-  /** Text of the active excerpt, for the read-only passage panel. */
-  excerptText: string | null;
+  /** Whether the room has an active excerpt to copy into the passage box. */
+  canUsePassageFromExcerpt: boolean;
   onUseSelection: () => void;
   onBeatTextChange: (text: string) => void;
-  onSelectSource: (reference: WorkshopWidgetSourceReference | null) => void;
+  onPassageTextChange: (text: string) => void;
+  onUsePassageFromExcerpt: () => void;
+  onUsePassageFromSelection: () => void;
+  onToggleSourceReference: (reference: WorkshopWidgetSourceReference) => void;
   onPovModeChange: (mode: WorkshopShowVsTellPovMode) => void;
   onPovFocalCharacterChange: (text: string) => void;
   onMustSurviveChange: (text: string) => void;
@@ -93,9 +105,7 @@ export interface WorkshopShowVsTellModalProps {
 /* eslint-disable @typescript-eslint/naming-convention -- Blocker ids are stable domain literals. */
 const GENERATE_BLOCKER_COPY: Record<ShowVsTellGenerateBlocker, string> = {
   'beat-required': 'Add the beat to explore.',
-  'must-survive-required':
-    'Say what must survive — “the same beat at five distances” needs a declared “same”.',
-  'source-unavailable': 'Choose another surrounding-passage source before generating.'
+  'source-unavailable': 'Untick the unavailable context source before generating.'
 };
 
 const COMMIT_BLOCKER_COPY: Record<ShowVsTellCommitBlocker, string> = {
@@ -123,6 +133,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
   generation,
   invalidationNotice,
   intakeNotice,
+  passageNotice,
   generateBlockers,
   commitBlockers,
   commitPending,
@@ -130,10 +141,13 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
   banner,
   artifactUsage,
   availableSources,
-  excerptText,
+  canUsePassageFromExcerpt,
   onUseSelection,
   onBeatTextChange,
-  onSelectSource,
+  onPassageTextChange,
+  onUsePassageFromExcerpt,
+  onUsePassageFromSelection,
+  onToggleSourceReference,
   onPovModeChange,
   onPovFocalCharacterChange,
   onMustSurviveChange,
@@ -202,50 +216,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
       onClose={close}
     >
       <div className="pm-ws-svt">
-        <header className="pm-ws-svt-head">
-          <div className="pm-ws-eyebrow pm-ws-svt-eyebrow">
-            Widget{' '}
-            <span className="pm-ws-sb-railtag pm-ws-sb-railtag-oneshot">
-              one-shot · thread-artifact
-            </span>
-          </div>
-          <h2 id="pm-ws-svt-title">
-            <Icon name="eye" size={17} /> Show vs. Tell Playground
-          </h2>
-          <p className="pm-ws-svt-sub">
-            Move one beat along the continuum from <b>compressed explanation</b> to{' '}
-            <b>embodied dramatization</b>, see what each version gains and costs, and hand the
-            useful directions back to the room. <b>Both ends are tools</b> — nothing here calls
-            telling bad writing.
-          </p>
-          {banner.kind === 'seed' && (
-            <div className="pm-ws-svt-banner pm-ws-svt-banner-seed">
-              <Icon name="sparkle" size={13} />
-              <span>
-                <b>Recommended and prefilled by {banner.personaLabel}.</b> {banner.personaLabel}{' '}
-                spotted a told beat worth testing — proposing and prefilling is as far as a
-                persona goes; you decide what commits.
-              </span>
-            </div>
-          )}
-          {banner.kind === 'clone' && (
-            <div className="pm-ws-svt-banner pm-ws-svt-banner-clone">
-              <Icon name="refresh" size={13} />
-              {banner.from === 'rewound-message' ? (
-                <span>
-                  <b>Reopened from a message you rewound.</b> Adjust it, then commit to send
-                  it again as a <b>new</b> turn at the head.
-                </span>
-              ) : (
-                <span>
-                  <b>Re-opened from a committed turn.</b> The old chip stays as history —
-                  committing again creates a <b>new</b> turn at the head.
-                </span>
-              )}
-            </div>
-          )}
-          <WorkshopModalShell.CloseButton disabled={commitPending} />
-        </header>
+        <ShowVsTellSheetHeader banner={banner} commitPending={commitPending} />
 
         <div className="pm-ws-svt-body">
           <div className="pm-ws-svt-field">
@@ -295,12 +266,9 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
 
           <div className="pm-ws-svt-grid">
             <div className="pm-ws-svt-grid-main">
-              <ShowVsTellSurroundingPanel
+              <ShowVsTellConstraintsPanel
                 draft={draft}
-                availableSources={availableSources}
-                excerptText={excerptText}
                 disabled={interactionLocked}
-                onSelectSource={onSelectSource}
                 onPovModeChange={onPovModeChange}
                 onPovFocalCharacterChange={onPovFocalCharacterChange}
                 onMustSurviveChange={onMustSurviveChange}
@@ -318,6 +286,18 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
               />
             </div>
           </div>
+
+          <ShowVsTellSurroundingPanel
+            draft={draft}
+            availableSources={availableSources}
+            canUsePassageFromExcerpt={canUsePassageFromExcerpt}
+            passageNotice={passageNotice}
+            disabled={interactionLocked}
+            onPassageTextChange={onPassageTextChange}
+            onUsePassageFromExcerpt={onUsePassageFromExcerpt}
+            onUsePassageFromSelection={onUsePassageFromSelection}
+            onToggleSourceReference={onToggleSourceReference}
+          />
 
           <ShowVsTellContinuumControl
             position={draft.position}

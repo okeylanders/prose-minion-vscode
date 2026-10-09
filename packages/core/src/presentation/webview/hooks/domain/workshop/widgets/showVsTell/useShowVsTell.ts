@@ -65,6 +65,8 @@ export interface ShowVsTellState {
 
 export interface ShowVsTellActions {
   requestBeatSelection: () => void;
+  /** Fills the writer's surrounding-passage box from the editor selection (D2). */
+  requestPassageSelection: () => void;
   /** Returns the freshly minted correlation token. */
   generate: (input: ShowVsTellGenerationInput) => string;
   cancelGeneration: (token?: string) => void;
@@ -113,12 +115,17 @@ export function useShowVsTell(): UseShowVsTellReturn {
     post(MessageType.REQUEST_SELECTION, { target: 'workshop_show_vs_tell_beat' });
   }, [post]);
 
+  const requestPassageSelection = React.useCallback(() => {
+    post(MessageType.REQUEST_SELECTION, { target: 'workshop_show_vs_tell_passage' });
+  }, [post]);
+
   const generate = React.useCallback((input: ShowVsTellGenerationInput): string => {
     const token = createShowVsTellRequestToken();
     activeAttemptRef.current = { token };
     setGenerationProgress(null);
     setGenerationResult(null);
-    // Named fields only: passage text never crosses, only the source reference.
+    // Named fields only: the writer's passage text and the source references
+    // cross as the surrounding context; resolved source text never does.
     post(MessageType.WORKSHOP_SHOW_VS_TELL_GENERATE, {
       widgetId: 'show-vs-tell',
       token,
@@ -254,6 +261,7 @@ export function useShowVsTell(): UseShowVsTellReturn {
     commitPending,
     commitResult,
     requestBeatSelection,
+    requestPassageSelection,
     generate,
     cancelGeneration,
     commit,

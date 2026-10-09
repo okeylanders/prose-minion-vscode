@@ -86,7 +86,8 @@
 }
 
 
-/* ---- intake grid: passage/context left, invariants right ---- */
+/* ---- intake grid: POV + invariants left, channels + length budget right (D1);
+        the surrounding passage and the context run full width below it ---- */
 [data-pm-surface="workshop"] .pm-ws-svt-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 272px;
@@ -153,9 +154,28 @@
 [data-pm-surface="workshop"] .pm-ws-svt-field textarea:focus {
   border-color: var(--pm-accent);
 }
+[data-pm-surface="workshop"] .pm-ws-svt-field-wide {
+  width: 100%;
+}
 [data-pm-surface="workshop"] textarea.pm-ws-svt-passage {
   min-height: 104px;
   line-height: 1.65;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-passage-tools {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 5px;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-passage-tools .pm-ws-svt-use-selection {
+  margin-left: 0;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-passage-count {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  font-family: var(--pm-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
 }
 
 /* provenance pills — never color-only: the pill text names the state */
@@ -193,6 +213,10 @@
 [data-pm-surface="workshop"] .pm-ws-svt-use-selection:hover:not(:disabled) {
   color: var(--pm-text);
   border-color: var(--pm-border-2);
+}
+[data-pm-surface="workshop"] .pm-ws-svt-use-selection:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 [data-pm-surface="workshop"] .pm-ws-svt-honest {
   margin: 6px 0 0;
@@ -912,31 +936,6 @@
   border-radius: var(--pm-r-pill);
   padding: 1px 7px;
 }
-[data-pm-surface="workshop"] .pm-ws-svt-passage {
-  margin: 0;
-  padding: 9px 11px;
-  max-height: 150px;
-  overflow-y: auto;
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--pm-r-input);
-  background: var(--pm-inset);
-  color: var(--pm-muted);
-  font-size: 12px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-[data-pm-surface="workshop"] .pm-ws-svt-passage mark {
-  background: var(--pm-accent-soft);
-  color: var(--pm-text);
-  border-radius: 3px;
-  padding: 0 2px;
-}
-[data-pm-surface="workshop"] .pm-ws-svt-passage-note {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.55;
-  color: var(--pm-faint);
-}
 [data-pm-surface="workshop"] .pm-ws-svt-chs {
   display: flex;
   flex-wrap: wrap;
@@ -966,7 +965,8 @@
   border-color: rgba(224, 103, 58, 0.5);
   color: var(--pm-text);
 }
-[data-pm-surface="workshop"] .pm-ws-svt-ch[aria-disabled="true"],
+/* Only the sheet-wide lock dims a chip (D4): a selected chip is never
+   locked or dimmed on its own, so `aria-disabled` is not styled here. */
 [data-pm-surface="workshop"] .pm-ws-svt-ch:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -987,6 +987,9 @@
 [data-pm-surface="workshop"] .pm-ws-svt-hint b {
   color: var(--pm-dim);
   font-weight: 600;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-hint-emphasis {
+  color: var(--pm-muted);
 }
 [data-pm-surface="workshop"] .pm-ws-svt-pov-row {
   display: grid;

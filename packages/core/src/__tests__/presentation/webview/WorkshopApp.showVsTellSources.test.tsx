@@ -90,8 +90,8 @@ describe('Show vs. Tell grounded work across room and source changes', () => {
   const sent = (type: MessageType) =>
     vscode.postMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type);
 
-  /** Open the sheet, ground it on `sourceLabel`, fill the required fields, and press Generate. */
-  const openAndGenerate = (service: WorkshopSessionService, sourceLabel: RegExp): string => {
+  /** Open the sheet, ground it on `sourceLabel` (none when null), fill the beat, and press Generate. */
+  const openAndGenerate = (service: WorkshopSessionService, sourceLabel: RegExp | null): string => {
     render(<WorkshopApp />);
     deliver(room(service));
     fireEvent.click(screen.getByRole('button', { name: 'Widgets' }));
@@ -103,7 +103,9 @@ describe('Show vs. Tell grounded work across room and source changes', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /Must survive every variation/ }), {
       target: { value: 'The distrust is old.' }
     });
-    fireEvent.click(screen.getByRole('radio', { name: sourceLabel }));
+    if (sourceLabel) {
+      fireEvent.click(screen.getByRole('checkbox', { name: sourceLabel }));
+    }
     fireEvent.click(screen.getByRole('button', { name: /Generate the workup/ }));
     return sent(MessageType.WORKSHOP_SHOW_VS_TELL_GENERATE).at(-1)!.payload.token as string;
   };
@@ -178,7 +180,7 @@ describe('Show vs. Tell grounded work across room and source changes', () => {
   it('does not disturb ungrounded work when unrelated context changes', () => {
     const service = newService();
     pin(service, 'Some excerpt.');
-    const token = openAndGenerate(service, /No surrounding passage/);
+    const token = openAndGenerate(service, null);
     settle(token);
     expect(workupShown()).toBe(true);
 

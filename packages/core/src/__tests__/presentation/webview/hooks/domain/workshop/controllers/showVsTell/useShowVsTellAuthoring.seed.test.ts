@@ -20,6 +20,7 @@ const minimalSeed = (): WorkshopShowVsTellRecommendationSeed => ({
 const completeSeed = (): WorkshopShowVsTellRecommendationSeed => ({
   beatText: 'She hadn’t trusted him since the funeral.',
   subject: 'the funeral line',
+  contextText: 'He set the mug down.\nShe did not look up.',
   sourceReferences: [{ kind: 'active-excerpt' }],
   mustSurvive: 'The distrust is old.\nIt predates tonight.',
   mustNotChange: 'No flashback.',
@@ -48,6 +49,7 @@ function mount(initial: Partial<UseShowVsTellAuthoringOptions> = {}) {
     generationProgress: null,
     generationResult: null,
     requestBeatSelection: jest.fn(),
+    requestPassageSelection: jest.fn(),
     generate: jest.fn(() => 'token-1'),
     cancelGeneration: jest.fn(),
     roomRunActive: false,
@@ -75,6 +77,25 @@ function mount(initial: Partial<UseShowVsTellAuthoringOptions> = {}) {
 const EXCERPT = { text: 'x', version: 1, pinnedAt: 1, source: { kind: 'manual' } } as never;
 
 describe('useShowVsTellAuthoring recommendation seed', () => {
+  it('opens the seed context text as the writer passage and the references as the context (D2)', () => {
+    const seed = completeSeed();
+    seed.sourceReferences = [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-2' }];
+    const h = mount({ opening: seedOpening(seed) });
+    expect(h.result.current.draft.surroundingContext).toEqual({
+      writerText: 'He set the mug down.\nShe did not look up.',
+      sourceReferences: [{ kind: 'active-excerpt' }, { kind: 'context-attachment', attachmentId: 'ctx-2' }]
+    });
+  });
+
+  it('opens a seed without must survive on a blank, optional field (D3)', () => {
+    const seed = minimalSeed();
+    delete seed.mustSurvive;
+    const h = mount({ opening: seedOpening(seed) });
+    expect(h.result.current.draft.invariants).toEqual({ mustSurvive: '', mustNotChange: '' });
+    expect(h.result.current.draft.surroundingContext.writerText).toBe('');
+    expect(h.result.current.generateBlockers).toEqual([]);
+  });
+
   it('seeds exactly the persona-supplied inputs and fills the rest from the defaults', () => {
     const h = mount({ opening: seedOpening(minimalSeed()) });
 
