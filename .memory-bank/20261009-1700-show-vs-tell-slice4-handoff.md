@@ -12,8 +12,9 @@ epic. Not merged.
 
 **Current gate:** Slice 4 is ready for review. Do not start Slice 5 until the
 PR merges. After this slice a writer can author, commit, reopen, and recommit a
-Show vs. Tell draft end to end, so the epic is again safe to merge into `main`
-as far as Show vs. Tell is concerned.
+Show vs. Tell draft end to end, so the Slice 3 → 4 restriction (catalog live
+while commit was disabled) no longer applies. Recommendation and prefill
+(Slice 5) and the witness matrix (Slice 6) are still open.
 
 ## What landed
 
