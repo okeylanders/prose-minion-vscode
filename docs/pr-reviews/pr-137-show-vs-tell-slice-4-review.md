@@ -3,19 +3,55 @@
 **Author:** okeylanders · **PR:** [#137](https://github.com/okeylanders/prose-minion-vscode/pull/137) (open, unmerged at review)
 **Branches:** `epic/conversation-widgets-sprint-05-slice-4-commit` → `epic/conversation-widgets`
 **Verified base / merge-base:** `d425f4c10cdec544b89581b6ce865d4163058c00`
-**Reviewed code head:** `151ab955adb8b76c081564a97b12efeae032b441`
-**Scope:** 38 files · +3,225 / −187 · 4 commits
-**Reviewed:** 2026-10-09 · **Reviewer:** Astra · **Mode:** independent code/spec review, focused host-boundary and webview-lifecycle audits, adversarial synthetic runtime probes, retained Slice 3 regressions, and full deterministic verification
+**Initial reviewed code head:** `151ab955adb8b76c081564a97b12efeae032b441`
+**Final re-review head:** `ca306ef406dc7b16066849fe79ea8665040ea08a`
+**Initial scope:** 38 files · +3,225 / −187 · 4 commits
+**Fix-round scope:** 8 files · +329 / −39 · 1 commit after the first report `39db626c`
+**Reviewed:** 2026-10-09 · **Reviewer:** Astra · **Mode:** independent code/spec review, focused host-boundary and webview-lifecycle audits, adversarial synthetic runtime probes, retained Slice 3 regressions, and full deterministic verification; full fix-delta re-review with independent commit-lock and stale-callback challenges
 
 ## Resolution ledger
 
-Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. No deferral is accepted on the author's behalf.
+Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. No deferral is accepted on the author's behalf. This ledger records the independently verified state at `ca306ef4`; original evidence below remains pinned to `151ab955`.
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | 🟡 Standard | Pending commits accept draft changes that lose edits or destroy retry state | Full-`WorkshopApp` delayed-ack witnesses: enabled continuum changes position; delayed selection replaces the beat and clears the workup while the submitted draft stays unchanged | **Open** |
+| F-01 | 🟡 Standard | Pending commits accept draft changes that lose edits or destroy retry state | Both original witnesses now assert corrected behavior; pointer/keyboard, real delayed clipboard, captured callbacks, refusal/retry, and generation-position controls pass | **Addressed** at `ca306ef4` |
 
-**Verdict: Changes requested before merge into `epic/conversation-widgets`.** The commit rail, host checks, and exact-clone mechanics are otherwise sound in the reviewed scope, and the existing deterministic gates and code-head CI pass. F-01 is an independently reproduced authoring-state gap in the newly enabled commit flow. No functional correction or merge was performed by this review.
+**Verdict: Approved for merge into `epic/conversation-widgets`.** F-01 is independently verified addressed at `ca306ef4`; no open Blocking, High, Standard, or Nit finding remains. The full deterministic gates and fix-head CI pass. Approval remains subject to required checks on the final report-only branch head. This report does not merge the PR; Slices 5 and 6 remain outstanding.
+
+## Final re-review at ca306ef4
+
+The complete [fix commit](https://github.com/okeylanders/prose-minion-vscode/commit/ca306ef406dc7b16066849fe79ea8665040ea08a) was inspected, including the two presentation changes, controller guards, three pure-helper extractions, tests, and documentation. The [developer response](https://github.com/okeylanders/prose-minion-vscode/pull/137#issuecomment-6085210123) was checked against independent execution.
+
+### F-01 is addressed
+
+- The continuum now receives `disabled={commitPending}` through to the shared radio group. Pointer input and directional/Home/End keyboard input cannot change the submitted position while committing. It remains available during generation, as required.
+- The controller reads a current `commitPendingRef` in its writer-edit, generation-input, selection-intake, and Generate paths. Callbacks captured before submission also observe the current guard rather than an old boolean closure. This protects the state owner independently of disabled presentation.
+- The original delayed-clipboard witness now preserves the submitted beat, workup, keeps, and carry modes. It exercises the real `UIHandler` and synthetic deferred clipboard adapter, including resolution scheduled from the commit-send microtask. The reply is dropped rather than queued. A refusal permits an exact-draft retry with a new token, and subsequent deliberate edits work normally.
+- Full-application success/reopen checks retain the submitted position. Wrong/stale acknowledgements and duplicate-submit controls still pass. Generation-time position movement keeps the active attempt and later workup.
+- Authoritative source/model invalidation remains active, including during a pending commit. The writer-input lock does not suppress the previously required invalidation when the underlying room/source changes.
+- The three extracted source-reference, POV-mode, and carry-mode helpers preserve the prior transformations and defensive source-reference copying. The controller remains **498 lines**, with pure rules at **381 lines**. No host/persistence/transport ownership changed.
+- No new actionable finding was established in the fix delta.
+
+### Final re-review verification
+
+All checks below target **`ca306ef406dc7b16066849fe79ea8665040ea08a`**, before this report-only update, with the same Node/npm runtime and unchanged lockfile.
+
+| Check | Result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **288 suites / 4,062 tests / 2 snapshots passed**, 145.735 seconds |
+| `npm run typecheck` | Core, webview, and extension passed |
+| Full `npm run lint` | **0 errors / 1,105 warnings**, unchanged from the initial review |
+| `npm run build`, including `verify:bundle` | Passed; existing three webpack size/performance warnings |
+| `git diff --check` over the fix and complete PR deltas | Passed |
+| Independent corrected UI/controller regressions | **3 suites / 63 tests passed**, 40.174 seconds; both corrected original witnesses also fail as expected against exact pre-fix modules from `39db626c` |
+| Retained independent Slice 3 lifecycle probes | **2 suites / 30 tests passed**, 33.775 seconds |
+| Retained independent host adversarial probes | **65 tests passed**, 5.776 seconds |
+| Fix-head GitHub CI | **Success**, [PR run 37961185697](https://github.com/okeylanders/prose-minion-vscode/actions/runs/37961185697) |
+
+The original findings below are historical evidence, not claims about the fixed head. Verification remains deterministic/synthetic: no live provider, real clipboard/manuscript, native browser rendering/traversal, or interactive VS Code Extension Development Host was exercised. This review changed only this report and performed no functional correction, real-room widget commit, merge, or release.
+
+## Original finding at 151ab955
 
 ## F-01 — Keep pending-commit authoring consistent with the submitted draft
 
@@ -63,7 +99,7 @@ Add protective full-app regressions for both witnesses, including keyboard posit
 - **Reopen and correlation.** The chip uses presentation-only counts from bounded host summaries; snapshot replacement replaces that map rather than retaining stale counts. Clone reopening preserves the full draft and lineage, including an unresolved source reference. Such a source prevents regeneration but not recommitting the already generated artifact. Wrong/stale acknowledgements cannot settle another commit, duplicate same-tick transport submission is suppressed, and refusal permits a fresh-token retry.
 - **Previous protections survive.** All 30 independent Slice 3 source/room lifecycle regressions pass against this head after the hook extraction, including replacement, source edits/refresh, transaction rollback, and stale result handling.
 
-## Verification actually run
+## Initial verification actually run
 
 All checks target **`151ab955adb8b76c081564a97b12efeae032b441`**, before this report-only commit. Runtime: Node **24.19.0** / npm **11.9.0**. The lockfile is unchanged; the isolated review worktree reused the prior lockfile-installed dependency tree. TypeScript, Jest, and webpack resolve repository source through this worktree's path mappings.
 
@@ -81,4 +117,4 @@ All checks target **`151ab955adb8b76c081564a97b12efeae032b441`**, before this re
 
 A passing bug-witness test means it reproduced the undesirable behavior. Native browser visual rendering, native keyboard traversal, an interactive VS Code Extension Development Host, and live/billable provider calls were **not** independently run. The UI evidence above is JSDOM with real application/controller code and synthetic host messages, including a real selection handler with a deferred synthetic clipboard adapter; the host tests use synthetic adapters and real session/coordinator behavior. No real manuscript was transmitted, and no functional repository edit, widget commit to a real room, merge, or release was performed by this review.
 
-After the fix, rerun the witnesses as corrected-behavior regressions, inspect the full developer delta, rerun all gates, update the ledger, and check CI on the exact final report head.
+The final re-review above supersedes the initial changes-requested verdict.
