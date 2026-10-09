@@ -22,6 +22,10 @@ import {
   computeCreativeVariationsTextualOverlap
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+import {
+  generatedShowVsTellDraft,
+  fixtureVariantId
+} from '@/__tests__/application/services/workshop/widgets/showVsTell/showVsTellFixtures';
 
 const draft: WorkshopGesturePlaygroundDraft = {
   targetPhrase: 'she smiled',
@@ -541,5 +545,141 @@ describe('WorkshopWidgetHostHandler', () => {
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
       payload: expect.objectContaining({ ok: false, message: reason })
     }));
+  });
+
+  describe('Show vs. Tell commit', () => {
+    const svtMessage = (
+      overrides: Partial<Extract<
+        WorkshopCommitWidgetMessage['payload'],
+        { widgetId: 'show-vs-tell' }
+      >> = {}
+    ): WorkshopCommitWidgetMessage => ({
+      type: MessageType.WORKSHOP_COMMIT_WIDGET,
+      source: 'webview.workshop.show-vs-tell',
+      timestamp: 1,
+      payload: {
+        widgetId: 'show-vs-tell',
+        requestToken: 'svt-commit-1',
+        draft: generatedShowVsTellDraft(),
+        ...overrides
+      }
+    });
+    const available = { availableWidgetIds: ['show-vs-tell'] as WorkshopWidgetId[] };
+
+    it('dispatches the exact arm with the compiled artifact, warnings, and clone identity', async () => {
+      const { handler, commit, postMessage } = createHandler(available);
+
+      await handler.handleCommit(svtMessage({ clonedFromConfigId: 'wc-7' }));
+
+      expect(commit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          widgetId: 'show-vs-tell',
+          clonedFromConfigId: 'wc-7',
+          widgetConfigInput: { widgetId: 'show-vs-tell', draft: generatedShowVsTellDraft() },
+          artifact: expect.objectContaining({
+            selectionCount: 2,
+            content: expect.stringContaining('warning: kept line 1 · advisory · must survive')
+          })
+        }),
+        { kind: 'host' },
+        expect.any(Function)
+      );
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        payload: expect.objectContaining({
+          action: 'commit',
+          requestToken: 'svt-commit-1',
+          widgetId: 'show-vs-tell',
+          ok: true
+        })
+      }));
+    });
+
+    it('rejects a crafted over-ceiling payload before any session mutation, whatever the webview said', async () => {
+      const host = createHandler(available);
+      const draft = generatedShowVsTellDraft();
+      draft.kept = draft.workup!.groups.flatMap((group) => group.variants).map((variant) => ({
+        variantId: variant.id,
+        carryMode: 'prose' as const
+      }));
+
+      await host.handler.handleCommit(svtMessage({ draft }));
+
+      expect(host.commit).not.toHaveBeenCalled();
+      expect(host.session.getWidgetConfig('wc-1')).toBeUndefined();
+      expect(host.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        payload: expect.objectContaining({
+          widgetId: 'show-vs-tell',
+          ok: false,
+          message: expect.stringMatching(/600-character ceiling.*direction only.*keep fewer.*shorten the note/)
+        })
+      }));
+    });
+
+    it('refuses an unsettled draft before the transaction', async () => {
+      const host = createHandler(available);
+
+      await host.handler.handleCommit(svtMessage({
+        draft: { ...generatedShowVsTellDraft(), kept: [{ variantId: fixtureVariantId(99), carryMode: 'direction' }] }
+      }));
+
+      expect(host.commit).not.toHaveBeenCalled();
+      expect(host.session.getWidgetConfig('wc-1')).toBeUndefined();
+    });
+
+    it('refuses a tool target, an active room, generation, and a second commit before mutation', async () => {
+      const toolTarget = createHandler(available);
+      toolTarget.session.setExcerpt({ text: 'A pinned passage.', source: { kind: 'manual' } });
+      toolTarget.session.beginToolRun('prose', 'req-sidecar');
+      toolTarget.session.completeToolReport('req-sidecar', 'Report.', 'conversation-tool');
+      expect(toolTarget.session.setChatTarget({ kind: 'tool', toolId: 'prose' })).toBe(true);
+      await toolTarget.handler.handleCommit(svtMessage());
+      expect(toolTarget.commit).not.toHaveBeenCalled();
+      expect(toolTarget.session.getWidgetConfig('wc-1')).toBeUndefined();
+      expect(toolTarget.postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        payload: expect.objectContaining({
+          widgetId: 'show-vs-tell',
+          ok: false,
+          message: expect.stringMatching(/Show vs\. Tell/)
+        })
+      }));
+
+      const activeRoom = createHandler({ ...available, roomRunActive: true });
+      await activeRoom.handler.handleCommit(svtMessage());
+      expect(activeRoom.commit).not.toHaveBeenCalled();
+
+      const generating = createHandler({ ...available, generationActive: true });
+      await generating.handler.handleCommit(svtMessage());
+      expect(generating.commit).not.toHaveBeenCalled();
+      expect(generating.generationActivity).toHaveBeenCalledWith('show-vs-tell');
+
+      let settle!: () => void;
+      const first = createHandler(available);
+      first.commit.mockImplementationOnce(async () => new Promise((resolve) => {
+        settle = () => resolve({ status: 'not-accepted', widgetConfigId: 'wc-1' });
+      }));
+      const pending = first.handler.handleCommit(svtMessage({ requestToken: 'svt-pending' }));
+      await Promise.resolve();
+      await first.handler.handleCommit(svtMessage({ requestToken: 'svt-duplicate' }));
+      expect(first.commit).toHaveBeenCalledTimes(1);
+      settle();
+      await pending;
+    });
+
+    it('never reaches an editor: the plan it hands the coordinator has no editor operation', async () => {
+      const { handler, commit } = createHandler(available);
+
+      await handler.handleCommit(svtMessage());
+
+      const plan = commit.mock.calls[0][0];
+      expect(Object.keys(plan).sort()).toEqual([
+        'artifact',
+        'clonedFromConfigId',
+        'displayText',
+        'roomText',
+        'toolTargetRefusalMessage',
+        'widgetConfigInput',
+        'widgetId'
+      ]);
+    });
   });
 });

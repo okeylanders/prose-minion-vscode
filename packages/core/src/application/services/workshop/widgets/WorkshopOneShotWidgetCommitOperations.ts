@@ -13,6 +13,9 @@ import {
 import {
   prepareCreativeVariationsOneShotCommit
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsOneShotCommit';
+import {
+  prepareShowVsTellOneShotCommit
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellOneShotCommit';
 
 export type WorkshopOneShotWidgetId = WorkshopCommitWidgetPayload['widgetId'];
 export type WorkshopOneShotWidgetConfigInput = Extract<
@@ -65,6 +68,10 @@ const WORKSHOP_ONE_SHOT_WIDGET_COMMIT_OPERATIONS = {
   'creative-variations': {
     widgetId: 'creative-variations',
     prepare: prepareCreativeVariationsOneShotCommit
+  },
+  'show-vs-tell': {
+    widgetId: 'show-vs-tell',
+    prepare: prepareShowVsTellOneShotCommit
   }
 } satisfies WorkshopOneShotWidgetCommitOperationRegistry;
 

@@ -3,8 +3,8 @@
  *
  * Slice 1 declared the exact authoring draft and the generated workup it
  * stores. Slice 2 adds the generate, cancel, progress, and result messages.
- * Commit and recommendation message contracts arrive with the slices that
- * ship those routes.
+ * Slice 4 adds the commit payload. The recommendation message contract
+ * arrives with the slice that ships that route.
  */
 
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
@@ -193,6 +193,19 @@ export interface WorkshopShowVsTellDraft {
   kept: WorkshopShowVsTellKeptVariant[];
   /** Optional single-line note to the room. */
   note: string;
+}
+
+/**
+ * Commit transports the authored draft unchanged. The host validates it, then
+ * compiles the artifact itself, so the webview never supplies artifact text.
+ */
+export interface WorkshopShowVsTellCommitPayload {
+  widgetId: 'show-vs-tell';
+  /** Fresh webview-minted correlation token for this commit attempt. */
+  requestToken: string;
+  draft: WorkshopShowVsTellDraft;
+  /** Present only when recommitting a historical config as a fresh turn. */
+  clonedFromConfigId?: string;
 }
 
 /**

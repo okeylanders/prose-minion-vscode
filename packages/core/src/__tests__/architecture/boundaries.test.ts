@@ -391,7 +391,7 @@ const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] 
       String.raw`\bShow\s+vs\.\s+Tell\b`,
       String.raw`\b(?:focalCharacter|lengthBudget|told-cleanly|shown-as-evidence|shown-from-inside|observable-action|sensory-evidence|dialogue-subtext|summary-exposition|plus-one-sentence|plus-one-paragraph|svtw)\b`
     ],
-    minimumSourceFiles: 22
+    minimumSourceFiles: 25
   }
 ];
 
@@ -512,7 +512,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations.ts',
     reason: 'closed one-shot feature-preparation dispatch',
-    allowedToken: /(?:(?:GesturePlayground|CreativeVariations)OneShotCommit|prepare(?:GesturePlayground|CreativeVariations)OneShotCommit|gesture-playground|gesturePlayground|creative-variations|creativeVariations)/
+    allowedToken: /(?:(?:GesturePlayground|CreativeVariations|ShowVsTell)OneShotCommit|prepare(?:GesturePlayground|CreativeVariations|ShowVsTell)OneShotCommit|gesture-playground|gesturePlayground|creative-variations|creativeVariations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
@@ -632,7 +632,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/types/messages/workshop/widgets.ts',
     reason: 'explicit widget-family config, recommendation, and result union owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopShowVsTell(?:Draft|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|metaphorPull)/
+    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopShowVsTell(?:CommitPayload|Draft|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|metaphorPull)/
   },
   {
     file: 'utils/workshopPromptFrames.ts',
