@@ -154,6 +154,7 @@ Frontend hooks mirror backend handlers by domain:
 | `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation and correlation |
 | `useCreativeVariations` | `WorkshopCreativeVariationsHandler` | Creative generation and correlation; the authoring controller owns writer choices |
 | `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows |
+| `useShowVsTell` | `WorkshopShowVsTellHandler` | Show vs. Tell generation and correlation; the authoring controller (`controllers/showVsTell/`) owns writer choices |
 | `useWorkshopStandingDirectives` | `WorkshopStandingDirectiveHandler` | Generic standing apply/remove lifecycle |
 
 ### 4. Tripartite Hook Interface
@@ -273,8 +274,8 @@ Workshop is internally sliced under `application/handlers/domain/workshop/`.
 `WorkshopRoomHandler` owns the nine room/run routes, one active-run slot, and
 the sole Workshop session-state envelope. `WorkshopSliceComposition` constructs
 and registers the context, excerpt/scope, session, todo, standing-directive,
-widget-host, Gesture Playground, Creative Variations, and Lexical Gravity route
-owners behind the shared session-operation mutation gate.
+widget-host, Gesture Playground, Creative Variations, Lexical Gravity, and Show
+vs. Tell route owners behind the shared session-operation mutation gate.
 `WorkshopWidgetHostHandler` owns the single family commit route, while
 `WorkshopOneShotWidgetCommitCoordinator` owns retry-config, turn/artifact
 acceptance, and linkage mechanics; named feature compilers retain feature
@@ -398,6 +399,42 @@ not the frozen first-turn contract, so a room reopened from before recall
 existed learns it when archive import rebuilds its system prompt.
 
 **References**: [Workshop Personas Recall Saved Session Transcripts (2026-10-05)](adr/2026-10-05-workshop-session-transcript-recall.md), [Workshop Transcript Export (2026-10-05)](adr/2026-10-05-workshop-transcript-export.md)
+
+### 10. Workshop Conversation Widgets
+
+Four shared registries keep the widgets closed and their identities aligned.
+Each named feature still owns its own prompts, codec, and artifact wording.
+Playgrounds (Gesture Playground, Creative Variations, Show vs. Tell) share the
+one-shot rail: play first, then commit one config, turn, and artifact.
+
+- **Catalog.** `WORKSHOP_WIDGET_CATALOG` in `shared/constants/workshopWidgets.ts`
+  is the one source of widget ids, labels, rails, and `live` state. Show vs. Tell
+  is live in the Playgrounds group. Route-time availability reads the same
+  catalog through `WORKSHOP_WIDGET_CATALOG_AVAILABILITY_POLICY`.
+- **One-shot commit rail.** `WorkshopOneShotWidgetCommitCoordinator` is the
+  feature-neutral transaction for config, turn, and artifact. Show vs. Tell's
+  compiler owns its validation. Its artifact is the counted `widget:show-vs-tell`
+  body, capped at 600 characters, and built by the single formula in
+  `ShowVsTellArtifact.ts`. Model warnings sit outside that count, so a writer can
+  commit with them. The host re-checks the ceiling before commit, and commit never
+  touches editor text.
+- **Recommendation registry.** `WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES` in
+  `WorkshopWidgetRecommendationOperations.ts` maps each recommendable widget to
+  its own parser. Show vs. Tell's entry produces an input-only seed: the beat,
+  optional context, the constraints, and suggested settings. It never carries a
+  workup, selections, or a note, and opening the seed never auto-generates.
+- **Shared narrative-handling vocabulary.** `shared/constants/narrativeHandlingVocabulary.ts`
+  owns the five continuum positions, the three Controller values, their labels,
+  and the position → value mapping. Show vs. Tell imports it; Prose Controller
+  (Sprint 04) must import it rather than redeclare it. Position names, tradeoff
+  copy, and the readout stay feature-owned.
+- **Persistence lifecycle.** `WorkshopWidgetPersistenceLifecycle.ts` is the closed
+  registry of persisted widget-config arms. Show vs. Tell has its own arm beside
+  Gesture Playground, Creative Variations, and Lexical Gravity.
+
+Show vs. Tell's gear and evidence-mode independence from Lexical Gravity is pinned
+by architecture witnesses (`architecture/showVsTellWitnesses.test.ts`) and by the
+host and webview independence tests.
 
 ---
 

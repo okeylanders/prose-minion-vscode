@@ -108,8 +108,12 @@ export function assertShowVsTellRecommendationSeedShape(value: unknown, path: st
     arrayOf(seed.channels, `${path}.channels`, (channel, channelPath) =>
       enumAt(channel, channelPath, CHANNEL_IDS)
     );
-    if (new Set(seed.channels as string[]).size !== (seed.channels as string[]).length) {
-      shapeError(`${path}.channels`, 'distinct channels');
+    // The parser emits the fixed channel order and the generation integrity
+    // gate demands it, so a seed in any other order could only have been
+    // altered by hand. Refuse it at hydration instead of at the first Generate.
+    const channelOrder = (seed.channels as string[]).map((channel) => CHANNEL_IDS.indexOf(channel as never));
+    if (channelOrder.some((order, index) => index > 0 && order <= channelOrder[index - 1])) {
+      shapeError(`${path}.channels`, 'distinct channels in the fixed channel order');
     }
   }
   if (seed.lengthBudget !== undefined) {
