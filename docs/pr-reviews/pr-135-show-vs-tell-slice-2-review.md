@@ -1,10 +1,10 @@
 # PR Review — Show vs. Tell generation, response codec, and prompt bundle (Slice 2)
 
-**Author:** okeylanders · **PR:** [#135](https://github.com/okeylanders/prose-minion-vscode/pull/135) (open, unmerged at review)  
-**Branches:** `epic/conversation-widgets-sprint-05-slice-2-generation` → `epic/conversation-widgets`  
-**Verified base / merge-base:** `d068abddbc0a89a65c8466780735e6cfab83005d`  
-**Reviewed code head:** `43d1a7a584658d9a3be7dfb4a737a4decad36697`  
-**Scope:** 36 files · +3,068 / −31 · 11 commits  
+**Author:** okeylanders · **PR:** [#135](https://github.com/okeylanders/prose-minion-vscode/pull/135) (open, unmerged at review)
+**Branches:** `epic/conversation-widgets-sprint-05-slice-2-generation` → `epic/conversation-widgets`
+**Verified base / merge-base:** `d068abddbc0a89a65c8466780735e6cfab83005d`
+**Reviewed code head:** `43d1a7a584658d9a3be7dfb4a737a4decad36697`
+**Scope:** 36 files · +3,068 / −31 · 11 commits
 **Reviewed:** 2026-10-09 · **Reviewer:** Astra · **Mode:** independent code/spec review, focused lifecycle and codec audits, adversarial runtime probes, full deterministic verification
 
 ## Resolution ledger
