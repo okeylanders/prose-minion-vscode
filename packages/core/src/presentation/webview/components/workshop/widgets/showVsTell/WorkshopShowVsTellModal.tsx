@@ -9,8 +9,8 @@
  *
  * CONTROLLED presentation. The draft, invalidation rules, and every blocker
  * live in the authoring controller; this component renders what it is given
- * and raises semantic callbacks. Commit is present but disabled until Slice 4
- * wires it, and it always names why.
+ * and raises semantic callbacks. Commit is enabled exactly when the controller
+ * reports no blockers, and a disabled Commit always names why.
  */
 
 import * as React from 'react';
@@ -42,6 +42,7 @@ import { ShowVsTellVariantCard } from './ShowVsTellVariantCard';
 import type {
   ShowVsTellArtifactUsage,
   ShowVsTellAvailableSource,
+  ShowVsTellBanner,
   ShowVsTellCommitBlocker,
   ShowVsTellGenerateBlocker,
   ShowVsTellGenerationPhase
@@ -57,6 +58,11 @@ export interface WorkshopShowVsTellModalProps {
   intakeNotice: string | null;
   generateBlockers: readonly ShowVsTellGenerateBlocker[];
   commitBlockers: readonly ShowVsTellCommitBlocker[];
+  /** True while the host has not yet answered a commit; the sheet is locked. */
+  commitPending: boolean;
+  /** The host's refusal or a transport failure; the exact draft stays open. */
+  commitError: string | null;
+  banner: ShowVsTellBanner;
   artifactUsage: ShowVsTellArtifactUsage | null;
   availableSources: readonly ShowVsTellAvailableSource[];
   /** Text of the active excerpt, for the read-only passage panel. */
@@ -76,6 +82,7 @@ export interface WorkshopShowVsTellModalProps {
   onToggleKeep: (variantId: string) => void;
   onCarryModeChange: (variantId: string, mode: WorkshopShowVsTellCarryMode) => void;
   onNoteChange: (note: string) => void;
+  onCommit: () => void;
   widgetModelOptions: ModelOption[];
   selectedWidgetModel: string;
   onWidgetModelChange: (modelId: string) => void;
@@ -93,13 +100,15 @@ const GENERATE_BLOCKER_COPY: Record<ShowVsTellGenerateBlocker, string> = {
 
 const COMMIT_BLOCKER_COPY: Record<ShowVsTellCommitBlocker, string> = {
   'generation-in-flight': 'Generation is still running.',
+  'commit-in-flight': 'Committing…',
+  'room-run-active': 'Wait for the current Workshop response to finish before committing.',
+  'tool-target': 'Switch to a persona target before committing — tool sidecars do not take craft directions.',
   'no-workup': 'Generate a workup before committing.',
   'no-keep': 'Keep at least one variant to commit.',
   'artifact-compilation-failed':
     'The kept variants no longer match this workup. Regenerate before committing.',
   'over-artifact-budget':
-    'The commit payload is over its 600-character ceiling — switch variants to direction only, keep fewer, or shorten the note.',
-  'commit-not-wired': 'Commit arrives in Slice 4.'
+    'The commit payload is over its 600-character ceiling — switch variants to direction only, keep fewer, or shorten the note.'
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -116,6 +125,9 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
   intakeNotice,
   generateBlockers,
   commitBlockers,
+  commitPending,
+  commitError,
+  banner,
   artifactUsage,
   availableSources,
   excerptText,
@@ -134,6 +146,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
   onToggleKeep,
   onCarryModeChange,
   onNoteChange,
+  onCommit,
   widgetModelOptions,
   selectedWidgetModel,
   onWidgetModelChange,
@@ -142,6 +155,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
 }) => {
   const [modelBrowserOpen, setModelBrowserOpen] = React.useState(false);
   const generating = generation.kind === 'generating';
+  const interactionLocked = generating || commitPending;
   const workup = draft.workup;
   const provenance = draft.beat.provenance;
   const povLabel = SHOW_VS_TELL_POV_MODES.find((mode) => mode.id === draft.pov.mode)?.label;
@@ -152,19 +166,20 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
     [draft.kept]
   );
   const directionCount = draft.kept.filter((entry) => entry.carryMode === 'direction').length;
-  const generateDisabled = generating || generateBlockers.length > 0;
+  const generateDisabled = interactionLocked || generateBlockers.length > 0;
   const activeBlocker = commitBlockers[0] ?? null;
+  const commitDisabled = activeBlocker !== null;
 
   const close = React.useCallback(() => {
     /* The model browser overlays this sheet and owns the first Escape. */
-    if (modelBrowserOpen) {
+    if (modelBrowserOpen || commitPending) {
       return;
     }
     if (generating) {
       onCancelGenerate();
     }
     onClose();
-  }, [modelBrowserOpen, generating, onCancelGenerate, onClose]);
+  }, [modelBrowserOpen, commitPending, generating, onCancelGenerate, onClose]);
 
   const changeWidgetModel = React.useCallback(
     (_scope: ModelScope, modelId: string) => {
@@ -203,7 +218,23 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
             useful directions back to the room. <b>Both ends are tools</b> — nothing here calls
             telling bad writing.
           </p>
-          <WorkshopModalShell.CloseButton />
+          {banner.kind === 'clone' && (
+            <div className="pm-ws-svt-banner pm-ws-svt-banner-clone">
+              <Icon name="refresh" size={13} />
+              {banner.from === 'rewound-message' ? (
+                <span>
+                  <b>Reopened from a message you rewound.</b> Adjust it, then commit to send
+                  it again as a <b>new</b> turn at the head.
+                </span>
+              ) : (
+                <span>
+                  <b>Re-opened from a committed turn.</b> The old chip stays as history —
+                  committing again creates a <b>new</b> turn at the head.
+                </span>
+              )}
+            </div>
+          )}
+          <WorkshopModalShell.CloseButton disabled={commitPending} />
         </header>
 
         <div className="pm-ws-svt-body">
@@ -231,7 +262,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
               <button
                 type="button"
                 className="pm-ws-svt-use-selection"
-                disabled={generating}
+                disabled={interactionLocked}
                 onClick={onUseSelection}
               >
                 Use editor selection
@@ -243,7 +274,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
               aria-required="true"
               value={draft.beat.text}
               maxLength={BUDGET.showVsTellBeatCharacters}
-              disabled={generating}
+              disabled={interactionLocked}
               placeholder="Select a line in the editor, or paste one beat."
               onChange={(event) => onBeatTextChange(event.target.value)}
             />
@@ -258,7 +289,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
                 draft={draft}
                 availableSources={availableSources}
                 excerptText={excerptText}
-                disabled={generating}
+                disabled={interactionLocked}
                 onSelectSource={onSelectSource}
                 onPovModeChange={onPovModeChange}
                 onPovFocalCharacterChange={onPovFocalCharacterChange}
@@ -271,14 +302,18 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
                 channels={draft.channels}
                 lengthBudget={draft.lengthBudget}
                 pov={draft.pov}
-                disabled={generating}
+                disabled={interactionLocked}
                 onToggleChannel={onToggleChannel}
                 onLengthBudgetChange={onLengthBudgetChange}
               />
             </div>
           </div>
 
-          <ShowVsTellContinuumControl position={draft.position} onPositionChange={onPositionChange} />
+          <ShowVsTellContinuumControl
+            position={draft.position}
+            onPositionChange={onPositionChange}
+            disabled={commitPending}
+          />
 
           {generating ? (
             <div className="pm-ws-svt-progress">
@@ -322,6 +357,9 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
           {generation.kind === 'failed' && (
             <div className="pm-ws-svt-error" role="alert">{generation.message}</div>
           )}
+          {commitError && (
+            <div className="pm-ws-svt-error" role="alert">{commitError}</div>
+          )}
           {!workup && !generating && invalidationNotice && (
             <p className="pm-ws-svt-empty" role="status">{invalidationNotice}</p>
           )}
@@ -358,7 +396,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
                             ordinal={ordinal}
                             kept={carryMode !== undefined}
                             carryMode={carryMode ?? 'direction'}
-                            interactionLocked={generating}
+                            interactionLocked={interactionLocked}
                             onToggleKeep={onToggleKeep}
                             onCarryModeChange={onCarryModeChange}
                           />
@@ -377,7 +415,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
                   type="text"
                   value={draft.note}
                   maxLength={BUDGET.showVsTellNoteCharacters}
-                  disabled={generating}
+                  disabled={interactionLocked}
                   placeholder="e.g. the tell can stay if the fulcrum is shown"
                   onChange={(event) => onNoteChange(event.target.value)}
                 />
@@ -398,7 +436,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
               onOpenBrowser={onOpenWidgetModelBrowser}
               onBrowserOpenChange={setModelBrowserOpen}
               label="Widget Model"
-              disabled={generating}
+              disabled={interactionLocked}
             />
             {workup && draft.kept.length > 0 && (
               <span className="pm-ws-svt-foot-count">
@@ -410,19 +448,33 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
           <p className="pm-ws-svt-editor-note">
             Nothing is inserted into the editor — commit hands directions to the room.
           </p>
-          {activeBlocker && (
+          {activeBlocker && activeBlocker !== 'commit-in-flight' && (
             <span className="pm-ws-svt-commit-reason" id="pm-ws-svt-commit-reason">
               {COMMIT_BLOCKER_COPY[activeBlocker]}
             </span>
           )}
-          <button type="button" className="pm-ws-svt-cancel" onClick={close}>Cancel</button>
+          <button
+            type="button"
+            className="pm-ws-svt-cancel"
+            disabled={commitPending}
+            onClick={close}
+          >
+            Cancel
+          </button>
           <button
             type="button"
             className="pm-ws-svt-commit"
-            disabled
-            aria-describedby={activeBlocker ? 'pm-ws-svt-commit-reason' : undefined}
+            disabled={commitDisabled}
+            aria-describedby={
+              activeBlocker && activeBlocker !== 'commit-in-flight'
+                ? 'pm-ws-svt-commit-reason'
+                : undefined
+            }
+            onClick={onCommit}
           >
-            Commit to thread
+            {commitPending
+              ? 'Committing…'
+              : banner.kind === 'clone' ? 'Commit as new turn' : 'Commit to thread'}
           </button>
         </footer>
       </div>

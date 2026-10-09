@@ -9,8 +9,12 @@ import {
   WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopLexicalGravityWidgetConfigSnapshot,
+  WorkshopShowVsTellWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary
 } from '@messages';
+import {
+  generatedShowVsTellDraft
+} from '@/__tests__/application/services/workshop/widgets/showVsTell/showVsTellFixtures';
 import {
   builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
@@ -61,6 +65,16 @@ const creativeConfig: WorkshopCreativeVariationsWidgetConfigSnapshot = {
   createdAt: 3,
   clonedFromConfigId: 'wc-creative-original',
   draft: generatedDraft
+};
+
+const showVsTellConfig: WorkshopShowVsTellWidgetConfigSnapshot = {
+  id: 'wc-svt',
+  widgetId: 'show-vs-tell',
+  revision: 1,
+  createdAt: 4,
+  committedTurnId: 'turn-5',
+  artifactId: 'ta-5',
+  draft: generatedShowVsTellDraft()
 };
 
 const activeLexical: WorkshopStandingDirectiveSummary = {
@@ -473,5 +487,97 @@ describe('useWorkshopWidgetOpening', () => {
     expect(result.current.showVsTellOpening).toBeNull();
     expect(onCloseShowVsTell).toHaveBeenCalledTimes(1);
     expect(onCloseCreativeVariations).not.toHaveBeenCalled();
+  });
+
+  describe('Show vs. Tell reopen', () => {
+    const mount = (host: WorkshopWidgetOpeningHost, onError = jest.fn(), onCloseShowVsTell = jest.fn()) => {
+      let current = host;
+      const hook = renderHook(() => useWorkshopWidgetOpening({
+        host: current,
+        standingDirectives: [],
+        onError,
+        onCloseGesturePlayground: jest.fn(),
+        onCloseLexicalGravity: jest.fn(),
+        onCloseCreativeVariations: jest.fn(),
+        onCloseShowVsTell
+      }));
+      return {
+        ...hook,
+        respondWith: (next: Partial<WorkshopWidgetOpeningHost>) => {
+          current = { ...current, ...next };
+          hook.rerender();
+        },
+        onError,
+        onCloseShowVsTell
+      };
+    };
+
+    it('opens the exact committed draft as a clone, from a chip', () => {
+      const host = emptyHost();
+      const h = mount(host);
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      expect(host.requestWidgetConfig).toHaveBeenCalledWith(showVsTellConfig.id);
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'clone', config: showVsTellConfig });
+      expect(h.result.current.showVsTellOpening?.kind === 'clone'
+        ? h.result.current.showVsTellOpening.config.draft
+        : null).toEqual(generatedShowVsTellDraft());
+      expect(h.result.current.pendingWidgetConfigId).toBeNull();
+      expect(h.onError).not.toHaveBeenCalled();
+    });
+
+    it('reopens a config the host restored after a rewind, with no committed turn', () => {
+      const restored = { ...showVsTellConfig, committedTurnId: undefined, artifactId: undefined };
+      const host = { ...emptyHost(), restoredWidgetConfigId: restored.id };
+      const h = mount(host);
+
+      expect(host.consumeRestoredWidgetConfig).toHaveBeenCalledTimes(1);
+      expect(host.requestWidgetConfig).toHaveBeenCalledWith(restored.id);
+      h.respondWith({ widgetConfigData: restored, widgetConfigResponseId: restored.id });
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'clone', config: restored });
+    });
+
+    it('does not replace an already-open Show vs. Tell sheet with a late clone response', () => {
+      const h = mount(emptyHost());
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      act(() => h.result.current.launchWidget('show-vs-tell'));
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'new' });
+      expect(h.onError).toHaveBeenCalledWith(
+        'Close the current widget sheet before reopening a committed configuration.'
+      );
+      expect(h.result.current.pendingWidgetConfigId).toBeNull();
+    });
+
+    it('no longer reports Show vs. Tell as unopenable', () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const h = mount(emptyHost());
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+
+      expect(warn).not.toHaveBeenCalled();
+      expect(h.onError).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it('clears the pending request and host config data when the clone sheet closes', () => {
+      const host = emptyHost();
+      const h = mount(host);
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+      (host.clearWidgetConfigData as jest.Mock).mockClear();
+
+      act(() => h.result.current.closeShowVsTell());
+
+      expect(h.result.current.showVsTellOpening).toBeNull();
+      expect(host.clearWidgetConfigData).toHaveBeenCalled();
+      expect(h.onCloseShowVsTell).toHaveBeenCalledTimes(1);
+    });
   });
 });

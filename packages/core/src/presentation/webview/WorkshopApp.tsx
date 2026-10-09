@@ -257,7 +257,8 @@ export const WorkshopApp: React.FC = () => {
   }, [creativeVariations.cancelGeneration, creativeVariations.resetCommitState]);
   const clearShowVsTellTransientState = React.useCallback(() => {
     showVsTell.cancelGeneration();
-  }, [showVsTell.cancelGeneration]);
+    showVsTell.resetCommitState();
+  }, [showVsTell.cancelGeneration, showVsTell.resetCommitState]);
   const handleWidgetOpeningError = React.useCallback(
     (message: string) => showToast({ message, icon: 'x', tone: 'error' }),
     [showToast]
@@ -316,7 +317,17 @@ export const WorkshopApp: React.FC = () => {
     generationResult: showVsTell.generationResult,
     requestBeatSelection: showVsTell.requestBeatSelection,
     generate: showVsTell.generate,
-    cancelGeneration: showVsTell.cancelGeneration
+    cancelGeneration: showVsTell.cancelGeneration,
+    roomRunActive: workshop.isRunning,
+    toolTargetActive: workshop.chatTarget.kind === 'tool',
+    commitPending: showVsTell.commitPending,
+    commitOutcome: showVsTell.commitResult,
+    commit: (draft, clonedFromConfigId) => {
+      showVsTell.commit({ widgetId: 'show-vs-tell', draft, clonedFromConfigId });
+    },
+    clearCommitResult: showVsTell.clearCommitResult,
+    resetCommitState: showVsTell.resetCommitState,
+    onCommitAccepted: widgetOpening.closeShowVsTell
   });
 
   React.useEffect(() => {
@@ -1329,6 +1340,7 @@ export const WorkshopApp: React.FC = () => {
                 onCopy={copyTurn}
                 onSave={saveTurn}
                 onOpenWidgetConfig={widgetOpening.openWidgetConfig}
+                widgetConfigSummaries={widgetHost.widgetConfigSummaries}
                 onOpenWidgetRecommendation={widgetOpening.openWidgetRecommendation}
                 turnRewindability={threadRewindability}
                 rewindPausedReason={rewindPausedReason}
@@ -1577,12 +1589,24 @@ export const WorkshopApp: React.FC = () => {
       {widgetOpening.showVsTellOpening && (
         <WorkshopShowVsTellModal
           open
+          banner={
+            widgetOpening.showVsTellOpening.kind === 'clone'
+              ? {
+                  kind: 'clone',
+                  from: widgetOpening.showVsTellOpening.config.committedTurnId === undefined
+                    ? 'rewound-message'
+                    : 'committed-turn'
+                }
+              : { kind: 'none' }
+          }
           draft={showVsTellAuthoring.draft}
           generation={showVsTellAuthoring.generation}
           invalidationNotice={showVsTellAuthoring.invalidationNotice}
           intakeNotice={showVsTellAuthoring.intakeNotice}
           generateBlockers={showVsTellAuthoring.generateBlockers}
           commitBlockers={showVsTellAuthoring.commitBlockers}
+          commitPending={showVsTell.commitPending}
+          commitError={showVsTellAuthoring.commitError}
           artifactUsage={showVsTellAuthoring.artifactUsage}
           availableSources={showVsTellAuthoring.availableSources}
           excerptText={workshop.excerpt?.text ?? null}
@@ -1601,6 +1625,7 @@ export const WorkshopApp: React.FC = () => {
           onToggleKeep={showVsTellAuthoring.toggleKeep}
           onCarryModeChange={showVsTellAuthoring.changeCarryMode}
           onNoteChange={showVsTellAuthoring.changeNote}
+          onCommit={showVsTellAuthoring.commitDraft}
           widgetModelOptions={modelsSettings.modelOptions}
           selectedWidgetModel={effectiveWidgetModelId}
           onWidgetModelChange={(modelId) =>

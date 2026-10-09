@@ -19,17 +19,19 @@ export type ShowVsTellGenerateBlocker =
   | 'source-unavailable';
 
 /**
- * Why Commit is unavailable, most important first. `commit-not-wired` is the
- * last entry until Slice 4 wires the commit route, so Commit is always
- * disabled in this slice; the others explain what the writer can still fix.
+ * Why Commit is unavailable, most important first: what is happening now
+ * (a generation, a commit, the room, the target), then what the writer can
+ * still fix in the draft. Commit is enabled exactly when this list is empty.
  */
 export type ShowVsTellCommitBlocker =
   | 'generation-in-flight'
+  | 'commit-in-flight'
+  | 'room-run-active'
+  | 'tool-target'
   | 'no-workup'
   | 'no-keep'
   | 'artifact-compilation-failed'
-  | 'over-artifact-budget'
-  | 'commit-not-wired';
+  | 'over-artifact-budget';
 
 export interface ShowVsTellAvailableSource {
   reference: WorkshopWidgetSourceReference;
@@ -44,5 +46,8 @@ export interface ShowVsTellArtifactUsage {
   budget: number;
 }
 
-/** Display posture of the current opening. */
-export type ShowVsTellBanner = { kind: 'none' };
+/** Display posture of the current opening; mapped from the opening controller. */
+export type ShowVsTellBanner =
+  | { kind: 'none' }
+  /** A rewound message released its commit, so no chip is left behind (ADR 2026-09-30). */
+  | { kind: 'clone'; from: 'committed-turn' | 'rewound-message' };

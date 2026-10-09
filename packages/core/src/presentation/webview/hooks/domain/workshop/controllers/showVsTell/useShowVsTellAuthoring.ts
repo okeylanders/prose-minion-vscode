@@ -55,8 +55,16 @@ import {
   sameBeat,
   toggledShowVsTellChannels,
   toggledShowVsTellKeep,
+  withShowVsTellCarryMode,
+  withShowVsTellPovMode,
+  withShowVsTellSourceReference,
   type ShowVsTellInputLabel
 } from './showVsTellAuthoringRules';
+import { useShowVsTellInvalidationWatch } from './useShowVsTellInvalidationWatch';
+import {
+  useShowVsTellCommitFlow,
+  type ShowVsTellCommitOutcome
+} from './useShowVsTellCommitFlow';
 
 // The rule helpers live beside this owner; these two are part of its public face.
 export { collapseShowVsTellLineBreaks, createShowVsTellAuthoringDraft };
@@ -82,6 +90,15 @@ export interface UseShowVsTellAuthoringOptions {
   requestBeatSelection: () => void;
   generate: (input: ShowVsTellGenerationInput) => string;
   cancelGeneration: (token?: string) => void;
+  /** Host truth about the room, so Commit explains why it is unavailable. */
+  roomRunActive: boolean;
+  toolTargetActive: boolean;
+  commitPending: boolean;
+  commitOutcome: ShowVsTellCommitOutcome | null;
+  commit: (draft: WorkshopShowVsTellDraft, clonedFromConfigId?: string) => void;
+  clearCommitResult: () => void;
+  resetCommitState: () => void;
+  onCommitAccepted: () => void;
 }
 
 export interface ShowVsTellAuthoringState {
@@ -90,6 +107,8 @@ export interface ShowVsTellAuthoringState {
   invalidationNotice: string | null;
   /** Visible explanation when intake had to shorten a selection into a beat. */
   intakeNotice: string | null;
+  /** The host's refusal or a transport failure; the exact draft stays open. */
+  commitError: string | null;
   generateBlockers: readonly ShowVsTellGenerateBlocker[];
   commitBlockers: readonly ShowVsTellCommitBlocker[];
   /** The exact counted artifact body; null until a variant is kept. */
@@ -114,6 +133,7 @@ export interface ShowVsTellAuthoringActions {
   toggleKeep: (variantId: string) => void;
   changeCarryMode: (variantId: string, mode: WorkshopShowVsTellCarryMode) => void;
   changeNote: (note: string) => void;
+  commitDraft: () => void;
 }
 
 /** Explicitly empty: the host owns durable truth, and this controller is transient. */
@@ -136,7 +156,15 @@ export function useShowVsTellAuthoring({
   generationResult,
   requestBeatSelection,
   generate,
-  cancelGeneration
+  cancelGeneration,
+  roomRunActive,
+  toolTargetActive,
+  commitPending,
+  commitOutcome,
+  commit,
+  clearCommitResult,
+  resetCommitState,
+  onCommitAccepted
 }: UseShowVsTellAuthoringOptions): UseShowVsTellAuthoringReturn {
   const open = opening !== null;
   const [draft, setDraftState] = React.useState<WorkshopShowVsTellDraft>(
@@ -155,24 +183,48 @@ export function useShowVsTellAuthoring({
   const [intakeNotice, setIntakeNotice] = React.useState<string | null>(null);
   const activeTokenRef = React.useRef<string>();
   const wasOpenRef = React.useRef(false);
-  const previousWidgetModelIdRef = React.useRef(widgetModelId);
-  const previousRoomKeyRef = React.useRef(roomKey);
+  /**
+   * While a commit is pending the draft is what was submitted. Every
+   * writer-driven edit and every late intake reply is refused, so a refusal
+   * leaves the exact draft to retry and a success discards nothing visible.
+   */
+  const commitPendingRef = React.useRef(commitPending);
+  commitPendingRef.current = commitPending;
+  const editDraft = React.useCallback((
+    update: (current: WorkshopShowVsTellDraft) => WorkshopShowVsTellDraft
+  ) => {
+    if (!commitPendingRef.current) {
+      setDraft(update);
+    }
+  }, [setDraft]);
+  /** Set only when the sheet opened from a committed config; recommit records it as lineage. */
+  const seededCloneConfigIdRef = React.useRef<string>();
+  const commitFlow = useShowVsTellCommitFlow({
+    open,
+    commitOutcome,
+    commit,
+    clearCommitResult,
+    resetCommitState,
+    onCommitAccepted
+  });
 
   React.useEffect(() => {
     if (open && !wasOpenRef.current) {
       activeTokenRef.current = undefined;
-      previousWidgetModelIdRef.current = widgetModelId;
-      previousRoomKeyRef.current = roomKey;
-      setDraft(createShowVsTellAuthoringDraft());
+      // The one place a draft is seeded: a chip reopens the exact committed
+      // draft, anything else starts fresh.
+      seededCloneConfigIdRef.current = opening?.kind === 'clone' ? opening.config.id : undefined;
+      setDraft(opening?.kind === 'clone' ? opening.config.draft : createShowVsTellAuthoringDraft());
       setGeneration({ kind: 'idle' });
       setInvalidationNotice(null);
       setIntakeNotice(null);
     } else if (!open && wasOpenRef.current) {
       // Closing discards any reply still in flight: its token is no longer ours.
       activeTokenRef.current = undefined;
+      seededCloneConfigIdRef.current = undefined;
     }
     wasOpenRef.current = open;
-  }, [open, roomKey, setDraft, widgetModelId]);
+  }, [open, opening, setDraft]);
 
   React.useEffect(() => {
     const token = activeTokenRef.current;
@@ -224,7 +276,7 @@ export function useShowVsTellAuthoring({
   ) => {
     const current = draftRef.current;
     const next = update(current);
-    if (next === current) {
+    if (next === current || commitPendingRef.current) {
       return;
     }
     const hadActiveGeneration = activeTokenRef.current !== undefined;
@@ -239,7 +291,7 @@ export function useShowVsTellAuthoring({
 
   const handleBeatSelection = React.useCallback((message: SelectionDataMessage) => {
     /* Normal delivery is target-routed; retain the check for direct hook consumers. */
-    if (!open || activeTokenRef.current !== undefined
+    if (!open || activeTokenRef.current !== undefined || commitPendingRef.current
       || message.payload.target !== 'workshop_show_vs_tell_beat') {
       return;
     }
@@ -264,26 +316,12 @@ export function useShowVsTellAuthoring({
   const selectSourceReference = React.useCallback((
     reference: WorkshopWidgetSourceReference | null
   ) => {
-    updateGenerationInput('surrounding passage source', (current) => {
-      const existing = current.surroundingContext.sourceReferences[0];
-      const unchanged = reference === null
-        ? existing === undefined
-        : existing !== undefined
-          && showVsTellSourceReferenceKey(existing) === showVsTellSourceReferenceKey(reference);
-      return unchanged
-        ? current
-        : {
-            ...current,
-            surroundingContext: { sourceReferences: reference === null ? [] : [{ ...reference }] }
-          };
-    });
+    updateGenerationInput('surrounding passage source', (current) =>
+      withShowVsTellSourceReference(current, reference));
   }, [updateGenerationInput]);
 
   const changePovMode = React.useCallback((mode: WorkshopShowVsTellPovMode) => {
-    updateGenerationInput('point of view', (current) => mode === current.pov.mode
-      ? current
-      // `unspecified` names no focal character, so the character is blanked with it.
-      : { ...current, pov: { mode, focalCharacter: mode === 'unspecified' ? '' : current.pov.focalCharacter } });
+    updateGenerationInput('point of view', (current) => withShowVsTellPovMode(current, mode));
   }, [updateGenerationInput]);
 
   const changePovFocalCharacter = React.useCallback((raw: string) => {
@@ -324,63 +362,30 @@ export function useShowVsTellAuthoring({
       : { ...current, lengthBudget });
   }, [updateGenerationInput]);
 
-  /** The one exception: moving the position keeps the workup, the kept variants, and any attempt. */
+  /**
+   * The one exception: moving the position keeps the workup, the kept
+   * variants, and any attempt. It is still refused while a commit is pending.
+   */
   const changePosition = React.useCallback((position: NarrativeHandlingPosition) => {
     if (position !== draftRef.current.position) {
-      setDraft((current) => ({ ...current, position }));
+      editDraft((current) => ({ ...current, position }));
     }
-  }, [setDraft]);
+  }, [editDraft]);
 
-  React.useEffect(() => {
-    const previousWidgetModelId = previousWidgetModelIdRef.current;
-    if (!open) {
-      previousWidgetModelIdRef.current = widgetModelId;
-      return;
-    }
-    if (previousWidgetModelId === widgetModelId) {
-      return;
-    }
-    previousWidgetModelIdRef.current = widgetModelId;
-    const current = draftRef.current;
-    const hadActiveGeneration = activeTokenRef.current !== undefined;
-    const hadWork = hasSettledWork(current);
-    if (!hadActiveGeneration && !hadWork) {
-      return;
-    }
-    cancelActiveGeneration();
-    if (hadWork) {
-      setDraft({ ...current, workup: null, kept: [] });
-    }
-    setInvalidationNotice(changedWorkNotice('widget model', hadActiveGeneration, hadWork));
-  }, [cancelActiveGeneration, open, setDraft, widgetModelId]);
-
-  React.useEffect(() => {
-    const previousRoomKey = previousRoomKeyRef.current;
-    if (!open) {
-      previousRoomKeyRef.current = roomKey;
-      return;
-    }
-    if (previousRoomKey === roomKey) {
-      return;
-    }
-    previousRoomKeyRef.current = roomKey;
-    const current = draftRef.current;
-    // Only work grounded on a source reference depends on the room: a beat
-    // generated with no source is the same request in any room.
-    if (current.surroundingContext.sourceReferences.length === 0) {
-      return;
-    }
-    const hadActiveGeneration = activeTokenRef.current !== undefined;
-    const hadWork = hasSettledWork(current);
-    if (!hadActiveGeneration && !hadWork) {
-      return;
-    }
-    cancelActiveGeneration();
-    if (hadWork) {
-      setDraft({ ...current, workup: null, kept: [] });
-    }
-    setInvalidationNotice(changedWorkNotice('room', hadActiveGeneration, hadWork));
-  }, [cancelActiveGeneration, open, roomKey, setDraft]);
+  const clearSettledWork = React.useCallback(
+    (current: WorkshopShowVsTellDraft) => setDraft({ ...current, workup: null, kept: [] }),
+    [setDraft]
+  );
+  useShowVsTellInvalidationWatch({
+    open,
+    widgetModelId,
+    roomKey,
+    draftRef,
+    activeTokenRef,
+    cancelActiveGeneration,
+    clearSettledWork,
+    setInvalidationNotice
+  });
 
   const availableSources = React.useMemo(
     () => deriveShowVsTellAvailableSources(activeExcerpt, contextAttachments),
@@ -394,7 +399,7 @@ export function useShowVsTellAuthoring({
 
   const generateWorkup = React.useCallback(() => {
     const current = draftRef.current;
-    if (generateBlockers.length > 0) {
+    if (generateBlockers.length > 0 || commitPendingRef.current) {
       return;
     }
     cancelActiveGeneration();
@@ -418,25 +423,20 @@ export function useShowVsTellAuthoring({
   }, [cancelActiveGeneration]);
 
   const toggleKeep = React.useCallback((variantId: string) => {
-    setDraft((current) => toggledShowVsTellKeep(current, variantId));
-  }, [setDraft]);
+    editDraft((current) => toggledShowVsTellKeep(current, variantId));
+  }, [editDraft]);
 
   const changeCarryMode = React.useCallback((
     variantId: string,
     carryMode: WorkshopShowVsTellCarryMode
   ) => {
-    setDraft((current) => ({
-      ...current,
-      kept: current.kept.map((entry) => entry.variantId === variantId
-        ? { ...entry, carryMode }
-        : entry)
-    }));
-  }, [setDraft]);
+    editDraft((current) => withShowVsTellCarryMode(current, variantId, carryMode));
+  }, [editDraft]);
 
   const changeNote = React.useCallback((raw: string) => {
     const note = collapseShowVsTellLineBreaks(raw).slice(0, BUDGET.showVsTellNoteCharacters);
-    setDraft((current) => note === current.note ? current : { ...current, note });
-  }, [setDraft]);
+    editDraft((current) => note === current.note ? current : { ...current, note });
+  }, [editDraft]);
 
   const artifactProjection = React.useMemo(() => projectShowVsTellArtifact(draft), [draft]);
   const artifactUsage = artifactProjection.usage;
@@ -450,17 +450,28 @@ export function useShowVsTellAuthoring({
   const commitBlockers = React.useMemo(
     () => deriveShowVsTellCommitBlockers({
       generating: generation.kind === 'generating',
-      draft,
-      projection: artifactProjection
+      commitPending,
+      roomRunActive,
+      toolTargetActive,
+      draft
     }),
-    [artifactProjection, draft, generation.kind]
+    [commitPending, draft, generation.kind, roomRunActive, toolTargetActive]
   );
+
+  const { submitCommit } = commitFlow;
+  const commitDraft = React.useCallback(() => {
+    if (commitBlockers.length > 0) {
+      return;
+    }
+    submitCommit(draftRef.current, seededCloneConfigIdRef.current);
+  }, [commitBlockers.length, submitCommit]);
 
   return {
     draft,
     generation,
     invalidationNotice,
     intakeNotice,
+    commitError: commitFlow.commitError,
     generateBlockers,
     commitBlockers,
     artifactUsage,
@@ -481,6 +492,7 @@ export function useShowVsTellAuthoring({
     toggleKeep,
     changeCarryMode,
     changeNote,
+    commitDraft,
     persistedState: {}
   };
 }

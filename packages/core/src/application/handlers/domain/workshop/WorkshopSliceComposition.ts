@@ -172,13 +172,11 @@ export class WorkshopSliceComposition {
         markDirty
       }
     );
-    // The show-vs-tell arm joins the one-shot id type when its commit lands, so
-    // the key set is widened here until then.
     const oneShotGenerationActivity = {
       'gesture-playground': () => this.gesturePlaygroundHandler.isGenerationActive(),
       'creative-variations': () => this.creativeVariationsHandler.isGenerationActive(),
       'show-vs-tell': () => this.showVsTellHandler.isGenerationActive()
-    } satisfies Record<WorkshopOneShotWidgetId | 'show-vs-tell', () => boolean>;
+    } satisfies Record<WorkshopOneShotWidgetId, () => boolean>;
     this.widgetHostHandler = new WorkshopWidgetHostHandler(
       session,
       oneShotCommitCoordinator,

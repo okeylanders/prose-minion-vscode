@@ -19,11 +19,14 @@ import { ShowVsTellReadout } from './ShowVsTellReadout';
 export interface ShowVsTellContinuumControlProps {
   position: NarrativeHandlingPosition;
   onPositionChange: (position: NarrativeHandlingPosition) => void;
+  /** Locked only while a commit is pending; the position stays editable during generation. */
+  disabled?: boolean;
 }
 
 export const ShowVsTellContinuumControl: React.FC<ShowVsTellContinuumControlProps> = ({
   position,
-  onPositionChange
+  onPositionChange,
+  disabled = false
 }) => {
   const selected = SHOW_VS_TELL_POSITIONS.find((candidate) => candidate.id === position);
   return (
@@ -38,6 +41,7 @@ export const ShowVsTellContinuumControl: React.FC<ShowVsTellContinuumControlProp
         ariaLabel="Position on the continuum"
         value={position}
         onChange={onPositionChange}
+        disabled={disabled}
         optionClassName={(selected) => `pm-ws-svt-step${selected ? ' pm-ws-svt-step-on' : ''}`}
         options={SHOW_VS_TELL_POSITIONS.map((step) => ({
           id: step.id,

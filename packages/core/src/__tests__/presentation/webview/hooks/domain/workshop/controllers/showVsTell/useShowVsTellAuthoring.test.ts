@@ -61,7 +61,8 @@ const selection = (
 interface Harness {
   options: jest.Mocked<Pick<
     UseShowVsTellAuthoringOptions,
-    'requestBeatSelection' | 'generate' | 'cancelGeneration'
+    'requestBeatSelection' | 'generate' | 'cancelGeneration' | 'commit'
+    | 'clearCommitResult' | 'resetCommitState' | 'onCommitAccepted'
   >>;
   result: { current: ReturnType<typeof useShowVsTellAuthoring> };
   rerender: (props: Partial<UseShowVsTellAuthoringOptions>) => void;
@@ -72,7 +73,11 @@ function setup(initial: Partial<UseShowVsTellAuthoringOptions> = {}): Harness {
   const options = {
     requestBeatSelection: jest.fn(),
     generate: jest.fn((_input: unknown) => `token-${++tokenIndex}`),
-    cancelGeneration: jest.fn()
+    cancelGeneration: jest.fn(),
+    commit: jest.fn(),
+    clearCommitResult: jest.fn(),
+    resetCommitState: jest.fn(),
+    onCommitAccepted: jest.fn()
   };
   const base: UseShowVsTellAuthoringOptions = {
     opening: { kind: 'new' },
@@ -82,6 +87,10 @@ function setup(initial: Partial<UseShowVsTellAuthoringOptions> = {}): Harness {
     widgetModelId: 'model-a',
     generationProgress: null,
     generationResult: null,
+    roomRunActive: false,
+    toolTargetActive: false,
+    commitPending: false,
+    commitOutcome: null,
     ...options
   };
   const { result, rerender } = renderHook(
@@ -481,16 +490,16 @@ describe('useShowVsTellAuthoring', () => {
   });
 
   describe('payload meter and commit blockers', () => {
-    it('has no usage until a variant is kept, and always blocks commit until Slice 4', () => {
+    it('has no usage until a variant is kept, and commits only once something is kept', () => {
       const h = setup();
       expect(h.result.current.artifactUsage).toBeNull();
-      expect(h.result.current.commitBlockers).toEqual(['no-workup', 'commit-not-wired']);
+      expect(h.result.current.commitBlockers).toEqual(['no-workup']);
 
       settleWorkup(h);
-      expect(h.result.current.commitBlockers).toEqual(['no-keep', 'commit-not-wired']);
+      expect(h.result.current.commitBlockers).toEqual(['no-keep']);
 
       act(() => h.result.current.toggleKeep(fixtureVariantId(2)));
-      expect(h.result.current.commitBlockers).toEqual(['commit-not-wired']);
+      expect(h.result.current.commitBlockers).toEqual([]);
     });
 
     it('counts against the projection and its count equals the projection length', () => {
@@ -525,14 +534,14 @@ describe('useShowVsTellAuthoring', () => {
       }
 
       expect(h.result.current.artifactUsage!.characters).toBeGreaterThan(600);
-      expect(h.result.current.commitBlockers).toEqual(['over-artifact-budget', 'commit-not-wired']);
+      expect(h.result.current.commitBlockers).toEqual(['over-artifact-budget']);
 
       for (const ordinal of [2, 4, 6, 7]) {
         act(() => h.result.current.changeCarryMode(fixtureVariantId(ordinal), 'direction'));
       }
 
       expect(h.result.current.artifactUsage!.characters).toBeLessThanOrEqual(600);
-      expect(h.result.current.commitBlockers).toEqual(['commit-not-wired']);
+      expect(h.result.current.commitBlockers).toEqual([]);
     });
 
     it('reports generation-in-flight first', () => {

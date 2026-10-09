@@ -17,7 +17,7 @@ import {
   WorkshopLexicalGravityReach,
   WorkshopLexicalGravityRecommendationSeed
 } from './lexicalGravity';
-import { WorkshopShowVsTellDraft } from './showVsTell';
+import { WorkshopShowVsTellCommitPayload, WorkshopShowVsTellDraft } from './showVsTell';
 import { WorkshopStandingWidgetCommit } from './standingDirectives';
 
 /**
@@ -205,7 +205,8 @@ export interface WorkshopWidgetConfigRestoredMessage extends MessageEnvelope<{
 /** Family rail contract; each supported one-shot widget contributes one exact arm. */
 export type WorkshopCommitWidgetPayload =
   | WorkshopGesturePlaygroundCommitPayload
-  | WorkshopCreativeVariationsCommitPayload;
+  | WorkshopCreativeVariationsCommitPayload
+  | WorkshopShowVsTellCommitPayload;
 
 export interface WorkshopCommitWidgetMessage extends MessageEnvelope<WorkshopCommitWidgetPayload> {
   type: MessageType.WORKSHOP_COMMIT_WIDGET;
@@ -229,6 +230,10 @@ export type WorkshopWidgetActionResultPayload =
   | (WorkshopWidgetActionResultBase & {
       action: 'commit';
       widgetId: 'creative-variations';
+    })
+  | (WorkshopWidgetActionResultBase & {
+      action: 'commit';
+      widgetId: 'show-vs-tell';
     })
   | (WorkshopWidgetActionResultBase & {
       action: 'apply-standing';

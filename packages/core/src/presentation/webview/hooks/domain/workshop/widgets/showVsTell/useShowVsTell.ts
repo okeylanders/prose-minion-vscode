@@ -11,17 +11,30 @@
  * failure, and the host posts the one result immediately after it, so the
  * attempt keeps its token only until that result arrives (or is ignored by
  * the next Generate). The outcome always comes from the result.
+ *
+ * Commit has its own token (`requestToken`), one in flight at a time. The
+ * webview mints it and the host echoes it on the action result, so a late or
+ * foreign acknowledgement can never settle another attempt.
  */
 
 import * as React from 'react';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 import {
+  createWorkshopWidgetActionRequestToken
+} from '@hooks/domain/workshop/createWorkshopWidgetActionRequestToken';
+import {
+  reportWorkshopWidgetActionCorrelationIssue
+} from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
+import {
   MessageType,
+  type WorkshopShowVsTellCommitPayload,
   type WorkshopShowVsTellGenerationProgressMessage,
   type WorkshopShowVsTellGenerationProgressPayload,
   type WorkshopShowVsTellResultMessage,
-  type WorkshopShowVsTellResultPayload
+  type WorkshopShowVsTellResultPayload,
+  type WorkshopWidgetActionResultMessage,
+  type WorkshopWidgetActionResultPayload
 } from '@messages';
 import type {
   ShowVsTellGenerationInput
@@ -38,9 +51,16 @@ let showVsTellTokenCounter = 0;
 const createShowVsTellRequestToken = (): string =>
   `show-vs-tell-${Date.now()}-${++showVsTellTokenCounter}`;
 
+export type ShowVsTellCommitResult = Extract<
+  WorkshopWidgetActionResultPayload,
+  { action: 'commit'; widgetId: 'show-vs-tell' }
+>;
+
 export interface ShowVsTellState {
   generationProgress: WorkshopShowVsTellGenerationProgressPayload | null;
   generationResult: WorkshopShowVsTellResultPayload | null;
+  commitPending: boolean;
+  commitResult: ShowVsTellCommitResult | null;
 }
 
 export interface ShowVsTellActions {
@@ -48,6 +68,14 @@ export interface ShowVsTellActions {
   /** Returns the freshly minted correlation token. */
   generate: (input: ShowVsTellGenerationInput) => string;
   cancelGeneration: (token?: string) => void;
+  /** Returns the minted request token, or undefined while another commit is in flight. */
+  commit: (
+    payload: Omit<WorkshopShowVsTellCommitPayload, 'requestToken'>
+  ) => string | undefined;
+  handleCommitResult: (message: WorkshopWidgetActionResultMessage) => void;
+  clearCommitResult: () => void;
+  /** Recover a newly opened sheet from an acknowledgement lost with an older surface. */
+  resetCommitState: () => void;
   handleGenerationProgress: (message: WorkshopShowVsTellGenerationProgressMessage) => void;
   handleGenerationResult: (message: WorkshopShowVsTellResultMessage) => void;
 }
@@ -64,10 +92,13 @@ export type UseShowVsTellReturn = ShowVsTellState &
 export function useShowVsTell(): UseShowVsTellReturn {
   const vscode = useVSCodeApi();
   const activeAttemptRef = React.useRef<ActiveShowVsTellAttempt>();
+  const activeCommitTokenRef = React.useRef<string>();
   const [generationProgress, setGenerationProgress] =
     React.useState<WorkshopShowVsTellGenerationProgressPayload | null>(null);
   const [generationResult, setGenerationResult] =
     React.useState<WorkshopShowVsTellResultPayload | null>(null);
+  const [commitPending, setCommitPending] = React.useState(false);
+  const [commitResult, setCommitResult] = React.useState<ShowVsTellCommitResult | null>(null);
 
   const post = React.useCallback((type: MessageType, payload: object) => {
     vscode.postMessage({
@@ -121,6 +152,61 @@ export function useShowVsTell(): UseShowVsTellReturn {
     setGenerationResult(null);
   }, [vscode]);
 
+  const commit = React.useCallback((
+    payload: Omit<WorkshopShowVsTellCommitPayload, 'requestToken'>
+  ): string | undefined => {
+    if (activeCommitTokenRef.current !== undefined) {
+      return undefined;
+    }
+    const requestToken = createWorkshopWidgetActionRequestToken('commit');
+    activeCommitTokenRef.current = requestToken;
+    setCommitPending(true);
+    setCommitResult(null);
+    // The draft rides unchanged; the host compiles the artifact itself.
+    post(MessageType.WORKSHOP_COMMIT_WIDGET, { ...payload, requestToken });
+    return requestToken;
+  }, [post]);
+
+  const handleCommitResult = React.useCallback((
+    message: WorkshopWidgetActionResultMessage
+  ) => {
+    if (message.payload.action !== 'commit') {
+      return;
+    }
+    const expectedToken = activeCommitTokenRef.current;
+    if (message.payload.widgetId !== 'show-vs-tell') {
+      if (message.payload.requestToken === expectedToken) {
+        reportWorkshopWidgetActionCorrelationIssue(
+          'useShowVsTell',
+          message,
+          'expected widget show-vs-tell'
+        );
+      }
+      return;
+    }
+    if (message.payload.requestToken !== expectedToken) {
+      reportWorkshopWidgetActionCorrelationIssue(
+        'useShowVsTell',
+        message,
+        'no current commit request owns this token'
+      );
+      return;
+    }
+    activeCommitTokenRef.current = undefined;
+    setCommitPending(false);
+    setCommitResult(message.payload);
+  }, []);
+
+  const clearCommitResult = React.useCallback(() => {
+    setCommitResult(null);
+  }, []);
+
+  const resetCommitState = React.useCallback(() => {
+    activeCommitTokenRef.current = undefined;
+    setCommitPending(false);
+    setCommitResult(null);
+  }, []);
+
   const handleGenerationProgress = React.useCallback(
     (message: WorkshopShowVsTellGenerationProgressMessage) => {
       const active = activeAttemptRef.current;
@@ -165,9 +251,15 @@ export function useShowVsTell(): UseShowVsTellReturn {
   return {
     generationProgress,
     generationResult,
+    commitPending,
+    commitResult,
     requestBeatSelection,
     generate,
     cancelGeneration,
+    commit,
+    handleCommitResult,
+    clearCommitResult,
+    resetCommitState,
     handleGenerationProgress,
     handleGenerationResult,
     persistedState: {}
