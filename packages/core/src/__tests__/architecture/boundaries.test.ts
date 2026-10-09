@@ -391,7 +391,7 @@ const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] 
       String.raw`\bShow\s+vs\.\s+Tell\b`,
       String.raw`\b(?:focalCharacter|lengthBudget|told-cleanly|shown-as-evidence|shown-from-inside|observable-action|sensory-evidence|dialogue-subtext|summary-exposition|plus-one-sentence|plus-one-paragraph|svtw)\b`
     ],
-    minimumSourceFiles: 25
+    minimumSourceFiles: 27
   }
 ];
 
