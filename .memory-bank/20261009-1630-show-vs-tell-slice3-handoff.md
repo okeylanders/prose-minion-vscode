@@ -68,20 +68,12 @@ editor write, and Creative Variations code beyond sibling arms.
 3. **Neutral blurb with the flip: agreed.** The catalog test also asserts the
    blurb does not mention recasting, alternatives, fixing, or improving.
 
-### Contract question needing a writer decision (not blocking this slice)
+### Direction rule (superseded by the review fixes)
 
-**"Direction-only carry always lowers the count" is not guaranteed by the
-frozen rules.** `keep: "<prose>"` costs `prose + 8`; `direction: <dir>` costs
-`dir + 11`. The Slice 1 integrity rule only requires direction strictly shorter
-than prose, so a direction 1–2 characters shorter can raise the count by up to
-2. `ShowVsTellArtifact.test.ts` proves the property holds whenever the margin is
-at least 3 and documents the 2-character edge. Real directions are far shorter
-(the fixture runs 0.36–0.66), so this is theoretical, but it is a stated
-completion criterion. Recommended fix: tighten the shared rule to
-`direction + 3 <= prose` (one line in the integrity gate, the prompt wording,
-and their tests; the projection needs no change). Tracked in
-[`.todo/tech-debt/2026-10-09-show-vs-tell-direction-margin.md`](../.todo/tech-debt/2026-10-09-show-vs-tell-direction-margin.md).
-I did **not** change the Slice 1/2 rule, since it was Opus-reviewed.
+The first cut flagged that "direction strictly shorter than prose" cannot
+guarantee that direction-only carry lowers the count. That write-up
+(a "+3 raw margin", "up to two characters") was **wrong**; Astra's review
+corrected it. See *Review fixes → F-02* below for the shipped rule.
 
 ### Other decisions
 
@@ -171,5 +163,57 @@ I did **not** change the Slice 1/2 rule, since it was Opus-reviewed.
   `show-vs-tell: 'eye'`. `WorkshopTurnBubble` needs a Show vs. Tell arm.
 - **Neutralizer.** `widget:show-vs-tell` registers with the prompt-delimiter
   neutralizer in the same change that ships the frame.
-- **Direction-margin decision** (above) before wiring commit if the writer wants
-  the "always lowers" guarantee to be literally true.
+- **Direction rule.** Resolved in the review fixes: the shared predicate is
+  encoded and margin-4; nothing for Slice 4 to decide.
+
+## Review fixes (Astra, PR #136)
+
+Report: `docs/pr-reviews/pr-136-show-vs-tell-slice-3-review.md`. All four
+findings are addressed on the same branch.
+
+- **F-01: stale grounded work.** The snapshot now carries two host revisions:
+  `roomRevision` (a process-unique mint that changes whenever the aggregate
+  becomes a different room: construction, `reset`, and import, so New, Open,
+  Rewind, Branch, and restore) and `contextRevision` (the aggregate's own
+  monotonic count of prompt-bearing context changes, already persisted as
+  `revisions.context`; it moves on every attachment add, remove, text edit, and
+  file refresh). Attachment bodies stay host-private. `useWorkshopRoom` exposes
+  both and `WorkshopApp` keys the controller on
+  `roomRevision:contextRevision:excerpt.version`. On a change the controller
+  cancels an in-flight attempt and clears the settled workup, kept list, and
+  carry, **only when a source reference grounded them**: an ungrounded beat is
+  the same request in any room. `WorkshopApp.showVsTellSources.test.tsx` holds
+  the three witnesses against real `WorkshopSessionService` snapshots (another
+  session at the same excerpt version; an in-place file refresh with the same id
+  and word count; an in-place text edit with a generation in flight), plus the
+  version-increment, close/reopen, and ungrounded controls. Mutating the key
+  back to excerpt version plus ids turns exactly the three witnesses red.
+- **F-02: direction carry could raise the count (600 → 603).** One shared,
+  encoded rule replaces the raw one:
+  `encode(direction).length + 4 <= encode(prose).length`, where the 4 is derived
+  from the frozen line keys (`direction` key − `keep` key − 1) and `encode` is
+  the projection's own encoder, now owned by `ShowVsTellDerivations` and
+  re-exported by the projection. `isShowVsTellDirectionShortEnough` backs the
+  response codec, persisted integrity, and the prompt wording ("at least 4
+  characters shorter … each line break counts as one character"), whose sync
+  test derives the 4 from the same constant. Tests cover raw margins 0/1/3
+  (rejected) and 4/5/12 (accepted), CRLF versus LF/CR/U+2028/U+2029 across a
+  matrix, trimming, and the exact CRLF witness (rejected at decode and at
+  integrity; the count would otherwise have risen by 3). The 585 ≤ 600 absolute
+  bound is unchanged. The earlier "never raises by more than two" claim and its
+  debt note are deleted; the note is archived as resolved.
+- **F-03: radio keyboard pattern.** One `ShowVsTellRadioGroup` (full APG
+  pattern: one tab stop on the selected option, Arrow keys move focus and
+  selection with wraparound, Home/End) now backs both the continuum and the
+  length budget; a disabled group has no tab stop and ignores keys. Tests cover
+  both groups. Choosing another position still keeps the workup (controller
+  test).
+- **N-01: controller size.** `useShowVsTellAuthoring.ts` is 486 lines;
+  `showVsTellAuthoringRules.ts` holds the pure rules. Still one transport-free
+  owner; the boundary and presentation guards cover both files
+  (`minimumSourceFiles` 20 → 22).
+
+Known limit, stated plainly: `roomRevision` is a per-process mint, so it
+distinguishes rooms within a running extension host (the only place a webview's
+stale reply can exist). It is not persisted and is not an identity of the saved
+session on disk.

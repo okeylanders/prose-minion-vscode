@@ -1,6 +1,6 @@
 # Sprint 05: Show vs. Tell Playground
 
-**Status**: Slice 3 ready for review. Slices 1 (#134) and 2 (#135) merged. Slice 3 (authoring surface, artifact projection, catalog flip) is on one branch and one PR; commit stays disabled until Slice 4, so the epic must not merge into `main` before it.
+**Status**: Slice 3 review fixes applied (Astra F-01–F-03, N-01); ready for re-review. Slices 1 (#134) and 2 (#135) merged. Slice 3 (authoring surface, artifact projection, catalog flip) is on one branch and one PR; commit stays disabled until Slice 4, so the epic must not merge into `main` before it.
 **Priority**: Medium
 **Branches**: one per slice, `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, each cut from `epic/conversation-widgets` and merged back into it by PR (see [Branching](#branching))
 **Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
@@ -175,8 +175,9 @@ the readout and changes what commits, without discarding the workup.
   allowed for dialogue), the channel(s) it uses (one or two of the five), a
   **gains / costs** craft note as two separate plain-text fields (`gains`,
   `costs`; no Markdown or HTML, and the UI supplies the bold labels), and a
-  **direction**: an abstract, reusable instruction that is strictly
-  shorter than the prose (the design fixture runs 0.36–0.66 of the prose
+  **direction**: an abstract, reusable instruction that is at least
+  four encoded characters shorter than the prose, so carrying it as direction
+  always lowers the count (the design fixture runs 0.36–0.66 of the prose
   length). Word count is computed host-side for display (`N w`), not supplied by
   the model. Ids are host-minted after validation, never supplied by the model.
   As in Sprint 03, a closed parser validates counts, group membership, character
@@ -361,7 +362,7 @@ same commit.
 | `showVsTellVariantsMinimum` / `showVsTellVariants` | 4 / 8 | Confirmed; four groups always present |
 | `showVsTellChannelsPerVariant` | 2 (minimum 1) | The fixture's richest variant is `summary + action` |
 | `showVsTellProseCharacters` | 1,200 | Covers the `+1 paragraph` budget |
-| `showVsTellDirectionCharacters` | 120 | Also strictly shorter than its prose; the fixture's longest is about 60 |
+| `showVsTellDirectionCharacters` | 120 | Also at least 4 encoded characters shorter than its prose, so direction-only carry always lowers the count; the fixture's longest is about 60 |
 | `showVsTellGainsCharacters` / `showVsTellCostsCharacters` | 160 / 160 | One sentence each |
 | `showVsTellFlagsPerVariant` / `showVsTellFlagNoteCharacters` | 4 / 160 | Bounds the uncounted warning lines |
 | `showVsTellOutputTokens` | 16,000 | Eight variants is about 13k characters of payload, plus headroom |
