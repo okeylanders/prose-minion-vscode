@@ -15,7 +15,6 @@ import type {
   SelectionDataMessage,
   WorkshopContextAttachmentSnapshot,
   WorkshopExcerptSnapshot,
-  WorkshopShowVsTellBeat,
   WorkshopShowVsTellCarryMode,
   WorkshopShowVsTellChannel,
   WorkshopShowVsTellDraft,
@@ -28,17 +27,9 @@ import type {
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { NarrativeHandlingPosition } from '@shared/constants/narrativeHandlingVocabulary';
 import {
-  SHOW_VS_TELL_CHANNELS,
-  SHOW_VS_TELL_DEFAULTS
-} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellContinuum';
-import {
   showVsTellSourceReferenceKey,
-  showVsTellWorkupVariants,
   type ShowVsTellGenerationInput
 } from '@/application/services/workshop/widgets/showVsTell/ShowVsTellDerivations';
-import {
-  buildShowVsTellArtifact
-} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellArtifact';
 import type {
   ShowVsTellArtifactUsage,
   ShowVsTellAvailableSource,
@@ -49,6 +40,26 @@ import type {
 import type {
   WorkshopShowVsTellOpening
 } from '@hooks/domain/workshop/controllers/useWorkshopWidgetOpening';
+import {
+  beatFromSelection,
+  beatWithEditedText,
+  changedWorkNotice,
+  collapseShowVsTellLineBreaks,
+  createShowVsTellAuthoringDraft,
+  deriveShowVsTellAvailableSources,
+  deriveShowVsTellCommitBlockers,
+  deriveShowVsTellGenerateBlockers,
+  generationDetail,
+  hasSettledWork,
+  projectShowVsTellArtifact,
+  sameBeat,
+  toggledShowVsTellChannels,
+  toggledShowVsTellKeep,
+  type ShowVsTellInputLabel
+} from './showVsTellAuthoringRules';
+
+// The rule helpers live beside this owner; these two are part of its public face.
+export { collapseShowVsTellLineBreaks, createShowVsTellAuthoringDraft };
 
 const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 
@@ -114,82 +125,6 @@ export type UseShowVsTellAuthoringReturn = ShowVsTellAuthoringState &
   ShowVsTellAuthoringActions & {
     persistedState: ShowVsTellAuthoringPersistence;
   };
-
-export function createShowVsTellAuthoringDraft(): WorkshopShowVsTellDraft {
-  return {
-    beat: { text: '', provenance: { kind: 'pasted' } },
-    surroundingContext: { sourceReferences: [] },
-    pov: { ...SHOW_VS_TELL_DEFAULTS.pov },
-    invariants: { mustSurvive: '', mustNotChange: '' },
-    channels: [...SHOW_VS_TELL_DEFAULTS.channels],
-    lengthBudget: SHOW_VS_TELL_DEFAULTS.lengthBudget,
-    position: SHOW_VS_TELL_DEFAULTS.position,
-    workup: null,
-    kept: [],
-    note: ''
-  };
-}
-
-const LINE_BREAK_RUN = /\s*(?:\r\n|[\r\n\u2028\u2029])+\s*/gu;
-
-/** A beat, a focal character, and the note are single-line fields. */
-export function collapseShowVsTellLineBreaks(text: string): string {
-  return text.replace(LINE_BREAK_RUN, ' ');
-}
-
-type ShowVsTellInputLabel =
-  | 'beat'
-  | 'surrounding passage source'
-  | 'point of view'
-  | '“Must survive” constraint'
-  | '“Must not change” constraint'
-  | 'channels'
-  | 'length budget'
-  | 'widget model'
-  | 'room';
-
-function changedWorkNotice(
-  label: ShowVsTellInputLabel,
-  hadActiveGeneration: boolean,
-  hadSettledWork: boolean
-): string | null {
-  if (hadSettledWork) {
-    return `Generated workup cleared because the ${label} changed.`;
-  }
-  return hadActiveGeneration
-    ? `Generation cancelled because the ${label} changed.`
-    : null;
-}
-
-function generationDetail(progress: WorkshopShowVsTellGenerationProgressPayload): string {
-  switch (progress.stage) {
-    case 'requesting':
-      return 'Requesting the workup';
-    case 'workup':
-      return `Receiving the workup · ${progress.outputCharacters.toLocaleString()} characters`;
-    case 'validating':
-      return 'Validating the closed response';
-  }
-}
-
-function sameBeat(left: WorkshopShowVsTellBeat, right: WorkshopShowVsTellBeat): boolean {
-  if (left.text !== right.text || left.provenance.kind !== right.provenance.kind) {
-    return false;
-  }
-  if (left.provenance.kind === 'excerpt' && right.provenance.kind === 'excerpt') {
-    return left.provenance.relativePath === right.provenance.relativePath
-      && left.provenance.startLine === right.provenance.startLine
-      && left.provenance.endLine === right.provenance.endLine;
-  }
-  if (left.provenance.kind === 'persona-prefill' && right.provenance.kind === 'persona-prefill') {
-    return left.provenance.personaId === right.provenance.personaId
-      && left.provenance.editedByWriter === right.provenance.editedByWriter;
-  }
-  return true;
-}
-
-const hasSettledWork = (draft: WorkshopShowVsTellDraft): boolean =>
-  draft.workup !== null || draft.kept.length > 0;
 
 export function useShowVsTellAuthoring({
   opening,
@@ -308,33 +243,12 @@ export function useShowVsTellAuthoring({
       || message.payload.target !== 'workshop_show_vs_tell_beat') {
       return;
     }
-    const payload = message.payload;
-    const collapsed = collapseShowVsTellLineBreaks(payload.content).trim();
-    const text = collapsed.slice(0, BUDGET.showVsTellBeatCharacters).trim();
-    // Display-safe provenance: the editor URI is dropped; the relative path and
-    // line range stay. Clipboard intake carries no range and is recorded as pasted.
-    const provenance = payload.sourceUri && payload.relativePath
-      ? {
-          kind: 'excerpt' as const,
-          relativePath: payload.relativePath,
-          ...(payload.startLine !== undefined ? { startLine: payload.startLine } : {}),
-          ...(payload.endLine !== undefined ? { endLine: payload.endLine } : {})
-        }
-      : { kind: 'pasted' as const };
-    const beat: WorkshopShowVsTellBeat = { text, provenance };
-    setIntakeNotice(
-      collapsed.length > BUDGET.showVsTellBeatCharacters
-        ? `That selection was longer than ${BUDGET.showVsTellBeatCharacters} characters, so the beat holds its first ${BUDGET.showVsTellBeatCharacters}. A beat is one line — use Creative Variations for a passage.`
-        : null
-    );
+    const { beat, notice } = beatFromSelection(message.payload);
+    setIntakeNotice(notice);
     updateGenerationInput('beat', (current) => sameBeat(beat, current.beat)
       ? current
       : { ...current, beat });
   }, [open, updateGenerationInput]);
-
-  const requestCurrentBeatSelection = React.useCallback(() => {
-    requestBeatSelection();
-  }, [requestBeatSelection]);
 
   const changeBeatText = React.useCallback((raw: string) => {
     const text = collapseShowVsTellLineBreaks(raw).slice(0, BUDGET.showVsTellBeatCharacters);
@@ -343,19 +257,7 @@ export function useShowVsTellAuthoring({
       if (text === current.beat.text) {
         return current;
       }
-      // Editing seeded text follows Creative Variations' provenance-flip rule.
-      const provenance = current.beat.provenance;
-      return {
-        ...current,
-        beat: {
-          text,
-          provenance: provenance.kind === 'excerpt'
-            ? { kind: 'pasted' }
-            : provenance.kind === 'persona-prefill'
-              ? { ...provenance, editedByWriter: true }
-              : provenance
-        }
-      };
+      return { ...current, beat: beatWithEditedText(current.beat, text) };
     });
   }, [updateGenerationInput]);
 
@@ -411,20 +313,8 @@ export function useShowVsTellAuthoring({
 
   const toggleChannel = React.useCallback((channel: WorkshopShowVsTellChannel) => {
     updateGenerationInput('channels', (current) => {
-      const selected = current.channels.includes(channel);
-      if (selected && current.channels.length === 1) {
-        return current; // The last selected channel cannot be turned off.
-      }
-      const wanted = selected
-        ? current.channels.filter((candidate) => candidate !== channel)
-        : [...current.channels, channel];
-      // Stored in the fixed channel order, whatever order the writer clicked.
-      return {
-        ...current,
-        channels: SHOW_VS_TELL_CHANNELS
-          .map((descriptor) => descriptor.id)
-          .filter((id) => wanted.includes(id))
-      };
+      const channels = toggledShowVsTellChannels(current.channels, channel);
+      return channels === current.channels ? current : { ...current, channels };
     });
   }, [updateGenerationInput]);
 
@@ -492,41 +382,15 @@ export function useShowVsTellAuthoring({
     setInvalidationNotice(changedWorkNotice('room', hadActiveGeneration, hadWork));
   }, [cancelActiveGeneration, open, roomKey, setDraft]);
 
-  const availableSources = React.useMemo<ShowVsTellAvailableSource[]>(() => [
-    ...(activeExcerpt
-      ? [{
-          reference: { kind: 'active-excerpt' } as const,
-          label: 'Active excerpt',
-          detail: activeExcerpt.source.kind === 'manual'
-            ? `Pasted Workshop passage · version ${activeExcerpt.version}`
-            : `${activeExcerpt.source.relativePath} · version ${activeExcerpt.version}`
-        }]
-      : []),
-    ...contextAttachments.map((attachment) => ({
-      reference: { kind: 'context-attachment' as const, attachmentId: attachment.id },
-      label: attachment.label,
-      detail: `${attachment.kind === 'file' ? attachment.relativePath ?? 'Project file' : 'Workshop text'} · ${attachment.words.toLocaleString()} words`
-    }))
-  ], [activeExcerpt, contextAttachments]);
+  const availableSources = React.useMemo(
+    () => deriveShowVsTellAvailableSources(activeExcerpt, contextAttachments),
+    [activeExcerpt, contextAttachments]
+  );
 
-  const generateBlockers = React.useMemo<ShowVsTellGenerateBlocker[]>(() => {
-    const blockers: ShowVsTellGenerateBlocker[] = [];
-    if (draft.beat.text.trim().length === 0) {
-      blockers.push('beat-required');
-    }
-    if (draft.invariants.mustSurvive.trim().length === 0) {
-      blockers.push('must-survive-required');
-    }
-    const reference = draft.surroundingContext.sourceReferences[0];
-    if (
-      reference !== undefined
-      && !availableSources.some((source) =>
-        showVsTellSourceReferenceKey(source.reference) === showVsTellSourceReferenceKey(reference))
-    ) {
-      blockers.push('source-unavailable');
-    }
-    return blockers;
-  }, [availableSources, draft.beat.text, draft.invariants.mustSurvive, draft.surroundingContext]);
+  const generateBlockers = React.useMemo(
+    () => deriveShowVsTellGenerateBlockers(draft, availableSources),
+    [availableSources, draft]
+  );
 
   const generateWorkup = React.useCallback(() => {
     const current = draftRef.current;
@@ -554,23 +418,7 @@ export function useShowVsTellAuthoring({
   }, [cancelActiveGeneration]);
 
   const toggleKeep = React.useCallback((variantId: string) => {
-    setDraft((current) => {
-      const variants = current.workup ? showVsTellWorkupVariants(current.workup) : [];
-      if (!variants.some((variant) => variant.id === variantId)) {
-        return current;
-      }
-      const kept = current.kept.some((entry) => entry.variantId === variantId)
-        ? current.kept.filter((entry) => entry.variantId !== variantId)
-        : [...current.kept, { variantId, carryMode: SHOW_VS_TELL_DEFAULTS.carryMode }];
-      // Kept variants are stored in workup order.
-      const order = new Map(variants.map((variant, index) => [variant.id, index]));
-      return {
-        ...current,
-        kept: [...kept].sort(
-          (left, right) => (order.get(left.variantId) ?? 0) - (order.get(right.variantId) ?? 0)
-        )
-      };
-    });
+    setDraft((current) => toggledShowVsTellKeep(current, variantId));
   }, [setDraft]);
 
   const changeCarryMode = React.useCallback((
@@ -590,24 +438,7 @@ export function useShowVsTellAuthoring({
     setDraft((current) => note === current.note ? current : { ...current, note });
   }, [setDraft]);
 
-  const artifactProjection = React.useMemo<{
-    usage: ShowVsTellArtifactUsage | null;
-    error: unknown | null;
-  }>(() => {
-    if (draft.kept.length === 0) {
-      return { usage: null, error: null };
-    }
-    try {
-      // The webview meter calls the same projection the host re-checks with.
-      const text = buildShowVsTellArtifact(draft);
-      return {
-        usage: { text, characters: text.length, budget: BUDGET.showVsTellArtifactCharacters },
-        error: null
-      };
-    } catch (error) {
-      return { usage: null, error };
-    }
-  }, [draft]);
+  const artifactProjection = React.useMemo(() => projectShowVsTellArtifact(draft), [draft]);
   const artifactUsage = artifactProjection.usage;
 
   React.useEffect(() => {
@@ -616,26 +447,14 @@ export function useShowVsTellAuthoring({
     }
   }, [artifactProjection.error]);
 
-  const commitBlockers = React.useMemo<ShowVsTellCommitBlocker[]>(() => {
-    const blockers: ShowVsTellCommitBlocker[] = [];
-    if (generation.kind === 'generating') {
-      blockers.push('generation-in-flight');
-    }
-    if (!draft.workup) {
-      blockers.push('no-workup');
-    } else if (draft.kept.length === 0) {
-      blockers.push('no-keep');
-    }
-    if (artifactProjection.error !== null) {
-      blockers.push('artifact-compilation-failed');
-    }
-    if (artifactUsage && artifactUsage.characters > artifactUsage.budget) {
-      blockers.push('over-artifact-budget');
-    }
-    // Slice 4 wires the commit route and removes this entry.
-    blockers.push('commit-not-wired');
-    return blockers;
-  }, [artifactProjection.error, artifactUsage, draft.kept.length, draft.workup, generation.kind]);
+  const commitBlockers = React.useMemo(
+    () => deriveShowVsTellCommitBlockers({
+      generating: generation.kind === 'generating',
+      draft,
+      projection: artifactProjection
+    }),
+    [artifactProjection, draft, generation.kind]
+  );
 
   return {
     draft,
@@ -646,7 +465,7 @@ export function useShowVsTellAuthoring({
     commitBlockers,
     artifactUsage,
     availableSources,
-    requestBeatSelection: requestCurrentBeatSelection,
+    requestBeatSelection,
     handleBeatSelection,
     changeBeatText,
     selectSourceReference,

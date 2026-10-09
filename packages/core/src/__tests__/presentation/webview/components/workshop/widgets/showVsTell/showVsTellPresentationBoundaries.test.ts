@@ -22,6 +22,10 @@ const CONTROLLER = path.join(
   SRC,
   'presentation/webview/hooks/domain/workshop/controllers/showVsTell/useShowVsTellAuthoring.ts'
 );
+const CONTROLLER_RULES = path.join(
+  SRC,
+  'presentation/webview/hooks/domain/workshop/controllers/showVsTell/showVsTellAuthoringRules.ts'
+);
 const TRANSPORT = path.join(
   SRC,
   'presentation/webview/hooks/domain/workshop/widgets/showVsTell/useShowVsTell.ts'
@@ -36,6 +40,7 @@ const componentFiles = fs.readdirSync(COMPONENT_DIRECTORY).filter((name) => /\.(
 const webviewFiles = [
   ...componentFiles.filter((name) => /\.tsx?$/.test(name)).map((name) => path.join(COMPONENT_DIRECTORY, name)),
   CONTROLLER,
+  CONTROLLER_RULES,
   TRANSPORT
 ];
 
@@ -87,13 +92,16 @@ describe('showVsTell presentation boundaries', () => {
     }
   });
 
-  it('the controller is transport-free', () => {
-    const content = read(CONTROLLER);
+  it.each([['controller', CONTROLLER], ['controller rules', CONTROLLER_RULES]])(
+    'the %s is transport-free',
+    (_name, file) => {
+      const content = read(file);
 
-    expect(content).not.toMatch(/useVSCodeApi|acquireVsCodeApi|MessageType|postMessage/);
-    expect(importSources(content).filter((source) => source.includes('messages')))
-      .toEqual(['@messages']);
-  });
+      expect(content).not.toMatch(/useVSCodeApi|acquireVsCodeApi|MessageType|postMessage/);
+      expect(importSources(content).filter((source) => source.includes('messages')))
+        .toEqual(['@messages']);
+    }
+  );
 
   it('nothing in the webview imports the codec, integrity, or workup-id modules', () => {
     for (const file of webviewFiles) {
