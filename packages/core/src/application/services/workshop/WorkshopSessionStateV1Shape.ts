@@ -51,6 +51,9 @@ import {
   assertCreativeVariationsRecommendationSeedShape
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsConfigCodec';
 import {
+  assertShowVsTellRecommendationSeedShape
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellConfigCodec';
+import {
   assertGesturePlaygroundRecommendationSeedShape
 } from '@/application/services/workshop/widgets/gesturePlayground/GesturePlaygroundConfigCodec';
 import {
@@ -650,6 +653,12 @@ function assertTurnWidgetRecommendation(value: unknown, path: string): void {
   // a staged build must not write a session that the shipped codec cannot reopen.
   if (!isLiveWorkshopWidgetId(recommendation.widgetId)) {
     shapeError(`${path}.widgetId`, 'live Conversation Widget id');
+  }
+  if (recommendation.widgetId === 'show-vs-tell') {
+    // Unlike the older arms, this recommendation is meaningless without its
+    // seed: the beat and the declared "same" are the whole payload.
+    assertShowVsTellRecommendationSeedShape(recommendation.seed, `${path}.seed`);
+    return;
   }
   if (recommendation.seed === undefined) return;
   if (recommendation.widgetId === 'gesture-playground') {

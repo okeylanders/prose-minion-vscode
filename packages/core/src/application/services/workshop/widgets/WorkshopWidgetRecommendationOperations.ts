@@ -30,6 +30,11 @@ import {
   LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityRecommendation';
 import {
+  ShowVsTellRecommendationField,
+  ShowVsTellRecommendationInvalidFieldReason,
+  SHOW_VS_TELL_WIDGET_RECOMMENDATION_ENTRY
+} from '@/application/services/workshop/widgets/showVsTell/ShowVsTellRecommendation';
+import {
   extractWorkshopWidgetRecommendationId,
   TRY_WIDGET_HEADING,
   WorkshopWidgetRecommendationEntry,
@@ -39,12 +44,14 @@ import {
 export type WorkshopWidgetRecommendationField =
   | CreativeVariationsRecommendationField
   | GesturePlaygroundRecommendationField
-  | LexicalGravityRecommendationField;
+  | LexicalGravityRecommendationField
+  | ShowVsTellRecommendationField;
 
 export type WorkshopWidgetRecommendationInvalidFieldReason =
   | CreativeVariationsRecommendationInvalidFieldReason
   | GesturePlaygroundRecommendationInvalidFieldReason
-  | LexicalGravityRecommendationInvalidFieldReason;
+  | LexicalGravityRecommendationInvalidFieldReason
+  | ShowVsTellRecommendationInvalidFieldReason;
 
 export type WorkshopWidgetRecommendationInspection =
   ProtocolWorkshopWidgetRecommendationInspection<
@@ -66,7 +73,8 @@ type RecommendationWidgetId = WorkshopWidgetRecommendation['widgetId'];
 export const WORKSHOP_WIDGET_RECOMMENDATION_ENTRIES = Object.freeze({
   'gesture-playground': GESTURE_PLAYGROUND_WIDGET_RECOMMENDATION_ENTRY,
   'lexical-gravity': LEXICAL_GRAVITY_WIDGET_RECOMMENDATION_ENTRY,
-  'creative-variations': CREATIVE_VARIATIONS_WIDGET_RECOMMENDATION_ENTRY
+  'creative-variations': CREATIVE_VARIATIONS_WIDGET_RECOMMENDATION_ENTRY,
+  'show-vs-tell': SHOW_VS_TELL_WIDGET_RECOMMENDATION_ENTRY
 }) satisfies Readonly<
   Record<RecommendationWidgetId, WorkshopWidgetRecommendationEntry>
 >;

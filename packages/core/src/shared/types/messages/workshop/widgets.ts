@@ -17,7 +17,11 @@ import {
   WorkshopLexicalGravityReach,
   WorkshopLexicalGravityRecommendationSeed
 } from './lexicalGravity';
-import { WorkshopShowVsTellCommitPayload, WorkshopShowVsTellDraft } from './showVsTell';
+import {
+  WorkshopShowVsTellCommitPayload,
+  WorkshopShowVsTellDraft,
+  WorkshopShowVsTellRecommendationSeed
+} from './showVsTell';
 import { WorkshopStandingWidgetCommit } from './standingDirectives';
 
 /**
@@ -175,6 +179,11 @@ export type WorkshopWidgetRecommendation =
   | {
       widgetId: 'creative-variations';
       seed?: WorkshopCreativeVariationsRecommendationSeed;
+    }
+  | {
+      widgetId: 'show-vs-tell';
+      /** Required: a recommendation without a beat and a declared "same" opens nothing. */
+      seed: WorkshopShowVsTellRecommendationSeed;
     };
 
 export interface WorkshopRequestWidgetConfigMessage extends MessageEnvelope<{ configId: string }> {

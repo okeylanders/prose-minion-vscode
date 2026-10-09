@@ -253,7 +253,7 @@ describe('prompt budgets', () => {
   });
 
   it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(7_823);
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(12_523);
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {

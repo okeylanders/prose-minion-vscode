@@ -181,6 +181,11 @@ function widgetRecommendationMeta(
       return recommendation.seed?.subjectText
         ? 'prefilled · passage ready'
         : 'recommended';
+    case 'show-vs-tell':
+      // The subject is a persona-written display label; it is chip-only.
+      return recommendation.seed.subject
+        ? `prefilled · ${recommendation.seed.subject}`
+        : 'prefilled';
   }
 }
 

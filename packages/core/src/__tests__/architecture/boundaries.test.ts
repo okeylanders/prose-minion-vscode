@@ -391,7 +391,7 @@ const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] 
       String.raw`\bShow\s+vs\.\s+Tell\b`,
       String.raw`\b(?:focalCharacter|lengthBudget|told-cleanly|shown-as-evidence|shown-from-inside|observable-action|sensory-evidence|dialogue-subtext|summary-exposition|plus-one-sentence|plus-one-paragraph|svtw)\b`
     ],
-    minimumSourceFiles: 27
+    minimumSourceFiles: 28
   }
 ];
 
@@ -482,17 +482,17 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
     reason: 'closed persisted union validator',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations)ConfigCodec|assert(?:GesturePlayground|LexicalGravity|CreativeVariations)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations)/
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)ConfigCodec|assert(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
     reason: 'recommendation source-availability boundary',
-    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell|lengthBudget|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionRecords.ts',
     reason: 'closed recommendation-clone dispatch',
-    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',
@@ -517,7 +517,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
     reason: 'closed widget-recommendation registry and prompt composer',
-    allowedToken: /(?:(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY|CREATIVE_VARIATIONS)_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity|CreativeVariations)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
+    allowedToken: /(?:(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY|CREATIVE_VARIATIONS|SHOW_VS_TELL)_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
   },
   {
     file: 'shared/types/messages/workshop/recovery.ts',
@@ -552,7 +552,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
     reason: 'closed widget-opening presentation controller',
-    allowedToken: /(?:WorkshopShowVsTellOpening|WorkshopShowVsTellWidgetConfigSnapshot|setShowVsTellOpening|show-vs-tell|showVsTellOpening|Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+    allowedToken: /(?:WorkshopShowVsTellOpening|WorkshopShowVsTellRecommendationSeed|WorkshopShowVsTellWidgetConfigSnapshot|setShowVsTellOpening|show-vs-tell|showVsTellOpening|Show vs\. Tell|Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts',
@@ -577,7 +577,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
     reason: 'closed writer-ask prefill registry',
-    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|creative-aim)/
+    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|show-vs-tell|creative-aim)/
   },
   {
     file: 'shared/constants/promptBudgets.ts',
@@ -632,7 +632,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/types/messages/workshop/widgets.ts',
     reason: 'explicit widget-family config, recommendation, and result union owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopShowVsTell(?:CommitPayload|Draft|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|metaphorPull)/
+    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopShowVsTell(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|metaphorPull)/
   },
   {
     file: 'utils/workshopPromptFrames.ts',

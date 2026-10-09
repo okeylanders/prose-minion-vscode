@@ -489,6 +489,81 @@ describe('useWorkshopWidgetOpening', () => {
     expect(onCloseCreativeVariations).not.toHaveBeenCalled();
   });
 
+  describe('Show vs. Tell recommendation prefill', () => {
+    const seedRecommendation = {
+      widgetId: 'show-vs-tell' as const,
+      seed: {
+        beatText: 'She hadn’t trusted him since the funeral.',
+        subject: 'the funeral line',
+        sourceReferences: [],
+        mustSurvive: 'The distrust is old.'
+      }
+    };
+    const mount = (host = emptyHost(), onError = jest.fn()) => ({
+      onError,
+      ...renderHook(() => useWorkshopWidgetOpening({
+        host,
+        standingDirectives: [],
+        onError,
+        onCloseGesturePlayground: jest.fn(),
+        onCloseLexicalGravity: jest.fn(),
+        onCloseCreativeVariations: jest.fn(),
+        onCloseShowVsTell: jest.fn()
+      }))
+    });
+
+    it('opens a seed opening that carries the producing persona', () => {
+      const h = mount();
+
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'Jill', 'jill'));
+
+      expect(h.result.current.showVsTellOpening).toEqual({
+        kind: 'seed',
+        seed: seedRecommendation.seed,
+        personaId: 'jill',
+        personaLabel: 'Jill'
+      });
+      expect(h.result.current.creativeVariationsOpening).toBeNull();
+      expect(h.onError).not.toHaveBeenCalled();
+    });
+
+    it('refuses a prefill whose producing persona identity is missing', () => {
+      const h = mount();
+
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'the persona'));
+
+      expect(h.result.current.showVsTellOpening).toBeNull();
+      expect(h.onError).toHaveBeenCalledWith(
+        'That Show vs. Tell prefill has no persona identity and cannot open.'
+      );
+    });
+
+    it('keeps an open Show vs. Tell draft when another persona prefill is clicked', () => {
+      const h = mount();
+
+      act(() => h.result.current.launchWidget('show-vs-tell'));
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'Margot', 'margot'));
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'new' });
+      expect(h.onError).toHaveBeenCalledWith(
+        'Close the current Show vs. Tell sheet before opening a prefill.'
+      );
+    });
+
+    it('keeps the writer-requested config reopen ahead of a later prefill click', () => {
+      const h = mount();
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'Margot', 'margot'));
+
+      expect(h.result.current.pendingWidgetConfigId).toBe(showVsTellConfig.id);
+      expect(h.result.current.showVsTellOpening).toBeNull();
+      expect(h.onError).toHaveBeenCalledWith(
+        'Wait for the requested widget configuration before opening a prefill.'
+      );
+    });
+  });
+
   describe('Show vs. Tell reopen', () => {
     const mount = (host: WorkshopWidgetOpeningHost, onError = jest.fn(), onCloseShowVsTell = jest.fn()) => {
       let current = host;

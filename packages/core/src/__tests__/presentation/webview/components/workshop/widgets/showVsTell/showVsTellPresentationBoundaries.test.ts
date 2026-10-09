@@ -2,7 +2,7 @@
  * Negative-space witness for the Show vs. Tell presentation slice
  * (Sprint 05, Slices 3 and 4).
  *
- * Four claims:
+ * Five claims (the fifth, added in Slice 5, pins the recommendation seed):
  *  1. The component directory is controlled presentation only: no VS Code
  *     transport, no message-enum dispatch, no storage, no editor-write path.
  *  2. The authoring controller is transport-free, and nothing in the webview
@@ -14,6 +14,9 @@
  *  4. No editor-write path exists anywhere in the feature: no Show vs. Tell
  *     file, on either side of the host boundary, references an editor edit,
  *     insert, or apply API, and no Show vs. Tell message type names one.
+ *  5. The recommendation seed is input-only: its contract declares no
+ *     workup, kept variants, carry mode, note, or provenance, and the
+ *     webview never imports the host-only recommendation parser.
  */
 
 import * as fs from 'fs';
@@ -69,9 +72,10 @@ const featureFiles = [
   CONTRACT_FILE
 ];
 
-// The commit, warning, codec, integrity, and workup-id modules are host-only.
+// The commit, warning, codec, integrity, workup-id, and recommendation-parser
+// modules are host-only.
 const HOST_ONLY_MODULE =
-  /ShowVsTell(?:ConfigCodec|ConfigIntegrity|WorkupId|OneShotCommit|ArtifactWarnings)|node:crypto|from 'crypto'/;
+  /ShowVsTell(?:ConfigCodec|ConfigIntegrity|WorkupId|OneShotCommit|ArtifactWarnings|Recommendation)|node:crypto|from 'crypto'/;
 
 const FORBIDDEN_COMPONENT_TOKENS = [
   'useVSCodeApi',
@@ -139,7 +143,7 @@ describe('showVsTell presentation boundaries', () => {
     }
   );
 
-  it('nothing in the webview imports the codec, integrity, or workup-id modules', () => {
+  it('nothing in the webview imports the codec, integrity, workup-id, commit, or recommendation-parser modules', () => {
     for (const file of webviewFiles) {
       const offending = importSources(read(file)).filter((source) => HOST_ONLY_MODULE.test(source));
       expect({ file: path.relative(SRC, file), offending }).toEqual({
@@ -197,4 +201,27 @@ describe('showVsTell presentation boundaries', () => {
     expect(read(path.join(COMPONENT_DIRECTORY, 'WorkshopShowVsTellModal.tsx')))
       .toContain('Nothing is inserted into the editor — commit hands directions to the room.');
   });
+  it('declares the recommendation seed input-only: no workup, kept, carry, note, or provenance', () => {
+    const contract = read(CONTRACT_FILE);
+    const start = contract.indexOf('export interface WorkshopShowVsTellRecommendationSeed');
+    const seedInterface = contract.slice(start, contract.indexOf('\n}\n', start));
+
+    expect(start).toBeGreaterThan(-1);
+    for (const forbidden of ['workup', 'kept', 'carry', 'note', 'provenance', 'editedByWriter']) {
+      expect({ forbidden, declared: new RegExp(`^\\s+${forbidden}\\w*\\??:`, 'm').test(seedInterface) })
+        .toEqual({ forbidden, declared: false });
+    }
+  });
+
+  it('keeps persona-prefill custody on the beat alone: no POV custody marker exists (Q3)', () => {
+    const contract = read(CONTRACT_FILE);
+    const pov = contract.slice(
+      contract.indexOf('export interface WorkshopShowVsTellPov '),
+      contract.indexOf('export interface WorkshopShowVsTellInvariants')
+    );
+
+    expect(pov).toContain('focalCharacter');
+    expect(pov).not.toMatch(/provenance|editedByWriter|personaId/);
+  });
+
 });

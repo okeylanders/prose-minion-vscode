@@ -18,6 +18,7 @@ import {
   exactObject,
   numberAt,
   objectAt,
+  optionalBoundedStringAt,
   shapeError
 } from '@/application/services/workshop/persistedValidation';
 import type {
@@ -53,6 +54,68 @@ const LINE_BREAK = /[\r\n\u2028\u2029]/;
  * suffixes; integrity then requires their exact derived values.
  */
 const DERIVED_ID_CHARACTERS = PROMPT_BUDGETS.workshopWidgets.showVsTellWorkupIdCharacters + 40;
+
+/**
+ * Exact persisted shape of a recommendation seed. The seed is input-only, so
+ * the exact-key check is what makes a workup, kept variants, a carry mode, a
+ * note, or provenance unrepresentable: any such key is an unknown key.
+ */
+export function assertShowVsTellRecommendationSeedShape(value: unknown, path: string): void {
+  const budget = PROMPT_BUDGETS.workshopWidgets;
+  const seed = exactObject(
+    value,
+    path,
+    ['beatText', 'sourceReferences', 'mustSurvive'],
+    ['subject', 'mustNotChange', 'pov', 'position', 'channels', 'lengthBudget']
+  );
+  singleLineStringAt(seed.beatText, `${path}.beatText`, budget.showVsTellBeatCharacters, false);
+  if (seed.subject !== undefined) {
+    singleLineStringAt(
+      seed.subject,
+      `${path}.subject`,
+      budget.showVsTellRecommendationSubjectCharacters
+    );
+  }
+  assertShowVsTellSourceReferencesShape(seed.sourceReferences, `${path}.sourceReferences`);
+  boundedStringAt(
+    seed.mustSurvive,
+    `${path}.mustSurvive`,
+    budget.showVsTellMustSurviveCharacters,
+    false
+  );
+  optionalBoundedStringAt(
+    seed.mustNotChange,
+    `${path}.mustNotChange`,
+    budget.showVsTellMustNotChangeCharacters
+  );
+  if (seed.pov !== undefined) {
+    const pov = exactObject(seed.pov, `${path}.pov`, ['mode', 'focalCharacter']);
+    enumAt(pov.mode, `${path}.pov.mode`, POV_MODE_IDS);
+    singleLineStringAt(
+      pov.focalCharacter,
+      `${path}.pov.focalCharacter`,
+      budget.showVsTellPovFocalCharacterCharacters
+    );
+    if (pov.mode === 'unspecified' && pov.focalCharacter !== '') {
+      shapeError(`${path}.pov.focalCharacter`, 'blank while the mode is unspecified');
+    }
+  }
+  if (seed.position !== undefined) {
+    enumAt(seed.position, `${path}.position`, NARRATIVE_HANDLING_POSITIONS);
+  }
+  if (seed.channels !== undefined) {
+    boundedArrayAt(seed.channels, `${path}.channels`, 1, CHANNEL_IDS.length, 'channels');
+    arrayOf(seed.channels, `${path}.channels`, (channel, channelPath) =>
+      enumAt(channel, channelPath, CHANNEL_IDS)
+    );
+    if (new Set(seed.channels as string[]).size !== (seed.channels as string[]).length) {
+      shapeError(`${path}.channels`, 'distinct channels');
+    }
+  }
+  if (seed.lengthBudget !== undefined) {
+    enumAt(seed.lengthBudget, `${path}.lengthBudget`, LENGTH_BUDGET_IDS);
+  }
+}
 
 export function assertShowVsTellDraftCheckpointShape(value: unknown, path: string): void {
   assertShowVsTellDraftShape(value, path);
