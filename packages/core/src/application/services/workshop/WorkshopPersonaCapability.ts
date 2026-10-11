@@ -546,7 +546,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       this.dictionaryContext(request.context, request.purpose),
       () => {},
       this.turn.signal,
-      { includeEncyclopedia: false }
+      { includeEncyclopedia: false, includePalettes: false }
     );
     if (this.turn.signal.aborted) throw this.abortError();
     const failed = isApiKeyNotConfiguredWarning(lookup.content) || lookup.content.startsWith('Error:');
@@ -569,6 +569,7 @@ export class WorkshopPersonaCapability implements AgentCapability<
       this.dictionaryContext(request.context, request.purpose),
       {
         includeEncyclopedia: false,
+        includePalettes: false,
         signal: this.turn.signal,
         onProgress: progress => this.turn.events.status(
           `${this.speakerLabel()} is building the Writer's Dictionary entry…`,

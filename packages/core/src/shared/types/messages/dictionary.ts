@@ -9,6 +9,30 @@ import { TokenUsage } from './tokenUsage';
 export interface DictionaryEntryOptions {
   /** Include the Topic & Related Lexicon appendix unless explicitly disabled. */
   includeEncyclopedia?: boolean;
+  /**
+   * Include the 🎨 Chromatic Palettes section (`pm-palette` fences) ONLY when
+   * explicitly `true`. Absent means OFF, unlike `includeEncyclopedia`: callers
+   * that cannot render palette fences (Workshop personas, a console host)
+   * must never receive them by default. The Dictionary UI always sends a boolean.
+   */
+  includePalettes?: boolean;
+}
+
+export type ResolvedDictionaryEntryOptions = Required<DictionaryEntryOptions>;
+
+/**
+ * Apply each entry option's documented default and drop every non-option
+ * field, so handlers can forward a payload's entry options as one object.
+ * The `Required` return type makes a new option fail to compile here until
+ * its default is decided.
+ */
+export function resolveDictionaryEntryOptions(
+  options: DictionaryEntryOptions = {}
+): ResolvedDictionaryEntryOptions {
+  return {
+    includeEncyclopedia: options.includeEncyclopedia !== false,
+    includePalettes: options.includePalettes === true
+  };
 }
 
 export interface LookupDictionaryPayload extends DictionaryEntryOptions {
