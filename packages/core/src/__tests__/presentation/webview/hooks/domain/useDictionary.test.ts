@@ -29,6 +29,7 @@ describe('useDictionary - Type Contracts', () => {
         word: '',
         context: '',
         includeEncyclopedia: true,
+        includePalettes: true,
         wordEdited: false,
         sourceUri: '',
         relativePath: '',
@@ -70,6 +71,7 @@ describe('useDictionary - Type Contracts', () => {
         setWord: jest.fn(),
         setContext: jest.fn(),
         setIncludeEncyclopedia: jest.fn(),
+        setIncludePalettes: jest.fn(),
         setWordEdited: jest.fn(),
         setSource: jest.fn(),
         clearResult: jest.fn(),
@@ -103,6 +105,7 @@ describe('useDictionary - Type Contracts', () => {
         dictionaryWord: '',
         dictionaryContext: '',
         dictionaryIncludeEncyclopedia: true,
+        dictionaryIncludePalettes: true,
         dictionaryWordEdited: false,
         dictionarySourceUri: '',
         dictionaryRelativePath: '',
@@ -156,6 +159,50 @@ describe('useDictionary - Encyclopedia Preference', () => {
 
     const restored = renderHook(() => useDictionary());
     expect(restored.result.current.includeEncyclopedia).toBe(false);
+  });
+});
+
+describe('useDictionary - Chromatic Palettes Preference', () => {
+  beforeEach(() => {
+    (useVSCodeApi as jest.Mock).mockReturnValue(createMockVSCode());
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('includes palettes by default', () => {
+    const { result } = renderHook(() => useDictionary());
+
+    expect(result.current.includePalettes).toBe(true);
+    expect(result.current.persistedState.dictionaryIncludePalettes).toBe(true);
+  });
+
+  it.each([false, true])('restores a saved palette preference of %s', (includePalettes) => {
+    (usePersistedState as jest.Mock).mockReturnValue({
+      dictionaryIncludePalettes: includePalettes
+    });
+
+    const { result } = renderHook(() => useDictionary());
+
+    expect(result.current.includePalettes).toBe(includePalettes);
+  });
+
+  it('persists the palette choice independently of the encyclopedia choice', () => {
+    const { result, unmount } = renderHook(() => useDictionary());
+
+    act(() => result.current.setIncludePalettes(false));
+
+    expect(result.current.includePalettes).toBe(false);
+    expect(result.current.includeEncyclopedia).toBe(true);
+    const persistedState = result.current.persistedState;
+    unmount();
+    (usePersistedState as jest.Mock).mockReturnValue(persistedState);
+
+    const restored = renderHook(() => useDictionary());
+    expect(restored.result.current.includePalettes).toBe(false);
+    expect(restored.result.current.includeEncyclopedia).toBe(true);
   });
 });
 

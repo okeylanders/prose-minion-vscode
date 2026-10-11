@@ -11,6 +11,8 @@ import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { WordCounter } from '../shared/WordCounter';
 import { StreamingContent } from '../shared/StreamingContent';
+import { DictionaryOptionSwitch } from '@components/dictionary/DictionaryOptionSwitch';
+import { DICTIONARY_FENCED_BLOCKS } from '@components/dictionary/ChromaticPaletteBlock';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
@@ -143,7 +145,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       payload: {
         word: sanitizedWord,
         context: contextValue || undefined,
-        includeEncyclopedia: dictionary.includeEncyclopedia
+        includeEncyclopedia: dictionary.includeEncyclopedia,
+        includePalettes: dictionary.includePalettes
       },
       timestamp: Date.now()
     });
@@ -188,7 +191,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       payload: {
         word: sanitizedWord,
         contextText: dictionary.context.trim() || undefined,
-        includeEncyclopedia: dictionary.includeEncyclopedia
+        includeEncyclopedia: dictionary.includeEncyclopedia,
+        includePalettes: dictionary.includePalettes
       },
       timestamp: Date.now()
     });
@@ -213,7 +217,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       payload: {
         word: sanitizedWord,
         context: dictionary.context.trim() || undefined,
-        includeEncyclopedia: dictionary.includeEncyclopedia
+        includeEncyclopedia: dictionary.includeEncyclopedia,
+        includePalettes: dictionary.includePalettes
       },
       timestamp: Date.now()
     });
@@ -358,32 +363,24 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
         />
       </div>
 
-      <button
-        type="button"
-        role="switch"
-        className="pm-dictionary-encyclopedia-option"
-        aria-checked={dictionary.includeEncyclopedia}
-        aria-labelledby="dictionary-encyclopedia-label dictionary-encyclopedia-kind"
-        aria-describedby="dictionary-encyclopedia-description"
+      <DictionaryOptionSwitch
+        id="dictionary-encyclopedia"
+        label="Topic & Related Lexicon"
+        kind="Encyclopedia entry"
+        description="Append in-depth topic exploration, related vocabulary, and possible reference books to the end of this entry."
+        checked={dictionary.includeEncyclopedia}
         disabled={isGenerating}
-        onClick={() => dictionary.setIncludeEncyclopedia(!dictionary.includeEncyclopedia)}
-      >
-        <span className="pm-dictionary-encyclopedia-copy">
-          <span className="pm-dictionary-encyclopedia-heading">
-            <span id="dictionary-encyclopedia-label">Topic &amp; Related Lexicon</span>
-            <span id="dictionary-encyclopedia-kind" className="pm-dictionary-encyclopedia-kind">Encyclopedia entry</span>
-          </span>
-          <span id="dictionary-encyclopedia-description" className="pm-dictionary-encyclopedia-description">
-            Append in-depth topic exploration, related vocabulary, and possible reference books to the end of this entry.
-          </span>
-        </span>
-        <span className="pm-dictionary-encyclopedia-control" aria-hidden="true">
-          <span>{dictionary.includeEncyclopedia ? 'On' : 'Off'}</span>
-          <span className="pm-dictionary-encyclopedia-track">
-            <span className="pm-dictionary-encyclopedia-thumb" />
-          </span>
-        </span>
-      </button>
+        onChange={dictionary.setIncludeEncyclopedia}
+      />
+      <DictionaryOptionSwitch
+        id="dictionary-palettes"
+        label="Chromatic Palettes"
+        kind="Color swatches"
+        description="Add literal and evocative color palettes after AI Advisory Notes. Every swatch is a named color with a short definition and its hex value."
+        checked={dictionary.includePalettes}
+        disabled={isGenerating}
+        onChange={dictionary.setIncludePalettes}
+      />
 
       <div className="button-group">
         <button
@@ -421,6 +418,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
           chunksPerSecond={dictionary.streamingChunksPerSecond}
           onCancel={dictionary.currentRequestId ? handleCancelStreaming : undefined}
           cancelDisabled={!dictionary.currentRequestId}
+          fencedBlocks={DICTIONARY_FENCED_BLOCKS}
         />
       )}
 
@@ -479,7 +477,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
               });
             }}
           >
-            <MarkdownRenderer content={markdownContent} />
+            <MarkdownRenderer content={markdownContent} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />
           </ErrorBoundary>
         </div>
       )}

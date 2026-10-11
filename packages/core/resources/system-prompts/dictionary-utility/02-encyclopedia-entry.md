@@ -1,6 +1,6 @@
 # Dictionary Utility — Encyclopedia Entry Required for This Lookup
 
-The writer has ENABLED the encyclopedia entry for this lookup. It is a required part of this response. After completing all fifteen standard dictionary sections, append **Topic & Related Lexicon** LAST, after **AI Advisory Notes**. Preserve the original sections' order, depth, and creative breadth.
+The writer has ENABLED the encyclopedia entry for this lookup. It is a required part of this response. After completing all fifteen standard dictionary sections, append **Topic & Related Lexicon** LAST, after **AI Advisory Notes** and any enabled **Chromatic Palettes** section. Preserve the original sections' order, depth, and creative breadth.
 
 Use the heading `# 📂 Topic & Related Lexicon`. The response is incomplete if it stops at AI Advisory Notes or omits the encyclopedia section.
 

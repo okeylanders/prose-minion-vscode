@@ -1088,7 +1088,7 @@ select:focus {
   transform: none;
 }
 
-.pm-dictionary-encyclopedia-option {
+.pm-dictionary-option {
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -1106,30 +1106,30 @@ select:focus {
   cursor: pointer;
 }
 
-.pm-dictionary-encyclopedia-option[aria-checked="true"] {
+.pm-dictionary-option[aria-checked="true"] {
   border-color: var(--pm-primary-soft-border);
   background: color-mix(in srgb, var(--pm-primary) 5%, var(--pm-surface));
 }
 
-.pm-dictionary-encyclopedia-option:hover:not(:disabled) {
+.pm-dictionary-option:hover:not(:disabled) {
   border-color: var(--pm-primary);
 }
 
-.pm-dictionary-encyclopedia-option:focus-visible {
+.pm-dictionary-option:focus-visible {
   outline: 2px solid var(--pm-primary);
   outline-offset: 2px;
 }
 
-.pm-dictionary-encyclopedia-option:disabled {
+.pm-dictionary-option:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.pm-dictionary-encyclopedia-copy {
+.pm-dictionary-option-copy {
   min-width: 0;
 }
 
-.pm-dictionary-encyclopedia-heading {
+.pm-dictionary-option-heading {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1137,7 +1137,7 @@ select:focus {
   font-weight: 600;
 }
 
-.pm-dictionary-encyclopedia-kind {
+.pm-dictionary-option-kind {
   padding: 2px 7px;
   border: 1px solid var(--pm-border-soft);
   border-radius: var(--pm-r-pill);
@@ -1147,7 +1147,7 @@ select:focus {
   font-weight: 500;
 }
 
-.pm-dictionary-encyclopedia-description {
+.pm-dictionary-option-description {
   display: block;
   margin-top: 6px;
   color: var(--pm-muted);
@@ -1155,7 +1155,7 @@ select:focus {
   line-height: 1.5;
 }
 
-.pm-dictionary-encyclopedia-control {
+.pm-dictionary-option-control {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -1164,7 +1164,7 @@ select:focus {
   font-size: 11px;
 }
 
-.pm-dictionary-encyclopedia-track {
+.pm-dictionary-option-track {
   box-sizing: border-box;
   position: relative;
   width: 36px;
@@ -1175,7 +1175,7 @@ select:focus {
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.pm-dictionary-encyclopedia-thumb {
+.pm-dictionary-option-thumb {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -1186,19 +1186,19 @@ select:focus {
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.pm-dictionary-encyclopedia-option[aria-checked="true"] .pm-dictionary-encyclopedia-track {
+.pm-dictionary-option[aria-checked="true"] .pm-dictionary-option-track {
   border-color: var(--pm-primary);
   background: var(--pm-primary);
 }
 
-.pm-dictionary-encyclopedia-option[aria-checked="true"] .pm-dictionary-encyclopedia-thumb {
+.pm-dictionary-option[aria-checked="true"] .pm-dictionary-option-thumb {
   transform: translateX(16px);
   background: var(--pm-primary-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pm-dictionary-encyclopedia-track,
-  .pm-dictionary-encyclopedia-thumb {
+  .pm-dictionary-option-track,
+  .pm-dictionary-option-thumb {
     transition: none;
   }
 }
@@ -1219,6 +1219,141 @@ select:focus {
   color: var(--pm-muted);
   font-size: 11px;
   line-height: 1.5;
+}
+
+/* ============================================================
+   Dictionary Chromatic Palettes (`pm-palette` fences): a strip for the
+   colors together, then a list for reading them. Chip and strip colors
+   arrive ONLY through React's validated style={{ backgroundColor }} —
+   never filter, fade, or blend them, or a chip stops meaning its hex.
+   The palette renders inside .markdown-content, whose ul/li rules
+   (specificity 0,1,1) would otherwise leak in, hence the
+   `.pm-palette .x` (0,2,0) selectors on the list.
+   ============================================================ */
+.pm-palette {
+  /* Ring derived from the text color so it contrasts in every theme:
+     light around near-black chips on dark, dark around near-white on light. */
+  --pm-palette-ring: color-mix(in srgb, var(--pm-text) 28%, transparent);
+  box-sizing: border-box;
+  min-width: 0;
+  margin: var(--spacing-md) 0;
+  padding: var(--spacing-md);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  background: var(--pm-surface);
+}
+
+.pm-palette-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.pm-palette-title {
+  min-width: 0;
+  color: var(--pm-text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.pm-palette-kind {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-r-pill);
+  background: var(--pm-surface-2);
+  color: var(--pm-text-2);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.pm-palette-strip {
+  box-sizing: border-box;
+  display: flex;
+  height: 20px;
+  margin-bottom: var(--spacing-md);
+  overflow: hidden;
+  border: 1px solid var(--pm-palette-ring);
+  border-radius: var(--pm-r-input);
+}
+
+.pm-palette-strip-segment {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pm-palette .pm-palette-swatches {
+  display: grid;
+  /* One column in the sidebar; wider panes flow rows into columns. min()
+     keeps a pane narrower than 220px from scrolling horizontally. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--spacing-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pm-palette .pm-palette-swatch {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+}
+
+.pm-palette-chip {
+  box-sizing: border-box;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--pm-palette-ring);
+  border-radius: var(--pm-r-input);
+  /* Keep the ring over the card, not over the swatch's own color. */
+  background-clip: padding-box;
+}
+
+.pm-palette-swatch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pm-palette-swatch-name {
+  color: var(--pm-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.pm-palette-swatch-definition {
+  color: var(--pm-text-2);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.pm-palette-swatch-hex {
+  color: var(--pm-muted);
+  font-family: var(--pm-mono);
+  font-size: 11px;
+}
+
+.pm-palette-note {
+  margin-top: var(--spacing-md);
+  color: var(--pm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* A swatch is its color: keep it literal under OS forced-colors modes too. */
+@media (forced-colors: active) {
+  .pm-palette-chip,
+  .pm-palette-strip-segment {
+    forced-color-adjust: none;
+  }
 }
 
 /* Analysis buttons section with visual hierarchy */
@@ -1528,6 +1663,12 @@ select:focus {
   font-size: 12.5px;
   line-height: 1.65;
   color: var(--pm-text-2);
+}
+
+/* Markdown runs between fenced-block components (MarkdownRenderer's opt-in
+   `fencedBlocks` path) lay out as if the wrapper were not there. */
+.markdown-content-run {
+  display: contents;
 }
 
 .markdown-content h1,

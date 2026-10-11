@@ -330,7 +330,7 @@ describe('WorkshopPersonaCapability', () => {
     });
   });
 
-  it('omits encyclopedia content from persona lookups and records exact, versioned evidence', async () => {
+  it('omits encyclopedia and palette content from persona lookups and records exact, versioned evidence', async () => {
     const adapter = capability();
     const result = await adapter.fulfill({
       capability: 'dictionary.lookup',
@@ -344,7 +344,8 @@ describe('WorkshopPersonaCapability', () => {
       'Mara pauses at the door.\n\nLookup purpose: Check threshold connotations.',
       expect.any(Function),
       controller.signal,
-      { includeEncyclopedia: false }
+      // Personas cannot see color: palettes stay off whatever the Dictionary tab says.
+      { includeEncyclopedia: false, includePalettes: false }
     );
     expect(result.evidence).toContain('Threshold-toned.');
     expect(result.evidence).toContain('excerpt-version="1"');
@@ -412,6 +413,7 @@ describe('WorkshopPersonaCapability', () => {
       'Threshold scene.\n\nLookup purpose: Explore the full lexical field.',
       expect.objectContaining({
         includeEncyclopedia: false,
+        includePalettes: false,
         signal: controller.signal,
         onProgress: expect.any(Function)
       })

@@ -40,35 +40,59 @@ describe('DictionaryHandler', () => {
     });
   });
 
-  it.each([true, false, undefined])('forwards encyclopedia=%s to streaming lookup', async includeEncyclopedia => {
-    await handler.handleLookupDictionary({
-      type: MessageType.LOOKUP_DICTIONARY,
-      source: 'webview.dictionary',
-      payload: { word: 'plosive', contextText: 'Compare consonant textures.', includeEncyclopedia },
-      timestamp: 1
-    });
+  // A payload's entry options are forwarded as one resolved object:
+  // encyclopedia is opt-out (absent = on), palettes are opt-in (absent = off).
+  const entryOptionCases = [
+    { includeEncyclopedia: true, includePalettes: true, expected: { includeEncyclopedia: true, includePalettes: true } },
+    { includeEncyclopedia: false, includePalettes: false, expected: { includeEncyclopedia: false, includePalettes: false } },
+    { includeEncyclopedia: false, includePalettes: true, expected: { includeEncyclopedia: false, includePalettes: true } },
+    { includeEncyclopedia: undefined, includePalettes: undefined, expected: { includeEncyclopedia: true, includePalettes: false } }
+  ];
 
-    expect(mockService.lookupWordStreaming).toHaveBeenCalledWith(
-      'plosive',
-      'Compare consonant textures.',
-      expect.any(Function),
-      expect.any(AbortSignal),
-      { includeEncyclopedia }
-    );
-  });
+  it.each(entryOptionCases)(
+    'forwards encyclopedia=$includeEncyclopedia palettes=$includePalettes to streaming lookup',
+    async ({ includeEncyclopedia, includePalettes, expected }) => {
+      await handler.handleLookupDictionary({
+        type: MessageType.LOOKUP_DICTIONARY,
+        source: 'webview.dictionary',
+        payload: { word: 'plosive', contextText: 'Compare consonant textures.', includeEncyclopedia, includePalettes },
+        timestamp: 1
+      });
 
-  it.each([true, false, undefined])('forwards encyclopedia=%s to Fast Generate', async includeEncyclopedia => {
-    await handler.handleFastGenerate({
-      type: MessageType.FAST_GENERATE_DICTIONARY,
-      source: 'webview.dictionary',
-      payload: { word: 'plosive', context: 'Compare consonant textures.', includeEncyclopedia },
-      timestamp: 1
-    });
+      expect(mockService.lookupWordStreaming).toHaveBeenCalledWith(
+        'plosive',
+        'Compare consonant textures.',
+        expect.any(Function),
+        expect.any(AbortSignal),
+        expected
+      );
+      // Strict: no word, context, or other payload field rides along with the options.
+      expect(mockService.lookupWordStreaming.mock.calls[0][4]).toStrictEqual(expected);
+    }
+  );
 
-    expect(mockService.generateParallelDictionary).toHaveBeenCalledWith(
-      'plosive',
-      'Compare consonant textures.',
-      { includeEncyclopedia }
-    );
-  });
+  it.each(entryOptionCases)(
+    'forwards encyclopedia=$includeEncyclopedia palettes=$includePalettes to Fast Generate',
+    async ({ includeEncyclopedia, includePalettes, expected }) => {
+      await handler.handleFastGenerate({
+        type: MessageType.FAST_GENERATE_DICTIONARY,
+        source: 'webview.dictionary',
+        payload: {
+          word: 'plosive',
+          context: 'Compare consonant textures.',
+          sourceUri: 'file:///chapter.md',
+          includeEncyclopedia,
+          includePalettes
+        },
+        timestamp: 1
+      });
+
+      expect(mockService.generateParallelDictionary).toHaveBeenCalledWith(
+        'plosive',
+        'Compare consonant textures.',
+        expected
+      );
+      expect(mockService.generateParallelDictionary.mock.calls[0][2]).toStrictEqual(expected);
+    }
+  );
 });

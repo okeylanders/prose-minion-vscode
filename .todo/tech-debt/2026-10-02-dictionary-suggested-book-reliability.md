@@ -34,7 +34,7 @@ Do not treat adding another confidence instruction as proof of a fix.
 ## Related files
 
 - `packages/core/resources/system-prompts/dictionary-utility/02-encyclopedia-entry.md`
-- `packages/core/resources/system-prompts/dictionary-fast/16-topic-related-lexicon-block.md`
+- `packages/core/resources/system-prompts/dictionary-fast/17-topic-related-lexicon-block.md`
 - [Artwork record](../../.memory-bank/20261003-0115-release-v2.7.0-readme-and-tour.md)
 
 ## Completion criteria

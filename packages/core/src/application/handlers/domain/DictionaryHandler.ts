@@ -20,7 +20,8 @@ import {
   ErrorMessage,
   StreamStartedPayload,
   StreamChunkMessage,
-  StreamCompleteMessage
+  StreamCompleteMessage,
+  resolveDictionaryEntryOptions
 } from '@messages';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
@@ -171,7 +172,7 @@ export class DictionaryHandler {
    * Uses streaming API for progressive response display
    */
   async handleLookupDictionary(message: LookupDictionaryMessage): Promise<void> {
-    const { word, contextText, includeEncyclopedia } = message.payload;
+    const { word, contextText } = message.payload;
 
     if (!word.trim()) {
       this.sendError('dictionary', 'Dictionary lookup requires a word to search');
@@ -195,7 +196,7 @@ export class DictionaryHandler {
           this.sendStreamChunk(requestId, token);
         },
         controller.signal,
-        { includeEncyclopedia }
+        resolveDictionaryEntryOptions(message.payload)
       );
 
       // Send complete message - use signal.aborted to detect cancellation
@@ -226,7 +227,7 @@ export class DictionaryHandler {
    */
   async handleFastGenerate(message: FastGenerateDictionaryMessage): Promise<void> {
     try {
-      const { word, context, includeEncyclopedia } = message.payload;
+      const { word, context } = message.payload;
 
       if (!word.trim()) {
         this.sendError('dictionary', 'Fast dictionary generation requires a word');
@@ -239,7 +240,7 @@ export class DictionaryHandler {
       const result = await this.dictionaryService.generateParallelDictionary(
         word,
         context,
-        { includeEncyclopedia }
+        resolveDictionaryEntryOptions(message.payload)
       );
 
       // Send result back to webview

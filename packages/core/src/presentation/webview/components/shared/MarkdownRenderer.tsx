@@ -6,10 +6,35 @@
 import * as React from 'react';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
+import type { Token, Tokens, TokensList } from 'marked';
+import type { CHROMATIC_PALETTE_FENCE_LANGUAGE } from '@shared/constants/chromaticPalettes';
+import { startsMarkdownSection } from '@/utils/markdownFences';
+
+/**
+ * Fence languages a caller may register through `fencedBlocks`. Closed on
+ * purpose, like the Workshop's widget registries: widen it only by adding a
+ * real, validated renderer's language (and, per the Chromatic Palettes spec,
+ * an ADR once a second renderer exists).
+ */
+export type MarkdownFencedBlockLanguage = typeof CHROMATIC_PALETTE_FENCE_LANGUAGE;
+
+export interface MarkdownFencedBlockRenderer {
+  /** Return null to fall back to the ordinary sanitized code-block rendering. */
+  render(source: string): React.ReactElement | null;
+}
+
+export type MarkdownFencedBlocks = Readonly<Partial<Record<MarkdownFencedBlockLanguage, MarkdownFencedBlockRenderer>>>;
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  /**
+   * Opt-in React renderers for TOP-LEVEL fenced code blocks, keyed by fence
+   * language. When absent, or when no registered fence renders, output is the
+   * unchanged single-pass sanitized HTML. It is a memo dependency, so pass a
+   * stable (module-level) object rather than an inline literal.
+   */
+  fencedBlocks?: MarkdownFencedBlocks;
 }
 
 /**
@@ -23,11 +48,24 @@ export const sanitizeMarkdownHtml = (html: string): string => DOMPurify.sanitize
   FORBID_ATTR: ['style']
 });
 
+type MarkdownSegment =
+  | { kind: 'markdown'; key: string; html: string }
+  | { kind: 'fenced-block'; key: string; element: React.ReactElement };
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
-  className = ''
+  className = '',
+  fencedBlocks
 }) => {
+  const fencedSegments = React.useMemo(
+    () => (fencedBlocks ? renderFencedSegments(content, fencedBlocks) : null),
+    [content, fencedBlocks]
+  );
+
   const htmlContent = React.useMemo(() => {
+    if (fencedSegments) {
+      return '';
+    }
     try {
       // Configure marked options
       marked.setOptions({
@@ -46,7 +84,21 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       // parsing fails, preserve safe text while applying the same sanitizer.
       return sanitizeMarkdownHtml(content);
     }
-  }, [content]);
+  }, [content, fencedSegments]);
+
+  if (fencedSegments) {
+    // One `.markdown-content` root keeps every descendant rule applying; the
+    // run wrappers are `display: contents` so they add no layout of their own.
+    return (
+      <div className={`markdown-content ${className}`}>
+        {fencedSegments.map(segment => (
+          segment.kind === 'markdown'
+            ? <div key={segment.key} className="markdown-content-run" dangerouslySetInnerHTML={{ __html: segment.html }} />
+            : <React.Fragment key={segment.key}>{segment.element}</React.Fragment>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -55,3 +107,121 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     />
   );
 };
+
+/**
+ * Lexes once, then splits the TOP-LEVEL tokens into sanitized Markdown runs
+ * and registered fenced-block components. Fences nested in lists or
+ * blockquotes are deliberately left to the ordinary code-block rendering.
+ *
+ * A registered fence's body ends at the first heading or fence line: no
+ * registered grammar contains one, so such a line means a closing delimiter
+ * was missed (an unclosed fence runs to the end of the document). The
+ * remainder is lexed again and rendered as ordinary Markdown, so a missed
+ * delimiter never hides the section or the next fence after it.
+ *
+ * Returns null — meaning "take the single-pass path" — when no registered
+ * fence rendered, or when anything here throws.
+ */
+const renderFencedSegments = (
+  content: string,
+  fencedBlocks: MarkdownFencedBlocks
+): MarkdownSegment[] | null => {
+  try {
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+    });
+
+    const tokens = marked.lexer(content);
+    const pending: Token[] = [...tokens];
+    const pieces: Array<Token[] | React.ReactElement> = [];
+    let renderedFencedBlock = false;
+
+    for (let token = pending.shift(); token; token = pending.shift()) {
+      const fenced = renderFencedBlock(token, fencedBlocks);
+      const previous = pieces[pieces.length - 1];
+      if (fenced) {
+        pieces.push(fenced.element);
+        renderedFencedBlock = true;
+        if (fenced.remainder) {
+          const remainder = marked.lexer(fenced.remainder);
+          Object.assign(tokens.links, remainder.links);
+          pending.unshift(...remainder);
+        }
+      } else if (Array.isArray(previous)) {
+        previous.push(token);
+      } else {
+        pieces.push([token]);
+      }
+    }
+
+    // Mid-stream, most updates have no renderable fence yet: bail out before
+    // parsing or sanitizing any run, so the caller's single pass is the only one.
+    if (!renderedFencedBlock) {
+      return null;
+    }
+
+    const segments: MarkdownSegment[] = [];
+    for (const piece of pieces) {
+      if (!Array.isArray(piece)) {
+        segments.push({ kind: 'fenced-block', key: `fenced-block-${segments.length}`, element: piece });
+        continue;
+      }
+      // Each run is parsed on its own, so it carries the document's reference
+      // definitions with it.
+      const run: TokensList = Object.assign(piece, { links: tokens.links });
+      const html = sanitizeMarkdownHtml(marked.parser(run));
+      if (html.trim().length > 0) {
+        segments.push({ kind: 'markdown', key: `markdown-${segments.length}`, html });
+      }
+    }
+    return segments;
+  } catch (error) {
+    console.error('Error rendering fenced Markdown blocks:', error);
+    return null;
+  }
+};
+
+interface RenderedFencedBlock {
+  element: React.ReactElement;
+  /** Body text from the first section line on, to render as ordinary Markdown. */
+  remainder?: string;
+}
+
+const renderFencedBlock = (
+  token: Token,
+  fencedBlocks: MarkdownFencedBlocks
+): RenderedFencedBlock | null => {
+  if (token.type !== 'code') {
+    return null;
+  }
+  const code = token as Tokens.Code;
+  if (code.codeBlockStyle === 'indented') {
+    return null;
+  }
+  // Same reading of the info string as marked's own renderer: the first word.
+  const language = (code.lang ?? '').trim().split(/\s+/)[0];
+  if (!isRegisteredFenceLanguage(fencedBlocks, language)) {
+    return null;
+  }
+  const { body, remainder } = splitAtMarkdownSection(code.text);
+  // No valid content before the boundary: keep the whole fence as readable code.
+  const element = fencedBlocks[language]?.render(body) ?? null;
+  return element ? { element, remainder } : null;
+};
+
+/** Splits a fence body before the first line that starts a new Markdown section. */
+const splitAtMarkdownSection = (text: string): { body: string; remainder?: string } => {
+  const lines = text.split('\n');
+  const boundary = lines.findIndex(startsMarkdownSection);
+  return boundary < 0
+    ? { body: text }
+    : { body: lines.slice(0, boundary).join('\n'), remainder: lines.slice(boundary).join('\n') };
+};
+
+/** Own keys only: a ```constructor fence must not reach Object.prototype. */
+const isRegisteredFenceLanguage = (
+  fencedBlocks: MarkdownFencedBlocks,
+  language: string
+): language is MarkdownFencedBlockLanguage =>
+  Object.prototype.hasOwnProperty.call(fencedBlocks, language);

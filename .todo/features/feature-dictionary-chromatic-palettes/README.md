@@ -1,6 +1,6 @@
 # Feature: Dictionary Chromatic Palettes
 
-**Status**: Planned
+**Status**: In Review — implemented on `claude/busy-curie-9x9nw7`; automated criteria pass, manual Extension Development Host checks open
 **Priority**: Medium
 **Estimated Effort**: Medium (one branch, one PR)
 **Date Identified**: 2026-10-11
@@ -188,6 +188,12 @@ the Workshop's closed widget registries.
     `tokens.links`. Copy `links` onto each run's token array.
   - Fences nested inside lists or blockquotes are out of scope. They render as
     code blocks.
+  - **Fence boundary (review F-01).** A registered fence's body ends at the
+    first heading or fence line, which the palette grammar never contains.
+    Such a line means a closing delimiter was missed, so the remainder is
+    lexed again and rendered as ordinary Markdown. A missed delimiter
+    therefore never hides the next section or the next palette. A fence with
+    no valid swatch before that line stays readable code.
 - `PaletteBlock` sets each chip's color through React's `style` prop
   (`{ backgroundColor: hex }`) using a value that has already passed the
   strict hex check. This is a CSSOM property write on an element React
@@ -343,14 +349,14 @@ sections never give conflicting instructions about what comes next.
 | `shared/types/messages/dictionary.ts` | Add `includePalettes?: boolean` to `DictionaryEntryOptions`. **Absent means off** (opt-in), documented on the field, so non-UI callers (Workshop, a future console host) never receive fences they cannot render. The UI always sends an explicit boolean. |
 | `DictionaryHandler.ts` | Forward the option on both routes. Prefer passing the entry-options object through instead of destructuring each flag, so the next option does not need handler edits. |
 | `tools/utility/dictionaryUtility.ts` | Add a `{{PALETTES_BLUEPRINT_SECTION}}` placeholder (in `00-dictionary-utility.md` and the default fallback blueprint) before the encyclopedia placeholder. Compute the section numbers. Load `03-chromatic-palettes.md` only when enabled. State the selection in the system and user messages. The fallback instructions respect the choice. |
-| `DictionaryService.ts` | Add the `chromatic-palettes` block. Generalize selection to a small optional-block → entry-option map instead of chained conditions. Progress, metadata, and usage/cache aggregation already count only selected blocks. The default budget (3,500 tokens / 15 s) is enough. Extend the sparse diagnostics with `palettes=enabled\|disabled` and a palette-fence count, with no content. |
+| `DictionaryService.ts` | Add the `chromatic-palettes` block. Generalize selection to a small optional-block → entry-option map instead of chained conditions. Progress, metadata, and usage/cache aggregation already count only selected blocks. The default budget (3,500 tokens / 15 s) is enough. Extend the sparse diagnostics with `palettes=enabled\|disabled` and a palette-fence count, with no content. Close any fence a block leaves open before concatenating blocks (review F-01), so one block cannot absorb its siblings. Decide "open" with `marked`, by container (review F-02): only a top-level fence can stay open, so well-formed list, quote, and HTML-block fences are never touched. |
 | `resources/system-prompts/dictionary-fast/` | Add `16-chromatic-palettes-block.md`. Rename Topic to `17-…` with its content unchanged. |
 | `WorkshopPersonaCapability.ts` | Pass `includePalettes: false` on both dictionary calls. |
 | `useDictionary.ts` | Add `includePalettes` state and persist it as `dictionaryIncludePalettes` (default per Open Question 2). |
 | `UtilitiesTab.tsx` | Add the second switch and pass `includePalettes` on Standard, Fast, and auto-run. Pass the palette registry to the result view's `MarkdownRenderer` and to `StreamingContent`. **The file is 490 lines**, so extract the switch markup into a small `DictionaryOptionSwitch` used by both switches, with neutral `pm-dictionary-option*` classes, rather than pushing the tab past 500. |
 | `components/shared/MarkdownRenderer.tsx`, `StreamingContent.tsx` | Add the opt-in fenced-block prop and pass it through. |
 | New: palette parser + `PaletteBlock` | Put them in a dictionary-scoped presentation module, for example `components/dictionary/` plus a pure parser under `utils/`. The parser has no React dependency. |
-| `CHANGELOG.md`, `docs/CHANGELOG-DETAILED.md` | Add a user-facing entry, as the encyclopedia change did. |
+| `CHANGELOG.md`, `docs/CHANGELOG-DETAILED.md` | No change in this branch. Release preparation (`chore(release): prepare vX`) writes both changelogs; the summary below and the PR description supply the user-facing wording. |
 
 `DictionaryService.ts` is already 695 lines, over the 500-line guideline,
 before this change. This feature adds only a little to it and should not be
@@ -359,6 +365,9 @@ extract the Fast Generate fan-out into its own collaborator and track that as
 debt.
 
 ## Open Questions
+
+The first implementation follows each recommendation below. Any of them can
+be overturned in review; each is a small, local change.
 
 1. **Placement.** Is *after AI Advisory Notes, before Topic* right, or should
    palettes sit next to 🪶 Narrative Texture, their nearest neighbor in
@@ -400,7 +409,7 @@ debt.
 
 ### Automated
 
-- [ ] Parser covers valid fences; optional and missing `title`, `kind`, and
+- [x] Parser covers valid fences; optional and missing `title`, `kind`, and
       `note`; field splitting, including a definition that contains `|`; name
       trimming and capping; definition trimming and capping; a valid named
       swatch without a definition (kept, with no definition); uppercase
@@ -409,35 +418,65 @@ debt.
       of names that are only a color code (`#B87333 | #B87333`); the 8-swatch
       cap; zero valid swatches → `null`; CRLF; and truncated mid-stream input,
       including a half-arrived definition (never throws).
-- [ ] `PaletteBlock` renders each row as name, then definition, then hex, all
+- [x] `PaletteBlock` renders each row as name, then definition, then hex, all
       as visible text. A swatch without a definition renders no empty
       definition line. No chip is rendered without a name. The strip has one
       segment per swatch, in order, and is `aria-hidden`.
-- [ ] `MarkdownRenderer` without the prop is unchanged. The existing
+- [x] `MarkdownRenderer` without the prop is unchanged. The existing
       sanitization test passes **unmodified**, and the DOMPurify config is
       byte-identical.
-- [ ] `MarkdownRenderer` with the prop renders `pm-palette` fences as
+- [x] `MarkdownRenderer` with the prop renders `pm-palette` fences as
       swatches, leaves other fences as code blocks, keeps one
       `.markdown-content` root, and falls back to a code block when a fence
       has no valid swatches. No rendered `style` contains anything other than
       a validated `background-color`, and an injection-attempt fence produces
       no `url(` anywhere in the DOM.
-- [ ] `dictionaryUtility` composes the palette prompt only when enabled.
+- [x] `dictionaryUtility` composes the palette prompt only when enabled.
       Section numbers are correct in all four palette/encyclopedia
       combinations. The system and user messages both state the selection.
       The fallback respects it.
-- [ ] `DictionaryService` selects blocks correctly in all four combinations,
+- [x] `DictionaryService` selects blocks correctly in all four combinations,
       reports the right totals in progress and metadata, and resolves the
       `16-chromatic-palettes` and `17-topic-related-lexicon` prompt files.
-- [ ] All 15 original Fast blocks, the original reference example, and the
+- [x] All 15 original Fast blocks, the original reference example, and the
       Topic block content are byte-identical apart from the Topic rename.
-- [ ] `DictionaryHandler` forwards `includePalettes` on both routes.
+- [x] `DictionaryHandler` forwards `includePalettes` on both routes.
       `WorkshopPersonaCapability` passes `false` on both calls.
-- [ ] `useDictionary` persists and restores `dictionaryIncludePalettes`.
+- [x] `useDictionary` persists and restores `dictionaryIncludePalettes`.
       `UtilitiesTab` tests cover the switch, its disabled-while-generating
       state, and the payloads for Standard, Fast, and auto-run.
-- [ ] The repo's typecheck, lint (zero errors), `npm test`, and production
+- [x] The repo's typecheck, lint (zero errors), `npm test`, and production
       build pass. No `from 'vscode'` in `packages/core/src`.
+
+### Verification record (2026-10-11)
+
+Integrated head of `claude/busy-curie-9x9nw7`, against `main` at `37a1d06`.
+Updated after the review F-01 (`f44250f`) and F-02 (`5fcb8e4`) fixes:
+
+- `npm run typecheck`: core, webview, and app clean.
+- `npm test`: 306 suites / 4,437 tests / 2 snapshots pass (`main`: 299 /
+  4,257 / 2, so the branch adds 7 suites and 180 tests).
+- `npm run lint`: 0 errors, 1,122 warnings (`main`: 1,116). All six new
+  warnings are the repo-wide `naming-convention` rule: three PascalCase
+  components, one PascalCase test harness, a second `__html`, and a test
+  mock's `__esModule`.
+- `npm run build`, including `verify:bundle`: OK.
+- `git diff --check` clean; no `from 'vscode'` in `packages/core/src`.
+- Prompt resources: only the two new palette prompts, the 100% Topic rename,
+  one placeholder line in `00-dictionary-utility.md`, and one ordering phrase
+  in `02-encyclopedia-entry.md` changed. The 15 original Fast blocks and the
+  reference example are untouched.
+- `MarkdownRenderer.test.tsx` and the DOMPurify configuration are unchanged.
+- Files over 500 lines: only the pre-existing `DictionaryService.ts`
+  (695 → 735) and `WorkshopPersonaCapability.ts` (826 → 827).
+- Review F-01 regression: 12 of the 16 Fast service → renderer cases fail
+  without the fix, and 4 of the 5 renderer boundary cases fail without the
+  renderer split. All pass with it.
+- Review F-02 regression: the 4 container-fence service → renderer cases
+  (list, ordered list, tilde list, `<pre>`; palettes off and on) fail on the
+  line-only fence reader and pass on the `marked`-based one.
+
+No live provider call or Extension Development Host session was run.
 
 ### Manual (Extension Development Host)
 
@@ -475,7 +514,7 @@ debt.
 4. Fast block, Topic rename, and service selection and diagnostics.
 5. `DictionaryOptionSwitch` extraction, the palette switch, persistence, and
    wiring of the result and streaming views.
-6. Changelog entries.
+6. Spec status, verification record, and PR. Release preparation writes the changelogs.
 
 ## Related Files
 

@@ -18,7 +18,13 @@
 
 import { LogSink } from '@/platform';
 import { ListenerSet } from '@/utils/ListenerSet';
-import { API_KEY_NOT_CONFIGURED_HEADING, DictionaryEntryOptions } from '@messages';
+import {
+  API_KEY_NOT_CONFIGURED_HEADING,
+  DictionaryEntryOptions,
+  ResolvedDictionaryEntryOptions,
+  resolveDictionaryEntryOptions
+} from '@messages';
+import { CHROMATIC_PALETTE_FENCE_LANGUAGE } from '@shared/constants/chromaticPalettes';
 import pLimit from 'p-limit';
 import { DictionaryUtility } from '@/tools/utility/dictionaryUtility';
 import { AIResourceManager } from '@orchestration/AIResourceManager';
@@ -37,6 +43,7 @@ import {
 import { TokenUsage } from '@messages/tokenUsage';
 import { StatusEmitter } from '@messages/status';
 import { ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { closeUnterminatedFence } from '@/utils/markdownFences';
 
 /**
  * Service wrapper for AI-powered dictionary lookups
@@ -66,11 +73,40 @@ const DICTIONARY_BLOCKS = [
   'semantic-gradient',
   'special-focus',
   'ai-advisory-notes',
+  'chromatic-palettes',
   'topic-related-lexicon'
 ] as const;
 
 type DictionaryBlockName = typeof DICTIONARY_BLOCKS[number];
 type DictionaryLookupMode = 'standard' | 'streaming';
+
+/**
+ * Optional blocks and the entry option that selects each; every other block
+ * always runs. `resolveDictionaryEntryOptions` owns the defaults: Topic is
+ * opt-out, palettes are opt-in.
+ */
+const OPTIONAL_BLOCK_OPTIONS: ReadonlyMap<DictionaryBlockName, keyof ResolvedDictionaryEntryOptions> = new Map([
+  ['chromatic-palettes', 'includePalettes'],
+  ['topic-related-lexicon', 'includeEncyclopedia']
+]);
+
+function isBlockSelected(blockName: DictionaryBlockName, entry: ResolvedDictionaryEntryOptions): boolean {
+  const option = OPTIONAL_BLOCK_OPTIONS.get(blockName);
+  return option === undefined || entry[option];
+}
+
+/** Sparse diagnostics: which optional sections a request selected, never its content. */
+function describeEntrySelection(entry: ResolvedDictionaryEntryOptions): string {
+  const state = (enabled: boolean) => (enabled ? 'enabled' : 'disabled');
+  return `encyclopedia=${state(entry.includeEncyclopedia)} palettes=${state(entry.includePalettes)}`;
+}
+
+/** Count opening fences, at line start, whose info string is exactly the palette language. */
+function countPaletteFences(markdown: string): number {
+  return markdown.split('\n').filter(line =>
+    /^`{3,}/.test(line) && line.replace(/^`{3,}/, '').trim() === CHROMATIC_PALETTE_FENCE_LANGUAGE
+  ).length;
+}
 
 /**
  * Progress callback for parallel generation
@@ -171,21 +207,17 @@ export class DictionaryService {
     try {
       // Get options from ToolOptionsProvider
       const options = this.toolOptions.getOptions();
-      const includeEncyclopedia = entryOptions.includeEncyclopedia !== false;
-      this.logLookupStarted('standard', includeEncyclopedia, options.maxTokens);
+      const entry = resolveDictionaryEntryOptions(entryOptions);
+      this.logLookupStarted('standard', entry, options.maxTokens);
 
       const executionResult = await this.dictionaryUtility.lookup(
-        {
-          word,
-          contextText,
-          includeEncyclopedia: entryOptions.includeEncyclopedia
-        },
+        { word, contextText, ...entry },
         {
           temperature: options.temperature ?? 0.4,
           maxTokens: options.maxTokens
         }
       );
-      this.logLookupCompleted('standard', includeEncyclopedia, executionResult);
+      this.logLookupCompleted('standard', entry, executionResult);
 
       return AnalysisResultFactory.createAnalysisResult(
         'dictionary_lookup',
@@ -226,11 +258,11 @@ export class DictionaryService {
 
     try {
       const options = this.toolOptions.getOptions();
-      const includeEncyclopedia = entryOptions.includeEncyclopedia !== false;
-      this.logLookupStarted('streaming', includeEncyclopedia, options.maxTokens);
+      const entry = resolveDictionaryEntryOptions(entryOptions);
+      this.logLookupStarted('streaming', entry, options.maxTokens);
 
       const executionResult = await this.dictionaryUtility.lookup(
-        { word, contextText, includeEncyclopedia: entryOptions.includeEncyclopedia },
+        { word, contextText, ...entry },
         {
           temperature: options.temperature ?? 0.4,
           maxTokens: options.maxTokens,
@@ -238,7 +270,7 @@ export class DictionaryService {
           onToken
         }
       );
-      this.logLookupCompleted('streaming', includeEncyclopedia, executionResult);
+      this.logLookupCompleted('streaming', entry, executionResult);
 
       // Note: orchestrator now catches AbortError internally and returns partial content
       // The executionResult.content will contain whatever was received before cancellation
@@ -256,13 +288,13 @@ export class DictionaryService {
     }
   }
 
-  private logLookupStarted(mode: DictionaryLookupMode, includeEncyclopedia: boolean, maxTokens: number): void {
+  private logLookupStarted(mode: DictionaryLookupMode, entry: ResolvedDictionaryEntryOptions, maxTokens: number): void {
     this.outputChannel?.appendLine(
-      `[DictionaryService] Lookup started: mode=${mode} encyclopedia=${includeEncyclopedia ? 'enabled' : 'disabled'} maxTokens=${maxTokens}`
+      `[DictionaryService] Lookup started: mode=${mode} ${describeEntrySelection(entry)} maxTokens=${maxTokens}`
     );
   }
 
-  private logLookupCompleted(mode: DictionaryLookupMode, includeEncyclopedia: boolean, result: ExecutionResult): void {
+  private logLookupCompleted(mode: DictionaryLookupMode, entry: ResolvedDictionaryEntryOptions, result: ExecutionResult): void {
     if (!this.outputChannel) return;
 
     const hasTopicSection = result.content.split('\n').some(line =>
@@ -274,11 +306,11 @@ export class DictionaryService {
         .toLowerCase() === 'topic & related lexicon'
     );
     this.outputChannel.appendLine(
-      `[DictionaryService] Lookup completed: mode=${mode} encyclopedia=${includeEncyclopedia ? 'enabled' : 'disabled'} ` +
+      `[DictionaryService] Lookup completed: mode=${mode} ${describeEntrySelection(entry)} ` +
       `finishReason=${result.finishReason ?? 'unreported'} completionTokens=${result.usage?.completionTokens ?? 'unreported'} ` +
-      `cancelled=${result.cancelled === true} hasTopicSection=${hasTopicSection}`
+      `cancelled=${result.cancelled === true} hasTopicSection=${hasTopicSection} paletteFences=${countPaletteFences(result.content)}`
     );
-    if (includeEncyclopedia && !hasTopicSection && !result.cancelled && result.finishReason === 'stop') {
+    if (entry.includeEncyclopedia && !hasTopicSection && !result.cancelled && result.finishReason === 'stop') {
       this.outputChannel.appendLine(
         `[DictionaryService] Encyclopedia section missing from completed lookup: mode=${mode} finishReason=stop`
       );
@@ -341,7 +373,10 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     options: ParallelDictionaryOptions = {}
   ): Promise<FastGenerateDictionaryResultPayload> {
     const startTime = Date.now();
-    this.outputChannel?.appendLine(`\n[DictionaryService] Starting parallel dictionary generation for "${word}"`);
+    const entry = resolveDictionaryEntryOptions(options);
+    this.outputChannel?.appendLine(
+      `\n[DictionaryService] Starting parallel dictionary generation for "${word}" ${describeEntrySelection(entry)}`
+    );
 
     const engine = this.aiResourceManager.getEngine('dictionary');
     if (!engine) {
@@ -361,9 +396,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     // Load prompts
     const baseInstructions = await this.loadBlockPrompt('00-base-instructions');
     const completedBlocks: string[] = [];
-    const selectedBlocks = DICTIONARY_BLOCKS.filter(blockName =>
-      options.includeEncyclopedia !== false || blockName !== 'topic-related-lexicon'
-    );
+    const selectedBlocks = DICTIONARY_BLOCKS.filter(blockName => isBlockSelected(blockName, entry));
     const totalBlocks = selectedBlocks.length;
 
     // Create concurrency limiter
@@ -642,7 +675,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
     const combinedResult = header + '\n' + orderedContent.join('\n\n');
 
     this.outputChannel?.appendLine(
-      `[DictionaryService] Parallel generation completed: ${successCount}/${selectedBlocks.length} blocks in ${totalDuration}ms`
+      `[DictionaryService] Parallel generation completed: ${successCount}/${selectedBlocks.length} blocks in ${totalDuration}ms ` +
+      `paletteFences=${countPaletteFences(combinedResult)}`
     );
 
     if (partialFailures.length > 0) {
@@ -684,12 +718,18 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    */
   private normalizeBlockContent(blockName: DictionaryBlockName, content: string): string {
     const trimmed = content.trim();
-
-    if (blockName === 'special-focus') {
-      return trimmed;
-    }
-
     const specialFocusHeader = /(?:^|\n)## \*\*Special Focus:[\s\S]*$/i;
-    return trimmed.replace(specialFocusHeader, '').trim();
+    const normalized = blockName === 'special-focus'
+      ? trimmed
+      : trimmed.replace(specialFocusHeader, '').trim();
+
+    // Blocks are generated independently and then concatenated. A block that
+    // ends inside a fence (a token-limited response, a forgotten closer) would
+    // otherwise absorb every block after it.
+    const closed = closeUnterminatedFence(normalized);
+    if (closed !== normalized) {
+      this.outputChannel?.appendLine(`[DictionaryService] Closed an unterminated fence in block "${blockName}"`);
+    }
+    return closed;
   }
 }

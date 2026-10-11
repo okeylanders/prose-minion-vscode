@@ -8,6 +8,11 @@ export { WordCounter } from './WordCounter';
 export type { WordCounterProps } from './WordCounter';
 export { WordLengthFilterTabs } from './WordLengthFilterTabs';
 export { MarkdownRenderer } from './MarkdownRenderer';
+export type {
+  MarkdownFencedBlockLanguage,
+  MarkdownFencedBlockRenderer,
+  MarkdownFencedBlocks
+} from './MarkdownRenderer';
 export { ScopeBox } from './ScopeBox';
 export type { ScopeBoxProps } from './ScopeBox';
 export { Icon } from './Icon';
