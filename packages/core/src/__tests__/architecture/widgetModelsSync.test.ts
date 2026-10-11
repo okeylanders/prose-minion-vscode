@@ -79,6 +79,6 @@ describe('Workshop widget model catalog', () => {
       /widgetModelOptions=\{\s*modelsSettings\.modelOptions\s*\}/g
     );
 
-    expect(fullCatalogBindings).toHaveLength(3);
+    expect(fullCatalogBindings).toHaveLength(4);
   });
 });

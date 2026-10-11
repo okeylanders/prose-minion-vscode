@@ -52,6 +52,7 @@ import {
   WorkshopTranscriptExportStore,
   GesturePlaygroundService,
   CreativeVariationsService,
+  ShowVsTellService,
   LexicalGravityModelService,
   LexicalGravityLensRepository,
   RejectedModelResponseRecoveryStore,
@@ -313,6 +314,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     rejectedModelResponseRecoveryPresenter,
     outputChannel
   );
+  const showVsTellService = new ShowVsTellService(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    rejectedModelResponseRecovery,
+    rejectedModelResponseRecoveryPresenter,
+    outputChannel
+  );
   const lexicalGravityModelService = new LexicalGravityModelService(
     aiResourceManager,
     resourceLoader.getPromptLoader(),
@@ -352,6 +360,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     workshopTranscriptExportService,
     gesturePlaygroundService,
     creativeVariationsService,
+    showVsTellService,
     lexicalGravityModelService,
     lexicalGravityLensRepository,
     workshopStandingDirectiveService

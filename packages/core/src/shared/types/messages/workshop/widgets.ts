@@ -17,6 +17,11 @@ import {
   WorkshopLexicalGravityReach,
   WorkshopLexicalGravityRecommendationSeed
 } from './lexicalGravity';
+import {
+  WorkshopShowVsTellCommitPayload,
+  WorkshopShowVsTellDraft,
+  WorkshopShowVsTellRecommendationSeed
+} from './showVsTell';
 import { WorkshopStandingWidgetCommit } from './standingDirectives';
 
 /**
@@ -81,11 +86,18 @@ export interface WorkshopCreativeVariationsWidgetConfigSnapshot
   draft: WorkshopCreativeVariationsDraft;
 }
 
+export interface WorkshopShowVsTellWidgetConfigSnapshot
+  extends WorkshopWidgetConfigSnapshotBase {
+  widgetId: 'show-vs-tell';
+  draft: WorkshopShowVsTellDraft;
+}
+
 /** Earned persisted union: each widget owns its exact authoring-state codec. */
 export type WorkshopWidgetConfigSnapshot =
   | WorkshopGesturePlaygroundWidgetConfigSnapshot
   | WorkshopLexicalGravityWidgetConfigSnapshot
-  | WorkshopCreativeVariationsWidgetConfigSnapshot;
+  | WorkshopCreativeVariationsWidgetConfigSnapshot
+  | WorkshopShowVsTellWidgetConfigSnapshot;
 
 /**
  * Bounded config identity carried in ordinary session snapshots. The full
@@ -115,10 +127,20 @@ export type WorkshopCreativeVariationsWidgetConfigSummary =
     selectionCount: number;
   };
 
+/** The beat is bounded at 160 characters, so its preview is the whole beat. */
+export type WorkshopShowVsTellWidgetConfigSummary =
+  Omit<WorkshopShowVsTellWidgetConfigSnapshot, 'draft'> & {
+    beatPreview: string;
+    keptCount: number;
+    /** Kept variants carried as direction only (the chip's `{M} as direction`). */
+    directionCount: number;
+  };
+
 export type WorkshopWidgetConfigSummary =
   | WorkshopGesturePlaygroundWidgetConfigSummary
   | WorkshopLexicalGravityWidgetConfigSummary
-  | WorkshopCreativeVariationsWidgetConfigSummary;
+  | WorkshopCreativeVariationsWidgetConfigSummary
+  | WorkshopShowVsTellWidgetConfigSummary;
 
 /**
  * Display-safe widget-commit decoration on a normal user message turn —
@@ -157,6 +179,11 @@ export type WorkshopWidgetRecommendation =
   | {
       widgetId: 'creative-variations';
       seed?: WorkshopCreativeVariationsRecommendationSeed;
+    }
+  | {
+      widgetId: 'show-vs-tell';
+      /** Required: a recommendation without a beat and a declared "same" opens nothing. */
+      seed: WorkshopShowVsTellRecommendationSeed;
     };
 
 export interface WorkshopRequestWidgetConfigMessage extends MessageEnvelope<{ configId: string }> {
@@ -187,7 +214,8 @@ export interface WorkshopWidgetConfigRestoredMessage extends MessageEnvelope<{
 /** Family rail contract; each supported one-shot widget contributes one exact arm. */
 export type WorkshopCommitWidgetPayload =
   | WorkshopGesturePlaygroundCommitPayload
-  | WorkshopCreativeVariationsCommitPayload;
+  | WorkshopCreativeVariationsCommitPayload
+  | WorkshopShowVsTellCommitPayload;
 
 export interface WorkshopCommitWidgetMessage extends MessageEnvelope<WorkshopCommitWidgetPayload> {
   type: MessageType.WORKSHOP_COMMIT_WIDGET;
@@ -211,6 +239,10 @@ export type WorkshopWidgetActionResultPayload =
   | (WorkshopWidgetActionResultBase & {
       action: 'commit';
       widgetId: 'creative-variations';
+    })
+  | (WorkshopWidgetActionResultBase & {
+      action: 'commit';
+      widgetId: 'show-vs-tell';
     })
   | (WorkshopWidgetActionResultBase & {
       action: 'apply-standing';

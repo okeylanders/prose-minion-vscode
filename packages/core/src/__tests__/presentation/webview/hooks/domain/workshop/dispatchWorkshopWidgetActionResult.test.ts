@@ -11,12 +11,14 @@ describe('dispatchWorkshopWidgetActionResult', () => {
     };
     const handleGestureActionResult = jest.fn();
     const handleCreativeVariationsActionResult = jest.fn();
+    const handleShowVsTellActionResult = jest.fn();
     const handleLexicalActionResult = jest.fn();
     const handleStandingDirectiveActionResult = jest.fn();
 
     dispatchWorkshopWidgetActionResult(message, {
       handleGestureActionResult,
       handleCreativeVariationsActionResult,
+      handleShowVsTellActionResult,
       handleLexicalActionResult,
       handleStandingDirectiveActionResult
     });
@@ -25,6 +27,7 @@ describe('dispatchWorkshopWidgetActionResult', () => {
       message,
       handleGestureActionResult,
       handleCreativeVariationsActionResult,
+      handleShowVsTellActionResult,
       handleLexicalActionResult,
       handleStandingDirectiveActionResult
     };
@@ -40,6 +43,7 @@ describe('dispatchWorkshopWidgetActionResult', () => {
 
     expect(result.handleGestureActionResult).toHaveBeenCalledWith(result.message);
     expect(result.handleCreativeVariationsActionResult).toHaveBeenCalledWith(result.message);
+    expect(result.handleShowVsTellActionResult).toHaveBeenCalledWith(result.message);
     expect(result.handleLexicalActionResult).toHaveBeenCalledWith(result.message);
     expect(result.handleStandingDirectiveActionResult).toHaveBeenCalledWith(result.message);
   });

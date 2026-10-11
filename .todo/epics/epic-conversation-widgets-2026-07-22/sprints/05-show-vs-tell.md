@@ -1,6 +1,6 @@
 # Sprint 05: Show vs. Tell Playground
 
-**Status**: Slice 0 complete (contract frozen 2026-10-08) — ready for Slice 1
+**Status**: Slice 7 (design edits) ready for review. Slices 1–6 merged (#134–#139). See [Design edits (writer decisions, 2026-10-09)](#design-edits-writer-decisions-2026-10-09).
 **Priority**: Medium
 **Branches**: one per slice, `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, each cut from `epic/conversation-widgets` and merged back into it by PR (see [Branching](#branching))
 **Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
@@ -115,6 +115,12 @@ continuum, a deterministic tradeoff readout, and a workup grouped by kind.
 - **Surrounding passage** (read-only context). Taken from the room excerpt with
   the beat highlighted and labelled with its source. It grounds POV and meaning
   for generation. It never rides the commit.
+  > **Superseded by D2 (2026-10-09).** After hands-on testing the writer
+  > wanted to write or paste the passage, not only point at a source. The
+  > surrounding passage is now a writer text box (Use excerpt, Use selection,
+  > or type), and the room sources moved to a separate **Context**
+  > multi-select. The beat highlight could not survive in a text box and was
+  > dropped. It still never rides the commit.
 - **POV constraint.** Shown as a tag on the beat label (design: `POV: close
   third · his`). POV is a **constraint, not a channel**. The generation is told
   that interiority may only be the POV character's own perception and
@@ -133,6 +139,11 @@ continuum, a deterministic tradeoff readout, and a workup grouped by kind.
   is the first constraint line of the committed payload. Unlike Creative
   Variations, the field is required: "the same beat at five distances" has no
   meaning without a declared "same".
+  > **Superseded by D3 (2026-10-09).** In testing, a told beat often carried
+  > its own "same" and a forced declaration got in the way. Must survive is
+  > now optional everywhere (draft, codec, integrity, generation gate,
+  > prompts, seed, UI), exactly like must not change: blank declares no
+  > constraint, the model invents none, and the artifact omits the line.
 - **Must *not* change** (optional). Hard boundaries such as "no flashback; stay
   in the kitchen, stay in tonight". A blank field declares no constraint, and
   the model does not infer one.
@@ -141,6 +152,10 @@ continuum, a deterministic tradeoff readout, and a workup grouped by kind.
   e.g. *his inference only*), `dialogue / subtext`, and `summary / exposition`.
   At least one stays selected: the last selected channel cannot be turned off.
   New drafts default to `observable action` + `sensory evidence`.
+  > **Superseded by D4 (2026-10-09).** The last-channel lock read as a
+  > disabled, dimmed chip and confused the writer. Channels are now 0–5; zero
+  > means "no emphasis" and the generation chooses channels freely, varying
+  > them across variants. The defaults are unchanged.
 - **Length budget.** A single-select of `tighter`, `same length`,
   `+1 sentence`, or `+1 paragraph`. New drafts default to `same length`.
 
@@ -175,13 +190,19 @@ the readout and changes what commits, without discarding the workup.
   allowed for dialogue), the channel(s) it uses (one or two of the five), a
   **gains / costs** craft note as two separate plain-text fields (`gains`,
   `costs`; no Markdown or HTML, and the UI supplies the bold labels), and a
-  **direction**: an abstract, reusable instruction that is strictly
-  shorter than the prose (the design fixture runs 0.36–0.66 of the prose
+  **direction**: an abstract, reusable instruction that is at least
+  four encoded characters shorter than the prose, so carrying it as direction
+  always lowers the count (the design fixture runs 0.36–0.66 of the prose
   length). Word count is computed host-side for display (`N w`), not supplied by
   the model. Ids are host-minted after validation, never supplied by the model.
   As in Sprint 03, a closed parser validates counts, group membership, character
   limits, and the shorter-than-prose rule atomically, and an exact normalized
   duplicate rejects the whole workup.
+  > **Superseded by D5 (2026-10-09).** The shorter-than-prose rule rejected
+  > about half of Okey's live workups: a short told variant rarely has a
+  > shorter direction. A direction is now bounded only by its own 120-character
+  > ceiling. The meter still prices a direction-only carry honestly, so the
+  > writer sees when it does not help.
 - **The mixed group exists because it is usually the answer**, and its craft
   note says so and then says to distrust it once. The generation prompt
   requires this framing.
@@ -267,7 +288,10 @@ the readout and changes what commits, without discarding the workup.
 
 - **Config, not just output, persists.** The full draft is stored by stable id
   in `WorkshopSessionService`: beat + provenance, POV constraint, both
-  invariant fields, channels, budget, position, the generated workup, kept
+  invariant fields, the surrounding passage (the writer's text, persisted, plus
+  the context source references; resolved source text is never stored; D2
+  supersedes the earlier reference-only rule), channels, budget, position, the generated
+  workup, kept
   variants **and their carry modes**, and the note. Focus, scroll, and the busy
   state are ephemeral. (The prototype's reopen drops channels and budget. That
   is a prototype gap, not the contract.)
@@ -279,7 +303,10 @@ the readout and changes what commits, without discarding the workup.
 - **Codec.** A feature-local draft codec plus a closed widget-lifecycle
   registry arm, following the
   [codec evolution ADR](../../../../docs/adr/2026-07-30-workshop-session-codec-evolution.md).
-  The configs are unshipped, so no migration arm is needed.
+  The configs are unshipped, so no migration arm is needed. Slice 7 added the
+  first development-checkpoint repair
+  (`defaulted-widget-show-vs-tell-surrounding-passage-text`); see
+  [Design edits](#design-edits-writer-decisions-2026-10-09).
 
 ### Recommend and prefill
 
@@ -290,9 +317,14 @@ the readout and changes what commits, without discarding the workup.
   Opening it shows the seed banner (*Recommended and prefilled by {persona}.
   … she proposes and prefills, you decide what commits.*, with pronouns
   derived from the persona, not hard-coded). The seed is **input-only**:
-  beat, optional surrounding context source, must survive, optional must not
+  beat, optional surrounding-context text and 0–8 context sources, optional
+  must survive (D3), optional must not
   change, and optionally a suggested POV, position, channels, and budget. It never
   carries a workup, selections, or a note, and opening it never auto-generates.
+  The persona catalog holds no pronoun data, so the shipped banner names the
+  persona and uses no pronoun (writer decision, 2026-10-09); a pronoun field
+  would be a separate decision. After prefill, POV is plain writer input with no
+  custody marker (Q3); only the beat keeps `persona-prefill` provenance.
 - **Diagnosis, not verdict.** The recommendation prompt teaches personas to
   frame a told beat as a choice in the panel's vocabulary (design: *"It isn't a
   bad sentence — it's a choice you haven't made yet. That line buys you a year
@@ -318,7 +350,7 @@ the readout and changes what commits, without discarding the workup.
    tradeoff line, the deterministic seven-dimension readout, and the Controller
    vocabulary line.
 3. One cancellable, typed generation with a closed four-group response schema,
-   atomic validation (count, groups, lengths, direction-shorter-than-prose,
+   atomic validation (count, groups, lengths, ~~direction-shorter-than-prose~~ (dropped by D5),
    exact duplicates, flag grammar), progress and failure states, and
    stale-result correlation.
 4. Grouped workup cards with gains/costs notes and word counts, multi-select
@@ -346,7 +378,10 @@ same commit.
 | Budget | Value | Why |
 |---|---|---|
 | `showVsTellBeatCharacters` | 160 | A beat, not a passage. The writer-turn preview is the whole beat |
-| `showVsTellContextCharacters` | 250,000 | Parity with `creativeContextCharacters` (room excerpt) |
+| `showVsTellContextCharacters` | 250,000 | Parity with `creativeContextCharacters`; bounds the writer text plus every resolved source together (D2) |
+| `showVsTellRecommendationContextCharacters` | 20,000 | Parity with `creativeRecommendationContextCharacters`; the seed's `surrounding-context` field (D2, Slice 7) |
+| `showVsTellSourceReferences` | 8 | Parity with `creativeSourceReferences` (D2, Slice 7; was 1 under Q1) |
+| `showVsTellSourceReferenceCharacters` | 500 | Parity with `creativeSourceReferenceCharacters` (a `ctx-N` id bound) |
 | `showVsTellProvenancePathCharacters` | 500 | Parity with Creative Variations |
 | `showVsTellPovFocalCharacterCharacters` | 80 | A name, not a description |
 | `showVsTellMustSurviveCharacters` | 120 | Rides the artifact; the fixture is 76 |
@@ -357,7 +392,7 @@ same commit.
 | `showVsTellVariantsMinimum` / `showVsTellVariants` | 4 / 8 | Confirmed; four groups always present |
 | `showVsTellChannelsPerVariant` | 2 (minimum 1) | The fixture's richest variant is `summary + action` |
 | `showVsTellProseCharacters` | 1,200 | Covers the `+1 paragraph` budget |
-| `showVsTellDirectionCharacters` | 120 | Also strictly shorter than its prose; the fixture's longest is about 60 |
+| `showVsTellDirectionCharacters` | 120 | Bounded on its own since D5 (the earlier 4-character margin against the prose is gone); the fixture's longest is about 60 |
 | `showVsTellGainsCharacters` / `showVsTellCostsCharacters` | 160 / 160 | One sentence each |
 | `showVsTellFlagsPerVariant` / `showVsTellFlagNoteCharacters` | 4 / 160 | Bounds the uncounted warning lines |
 | `showVsTellOutputTokens` | 16,000 | Eight variants is about 13k characters of payload, plus headroom |
@@ -369,7 +404,8 @@ same commit.
 Fit-guarantee arithmetic (Slice 1 pins it): `beat: "…"` 168 + the longest
 position line (`position: hinge · tell the bridge, show the fulcrum`) 51 +
 `must survive: …` 134 + `must not change: …` 97 + one `direction: …` 131 +
-4 newlines = **585 ≤ 600**.
+4 newlines = **585 ≤ 600**. Since D3 the must-survive line is optional, so
+585 is the maximum case; a blank must survive only shortens the body.
 
 ## Implementation slices
 
@@ -406,7 +442,7 @@ main ─────────────────────────
 |---|---|---|---|
 | 0 | ✅ Contract frozen; kickoff decisions recorded; design reconciliation accepted; Sprint 04 adopts the shared vocabulary; baseline recorded. | Opus | — |
 | 1 | Contracts, budgets (with the fit-guarantee test), feature-local draft codec, lifecycle registry arm, and integrity. The shared `narrativeHandlingVocabulary.ts` and the feature-owned continuum and readout constants, with tests pinning the two non-monotonic readout rows. | **Opus** | — |
-| 2 | **2a — prompt bundle** (`system-prompts/show-vs-tell/`). **2b — strict four-group response codec, cancellation, and stale-result correlation.** | 2a **Opus**; 2b **Sonnet** | Correlation tests; the direction-shorter-than-prose rule; group-membership rejection |
+| 2 | **2a — prompt bundle** (`system-prompts/show-vs-tell/`). **2b — strict four-group response codec, cancellation, and stale-result correlation.** | 2a **Opus**; 2b **Sonnet** | Correlation tests; ~~the direction-shorter-than-prose rule~~ (dropped by D5); group-membership rejection |
 | 3 | Intake, authoring controller, continuum, readout, POV field, channels, budget, grouped cards, carry, note, and payload meter. **The catalog goes live here, intentionally, for hands-on testing.** Commit stays disabled until Slice 4 wires it, and the epic does not merge into `main` until Slice 4 has landed. | **Sonnet** | The meter imports the host projection; moving the position does not invalidate the workup, but every other generation input does; no score, rank, or good/bad colour anywhere |
 | 4 | Commit through the shared Sprint 03 coordinator; host re-check of the 600 ceiling; `widget:show-vs-tell` registered with the prompt-delimiter neutralizer; chip, exact reopen, and clone-and-recommit. | **Sonnet** | Host ceiling re-check; neutralizer registration; nothing touches the editor |
 | 5 | Persona recommendation codec and prefill (Host and Guest), the Host-preparation door, and neutral browser copy. | **Sonnet** (mechanics); **Opus** writes the recommendation prompt's "diagnosis, not verdict" copy | Seed is input-only; opening never auto-generates; pronouns are derived |
@@ -527,26 +563,211 @@ Also decided at Slice 0:
   lines are excluded, and a fit guarantee is pinned by a test.
 - **Gains and costs are two plain-text fields**, not one Markdown note.
 
+### Slice 1 contract questions (writer decisions, 2026-10-09)
+
+The three questions raised in the [Slice 1 handoff](../../../../.memory-bank/20261009-0627-show-vs-tell-slice1-handoff.md#contract-questions-also-in-the-pr):
+
+- **Q1, surrounding passage → persist a source now.** Slice 2b adds
+  `surroundingContext: { sourceReferences }` to the draft and the generate
+  payload. The host resolves the source's text at generation time; passage
+  text never crosses from the webview, is never persisted, and never rides
+  the commit. **Implemented in 2b.**
+  > **Superseded by D2 (2026-10-09).** The writer wanted to author the
+  > passage, so `surroundingContext` is now `{ writerText, sourceReferences }`
+  > as in Creative Variations: the text crosses and persists in the draft,
+  > references are 0–8, and neither rides the commit. Only the "0–1 source,
+  > text never crosses" half of Q1 is superseded; the host still resolves
+  > source text at generation.
+- **Q2, line breaks → multi-line allowed.** No validator rejects line breaks
+  in `direction`, `gains`, `costs`, flag notes, or the invariants. The 2a
+  prompt does not forbid them; it still asks for one sentence each in
+  `gains` and `costs` and a compact `direction`. **Slice 4's artifact
+  projection must define a continuation-line format for multi-line values**
+  and redo the fit-guarantee arithmetic if that format adds characters.
+- **Q3, POV custody → open.** Whether "persona-prepared" survives reopen is
+  decided at Slice 5.
+
+### Design edits (writer decisions, 2026-10-09)
+
+After hands-on testing of Slices 1–6, Okey revised four decisions, then a
+fifth during Slice 7 review, and a sixth (D6) once Slice 7 had merged. They
+supersede the earlier text where marked
+above and landed as **Slice 7**
+(branch `epic/conversation-widgets-sprint-05-slice-7-design-edits`, cut from
+the Slice 6 merge `16320d6`).
+
+- **D1: layout.** In the sheet, the **POV + must survive + must not change**
+  block sits **above** the passage area, beside the channels and length budget
+  (the design reference's two-column intake). The **Surrounding passage** text
+  box and the **Context** source list each run **full width** of the modal,
+  then the continuum follows. The beat highlight of the old read-only panel
+  could not survive in a text box and was dropped cleanly, not faked.
+- **D2: the surrounding passage becomes writer text, and the context becomes
+  a multi-select.** Supersedes Q1's "0–1 source reference, text never crosses
+  from the webview". `surroundingContext` is now `{ writerText; sourceReferences[] }`,
+  mirroring `WorkshopCreativeVariationsSurroundingContext`:
+  - **Surrounding passage** is a text box. **Use excerpt** copies the active
+    excerpt's text in, **Use selection** copies the editor selection in
+    through the new `workshop_show_vs_tell_passage` selection target, or the
+    writer types or pastes. The text is ≤ `showVsTellContextCharacters`
+    (250,000, shared with every resolved source) and **persists in the
+    draft**, as Creative Variations does.
+  - **Context** is the list of room sources (the active excerpt and the
+    context attachments), now checkboxes. References are 0–8
+    (`showVsTellSourceReferences` raised to Creative Variations' value),
+    unique, and in one canonical order (the excerpt first, then attachments
+    by `ctx-N` ordinal); integrity rejects any other arrangement.
+  - The text and the references are generation inputs: changing either
+    invalidates the workup. Position still does not. An unavailable
+    reference stays as committed and still blocks Generate.
+  - Neither rides the commit. The artifact projection is unchanged.
+  - **D2a (relayed 2026-10-09): the Context list is a scrollable well, at
+    most five rows tall.** The checkbox list sits in a bordered, inset well
+    matching the sheet's other wells; it grows with its content up to five
+    rows, then holds and scrolls vertically; with fewer sources it shrinks to
+    fit; it never scrolls horizontally, and long names and paths truncate
+    with an ellipsis. The list stays a labelled group, every checkbox stays
+    reachable by Tab with the well scrolling to follow focus, and the well
+    adds no tab stop of its own. The cap is derived from the row height
+    (`--pm-ws-svt-source-well-rows` × `--pm-ws-svt-source-row` plus gaps and
+    padding), not a magic pixel number; jsdom cannot compute it, so a test
+    pins the class contract.
+  - The recommendation frame gains an optional `surrounding-context` field
+    (tag already reserved; capped by the new
+    `showVsTellRecommendationContextCharacters`, 20,000) and allows several
+    `source-references`, listed in any order and stored canonically.
+- **D3: must survive is optional.** The draft, codec, integrity, generation
+  gate, prompts, recommendation seed and parser, and UI treat it like must
+  not change: blank declares no constraint and the model invents none. The
+  artifact's `must survive:` line is **omitted when blank**, exactly like
+  `must not change:`; the frozen line keys stay and 585 ≤ 600 is now the
+  maximum case. Flags against must survive are valid only when it is
+  non-blank (the existing rule).
+- **D4: channels are 0–5, and zero means "no emphasis".** The last-channel
+  lock, its `aria-disabled`, and its dimmed look are gone; a selected chip
+  reads as selected. With zero channels the generation chooses channels
+  freely and varies them across variants (taught in the generation prompt,
+  pinned by a prompt-sync test). `SHOW_VS_TELL_DEFAULTS.channels` is
+  unchanged. Persisted channels stay unique and in canonical order, and the
+  seed's optional channels keep their meaning: absent opens on the defaults.
+- **D5: no direction-versus-prose length rule.** Live generation failed about
+  half the time with *"direction must be at least 4 characters shorter than
+  its prose"*: a short told variant (`She left.`) almost never has a shorter
+  reusable direction. The rule is gone from the response codec, the draft
+  integrity gate, and the prompt; `direction` is bounded only by its own
+  120-character ceiling. The artifact meter still counts a direction-only
+  carry exactly (`direction + 11` against `prose + 8`), so a carry that does
+  not save room shows as such, and the over-ceiling copy now says "carry
+  variants as direction where that is shorter". Old data is valid under D5
+  because it only relaxes a rule.
+- **D6: Generate / Regenerate moves into the pinned footer (writer request,
+  2026-10-11).** The button was small and easy to miss in the scrolling body;
+  it now sits right-aligned on the **Widget model** row of the footer, beside
+  the model selector. Generate carries Commit's accent until a workup exists,
+  then Regenerate takes Cancel's quiet bordered look; while a generation runs
+  the footer button reads "Generating…" and the body's progress block keeps
+  the one cancel affordance. The regenerate warning rides the button as a
+  `title` plus visually hidden `aria-describedby` text.
+
+**Unchanged:** Q2 (multi-line values, `↵`), Q3 (POV is plain writer input),
+the pronoun-free seed banner, the Slice 4 commit rail, and the host ceiling
+re-check.
+
+Rendered from the production webview bundle at Slice 7 (headless Chromium,
+zero channels, blank must survive, excerpt copied into the passage, two of
+eight room sources ticked, the five-row Context well scrolled to keyboard
+focus): [assets/05-show-vs-tell-slice7-sheet.png](assets/05-show-vs-tell-slice7-sheet.png).
+
+**Saved-session safety.** Okey's live sessions hold drafts and seeds in the
+old shape (no `writerText`, at most one reference, must survive required, at
+least one channel). D3 and D4 only relax rules, so old data is valid under
+them, and so does D5. D2 adds a required draft field, so per
+[ADR 2026-07-30](../../../../docs/adr/2026-07-30-workshop-session-codec-evolution.md)
+the Show vs. Tell codec gained the narrowly named checkpoint repair
+`defaulted-widget-show-vs-tell-surrounding-passage-text`, which fills
+`surroundingContext.writerText: ''` on a draft saved before Slice 7. It is
+logged by name through the persistence coordinator and regression-tested with
+an old-shape fixture at the codec, the session, and the route matrix
+(hydrate, reopen as a clone, recommit). The seed's new `contextText` is
+optional, so no seed repair exists. This is not a version migration and
+`schemaVersion` did not change.
+
 ## Completion criteria
 
-- A writer can intentionally choose explanation, summary, a hinge, evidence,
+- [ ] A writer can intentionally choose explanation, summary, a hinge, evidence,
   or inhabitation and understand the pacing, clarity, intimacy, ambiguity, and
   scene-time tradeoffs from the deterministic readout. Nothing on the surface
   scores, ranks, or colour-codes either end as better.
-- A generated workup always spans all four groups. Every variant shows its
-  gains/costs note, word count, and a direction shorter than its prose.
-- All generated and committed variants preserve the declared constraints or
+  *Not ticked.* The no-score, no-rank, one-accent half is evidenced by
+  `WorkshopShowVsTellModal.test.tsx`: `renders the pinned seven-row table for %s
+  with one accent colour` (pinned readout rows, one accent class) and `carries
+  the frozen caption and no score, rank, or verdict language` (verdict-word scan
+  over the continuum and workup; no rank, best, or score class). Missing: the
+  "a writer can understand the tradeoffs" half, which needs the interactive VS
+  Code smoke test (see Open follow-ups).
+- [x] A generated workup always spans all four groups. Every variant shows its
+  gains/costs note, word count, and a direction ~~shorter than its prose~~
+  (length rule dropped by D5; bounded by its own ceiling).
+  *Evidence:* `infrastructure/api/services/widgets/showVsTell/ShowVsTellResponseCodec.test.ts`
+  (group membership and atomic validation, and the D5 acceptance cases);
+  `WorkshopShowVsTellModal.test.tsx` (card fields).
+- [ ] All generated and committed variants preserve the declared constraints or
   show a visible warning the writer can weigh. No variation is silently treated
   as canon, and no model warning vetoes the writer's choice.
-- The payload meter matches the host's artifact projection exactly. An
-  over-ceiling draft cannot commit, and switching a variant to direction only
-  always lowers the count.
-- Commit never touches editor text. The persisted draft reopens exactly, and
+  *Not ticked.* Warning visibility and no-veto commit are covered by
+  `ShowVsTellCommitEligibility.test.ts` and the commit-flow tests, but the
+  "never silently canon" wording has no dedicated witness. It rests on the
+  prompt copy and the Slice 2 and Slice 4 reviews. Missing: a test or witness
+  that names the canon rule directly.
+- [x] The payload meter matches the host's artifact projection exactly and
+  shows each carry's exact cost (`direction + 11` against `prose + 8`). An
+  over-ceiling draft cannot commit, and the one-direction fit guarantee
+  (585 ≤ 600) holds.
+  > **Superseded by D5 (2026-10-09):** this criterion used to read "switching
+  > a variant to direction only always lowers the count", guaranteed by the
+  > encoded-margin rule (PR #136 review). With no relative-length rejection, a
+  > direction carry can save nothing or raise the count (a multiline prose of
+  > raw length 124 / encoded length 120 with a 120-character direction goes
+  > from 600 as prose to 603 as direction, and the host's separate
+  > 600-character gate refuses it).
+  *Evidence:* `ShowVsTellArtifact.test.ts` (exact pricing, the 600 → 603
+  case), `ShowVsTellBudgets.test.ts` (fit guarantee, 585 ≤ 600),
+  `ShowVsTellCommitEligibility.test.ts`, and the over-600 refusal row in
+  `WorkshopRoomHandler.showVsTellMatrix.test.ts`.
+- [x] Commit never touches editor text. The persisted draft reopens exactly, and
   recommitting a reopened draft mints a new config, artifact, and turn.
-- The five-position → Controller mapping is one shared constant, pinned by a
+  *Evidence:* `ShowVsTellOneShotCommit.test.ts`, `ShowVsTellPersistence.test.ts`,
+  the clone-recommit row in `WorkshopRoomHandler.showVsTellMatrix.test.ts`, and
+  the no-editor-write claim 4 in `showVsTellPresentationBoundaries.test.ts`.
+- [ ] The five-position → Controller mapping is one shared constant, pinned by a
   test that both surfaces depend on.
-- The feature reuses only truthful mechanical variation seams and remains a
+  *Not ticked.* The constant exists and is pinned: `narrativeHandlingVocabulary.test.ts`
+  and `architecture/showVsTellWitnesses.test.ts` (a). Show vs. Tell imports it.
+  Prose Controller is not built, so no second surface consumes it yet. Sprint
+  04's adoption is a doc-level assertion only. Missing: Sprint 04's build.
+- [x] The feature reuses only truthful mechanical variation seams and remains a
   separately named, independently testable widget slice. Creative Variations
   does not learn continuum or channel vocabulary.
-- Architecture witnesses, focused tests, typechecks, lint, build, and
+  *Evidence:* `showVsTellWitnesses.test.ts` (b) and (c); `boundaries.test.ts`
+  sibling guards; the independence tests `WorkshopRoomHandler.showVsTellIndependence.test.ts`
+  and `useWorkshopWidgetOpening.showVsTellIndependence.test.ts`.
+- [x] Architecture witnesses, focused tests, typechecks, lint, build, and
   `git diff --check` pass.
+  *Evidence:* Slice 6a verification at `a5f3118` (typecheck clean; lint 0 errors
+  and 1,112 warnings, the baseline; build and `verify-bundle` OK; `git diff --check`
+  clean). Slice 6b changed no code (`git diff --stat f4c0c4f` lists only `.md`
+  files) and reran `npm test` at the docs head. See the 6b memory-bank note for
+  the counts.
+
+## Open follow-ups
+
+- **Persona pronoun metadata.** The catalog holds no pronoun data, so the seed
+  banner names the persona and uses no pronoun (writer decision, 2026-10-09).
+  Filed: [tech-debt 2026-10-09 persona pronoun metadata](../../../tech-debt/2026-10-09-persona-pronoun-metadata.md).
+- **Live-provider quality pass.** No live, billable provider call has been run
+  for generation or recommendation. Prompt quality is unverified against a real
+  model. Filed: [tech-debt 2026-10-09 show-vs-tell live-provider quality pass](../../../tech-debt/2026-10-09-show-vs-tell-live-provider-quality-pass.md).
+- **Interactive VS Code smoke test.** No Extension Development Host or native
+  browser run has covered the authoring, commit, reopen, or recommend flows.
+  This is also the missing evidence for the readout-comprehension criterion.
+  Filed: [tech-debt 2026-10-09 show-vs-tell interactive smoke test](../../../tech-debt/2026-10-09-show-vs-tell-interactive-smoke-test.md).

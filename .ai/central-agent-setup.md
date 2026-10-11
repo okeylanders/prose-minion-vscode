@@ -58,7 +58,7 @@ packages/core/src/
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
-│           └── workshop/                  # Room owner + 10 composed route owners
+│           └── workshop/                  # Room owner + 11 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
 │               ├── WorkshopRouteContracts.ts
@@ -72,7 +72,8 @@ packages/core/src/
 │                   ├── WorkshopWidgetHostHandler.ts
 │                   ├── creativeVariations/WorkshopCreativeVariationsHandler.ts
 │                   ├── gesturePlayground/WorkshopGesturePlaygroundHandler.ts
-│                   └── lexicalGravity/WorkshopLexicalGravityHandler.ts
+│                   ├── lexicalGravity/WorkshopLexicalGravityHandler.ts
+│                   └── showVsTell/WorkshopShowVsTellHandler.ts
 ├── domain/            # Domain layer (business logic)
 │   └── models/        # Domain models and entities
 ├── infrastructure/    # Infrastructure layer (external integrations)
@@ -109,6 +110,7 @@ packages/core/src/
                 ├── creativeVariations.ts
                 ├── gesturePlayground.ts
                 ├── lexicalGravity.ts
+                ├── showVsTell.ts
                 ├── recovery.ts
                 └── settings.ts
 ```
@@ -149,7 +151,13 @@ packages/core/src/presentation/webview/
 │           ├── useWorkshopWidgetHost.ts
 │           ├── useWorkshopStandingDirectives.ts
 │           ├── controllers/            # Transient modal/surface state machines
+│           │   ├── creativeVariations/useCreativeVariationsAuthoring.ts
+│           │   └── showVsTell/         # useShowVsTellAuthoring, Intake, CommitFlow, InvalidationWatch
 │           └── widgets/                # Named feature transport/correlation hooks
+│               ├── creativeVariations/useCreativeVariations.ts
+│               ├── showVsTell/useShowVsTell.ts
+│               ├── useGesturePlayground.ts
+│               └── useLexicalGravity.ts
 ```
 
 Patterns and conventions:
@@ -157,9 +165,10 @@ Patterns and conventions:
 - Persistence: Each hook exposes `persistedState`; App composes them into `usePersistence` to sync `vscode.setState`.
 - Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
   retired `useWorkshop` facade. Generic widget mechanics use explicit closed
-  registries; Gesture Playground, Creative Variations, and Lexical Gravity keep
-  feature-specific contracts, handlers, codecs, prompts, and presentation hooks
-  in named slices.
+  registries; Gesture Playground, Creative Variations, Lexical Gravity, and Show
+  vs. Tell keep feature-specific contracts, handlers, codecs, prompts, and
+  presentation hooks in named slices. Show vs. Tell's five-position → Controller
+  mapping lives only in `shared/constants/narrativeHandlingVocabulary.ts`.
 - Message enums: Use `STATUS` for status messages, `MODEL_DATA`/`REQUEST_MODEL_DATA` for model options, and `SET_MODEL_SELECTION` for user selection. Avoid ad-hoc enums like `STATUS_MESSAGE`, `MODEL_OPTIONS_DATA`, or `SET_MODEL`.
 - UI settings: Toggle UI prefs (e.g., token widget) via `UPDATE_SETTING` with nested keys like `ui.showTokenWidget`.
 - Metrics: Provide `setPathText` and `clearSubtoolResult` so subtools can refresh independently.
@@ -680,7 +689,7 @@ The project uses **Jest** with **ts-jest** for automated testing. Tests follow a
 ```
 packages/core/src/__tests__/   # All tests in a separate dir mirroring the source tree
 ├── setup.ts           # VSCode API mocks and global test setup
-├── architecture/      # Boundary/contract guards (e.g. boundaries.test.ts)
+├── architecture/      # Boundary/contract guards (e.g. boundaries.test.ts, showVsTellWitnesses.test.ts)
 ├── application/
 │   ├── handlers/      # MessageRouter + domain handler tests
 │   └── services/      # Application service tests
@@ -709,14 +718,14 @@ npm run test:watch
 npm run test:tier1
 ```
 
-**Test Inventory** (measured 2026-08-06):
-- 189 suites / 1,937 tests / 1 snapshot
+**Test Inventory** (measured 2026-10-09, Sprint 05 Slice 7):
+- 299 suites / 4,249 tests / 2 snapshots
 - Coverage report saved to `coverage/` (gitignored)
 - Includes `__tests__/architecture/` guards that fail the build on boundary/contract drift
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's ten route owners
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's eleven route owners
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):

@@ -175,6 +175,33 @@ describe('prompt budgets', () => {
       creativeResponseCharacters: 140_000,
       creativeArtifactCharacters: 20_000,
       creativeRecommendationFrameAllowanceCharacters: 2_500,
+      showVsTellBeatCharacters: 160,
+      showVsTellContextCharacters: 250_000,
+      showVsTellRecommendationContextCharacters: 20_000,
+      showVsTellSourceReferences: 8,
+      showVsTellSourceReferenceCharacters: 500,
+      showVsTellProvenancePathCharacters: 500,
+      showVsTellPovFocalCharacterCharacters: 80,
+      showVsTellMustSurviveCharacters: 120,
+      showVsTellMustNotChangeCharacters: 80,
+      showVsTellNoteCharacters: 160,
+      showVsTellWorkupIdCharacters: 64,
+      showVsTellVariantsPerGroupMinimum: 1,
+      showVsTellVariantsPerGroup: 2,
+      showVsTellVariantsMinimum: 4,
+      showVsTellVariants: 8,
+      showVsTellChannelsPerVariant: 2,
+      showVsTellProseCharacters: 1_200,
+      showVsTellDirectionCharacters: 120,
+      showVsTellGainsCharacters: 160,
+      showVsTellCostsCharacters: 160,
+      showVsTellFlagsPerVariant: 4,
+      showVsTellFlagNoteCharacters: 160,
+      showVsTellOutputTokens: 16_000,
+      showVsTellResponseCharacters: 48_000,
+      showVsTellArtifactCharacters: 600,
+      showVsTellRecommendationSubjectCharacters: 60,
+      showVsTellRecommendationFrameAllowanceCharacters: 1_200,
       lexicalRecommendationFrameCharacters: 1_000,
       lexicalLensNameCharacters: 80,
       lexicalLensSlugCharacters: 64,
@@ -220,11 +247,15 @@ describe('prompt budgets', () => {
       lexicalPreviewOutputTokens: 5_000,
       lexicalDirectiveCharacters: 16_000
     });
+    // The aggregate is the largest single frame (Creative Variations). Show vs.
+    // Tell's own frame grew to 25,700 at Slice 7 (D2) and stays under it.
     expect(WORKSHOP_WIDGET_RECOMMENDATION_FRAME_CHARACTERS).toBe(51_500);
   });
 
   it('pins the assembled recommendation instruction so prompt growth is reviewed explicitly', () => {
-    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(7_823);
+    // 12,523 → 13,098 at Slice 7: the optional surrounding-context field, the
+    // multi-reference rule, and the optional must-survive wording.
+    expect(WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION.length).toBe(13_098);
   });
 
   it('keeps Lexical Gravity Preview as two explicit application gears', () => {
@@ -290,6 +321,29 @@ describe('prompt budgets', () => {
       expect(prompt).toContain(fragment);
     }
     expect(prompt).toContain("Target 60–100% of the subject's length");
+  });
+
+  it('declares every Show vs. Tell response ceiling to the model', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(SRC_ROOT, '..', 'resources', 'system-prompts', 'show-vs-tell', '00-show-vs-tell.md'),
+      'utf8'
+    );
+    const budget = PROMPT_BUDGETS.workshopWidgets;
+    for (const fragment of [
+      `\`prose\` ≤ ${budget.showVsTellProseCharacters.toLocaleString('en-US')} characters`,
+      `\`direction\` ≤ ${budget.showVsTellDirectionCharacters} characters.`,
+      `\`gains\` and \`costs\` ≤ ${budget.showVsTellGainsCharacters} characters each`,
+      `\`channels\` holds 1–${budget.showVsTellChannelsPerVariant} channel ids, without repeats`,
+      `At most ${budget.showVsTellFlagsPerVariant} \`invariantFlags\` per variant`,
+      `flag \`note\` ≤ ${budget.showVsTellFlagNoteCharacters} characters`,
+      `${budget.showVsTellVariantsPerGroupMinimum}–${budget.showVsTellVariantsPerGroup} variants per group`,
+      `${budget.showVsTellVariantsMinimum}–${budget.showVsTellVariants} variants in total`,
+      `The whole response ≤ ${budget.showVsTellResponseCharacters.toLocaleString('en-US')} characters`
+    ]) {
+      expect(prompt).toContain(fragment);
+    }
+    // Gains and costs share one stated ceiling, so the two budgets must agree.
+    expect(budget.showVsTellCostsCharacters).toBe(budget.showVsTellGainsCharacters);
   });
 
   it('recognizes mutable, field, and suffix-style budget declarations', () => {

@@ -92,6 +92,8 @@ const WORKSHOP_GESTURE_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/gesturePlayground/WorkshopGesturePlaygroundHandler.ts';
 const WORKSHOP_CREATIVE_VARIATIONS_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/creativeVariations/WorkshopCreativeVariationsHandler.ts';
+const WORKSHOP_SHOW_VS_TELL_HANDLER_OWNER =
+  'application/handlers/domain/workshop/widgets/showVsTell/WorkshopShowVsTellHandler.ts';
 const WORKSHOP_LEXICAL_HANDLER_OWNER =
   'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts';
 
@@ -213,6 +215,14 @@ const WORKSHOP_ROUTE_OWNERS = [
     ]
   },
   {
+    owner: WORKSHOP_SHOW_VS_TELL_HANDLER_OWNER,
+    registration: 'direct',
+    messageTypes: [
+      'WORKSHOP_SHOW_VS_TELL_GENERATE',
+      'CANCEL_SHOW_VS_TELL_GENERATE_REQUEST'
+    ]
+  },
+  {
     owner: WORKSHOP_WIDGET_HOST_HANDLER_OWNER,
     registration: 'mutation',
     messageTypes: ['WORKSHOP_COMMIT_WIDGET']
@@ -290,6 +300,7 @@ const WORKSHOP_COMPOSED_SLICE_HANDLER_NAMES = [
   'WorkshopLexicalGravityHandler',
   'WorkshopSessionExportHandler',
   'WorkshopSessionMessageHandler',
+  'WorkshopShowVsTellHandler',
   'WorkshopStandingDirectiveHandler',
   'WorkshopTodoHandler',
   'WorkshopWidgetHostHandler'
@@ -306,6 +317,7 @@ const MODULE_REFERENCE = new RegExp(
 const GESTURE_FEATURE_REFERENCE = /(?:GesturePlayground|gesturePlayground|gesture-playground)/;
 const LEXICAL_FEATURE_REFERENCE = /(?:LexicalGravity|lexicalGravity|lexical-gravity)/;
 const CREATIVE_VARIATIONS_FEATURE_REFERENCE = /(?:CreativeVariations|creativeVariations|creative-variations)/;
+const SHOW_VS_TELL_FEATURE_REFERENCE = /(?:ShowVsTell|showVsTell|show-vs-tell)/;
 
 /**
  * Closed feature inventory for cross-slice architecture witnesses. A feature
@@ -364,6 +376,24 @@ const WORKSHOP_FEATURE_BOUNDARIES: readonly WorkshopFeatureBoundaryDescriptor[] 
       String.raw`(?:(?<=\.)\b(?:aim|distance)\b|\b(?:aim|distance)\b(?=\s*:))`
     ],
     minimumSourceFiles: 3
+  },
+  {
+    widgetId: 'show-vs-tell',
+    name: 'Show vs. Tell',
+    pathReference: /ShowVsTell/i,
+    importReference: SHOW_VS_TELL_FEATURE_REFERENCE,
+    // Shared narrative-handling position and lever ids are deliberately absent:
+    // they belong to narrativeHandlingVocabulary, not to this feature.
+    semanticTokenSources: [
+      String.raw`\b[A-Za-z0-9_]*(?:(?:ShowVsTell|showVsTell)[A-Z])[A-Za-z0-9_]*\b`,
+      String.raw`\b[A-Z0-9_]*SHOW_VS_TELL_[A-Z0-9_]+\b`,
+      String.raw`\b[a-z0-9_-]*show[_-]vs[_-]tell[a-z0-9_-]*\b`,
+      String.raw`\bShow\s+vs\.\s+Tell\b`,
+      String.raw`\b(?:focalCharacter|lengthBudget|told-cleanly|shown-as-evidence|shown-from-inside|observable-action|sensory-evidence|dialogue-subtext|summary-exposition|plus-one-sentence|plus-one-paragraph|svtw)\b`
+    ],
+    // Slice 7 added ShowVsTellConstraintsPanel, ShowVsTellSheetHeader,
+    // ShowVsTellCheckpointNormalization, showVsTellSourceRules, and useShowVsTellIntake.
+    minimumSourceFiles: 33
   }
 ];
 
@@ -429,42 +459,42 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/handlers/MessageHandler.ts',
     reason: 'composition-root feature-service wiring',
-    allowedToken: /(?:creativeVariationsService|gesturePlayground(?:Service)?|lexicalGravity(?:LensRepository|ModelService)?)/
+    allowedToken: /(?:creativeVariationsService|showVsTellService|gesturePlayground(?:Service)?|lexicalGravity(?:LensRepository|ModelService)?)/
   },
   {
     file: 'application/handlers/MessageHandlerContracts.ts',
     reason: 'composition-root service contract',
-    allowedToken: /(?:Creative Variations|CreativeVariationsService|creativeVariationsService|Gesture Playground|Lexical Gravity|GesturePlaygroundService|LexicalGravity(?:LensRepository|ModelService)|gesturePlaygroundService|lexicalGravity(?:LensRepository|ModelService))/
+    allowedToken: /(?:Creative Variations|CreativeVariationsService|creativeVariationsService|Show vs\. Tell|ShowVsTellService|showVsTellService|Gesture Playground|Lexical Gravity|GesturePlaygroundService|LexicalGravity(?:LensRepository|ModelService)|gesturePlaygroundService|lexicalGravity(?:LensRepository|ModelService))/
   },
   {
     file: 'application/handlers/domain/workshop/WorkshopSliceComposition.ts',
     reason: 'Workshop-internal feature-slice composition owner',
-    allowedToken: /(?:WorkshopCreativeVariationsHandler|CreativeVariationsWorkupId|createCreativeVariationsWorkupIdFactory|creativeVariationsHandler|WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesture-playground|gesturePlayground(?:Handler)?|creative-variations|lexicalGravity(?:Handler)?)/
+    allowedToken: /(?:WorkshopCreativeVariationsHandler|CreativeVariationsWorkupId|createCreativeVariationsWorkupIdFactory|creativeVariationsHandler|WorkshopShowVsTellHandler|ShowVsTellWorkupId|createShowVsTellWorkupIdFactory|showVsTell(?:Handler)?|show-vs-tell|WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesture-playground|gesturePlayground(?:Handler)?|creative-variations|lexicalGravity(?:Handler)?)/
   },
   {
     file: 'application/handlers/domain/workshop/WorkshopRouteContracts.ts',
     reason: 'Workshop-internal composition contract owner',
-    allowedToken: /(?:WorkshopCreativeVariations(?:Handler|ServicePort)|creativeVariations|WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
+    allowedToken: /(?:WorkshopCreativeVariations(?:Handler|ServicePort)|creativeVariations|WorkshopShowVsTell(?:Handler|ServicePort)|showVsTell|WorkshopGesturePlayground(?:Handler|ServicePort)|WorkshopLexicalGravity(?:Handler|ModelPort|RepositoryPort)|gesturePlayground|lexicalGravity)/
   },
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetPersistenceLifecycle.ts',
     reason: 'closed persisted-config lifecycle registry',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity|CreativeVariations)Draft(?:CheckpointShape|Integrity|Shape)|normalize(?:GesturePlayground|LexicalGravity|CreativeVariations)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations)/
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)(?:ConfigCodec|CheckpointNormalization)|assert(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)Draft(?:CheckpointShape|Integrity|Shape)|normalize(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)DraftForHydration|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionStateV1Shape.ts',
     reason: 'closed persisted union validator',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations)ConfigCodec|assert(?:GesturePlayground|LexicalGravity|CreativeVariations)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations)/
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)ConfigCodec|assert(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)(?:Draft|RecommendationSeed)Shape|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/WorkshopRunCompletion.ts',
     reason: 'recommendation source-availability boundary',
-    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell|lengthBudget|lensSlug|metaphorPull|unsupported_lens|invalid_weight|invalid_reach|invalid_metaphor_pull|target_missing_from_context|invalid_source_references|subjectText|mustSurvive|mustNotChange|aim|distance|requestedCount|invalid_distance|invalid_requested_count)/
   },
   {
     file: 'application/services/workshop/WorkshopSessionRecords.ts',
     reason: 'closed recommendation-clone dispatch',
-    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/directives/WorkshopStandingDirectiveOperations.ts',
@@ -474,37 +504,37 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetConfigLedger.ts',
     reason: 'explicit widget-family draft union owner',
-    allowedToken: /(?:WorkshopGesturePlaygroundDraft|WorkshopLexicalGravityDraft|WorkshopCreativeVariationsDraft|gesture-playground|lexical-gravity|creative-variations)/
+    allowedToken: /(?:WorkshopGesturePlaygroundDraft|WorkshopLexicalGravityDraft|WorkshopCreativeVariationsDraft|WorkshopShowVsTellDraft|gesture-playground|lexical-gravity|creative-variations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetConfigOperations.ts',
     reason: 'closed widget-config operations dispatch',
-    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations)ConfigCodec|clone(?:GesturePlayground|LexicalGravity|CreativeVariations)Draft|summarize(?:GesturePlayground|LexicalGravity|CreativeVariations)Draft|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations)/
+    allowedToken: /(?:(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)ConfigCodec|clone(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)Draft|summarize(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)Draft|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations.ts',
     reason: 'closed one-shot feature-preparation dispatch',
-    allowedToken: /(?:(?:GesturePlayground|CreativeVariations)OneShotCommit|prepare(?:GesturePlayground|CreativeVariations)OneShotCommit|gesture-playground|gesturePlayground|creative-variations|creativeVariations)/
+    allowedToken: /(?:(?:GesturePlayground|CreativeVariations|ShowVsTell)OneShotCommit|prepare(?:GesturePlayground|CreativeVariations|ShowVsTell)OneShotCommit|gesture-playground|gesturePlayground|creative-variations|creativeVariations|show-vs-tell)/
   },
   {
     file: 'application/services/workshop/widgets/WorkshopWidgetRecommendationOperations.ts',
     reason: 'closed widget-recommendation registry and prompt composer',
-    allowedToken: /(?:(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY|CREATIVE_VARIATIONS)_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity|CreativeVariations)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
+    allowedToken: /(?:(?:GESTURE_PLAYGROUND|LEXICAL_GRAVITY|CREATIVE_VARIATIONS|SHOW_VS_TELL)_WIDGET_RECOMMENDATION_ENTRY|(?:GesturePlayground|LexicalGravity|CreativeVariations|ShowVsTell)Recommendation(?:Field|InvalidFieldReason)?|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|gesture(?:CharacterNotes|Context|RecommendationFrameAllowance|SourceReference|TargetPhrase|WriterInstructions)Characters)/
   },
   {
     file: 'shared/types/messages/workshop/recovery.ts',
     reason: 'closed rejected-widget response-contract registry',
-    allowedToken: /(?:RECOVERABLE_WIDGET_RESPONSE_CONTRACTS|RecoverableWidgetToolName|RejectedModelResponseContract|creative-variations(?:-[a-z0-9]+)*|gesture-playground(?:-[a-z0-9]+)*|lexical-gravity(?:-[a-z0-9]+)*|(?:END_)?(?:CREATIVE_VARIATIONS|GESTURE|LEXICAL)_[A-Z0-9_]+)/
+    allowedToken: /(?:RECOVERABLE_WIDGET_RESPONSE_CONTRACTS|RecoverableWidgetToolName|RejectedModelResponseContract|creative-variations(?:-[a-z0-9]+)*|show-vs-tell(?:-[a-z0-9]+)*|gesture-playground(?:-[a-z0-9]+)*|lexical-gravity(?:-[a-z0-9]+)*|(?:END_)?(?:CREATIVE_VARIATIONS|SHOW_VS_TELL|GESTURE|LEXICAL)_[A-Z0-9_]+)/
   },
   {
     file: 'index.ts',
     reason: 'core public composition barrel',
-    allowedToken: /(?:CreativeVariationsService|GesturePlaygroundDirective|GesturePlaygroundService|LexicalGravityLensRepository|LexicalGravityModelService|buildGestureDirective|gesturePlayground)/
+    allowedToken: /(?:CreativeVariationsService|ShowVsTellService|GesturePlaygroundDirective|GesturePlaygroundService|LexicalGravityLensRepository|LexicalGravityModelService|buildGestureDirective|gesturePlayground)/
   },
   {
     file: 'presentation/webview/WorkshopApp.tsx',
     reason: 'Workshop presentation composition root',
-    allowedToken: /(?:CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE|CreativeVariationsDistinctness|GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopCreativeVariationsModal|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|clearCreativeVariationsTransientState|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|copyCreativeVariation|copyGestureDictionary|creative-variations|creative_variations|creativeVariations|creativeVariationsAuthoring|creativeVariationsOpening|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useCreativeVariations|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:WorkshopShowVsTellModal|clearShowVsTellTransientState|show-vs-tell|showVsTellAuthoring|showVsTellOpening|useShowVsTellAuthoring|CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE|CreativeVariationsDistinctness|GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopCreativeVariationsModal|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|clearCreativeVariationsTransientState|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|copyCreativeVariation|copyGestureDictionary|creative-variations|creative_variations|creativeVariations|creativeVariationsAuthoring|creativeVariationsOpening|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useCreativeVariations|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
   },
   {
     file: 'presentation/webview/components/SettingsOverlay.tsx',
@@ -514,27 +544,27 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/components/workshop/WorkshopTurnBubble.tsx',
     reason: 'closed widget-recommendation presentation dispatch',
-    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|lensSlug|subjectText)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell|Show vs\. Tell|lensSlug|subjectText)/
   },
   {
     file: 'presentation/webview/components/workshop/workshopWidgetIcons.ts',
     reason: 'closed widget-icon presentation registry',
-    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations)/
+    allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
     reason: 'closed widget-opening presentation controller',
-    allowedToken: /(?:Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+    allowedToken: /(?:WorkshopShowVsTellOpening|WorkshopShowVsTellRecommendationSeed|WorkshopShowVsTellWidgetConfigSnapshot|setShowVsTellOpening|show-vs-tell|showVsTellOpening|Show vs\. Tell|Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts',
     reason: 'closed Workshop selection-target presentation dispatch',
-    allowedToken: /(?:handleCreativeVariationsSubject|workshop_creative_variations_subject)/
+    allowedToken: /(?:handleCreativeVariationsSubject|handleShowVsTell(?:Beat|Passage)|workshop_creative_variations_subject|workshop_show_vs_tell_(?:beat|passage))/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopWidgetActionResult.ts',
     reason: 'closed widget-result presentation dispatch',
-    allowedToken: /(?:handleCreativeVariationsActionResult|handleGestureActionResult|handleLexicalActionResult)/
+    allowedToken: /(?:handleCreativeVariationsActionResult|handleShowVsTellActionResult|handleGestureActionResult|handleLexicalActionResult)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/useWorkshopStandingDirectives.ts',
@@ -544,17 +574,17 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
     reason: 'Workshop webview route-composition table',
-    allowedToken: /(?:UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
   },
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
     reason: 'closed writer-ask prefill registry',
-    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|creative-aim)/
+    allowedToken: /(?:creative-variations|gesture-playground|lexical-gravity|show-vs-tell|creative-aim)/
   },
   {
     file: 'shared/constants/promptBudgets.ts',
     reason: 'central deterministic prompt-budget catalog',
-    allowedToken: /(?:Gesture Playground|Creative Variations|gesture[A-Z][A-Za-z0-9]*|lexical[A-Z][A-Za-z0-9]*|creative[A-Z][A-Za-z0-9]*)/
+    allowedToken: /(?:Gesture Playground|Creative Variations|Show vs\. Tell|gesture[A-Z][A-Za-z0-9]*|lexical[A-Z][A-Za-z0-9]*|creative[A-Z][A-Za-z0-9]*|showVsTell[A-Z][A-Za-z0-9]*)/
   },
   {
     file: 'shared/constants/resultToolNames.ts',
@@ -564,32 +594,32 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/constants/workshopWidgets.ts',
     reason: 'generic widget catalog may own feature ids and labels, not feature value grammar',
-    allowedToken: /(?:WorkshopGesturePlaygroundHandler|gesture-playground|lexical-gravity|creative-variations|Gesture Playground|Lexical Gravity|Creative Variations)/
+    allowedToken: /(?:WorkshopGesturePlaygroundHandler|gesture-playground|lexical-gravity|creative-variations|show-vs-tell|Gesture Playground|Lexical Gravity|Creative Variations|Show vs\. Tell)/
   },
   {
     file: 'shared/streamingCancelMessages.ts',
     reason: 'closed streaming-cancellation registry',
-    allowedToken: /(?:(?:CANCEL_|Cancel)(?:CREATIVE_VARIATIONS|CreativeVariations|GESTURE_PLAYGROUND|GesturePlayground).*|workshop-(?:creative-variations|gesture-playground))/
+    allowedToken: /(?:(?:CANCEL_|Cancel)(?:CREATIVE_VARIATIONS|CreativeVariations|SHOW_VS_TELL|ShowVsTell|GESTURE_PLAYGROUND|GesturePlayground).*|workshop-(?:creative-variations|show-vs-tell|gesture-playground))/
   },
   {
     file: 'shared/types/messages/base.ts',
     reason: 'closed MessageType wire-value registry',
-    allowedToken: /(?:Gesture Playground|(?:CANCEL_|WORKSHOP_).*(?:CREATIVE_VARIATIONS|GESTURE_PLAYGROUND|LEXICAL_GRAVITY).*|(?:cancel_|workshop_).*(?:creative_variations|gesture_playground|lexical_gravity).*)/
+    allowedToken: /(?:Gesture Playground|(?:CANCEL_|WORKSHOP_).*(?:CREATIVE_VARIATIONS|SHOW_VS_TELL|GESTURE_PLAYGROUND|LEXICAL_GRAVITY).*|(?:cancel_|workshop_).*(?:creative_variations|show_vs_tell|gesture_playground|lexical_gravity).*)/
   },
   {
     file: 'shared/types/messages/index.ts',
     reason: 'message union composition barrel',
-    allowedToken: /.*(?:CreativeVariations|GesturePlayground|LexicalGravity).*/
+    allowedToken: /.*(?:CreativeVariations|ShowVsTell|GesturePlayground|LexicalGravity).*/
   },
   {
     file: 'shared/types/messages/ui.ts',
     reason: 'closed host selection-target wire union',
-    allowedToken: /workshop_creative_variations_subject/
+    allowedToken: /(?:workshop_creative_variations_subject|workshop_show_vs_tell_(?:beat|passage))/
   },
   {
     file: 'shared/types/messages/streaming.ts',
     reason: 'closed streaming-domain wire union',
-    allowedToken: /workshop-(?:creative-variations|gesture-playground)/
+    allowedToken: /workshop-(?:creative-variations|show-vs-tell|gesture-playground)/
   },
   {
     file: 'shared/types/messages/workshop/index.ts',
@@ -604,7 +634,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'shared/types/messages/workshop/widgets.ts',
     reason: 'explicit widget-family config, recommendation, and result union owner',
-    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|metaphorPull)/
+    allowedToken: /(?:WorkshopGesturePlayground(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopLexicalGravity(?:Draft|EvidenceMode|Reach|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopCreativeVariations(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|WorkshopShowVsTell(?:CommitPayload|Draft|RecommendationSeed|WidgetConfigSnapshot|WidgetConfigSummary)|gesture-playground|gesturePlayground|lexical-gravity|lexicalGravity|creative-variations|creativeVariations|show-vs-tell|metaphorPull)/
   },
   {
     file: 'utils/workshopPromptFrames.ts',
@@ -1175,11 +1205,11 @@ describe('architectural boundaries', () => {
       );
     };
 
-    expect(expectedOwnerPairs).toHaveLength(54);
+    expect(expectedOwnerPairs).toHaveLength(56);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(37);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(17);
+      .toHaveLength(19);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });
@@ -1647,6 +1677,7 @@ describe('architectural boundaries', () => {
       'recovery.ts',
       'session.ts',
       'settings.ts',
+      'showVsTell.ts',
       'standingDirectives.ts',
       'widgets.ts'
     ]);

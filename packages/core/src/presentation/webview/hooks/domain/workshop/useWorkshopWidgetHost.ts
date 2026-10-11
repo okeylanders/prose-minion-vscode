@@ -4,9 +4,11 @@ import * as React from 'react';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import {
   MessageType,
+  WorkshopSessionStateMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigRestoredMessage,
-  WorkshopWidgetConfigSnapshot
+  WorkshopWidgetConfigSnapshot,
+  WorkshopWidgetConfigSummary
 } from '@messages';
 
 export interface WorkshopWidgetHostState {
@@ -19,6 +21,12 @@ export interface WorkshopWidgetHostState {
    * decision 3).
    */
   restoredWidgetConfigId: string | null;
+  /**
+   * Bounded identities of the committed configs behind the visible thread
+   * window, keyed by config id. A chip reads display counts here, so the
+   * persisted turn stays exactly as it is. Mirrored from the host snapshot.
+   */
+  widgetConfigSummaries: Readonly<Record<string, WorkshopWidgetConfigSummary>>;
 }
 
 export interface WorkshopWidgetHostActions {
@@ -26,6 +34,7 @@ export interface WorkshopWidgetHostActions {
   clearWidgetConfigData: () => void;
   handleWidgetConfigData: (message: WorkshopWidgetConfigDataMessage) => void;
   handleWidgetConfigRestored: (message: WorkshopWidgetConfigRestoredMessage) => void;
+  handleSessionState: (message: WorkshopSessionStateMessage) => void;
   consumeRestoredWidgetConfig: () => void;
 }
 
@@ -45,6 +54,15 @@ export function useWorkshopWidgetHost(): UseWorkshopWidgetHostReturn {
   const [widgetConfigResponseId, setWidgetConfigResponseId] = React.useState<string | null>(null);
   const [widgetConfigError, setWidgetConfigError] = React.useState<string | null>(null);
   const [restoredWidgetConfigId, setRestoredWidgetConfigId] = React.useState<string | null>(null);
+
+  const [widgetConfigSummaries, setWidgetConfigSummaries] =
+    React.useState<Readonly<Record<string, WorkshopWidgetConfigSummary>>>({});
+
+  const handleSessionState = React.useCallback((message: WorkshopSessionStateMessage) => {
+    setWidgetConfigSummaries(Object.fromEntries(
+      (message.payload.session.widgetConfigs ?? []).map((config) => [config.id, config])
+    ));
+  }, []);
 
   const requestWidgetConfig = React.useCallback((configId: string) => {
     setWidgetConfigData(null);
@@ -89,10 +107,12 @@ export function useWorkshopWidgetHost(): UseWorkshopWidgetHostReturn {
     widgetConfigResponseId,
     widgetConfigError,
     restoredWidgetConfigId,
+    widgetConfigSummaries,
     requestWidgetConfig,
     clearWidgetConfigData,
     handleWidgetConfigData,
     handleWidgetConfigRestored,
+    handleSessionState,
     consumeRestoredWidgetConfig,
     persistedState: {}
   };

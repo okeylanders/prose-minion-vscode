@@ -9,6 +9,8 @@ import {
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopPersonaId,
+  WorkshopShowVsTellRecommendationSeed,
+  WorkshopShowVsTellWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary,
   WorkshopTurn,
   WorkshopWidgetConfigSnapshot,
@@ -37,6 +39,20 @@ export type WorkshopCreativeVariationsOpening =
     }
   | { kind: 'clone'; config: WorkshopCreativeVariationsWidgetConfigSnapshot };
 
+/**
+ * A chip reopens its exact committed draft; a persona recommendation prefills
+ * the inputs only and never generates.
+ */
+export type WorkshopShowVsTellOpening =
+  | { kind: 'new' }
+  | {
+      kind: 'seed';
+      seed: WorkshopShowVsTellRecommendationSeed;
+      personaId: WorkshopPersonaId;
+      personaLabel: string;
+    }
+  | { kind: 'clone'; config: WorkshopShowVsTellWidgetConfigSnapshot };
+
 export interface WorkshopWidgetOpeningHost {
   widgetConfigData: WorkshopWidgetConfigSnapshot | null;
   widgetConfigResponseId: string | null;
@@ -55,12 +71,14 @@ export interface UseWorkshopWidgetOpeningOptions {
   onCloseGesturePlayground: () => void;
   onCloseLexicalGravity: () => void;
   onCloseCreativeVariations: () => void;
+  onCloseShowVsTell: () => void;
 }
 
 export interface WorkshopWidgetOpeningState {
   gesturePlaygroundOpening: WorkshopGesturePlaygroundOpening | null;
   lexicalGravityOpening: WorkshopLexicalGravityOpening | null;
   creativeVariationsOpening: WorkshopCreativeVariationsOpening | null;
+  showVsTellOpening: WorkshopShowVsTellOpening | null;
   pendingWidgetConfigId: string | null;
 }
 
@@ -75,6 +93,7 @@ export interface WorkshopWidgetOpeningActions {
   closeGesturePlayground: () => void;
   closeLexicalGravity: () => void;
   closeCreativeVariations: () => void;
+  closeShowVsTell: () => void;
 }
 
 export interface WorkshopWidgetOpeningPersistence {
@@ -92,7 +111,8 @@ export function useWorkshopWidgetOpening({
   onError,
   onCloseGesturePlayground,
   onCloseLexicalGravity,
-  onCloseCreativeVariations
+  onCloseCreativeVariations,
+  onCloseShowVsTell
 }: UseWorkshopWidgetOpeningOptions): UseWorkshopWidgetOpeningReturn {
   const [gesturePlaygroundOpening, setGesturePlaygroundOpening] =
     React.useState<WorkshopGesturePlaygroundOpening | null>(null);
@@ -100,6 +120,8 @@ export function useWorkshopWidgetOpening({
     React.useState<WorkshopLexicalGravityOpening | null>(null);
   const [creativeVariationsOpening, setCreativeVariationsOpening] =
     React.useState<WorkshopCreativeVariationsOpening | null>(null);
+  const [showVsTellOpening, setShowVsTellOpening] =
+    React.useState<WorkshopShowVsTellOpening | null>(null);
   const [pendingWidgetConfigId, setPendingWidgetConfigId] = React.useState<string | null>(null);
 
   const openWidgetConfig = React.useCallback((widgetConfigId: string) => {
@@ -130,6 +152,10 @@ export function useWorkshopWidgetOpening({
     }
     if (widgetId === 'creative-variations') {
       setCreativeVariationsOpening({ kind: 'new' });
+      return;
+    }
+    if (widgetId === 'show-vs-tell') {
+      setShowVsTellOpening({ kind: 'new' });
       return;
     }
     if (widgetId === 'lexical-gravity') {
@@ -186,6 +212,26 @@ export function useWorkshopWidgetOpening({
             personaLabel: personaLabel ?? 'the persona'
           });
           return;
+        case 'show-vs-tell':
+          if (pendingWidgetConfigId) {
+            onError('Wait for the requested widget configuration before opening a prefill.');
+            return;
+          }
+          if (showVsTellOpening) {
+            onError('Close the current Show vs. Tell sheet before opening a prefill.');
+            return;
+          }
+          if (!personaId) {
+            onError('That Show vs. Tell prefill has no persona identity and cannot open.');
+            return;
+          }
+          setShowVsTellOpening({
+            kind: 'seed',
+            seed: recommendation.seed,
+            personaId,
+            personaLabel: personaLabel ?? 'the persona'
+          });
+          return;
         default: {
           const exhaustive: never = recommendation;
           console.warn(
@@ -196,7 +242,7 @@ export function useWorkshopWidgetOpening({
         }
       }
     },
-    [creativeVariationsOpening, onError, pendingWidgetConfigId]
+    [creativeVariationsOpening, onError, pendingWidgetConfigId, showVsTellOpening]
   );
 
   const closeGesturePlayground = React.useCallback(() => {
@@ -220,6 +266,13 @@ export function useWorkshopWidgetOpening({
     onCloseCreativeVariations();
   }, [host.clearWidgetConfigData, onCloseCreativeVariations]);
 
+  const closeShowVsTell = React.useCallback(() => {
+    setShowVsTellOpening(null);
+    setPendingWidgetConfigId(null);
+    host.clearWidgetConfigData();
+    onCloseShowVsTell();
+  }, [host.clearWidgetConfigData, onCloseShowVsTell]);
+
   React.useEffect(() => {
     if (!pendingWidgetConfigId || host.widgetConfigResponseId !== pendingWidgetConfigId) {
       return;
@@ -238,6 +291,14 @@ export function useWorkshopWidgetOpening({
           );
         } else {
           setCreativeVariationsOpening({ kind: 'clone', config });
+        }
+      } else if (config.widgetId === 'show-vs-tell') {
+        if (showVsTellOpening) {
+          onError(
+            'Close the current widget sheet before reopening a committed configuration.'
+          );
+        } else {
+          setShowVsTellOpening({ kind: 'clone', config });
         }
       } else if (config.widgetId === 'lexical-gravity') {
         const active = standingDirectives.some(
@@ -267,6 +328,7 @@ export function useWorkshopWidgetOpening({
     host.widgetConfigError,
     host.widgetConfigResponseId,
     creativeVariationsOpening,
+    showVsTellOpening,
     onError,
     pendingWidgetConfigId,
     standingDirectives
@@ -276,6 +338,7 @@ export function useWorkshopWidgetOpening({
     gesturePlaygroundOpening,
     lexicalGravityOpening,
     creativeVariationsOpening,
+    showVsTellOpening,
     pendingWidgetConfigId,
     openWidgetConfig,
     launchWidget,
@@ -283,6 +346,7 @@ export function useWorkshopWidgetOpening({
     closeGesturePlayground,
     closeLexicalGravity,
     closeCreativeVariations,
+    closeShowVsTell,
     persistedState: {}
   };
 }

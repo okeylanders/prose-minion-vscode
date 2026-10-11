@@ -242,6 +242,40 @@ describe('UIHandler', () => {
       }));
     });
 
+    it('echoes a request correlation id on the reply, and omits it when the request carried none', async () => {
+      const echoing = new UIHandler(
+        postMessage as any,
+        { appendLine } as any,
+        createFakeFileSystem(),
+        createFakeWorkspace(),
+        createFakeShellService({ readClipboard: async () => 'Clipboard passage.' }),
+        createFakeEditorContext(),
+        createFakeGlobalState()
+      );
+
+      await echoing.handleSelectionRequest({
+        type: MessageType.REQUEST_SELECTION,
+        source: 'webview.workshop.show-vs-tell',
+        timestamp: 1,
+        payload: { target: 'workshop_show_vs_tell_passage', requestId: 'show-vs-tell-passage-7' }
+      } as any);
+      await echoing.handleSelectionRequest({
+        type: MessageType.REQUEST_SELECTION,
+        source: 'webview.workshop.show-vs-tell',
+        timestamp: 2,
+        payload: { target: 'workshop_show_vs_tell_beat' }
+      } as any);
+
+      const [correlated, plain] = postMessage.mock.calls.map(([posted]) => posted.payload);
+      expect(correlated).toMatchObject({
+        target: 'workshop_show_vs_tell_passage',
+        requestId: 'show-vs-tell-passage-7',
+        content: 'Clipboard passage.'
+      });
+      expect(plain.target).toBe('workshop_show_vs_tell_beat');
+      expect('requestId' in plain).toBe(false);
+    });
+
     it('returns clipboard fallback text without pretending it has editor provenance', async () => {
       handler = new UIHandler(
         postMessage as any,

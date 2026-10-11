@@ -492,6 +492,87 @@ describe('WorkshopTurnBubble variation cards', () => {
     expect(onOpenWidgetConfig).toHaveBeenCalledWith('wc-8');
   });
 
+  describe('Show vs. Tell chip', () => {
+    const turn = (selectionCount: number) => ({
+      id: 'svt-widget-turn',
+      role: 'user' as const,
+      kind: 'message' as const,
+      participant: 'writer' as const,
+      artifact: 'persona_message' as const,
+      content: "Ran “She hadn’t trusted him.” through the playground at hinge — here's how I want the beat carried.",
+      timestamp: 1,
+      excerptVersion: 1,
+      widgetCommit: {
+        widgetId: 'show-vs-tell' as const,
+        widgetConfigId: 'wc-12',
+        rail: 'thread-artifact' as const,
+        artifactId: 'ta-13',
+        selectionCount
+      }
+    });
+    const summary = (keptCount: number, directionCount: number) => ({
+      id: 'wc-12',
+      widgetId: 'show-vs-tell' as const,
+      revision: 1,
+      createdAt: 1,
+      beatPreview: 'She hadn’t trusted him.',
+      keptCount,
+      directionCount
+    });
+    const renderChip = (
+      selectionCount: number,
+      widgetConfigSummary?: React.ComponentProps<typeof WorkshopTurnBubble>['widgetConfigSummary']
+    ) => {
+      const onOpenWidgetConfig = jest.fn();
+      render(
+        <WorkshopTurnBubble
+          turn={turn(selectionCount)}
+          quickActionToolId={null}
+          onQuickAction={jest.fn()}
+          onTalkDirectly={jest.fn()}
+          onCopy={jest.fn()}
+          onSave={jest.fn()}
+          onOpenWidgetConfig={onOpenWidgetConfig}
+          widgetConfigSummary={widgetConfigSummary}
+        />
+      );
+      return onOpenWidgetConfig;
+    };
+
+    it('reads `{N} kept · {M} as direction · re-open` with the eye icon and reopens its config', () => {
+      const onOpenWidgetConfig = renderChip(2, summary(2, 1));
+
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell/ });
+      expect(chip.textContent?.trim()).toBe('Show vs. Tell 2 kept · 1 as direction · re-open');
+      expect(chip.textContent).not.toContain('Playground');
+      expect(chip.querySelector('svg')).not.toBeNull();
+      fireEvent.click(chip);
+      expect(onOpenWidgetConfig).toHaveBeenCalledWith('wc-12');
+    });
+
+    it('omits the direction clause when no variant rides as direction', () => {
+      renderChip(3, summary(3, 0));
+
+      expect(screen.getByRole('button', { name: /Show vs\. Tell/ }).textContent?.trim())
+        .toBe('Show vs. Tell 3 kept · re-open');
+    });
+
+    it('keeps the kept count, and omits the clause, when the summary is outside the visible window', () => {
+      renderChip(2);
+
+      expect(screen.getByRole('button', { name: /Show vs\. Tell/ }).textContent?.trim())
+        .toBe('Show vs. Tell 2 kept · re-open');
+    });
+
+    it('is presentation-only, and never scores or recommends', () => {
+      renderChip(2, summary(2, 1));
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell/ });
+
+      expect(chip.getAttribute('title')).toBe('Presentation-only — the model never sees this chip');
+      expect(chip.textContent).not.toMatch(/\b(?:score|best|better|ranked)\b/i);
+    });
+  });
+
   it('forwards the complete rich persona seed when its widget chip is opened', () => {
     const onOpenWidgetRecommendation = jest.fn();
     const recommendation = {
@@ -575,6 +656,68 @@ describe('WorkshopTurnBubble variation cards', () => {
       'Margot',
       'margot'
     );
+  });
+
+  describe('Show vs. Tell recommendation chip', () => {
+    const renderChip = (seed: Partial<{ subject: string }>) => {
+      const onOpenWidgetRecommendation = jest.fn();
+      const recommendation = {
+        widgetId: 'show-vs-tell' as const,
+        seed: {
+          beatText: 'She hadn’t trusted him since the funeral.',
+          sourceReferences: [],
+          mustSurvive: 'The distrust is old.',
+          ...seed
+        }
+      };
+      render(
+        <WorkshopTurnBubble
+          turn={{
+            ...assistantTurn('That line carries a year in nine words.'),
+            kind: 'message',
+            participant: 'guest',
+            artifact: 'persona_message',
+            toolId: undefined,
+            toolLabel: undefined,
+            personaId: 'margot',
+            personaLabel: 'Margot',
+            widgetRecommendation: recommendation
+          }}
+          quickActionToolId={null}
+          onQuickAction={jest.fn()}
+          onTalkDirectly={jest.fn()}
+          onCopy={jest.fn()}
+          onSave={jest.fn()}
+          onOpenWidgetRecommendation={onOpenWidgetRecommendation}
+        />
+      );
+      return { onOpenWidgetRecommendation, recommendation };
+    };
+
+    it('reads "prefilled · {subject}" under the widget label and opens with the exact persona', () => {
+      const { onOpenWidgetRecommendation, recommendation } = renderChip({
+        subject: 'the funeral line'
+      });
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell Playground/ });
+
+      expect(chip.textContent).toContain('Show vs. Tell Playground');
+      expect(chip.textContent).toContain('prefilled · the funeral line');
+      fireEvent.click(chip);
+      expect(onOpenWidgetRecommendation).toHaveBeenCalledWith(recommendation, 'Margot', 'margot');
+    });
+
+    it('falls back to a bare "prefilled" when the persona wrote no subject', () => {
+      renderChip({});
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell Playground/ });
+      expect(chip.querySelector('.pm-ws-widget-chip-meta')?.textContent).toBe('prefilled');
+    });
+
+    it('never shows the beat or the must-survive on the chip', () => {
+      renderChip({ subject: 'the funeral line' });
+      const chip = screen.getByRole('button', { name: /Show vs\. Tell Playground/ });
+      expect(chip.textContent).not.toContain('trusted him');
+      expect(chip.textContent).not.toContain('distrust');
+    });
   });
 
   it('labels logical-turn traffic as processed across provider calls', () => {

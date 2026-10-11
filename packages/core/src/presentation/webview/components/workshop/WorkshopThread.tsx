@@ -7,7 +7,8 @@ import {
   WorkshopTodoItem,
   WorkshopTurn,
   WorkshopTurnRewindability,
-  WorkshopPersonaId
+  WorkshopPersonaId,
+  WorkshopWidgetConfigSummary
 } from '@messages';
 import { WorkshopTurnBubble } from './WorkshopTurnBubble';
 
@@ -24,6 +25,8 @@ interface WorkshopThreadProps {
   onSave: (content: string, turn: WorkshopTurn) => void;
   /** Widget chips (ADR 2026-07-22): clone-and-recommit + persona recommend. */
   onOpenWidgetConfig?: (widgetConfigId: string) => void;
+  /** Bounded config summaries for the visible window, keyed by config id. */
+  widgetConfigSummaries?: Readonly<Record<string, WorkshopWidgetConfigSummary>>;
   onOpenWidgetRecommendation?: (
     recommendation: NonNullable<WorkshopTurn['widgetRecommendation']>,
     personaLabel?: string,
@@ -53,6 +56,7 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
   onCopy,
   onSave,
   onOpenWidgetConfig,
+  widgetConfigSummaries = {},
   onOpenWidgetRecommendation,
   turnRewindability = {},
   rewindPausedReason,
@@ -96,6 +100,9 @@ export const WorkshopThread: React.FC<WorkshopThreadProps> = React.memo(({
           onCopy={onCopy}
           onSave={onSave}
           onOpenWidgetConfig={onOpenWidgetConfig}
+          widgetConfigSummary={turn.widgetCommit
+            ? widgetConfigSummaries[turn.widgetCommit.widgetConfigId]
+            : undefined}
           onOpenWidgetRecommendation={onOpenWidgetRecommendation}
           rewindability={turnRewindability[turn.id]}
           rewindPausedReason={rewindPausedReason}

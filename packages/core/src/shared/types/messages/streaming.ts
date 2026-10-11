@@ -17,7 +17,8 @@ export type StreamingDomain =
   | 'workshop'
   | 'workshop-context'
   | 'workshop-gesture-playground'
-  | 'workshop-creative-variations';
+  | 'workshop-creative-variations'
+  | 'workshop-show-vs-tell';
 
 /**
  * Payload for STREAM_CHUNK messages

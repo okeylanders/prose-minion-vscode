@@ -475,6 +475,19 @@ export interface WorkshopSessionSnapshot {
   excerptVersion: number;
   /** Number of excerpt replacements since the last new-session boundary. */
   replacementCount: number;
+  /**
+   * Identity of this room generation. It changes when the room is replaced
+   * (New, Open, Rewind, Branch, restore) and is unique per process, so excerpt
+   * versions that restart at 1 in another session cannot be mistaken for this
+   * room. A revision, never content.
+   */
+  roomRevision: number;
+  /**
+   * Monotonic count of prompt-bearing context changes in this room (every
+   * attachment add, remove, edit, and file refresh). Attachment bodies stay
+   * host-private; widgets key grounded work on this, not on labels or counts.
+   */
+  contextRevision: number;
   /** Ordered context attachments shared with host and tools (Sprint 12). */
   contextAttachments: WorkshopContextAttachmentSnapshot[];
   /**

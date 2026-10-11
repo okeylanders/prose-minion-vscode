@@ -74,10 +74,10 @@ export const WORKSHOP_WIDGET_CATALOG: readonly WorkshopWidgetGroupDescriptor[] =
         rail: 'oneshot',
         railLabel: 'one-shot',
         group: 'Playgrounds',
-        tag: 'concept',
+        tag: 'Sprint 05',
         lifecycleNote: ONE_SHOT_LIFECYCLE,
-        blurb: 'Recast a told beat as shown alternatives; keep the ones that land.',
-        live: false
+        blurb: 'Move one beat between telling and showing — see what each distance gains and costs, keep what lands.',
+        live: true
       },
       {
         id: 'creative-variations',
@@ -248,7 +248,8 @@ const WIDGETS_BY_ID: ReadonlyMap<WorkshopWidgetId, WorkshopWidgetDescriptor> = n
 
 const WIDGET_SELECTION_UNIT_LABELS: ReadonlyMap<WorkshopWidgetId, string> = new Map([
   ['gesture-playground', 'direction'],
-  ['creative-variations', 'variation']
+  ['creative-variations', 'variation'],
+  ['show-vs-tell', 'kept variant']
 ]);
 
 /** Descriptor lookup; undefined for ids this build does not know. */

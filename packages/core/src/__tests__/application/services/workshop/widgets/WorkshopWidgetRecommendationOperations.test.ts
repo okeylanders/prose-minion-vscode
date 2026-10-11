@@ -130,7 +130,8 @@ describe('WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION', () => {
     expect(entries.map(({ widgetId }) => widgetId)).toEqual([
       'gesture-playground',
       'lexical-gravity',
-      'creative-variations'
+      'creative-variations',
+      'show-vs-tell'
     ]);
     expect(new Set(entries.map(({ catalogOrder }) => catalogOrder)).size).toBe(entries.length);
     expect(new Set(entries.map(({ instructionOrder }) => instructionOrder)).size).toBe(
@@ -219,7 +220,7 @@ describe('inspectWorkshopWidgetRecommendation', () => {
 
   it('rejects widget ids that are not live and host-addressable', () => {
     expect(
-      inspectWithCatalog(recommendationFrame({ widgetId: 'show-vs-tell' }))
+      inspectWithCatalog(recommendationFrame({ widgetId: 'topic-relationship' }))
     ).toEqual({ outcome: 'rejected', rejection: 'unknown_or_unavailable_widget' });
     expect(
       inspectWithCatalog(recommendationFrame({ widgetId: 'made-up-widget' }))

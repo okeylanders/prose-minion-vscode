@@ -171,6 +171,9 @@ export enum MessageType {
   WORKSHOP_CREATIVE_VARIATIONS_GENERATE = 'workshop_creative_variations_generate',
   WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS = 'workshop_creative_variations_generation_progress',
   WORKSHOP_CREATIVE_VARIATIONS_RESULT = 'workshop_creative_variations_result',
+  WORKSHOP_SHOW_VS_TELL_GENERATE = 'workshop_show_vs_tell_generate',
+  WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS = 'workshop_show_vs_tell_generation_progress',
+  WORKSHOP_SHOW_VS_TELL_RESULT = 'workshop_show_vs_tell_result',
   WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES = 'workshop_request_lexical_gravity_lenses',
   WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA = 'workshop_lexical_gravity_lenses_data',
   WORKSHOP_PREVIEW_LEXICAL_GRAVITY = 'workshop_preview_lexical_gravity',
@@ -187,7 +190,8 @@ export enum MessageType {
   WORKSHOP_REMOVE_STANDING_WIDGET = 'workshop_remove_standing_widget',
   WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',
   CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST = 'cancel_gesture_playground_generate_request',
-  CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST = 'cancel_creative_variations_generate_request'
+  CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST = 'cancel_creative_variations_generate_request',
+  CANCEL_SHOW_VS_TELL_GENERATE_REQUEST = 'cancel_show_vs_tell_generate_request'
 }
 
 export interface BaseMessage {

@@ -5,6 +5,8 @@ import type { SelectionDataMessage } from '@messages';
 export interface WorkshopSelectionDataConsumers {
   handleExcerptVerification: (message: SelectionDataMessage) => void;
   handleCreativeVariationsSubject: (message: SelectionDataMessage) => void;
+  handleShowVsTellBeat: (message: SelectionDataMessage) => void;
+  handleShowVsTellPassage: (message: SelectionDataMessage) => void;
 }
 
 export function dispatchWorkshopSelectionData(
@@ -17,6 +19,12 @@ export function dispatchWorkshopSelectionData(
       return;
     case 'workshop_creative_variations_subject':
       consumers.handleCreativeVariationsSubject(message);
+      return;
+    case 'workshop_show_vs_tell_beat':
+      consumers.handleShowVsTellBeat(message);
+      return;
+    case 'workshop_show_vs_tell_passage':
+      consumers.handleShowVsTellPassage(message);
       return;
     default:
       return;

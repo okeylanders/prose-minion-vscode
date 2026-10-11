@@ -10,6 +10,7 @@ import {
   WorkshopCreativeVariationsDraft,
   WorkshopGesturePlaygroundDraft,
   WorkshopLexicalGravityDraft,
+  WorkshopShowVsTellDraft,
   WorkshopWidgetConfigSnapshot,
   WorkshopWidgetConfigSummary
 } from '@messages';
@@ -22,7 +23,8 @@ export interface WorkshopWidgetConfigLedgerState {
 export type WorkshopWidgetConfigInput =
   | { widgetId: 'gesture-playground'; draft: WorkshopGesturePlaygroundDraft }
   | { widgetId: 'lexical-gravity'; draft: WorkshopLexicalGravityDraft }
-  | { widgetId: 'creative-variations'; draft: WorkshopCreativeVariationsDraft };
+  | { widgetId: 'creative-variations'; draft: WorkshopCreativeVariationsDraft }
+  | { widgetId: 'show-vs-tell'; draft: WorkshopShowVsTellDraft };
 
 export interface WorkshopWidgetConfigIdentity {
   id: string;

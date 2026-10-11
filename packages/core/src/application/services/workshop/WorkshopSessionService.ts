@@ -210,11 +210,22 @@ export class WorkshopSessionActiveRunPersistenceError extends Error {
  * counter when its ids must never recur during this aggregate's lifetime
  * (turns and todos); otherwise it restores the construction-time counter.
  */
+/**
+ * Process-wide room identity mint. A revision names a room generation; it is
+ * never content. Two aggregates, or one aggregate before and after a
+ * replacement, can never share a value, so a webview can tell "another room"
+ * from "the same room" without comparing excerpt versions that restart at 1.
+ */
+let roomRevisionCounter = 0;
+const mintRoomRevision = (): number => ++roomRevisionCounter;
+
 export class WorkshopSessionService {
   /** Pinned/shelved passage and immutable-before-memory scope state machine. */
   private readonly passageScope: WorkshopPassageScope;
   private contextAttachments: WorkshopContextAttachment[] = [];
   private contextRevision = 0;
+  /** Changes whenever this aggregate becomes a different room (reset or import). */
+  private roomRevision = mintRoomRevision();
   private pendingContextRevision?: number;
   private readonly contextDelivery = new WorkshopContextDelivery();
   private attachmentCounter = 0;
@@ -1844,6 +1855,7 @@ export class WorkshopSessionService {
    */
   reset(options: { clearWorkingSet?: boolean } = {}): string[] {
     const conversationIds = this.clearAllConversations();
+    this.roomRevision = mintRoomRevision();
     if (options.clearWorkingSet) {
       this.contextAttachments = [];
       this.contextRevision = 0;
@@ -2150,6 +2162,7 @@ export class WorkshopSessionService {
     // assignment-only installation of the fully reconciled room.
     this.contextAttachments = contextAttachments;
     this.contextRevision = normalized.revisions.context;
+    this.roomRevision = mintRoomRevision();
     this.pendingContextRevision = pendingContextRevision;
     this.contextDelivery.install(hostConversationId ? normalized.hostContextDelivery : undefined);
     this.attachmentCounter = normalized.counters.attachment;
@@ -2283,6 +2296,8 @@ export class WorkshopSessionService {
         : undefined,
       excerptVersion: passageState.excerptVersion,
       replacementCount: passageState.replacementCount,
+      roomRevision: this.roomRevision,
+      contextRevision: this.contextRevision,
       contextAttachments: this.contextAttachments.map(attachmentSnapshot),
       pendingMessageAttachments: this.pendingMessageAttachments.map(messageAttachmentSnapshot),
       pendingHostUpdate: passageState.pendingRevisionVersion !== undefined

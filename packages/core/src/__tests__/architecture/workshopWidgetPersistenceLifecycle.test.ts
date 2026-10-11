@@ -12,7 +12,8 @@ describe('WorkshopWidgetPersistenceLifecycle architecture', () => {
     expect(ids).toEqual([
       'gesture-playground',
       'lexical-gravity',
-      'creative-variations'
+      'creative-variations',
+      'show-vs-tell'
     ]);
     expect(ids.every(isPersistedWorkshopWidgetId)).toBe(true);
   });

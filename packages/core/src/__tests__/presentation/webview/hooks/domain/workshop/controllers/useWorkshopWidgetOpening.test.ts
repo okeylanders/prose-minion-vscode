@@ -9,8 +9,12 @@ import {
   WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopLexicalGravityWidgetConfigSnapshot,
+  WorkshopShowVsTellWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary
 } from '@messages';
+import {
+  generatedShowVsTellDraft
+} from '@/__tests__/application/services/workshop/widgets/showVsTell/showVsTellFixtures';
 import {
   builtInLexicalGravityLenses
 } from '@/application/services/workshop/widgets/lexicalGravity/LexicalGravityLenses';
@@ -63,6 +67,16 @@ const creativeConfig: WorkshopCreativeVariationsWidgetConfigSnapshot = {
   draft: generatedDraft
 };
 
+const showVsTellConfig: WorkshopShowVsTellWidgetConfigSnapshot = {
+  id: 'wc-svt',
+  widgetId: 'show-vs-tell',
+  revision: 1,
+  createdAt: 4,
+  committedTurnId: 'turn-5',
+  artifactId: 'ta-5',
+  draft: generatedShowVsTellDraft()
+};
+
 const activeLexical: WorkshopStandingDirectiveSummary = {
   id: 'pd-1',
   family: 'lexical-gravity',
@@ -99,7 +113,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground,
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations
+      onCloseCreativeVariations,
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('gesture-playground'));
@@ -156,7 +171,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('lexical-gravity'));
@@ -193,7 +209,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
     expect(host.requestWidgetConfig).not.toHaveBeenCalled();
 
@@ -224,7 +241,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig('wc-missing'));
@@ -251,7 +269,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError: jest.fn(),
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('creative-variations'));
@@ -286,7 +305,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig(creativeConfig.id));
@@ -316,7 +336,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.launchWidget('creative-variations'));
@@ -340,7 +361,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig(creativeConfig.id));
@@ -365,7 +387,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetRecommendation({
@@ -389,7 +412,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetConfig('wc-prose'));
@@ -425,7 +449,8 @@ describe('useWorkshopWidgetOpening', () => {
       onError,
       onCloseGesturePlayground: jest.fn(),
       onCloseLexicalGravity: jest.fn(),
-      onCloseCreativeVariations: jest.fn()
+      onCloseCreativeVariations: jest.fn(),
+      onCloseShowVsTell: jest.fn()
     }));
 
     act(() => result.current.openWidgetRecommendation({
@@ -439,5 +464,195 @@ describe('useWorkshopWidgetOpening', () => {
       "[Workshop] prose-controller recommendation can't be opened in this version."
     );
     warn.mockRestore();
+  });
+
+  it('opens a fresh Show vs. Tell draft and closes it without touching other sheets', () => {
+    const onCloseShowVsTell = jest.fn();
+    const onCloseCreativeVariations = jest.fn();
+    const { result } = renderHook(() => useWorkshopWidgetOpening({
+      host: emptyHost(),
+      standingDirectives: [],
+      onError: jest.fn(),
+      onCloseGesturePlayground: jest.fn(),
+      onCloseLexicalGravity: jest.fn(),
+      onCloseCreativeVariations,
+      onCloseShowVsTell
+    }));
+
+    act(() => result.current.launchWidget('show-vs-tell'));
+    expect(result.current.showVsTellOpening).toEqual({ kind: 'new' });
+    expect(result.current.creativeVariationsOpening).toBeNull();
+
+    act(() => result.current.closeShowVsTell());
+    expect(result.current.showVsTellOpening).toBeNull();
+    expect(onCloseShowVsTell).toHaveBeenCalledTimes(1);
+    expect(onCloseCreativeVariations).not.toHaveBeenCalled();
+  });
+
+  describe('Show vs. Tell recommendation prefill', () => {
+    const seedRecommendation = {
+      widgetId: 'show-vs-tell' as const,
+      seed: {
+        beatText: 'She hadn’t trusted him since the funeral.',
+        subject: 'the funeral line',
+        sourceReferences: [],
+        mustSurvive: 'The distrust is old.'
+      }
+    };
+    const mount = (host = emptyHost(), onError = jest.fn()) => ({
+      onError,
+      ...renderHook(() => useWorkshopWidgetOpening({
+        host,
+        standingDirectives: [],
+        onError,
+        onCloseGesturePlayground: jest.fn(),
+        onCloseLexicalGravity: jest.fn(),
+        onCloseCreativeVariations: jest.fn(),
+        onCloseShowVsTell: jest.fn()
+      }))
+    });
+
+    it('opens a seed opening that carries the producing persona', () => {
+      const h = mount();
+
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'Jill', 'jill'));
+
+      expect(h.result.current.showVsTellOpening).toEqual({
+        kind: 'seed',
+        seed: seedRecommendation.seed,
+        personaId: 'jill',
+        personaLabel: 'Jill'
+      });
+      expect(h.result.current.creativeVariationsOpening).toBeNull();
+      expect(h.onError).not.toHaveBeenCalled();
+    });
+
+    it('refuses a prefill whose producing persona identity is missing', () => {
+      const h = mount();
+
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'the persona'));
+
+      expect(h.result.current.showVsTellOpening).toBeNull();
+      expect(h.onError).toHaveBeenCalledWith(
+        'That Show vs. Tell prefill has no persona identity and cannot open.'
+      );
+    });
+
+    it('keeps an open Show vs. Tell draft when another persona prefill is clicked', () => {
+      const h = mount();
+
+      act(() => h.result.current.launchWidget('show-vs-tell'));
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'Margot', 'margot'));
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'new' });
+      expect(h.onError).toHaveBeenCalledWith(
+        'Close the current Show vs. Tell sheet before opening a prefill.'
+      );
+    });
+
+    it('keeps the writer-requested config reopen ahead of a later prefill click', () => {
+      const h = mount();
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      act(() => h.result.current.openWidgetRecommendation(seedRecommendation, 'Margot', 'margot'));
+
+      expect(h.result.current.pendingWidgetConfigId).toBe(showVsTellConfig.id);
+      expect(h.result.current.showVsTellOpening).toBeNull();
+      expect(h.onError).toHaveBeenCalledWith(
+        'Wait for the requested widget configuration before opening a prefill.'
+      );
+    });
+  });
+
+  describe('Show vs. Tell reopen', () => {
+    const mount = (host: WorkshopWidgetOpeningHost, onError = jest.fn(), onCloseShowVsTell = jest.fn()) => {
+      let current = host;
+      const hook = renderHook(() => useWorkshopWidgetOpening({
+        host: current,
+        standingDirectives: [],
+        onError,
+        onCloseGesturePlayground: jest.fn(),
+        onCloseLexicalGravity: jest.fn(),
+        onCloseCreativeVariations: jest.fn(),
+        onCloseShowVsTell
+      }));
+      return {
+        ...hook,
+        respondWith: (next: Partial<WorkshopWidgetOpeningHost>) => {
+          current = { ...current, ...next };
+          hook.rerender();
+        },
+        onError,
+        onCloseShowVsTell
+      };
+    };
+
+    it('opens the exact committed draft as a clone, from a chip', () => {
+      const host = emptyHost();
+      const h = mount(host);
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      expect(host.requestWidgetConfig).toHaveBeenCalledWith(showVsTellConfig.id);
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'clone', config: showVsTellConfig });
+      expect(h.result.current.showVsTellOpening?.kind === 'clone'
+        ? h.result.current.showVsTellOpening.config.draft
+        : null).toEqual(generatedShowVsTellDraft());
+      expect(h.result.current.pendingWidgetConfigId).toBeNull();
+      expect(h.onError).not.toHaveBeenCalled();
+    });
+
+    it('reopens a config the host restored after a rewind, with no committed turn', () => {
+      const restored = { ...showVsTellConfig, committedTurnId: undefined, artifactId: undefined };
+      const host = { ...emptyHost(), restoredWidgetConfigId: restored.id };
+      const h = mount(host);
+
+      expect(host.consumeRestoredWidgetConfig).toHaveBeenCalledTimes(1);
+      expect(host.requestWidgetConfig).toHaveBeenCalledWith(restored.id);
+      h.respondWith({ widgetConfigData: restored, widgetConfigResponseId: restored.id });
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'clone', config: restored });
+    });
+
+    it('does not replace an already-open Show vs. Tell sheet with a late clone response', () => {
+      const h = mount(emptyHost());
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      act(() => h.result.current.launchWidget('show-vs-tell'));
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+
+      expect(h.result.current.showVsTellOpening).toEqual({ kind: 'new' });
+      expect(h.onError).toHaveBeenCalledWith(
+        'Close the current widget sheet before reopening a committed configuration.'
+      );
+      expect(h.result.current.pendingWidgetConfigId).toBeNull();
+    });
+
+    it('no longer reports Show vs. Tell as unopenable', () => {
+      const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const h = mount(emptyHost());
+
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+
+      expect(warn).not.toHaveBeenCalled();
+      expect(h.onError).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it('clears the pending request and host config data when the clone sheet closes', () => {
+      const host = emptyHost();
+      const h = mount(host);
+      act(() => h.result.current.openWidgetConfig(showVsTellConfig.id));
+      h.respondWith({ widgetConfigData: showVsTellConfig, widgetConfigResponseId: showVsTellConfig.id });
+      (host.clearWidgetConfigData as jest.Mock).mockClear();
+
+      act(() => h.result.current.closeShowVsTell());
+
+      expect(h.result.current.showVsTellOpening).toBeNull();
+      expect(host.clearWidgetConfigData).toHaveBeenCalled();
+      expect(h.onCloseShowVsTell).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -23,7 +23,11 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
     handleSessionContextScan: jest.fn(),
     handleSessionRecoveryNotice: jest.fn()
   } as never,
-  widgetHost: { handleWidgetConfigData: jest.fn(), handleWidgetConfigRestored: jest.fn() } as never,
+  widgetHost: {
+    handleWidgetConfigData: jest.fn(),
+    handleWidgetConfigRestored: jest.fn(),
+    handleSessionState: jest.fn()
+  } as never,
   gesturePlayground: {
     handleWidgetMenuResult: jest.fn(),
     handleWidgetGenerationProgress: jest.fn(),
@@ -43,6 +47,15 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   } as never,
   creativeVariationsAuthoring: {
     handleSubjectSelection: jest.fn()
+  } as never,
+  showVsTell: {
+    handleGenerationProgress: jest.fn(),
+    handleGenerationResult: jest.fn(),
+    handleCommitResult: jest.fn()
+  } as never,
+  showVsTellAuthoring: {
+    handleBeatSelection: jest.fn(),
+    handlePassageSelection: jest.fn()
   } as never,
   standingDirectives: { handleActionResult: jest.fn() } as never,
   excerptVerify: { handleSelectionData: jest.fn() } as never,
@@ -87,8 +100,60 @@ describe('buildWorkshopAppMessageRoutes', () => {
     expect(deps.widgetHost.handleWidgetConfigData).toHaveBeenCalledWith(configMessage);
     expect(deps.gesturePlayground.handleWidgetActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.creativeVariations.handleCommitResult).toHaveBeenCalledWith(actionMessage);
+    expect(deps.showVsTell.handleCommitResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.lexicalGravity.handleActionResult).toHaveBeenCalledWith(actionMessage);
     expect(deps.standingDirectives.handleActionResult).toHaveBeenCalledWith(actionMessage);
+  });
+
+  it('mirrors each session snapshot to the room and to the generic widget host', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const message = { type: MessageType.WORKSHOP_SESSION_STATE, payload: {} } as never;
+
+    routes[MessageType.WORKSHOP_SESSION_STATE]!(message);
+
+    expect(deps.workshopRoom.handleSessionState).toHaveBeenCalledWith(message);
+    expect(deps.widgetHost.handleSessionState).toHaveBeenCalledWith(message);
+  });
+
+  it('routes Show vs. Tell progress and result to its transport and beat intake to its controller', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const progress = {
+      type: MessageType.WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS,
+      source: 'extension.workshop',
+      timestamp: 1,
+      payload: { widgetId: 'show-vs-tell', token: 't', workupId: 'w', phase: 'started' }
+    } as const;
+    const result = {
+      type: MessageType.WORKSHOP_SHOW_VS_TELL_RESULT,
+      source: 'extension.workshop',
+      timestamp: 2,
+      payload: { widgetId: 'show-vs-tell', token: 't', workupId: 'w', ok: false, error: 'x' }
+    } as const;
+    const selection = {
+      type: MessageType.SELECTION_DATA,
+      source: 'extension.ui',
+      timestamp: 3,
+      payload: { target: 'workshop_show_vs_tell_beat', content: 'A beat.' }
+    } as const;
+
+    routes[MessageType.WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS]!(progress as never);
+    routes[MessageType.WORKSHOP_SHOW_VS_TELL_RESULT]!(result as never);
+    routes[MessageType.SELECTION_DATA]!(selection as never);
+
+    expect(deps.showVsTell.handleGenerationProgress).toHaveBeenCalledWith(progress);
+    expect(deps.showVsTell.handleGenerationResult).toHaveBeenCalledWith(result);
+    expect(deps.showVsTellAuthoring.handleBeatSelection).toHaveBeenCalledWith(selection);
+    expect(deps.creativeVariationsAuthoring.handleSubjectSelection).not.toHaveBeenCalled();
+
+    const passage = {
+      ...selection,
+      payload: { target: 'workshop_show_vs_tell_passage', content: 'A passage.' }
+    } as const;
+    routes[MessageType.SELECTION_DATA]!(passage as never);
+    expect(deps.showVsTellAuthoring.handlePassageSelection).toHaveBeenCalledWith(passage);
+    expect(deps.showVsTellAuthoring.handleBeatSelection).toHaveBeenCalledTimes(1);
   });
 
   it('routes consume-once checkpoint recovery notices to the session owner', () => {

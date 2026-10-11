@@ -21,6 +21,7 @@ export * from './context';
 export * from './creativeVariations';
 export * from './gesturePlayground';
 export * from './lexicalGravity';
+export * from './showVsTell';
 export * from './standingDirectives';
 export * from './widgets';
 export * from './recovery';
