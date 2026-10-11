@@ -17,7 +17,8 @@ import {
 
 const PROMPT_ROOT = path.resolve(__dirname, '../../../resources/system-prompts');
 const PALETTE_PROMPTS = [
-  'dictionary-utility/03-chromatic-palettes.md'
+  'dictionary-utility/03-chromatic-palettes.md',
+  'dictionary-fast/16-chromatic-palettes-block.md'
 ];
 
 const SWATCH_LINE = /^([^|]+) \| (#[0-9A-F]{6}) \| (.+)$/;
@@ -78,4 +79,10 @@ describe.each(PALETTE_PROMPTS)('Chromatic Palettes prompt %s', (promptPath) => {
     });
     expect(new Set(names).size).toBe(names.length);
   });
+});
+
+it('teaches the same reference palettes in the standard lookup and Fast Generate', () => {
+  const [standard, fast] = PALETTE_PROMPTS.map((promptPath) =>
+    paletteFences(fs.readFileSync(path.join(PROMPT_ROOT, promptPath), 'utf8')));
+  expect(fast).toEqual(standard);
 });

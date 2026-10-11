@@ -76,7 +76,7 @@ describe('DictionaryService', () => {
     );
   });
 
-  it.each(['standard', 'streaming'] as const)('forwards the encyclopedia choice for %s lookup', async mode => {
+  it.each(['standard', 'streaming'] as const)('forwards the resolved entry choices for %s lookup', async mode => {
     const lookup = jest.spyOn(DictionaryUtility.prototype, 'lookup').mockResolvedValue({
       content: '# Entry', usedGuides: [], requestedResources: [], artifacts: []
     });
@@ -85,8 +85,14 @@ describe('DictionaryService', () => {
       const controller = new AbortController();
       const onToken = jest.fn();
 
-      for (const includeEncyclopedia of [undefined, true, false]) {
-        const entryOptions = includeEncyclopedia === undefined ? undefined : { includeEncyclopedia };
+      // Encyclopedia is opt-out (absent = on); palettes are opt-in (absent = off).
+      for (const [entryOptions, resolved] of [
+        [undefined, { includeEncyclopedia: true, includePalettes: false }],
+        [{ includeEncyclopedia: true }, { includeEncyclopedia: true, includePalettes: false }],
+        [{ includeEncyclopedia: false }, { includeEncyclopedia: false, includePalettes: false }],
+        [{ includePalettes: true }, { includeEncyclopedia: true, includePalettes: true }],
+        [{ includeEncyclopedia: false, includePalettes: true }, { includeEncyclopedia: false, includePalettes: true }]
+      ] as const) {
         if (mode === 'standard') {
           await service.lookupWord('plosive', 'Compare consonant textures.', entryOptions);
         } else {
@@ -95,7 +101,7 @@ describe('DictionaryService', () => {
           );
         }
         expect(lookup).toHaveBeenLastCalledWith({
-          word: 'plosive', contextText: 'Compare consonant textures.', includeEncyclopedia
+          word: 'plosive', contextText: 'Compare consonant textures.', ...resolved
         }, expect.objectContaining({
           temperature: 0.4,
           maxTokens: 10000,
@@ -137,6 +143,17 @@ describe('DictionaryService', () => {
       label: 'enabled with an unreported completion reason', includeEncyclopedia: true,
       content: '# 🧠 AI Advisory Notes\nPrivate generated text.',
       finishReason: undefined, cancelled: false, hasTopicSection: false, missingDiagnostic: false
+    },
+    {
+      label: 'palettes enabled with two palette fences', includeEncyclopedia: true, includePalettes: true,
+      content: '# 🎨 Chromatic Palettes\n\n```pm-palette\ntitle: Private palette\nPrivate Swatch | #B87333 | Private generated text.\n```\n\n' +
+        '````pm-palette\r\nPrivate Swatch | #43B3AE | Private generated text.\n````\n\n# 📂 **Topic & Related Lexicon**\nPrivate generated text.',
+      finishReason: 'stop', cancelled: false, hasTopicSection: true, missingDiagnostic: false, paletteFences: 2
+    },
+    {
+      label: 'palettes enabled with only look-alike fences', includeEncyclopedia: false, includePalettes: true,
+      content: 'Private generated text uses `pm-palette` inline.\n```pm-palette-draft\nPrivate Swatch | #B87333 | Private generated text.\n```\n```text\npm-palette\n```',
+      finishReason: 'stop', cancelled: false, hasTopicSection: false, missingDiagnostic: false, paletteFences: 0
     }
   ])('logs lookup diagnostics without request or generated text: $label', async scenario => {
     for (const mode of ['standard', 'streaming'] as const) {
@@ -147,7 +164,7 @@ describe('DictionaryService', () => {
         usage: { promptTokens: 20, completionTokens: 70, totalTokens: 90 }
       });
       const { service, outputChannel } = await buildLookupService(runInitial, 7000);
-      const entryOptions = { includeEncyclopedia: scenario.includeEncyclopedia };
+      const entryOptions = { includeEncyclopedia: scenario.includeEncyclopedia, includePalettes: scenario.includePalettes };
       const word = 'Private target word';
       const context = 'Private author context';
       if (mode === 'standard') {
@@ -157,19 +174,22 @@ describe('DictionaryService', () => {
       }
 
       const encyclopedia = scenario.includeEncyclopedia === false ? 'disabled' : 'enabled';
+      const palettes = scenario.includePalettes === true ? 'enabled' : 'disabled';
       expect(outputChannel.appendLine).toHaveBeenCalledWith(
-        `[DictionaryService] Lookup started: mode=${mode} encyclopedia=${encyclopedia} maxTokens=7000`
+        `[DictionaryService] Lookup started: mode=${mode} encyclopedia=${encyclopedia} palettes=${palettes} maxTokens=7000`
       );
       expect(outputChannel.appendLine).toHaveBeenCalledWith(
-        `[DictionaryService] Lookup completed: mode=${mode} encyclopedia=${encyclopedia} ` +
+        `[DictionaryService] Lookup completed: mode=${mode} encyclopedia=${encyclopedia} palettes=${palettes} ` +
         `finishReason=${scenario.finishReason ?? 'unreported'} completionTokens=70 ` +
-        `cancelled=${scenario.cancelled} hasTopicSection=${scenario.hasTopicSection}`
+        `cancelled=${scenario.cancelled} hasTopicSection=${scenario.hasTopicSection} paletteFences=${scenario.paletteFences ?? 0}`
       );
       const logs = outputChannel.appendLine.mock.calls.map(([line]) => line).join('\n');
       expect(logs.includes('Encyclopedia section missing from completed lookup')).toBe(scenario.missingDiagnostic);
       expect(logs).not.toContain(word);
       expect(logs).not.toContain(context);
       expect(logs).not.toContain('Private generated text');
+      expect(logs).not.toContain('Private palette');
+      expect(logs).not.toContain('#B87333');
       expect(runInitial).toHaveBeenCalledTimes(1);
       expect(runInitial.mock.calls[0][0].options.maxTokens).toBe(7000);
     }
@@ -212,9 +232,13 @@ describe('DictionaryService', () => {
   });
 
   it.each([
-    [true, 16],
-    [false, 15]
-  ] as const)('sums cache counts only for selected blocks with encyclopedia=%s', async (includeEncyclopedia, totalBlocks) => {
+    [true, undefined, 16],
+    [false, undefined, 15],
+    [true, true, 17],
+    [false, true, 16]
+  ] as const)('sums cache counts only for selected blocks with encyclopedia=%s palettes=%s', async (
+    includeEncyclopedia, includePalettes, totalBlocks
+  ) => {
     let omitDefinitionCacheRead = false;
     const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => ({
       content: `## ${toolName}`,
@@ -228,7 +252,7 @@ describe('DictionaryService', () => {
     }));
     const { service } = await buildLookupService(runInitial);
 
-    const fullyReported = await service.generateParallelDictionary('crash', undefined, { includeEncyclopedia });
+    const fullyReported = await service.generateParallelDictionary('crash', undefined, { includeEncyclopedia, includePalettes });
     expect(fullyReported.metadata.totalBlocks).toBe(totalBlocks);
     expect(fullyReported.usage).toMatchObject({
       promptTokens: 10 * totalBlocks,
@@ -239,39 +263,84 @@ describe('DictionaryService', () => {
     });
 
     omitDefinitionCacheRead = true;
-    const partiallyReported = await service.generateParallelDictionary('crash', undefined, { includeEncyclopedia });
+    const partiallyReported = await service.generateParallelDictionary('crash', undefined, { includeEncyclopedia, includePalettes });
     expect(partiallyReported.usage?.cachedTokens).toBeUndefined();
     expect(partiallyReported.usage?.cacheWriteTokens).toBe(totalBlocks);
   });
 
-  it.each([true, false])('loads only selected prompts and puts topic families last with encyclopedia=%s', async includeEncyclopedia => {
+  it.each([
+    { includeEncyclopedia: true, includePalettes: undefined },
+    { includeEncyclopedia: false, includePalettes: undefined },
+    { includeEncyclopedia: true, includePalettes: true },
+    { includeEncyclopedia: false, includePalettes: true }
+  ])('loads only selected prompts in output order with encyclopedia=$includeEncyclopedia palettes=$includePalettes', async ({
+    includeEncyclopedia, includePalettes
+  }) => {
+    const paletteSection = '# 🎨 Chromatic Palettes\n\n```pm-palette\ntitle: Warm Copper\nkind: literal\n' +
+      'Copper | #B87333 | the reddish-orange of the bare metal, freshly polished\n```';
     const loadPrompts = jest.fn(async (paths: string[]) =>
       paths.map((file) => fs.readFileSync(path.join(PROMPT_ROOT, file), 'utf8')).join('\n\n'));
     const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => ({
       content: toolName === 'dictionary-fast-topic-related-lexicon'
         ? '# 📂 Topic & Related Lexicon\n\n### Phonetics\nHow speech sounds are formed.\n- **Fricative** — A contrasting consonant class.'
-        : `# ${toolName.replace('dictionary-fast-', '').replace(/-/g, ' ')}`,
+        : toolName === 'dictionary-fast-chromatic-palettes'
+          ? paletteSection
+          : `# ${toolName.replace('dictionary-fast-', '').replace(/-/g, ' ')}`,
       usage: undefined
     }));
+    const outputChannel = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
     const service = new DictionaryService(
       { ensureInitialized: async () => undefined, getEngine: () => ({ runInitial }) } as never,
       { getPromptLoader: () => ({ loadPrompts }) } as never,
-      {} as never
+      {} as never,
+      outputChannel
     );
     const onProgress = jest.fn();
 
     const result = await service.generateParallelDictionary(
-      'plosive', 'Compare consonant textures in prose.', { onProgress, includeEncyclopedia }
+      'plosive', 'Compare consonant textures in prose.', { onProgress, includeEncyclopedia, includePalettes }
     );
 
-    const totalBlocks = includeEncyclopedia ? 16 : 15;
+    // Palettes are opt-in: an absent option leaves the block out.
+    const withPalettes = includePalettes === true;
+    const totalBlocks = 15 + Number(includeEncyclopedia) + Number(withPalettes);
     expect(result.metadata).toMatchObject({ totalBlocks, successCount: totalBlocks, partialFailures: [] });
     expect(Object.keys(result.metadata.blockDurations)).toHaveLength(totalBlocks);
     expect(runInitial).toHaveBeenCalledTimes(totalBlocks);
     const promptPaths = loadPrompts.mock.calls.map(([paths]) => paths[0]);
+    expect(promptPaths).not.toContain('dictionary-fast/16-topic-related-lexicon-block.md');
     const topicRequest = runInitial.mock.calls.find(([call]) => call.toolName === 'dictionary-fast-topic-related-lexicon')?.[0];
+    const paletteRequest = runInitial.mock.calls.find(([call]) => call.toolName === 'dictionary-fast-chromatic-palettes')?.[0];
+    const selection = `encyclopedia=${includeEncyclopedia ? 'enabled' : 'disabled'} palettes=${withPalettes ? 'enabled' : 'disabled'}`;
+    expect(outputChannel.appendLine).toHaveBeenCalledWith(
+      `\n[DictionaryService] Starting parallel dictionary generation for "plosive" ${selection}`
+    );
+    expect(outputChannel.appendLine).toHaveBeenCalledWith(expect.stringMatching(
+      new RegExp(`^\\[DictionaryService\\] Parallel generation completed: ${totalBlocks}/${totalBlocks} blocks in \\d+ms paletteFences=${Number(withPalettes)}$`)
+    ));
+    if (withPalettes) {
+      expect(promptPaths).toContain('dictionary-fast/16-chromatic-palettes-block.md');
+      expect(paletteRequest.systemMessage).toContain('Generate ONLY the **🎨 Chromatic Palettes** section.');
+      expect(paletteRequest.systemMessage).toContain('```pm-palette\ntitle: Warm Copper');
+      expect(paletteRequest.systemMessage).toContain('Output ONLY the section content, starting with "# 🎨 Chromatic Palettes".');
+      expect(paletteRequest.userMessage).toContain('Compare consonant textures in prose.');
+      expect(paletteRequest.options).toMatchObject({ maxTokens: 3500, timeoutMs: 15000 });
+      expect(result.result.indexOf('# 🎨 Chromatic Palettes'))
+        .toBeGreaterThan(result.result.indexOf('# ai advisory notes'));
+      if (includeEncyclopedia) {
+        expect(result.result.indexOf('# 📂 Topic & Related Lexicon'))
+          .toBeGreaterThan(result.result.indexOf('# 🎨 Chromatic Palettes'));
+      } else {
+        expect(result.result.endsWith(paletteSection)).toBe(true);
+      }
+    } else {
+      expect(promptPaths).not.toContain('dictionary-fast/16-chromatic-palettes-block.md');
+      expect(paletteRequest).toBeUndefined();
+      expect(result.result).not.toContain('Chromatic Palettes');
+      expect(result.metadata.blockDurations).not.toHaveProperty('chromatic-palettes');
+    }
     if (includeEncyclopedia) {
-      expect(promptPaths).toContain('dictionary-fast/16-topic-related-lexicon-block.md');
+      expect(promptPaths).toContain('dictionary-fast/17-topic-related-lexicon-block.md');
       expect(topicRequest.systemMessage).toContain('# 📂 Topic & Related Lexicon');
       expect(topicRequest.systemMessage).toContain('not automatically synonyms or antonyms');
       expect(topicRequest.systemMessage).toContain('at least two developed paragraphs');
@@ -283,11 +352,13 @@ describe('DictionaryService', () => {
         .toBeGreaterThan(result.result.indexOf('# ai advisory notes'));
       expect(result.result.endsWith('- **Fricative** — A contrasting consonant class.')).toBe(true);
     } else {
-      expect(promptPaths).not.toContain('dictionary-fast/16-topic-related-lexicon-block.md');
+      expect(promptPaths).not.toContain('dictionary-fast/17-topic-related-lexicon-block.md');
       expect(topicRequest).toBeUndefined();
       expect(result.result).not.toContain('Topic & Related Lexicon');
       expect(result.metadata.blockDurations).not.toHaveProperty('topic-related-lexicon');
-      expect(result.result.endsWith('# ai advisory notes')).toBe(true);
+      if (!withPalettes) {
+        expect(result.result.endsWith('# ai advisory notes')).toBe(true);
+      }
     }
     const senseRequest = runInitial.mock.calls.find(([call]) => call.toolName === 'dictionary-fast-sense-explorer')![0];
     expect(senseRequest.systemMessage).toContain('8-12 synonyms');
@@ -300,6 +371,7 @@ describe('DictionaryService', () => {
     expect(finalProgress).toMatchObject({ word: 'plosive', totalBlocks });
     expect(finalProgress.completedBlocks).toHaveLength(totalBlocks);
     expect(finalProgress.completedBlocks.includes('topic-related-lexicon')).toBe(includeEncyclopedia);
+    expect(finalProgress.completedBlocks.includes('chromatic-palettes')).toBe(withPalettes);
     for (const [progress] of onProgress.mock.calls) {
       expect(progress.totalBlocks).toBe(totalBlocks);
     }
