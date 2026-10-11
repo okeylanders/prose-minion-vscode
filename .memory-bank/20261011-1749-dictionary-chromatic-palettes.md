@@ -62,6 +62,27 @@ At the integrated head: typecheck clean; 304 suites / 4,377 tests /
 (`main` 1,116; all five new are `naming-convention`); build and
 `verify:bundle` OK. See the spec's verification record.
 
+## Review fixes
+
+Astra's review (`docs/pr-reviews/pr-142-dictionary-chromatic-palettes-review.md`)
+found **F-01 (Medium)**: an unclosed Fast palette fence absorbed the Topic
+block after it, and the renderer hid those lines while metadata reported
+17/17. Fixed in `f44250f`:
+
+- `utils/markdownFences.ts` holds one CommonMark fence reader for both
+  layers.
+- The host closes any fence a Fast block leaves open before concatenating.
+- The renderer ends a registered fence's body at the first heading or fence
+  line and renders the remainder as Markdown.
+- Regressions drive the real service into the real renderer across four
+  delimiters and `stop`/`length`.
+
+Not changed: Fast metadata still counts a token-limited block as successful
+(pre-existing for every block). With F-01 fixed, that no longer hides content.
+
+After the fix: 306 suites / 4,425 tests / 2 snapshots; lint 0 errors,
+1,122 warnings (+1 test-mock `__esModule`); typecheck and build OK.
+
 ## Follow-ups
 
 - Manual EDH checks in the spec (copper, melancholy, although, dusk with

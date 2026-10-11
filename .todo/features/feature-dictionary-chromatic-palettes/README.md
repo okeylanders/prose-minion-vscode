@@ -188,6 +188,12 @@ the Workshop's closed widget registries.
     `tokens.links`. Copy `links` onto each run's token array.
   - Fences nested inside lists or blockquotes are out of scope. They render as
     code blocks.
+  - **Fence boundary (review F-01).** A registered fence's body ends at the
+    first heading or fence line, which the palette grammar never contains.
+    Such a line means a closing delimiter was missed, so the remainder is
+    lexed again and rendered as ordinary Markdown. A missed delimiter
+    therefore never hides the next section or the next palette. A fence with
+    no valid swatch before that line stays readable code.
 - `PaletteBlock` sets each chip's color through React's `style` prop
   (`{ backgroundColor: hex }`) using a value that has already passed the
   strict hex check. This is a CSSOM property write on an element React
@@ -343,7 +349,7 @@ sections never give conflicting instructions about what comes next.
 | `shared/types/messages/dictionary.ts` | Add `includePalettes?: boolean` to `DictionaryEntryOptions`. **Absent means off** (opt-in), documented on the field, so non-UI callers (Workshop, a future console host) never receive fences they cannot render. The UI always sends an explicit boolean. |
 | `DictionaryHandler.ts` | Forward the option on both routes. Prefer passing the entry-options object through instead of destructuring each flag, so the next option does not need handler edits. |
 | `tools/utility/dictionaryUtility.ts` | Add a `{{PALETTES_BLUEPRINT_SECTION}}` placeholder (in `00-dictionary-utility.md` and the default fallback blueprint) before the encyclopedia placeholder. Compute the section numbers. Load `03-chromatic-palettes.md` only when enabled. State the selection in the system and user messages. The fallback instructions respect the choice. |
-| `DictionaryService.ts` | Add the `chromatic-palettes` block. Generalize selection to a small optional-block → entry-option map instead of chained conditions. Progress, metadata, and usage/cache aggregation already count only selected blocks. The default budget (3,500 tokens / 15 s) is enough. Extend the sparse diagnostics with `palettes=enabled\|disabled` and a palette-fence count, with no content. |
+| `DictionaryService.ts` | Add the `chromatic-palettes` block. Generalize selection to a small optional-block → entry-option map instead of chained conditions. Progress, metadata, and usage/cache aggregation already count only selected blocks. The default budget (3,500 tokens / 15 s) is enough. Extend the sparse diagnostics with `palettes=enabled\|disabled` and a palette-fence count, with no content. Close any fence a block leaves open before concatenating blocks (review F-01), so one block cannot absorb its siblings. |
 | `resources/system-prompts/dictionary-fast/` | Add `16-chromatic-palettes-block.md`. Rename Topic to `17-…` with its content unchanged. |
 | `WorkshopPersonaCapability.ts` | Pass `includePalettes: false` on both dictionary calls. |
 | `useDictionary.ts` | Add `includePalettes` state and persist it as `dictionaryIncludePalettes` (default per Open Question 2). |
@@ -444,14 +450,16 @@ be overturned in review; each is a small, local change.
 
 ### Verification record (2026-10-11)
 
-Integrated head of `claude/busy-curie-9x9nw7`, against `main` at `37a1d06`:
+Integrated head of `claude/busy-curie-9x9nw7`, against `main` at `37a1d06`.
+Updated after the review F-01 fix (`f44250f`):
 
 - `npm run typecheck`: core, webview, and app clean.
-- `npm test`: 304 suites / 4,377 tests / 2 snapshots pass (`main`: 299 /
-  4,257 / 2, so the branch adds 5 suites and 120 tests).
-- `npm run lint`: 0 errors, 1,121 warnings (`main`: 1,116). All five new
+- `npm test`: 306 suites / 4,425 tests / 2 snapshots pass (`main`: 299 /
+  4,257 / 2, so the branch adds 7 suites and 168 tests).
+- `npm run lint`: 0 errors, 1,122 warnings (`main`: 1,116). All six new
   warnings are the repo-wide `naming-convention` rule: three PascalCase
-  components, one PascalCase test harness, and a second `__html`.
+  components, one PascalCase test harness, a second `__html`, and a test
+  mock's `__esModule`.
 - `npm run build`, including `verify:bundle`: OK.
 - `git diff --check` clean; no `from 'vscode'` in `packages/core/src`.
 - Prompt resources: only the two new palette prompts, the 100% Topic rename,
@@ -460,7 +468,10 @@ Integrated head of `claude/busy-curie-9x9nw7`, against `main` at `37a1d06`:
   reference example are untouched.
 - `MarkdownRenderer.test.tsx` and the DOMPurify configuration are unchanged.
 - Files over 500 lines: only the pre-existing `DictionaryService.ts`
-  (695 → 728) and `WorkshopPersonaCapability.ts` (826 → 827).
+  (695 → 735) and `WorkshopPersonaCapability.ts` (826 → 827).
+- Review F-01 regression: 12 of the 16 Fast service → renderer cases fail
+  without the fix, and 4 of the 5 renderer boundary cases fail without the
+  renderer split. All pass with it.
 
 No live provider call or Extension Development Host session was run.
 
