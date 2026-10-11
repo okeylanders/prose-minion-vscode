@@ -81,6 +81,7 @@ elsewhere.
 | High | [Show vs. Tell interactive smoke test](2026-10-09-show-vs-tell-interactive-smoke-test.md) | Open |
 | Medium | [Show vs. Tell live-provider quality pass](2026-10-09-show-vs-tell-live-provider-quality-pass.md) | Open |
 | Low | [Persona pronoun metadata](2026-10-09-persona-pronoun-metadata.md) | Open — writer decision |
+| Medium | [Thread artifacts replay on every later turn](2026-10-11-workshop-thread-artifact-history-replay.md) | Identified |
 
 ## Review Guidance
 

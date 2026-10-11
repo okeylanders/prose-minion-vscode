@@ -1,6 +1,6 @@
 # Sprint 05: Show vs. Tell Playground
 
-**Status**: Slice 7 (design edits) ready for review. Slices 1–6 merged (#134–#139). See [Design edits (writer decisions, 2026-10-09)](#design-edits-writer-decisions-2026-10-09).
+**Status**: Complete. Slices 1–7 merged into `epic/conversation-widgets` (#134–#140), D6 committed on the epic, and the epic merged into `main` in #141 (2026-10-11). See [Design edits (writer decisions, 2026-10-09)](#design-edits-writer-decisions-2026-10-09). Open follow-ups: the interactive smoke test, the live-provider quality pass, persona pronoun metadata, and [thread-artifact history replay](../../../tech-debt/2026-10-11-workshop-thread-artifact-history-replay.md).
 **Priority**: Medium
 **Branches**: one per slice, `epic/conversation-widgets-sprint-05-slice-<N>-<desc>`, each cut from `epic/conversation-widgets` and merged back into it by PR (see [Branching](#branching))
 **Depends on**: [Sprint 03 — Creative Variations](03-creative-variations.md), complete and merged into `epic/conversation-widgets` (PR #112). [Sprint 04 — Prose Controller](04-prose-controller.md) is **not** a build dependency: this sprint owns the shared narrative-handling vocabulary constant, and Sprint 04 adopts it (see [Kickoff decisions](#kickoff-decisions-slice-0-2026-10-08)).
@@ -252,8 +252,10 @@ the readout and changes what commits, without discarding the workup.
   Buttons: `Cancel`, plus `Commit to thread` (or `Commit as new turn` when
   re-opened from a chip).
 - **Committed frame.** Staged through the existing rail
-  (`pendingMessageAttachments → buildWorkshopThreadArtifactFrame`); rides
-  exactly one turn and is never re-shipped:
+  (`pendingMessageAttachments → buildWorkshopThreadArtifactFrame`); is attached to
+  exactly one turn and never re-attached. It does stay in each persona's
+  retained history, so it is replayed on later turns until released (see
+  [thread-artifact history replay](../../../tech-debt/2026-10-11-workshop-thread-artifact-history-replay.md)):
 
   ```text
   <thread-artifact id="ta-N" kind="widget:show-vs-tell">
