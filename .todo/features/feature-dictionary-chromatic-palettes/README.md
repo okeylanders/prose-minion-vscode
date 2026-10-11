@@ -1,6 +1,6 @@
 # Feature: Dictionary Chromatic Palettes
 
-**Status**: Planned
+**Status**: In Progress — implementation on branch `claude/busy-curie-9x9nw7`
 **Priority**: Medium
 **Estimated Effort**: Medium (one branch, one PR)
 **Date Identified**: 2026-10-11
@@ -350,7 +350,7 @@ sections never give conflicting instructions about what comes next.
 | `UtilitiesTab.tsx` | Add the second switch and pass `includePalettes` on Standard, Fast, and auto-run. Pass the palette registry to the result view's `MarkdownRenderer` and to `StreamingContent`. **The file is 490 lines**, so extract the switch markup into a small `DictionaryOptionSwitch` used by both switches, with neutral `pm-dictionary-option*` classes, rather than pushing the tab past 500. |
 | `components/shared/MarkdownRenderer.tsx`, `StreamingContent.tsx` | Add the opt-in fenced-block prop and pass it through. |
 | New: palette parser + `PaletteBlock` | Put them in a dictionary-scoped presentation module, for example `components/dictionary/` plus a pure parser under `utils/`. The parser has no React dependency. |
-| `CHANGELOG.md`, `docs/CHANGELOG-DETAILED.md` | Add a user-facing entry, as the encyclopedia change did. |
+| `CHANGELOG.md`, `docs/CHANGELOG-DETAILED.md` | No change in this branch. Release preparation (`chore(release): prepare vX`) writes both changelogs; the summary below and the PR description supply the user-facing wording. |
 
 `DictionaryService.ts` is already 695 lines, over the 500-line guideline,
 before this change. This feature adds only a little to it and should not be
@@ -359,6 +359,9 @@ extract the Fast Generate fan-out into its own collaborator and track that as
 debt.
 
 ## Open Questions
+
+The first implementation follows each recommendation below. Any of them can
+be overturned in review; each is a small, local change.
 
 1. **Placement.** Is *after AI Advisory Notes, before Topic* right, or should
    palettes sit next to 🪶 Narrative Texture, their nearest neighbor in
@@ -475,7 +478,7 @@ debt.
 4. Fast block, Topic rename, and service selection and diagnostics.
 5. `DictionaryOptionSwitch` extraction, the palette switch, persistence, and
    wiring of the result and streaming views.
-6. Changelog entries.
+6. Spec status, verification record, and PR. Release preparation writes the changelogs.
 
 ## Related Files
 
