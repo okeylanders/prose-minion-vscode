@@ -311,4 +311,63 @@ describe('MarkdownRenderer fenced blocks', () => {
       );
     });
   });
+
+  // PR #142 review F-01: an unclosed registered fence must not hide the
+  // section after it (the Standard lookup writes every section in one reply).
+  describe('unclosed fences', () => {
+    const unclosedPalette = [
+      '# 🎨 Chromatic Palettes',
+      '',
+      '```pm-palette',
+      'title: Warm Copper',
+      'kind: literal',
+      'Copper | #B87333 | the reddish-orange of the bare metal'
+    ].join('\n');
+
+    it('ends the palette at the next heading and renders that section as Markdown', () => {
+      const content = `${unclosedPalette}\n\n# 📂 Topic & Related Lexicon\n\nThe whole appendix stays visible.`;
+
+      render(<MarkdownRenderer content={content} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />);
+
+      expect(screen.getByRole('figure', { name: 'Warm Copper' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: '📂 Topic & Related Lexicon' })).toBeTruthy();
+      expect(screen.getByText('The whole appendix stays visible.')).toBeTruthy();
+      expect(document.querySelector('pre')).toBeNull();
+    });
+
+    it('renders a second palette whose opener appears inside an unclosed first one (its closer ends the first fence)', () => {
+      const content = `${unclosedPalette}\n\`\`\`pm-palette\ntitle: Aged Copper\nVerdigris | #43B3AE | the blue-green crust on weathered copper\n\`\`\``;
+
+      render(<MarkdownRenderer content={content} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />);
+
+      expect(screen.getByRole('figure', { name: 'Warm Copper' })).toBeTruthy();
+      expect(screen.getByRole('figure', { name: 'Aged Copper' })).toBeTruthy();
+    });
+
+    it('keeps a half-arrived swatch name in the palette instead of flashing it as prose', () => {
+      render(<MarkdownRenderer content={`${unclosedPalette}\nBronz`} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />);
+
+      expect(screen.getAllByRole('listitem')).toHaveLength(1);
+      expect(screen.queryByText('Bronz')).toBeNull();
+    });
+
+    it('keeps an unclosed fence that opens with a heading as readable code', () => {
+      const content = '```pm-palette\n# Not a palette\nCopper | #B87333 | polished';
+
+      render(<MarkdownRenderer content={content} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />);
+
+      expect(document.querySelector('.pm-palette')).toBeNull();
+      expect(document.querySelector('pre code')?.textContent).toContain('# Not a palette');
+    });
+
+    it('splits a closed fence at a stray heading too, keeping what follows visible', () => {
+      const content = fence('pm-palette', 'title: Warm Copper\nCopper | #B87333 | polished\n# Stray heading\nTrailing prose.');
+
+      render(<MarkdownRenderer content={content} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />);
+
+      expect(screen.getByRole('figure', { name: 'Warm Copper' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Stray heading' })).toBeTruthy();
+      expect(screen.getByText('Trailing prose.')).toBeTruthy();
+    });
+  });
 });

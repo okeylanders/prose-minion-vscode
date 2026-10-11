@@ -43,6 +43,7 @@ import {
 import { TokenUsage } from '@messages/tokenUsage';
 import { StatusEmitter } from '@messages/status';
 import { ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
+import { closeUnterminatedFence } from '@/utils/markdownFences';
 
 /**
  * Service wrapper for AI-powered dictionary lookups
@@ -717,12 +718,18 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
    */
   private normalizeBlockContent(blockName: DictionaryBlockName, content: string): string {
     const trimmed = content.trim();
-
-    if (blockName === 'special-focus') {
-      return trimmed;
-    }
-
     const specialFocusHeader = /(?:^|\n)## \*\*Special Focus:[\s\S]*$/i;
-    return trimmed.replace(specialFocusHeader, '').trim();
+    const normalized = blockName === 'special-focus'
+      ? trimmed
+      : trimmed.replace(specialFocusHeader, '').trim();
+
+    // Blocks are generated independently and then concatenated. A block that
+    // ends inside a fence (a token-limited response, a forgotten closer) would
+    // otherwise absorb every block after it.
+    const closed = closeUnterminatedFence(normalized);
+    if (closed !== normalized) {
+      this.outputChannel?.appendLine(`[DictionaryService] Closed an unterminated fence in block "${blockName}"`);
+    }
+    return closed;
   }
 }

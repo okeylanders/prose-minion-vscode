@@ -8,6 +8,7 @@ import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import type { Token, Tokens, TokensList } from 'marked';
 import type { CHROMATIC_PALETTE_FENCE_LANGUAGE } from '@shared/constants/chromaticPalettes';
+import { startsMarkdownSection } from '@/utils/markdownFences';
 
 /**
  * Fence languages a caller may register through `fencedBlocks`. Closed on
@@ -112,6 +113,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
  * and registered fenced-block components. Fences nested in lists or
  * blockquotes are deliberately left to the ordinary code-block rendering.
  *
+ * A registered fence's body ends at the first heading or fence line: no
+ * registered grammar contains one, so such a line means a closing delimiter
+ * was missed (an unclosed fence runs to the end of the document). The
+ * remainder is lexed again and rendered as ordinary Markdown, so a missed
+ * delimiter never hides the section or the next fence after it.
+ *
  * Returns null — meaning "take the single-pass path" — when no registered
  * fence rendered, or when anything here throws.
  */
@@ -126,15 +133,21 @@ const renderFencedSegments = (
     });
 
     const tokens = marked.lexer(content);
+    const pending: Token[] = [...tokens];
     const pieces: Array<Token[] | React.ReactElement> = [];
     let renderedFencedBlock = false;
 
-    for (const token of tokens) {
-      const element = renderFencedBlock(token, fencedBlocks);
+    for (let token = pending.shift(); token; token = pending.shift()) {
+      const fenced = renderFencedBlock(token, fencedBlocks);
       const previous = pieces[pieces.length - 1];
-      if (element) {
-        pieces.push(element);
+      if (fenced) {
+        pieces.push(fenced.element);
         renderedFencedBlock = true;
+        if (fenced.remainder) {
+          const remainder = marked.lexer(fenced.remainder);
+          Object.assign(tokens.links, remainder.links);
+          pending.unshift(...remainder);
+        }
       } else if (Array.isArray(previous)) {
         previous.push(token);
       } else {
@@ -169,10 +182,16 @@ const renderFencedSegments = (
   }
 };
 
+interface RenderedFencedBlock {
+  element: React.ReactElement;
+  /** Body text from the first section line on, to render as ordinary Markdown. */
+  remainder?: string;
+}
+
 const renderFencedBlock = (
   token: Token,
   fencedBlocks: MarkdownFencedBlocks
-): React.ReactElement | null => {
+): RenderedFencedBlock | null => {
   if (token.type !== 'code') {
     return null;
   }
@@ -185,7 +204,19 @@ const renderFencedBlock = (
   if (!isRegisteredFenceLanguage(fencedBlocks, language)) {
     return null;
   }
-  return fencedBlocks[language]?.render(code.text) ?? null;
+  const { body, remainder } = splitAtMarkdownSection(code.text);
+  // No valid content before the boundary: keep the whole fence as readable code.
+  const element = fencedBlocks[language]?.render(body) ?? null;
+  return element ? { element, remainder } : null;
+};
+
+/** Splits a fence body before the first line that starts a new Markdown section. */
+const splitAtMarkdownSection = (text: string): { body: string; remainder?: string } => {
+  const lines = text.split('\n');
+  const boundary = lines.findIndex(startsMarkdownSection);
+  return boundary < 0
+    ? { body: text }
+    : { body: lines.slice(0, boundary).join('\n'), remainder: lines.slice(boundary).join('\n') };
 };
 
 /** Own keys only: a ```constructor fence must not reach Object.prototype. */
