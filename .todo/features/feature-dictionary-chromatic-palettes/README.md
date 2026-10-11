@@ -21,11 +21,13 @@ A lookup for *copper* might return a literal **Warm Copper** palette, an
 **Aged Copper & Patina** palette, and an evocative palette for the word's
 mood. A lookup for *melancholy* returns only evocative palettes.
 
-**This is a writer's dictionary, so every color is named.** The name is the
-main content, and the hex value is the reference that goes with it. Names
-such as *verdigris*, *burnished copper*, and *oxblood* are color words a
-writer can put straight into a sentence. A swatch with only a hex value is
-not valid output and is never displayed.
+**This is a writer's dictionary, so every color is named and defined.** The
+name is the main content, a short definition explains it, and the hex value
+is the reference that goes with it. Names such as *verdigris*, *burnished
+copper*, and *oxblood* are color words a writer can put straight into a
+sentence. The definition matters most when the term is unfamiliar: *ecru*
+means "the grayish-yellow of unbleached linen". A swatch with only a hex
+value is not valid output and is never displayed.
 
 ## Problem / Motivation
 
@@ -65,12 +67,20 @@ appears**, because at that point the extension point becomes architecture.
   **📂 Topic & Related Lexicon** appendix (see *Placement*).
 - Each palette is a `pm-palette` fenced block (see *Palette Grammar*). The
   Dictionary result view and the Dictionary streaming view render these blocks
-  as swatch grids. Every other Markdown surface is unchanged.
-- **Every swatch is a named color.** Each swatch shows its color name first,
-  then the hex value as its reference. A name can be an established color term
-  (*verdigris*, *sienna*, *oxblood*, *celadon*) or, when no established term
-  fits, a descriptive phrase a writer could use in prose (*deep patina*,
-  *lamp-lit amber*). Generic labels like "Brown 2" are never acceptable.
+  as a color strip plus a list of named, defined swatches. Every other
+  Markdown surface is unchanged.
+- **Every swatch is a named, defined color.** Each swatch shows its color
+  name first, then a short definition, then the hex value as its reference.
+  A name can be an established color term (*verdigris*, *sienna*, *oxblood*,
+  *celadon*) or, when no established term fits, a descriptive phrase a writer
+  could use in prose (*deep patina*, *lamp-lit amber*). Generic labels like
+  "Brown 2" are never acceptable.
+- **Definitions** are one short phrase each (about 12 words or fewer). For an
+  established term, the definition says what the color is and, when the
+  origin is well known and short to state, where the name comes from
+  (*ecru*: "the grayish-yellow of unbleached linen; French for 'raw'"). For a
+  coined name, it says where a writer would see that color ("the dark
+  gray-green that settles in the folds of an old copper roof").
 - **Literal vs. evocative.** A palette is `literal` when it shows colors the
   word physically names or implies (a material, a light, a substance) and
   `evocative` when it gives the word's mood or atmosphere. A word can get
@@ -88,8 +98,10 @@ appears**, because at that point the extension point becomes architecture.
 ## Palette Grammar
 
 One palette per fence. Optional header lines (`key: value`) come first,
-followed by one swatch per line as `Color Name | #RRGGBB`. The **name comes
-first** because it is the content; the hex value is the reference.
+followed by one swatch per line as `Color Name | #RRGGBB | short definition`.
+The **name comes first** because it is the content, the hex value is the
+reference, and the definition goes last because it is the longest field and
+the most likely to contain stray punctuation.
 
 The example mixes established color terms, shown with their conventional
 values, with descriptive phrases coined where no standard term fits:
@@ -99,22 +111,22 @@ values, with descriptive phrases coined where no standard term fits:
 title: Warm Copper
 kind: literal
 note: Polished, metallic warmth (new pennies, sunlit pans, a lamp-lit forge).
-Copper | #B87333
-Bronze | #CD7F32
-Sienna | #A0522D
-Fawn | #E5AA70
-Desert Sand | #EDC9AF
+Copper | #B87333 | the reddish-orange of the bare metal, freshly polished
+Bronze | #CD7F32 | the warmer, yellower brown of copper alloyed with tin
+Sienna | #A0522D | a reddish-brown earth pigment named for Siena, Italy
+Fawn | #E5AA70 | the light yellowish tan of a young deer's coat
+Desert Sand | #EDC9AF | a pale pinkish beige, like dunes in low sun
 ```
 
 ```pm-palette
 title: Aged Copper & Patina
 kind: literal
 note: Oxidation and weathering; roofs, statues, and old pipes after decades of rain.
-Russet | #80461B
-Deep Patina | #577E73
-Verdigris | #43B3AE
-Weathered Bronze | #C0A47D
-Ecru | #C2B280
+Russet | #80461B | a reddish brown, named for a coarse homespun cloth
+Deep Patina | #577E73 | the dark gray-green that settles in the folds of an old copper roof
+Verdigris | #43B3AE | the blue-green crust that forms on weathered copper, brass, and bronze
+Weathered Bronze | #C0A47D | the dulled, sandy brown of bronze left out in the rain
+Ecru | #C2B280 | the grayish-yellow of unbleached linen; French for "raw"
 ```
 ````
 
@@ -125,10 +137,18 @@ returns `ChromaticPalette | null`:
   optional. A missing `title` falls back to `Palette`. A `kind` other than
   `literal` or `evocative` drops the badge. Headers are matched only before
   the first swatch line.
-- **Swatch lines** split on the **last** `|`. The name is trimmed and capped
-  at 40 characters. The value is trimmed and must match `^#[0-9A-Fa-f]{6}$`
-  exactly. It is normalized to uppercase. No 3-digit hex, `rgb()`, CSS color
-  keywords, alpha, or `;`.
+- **Swatch lines** split on `|`. The first field is the name and the second
+  is the value. Everything after the second `|` is the definition, so a
+  definition may itself contain `|`, while a name may not.
+  - **Name:** trimmed and capped at 40 characters.
+  - **Value:** trimmed and must match `^#[0-9A-Fa-f]{6}$` exactly. It is
+    normalized to uppercase. No 3-digit hex, `rgb()`, CSS color keywords,
+    alpha, or `;`.
+  - **Definition:** trimmed and capped at 160 characters, as a safety bound
+    well above the prompt's target. The prompt requires a definition, but the
+    parser treats it as optional: a named, valid swatch without one still
+    renders, without the definition line. A missing definition loses less
+    than a dropped color would.
 - **A swatch needs a name.** A line with an empty name is skipped, and so is
   a line whose name is just a color code (`#…`, `rgb(…)`). The dictionary
   never shows an unnamed color. The parser cannot tell whether a name is
@@ -176,7 +196,8 @@ the Workshop's closed widget registries.
   (`style-src … 'unsafe-inline'` in `apps/vscode-extension/src/application/providers/webviewHtml.ts`).
 - A validated `#RRGGBB` cannot carry `url(`, so the CSS-beacon concern in the
   sanitizer's comment still holds.
-- Names, titles, and notes render as React text nodes and are escaped.
+- Names, definitions, titles, and notes render as React text nodes and are
+  escaped.
 
 ### Alternatives considered
 
@@ -189,20 +210,46 @@ the Workshop's closed widget registries.
 
 ### Visual and accessibility requirements
 
+Definitions make each swatch a short dictionary entry. A grid of small tiles,
+as in the mockup, cannot hold a wrapped definition in a narrow sidebar, so
+each palette has two parts: a **strip** for seeing the colors together and a
+**list** for reading them.
+
+```text
+┌ Warm Copper ─────────────────────────────── [Literal] ┐
+│ ███████████████████████████████████████████████████ │  ← strip: the colors as one band
+│ ██  Copper                                           │
+│ ██  the reddish-orange of the bare metal, freshly…   │  ← one row per swatch
+│ ██  #B87333                                          │
+│ ██  Verdigris                                        │
+│ ██  the blue-green crust that forms on weathered…    │
+│ ██  #43B3AE                                          │
+│ Polished, metallic warmth (new pennies, sunlit pans…)│  ← note (figcaption)
+└──────────────────────────────────────────────────────┘
+```
+
 - Each palette is a `<figure>` with a heading row: the title plus a
-  **Literal** or **Evocative** text badge. A swatch grid follows, then a
-  `<figcaption>` with the note.
-- Each swatch shows a color chip with two lines of visible text below it,
-  never on top of it, which avoids contrast problems on arbitrary colors. The
-  **color name** is the primary line, in normal body text, wrapping rather
-  than truncating. The **hex** is the secondary line, smaller and muted, in
-  monospace. The chip has `role="img"` and
-  `aria-label="Copper, #B87333, rgb(184, 115, 51)"`, and the same
-  `rgb(…)` string appears as its `title` tooltip. Color is never the only
-  carrier of information.
-- The grid wraps for the narrow sidebar
-  (`grid-template-columns: repeat(auto-fill, minmax(64px, 1fr))` or
-  equivalent). The 5-wide row in the mockup is for a wide pane only.
+  **Literal** or **Evocative** text badge. Next come the strip, then the
+  swatch list, then a `<figcaption>` with the note.
+- **Strip.** A single horizontal band split into equal segments, one per
+  swatch, in swatch order. It recreates the at-a-glance harmony of the
+  mockup at any width. It repeats information the list already gives, so it
+  is `aria-hidden="true"`.
+- **Swatch row.** A color chip (about 40 × 40 px) on the left, with three
+  lines of text to its right. The text is never placed on the chip, which
+  avoids contrast problems on arbitrary colors.
+  1. **Color name**: the primary line, in emphasized body text.
+  2. **Definition**: normal body text that wraps rather than truncates (the
+     ellipses in the sketch are only for space).
+  3. **Hex**: smaller and muted, in monospace.
+
+  The chip has `role="img"` and
+  `aria-label="Copper, #B87333, rgb(184, 115, 51)"`, and the same `rgb(…)`
+  string appears as its `title` tooltip. Color is never the only carrier of
+  information.
+- **Width.** Rows stack in one column in the sidebar. Wide panes can flow
+  rows into more columns (`grid-template-columns: repeat(auto-fill,
+  minmax(220px, 1fr))` or equivalent). Never scroll horizontally.
 - Chips get a 1px theme-token border so near-black and near-white swatches
   stay visible in dark, light, sepia, and Follow VS Code modes. Chip colors
   render literally, with no theme filter, opacity, or blend.
@@ -215,7 +262,9 @@ The Dictionary streaming view (`StreamingContent`) passes the same opt-in
 prop through to `MarkdownRenderer`. Mid-stream, `marked` lexes an unclosed
 fence as a code block that runs to the end of the input, so swatches appear
 line by line. A half-arrived value such as `#CD7` fails validation and is
-skipped until it is complete. The parser must never throw on truncated input.
+skipped until it is complete. A definition that is still arriving shows as
+partial text that grows, like the rest of a streamed entry. The parser must
+never throw on truncated input.
 
 ## Placement
 
@@ -259,6 +308,17 @@ in compact form.
   bare color codes, or names that repeat within one palette.
 - When a swatch uses an established term, its hex should be close to that
   term's conventional value, so the name and the chip agree.
+- **Define every swatch** in one short phrase (about 12 words or fewer),
+  after the second `|`. The definition explains the name, not the hex.
+  - **Established terms:** say what the color is, and name its source or
+    origin when that is well known and brief (a pigment, a material, a
+    place, a language). Do not invent etymologies or origin stories. When
+    unsure where a name comes from, describe the color's appearance and
+    referent only.
+  - **Coined names:** say where a writer would see the color (a surface, a
+    light, a moment), so the phrase works as prose material.
+  - Don't restate the hex or rgb value, and don't start with "A color that…".
+    Go straight to the image.
 - Give each palette a one-sentence `note` on its visual character and one way
   a writer might use it (scene lighting, wardrobe, setting, motif).
 - Let the context excerpt steer evocative palettes. A night scene gets a
@@ -306,24 +366,24 @@ debt.
    renaming ten Fast prompt files, and breaking the "original blocks keep
    their numbering" precedent. The recommendation is the end placement.
 2. **Default.** Should the switch start **on** (matching the encyclopedia,
-   and the cost is small at about 150–400 completion tokens) or **off**? The
+   with an estimated cost of roughly 300–700 completion tokens including
+   definitions, to be confirmed from the diagnostics log) or **off**? The
    recommendation is on.
-3. **Visible RGB.** The name and hex are always visible. Should `rgb(r, g, b)`
-   be a third visible line, or appear only in the tooltip and accessible
-   label? The recommendation is tooltip only, to keep chips compact in the
-   sidebar.
+3. **Visible RGB.** The name, definition, and hex are always visible. Should
+   `rgb(r, g, b)` be another visible line, or appear only in the tooltip and
+   accessible label? The recommendation is tooltip only, to keep rows compact
+   in the sidebar.
 4. **Evocative palette for a literal word.** Should *copper* always get one
    evocative palette alongside its literal ones, or only when the context
    excerpt invites it? The recommendation is to let the model decide, with
    the prompt encouraging one evocative palette when it adds something.
-5. **Per-swatch gloss.** Established terms like *celadon* or *sang-de-boeuf*
-   may be new to a writer. Should a swatch line be allowed an optional third
-   field, a short gloss
-   (`Verdigris | #43B3AE | the blue-green crust on weathered copper`), shown
-   under the name? That would add a little vocabulary teaching, at the cost of
-   longer output and taller swatches in the sidebar. The recommendation is
-   to leave it out of the first version and rely on the palette `note`. If
-   it's wanted, it is an additive change to the grammar.
+### Resolved
+
+- **Color names are first-class** (Okey, 2026-10-11). Every swatch carries a
+  name, and the hex value is its reference. Unnamed swatches are never shown.
+- **Per-swatch definitions ship in the first version** (Okey, 2026-10-11).
+  They became the third grammar field and caused the switch from a tile grid
+  to the strip-plus-list layout.
 
 ## Out of Scope
 
@@ -341,14 +401,18 @@ debt.
 ### Automated
 
 - [ ] Parser covers valid fences; optional and missing `title`, `kind`, and
-      `note`; last-`|` splitting; name trimming and capping; uppercase
+      `note`; field splitting, including a definition that contains `|`; name
+      trimming and capping; definition trimming and capping; a valid named
+      swatch without a definition (kept, with no definition); uppercase
       normalization; rejection of 3-digit hex, `rgb()`, CSS color keywords,
       and `#B87333; background:url(x)` values; skipping of unnamed swatches and
       of names that are only a color code (`#B87333 | #B87333`); the 8-swatch
-      cap; zero valid swatches → `null`; CRLF; and truncated mid-stream input
-      (never throws).
-- [ ] `PaletteBlock` renders every swatch's name as visible text before its
-      hex, and no chip is rendered without a name.
+      cap; zero valid swatches → `null`; CRLF; and truncated mid-stream input,
+      including a half-arrived definition (never throws).
+- [ ] `PaletteBlock` renders each row as name, then definition, then hex, all
+      as visible text. A swatch without a definition renders no empty
+      definition line. No chip is rendered without a name. The strip has one
+      segment per swatch, in order, and is `aria-hidden`.
 - [ ] `MarkdownRenderer` without the prop is unchanged. The existing
       sanitization test passes **unmodified**, and the DOMPurify config is
       byte-identical.
@@ -378,16 +442,22 @@ debt.
 ### Manual (Extension Development Host)
 
 - [ ] *copper*, Standard and Fast: plausible literal palettes, readable
-      notes. Every swatch is named, established color terms appear where they
-      fit, coined names read as usable prose phrases, and no generic labels
-      appear.
+      notes. Every swatch is named and defined. Established color terms
+      appear where they fit, coined names read as usable prose phrases, and no
+      generic labels appear.
+- [ ] Definitions: spot-check established terms (for example *verdigris*,
+      *sienna*, *ecru*) for accurate meanings and origins, with no invented
+      etymology. Coined names are defined by where the color is seen, and
+      every definition stays within a phrase.
 - [ ] *melancholy*: evocative palettes only.
 - [ ] *although*: heading plus one sentence, no fence, no broken rendering.
 - [ ] A word with context, such as *dusk* with a night-scene excerpt: the
       evocative palette follows the context.
 - [ ] Dark, light, sepia, and Follow VS Code: near-black and near-white chips
       stay visible and labels are legible.
-- [ ] Narrow sidebar: the grid wraps with no horizontal scroll.
+- [ ] Narrow sidebar: rows stack in one column, definitions wrap without
+      truncating, and nothing scrolls horizontally. In a wide pane, rows
+      flow into columns and the strip stays a single band.
 - [ ] Streaming: swatches appear progressively, with no console errors and no
       flash of broken markup.
 - [ ] Copy and Save: fences are preserved verbatim, and the saved file reads
