@@ -1,6 +1,6 @@
 # Feature: Dictionary Chromatic Palettes
 
-**Status**: In Progress — implementation on branch `claude/busy-curie-9x9nw7`
+**Status**: In Review — implemented on `claude/busy-curie-9x9nw7`; automated criteria pass, manual Extension Development Host checks open
 **Priority**: Medium
 **Estimated Effort**: Medium (one branch, one PR)
 **Date Identified**: 2026-10-11
@@ -403,7 +403,7 @@ be overturned in review; each is a small, local change.
 
 ### Automated
 
-- [ ] Parser covers valid fences; optional and missing `title`, `kind`, and
+- [x] Parser covers valid fences; optional and missing `title`, `kind`, and
       `note`; field splitting, including a definition that contains `|`; name
       trimming and capping; definition trimming and capping; a valid named
       swatch without a definition (kept, with no definition); uppercase
@@ -412,35 +412,57 @@ be overturned in review; each is a small, local change.
       of names that are only a color code (`#B87333 | #B87333`); the 8-swatch
       cap; zero valid swatches → `null`; CRLF; and truncated mid-stream input,
       including a half-arrived definition (never throws).
-- [ ] `PaletteBlock` renders each row as name, then definition, then hex, all
+- [x] `PaletteBlock` renders each row as name, then definition, then hex, all
       as visible text. A swatch without a definition renders no empty
       definition line. No chip is rendered without a name. The strip has one
       segment per swatch, in order, and is `aria-hidden`.
-- [ ] `MarkdownRenderer` without the prop is unchanged. The existing
+- [x] `MarkdownRenderer` without the prop is unchanged. The existing
       sanitization test passes **unmodified**, and the DOMPurify config is
       byte-identical.
-- [ ] `MarkdownRenderer` with the prop renders `pm-palette` fences as
+- [x] `MarkdownRenderer` with the prop renders `pm-palette` fences as
       swatches, leaves other fences as code blocks, keeps one
       `.markdown-content` root, and falls back to a code block when a fence
       has no valid swatches. No rendered `style` contains anything other than
       a validated `background-color`, and an injection-attempt fence produces
       no `url(` anywhere in the DOM.
-- [ ] `dictionaryUtility` composes the palette prompt only when enabled.
+- [x] `dictionaryUtility` composes the palette prompt only when enabled.
       Section numbers are correct in all four palette/encyclopedia
       combinations. The system and user messages both state the selection.
       The fallback respects it.
-- [ ] `DictionaryService` selects blocks correctly in all four combinations,
+- [x] `DictionaryService` selects blocks correctly in all four combinations,
       reports the right totals in progress and metadata, and resolves the
       `16-chromatic-palettes` and `17-topic-related-lexicon` prompt files.
-- [ ] All 15 original Fast blocks, the original reference example, and the
+- [x] All 15 original Fast blocks, the original reference example, and the
       Topic block content are byte-identical apart from the Topic rename.
-- [ ] `DictionaryHandler` forwards `includePalettes` on both routes.
+- [x] `DictionaryHandler` forwards `includePalettes` on both routes.
       `WorkshopPersonaCapability` passes `false` on both calls.
-- [ ] `useDictionary` persists and restores `dictionaryIncludePalettes`.
+- [x] `useDictionary` persists and restores `dictionaryIncludePalettes`.
       `UtilitiesTab` tests cover the switch, its disabled-while-generating
       state, and the payloads for Standard, Fast, and auto-run.
-- [ ] The repo's typecheck, lint (zero errors), `npm test`, and production
+- [x] The repo's typecheck, lint (zero errors), `npm test`, and production
       build pass. No `from 'vscode'` in `packages/core/src`.
+
+### Verification record (2026-10-11)
+
+Integrated head of `claude/busy-curie-9x9nw7`, against `main` at `37a1d06`:
+
+- `npm run typecheck`: core, webview, and app clean.
+- `npm test`: 304 suites / 4,377 tests / 2 snapshots pass (`main`: 299 /
+  4,257 / 2, so the branch adds 5 suites and 120 tests).
+- `npm run lint`: 0 errors, 1,121 warnings (`main`: 1,116). All five new
+  warnings are the repo-wide `naming-convention` rule: three PascalCase
+  components, one PascalCase test harness, and a second `__html`.
+- `npm run build`, including `verify:bundle`: OK.
+- `git diff --check` clean; no `from 'vscode'` in `packages/core/src`.
+- Prompt resources: only the two new palette prompts, the 100% Topic rename,
+  one placeholder line in `00-dictionary-utility.md`, and one ordering phrase
+  in `02-encyclopedia-entry.md` changed. The 15 original Fast blocks and the
+  reference example are untouched.
+- `MarkdownRenderer.test.tsx` and the DOMPurify configuration are unchanged.
+- Files over 500 lines: only the pre-existing `DictionaryService.ts`
+  (695 → 728) and `WorkshopPersonaCapability.ts` (826 → 827).
+
+No live provider call or Extension Development Host session was run.
 
 ### Manual (Extension Development Host)
 
