@@ -590,7 +590,8 @@ The three questions raised in the [Slice 1 handoff](../../../../.memory-bank/202
 ### Design edits (writer decisions, 2026-10-09)
 
 After hands-on testing of Slices 1–6, Okey revised four decisions, then a
-fifth during Slice 7 review. They supersede the earlier text where marked
+fifth during Slice 7 review, and a sixth (D6) once Slice 7 had merged. They
+supersede the earlier text where marked
 above and landed as **Slice 7**
 (branch `epic/conversation-widgets-sprint-05-slice-7-design-edits`, cut from
 the Slice 6 merge `16320d6`).
@@ -659,6 +660,14 @@ the Slice 6 merge `16320d6`).
   not save room shows as such, and the over-ceiling copy now says "carry
   variants as direction where that is shorter". Old data is valid under D5
   because it only relaxes a rule.
+- **D6: Generate / Regenerate moves into the pinned footer (writer request,
+  2026-10-11).** The button was small and easy to miss in the scrolling body;
+  it now sits right-aligned on the **Widget model** row of the footer, beside
+  the model selector. Generate carries Commit's accent until a workup exists,
+  then Regenerate takes Cancel's quiet bordered look; while a generation runs
+  the footer button reads "Generating…" and the body's progress block keeps
+  the one cancel affordance. The regenerate warning rides the button as a
+  `title` plus visually hidden `aria-describedby` text.
 
 **Unchanged:** Q2 (multi-line values, `↵`), Q3 (POV is plain writer input),
 the pronoun-free seed banner, the Slice 4 commit rail, and the host ceiling

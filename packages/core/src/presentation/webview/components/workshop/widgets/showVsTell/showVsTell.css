@@ -410,62 +410,13 @@
   font-weight: 600;
 }
 
-/* ---- generate / progress / seam / errors ---- */
-[data-pm-surface="workshop"] .pm-ws-svt-gen {
-  margin-top: 15px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 36px;
-  border-radius: 9px;
-  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
-  border: 1px solid var(--pm-accent-lo);
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: var(--pm-sans);
-}
-[data-pm-surface="workshop"] .pm-ws-svt-gen:hover:not(:disabled) {
-  filter: brightness(1.06);
-}
-[data-pm-surface="workshop"] .pm-ws-svt-gen:disabled {
-  filter: saturate(0.3) brightness(0.65);
-  cursor: not-allowed;
-}
-[data-pm-surface="workshop"] .pm-ws-svt-gen-ghost {
-  width: auto;
-  height: 28px;
-  padding: 0 11px;
-  background: transparent;
-  border: 1px solid var(--pm-border);
-  color: var(--pm-dim);
-  font-weight: 500;
-  font-size: 11.5px;
-}
-[data-pm-surface="workshop"] .pm-ws-svt-gen-ghost:hover:not(:disabled) {
-  color: var(--pm-text-2);
-  border-color: var(--pm-border-2);
-  filter: none;
-}
-[data-pm-surface="workshop"] .pm-ws-svt-regen-note,
-[data-pm-surface="workshop"] .pm-ws-svt-gen-reasons {
-  margin: 7px 0 0;
-  font-size: 10.5px;
-  line-height: 1.5;
-  color: var(--pm-faint);
-}
-[data-pm-surface="workshop"] .pm-ws-svt-gen-reasons {
-  color: var(--pm-dim);
-}
+/* ---- progress / seam / errors (Generate itself lives in the footer, D6) ---- */
 [data-pm-surface="workshop"] .pm-ws-svt-seam {
   font-family: var(--pm-mono);
   font-size: 10px;
   color: var(--pm-faint);
   text-align: center;
-  margin-top: 7px;
+  margin-top: 15px;
 }
 [data-pm-surface="workshop"] .pm-ws-svt-progress {
   margin-top: 15px;
@@ -867,12 +818,16 @@
   border-top: 1px solid var(--pm-border-soft);
   background: var(--pm-surface);
 }
+/* The model row: selector and kept count left, Generate / Regenerate right (D6).
+   It wraps in a narrow sidebar — the generate slot drops to its own line and
+   stays right-aligned — so nothing overflows or clips. */
 [data-pm-surface="workshop"] .pm-ws-svt-model {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
 }
 [data-pm-surface="workshop"] .pm-ws-svt-model .model-selector {
   width: auto;
@@ -908,6 +863,63 @@
   font-size: 10.5px;
   color: var(--pm-accent-hi);
   white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-gen-slot {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+/* Generate shares the commit button's geometry and accent; it is the sheet's
+   main next action until a workup exists. */
+[data-pm-surface="workshop"] .pm-ws-svt-gen {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 16px;
+  border: 1px solid var(--pm-accent-lo);
+  border-radius: var(--pm-r-button);
+  background: linear-gradient(180deg, var(--pm-accent-hi), var(--pm-accent-lo));
+  color: #fff;
+  cursor: pointer;
+  font: 600 11.5px var(--pm-sans);
+  white-space: nowrap;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-gen:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+[data-pm-surface="workshop"] .pm-ws-svt-gen:disabled {
+  filter: saturate(0.3) brightness(0.65);
+  cursor: not-allowed;
+}
+/* Once a workup exists, Regenerate takes the Cancel button's quiet bordered
+   look so it never competes with Commit, yet still reads as a button. */
+[data-pm-surface="workshop"] .pm-ws-svt-gen-ghost {
+  background: transparent;
+  border-color: var(--pm-border);
+  color: var(--pm-muted);
+  font-weight: 550;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-gen-ghost:hover:not(:disabled) {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+  filter: none;
+}
+[data-pm-surface="workshop"] .pm-ws-svt-gen-reasons {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 260px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--pm-dim);
+  text-align: right;
 }
 [data-pm-surface="workshop"] .pm-ws-svt-commit-reason {
   flex: none;

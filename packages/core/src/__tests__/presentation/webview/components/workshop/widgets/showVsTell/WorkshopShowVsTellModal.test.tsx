@@ -89,6 +89,22 @@ const renderModal = (
 const filledSegments = (row: HTMLElement): number =>
   row.querySelectorAll('.pm-ws-svt-bar-on').length;
 
+const STYLESHEET = path.resolve(
+  __dirname,
+  '../../../../../../../presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css'
+);
+/** The declaration block for one selector; jsdom does not compute layout, so tests pin the contract. */
+const rule = (css: string, selector: string): string => {
+  const start = css.indexOf(`${selector} {`);
+  expect(start).toBeGreaterThan(-1);
+  return css.slice(start, css.indexOf('}', start));
+};
+
+const REGENERATE_NOTE =
+  'Regenerating replaces every variant and clears kept variants and carry modes.';
+const sheetBody = (): HTMLElement => document.querySelector('.pm-ws-svt-body')!;
+const sheetFooter = (): HTMLElement => document.querySelector('footer.pm-ws-svt-foot')!;
+
 describe('WorkshopShowVsTellModal', () => {
   afterEach(cleanup);
 
@@ -407,16 +423,6 @@ describe('WorkshopShowVsTellModal', () => {
   });
 
   describe('context well (D2a)', () => {
-    const STYLESHEET = path.resolve(
-      __dirname,
-      '../../../../../../../presentation/webview/components/workshop/widgets/showVsTell/showVsTell.css'
-    );
-    const rule = (css: string, selector: string): string => {
-      const start = css.indexOf(`${selector} {`);
-      expect(start).toBeGreaterThan(-1);
-      return css.slice(start, css.indexOf('}', start));
-    };
-
     it('renders the context list as one labelled group whose well is not a tab stop', () => {
       renderModal({
         availableSources: Array.from({ length: 7 }, (_, index) => ({
@@ -499,7 +505,7 @@ describe('WorkshopShowVsTellModal', () => {
         .toBeTruthy();
     });
 
-    it('fires Generate and, once a workup exists, becomes a ghost Regenerate', () => {
+    it('fires Generate and, once a workup exists, becomes a quiet Regenerate', () => {
       const props = renderModal();
       fireEvent.click(screen.getByRole('button', { name: /Generate the workup/ }));
       expect(props.onGenerate).toHaveBeenCalledTimes(1);
@@ -508,7 +514,7 @@ describe('WorkshopShowVsTellModal', () => {
       renderModal({ draft: generatedShowVsTellDraft() });
       const regenerate = screen.getByRole('button', { name: /Regenerate the workup/ });
       expect(regenerate.className).toContain('pm-ws-svt-gen-ghost');
-      expect(screen.getByText(/clears kept variants and carry modes/)).toBeTruthy();
+      expect(screen.getByText(REGENERATE_NOTE)).toBeTruthy();
     });
 
     it('shows the busy copy and a cancel affordance while generating', () => {
@@ -535,6 +541,154 @@ describe('WorkshopShowVsTellModal', () => {
 
       expect(screen.getByRole('status').textContent)
         .toBe('Generated workup cleared because the beat changed.');
+    });
+  });
+
+  describe('footer Generate / Regenerate (D6)', () => {
+    const generateButton = (): HTMLButtonElement =>
+      screen.getByRole('button', { name: /^(?:Generate|Regenerate) the workup$/ }) as HTMLButtonElement;
+
+    it('sits in the pinned footer on the model row, after the model select, and nowhere in the body', () => {
+      renderModal();
+      const generate = generateButton();
+      const modelSelect = screen.getByRole('button', { name: /Browse widget model options/ });
+
+      expect(sheetFooter().contains(generate)).toBe(true);
+      expect(generate.closest('.pm-ws-svt-model')).not.toBeNull();
+      expect(modelSelect.closest('.pm-ws-svt-model')).toBe(generate.closest('.pm-ws-svt-model'));
+      expect(modelSelect.compareDocumentPosition(generate) & Node.DOCUMENT_POSITION_FOLLOWING)
+        .toBeTruthy();
+      expect(sheetBody().contains(generate)).toBe(false);
+      expect(within(sheetBody()).queryByRole('button', { name: /^(?:Generate|Regenerate) the workup$/ })).toBeNull();
+      expect(sheetBody().querySelector('.pm-ws-svt-gen, .pm-ws-svt-gen-reasons, .pm-ws-svt-regen-note'))
+        .toBeNull();
+    });
+
+    it('is the accented Generate before a workup and the quiet Regenerate after, in the same slot', () => {
+      renderModal();
+      const generate = generateButton();
+      expect(generate.textContent).toBe(' Generate the workup');
+      expect(generate.className).toBe('pm-ws-svt-gen');
+      expect(generate.disabled).toBe(false);
+
+      cleanup();
+      renderModal({ draft: generatedShowVsTellDraft() });
+      const regenerate = generateButton();
+      expect(regenerate.textContent).toBe(' Regenerate the workup');
+      expect(regenerate.className).toBe('pm-ws-svt-gen pm-ws-svt-gen-ghost');
+      expect(regenerate.closest('.pm-ws-svt-model')).not.toBeNull();
+      expect(sheetFooter().contains(regenerate)).toBe(true);
+    });
+
+    it('keeps the regenerate warning reachable by hover and by screen reader, not as body text', () => {
+      renderModal();
+      expect(screen.queryByText(REGENERATE_NOTE)).toBeNull();
+      expect(generateButton().title).toBe('');
+      expect(generateButton().getAttribute('aria-describedby')).toBeNull();
+
+      cleanup();
+      renderModal({ draft: generatedShowVsTellDraft() });
+      const regenerate = generateButton();
+      const note = screen.getByText(REGENERATE_NOTE);
+      expect(note.className).toBe('pm-ws-svt-visually-hidden');
+      expect(regenerate.getAttribute('aria-describedby')).toBe(note.id);
+      expect(regenerate.title).toBe(REGENERATE_NOTE);
+      expect(sheetFooter().contains(note)).toBe(true);
+      expect(sheetBody().contains(note)).toBe(false);
+    });
+
+    it('is disabled by a blocker with the written reason beside it in the footer', () => {
+      const props = renderModal({ generateBlockers: ['beat-required'] });
+      const generate = generateButton();
+      const reason = screen.getByText('Add the beat to explore.');
+
+      expect(generate.disabled).toBe(true);
+      expect(generate.getAttribute('aria-describedby')).toBe(reason.id);
+      expect(reason.closest('.pm-ws-svt-gen-slot')).toBe(generate.closest('.pm-ws-svt-gen-slot'));
+      expect(sheetBody().contains(reason)).toBe(false);
+      fireEvent.click(generate);
+      expect(props.onGenerate).not.toHaveBeenCalled();
+    });
+
+    it('names both the warning and the blocker when Regenerate is blocked', () => {
+      renderModal({ draft: generatedShowVsTellDraft(), generateBlockers: ['source-unavailable'] });
+      const regenerate = generateButton();
+
+      expect(regenerate.disabled).toBe(true);
+      expect(regenerate.getAttribute('aria-describedby')).toBe(
+        `${screen.getByText(REGENERATE_NOTE).id} ${screen.getByText(/Untick the unavailable context source/).id}`
+      );
+    });
+
+    it('reads Generating… in the footer while the body keeps the one cancel affordance', () => {
+      const props = renderModal({
+        generation: { kind: 'generating', detail: 'Requesting the workup' },
+        generateBlockers: ['beat-required']
+      });
+      const busy = screen.getByRole('button', { name: 'Generating…' }) as HTMLButtonElement;
+
+      expect(busy.disabled).toBe(true);
+      expect(busy.className).toBe('pm-ws-svt-gen');
+      expect(sheetFooter().contains(busy)).toBe(true);
+      expect(busy.getAttribute('aria-describedby')).toBeNull();
+      expect(screen.queryByText('Add the beat to explore.')).toBeNull();
+      expect(screen.queryByRole('button', { name: /^(?:Generate|Regenerate) the workup$/ })).toBeNull();
+
+      const cancels = screen.getAllByRole('button', { name: 'Cancel generation' });
+      expect(cancels).toHaveLength(1);
+      expect(cancels[0].closest('.pm-ws-svt-progress')).not.toBeNull();
+      expect(sheetBody().contains(cancels[0])).toBe(true);
+      expect(sheetFooter().contains(cancels[0])).toBe(false);
+      fireEvent.click(busy);
+      expect(props.onGenerate).not.toHaveBeenCalled();
+      expect(props.onCancelGenerate).not.toHaveBeenCalled();
+    });
+
+    it('is locked while a commit is pending, before and after a workup', () => {
+      const props = renderModal({ commitBlockers: ['commit-in-flight'], commitPending: true });
+      const generate = generateButton();
+      expect(generate.textContent).toBe(' Generate the workup');
+      expect(generate.disabled).toBe(true);
+      fireEvent.click(generate);
+      expect(props.onGenerate).not.toHaveBeenCalled();
+
+      cleanup();
+      renderModal({
+        draft: keptDraft([[3, 'direction']]),
+        commitBlockers: ['commit-in-flight'],
+        commitPending: true
+      });
+      expect(generateButton().textContent).toBe(' Regenerate the workup');
+      expect(generateButton().disabled).toBe(true);
+    });
+
+    it('shares the commit rail’s geometry and tokens, and lets the model row wrap without overflow', () => {
+      // jsdom does not compute stylesheet layout, so this pins the class contract.
+      const css = fs.readFileSync(STYLESHEET, 'utf8');
+      const model = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-model');
+      const slot = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-gen-slot');
+      const generate = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-gen');
+      const ghost = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-gen-ghost');
+      const commit = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-commit');
+      const cancel = rule(css, '[data-pm-surface="workshop"] .pm-ws-svt-cancel');
+      const declaration = (block: string, property: string): string | undefined =>
+        block.match(new RegExp(`(?:^|\\s)${property}:\\s*([^;]+);`, 'u'))?.[1];
+
+      expect(model).toMatch(/flex-wrap: wrap;/);
+      expect(model).toMatch(/min-width: 0;/);
+      expect(slot).toMatch(/margin-left: auto;/);
+      expect(slot).toMatch(/justify-content: flex-end;/);
+      expect(slot).toMatch(/flex-wrap: wrap;/);
+      expect(slot).toMatch(/min-width: 0;/);
+      expect(slot).toMatch(/max-width: 100%;/);
+      expect(css).not.toMatch(/\.pm-ws-svt-gen\s*\{[^}]*width: 100%;/u);
+
+      expect(declaration(generate, 'height')).toBe(declaration(commit, 'height'));
+      expect(declaration(generate, 'background')).toBe(declaration(commit, 'background'));
+      expect(declaration(generate, 'border-radius')).toBe(declaration(commit, 'border-radius'));
+      expect(declaration(ghost, 'border-color')).toBe('var(--pm-border)');
+      expect(declaration(ghost, 'color')).toBe(declaration(cancel, 'color'));
+      expect(declaration(ghost, 'background')).toBe('transparent');
     });
   });
 

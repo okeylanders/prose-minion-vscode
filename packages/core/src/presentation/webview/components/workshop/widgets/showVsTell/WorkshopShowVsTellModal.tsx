@@ -16,6 +16,12 @@
  * optional must survive, must not change) beside the channels and length
  * budget; then the full-width surrounding passage; then the full-width
  * context multi-select; then the continuum.
+ *
+ * Generate / Regenerate (D6) lives in the pinned footer, right-aligned on the
+ * widget-model row, so it is always in reach. While a generation runs the
+ * footer button only reports "Generating…"; the one cancel affordance stays
+ * with the progress block in the body, so a double-click on Generate can
+ * never land on Cancel.
  */
 
 import * as React from 'react';
@@ -122,6 +128,9 @@ const COMMIT_BLOCKER_COPY: Record<ShowVsTellCommitBlocker, string> = {
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
+const REGENERATE_NOTE =
+  'Regenerating replaces every variant and clears kept variants and carry modes.';
+
 const groupFor = (
   kind: WorkshopShowVsTellWorkupGroup['kind'],
   groups: readonly WorkshopShowVsTellWorkupGroup[]
@@ -181,6 +190,12 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
   );
   const directionCount = draft.kept.filter((entry) => entry.carryMode === 'direction').length;
   const generateDisabled = interactionLocked || generateBlockers.length > 0;
+  /* While a generation runs, the busy label is the reason; blockers return once it settles. */
+  const showGenerateReasons = !generating && generateBlockers.length > 0;
+  const generateDescribedBy = [
+    workup ? 'pm-ws-svt-regen-note' : null,
+    showGenerateReasons ? 'pm-ws-svt-gen-reasons' : null
+  ].filter((id): id is string => id !== null).join(' ') || undefined;
   const activeBlocker = commitBlockers[0] ?? null;
   const commitDisabled = activeBlocker !== null;
 
@@ -305,7 +320,7 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
             disabled={commitPending}
           />
 
-          {generating ? (
+          {generating && (
             <div className="pm-ws-svt-progress">
               <div className="pm-ws-svt-progress-copy" role="status" aria-live="polite">
                 <span>
@@ -319,29 +334,6 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
               <div className="pm-ws-svt-progress-track" aria-hidden="true"><span /></div>
               <button type="button" onClick={onCancelGenerate}>Cancel generation</button>
             </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                className={`pm-ws-svt-gen${workup ? ' pm-ws-svt-gen-ghost' : ''}`}
-                disabled={generateDisabled}
-                aria-describedby={generateBlockers.length > 0 ? 'pm-ws-svt-gen-reasons' : undefined}
-                onClick={onGenerate}
-              >
-                <Icon name={workup ? 'refresh' : 'sparkle'} size={13} />{' '}
-                {workup ? 'Regenerate the workup' : 'Generate the workup'}
-              </button>
-              {workup && (
-                <p className="pm-ws-svt-regen-note">
-                  Regenerating replaces every variant and clears kept variants and carry modes.
-                </p>
-              )}
-              {generateBlockers.length > 0 && (
-                <p className="pm-ws-svt-gen-reasons" id="pm-ws-svt-gen-reasons">
-                  {generateBlockers.map((blocker) => GENERATE_BLOCKER_COPY[blocker]).join(' ')}
-                </p>
-              )}
-            </>
           )}
 
           {generation.kind === 'failed' && (
@@ -434,6 +426,31 @@ export const WorkshopShowVsTellModal: React.FC<WorkshopShowVsTellModalProps> = (
                 {directionCount > 0 ? ` · ${directionCount} as direction` : ''}
               </span>
             )}
+            <div className="pm-ws-svt-gen-slot">
+              {showGenerateReasons && (
+                <span className="pm-ws-svt-gen-reasons" id="pm-ws-svt-gen-reasons">
+                  {generateBlockers.map((blocker) => GENERATE_BLOCKER_COPY[blocker]).join(' ')}
+                </span>
+              )}
+              {workup && (
+                <span className="pm-ws-svt-visually-hidden" id="pm-ws-svt-regen-note">
+                  {REGENERATE_NOTE}
+                </span>
+              )}
+              <button
+                type="button"
+                className={`pm-ws-svt-gen${workup ? ' pm-ws-svt-gen-ghost' : ''}`}
+                disabled={generateDisabled}
+                aria-describedby={generateDescribedBy}
+                title={workup ? REGENERATE_NOTE : undefined}
+                onClick={onGenerate}
+              >
+                <Icon name={workup ? 'refresh' : 'sparkle'} size={13} />{' '}
+                {generating
+                  ? 'Generating…'
+                  : workup ? 'Regenerate the workup' : 'Generate the workup'}
+              </button>
+            </div>
           </div>
           <p className="pm-ws-svt-editor-note">
             Nothing is inserted into the editor — commit hands directions to the room.
