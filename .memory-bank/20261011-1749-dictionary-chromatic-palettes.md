@@ -80,8 +80,17 @@ block after it, and the renderer hid those lines while metadata reported
 Not changed: Fast metadata still counts a token-limited block as successful
 (pre-existing for every block). With F-01 fixed, that no longer hides content.
 
-After the fix: 306 suites / 4,425 tests / 2 snapshots; lint 0 errors,
-1,122 warnings (+1 test-mock `__esModule`); typecheck and build OK.
+Astra's re-review marked F-01 Addressed and found **F-02 (Medium)**: the
+line-only fence reader mistook a valid list-contained fence (or backticks in
+`<pre>`) for an open one, and the repair then opened a top-level fence that
+swallowed later sections, even with palettes off. Fixed in `5fcb8e4`:
+`findUnterminatedFence` now asks `marked` (a private, lazily built
+instance), since only a top-level fence can stay open. Lazy construction
+matters: three suites mock `marked` without `Marked`, and the webview never
+needs the lexer.
+
+After both fixes: 306 suites / 4,437 tests / 2 snapshots; lint 0 errors,
+1,122 warnings; typecheck and build OK.
 
 ## Follow-ups
 

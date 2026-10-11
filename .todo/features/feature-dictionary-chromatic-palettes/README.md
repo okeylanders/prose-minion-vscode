@@ -349,7 +349,7 @@ sections never give conflicting instructions about what comes next.
 | `shared/types/messages/dictionary.ts` | Add `includePalettes?: boolean` to `DictionaryEntryOptions`. **Absent means off** (opt-in), documented on the field, so non-UI callers (Workshop, a future console host) never receive fences they cannot render. The UI always sends an explicit boolean. |
 | `DictionaryHandler.ts` | Forward the option on both routes. Prefer passing the entry-options object through instead of destructuring each flag, so the next option does not need handler edits. |
 | `tools/utility/dictionaryUtility.ts` | Add a `{{PALETTES_BLUEPRINT_SECTION}}` placeholder (in `00-dictionary-utility.md` and the default fallback blueprint) before the encyclopedia placeholder. Compute the section numbers. Load `03-chromatic-palettes.md` only when enabled. State the selection in the system and user messages. The fallback instructions respect the choice. |
-| `DictionaryService.ts` | Add the `chromatic-palettes` block. Generalize selection to a small optional-block → entry-option map instead of chained conditions. Progress, metadata, and usage/cache aggregation already count only selected blocks. The default budget (3,500 tokens / 15 s) is enough. Extend the sparse diagnostics with `palettes=enabled\|disabled` and a palette-fence count, with no content. Close any fence a block leaves open before concatenating blocks (review F-01), so one block cannot absorb its siblings. |
+| `DictionaryService.ts` | Add the `chromatic-palettes` block. Generalize selection to a small optional-block → entry-option map instead of chained conditions. Progress, metadata, and usage/cache aggregation already count only selected blocks. The default budget (3,500 tokens / 15 s) is enough. Extend the sparse diagnostics with `palettes=enabled\|disabled` and a palette-fence count, with no content. Close any fence a block leaves open before concatenating blocks (review F-01), so one block cannot absorb its siblings. Decide "open" with `marked`, by container (review F-02): only a top-level fence can stay open, so well-formed list, quote, and HTML-block fences are never touched. |
 | `resources/system-prompts/dictionary-fast/` | Add `16-chromatic-palettes-block.md`. Rename Topic to `17-…` with its content unchanged. |
 | `WorkshopPersonaCapability.ts` | Pass `includePalettes: false` on both dictionary calls. |
 | `useDictionary.ts` | Add `includePalettes` state and persist it as `dictionaryIncludePalettes` (default per Open Question 2). |
@@ -451,11 +451,11 @@ be overturned in review; each is a small, local change.
 ### Verification record (2026-10-11)
 
 Integrated head of `claude/busy-curie-9x9nw7`, against `main` at `37a1d06`.
-Updated after the review F-01 fix (`f44250f`):
+Updated after the review F-01 (`f44250f`) and F-02 (`5fcb8e4`) fixes:
 
 - `npm run typecheck`: core, webview, and app clean.
-- `npm test`: 306 suites / 4,425 tests / 2 snapshots pass (`main`: 299 /
-  4,257 / 2, so the branch adds 7 suites and 168 tests).
+- `npm test`: 306 suites / 4,437 tests / 2 snapshots pass (`main`: 299 /
+  4,257 / 2, so the branch adds 7 suites and 180 tests).
 - `npm run lint`: 0 errors, 1,122 warnings (`main`: 1,116). All six new
   warnings are the repo-wide `naming-convention` rule: three PascalCase
   components, one PascalCase test harness, a second `__html`, and a test
@@ -472,6 +472,9 @@ Updated after the review F-01 fix (`f44250f`):
 - Review F-01 regression: 12 of the 16 Fast service → renderer cases fail
   without the fix, and 4 of the 5 renderer boundary cases fail without the
   renderer split. All pass with it.
+- Review F-02 regression: the 4 container-fence service → renderer cases
+  (list, ordered list, tilde list, `<pre>`; palettes off and on) fail on the
+  line-only fence reader and pass on the `marked`-based one.
 
 No live provider call or Extension Development Host session was run.
 
