@@ -14,6 +14,7 @@ import {
   CHROMATIC_PALETTE_FENCE_LANGUAGE,
   CHROMATIC_PALETTE_LIMITS
 } from '@shared/constants/chromaticPalettes';
+import { parseChromaticPalette } from '@utils/chromaticPalette';
 
 const PROMPT_ROOT = path.resolve(__dirname, '../../../resources/system-prompts');
 const PALETTE_PROMPTS = [
@@ -78,6 +79,20 @@ describe.each(PALETTE_PROMPTS)('Chromatic Palettes prompt %s', (promptPath) => {
       return name.toLowerCase();
     });
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  // The Dictionary renders these fences with the webview parser; an example it
+  // would drop, truncate, or reread differently teaches broken output.
+  it.each(fences.map((fence) => [fence[0], fence] as const))('example "%s" round-trips through the webview parser', (_title, fence) => {
+    const [title, kind, note, ...swatches] = fence;
+    const palette = parseChromaticPalette(fence.join('\n'));
+
+    expect(palette).not.toBeNull();
+    expect(`title: ${palette!.title}`).toBe(title);
+    expect(`kind: ${palette!.kind}`).toBe(kind);
+    expect(`note: ${palette!.note}`).toBe(note);
+    expect(palette!.swatches.map((swatch) => `${swatch.name} | ${swatch.hex} | ${swatch.definition}`))
+      .toEqual(swatches);
   });
 });
 
