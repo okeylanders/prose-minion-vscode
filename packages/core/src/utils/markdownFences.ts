@@ -6,7 +6,21 @@
  * need the same answer to one question: where does a fence end? A fence with
  * no closing delimiter (a token-limited response, a forgotten closer) runs to
  * the end of the document under CommonMark, swallowing whatever follows it.
+ *
+ * Whether a document ends inside a fence depends on Markdown containers
+ * (lists, block quotes, HTML blocks), so that question goes to `marked`, the
+ * parser the renderer uses. The line helpers below only read a delimiter
+ * line that is already known to belong to a fence.
  */
+
+import { Marked, type Tokens } from 'marked';
+
+/**
+ * A private instance, so this never reads or changes the renderer's global
+ * options. Built on first use: the webview imports only the line helpers.
+ */
+let fenceLexer: Marked | undefined;
+const getFenceLexer = (): Marked => (fenceLexer ??= new Marked({ gfm: true }));
 
 export interface FenceDelimiter {
   char: '`' | '~';
@@ -36,19 +50,25 @@ export function closesFence(line: string, opener: FenceDelimiter): boolean {
   return Boolean(match && match[1][0] === opener.char && match[1].length >= opener.length);
 }
 
-/** The delimiter of the fence still open at the end of `markdown`, or undefined when every fence closes. */
+/**
+ * The delimiter of a fence still open at the end of `markdown`, or undefined
+ * when none is. Only a top-level fence can stay open past its document: one
+ * inside a list item, block quote, or HTML block ends with its container, so
+ * the following text is never absorbed. An unterminated top-level fence runs
+ * to the end, so it is always the last token.
+ */
 export function findUnterminatedFence(markdown: string): FenceDelimiter | undefined {
-  let open: FenceDelimiter | undefined;
-  for (const line of markdown.split(/\r?\n/)) {
-    if (open) {
-      if (closesFence(line, open)) {
-        open = undefined;
-      }
-    } else {
-      open = parseFenceOpener(line);
-    }
+  const tokens = getFenceLexer().lexer(markdown).filter(token => token.type !== 'space');
+  const last = tokens[tokens.length - 1];
+  if (last?.type !== 'code' || (last as Tokens.Code).codeBlockStyle === 'indented') {
+    return undefined;
   }
-  return open;
+  const lines = last.raw.replace(/\n+$/, '').split('\n');
+  const opener = parseFenceOpener(lines[0]);
+  if (!opener) {
+    return undefined;
+  }
+  return lines.length > 1 && closesFence(lines[lines.length - 1], opener) ? undefined : opener;
 }
 
 /**

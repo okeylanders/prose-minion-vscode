@@ -34,7 +34,19 @@ function paletteResponse(delimiter: string, closed: boolean, swatch = 'Copper | 
   return ['# 🎨 Chromatic Palettes', '', ...fence, ...(closed ? [delimiter] : [])].join('\n');
 }
 
-async function generateFastEntry(palette: string, finishReason: 'stop' | 'length') {
+interface FastEntryOptions {
+  palette?: string;
+  finishReason?: 'stop' | 'length';
+  definition?: string;
+  includePalettes?: boolean;
+}
+
+async function generateFastEntry({
+  palette = paletteResponse('```', true),
+  finishReason = 'stop',
+  definition,
+  includePalettes = true
+}: FastEntryOptions) {
   const loadPrompts = jest.fn(async (paths: string[]) =>
     paths.map((file) => fs.readFileSync(path.join(PROMPT_ROOT, file), 'utf8')).join('\n\n'));
   const runInitial = jest.fn().mockImplementation(async ({ toolName }: { toolName: string }) => ({
@@ -42,7 +54,9 @@ async function generateFastEntry(palette: string, finishReason: 'stop' | 'length
       ? palette
       : toolName === 'dictionary-fast-topic-related-lexicon'
         ? TOPIC_RESPONSE
-        : `# ${toolName.replace('dictionary-fast-', '')}`,
+        : toolName === 'dictionary-fast-definition' && definition !== undefined
+          ? definition
+          : `# ${toolName.replace('dictionary-fast-', '')}`,
     finishReason: toolName === 'dictionary-fast-chromatic-palettes' ? finishReason : 'stop'
   }));
   const outputChannel = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
@@ -53,7 +67,7 @@ async function generateFastEntry(palette: string, finishReason: 'stop' | 'length
     outputChannel
   );
   const entry = await service.generateParallelDictionary('copper', undefined, {
-    includePalettes: true,
+    includePalettes,
     includeEncyclopedia: true
   });
   return { entry, outputChannel };
@@ -68,7 +82,7 @@ describe('Fast Generate keeps sibling blocks out of an unclosed palette fence (F
       ['unclosed after a normal stop', false, 'stop'],
       ['unclosed after the token limit', false, 'length']
     ] as const)('%s: renders the palette and the following Topic section', async (_label, closed, finishReason) => {
-      const { entry, outputChannel } = await generateFastEntry(paletteResponse(delimiter, closed), finishReason);
+      const { entry, outputChannel } = await generateFastEntry({ palette: paletteResponse(delimiter, closed), finishReason });
 
       expect(entry.metadata).toMatchObject({ successCount: 17, totalBlocks: 17, partialFailures: [] });
       // The raw entry Copy and Save carry: Topic sits outside every fence.
@@ -90,10 +104,10 @@ describe('Fast Generate keeps sibling blocks out of an unclosed palette fence (F
     });
 
     it('unclosed with no valid swatch: keeps the fence as readable code and Topic visible', async () => {
-      const { entry } = await generateFastEntry(
-        paletteResponse(delimiter, false, 'Copper | not-a-color | the reddish-orange of polished copper'),
-        'length'
-      );
+      const { entry } = await generateFastEntry({
+        palette: paletteResponse(delimiter, false, 'Copper | not-a-color | the reddish-orange of polished copper'),
+        finishReason: 'length'
+      });
 
       render(<MarkdownRenderer content={entry.result} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />);
 
@@ -101,5 +115,39 @@ describe('Fast Generate keeps sibling blocks out of an unclosed palette fence (F
       expect(document.querySelector('pre code')?.textContent).toContain('Copper | not-a-color');
       expect(screen.getByText(TOPIC_BODY)).toBeTruthy();
     });
+  });
+});
+
+/**
+ * PR #142 review F-02: the block-boundary repair must recognize a fence by its
+ * Markdown container. A well-formed fence in a list item, or literal backticks
+ * in an HTML block, is not an open fence; "closing" it would open a new
+ * top-level fence that swallows every later section.
+ */
+describe('Fast Generate leaves well-formed container fences alone (F-02)', () => {
+  it.each([
+    ['an unordered list item', '- ```text\n  hello world\n  ```'],
+    ['an ordered list item', '1. ```text\n   hello world\n   ```'],
+    ['a list item with tildes', '- ~~~\n  hello world\n  ~~~'],
+    ['an HTML <pre> block with literal backticks', '<pre>\n```\nhello world\n</pre>']
+  ])('in %s, with palettes off and on', async (_label, sample) => {
+    const definition = `# 📕 Definition\n\nA quoted code sample.\n\n${sample}`;
+
+    for (const includePalettes of [false, true]) {
+      const { entry, outputChannel } = await generateFastEntry({ definition, includePalettes });
+
+      expect(entry.result).toContain(definition);
+      expect(outputChannel.appendLine).not.toHaveBeenCalledWith(
+        expect.stringContaining('Closed an unterminated fence')
+      );
+
+      const { unmount } = render(<MarkdownRenderer content={entry.result} fencedBlocks={DICTIONARY_FENCED_BLOCKS} />);
+
+      expect(document.body.textContent).toContain('hello world');
+      expect(screen.getByRole('heading', { name: '📂 Topic & Related Lexicon' })).toBeTruthy();
+      expect(screen.getByText(TOPIC_BODY)).toBeTruthy();
+      expect(screen.queryAllByRole('img')).toHaveLength(includePalettes ? 1 : 0);
+      unmount();
+    }
   });
 });

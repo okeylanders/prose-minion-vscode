@@ -41,6 +41,22 @@ describe('markdownFences', () => {
     expect(findUnterminatedFence(markdown)).toEqual(expected);
   });
 
+  // PR #142 review F-02: container fences are valid Markdown and can never
+  // absorb what follows, so they must not be "repaired".
+  it.each([
+    ['a closed fence in a list item', '# Definition\n\nA quoted sample.\n\n- ```text\n  hello world\n  ```'],
+    ['a closed fence in an ordered list item', '1. ```text\n   hello\n   ```'],
+    ['a closed tilde fence in a list item', '- ~~~\n  hello\n  ~~~'],
+    ['a closed fence in a block quote', '> ```\n> hello\n> ```'],
+    ['literal backticks in an HTML <pre> block', '<pre>\n```\ncode\n</pre>'],
+    ['an unclosed fence in a list item (it ends with the list)', '- ```text\n  hello'],
+    ['an unclosed fence in a block quote (it ends with the quote)', '> ```\n> hello'],
+    ['an indented code block', '    ```\n    not a fence']
+  ])('leaves %s unchanged', (_label, markdown) => {
+    expect(findUnterminatedFence(markdown)).toBeUndefined();
+    expect(closeUnterminatedFence(markdown)).toBe(markdown);
+  });
+
   it('appends a matching closer only when a fence is left open', () => {
     expect(closeUnterminatedFence('````pm-palette\nCopper | #B87333')).toBe('````pm-palette\nCopper | #B87333\n````');
     expect(closeUnterminatedFence('~~~\nx')).toBe('~~~\nx\n~~~');
