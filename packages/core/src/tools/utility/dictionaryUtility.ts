@@ -7,9 +7,44 @@ import { PromptLoader } from '../shared/prompts';
 import { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { ExecutionResult, StreamingTokenCallback } from '@orchestration/AgentRunContracts';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
-import { DictionaryEntryOptions } from '@messages';
+import {
+  DictionaryEntryOptions,
+  ResolvedDictionaryEntryOptions,
+  resolveDictionaryEntryOptions
+} from '@messages';
+import { CHROMATIC_PALETTE_FENCE_LANGUAGE } from '@shared/constants/chromaticPalettes';
 
+const PALETTES_BLUEPRINT_PLACEHOLDER = '{{PALETTES_BLUEPRINT_SECTION}}';
 const ENCYCLOPEDIA_BLUEPRINT_PLACEHOLDER = '{{ENCYCLOPEDIA_BLUEPRINT_SECTION}}';
+const STANDARD_SECTION_COUNT = 15;
+
+/**
+ * Blueprint numbers of the enabled optional sections. Output order is fixed:
+ * AI Advisory Notes (15) → Chromatic Palettes → Topic & Related Lexicon, which
+ * is always last. A disabled section has no number.
+ */
+interface OptionalSectionPlan {
+  palettes?: number;
+  topic?: number;
+}
+
+function planOptionalSections(options: ResolvedDictionaryEntryOptions): OptionalSectionPlan {
+  const palettes = options.includePalettes ? STANDARD_SECTION_COUNT + 1 : undefined;
+  const topic = options.includeEncyclopedia ? (palettes ?? STANDARD_SECTION_COUNT) + 1 : undefined;
+  return { palettes, topic };
+}
+
+/** The section(s) Topic & Related Lexicon directly follows. */
+function topicPredecessors(sections: OptionalSectionPlan): string {
+  return sections.palettes === undefined ? 'AI Advisory Notes' : 'AI Advisory Notes and Chromatic Palettes';
+}
+
+/** Fill a blueprint slot, or drop an unused slot with its line break so it leaves no blank line. */
+function fillBlueprintSlot(instructions: string, placeholder: string, line?: string): string {
+  return line === undefined
+    ? instructions.replace(`${placeholder}\n`, '').replace(placeholder, '')
+    : instructions.replace(placeholder, line);
+}
 
 export interface DictionaryLookupInput extends DictionaryEntryOptions {
   word: string;
@@ -41,10 +76,10 @@ export class DictionaryUtility {
     }
 
     const sharedPrompts = await this.promptLoader.loadSharedPrompts();
-    const includeEncyclopedia = input.includeEncyclopedia !== false;
-    const toolPrompts = await this.loadToolPrompts(includeEncyclopedia);
-    const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts, includeEncyclopedia);
-    const userMessage = this.buildUserMessage(input);
+    const sections = planOptionalSections(resolveDictionaryEntryOptions(input));
+    const toolPrompts = await this.loadToolPrompts(sections);
+    const systemMessage = this.buildSystemMessage(sharedPrompts, toolPrompts, sections);
+    const userMessage = this.buildUserMessage(input, sections);
 
     return this.agentRunEngine.runInitial({
       toolName: 'dictionary-utility',
@@ -60,36 +95,58 @@ export class DictionaryUtility {
     });
   }
 
-  private async loadToolPrompts(includeEncyclopedia: boolean): Promise<string> {
+  private async loadToolPrompts(sections: OptionalSectionPlan): Promise<string> {
     try {
       const paths = [
         'dictionary-utility/00-dictionary-utility.md',
         'dictionary-utility/01-dictionary-example.md'
       ];
-      if (includeEncyclopedia) {
+      // Optional guidance follows output order, so the last guidance appended
+      // belongs to the section that really comes last (Topic, when enabled).
+      if (sections.palettes !== undefined) {
+        paths.push('dictionary-utility/03-chromatic-palettes.md');
+      }
+      if (sections.topic !== undefined) {
         paths.push('dictionary-utility/02-encyclopedia-entry.md');
       }
       const prompts = await this.promptLoader.loadPrompts(paths);
-      return this.composeEncyclopediaBlueprint(prompts, includeEncyclopedia);
+      return this.composeBlueprint(prompts, sections);
     } catch (error) {
       console.warn('Could not load dictionary utility prompts, using defaults');
-      return this.getDefaultInstructions(includeEncyclopedia);
+      return this.getDefaultInstructions(sections);
     }
   }
 
-  private buildSystemMessage(sharedPrompts: string, toolPrompts: string, includeEncyclopedia: boolean): string {
+  private buildSystemMessage(sharedPrompts: string, toolPrompts: string, sections: OptionalSectionPlan): string {
     const parts = [
-      toolPrompts || this.getDefaultInstructions(includeEncyclopedia),
+      toolPrompts || this.getDefaultInstructions(sections),
       sharedPrompts,
-      includeEncyclopedia
-        ? 'Encyclopedia entry: ENABLED for this lookup. The output blueprint includes the required final section 16, Topic & Related Lexicon. Continue after AI Advisory Notes with "# 📂 Topic & Related Lexicon" and the complete encyclopedia entry. The response is incomplete without it. The original ~1000-word target applies only to the preceding dictionary sections; allow additional space for the encyclopedia entry.'
-        : 'The optional Topic & Related Lexicon (encyclopedia) section is disabled for this lookup. Generate only the standard dictionary sections, ending with AI Advisory Notes.'
+      [this.describePaletteSelection(sections), this.describeEncyclopediaSelection(sections)].join('\n\n')
     ].filter(Boolean);
 
     return parts.join('\n\n---\n\n');
   }
 
-  private buildUserMessage(input: DictionaryLookupInput): string {
+  private describePaletteSelection(sections: OptionalSectionPlan): string {
+    if (sections.palettes === undefined) {
+      return `Chromatic Palettes: DISABLED for this lookup. Do not generate a Chromatic Palettes section or any \`${CHROMATIC_PALETTE_FENCE_LANGUAGE}\` fences.`;
+    }
+    const fences = `one \`${CHROMATIC_PALETTE_FENCE_LANGUAGE}\` fence per palette, following the palette grammar exactly`;
+    return sections.topic === undefined
+      ? `Chromatic Palettes: ENABLED for this lookup. The output blueprint includes the required final section ${sections.palettes}, Chromatic Palettes; the response is incomplete without it. After AI Advisory Notes, finish with "# 🎨 Chromatic Palettes" and ${fences}.`
+      : `Chromatic Palettes: ENABLED for this lookup. The output blueprint includes the required section ${sections.palettes}, Chromatic Palettes; the response is incomplete without it. After AI Advisory Notes, write "# 🎨 Chromatic Palettes" with ${fences}, then continue with section ${sections.topic}, Topic & Related Lexicon.`;
+  }
+
+  private describeEncyclopediaSelection(sections: OptionalSectionPlan): string {
+    if (sections.topic === undefined) {
+      return sections.palettes === undefined
+        ? 'The optional Topic & Related Lexicon (encyclopedia) section is disabled for this lookup. Generate only the standard dictionary sections, ending with AI Advisory Notes.'
+        : 'The optional Topic & Related Lexicon (encyclopedia) section is disabled for this lookup. Generate only the standard dictionary sections and Chromatic Palettes, ending with Chromatic Palettes.';
+    }
+    return `Encyclopedia entry: ENABLED for this lookup. The output blueprint includes the required final section ${sections.topic}, Topic & Related Lexicon. Continue after ${topicPredecessors(sections)} with "# 📂 Topic & Related Lexicon" and the complete encyclopedia entry. The response is incomplete without it. The original ~1000-word target applies only to the preceding dictionary sections; allow additional space for the encyclopedia entry.`;
+  }
+
+  private buildUserMessage(input: DictionaryLookupInput, sections: OptionalSectionPlan): string {
     const lines = [
       `Please prepare a rich dictionary report for the target word.`,
       '',
@@ -105,21 +162,43 @@ export class DictionaryUtility {
     }
 
     lines.push('', 'Focus on nuance, usage, and fiction-writing applications.');
-    lines.push('', input.includeEncyclopedia !== false
-      ? 'Include the encyclopedia entry: after AI Advisory Notes, finish with the complete "# 📂 Topic & Related Lexicon" section, including topic explanations, related vocabulary, writing examples, and possible reference books.'
-      : 'Do not include an encyclopedia entry. Finish with AI Advisory Notes.');
+    lines.push('', this.requestPalettes(sections));
+    lines.push('', this.requestEncyclopedia(sections));
 
     return lines.join('\n');
   }
 
-  private composeEncyclopediaBlueprint(instructions: string, includeEncyclopedia: boolean): string {
-    const section = includeEncyclopedia
-      ? '16. 📂 **Topic & Related Lexicon** — Required final encyclopedia section: developed topic explanations, related vocabulary, concrete examples and writing applications, plus 1–2 possible reference books per topic when suitable.'
-      : '';
-    return instructions.replace(ENCYCLOPEDIA_BLUEPRINT_PLACEHOLDER, section);
+  private requestPalettes(sections: OptionalSectionPlan): string {
+    if (sections.palettes === undefined) {
+      return `Do not include Chromatic Palettes or any \`${CHROMATIC_PALETTE_FENCE_LANGUAGE}\` fences.`;
+    }
+    const fences = `one \`${CHROMATIC_PALETTE_FENCE_LANGUAGE}\` fence per palette`;
+    return sections.topic === undefined
+      ? `Include Chromatic Palettes as section ${sections.palettes}: after AI Advisory Notes, finish with the "# 🎨 Chromatic Palettes" section, ${fences}.`
+      : `Include Chromatic Palettes as section ${sections.palettes}: after AI Advisory Notes, write the "# 🎨 Chromatic Palettes" section with ${fences}, before Topic & Related Lexicon.`;
   }
 
-  private getDefaultInstructions(includeEncyclopedia: boolean): string {
+  private requestEncyclopedia(sections: OptionalSectionPlan): string {
+    return sections.topic === undefined
+      ? `Do not include an encyclopedia entry. Finish with ${sections.palettes === undefined ? 'AI Advisory Notes' : 'Chromatic Palettes'}.`
+      : `Include the encyclopedia entry: after ${topicPredecessors(sections)}, finish with the complete "# 📂 Topic & Related Lexicon" section, including topic explanations, related vocabulary, writing examples, and possible reference books.`;
+  }
+
+  private composeBlueprint(instructions: string, sections: OptionalSectionPlan): string {
+    const palettesLine = sections.palettes === undefined
+      ? undefined
+      : `${sections.palettes}. 🎨 **Chromatic Palettes** — Required color section: 1–3 \`${CHROMATIC_PALETTE_FENCE_LANGUAGE}\` fences, one per palette, each with 3–6 named and defined swatches; a word without color resonance gets the heading and one sentence, with no fence.`;
+    const topicLine = sections.topic === undefined
+      ? undefined
+      : `${sections.topic}. 📂 **Topic & Related Lexicon** — Required final encyclopedia section: developed topic explanations, related vocabulary, concrete examples and writing applications, plus 1–2 possible reference books per topic when suitable.`;
+    return fillBlueprintSlot(
+      fillBlueprintSlot(instructions, PALETTES_BLUEPRINT_PLACEHOLDER, palettesLine),
+      ENCYCLOPEDIA_BLUEPRINT_PLACEHOLDER,
+      topicLine
+    );
+  }
+
+  private getDefaultInstructions(sections: OptionalSectionPlan): string {
     const dictionaryInstructions = `# Dictionary Utility — Output Contract
 
 You are the \`dictionary-utility\`. Produce an exhaustive, fiction-focused dictionary entry whenever a word is supplied.
@@ -142,6 +221,7 @@ Respond in markdown only with the following sections, preserving the icons and h
 13. 🧭 **Semantic Gradient** — Ordered ladder of near-synonyms illustrating intensity/nuance.
 14. Special Focus — When context or author notes are provided, add a dedicated markdown section titled "## **Special Focus: [brief context label]**" that directly answers the user's contextual question or use case with targeted guidance, examples, and if helpful a recommended layering or comparison.
 15. 🧠 **AI Advisory Notes** — Call out any sections that rely on model inference or may need verification.
+${PALETTES_BLUEPRINT_PLACEHOLDER}
 ${ENCYCLOPEDIA_BLUEPRINT_PLACEHOLDER}
 
 ### Additional Guidelines
@@ -151,16 +231,39 @@ ${ENCYCLOPEDIA_BLUEPRINT_PLACEHOLDER}
 - Reference genre applications whenever relevant.
 - Treat optional context as a concrete writing question, not just background color.
 - Never include system-level commentary or raw XML tags in the final output.`;
-    const instructions = this.composeEncyclopediaBlueprint(dictionaryInstructions, includeEncyclopedia);
-    return includeEncyclopedia
-      ? `${instructions}\n\n${this.getDefaultEncyclopediaInstructions()}`
-      : instructions;
+    // Optional guidance follows output order, as in loadToolPrompts.
+    return [
+      this.composeBlueprint(dictionaryInstructions, sections),
+      sections.palettes === undefined ? '' : this.getDefaultPaletteInstructions(sections),
+      sections.topic === undefined ? '' : this.getDefaultEncyclopediaInstructions(sections)
+    ].filter(Boolean).join('\n\n');
   }
 
-  private getDefaultEncyclopediaInstructions(): string {
+  private getDefaultPaletteInstructions(sections: OptionalSectionPlan): string {
+    const placement = sections.topic === undefined
+      ? 'as the final section'
+      : 'before the final **Topic & Related Lexicon** section';
+    return `# Chromatic Palettes Required for This Lookup
+
+The writer has ENABLED Chromatic Palettes for this lookup. It is a required part of this response. Write it after **AI Advisory Notes**, ${placement}, under the heading "# 🎨 Chromatic Palettes".
+
+### Chromatic Palettes Guidelines
+- Write 1–3 palettes with 3–6 swatches each, one fenced code block per palette with the info string \`${CHROMATIC_PALETTE_FENCE_LANGUAGE}\`.
+- Inside each fence, start with \`title:\`, then \`kind: literal\` or \`kind: evocative\`, then a one-sentence \`note:\` on the palette's visual character and one way a writer might use it. Then write one swatch per line as \`Color Name | #RRGGBB | short definition\`, with exactly six hex digits.
+- Literal palettes show colors the word physically names or implies; evocative palettes give its mood or atmosphere. Abstract words usually get only evocative palettes. Let the context excerpt steer evocative palettes.
+- Name every swatch. Prefer an established color term (verdigris, sienna, oxblood) with a hex close to its conventional value; otherwise coin a short phrase a writer could use in a sentence. Never use generic labels, bare color codes, or repeated names.
+- Define every swatch in about 12 words or fewer. For an established term, say what the color is, and give its origin only when well known and brief; never invent an etymology. For a coined name, say where a writer would see the color. Do not restate the hex.
+- Hex values are illustrative approximations; claim no Pantone, RAL, or other standard match.
+- When the word has no meaningful color resonance, write the heading and one plain sentence, with no fence.`;
+  }
+
+  private getDefaultEncyclopediaInstructions(sections: OptionalSectionPlan): string {
+    const predecessors = sections.palettes === undefined
+      ? '**AI Advisory Notes**'
+      : '**AI Advisory Notes** and **Chromatic Palettes**';
     return `# Encyclopedia Entry Required for This Lookup
 
-The writer has ENABLED the encyclopedia entry for this lookup. It is a required part of this response. After completing all fifteen standard dictionary sections, append this section LAST, after **AI Advisory Notes**. Preserve the original sections' order, depth, and creative breadth.
+The writer has ENABLED the encyclopedia entry for this lookup. It is a required part of this response. After completing all fifteen standard dictionary sections, append this section LAST, after ${predecessors}. Preserve the original sections' order, depth, and creative breadth.
 
 Use the heading "# 📂 Topic & Related Lexicon". The response is incomplete if it stops at AI Advisory Notes or omits the encyclopedia section.
 
