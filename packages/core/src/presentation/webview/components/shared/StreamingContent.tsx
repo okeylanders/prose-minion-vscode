@@ -8,6 +8,7 @@
 
 import * as React from 'react';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import type { MarkdownFencedBlocks } from './MarkdownRenderer';
 import { LoadingIndicator } from './LoadingIndicator';
 import { formatStreamingStats } from '@formatters';
 
@@ -34,6 +35,8 @@ interface StreamingContentProps {
   waitingMessage?: string;
   /** Additional CSS class */
   className?: string;
+  /** Opt-in fenced-block renderers, passed through to MarkdownRenderer. Pass a stable object. */
+  fencedBlocks?: MarkdownFencedBlocks;
 }
 
 export const StreamingContent: React.FC<StreamingContentProps> = ({
@@ -47,7 +50,8 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
   onCancel,
   cancelDisabled,
   waitingMessage = 'Waiting for first chunks...',
-  className = ''
+  className = '',
+  fencedBlocks
 }) => {
   const stats = formatStreamingStats({
     chunkCount,
@@ -90,7 +94,7 @@ export const StreamingContent: React.FC<StreamingContentProps> = ({
           />
         </div>
       ) : (
-        <MarkdownRenderer content={content} />
+        <MarkdownRenderer content={content} fencedBlocks={fencedBlocks} />
       )}
     </div>
   );
