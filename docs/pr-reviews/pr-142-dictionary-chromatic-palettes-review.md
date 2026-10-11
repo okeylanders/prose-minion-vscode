@@ -5,7 +5,8 @@
 **Verified base / merge-base:** `37a1d06a9536f96086841bc127a19ddaf683e887`
 **Reviewed implementation head:** `c5f7b0b702aebcf67f807277277a301e87d09e14`
 **Independently re-reviewed correction head:** `a3a18687ac15f71ed11a71f4215c6081ec12e8ba` (fix `f44250f5114ec4c4ae09d8a1cb49c15d517563c9`, followed by documentation)
-**Scope:** 34 files · +2,497 / −206 · 9 commits
+**Final independently re-reviewed code head:** `2c6723607799d4869987d399047652d5c7271a14` (F-02 fix `5fcb8e4`, followed by documentation)
+**Initial scope:** 34 files · +2,497 / −206 · 9 commits
 **Reviewed:** 2026-10-11 · **Reviewer:** Astra · **Mode:** independent source/spec review, real service/renderer boundary witnesses, synthetic component/lifecycle and adversarial parser probes, and full deterministic verification
 
 ## Resolution ledger
@@ -15,9 +16,9 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
 | F-01 | Medium / P2 | An unfinished Fast palette fence silently hides the independently successful Topic & Related Lexicon appendix | All eight original desired-safe witnesses pass after `f44250f`; independent Standard recovery, security, and streaming probes also pass | **Addressed** |
-| F-02 | Medium / P2 | The correction adds a spurious fence after valid list/HTML-contained code, turning subsequent Fast sections into one code block | Four valid-Markdown service→renderer witnesses fail at `a3a18687`, including palettes-off requests | **Open** |
+| F-02 | Medium / P2 | The correction adds a spurious fence after valid list/HTML-contained code, turning subsequent Fast sections into one code block | All four original container witnesses pass at `2c672360`; private lexer and retained fence-boundary probes also pass | **Addressed** |
 
-**Verdict: Changes requested.** F-01's original failure is independently resolved. The correction introduces F-02 by applying a line-only fence reader to every Fast block without Markdown container context. Resolve F-02 before merging; it affects valid pre-existing Markdown even when Chromatic Palettes is off. Full repository gates and correction-head CI pass but do not cover this regression.
+**Verdict: Approved for merge into `main`.** Both findings are independently resolved at `2c672360`; no open review finding remains. The complete deterministic gates, retained independent regressions, additional boundary/security probes, and final code-head CI pass. Approval remains subject to required checks on the final report-only branch head. The separately disclosed Extension Development Host, actual rendered-browser, and live-provider checks remain unperformed; this approval does not claim those checks or merge the PR.
 
 ## F-01 — Preserve the next Fast block when a palette fence is unfinished (addressed)
 
@@ -61,7 +62,7 @@ This is **display loss, not deletion of the raw result**. Separate real-componen
 
 **Resolution verified at `a3a18687`:** The Fast assembler adds a matching closer to an unfinished block, and the opt-in renderer splits a palette body at a following heading/fence so the remainder can render normally in Standard output. All eight original desired-safe cases now pass. Eighteen additional independent renderer probes cover both delimiter characters and lengths, heading levels 1/3/6, a second palette, reference links spanning recovered sections, sanitization of recovered hostile markup, and partial-name streaming. The original 21 parser/Dictionary lifecycle probes, four repeated-render/component probes, and 68 host contract probes still pass. Copy/Save carry the assembled Markdown; for a repaired Fast response, that includes the inserted closing delimiter. This addresses F-01, while the new generic closure reader has the separate F-02 regression below.
 
-## F-02 — Do not repair an already well-formed container fence
+## F-02 — Do not repair an already well-formed container fence (addressed)
 
 **Locations:** [`markdownFences.ts:40–50`](https://github.com/okeylanders/prose-minion-vscode/blob/a3a18687ac15f71ed11a71f4215c6081ec12e8ba/packages/core/src/utils/markdownFences.ts#L40-L50) and its new unconditional use in [`DictionaryService.ts:719–733`](https://github.com/okeylanders/prose-minion-vscode/blob/a3a18687ac15f71ed11a71f4215c6081ec12e8ba/packages/core/src/infrastructure/api/services/dictionary/DictionaryService.ts#L719-L733).
 
@@ -84,6 +85,8 @@ With `{ includePalettes: false, includeEncyclopedia: true }`, the helper appends
 **Independent evidence:** Four desired-safe service→renderer witnesses fail: an unordered-list backtick fence, an ordered-list backtick fence, an unordered-list tilde fence, and a `<pre>` HTML container containing literal backticks. Each first verifies that the original Markdown renders the Topic heading normally, then drives the real Fast service with synthetic completed responses and verifies that the Topic heading disappears into code after the new repair. The raw Topic text remains readable as code; this is a new formatting/boundary regression, not the silent text omission in F-01.
 
 **Requested change:** Identify an actually unterminated fence in its Markdown container context before appending a closer, or otherwise limit the repair so already well-formed Markdown is unchanged. Add real assembly/rendering regressions for closed list-contained fences and raw HTML code containers, with palettes both disabled and enabled. Retain the passing F-01 cases, shorter/longer-delimiter handling, valid raw output, and progressive Standard rendering. Avoid treating a line-level delimiter matcher as a complete CommonMark block parser.
+
+**Resolution verified at `2c672360`:** `findUnterminatedFence` now uses a private, lazily constructed `Marked` lexer and examines only the final top-level fenced-code token. Lists, quotes, HTML containers, and indented code therefore do not get spurious top-level closers. All four original F-02 service→renderer witnesses pass, and the committed integration tests exercise palettes both off and on. Additional independent checks leave valid container content byte-identical, cover open fences that end with their container, normalize LF/CRLF/lone-CR for parsing while retaining original source bytes, and prove that the private lexer neither inherits nor mutates the renderer's singleton options. The original F-01 cases and progressive streaming probes still pass. No new actionable finding was established in the complete five-file correction delta.
 
 ## Initial independently verified behavior outside F-01
 
@@ -130,7 +133,29 @@ The full correction delta from report commit `3b937d1a` is eight files, +388/−
 | F-02 desired-safe container witnesses | **4 failed**, 2.941 seconds on independent rerun; all reproduce F-02 |
 | Correction-head GitHub CI | **Success**, [run 38164319975](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38164319975) at `a3a18687` |
 
-The initial report-only head `3b937d1a` also passed [CI run 38163248577](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38163248577). Neither green CI run settles the new independent regression.
+The initial report-only head `3b937d1a` also passed [CI run 38163248577](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38163248577). Those green CI runs did not cover F-02; the final resolution is verified below.
+
+## Final re-review verification at `2c672360`
+
+The F-02 correction delta from report commit `bd69a95a` is five files, +121/−25. The implementation, regression additions, and documentation were reviewed in full. The base remains `37a1d06a`, and GitHub reports the PR open and mergeable. No functional change was made by the reviewer.
+
+| Check | Result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **306 suites / 4,437 tests / 2 snapshots passed**, 91.226 seconds |
+| `npm run typecheck` | Core, webview, and extension passed |
+| Full `npm run lint` | **0 errors / 1,122 warnings**, unchanged from the preceding correction |
+| `npm run build`, including `verify:bundle` | Passed; webpack size/performance warnings remain |
+| `git diff --check bd69a95a..2c672360` | Passed |
+| Original independent host contracts | **68 passed**, 3.334 seconds |
+| Original eight F-01 desired-safe assertions, unchanged | **8 passed**, 3.514 seconds; also covered by the updated suite below |
+| Independent host correction suites | **65 passed**, 3.814 seconds on independent rerun: 4 original F-02 container witnesses, 18 updated F-01/Copy/Save cases, 28 adversarial fence cases, and 15 lexer-isolation/normalization/container invariants |
+| Retained parser/Dictionary lifecycle probes | **21 passed**, 4.946 seconds |
+| Retained repeated-render/streaming/switch probes | **4 passed**, 3.703 seconds |
+| Retained Standard recovery/security probes | **18 passed**, 3.486 seconds |
+| Original sanitizer/config preservation | DOMPurify configuration and original sanitization test still byte-identical to the base |
+| Final code-head GitHub CI | **Success**, [run 38165915695](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38165915695) at `2c672360` |
+
+The preceding report-only head `bd69a95a` passed [CI run 38164815855](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38164815855). Old characterization assertions that explicitly expected missing/inside-code Topic content are retained as historical evidence, not treated as desired behavior; their corrected assertions now pass. Independent test counts above identify the original-eight replay separately so it is not mistaken for eight additional unique cases.
 
 ### Verification limits
 
@@ -138,4 +163,4 @@ A synthetic preview built successfully from the actual components and production
 
 No live or billable provider calls were made. Generated grammar compliance, plausible palettes for real words, and the factual accuracy/etymology of generated color definitions remain unverified. Green mocked tests do not establish those qualities. No secrets or real manuscript were used.
 
-This review commits only this report. It makes no functional edit, merge, branch deletion, release, or deployment. Required CI on the next report-only branch head is a separate check; F-01 is addressed and F-02 remains open at `a3a18687`.
+This review commits only this report. It makes no functional edit, merge, branch deletion, release, or deployment. Both F-01 and F-02 are addressed at `2c672360`. Required CI on the final report-only branch head is checked separately after publication.
