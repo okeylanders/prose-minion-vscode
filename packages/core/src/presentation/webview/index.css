@@ -1088,7 +1088,7 @@ select:focus {
   transform: none;
 }
 
-.pm-dictionary-encyclopedia-option {
+.pm-dictionary-option {
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -1106,30 +1106,30 @@ select:focus {
   cursor: pointer;
 }
 
-.pm-dictionary-encyclopedia-option[aria-checked="true"] {
+.pm-dictionary-option[aria-checked="true"] {
   border-color: var(--pm-primary-soft-border);
   background: color-mix(in srgb, var(--pm-primary) 5%, var(--pm-surface));
 }
 
-.pm-dictionary-encyclopedia-option:hover:not(:disabled) {
+.pm-dictionary-option:hover:not(:disabled) {
   border-color: var(--pm-primary);
 }
 
-.pm-dictionary-encyclopedia-option:focus-visible {
+.pm-dictionary-option:focus-visible {
   outline: 2px solid var(--pm-primary);
   outline-offset: 2px;
 }
 
-.pm-dictionary-encyclopedia-option:disabled {
+.pm-dictionary-option:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.pm-dictionary-encyclopedia-copy {
+.pm-dictionary-option-copy {
   min-width: 0;
 }
 
-.pm-dictionary-encyclopedia-heading {
+.pm-dictionary-option-heading {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1137,7 +1137,7 @@ select:focus {
   font-weight: 600;
 }
 
-.pm-dictionary-encyclopedia-kind {
+.pm-dictionary-option-kind {
   padding: 2px 7px;
   border: 1px solid var(--pm-border-soft);
   border-radius: var(--pm-r-pill);
@@ -1147,7 +1147,7 @@ select:focus {
   font-weight: 500;
 }
 
-.pm-dictionary-encyclopedia-description {
+.pm-dictionary-option-description {
   display: block;
   margin-top: 6px;
   color: var(--pm-muted);
@@ -1155,7 +1155,7 @@ select:focus {
   line-height: 1.5;
 }
 
-.pm-dictionary-encyclopedia-control {
+.pm-dictionary-option-control {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -1164,7 +1164,7 @@ select:focus {
   font-size: 11px;
 }
 
-.pm-dictionary-encyclopedia-track {
+.pm-dictionary-option-track {
   box-sizing: border-box;
   position: relative;
   width: 36px;
@@ -1175,7 +1175,7 @@ select:focus {
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.pm-dictionary-encyclopedia-thumb {
+.pm-dictionary-option-thumb {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -1186,19 +1186,19 @@ select:focus {
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.pm-dictionary-encyclopedia-option[aria-checked="true"] .pm-dictionary-encyclopedia-track {
+.pm-dictionary-option[aria-checked="true"] .pm-dictionary-option-track {
   border-color: var(--pm-primary);
   background: var(--pm-primary);
 }
 
-.pm-dictionary-encyclopedia-option[aria-checked="true"] .pm-dictionary-encyclopedia-thumb {
+.pm-dictionary-option[aria-checked="true"] .pm-dictionary-option-thumb {
   transform: translateX(16px);
   background: var(--pm-primary-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pm-dictionary-encyclopedia-track,
-  .pm-dictionary-encyclopedia-thumb {
+  .pm-dictionary-option-track,
+  .pm-dictionary-option-thumb {
     transition: none;
   }
 }

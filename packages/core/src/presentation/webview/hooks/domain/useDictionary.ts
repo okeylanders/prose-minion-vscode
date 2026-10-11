@@ -37,6 +37,7 @@ export interface DictionaryState {
   word: string;
   context: string;
   includeEncyclopedia: boolean;
+  includePalettes: boolean;
   wordEdited: boolean;
   sourceUri: string;
   relativePath: string;
@@ -64,6 +65,7 @@ export interface DictionaryActions {
   setWord: (word: string) => void;
   setContext: (context: string) => void;
   setIncludeEncyclopedia: (include: boolean) => void;
+  setIncludePalettes: (include: boolean) => void;
   setWordEdited: (edited: boolean) => void;
   setSource: (uri?: string, relativePath?: string) => void;
   clearResult: () => void;
@@ -85,6 +87,7 @@ export interface DictionaryPersistence {
   dictionaryWord: string;
   dictionaryContext: string;
   dictionaryIncludeEncyclopedia: boolean;
+  dictionaryIncludePalettes: boolean;
   dictionaryWordEdited: boolean;
   dictionarySourceUri: string;
   dictionaryRelativePath: string;
@@ -131,6 +134,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     dictionaryWord?: string;
     dictionaryContext?: string;
     dictionaryIncludeEncyclopedia?: boolean;
+    dictionaryIncludePalettes?: boolean;
     dictionaryWordEdited?: boolean;
     dictionarySourceUri?: string;
     dictionaryRelativePath?: string;
@@ -146,6 +150,9 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [context, setContext] = React.useState<string>(persisted?.dictionaryContext ?? '');
   const [includeEncyclopedia, setIncludeEncyclopedia] = React.useState<boolean>(
     persisted?.dictionaryIncludeEncyclopedia ?? true
+  );
+  const [includePalettes, setIncludePalettes] = React.useState<boolean>(
+    persisted?.dictionaryIncludePalettes ?? true
   );
   const [wordEdited, setWordEdited] = React.useState<boolean>(persisted?.dictionaryWordEdited ?? false);
   const [sourceUri, setSourceUri] = React.useState<string>(persisted?.dictionarySourceUri ?? '');
@@ -323,6 +330,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     word,
     context,
     includeEncyclopedia,
+    includePalettes,
     wordEdited,
     sourceUri,
     relativePath,
@@ -348,6 +356,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     setWord,
     setContext,
     setIncludeEncyclopedia,
+    setIncludePalettes,
     setWordEdited,
     setSource,
     clearResult,
@@ -368,6 +377,7 @@ export const useDictionary = (): UseDictionaryReturn => {
       dictionaryWord: word,
       dictionaryContext: context,
       dictionaryIncludeEncyclopedia: includeEncyclopedia,
+      dictionaryIncludePalettes: includePalettes,
       dictionaryWordEdited: wordEdited,
       dictionarySourceUri: sourceUri,
       dictionaryRelativePath: relativePath,
