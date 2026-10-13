@@ -53,12 +53,9 @@ describe('OpenRouter prompt cache request policies', () => {
   it.each([
     'deepseek/deepseek-v3.2',
     'qwen/qwen-plus',
-    'qwen/qwen3-max',
-    'qwen/qwen3-coder-plus',
     'qwen/qwen3-coder-flash',
     'qwen/qwen3.6-plus',
     'qwen/qwen3.6-flash',
-    'qwen/qwen3.6-max-preview',
     'qwen/qwen3.7-max',
     'qwen/qwen3.7-plus',
     'qwen/qwen3.7-flash',
@@ -66,7 +63,7 @@ describe('OpenRouter prompt cache request policies', () => {
     'qwen/qwen3.8-max-0902',
     'qwen/qwen3.8-flash',
     '~qwen/qwen3.7-max',
-    'qwen/qwen3-max:nitro',
+    'qwen/qwen3.8-max-0902:nitro',
     '~deepseek/deepseek-v3.2:floor'
   ])('prepares supported %s with content-level caching instead of a request-level hint', model => {
     const request = prepareOpenRouterPromptCacheRequest(model, messages, 'participant-1');
@@ -80,7 +77,6 @@ describe('OpenRouter prompt cache request policies', () => {
   });
 
   it.each([
-    'qwen/qwen3-max-thinking',
     'qwen/qwen3.8-max-prime',
     'qwen/qwen3.5-plus-02-15',
     'qwen/qwen3.5-flash-02-23',
@@ -89,6 +85,8 @@ describe('OpenRouter prompt cache request policies', () => {
     'deepseek/deepseek-v4-pro',
     'google/gemini-3.8-flash',
     'meta/muse-spark-1.3',
+    'meta/muse-wonder',
+    'stepfun/step-5-preview',
     'openrouter/auto',
     'unknown/model'
   ])('keeps unverified or native %s on its existing content shape', model => {
@@ -97,7 +95,7 @@ describe('OpenRouter prompt cache request policies', () => {
     expect(request).not.toHaveProperty('cache_control');
   });
 
-  it.each(['anthropic/claude-opus-4.6', '~anthropic/claude-sonnet-latest:nitro', 'qwen/qwen3-max'])
+  it.each(['anthropic/claude-opus-4.6', '~anthropic/claude-sonnet-latest:nitro', 'qwen/qwen3.8-max-0902'])
   ('preserves one-off %s without explicit cache-write intent', model => {
     expect(prepareOpenRouterPromptCacheRequest(model, messages)).toEqual({ messages });
   });
@@ -109,8 +107,8 @@ describe('OpenRouter prompt cache request policies', () => {
       Object.freeze({ role: 'assistant' as const, content: 'Reply' }),
       Object.freeze({ role: 'user' as const, content: 'Follow-up' })
     ]);
-    const initial = prepareOpenRouterPromptCacheRequest('qwen/qwen3-max', frozenInitial, 'participant-1');
-    const followUp = prepareOpenRouterPromptCacheRequest('qwen/qwen3-max', frozenFollowUp, 'participant-1');
+    const initial = prepareOpenRouterPromptCacheRequest('qwen/qwen3.8-max-0902', frozenInitial, 'participant-1');
+    const followUp = prepareOpenRouterPromptCacheRequest('qwen/qwen3.8-max-0902', frozenFollowUp, 'participant-1');
     expect(followUp.session_id).toBe(initial.session_id);
     expect(followUp.messages).toEqual([
       cachedMessage('system', 'Stable instructions'),
@@ -151,7 +149,7 @@ describe('OpenRouter prompt cache request policies', () => {
     [[{ role: 'user', content: 'Question' }, { role: 'assistant', content: 'Assistant tail' }],
       [{ role: 'user', content: [{ type: 'text', text: 'Question' }] }, cachedMessage('assistant', 'Assistant tail')]]
   ])('handles short/empty transcripts without duplicate or empty cache markers (%j)', (input, expected) => {
-    const request = prepareOpenRouterPromptCacheRequest('qwen/qwen3-max', input as OpenRouterMessage[], 'participant-1');
+    const request = prepareOpenRouterPromptCacheRequest('qwen/qwen3.8-max-0902', input as OpenRouterMessage[], 'participant-1');
     expect(request.messages).toEqual(expected);
   });
 });

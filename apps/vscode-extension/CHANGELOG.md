@@ -2,6 +2,16 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- Muse Wonder and Step 5 Preview are available as opt-in choices for writing tools, Workshop, and Category Search. OpenRouter lists their model IDs, prices, and context limits; their prose quality has not been evaluated in Prose Minion. Defaults and saved selections are unchanged.
+
+### Removed
+
+- Retired Qwen3 Coder Plus, Qwen3 Max, Qwen3 Max Thinking, and Qwen3.6 Max Preview from the curated model picker. Qwen3.8 Max (0902) remains available.
+
 ## [2.9.0] - 2026-10-08
 
 ### Added

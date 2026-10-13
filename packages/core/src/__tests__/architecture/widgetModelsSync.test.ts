@@ -7,6 +7,7 @@ import { RECOMMENDED_MODELS } from '@providers/OpenRouterModels';
 const EXPECTED_SHARED_MODEL_IDS = [
   'meta/muse-spark-1.1',
   'meta/muse-spark-1.3',
+  'meta/muse-wonder',
   'qwen/qwen3.8-max-0902',
   'qwen/qwen3.8-max-prime',
   'anthropic/claude-fable-5.1',
@@ -33,6 +34,7 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'xiaomi/mimo-v2.6-pro-ultraspeed',
   'mistralai/mistral-large-2407',
   'mistralai/mistral-large-4-0',
+  'stepfun/step-5-preview',
   'nousresearch/hermes-3-llama-3.1-70b',
   'nousresearch/hermes-3-llama-3.1-405b',
   'aion-labs/aion-3.5-mini',
@@ -47,6 +49,10 @@ const RETIRED_MODEL_IDS = [
   'inception/mercury-2.5-preview',
   'qwen/qwen3.8-max',
   'mistralai/mistral-large-2512',
+  'qwen/qwen3-coder-plus',
+  'qwen/qwen3-max',
+  'qwen/qwen3-max-thinking',
+  'qwen/qwen3.6-max-preview',
   'nousresearch/hermes-4-70b'
 ] as const;
 
