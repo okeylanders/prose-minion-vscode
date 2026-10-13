@@ -51,11 +51,11 @@ let showVsTellTokenCounter = 0;
 const createShowVsTellRequestToken = (): string =>
   `show-vs-tell-${Date.now()}-${++showVsTellTokenCounter}`;
 
-let showVsTellPassageRequestCounter = 0;
+let showVsTellSelectionRequestCounter = 0;
 
 /** One id per Use selection ask; the host echoes it so a late reply can be matched or dropped. */
-const createShowVsTellPassageRequestId = (): string =>
-  `show-vs-tell-passage-${Date.now()}-${++showVsTellPassageRequestCounter}`;
+const createShowVsTellSelectionRequestId = (field: 'beat' | 'passage'): string =>
+  `show-vs-tell-${field}-${Date.now()}-${++showVsTellSelectionRequestCounter}`;
 
 export type ShowVsTellCommitResult = Extract<
   WorkshopWidgetActionResultPayload,
@@ -70,7 +70,8 @@ export interface ShowVsTellState {
 }
 
 export interface ShowVsTellActions {
-  requestBeatSelection: () => void;
+  /** Returns the correlation id the host will echo on the beat-selection reply. */
+  requestBeatSelection: () => string;
   /**
    * Fills the writer's surrounding-passage box from the editor selection (D2).
    * Returns the correlation id the host will echo on the reply.
@@ -120,12 +121,14 @@ export function useShowVsTell(): UseShowVsTellReturn {
     });
   }, [vscode]);
 
-  const requestBeatSelection = React.useCallback(() => {
-    post(MessageType.REQUEST_SELECTION, { target: 'workshop_show_vs_tell_beat' });
+  const requestBeatSelection = React.useCallback((): string => {
+    const requestId = createShowVsTellSelectionRequestId('beat');
+    post(MessageType.REQUEST_SELECTION, { target: 'workshop_show_vs_tell_beat', requestId });
+    return requestId;
   }, [post]);
 
   const requestPassageSelection = React.useCallback((): string => {
-    const requestId = createShowVsTellPassageRequestId();
+    const requestId = createShowVsTellSelectionRequestId('passage');
     post(MessageType.REQUEST_SELECTION, { target: 'workshop_show_vs_tell_passage', requestId });
     return requestId;
   }, [post]);

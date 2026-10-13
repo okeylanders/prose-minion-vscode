@@ -55,7 +55,7 @@ const selection = (
   type: MessageType.SELECTION_DATA,
   source: 'extension.ui',
   timestamp: 1,
-  payload: { target: 'workshop_show_vs_tell_beat', content: 'A beat.', ...payload }
+  payload: { target: 'workshop_show_vs_tell_beat', requestId: 'bsel-1', content: 'A beat.', ...payload }
 });
 
 interface Harness {
@@ -71,7 +71,7 @@ interface Harness {
 function setup(initial: Partial<UseShowVsTellAuthoringOptions> = {}): Harness {
   let tokenIndex = 0;
   const options = {
-    requestBeatSelection: jest.fn(),
+    requestBeatSelection: jest.fn(() => 'bsel-1'),
     requestPassageSelection: jest.fn(() => 'psel-1'),
     generate: jest.fn((_input: unknown) => `token-${++tokenIndex}`),
     cancelGeneration: jest.fn(),
@@ -187,7 +187,10 @@ describe('useShowVsTellAuthoring', () => {
   describe('invalidation', () => {
     const everyInvalidatingInput: Array<[string, (h: Harness) => void]> = [
       ['beat text', (h) => h.result.current.changeBeatText('A different beat.')],
-      ['beat selection', (h) => h.result.current.handleBeatSelection(selection({ content: 'Another beat.' }))],
+      ['beat selection', (h) => {
+        h.result.current.requestBeatSelection();
+        h.result.current.handleBeatSelection(selection({ content: 'Another beat.' }));
+      }],
       ['context source', (h) => h.result.current.toggleSourceReference({ kind: 'active-excerpt' })],
       ['passage text', (h) => h.result.current.changePassageText('He set the mug down.')],
       ['passage selection', (h) => {
@@ -579,6 +582,7 @@ describe('useShowVsTellAuthoring', () => {
 
     it('keeps relativePath and the line range for an editor selection and drops sourceUri', () => {
       const h = setup();
+      act(() => h.result.current.requestBeatSelection());
 
       act(() => h.result.current.handleBeatSelection(selection({
         content: 'She hadn’t trusted him.',
@@ -597,6 +601,7 @@ describe('useShowVsTellAuthoring', () => {
 
     it('records clipboard intake as pasted', () => {
       const h = setup();
+      act(() => h.result.current.requestBeatSelection());
 
       act(() => h.result.current.handleBeatSelection(selection({ content: 'From the clipboard.' })));
 
@@ -605,6 +610,7 @@ describe('useShowVsTellAuthoring', () => {
 
     it('collapses line breaks on intake because a beat is a single line', () => {
       const h = setup();
+      act(() => h.result.current.requestBeatSelection());
 
       act(() => h.result.current.handleBeatSelection(selection({
         content: 'First line.\r\n  Second line.\n\nThird.'
@@ -617,6 +623,7 @@ describe('useShowVsTellAuthoring', () => {
     it('shortens an over-long selection to the beat budget and says so', () => {
       const h = setup();
       const long = 'word '.repeat(80);
+      act(() => h.result.current.requestBeatSelection());
 
       act(() => h.result.current.handleBeatSelection(selection({ content: long })));
 
@@ -627,6 +634,7 @@ describe('useShowVsTellAuthoring', () => {
 
     it('ignores a selection for another target and any selection while generating', () => {
       const h = setup();
+      act(() => h.result.current.requestBeatSelection());
       act(() => h.result.current.handleBeatSelection(selection({
         target: 'workshop_creative_variations_subject', content: 'Not ours.'
       })));
@@ -636,6 +644,7 @@ describe('useShowVsTellAuthoring', () => {
         h.result.current.changeBeatText('A beat.');
         h.result.current.changeMustSurvive('The turn.');
       });
+      act(() => h.result.current.requestBeatSelection());
       act(() => h.result.current.generateWorkup());
       act(() => h.result.current.handleBeatSelection(selection({ content: 'Late.' })));
 
@@ -644,6 +653,7 @@ describe('useShowVsTellAuthoring', () => {
 
     it('editing seeded text flips excerpt provenance to pasted', () => {
       const h = setup();
+      act(() => h.result.current.requestBeatSelection());
       act(() => h.result.current.handleBeatSelection(selection({
         content: 'Seeded.', sourceUri: 'file:///x.md', relativePath: 'x.md', startLine: 1, endLine: 1
       })));

@@ -73,14 +73,28 @@ describe('useShowVsTell', () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  it('requests beat intake on its own target', () => {
+  it.each([
+    ['beat', 'requestBeatSelection', 'workshop_show_vs_tell_beat'],
+    ['passage', 'requestPassageSelection', 'workshop_show_vs_tell_passage']
+  ] as const)('correlates each %s intake request with a fresh id', (_field, action, target) => {
     const { result } = renderHook(() => useShowVsTell());
+    let first = '';
+    let second = '';
 
-    act(() => result.current.requestBeatSelection());
+    act(() => {
+      first = result.current[action]();
+      second = result.current[action]();
+    });
 
+    expect(first).toEqual(expect.any(String));
+    expect(first).not.toBe(second);
     expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       type: MessageType.REQUEST_SELECTION,
-      payload: { target: 'workshop_show_vs_tell_beat' }
+      payload: { target, requestId: first }
+    }));
+    expect(vscode.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      type: MessageType.REQUEST_SELECTION,
+      payload: { target, requestId: second }
     }));
   });
 

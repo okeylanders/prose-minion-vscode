@@ -21,7 +21,7 @@ const baseOptions = (): UseShowVsTellAuthoringOptions => ({
   widgetModelId: 'model-a',
   generationProgress: null,
   generationResult: null,
-  requestBeatSelection: jest.fn(),
+  requestBeatSelection: jest.fn(() => 'bsel-1'),
   requestPassageSelection: jest.fn(() => 'psel-1'),
   generate: jest.fn(() => 'token-1'),
   cancelGeneration: jest.fn(),
