@@ -59,6 +59,7 @@ interface WorkshopComposerProps {
   /** Deterministic current-recipient label for visible, accessible composer language. */
   recipientLabel: string;
   estimatedCacheExpiresAt?: number;
+  cacheRequestModelId?: string;
   /** A run is streaming — show stop instead of send. */
   isRunning: boolean;
   /** First host snapshot has arrived. */
@@ -105,6 +106,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
   hasConversation,
   recipientLabel,
   estimatedCacheExpiresAt,
+  cacheRequestModelId,
   isRunning,
   sessionReady,
   conversationBehavior,
@@ -294,6 +296,7 @@ export const WorkshopComposer: React.FC<WorkshopComposerProps> = ({
         </div>
         <WorkshopCacheIndicator
           estimatedExpiresAt={estimatedCacheExpiresAt}
+          cacheRequestModelId={cacheRequestModelId}
           recipientLabel={recipientLabel}
         />
         {canAddExcerpt && (

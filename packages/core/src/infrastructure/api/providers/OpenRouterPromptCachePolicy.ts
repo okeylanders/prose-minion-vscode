@@ -1,5 +1,9 @@
 import { createHash } from 'crypto';
 import { ClaudeCacheTtl, coerceClaudeCacheTtl, TokenUsage } from '@messages';
+import {
+  isMetaMuseCacheEstimateModel,
+  META_MUSE_CACHE_ESTIMATE_SECONDS
+} from '@shared/constants/promptCacheEstimates';
 import type {
   OpenRouterCacheControl,
   OpenRouterMessage,
@@ -97,6 +101,14 @@ const PROMPT_CACHE_POLICIES = {
     ttlSeconds: () => 1800,
     confirmsActivity: usage => (usage.cachedTokens ?? 0) > 0 || (usage.cacheWriteTokens ?? 0) > 0
   },
+  metaMuseAutomatic: {
+    supports: isMetaMuseCacheEstimateModel,
+    prepare: messages => ({ messages }),
+    // Five minutes is a UI guideline, not a provider retention guarantee.
+    // Only a reported read starts it; a miss does not prove cache admission.
+    ttlSeconds: () => META_MUSE_CACHE_ESTIMATE_SECONDS,
+    confirmsActivity: usage => (usage.cachedTokens ?? 0) > 0
+  },
   native: {
     supports: () => true,
     prepare: messages => ({ messages }),
@@ -111,7 +123,7 @@ function resolvePromptCachePolicy(model: string): OpenRouterPromptCachePolicy {
     ?? PROMPT_CACHE_POLICIES.native;
 }
 
-/** Documented cache window only; unknown native retention stays unestimated. */
+/** Cache window for display; Muse uses a disclosed five-minute guideline. */
 export function getOpenRouterPromptCacheTtlSeconds(model: string, ttl?: ClaudeCacheTtl): number | undefined {
   return resolvePromptCachePolicy(model).ttlSeconds(coerceClaudeCacheTtl(ttl));
 }

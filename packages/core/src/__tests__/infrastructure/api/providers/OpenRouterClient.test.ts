@@ -81,13 +81,44 @@ describe('estimated cache window', () => {
       cacheRequestModelId: '~openai/gpt-5.6-terra:nitro', measuredAt: 1_060_000 });
   });
 
+  it.each([false, true])('starts the Muse guideline at dispatch after reported reuse (streaming=%s)', async streaming => {
+    let now = 1_000_000;
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
+    const usage = { prompt_tokens: 98_749, completion_tokens: 633, total_tokens: 99_382,
+      prompt_tokens_details: { cached_tokens: 97_000 } };
+    global.fetch = jest.fn(async (_url, init) => {
+      const body = JSON.parse(init!.body as string);
+      expect(body.model).toBe('~meta/muse-wonder:nitro');
+      expect(body.cache_control).toBeUndefined();
+      now += 60_000;
+      return streaming ? streamingResponse({ model: 'meta/muse-wonder', usage,
+        choices: [{ delta: { content: 'Reply' }, finish_reason: 'stop' }] }, '[DONE]')
+        : { ok: true, json: async () => ({ model: 'meta/muse-wonder', usage,
+          choices: [{ message: { content: 'Reply' }, finish_reason: 'stop' }] }) } as Response;
+    }) as typeof fetch;
+    const client = new OpenRouterClient('key', '~meta/muse-wonder:nitro');
+    const options = { conversationId: 'room', claudeCacheTtl: '1h' as const };
+    let observation;
+    if (streaming) {
+      for await (const chunk of client.createStreamingChatCompletion([], options)) {
+        if (chunk.done) observation = chunk.observation;
+      }
+    } else observation = (await client.createChatCompletion([], options)).observation;
+    expect(observation).toMatchObject({ estimatedCacheExpiresAt: 1_300_000,
+      cacheRequestModelId: '~meta/muse-wonder:nitro', measuredAt: 1_060_000 });
+  });
+
   it.each([
     ['anthropic/claude-sonnet-5', 'room', 40, 0, 300_000],
     ['anthropic/claude-sonnet-5', 'room', 0, 40, 300_000],
     ['anthropic/claude-sonnet-5', 'room', 0, 0, undefined],
     ['anthropic/claude-sonnet-5', undefined, 40, 0, undefined],
     ['google/gemini-2.5-pro', 'room', 40, 0, undefined],
-    ['meta/muse-spark-1.3', 'room', 40, 0, undefined],
+    ['meta/muse-spark-1.3', 'room', 40, 0, 300_000],
+    ['meta/muse-wonder', 'room', 0, 0, undefined],
+    ['meta/muse-wonder', 'room', 0, 40, undefined],
+    ['meta/muse-wonder', 'room', undefined, undefined, undefined],
+    ['meta/muse-wonder', undefined, 40, 0, undefined],
     ['qwen/qwen-plus', 'room', 40, 0, undefined],
     ['qwen/qwen-plus', 'room', 40, 10, 300_000],
     ['openai/gpt-5.6-terra', 'room', 40, 0, 1_800_000],

@@ -1654,17 +1654,25 @@
   align-items: center;
   gap: 8px;
 }
-[data-pm-surface="workshop"] .pm-ws-comp-cache {
+[data-pm-surface="workshop"] .pm-ws-comp-cache-group {
   flex: 1 1 180px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-cache {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   color: var(--pm-accent-hi);
-  text-align: center;
-  font-size: 11px;
-  line-height: 1.5;
+}
+[data-pm-surface="workshop"] .pm-ws-comp-cache-note {
+  color: var(--pm-muted);
 }
 [data-pm-surface="workshop"] .pm-ws-comp-cache svg {
   flex-shrink: 0;

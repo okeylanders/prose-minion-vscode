@@ -31,6 +31,12 @@ Three PRs landed after v2.9.0: [#141](https://github.com/okeylanders/prose-minio
 - [PR #143](https://github.com/okeylanders/prose-minion-vscode/pull/143) adds `meta/muse-wonder` and `stepfun/step-5-preview` to shared model pickers and Category Search, with live catalog and endpoint metadata checks but no paid prose-quality witness. It removes four Qwen IDs retired October 9, 2026, from the curated picker and stale cache/parameter metadata. Qwen3.8 Max (0902) remains selectable.
 - The registry is `infrastructure/api/providers/OpenRouterModels.ts`; Category Search options are mirrored in the extension manifest. The [model guide](RECOMMENDED_MODELS.md) records advertised modality, context, and pricing at the October 13 audit.
 
+### Muse cache estimate
+
+- Muse Spark 1.1–1.3 and Muse Wonder use an approximate five-minute Workshop countdown after OpenRouter reports positive cached input tokens. The timer starts at request dispatch, and the composer displays "Meta does not guarantee the cache window." beneath it. Meta's automatic in-memory caching has no guaranteed retention window; this estimate does not establish a five-minute TTL or promise another hit.
+- The shared model set in `shared/constants/promptCacheEstimates.ts` keeps the estimate policy and disclaimer aligned, including OpenRouter aliases. Zero or absent cache reads do not start a timer. Native request content and routing stay unchanged; no cache control or retention parameter is added.
+- Regression tests cover streamed and ordinary responses, request-start timing, the model set and aliases, zero/missing reads, the disclaimer, and expiry. These are mocked checks. The user-provided Activity evidence confirms one Wonder hit but does not establish a provider lifetime.
+
 ### Workshop tour and README artwork
 
 - The startup notice moves to `v8` and leads with two pages: Show vs. Tell Playground, then Chromatic Palettes. The Show vs. Tell page says the widget never writes the manuscript and that personas may only suggest and prefill. The Chromatic Palettes page says Workshop persona lookups omit palettes.
