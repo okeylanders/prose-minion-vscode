@@ -38,6 +38,8 @@ describe('Workshop cache estimate', () => {
     const disclaimer = screen.getByText('Meta does not guarantee the cache window.');
     expect(countdown.nextElementSibling).toBe(disclaimer);
     expect(countdown.title).toContain('Meta may evict cached content earlier');
+    expect(countdown.title).toContain('assumes the prompt was cached');
+    expect(countdown.title).not.toContain('confirmed cache activity');
     act(() => { jest.advanceTimersByTime(300_000); });
     expect(screen.getByText('Est. Cache Time Remaining: window elapsed')).toBeTruthy();
     expect(disclaimer.textContent).toBe('Meta does not guarantee the cache window.');

@@ -2,7 +2,7 @@ import type { OpenRouterMessage, OpenRouterWireMessage } from '@providers/OpenRo
 import {
   prepareOpenRouterPromptCacheRequest,
   getOpenRouterPromptCacheTtlSeconds,
-  hasOpenRouterKnownCacheActivity
+  shouldStartOpenRouterPromptCacheEstimate
 } from '@providers/OpenRouterPromptCachePolicy';
 
 describe('selected cache duration', () => {
@@ -28,10 +28,10 @@ describe('selected cache duration', () => {
   it.each([
     'meta/muse-spark-1.1', 'meta/muse-spark-1.2', 'meta/muse-spark-1.3',
     'meta/muse-wonder', '~meta/muse-wonder:nitro'
-  ])('uses the five-minute display guideline for %s after reported reuse', model => {
+  ])('uses the five-minute display guideline for a completed %s prompt', model => {
     const messages: OpenRouterMessage[] = [{ role: 'user', content: 'Hello' }];
     expect(getOpenRouterPromptCacheTtlSeconds(model, '1h')).toBe(300);
-    expect(hasOpenRouterKnownCacheActivity(model, {
+    expect(shouldStartOpenRouterPromptCacheEstimate(model, {
       promptTokens: 100, completionTokens: 10, totalTokens: 110, cachedTokens: 40
     })).toBe(true);
     const request = prepareOpenRouterPromptCacheRequest(model, messages, 'room', '1h');
@@ -41,9 +41,15 @@ describe('selected cache duration', () => {
     expect(request).not.toHaveProperty('prompt_cache_retention');
   });
 
-  it.each([undefined, 0])('does not infer Muse admission from a write counter or missing read (%s)', cachedTokens => {
-    expect(hasOpenRouterKnownCacheActivity('meta/muse-wonder', {
-      promptTokens: 100, completionTokens: 10, totalTokens: 110, cachedTokens, cacheWriteTokens: 100
+  it.each([undefined, 0])('starts the Muse estimate on a cold prompt without reported cache reads (%s)', cachedTokens => {
+    expect(shouldStartOpenRouterPromptCacheEstimate('meta/muse-wonder', {
+      promptTokens: 100, completionTokens: 10, totalTokens: 110, cachedTokens
+    })).toBe(true);
+  });
+
+  it('keeps the Muse estimate hidden when no input tokens were processed', () => {
+    expect(shouldStartOpenRouterPromptCacheEstimate('meta/muse-wonder', {
+      promptTokens: 0, completionTokens: 0, totalTokens: 0
     })).toBe(false);
   });
 

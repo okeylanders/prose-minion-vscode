@@ -22,7 +22,7 @@ interface OpenRouterPromptCachePolicy {
   readonly supports: (model: string) => boolean;
   readonly prepare: (messages: readonly OpenRouterMessage[], ttl: ClaudeCacheTtl) => PreparedCacheContent;
   readonly ttlSeconds: (ttl: ClaudeCacheTtl) => number | undefined;
-  readonly confirmsActivity: (usage: TokenUsage) => boolean;
+  readonly startsEstimate: (usage: TokenUsage) => boolean;
 }
 
 // OpenRouter's caching guide plus Alibaba endpoint cache-write metadata,
@@ -83,7 +83,7 @@ const PROMPT_CACHE_POLICIES = {
       cache_control: { type: 'ephemeral', ...(ttl === '1h' ? { ttl } : {}) }
     }),
     ttlSeconds: ttl => ttl === '1h' ? 3600 : 300,
-    confirmsActivity: usage => (usage.cachedTokens ?? 0) > 0 || (usage.cacheWriteTokens ?? 0) > 0
+    startsEstimate: usage => (usage.cachedTokens ?? 0) > 0 || (usage.cacheWriteTokens ?? 0) > 0
   },
   alibabaExplicit: {
     supports: model => ALIBABA_EXPLICIT_CACHE_MODELS.has(model),
@@ -91,7 +91,7 @@ const PROMPT_CACHE_POLICIES = {
     ttlSeconds: () => 300,
     // A read alone could come from another endpoint's implicit cache, whose
     // lifetime is unknown. Explicit writes prove the known five-minute mode.
-    confirmsActivity: usage => (usage.cacheWriteTokens ?? 0) > 0
+    startsEstimate: usage => (usage.cacheWriteTokens ?? 0) > 0
   },
   openaiAutomatic: {
     supports: supportsOpenAiCacheWindow,
@@ -99,21 +99,22 @@ const PROMPT_CACHE_POLICIES = {
     // A minimum eligibility window, not an exact eviction time. OpenAI may
     // retain it longer; this policy does not change its automatic caching.
     ttlSeconds: () => 1800,
-    confirmsActivity: usage => (usage.cachedTokens ?? 0) > 0 || (usage.cacheWriteTokens ?? 0) > 0
+    startsEstimate: usage => (usage.cachedTokens ?? 0) > 0 || (usage.cacheWriteTokens ?? 0) > 0
   },
   metaMuseAutomatic: {
     supports: isMetaMuseCacheEstimateModel,
     prepare: messages => ({ messages }),
     // Five minutes is a UI guideline, not a provider retention guarantee.
-    // Only a reported read starts it; a miss does not prove cache admission.
+    // A completed prompt may populate the native cache on its first request.
+    // Admission is assumed for display; the reply badge still reports reuse.
     ttlSeconds: () => META_MUSE_CACHE_ESTIMATE_SECONDS,
-    confirmsActivity: usage => (usage.cachedTokens ?? 0) > 0
+    startsEstimate: usage => usage.promptTokens > 0
   },
   native: {
     supports: () => true,
     prepare: messages => ({ messages }),
     ttlSeconds: () => undefined,
-    confirmsActivity: () => false
+    startsEstimate: () => false
   }
 } satisfies Record<string, OpenRouterPromptCachePolicy>;
 
@@ -128,8 +129,8 @@ export function getOpenRouterPromptCacheTtlSeconds(model: string, ttl?: ClaudeCa
   return resolvePromptCachePolicy(model).ttlSeconds(coerceClaudeCacheTtl(ttl));
 }
 
-export function hasOpenRouterKnownCacheActivity(model: string, usage: TokenUsage): boolean {
-  return resolvePromptCachePolicy(model).confirmsActivity(usage);
+export function shouldStartOpenRouterPromptCacheEstimate(model: string, usage: TokenUsage): boolean {
+  return resolvePromptCachePolicy(model).startsEstimate(usage);
 }
 
 /** Translate retained-conversation intent into an outgoing cache request. */

@@ -1,7 +1,7 @@
 # Muse prompt-cache investigation — 2026-10-13
 
 **Branch:** `release/v2.10.0`, investigation began at `e08f5e1e`
-**Status:** User's Activity screenshot confirms one Wonder cache hit and five approximately full-price requests; fixed TTL and miss causes remain unconfirmed. Okey requested a disclosed five-minute display estimate.
+**Status:** Okey confirmed the countdown/footnote works after a cache hit and reported the missing first-reply indicator. The estimate now starts after a completed retained Muse request with positive input usage. Fixed TTL, cache admission, and miss causes remain unconfirmed.
 **Scope:** Public provider contracts, existing local runtime metadata, mocked tests, and the requested countdown/footnote implementation. No paid inference call.
 
 ## Provider evidence
@@ -86,3 +86,11 @@ Okey requested five minutes for the Meta models with a footnote that Meta does n
 Only reported positive cache reads start the estimate; misses and absent read counters do not prove cache admission. Dispatch remains the clock anchor, so generation time does not extend the estimate. The footnote appears directly below the countdown: **Meta does not guarantee the cache window.** The tooltip explains that the five-minute guideline is approximate and earlier eviction is possible. Request content and native caching parameters are unchanged.
 
 Focused mocked verification passed: four suites / 167 tests. Scoped ESLint passed with no errors; warnings concern wire names, component names, and brace style. `npm run package` passed all three typechecks, 306 suites / 4,472 tests / two snapshots, production bundles, and VSIX packaging. The packaged webview contains the footnote. The new artifact is recorded in the manual-test checkpoint and supersedes the earlier hash. This display decision supplies no new proof of cache retention or the cause of misses.
+
+## First-reply indicator correction — 15:43 CDT
+
+Okey manually observed a cold first reply with no timer, followed by a second reply with a cache hit and a visible timer. That matches the initial hit-only trigger. The requested correction starts the estimate after a completed retained Muse request with positive prompt usage, including zero or absent read counters. Input usage is required; one-off requests and applied context compression remain excluded.
+
+The policy predicate is renamed from `hasOpenRouterKnownCacheActivity` to `shouldStartOpenRouterPromptCacheEstimate` because Muse now uses assumed admission. The other providers keep their previous triggers. The Meta tooltip describes the latest completed request and explicitly says the guideline assumes the prompt was cached. The visible footnote remains unchanged. Original cache read/write counters flow through unchanged, so the response badge continues to report actual provider evidence.
+
+`npm run package` passed all three typechecks, 306 suites / 4,477 tests / two snapshots, production builds, bundle sentinels, and packaging. Streamed and ordinary cold responses, absent reads, unchanged cache counters, zero input usage, and tooltip wording have regression coverage. Scoped ESLint has zero errors and 133 warnings in the inspected files. No paid calls were made. The exact new VSIX is recorded in the manual-test checkpoint; the `ddf34d1a…` package is superseded and this correction needs manual retesting before publication.

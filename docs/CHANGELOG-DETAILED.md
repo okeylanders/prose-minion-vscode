@@ -33,9 +33,9 @@ Three PRs landed after v2.9.0: [#141](https://github.com/okeylanders/prose-minio
 
 ### Muse cache estimate
 
-- Muse Spark 1.1–1.3 and Muse Wonder use an approximate five-minute Workshop countdown after OpenRouter reports positive cached input tokens. The timer starts at request dispatch, and the composer displays "Meta does not guarantee the cache window." beneath it. Meta's automatic in-memory caching has no guaranteed retention window; this estimate does not establish a five-minute TTL or promise another hit.
-- The shared model set in `shared/constants/promptCacheEstimates.ts` keeps the estimate policy and disclaimer aligned, including OpenRouter aliases. Zero or absent cache reads do not start a timer. Native request content and routing stay unchanged; no cache control or retention parameter is added.
-- Regression tests cover streamed and ordinary responses, request-start timing, the model set and aliases, zero/missing reads, the disclaimer, and expiry. These are mocked checks. The user-provided Activity evidence confirms one Wonder hit but does not establish a provider lifetime.
+- Muse Spark 1.1–1.3 and Muse Wonder use an approximate five-minute Workshop countdown after a completed retained request with positive input usage, including a cold first reply. The timer starts at request dispatch, and the composer displays "Meta does not guarantee the cache window." beneath it. Its tooltip explicitly assumes cache admission. Meta's automatic in-memory caching has no guaranteed retention window; this estimate does not establish a five-minute TTL or promise another hit.
+- The shared model set in `shared/constants/promptCacheEstimates.ts` keeps the estimate policy and disclaimer aligned, including OpenRouter aliases. Zero or absent cache reads permit the heuristic countdown; the cached-token badge keeps the original provider counters. Missing input usage, one-off requests, or applied context compression do not show an estimate. Native request content and routing stay unchanged; no cache control or retention parameter is added.
+- Regression tests cover streamed and ordinary cold replies and cache hits, unchanged usage counters, request-start timing, the model set and aliases, zero/missing reads, the disclaimer, and expiry. These are mocked checks. Okey's manual observation confirmed the prior timer appeared after the second reply's cache hit and motivated starting the estimate on the first completed prompt. That observation does not establish a provider lifetime.
 
 ### Workshop tour and README artwork
 
