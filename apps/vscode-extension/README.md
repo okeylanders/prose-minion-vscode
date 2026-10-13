@@ -24,7 +24,27 @@
 
 ---
 
-## What's new in v2.9.0 — Workshop transcripts across sessions
+## What's new in v2.10.0 — Show vs. Tell, and color for your Dictionary
+
+**Show vs. Tell Playground.** A Workshop widget for one beat. Open it from **Widgets**, paste or select a told beat, and move it along a five-position continuum from **State it** to **Inhabit**. A tradeoff readout shows what each position gains and costs, and no bar is a score. One generation returns four groups of alternatives: told cleanly, shown as evidence, shown from inside, and mixed. Keep the useful ones as prose or as a short direction, then commit them to the thread. You choose what commits, and the widget never edits your manuscript. Your host or a guest can suggest a beat and prefill the sheet; only you generate, keep, and commit.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/workshop-show-vs-tell.png" alt="Top: the Show vs. Tell continuum with Hinge selected and its seven-row tradeoff readout. Bottom: a kept Shown as evidence variant with its direction, gains, costs, and Commit as: prose variant or direction only" width="100%"/>
+</p>
+
+**Chromatic Palettes.** Dictionary entries can end with named color palettes: a strip of the palette's colors, then each swatch's name, a short definition, and its hex value. Palettes are literal when they show colors the word names or implies, and evocative when they carry its mood. The **Chromatic Palettes** switch beside Topic & Related Lexicon starts on and remembers your choice for standard and Fast lookups. Workshop persona lookups leave palettes out.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-chromatic-palettes.png" alt="Left: the Dictionary tab's Topic and Related Lexicon and Chromatic Palettes switches, both on. Right: a Madder Dye Vat palette from a real lookup, with Alizarin Crimson, Madder Lake, Turkey Red, Oxblood, and Rose Madder swatches, each named and defined with its hex value" width="100%"/>
+</p>
+
+- **Try Muse Wonder or Step 5 Preview** — both join the model pickers for writing tools, Workshop, and Category Search as opt-in choices. OpenRouter lists their IDs, prices, and context limits; their prose quality has not been evaluated in Prose Minion. Defaults and saved selections are unchanged.
+- **A tidier model list** — Qwen3 Coder Plus, Qwen3 Max, Qwen3 Max Thinking, and Qwen3.6 Max Preview leave the curated picker. Qwen3.8 Max (0902) remains.
+- **Steadier Dictionary output** — later sections stay readable when a generated palette is left unclosed, in standard and Fast lookups.
+
+Show vs. Tell and Chromatic Palettes are backed by automated tests. Their interactive and live-provider quality checks are still in progress.
+
+### Also in v2.9.0 — Workshop transcripts across sessions
 
 **Export a conversation.** Use **Sessions → Export…** to save a Workshop conversation as Markdown for another agent or your notes, JSON for scripts, or styled HTML to share or print to PDF. The export holds your messages and every reply, including older turns the thread no longer shows. Files land in `prose-minion/exports/`, and an earlier export is never replaced.
 
@@ -252,6 +272,10 @@ Not a definition lookup — a craft reference: connotation, register, sense expl
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-topic-lexicon.png" alt="Left: the Dictionary tab looking up 'Fricative' with the Topic and Related Lexicon switch on. Right: the resulting encyclopedia entry, covering phonetics and phonology, related vocabulary, a writing example, and two reference books" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-chromatic-palettes.png" alt="Left: the Dictionary tab's Topic and Related Lexicon and Chromatic Palettes switches, both on. Right: a Madder Dye Vat palette from a real lookup, with Alizarin Crimson, Madder Lake, Turkey Red, Oxblood, and Rose Madder swatches, each named and defined with its hex value" width="100%"/>
 </p>
 
 ---

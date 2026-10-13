@@ -26,19 +26,72 @@ describe('WorkshopNoticeModal', () => {
   /** The media well's legend, which repeats the control names as call-outs. */
   const legend = () => document.querySelector('.pm-ws-notice-legend') as HTMLElement;
 
-  it('opens on the newest notice, page one of thirteen, with prev disabled', () => {
+  it('opens on the newest notice, page one of fifteen, with prev disabled', () => {
     renderModal();
-    expect(screen.getByText(/1 \/ 13/)).toBeTruthy();
-    expect(screen.getByText('New: export a conversation')).toBeTruthy();
+    expect(screen.getByText(/1 \/ 15/)).toBeTruthy();
+    expect(screen.getByText('New: Show vs. Tell Playground')).toBeTruthy();
     const prev = screen.getByRole('button', { name: 'Previous notice' }) as HTMLButtonElement;
     expect(prev.disabled).toBe(true);
   });
 
   /* ADR 2026-09-30, Sprint 03 kickoff decision 5: the release's new pages lead. */
-  it('introduces transcript export first: three formats, saved under prose-minion/exports', () => {
+  it('introduces Show vs. Tell first: a five-position continuum, four groups, and the writer commits', () => {
     renderModal();
 
-    expect(screen.getByText(/1 \/ 13/).parentElement?.textContent).toBe('1 / 13 · new');
+    expect(screen.getByText(/1 \/ 15/).parentElement?.textContent).toBe('1 / 15 · new');
+    expect(within(copy()).getByText('Widgets')).toBeTruthy();
+    expect(within(copy()).getByText('State it')).toBeTruthy();
+    expect(within(copy()).getByText('Inhabit')).toBeTruthy();
+    expect(within(copy()).getByText(/no bar is a score/)).toBeTruthy();
+    expect(within(copy()).getByText(/told cleanly, shown as evidence, shown from inside, and mixed/)).toBeTruthy();
+    /* The widget never writes the manuscript; the copy must say so. */
+    expect(within(copy()).getByText(/Nothing is\s+inserted into your manuscript/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
+      'Your host or a guest can suggest a beat to try and prefill the sheet, but only you ' +
+      'generate, keep, and commit.'
+    );
+
+    const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
+    expect(callouts.map((node) => node.textContent)).toEqual(['1', '2', '3', '4']);
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Continuum — five named positions, State it to Inhabit; Hinge is the default.',
+      '2Tradeoff readout — what a position gains and costs; no model call, and no bar is a score.',
+      '3Keep — the variants worth carrying into the room.',
+      '4Commit as — the variant itself as prose, or only its direction.'
+    ]);
+  });
+
+  it('introduces Chromatic Palettes second: the switch, literal and evocative, personas leave it out', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+
+    expect(screen.getByText(/2 \/ 15/).parentElement?.textContent).toBe('2 / 15 · new');
+    expect(screen.getByText('New: Chromatic Palettes')).toBeTruthy();
+    expect(within(copy()).getByText(/a name, a short definition, and its hex value/)).toBeTruthy();
+    expect(within(copy()).getByText('literal')).toBeTruthy();
+    expect(within(copy()).getByText('evocative')).toBeTruthy();
+    expect(within(copy()).getByText('Chromatic Palettes')).toBeTruthy();
+    expect(within(copy()).getByText(/It starts on and remembers your choice for both\s+standard and Fast lookups/)).toBeTruthy();
+    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
+      'When a host or guest looks up a word for you in the Workshop, palettes are left out. Hex ' +
+      'values are approximations, not paint or Pantone matches.'
+    );
+
+    const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
+    expect(callouts.map((node) => node.textContent)).toEqual(['1', '2', '3']);
+    expect(within(legend()).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
+      '1Chromatic Palettes — the switch beside Topic & Related Lexicon; on by default.',
+      '2Palette — a title, literal or evocative, and a strip of its colors.',
+      '3Swatch — a named color with a short definition and its hex value.'
+    ]);
+  });
+
+  it('keeps transcript export as a primer: three formats, saved under prose-minion/exports', () => {
+    renderModal();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
+
+    expect(screen.getByText(/3 \/ 15/).parentElement?.textContent).toBe('3 / 15 · primer');
+    expect(screen.getByText('Export a conversation')).toBeTruthy();
     expect(within(copy()).getByText('Sessions → Export…')).toBeTruthy();
     expect(within(copy()).getByText('Markdown')).toBeTruthy();
     expect(within(copy()).getByText('JSON')).toBeTruthy();
@@ -62,12 +115,12 @@ describe('WorkshopNoticeModal', () => {
     ]);
   });
 
-  it('introduces session recall second as reading saved records, with the upgrade warning', () => {
+  it('keeps session recall as a primer, reading saved records, without the v2.9.0 note', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
 
-    expect(screen.getByText(/2 \/ 13/).parentElement?.textContent).toBe('2 / 13 · new');
-    expect(screen.getByText('New: personas can read your saved sessions')).toBeTruthy();
+    expect(screen.getByText(/4 \/ 15/).parentElement?.textContent).toBe('4 / 15 · primer');
+    expect(screen.getByText('Personas can read your saved sessions')).toBeTruthy();
     expect(within(copy()).getByText(/other sessions you’ve saved by\s+name in this project/)).toBeTruthy();
     expect(within(copy()).getByText(/list and search those sessions, read the turns that matter/)).toBeTruthy();
     expect(within(copy()).getByText('Session Recall')).toBeTruthy();
@@ -75,11 +128,7 @@ describe('WorkshopNoticeModal', () => {
     expect(within(copy()).getByText(/reading saved records, not\s+remembering/)).toBeTruthy();
     expect(within(copy()).getByText(/check the cited turns/)).toBeTruthy();
     expect(within(copy()).queryByText(/remembers/)).toBeNull();
-    expect(document.querySelector('.pm-ws-notice-note')?.textContent).toBe(
-      'Updating: sessions that contain recall activity can’t be opened by earlier versions of ' +
-      'Prose Minion. If you sync sessions through Git, update every machine first. Also fixed: ' +
-      'adding a guest persona’s finding to the To-do List no longer stops the session from saving.'
-    );
+    expect(document.querySelector('.pm-ws-notice-note')).toBeNull();
 
     const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
     expect(callouts.map((node) => node.textContent)).toEqual(['1', '2']);
@@ -92,9 +141,9 @@ describe('WorkshopNoticeModal', () => {
   /* The tour is the writer's full guide: earlier releases' pages stay on as primers. */
   it('keeps Craft Steering as a primer, pointing at Tools and its Craft & Voice card', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 6' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 8' }));
 
-    expect(screen.getByText(/6 \/ 13/).parentElement?.textContent).toBe('6 / 13 · primer');
+    expect(screen.getByText(/8 \/ 15/).parentElement?.textContent).toBe('8 / 15 · primer');
     expect(screen.getByText('Craft Steering', { selector: 'h2' })).toBeTruthy();
     expect(within(copy()).getByText('Steering the Craft')).toBeTruthy();
     expect(within(copy()).getByText(/judged by their effect, not smoothed away/)).toBeTruthy();
@@ -114,9 +163,9 @@ describe('WorkshopNoticeModal', () => {
 
   it('keeps Topic & Related Lexicon as a primer, and says personas leave it out', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 7' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
 
-    expect(screen.getByText(/7 \/ 13/).parentElement?.textContent).toBe('7 / 13 · primer');
+    expect(screen.getByText(/9 \/ 15/).parentElement?.textContent).toBe('9 / 15 · primer');
     expect(screen.getByText('Topic & Related Lexicon', { selector: 'h2' })).toBeTruthy();
     expect(within(copy()).getByText(/Dictionary entries can end with an encyclopedia entry/)).toBeTruthy();
     expect(within(copy()).getByText(/possible reference books for each\s+topic/)).toBeTruthy();
@@ -135,9 +184,9 @@ describe('WorkshopNoticeModal', () => {
 
   it('keeps the larger context budgets as a primer, without the v2.8.0 upgrade note', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 6' }));
 
-    expect(screen.getByText(/4 \/ 13/).parentElement?.textContent).toBe('4 / 13 · primer');
+    expect(screen.getByText(/6 \/ 15/).parentElement?.textContent).toBe('6 / 15 · primer');
     expect(screen.getByText('Room for more context')).toBeTruthy();
     expect(within(copy()).getByText('100,000 words')).toBeTruthy();
     expect(within(copy()).getByText('seven attachments')).toBeTruthy();
@@ -155,9 +204,9 @@ describe('WorkshopNoticeModal', () => {
 
   it('keeps prompt caching as a primer: the clock is an estimate, the cached count is evidence', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 3' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
 
-    expect(screen.getByText(/3 \/ 13/).parentElement?.textContent).toBe('3 / 13 · primer');
+    expect(screen.getByText(/5 \/ 15/).parentElement?.textContent).toBe('5 / 15 · primer');
     expect(screen.getByText('Prompt caching, with a cache clock')).toBeTruthy();
     expect(within(copy()).getByText(/supported Alibaba\/Qwen routes/)).toBeTruthy();
     expect(within(copy()).getByText(/Other providers\s+keep their own caching/)).toBeTruthy();
@@ -181,13 +230,15 @@ describe('WorkshopNoticeModal', () => {
      first and in their original order, ahead of the standing tour. */
   it('orders the tour newest first, then earlier releases, then the standing tour', () => {
     renderModal();
-    const titles = Array.from({ length: 13 }, (_, index) => {
+    const titles = Array.from({ length: 15 }, (_, index) => {
       fireEvent.click(screen.getByRole('button', { name: `Notice ${index + 1}` }));
       return copy().querySelector('h2')?.textContent;
     });
     expect(titles).toEqual([
-      'New: export a conversation',
-      'New: personas can read your saved sessions',
+      'New: Show vs. Tell Playground',
+      'New: Chromatic Palettes',
+      'Export a conversation',
+      'Personas can read your saved sessions',
       'Prompt caching, with a cache clock',
       'Room for more context',
       'Rewind, edit, and branch',
@@ -205,18 +256,18 @@ describe('WorkshopNoticeModal', () => {
   /* Every page title after the two lead pages drops "New:". */
   it('marks only the two lead pages as new', () => {
     renderModal();
-    const tags = Array.from({ length: 13 }, (_, index) => {
+    const tags = Array.from({ length: 15 }, (_, index) => {
       fireEvent.click(screen.getByRole('button', { name: `Notice ${index + 1}` }));
-      return screen.getByText(new RegExp(`^${index + 1} / 13`)).parentElement?.textContent;
+      return screen.getByText(new RegExp(`^${index + 1} / 15`)).parentElement?.textContent;
     });
-    expect(tags.filter((tag) => tag?.endsWith('· new'))).toEqual(['1 / 13 · new', '2 / 13 · new']);
+    expect(tags.filter((tag) => tag?.endsWith('· new'))).toEqual(['1 / 15 · new', '2 / 15 · new']);
   });
 
   it('keeps rewind, edit, and branch as a primer, without the old release note', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 7' }));
 
-    expect(screen.getByText(/5 \/ 13/).parentElement?.textContent).toBe('5 / 13 · primer');
+    expect(screen.getByText(/7 \/ 15/).parentElement?.textContent).toBe('7 / 15 · primer');
     expect(screen.getByText('Rewind, edit, and branch')).toBeTruthy();
     expect(within(copy()).getByText('Rewind to here')).toBeTruthy();
     expect(within(copy()).getByText('Edit from here')).toBeTruthy();
@@ -228,7 +279,7 @@ describe('WorkshopNoticeModal', () => {
 
   it('draws the thread\'s own actions, called out to match the legend', () => {
     renderModal();
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 5' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 7' }));
 
     const rows = Array.from(document.querySelectorAll('.pm-ws-notice-actions'));
     expect(rows.map((row) => row.querySelector('.pm-ws-notice-actions-caption')?.textContent))
@@ -252,21 +303,21 @@ describe('WorkshopNoticeModal', () => {
     renderModal();
     const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
     fireEvent.click(next);
-    expect(screen.getByText(/2 \/ 13/)).toBeTruthy();
-    expect(screen.getByText('New: personas can read your saved sessions')).toBeTruthy();
+    expect(screen.getByText(/2 \/ 15/)).toBeTruthy();
+    expect(screen.getByText('New: Chromatic Palettes')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 8' }));
-    expect(screen.getByText(/8 \/ 13/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
+    expect(screen.getByText(/10 \/ 15/)).toBeTruthy();
     expect(screen.getByText('Welcome to the Workshop beta')).toBeTruthy();
     expect(screen.getByText(/never changes project files on its own/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
-    expect(screen.getByText(/9 \/ 13/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+    expect(screen.getByText(/11 \/ 15/)).toBeTruthy();
     expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     expect(within(copy()).getByText(/Prose Minion Settings/)).toBeTruthy();
     expect(within(copy()).getByText(/individual chapter files/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 15' }));
     expect(screen.getByText('Agents can work with your project')).toBeTruthy();
     expect(screen.getByText(/do not need to attach every file by hand/)).toBeTruthy();
     /* Widgets ship; the browser no longer claims nothing launches. */
@@ -278,13 +329,13 @@ describe('WorkshopNoticeModal', () => {
   it('explains host choice, model guidance, conversation settings, and persona-run tools', () => {
     renderModal();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 12' }));
     expect(screen.getByText('Choose a host, then invite guests')).toBeTruthy();
     expect(within(copy()).getByText('Gemini 3.6 Flash')).toBeTruthy();
     expect(within(copy()).getByText('GPT-5.6 Terra')).toBeTruthy();
     expect(within(copy()).getByText('GPT-5.6 Sol')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
     expect(within(copy()).getByText(/Conversation Controller/)).toBeTruthy();
     expect(within(copy()).getByText(/About you/)).toBeTruthy();
     expect(within(copy()).getByText(/clickable citation pill/)).toBeTruthy();
@@ -293,7 +344,7 @@ describe('WorkshopNoticeModal', () => {
        must survive a design re-pull. */
     expect(within(copy()).getByText(/comfortable sharing/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Notice 12' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Notice 14' }));
     expect(screen.getByText('Tools — run them directly, or ask a persona')).toBeTruthy();
     expect(within(copy()).getByText(/specific line, variation, or question/)).toBeTruthy();
   });
@@ -306,7 +357,7 @@ describe('WorkshopNoticeModal', () => {
         )
       };
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 8' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
 
       const shots = screen.getAllByRole('img') as HTMLImageElement[];
       expect(shots.length).toBeGreaterThan(0);
@@ -318,12 +369,14 @@ describe('WorkshopNoticeModal', () => {
     });
 
     it.each([
-      ['Notice 1', ['sessions-menu-export', 'export-transcript-formats']],
-      ['Notice 2', ['recall-card-and-reply']],
-      ['Notice 3', ['composer-cache-clock', 'reply-cached-badge', 'settings-cache-duration']],
-      ['Notice 4', ['attach-menu', 'message-attachment-slots', 'context-intake-meter']],
-      ['Notice 6', ['composer-controls', 'tools-craft-steering']],
-      ['Notice 7', ['dictionary-topic-switch', 'dictionary-topic-entry']]
+      ['Notice 1', ['show-vs-tell-continuum', 'show-vs-tell-kept-variant']],
+      ['Notice 2', ['dictionary-palette-switch', 'dictionary-palette-entry']],
+      ['Notice 3', ['sessions-menu-export', 'export-transcript-formats']],
+      ['Notice 4', ['recall-card-and-reply']],
+      ['Notice 5', ['composer-cache-clock', 'reply-cached-badge', 'settings-cache-duration']],
+      ['Notice 6', ['attach-menu', 'message-attachment-slots', 'context-intake-meter']],
+      ['Notice 8', ['composer-controls', 'tools-craft-steering']],
+      ['Notice 9', ['dictionary-topic-switch', 'dictionary-topic-entry']]
     ])('shows the feature screenshots on %s', (dot, names) => {
       window.proseMinionAssets = {
         noticeShots: Object.fromEntries(
@@ -342,7 +395,7 @@ describe('WorkshopNoticeModal', () => {
 
     it('renders one call-out per legend row, positioned in percentages', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 12' }));
 
       const callouts = Array.from(document.querySelectorAll('.pm-ws-notice-callout'));
       expect(callouts).toHaveLength(4);
@@ -359,12 +412,12 @@ describe('WorkshopNoticeModal', () => {
 
     it('survives a host that never stamped the screenshots', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 8' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 10' }));
       const shots = screen.getAllByRole('img') as HTMLImageElement[];
       expect(shots.length).toBeGreaterThan(0);
       shots.forEach((img) => expect(img.getAttribute('src')).toBe(''));
       /* The tour still pages — a missing asset costs a picture, not the box. */
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
       expect(screen.getByText("Set the room's conversation style")).toBeTruthy();
     });
 
@@ -377,7 +430,7 @@ describe('WorkshopNoticeModal', () => {
      */
     it('keeps the setup page narrow enough that both shots fit without scrolling', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
 
       const figures = Array.from(
         document.querySelectorAll('.pm-ws-notice-figure')
@@ -396,7 +449,7 @@ describe('WorkshopNoticeModal', () => {
 
     it('shows the Conversation Controller tabs as three captioned thumbnails', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
 
       const captions = Array.from(document.querySelectorAll('.pm-ws-notice-thumb figcaption'));
       expect(captions.map((node) => node.textContent)).toEqual([
@@ -410,7 +463,7 @@ describe('WorkshopNoticeModal', () => {
   describe('project-configuration guide', () => {
     it('is reachable from the setup notice and returns to the same page', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
 
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
 
@@ -420,13 +473,13 @@ describe('WorkshopNoticeModal', () => {
       expect(screen.queryByText('Start with an open project folder')).toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/9 \/ 13/)).toBeTruthy();
+      expect(screen.getByText(/11 \/ 15/)).toBeTruthy();
       expect(screen.getByText('Start with an open project folder')).toBeTruthy();
     });
 
     it('is reachable from the agents notice and returns to the LAST page', () => {
       renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 15' }));
 
       fireEvent.click(screen.getByRole('button', { name: /Project Resource Locations/ }));
       expect(screen.getByRole('dialog', { name: 'How to configure your project' })).toBeTruthy();
@@ -434,7 +487,7 @@ describe('WorkshopNoticeModal', () => {
       /* The boundary page is where an index-reset or PAGES.length - 1 off-by-one
          hides while passing on an interior page (PR #94 review, Cal). */
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
-      expect(screen.getByText(/13 \/ 13/)).toBeTruthy();
+      expect(screen.getByText(/15 \/ 15/)).toBeTruthy();
       expect(screen.getByText('Agents can work with your project')).toBeTruthy();
       const next = screen.getByRole('button', { name: 'Next notice' }) as HTMLButtonElement;
       expect(next.disabled).toBe(true);
@@ -448,12 +501,12 @@ describe('WorkshopNoticeModal', () => {
     it('renders the guide-link sentences with correct spacing and punctuation', () => {
       renderModal();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
       expect(document.querySelector('.pm-ws-notice-guide-note')?.textContent).toBe(
         'Then follow How to configure your project for the whole walkthrough.'
       );
 
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 13' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 15' }));
       expect(document.querySelector('.pm-ws-notice-guide-note')?.textContent).toBe(
         'Project-file reading depends on the paths set in Project Resource Locations.'
       );
@@ -462,7 +515,7 @@ describe('WorkshopNoticeModal', () => {
     it('keeps "Don\'t show again" checked across a trip through the guide', () => {
       const { onDismiss } = renderModal();
       fireEvent.click(screen.getByRole('checkbox'));
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
 
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
       fireEvent.click(screen.getByRole('button', { name: /Back to the tour/ }));
@@ -474,7 +527,7 @@ describe('WorkshopNoticeModal', () => {
 
     it('closes on Escape without touching the notice dismissal', () => {
       const { onClose, onDismiss } = renderModal();
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
 
       fireEvent.keyDown(window, { key: 'Escape' });
@@ -503,7 +556,7 @@ describe('WorkshopNoticeModal', () => {
       const { unmount } = render(
         <WorkshopNoticeModal open onClose={jest.fn()} onDismiss={jest.fn()} />
       );
-      fireEvent.click(screen.getByRole('button', { name: 'Notice 9' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Notice 11' }));
 
       fireEvent.click(screen.getByRole('button', { name: /How to configure your project/ }));
       await Promise.resolve();

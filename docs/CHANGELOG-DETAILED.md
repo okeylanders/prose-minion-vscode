@@ -31,6 +31,14 @@ Three PRs landed after v2.9.0: [#141](https://github.com/okeylanders/prose-minio
 - [PR #143](https://github.com/okeylanders/prose-minion-vscode/pull/143) adds `meta/muse-wonder` and `stepfun/step-5-preview` to shared model pickers and Category Search, with live catalog and endpoint metadata checks but no paid prose-quality witness. It removes four Qwen IDs retired October 9, 2026, from the curated picker and stale cache/parameter metadata. Qwen3.8 Max (0902) remains selectable.
 - The registry is `infrastructure/api/providers/OpenRouterModels.ts`; Category Search options are mirrored in the extension manifest. The [model guide](RECOMMENDED_MODELS.md) records advertised modality, context, and pricing at the October 13 audit.
 
+### Workshop tour and README artwork
+
+- The startup notice moves to `v8` and leads with two pages: Show vs. Tell Playground, then Chromatic Palettes. The Show vs. Tell page says the widget never writes the manuscript and that personas may only suggest and prefill. The Chromatic Palettes page says Workshop persona lookups omit palettes.
+- Their four screenshots are 2× captures of the real v2.10.0 webview bundle: `show-vs-tell-continuum`, `show-vs-tell-kept-variant`, `dictionary-palette-switch`, and `dictionary-palette-entry`. The Show vs. Tell workup is demo content in the host's wire format. The palette is Okey's real "Madder Dye Vat" lookup output, re-rendered verbatim.
+- v2.9.0's export and recall pages follow as primers, ahead of the v2.8.0 and v2.7.0 pages, and the recall page drops its release-only note. The tour is fifteen pages, newest release first.
+- `boundaries.test.ts` approves `WorkshopNoticeModal.tsx` and `shared/constants/workshopNotices.ts` as feature-naming surfaces for "Show vs. Tell" and the two `show-vs-tell-*` shot names, and records why Prose Controller needs no arm there.
+- The README leads with v2.10.0 and adds two composites, `workshop-show-vs-tell.png` and `dictionary-chromatic-palettes.png`. The palette composite also joins the Dictionary feature section. v2.9.0 moves to "Also in v2.9.0" with its images.
+
 ## [2.9.0] - 2026-10-08 — Workshop transcript export and saved-session recall
 
 ### Overview

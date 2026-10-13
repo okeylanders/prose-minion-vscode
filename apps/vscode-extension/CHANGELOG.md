@@ -9,6 +9,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 - **Show vs. Tell Playground** in Workshop lets you move a beat along a five-position continuum, compare four groups of alternatives, and keep selected prose or compact directions in a room artifact. You choose what to commit; the widget does not edit your manuscript.
 - **Chromatic Palettes** in the Writer's Dictionary adds named color swatches with short definitions and hex values. The switch beside Topic & Related Lexicon remembers your choice; standard and Fast lookups use it, while Workshop persona lookups omit palettes.
 - Muse Wonder and Step 5 Preview are available as opt-in choices for writing tools, Workshop, and Category Search. OpenRouter lists their model IDs, prices, and context limits; their prose quality has not been evaluated in Prose Minion. Defaults and saved selections are unchanged.
+- The Workshop's startup tour opens once more and begins with Show vs. Tell and Chromatic Palettes.
 
 ### Fixed
 
