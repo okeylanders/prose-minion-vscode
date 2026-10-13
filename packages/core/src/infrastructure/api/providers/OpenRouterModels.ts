@@ -61,7 +61,13 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     id: 'meta/muse-spark-1.3',
     name: 'Muse Spark 1.3',
     family: 'Muse',
-    description: 'Meta\'s latest 1M-context multimodal Muse checkpoint for long-running agentic workflows and context-heavy editorial search'
+    description: 'Meta\'s 1M-context multimodal Muse Spark checkpoint for context-heavy editorial search'
+  },
+  {
+    id: 'meta/muse-wonder',
+    name: 'Muse Wonder',
+    family: 'Muse',
+    description: 'Premium 1M-context Meta reasoner for complex editorial search; prose quality in Prose Minion is unverified'
   },
   {
     id: 'anthropic/claude-sonnet-4.5',
@@ -286,6 +292,12 @@ export const CATEGORY_MODELS: CuratedOpenRouterModel[] = [
     description: 'Fast multimodal StepFun model with strong throughput for category matching, quick rewrites, and utility analysis'
   },
   {
+    id: 'stepfun/step-5-preview',
+    name: 'Step 5 Preview',
+    family: 'Step',
+    description: '1M-context StepFun preview for long-document category matching; prose quality in Prose Minion is unverified'
+  },
+  {
     id: 'qwen/qwen3.6-flash',
     name: 'Qwen3.6 Flash',
     family: 'Qwen3.6',
@@ -459,7 +471,13 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     id: 'meta/muse-spark-1.3',
     name: 'Muse Spark 1.3',
     family: 'Muse',
-    description: 'Meta\'s latest 1M-context multimodal Muse checkpoint. A strong fit for sustained manuscript work, complex revision planning, and long-running agentic editorial workflows.'
+    description: 'Meta\'s 1M-context multimodal Muse Spark checkpoint for sustained manuscript work and editorial planning.'
+  },
+  {
+    id: 'meta/muse-wonder',
+    name: 'Muse Wonder',
+    family: 'Muse',
+    description: 'Premium 1M-context Meta reasoning model for complex, long-running work. Accepts text, images, video, audio, and PDFs; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'anthropic/claude-opus-4.1',
@@ -622,6 +640,12 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Step 3.7 Flash',
     family: 'Step',
     description: 'StepFun\'s latest Flash model with 256K context. Fast, inexpensive option for quick critique, dictionary alternatives, and utility rewriting.'
+  },
+  {
+    id: 'stepfun/step-5-preview',
+    name: 'Step 5 Preview',
+    family: 'Step',
+    description: 'StepFun\'s 1M-context preview model for long documents and multi-step work. Accepts text, images, and video; prose quality in Prose Minion is unverified.'
   },
   {
     id: 'google/gemini-2.5-flash',
@@ -1062,24 +1086,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     description: 'Higher-throughput Pro route for responsive long-context critique and editorial work.'
   },
   {
-    id: 'qwen/qwen3-coder-plus',
-    name: 'Qwen3 Coder Plus',
-    family: 'Qwen3',
-    description: 'Powerhouse coding agent. Use for advanced formatting scripts or technical edits.'
-  },
-  {
-    id: 'qwen/qwen3-max',
-    name: 'Qwen3 Max',
-    family: 'Qwen3',
-    description: 'Top-tier open model capability. Strong reasoning and creative writing performance.'
-  },
-  {
-    id: 'qwen/qwen3-max-thinking',
-    name: 'Qwen3 Max Thinking',
-    family: 'Qwen3',
-    description: 'Thinking-optimized Qwen3 Max. Stronger structural reasoning for plot analysis and consistency review.'
-  },
-  {
     id: 'qwen/qwen3.6-plus',
     name: 'Qwen3.6 Plus',
     family: 'Qwen3.6',
@@ -1090,12 +1096,6 @@ export const RECOMMENDED_MODELS: CuratedOpenRouterModel[] = [
     name: 'Qwen3.6 Flash',
     family: 'Qwen3.6',
     description: 'Fast 1M-context Qwen model. Good for inexpensive utility tasks, dictionary alternatives, and large batch checks.'
-  },
-  {
-    id: 'qwen/qwen3.6-max-preview',
-    name: 'Qwen3.6 Max Preview',
-    family: 'Qwen3.6',
-    description: 'Top-tier Qwen 3.6 preview. Premium open-model option for deep prose critique with very long context.'
   },
   {
     id: 'qwen/qwen3.7-max',

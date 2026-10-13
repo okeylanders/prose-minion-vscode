@@ -166,8 +166,9 @@ describe('OpenRouterClient conversation prompt caching', () => {
       ['openai/gpt-5.4', false],
       ['google/gemini-2.5-pro', false],
       ['z-ai/glm-4.6', false],
-      ['qwen/qwen3-max-thinking', false],
       ['meta/muse-spark-1.3', false],
+      ['meta/muse-wonder', false],
+      ['stepfun/step-5-preview', false],
       ['openrouter/auto', false]
     ])('applies only the documented conversation policy for %s', async (model, explicitCaching) => {
       const body = await send(new OpenRouterClient('key', model), streaming, 'participant-1');
@@ -189,7 +190,7 @@ describe('OpenRouterClient conversation prompt caching', () => {
       }
     });
 
-    it.each(['qwen/qwen3-max', 'qwen/qwen3.8-max-0902', '~deepseek/deepseek-v3.2:nitro'])
+    it.each(['qwen/qwen3.7-max', 'qwen/qwen3.8-max-0902', '~deepseek/deepseek-v3.2:nitro'])
     ('serializes %s with content-block cache hints on the system and advancing tail', async model => {
       const client = new OpenRouterClient('key', model);
       const messages: OpenRouterMessage[] = [
@@ -228,7 +229,7 @@ describe('OpenRouterClient conversation prompt caching', () => {
       expect(gemini).not.toHaveProperty('cache_control');
     });
 
-    it.each(['anthropic/claude-opus-4.6', 'qwen/qwen3-max'])
+    it.each(['anthropic/claude-opus-4.6', 'qwen/qwen3.8-max-0902'])
     ('leaves discarded one-off %s requests without cache-write opt-in or session affinity', async model => {
       const body = await send(new OpenRouterClient('key', model), streaming);
       expect(body).not.toHaveProperty('cache_control');

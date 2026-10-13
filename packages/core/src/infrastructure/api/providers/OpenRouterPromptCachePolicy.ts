@@ -26,12 +26,9 @@ interface OpenRouterPromptCachePolicy {
 const ALIBABA_EXPLICIT_CACHE_MODELS = new Set([
   'deepseek/deepseek-v3.2',
   'qwen/qwen-plus',
-  'qwen/qwen3-max',
-  'qwen/qwen3-coder-plus',
   'qwen/qwen3-coder-flash',
   'qwen/qwen3.6-plus',
   'qwen/qwen3.6-flash',
-  'qwen/qwen3.6-max-preview',
   'qwen/qwen3.7-max',
   'qwen/qwen3.7-plus',
   'qwen/qwen3.7-flash',

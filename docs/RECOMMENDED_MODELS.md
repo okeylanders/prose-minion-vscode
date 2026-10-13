@@ -29,9 +29,17 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 ### Meta Muse Spark 1.3 — Long-Running Editorial Work
 
 - **Best For:** Sustained manuscript work, complex revision planning, and context-heavy editorial workflows
-- **Description:** Meta's latest multimodal reasoning Muse checkpoint accepts text, images, video, audio, and PDFs with a 1M-token context window; it remains opt-in alongside Muse 1.1 and 1.2 so writers can choose the generation that fits the work
+- **Description:** Meta's multimodal Muse Spark checkpoint accepts text, images, video, audio, and PDFs with a 1M-token context window; it remains opt-in alongside Muse 1.1 and 1.2 so writers can choose the generation that fits the work
 - **Links:**
   - OpenRouter: https://openrouter.ai/meta/muse-spark-1.3
+  - Meta: https://ai.meta.com/
+
+### Meta Muse Wonder — Premium Long-Context Reasoning
+
+- **Best For:** Trying complex editorial planning and manuscript-scale analysis where a premium reasoning model may help
+- **Description:** OpenRouter lists text, image, video, audio, and PDF input, text output, and 1,048,576-token context. Its listed price on October 13, 2026 was $4/M input and $20/M output tokens. Prose quality has not been evaluated in this extension; Wonder is an opt-in choice, not a new default
+- **Links:**
+  - OpenRouter: https://openrouter.ai/meta/muse-wonder
   - Meta: https://ai.meta.com/
 
 ### Claude Sonnet 5 — Previous Sonnet Generation
@@ -569,19 +577,19 @@ OpenRouter had no GPT-6 Terra route during this audit. GPT-5.6 Terra remains ava
   - OpenRouter: https://openrouter.ai/stepfun/step-3.7-flash
   - StepFun: https://www.stepfun.com/
 
+### Step 5 Preview — Long-Document Reasoning
+
+- **Best For:** Trying long-document critique and structured editorial planning with a 1M-context model
+- **Description:** OpenRouter lists text, image, and video input with text output. Its listed price on October 13, 2026 was $1/M input and $2.70/M output tokens. This preview model's prose quality has not been evaluated in Prose Minion; it is an opt-in choice
+- **Links:**
+  - OpenRouter: https://openrouter.ai/stepfun/step-5-preview
+  - StepFun: https://www.stepfun.com/
+
 ---
 
 ## 💻 Specialized Coding
 
 **Best for:** Working on the extension itself, technical writing, or complex formatting scripts
-
-### Qwen3 Coder Plus — Coding Agent
-
-- **Best For:** Powerhouse coding agent
-- **Description:** Use for advanced formatting scripts or technical edits
-- **Links:**
-  - OpenRouter: https://openrouter.ai/qwen/qwen3-coder-plus
-  - Qwen: https://qwenlm.github.io/
 
 ### GPT-5.1 Codex — Scripting
 
