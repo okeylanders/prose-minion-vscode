@@ -10,8 +10,8 @@
  * gate, so it invalidates the workup exactly as any other generation input
  * does, and is refused while a commit is pending.
  *
- * A passage selection reply is bound to the request that asked for it
- * (PR #140 review, F-01): the transport mints a correlation id per ask, the
+ * Beat and passage selection replies are bound to the requests that asked
+ * for them: the transport mints a correlation id per ask, the
  * host echoes it, and only the one live id is accepted. The live id is
  * dropped when another ask supersedes it, when the writer edits the box or
  * uses the excerpt, when the sheet opens or closes, when the room changes,
@@ -48,12 +48,13 @@ const BUDGET = PROMPT_BUDGETS.workshopWidgets;
 export interface UseShowVsTellIntakeOptions {
   open: boolean;
   activeExcerpt: WorkshopExcerptSnapshot | null;
-  /** Host revision of the room; a change invalidates any outstanding passage request. */
+  /** Host revision of the room; a change invalidates outstanding selection requests. */
   roomKey: string;
-  /** A generation or commit transition invalidates any outstanding passage request. */
+  /** A generation or commit transition invalidates outstanding selection requests. */
   generationActive: boolean;
   commitPending: boolean;
-  requestBeatSelection: () => void;
+  /** Asks the host for the beat selection and returns the correlation id it will echo. */
+  requestBeatSelection: () => string;
   /** Asks the host for the editor selection and returns the correlation id it will echo. */
   requestPassageSelection: () => string;
   /** True while an attempt is in flight or a commit is pending: intake replies are dropped. */
@@ -83,7 +84,7 @@ export interface ShowVsTellIntakeActions {
   requestPassageSelection: () => void;
   handlePassageSelection: (message: SelectionDataMessage) => void;
   toggleSourceReference: (reference: WorkshopWidgetSourceReference) => void;
-  /** Clears both notices and any outstanding passage request; the controller calls it when the sheet opens. */
+  /** Clears both notices and outstanding selection requests when the sheet opens. */
   resetIntake: () => void;
 }
 
@@ -103,32 +104,51 @@ export function useShowVsTellIntake({
   roomKey,
   generationActive,
   commitPending,
-  requestBeatSelection,
+  requestBeatSelection: requestBeatSelectionFromHost,
   requestPassageSelection,
   isIntakeLocked,
   updateGenerationInput
 }: UseShowVsTellIntakeOptions): UseShowVsTellIntakeReturn {
   const [intakeNotice, setIntakeNotice] = React.useState<string | null>(null);
   const [passageNotice, setPassageNotice] = React.useState<string | null>(null);
-  /** The one passage request whose reply is still wanted; undefined when none is. */
+  /** Each field accepts only the reply to its newest outstanding ask. */
+  const liveBeatRequestRef = React.useRef<string>();
   const livePassageRequestRef = React.useRef<string>();
 
   // Every lifecycle edge that makes an outstanding ask stale drops its id.
   // The drop is permanent: nothing restores an id once a transition began.
-  React.useEffect(() => {
+  const clearSelectionRequests = React.useCallback(() => {
+    liveBeatRequestRef.current = undefined;
     livePassageRequestRef.current = undefined;
-  }, [open, roomKey]);
-  React.useEffect(() => {
+  }, []);
+  React.useEffect(clearSelectionRequests, [clearSelectionRequests, open, roomKey]);
+  const clearSelectionRequestsWhenIntakeLocks = React.useCallback(() => {
     if (generationActive || commitPending) {
-      livePassageRequestRef.current = undefined;
+      clearSelectionRequests();
     }
-  }, [commitPending, generationActive]);
+  }, [clearSelectionRequests, commitPending, generationActive]);
+  React.useEffect(clearSelectionRequestsWhenIntakeLocks, [clearSelectionRequestsWhenIntakeLocks]);
+
+  const requestBeatSelection = React.useCallback(() => {
+    if (open && !isIntakeLocked()) {
+      liveBeatRequestRef.current = requestBeatSelectionFromHost();
+    }
+  }, [isIntakeLocked, open, requestBeatSelectionFromHost]);
 
   const handleBeatSelection = React.useCallback((message: SelectionDataMessage) => {
     /* Normal delivery is target-routed; retain the check for direct hook consumers. */
-    if (!open || isIntakeLocked() || message.payload.target !== 'workshop_show_vs_tell_beat') {
+    const { target, requestId } = message.payload;
+    const live = liveBeatRequestRef.current;
+    if (
+      !open
+      || isIntakeLocked()
+      || target !== 'workshop_show_vs_tell_beat'
+      || live === undefined
+      || requestId !== live
+    ) {
       return;
     }
+    liveBeatRequestRef.current = undefined;
     const { beat, notice } = beatFromSelection(message.payload);
     setIntakeNotice(notice);
     updateGenerationInput('beat', (current) => sameBeat(beat, current.beat)
@@ -137,6 +157,7 @@ export function useShowVsTellIntake({
   }, [isIntakeLocked, open, updateGenerationInput]);
 
   const changeBeatText = React.useCallback((raw: string) => {
+    liveBeatRequestRef.current = undefined;
     const text = collapseShowVsTellLineBreaks(raw).slice(0, BUDGET.showVsTellBeatCharacters);
     setIntakeNotice(null);
     updateGenerationInput('beat', (current) => text === current.beat.text
@@ -197,10 +218,10 @@ export function useShowVsTellIntake({
   }, [updateGenerationInput]);
 
   const resetIntake = React.useCallback(() => {
-    livePassageRequestRef.current = undefined;
+    clearSelectionRequests();
     setIntakeNotice(null);
     setPassageNotice(null);
-  }, []);
+  }, [clearSelectionRequests]);
 
   return {
     intakeNotice,

@@ -15,7 +15,7 @@ import type { OpenRouterMessage } from '@providers/OpenRouterChatContracts';
 import {
   prepareOpenRouterPromptCacheRequest,
   getOpenRouterPromptCacheTtlSeconds,
-  hasOpenRouterKnownCacheActivity,
+  shouldStartOpenRouterPromptCacheEstimate,
   OpenRouterPreparedMessages
 } from '@providers/OpenRouterPromptCachePolicy';
 
@@ -526,15 +526,15 @@ export class OpenRouterClient {
     usage: TokenUsage,
     requestStartedAt: number
   ): number | undefined {
-    if (!options?.conversationId || !hasOpenRouterKnownCacheActivity(requestedModel, usage)) {
+    if (!options?.conversationId || !shouldStartOpenRouterPromptCacheEstimate(requestedModel, usage)) {
       return undefined;
     }
     const ttl = getOpenRouterPromptCacheTtlSeconds(requestedModel, options.claudeCacheTtl);
     if (ttl === undefined || ttl !== getOpenRouterPromptCacheTtlSeconds(responseModel, options.claudeCacheTtl)) {
       return undefined;
     }
-    // Provider usage confirms activity, not its timestamp. Dispatch time is
-    // conservative: a long generation must not extend the displayed window.
+    // Dispatch time is conservative for both confirmed activity and assumed
+    // Muse admission: a long generation must not extend the displayed window.
     return requestStartedAt + ttl * 1000;
   }
 

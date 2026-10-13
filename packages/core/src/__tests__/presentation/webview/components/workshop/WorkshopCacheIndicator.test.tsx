@@ -27,4 +27,34 @@ describe('Workshop cache estimate', () => {
     expect(screen.queryByText(/Est. Cache Time Remaining/)).toBeNull();
     expect(jest.getTimerCount()).toBe(0);
   });
+
+  it.each([
+    'meta/muse-spark-1.1', 'meta/muse-spark-1.2', 'meta/muse-spark-1.3',
+    'meta/muse-wonder', '~meta/muse-wonder:nitro'
+  ])('shows the Meta disclaimer below the estimated countdown for %s', cacheRequestModelId => {
+    render(<WorkshopCacheIndicator recipientLabel="Jill" cacheRequestModelId={cacheRequestModelId}
+      estimatedExpiresAt={300_000} />);
+    const countdown = screen.getByText('Est. Cache Time Remaining: 5 min');
+    const disclaimer = screen.getByText('Meta does not guarantee the cache window.');
+    expect(countdown.nextElementSibling).toBe(disclaimer);
+    expect(countdown.title).toContain('Meta may evict cached content earlier');
+    expect(countdown.title).toContain('assumes the prompt was cached');
+    expect(countdown.title).not.toContain('confirmed cache activity');
+    act(() => { jest.advanceTimersByTime(300_000); });
+    expect(screen.getByText('Est. Cache Time Remaining: window elapsed')).toBeTruthy();
+    expect(disclaimer.textContent).toBe('Meta does not guarantee the cache window.');
+  });
+
+  it('removes the Meta note when estimates disappear or the model changes', () => {
+    const { rerender } = render(<WorkshopCacheIndicator recipientLabel="Jill"
+      cacheRequestModelId="meta/muse-wonder" estimatedExpiresAt={300_000} />);
+    rerender(<WorkshopCacheIndicator recipientLabel="Jill" cacheRequestModelId="meta/muse-wonder" />);
+    expect(screen.queryByText(/Meta does not guarantee/)).toBeNull();
+    expect(screen.queryByText(/Est. Cache Time Remaining/)).toBeNull();
+    expect(jest.getTimerCount()).toBe(0);
+    rerender(<WorkshopCacheIndicator recipientLabel="Jill" cacheRequestModelId="anthropic/claude-sonnet-5"
+      estimatedExpiresAt={300_000} />);
+    expect(screen.getByText('Est. Cache Time Remaining: 5 min')).toBeTruthy();
+    expect(screen.queryByText(/Meta does not guarantee/)).toBeNull();
+  });
 });

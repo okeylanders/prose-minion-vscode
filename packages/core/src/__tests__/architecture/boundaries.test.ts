@@ -457,6 +457,11 @@ interface ApprovedGenericFeatureSurface {
  */
 const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatureSurface[] = [
   {
+    file: 'shared/constants/workshopNotices.ts',
+    reason: 'startup-tour screenshot names, one per shot',
+    allowedToken: /show-vs-tell-(?:continuum|kept-variant)/
+  },
+  {
     file: 'application/handlers/MessageHandler.ts',
     reason: 'composition-root feature-service wiring',
     allowedToken: /(?:creativeVariationsService|showVsTellService|gesturePlayground(?:Service)?|lexicalGravity(?:LensRepository|ModelService)?)/
@@ -550,6 +555,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     file: 'presentation/webview/components/workshop/workshopWidgetIcons.ts',
     reason: 'closed widget-icon presentation registry',
     allowedToken: /(?:gesture-playground|lexical-gravity|creative-variations|show-vs-tell)/
+  },
+  {
+    file: 'presentation/webview/components/workshop/WorkshopNoticeModal.tsx',
+    reason: 'startup tour names a release\'s features and their screenshots',
+    allowedToken: /(?:Show vs\. Tell|show-vs-tell-(?:continuum|kept-variant))/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
@@ -687,6 +697,14 @@ const PROSE_CONTROLLER_GENERIC_SEAM_ENTRIES = [
  * reviewable; together with the seam list this must partition all approvals.
  */
 const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
+  {
+    file: 'presentation/webview/components/workshop/WorkshopNoticeModal.tsx',
+    reason: 'the startup tour names a feature only once a release ships it'
+  },
+  {
+    file: 'shared/constants/workshopNotices.ts',
+    reason: 'tour screenshot names are added with the release that shows them'
+  },
   {
     file: 'application/services/workshop/widgets/WorkshopOneShotWidgetCommitOperations.ts',
     reason: 'Prose Controller is standing and never enters the one-shot commit dispatch'

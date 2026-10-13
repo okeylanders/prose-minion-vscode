@@ -242,7 +242,8 @@ describe('UIHandler', () => {
       }));
     });
 
-    it('echoes a request correlation id on the reply, and omits it when the request carried none', async () => {
+    it.each(['workshop_show_vs_tell_beat', 'workshop_show_vs_tell_passage'] as const)(
+      'echoes the correlation id for %s, and omits it when the request carried none', async (target) => {
       const echoing = new UIHandler(
         postMessage as any,
         { appendLine } as any,
@@ -257,7 +258,7 @@ describe('UIHandler', () => {
         type: MessageType.REQUEST_SELECTION,
         source: 'webview.workshop.show-vs-tell',
         timestamp: 1,
-        payload: { target: 'workshop_show_vs_tell_passage', requestId: 'show-vs-tell-passage-7' }
+        payload: { target, requestId: 'show-vs-tell-selection-7' }
       } as any);
       await echoing.handleSelectionRequest({
         type: MessageType.REQUEST_SELECTION,
@@ -268,8 +269,8 @@ describe('UIHandler', () => {
 
       const [correlated, plain] = postMessage.mock.calls.map(([posted]) => posted.payload);
       expect(correlated).toMatchObject({
-        target: 'workshop_show_vs_tell_passage',
-        requestId: 'show-vs-tell-passage-7',
+        target,
+        requestId: 'show-vs-tell-selection-7',
         content: 'Clipboard passage.'
       });
       expect(plain.target).toBe('workshop_show_vs_tell_beat');

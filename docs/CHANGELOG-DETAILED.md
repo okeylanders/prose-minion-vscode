@@ -5,6 +5,46 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-10-13 — Show vs. Tell, Chromatic Palettes, and model catalog refresh
+
+### Overview
+
+Three PRs landed after v2.9.0: [#141](https://github.com/okeylanders/prose-minion-vscode/pull/141), [#142](https://github.com/okeylanders/prose-minion-vscode/pull/142), and [#143](https://github.com/okeylanders/prose-minion-vscode/pull/143). They add a Workshop writing widget, optional color palettes in Dictionary output, and a curated OpenRouter catalog refresh. Existing model defaults and saved selections are unchanged. No released Workshop session migration is required for Show vs. Tell.
+
+### Show vs. Tell Playground
+
+- A new one-shot Workshop widget moves a beat across State it, Summarize, Hinge, Evidence, and Inhabit. Its generation result has four groups of variants; the writer may carry selected prose or a compact direction into a room artifact of at most 600 characters. The commit path rechecks that ceiling on the host and never writes to the editor.
+- The authoring sheet supports a writer-supplied surrounding passage, up to eight room context sources, optional POV and constraints, zero to five selected channels, cancellation, and exact reopen or clone-and-recommit. Host and Guest personas can recommend the widget and prefill only its input.
+- Contracts and persistence live under `shared/types/messages/workshop/showVsTell.ts`; generation and commit are owned by `WorkshopShowVsTellHandler` and `ShowVsTellService`; the React controller and components live under `presentation/webview/.../showVsTell/`. The shared five-position vocabulary is `shared/constants/narrativeHandlingVocabulary.ts`. Slice reviews are [#134](pr-reviews/pr-134-show-vs-tell-slice-1-review.md) through [#140](pr-reviews/pr-140-show-vs-tell-slice-7-review.md).
+- Automated route, persistence, budget, and presentation witnesses are present. An installed Extension Development Host smoke test and a live-provider quality pass remain open; see the [interactive smoke test](../.todo/tech-debt/2026-10-09-show-vs-tell-interactive-smoke-test.md) and [quality pass](../.todo/tech-debt/2026-10-09-show-vs-tell-live-provider-quality-pass.md).
+- Release review found the beat-selection path could accept a delayed clipboard reply after newer writer work. Beat intake now mirrors the passage path's request correlation: only the newest outstanding request is accepted once, and edits, sheet lifecycle, room changes, generation, and commit permanently discard pending replies. Regression tests cover reordered replies and preservation of settled workups.
+
+### Dictionary Chromatic Palettes
+
+- The optional palette section follows AI Advisory Notes and precedes Topic & Related Lexicon. Each palette has named swatches with hex values and short definitions. The Dictionary tab renders a color strip and swatch rows; Copy and Save retain portable `pm-palette` fences. Standard, Fast, and auto-run use the persisted switch, which defaults on; Workshop persona lookups omit palettes.
+- The shared grammar is in `shared/constants/chromaticPalettes.ts`; prompt resources are `dictionary-utility/03-chromatic-palettes.md` and `dictionary-fast/16-chromatic-palettes-block.md`; the parser and renderer are `presentation/webview/utils/chromaticPalette.ts` and `components/dictionary/ChromaticPaletteBlock.tsx`.
+- The [PR #142 review](pr-reviews/pr-142-dictionary-chromatic-palettes-review.md) found two fence-boundary cases. The host now closes a genuinely open top-level Fast block before joining independently generated sections, and the renderer preserves later headings after an unclosed palette fence. `utils/markdownFences.ts` uses the same Markdown parser boundary as the renderer so list and HTML-contained fences are left intact. Regression tests cover the real Fast service through the renderer.
+- Manual theme, narrow-sidebar, streaming, copy/save, and live model-output checks remain open in the [feature spec](../.todo/features/feature-dictionary-chromatic-palettes/README.md). Model compliance with the palette grammar and the accuracy of generated definitions are unverified.
+
+### OpenRouter catalog
+
+- [PR #143](https://github.com/okeylanders/prose-minion-vscode/pull/143) adds `meta/muse-wonder` and `stepfun/step-5-preview` to shared model pickers and Category Search, with live catalog and endpoint metadata checks but no paid prose-quality witness. It removes four Qwen IDs retired October 9, 2026, from the curated picker and stale cache/parameter metadata. Qwen3.8 Max (0902) remains selectable.
+- The registry is `infrastructure/api/providers/OpenRouterModels.ts`; Category Search options are mirrored in the extension manifest. The [model guide](RECOMMENDED_MODELS.md) records advertised modality, context, and pricing at the October 13 audit.
+
+### Muse cache estimate
+
+- Muse Spark 1.1–1.3 and Muse Wonder use an approximate five-minute Workshop countdown after a completed retained request with positive input usage, including a cold first reply. The timer starts at request dispatch, and the composer displays "Meta does not guarantee the cache window." beneath it. Its tooltip explicitly assumes cache admission. Meta's automatic in-memory caching has no guaranteed retention window; this estimate does not establish a five-minute TTL or promise another hit.
+- The shared model set in `shared/constants/promptCacheEstimates.ts` keeps the estimate policy and disclaimer aligned, including OpenRouter aliases. Zero or absent cache reads permit the heuristic countdown; the cached-token badge keeps the original provider counters. Missing input usage, one-off requests, or applied context compression do not show an estimate. Native request content and routing stay unchanged; no cache control or retention parameter is added.
+- Regression tests cover streamed and ordinary cold replies and cache hits, unchanged usage counters, request-start timing, the model set and aliases, zero/missing reads, the disclaimer, and expiry. These are mocked checks. Okey's manual observation confirmed the prior timer appeared after the second reply's cache hit and motivated starting the estimate on the first completed prompt. That observation does not establish a provider lifetime.
+
+### Workshop tour and README artwork
+
+- The startup notice moves to `v8` and leads with two pages: Show vs. Tell Playground, then Chromatic Palettes. The Show vs. Tell page says the widget never writes the manuscript and that personas may only suggest and prefill. The Chromatic Palettes page says Workshop persona lookups omit palettes.
+- Their four screenshots are 2× captures of the real v2.10.0 webview bundle: `show-vs-tell-continuum`, `show-vs-tell-kept-variant`, `dictionary-palette-switch`, and `dictionary-palette-entry`. The Show vs. Tell workup is demo content in the host's wire format. The palette is Okey's real "Madder Dye Vat" lookup output, re-rendered verbatim.
+- v2.9.0's export and recall pages follow as primers, ahead of the v2.8.0 and v2.7.0 pages, and the recall page drops its release-only note. The tour is fifteen pages, newest release first.
+- `boundaries.test.ts` approves `WorkshopNoticeModal.tsx` and `shared/constants/workshopNotices.ts` as feature-naming surfaces for "Show vs. Tell" and the two `show-vs-tell-*` shot names, and records why Prose Controller needs no arm there.
+- The README leads with v2.10.0 and adds two composites, `workshop-show-vs-tell.png` and `dictionary-chromatic-palettes.png`. The palette composite also joins the Dictionary feature section. v2.9.0 moves to "Also in v2.9.0" with its images.
+
 ## [2.9.0] - 2026-10-08 — Workshop transcript export and saved-session recall
 
 ### Overview

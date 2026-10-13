@@ -124,8 +124,110 @@ const COMPOSER_CONTROLS_ALT = 'The Workshop composer control bar';
 
 const PAGES: readonly NoticePage[] = [
   {
-    title: 'New: export a conversation',
+    title: 'New: Show vs. Tell Playground',
     tag: 'new',
+    body: (
+      <>
+        A Workshop widget for one beat. Open it from <b>Widgets</b>, paste or select a told beat,
+        add the passage around it, and pick a point on a five-position continuum from{' '}
+        <b>State it</b> to <b>Inhabit</b>. The readout under it shows what each position gains
+        and costs, and no bar is a score. One generation returns four groups of alternatives:
+        told cleanly, shown as evidence, shown from inside, and mixed. Keep the ones worth
+        using, as prose or as a short direction, and commit them to the thread. Nothing is
+        inserted into your manuscript: commit hands directions to the room.
+      </>
+    ),
+    note: (
+      <>
+        Your host or a guest can suggest a beat to try and prefill the sheet, but only you
+        generate, keep, and commit.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'show-vs-tell-continuum',
+        alt: 'The Show vs. Tell continuum with Hinge selected, its tradeoff line, and the seven-row tradeoff readout',
+        maxWidthPx: 480,
+        ratio: '1460 / 668',
+        callouts: [
+          { label: '1', leftPercent: 38.6, topPercent: 16.4, widthPercent: 22.6, heightPercent: 27.5 },
+          { label: '2', leftPercent: 0.4, topPercent: 49, widthPercent: 98.4, heightPercent: 29 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'show-vs-tell-kept-variant',
+        alt: 'A kept Shown as evidence variant with its direction, gains, costs, and Commit as: prose variant or direction only',
+        maxWidthPx: 480,
+        ratio: '1484 / 492',
+        callouts: [
+          { label: '3', leftPercent: 1.6, topPercent: 4.5, widthPercent: 7.6, heightPercent: 21 },
+          { label: '4', leftPercent: 2.4, topPercent: 81, widthPercent: 42, heightPercent: 11 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Continuum', detail: 'five named positions, State it to Inhabit; Hinge is the default.' },
+      { label: '2', term: 'Tradeoff readout', detail: 'what a position gains and costs; no model call, and no bar is a score.' },
+      { label: '3', term: 'Keep', detail: 'the variants worth carrying into the room.' },
+      { label: '4', term: 'Commit as', detail: 'the variant itself as prose, or only its direction.' }
+    ]
+  },
+  {
+    title: 'New: Chromatic Palettes',
+    tag: 'new',
+    body: (
+      <>
+        Dictionary entries can now end with named color palettes. Each palette has a strip of
+        its colors, and each swatch has a name, a short definition, and its hex value. A palette
+        is <b>literal</b> when it shows colors the word names or implies (a pigment, a metal, a
+        light) and <b>evocative</b> when it carries the word&rsquo;s mood. Turn palettes on or off
+        with the <b>Chromatic Palettes</b> switch beside Topic &amp; Related Lexicon in the
+        sidebar&rsquo;s <b>Dictionary</b> tab. It starts on and remembers your choice for both
+        standard and Fast lookups.
+      </>
+    ),
+    note: (
+      <>
+        When a host or guest looks up a word for you in the Workshop, palettes are left out. Hex
+        values are approximations, not paint or Pantone matches.
+      </>
+    ),
+    wellTitle: 'Where to look',
+    media: [
+      {
+        kind: 'figure',
+        shot: 'dictionary-palette-switch',
+        alt: 'The Chromatic Palettes switch in the Dictionary tab, turned on',
+        maxWidthPx: 420,
+        ratio: '748 / 228',
+        callouts: [
+          { label: '1', leftPercent: 75.5, topPercent: 33, widthPercent: 19.5, heightPercent: 33 }
+        ]
+      },
+      {
+        kind: 'figure',
+        shot: 'dictionary-palette-entry',
+        alt: 'The start of a Chromatic Palettes section: the Madder Dye Vat palette, with Alizarin Crimson and Madder Lake swatches',
+        maxWidthPx: 320,
+        ratio: '680 / 620',
+        callouts: [
+          { label: '2', leftPercent: 3.8, topPercent: 17.5, widthPercent: 89.2, heightPercent: 20.5 },
+          { label: '3', leftPercent: 3.8, topPercent: 39, widthPercent: 89.2, heightPercent: 28.5 }
+        ]
+      }
+    ],
+    legend: [
+      { label: '1', term: 'Chromatic Palettes', detail: 'the switch beside Topic & Related Lexicon; on by default.' },
+      { label: '2', term: 'Palette', detail: 'a title, literal or evocative, and a strip of its colors.' },
+      { label: '3', term: 'Swatch', detail: 'a named color with a short definition and its hex value.' }
+    ]
+  },
+  {
+    title: 'Export a conversation',
+    tag: 'primer',
     body: (
       <>
         Use <b>Sessions &rarr; Export&hellip;</b> to save a Workshop conversation as a file:{' '}
@@ -176,8 +278,8 @@ const PAGES: readonly NoticePage[] = [
     ]
   },
   {
-    title: 'New: personas can read your saved sessions',
-    tag: 'new',
+    title: 'Personas can read your saved sessions',
+    tag: 'primer',
     body: (
       <>
         Ask about earlier work, like a decision from last week or a to-do still open, and your
@@ -187,14 +289,6 @@ const PAGES: readonly NoticePage[] = [
         names the session and turns it used. They&rsquo;re reading saved records, not
         remembering, so check the cited turns before relying on an answer. Attachment contents,
         widget payloads, and hidden tool evidence stay out.
-      </>
-    ),
-    note: (
-      <>
-        <b>Updating:</b> sessions that contain recall activity can&rsquo;t be opened by earlier
-        versions of Prose Minion. If you sync sessions through Git, update every machine first.{' '}
-        <b>Also fixed:</b> adding a guest persona&rsquo;s finding to the To-do List no longer
-        stops the session from saving.
       </>
     ),
     wellTitle: 'Where to look',

@@ -38,11 +38,19 @@ const passageSelection = (content: string, requestId?: string): SelectionDataMes
   payload: { target: 'workshop_show_vs_tell_passage', ...(requestId ? { requestId } : {}), content }
 });
 
+const beatSelection = (content: string, requestId?: string): SelectionDataMessage => ({
+  type: MessageType.SELECTION_DATA,
+  source: 'extension.ui',
+  timestamp: 1,
+  payload: { target: 'workshop_show_vs_tell_beat', ...(requestId ? { requestId } : {}), content }
+});
+
 function mount(initial: Partial<UseShowVsTellAuthoringOptions> = {}) {
   let tokenIndex = 0;
+  let beatRequestIndex = 0;
   let passageRequestIndex = 0;
   const options = {
-    requestBeatSelection: jest.fn(),
+    requestBeatSelection: jest.fn(() => `bsel-${++beatRequestIndex}`),
     requestPassageSelection: jest.fn(() => `psel-${++passageRequestIndex}`),
     generate: jest.fn((_input: unknown) => `token-${++tokenIndex}`),
     cancelGeneration: jest.fn(),
@@ -84,6 +92,100 @@ const settled = (token: string): WorkshopShowVsTellResultPayload => {
   const workup = generatedShowVsTellDraft().workup!;
   return { widgetId: 'show-vs-tell', token, workupId: workup.workupId, ok: true, workup };
 };
+
+describe('useShowVsTellAuthoring beat selection ownership', () => {
+  const reply = (h: ReturnType<typeof mount>, content: string, requestId?: string) =>
+    act(() => h.result.current.handleBeatSelection(beatSelection(content, requestId)));
+
+  it('accepts only the newest outstanding request once, and ignores unsolicited or uncorrelated replies', () => {
+    const h = mount();
+    reply(h, 'Unsolicited.', 'bsel-1');
+    act(() => h.result.current.requestBeatSelection());
+    reply(h, 'No id.');
+    reply(h, 'Foreign id.', 'other');
+    expect(h.result.current.draft.beat.text).toBe('');
+
+    act(() => h.result.current.requestBeatSelection());
+    reply(h, 'Newest selection.', 'bsel-2');
+    reply(h, 'Older clipboard read.', 'bsel-1');
+    reply(h, 'Duplicate reply.', 'bsel-2');
+
+    expect(h.result.current.draft.beat.text).toBe('Newest selection.');
+  });
+
+  it('preserves a writer edit when a pending clipboard reply arrives', () => {
+    const h = mount();
+    act(() => h.result.current.requestBeatSelection());
+    act(() => h.result.current.changeBeatText('Typed later.'));
+
+    reply(h, 'Old clipboard.', 'bsel-1');
+
+    expect(h.result.current.draft.beat.text).toBe('Typed later.');
+    expect(h.result.current.intakeNotice).toBeNull();
+  });
+
+  it('discards pending replies across a sheet reopen or room change', () => {
+    const h = mount();
+    act(() => h.result.current.requestBeatSelection());
+    h.rerender({ opening: null });
+    h.rerender({ opening: { kind: 'new' } });
+    reply(h, 'Before the reopen.', 'bsel-1');
+    expect(h.result.current.draft.beat.text).toBe('');
+
+    act(() => h.result.current.requestBeatSelection());
+    h.rerender({ roomKey: 'room-2' });
+    reply(h, 'From the old room.', 'bsel-2');
+    expect(h.result.current.draft.beat.text).toBe('');
+  });
+
+  it('keeps a settled workup when a pre-generation or pre-commit selection reply arrives late', () => {
+    const h = mount();
+    act(() => h.result.current.changeBeatText('A beat.'));
+    act(() => h.result.current.requestBeatSelection());
+    act(() => h.result.current.generateWorkup());
+    h.rerender({ generationResult: settled(h.options.generate.mock.results[0].value as string) });
+    const draft = h.result.current.draft;
+    expect(draft.workup).not.toBeNull();
+
+    reply(h, 'After generation settled.', 'bsel-1');
+    expect(h.result.current.draft).toEqual(draft);
+
+    act(() => h.result.current.requestBeatSelection());
+    h.rerender({ commitPending: true });
+    h.rerender({ commitPending: false, commitOutcome: { ok: false, message: 'Refused.' } });
+    reply(h, 'After commit refusal.', 'bsel-2');
+    expect(h.result.current.draft).toEqual(draft);
+    expect(h.result.current.invalidationNotice).toBeNull();
+  });
+
+  it('correlates beat and passage requests independently', () => {
+    const h = mount();
+    act(() => {
+      h.result.current.requestBeatSelection();
+      h.result.current.requestPassageSelection();
+    });
+    reply(h, 'The wrong field.', 'psel-1');
+    act(() => h.result.current.handlePassageSelection(passageSelection('Surrounding prose.', 'psel-1')));
+    reply(h, 'Selected beat.', 'bsel-1');
+
+    expect(h.result.current.draft.beat.text).toBe('Selected beat.');
+    expect(h.result.current.draft.surroundingContext.writerText).toBe('Surrounding prose.');
+  });
+
+  it('does not ask for beat intake while closed, generating, or committing', () => {
+    const h = mount({ opening: null });
+    act(() => h.result.current.requestBeatSelection());
+    h.rerender({ opening: { kind: 'new' } });
+    act(() => h.result.current.changeBeatText('A beat.'));
+    act(() => h.result.current.generateWorkup());
+    act(() => h.result.current.requestBeatSelection());
+    act(() => h.result.current.cancelGenerate());
+    h.rerender({ commitPending: true });
+    act(() => h.result.current.requestBeatSelection());
+
+    expect(h.options.requestBeatSelection).not.toHaveBeenCalled();
+  });
+});
 
 describe('useShowVsTellAuthoring surrounding passage (D2)', () => {
   it('starts blank and accepts typed or pasted multi-line text up to the context allowance', () => {

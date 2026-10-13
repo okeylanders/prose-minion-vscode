@@ -1,5 +1,9 @@
 import type { OpenRouterMessage, OpenRouterWireMessage } from '@providers/OpenRouterChatContracts';
-import { prepareOpenRouterPromptCacheRequest, getOpenRouterPromptCacheTtlSeconds } from '@providers/OpenRouterPromptCachePolicy';
+import {
+  prepareOpenRouterPromptCacheRequest,
+  getOpenRouterPromptCacheTtlSeconds,
+  shouldStartOpenRouterPromptCacheEstimate
+} from '@providers/OpenRouterPromptCachePolicy';
 
 describe('selected cache duration', () => {
   it.each([
@@ -18,6 +22,39 @@ describe('selected cache duration', () => {
   it.each(['openai/gpt-5.5', 'openai/gpt-5.4', 'openai/gpt-5.2', 'openai/gpt-4.1',
     'openai/gpt-oss-120b', 'openai/gpt-chat-latest', 'openrouter/auto', 'other/gpt-5.6-terra',
     'openai/gpt-5.60invalid', 'openai/gpt-60invalid'])('keeps %s lifetime unknown', model => {
+    expect(getOpenRouterPromptCacheTtlSeconds(model)).toBeUndefined();
+  });
+
+  it.each([
+    'meta/muse-spark-1.1', 'meta/muse-spark-1.2', 'meta/muse-spark-1.3',
+    'meta/muse-wonder', '~meta/muse-wonder:nitro'
+  ])('uses the five-minute display guideline for a completed %s prompt', model => {
+    const messages: OpenRouterMessage[] = [{ role: 'user', content: 'Hello' }];
+    expect(getOpenRouterPromptCacheTtlSeconds(model, '1h')).toBe(300);
+    expect(shouldStartOpenRouterPromptCacheEstimate(model, {
+      promptTokens: 100, completionTokens: 10, totalTokens: 110, cachedTokens: 40
+    })).toBe(true);
+    const request = prepareOpenRouterPromptCacheRequest(model, messages, 'room', '1h');
+    expect(request.messages).toBe(messages);
+    expect(request).not.toHaveProperty('cache_control');
+    expect(request).not.toHaveProperty('prompt_cache_key');
+    expect(request).not.toHaveProperty('prompt_cache_retention');
+  });
+
+  it.each([undefined, 0])('starts the Muse estimate on a cold prompt without reported cache reads (%s)', cachedTokens => {
+    expect(shouldStartOpenRouterPromptCacheEstimate('meta/muse-wonder', {
+      promptTokens: 100, completionTokens: 10, totalTokens: 110, cachedTokens
+    })).toBe(true);
+  });
+
+  it('keeps the Muse estimate hidden when no input tokens were processed', () => {
+    expect(shouldStartOpenRouterPromptCacheEstimate('meta/muse-wonder', {
+      promptTokens: 0, completionTokens: 0, totalTokens: 0
+    })).toBe(false);
+  });
+
+  it.each(['meta/llama-4-maverick', 'meta/muse-wonder-future', 'other/muse-wonder'])
+  ('keeps %s outside the Muse estimate policy', model => {
     expect(getOpenRouterPromptCacheTtlSeconds(model)).toBeUndefined();
   });
 

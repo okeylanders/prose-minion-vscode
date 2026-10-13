@@ -51,7 +51,11 @@ exports[`getWebviewHtml pins the sidebar surface output — the extraction promi
         "dictionary-topic-entry": "https://webview.test/ext/assets/workshop-notices/dictionary-topic-entry.png",
         "sessions-menu-export": "https://webview.test/ext/assets/workshop-notices/sessions-menu-export.png",
         "export-transcript-formats": "https://webview.test/ext/assets/workshop-notices/export-transcript-formats.png",
-        "recall-card-and-reply": "https://webview.test/ext/assets/workshop-notices/recall-card-and-reply.png"
+        "recall-card-and-reply": "https://webview.test/ext/assets/workshop-notices/recall-card-and-reply.png",
+        "show-vs-tell-continuum": "https://webview.test/ext/assets/workshop-notices/show-vs-tell-continuum.png",
+        "show-vs-tell-kept-variant": "https://webview.test/ext/assets/workshop-notices/show-vs-tell-kept-variant.png",
+        "dictionary-palette-switch": "https://webview.test/ext/assets/workshop-notices/dictionary-palette-switch.png",
+        "dictionary-palette-entry": "https://webview.test/ext/assets/workshop-notices/dictionary-palette-entry.png"
       }
     };
   </script>

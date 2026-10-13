@@ -87,7 +87,8 @@ export interface UseShowVsTellAuthoringOptions {
   widgetModelId: string;
   generationProgress: WorkshopShowVsTellGenerationProgressPayload | null;
   generationResult: WorkshopShowVsTellResultPayload | null;
-  requestBeatSelection: () => void;
+  /** Asks the host for the beat selection; returns the echoed correlation id. */
+  requestBeatSelection: () => string;
   /** Asks the host for the editor selection on the surrounding-passage target; returns the echoed correlation id. */
   requestPassageSelection: () => string;
   generate: (input: ShowVsTellGenerationInput) => string;

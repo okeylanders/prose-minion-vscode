@@ -57,6 +57,11 @@ describe('WorkshopComposer', () => {
     expect(add.parentElement?.nextElementSibling?.textContent).toContain('Est. Cache Time Remaining:');
   });
 
+  it('displays the Meta note with the current request model cache estimate', () => {
+    renderComposer({ estimatedCacheExpiresAt: Date.now() + 300_000, cacheRequestModelId: 'meta/muse-wonder' });
+    expect(screen.getByText('Meta does not guarantee the cache window.')).toBeTruthy();
+  });
+
   it('keeps Shift+Enter available for a newline instead of sending', () => {
     const { onSend } = renderComposer();
     const composer = screen.getByRole('textbox', { name: 'Message Choreography' });

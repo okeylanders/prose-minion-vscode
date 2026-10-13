@@ -312,22 +312,26 @@ describe('Show vs. Tell commit, chip, and clone-and-recommit', () => {
       const dialog = sheet()!;
       // The editor has no selection, so the host is still waiting on the clipboard.
       fireEvent.click(within(dialog).getByRole('button', { name: 'Use editor selection' }));
-      expect(sent(MessageType.REQUEST_SELECTION).at(-1)!.payload).toEqual({ target: 'workshop_show_vs_tell_beat' });
+      const selectionRequest = sent(MessageType.REQUEST_SELECTION).at(-1)!.payload;
+      expect(selectionRequest).toEqual({ target: 'workshop_show_vs_tell_beat', requestId: expect.any(String) });
       fireEvent.click(within(dialog).getByRole('button', { name: 'Commit as new turn' }));
       const first = lastCommit();
 
-      deliver({
+      const clipboardReply = {
         type: MessageType.SELECTION_DATA,
         source: 'extension.ui',
         timestamp: 7,
-        payload: { target: 'workshop_show_vs_tell_beat', content: 'A different beat from the clipboard.' }
-      });
+        payload: { ...selectionRequest, content: 'A different beat from the clipboard.' }
+      };
+      deliver(clipboardReply);
 
       expect((within(dialog).getByRole('textbox', { name: /Selected beat/ }) as HTMLInputElement).value)
         .toBe(committed.beat.text);
       expect(screen.queryByRole('region', { name: 'Generated workup' })).not.toBeNull();
 
       commitResult(first.requestToken, { ok: false, message: 'The room did not accept the commit.' });
+      // Settling the commit does not restore the old selection request.
+      deliver(clipboardReply);
 
       // Nothing was rewritten, so Commit is still available and retries the exact submitted draft.
       expect(screen.getByRole('alert').textContent).toBe('The room did not accept the commit.');

@@ -1465,6 +1465,7 @@ export const WorkshopApp: React.FC = () => {
               onAddExcerpt={addExcerptByPaste}
               hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
               recipientLabel={chatTargetLabel}
+              cacheRequestModelId={workshop.contextBudget?.snapshot?.cacheRequestModelId}
               estimatedCacheExpiresAt={
                 workshop.contextBudget?.snapshot?.cacheRequestModelId
                   === (modelsSettings.modelSelections.assistant ?? modelsSettings.settings.assistantModel)
