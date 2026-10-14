@@ -5,6 +5,14 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.1] - 2026-10-14 — Google Gemini 4 Argon
+
+### OpenRouter catalog
+
+- Adds `google/gemini-4-argon` to `RECOMMENDED_MODELS` and `CATEGORY_MODELS`, with the Category Search setting enum synchronized in the extension manifest. The shared catalog supplies Assistant, Dictionary, Context, Workshop, and all four Conversation Widget pickers. Defaults and saved selections are unchanged.
+- Verified the live OpenRouter catalog and per-model endpoints on October 14, 2026: 1,048,576-token context, multimodal input, text output, reasoning, tools, and structured-output support. Catalog pricing was $2/M input and $10/M output tokens; provider pricing and long-decode output limits vary. Parameter count remains explicitly undisclosed through the existing metadata fallback.
+- This patch adds a selectable model and release documentation. No provider request behavior or Workshop tour revision changes. No paid inference or prose-quality qualification is claimed.
+
 ## [2.10.0] - 2026-10-13 — Show vs. Tell, Chromatic Palettes, and model catalog refresh
 
 ### Overview

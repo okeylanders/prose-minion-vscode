@@ -2,6 +2,12 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.10.1] - 2026-10-14
+
+### Added
+
+- Google Gemini 4 Argon is available as an opt-in model for writing tools, Workshop, Conversation Widgets, and Category Search. Existing model defaults and saved selections are unchanged; prose quality has not been evaluated in this release.
+
 ## [2.10.0] - 2026-10-13
 
 ### Added

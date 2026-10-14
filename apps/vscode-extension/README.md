@@ -24,7 +24,11 @@
 
 ---
 
-## What's new in v2.10.0 — Show vs. Tell, and color for your Dictionary
+## What's new in v2.10.1 — Gemini 4 Argon
+
+**Try Gemini 4 Argon.** Google's new reasoning model joins the model pickers for writing tools, Workshop, Conversation Widgets, and Category Search. OpenRouter lists a 1M-token context window and multimodal input; its prose quality has not been evaluated in Prose Minion. Choose it when you want to try it; your defaults and saved selections stay as they are.
+
+### Also in v2.10.0 — Show vs. Tell, and color for your Dictionary
 
 **Show vs. Tell Playground.** A Workshop widget for one beat. Open it from **Widgets**, paste or select a told beat, and move it along a five-position continuum from **State it** to **Inhabit**. A tradeoff readout shows what each position gains and costs, and no bar is a score. One generation returns four groups of alternatives: told cleanly, shown as evidence, shown from inside, and mixed. Keep the useful ones as prose or as a short direction, then commit them to the thread. You choose what commits, and the widget never edits your manuscript. Your host or a guest can suggest a beat and prefill the sheet; only you generate, keep, and commit.
 
