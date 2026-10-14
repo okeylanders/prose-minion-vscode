@@ -13,6 +13,7 @@ const EXPECTED_SHARED_MODEL_IDS = [
   'anthropic/claude-fable-5.1',
   'inception/mercury-2.5',
   'google/gemini-3.8-flash',
+  'google/gemini-4-argon',
   'openai/gpt-6-luna',
   'openai/gpt-6-luna-pro',
   'openai/gpt-6-sol',
