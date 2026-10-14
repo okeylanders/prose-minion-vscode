@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-06-29
 **Source**: User request
-**Status**: Planned. Dictionary portion in progress: [Epic: Dictionary Lookup History](../../epics/epic-dictionary-lookup-history-2026-10-14/README.md) ([ADR 2026-10-14](../../../docs/adr/2026-10-14-dictionary-lookup-history.md))
+**Status**: Planned. Dictionary portion built (live check pending): [Epic: Dictionary Lookup History](../../epics/epic-dictionary-lookup-history-2026-10-14/README.md) ([ADR 2026-10-14](../../../docs/adr/2026-10-14-dictionary-lookup-history.md))
 **Priority**: Medium
 **Estimated Effort**: Medium
 

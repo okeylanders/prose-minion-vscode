@@ -3,7 +3,7 @@
 **Epic:** [Dictionary Lookup History](README.md)
 **Decision:** [ADR 2026-10-14](../../../docs/adr/2026-10-14-dictionary-lookup-history.md), D5–D7
 **Depends on:** Slice 1 contracts. The component is presentational, so it can be built alongside Slice 2 and mounted once Slice 2's hook exists.
-**Status:** Planned
+**Status:** Done: component `81383a2` (built in parallel with Slice 2); wiring and docs at integration
 
 ## Outcome
 
@@ -77,6 +77,12 @@ interface DictionaryHistoryModalProps {
 ## Wiring
 
 This step runs after Slice 2 lands.
+
+> **As built:** the popup's open state lives in `DictionaryHistoryNav` (the
+> component that owns the `🕘` button), not in `UtilitiesTab`. That keeps
+> focus return with the opener and the tab under 500 lines. The button stays
+> mounted while the popup is open, so clearing the last entry shows the empty
+> state instead of closing the popup mid-interaction.
 
 - `UtilitiesTab` keeps `historyOpen` as local UI state. The `🕘` position label
   becomes a button (`aria-label="Lookup history"`, `aria-haspopup="dialog"`)

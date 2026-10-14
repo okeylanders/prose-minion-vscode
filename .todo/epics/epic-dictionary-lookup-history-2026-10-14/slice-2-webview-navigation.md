@@ -3,7 +3,7 @@
 **Epic:** [Dictionary Lookup History](README.md)
 **Decision:** [ADR 2026-10-14](../../../docs/adr/2026-10-14-dictionary-lookup-history.md), D5, D6, and D8
 **Depends on:** Slice 1 contracts
-**Status:** Planned
+**Status:** Done (`ca73ac1`, `2e29bee`)
 
 ## Outcome
 

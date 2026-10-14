@@ -2,7 +2,7 @@
 
 **Epic:** [Dictionary Lookup History](README.md)
 **Decision:** [ADR 2026-10-14](../../../docs/adr/2026-10-14-dictionary-lookup-history.md), D1–D5 and D7
-**Status:** Planned
+**Status:** Done (`76e1ec8`, `04d891b`)
 
 ## Outcome
 

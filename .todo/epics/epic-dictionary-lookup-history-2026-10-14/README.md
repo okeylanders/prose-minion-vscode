@@ -1,6 +1,6 @@
 # Epic: Dictionary Lookup History
 
-**Status:** In progress. Spec written 2026-10-14; Slices 1–3 being built
+**Status:** Built 2026-10-14. Slices 1–3 integrated on the branch; the live Extension Development Host pass is pending
 **Priority:** Medium
 **Created:** 2026-10-14
 **Integration branch:** `claude/stoic-brown-wsqqr5` (from `main` at `529a0dd`). Each slice lands as its own reviewed commit series on this branch.
@@ -43,8 +43,9 @@ selection.
 |---|---|---|---|
 | 0 | Spec | ADR + this epic; feature note linked | Done |
 | 1 | [Host history ledger](slice-1-host-history-ledger.md) | Contracts, store, codec, recording, routes, broadcast, composition root | Done: `76e1ec8`, `04d891b` |
-| 2 | [Navigation](slice-2-webview-navigation.md) | `lookupSubject` / `restoreView`, pure navigation rules, `useDictionaryHistory`, header `‹ 🕘 ›` cluster, meta line | Planned |
-| 3 | [History popup](slice-3-history-popup.md) | `DictionaryHistoryModal` (list, open, delete, clear), wiring, docs, memory bank | Planned |
+| 2 | [Navigation](slice-2-webview-navigation.md) | `lookupSubject` / `restoreView`, pure navigation rules, `useDictionaryHistory`, header `‹ 🕘 ›` cluster, meta line | Done: `ca73ac1`, `2e29bee` |
+| 3 | [History popup](slice-3-history-popup.md) | `DictionaryHistoryModal` (list, open, delete, clear), wiring, docs, memory bank | Done: component `81383a2`; wiring and docs in the integration commit |
+| 4 | Verify live | Extension Development Host pass (see Verification); ADR → Accepted | Pending (needs a human with VS Code) |
 
 Slice 1 is the foundation. Slices 2 and 3 both build on its contracts. Slice
 3's modal is presentational (props in, callbacks out), so it can be built
@@ -96,3 +97,29 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
   Observed order: the result (with `historyEntryId`) is posted before the
   `DICTIONARY_HISTORY` broadcast, so the webview must not drop a
   just-followed cursor while it waits for that list.
+- **2026-10-14. Slices 2–3 and integration.** Slice 2 (navigation) was built in
+  the main checkout while Slice 3's popup component was built in an isolated
+  worktree against Slice 1's contracts. Its commit cherry-picked cleanly
+  (`81383a2`), because the two slices wrote CSS in separate regions of
+  `index.css`.
+  - **Wiring:** the `🕘` position label is now the popup button. The popup's
+    open state lives in `DictionaryHistoryNav`, so focus returns to its opener
+    and `UtilitiesTab` stays under 500 lines. The meta line uses the shared
+    `formatDictionaryHistoryTime`.
+  - **Slice 2 additions beyond the spec:**
+    - A replay guard (`hasFollowedEntry`). With `retainContextWhenHidden`, the
+      host re-sends its cached `DICTIONARY_RESULT` each time the sidebar
+      reappears, and that would otherwise put the newest result under an
+      older entry's form.
+    - Ref-backed decisions, because the result and the history broadcast can
+      be routed before React re-renders.
+    - One shared phrase normalizer for submit and the dirty check.
+  - **Verification:** 312 suites / 4,641 tests pass (from 306 / 4,477).
+    Typecheck is clean. Lint has 0 errors and adds only PascalCase
+    `naming-convention` warnings, which every component triggers. The
+    production build compiles.
+  - **Follow-ups:**
+    - Right-click "Look Up Word" lookups record no source, because
+      `useSelection` drops the injection's source for dictionary targets.
+    - Two windows on one folder: the last writer wins (ADR Consequences).
+    - Assistant and Category Search history remain in the parent feature.
