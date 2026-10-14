@@ -9,8 +9,19 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
-import { DictionaryState, DictionaryActions, DictionaryPersistence, useDictionary } from '@/presentation/webview/hooks/domain/useDictionary';
-import { API_KEY_NOT_CONFIGURED_HEADING, ClearTransientApiKeyWarningMessage, MessageType } from '@messages';
+import {
+  DictionaryState,
+  DictionaryActions,
+  DictionaryPersistence,
+  DictionaryView,
+  useDictionary
+} from '@/presentation/webview/hooks/domain/useDictionary';
+import {
+  API_KEY_NOT_CONFIGURED_HEADING,
+  ClearTransientApiKeyWarningMessage,
+  DictionaryLookupRequest,
+  MessageType
+} from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi');
@@ -25,6 +36,7 @@ describe('useDictionary - Type Contracts', () => {
       const state: DictionaryState = {
         result: '',
         toolName: undefined,
+        lookupSubject: null,
         loading: false,
         word: '',
         context: '',
@@ -74,6 +86,8 @@ describe('useDictionary - Type Contracts', () => {
         setIncludePalettes: jest.fn(),
         setWordEdited: jest.fn(),
         setSource: jest.fn(),
+        setLookupSubject: jest.fn(),
+        restoreView: jest.fn(),
         clearResult: jest.fn(),
         handleClearTransientApiKeyWarning: jest.fn(),
         handleFastGenerateResult: jest.fn(),
@@ -89,6 +103,8 @@ describe('useDictionary - Type Contracts', () => {
       expect(typeof actions.handleDictionaryResult).toBe('function');
       expect(typeof actions.setWord).toBe('function');
       expect(typeof actions.clearResult).toBe('function');
+      expect(typeof actions.setLookupSubject).toBe('function');
+      expect(typeof actions.restoreView).toBe('function');
       expect(typeof actions.handleClearTransientApiKeyWarning).toBe('function');
       expect(typeof actions.handleFastGenerateResult).toBe('function');
       expect(typeof actions.setFastGenerating).toBe('function');
@@ -109,13 +125,15 @@ describe('useDictionary - Type Contracts', () => {
         dictionaryWordEdited: false,
         dictionarySourceUri: '',
         dictionaryRelativePath: '',
-        dictionaryStatusMessage: ''
+        dictionaryStatusMessage: '',
+        dictionaryLookupSubject: null
       };
 
       expect(persistence).toHaveProperty('utilitiesResult');
       expect(persistence).toHaveProperty('dictionaryWord');
       expect(persistence).toHaveProperty('dictionaryContext');
       expect(persistence).toHaveProperty('dictionaryToolName');
+      expect(persistence).toHaveProperty('dictionaryLookupSubject');
     });
   });
 });
@@ -342,5 +360,95 @@ describe('useDictionary - Streaming Cancellation', () => {
     expect(result.current.result).toBe('');
     expect(result.current.loading).toBe(false);
     expect(result.current.isStreaming).toBe(false);
+  });
+});
+
+describe('useDictionary - Restoring a history view', () => {
+  const subject: DictionaryLookupRequest = {
+    word: 'petrichor',
+    context: 'Rain on hot stone.',
+    includeEncyclopedia: false,
+    includePalettes: true,
+    mode: 'fast',
+    sourceUri: 'file:///novel/ch1.md',
+    relativePath: 'ch1.md'
+  };
+  const view: DictionaryView = {
+    word: 'petrichor',
+    context: 'Rain on hot stone.',
+    includeEncyclopedia: false,
+    includePalettes: true,
+    sourceUri: 'file:///novel/ch1.md',
+    relativePath: 'ch1.md',
+    result: '# petrichor\n\nThe smell of rain.',
+    toolName: 'dictionary_fast_generate',
+    lookupSubject: subject
+  };
+
+  beforeEach(() => {
+    (useVSCodeApi as jest.Mock).mockReturnValue(createMockVSCode());
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('starts with no lookup subject', () => {
+    const { result } = renderHook(() => useDictionary());
+
+    expect(result.current.lookupSubject).toBeNull();
+    expect(result.current.persistedState.dictionaryLookupSubject).toBeNull();
+  });
+
+  it('restoreView sets every view field, marks the word edited, and clears the status line', () => {
+    const { result } = renderHook(() => useDictionary());
+    act(() => result.current.handleStatusMessage({
+      type: MessageType.STATUS,
+      source: 'extension.dictionary',
+      payload: { message: 'Looking up…' },
+      timestamp: 1
+    }));
+
+    act(() => result.current.restoreView(view));
+
+    expect(result.current.word).toBe(view.word);
+    expect(result.current.context).toBe(view.context);
+    expect(result.current.includeEncyclopedia).toBe(false);
+    expect(result.current.includePalettes).toBe(true);
+    expect(result.current.sourceUri).toBe(view.sourceUri);
+    expect(result.current.relativePath).toBe(view.relativePath);
+    expect(result.current.result).toBe(view.result);
+    expect(result.current.toolName).toBe(view.toolName);
+    expect(result.current.lookupSubject).toEqual(subject);
+    expect(result.current.wordEdited).toBe(true);
+    expect(result.current.statusMessage).toBe('');
+  });
+
+  it('restoreView leaves loading, streaming, and fast generation untouched', () => {
+    const { result } = renderHook(() => useDictionary());
+    act(() => result.current.setFastGenerating(true));
+    act(() => result.current.startStreaming('dict-9'));
+
+    act(() => result.current.restoreView(view));
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.isFastGenerating).toBe(true);
+    expect(result.current.isStreaming).toBe(true);
+    expect(result.current.currentRequestId).toBe('dict-9');
+  });
+
+  it('persists the lookup subject so Copy and Save still name it after a reload', () => {
+    const { result, unmount } = renderHook(() => useDictionary());
+
+    act(() => result.current.setLookupSubject(subject));
+
+    expect(result.current.persistedState.dictionaryLookupSubject).toEqual(subject);
+    const persistedState = result.current.persistedState;
+    unmount();
+    (usePersistedState as jest.Mock).mockReturnValue(persistedState);
+
+    const restored = renderHook(() => useDictionary());
+    expect(restored.result.current.lookupSubject).toEqual(subject);
   });
 });

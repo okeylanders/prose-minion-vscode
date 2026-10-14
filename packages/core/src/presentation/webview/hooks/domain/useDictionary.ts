@@ -3,6 +3,11 @@
  *
  * Manages dictionary word, context, results, and source tracking.
  * Includes streaming support for progressive response display.
+ *
+ * `lookupSubject` is the request the displayed result answers (ADR 2026-10-14,
+ * D8). Submitting a lookup sets it, and so does restoring a history entry or
+ * draft through `restoreView`, so Copy, Save, and the history draft rule all
+ * name the lookup the writer is actually reading.
  */
 
 import * as React from 'react';
@@ -18,6 +23,7 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage,
   ClearTransientApiKeyWarningMessage,
+  DictionaryLookupRequest,
   isApiKeyNotConfiguredWarning
 } from '@messages';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
@@ -30,9 +36,28 @@ export interface FastGenerationMetadata {
   totalBlocks: number;
 }
 
+/**
+ * Everything the Dictionary tab shows for one lookup: the form, the result,
+ * and the request that result answers. History navigation stashes and
+ * restores whole views so the form and the result can never disagree.
+ */
+export interface DictionaryView {
+  word: string;
+  context: string;
+  includeEncyclopedia: boolean;
+  includePalettes: boolean;
+  sourceUri: string;
+  relativePath: string;
+  result: string;
+  toolName: string | undefined;
+  lookupSubject: DictionaryLookupRequest | null;
+}
+
 export interface DictionaryState {
   result: string;
   toolName: string | undefined;
+  /** The request the displayed result answers; null when nothing was looked up. */
+  lookupSubject: DictionaryLookupRequest | null;
   loading: boolean;
   word: string;
   context: string;
@@ -68,6 +93,13 @@ export interface DictionaryActions {
   setIncludePalettes: (include: boolean) => void;
   setWordEdited: (edited: boolean) => void;
   setSource: (uri?: string, relativePath?: string) => void;
+  setLookupSubject: (subject: DictionaryLookupRequest | null) => void;
+  /**
+   * Show a stashed or recorded view. Leaves loading, streaming, and fast
+   * generation alone, and marks the word edited so a selection auto-fill
+   * cannot overwrite the restored word.
+   */
+  restoreView: (view: DictionaryView) => void;
   clearResult: () => void;
   handleClearTransientApiKeyWarning: (message: ClearTransientApiKeyWarningMessage) => void;
   // Fast generation actions
@@ -92,6 +124,7 @@ export interface DictionaryPersistence {
   dictionarySourceUri: string;
   dictionaryRelativePath: string;
   dictionaryStatusMessage: string;
+  dictionaryLookupSubject: DictionaryLookupRequest | null;
 }
 
 export type UseDictionaryReturn = DictionaryState & DictionaryActions & { persistedState: DictionaryPersistence };
@@ -139,6 +172,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     dictionarySourceUri?: string;
     dictionaryRelativePath?: string;
     dictionaryStatusMessage?: string;
+    dictionaryLookupSubject?: DictionaryLookupRequest | null;
   }>();
 
   const [result, setResult] = React.useState<string>(
@@ -158,6 +192,9 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [sourceUri, setSourceUri] = React.useState<string>(persisted?.dictionarySourceUri ?? '');
   const [relativePath, setRelativePath] = React.useState<string>(persisted?.dictionaryRelativePath ?? '');
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.dictionaryStatusMessage ?? '');
+  const [lookupSubject, setLookupSubject] = React.useState<DictionaryLookupRequest | null>(
+    persisted?.dictionaryLookupSubject ?? null
+  );
 
   // Fast generation state
   const [isFastGenerating, setIsFastGenerating] = React.useState<boolean>(false);
@@ -207,6 +244,20 @@ export const useDictionary = (): UseDictionaryReturn => {
   const setSource = React.useCallback((uri?: string, rel?: string) => {
     setSourceUri(uri || '');
     setRelativePath(rel || '');
+  }, []);
+
+  const restoreView = React.useCallback((view: DictionaryView) => {
+    setWord(view.word);
+    setContext(view.context);
+    setIncludeEncyclopedia(view.includeEncyclopedia);
+    setIncludePalettes(view.includePalettes);
+    setSourceUri(view.sourceUri);
+    setRelativePath(view.relativePath);
+    setResult(view.result);
+    setToolName(view.toolName);
+    setLookupSubject(view.lookupSubject);
+    setWordEdited(true);
+    setStatusMessage('');
   }, []);
 
   const clearResult = React.useCallback(() => {
@@ -326,6 +377,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     // State
     result,
     toolName,
+    lookupSubject,
     loading,
     word,
     context,
@@ -359,6 +411,8 @@ export const useDictionary = (): UseDictionaryReturn => {
     setIncludePalettes,
     setWordEdited,
     setSource,
+    setLookupSubject,
+    restoreView,
     clearResult,
     handleClearTransientApiKeyWarning,
     handleFastGenerateResult,
@@ -382,6 +436,7 @@ export const useDictionary = (): UseDictionaryReturn => {
       dictionarySourceUri: sourceUri,
       dictionaryRelativePath: relativePath,
       dictionaryStatusMessage: statusMessage,
+      dictionaryLookupSubject: lookupSubject,
     },
   };
 };
