@@ -505,6 +505,64 @@ describe('UtilitiesTab dictionary history', () => {
     expect(save.metadata).toEqual(expect.objectContaining({ word: 'petrichor', context: 'Rain on hot stone.' }));
   });
 
+  it('opens the lookup history popup from the position button', () => {
+    render(<StubHarness history={stubHistory({ cursorId: 'h2', position: { index: 2, total: 3 } })} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lookup history' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Lookup history' });
+    expect(within(dialog).getByRole('button', { name: 'Open lookup: petrichor' })).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Open lookup: umbra' })).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Open lookup: geosmin' }).getAttribute('aria-current')).toBe('true');
+  });
+
+  it('restores a lookup chosen in the popup and closes it', () => {
+    const history = stubHistory();
+    render(<StubHarness history={history} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lookup history' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open lookup: umbra' }));
+
+    expect(history.openEntry).toHaveBeenCalledWith('h1');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('deletes and clears through the history model', () => {
+    const history = stubHistory();
+    render(<StubHarness history={history} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lookup history' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete lookup: geosmin' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear history' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(history.deleteEntry).toHaveBeenCalledWith('h2');
+    expect(history.clearHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('locks row selection in the popup while a lookup is generating', () => {
+    render(<StubHarness history={stubHistory({ navigationLocked: true, canGoOlder: false })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lookup history' }));
+
+    expect((screen.getByRole('button', { name: 'Open lookup: petrichor' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Delete lookup: petrichor' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('keeps the popup open on its empty state after the last entry is cleared', () => {
+    const { rerender } = render(<StubHarness history={stubHistory()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lookup history' }));
+
+    rerender(<StubHarness history={stubHistory({ entries: [], position: { index: null, total: 0 }, canGoOlder: false, olderSummary: null })} />);
+
+    expect(screen.getByRole('dialog', { name: 'Lookup history' })).toBeTruthy();
+    expect(screen.getByText(/No lookups yet/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close lookup history' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Lookup history' })).toBeNull();
+  });
+
   it('falls back to the normalized form word in the Copy header when nothing was looked up', () => {
     vscode.getState.mockReturnValue({ dictionaryWord: '  copper   pot ', utilitiesResult: 'A shiny metal.' });
     render(<HistoryHarness />);

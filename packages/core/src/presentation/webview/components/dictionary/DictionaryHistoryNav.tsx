@@ -2,18 +2,37 @@
  * Dictionary history header controls (ADR 2026-10-14, D6).
  *
  * `DictionaryHistoryNav` is the `‹` `🕘 3 / 12` `›` cluster beside the tab
- * title; `DictionaryHistoryMeta` is the "From history" line under it. Both are
+ * title. The `🕘` position button opens the lookup history popup, and the
+ * cluster owns that popup's open state so focus returns to its opener.
+ * `DictionaryHistoryMeta` is the "From history" line under the title. Both are
  * presentational: `useDictionaryHistory` owns the state and the transport.
  */
 
 import * as React from 'react';
 import { DictionaryHistorySummary } from '@messages';
 import { Icon } from '@components/shared/Icon';
+import { DictionaryHistoryModal } from '@components/dictionary/DictionaryHistoryModal';
 import { UseDictionaryHistoryReturn } from '@hooks/domain/useDictionaryHistory';
+import { formatDictionaryHistoryTime } from '@utils/formatDictionaryHistoryTime';
 
 export type DictionaryHistoryNavModel = Pick<
   UseDictionaryHistoryReturn,
-  'canGoOlder' | 'canGoNewer' | 'goOlder' | 'goNewer' | 'position' | 'olderSummary' | 'newerSummary' | 'draft'
+  | 'canGoOlder'
+  | 'canGoNewer'
+  | 'goOlder'
+  | 'goNewer'
+  | 'position'
+  | 'olderSummary'
+  | 'newerSummary'
+  | 'draft'
+  | 'entries'
+  | 'cursorId'
+  | 'durability'
+  | 'limit'
+  | 'navigationLocked'
+  | 'openEntry'
+  | 'deleteEntry'
+  | 'clearHistory'
 >;
 
 interface DictionaryHistoryNavProps {
@@ -37,6 +56,13 @@ const newerTitle = (history: DictionaryHistoryNavModel): string => {
 
 export const DictionaryHistoryNav: React.FC<DictionaryHistoryNavProps> = ({ history }) => {
   const { index, total } = history.position;
+  const [historyOpen, setHistoryOpen] = React.useState(false);
+  const closeHistory = React.useCallback(() => setHistoryOpen(false), []);
+  const { openEntry } = history;
+  const selectEntry = React.useCallback((id: string) => {
+    openEntry(id);
+    setHistoryOpen(false);
+  }, [openEntry]);
 
   return (
     <div className="pm-dictionary-history-nav">
@@ -50,16 +76,22 @@ export const DictionaryHistoryNav: React.FC<DictionaryHistoryNavProps> = ({ hist
       >
         <Icon name="chevLeft" size={14} />
       </button>
-      {total > 0 && (
-        <span
+      {/* Stays while the popup is open so clearing the last entry shows the
+          empty state and focus can return here on close. */}
+      {(total > 0 || historyOpen) && (
+        <button
+          type="button"
           className="pm-dictionary-history-position"
+          onClick={() => setHistoryOpen(true)}
+          aria-label="Lookup history"
+          aria-haspopup="dialog"
           title={index === null
             ? `Viewing your current lookup · ${total} in history`
             : `Viewing lookup ${index} of ${total}, newest first`}
         >
           <Icon name="history" size={13} />
           <span>{index ?? '—'} / {total}</span>
-        </span>
+        </button>
       )}
       <button
         type="button"
@@ -71,16 +103,22 @@ export const DictionaryHistoryNav: React.FC<DictionaryHistoryNavProps> = ({ hist
       >
         <Icon name="chevRight" size={14} />
       </button>
+      {history.durability && (
+        <DictionaryHistoryModal
+          open={historyOpen}
+          entries={history.entries}
+          cursorId={history.cursorId}
+          durability={history.durability}
+          limit={history.limit}
+          selectionDisabled={history.navigationLocked}
+          onSelect={selectEntry}
+          onDelete={history.deleteEntry}
+          onClear={history.clearHistory}
+          onClose={closeHistory}
+        />
+      )}
     </div>
   );
-};
-
-// Local until the history popup lands its shared formatter.
-const formatHistoryMetaTime = (createdAt: string): string => {
-  const date = new Date(createdAt);
-  return Number.isNaN(date.getTime())
-    ? createdAt
-    : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
 interface DictionaryHistoryMetaProps {
@@ -92,9 +130,10 @@ export const DictionaryHistoryMeta: React.FC<DictionaryHistoryMetaProps> = ({ su
   if (!summary) {
     return null;
   }
+  const time = formatDictionaryHistoryTime(summary.createdAt, new Date());
   const parts = [
     'From history',
-    formatHistoryMetaTime(summary.createdAt),
+    ...(time ? [time] : []),
     summary.mode === 'fast' ? '⚡ Fast' : 'Standard',
     ...(summary.modelId ? [summary.modelId] : [])
   ];

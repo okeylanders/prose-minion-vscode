@@ -1245,15 +1245,34 @@ select:focus {
   filter: none;
 }
 
+/* The position doubles as the popup opener: a quiet pill, not a fourth square. */
 .pm-dictionary-history-position {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
   color: var(--pm-muted);
   font-family: var(--pm-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pm-dictionary-history-position:hover {
+  border-color: var(--pm-border);
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+
+.pm-dictionary-history-position:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: 1px;
 }
 
 .pm-dictionary-history-meta {
