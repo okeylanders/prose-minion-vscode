@@ -38,6 +38,9 @@ export function resolveDictionaryEntryOptions(
 export interface LookupDictionaryPayload extends DictionaryEntryOptions {
   word: string;
   contextText?: string;
+  /** Source of the selected word, recorded in history to restore the "Source:" line. */
+  sourceUri?: string;
+  relativePath?: string;
 }
 
 export interface LookupDictionaryMessage extends MessageEnvelope<LookupDictionaryPayload> {
@@ -47,6 +50,8 @@ export interface LookupDictionaryMessage extends MessageEnvelope<LookupDictionar
 export interface DictionaryResultPayload {
   result: string;
   toolName: string;
+  /** The history entry this result was recorded as; absent when it was not recorded. */
+  historyEntryId?: string;
 }
 
 export interface DictionaryResultMessage extends MessageEnvelope<DictionaryResultPayload> {
@@ -59,6 +64,7 @@ export interface FastGenerateDictionaryPayload extends DictionaryEntryOptions {
   word: string;
   context?: string;
   sourceUri?: string;
+  relativePath?: string;
 }
 
 export interface FastGenerateDictionaryMessage extends MessageEnvelope<FastGenerateDictionaryPayload> {
@@ -84,6 +90,8 @@ export interface FastGenerateDictionaryResultPayload {
     totalBlocks: number;
   };
   usage?: TokenUsage; // Aggregated usage across all blocks
+  /** The history entry this result was recorded as; absent when it was not recorded. */
+  historyEntryId?: string;
 }
 
 export interface FastGenerateDictionaryResultMessage extends MessageEnvelope<FastGenerateDictionaryResultPayload> {

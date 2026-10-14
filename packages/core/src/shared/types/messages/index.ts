@@ -18,6 +18,7 @@ export * from './warnings';
 // Domain-specific messages
 export * from './analysis';
 export * from './dictionary';
+export * from './dictionaryHistory';
 export * from './context';
 export * from './metrics';
 export * from './search';
@@ -43,6 +44,14 @@ import {
   FastGenerateDictionaryResultMessage,
   DictionaryGenerationProgressMessage
 } from './dictionary';
+import {
+  RequestDictionaryHistoryMessage,
+  DictionaryHistoryMessage,
+  RequestDictionaryHistoryEntryMessage,
+  DictionaryHistoryEntryMessage,
+  DeleteDictionaryHistoryEntryMessage,
+  ClearDictionaryHistoryMessage
+} from './dictionaryHistory';
 import {
   GenerateContextMessage,
   ContextResultMessage
@@ -249,6 +258,10 @@ export type WebviewToExtensionMessage =
   | OpenWorkshopMessage
   | OpenAssistantSettingsMessage
   | FastGenerateDictionaryMessage
+  | RequestDictionaryHistoryMessage
+  | RequestDictionaryHistoryEntryMessage
+  | DeleteDictionaryHistoryEntryMessage
+  | ClearDictionaryHistoryMessage
   | CancelAnalysisRequestMessage
   | CancelDictionaryRequestMessage
   | CancelContextRequestMessage
@@ -341,6 +354,8 @@ export type ExtensionToWebviewMessage =
   | ClearTransientApiKeyWarningMessage
   | FastGenerateDictionaryResultMessage
   | DictionaryGenerationProgressMessage
+  | DictionaryHistoryMessage
+  | DictionaryHistoryEntryMessage
   | StreamStartedMessage
   | StreamChunkMessage
   | StreamCompleteMessage
