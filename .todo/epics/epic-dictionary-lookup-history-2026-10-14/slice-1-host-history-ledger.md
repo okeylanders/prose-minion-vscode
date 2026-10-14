@@ -179,3 +179,26 @@ AGENTS.md requires siblings to take a non-optional `LogSink`.
 
 The full suite, typecheck, and lint pass. There is no `vscode` import in core.
 The diff touches only the files above and their tests.
+
+## Implementation notes
+
+Additions the spec left open. None of them contradict it.
+
+- **A file the store cannot trust stays untouched.** If `dictionary.json`
+  exists but cannot be read (a non-ENOENT error), or is invalid and the
+  rename aside fails, the store keeps history in memory, reports
+  `session/write-failed`, and never writes over the file. Writing would
+  otherwise replace up to fifty entries the writer could still recover
+  (ADR D4: "never overwrites data the writer might want to repair").
+- **The codec rejects a few more whole-file shapes.** A top-level value that
+  is not an object, or a missing `entries` list, is `invalid` (renamed aside)
+  like bad JSON. A repeated entry `id` keeps the first (newest) entry and
+  counts the rest as dropped, because ids address load and delete.
+- **The location is resolved once, at first load.** A later workspace change
+  cannot write one project's history into another project.
+- **The context preview counts code points**, so the cut never splits an
+  emoji. It trims trailing whitespace before the `…`.
+- **Architecture guards.** `DICTIONARY_HISTORY_LIMIT` is on the prompt-budget
+  guard's non-prompt allowlist: it caps storage, and no prompt sees it.
+  `DictionaryHistoryStore` is in the boundary guard's list of infrastructure
+  that handlers must not construct.

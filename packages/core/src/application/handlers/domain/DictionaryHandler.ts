@@ -4,9 +4,16 @@
  *
  * SPRINT 05 REFACTOR: Now injects DictionaryService directly (facade removed)
  * SPRINT 03 (Sub-Epic 4): Added streaming + cancellation support
+ * ADR 2026-10-14: Records Dictionary-tab lookups in the shared history and
+ * answers the history routes. Workshop persona lookups call DictionaryService
+ * directly, never through this handler, so they never enter the history.
  */
 
 import { DictionaryService } from '@services/dictionary/DictionaryService';
+import type {
+  DictionaryHistoryRecordInput,
+  DictionaryHistoryStore
+} from '@/infrastructure/storage/DictionaryHistoryStore';
 import {
   LookupDictionaryMessage,
   FastGenerateDictionaryMessage,
@@ -16,13 +23,25 @@ import {
   ErrorSource,
   DictionaryResultMessage,
   FastGenerateDictionaryResultMessage,
+  FastGenerateDictionaryResultPayload,
   StatusMessage,
   ErrorMessage,
   StreamStartedPayload,
   StreamChunkMessage,
   StreamCompleteMessage,
-  resolveDictionaryEntryOptions
+  resolveDictionaryEntryOptions,
+  ResolvedDictionaryEntryOptions,
+  DictionaryLookupMode,
+  DictionaryLookupRequest,
+  DictionaryHistoryMessage,
+  DictionaryHistoryEntryMessage,
+  DictionaryHistoryEntryPayload,
+  RequestDictionaryHistoryMessage,
+  RequestDictionaryHistoryEntryMessage,
+  DeleteDictionaryHistoryEntryMessage,
+  ClearDictionaryHistoryMessage
 } from '@messages';
+import { LogSink } from '@/platform';
 import { MessageTransport } from '@handlers/MessageHandlerContracts';
 import { MessageRouter } from '../MessageRouter';
 
@@ -30,14 +49,26 @@ import { MessageRouter } from '../MessageRouter';
 let requestIdCounter = 0;
 const generateRequestId = () => `dict-${Date.now()}-${++requestIdCounter}`;
 
+/** The tool name the Dictionary tab gives a fast result; the fast payload carries none. */
+const FAST_GENERATE_TOOL_NAME = 'dictionary_fast_generate';
+
 export class DictionaryHandler {
   // Track active abort controllers by request ID for cancellation
   private activeRequests = new Map<string, AbortController>();
+  private readonly disposeHistoryListener: () => void;
 
   constructor(
     private readonly dictionaryService: DictionaryService,
-    private readonly postMessage: MessageTransport
-  ) {}
+    private readonly history: DictionaryHistoryStore,
+    private readonly postMessage: MessageTransport,
+    private readonly outputChannel: LogSink
+  ) {
+    // The store is shared by every webview; each handler pushes a fresh list
+    // to its own webview after any change, whichever surface caused it.
+    this.disposeHistoryListener = history.onDidChange(() => {
+      void this.sendHistory();
+    });
+  }
 
   /**
    * Register message routes for dictionary domain
@@ -46,6 +77,15 @@ export class DictionaryHandler {
     router.register(MessageType.LOOKUP_DICTIONARY, this.handleLookupDictionary.bind(this));
     router.register(MessageType.FAST_GENERATE_DICTIONARY, this.handleFastGenerate.bind(this));
     router.register(MessageType.CANCEL_DICTIONARY_REQUEST, this.handleCancelRequest.bind(this));
+    router.register(MessageType.REQUEST_DICTIONARY_HISTORY, this.handleRequestHistory.bind(this));
+    router.register(MessageType.REQUEST_DICTIONARY_HISTORY_ENTRY, this.handleRequestHistoryEntry.bind(this));
+    router.register(MessageType.DELETE_DICTIONARY_HISTORY_ENTRY, this.handleDeleteHistoryEntry.bind(this));
+    router.register(MessageType.CLEAR_DICTIONARY_HISTORY, this.handleClearHistory.bind(this));
+  }
+
+  /** Release this handler's history subscription; the shared store lives on. */
+  dispose(): void {
+    this.disposeHistoryListener();
   }
 
   /**
@@ -80,13 +120,14 @@ export class DictionaryHandler {
     void this.postMessage(message);
   }
 
-  private sendDictionaryResult(result: string, toolName: string): void {
+  private sendDictionaryResult(result: string, toolName: string, historyEntryId?: string): void {
     const message: DictionaryResultMessage = {
       type: MessageType.DICTIONARY_RESULT,
       source: 'extension.dictionary',
       payload: {
         result,
-        toolName
+        toolName,
+        ...(historyEntryId ? { historyEntryId } : {})
       },
       timestamp: Date.now()
     };
@@ -172,13 +213,16 @@ export class DictionaryHandler {
    * Uses streaming API for progressive response display
    */
   async handleLookupDictionary(message: LookupDictionaryMessage): Promise<void> {
-    const { word, contextText } = message.payload;
+    const { word, contextText, sourceUri, relativePath } = message.payload;
 
     if (!word.trim()) {
       this.sendError('dictionary', 'Dictionary lookup requires a word to search');
       return;
     }
 
+    const entryOptions = resolveDictionaryEntryOptions(message.payload);
+    // Captured before the run so a model hot swap mid-lookup cannot relabel the entry.
+    const modelId = this.dictionaryService.getActiveModelId();
     const requestId = generateRequestId();
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
@@ -196,7 +240,7 @@ export class DictionaryHandler {
           this.sendStreamChunk(requestId, token);
         },
         controller.signal,
-        resolveDictionaryEntryOptions(message.payload)
+        entryOptions
       );
 
       // Send complete message - use signal.aborted to detect cancellation
@@ -204,9 +248,19 @@ export class DictionaryHandler {
       const cancelled = controller.signal.aborted;
       this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
 
-      // Also send dictionary result for backward compatibility
+      // Also send dictionary result for backward compatibility. Only a generated
+      // entry is history; the API-key notice and `Error:` text are not.
       if (!cancelled) {
-        this.sendDictionaryResult(result.content, result.toolName);
+        let historyEntryId: string | undefined;
+        if (result.outcome === 'entry') {
+          historyEntryId = await this.recordHistory({
+            request: buildHistoryRequest('standard', word, contextText, entryOptions, { sourceUri, relativePath }),
+            modelId,
+            toolName: result.toolName,
+            result: result.content
+          });
+        }
+        this.sendDictionaryResult(result.content, result.toolName, historyEntryId);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -227,24 +281,39 @@ export class DictionaryHandler {
    */
   async handleFastGenerate(message: FastGenerateDictionaryMessage): Promise<void> {
     try {
-      const { word, context } = message.payload;
+      const { word, context, sourceUri, relativePath } = message.payload;
 
       if (!word.trim()) {
         this.sendError('dictionary', 'Fast dictionary generation requires a word');
         return;
       }
 
+      const entryOptions = resolveDictionaryEntryOptions(message.payload);
+      // Captured before the run so a model hot swap mid-lookup cannot relabel the entry.
+      const modelId = this.dictionaryService.getActiveModelId();
       this.sendStatus(`🧪 Fast generating dictionary entry for "${word}"...`);
 
       // Generate parallel dictionary (progress sent via STATUS messages)
       const result = await this.dictionaryService.generateParallelDictionary(
         word,
         context,
-        resolveDictionaryEntryOptions(message.payload)
+        entryOptions
       );
 
+      // At least one generated block makes an entry, partial failures and all,
+      // exactly as rendered. No block means the API-key notice or total failure.
+      let historyEntryId: string | undefined;
+      if (result.metadata.successCount > 0) {
+        historyEntryId = await this.recordHistory({
+          request: buildHistoryRequest('fast', word, context, entryOptions, { sourceUri, relativePath }),
+          modelId,
+          toolName: FAST_GENERATE_TOOL_NAME,
+          result: result.result
+        });
+      }
+
       // Send result back to webview
-      this.sendFastGenerateResult(result);
+      this.sendFastGenerateResult(historyEntryId ? { ...result, historyEntryId } : result);
       this.sendStatus('');
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -255,17 +324,7 @@ export class DictionaryHandler {
   /**
    * Send fast generate result to webview
    */
-  private sendFastGenerateResult(result: {
-    word: string;
-    result: string;
-    metadata: {
-      totalDuration: number;
-      blockDurations: Record<string, number>;
-      partialFailures: string[];
-      successCount: number;
-      totalBlocks: number;
-    };
-  }): void {
+  private sendFastGenerateResult(result: FastGenerateDictionaryResultPayload): void {
     const message: FastGenerateDictionaryResultMessage = {
       type: MessageType.FAST_GENERATE_DICTIONARY_RESULT,
       source: 'extension.dictionary',
@@ -274,4 +333,91 @@ export class DictionaryHandler {
     };
     void this.postMessage(message);
   }
+
+  // History (ADR 2026-10-14)
+
+  /**
+   * Record a completed lookup and return its id. History must never fail a
+   * lookup, so any failure is logged and the result is posted without an id.
+   */
+  private async recordHistory(input: DictionaryHistoryRecordInput): Promise<string | undefined> {
+    try {
+      const entry = await this.history.record(input);
+      return entry.id;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[DictionaryHandler] Could not record ${input.request.mode} lookup in history: ${msg}`);
+      return undefined;
+    }
+  }
+
+  async handleRequestHistory(_message: RequestDictionaryHistoryMessage): Promise<void> {
+    await this.sendHistory();
+  }
+
+  async handleRequestHistoryEntry(message: RequestDictionaryHistoryEntryMessage): Promise<void> {
+    const { id } = message.payload;
+    let payload: DictionaryHistoryEntryPayload;
+    try {
+      const entry = await this.history.get(id);
+      payload = entry ? { status: 'found', entry } : { status: 'missing', id };
+    } catch (error) {
+      // A reply the webview can act on (it clears its pending load) beats silence.
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[DictionaryHandler] Could not load history entry ${id}: ${msg}`);
+      payload = { status: 'missing', id };
+    }
+    const reply: DictionaryHistoryEntryMessage = {
+      type: MessageType.DICTIONARY_HISTORY_ENTRY,
+      source: 'extension.dictionary',
+      payload,
+      timestamp: Date.now()
+    };
+    void this.postMessage(reply);
+  }
+
+  /** The store's change event broadcasts the new list. */
+  async handleDeleteHistoryEntry(message: DeleteDictionaryHistoryEntryMessage): Promise<void> {
+    await this.history.delete(message.payload.id);
+  }
+
+  /** The store's change event broadcasts the new list. */
+  async handleClearHistory(_message: ClearDictionaryHistoryMessage): Promise<void> {
+    await this.history.clear();
+  }
+
+  private async sendHistory(): Promise<void> {
+    try {
+      const snapshot = await this.history.snapshot();
+      const message: DictionaryHistoryMessage = {
+        type: MessageType.DICTIONARY_HISTORY,
+        source: 'extension.dictionary',
+        payload: snapshot,
+        timestamp: Date.now()
+      };
+      void this.postMessage(message);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`[DictionaryHandler] Could not send dictionary history: ${msg}`);
+    }
+  }
+}
+
+/** What the writer asked for, with options resolved and context trimmed, as history keeps it. */
+function buildHistoryRequest(
+  mode: DictionaryLookupMode,
+  word: string,
+  context: string | undefined,
+  entryOptions: ResolvedDictionaryEntryOptions,
+  source: { sourceUri?: string; relativePath?: string }
+): DictionaryLookupRequest {
+  return {
+    word,
+    context: context?.trim() ?? '',
+    includeEncyclopedia: entryOptions.includeEncyclopedia,
+    includePalettes: entryOptions.includePalettes,
+    mode,
+    ...(source.sourceUri ? { sourceUri: source.sourceUri } : {}),
+    ...(source.relativePath ? { relativePath: source.relativePath } : {})
+  };
 }

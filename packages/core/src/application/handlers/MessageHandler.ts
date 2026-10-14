@@ -162,6 +162,7 @@ export class MessageHandler {
     const {
       assistantToolService,
       dictionaryService,
+      dictionaryHistoryStore,
       contextAssistantService,
       proseStatsService,
       styleFlagsService,
@@ -208,7 +209,9 @@ export class MessageHandler {
 
     this.dictionaryHandler = new DictionaryHandler(
       dictionaryService,
-      this.postMessage.bind(this)
+      dictionaryHistoryStore,
+      this.postMessage.bind(this),
+      outputChannel
     );
 
     // Subscribe dictionary generation progress into this webview's status rail
@@ -868,6 +871,7 @@ export class MessageHandler {
       this.disposeTokenUsageListener();
       this.disposeProcessedUsageResetListener();
       this.disposeDictionaryStatusListener();
+      this.dictionaryHandler.dispose();
       this.disposeSearchStatusListener();
       this.analysisHandler.dispose();
       this.workshopHandler.dispose();

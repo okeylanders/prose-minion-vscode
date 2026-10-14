@@ -48,6 +48,8 @@ interface TestAssembly {
   categoryAddStatusListener: jest.Mock;
   disposeCategoryStatusListener: jest.Mock;
   disposeDictionaryStatusListener: jest.Mock;
+  dictionaryHistoryOnDidChange: jest.Mock;
+  disposeDictionaryHistoryListener: jest.Mock;
   /** Fan a token-usage event out to every LIVE registration (real Set). */
   emitTokenUsage: (usage: TokenUsageTotals) => void;
   tokenUsageListenerCount: () => number;
@@ -96,6 +98,8 @@ function createTestAssembly(): TestAssembly {
   const categoryAddStatusListener = jest.fn(() => disposeCategoryStatusListener);
   const disposeCategoryStatusListener = jest.fn();
   const disposeDictionaryStatusListener = jest.fn();
+  const disposeDictionaryHistoryListener = jest.fn();
+  const dictionaryHistoryOnDidChange = jest.fn(() => disposeDictionaryHistoryListener);
   const assistantToolService = {
     // Registered twice per handler: AnalysisHandler + WorkshopRoomHandler.
     addStatusListener: jest.fn(() => jest.fn()),
@@ -110,6 +114,9 @@ function createTestAssembly(): TestAssembly {
     dictionaryService: {
       addStatusListener: jest.fn(() => disposeDictionaryStatusListener),
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
+    },
+    dictionaryHistoryStore: {
+      onDidChange: dictionaryHistoryOnDidChange
     },
     contextAssistantService: {
       refreshConfiguration: jest.fn().mockResolvedValue(undefined)
@@ -225,6 +232,8 @@ function createTestAssembly(): TestAssembly {
     categoryAddStatusListener,
     disposeCategoryStatusListener,
     disposeDictionaryStatusListener,
+    dictionaryHistoryOnDidChange,
+    disposeDictionaryHistoryListener,
     emitTokenUsage: (usage) => {
       for (const listener of [...tokenUsageListeners]) {
         listener(usage);
@@ -473,6 +482,7 @@ describe('MessageHandler assembly', () => {
     expect(assembly.disposeBalanceListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeSecretListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeDictionaryStatusListener).toHaveBeenCalledTimes(1);
+    expect(assembly.disposeDictionaryHistoryListener).toHaveBeenCalledTimes(1);
     expect(assembly.disposeCategoryStatusListener).toHaveBeenCalledTimes(1);
     expect(assembly.tokenUsageListenerCount()).toBe(0);
     // …and NEVER tears down the shared service: the other webview surface
@@ -487,6 +497,7 @@ describe('MessageHandler assembly', () => {
     expect(assembly.accountAddRefreshListener).toHaveBeenCalledTimes(2);
     expect(assembly.secretOnDidChange).toHaveBeenCalledTimes(2);
     expect(assembly.categoryAddStatusListener).toHaveBeenCalledTimes(2);
+    expect(assembly.dictionaryHistoryOnDidChange).toHaveBeenCalledTimes(2);
     expect(assembly.tokenUsageListenerCount()).toBe(1);
   });
 

@@ -35,7 +35,11 @@ import {
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
-import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
+import {
+  AnalysisResult,
+  AnalysisResultFactory,
+  AnalysisResultOptions
+} from '@/domain/models/AnalysisResult';
 import {
   DictionaryBlockResult,
   FastGenerateDictionaryResultPayload
@@ -122,6 +126,19 @@ export interface ParallelDictionaryOptions extends DictionaryEntryOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * How a single-call lookup ended. `entry` is a generated entry (complete,
+ * truncated, or cut short by cancellation, which the caller's signal tells
+ * apart); `unconfigured` is the API-key notice; `failed` is the `Error:` text
+ * the service renders in place of an entry. Callers branch on this instead of
+ * sniffing the content.
+ */
+export type DictionaryLookupOutcome = 'entry' | 'unconfigured' | 'failed';
+
+export type DictionaryLookupResult = AnalysisResult & {
+  readonly outcome: DictionaryLookupOutcome;
+};
+
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
@@ -186,6 +203,14 @@ export class DictionaryService {
   }
 
   /**
+   * The dictionary model a lookup started now would use. Read at request
+   * start so a hot swap during the run cannot relabel what ran.
+   */
+  getActiveModelId(): string | undefined {
+    return this.aiResourceManager.getResolvedModel('dictionary');
+  }
+
+  /**
    * Look up a word in the dictionary with AI assistance
    *
    * @param word - Word to look up
@@ -196,12 +221,9 @@ export class DictionaryService {
     word: string,
     contextText?: string,
     entryOptions: DictionaryEntryOptions = {}
-  ): Promise<AnalysisResult> {
+  ): Promise<DictionaryLookupResult> {
     if (!this.dictionaryUtility) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.getApiKeyWarning()
-      );
+      return this.lookupResult('unconfigured', this.getApiKeyWarning());
     }
 
     try {
@@ -219,16 +241,13 @@ export class DictionaryService {
       );
       this.logLookupCompleted('standard', entry, executionResult);
 
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
+      return this.lookupResult(
+        'entry',
         executionResult.content,
         { usage: executionResult.usage, finishReason: executionResult.finishReason }
       );
     } catch (error) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.formatLookupFailure(error)
-      );
+      return this.lookupResult('failed', this.formatLookupFailure(error));
     }
   }
 
@@ -248,12 +267,9 @@ export class DictionaryService {
     onToken: StreamingTokenCallback,
     signal?: AbortSignal,
     entryOptions: DictionaryEntryOptions = {}
-  ): Promise<AnalysisResult> {
+  ): Promise<DictionaryLookupResult> {
     if (!this.dictionaryUtility) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.getApiKeyWarning()
-      );
+      return this.lookupResult('unconfigured', this.getApiKeyWarning());
     }
 
     try {
@@ -274,18 +290,26 @@ export class DictionaryService {
 
       // Note: orchestrator now catches AbortError internally and returns partial content
       // The executionResult.content will contain whatever was received before cancellation
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
+      return this.lookupResult(
+        'entry',
         executionResult.content,
         { usage: executionResult.usage, finishReason: executionResult.finishReason }
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.formatLookupFailure(error)
-      );
+      return this.lookupResult('failed', this.formatLookupFailure(error));
     }
+  }
+
+  private lookupResult(
+    outcome: DictionaryLookupOutcome,
+    content: string,
+    options?: AnalysisResultOptions
+  ): DictionaryLookupResult {
+    return {
+      ...AnalysisResultFactory.createAnalysisResult('dictionary_lookup', content, options),
+      outcome
+    };
   }
 
   private logLookupStarted(mode: DictionaryLookupMode, entry: ResolvedDictionaryEntryOptions, maxTokens: number): void {

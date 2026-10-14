@@ -63,6 +63,72 @@ describe('DictionaryService', () => {
     );
   });
 
+  describe('lookup outcome', () => {
+    const lookups = [
+      ['standard', (service: DictionaryService) => service.lookupWord('commanding')],
+      ['streaming', (service: DictionaryService) => service.lookupWordStreaming('commanding', undefined, jest.fn())]
+    ] as const;
+
+    it.each(lookups)('marks a generated %s lookup as an entry', async (_mode, lookup) => {
+      const { service } = await buildLookupService(
+        jest.fn().mockResolvedValue({ content: '# Entry', finishReason: 'stop' })
+      );
+
+      await expect(lookup(service)).resolves.toMatchObject({
+        toolName: 'dictionary_lookup', content: '# Entry', outcome: 'entry'
+      });
+    });
+
+    it.each(lookups)('marks a truncated %s lookup as an entry', async (_mode, lookup) => {
+      const { service } = await buildLookupService(
+        jest.fn().mockResolvedValue({ content: '# Entr', finishReason: 'length' })
+      );
+
+      await expect(lookup(service)).resolves.toMatchObject({ finishReason: 'length', outcome: 'entry' });
+    });
+
+    it.each(lookups)('marks a failed %s lookup as failed', async (_mode, lookup) => {
+      const { service } = await buildLookupService(jest.fn().mockRejectedValue(new Error('Prompt assembly failed')));
+
+      await expect(lookup(service)).resolves.toMatchObject({
+        content: 'Error: Prompt assembly failed', outcome: 'failed'
+      });
+    });
+
+    it.each(lookups)('marks a %s lookup without an API key as unconfigured', async (_mode, lookup) => {
+      const service = new DictionaryService(
+        {
+          ensureInitialized: jest.fn().mockResolvedValue(undefined),
+          getEngine: jest.fn().mockReturnValue(undefined)
+        } as never,
+        { getPromptLoader: jest.fn() } as never,
+        { getOptions: jest.fn() } as never
+      );
+      await service.refreshConfiguration();
+
+      const result = await lookup(service);
+
+      expect(result.outcome).toBe('unconfigured');
+      expect(result.content).toContain('configure your OpenRouter API key');
+    });
+  });
+
+  it('reads the active model from the dictionary scope', () => {
+    const getResolvedModel = jest.fn().mockReturnValue('anthropic/claude-sonnet-4.5');
+    const service = new DictionaryService(
+      {
+        ensureInitialized: jest.fn().mockResolvedValue(undefined),
+        getEngine: jest.fn().mockReturnValue(undefined),
+        getResolvedModel
+      } as never,
+      {} as never,
+      {} as never
+    );
+
+    expect(service.getActiveModelId()).toBe('anthropic/claude-sonnet-4.5');
+    expect(getResolvedModel).toHaveBeenCalledWith('dictionary');
+  });
+
   it('keeps ordinary lookup failures concise while recording them', async () => {
     const { service, outputChannel } = await buildLookupService(
       jest.fn().mockRejectedValue(new Error('Prompt assembly failed'))

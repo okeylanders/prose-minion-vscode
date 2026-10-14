@@ -41,6 +41,7 @@ import type {
 import type { ShowVsTellService } from '@services/widgets/showVsTell/ShowVsTellService';
 import type { LexicalGravityModelService } from '@services/widgets/LexicalGravityModelService';
 import type { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
+import type { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import type { PlatformDisposable } from '@/platform';
@@ -93,6 +94,8 @@ export interface ResultCache {
 export interface CoreServices {
   assistantToolService: AssistantToolService;
   dictionaryService: DictionaryService;
+  /** Shared Dictionary-tab lookup history, persisted under prose-minion/history (ADR 2026-10-14). */
+  dictionaryHistoryStore: DictionaryHistoryStore;
   contextAssistantService: ContextAssistantService;
   proseStatsService: ProseStatsService;
   styleFlagsService: StyleFlagsService;
