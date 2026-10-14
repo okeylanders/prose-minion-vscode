@@ -170,6 +170,14 @@ Here is a guide to the models we recommend for creative writing, analysis, and e
 
 **Best for:** Dictionary definitions, Prose Analysis critiques, finding plot holes, and structural editing
 
+### Gemini 4 Argon — Long-Context Reasoning
+
+- **Best For:** Trying long-document analysis, structural critique, and complex Category Search with a reasoning model
+- **Description:** OpenRouter lists `google/gemini-4-argon` with 1,048,576-token context, text/image/audio/video/file input, text output, reasoning, tools, and structured-output support. Its catalog price on October 14, 2026 was $2/M input and $10/M output tokens; serving endpoints and temporary discounts may differ. The catalog's synchronous output limit is 65,536 tokens; larger advertised long-decode limits depend on the serving endpoint. Prose quality has not been evaluated in Prose Minion; Argon is an opt-in choice
+- **Links:**
+  - OpenRouter: https://openrouter.ai/google/gemini-4-argon
+  - Google: https://ai.google.dev/gemini-api/docs/models/gemini-4-argon
+
 ### Gemini 2.5 Pro — Complex Reasoning
 
 - **Best For:** Advanced reasoning with "thinking" capabilities
