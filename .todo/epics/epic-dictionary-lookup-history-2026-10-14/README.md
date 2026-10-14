@@ -42,7 +42,7 @@ selection.
 | # | Slice | Outcome | Status |
 |---|---|---|---|
 | 0 | Spec | ADR + this epic; feature note linked | Done |
-| 1 | [Host history ledger](slice-1-host-history-ledger.md) | Contracts, store, codec, recording, routes, broadcast, composition root | Planned |
+| 1 | [Host history ledger](slice-1-host-history-ledger.md) | Contracts, store, codec, recording, routes, broadcast, composition root | Done: `76e1ec8`, `04d891b` |
 | 2 | [Navigation](slice-2-webview-navigation.md) | `lookupSubject` / `restoreView`, pure navigation rules, `useDictionaryHistory`, header `‹ 🕘 ›` cluster, meta line | Planned |
 | 3 | [History popup](slice-3-history-popup.md) | `DictionaryHistoryModal` (list, open, delete, clear), wiring, docs, memory bank | Planned |
 
@@ -83,3 +83,16 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
   model is captured at request start; a draft slot keeps unsaved input. The
   Copy/Save header moves from `lastLookupRef` to `lookupSubject`, because the
   ref would name the wrong word after a restore.
+- **2026-10-14. Slice 1.** Host ledger landed: 308 suites / 4,537 tests
+  (+2 suites, +60 tests), typecheck clean, no `vscode` in core. It went
+  beyond the spec in a few places, all listed in the slice's implementation
+  notes:
+  - A file the store can neither read nor set aside is never overwritten.
+    History stays session-only instead.
+  - Duplicate ids are de-duplicated on load.
+  - The file location is fixed at first load.
+  - Logs never carry the writer's words, context, or results.
+
+  Observed order: the result (with `historyEntryId`) is posted before the
+  `DICTIONARY_HISTORY` broadcast, so the webview must not drop a
+  just-followed cursor while it waits for that list.
