@@ -3,7 +3,7 @@
 **Status:** Built 2026-10-14. Slices 1–3 integrated on the branch; the live Extension Development Host pass is pending
 **Priority:** Medium
 **Created:** 2026-10-14
-**Integration branch:** `claude/stoic-brown-wsqqr5` (from `main` at `529a0dd`). Each slice lands as its own reviewed commit series on this branch.
+**Integration branch:** `epic/dictionary-lookup-history`. The slices were built on `claude/stoic-brown-wsqqr5` (from `main` at `529a0dd`), each as its own reviewed commit series, then moved here with `main` (v2.10.1) merged in.
 **Decision:** [ADR 2026-10-14: Dictionary Lookup History](../../../docs/adr/2026-10-14-dictionary-lookup-history.md) (Proposed)
 **Realizes:** the Dictionary third of [Feature: Request History Buttons](../../features/feature-request-history-buttons/README.md)
 

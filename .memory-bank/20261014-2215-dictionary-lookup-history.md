@@ -1,7 +1,7 @@
 # Dictionary Lookup History: Built on the Epic Branch
 
 **Date:** 2026-10-14
-**Branch:** `claude/stoic-brown-wsqqr5` (from `main` at `529a0dd`)
+**Branch:** `epic/dictionary-lookup-history` (built on `claude/stoic-brown-wsqqr5` from `main` at `529a0dd`; `main` v2.10.1 merged in)
 **Epic:** [.todo/epics/epic-dictionary-lookup-history-2026-10-14](../.todo/epics/epic-dictionary-lookup-history-2026-10-14/README.md)
 **ADR:** [docs/adr/2026-10-14-dictionary-lookup-history.md](../docs/adr/2026-10-14-dictionary-lookup-history.md) (Proposed; accept after the live pass)
 
