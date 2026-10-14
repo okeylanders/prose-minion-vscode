@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-06-29
 **Source**: User request
-**Status**: Planned
+**Status**: Planned. Dictionary portion in progress: [Epic: Dictionary Lookup History](../../epics/epic-dictionary-lookup-history-2026-10-14/README.md) ([ADR 2026-10-14](../../../docs/adr/2026-10-14-dictionary-lookup-history.md))
 **Priority**: Medium
 **Estimated Effort**: Medium
 
@@ -49,7 +49,11 @@ copying from previous output.
 - Follow the existing domain-hook persistence pattern if history survives reloads.
 - Use existing message and settings patterns for any Settings-tab clear action.
 - Avoid storing generated responses as part of request history unless the product
-  explicitly needs replayable result history.
+  explicitly needs replayable result history. **Update 2026-10-14:** the
+  Dictionary needs it. Its history stores the result, model, options, and
+  context, persisted host-side under `prose-minion/history/dictionary.json`
+  (see the ADR). Assistant and Category Search should reuse the
+  `prose-minion/history/<tool>.json` convention.
 
 ## Acceptance Criteria
 
