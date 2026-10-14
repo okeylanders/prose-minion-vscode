@@ -158,3 +158,62 @@ fields, `lookupSubject`, `restoreView`, and the generating flags (`loading`,
 The full suite, typecheck, and lint pass. `UtilitiesTab.tsx` stays under 500
 lines; if it would not, extract the header cluster into
 `components/dictionary/DictionaryHistoryNav.tsx`.
+
+## Implementation notes
+
+Additions and choices the spec left open. One addition (the replay guard)
+goes beyond the spec, and the reason is given.
+
+- **A replayed result is not applied again.** `MessageHandler` replays its
+  cached `DICTIONARY_RESULT` each time the sidebar becomes visible. Without a
+  guard, hiding and showing the sidebar after stepping back to an older entry
+  would put the newest standard result under the older entry's form, and
+  Copy would name the wrong word: the bug D8 exists to prevent. The same
+  replay already put an older standard result over a newer ⚡ fast one.
+  `useDictionaryHistory` remembers the ids it followed, and
+  `hasFollowedEntry(id)` lets the `DICTIONARY_RESULT` route skip a result it
+  has already shown. A result without a `historyEntryId` is applied as before.
+- **Decisions read a ref, not a render's closure.** `useMessageRouter`
+  refreshes its handlers after each commit, so `DICTIONARY_RESULT` and the
+  `DICTIONARY_HISTORY` broadcast that follows can both run on one render's
+  closures. Every navigation change writes `navigationRef` synchronously.
+  `handleHistory` therefore sees the cursor that `followRecordedEntry` just
+  set and keeps it. A test runs both calls inside one `act`, and it fails
+  when `handleHistory` reads the render's state instead.
+- **`navigationLocked`** (true while generating) is exposed, and `canGoOlder`
+  and `canGoNewer` already include it. The Slice 3 popup can lock its rows
+  with the same flag.
+- **Position follows the navigation position.** `position`, `olderSummary`,
+  and `newerSummary` use `pendingEntryId ?? cursorId`, the same position the
+  buttons step from, so the label and tooltips keep up with rapid clicks.
+  `cursorSummary`, which drives the meta line, names the entry the pane
+  actually shows.
+- **The step is chosen before the stash.** That keeps the result equal to the
+  enabled state of the buttons. A `draft` step restores whatever the slot
+  holds after the stash. So `›` from an edited newest entry keeps those edits
+  (they replace an older draft, because the slot holds the newest unsaved
+  input), rather than discarding them. A draft step also clears
+  `pendingEntryId`, so a late entry load cannot overwrite the restored draft.
+- **A `missing` reply clears only its own load.** It clears `pendingEntryId`
+  only when the ids match, so a stale reply cannot cancel a newer load. It
+  always asks for the list again.
+- **One normalization.** `normalizeDictionaryPhrase` and
+  `DICTIONARY_PHRASE_WORDS` moved from `UtilitiesTab` into
+  `dictionaryHistoryNavigation.ts`, so submit and the dirty check share them.
+  The dirty check normalizes the subject's word too, so a restored entry is
+  never dirty because of whitespace.
+- **`durability` is `null`** until the host's first list arrives.
+- **Header split.** `components/dictionary/DictionaryHistoryNav.tsx` exports
+  `DictionaryHistoryNav` (the cluster) and `DictionaryHistoryMeta` (the meta
+  line), which keeps `UtilitiesTab.tsx` at 479 lines. The meta line's date
+  uses a local `formatHistoryMetaTime` until Slice 3's shared formatter lands.
+
+### Follow-up
+
+- **Right-click lookups record no source.** The host sends `sourceUri` and
+  `relativePath` with the editor's "Look Up Word" selection, but
+  `useSelection.handleSelectionUpdated` drops them for dictionary injections,
+  and the form clears its "Source:" line. The auto-run path sends the
+  injection's (empty) source, which matches the form. Carrying the source
+  through would record it in history and show the Source line after a
+  right-click lookup. That is a small UX change, left out of this slice.

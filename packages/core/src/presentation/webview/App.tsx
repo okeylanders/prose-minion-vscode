@@ -27,6 +27,7 @@ import { useAppMessageRouter } from './hooks/useAppMessageRouter';
 import { useAnalysis } from './hooks/domain/useAnalysis';
 import { useMetrics } from './hooks/domain/useMetrics';
 import { useDictionary } from './hooks/domain/useDictionary';
+import { useDictionaryHistory } from './hooks/domain/useDictionaryHistory';
 import { useContext } from './hooks/domain/useContext';
 import { useSearch } from './hooks/domain/useSearch';
 import { useSettings } from './hooks/domain/useSettings';
@@ -51,6 +52,7 @@ export const App: React.FC = () => {
   const analysis = useAnalysis();
   const metrics = useMetrics();
   const dictionary = useDictionary();
+  const dictionaryHistory = useDictionaryHistory(dictionary);
   const context = useContext();
   const search = useSearch();
   const settings = useSettings();
@@ -96,6 +98,7 @@ export const App: React.FC = () => {
     analysis,
     metrics,
     dictionary,
+    dictionaryHistory,
     context,
     search,
     settings,
@@ -121,6 +124,7 @@ export const App: React.FC = () => {
     ...analysis.persistedState,
     ...metrics.persistedState,
     ...dictionary.persistedState,
+    ...dictionaryHistory.persistedState,
     ...context.persistedState,
     ...search.persistedState,
     ...settings.persistedState,
@@ -361,6 +365,7 @@ export const App: React.FC = () => {
             <UtilitiesTab
               vscode={vscode}
               dictionary={dictionary}
+              dictionaryHistory={dictionaryHistory}
               selection={selection}
               settings={settings}
             />

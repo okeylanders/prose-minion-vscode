@@ -1203,6 +1203,66 @@ select:focus {
   }
 }
 
+/* Dictionary header: the tab title with the history `‹` `🕘 n / total` `›`
+   cluster on the right, and the "From history" meta line under it. */
+.pm-dictionary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin: 6px 0 14px;
+}
+
+.pm-dictionary-header > h2 {
+  min-width: 0;
+  margin: 0;
+  color: var(--pm-text);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pm-dictionary-history-nav {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Plain accessory squares, like the result copy/save buttons. */
+.pm-dictionary-history-nav .icon-button {
+  width: 28px;
+  height: 26px;
+  min-width: 28px;
+  border-color: var(--pm-border);
+  background-color: var(--pm-surface-2);
+  color: var(--pm-muted);
+}
+
+.pm-dictionary-history-nav .icon-button:hover:not(:disabled) {
+  background-color: var(--pm-surface);
+  color: var(--pm-text);
+  filter: none;
+}
+
+.pm-dictionary-history-position {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pm-muted);
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pm-dictionary-history-meta {
+  margin: -8px 0 var(--spacing-md);
+  color: var(--pm-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .button-group {
   display: flex;
   flex-wrap: wrap;

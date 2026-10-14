@@ -4,10 +4,16 @@ import * as React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { UtilitiesTab } from '@components/tabs/UtilitiesTab';
 import { useDictionary } from '@hooks/domain/useDictionary';
+import { UseDictionaryHistoryReturn, useDictionaryHistory } from '@hooks/domain/useDictionaryHistory';
 import { useSelection } from '@hooks/domain/useSelection';
 import { useSettings } from '@hooks/domain/useSettings';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
-import { MessageType } from '@messages';
+import {
+  DictionaryHistoryEntry,
+  DictionaryHistorySummary,
+  DictionaryLookupRequest,
+  MessageType
+} from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
 jest.mock('@hooks/useVSCodeApi');
@@ -22,6 +28,7 @@ describe('UtilitiesTab dictionary section options', () => {
 
   function DictionaryHarness() {
     const dictionary = useDictionary();
+    const dictionaryHistory = useDictionaryHistory(dictionary);
     const selection = useSelection();
     const settings = useSettings();
 
@@ -32,7 +39,13 @@ describe('UtilitiesTab dictionary section options', () => {
         payload: { text: 'copper', target: 'dictionary', autoRun: true },
         timestamp: 1
       }, () => {})}>Look up from editor</button>
-      <UtilitiesTab vscode={vscode} dictionary={dictionary} selection={selection} settings={settings} />
+      <UtilitiesTab
+        vscode={vscode}
+        dictionary={dictionary}
+        dictionaryHistory={dictionaryHistory}
+        selection={selection}
+        settings={settings}
+      />
     </>;
   }
 
@@ -125,7 +138,9 @@ describe('UtilitiesTab dictionary section options', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Look up from editor' }));
 
-      expect(vscode.postMessage).toHaveBeenCalledTimes(1);
+      const lookups = vscode.postMessage.mock.calls
+        .filter(([message]) => message.type === MessageType.FAST_GENERATE_DICTIONARY);
+      expect(lookups).toHaveLength(1);
       expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
         type: MessageType.FAST_GENERATE_DICTIONARY,
         payload: expect.objectContaining({ word: 'copper', includeEncyclopedia, includePalettes })
@@ -139,9 +154,16 @@ describe('UtilitiesTab chromatic palette rendering', () => {
 
   function DictionaryHarness() {
     const dictionary = useDictionary();
+    const dictionaryHistory = useDictionaryHistory(dictionary);
     const selection = useSelection();
     const settings = useSettings();
-    return <UtilitiesTab vscode={vscode} dictionary={dictionary} selection={selection} settings={settings} />;
+    return <UtilitiesTab
+      vscode={vscode}
+      dictionary={dictionary}
+      dictionaryHistory={dictionaryHistory}
+      selection={selection}
+      settings={settings}
+    />;
   }
 
   beforeEach(() => {
@@ -185,5 +207,310 @@ describe('UtilitiesTab chromatic palette rendering', () => {
     expect(screen.getByText('Hex values are approximations.')).toBeTruthy();
     expect(document.querySelector('pre code')?.textContent).toContain('const untouched = true;');
     expect(document.querySelector('code.language-pm-palette')).toBeNull();
+  });
+});
+
+describe('UtilitiesTab dictionary history', () => {
+  let vscode: ReturnType<typeof createMockVSCode>;
+
+  const SUMMARIES: DictionaryHistorySummary[] = [
+    { id: 'h3', createdAt: '2026-10-14T12:00:00.000Z', word: 'petrichor', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard', modelId: 'test/model' },
+    { id: 'h2', createdAt: '2026-10-13T12:00:00.000Z', word: 'geosmin', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'fast' },
+    { id: 'h1', createdAt: '2026-10-12T12:00:00.000Z', word: 'umbra', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard' }
+  ];
+  const PETRICHOR: DictionaryHistoryEntry = {
+    id: 'h3',
+    createdAt: '2026-10-14T12:00:00.000Z',
+    request: {
+      word: 'petrichor',
+      context: 'Rain on hot stone.',
+      includeEncyclopedia: true,
+      includePalettes: true,
+      mode: 'standard',
+      relativePath: 'chapters/rain.md'
+    },
+    modelId: 'test/model',
+    toolName: 'dictionary_lookup',
+    result: 'The smell of rain on dry earth.'
+  };
+
+  const onSubject = jest.fn();
+  const onBegin = jest.fn();
+
+  /** Real hooks, with spies on the two submit-path calls and buttons that play host replies. */
+  function HistoryHarness() {
+    const dictionary = useDictionary();
+    const dictionaryHistory = useDictionaryHistory(dictionary);
+    const selection = useSelection();
+    const settings = useSettings();
+    const spiedDictionary = {
+      ...dictionary,
+      setLookupSubject: (subject: DictionaryLookupRequest | null) => {
+        onSubject(subject);
+        dictionary.setLookupSubject(subject);
+      }
+    };
+    const spiedHistory = {
+      ...dictionaryHistory,
+      beginNewLookup: () => {
+        onBegin();
+        dictionaryHistory.beginNewLookup();
+      }
+    };
+
+    return <>
+      <button onClick={() => dictionaryHistory.handleHistory({
+        type: MessageType.DICTIONARY_HISTORY,
+        source: 'extension.dictionary',
+        payload: { entries: SUMMARIES, durability: { kind: 'session', reason: 'no-workspace' }, limit: 50 },
+        timestamp: 1
+      })}>Host sends list</button>
+      <button onClick={() => dictionaryHistory.handleHistoryEntry({
+        type: MessageType.DICTIONARY_HISTORY_ENTRY,
+        source: 'extension.dictionary',
+        payload: { status: 'found', entry: PETRICHOR },
+        timestamp: 1
+      })}>Host sends petrichor</button>
+      <button onClick={() => selection.handleSelectionUpdated({
+        type: MessageType.SELECTION_UPDATED,
+        source: 'extension.editor',
+        payload: { text: 'verdigris', target: 'dictionary', autoRun: true },
+        timestamp: 1
+      }, () => {})}>Look up from editor</button>
+      <UtilitiesTab
+        vscode={vscode}
+        dictionary={spiedDictionary}
+        dictionaryHistory={spiedHistory}
+        selection={selection}
+        settings={settings}
+      />
+    </>;
+  }
+
+  /** A history model with every action stubbed, for rendering fixed nav states. */
+  const stubHistory = (overrides: Partial<UseDictionaryHistoryReturn> = {}): UseDictionaryHistoryReturn => ({
+    entries: SUMMARIES,
+    durability: { kind: 'project', displayPath: 'prose-minion/history/dictionary.json' },
+    limit: 50,
+    cursorId: null,
+    pendingEntryId: null,
+    draft: null,
+    navigationLocked: false,
+    canGoOlder: true,
+    canGoNewer: false,
+    position: { index: null, total: 3 },
+    cursorSummary: null,
+    olderSummary: SUMMARIES[0],
+    newerSummary: null,
+    requestHistory: jest.fn(),
+    handleHistory: jest.fn(),
+    handleHistoryEntry: jest.fn(),
+    goOlder: jest.fn(),
+    goNewer: jest.fn(),
+    openEntry: jest.fn(),
+    deleteEntry: jest.fn(),
+    clearHistory: jest.fn(),
+    followRecordedEntry: jest.fn(),
+    hasFollowedEntry: jest.fn(() => false),
+    beginNewLookup: jest.fn(),
+    persistedState: { dictionaryHistoryCursorId: null },
+    ...overrides
+  });
+
+  function StubHarness({ history }: { history: UseDictionaryHistoryReturn }) {
+    const dictionary = useDictionary();
+    const selection = useSelection();
+    const settings = useSettings();
+    return <UtilitiesTab
+      vscode={vscode}
+      dictionary={dictionary}
+      dictionaryHistory={history}
+      selection={selection}
+      settings={settings}
+    />;
+  }
+
+  const older = () => screen.getByRole('button', { name: 'Previous lookup' }) as HTMLButtonElement;
+  const newer = () => screen.getByRole('button', { name: 'Next lookup' }) as HTMLButtonElement;
+  const positionLabel = () => document.querySelector('.pm-dictionary-history-position');
+  const posted = (type: MessageType) => vscode.postMessage.mock.calls
+    .map(([message]) => message)
+    .filter(message => message.type === type);
+
+  beforeEach(() => {
+    vscode = createMockVSCode();
+    vscode.getState.mockReturnValue({
+      dictionaryWord: 'copper',
+      dictionaryContext: 'The copper pot glowed.',
+      dictionarySourceUri: 'file:///novel/chapters/kitchen.md',
+      dictionaryRelativePath: 'chapters/kitchen.md'
+    });
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders the nav cluster beside the title, with the position label hidden until there is history', () => {
+    render(<HistoryHarness />);
+
+    expect(screen.getByRole('heading', { name: 'Utilities · Dictionary' })).toBeTruthy();
+    expect(older().disabled).toBe(true);
+    expect(newer().disabled).toBe(true);
+    expect(positionLabel()).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Host sends list' }));
+
+    expect(positionLabel()?.textContent).toBe('— / 3');
+    expect(older().disabled).toBe(false);
+    expect(older().title).toBe('Previous lookup: petrichor');
+    expect(newer().disabled).toBe(true);
+  });
+
+  it('disables ‹ at the oldest entry and › at the newest entry without a draft', () => {
+    const { rerender } = render(<StubHarness history={stubHistory({
+      cursorId: 'h1', position: { index: 3, total: 3 }, canGoOlder: false, canGoNewer: true,
+      olderSummary: null, newerSummary: SUMMARIES[1]
+    })} />);
+
+    expect(positionLabel()?.textContent).toBe('3 / 3');
+    expect(older().disabled).toBe(true);
+    expect(newer().disabled).toBe(false);
+    expect(newer().title).toBe('Next lookup: geosmin');
+
+    rerender(<StubHarness history={stubHistory({
+      cursorId: 'h3', position: { index: 1, total: 3 }, canGoOlder: true, canGoNewer: false,
+      olderSummary: SUMMARIES[1], newerSummary: null
+    })} />);
+
+    expect(positionLabel()?.textContent).toBe('1 / 3');
+    expect(older().disabled).toBe(false);
+    expect(newer().disabled).toBe(true);
+  });
+
+  it('names the stashed draft as the target of › from the newest entry', () => {
+    render(<StubHarness history={stubHistory({
+      cursorId: 'h3', position: { index: 1, total: 3 }, canGoNewer: true, newerSummary: null,
+      draft: {
+        word: 'copper', context: '', includeEncyclopedia: true, includePalettes: true,
+        sourceUri: '', relativePath: '', result: '', toolName: undefined, lookupSubject: null
+      }
+    })} />);
+
+    expect(newer().title).toBe('Next lookup: copper (unsaved)');
+  });
+
+  it('disables both buttons while a lookup is generating', () => {
+    render(<HistoryHarness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Host sends list' }));
+    expect(older().disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Run Dictionary Lookup' }));
+
+    expect(older().disabled).toBe(true);
+    expect(newer().disabled).toBe(true);
+  });
+
+  it('steps through history with ‹ and ›', () => {
+    const history = stubHistory({ canGoNewer: true, cursorId: 'h2', position: { index: 2, total: 3 } });
+    render(<StubHarness history={history} />);
+
+    fireEvent.click(older());
+    fireEvent.click(newer());
+
+    expect(history.goOlder).toHaveBeenCalledTimes(1);
+    expect(history.goNewer).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['Run Dictionary Lookup', MessageType.LOOKUP_DICTIONARY, 'standard', { contextText: 'The copper pot glowed.' }],
+    ['⚡ Experimental: Run Dictionary Lookup [Fast]', MessageType.FAST_GENERATE_DICTIONARY, 'fast', { context: 'The copper pot glowed.' }]
+  ] as const)('%s sends its source, records its subject, and starts a new lookup', (button, type, mode, contextField) => {
+    render(<HistoryHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: button }));
+
+    expect(posted(type)).toEqual([expect.objectContaining({
+      payload: expect.objectContaining({
+        word: 'copper',
+        ...contextField,
+        sourceUri: 'file:///novel/chapters/kitchen.md',
+        relativePath: 'chapters/kitchen.md'
+      })
+    })]);
+    expect(onSubject).toHaveBeenCalledWith({
+      word: 'copper',
+      context: 'The copper pot glowed.',
+      includeEncyclopedia: true,
+      includePalettes: true,
+      mode,
+      sourceUri: 'file:///novel/chapters/kitchen.md',
+      relativePath: 'chapters/kitchen.md'
+    });
+    expect(onBegin).toHaveBeenCalledTimes(1);
+  });
+
+  it('the editor context-menu lookup also records its subject and starts a new lookup', () => {
+    render(<HistoryHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Look up from editor' }));
+
+    expect(onSubject).toHaveBeenCalledWith(expect.objectContaining({ word: 'verdigris', mode: 'fast' }));
+    expect(onBegin).toHaveBeenCalledTimes(1);
+    expect(posted(MessageType.FAST_GENERATE_DICTIONARY)).toHaveLength(1);
+  });
+
+  it('restores an entry and shows where it came from', () => {
+    render(<HistoryHarness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Host sends list' }));
+    expect(document.querySelector('.pm-dictionary-history-meta')).toBeNull();
+
+    fireEvent.click(older());
+    expect(posted(MessageType.REQUEST_DICTIONARY_HISTORY_ENTRY)).toEqual([
+      expect.objectContaining({ payload: { id: 'h3' } })
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'Host sends petrichor' }));
+
+    expect((screen.getByPlaceholderText(/Enter the word or phrase/) as HTMLInputElement).value).toBe('petrichor');
+    expect(screen.getByText('Source: chapters/rain.md')).toBeTruthy();
+    expect(screen.getByText('The smell of rain on dry earth.')).toBeTruthy();
+    expect(positionLabel()?.textContent).toBe('1 / 3');
+    const meta = document.querySelector('.pm-dictionary-history-meta')?.textContent ?? '';
+    expect(meta.startsWith('From history · ')).toBe(true);
+    expect(meta.endsWith(' · Standard · test/model')).toBe(true);
+  });
+
+  it('labels a fast entry and omits an unknown model on the meta line', () => {
+    render(<StubHarness history={stubHistory({ cursorId: 'h2', cursorSummary: SUMMARIES[1], position: { index: 2, total: 3 } })} />);
+
+    const meta = document.querySelector('.pm-dictionary-history-meta')?.textContent ?? '';
+    expect(meta.endsWith(' · ⚡ Fast')).toBe(true);
+    expect(meta.split(' · ')).toHaveLength(3);
+  });
+
+  it('names the restored lookup in the Copy and Save headers even after the form is edited', () => {
+    render(<HistoryHarness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Host sends list' }));
+    fireEvent.click(older());
+    fireEvent.click(screen.getByRole('button', { name: 'Host sends petrichor' }));
+    fireEvent.change(screen.getByPlaceholderText(/Enter the word or phrase/), { target: { value: 'geosmin' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy dictionary entry' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save dictionary entry' }));
+
+    expect(posted(MessageType.COPY_RESULT)[0].payload.content.startsWith('# petrichor\n')).toBe(true);
+    const save = posted(MessageType.SAVE_RESULT)[0].payload;
+    expect(save.content.startsWith('# petrichor\n')).toBe(true);
+    expect(save.metadata).toEqual(expect.objectContaining({ word: 'petrichor', context: 'Rain on hot stone.' }));
+  });
+
+  it('falls back to the normalized form word in the Copy header when nothing was looked up', () => {
+    vscode.getState.mockReturnValue({ dictionaryWord: '  copper   pot ', utilitiesResult: 'A shiny metal.' });
+    render(<HistoryHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy dictionary entry' }));
+
+    expect(posted(MessageType.COPY_RESULT)[0].payload.content.startsWith('# copper pot\n')).toBe(true);
   });
 });

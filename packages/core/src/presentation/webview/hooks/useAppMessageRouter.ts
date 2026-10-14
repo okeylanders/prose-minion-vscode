@@ -18,6 +18,7 @@ import { useMessageRouter, MessageHandlerMap } from './useMessageRouter';
 import { UseAnalysisReturn } from './domain/useAnalysis';
 import { UseMetricsReturn } from './domain/useMetrics';
 import { UseDictionaryReturn } from './domain/useDictionary';
+import { UseDictionaryHistoryReturn } from './domain/useDictionaryHistory';
 import { UseContextReturn } from './domain/useContext';
 import { UseSearchReturn } from './domain/useSearch';
 import { UseSettingsReturn } from './domain/useSettings';
@@ -37,6 +38,7 @@ export interface AppMessageRouterDeps {
   analysis: UseAnalysisReturn;
   metrics: UseMetricsReturn;
   dictionary: UseDictionaryReturn;
+  dictionaryHistory: UseDictionaryHistoryReturn;
   context: UseContextReturn;
   search: UseSearchReturn;
   settings: UseSettingsReturn;
@@ -61,7 +63,7 @@ export interface AppMessageRouterDeps {
  */
 export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandlerMap => {
   const {
-    analysis, metrics, dictionary, context, search, settings, selection,
+    analysis, metrics, dictionary, dictionaryHistory, context, search, settings, selection,
     publishingSettings, wordSearchSettings, wordFrequencySettings, tokensSettings,
     themeSettings, tokenTracking, contextPathsSettings, modelsSettings, accountBalance,
     setActiveTab, setError,
@@ -87,13 +89,24 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
       setError(''); // Clear error on success
     },
     [MessageType.DICTIONARY_RESULT]: (msg) => {
+      const { historyEntryId } = msg.payload;
+      // The host replays its cached DICTIONARY_RESULT each time the sidebar is
+      // shown again. Re-applying a result this view already followed would
+      // overwrite a history entry the writer has since navigated to.
+      if (dictionaryHistory.hasFollowedEntry(historyEntryId)) {
+        return;
+      }
       dictionary.handleDictionaryResult(msg);
+      dictionaryHistory.followRecordedEntry(historyEntryId);
       setError(''); // Clear error on success
     },
     [MessageType.FAST_GENERATE_DICTIONARY_RESULT]: (msg) => {
       dictionary.handleFastGenerateResult(msg);
+      dictionaryHistory.followRecordedEntry(msg.payload.historyEntryId);
       setError(''); // Clear error on success
     },
+    [MessageType.DICTIONARY_HISTORY]: dictionaryHistory.handleHistory,
+    [MessageType.DICTIONARY_HISTORY_ENTRY]: dictionaryHistory.handleHistoryEntry,
     [MessageType.STREAM_STARTED]: (msg) => {
       const domain = msg.payload.domain;
       if (domain === 'dictionary') {
