@@ -193,7 +193,7 @@ describe('DictionaryHandler', () => {
         modelIds: [MODEL],
         toolName: 'dictionary_lookup',
         result: '# Entry'
-      }, expect.any(AbortSignal));
+      }, { beforeCommit: expect.any(Function) });
       const requestId = (posted(MessageType.STREAM_STARTED)[0] as { payload: { requestId: string } }).payload.requestId;
       expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([
         expect.objectContaining({
@@ -235,51 +235,96 @@ describe('DictionaryHandler', () => {
       expect(posted(MessageType.DICTIONARY_RESULT)[0].payload).toMatchObject({ historyEntryId: 'hist-1' });
     });
 
-    // Astra F-05: the stream stays cancellable through the history save, so a
-    // cancel the host acknowledges there must win: no success, no entry.
-    it('honors a cancel accepted during the history save: cancelled completion, no result, nothing retained', async () => {
-      const fileSystem = new MemoryFileSystem();
-      const projectHistory = new DictionaryHistoryStore(
-        fileSystem,
-        createFakeWorkspace({ workspaceFolders: () => [{ path: '/novel', name: 'novel' }] }),
-        log,
-        { createId: () => 'hist-cancelled', now: () => new Date('2026-10-14T14:02:00.000Z') }
-      );
-      handler.dispose();
-      handler = new DictionaryHandler(mockService as never, projectHistory, postMessage, log);
-      let releaseWrite!: () => void;
-      const gate = new Promise<void>(resolve => { releaseWrite = resolve; });
-      const writeFile = fileSystem.writeFile.bind(fileSystem);
-      const write = jest.spyOn(fileSystem, 'writeFile').mockImplementationOnce(async (filePath, data) => {
-        await gate;
-        return writeFile(filePath, data);
+    // Astra F-05: the lookup stays cancellable until the store's commit point.
+    // A cancel before it is honored everywhere; a cancel after it is refused,
+    // never acknowledged, and the lookup stands as recorded.
+    describe('cancellation and the history commit point', () => {
+      const HISTORY_FILE = '/novel/prose-minion/history/dictionary.json';
+      let fileSystem: MemoryFileSystem;
+      let projectHistory: DictionaryHistoryStore;
+
+      beforeEach(() => {
+        fileSystem = new MemoryFileSystem();
+        projectHistory = new DictionaryHistoryStore(
+          fileSystem,
+          createFakeWorkspace({ workspaceFolders: () => [{ path: '/novel', name: 'novel' }] }),
+          log,
+          { createId: () => 'hist-1', now: () => new Date('2026-10-14T14:02:00.000Z') }
+        );
+        handler.dispose();
+        handler = new DictionaryHandler(mockService as never, projectHistory, postMessage, log);
       });
 
-      const lookup = handler.handleLookupDictionary(lookupMessage());
-      await flushQueuedWork();
-      expect(write).toHaveBeenCalledTimes(1); // the save is in flight
-      const { requestId } = (posted(MessageType.STREAM_STARTED)[0] as { payload: { requestId: string } }).payload;
+      /** Hold the next call of a file-system step until released. */
+      const holdNext = (step: 'writeFile' | 'rename'): { release: () => void; held: jest.SpyInstance } => {
+        let release!: () => void;
+        const gate = new Promise<void>(resolve => { release = resolve; });
+        const original = (fileSystem[step] as (...args: unknown[]) => Promise<void>).bind(fileSystem);
+        const held = jest.spyOn(fileSystem, step).mockImplementationOnce(async (...args: unknown[]) => {
+          await gate;
+          return original(...args);
+        });
+        return { release, held };
+      };
 
-      await handler.handleCancelRequest({
+      const cancel = async (requestId: string): Promise<void> => handler.handleCancelRequest({
         type: MessageType.CANCEL_DICTIONARY_REQUEST,
         source: 'webview.dictionary',
         payload: { requestId, domain: 'dictionary' },
         timestamp: 2
       });
-      expect(posted(MessageType.STATUS).map((message) => (message.payload as { message: string }).message))
-        .toContain('Dictionary lookup cancelled');
+      const startedId = (): string =>
+        (posted(MessageType.STREAM_STARTED)[0] as { payload: { requestId: string } }).payload.requestId;
+      const statuses = (): string[] =>
+        posted(MessageType.STATUS).map((message) => (message.payload as { message: string }).message);
 
-      releaseWrite();
-      await lookup;
-      await flushQueuedWork();
+      it('honors a cancel accepted while the entry is staged: cancelled completion, no result, nothing retained', async () => {
+        const { release, held } = holdNext('writeFile');
 
-      expect(posted(MessageType.STREAM_COMPLETE)).toEqual([
-        expect.objectContaining({ payload: expect.objectContaining({ requestId, cancelled: true }) })
-      ]);
-      expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([]);
-      expect(posted(MessageType.DICTIONARY_HISTORY)).toEqual([]);
-      expect((await projectHistory.snapshot()).entries).toEqual([]);
-      expect(fileSystem.json('/novel/prose-minion/history/dictionary.json')).toMatchObject({ entries: [] });
+        const lookup = handler.handleLookupDictionary(lookupMessage());
+        await flushQueuedWork();
+        expect(held).toHaveBeenCalledTimes(1); // the save is in flight
+        const requestId = startedId();
+        await cancel(requestId);
+        expect(statuses()).toContain('Dictionary lookup cancelled');
+
+        release();
+        await lookup;
+        await flushQueuedWork();
+
+        expect(posted(MessageType.STREAM_COMPLETE)).toEqual([
+          expect.objectContaining({ payload: expect.objectContaining({ requestId, cancelled: true }) })
+        ]);
+        expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([]);
+        expect(posted(MessageType.DICTIONARY_HISTORY)).toEqual([]);
+        expect((await projectHistory.snapshot()).entries).toEqual([]);
+        // The history file was never written: nothing was committed.
+        expect(fileSystem.files.has(HISTORY_FILE)).toBe(false);
+      });
+
+      it('refuses a cancel that arrives after the commit point: no acknowledgment, a recorded success', async () => {
+        const { release, held } = holdNext('rename');
+
+        const lookup = handler.handleLookupDictionary(lookupMessage());
+        await flushQueuedWork();
+        expect(held).toHaveBeenCalledTimes(1); // committed; the rename is in flight
+        const requestId = startedId();
+        await cancel(requestId);
+        expect(statuses()).not.toContain('Dictionary lookup cancelled');
+
+        release();
+        await lookup;
+        await flushQueuedWork();
+
+        expect(posted(MessageType.STREAM_COMPLETE)).toEqual([
+          expect.objectContaining({ payload: expect.objectContaining({ requestId, cancelled: false }) })
+        ]);
+        expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([
+          expect.objectContaining({ payload: expect.objectContaining({ requestId, historyEntryId: 'hist-1' }) })
+        ]);
+        expect((await projectHistory.snapshot()).entries.map((entry) => entry.id)).toEqual(['hist-1']);
+        expect(fileSystem.json(HISTORY_FILE)).toMatchObject({ entries: [{ id: 'hist-1' }] });
+      });
     });
 
     it('names the stream a result settles, recorded or not', async () => {

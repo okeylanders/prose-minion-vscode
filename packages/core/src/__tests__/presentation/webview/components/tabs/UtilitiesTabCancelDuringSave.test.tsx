@@ -132,12 +132,13 @@ describe('UtilitiesTab cancel during the history save', () => {
     (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
 
     fileSystem = new MemoryFileSystem();
+    let nextId = 0;
     const log: LogSink = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() } as never;
     history = new DictionaryHistoryStore(
       fileSystem,
       createFakeWorkspace({ workspaceFolders: () => [{ path: '/novel', name: 'novel' }] }),
       log,
-      { createId: () => 'hist-1', now: () => new Date('2026-10-14T14:02:00.000Z') }
+      { createId: () => `hist-${++nextId}`, now: () => new Date('2026-10-14T14:02:00.000Z') }
     );
 
     // The first file write (the entry's save) waits until the test releases it.
@@ -149,10 +150,11 @@ describe('UtilitiesTab cancel during the history save', () => {
     });
 
     const dictionaryService = {
-      lookupWordStreaming: jest.fn(async (_word: string, _context: string | undefined, onToken: (token: string) => void) => {
-        onToken('Generated ');
-        onToken('entry.');
-        return { content: 'Generated entry.', toolName: 'dictionary_lookup', finishReason: 'stop', outcome: 'entry', modelId: 'model/A' };
+      lookupWordStreaming: jest.fn(async (word: string, _context: string | undefined, onToken: (token: string) => void) => {
+        const content = word === 'gloaming' ? 'Generated entry.' : `${word} entry.`;
+        onToken(content.slice(0, 5));
+        onToken(content.slice(5));
+        return { content, toolName: 'dictionary_lookup', finishReason: 'stop', outcome: 'entry', modelId: 'model/A' };
       })
     };
     handler = new DictionaryHandler(dictionaryService as never, history, async (message) => {
@@ -193,12 +195,35 @@ describe('UtilitiesTab cancel during the history save', () => {
     ]);
     expect(sent(MessageType.DICTIONARY_RESULT)).toEqual([]);
     expect((await history.snapshot()).entries).toEqual([]);
-    expect(fileSystem.json(HISTORY_FILE)).toMatchObject({ entries: [] });
+    // Nothing was committed, so the history file was never written.
+    expect(fileSystem.files.has(HISTORY_FILE)).toBe(false);
     // The webview kept what streamed, released the lock, and never saw an entry.
     expect(screen.getByText('Generated entry.')).toBeTruthy();
     expect(runButton().disabled).toBe(false);
     expect(positionLabel()).toBeNull();
     expect(document.querySelector('.pm-dictionary-history-meta')).toBeNull();
+  });
+
+  it('a new lookup started after the cancel, before the old save finishes, is the only one kept', async () => {
+    render(<Harness />);
+    await pump();
+    await startLookup('gloaming');
+    fireEvent.click(cancelButton()!);
+    await pump();
+
+    // The writer moves on while the cancelled lookup's save is still held.
+    expect(runButton().disabled).toBe(false);
+    await startLookup('petrichor');
+    releaseWrite();
+    await pump();
+
+    expect(sent(MessageType.DICTIONARY_RESULT)).toEqual([
+      expect.objectContaining({ payload: expect.objectContaining({ result: 'petrichor entry.', historyEntryId: 'hist-2' }) })
+    ]);
+    expect((await history.snapshot()).entries.map(entry => entry.id)).toEqual(['hist-2']);
+    expect(fileSystem.json(HISTORY_FILE)).toMatchObject({ entries: [{ id: 'hist-2', request: { word: 'petrichor' } }] });
+    expect(screen.getByText('petrichor entry.')).toBeTruthy();
+    expect(positionLabel()?.textContent).toBe('1 / 1');
   });
 
   it('without a cancel, the same save completes as a recorded success (control)', async () => {

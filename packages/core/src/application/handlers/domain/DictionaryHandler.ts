@@ -257,13 +257,12 @@ export class DictionaryHandler {
           modelIds: result.modelId ? [result.modelId] : [],
           toolName: result.toolName,
           result: result.content
-        }, controller.signal)
+        }, () => this.closeCancellation(requestId, controller))
         : undefined;
 
-      // Read cancellation only now. The stream stays cancellable through the
-      // save, and the store withdraws the entry when a cancel lands there, so
-      // an acknowledged cancel completes as cancelled with nothing retained
-      // (Astra F-05).
+      // Read cancellation only now. The lookup stays cancellable until the
+      // store's commit point: a cancel accepted before it withdraws the entry,
+      // and a cancel arriving after it finds nothing left to cancel (Astra F-05).
       const cancelled = controller.signal.aborted;
 
       // Completion and the final result go out back to back. The result names
@@ -347,18 +346,34 @@ export class DictionaryHandler {
   /**
    * Record a completed lookup and return its id. History must never fail a
    * lookup, so any failure is logged and the result is posted without an id.
-   * With the lookup's signal, a cancel that lands during the save withdraws
-   * the entry and this resolves `undefined`.
+   * With a commit gate, a lookup cancelled before the store's commit point
+   * is withdrawn and this resolves `undefined`.
    */
-  private async recordHistory(input: DictionaryHistoryRecordInput, signal?: AbortSignal): Promise<string | undefined> {
+  private async recordHistory(input: DictionaryHistoryRecordInput, beforeCommit?: () => boolean): Promise<string | undefined> {
     try {
-      const entry = signal ? await this.history.record(input, signal) : await this.history.record(input);
+      const entry = beforeCommit
+        ? await this.history.record(input, { beforeCommit })
+        : await this.history.record(input);
       return entry?.id;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[DictionaryHandler] Could not record ${input.request.mode} lookup in history: ${msg}`);
       return undefined;
     }
+  }
+
+  /**
+   * The history commit point of a cancellable lookup, called synchronously by
+   * the store. A lookup already cancelled is withdrawn. Otherwise it stops
+   * being cancellable in the same tick it commits: a later cancel finds no
+   * active request, so the host never acknowledges a cancel it cannot honor.
+   */
+  private closeCancellation(requestId: string, controller: AbortController): boolean {
+    if (controller.signal.aborted) {
+      return false;
+    }
+    this.activeRequests.delete(requestId);
+    return true;
   }
 
   async handleRequestHistory(_message: RequestDictionaryHistoryMessage): Promise<void> {

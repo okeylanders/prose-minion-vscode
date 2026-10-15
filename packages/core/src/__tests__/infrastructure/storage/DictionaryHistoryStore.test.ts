@@ -295,9 +295,12 @@ describe('DictionaryHistoryStore', () => {
     expect(logs()).not.toContain('confidential');
   });
 
-  // Astra F-05: a lookup stays cancellable through its save, so a record
-  // made with a signal is a commitment its caller can still withdraw.
-  describe('a record made with a cancellation signal', () => {
+  // Astra F-05: a cancellable lookup's entry becomes history only at the
+  // store's commit point. The new ledger is staged in a temporary file and
+  // replaces the history file only after `beforeCommit` agrees, so withdrawing
+  // never needs a compensating write, and the history file holds only
+  // committed history whatever fails.
+  describe('a record with a commit point (beforeCommit)', () => {
     const settle = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
 
     /** Hold the next file write until released; later writes run as normal. */
@@ -316,52 +319,136 @@ describe('DictionaryHistoryStore', () => {
       (await store.snapshot()).entries.map((entry) => entry.id);
     const fileIds = (): string[] =>
       (fileSystem.json(HISTORY_FILE) as { entries: Array<{ id: string }> }).entries.map((entry) => entry.id);
+    const temporaryFiles = (): string[] => [...fileSystem.files.keys()].filter((filePath) => filePath.includes('.tmp-'));
 
-    it('records nothing, writes nothing, and emits nothing when the signal is already aborted', async () => {
-      const store = createStore();
-      const changes = jest.fn();
-      store.onDidChange(changes);
-      const controller = new AbortController();
-      controller.abort();
-
-      await expect(store.record(lookup('alpha'), controller.signal)).resolves.toBeUndefined();
-
-      expect(await storedIds(store)).toEqual([]);
-      expect(fileSystem.files.has(HISTORY_FILE)).toBe(false);
-      expect(changes).not.toHaveBeenCalled();
-    });
-
-    it('withdraws an entry whose signal aborts during its write, restoring the entry it evicted', async () => {
+    /** A full two-entry ledger on disk: [entry-2, entry-1]. Recording again would evict entry-1. */
+    const fullStore = async (): Promise<DictionaryHistoryStore> => {
       const store = createStore([ROOT], { limit: 2 });
       await store.record(lookup('alpha'));
       await store.record(lookup('beta'));
+      return store;
+    };
+
+    /** What a fresh store, as after a reload, reads back from the same files. */
+    const reopenedIds = async (): Promise<string[]> => storedIds(createStore([ROOT], { limit: 2 }));
+
+    it('consults the commit point after staging and immediately before the rename that commits', async () => {
+      const store = await fullStore();
+      const order: string[] = [];
+      const stage = fileSystem.writeFile.bind(fileSystem);
+      const commit = fileSystem.rename.bind(fileSystem);
+      jest.spyOn(fileSystem, 'writeFile').mockImplementation(async (filePath, data) => {
+        order.push('stage');
+        return stage(filePath, data);
+      });
+      jest.spyOn(fileSystem, 'rename').mockImplementation(async (fromPath, toPath, options) => {
+        order.push('commit');
+        return commit(fromPath, toPath, options);
+      });
+
+      const entry = await store.record(lookup('gamma'), { beforeCommit: () => { order.push('beforeCommit'); return true; } });
+
+      expect(order).toEqual(['stage', 'beforeCommit', 'commit']);
+      expect(entry?.id).toBe('entry-3');
+      expect(fileIds()).toEqual(['entry-3', 'entry-2']);
+    });
+
+    it('withdraws at the commit point at capacity: the history file, memory, and a reload keep the prior ledger', async () => {
+      const store = await fullStore();
       const changes = jest.fn();
       store.onDidChange(changes);
-      const { release, write } = holdNextWrite();
-      const controller = new AbortController();
+      const rename = jest.spyOn(fileSystem, 'rename');
 
-      const pending = store.record(lookup('gamma'), controller.signal);
-      await settle();
-      expect(write).toHaveBeenCalledTimes(1); // the save is in flight
-      controller.abort();
-      release();
+      await expect(store.record(lookup('gamma'), { beforeCommit: () => false })).resolves.toBeUndefined();
 
-      await expect(pending).resolves.toBeUndefined();
+      expect(rename).not.toHaveBeenCalled();
       expect(await storedIds(store)).toEqual(['entry-2', 'entry-1']);
       expect(fileIds()).toEqual(['entry-2', 'entry-1']);
+      expect(await reopenedIds()).toEqual(['entry-2', 'entry-1']);
+      expect(temporaryFiles()).toEqual([]);
       expect(changes).not.toHaveBeenCalled();
     });
 
-    it('commits an entry whose signal never aborts', async () => {
-      const store = createStore();
+    it('withdraws a lookup cancelled while its ledger was being staged', async () => {
+      const store = await fullStore();
+      const { release, write } = holdNextWrite();
+      let cancelled = false;
+
+      const pending = store.record(lookup('gamma'), { beforeCommit: () => !cancelled });
+      await settle();
+      expect(write).toHaveBeenCalledTimes(1); // staging is in flight
+      cancelled = true;
+      release();
+
+      await expect(pending).resolves.toBeUndefined();
+      expect(await reopenedIds()).toEqual(['entry-2', 'entry-1']);
+    });
+
+    it('keeps the prior ledger when the withdrawn temporary file cannot even be deleted', async () => {
+      const store = await fullStore();
+      jest.spyOn(fileSystem, 'delete').mockRejectedValueOnce(new Error('EIO: delete'));
+
+      await expect(store.record(lookup('gamma'), { beforeCommit: () => false })).resolves.toBeUndefined();
+
+      // The leftover is never read as history; the history file still holds the prior ledger.
+      expect(temporaryFiles()).toHaveLength(1);
+      expect(await reopenedIds()).toEqual(['entry-2', 'entry-1']);
+    });
+
+    it('surfaces degraded durability when staging fails, whether the entry is then withdrawn or committed', async () => {
+      const store = await fullStore();
       const changes = jest.fn();
       store.onDidChange(changes);
+      jest.spyOn(fileSystem, 'writeFile').mockRejectedValueOnce(new Error('EIO: write'));
 
-      const entry = await store.record(lookup('alpha'), new AbortController().signal);
+      await expect(store.record(lookup('gamma'), { beforeCommit: () => false })).resolves.toBeUndefined();
 
-      expect(entry?.id).toBe('entry-1');
-      expect(fileIds()).toEqual(['entry-1']);
       expect(changes).toHaveBeenCalledTimes(1);
+      expect(await store.snapshot()).toMatchObject({
+        entries: [{ id: 'entry-2' }, { id: 'entry-1' }],
+        durability: { kind: 'session', reason: 'write-failed' }
+      });
+      expect(await reopenedIds()).toEqual(['entry-2', 'entry-1']);
+
+      jest.spyOn(fileSystem, 'writeFile').mockRejectedValueOnce(new Error('EIO: write'));
+      const committed = await store.record(lookup('delta'), { beforeCommit: () => true });
+
+      // Committed for this session only, and reported so; the file keeps committed history.
+      expect(committed?.id).toBe('entry-4');
+      expect(await store.snapshot()).toMatchObject({
+        entries: [{ id: 'entry-4' }, { id: 'entry-2' }],
+        durability: { kind: 'session', reason: 'write-failed' }
+      });
+      expect(await reopenedIds()).toEqual(['entry-2', 'entry-1']);
+    });
+
+    it('keeps the prior history file when the committing rename fails, and reports it', async () => {
+      const store = await fullStore();
+      const changes = jest.fn();
+      store.onDidChange(changes);
+      fileSystem.failRenameToPath = HISTORY_FILE;
+
+      const entry = await store.record(lookup('gamma'), { beforeCommit: () => true });
+
+      expect(entry?.id).toBe('entry-3');
+      expect(changes).toHaveBeenCalledTimes(1);
+      expect(await store.snapshot()).toMatchObject({
+        entries: [{ id: 'entry-3' }, { id: 'entry-2' }],
+        durability: { kind: 'session', reason: 'write-failed' }
+      });
+      fileSystem.failRenameToPath = undefined;
+      expect(await reopenedIds()).toEqual(['entry-2', 'entry-1']);
+      expect(temporaryFiles()).toEqual([]);
+    });
+
+    it('consults the commit point at once when there is no history file to write', async () => {
+      const store = createStore([]);
+      const beforeCommit = jest.fn(() => false);
+
+      await expect(store.record(lookup('alpha'), { beforeCommit })).resolves.toBeUndefined();
+
+      expect(beforeCommit).toHaveBeenCalledTimes(1);
+      expect(await storedIds(store)).toEqual([]);
     });
   });
 

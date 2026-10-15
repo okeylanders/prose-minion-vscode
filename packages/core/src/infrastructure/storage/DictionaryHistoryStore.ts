@@ -58,6 +58,24 @@ export interface DictionaryHistoryRecordInput {
   result: string;
 }
 
+export interface DictionaryHistoryRecordOptions {
+  /**
+   * The commit point of a lookup the writer can still cancel (Astra F-05).
+   * Called synchronously, once, at the instant the entry would become history:
+   * after the new ledger is staged in a temporary file and immediately before
+   * that file replaces the history file (or at once, when the history is not
+   * saved to a file). Returning `false` withdraws the entry. The history file
+   * is never touched, memory is unchanged, nothing is emitted, and `record`
+   * resolves `undefined`. Returning `true` commits. Because nothing awaits
+   * between this call and the commit, a caller can close its cancel window
+   * here atomically.
+   */
+  beforeCommit?: () => boolean;
+}
+
+/** How a staged write ended: withdrawn at the commit point, or committed. */
+type DictionaryHistoryWriteOutcome = 'withdrawn' | 'committed';
+
 export interface DictionaryHistoryStoreOptions {
   limit?: number;
   now?: () => Date;
@@ -125,20 +143,17 @@ export class DictionaryHistoryStore {
   /** Insert newest first, evict past the limit, persist, and emit. Never rejects on a write failure. */
   record(input: DictionaryHistoryRecordInput): Promise<DictionaryHistoryEntry>;
   /**
-   * The same, for a lookup the writer can still cancel (Astra F-05). A signal
-   * aborted before the insert, or during the write, leaves the history in
-   * memory and on disk exactly as it was, an entry the insert would have
-   * evicted included, emits nothing, and resolves `undefined`. The last check
-   * follows the last await, so no cancel message can land between it and the
-   * caller resuming.
+   * The same, with a commit point the caller can decline (see
+   * `beforeCommit`). The new ledger replaces the history file only after
+   * `beforeCommit` agrees, so a withdrawal never needs a compensating write
+   * and the file always holds committed history, across any write failure.
    */
-  record(input: DictionaryHistoryRecordInput, signal: AbortSignal): Promise<DictionaryHistoryEntry | undefined>;
-  record(input: DictionaryHistoryRecordInput, signal?: AbortSignal): Promise<DictionaryHistoryEntry | undefined> {
+  record(input: DictionaryHistoryRecordInput, options: DictionaryHistoryRecordOptions): Promise<DictionaryHistoryEntry | undefined>;
+  record(
+    input: DictionaryHistoryRecordInput,
+    options: DictionaryHistoryRecordOptions = {}
+  ): Promise<DictionaryHistoryEntry | undefined> {
     return this.enqueue(async () => {
-      if (signal?.aborted) {
-        return undefined;
-      }
-      const previous = this.entries;
       const entry = copyDictionaryHistoryEntry({
         id: this.createId(),
         createdAt: this.now().toISOString(),
@@ -147,13 +162,19 @@ export class DictionaryHistoryStore {
         toolName: input.toolName,
         result: input.result
       });
-      this.entries = [entry, ...previous].slice(0, this.limit);
-      await this.persist();
-      if (signal?.aborted) {
-        this.entries = previous;
-        await this.persist();
+      const candidate = [entry, ...this.entries].slice(0, this.limit);
+      const durabilityBefore = this.durabilityKey();
+
+      const outcome = await this.writeLedger(candidate, options.beforeCommit);
+      if (outcome === 'withdrawn') {
+        // The list is unchanged, but a failed staging write still degrades
+        // durability; tell the popup rather than return silently.
+        if (this.durabilityKey() !== durabilityBefore) {
+          this.changeListeners.emit();
+        }
         return undefined;
       }
+      this.entries = candidate;
       this.changeListeners.emit();
       return copyDictionaryHistoryEntry(entry);
     });
@@ -272,33 +293,83 @@ export class DictionaryHistoryStore {
     }
   }
 
-  /** Temporary sibling, then rename over the target, so a crash never leaves a torn file. */
+  /** Persist the in-memory ledger (delete, clear). */
   private async persist(): Promise<void> {
+    await this.writeLedger(this.entries);
+  }
+
+  /**
+   * Stage `entries` in a temporary sibling, then rename it over the history
+   * file, so a crash never leaves a torn file. `beforeCommit` runs
+   * synchronously at the commit point: after staging, immediately before the
+   * rename, or at once when there is no file to write. Declining it deletes
+   * the staged file and leaves the history file untouched.
+   *
+   * A write failure is logged and degrades durability to `session`; the
+   * caller still commits to memory. A staging failure never touches the
+   * history file, and a failed rename leaves it as it was, so the file only
+   * ever holds committed history.
+   */
+  private async writeLedger(
+    entries: DictionaryHistoryEntry[],
+    beforeCommit?: () => boolean
+  ): Promise<DictionaryHistoryWriteOutcome> {
+    const commitPoint = (): DictionaryHistoryWriteOutcome =>
+      beforeCommit && !beforeCommit() ? 'withdrawn' : 'committed';
+
     const location = this.location;
     if (location?.kind !== 'project' || this.persistenceBlocked) {
-      return;
+      return commitPoint();
     }
-    const bytes = encoder.encode(encodeDictionaryHistoryFile(this.entries));
+    const bytes = encoder.encode(encodeDictionaryHistoryFile(entries));
     const temporaryPath = `${location.filePath}.tmp-${this.now().getTime()}-${++this.temporaryWriteCounter}`;
+
     try {
       await this.fileSystem.createDirectory(location.directory);
       await this.fileSystem.writeFile(temporaryPath, bytes);
+    } catch (error) {
+      this.recordWriteFailure(error);
+      await this.deleteTemporaryFile(temporaryPath);
+      return commitPoint();
+    }
+
+    // Nothing awaits between the commit point and the rename that commits.
+    if (commitPoint() === 'withdrawn') {
+      await this.deleteTemporaryFile(temporaryPath);
+      return 'withdrawn';
+    }
+    try {
       await this.fileSystem.rename(temporaryPath, location.filePath, { overwrite: true });
       if (this.lastWriteFailed) {
         this.log.appendLine(`${LOG_PREFIX} History saved again after an earlier write failure.`);
       }
       this.lastWriteFailed = false;
     } catch (error) {
-      this.lastWriteFailed = true;
-      this.log.appendLine(
-        `${LOG_PREFIX} Could not save ${DICTIONARY_HISTORY_DISPLAY_PATH}; keeping history for this session: ${errorMessage(error)}`
-      );
-      try {
-        await this.fileSystem.delete(temporaryPath);
-      } catch {
-        // Best effort only: the write may have failed before the file existed.
-      }
+      this.recordWriteFailure(error);
+      await this.deleteTemporaryFile(temporaryPath);
     }
+    return 'committed';
+  }
+
+  private recordWriteFailure(error: unknown): void {
+    this.lastWriteFailed = true;
+    this.log.appendLine(
+      `${LOG_PREFIX} Could not save ${DICTIONARY_HISTORY_DISPLAY_PATH}; keeping history for this session: ${errorMessage(error)}`
+    );
+  }
+
+  /** Best effort only: the write may have failed before the file existed. */
+  private async deleteTemporaryFile(temporaryPath: string): Promise<void> {
+    try {
+      await this.fileSystem.delete(temporaryPath);
+    } catch {
+      // A leftover temporary file is never read as history.
+    }
+  }
+
+  /** Durability as a comparable key, to notice a change within one operation. */
+  private durabilityKey(): string {
+    return JSON.stringify(this.durability());
   }
 }
 
