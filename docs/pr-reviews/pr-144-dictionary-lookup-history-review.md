@@ -108,3 +108,32 @@ All implementation checks target **`6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c`**,
 | Implementation-head GitHub CI | **Success**, [run 38653447616](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38653447616) at `6ee5587d` |
 
 The independent witnesses use synthetic data, mocked filesystem/prompt/provider boundaries, and JSDOM where appropriate. They are not native visual, keyboard, Extension Development Host, real-disk crash, or live-provider quality evidence. The epic's native Standard/Fast/cancel/reload/no-folder acceptance pass and ADR acceptance remain pending. No merge, deployment, publication, credentials setup, or billable provider call was performed. Required checks on the final report-only head are a separate verification step.
+
+## Author response (2026-10-15)
+
+All four findings were reproduced against `6ee5587d` and fixed. One commit
+covers each, and F-01 and F-02 share a root cause and one commit. The ledger
+statuses above are left for re-verification, because **Addressed** here means
+independently verified. The ADR's [2026-10-15 amendment](../adr/2026-10-14-dictionary-lookup-history.md#amendment-2026-10-15-pr-144-review)
+records the changed decisions.
+
+| ID | Fix | What changed | Regressions |
+| --- | --- | --- | --- |
+| F-01 | `111b759` | The host records history **before** `STREAM_COMPLETE`, then posts completion and result back to back. The webview holds a completed stream (`loading`, so Run and `‹` `›` stay locked) until its own `DICTIONARY_RESULT` settles it (`useDictionary.isAwaitedResult`, ref-backed for back-to-back delivery). Cancelled lookups still release at once. A latent bug is also fixed: a cancelled request's id was deleted from the ignored set before the check, so its late completion was never ignored. | `DictionaryHandler.test.ts`: a deferred write shows `STREAM_COMPLETE` waits for it, with only a status reset between completion and result. `UtilitiesTabLookupSettlement.test.tsx` uses the real hooks, tab, and app router: after completion but before the result, a second Run and `‹` are blocked; afterwards the result, subject, cursor, loading, and Copy are coherent. `useDictionary.test.ts`: superseded, cancelled-late, and new-stream supersession cases. |
+| F-02 | `111b759` | `DICTIONARY_RESULT` carries its stream's `requestId`. A result applies only if it settles the awaited request, whatever its outcome, so replays, superseded results, and cancelled results are dropped. A fresh failed or unconfigured result still shows. This replaces the `historyEntryId`-keyed `hasFollowedEntry` guard. | `UtilitiesTabLookupSettlement.test.tsx`: for failed, unconfigured, and recorded results, a fresh result shows and its replay after a history restore is ignored, with Copy and Save naming the restored entry. A failure replayed after a newer Fast result is also ignored. `useDictionary.test.ts` covers the same at hook level. |
+| F-03 | `c4a348a` | History records what the provider reported for the call (`ExecutionResult.modelId`) through `DictionaryLookupResult.modelId`. A fast lookup collects the distinct models of its successful blocks. The entry shape is `modelIds: string[]`, empty when unreported and never guessed, and lists both models when a swap lands between blocks. The format is unreleased, so there is no migration. `getActiveModelId()` is removed. | `DictionaryService.test.ts`: a model swap held inside prompt loading (standard and streaming) yields model B. A swap between fast blocks yields `['model/A', 'model/B']`. Failed blocks contribute no model, and an unattributed run reports none. Handler tests record exactly what the service reports. |
+| F-04 | `5b512e5` | Invalid-file reasons are fixed phrases. The parser message is dropped, and an unknown version is named only when it is a whole number. | The codec and store plant a marker in malformed JSON and in an arbitrary `formatVersion`, and assert it never reaches the reason or the log, whether the file is set aside or cannot be. |
+
+Each regression was mutation-checked:
+- Restoring the selection snapshot fails 3 provenance tests.
+- Treating every result as awaited fails 11 tests.
+- Releasing loading on completion fails 3.
+- Completing before recording fails the deferred-write test.
+- The old codec fails 8 privacy tests.
+
+**Verification at `111b759`:**
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,137 warnings (1,138 at `6ee5587d`).
+- Full `npx jest`: **313 suites / 4,673 tests passing**.
+
+The native Extension Development Host pass is still pending.

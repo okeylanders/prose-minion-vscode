@@ -1,6 +1,6 @@
 # ADR 2026-10-14: Dictionary Lookup History
 
-**Status:** Proposed (2026-10-14)
+**Status:** Proposed (2026-10-14); amended 2026-10-15 after the [PR #144 review](../pr-reviews/pr-144-dictionary-lookup-history-review.md)
 **Date:** 2026-10-14
 **Epic:** [Dictionary Lookup History](../../.todo/epics/epic-dictionary-lookup-history-2026-10-14/README.md)
 **Extends:** [ADR 2026-06-16 — Monorepo Ports and Adapters](2026-06-16-monorepo-ports-and-adapters.md); [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](2026-06-18-messagehandler-composition-root-consolidation.md)
@@ -66,16 +66,18 @@ Options rejected:
 
 ### D2. The host records at successful completion, and only for the Dictionary tab
 
-`DictionaryHandler` records an entry after a lookup completes and *before* it
-posts the result. The entry is built from:
+`DictionaryHandler` records an entry after a lookup's run finishes and *before*
+it completes the stream or posts the result (see the
+[amendment](#amendment-2026-10-15-pr-144-review)). The entry is built from:
 
 - the request payload: the word as sent, trimmed context, resolved entry
   options, and the source path;
 - the mode, taken from the route (`LOOKUP_DICTIONARY` is `standard`,
   `FAST_GENERATE_DICTIONARY` is `fast`);
-- the model id, captured **when the request starts** through
-  `DictionaryService.getActiveModelId()`. A hot swap during the run cannot
-  mislabel the entry.
+- the models that generated it: the model the provider reported for the call
+  (`ExecutionResult.modelId`, carried on `DictionaryLookupResult.modelId`),
+  or, for a fast lookup, the distinct models its successful blocks reported.
+  No selection is read, either before or after the run (amended; see F-03).
 
 | Outcome | Recorded? |
 |---|---|
@@ -124,7 +126,7 @@ interface DictionaryHistoryEntry {
   id: string;
   createdAt: string;                     // ISO-8601
   request: DictionaryLookupRequest;
-  modelId?: string;                      // resolved dictionary model at request start
+  modelIds: string[];                    // provider-reported, first-use order; [] when unreported
   toolName: string;                      // 'dictionary_lookup' | 'dictionary_fast_generate'
   result: string;                        // the Markdown exactly as the tab rendered it
 }
@@ -170,7 +172,7 @@ interface DictionaryHistorySummary {
   includeEncyclopedia: boolean;
   includePalettes: boolean;
   mode: DictionaryLookupMode;
-  modelId?: string;
+  modelIds: string[];
   relativePath?: string;
 }
 
@@ -184,9 +186,11 @@ type DictionaryHistoryDurability =
   dispose, as `DictionaryService.addStatusListener` is) and posts a fresh
   `DICTIONARY_HISTORY`.
 - `DictionaryResultPayload` and `FastGenerateDictionaryResultPayload` gain an
-  optional `historyEntryId`. The webview's cursor follows a new lookup without
-  guessing. The result cache replays `DICTIONARY_RESULT`, and following an id
-  twice is harmless.
+  optional `historyEntryId`, so the webview's cursor follows a new lookup
+  without guessing. `DictionaryResultPayload` also carries the `requestId` of
+  the stream it settles. The webview applies a result only to the lookup it
+  is awaiting, so the cached `DICTIONARY_RESULT` the host replays when the
+  sidebar reappears never replaces the view (amended; see F-01 and F-02).
 - `LookupDictionaryPayload` gains `sourceUri?` and `relativePath?`.
   `FastGenerateDictionaryPayload` already has `sourceUri?` and gains
   `relativePath?`. Restoring an entry can then restore its "Source:" line.
@@ -249,8 +253,44 @@ replaces the ref.
 - The file holds the writer's context excerpts, so it may hold manuscript
   text. It stays inside the project, under the writer's control, and is
   covered by whatever VCS or backup the project uses.
-- `DictionaryService` gains one read (`getActiveModelId`) and an explicit
-  lookup outcome. The Workshop callers ignore the new field.
+- `DictionaryService` returns an explicit lookup outcome and the
+  provider-reported model. The Workshop callers ignore both fields.
+
+## Amendment 2026-10-15: PR #144 review
+
+Astra's review of PR #144 found four Medium defects. Each fix below changes
+a decision above.
+
+- **F-01: settlement ownership.** The handler completed the stream, then
+  awaited the history write, then posted the result. Completion released the
+  webview's lock, so a second Run or a history navigation could start inside
+  the write, and the first lookup's result then landed on the newer one.
+  - The handler now records **before** completing the stream. It then posts
+    `STREAM_COMPLETE` and `DICTIONARY_RESULT` back to back.
+  - In the webview, a completed stream stays owned (`loading`, which keeps
+    Run and `‹` `›` locked) until its own result settles it
+    (`useDictionary.isAwaitedResult`).
+- **F-02: replay identity.** The webview guarded replays by `historyEntryId`,
+  which failed and unconfigured results lack. Their cached replay overwrote a
+  restored entry, and Copy and Save then exported an error under the restored
+  word.
+  - Results now carry their stream's `requestId`. A result applies only if it
+    settles the awaited request.
+  - Replays of any outcome, superseded results, and cancelled lookups' late
+    results are dropped. A fresh failure still shows.
+  - This replaces `useDictionaryHistory.hasFollowedEntry`.
+- **F-03: model provenance.** A selection snapshot taken at request start is
+  not what ran. The manager hot-swaps by mutating the shared engine in place,
+  and the provider picks its model when each call is dispatched, so a swap
+  during prompt loading ran on model B and recorded model A.
+  - Entries now record what the provider reported for the call, as
+    `modelIds: string[]`. A fast lookup lists every model its blocks ran on.
+  - The format is unreleased, so the shape changed without a migration.
+  - `getActiveModelId()` is removed.
+- **F-04: log privacy.** Invalid-file reasons embedded the JSON parser's
+  message, which quotes the surrounding writer text, and an arbitrary
+  `formatVersion` value. Both reached the Output log. Reasons are now fixed
+  phrases, and only a whole-number version is named.
 
 ## Out of scope (follow-ups)
 

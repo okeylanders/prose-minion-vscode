@@ -123,3 +123,18 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
       `useSelection` drops the injection's source for dictionary targets.
     - Two windows on one folder: the last writer wins (ADR Consequences).
     - Assistant and Category Search history remain in the parent feature.
+- **2026-10-15. PR #144 review (Astra).** The review found four Medium
+  findings, all reproduced and fixed:
+  - **F-04 (`5b512e5`):** invalid-file reasons no longer quote writer text
+    into logs.
+  - **F-03 (`c4a348a`):** history records the provider-reported model
+    (`modelIds`), not a selection snapshot, which a swap during prompt
+    loading made wrong.
+  - **F-01 and F-02 (`111b759`):** the host records before completing the
+    stream. Results carry their `requestId`. A completed stream stays locked
+    until its own result settles it, and replays of any outcome are dropped.
+
+  The ADR is amended, and the review file has an author-response table.
+  Verification: 313 suites / 4,641 → 4,673 tests, typecheck clean, lint
+  1,137 warnings (one fewer). Each regression was mutation-checked.
+

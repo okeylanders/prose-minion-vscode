@@ -54,3 +54,22 @@ reruns a lookup and never changes the model selection.
   history, and the last writer wins on disk.
 - **Other tools:** history for Assistant and Category Search
   (`feature-request-history-buttons`), reusing `prose-minion/history/<tool>.json`.
+
+## 2026-10-15: PR #144 review fixes
+
+Astra's review ([docs/pr-reviews/pr-144-dictionary-lookup-history-review.md](../docs/pr-reviews/pr-144-dictionary-lookup-history-review.md))
+found four Medium findings, all fixed and mutation-checked. The ADR is amended.
+
+- **Settlement ownership (F-01, F-02):** a dictionary result now settles only
+  its own stream (`requestId`). The webview stays loading from stream
+  completion until that result arrives. Any future host change must keep
+  `STREAM_COMPLETE` and `DICTIONARY_RESULT` back to back, with no `await`
+  between them, or the lock opens again.
+- **Model provenance (F-03):** use `ExecutionResult.modelId`, never an
+  `AIResourceManager` selection read. Hot swaps mutate the shared engine in
+  place, and the provider picks its model at dispatch. Entries hold
+  `modelIds: string[]`.
+- **Log privacy (F-04):** never put `JSON.parse` messages or unvalidated
+  values into a log line. Node's parser quotes the surrounding source text.
+- **Verification:** 313 suites / 4,673 tests. Lint 1,137 warnings, 0 errors.
+
