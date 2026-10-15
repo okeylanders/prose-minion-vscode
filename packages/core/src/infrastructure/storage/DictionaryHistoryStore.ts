@@ -123,8 +123,22 @@ export class DictionaryHistoryStore {
   }
 
   /** Insert newest first, evict past the limit, persist, and emit. Never rejects on a write failure. */
-  record(input: DictionaryHistoryRecordInput): Promise<DictionaryHistoryEntry> {
+  record(input: DictionaryHistoryRecordInput): Promise<DictionaryHistoryEntry>;
+  /**
+   * The same, for a lookup the writer can still cancel (Astra F-05). A signal
+   * aborted before the insert, or during the write, leaves the history in
+   * memory and on disk exactly as it was, an entry the insert would have
+   * evicted included, emits nothing, and resolves `undefined`. The last check
+   * follows the last await, so no cancel message can land between it and the
+   * caller resuming.
+   */
+  record(input: DictionaryHistoryRecordInput, signal: AbortSignal): Promise<DictionaryHistoryEntry | undefined>;
+  record(input: DictionaryHistoryRecordInput, signal?: AbortSignal): Promise<DictionaryHistoryEntry | undefined> {
     return this.enqueue(async () => {
+      if (signal?.aborted) {
+        return undefined;
+      }
+      const previous = this.entries;
       const entry = copyDictionaryHistoryEntry({
         id: this.createId(),
         createdAt: this.now().toISOString(),
@@ -133,8 +147,13 @@ export class DictionaryHistoryStore {
         toolName: input.toolName,
         result: input.result
       });
-      this.entries = [entry, ...this.entries].slice(0, this.limit);
+      this.entries = [entry, ...previous].slice(0, this.limit);
       await this.persist();
+      if (signal?.aborted) {
+        this.entries = previous;
+        await this.persist();
+        return undefined;
+      }
       this.changeListeners.emit();
       return copyDictionaryHistoryEntry(entry);
     });

@@ -295,6 +295,76 @@ describe('DictionaryHistoryStore', () => {
     expect(logs()).not.toContain('confidential');
   });
 
+  // Astra F-05: a lookup stays cancellable through its save, so a record
+  // made with a signal is a commitment its caller can still withdraw.
+  describe('a record made with a cancellation signal', () => {
+    const settle = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
+
+    /** Hold the next file write until released; later writes run as normal. */
+    const holdNextWrite = (): { release: () => void; write: jest.SpyInstance } => {
+      let release!: () => void;
+      const gate = new Promise<void>(resolve => { release = resolve; });
+      const writeFile = fileSystem.writeFile.bind(fileSystem);
+      const write = jest.spyOn(fileSystem, 'writeFile').mockImplementationOnce(async (filePath, data) => {
+        await gate;
+        return writeFile(filePath, data);
+      });
+      return { release, write };
+    };
+
+    const storedIds = async (store: DictionaryHistoryStore): Promise<string[]> =>
+      (await store.snapshot()).entries.map((entry) => entry.id);
+    const fileIds = (): string[] =>
+      (fileSystem.json(HISTORY_FILE) as { entries: Array<{ id: string }> }).entries.map((entry) => entry.id);
+
+    it('records nothing, writes nothing, and emits nothing when the signal is already aborted', async () => {
+      const store = createStore();
+      const changes = jest.fn();
+      store.onDidChange(changes);
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(store.record(lookup('alpha'), controller.signal)).resolves.toBeUndefined();
+
+      expect(await storedIds(store)).toEqual([]);
+      expect(fileSystem.files.has(HISTORY_FILE)).toBe(false);
+      expect(changes).not.toHaveBeenCalled();
+    });
+
+    it('withdraws an entry whose signal aborts during its write, restoring the entry it evicted', async () => {
+      const store = createStore([ROOT], { limit: 2 });
+      await store.record(lookup('alpha'));
+      await store.record(lookup('beta'));
+      const changes = jest.fn();
+      store.onDidChange(changes);
+      const { release, write } = holdNextWrite();
+      const controller = new AbortController();
+
+      const pending = store.record(lookup('gamma'), controller.signal);
+      await settle();
+      expect(write).toHaveBeenCalledTimes(1); // the save is in flight
+      controller.abort();
+      release();
+
+      await expect(pending).resolves.toBeUndefined();
+      expect(await storedIds(store)).toEqual(['entry-2', 'entry-1']);
+      expect(fileIds()).toEqual(['entry-2', 'entry-1']);
+      expect(changes).not.toHaveBeenCalled();
+    });
+
+    it('commits an entry whose signal never aborts', async () => {
+      const store = createStore();
+      const changes = jest.fn();
+      store.onDidChange(changes);
+
+      const entry = await store.record(lookup('alpha'), new AbortController().signal);
+
+      expect(entry?.id).toBe('entry-1');
+      expect(fileIds()).toEqual(['entry-1']);
+      expect(changes).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('never logs writer text from an invalid file', () => {
     const MARKER = 'SECRET_MANUSCRIPT_WORDS';
     const malformed = `{"formatVersion":1,"entries":[{"request":{"context":${MARKER}}}]}`;

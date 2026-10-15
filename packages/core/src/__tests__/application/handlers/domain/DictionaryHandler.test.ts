@@ -8,6 +8,7 @@ import { DictionaryHandler } from '@/application/handlers/domain/DictionaryHandl
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
+import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import {
   ExtensionToWebviewMessage,
   FastGenerateDictionaryMessage,
@@ -192,7 +193,7 @@ describe('DictionaryHandler', () => {
         modelIds: [MODEL],
         toolName: 'dictionary_lookup',
         result: '# Entry'
-      });
+      }, expect.any(AbortSignal));
       const requestId = (posted(MessageType.STREAM_STARTED)[0] as { payload: { requestId: string } }).payload.requestId;
       expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([
         expect.objectContaining({
@@ -232,6 +233,53 @@ describe('DictionaryHandler', () => {
       // Nothing but a status reset sits between completion and the result.
       expect(types.slice(complete + 1, result).every(type => type === MessageType.STATUS)).toBe(true);
       expect(posted(MessageType.DICTIONARY_RESULT)[0].payload).toMatchObject({ historyEntryId: 'hist-1' });
+    });
+
+    // Astra F-05: the stream stays cancellable through the history save, so a
+    // cancel the host acknowledges there must win: no success, no entry.
+    it('honors a cancel accepted during the history save: cancelled completion, no result, nothing retained', async () => {
+      const fileSystem = new MemoryFileSystem();
+      const projectHistory = new DictionaryHistoryStore(
+        fileSystem,
+        createFakeWorkspace({ workspaceFolders: () => [{ path: '/novel', name: 'novel' }] }),
+        log,
+        { createId: () => 'hist-cancelled', now: () => new Date('2026-10-14T14:02:00.000Z') }
+      );
+      handler.dispose();
+      handler = new DictionaryHandler(mockService as never, projectHistory, postMessage, log);
+      let releaseWrite!: () => void;
+      const gate = new Promise<void>(resolve => { releaseWrite = resolve; });
+      const writeFile = fileSystem.writeFile.bind(fileSystem);
+      const write = jest.spyOn(fileSystem, 'writeFile').mockImplementationOnce(async (filePath, data) => {
+        await gate;
+        return writeFile(filePath, data);
+      });
+
+      const lookup = handler.handleLookupDictionary(lookupMessage());
+      await flushQueuedWork();
+      expect(write).toHaveBeenCalledTimes(1); // the save is in flight
+      const { requestId } = (posted(MessageType.STREAM_STARTED)[0] as { payload: { requestId: string } }).payload;
+
+      await handler.handleCancelRequest({
+        type: MessageType.CANCEL_DICTIONARY_REQUEST,
+        source: 'webview.dictionary',
+        payload: { requestId, domain: 'dictionary' },
+        timestamp: 2
+      });
+      expect(posted(MessageType.STATUS).map((message) => (message.payload as { message: string }).message))
+        .toContain('Dictionary lookup cancelled');
+
+      releaseWrite();
+      await lookup;
+      await flushQueuedWork();
+
+      expect(posted(MessageType.STREAM_COMPLETE)).toEqual([
+        expect.objectContaining({ payload: expect.objectContaining({ requestId, cancelled: true }) })
+      ]);
+      expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([]);
+      expect(posted(MessageType.DICTIONARY_HISTORY)).toEqual([]);
+      expect((await projectHistory.snapshot()).entries).toEqual([]);
+      expect(fileSystem.json('/novel/prose-minion/history/dictionary.json')).toMatchObject({ entries: [] });
     });
 
     it('names the stream a result settles, recorded or not', async () => {

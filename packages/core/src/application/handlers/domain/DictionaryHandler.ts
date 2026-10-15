@@ -242,16 +242,14 @@ export class DictionaryHandler {
         entryOptions
       );
 
-      // signal.aborted detects cancellation (the orchestrator returns partial
-      // content on abort instead of throwing).
-      const cancelled = controller.signal.aborted;
-
       // Record BEFORE completing the stream (Astra F-01). The webview holds the
       // lookup, and with it Run and history navigation, until the stream
       // completes, so the history write must not open a window in which a
       // newer lookup starts and then receives this one's result. Only a
       // generated entry is history; the API-key notice and `Error:` text are not.
-      const historyEntryId = !cancelled && result.outcome === 'entry'
+      // signal.aborted detects cancellation (the orchestrator returns partial
+      // content on abort instead of throwing).
+      const historyEntryId = !controller.signal.aborted && result.outcome === 'entry'
         ? await this.recordHistory({
           request: buildHistoryRequest('standard', word, contextText, entryOptions, { sourceUri, relativePath }),
           // What the provider reported running, not a selection read before
@@ -259,8 +257,14 @@ export class DictionaryHandler {
           modelIds: result.modelId ? [result.modelId] : [],
           toolName: result.toolName,
           result: result.content
-        })
+        }, controller.signal)
         : undefined;
+
+      // Read cancellation only now. The stream stays cancellable through the
+      // save, and the store withdraws the entry when a cancel lands there, so
+      // an acknowledged cancel completes as cancelled with nothing retained
+      // (Astra F-05).
+      const cancelled = controller.signal.aborted;
 
       // Completion and the final result go out back to back. The result names
       // its stream, so the webview applies it only to the lookup it settles.
@@ -343,11 +347,13 @@ export class DictionaryHandler {
   /**
    * Record a completed lookup and return its id. History must never fail a
    * lookup, so any failure is logged and the result is posted without an id.
+   * With the lookup's signal, a cancel that lands during the save withdraws
+   * the entry and this resolves `undefined`.
    */
-  private async recordHistory(input: DictionaryHistoryRecordInput): Promise<string | undefined> {
+  private async recordHistory(input: DictionaryHistoryRecordInput, signal?: AbortSignal): Promise<string | undefined> {
     try {
-      const entry = await this.history.record(input);
-      return entry.id;
+      const entry = signal ? await this.history.record(input, signal) : await this.history.record(input);
+      return entry?.id;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[DictionaryHandler] Could not record ${input.request.mode} lookup in history: ${msg}`);
