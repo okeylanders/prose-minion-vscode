@@ -73,3 +73,17 @@ found four Medium findings, all fixed and mutation-checked. The ADR is amended.
   values into a log line. Node's parser quotes the surrounding source text.
 - **Verification:** 313 suites / 4,673 tests. Lint 1,137 warnings, 0 errors.
 
+## 2026-10-15: Re-review (F-05)
+
+F-01 to F-04 were verified as Addressed. **F-05:** recording before completion
+kept the stream cancellable during the save. The host acknowledged a cancel
+there, but still posted success and kept the entry.
+
+The fix makes `record(input, signal)` withdrawable: no insert if the signal is
+already aborted, and an exact rollback with no emit if it aborts during the
+write. The handler reads `signal.aborted` after the save.
+
+Invariant: the store's final abort check must stay after its last `await`, and
+the handler must post with no `await` in between. Otherwise a cancel can slip
+between commit and completion.
+

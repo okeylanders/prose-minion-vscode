@@ -82,7 +82,7 @@ it completes the stream or posts the result (see the
 | Outcome | Recorded? |
 |---|---|
 | Standard lookup completed (`finishReason` `stop`, unreported, or `length`/truncated) | Yes |
-| Standard lookup cancelled (`signal.aborted`) | No |
+| Standard lookup cancelled (`signal.aborted`), including during the history save | No |
 | API key not configured | No |
 | Lookup failed (the service caught an error and returned `Error: …` text) | No |
 | Fast lookup with at least one successful block (`metadata.successCount > 0`) | Yes; partial failures included as rendered |
@@ -258,8 +258,9 @@ replaces the ref.
 
 ## Amendment 2026-10-15: PR #144 review
 
-Astra's review of PR #144 found four Medium defects. Each fix below changes
-a decision above.
+Astra's review of PR #144 found four Medium defects, and the re-review found
+a fifth (F-05) introduced by the F-01 fix. Each fix below changes a decision
+above.
 
 - **F-01: settlement ownership.** The handler completed the stream, then
   awaited the history write, then posted the result. Completion released the
@@ -287,6 +288,19 @@ a decision above.
     `modelIds: string[]`. A fast lookup lists every model its blocks ran on.
   - The format is unreleased, so the shape changed without a migration.
   - `getActiveModelId()` is removed.
+- **F-05 (re-review): cancellation through the save.** Recording before
+  completion (F-01) left the stream cancellable during the write. The host
+  acknowledged a cancel there, but it still completed as a success and kept
+  the entry, because it had read `cancelled` before the write.
+  - The lookup now stays cancellable through the save. `record(input, signal)`
+    withdraws the entry when the signal aborts, whether that happens before
+    the insert or during the write. The rollback restores memory and file
+    exactly, including an entry the insert would have evicted, and emits
+    nothing.
+  - The store's last check follows its last `await`, so no cancel message can
+    land between that check and the handler posting.
+  - The handler reads `cancelled` only after the save. An acknowledged cancel
+    therefore completes as cancelled, with no result and no entry.
 - **F-04: log privacy.** Invalid-file reasons embedded the JSON parser's
   message, which quotes the surrounding writer text, and an arbitrary
   `formatVersion` value. Both reached the Output log. Reasons are now fixed

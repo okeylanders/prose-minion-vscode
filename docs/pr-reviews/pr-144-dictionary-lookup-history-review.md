@@ -180,3 +180,56 @@ The complete correction delta from report head `bbd29c27` is **26 files, +998/âˆ
 | Correction-head GitHub CI | **Success** for both [pull-request run 38757680942](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38757680942) and [push run 38757674086](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38757674086), exact head `19114a20` |
 
 The earlier report-only head `bbd29c27` also passed both [pull-request run 38655081313](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38655081313) and [push run 38655077359](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38655077359). Required checks on the new report-only head remain a separate step. No functional edit, merge, deployment, native EDH run, or live/billable provider call was made during this re-review.
+
+## Author response to the re-review (2026-10-15)
+
+Thank you for the independent verification of F-01 to F-04. F-05 reproduces
+as described, and the F-01 reorder introduced it. It is fixed in `a1b2ed2`.
+The status above is left for re-verification.
+
+**Fix: the lookup stays cancellable through the save, and a cancel there is
+honored.** This is the requested change's first option.
+- `DictionaryHistoryStore.record(input, signal)` withdraws the entry when the
+  signal aborts, before the insert or during the write. The rollback restores
+  memory and file exactly, including an entry the insert would have evicted
+  at the limit, re-persists, and emits nothing.
+- The store's last check follows its last `await`. No macrotask (that is, no
+  cancel message) can land between it and the handler resuming and posting.
+- The handler reads `controller.signal.aborted` only after the save. An
+  acknowledged cancel therefore completes with `cancelled: true`, posts no
+  `DICTIONARY_RESULT`, and retains no entry.
+- Fast lookups have no Cancel action, so their record takes no signal.
+
+I chose this over ending the cancellable phase before the save. That option
+leaves a window: a Cancel pressed while completion is in flight to the webview
+is applied locally, but the host would already treat the lookup as
+uncancellable.
+
+**Regressions:**
+- `UtilitiesTabCancelDuringSave.test.tsx` (new) runs the real tab and hooks,
+  through the app router and a message bridge, to the real `DictionaryHandler`
+  and a project-backed `DictionaryHistoryStore`. The entry's file write is held
+  while the writer presses the visible **Cancel** button. The test asserts:
+  - the acknowledgment ("Dictionary lookup cancelled");
+  - `STREAM_COMPLETE` with `cancelled: true`;
+  - no final result;
+  - no retained entry, in memory or on disk;
+  - the webview unlocked with no history cursor.
+
+  A control without the cancel records the entry and shows it as `1 / 1`.
+- `DictionaryHandler.test.ts` covers the same cancel-during-save at the host,
+  with the store's write held.
+- `DictionaryHistoryStore.test.ts` covers an already-aborted signal (nothing
+  written or emitted), an abort during the write (rollback, including a
+  restored evicted entry, with no emit), and a signal that never aborts.
+- Mutation checks:
+  - Reading `cancelled` before the save, as at `19114a2`, fails 3 tests.
+  - Dropping the store's post-write rollback fails 3 tests.
+- The F-01 and F-02 ownership suites pass unchanged.
+
+**Also addressed:** the trailing blank line at EOF in the epic README and the
+memory-bank entry (`git diff --check` is clean).
+
+**Noted:** the development-data caveat for pre-fix `modelId` entries. No
+entries were written from this branch here, and the epic's verification
+section records it before the live pass.

@@ -137,4 +137,14 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
   The ADR is amended, and the review file has an author-response table.
   Verification: 313 suites / 4,641 → 4,673 tests, typecheck clean, lint
   1,137 warnings (one fewer). Each regression was mutation-checked.
+- **2026-10-15. Re-review.** Astra verified F-01 to F-04 as Addressed and
+  found **F-05**: a cancel during the new pre-completion save was acknowledged
+  but still recorded as a success. `a1b2ed2` keeps the lookup cancellable
+  through the save. The store withdraws a cancelled entry exactly (memory,
+  file, and any evicted entry, with no emit), and the handler reads
+  cancellation after the save. A new end-to-end test drives the visible
+  Cancel button against the real handler and store.
+  - **Before the live pass:** history files written by builds before
+    `c4a348a` hold `modelId`, not `modelIds`. Those entries are dropped on
+    load and removed by the next write. Save any worth keeping first.
 
