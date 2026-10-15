@@ -4,7 +4,8 @@
 **Branches:** `epic/dictionary-lookup-history` → `main`
 **Verified base / merge-base:** `db3e49b8081629d27646125132def2b90d1ffd32`
 **Reviewed implementation head:** `6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c`
-**Scope:** 46 files · +5,903 / −155 · 11 commits
+**Independently re-reviewed correction head:** `19114a20100dac1f1c7b5c85fbd4e993e737c801` (2026-10-15)
+**Initial scope:** 46 files · +5,903 / −155 · 11 commits
 **Reviewed:** 2026-10-14 · **Reviewer:** Astra · **Mode:** independent source/spec review, host and real-hook/component lifecycle witnesses, real-engine model-swap probe with synthetic transport, and full deterministic verification
 
 ## Resolution ledger
@@ -13,14 +14,15 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | Medium / P2 | Completing the stream before awaiting history persistence admits another lookup, then lets the first result overwrite its state | Real handler/store delayed-write witness; real Dictionary/history hooks and app router reproduce the mismatched subject/result | **Open** |
-| F-02 | Medium / P2 | A cached failed lookup overwrites a restored history entry whenever the sidebar reappears | Real hook/router replay plus actual UtilitiesTab Copy/Save callbacks reproduce an old error exported under the restored word | **Open** |
-| F-03 | Medium / P2 | The recorded model can differ from the model that actually generated the entry | Real Dictionary service/utility/run engine, delayed prompt loading, and in-place model swap produce a B result recorded as A | **Open** |
-| F-04 | Medium / P2 | Invalid-history diagnostics copy manuscript fragments into the Output log | Real codec/store with malformed context reproduces a source excerpt in the logged JSON-parser reason | **Open** |
+| F-01 | Medium / P2 | Completing the stream before awaiting history persistence admits another lookup, then lets the first result overwrite its state | The delayed-write gap and completion-to-result lock are fixed at `19114a20`; request-correlated settlement preserves result ownership | **Addressed** |
+| F-02 | Medium / P2 | A cached failed lookup overwrites a restored history entry whenever the sidebar reappears | Fresh outcomes settle their request once; failed/unconfigured/success replays preserve restored content and exports | **Addressed** |
+| F-03 | Medium / P2 | The recorded model can differ from the model that actually generated the entry | Real provider/client/engine probes now record the response model after a prompt-loading swap, and both models for a mixed Fast run | **Addressed** |
+| F-04 | Medium / P2 | Invalid-history diagnostics copy manuscript fragments into the Output log | Real codec/store probes keep malformed-context and arbitrary-version markers out of logs | **Addressed** |
+| F-05 | Medium / P2 | Cancel during the new pre-completion history write is acknowledged but still committed as success | A deferred real-store write produces `cancelled: false`, one final result, and one retained entry after the host acknowledged cancellation | **Open** |
 
-**Verdict: Changes requested.** The four findings below remain open at `6ee5587d`. Passing deterministic gates and implementation-head CI do not cover these missing boundary cases. The native Extension Development Host pass is separately pending in the epic; no native or live-provider acceptance is claimed here.
+**Verdict: Changes requested.** All four original findings are independently resolved at `19114a20`. The correction introduces the F-05 cancellation boundary below, which remains open. Full deterministic gates and both correction-head CI runs pass, but the independent desired-safe cancellation witness fails. The native Extension Development Host pass remains separately pending; no native or live-provider acceptance is claimed.
 
-## F-01 — Keep completion and final-result ownership coherent across the history write
+## F-01 — Keep completion and final-result ownership coherent across the history write (addressed)
 
 **Changed-code location:** [`DictionaryHandler.ts:249–263`](https://github.com/okeylanders/prose-minion-vscode/blob/6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c/packages/core/src/application/handlers/domain/DictionaryHandler.ts#L249-L263), particularly the new `await this.recordHistory(...)` at lines 256–261.
 
@@ -37,7 +39,9 @@ The real host/store witness establishes that completion is emitted while both pe
 
 **Requested change:** Keep the lookup owned and locked until its final result/history identity are settled, or correlate final results so an old completion cannot replace a newer request or navigation. Do not leave a user-interactive gap around the persistence await. Preserve cancelled-lookup behavior if the settlement order changes. Add a deferred-write integration regression that attempts both a second Run and history navigation before the write resolves, and verifies result, subject, cursor, loading, and Copy/Save coherence afterward.
 
-## F-02 — Identify cached delivery independently of whether a result enters history
+**Resolution verified at `19114a20`:** History recording now finishes before stream completion is sent. The webview remains loading between completion and its own `requestId`-correlated final result. The independent delayed-write probe and real hook/component settlement probes pass. The original stale-result/second-Run defect is fixed. F-05 below concerns the newly extended cancellable interval during that write, not a remaining result overwrite.
+
+## F-02 — Identify cached delivery independently of whether a result enters history (addressed)
 
 **Changed-code location:** [`useAppMessageRouter.ts:91–101`](https://github.com/okeylanders/prose-minion-vscode/blob/6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c/packages/core/src/presentation/webview/hooks/useAppMessageRouter.ts#L91-L101), with [`useDictionaryHistory.ts:311–314`](https://github.com/okeylanders/prose-minion-vscode/blob/6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c/packages/core/src/presentation/webview/hooks/domain/useDictionaryHistory.ts#L311-L314).
 
@@ -55,7 +59,9 @@ Save also sends `metadata.word = 'umbra'`. The saved history entry on disk is no
 
 **Requested change:** Give result delivery/replay a stable identity or ownership rule that also covers non-recorded outcomes. Continue showing a genuinely new failed/unconfigured lookup; do not fix this by discarding every no-ID result. Test failed/unconfigured replay after a history restore and after a newer Fast result, alongside the existing recorded-success replay control and normal fresh-error delivery.
 
-## F-03 — Store the generating model, not an earlier mutable selection snapshot
+**Resolution verified at `19114a20`:** Result identity is now its stream request ID, independent of whether the outcome entered history. A synchronous awaited-result ref admits a fresh result once and rejects its later replay. Fresh failure delivery, restored history, and Copy/Save remain coherent in independent hook/router/component probes.
+
+## F-03 — Store the generating model, not an earlier mutable selection snapshot (addressed)
 
 **Changed-code location:** [`DictionaryHandler.ts:223–225`](https://github.com/okeylanders/prose-minion-vscode/blob/6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c/packages/core/src/application/handlers/domain/DictionaryHandler.ts#L223-L225) and the equivalent capture in the Fast handler at lines 292–294. The new [`DictionaryService.getActiveModelId`](https://github.com/okeylanders/prose-minion-vscode/blob/6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c/packages/core/src/infrastructure/api/services/dictionary/DictionaryService.ts#L205-L211) reads the manager's current selection, rather than provenance returned by the execution.
 
@@ -67,7 +73,9 @@ The Fast path also reuses a mutable engine across its queued blocks, so a single
 
 **Requested change:** Bind the run to an immutable model/provider snapshot and record that same identity, or propagate actual execution provenance through the service result and represent mixed-model Fast output truthfully. Add a regression that changes the model during prompt loading; for Fast, also cover a change between queued block waves. Merely moving the manager read to after completion trades this error for the opposite one.
 
-## F-04 — Keep invalid-file reasons free of writer-owned text
+**Resolution verified at `19114a20`:** The selected-model reader is removed. `ExecutionResult.modelId` reaches the service and store, and successful Fast block models are retained as distinct `modelIds`. Independent probes exercise the real `OpenRouterClient`, `AgentRunEngine`, Dictionary service/utility, handler, and store with only fetch/prompt/filesystem I/O synthetic. A prompt-delayed swap requests B and records the provider-reported `provider/model/B`; a mixed Fast run retains both A/B response identities. The amended ADR explicitly treats the file as unreleased, so the model-list shape change does not require a released-format migration. **Development-data caveat:** pre-fix V1 entries with only `modelId` fail the new required `modelIds` decoder, are omitted on load, and are removed from the file by its next successful rewrite. Preserve any development history worth keeping before updating; the unreleased-format decision does not itself preserve those entries.
+
+## F-04 — Keep invalid-file reasons free of writer-owned text (addressed)
 
 **Changed-code location:** [`dictionaryHistoryCodec.ts:47–55`](https://github.com/okeylanders/prose-minion-vscode/blob/6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c/packages/core/src/infrastructure/storage/dictionaryHistoryCodec.ts#L47-L55), consumed verbatim by [`DictionaryHistoryStore.ts:244–246`](https://github.com/okeylanders/prose-minion-vscode/blob/6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c/packages/core/src/infrastructure/storage/DictionaryHistoryStore.ts#L244-L246) and its failure path.
 
@@ -82,6 +90,24 @@ The codec appends `JSON.parse`'s raw exception message to its invalid-file reaso
 On the independently tested Node 24 runtime, the parser reason includes `..."context":SECRET_MAN"...`; the store logs that excerpt while quarantining the file. Quarantine itself correctly preserves the original file. The defect is disclosure into diagnostics, not destruction or an observed network transmission.
 
 **Requested change:** Return fixed, bounded reason codes/messages for malformed JSON and invalid version types. If useful, log a safe numeric offset or validated numeric version without embedding source fragments or arbitrary objects. Add tests asserting that distinctive word/context/result markers never appear in logs for malformed JSON, unknown-version values, or quarantine failure.
+
+**Resolution verified at `19114a20`:** Malformed JSON uses a fixed reason. Unknown versions are rendered only when they are safe integers; arbitrary strings/objects are classified without their content. Independent real-store probes verify malformed-context/string/object privacy and retain the numeric-version diagnostic. Existing quarantine success/failure and original-file preservation tests also pass.
+
+## F-05 — Do not acknowledge cancellation and then retain the lookup as successful
+
+**Changed-code location:** [`DictionaryHandler.ts:247–269`](https://github.com/okeylanders/prose-minion-vscode/blob/19114a20100dac1f1c7b5c85fbd4e993e737c801/packages/core/src/application/handlers/domain/DictionaryHandler.ts#L247-L269), where `cancelled` is sampled once before the new `await recordHistory(...)` and reused afterward.
+
+Moving the write before completion correctly closes F-01, but the stream and its request remain active throughout that await. The actual tab continues to offer an enabled Cancel button because `isStreaming` and `currentRequestId` are still set. `handleCancelRequest` aborts the controller and posts "Dictionary lookup cancelled". When the write finishes, the handler uses its earlier `cancelled = false` snapshot, emits a successful completion and final result, and leaves the entry in history.
+
+**Independent reproduction:** Hold the real store's `FileSystem.writeFile` promise after a Standard generation returns. Cancel that request through `handleCancelRequest` and verify the cancellation acknowledgment. Release the write and inspect the emitted completion, final results, and store snapshot. The desired-safe assertion expects cancellation, no final result, and no retained entry; the actual values are:
+
+```text
+{ cancelled: false, results: 1, entries: 1 }
+```
+
+This is a newly extended cancellation interval, potentially noticeable on slow/remote workspace storage. Generation has already finished, so cancellation cannot reverse the inference cost. The new frontend correlation guard correctly ignores the canceled request's late final result; there is no renewed result-overwrite claim. The defect is that the UI and host accept cancellation while durably recording the lookup as successful, contrary to the stated cancelled-lookup exclusion.
+
+**Requested change:** Define one consistent boundary for cancellation and history commitment. Either honor an accepted cancellation through the save and avoid retaining/publishing that entry, or explicitly end the cancellable phase before saving while maintaining a separate busy/settlement lock. Merely re-reading the signal after the write can correct the completion flag but still leave the canceled entry on disk. Add a deferred-write regression that exercises the visible Cancel action, acknowledgment, completion, final result, and retained history together. Preserve the now-passing F-01/F-02 request-ownership cases.
 
 ## Scope and independently checked behavior
 
@@ -137,3 +163,20 @@ Each regression was mutation-checked:
 - Full `npx jest`: **313 suites / 4,673 tests passing**.
 
 The native Extension Development Host pass is still pending.
+
+## Independent re-review at `19114a20` (2026-10-15)
+
+The complete correction delta from report head `bbd29c27` is **26 files, +998/−187**, comprising fixes `5b512e54`, `c4a348a4`, and `111b7596`, plus the ADR/epic/author-response update `19114a20`. The implementation, updated contracts/codecs/components, regression additions, and amended decision were inspected. The original four issues are addressed; F-05 is the one remaining finding. The author response above is preserved as the author's record, distinct from this independent verification.
+
+| Check | Result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **313 suites / 4,673 tests / 2 snapshots passed**, 141.877 seconds |
+| `npm run typecheck` | Core, webview, and extension passed |
+| Full `npm run lint` | **0 errors / 1,137 warnings** |
+| `npm run build`, including `verify:bundle` | Passed; three webpack size/performance warnings; sentinels verified |
+| `git diff --check bbd29c27..19114a20` | Reports only an extra blank line at EOF in the changed epic README and implementation record; no production-source whitespace error |
+| Independent correction host/provider/store probes | **7 passed / 1 desired-safe assertion failed**, 2.584 seconds; only F-05 fails |
+| Independent correction UI probes | **12 desired-safe tests passed**, 3.371 seconds; real hooks, UtilitiesTab, and window-message routing cover settlement, fresh outcomes/replays, Copy/Save, Cancel→Run and interleaved deliveries, tab unmount, clear-history, and instantaneous streams |
+| Correction-head GitHub CI | **Success** for both [pull-request run 38757680942](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38757680942) and [push run 38757674086](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38757674086), exact head `19114a20` |
+
+The earlier report-only head `bbd29c27` also passed both [pull-request run 38655081313](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38655081313) and [push run 38655077359](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38655077359). Required checks on the new report-only head remain a separate step. No functional edit, merge, deployment, native EDH run, or live/billable provider call was made during this re-review.
