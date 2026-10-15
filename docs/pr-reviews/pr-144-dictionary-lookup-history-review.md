@@ -4,7 +4,7 @@
 **Branches:** `epic/dictionary-lookup-history` → `main`
 **Verified base / merge-base:** `db3e49b8081629d27646125132def2b90d1ffd32`
 **Reviewed implementation head:** `6ee5587dc7ba2a631c0eff28f7693b5d176cbf5c`
-**Independently re-reviewed correction heads:** `19114a20100dac1f1c7b5c85fbd4e993e737c801`, then `f1dc7e56a4f9d77ae2efd5df5b8693bdf77f0802` (2026-10-15)
+**Independently re-reviewed correction heads:** `19114a20100dac1f1c7b5c85fbd4e993e737c801`, `f1dc7e56a4f9d77ae2efd5df5b8693bdf77f0802`, and final implementation **`f1528c46241263c8e2b3eebc19d337f17a2506f2`** (2026-10-15)
 **Initial scope:** 46 files · +5,903 / −155 · 11 commits
 **Reviewed:** 2026-10-14 · **Reviewer:** Astra · **Mode:** independent source/spec review, host and real-hook/component lifecycle witnesses, real-engine model-swap probe with synthetic transport, and full deterministic verification
 
@@ -18,9 +18,9 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 | F-02 | Medium / P2 | A cached failed lookup overwrites a restored history entry whenever the sidebar reappears | Fresh outcomes settle their request once; failed/unconfigured/success replays preserve restored content and exports | **Addressed** |
 | F-03 | Medium / P2 | The recorded model can differ from the model that actually generated the entry | Real provider/client/engine probes now record the response model after a prompt-loading swap, and both models for a mixed Fast run | **Addressed** |
 | F-04 | Medium / P2 | Invalid-history diagnostics copy manuscript fragments into the Output log | Real codec/store probes keep malformed-context and arbitrary-version markers out of logs | **Addressed** |
-| F-05 | Medium / P2 | Cancellation during history persistence can still retain the canceled entry if rollback fails | Normal cancellation is fixed at `f1dc7e56`; a failed rollback leaves the canceled entry on disk and loses the evicted prior entry on reload, including deletion of a recoverable rollback temporary file | **Open — normal path addressed; rollback failure remains** |
+| F-05 | Medium / P2 | Cancellation during persistence was acknowledged but retained, and the first fix could lose prior history if rollback failed | At `f1528c46`, staged writes and one pre-rename commit gate eliminate compensating rollback; declined commits preserve prior memory/file/reload state, with durability changes broadcast | **Addressed** |
 
-**Verdict: Changes requested.** F-01 through F-04 remain independently resolved. At `f1dc7e56`, the normal F-05 cancellation path is also fixed, including the visible Cancel action and a subsequent lookup while the old save finishes. F-05 remains open only for the rollback-failure case below: a canceled entry can reappear after reload and an evicted prior entry can be lost. Full deterministic gates and both current implementation-head CI runs pass. The native Extension Development Host pass remains separately pending; no native or live-provider acceptance is claimed.
+**Verdict: Approved for merge into `main`.** All five findings are independently addressed at `f1528c46`; no new actionable regression was found. The final correction passes the full deterministic suite and independent storage-fault, lifecycle, provider-provenance, and message-routing probes. Exact report-head CI is checked separately after this report-only commit. The native Extension Development Host acceptance pass remains separately pending; this approval does not claim native/manual, live-provider quality, or publication acceptance.
 
 ## F-01 — Keep completion and final-result ownership coherent across the history write (addressed)
 
@@ -93,9 +93,9 @@ On the independently tested Node 24 runtime, the parser reason includes `..."con
 
 **Resolution verified at `19114a20`:** Malformed JSON uses a fixed reason. Unknown versions are rendered only when they are safe integers; arbitrary strings/objects are classified without their content. Independent real-store probes verify malformed-context/string/object privacy and retain the numeric-version diagnostic. Existing quarantine success/failure and original-file preservation tests also pass.
 
-## F-05 — Preserve accepted cancellation when history rollback fails (partially addressed)
+## F-05 — Keep cancellation and history commitment consistent (addressed)
 
-The original `19114a20` reproduction below is fixed on the normal storage path. The remaining `f1dc7e56` failure and requested refinement follow it.
+The following records the original `19114a20` defect and the `f1dc7e56` rollback-failure refinement. Both are resolved by the independently verified `f1528c46` commit-point design described afterward.
 
 **Changed-code location:** [`DictionaryHandler.ts:247–269`](https://github.com/okeylanders/prose-minion-vscode/blob/19114a20100dac1f1c7b5c85fbd4e993e737c801/packages/core/src/application/handlers/domain/DictionaryHandler.ts#L247-L269), where `cancelled` is sampled once before the new `await recordHistory(...)` and reused afterward.
 
@@ -111,9 +111,9 @@ This is a newly extended cancellation interval, potentially noticeable on slow/r
 
 **Requested change:** Define one consistent boundary for cancellation and history commitment. Either honor an accepted cancellation through the save and avoid retaining/publishing that entry, or explicitly end the cancellable phase before saving while maintaining a separate busy/settlement lock. Merely re-reading the signal after the write can correct the completion flag but still leave the canceled entry on disk. Add a deferred-write regression that exercises the visible Cancel action, acknowledgment, completion, final result, and retained history together. Preserve the now-passing F-01/F-02 request-ownership cases.
 
-### F-05 re-verification at `f1dc7e56`: normal cancellation fixed; rollback failure remains
+### F-05 re-verification at `f1dc7e56`: normal cancellation fixed; rollback failure found
 
-**Current changed-code location:** [`DictionaryHistoryStore.ts:152–155`](https://github.com/okeylanders/prose-minion-vscode/blob/f1dc7e56a4f9d77ae2efd5df5b8693bdf77f0802/packages/core/src/infrastructure/storage/DictionaryHistoryStore.ts#L152-L155), calling the error-swallowing [`persist():291–300`](https://github.com/okeylanders/prose-minion-vscode/blob/f1dc7e56a4f9d77ae2efd5df5b8693bdf77f0802/packages/core/src/infrastructure/storage/DictionaryHistoryStore.ts#L291-L300).
+**Changed-code location at `f1dc7e56`:** [`DictionaryHistoryStore.ts:152–155`](https://github.com/okeylanders/prose-minion-vscode/blob/f1dc7e56a4f9d77ae2efd5df5b8693bdf77f0802/packages/core/src/infrastructure/storage/DictionaryHistoryStore.ts#L152-L155), calling the error-swallowing [`persist():291–300`](https://github.com/okeylanders/prose-minion-vscode/blob/f1dc7e56a4f9d77ae2efd5df5b8693bdf77f0802/packages/core/src/infrastructure/storage/DictionaryHistoryStore.ts#L291-L300).
 
 **Verified improvement:** The handler now checks cancellation after recording, emits a cancelled completion and no final result, and the store restores its prior entries when a signal aborts during the save. The independent original F-05 witness now passes. The real-tab/handler/store bridge also passes through actual window-message routing, including Cancel followed by a new Standard lookup before the old save is released. With successful storage operations, the canceled entry is absent from memory and disk, any evicted prior entry is restored, and only the second lookup survives.
 
@@ -131,6 +131,14 @@ canonical file / freshly reopened store: [gamma, beta]
 A separate characterization at the actual default cap of 50 also reproduces the loss: canceled record 51 survives on disk and original record 1 disappears. It captures the rollback temporary file containing all 50 original entries before the rename error, then verifies that the catch block deletes that complete recovery copy, leaving only the candidate canonical file. At the reduced cap, that is `[beta, alpha]` deleted while `[gamma, beta]` remains canonical. This is observable loss on reload, not a claim that arbitrary storage outages can always be prevented. An ordinary initial-save failure preserves the prior canonical ledger; this newly added compensating write has a different failure consequence.
 
 **Requested refinement:** Treat a failed rollback distinctly from a successful cancellation. Preserve recoverable prior-ledger data rather than deleting it, make its recovery/commit state coherent across reload, and surface the degraded durability instead of silently returning through the no-change path. A safer commit/cancellation design is also acceptable. Add fault-injection regressions for a successful first save followed by failed rollback write and failed rollback rename, at capacity; assert the prior entry remains recoverable after reopening and the canceled entry is not silently treated as saved history. Keep the now-passing visible-Cancel and Cancel→new-Run tests.
+
+### F-05 final resolution verified at `f1528c46`
+
+The replacement design stages the candidate ledger without changing current entries, then invokes one synchronous `beforeCommit` gate immediately before issuing the rename. The handler's [`closeCancellation`:371–376](https://github.com/okeylanders/prose-minion-vscode/blob/f1528c46241263c8e2b3eebc19d337f17a2506f2/packages/core/src/application/handlers/domain/DictionaryHandler.ts#L371-L376) declines an already-cancelled request or closes its cancellation window in that same step. The store's [`writeLedger`:327–350](https://github.com/okeylanders/prose-minion-vscode/blob/f1528c46241263c8e2b3eebc19d337f17a2506f2/packages/core/src/infrastructure/storage/DictionaryHistoryStore.ts#L327-L350) never replaces the canonical history for a declined commit and needs no compensating write. A failed staging write or commit rename uses the explicit session-only fallback; [`record`:168–178](https://github.com/okeylanders/prose-minion-vscode/blob/f1528c46241263c8e2b3eebc19d337f17a2506f2/packages/core/src/infrastructure/storage/DictionaryHistoryStore.ts#L168-L178) also broadcasts changed durability for a withdrawn candidate.
+
+Independent fault probes verify that all 50 prior entries survive withdrawal in memory, canonical file, and a freshly opened store, even if temporary-file cleanup fails. Directory/write failures, commit-rename failures, subsequent recovery, queued record/delete/clear, and cancellation during load, staging, or queueing preserve the documented commit/session semantics. The original delayed-write host witness passes. There is no second write whose failure could discard the prior ledger.
+
+**Commit-boundary behavior explicitly checked:** a Cancel reaching the host after the gate is not acknowledged and does not undo the committed lookup. While a rename is outstanding, the webview can still stop locally; the completed entry subsequently appears in history. Real-tab/handler/store/window-router probes confirm this documented behavior preserves the displayed subject and Copy/Save, does not overwrite a newer lookup, and does not leave controls busy. A later accepted cancellation of that newer lookup also preserves both requests' correct outcomes. This is not a claim that post-commit cancellation removes an already-committed entry.
 
 ## Scope and independently checked behavior
 
@@ -341,3 +349,22 @@ request from `activeRequests` in the same synchronous step.
 - `git diff --check`: clean.
 - Full `npx jest`: **314 suites / 4,685 tests passing**.
 - `npm run build`: compiles.
+
+
+## Independent final re-review at `f1528c46` (2026-10-15)
+
+The final correction delta from report head `c39e7efc` is **9 files, +454/−124**, comprising implementation/tests `46a250dd`, the ADR/epic/author response `0dec417e`, and documentation EOF cleanup `f1528c46`. The implementation, changed tests, amended decision, and author response were independently inspected. F-01 through F-04 remain verified; F-05 is now addressed, with the explicit commit boundary documented above. No additional actionable finding was identified.
+
+| Check | Result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **314 suites / 4,685 tests / 2 snapshots passed**, 113.098 seconds |
+| `npm run typecheck` | Core, webview, and extension passed |
+| Full `npm run lint` | **0 errors / 1,138 warnings** |
+| `npm run build`, including `verify:bundle` | Passed; three webpack size/performance warnings; sentinels verified |
+| `git diff --check c39e7efc..f1528c46` | Passed |
+| Independent host/provider/store probes retained from the first correction | **8/8 passed**, retaining settlement, actual response-model/mixed-Fast provenance, diagnostic privacy, and delayed-write cancellation coverage |
+| Independent staged-store fault/ordering/reload probes | **14/14 passed**; current commit-gate API, actual default cap of 50, directory/write/rename/cleanup failures, durability notifications and recovery, queued mutations, cancellation timing, gate-called-once, and session-only behavior |
+| Independent UI and real-tab/handler/store/window-router probes | **18/18 passed**, 5.027 seconds: retained UI12, pre-commit bridge3, and new held-rename commit-boundary3 |
+| Implementation-head GitHub CI | **Success** for both [pull-request run 38766836025](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38766836025) and [push run 38766825579](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38766825579), exact head `f1528c46` |
+
+The prior report-only head `c39e7efc` passed both [pull-request run 38764443925](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38764443925) and [push run 38764439493](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38764439493). Required checks on this final report-only commit are a separate exact-head verification after publication. The review leaves the native Standard/Fast/cancel/reload/no-folder acceptance pass and ADR acceptance pending as documented by the author. No functional fix, merge, deployment, publication, credentials setup, or live/billable inference was performed by the reviewer.
