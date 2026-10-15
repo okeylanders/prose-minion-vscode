@@ -293,4 +293,37 @@ describe('DictionaryHistoryStore', () => {
 
     expect(logs()).not.toContain('confidential');
   });
+
+  describe('never logs writer text from an invalid file', () => {
+    const MARKER = 'SECRET_MANUSCRIPT_WORDS';
+    const malformed = `{"formatVersion":1,"entries":[{"request":{"context":${MARKER}}}]}`;
+    const unknownVersion = JSON.stringify({ formatVersion: { note: MARKER }, entries: [] });
+
+    it.each([
+      ['malformed JSON', malformed],
+      ['an arbitrary formatVersion value', unknownVersion]
+    ])('when setting aside a file with %s', async (_label, text) => {
+      fileSystem.files.set(HISTORY_FILE, new TextEncoder().encode(text));
+
+      await createStore().snapshot();
+
+      expect(fileBytes(QUARANTINE_FILE)).toBe(text);
+      expect(logs()).toContain('renamed it to');
+      expect(logs()).not.toContain('SECRET');
+    });
+
+    it.each([
+      ['malformed JSON', malformed],
+      ['an arbitrary formatVersion value', unknownVersion]
+    ])('when a file with %s cannot be set aside', async (_label, text) => {
+      fileSystem.files.set(HISTORY_FILE, new TextEncoder().encode(text));
+      fileSystem.failRenameToPath = QUARANTINE_FILE;
+
+      await createStore().snapshot();
+
+      expect(fileBytes(HISTORY_FILE)).toBe(text);
+      expect(logs()).toContain('could not be set aside');
+      expect(logs()).not.toContain('SECRET');
+    });
+  });
 });

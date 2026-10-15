@@ -40,19 +40,31 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isOptionalString = (value: unknown): value is string | undefined =>
   value === undefined || typeof value === 'string';
 
+/** A safe integer version is named; anything else is described by its kind only. */
+function describeUnknownFormatVersion(version: unknown): string {
+  if (version === undefined) {
+    return 'formatVersion is missing';
+  }
+  return Number.isSafeInteger(version)
+    ? `unknown formatVersion ${version as number}`
+    : 'formatVersion is not a whole number';
+}
+
 export function decodeDictionaryHistoryFile(text: string): DictionaryHistoryDecodeResult {
+  // Reasons reach the Output log, so they are fixed phrases. The parser's own
+  // message quotes the text around the error, which here is the writer's
+  // words, context, or results; an unknown version can be any value at all.
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return { kind: 'invalid', reason: `the file is not valid JSON (${message})` };
+  } catch {
+    return { kind: 'invalid', reason: 'the file is not valid JSON' };
   }
   if (!isRecord(parsed)) {
     return { kind: 'invalid', reason: 'the file is not a JSON object' };
   }
   if (parsed.formatVersion !== DICTIONARY_HISTORY_FORMAT_VERSION) {
-    return { kind: 'invalid', reason: `unknown formatVersion ${JSON.stringify(parsed.formatVersion) ?? 'undefined'}` };
+    return { kind: 'invalid', reason: describeUnknownFormatVersion(parsed.formatVersion) };
   }
   if (!Array.isArray(parsed.entries)) {
     return { kind: 'invalid', reason: 'entries is not a list' };

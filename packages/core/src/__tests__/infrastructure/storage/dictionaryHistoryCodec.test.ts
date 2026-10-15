@@ -77,6 +77,31 @@ describe('dictionaryHistoryCodec', () => {
     expect(decoded).toEqual({ kind: 'invalid', reason: expect.any(String) });
   });
 
+  describe('invalid-file reasons are fixed phrases, because the store logs them', () => {
+    const MARKER = 'SECRET_MANUSCRIPT_WORDS';
+
+    it.each([
+      ['malformed JSON around writer text', `{"formatVersion":1,"entries":[{"request":{"context":${MARKER}}}]}`],
+      ['a string formatVersion', JSON.stringify({ formatVersion: MARKER, entries: [] })],
+      ['an object formatVersion', JSON.stringify({ formatVersion: { note: MARKER }, entries: [] })],
+      ['a fractional formatVersion', JSON.stringify({ formatVersion: 1.5, entries: [] })]
+    ])('never quotes the file for %s', (_label, text) => {
+      const decoded = decodeDictionaryHistoryFile(text);
+
+      expect(decoded.kind).toBe('invalid');
+      expect(JSON.stringify(decoded)).not.toContain(MARKER);
+      expect(JSON.stringify(decoded)).not.toContain('SECRET');
+    });
+
+    it('names a whole-number version it does not know, and only that', () => {
+      expect(decodeDictionaryHistoryFile(JSON.stringify({ formatVersion: 7, entries: [] })))
+        .toEqual({ kind: 'invalid', reason: 'unknown formatVersion 7' });
+      expect(decodeDictionaryHistoryFile(JSON.stringify({ entries: [] })))
+        .toEqual({ kind: 'invalid', reason: 'formatVersion is missing' });
+      expect(decodeDictionaryHistoryFile('{"formatVersion":1,')).toEqual({ kind: 'invalid', reason: 'the file is not valid JSON' });
+    });
+  });
+
   it('drops and counts malformed entries while their valid neighbors survive', () => {
     const valid = entry();
     const { request } = valid;
