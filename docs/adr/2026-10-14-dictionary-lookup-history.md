@@ -82,7 +82,8 @@ it completes the stream or posts the result (see the
 | Outcome | Recorded? |
 |---|---|
 | Standard lookup completed (`finishReason` `stop`, unreported, or `length`/truncated) | Yes |
-| Standard lookup cancelled (`signal.aborted`), including during the history save | No |
+| Standard lookup cancelled (`signal.aborted`) before the history commit point, including while the entry is staged | No |
+| Cancel that reaches the host after the commit point | Refused (no acknowledgment); the lookup stands as recorded |
 | API key not configured | No |
 | Lookup failed (the service caught an error and returned `Error: …` text) | No |
 | Fast lookup with at least one successful block (`metadata.successCount > 0`) | Yes; partial failures included as rendered |
@@ -288,19 +289,25 @@ above.
     `modelIds: string[]`. A fast lookup lists every model its blocks ran on.
   - The format is unreleased, so the shape changed without a migration.
   - `getActiveModelId()` is removed.
-- **F-05 (re-review): cancellation through the save.** Recording before
-  completion (F-01) left the stream cancellable during the write. The host
-  acknowledged a cancel there, but it still completed as a success and kept
-  the entry, because it had read `cancelled` before the write.
-  - The lookup now stays cancellable through the save. `record(input, signal)`
-    withdraws the entry when the signal aborts, whether that happens before
-    the insert or during the write. The rollback restores memory and file
-    exactly, including an entry the insert would have evicted, and emits
-    nothing.
-  - The store's last check follows its last `await`, so no cancel message can
-    land between that check and the handler posting.
-  - The handler reads `cancelled` only after the save. An acknowledged cancel
-    therefore completes as cancelled, with no result and no entry.
+- **F-05 (re-reviews): one commit point closes the cancel window.**
+  Recording before completion (F-01) left the stream cancellable during the
+  write. The host acknowledged a cancel there, but it still completed as a
+  success and kept the entry.
+  - A first fix rolled the entry back with a compensating write. A failed
+    rollback could then leave the cancelled entry on disk, lose the entry the
+    insert had evicted, and delete the only complete temporary copy of the
+    prior history.
+  - The final design has no compensating write.
+    `record(input, { beforeCommit })` stages the new ledger in a temporary
+    file, then calls `beforeCommit` synchronously, immediately before the
+    rename that commits it (or at once when there is no file).
+  - Declining leaves the history file and memory untouched. The file
+    therefore only ever holds committed history, whatever write fails.
+  - The handler's `beforeCommit` withdraws an already-cancelled lookup.
+    Otherwise it removes the request from `activeRequests` in the same tick.
+    A cancel arriving after the commit point finds nothing to cancel, is
+    never acknowledged, and the lookup stands as recorded.
+  - A failed write that changes durability is always broadcast.
 - **F-04: log privacy.** Invalid-file reasons embedded the JSON parser's
   message, which quotes the surrounding writer text, and an arbitrary
   `formatVersion` value. Both reached the Output log. Reasons are now fixed

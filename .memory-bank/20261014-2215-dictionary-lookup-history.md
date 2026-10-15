@@ -87,3 +87,15 @@ Invariant: the store's final abort check must stay after its last `await`, and
 the handler must post with no `await` in between. Otherwise a cancel can slip
 between commit and completion.
 
+## 2026-10-15: Second re-review (F-05 rollback failure)
+
+The compensating rollback is gone (`46a250d`). Invariants:
+- **Commit point:** `DictionaryHistoryStore.record` commits only through
+  `beforeCommit`. The gate is called synchronously, immediately before the
+  committing rename. Never add an `await` between the gate and the rename.
+- **History file:** it holds only committed history. Never write the history
+  file before the commit point, and never "undo" a commit with a second write.
+- **Cancel window:** the handler's gate withdraws an already-cancelled lookup
+  and otherwise deletes the request from `activeRequests` in the same tick.
+  Cancellation ends exactly where commitment begins.
+

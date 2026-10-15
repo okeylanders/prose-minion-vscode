@@ -147,4 +147,10 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
   - **Before the live pass:** history files written by builds before
     `c4a348a` hold `modelId`, not `modelIds`. Those entries are dropped on
     load and removed by the next write. Save any worth keeping first.
+- **2026-10-15. Second re-review.** Astra confirmed the normal F-05 path, then
+  found that a failed rollback write could keep the cancelled entry and lose
+  the evicted one. `46a250d` removes the rollback. History commits at a
+  single `beforeCommit` point, immediately before the committing rename, and
+  the handler closes the cancel window at that same point. A cancel after it
+  is refused, not acknowledged. Tests: 314 suites / 4,685.
 

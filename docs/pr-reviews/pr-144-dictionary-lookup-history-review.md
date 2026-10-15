@@ -277,3 +277,68 @@ The F-05 correction delta from report head `479445c0` is **10 files, +485/−15*
 | Implementation-head GitHub CI | **Success** for both [pull-request run 38763157810](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38763157810) and [push run 38763148875](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38763148875), exact head `f1dc7e56` |
 
 The preceding report-only head `479445c0` passed both [pull-request run 38760393619](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38760393619) and [push run 38760382253](https://github.com/okeylanders/prose-minion-vscode/actions/runs/38760382253). Checks on the new report-only head are verified separately after publication. All independent probes use synthetic data and filesystem/provider boundaries; no native EDH, real-disk crash, live-provider quality, or publication acceptance is inferred.
+
+## Author response to the second re-review (2026-10-15)
+
+The rollback-failure case reproduces as described. A compensating write has
+its own failure mode, and the fix in `46a250d` removes that write rather than
+hardening it. This is the "safer commit/cancellation design" the refinement
+allows. The status above is left for re-verification.
+
+**One commit point instead of a rollback.**
+- `DictionaryHistoryStore.record(input, { beforeCommit })` stages the new
+  ledger in a temporary file. It then calls `beforeCommit()` synchronously,
+  immediately before the rename that commits, or at once when the history is
+  not saved to a file.
+- **Declined:** the staged file is deleted, and the history file and memory
+  are never touched. Nothing needs rolling back, so nothing can half-fail.
+- **Accepted:** the rename commits. If that rename fails, the prior history
+  file stays as it was. The entry lives for this session, and the store
+  reports durability as `session/write-failed`.
+- A staging failure never touches the history file. If it changes durability,
+  the store broadcasts a change even when the entry is withdrawn.
+- **Result:** the history file only ever holds committed history, and reopening
+  reads exactly that. No path deletes a copy of committed history.
+
+**The cancel window closes at the same point.** The handler's `beforeCommit`
+withdraws a lookup that is already cancelled. Otherwise it removes the
+request from `activeRequests` in the same synchronous step.
+- A cancel accepted before the commit point is honored everywhere: it is
+  acknowledged, completes as cancelled, posts no result, and retains nothing.
+- A cancel arriving after the commit point finds no active request, is never
+  acknowledged, and the lookup completes as the recorded success it is.
+- The webview may already have stopped locally in that last case. It ignores
+  the late completion and result as before, and the history list shows the
+  entry.
+
+**Regressions, at capacity, each checked after a fresh reopen:**
+- **Store:**
+  - call order (stage, then `beforeCommit`, then commit);
+  - withdrawal keeps the prior ledger in memory, in the file, and after
+    reopening;
+  - a cancel during staging;
+  - a withdrawn temporary file that cannot be deleted (the prior ledger is
+    intact, and the leftover is never read);
+  - a staging failure, both withdrawn and committed, with durability
+    broadcast;
+  - a failed commit rename (the prior file is kept, and the failure is
+    reported);
+  - a session-only store consults the gate at once.
+- **Handler:** a cancel during staging is honored; a cancel during the
+  commit rename is refused, with no acknowledgment and a recorded success.
+- **End to end:** the visible Cancel test now also asserts that the
+  history file is never created. A new test runs Cancel, then a second
+  Standard lookup before the old save releases; only the second lookup is
+  kept, in memory, on disk, and on screen.
+- **Mutation checks:**
+  - committing before the gate fails 7 tests;
+  - leaving the request cancellable after commit fails 1;
+  - a silent withdrawal after a failed staging write fails 1.
+
+**Verification at `46a250d`:**
+- `npm run typecheck`: clean.
+- `npm run lint`: 0 errors, 1,138 warnings.
+- `git diff --check`: clean.
+- Full `npx jest`: **314 suites / 4,685 tests passing**.
+- `npm run build`: compiles.
+
