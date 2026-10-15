@@ -98,4 +98,3 @@ The compensating rollback is gone (`46a250d`). Invariants:
 - **Cancel window:** the handler's gate withdraws an already-cancelled lookup
   and otherwise deletes the request from `activeRequests` in the same tick.
   Cancellation ends exactly where commitment begins.
-

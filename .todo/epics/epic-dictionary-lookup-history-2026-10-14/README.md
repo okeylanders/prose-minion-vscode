@@ -153,4 +153,3 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
   single `beforeCommit` point, immediately before the committing rename, and
   the handler closes the cancel window at that same point. A cancel after it
   is refused, not acknowledged. Tests: 314 suites / 4,685.
-
