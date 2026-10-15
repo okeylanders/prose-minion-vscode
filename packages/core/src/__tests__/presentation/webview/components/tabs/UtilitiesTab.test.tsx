@@ -214,9 +214,9 @@ describe('UtilitiesTab dictionary history', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
 
   const SUMMARIES: DictionaryHistorySummary[] = [
-    { id: 'h3', createdAt: '2026-10-14T12:00:00.000Z', word: 'petrichor', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard', modelId: 'test/model' },
-    { id: 'h2', createdAt: '2026-10-13T12:00:00.000Z', word: 'geosmin', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'fast' },
-    { id: 'h1', createdAt: '2026-10-12T12:00:00.000Z', word: 'umbra', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard' }
+    { id: 'h3', createdAt: '2026-10-14T12:00:00.000Z', word: 'petrichor', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard', modelIds: ['test/model'] },
+    { id: 'h2', createdAt: '2026-10-13T12:00:00.000Z', word: 'geosmin', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'fast', modelIds: [] },
+    { id: 'h1', createdAt: '2026-10-12T12:00:00.000Z', word: 'umbra', contextPreview: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard', modelIds: [] }
   ];
   const PETRICHOR: DictionaryHistoryEntry = {
     id: 'h3',
@@ -229,7 +229,7 @@ describe('UtilitiesTab dictionary history', () => {
       mode: 'standard',
       relativePath: 'chapters/rain.md'
     },
-    modelId: 'test/model',
+    modelIds: ['test/model'],
     toolName: 'dictionary_lookup',
     result: 'The smell of rain on dry earth.'
   };

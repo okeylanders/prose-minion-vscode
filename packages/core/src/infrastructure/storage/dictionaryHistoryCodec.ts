@@ -104,7 +104,7 @@ export function toDictionaryHistorySummary(entry: DictionaryHistoryEntry): Dicti
     includeEncyclopedia: request.includeEncyclopedia,
     includePalettes: request.includePalettes,
     mode: request.mode,
-    ...(entry.modelId !== undefined ? { modelId: entry.modelId } : {}),
+    modelIds: [...entry.modelIds],
     ...(request.relativePath !== undefined ? { relativePath: request.relativePath } : {})
   };
 }
@@ -118,7 +118,7 @@ export function copyDictionaryHistoryEntry(entry: DictionaryHistoryEntry): Dicti
     id: entry.id,
     createdAt: entry.createdAt,
     request: copyRequest(entry.request),
-    ...(entry.modelId !== undefined ? { modelId: entry.modelId } : {}),
+    modelIds: [...entry.modelIds],
     toolName: entry.toolName,
     result: entry.result
   };
@@ -136,6 +136,13 @@ function copyRequest(request: DictionaryLookupRequest): DictionaryLookupRequest 
   };
 }
 
+/** Distinct, non-empty model ids; empty when the provider reported none. */
+function isModelIdList(value: unknown): value is string[] {
+  return Array.isArray(value)
+    && value.every(modelId => typeof modelId === 'string' && modelId.length > 0)
+    && new Set(value).size === value.length;
+}
+
 function decodeEntry(value: unknown): DictionaryHistoryEntry | undefined {
   if (!isRecord(value)) {return undefined;}
   const request = decodeRequest(value.request);
@@ -143,7 +150,7 @@ function decodeEntry(value: unknown): DictionaryHistoryEntry | undefined {
     !request
     || typeof value.id !== 'string' || value.id.length === 0
     || typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt))
-    || !isOptionalString(value.modelId)
+    || !isModelIdList(value.modelIds)
     || typeof value.toolName !== 'string'
     || typeof value.result !== 'string'
   ) {
@@ -153,7 +160,7 @@ function decodeEntry(value: unknown): DictionaryHistoryEntry | undefined {
     id: value.id,
     createdAt: value.createdAt,
     request,
-    modelId: value.modelId,
+    modelIds: value.modelIds,
     toolName: value.toolName,
     result: value.result
   });

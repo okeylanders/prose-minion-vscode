@@ -31,8 +31,12 @@ export interface DictionaryHistoryEntry {
   /** ISO-8601. */
   createdAt: string;
   request: DictionaryLookupRequest;
-  /** The dictionary model resolved when the request started. */
-  modelId?: string;
+  /**
+   * The models that generated the result, as the provider reported them
+   * (`ExecutionResult.modelId`), in first-use order. Empty when unreported.
+   * More than one only when a fast lookup's blocks straddled a model swap.
+   */
+  modelIds: string[];
   /** `dictionary_lookup` or `dictionary_fast_generate`. */
   toolName: string;
   /** The Markdown exactly as the tab rendered it. */
@@ -49,7 +53,7 @@ export interface DictionaryHistorySummary {
   includeEncyclopedia: boolean;
   includePalettes: boolean;
   mode: DictionaryLookupMode;
-  modelId?: string;
+  modelIds: string[];
   relativePath?: string;
 }
 

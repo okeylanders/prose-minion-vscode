@@ -125,7 +125,7 @@ interface DictionaryHistoryMetaProps {
   summary: DictionaryHistorySummary | null;
 }
 
-/** `From history · <date> · Standard|⚡ Fast · <model>`; the model is omitted when unknown. */
+/** `From history · <date> · Standard|⚡ Fast · <models>`; the models are omitted when unreported. */
 export const DictionaryHistoryMeta: React.FC<DictionaryHistoryMetaProps> = ({ summary }) => {
   if (!summary) {
     return null;
@@ -135,7 +135,7 @@ export const DictionaryHistoryMeta: React.FC<DictionaryHistoryMetaProps> = ({ su
     'From history',
     ...(time ? [time] : []),
     summary.mode === 'fast' ? '⚡ Fast' : 'Standard',
-    ...(summary.modelId ? [summary.modelId] : [])
+    ...(summary.modelIds.length > 0 ? [summary.modelIds.join(' + ')] : [])
   ];
   return <p className="pm-dictionary-history-meta">{parts.join(' · ')}</p>;
 };

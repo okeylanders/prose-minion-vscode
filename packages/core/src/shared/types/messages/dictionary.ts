@@ -77,6 +77,8 @@ export interface DictionaryBlockResult {
   duration: number;
   error?: string;
   usage?: TokenUsage;
+  /** The model the provider reported for this block's call. */
+  modelId?: string;
 }
 
 export interface FastGenerateDictionaryResultPayload {
@@ -90,6 +92,12 @@ export interface FastGenerateDictionaryResultPayload {
     totalBlocks: number;
   };
   usage?: TokenUsage; // Aggregated usage across all blocks
+  /**
+   * The models the provider reported for the successful blocks, distinct, in
+   * block order. Blocks run on a shared engine, so a model swap mid-run can
+   * leave more than one.
+   */
+  modelIds: string[];
   /** The history entry this result was recorded as; absent when it was not recorded. */
   historyEntryId?: string;
 }

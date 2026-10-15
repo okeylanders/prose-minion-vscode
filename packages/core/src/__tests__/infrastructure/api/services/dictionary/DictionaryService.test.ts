@@ -113,20 +113,134 @@ describe('DictionaryService', () => {
     });
   });
 
-  it('reads the active model from the dictionary scope', () => {
-    const getResolvedModel = jest.fn().mockReturnValue('anthropic/claude-sonnet-4.5');
-    const service = new DictionaryService(
-      {
-        ensureInitialized: jest.fn().mockResolvedValue(undefined),
-        getEngine: jest.fn().mockReturnValue(undefined),
-        getResolvedModel
-      } as never,
-      {} as never,
-      {} as never
-    );
+  // Astra F-03: history must record the model that generated an entry. The
+  // manager hot-swaps by mutating the shared engine in place, and the
+  // provider picks its model when each call is dispatched, so a selection read
+  // at request start (or at completion) can disagree with what actually ran.
+  describe('model provenance', () => {
+    /** Like the real engine: each call runs on the model selected when it is dispatched. */
+    interface SwappableEngine {
+      model: string;
+      setModel: (model: string) => void;
+      runInitial: jest.Mock;
+    }
 
-    expect(service.getActiveModelId()).toBe('anthropic/claude-sonnet-4.5');
-    expect(getResolvedModel).toHaveBeenCalledWith('dictionary');
+    const swappableEngine = (initialModel: string): SwappableEngine => {
+      const engine: SwappableEngine = {
+        model: initialModel,
+        setModel: (model: string) => { engine.model = model; },
+        runInitial: jest.fn(async ({ toolName }: { toolName: string }) => ({
+          content: `# ${toolName} by ${engine.model}`,
+          finishReason: 'stop',
+          modelId: engine.model
+        }))
+      };
+      return engine;
+    };
+
+    const held = () => {
+      let release!: (value: string) => void;
+      const promise = new Promise<string>(resolve => { release = resolve; });
+      return { promise, release };
+    };
+
+    const settle = (): Promise<void> => new Promise(resolve => setImmediate(resolve));
+
+    const buildService = async (
+      engine: SwappableEngine,
+      promptLoader: { loadSharedPrompts: jest.Mock; loadPrompts: jest.Mock }
+    ) => {
+      const service = new DictionaryService(
+        {
+          ensureInitialized: jest.fn().mockResolvedValue(undefined),
+          getEngine: jest.fn().mockReturnValue(engine),
+          // The selection a snapshot would have read; it must not reach the result.
+          getResolvedModel: jest.fn().mockReturnValue('model/A')
+        } as never,
+        { getPromptLoader: () => promptLoader } as never,
+        { getOptions: jest.fn().mockReturnValue({ temperature: 0.4, maxTokens: 10000 }) } as never
+      );
+      await service.refreshConfiguration();
+      return service;
+    };
+
+    it.each([
+      ['standard', (service: DictionaryService) => service.lookupWord('plosive')],
+      ['streaming', (service: DictionaryService) => service.lookupWordStreaming('plosive', undefined, jest.fn())]
+    ])('reports the model that generated a %s lookup when a swap lands during prompt loading', async (_mode, lookup) => {
+      const engine = swappableEngine('model/A');
+      const sharedPrompts = held();
+      const service = await buildService(engine, {
+        loadSharedPrompts: jest.fn(() => sharedPrompts.promise),
+        loadPrompts: jest.fn().mockResolvedValue('dictionary prompts')
+      });
+
+      const pending = lookup(service);
+      await settle();
+      expect(engine.runInitial).not.toHaveBeenCalled();
+      engine.setModel('model/B');
+      sharedPrompts.release('shared prompts');
+      const result = await pending;
+
+      expect(result).toMatchObject({ outcome: 'entry', content: '# dictionary-utility by model/B', modelId: 'model/B' });
+    });
+
+    it('reports no model for a lookup the provider did not attribute', async () => {
+      const { service } = await buildLookupService(jest.fn().mockResolvedValue({ content: '# Entry', finishReason: 'stop' }));
+
+      const result = await service.lookupWordStreaming('plosive', undefined, jest.fn());
+
+      expect(result.outcome).toBe('entry');
+      expect(result).not.toHaveProperty('modelId');
+    });
+
+    it('reports every model a fast lookup ran on when a swap lands between its blocks', async () => {
+      const engine = swappableEngine('model/A');
+      const specialFocusPrompt = held();
+      const service = await buildService(engine, {
+        loadSharedPrompts: jest.fn().mockResolvedValue('shared prompts'),
+        loadPrompts: jest.fn(([promptPath]: string[]) => promptPath.includes('special-focus')
+          ? specialFocusPrompt.promise
+          : Promise.resolve('block prompt'))
+      });
+
+      const pending = service.generateParallelDictionary('plosive', 'Need scene-specific guidance.');
+      await settle();
+      // Every block but Special Focus has already run on model/A.
+      engine.setModel('model/B');
+      specialFocusPrompt.release('special focus prompt');
+      const result = await pending;
+
+      expect(result.result).toContain('# dictionary-fast-definition by model/A');
+      expect(result.result).toContain('by model/B');
+      expect(result.modelIds).toEqual(['model/A', 'model/B']);
+    });
+
+    it('lists only the models of blocks that produced content', async () => {
+      const runInitial = jest.fn(async ({ toolName }: { toolName: string }) => {
+        if (toolName.startsWith('dictionary-fast-definition')) {
+          throw new Error('Definition unavailable');
+        }
+        return { content: `# ${toolName}`, modelId: toolName.startsWith('dictionary-fast-pronunciation') ? 'model/B' : 'model/A' };
+      });
+      const { service } = await buildLookupService(runInitial);
+
+      const result = await service.generateParallelDictionary('plosive');
+
+      expect(result.metadata.partialFailures).toEqual(['definition']);
+      expect(result.modelIds).toEqual(['model/B', 'model/A']);
+    });
+
+    it('reports no models for the API-key notice', async () => {
+      const service = new DictionaryService(
+        { ensureInitialized: jest.fn().mockResolvedValue(undefined), getEngine: jest.fn().mockReturnValue(undefined) } as never,
+        { getPromptLoader: jest.fn() } as never,
+        { getOptions: jest.fn() } as never
+      );
+      await service.refreshConfiguration();
+
+      expect((await service.generateParallelDictionary('plosive')).modelIds).toEqual([]);
+    });
   });
 
   it('keeps ordinary lookup failures concise while recording them', async () => {

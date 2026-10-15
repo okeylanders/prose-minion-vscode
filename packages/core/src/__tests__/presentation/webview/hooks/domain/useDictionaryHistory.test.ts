@@ -40,6 +40,7 @@ const summary = (id: string, word: string, overrides: Partial<DictionaryHistoryS
   includeEncyclopedia: true,
   includePalettes: true,
   mode: 'standard',
+  modelIds: [],
   ...overrides
 });
 
@@ -56,7 +57,7 @@ const entryFor = (id: string, word: string): DictionaryHistoryEntry => ({
     mode: 'standard',
     relativePath: `${word}.md`
   },
-  modelId: 'test/model',
+  modelIds: ['test/model'],
   toolName: 'dictionary_lookup',
   result: `# ${word} result`
 });

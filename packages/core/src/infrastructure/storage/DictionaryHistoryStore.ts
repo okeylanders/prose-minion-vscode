@@ -53,7 +53,7 @@ export interface DictionaryHistorySnapshot {
 
 export interface DictionaryHistoryRecordInput {
   request: DictionaryLookupRequest;
-  modelId?: string;
+  modelIds: readonly string[];
   toolName: string;
   result: string;
 }
@@ -129,7 +129,7 @@ export class DictionaryHistoryStore {
         id: this.createId(),
         createdAt: this.now().toISOString(),
         request: input.request,
-        modelId: input.modelId,
+        modelIds: [...input.modelIds],
         toolName: input.toolName,
         result: input.result
       });

@@ -18,7 +18,7 @@ const entry = (overrides: Partial<DictionaryHistoryEntry> = {}): DictionaryHisto
     sourceUri: 'file:///novel/chapter-01.md',
     relativePath: 'chapter-01.md'
   },
-  modelId: 'anthropic/claude-sonnet-4.5',
+  modelIds: ['anthropic/claude-sonnet-4.5'],
   toolName: 'dictionary_lookup',
   result: '# Prose Minion | Writer\'s Dictionary Lookup\n\n**petrichor**',
   ...overrides
@@ -31,7 +31,7 @@ describe('dictionaryHistoryCodec', () => {
     const newest = entry({ id: 'dict-hist-2', request: { ...entry().request, mode: 'fast', context: '' } });
     const withoutOptionals = entry({
       id: 'dict-hist-1',
-      modelId: undefined,
+      modelIds: [],
       request: { word: 'umbra', context: '', includeEncyclopedia: false, includePalettes: true, mode: 'standard' }
     });
 
@@ -49,6 +49,7 @@ describe('dictionaryHistoryCodec', () => {
           id: 'dict-hist-1',
           createdAt: withoutOptionals.createdAt,
           request: { word: 'umbra', context: '', includeEncyclopedia: false, includePalettes: true, mode: 'standard' },
+          modelIds: [],
           toolName: 'dictionary_lookup',
           result: withoutOptionals.result
         }
@@ -110,7 +111,11 @@ describe('dictionaryHistoryCodec', () => {
       { ...valid, id: '' },
       { ...valid, id: 7 },
       { ...valid, createdAt: 'yesterday' },
-      { ...valid, modelId: 42 },
+      { ...valid, modelIds: undefined },
+      { ...valid, modelIds: 'model/A' },
+      { ...valid, modelIds: [42] },
+      { ...valid, modelIds: [''] },
+      { ...valid, modelIds: ['model/A', 'model/A'] },
       { ...valid, toolName: undefined },
       { ...valid, result: null },
       { ...valid, request: undefined },
@@ -155,14 +160,14 @@ describe('dictionaryHistoryCodec', () => {
         includeEncyclopedia: true,
         includePalettes: false,
         mode: 'standard',
-        modelId: 'anthropic/claude-sonnet-4.5',
+        modelIds: ['anthropic/claude-sonnet-4.5'],
         relativePath: 'chapter-01.md'
       });
     });
 
     it('omits the model and path when the entry has none', () => {
       const summary = toDictionaryHistorySummary(entry({
-        modelId: undefined,
+        modelIds: [],
         request: { ...entry().request, sourceUri: undefined, relativePath: undefined }
       }));
 

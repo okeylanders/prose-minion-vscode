@@ -221,8 +221,6 @@ export class DictionaryHandler {
     }
 
     const entryOptions = resolveDictionaryEntryOptions(message.payload);
-    // Captured before the run so a model hot swap mid-lookup cannot relabel the entry.
-    const modelId = this.dictionaryService.getActiveModelId();
     const requestId = generateRequestId();
     const controller = new AbortController();
     this.activeRequests.set(requestId, controller);
@@ -255,7 +253,9 @@ export class DictionaryHandler {
         if (result.outcome === 'entry') {
           historyEntryId = await this.recordHistory({
             request: buildHistoryRequest('standard', word, contextText, entryOptions, { sourceUri, relativePath }),
-            modelId,
+            // What the provider reported running, not a selection read before
+            // or after: a hot swap can land while the prompt is still loading.
+            modelIds: result.modelId ? [result.modelId] : [],
             toolName: result.toolName,
             result: result.content
           });
@@ -289,8 +289,6 @@ export class DictionaryHandler {
       }
 
       const entryOptions = resolveDictionaryEntryOptions(message.payload);
-      // Captured before the run so a model hot swap mid-lookup cannot relabel the entry.
-      const modelId = this.dictionaryService.getActiveModelId();
       this.sendStatus(`🧪 Fast generating dictionary entry for "${word}"...`);
 
       // Generate parallel dictionary (progress sent via STATUS messages)
@@ -306,7 +304,7 @@ export class DictionaryHandler {
       if (result.metadata.successCount > 0) {
         historyEntryId = await this.recordHistory({
           request: buildHistoryRequest('fast', word, context, entryOptions, { sourceUri, relativePath }),
-          modelId,
+          modelIds: result.modelIds,
           toolName: FAST_GENERATE_TOOL_NAME,
           result: result.result
         });

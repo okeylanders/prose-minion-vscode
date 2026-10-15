@@ -20,6 +20,7 @@ const summary = (overrides: Partial<DictionaryHistorySummary> & { id: string; wo
   includeEncyclopedia: false,
   includePalettes: false,
   mode: 'standard',
+  modelIds: [],
   ...overrides
 });
 
@@ -32,7 +33,7 @@ const ENTRIES: DictionaryHistorySummary[] = [
     mode: 'fast',
     includeEncyclopedia: true,
     includePalettes: true,
-    modelId: 'anthropic/claude-opus-4.1-with-an-unreasonably-long-routing-suffix',
+    modelIds: ['anthropic/claude-opus-4.1-with-an-unreasonably-long-routing-suffix'],
     contextPreview: 'The light went amber, then grey, then something without a name.',
     relativePath: 'chapters/03-the-marsh.md'
   }),

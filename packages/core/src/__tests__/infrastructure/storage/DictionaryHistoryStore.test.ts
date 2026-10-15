@@ -23,7 +23,7 @@ const lookup = (word: string, overrides: Partial<DictionaryHistoryRecordInput> =
     includePalettes: false,
     mode: 'standard'
   },
-  modelId: 'anthropic/claude-sonnet-4.5',
+  modelIds: ['anthropic/claude-sonnet-4.5'],
   toolName: 'dictionary_lookup',
   result: `# ${word}`,
   ...overrides
@@ -100,7 +100,7 @@ describe('DictionaryHistoryStore', () => {
       },
       toolName: 'dictionary_fast_generate'
     }));
-    await first.record(lookup('beta', { modelId: undefined }));
+    await first.record(lookup('beta', { modelIds: [] }));
 
     const lastWrite = fileSystem.renameCalls.at(-1);
     expect(lastWrite).toMatchObject({ toPath: HISTORY_FILE, overwrite: true });
@@ -180,6 +180,7 @@ describe('DictionaryHistoryStore', () => {
       id: 'kept',
       createdAt: NOW.toISOString(),
       request: { word: 'kept', context: '', includeEncyclopedia: true, includePalettes: false, mode: 'standard' },
+      modelIds: [],
       toolName: 'dictionary_lookup',
       result: '# kept'
     };

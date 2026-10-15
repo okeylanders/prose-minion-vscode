@@ -137,6 +137,12 @@ export type DictionaryLookupOutcome = 'entry' | 'unconfigured' | 'failed';
 
 export type DictionaryLookupResult = AnalysisResult & {
   readonly outcome: DictionaryLookupOutcome;
+  /**
+   * The model the provider reported for the call (`ExecutionResult.modelId`),
+   * so a caller records what generated the entry rather than a selection read
+   * before or after the run. Absent when unreported or when there is no entry.
+   */
+  readonly modelId?: string;
 };
 
 export class DictionaryService {
@@ -203,14 +209,6 @@ export class DictionaryService {
   }
 
   /**
-   * The dictionary model a lookup started now would use. Read at request
-   * start so a hot swap during the run cannot relabel what ran.
-   */
-  getActiveModelId(): string | undefined {
-    return this.aiResourceManager.getResolvedModel('dictionary');
-  }
-
-  /**
    * Look up a word in the dictionary with AI assistance
    *
    * @param word - Word to look up
@@ -244,7 +242,8 @@ export class DictionaryService {
       return this.lookupResult(
         'entry',
         executionResult.content,
-        { usage: executionResult.usage, finishReason: executionResult.finishReason }
+        { usage: executionResult.usage, finishReason: executionResult.finishReason },
+        executionResult.modelId
       );
     } catch (error) {
       return this.lookupResult('failed', this.formatLookupFailure(error));
@@ -293,7 +292,8 @@ export class DictionaryService {
       return this.lookupResult(
         'entry',
         executionResult.content,
-        { usage: executionResult.usage, finishReason: executionResult.finishReason }
+        { usage: executionResult.usage, finishReason: executionResult.finishReason },
+        executionResult.modelId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
@@ -304,11 +304,13 @@ export class DictionaryService {
   private lookupResult(
     outcome: DictionaryLookupOutcome,
     content: string,
-    options?: AnalysisResultOptions
+    options?: AnalysisResultOptions,
+    modelId?: string
   ): DictionaryLookupResult {
     return {
       ...AnalysisResultFactory.createAnalysisResult('dictionary_lookup', content, options),
-      outcome
+      outcome,
+      ...(modelId ? { modelId } : {})
     };
   }
 
@@ -413,7 +415,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           partialFailures: [],
           successCount: 0,
           totalBlocks: 0
-        }
+        },
+        modelIds: []
       };
     }
 
@@ -523,7 +526,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         blockName,
         content: result.content,
         duration,
-        usage: result.usage
+        usage: result.usage,
+        modelId: result.modelId
       };
     } catch (error) {
       if (this.isAbortError(error) || signal?.aborted) {
@@ -559,7 +563,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           blockName,
           content: result.content,
           duration: retryDuration,
-          usage: result.usage
+          usage: result.usage,
+          modelId: result.modelId
         };
       } catch (retryError) {
         if (this.isAbortError(retryError) || signal?.aborted) {
@@ -661,6 +666,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
 
     // Sort blocks to maintain order and build result
     const orderedContent: string[] = [];
+    // What generated the entry: blocks share one engine, so a model swap
+    // mid-run shows up here as a second model rather than being hidden.
+    const modelIds: string[] = [];
 
     for (const blockName of selectedBlocks) {
       const result = blockResults.find(r => r.blockName === blockName);
@@ -688,6 +696,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         } else if (result.content.trim()) {
           successCount++;
           orderedContent.push(this.normalizeBlockContent(blockName, result.content));
+          if (result.modelId && !modelIds.includes(result.modelId)) {
+            modelIds.push(result.modelId);
+          }
         }
       }
     }
@@ -719,6 +730,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         successCount,
         totalBlocks: selectedBlocks.length
       },
+      modelIds,
       usage: hasUsageData ? {
         promptTokens: totalPromptTokens,
         completionTokens: totalCompletionTokens,

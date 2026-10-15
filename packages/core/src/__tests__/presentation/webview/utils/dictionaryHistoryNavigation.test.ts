@@ -142,7 +142,7 @@ describe('dictionaryViewFromEntry', () => {
         sourceUri: 'file:///novel/ch1.md',
         relativePath: 'ch1.md'
       },
-      modelId: 'anthropic/claude',
+      modelIds: ['anthropic/claude'],
       toolName: 'dictionary_fast_generate',
       result: '# petrichor'
     };
@@ -165,6 +165,7 @@ describe('dictionaryViewFromEntry', () => {
       id: 'h2',
       createdAt: '2026-10-14T12:00:00.000Z',
       request: { word: 'umbra', context: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard' },
+      modelIds: [],
       toolName: 'dictionary_lookup',
       result: '# umbra'
     });

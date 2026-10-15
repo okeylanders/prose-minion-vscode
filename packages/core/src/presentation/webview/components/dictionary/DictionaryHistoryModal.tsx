@@ -102,14 +102,16 @@ const renderEntryBadges = (entry: DictionaryHistorySummary): React.ReactElement 
   if (entry.includePalettes) {
     badges.push(<span key="palettes" className="pm-dictionary-history-badge">Palettes</span>);
   }
-  if (entry.modelId) {
+  if (entry.modelIds.length > 0) {
+    // More than one only when a fast lookup's blocks straddled a model swap.
+    const models = entry.modelIds.join(' + ');
     badges.push(
       <span
         key="model"
         className="pm-dictionary-history-badge pm-dictionary-history-model"
-        title={entry.modelId}
+        title={models}
       >
-        {entry.modelId}
+        {models}
       </span>
     );
   }
