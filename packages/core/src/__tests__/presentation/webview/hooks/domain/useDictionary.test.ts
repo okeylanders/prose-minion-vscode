@@ -14,13 +14,17 @@ import {
   DictionaryActions,
   DictionaryPersistence,
   DictionaryView,
+  UseDictionaryReturn,
   useDictionary
 } from '@/presentation/webview/hooks/domain/useDictionary';
 import {
   API_KEY_NOT_CONFIGURED_HEADING,
   ClearTransientApiKeyWarningMessage,
   DictionaryLookupRequest,
-  MessageType
+  DictionaryResultMessage,
+  MessageType,
+  StreamCompleteMessage,
+  StreamStartedMessage
 } from '@messages';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 
@@ -29,6 +33,40 @@ jest.mock('../../../../../presentation/webview/hooks/usePersistence');
 
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { usePersistedState } from '@hooks/usePersistence';
+
+const streamStarted = (requestId: string): StreamStartedMessage => ({
+  type: MessageType.STREAM_STARTED,
+  source: 'extension.dictionary',
+  payload: { requestId, domain: 'dictionary' },
+  timestamp: 1
+});
+
+const streamComplete = (requestId: string, cancelled = false): StreamCompleteMessage => ({
+  type: MessageType.STREAM_COMPLETE,
+  source: 'extension.dictionary',
+  payload: { requestId, domain: 'dictionary', content: '', cancelled },
+  timestamp: 2
+});
+
+const dictionaryResult = (requestId: string, result: string, historyEntryId?: string): DictionaryResultMessage => ({
+  type: MessageType.DICTIONARY_RESULT,
+  source: 'extension.dictionary',
+  payload: { requestId, result, toolName: 'dictionary_lookup', ...(historyEntryId ? { historyEntryId } : {}) },
+  timestamp: 3
+});
+
+/**
+ * Drive a standard lookup to its result the way the host does: the stream
+ * starts, then completion and result arrive back to back in one act, before
+ * React re-renders.
+ */
+const settleLookup = (hook: { current: UseDictionaryReturn }, requestId: string, result: string): void => {
+  act(() => hook.current.handleStreamStarted(streamStarted(requestId)));
+  act(() => {
+    hook.current.handleStreamComplete(streamComplete(requestId));
+    hook.current.handleDictionaryResult(dictionaryResult(requestId, result));
+  });
+};
 
 describe('useDictionary - Type Contracts', () => {
   describe('Tripartite Interface Pattern', () => {
@@ -96,6 +134,7 @@ describe('useDictionary - Type Contracts', () => {
         handleStreamStarted: jest.fn(),
         handleStreamChunk: jest.fn(),
         handleStreamComplete: jest.fn(),
+        isAwaitedResult: jest.fn(),
         startStreaming: jest.fn(),
         cancelStreaming: jest.fn()
       };
@@ -271,31 +310,11 @@ describe('useDictionary - Transient Warning Persistence', () => {
       timestamp: 123
     };
 
-    act(() => {
-      result.current.handleDictionaryResult({
-        type: MessageType.DICTIONARY_RESULT,
-        source: 'extension.dictionary',
-        payload: {
-          result: `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to look up words.`,
-          toolName: 'dictionary_lookup'
-        },
-        timestamp: 1
-      });
-    });
+    settleLookup(result, 'dict-1', `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key to look up words.`);
     act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
     expect(result.current.result).toBe('');
 
-    act(() => {
-      result.current.handleDictionaryResult({
-        type: MessageType.DICTIONARY_RESULT,
-        source: 'extension.dictionary',
-        payload: {
-          result: 'Real dictionary output.',
-          toolName: 'dictionary_lookup'
-        },
-        timestamp: 2
-      });
-    });
+    settleLookup(result, 'dict-2', 'Real dictionary output.');
     act(() => result.current.handleClearTransientApiKeyWarning(clearMessage));
     expect(result.current.result).toBe('Real dictionary output.');
   });
@@ -341,17 +360,7 @@ describe('useDictionary - Streaming Cancellation', () => {
   it('keeps the result empty when cancelling before any dictionary chunks arrive', () => {
     const { result } = renderHook(() => useDictionary());
 
-    act(() => {
-      result.current.handleDictionaryResult({
-        type: MessageType.DICTIONARY_RESULT,
-        source: 'extension.dictionary',
-        payload: {
-          result: 'Previous dictionary output.',
-          toolName: 'dictionary_lookup'
-        },
-        timestamp: Date.now()
-      });
-    });
+    settleLookup(result, 'dict-1', 'Previous dictionary output.');
     expect(result.current.result).toBe('Previous dictionary output.');
 
     act(() => result.current.startStreaming('dict-2'));
@@ -450,5 +459,121 @@ describe('useDictionary - Restoring a history view', () => {
 
     const restored = renderHook(() => useDictionary());
     expect(restored.result.current.lookupSubject).toEqual(subject);
+  });
+});
+
+/**
+ * Astra F-01 and F-02: a final result applies only to the lookup it settles.
+ * The host replays its cached result whenever the sidebar is shown again,
+ * whatever the outcome, and a cancelled or superseded lookup's result can
+ * still arrive. Neither may replace a newer or restored view.
+ */
+describe('useDictionary - result ownership', () => {
+  beforeEach(() => {
+    (useVSCodeApi as jest.Mock).mockReturnValue(createMockVSCode());
+    (usePersistedState as jest.Mock).mockReturnValue({});
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const umbra: DictionaryView = {
+    word: 'umbra',
+    context: '',
+    includeEncyclopedia: true,
+    includePalettes: true,
+    sourceUri: '',
+    relativePath: '',
+    result: '# umbra',
+    toolName: 'dictionary_lookup',
+    lookupSubject: { word: 'umbra', context: '', includeEncyclopedia: true, includePalettes: true, mode: 'standard' }
+  };
+
+  it('stays loading after a completed stream until that stream\'s result settles it', () => {
+    const { result } = renderHook(() => useDictionary());
+    act(() => result.current.handleStreamStarted(streamStarted('dict-1')));
+
+    act(() => result.current.handleStreamComplete(streamComplete('dict-1')));
+
+    expect(result.current.isStreaming).toBe(false);
+    expect(result.current.loading).toBe(true);
+    expect(result.current.isAwaitedResult(dictionaryResult('dict-1', '# first'))).toBe(true);
+
+    act(() => result.current.handleDictionaryResult(dictionaryResult('dict-1', '# first')));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.result).toBe('# first');
+  });
+
+  it('ignores a result for a lookup it is not awaiting, then applies its own', () => {
+    const { result } = renderHook(() => useDictionary());
+    act(() => result.current.handleStreamStarted(streamStarted('dict-2')));
+    act(() => result.current.handleStreamComplete(streamComplete('dict-2')));
+
+    act(() => result.current.handleDictionaryResult(dictionaryResult('dict-1', '# superseded')));
+    expect(result.current.result).toBe('');
+    expect(result.current.loading).toBe(true);
+
+    act(() => result.current.handleDictionaryResult(dictionaryResult('dict-2', '# current')));
+    expect(result.current.result).toBe('# current');
+    expect(result.current.loading).toBe(false);
+  });
+
+  it.each([
+    ['a failed lookup', 'Error: provider unavailable'],
+    ['an unconfigured lookup', `${API_KEY_NOT_CONFIGURED_HEADING}\n\nAdd your key.`],
+    ['a recorded lookup', '# newest entry']
+  ])('ignores a replay of %s after a history entry was restored', (_label, content) => {
+    const { result } = renderHook(() => useDictionary());
+    settleLookup(result, 'dict-1', content);
+    expect(result.current.result).toBe(content);
+
+    act(() => result.current.restoreView(umbra));
+    act(() => result.current.handleDictionaryResult(dictionaryResult('dict-1', content)));
+
+    expect(result.current.result).toBe('# umbra');
+    expect(result.current.lookupSubject?.word).toBe('umbra');
+  });
+
+  it('releases a cancelled completion at once and awaits nothing', () => {
+    const { result } = renderHook(() => useDictionary());
+    act(() => result.current.handleStreamStarted(streamStarted('dict-1')));
+
+    act(() => result.current.handleStreamComplete(streamComplete('dict-1', true)));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.isAwaitedResult(dictionaryResult('dict-1', '# late'))).toBe(false);
+  });
+
+  it('ignores the late completion and result of a lookup it cancelled', () => {
+    const { result } = renderHook(() => useDictionary());
+    act(() => result.current.handleStreamStarted(streamStarted('dict-1')));
+    act(() => result.current.handleStreamChunk({
+      type: MessageType.STREAM_CHUNK,
+      source: 'extension.dictionary',
+      payload: { domain: 'dictionary', requestId: 'dict-1', token: 'partial' },
+      timestamp: 1
+    }));
+    act(() => result.current.cancelStreaming());
+
+    // The provider had already finished: the host completes the stream normally.
+    act(() => {
+      result.current.handleStreamComplete(streamComplete('dict-1'));
+      result.current.handleDictionaryResult(dictionaryResult('dict-1', '# full entry'));
+    });
+
+    expect(result.current.result).toBe('partial');
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('lets a new stream supersede a result still awaited', () => {
+    const { result } = renderHook(() => useDictionary());
+    act(() => result.current.handleStreamStarted(streamStarted('dict-1')));
+    act(() => result.current.handleStreamComplete(streamComplete('dict-1')));
+
+    act(() => result.current.handleStreamStarted(streamStarted('dict-2')));
+
+    expect(result.current.isAwaitedResult(dictionaryResult('dict-1', '# old'))).toBe(false);
   });
 });

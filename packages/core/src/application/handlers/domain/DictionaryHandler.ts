@@ -120,11 +120,12 @@ export class DictionaryHandler {
     void this.postMessage(message);
   }
 
-  private sendDictionaryResult(result: string, toolName: string, historyEntryId?: string): void {
+  private sendDictionaryResult(requestId: string, result: string, toolName: string, historyEntryId?: string): void {
     const message: DictionaryResultMessage = {
       type: MessageType.DICTIONARY_RESULT,
       source: 'extension.dictionary',
       payload: {
+        requestId,
         result,
         toolName,
         ...(historyEntryId ? { historyEntryId } : {})
@@ -241,26 +242,31 @@ export class DictionaryHandler {
         entryOptions
       );
 
-      // Send complete message - use signal.aborted to detect cancellation
-      // (orchestrator now returns partial content on abort instead of throwing)
+      // signal.aborted detects cancellation (the orchestrator returns partial
+      // content on abort instead of throwing).
       const cancelled = controller.signal.aborted;
-      this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
 
-      // Also send dictionary result for backward compatibility. Only a generated
-      // entry is history; the API-key notice and `Error:` text are not.
+      // Record BEFORE completing the stream (Astra F-01). The webview holds the
+      // lookup, and with it Run and history navigation, until the stream
+      // completes, so the history write must not open a window in which a
+      // newer lookup starts and then receives this one's result. Only a
+      // generated entry is history; the API-key notice and `Error:` text are not.
+      const historyEntryId = !cancelled && result.outcome === 'entry'
+        ? await this.recordHistory({
+          request: buildHistoryRequest('standard', word, contextText, entryOptions, { sourceUri, relativePath }),
+          // What the provider reported running, not a selection read before
+          // or after: a hot swap can land while the prompt is still loading.
+          modelIds: result.modelId ? [result.modelId] : [],
+          toolName: result.toolName,
+          result: result.content
+        })
+        : undefined;
+
+      // Completion and the final result go out back to back. The result names
+      // its stream, so the webview applies it only to the lookup it settles.
+      this.sendStreamComplete(requestId, result.content, cancelled, result.usage, result.finishReason === 'length');
       if (!cancelled) {
-        let historyEntryId: string | undefined;
-        if (result.outcome === 'entry') {
-          historyEntryId = await this.recordHistory({
-            request: buildHistoryRequest('standard', word, contextText, entryOptions, { sourceUri, relativePath }),
-            // What the provider reported running, not a selection read before
-            // or after: a hot swap can land while the prompt is still loading.
-            modelIds: result.modelId ? [result.modelId] : [],
-            toolName: result.toolName,
-            result: result.content
-          });
-        }
-        this.sendDictionaryResult(result.content, result.toolName, historyEntryId);
+        this.sendDictionaryResult(requestId, result.content, result.toolName, historyEntryId);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

@@ -193,15 +193,56 @@ describe('DictionaryHandler', () => {
         toolName: 'dictionary_lookup',
         result: '# Entry'
       });
+      const requestId = (posted(MessageType.STREAM_STARTED)[0] as { payload: { requestId: string } }).payload.requestId;
       expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([
         expect.objectContaining({
           source: 'extension.dictionary',
-          payload: { result: '# Entry', toolName: 'dictionary_lookup', historyEntryId: 'hist-1' }
+          payload: { requestId, result: '# Entry', toolName: 'dictionary_lookup', historyEntryId: 'hist-1' }
         })
       ]);
       // The stream still completes before the result is posted.
       expect(postedTypes().indexOf(MessageType.STREAM_COMPLETE))
         .toBeLessThan(postedTypes().indexOf(MessageType.DICTIONARY_RESULT));
+    });
+
+    // Astra F-01: completion releases the webview's lock on Run and history
+    // navigation, so it must not go out while the history write is pending.
+    it('completes the stream only after the history write, then posts the result right behind it', async () => {
+      let finishWrite!: () => void;
+      const record = history.record.bind(history);
+      jest.spyOn(history, 'record').mockImplementation(async (input) => {
+        await new Promise<void>(resolve => { finishWrite = resolve; });
+        return record(input);
+      });
+
+      const lookup = handler.handleLookupDictionary(lookupMessage());
+      await flushQueuedWork();
+
+      expect(postedTypes()).toContain(MessageType.STREAM_STARTED);
+      expect(postedTypes()).not.toContain(MessageType.STREAM_COMPLETE);
+      expect(postedTypes()).not.toContain(MessageType.DICTIONARY_RESULT);
+
+      finishWrite();
+      await lookup;
+
+      const types = postedTypes();
+      const complete = types.indexOf(MessageType.STREAM_COMPLETE);
+      const result = types.indexOf(MessageType.DICTIONARY_RESULT);
+      expect(complete).toBeGreaterThan(-1);
+      // Nothing but a status reset sits between completion and the result.
+      expect(types.slice(complete + 1, result).every(type => type === MessageType.STATUS)).toBe(true);
+      expect(posted(MessageType.DICTIONARY_RESULT)[0].payload).toMatchObject({ historyEntryId: 'hist-1' });
+    });
+
+    it('names the stream a result settles, recorded or not', async () => {
+      mockService.lookupWordStreaming.mockResolvedValue({
+        content: 'Error: Provider unavailable', toolName: 'dictionary_lookup', outcome: 'failed'
+      });
+
+      await handler.handleLookupDictionary(lookupMessage());
+
+      const started = posted(MessageType.STREAM_STARTED)[0] as { payload: { requestId: string } };
+      expect(posted(MessageType.DICTIONARY_RESULT)[0].payload).toMatchObject({ requestId: started.payload.requestId });
     });
 
     it('records resolved defaults and an empty context when the payload omits them', async () => {
@@ -290,7 +331,7 @@ describe('DictionaryHandler', () => {
 
       expect(record).not.toHaveBeenCalled();
       expect(posted(MessageType.DICTIONARY_RESULT)).toEqual([
-        expect.objectContaining({ payload: { result: content, toolName: 'dictionary_lookup' } })
+        expect.objectContaining({ payload: { requestId: expect.any(String), result: content, toolName: 'dictionary_lookup' } })
       ]);
     });
 

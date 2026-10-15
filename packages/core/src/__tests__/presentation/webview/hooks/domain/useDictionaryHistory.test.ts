@@ -342,14 +342,11 @@ describe('useDictionaryHistory', () => {
     expect(result.current.history.position).toEqual({ index: 1, total: 4 });
   });
 
-  it('follows an unrecorded result as live and remembers which entries it followed', () => {
+  it('follows a recorded result to its entry and an unrecorded result as live', () => {
     const { result } = renderOnNewestEntry();
 
     act(() => result.current.history.followRecordedEntry('h4'));
     expect(result.current.history.cursorId).toBe('h4');
-    expect(result.current.history.hasFollowedEntry('h4')).toBe(true);
-    expect(result.current.history.hasFollowedEntry('h3')).toBe(false);
-    expect(result.current.history.hasFollowedEntry(undefined)).toBe(false);
 
     act(() => result.current.history.followRecordedEntry(undefined));
     expect(result.current.history.cursorId).toBeNull();

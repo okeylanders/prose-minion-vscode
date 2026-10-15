@@ -90,14 +90,12 @@ export interface DictionaryHistoryActions {
   openEntry: (id: string) => void;
   deleteEntry: (id: string) => void;
   clearHistory: () => void;
-  /** A lookup result arrived; point the cursor at the entry it was recorded as. */
-  followRecordedEntry: (id?: string) => void;
   /**
-   * True when this view already followed the result recorded as `id`. The
-   * host replays its cached DICTIONARY_RESULT whenever the sidebar is shown
-   * again; re-applying it would overwrite an entry the writer navigated to.
+   * A lookup's result settled it; point the cursor at the entry it was
+   * recorded as. Callers apply only results that settle the awaited lookup
+   * (`useDictionary.isAwaitedResult`), so a replay never moves the cursor.
    */
-  hasFollowedEntry: (id?: string) => boolean;
+  followRecordedEntry: (id?: string) => void;
   /** Every submit path calls this: the new lookup becomes live. */
   beginNewLookup: () => void;
 }
@@ -157,7 +155,6 @@ export const useDictionaryHistory = (target: DictionaryHistoryTarget): UseDictio
     draft: null
   }));
   const navigationRef = React.useRef(navigation);
-  const followedIdsRef = React.useRef<Set<string>>(new Set());
 
   const commit = React.useCallback((patch: Partial<HistoryNavigation>) => {
     navigationRef.current = { ...navigationRef.current, ...patch };
@@ -303,16 +300,8 @@ export const useDictionaryHistory = (target: DictionaryHistoryTarget): UseDictio
   }, [commit, vscode]);
 
   const followRecordedEntry = React.useCallback((id?: string) => {
-    if (id !== undefined) {
-      followedIdsRef.current.add(id);
-    }
     commit({ cursorId: id ?? null, pendingEntryId: null });
   }, [commit]);
-
-  const hasFollowedEntry = React.useCallback(
-    (id?: string) => id !== undefined && followedIdsRef.current.has(id),
-    []
-  );
 
   const beginNewLookup = React.useCallback(() => {
     commit({ cursorId: null, pendingEntryId: null, draft: null });
@@ -351,7 +340,6 @@ export const useDictionaryHistory = (target: DictionaryHistoryTarget): UseDictio
     deleteEntry,
     clearHistory,
     followRecordedEntry,
-    hasFollowedEntry,
     beginNewLookup,
 
     // Persistence

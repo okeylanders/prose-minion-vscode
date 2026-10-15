@@ -311,7 +311,6 @@ describe('UtilitiesTab dictionary history', () => {
     deleteEntry: jest.fn(),
     clearHistory: jest.fn(),
     followRecordedEntry: jest.fn(),
-    hasFollowedEntry: jest.fn(() => false),
     beginNewLookup: jest.fn(),
     persistedState: { dictionaryHistoryCursorId: null },
     ...overrides

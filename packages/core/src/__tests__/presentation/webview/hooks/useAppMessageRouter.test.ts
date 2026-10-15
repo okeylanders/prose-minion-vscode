@@ -57,13 +57,12 @@ const makeDeps = () => {
       handleChapterGlobs: jest.fn(), setLoadingForTool: jest.fn(),
     },
     dictionary: {
-      handleDictionaryResult: jest.fn(), handleFastGenerateResult: jest.fn(), handleStreamStarted: jest.fn(),
+      handleDictionaryResult: jest.fn(), isAwaitedResult: jest.fn(() => true), handleFastGenerateResult: jest.fn(), handleStreamStarted: jest.fn(),
       handleStreamChunk: jest.fn(), handleStreamComplete: jest.fn(), handleStatusMessage: jest.fn(),
       handleClearTransientApiKeyWarning: jest.fn(), setLoading: jest.fn(), setFastGenerating: jest.fn(),
     },
     dictionaryHistory: {
       handleHistory: jest.fn(), handleHistoryEntry: jest.fn(), followRecordedEntry: jest.fn(),
-      hasFollowedEntry: jest.fn(() => false),
     },
     context: {
       handleStreamStarted: jest.fn(), handleStreamChunk: jest.fn(), handleStreamComplete: jest.fn(),
@@ -210,16 +209,17 @@ describe('buildAppMessageRoutes', () => {
     expect(deps.dictionaryHistory.followRecordedEntry).toHaveBeenCalledWith(undefined);
   });
 
-  it('ignores a replayed DICTIONARY_RESULT this view already followed', () => {
+  it('ignores a DICTIONARY_RESULT that does not settle the awaited lookup (replay, superseded, cancelled)', () => {
     const deps = makeDeps();
-    (deps.dictionaryHistory.hasFollowedEntry as jest.Mock).mockImplementation((id?: string) => id === 'h7');
+    (deps.dictionary.isAwaitedResult as jest.Mock).mockReturnValue(false);
 
     buildAppMessageRoutes(deps)[MessageType.DICTIONARY_RESULT]!(
-      { type: MessageType.DICTIONARY_RESULT, payload: { result: 'entry', historyEntryId: 'h7' } } as never
+      { type: MessageType.DICTIONARY_RESULT, payload: { requestId: 'dict-old', result: 'Error: boom' } } as never
     );
 
     expect(deps.dictionary.handleDictionaryResult).not.toHaveBeenCalled();
     expect(deps.dictionaryHistory.followRecordedEntry).not.toHaveBeenCalled();
+    expect(deps.setError).not.toHaveBeenCalled();
   });
 
   it('ERROR sets the message and clears only the erroring domain', () => {

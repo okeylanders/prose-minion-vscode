@@ -89,15 +89,15 @@ export const buildAppMessageRoutes = (deps: AppMessageRouterDeps): MessageHandle
       setError(''); // Clear error on success
     },
     [MessageType.DICTIONARY_RESULT]: (msg) => {
-      const { historyEntryId } = msg.payload;
-      // The host replays its cached DICTIONARY_RESULT each time the sidebar is
-      // shown again. Re-applying a result this view already followed would
-      // overwrite a history entry the writer has since navigated to.
-      if (dictionaryHistory.hasFollowedEntry(historyEntryId)) {
+      // Only the result that settles the lookup this view awaits applies. The
+      // host replays its cached result each time the sidebar is shown again,
+      // whatever its outcome, and a cancelled or superseded lookup's result
+      // can still arrive; either would overwrite a newer or restored view.
+      if (!dictionary.isAwaitedResult(msg)) {
         return;
       }
       dictionary.handleDictionaryResult(msg);
-      dictionaryHistory.followRecordedEntry(historyEntryId);
+      dictionaryHistory.followRecordedEntry(msg.payload.historyEntryId);
       setError(''); // Clear error on success
     },
     [MessageType.FAST_GENERATE_DICTIONARY_RESULT]: (msg) => {

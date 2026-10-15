@@ -109,6 +109,12 @@ export interface DictionaryActions {
   handleStreamChunk: (message: StreamChunkMessage) => void;
   handleStreamComplete: (message: StreamCompleteMessage) => void;
   handleStreamStarted: (message: StreamStartedMessage) => void;
+  /**
+   * True when this result settles the lookup this view is awaiting: its
+   * stream completed here and no result has settled it yet. Replays,
+   * superseded lookups, and cancelled lookups are false.
+   */
+  isAwaitedResult: (message: DictionaryResultMessage) => boolean;
   startStreaming: (requestId: string) => void;
   cancelStreaming: () => void;
 }
@@ -206,6 +212,13 @@ export const useDictionary = (): UseDictionaryReturn => {
   const streaming = useStreaming();
   const [currentRequestId, setCurrentRequestId] = React.useState<string | null>(null);
   const ignoredRequestIdsRef = React.useRef<Set<string>>(new Set());
+  /**
+   * The stream that completed here and now awaits its DICTIONARY_RESULT. Until
+   * that result settles it, the lookup stays owned (loading), so Run and
+   * history navigation cannot slip in between (Astra F-01). A ref, not state:
+   * completion and result arrive back to back, before React re-renders.
+   */
+  const awaitedResultIdRef = React.useRef<string | null>(null);
 
   // Clear result when dictionary lookup starts
   const clearResultWhenLoading = React.useCallback(() => {
@@ -218,13 +231,26 @@ export const useDictionary = (): UseDictionaryReturn => {
     clearResultWhenLoading();
   }, [clearResultWhenLoading]);
 
+  const isAwaitedResult = React.useCallback(
+    (message: DictionaryResultMessage) => message.payload.requestId === awaitedResultIdRef.current,
+    []
+  );
+
   const handleDictionaryResult = React.useCallback((message: DictionaryResultMessage) => {
+    // Only the result that settles the awaited lookup applies. The host replays
+    // its cached result whenever the sidebar is shown again, whatever its
+    // outcome, and a cancelled or superseded lookup's result can still arrive
+    // (Astra F-01, F-02). Either would replace a newer or restored view.
+    if (!isAwaitedResult(message)) {
+      return;
+    }
+    awaitedResultIdRef.current = null;
     const { result, toolName } = message.payload;
     setResult(result);
     setToolName(toolName);
     setLoading(false);
     setStatusMessage(''); // Clear status message
-  }, []);
+  }, [isAwaitedResult]);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
     const { message: statusText, progress: statusProgress, tickerMessage: ticker } = message.payload;
@@ -302,6 +328,8 @@ export const useDictionary = (): UseDictionaryReturn => {
     }
 
     ignoredRequestIdsRef.current.delete(requestId);
+    // A new stream supersedes any result still awaited.
+    awaitedResultIdRef.current = null;
     setCurrentRequestId(requestId);
     streaming.startStreaming();
     setLoading(true);
@@ -339,30 +367,33 @@ export const useDictionary = (): UseDictionaryReturn => {
     // Only handle dictionary domain completion
     if (domain !== 'dictionary') return;
 
-    // Clean up ignored ID for this request (whether it completed or was ignored)
-    ignoredRequestIdsRef.current.delete(requestId);
-
-    if (ignoredRequestIdsRef.current.has(requestId)) return;
+    // A request this view cancelled or preempted: forget it and change nothing.
+    if (ignoredRequestIdsRef.current.has(requestId)) {
+      ignoredRequestIdsRef.current.delete(requestId);
+      return;
+    }
 
     if (currentRequestId && requestId !== currentRequestId) {
-      if (ignoredRequestIdsRef.current.has(requestId)) return;
       return;
     }
 
     streaming.endStreaming();
     setCurrentRequestId(null);
-    setLoading(false);
 
-    if (!cancelled) {
-      // Content will come through DICTIONARY_RESULT message for backward compatibility
-      // The streaming content is shown progressively until then
+    if (cancelled) {
+      setLoading(false);
+      return;
     }
+    // The content arrives in this stream's DICTIONARY_RESULT, right behind this
+    // message. Stay loading until it settles the lookup.
+    awaitedResultIdRef.current = requestId;
   }, [currentRequestId, streaming]);
 
   const cancelStreaming = React.useCallback(() => {
     if (currentRequestId) {
       ignoredRequestIdsRef.current.add(currentRequestId);
     }
+    awaitedResultIdRef.current = null;
     const partialContent = streaming.buffer;
     streaming.endStreaming();
     if (partialContent) {
@@ -421,6 +452,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     handleStreamStarted,
     handleStreamChunk,
     handleStreamComplete,
+    isAwaitedResult,
     startStreaming,
     cancelStreaming,
 

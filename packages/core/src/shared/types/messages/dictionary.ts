@@ -48,6 +48,12 @@ export interface LookupDictionaryMessage extends MessageEnvelope<LookupDictionar
 }
 
 export interface DictionaryResultPayload {
+  /**
+   * The stream this result settles (its STREAM_STARTED `requestId`). The
+   * webview applies a result only to the lookup it is awaiting, so a replayed,
+   * superseded, or cancelled result never replaces the view.
+   */
+  requestId: string;
   result: string;
   toolName: string;
   /** The history entry this result was recorded as; absent when it was not recorded. */
