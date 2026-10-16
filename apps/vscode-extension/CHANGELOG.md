@@ -14,6 +14,10 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://g
 
 - Completed Dictionary-tab lookups record the models that actually generated their results. Failed lookups and lookups cancelled before their result is committed are not added to history. Workshop persona lookups stay outside Dictionary history.
 
+### Fixed
+
+- Right-click Dictionary lookups preserve the manuscript source path in the form and saved history, including when you choose to look up a phrase again after seeing its prior results.
+
 ## [2.10.1] - 2026-10-14
 
 ### Added

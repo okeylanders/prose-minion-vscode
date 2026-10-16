@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DictionaryHistoryModal` provides newest-first selection, per-entry deletion, confirmed clear, model/time/options/context previews, and durability information. Navigation is blocked until a generation's correlated result settles, including the interval between stream completion and history persistence.
 - A transport-free `useDictionaryPriorLookup` presentation controller checks normalized, case-folded phrases against current summaries. Standard, Fast, and right-click submission offer the newest matching entry or a fresh generation. Matches update as history changes; rerunning an already displayed matching entry skips the offer.
 - Results carry request ownership so replayed or superseded results cannot replace a restored entry. The submitted source and provider-reported model attribution remain attached to the lookup that produced them.
+- Release review found that `useSelection.handleSelectionUpdated` dropped the editor's `sourceUri` and `relativePath` when constructing Dictionary injections. It now forwards both fields, so immediate context-menu generation and **Look up again** after a prior-lookup offer preserve the submitted source. Real-hook/tab regression tests cover both paths and ensure missing source metadata clears a previously displayed source.
 
 ### References and verification scope
 

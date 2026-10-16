@@ -83,7 +83,10 @@ describe('UtilitiesTab prior-lookup check', () => {
       <button onClick={() => selection.handleSelectionUpdated({
         type: MessageType.SELECTION_UPDATED,
         source: 'extension.editor',
-        payload: { text: editorWord, target: 'dictionary', autoRun: true },
+        payload: {
+          text: editorWord, target: 'dictionary', autoRun: true,
+          sourceUri: 'file:///novel/chapters/moon.md', relativePath: 'chapters/moon.md'
+        },
         timestamp: 1
       }, () => {})}>Look up from editor</button>
       <UtilitiesTab
@@ -239,7 +242,9 @@ describe('UtilitiesTab prior-lookup check', () => {
 
     click('Look up again');
     expect(posted(MessageType.FAST_GENERATE_DICTIONARY)).toEqual([
-      expect.objectContaining({ payload: expect.objectContaining({ word: 'luminous' }) })
+      expect.objectContaining({ payload: expect.objectContaining({
+        word: 'luminous', sourceUri: 'file:///novel/chapters/moon.md', relativePath: 'chapters/moon.md'
+      }) })
     ]);
   });
 

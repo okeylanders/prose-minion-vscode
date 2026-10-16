@@ -236,9 +236,15 @@ describe('UtilitiesTab dictionary history', () => {
 
   const onSubject = jest.fn();
   const onBegin = jest.fn();
+  const EDITOR_SOURCE = {
+    sourceUri: 'file:///novel/chapters/statues.md',
+    relativePath: 'chapters/statues.md'
+  };
 
   /** Real hooks, with spies on the two submit-path calls and buttons that play host replies. */
-  function HistoryHarness() {
+  function HistoryHarness({ editorSource = EDITOR_SOURCE }: {
+    editorSource?: Pick<DictionaryLookupRequest, 'sourceUri' | 'relativePath'>;
+  }) {
     const dictionary = useDictionary();
     const dictionaryHistory = useDictionaryHistory(dictionary);
     const selection = useSelection();
@@ -274,7 +280,7 @@ describe('UtilitiesTab dictionary history', () => {
       <button onClick={() => selection.handleSelectionUpdated({
         type: MessageType.SELECTION_UPDATED,
         source: 'extension.editor',
-        payload: { text: 'verdigris', target: 'dictionary', autoRun: true },
+        payload: { text: 'verdigris', target: 'dictionary', autoRun: true, ...editorSource },
         timestamp: 1
       }, () => {})}>Look up from editor</button>
       <UtilitiesTab
@@ -450,14 +456,36 @@ describe('UtilitiesTab dictionary history', () => {
     expect(onBegin).toHaveBeenCalledTimes(1);
   });
 
-  it('the editor context-menu lookup also records its subject and starts a new lookup', () => {
+  it('preserves the editor context-menu source in the displayed form, lookup request, and history subject', () => {
     render(<HistoryHarness />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Look up from editor' }));
 
-    expect(onSubject).toHaveBeenCalledWith(expect.objectContaining({ word: 'verdigris', mode: 'fast' }));
+    expect(onSubject).toHaveBeenCalledWith(expect.objectContaining({
+      word: 'verdigris', mode: 'fast', ...EDITOR_SOURCE
+    }));
     expect(onBegin).toHaveBeenCalledTimes(1);
-    expect(posted(MessageType.FAST_GENERATE_DICTIONARY)).toHaveLength(1);
+    expect(posted(MessageType.FAST_GENERATE_DICTIONARY)).toEqual([
+      expect.objectContaining({ payload: expect.objectContaining({ word: 'verdigris', ...EDITOR_SOURCE }) })
+    ]);
+    expect(screen.getByText('Source: chapters/statues.md')).toBeTruthy();
+  });
+
+  it('clears an earlier source when a context-menu lookup has no source metadata', () => {
+    render(<HistoryHarness editorSource={{}} />);
+    expect(screen.getByText('Source: chapters/kitchen.md')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Look up from editor' }));
+
+    expect(onSubject).toHaveBeenCalledWith(expect.objectContaining({ word: 'verdigris' }));
+    expect(onSubject.mock.calls[0][0].sourceUri).toBeUndefined();
+    expect(onSubject.mock.calls[0][0].relativePath).toBeUndefined();
+    expect(posted(MessageType.FAST_GENERATE_DICTIONARY)).toEqual([
+      expect.objectContaining({ payload: expect.objectContaining({
+        word: 'verdigris', sourceUri: undefined, relativePath: undefined
+      }) })
+    ]);
+    expect(screen.queryByText('Source: chapters/kitchen.md')).toBeNull();
   });
 
   it('restores an entry and shows where it came from', () => {

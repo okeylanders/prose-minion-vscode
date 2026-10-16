@@ -119,8 +119,11 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
     `naming-convention` warnings, which every component triggers. The
     production build compiles.
   - **Follow-ups:**
-    - Right-click "Look Up Word" lookups record no source, because
-      `useSelection` drops the injection's source for dictionary targets.
+    - Right-click "Look Up Word" lookups recorded no source, because
+      `useSelection` dropped the injection's source for dictionary targets.
+      **Resolved during v2.11.0 preparation (2026-10-16):** the injection now
+      forwards source metadata; regression tests cover immediate generation,
+      rerunning after a prior-lookup offer, and clearing an absent source.
     - Two windows on one folder: the last writer wins (ADR Consequences).
     - Assistant and Category Search history remain in the parent feature.
 - **2026-10-15. PR #144 review (Astra).** The review found four Medium

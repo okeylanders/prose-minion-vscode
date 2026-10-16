@@ -107,7 +107,7 @@ export const useSelection = (): UseSelectionReturn => {
 
       if (targetValue === 'dictionary' || targetValue === 'both') {
         onTabChange(TabId.UTILITIES);
-        setDictionaryInjection({ word: text, autoRun, timestamp: Date.now() });
+        setDictionaryInjection({ word: text, sourceUri, relativePath, autoRun, timestamp: Date.now() });
       }
     },
     []
