@@ -35,7 +35,11 @@ import {
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import { ResourceLoaderService } from '@orchestration/ResourceLoaderService';
 import { ToolOptionsProvider } from '../shared/ToolOptionsProvider';
-import { AnalysisResult, AnalysisResultFactory } from '@/domain/models/AnalysisResult';
+import {
+  AnalysisResult,
+  AnalysisResultFactory,
+  AnalysisResultOptions
+} from '@/domain/models/AnalysisResult';
 import {
   DictionaryBlockResult,
   FastGenerateDictionaryResultPayload
@@ -122,6 +126,25 @@ export interface ParallelDictionaryOptions extends DictionaryEntryOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * How a single-call lookup ended. `entry` is a generated entry (complete,
+ * truncated, or cut short by cancellation, which the caller's signal tells
+ * apart); `unconfigured` is the API-key notice; `failed` is the `Error:` text
+ * the service renders in place of an entry. Callers branch on this instead of
+ * sniffing the content.
+ */
+export type DictionaryLookupOutcome = 'entry' | 'unconfigured' | 'failed';
+
+export type DictionaryLookupResult = AnalysisResult & {
+  readonly outcome: DictionaryLookupOutcome;
+  /**
+   * The model the provider reported for the call (`ExecutionResult.modelId`),
+   * so a caller records what generated the entry rather than a selection read
+   * before or after the run. Absent when unreported or when there is no entry.
+   */
+  readonly modelId?: string;
+};
+
 export class DictionaryService {
   private dictionaryUtility?: DictionaryUtility;
   private readonly statusListeners: ListenerSet<Parameters<StatusEmitter>>;
@@ -196,12 +219,9 @@ export class DictionaryService {
     word: string,
     contextText?: string,
     entryOptions: DictionaryEntryOptions = {}
-  ): Promise<AnalysisResult> {
+  ): Promise<DictionaryLookupResult> {
     if (!this.dictionaryUtility) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.getApiKeyWarning()
-      );
+      return this.lookupResult('unconfigured', this.getApiKeyWarning());
     }
 
     try {
@@ -219,16 +239,14 @@ export class DictionaryService {
       );
       this.logLookupCompleted('standard', entry, executionResult);
 
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
+      return this.lookupResult(
+        'entry',
         executionResult.content,
-        { usage: executionResult.usage, finishReason: executionResult.finishReason }
+        { usage: executionResult.usage, finishReason: executionResult.finishReason },
+        executionResult.modelId
       );
     } catch (error) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.formatLookupFailure(error)
-      );
+      return this.lookupResult('failed', this.formatLookupFailure(error));
     }
   }
 
@@ -248,12 +266,9 @@ export class DictionaryService {
     onToken: StreamingTokenCallback,
     signal?: AbortSignal,
     entryOptions: DictionaryEntryOptions = {}
-  ): Promise<AnalysisResult> {
+  ): Promise<DictionaryLookupResult> {
     if (!this.dictionaryUtility) {
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.getApiKeyWarning()
-      );
+      return this.lookupResult('unconfigured', this.getApiKeyWarning());
     }
 
     try {
@@ -274,18 +289,29 @@ export class DictionaryService {
 
       // Note: orchestrator now catches AbortError internally and returns partial content
       // The executionResult.content will contain whatever was received before cancellation
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
+      return this.lookupResult(
+        'entry',
         executionResult.content,
-        { usage: executionResult.usage, finishReason: executionResult.finishReason }
+        { usage: executionResult.usage, finishReason: executionResult.finishReason },
+        executionResult.modelId
       );
     } catch (error) {
       // AbortError is now caught in the orchestrator, so this is only for other errors
-      return AnalysisResultFactory.createAnalysisResult(
-        'dictionary_lookup',
-        this.formatLookupFailure(error)
-      );
+      return this.lookupResult('failed', this.formatLookupFailure(error));
     }
+  }
+
+  private lookupResult(
+    outcome: DictionaryLookupOutcome,
+    content: string,
+    options?: AnalysisResultOptions,
+    modelId?: string
+  ): DictionaryLookupResult {
+    return {
+      ...AnalysisResultFactory.createAnalysisResult('dictionary_lookup', content, options),
+      outcome,
+      ...(modelId ? { modelId } : {})
+    };
   }
 
   private logLookupStarted(mode: DictionaryLookupMode, entry: ResolvedDictionaryEntryOptions, maxTokens: number): void {
@@ -389,7 +415,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           partialFailures: [],
           successCount: 0,
           totalBlocks: 0
-        }
+        },
+        modelIds: []
       };
     }
 
@@ -499,7 +526,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         blockName,
         content: result.content,
         duration,
-        usage: result.usage
+        usage: result.usage,
+        modelId: result.modelId
       };
     } catch (error) {
       if (this.isAbortError(error) || signal?.aborted) {
@@ -535,7 +563,8 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
           blockName,
           content: result.content,
           duration: retryDuration,
-          usage: result.usage
+          usage: result.usage,
+          modelId: result.modelId
         };
       } catch (retryError) {
         if (this.isAbortError(retryError) || signal?.aborted) {
@@ -637,6 +666,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
 
     // Sort blocks to maintain order and build result
     const orderedContent: string[] = [];
+    // What generated the entry: blocks share one engine, so a model swap
+    // mid-run shows up here as a second model rather than being hidden.
+    const modelIds: string[] = [];
 
     for (const blockName of selectedBlocks) {
       const result = blockResults.find(r => r.blockName === blockName);
@@ -664,6 +696,9 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         } else if (result.content.trim()) {
           successCount++;
           orderedContent.push(this.normalizeBlockContent(blockName, result.content));
+          if (result.modelId && !modelIds.includes(result.modelId)) {
+            modelIds.push(result.modelId);
+          }
         }
       }
     }
@@ -695,6 +730,7 @@ The measurement tools (Prose Statistics, Style Flags, Word Frequency) work witho
         successCount,
         totalBlocks: selectedBlocks.length
       },
+      modelIds,
       usage: hasUsageData ? {
         promptTokens: totalPromptTokens,
         completionTokens: totalCompletionTokens,

@@ -21,6 +21,8 @@ const EXPECTED_ROUTES: MessageType[] = [
   MessageType.CATEGORY_SEARCH_RESULT,
   MessageType.DICTIONARY_RESULT,
   MessageType.FAST_GENERATE_DICTIONARY_RESULT,
+  MessageType.DICTIONARY_HISTORY,
+  MessageType.DICTIONARY_HISTORY_ENTRY,
   MessageType.STREAM_STARTED,
   MessageType.STREAM_CHUNK,
   MessageType.STREAM_COMPLETE,
@@ -55,9 +57,12 @@ const makeDeps = () => {
       handleChapterGlobs: jest.fn(), setLoadingForTool: jest.fn(),
     },
     dictionary: {
-      handleDictionaryResult: jest.fn(), handleFastGenerateResult: jest.fn(), handleStreamStarted: jest.fn(),
+      handleDictionaryResult: jest.fn(), isAwaitedResult: jest.fn(() => true), handleFastGenerateResult: jest.fn(), handleStreamStarted: jest.fn(),
       handleStreamChunk: jest.fn(), handleStreamComplete: jest.fn(), handleStatusMessage: jest.fn(),
       handleClearTransientApiKeyWarning: jest.fn(), setLoading: jest.fn(), setFastGenerating: jest.fn(),
+    },
+    dictionaryHistory: {
+      handleHistory: jest.fn(), handleHistoryEntry: jest.fn(), followRecordedEntry: jest.fn(),
     },
     context: {
       handleStreamStarted: jest.fn(), handleStreamChunk: jest.fn(), handleStreamComplete: jest.fn(),
@@ -165,6 +170,56 @@ describe('buildAppMessageRoutes', () => {
     expect(deps.analysis.handleStatusMessage).toHaveBeenCalled();
     expect(deps.dictionary.handleStatusMessage).not.toHaveBeenCalled();
     expect(deps.search.handleStatusMessage).not.toHaveBeenCalled();
+  });
+
+  it('routes the dictionary history list and entry replies to the history hook', () => {
+    const deps = makeDeps();
+    const routes = buildAppMessageRoutes(deps);
+    const list = { type: MessageType.DICTIONARY_HISTORY, payload: { entries: [] } };
+    const entry = { type: MessageType.DICTIONARY_HISTORY_ENTRY, payload: { status: 'missing', id: 'h1' } };
+
+    routes[MessageType.DICTIONARY_HISTORY]!(list as never);
+    routes[MessageType.DICTIONARY_HISTORY_ENTRY]!(entry as never);
+
+    expect(deps.dictionaryHistory.handleHistory).toHaveBeenCalledWith(list);
+    expect(deps.dictionaryHistory.handleHistoryEntry).toHaveBeenCalledWith(entry);
+  });
+
+  it.each([
+    [MessageType.DICTIONARY_RESULT, 'handleDictionaryResult'],
+    [MessageType.FAST_GENERATE_DICTIONARY_RESULT, 'handleFastGenerateResult']
+  ] as const)('%s shows the result and follows the entry it was recorded as', (type, handler) => {
+    const deps = makeDeps();
+    const message = { type, payload: { result: 'entry', historyEntryId: 'h7' } };
+
+    buildAppMessageRoutes(deps)[type]!(message as never);
+
+    expect(deps.dictionary[handler]).toHaveBeenCalledWith(message);
+    expect(deps.dictionaryHistory.followRecordedEntry).toHaveBeenCalledWith('h7');
+    expect(deps.setError).toHaveBeenCalledWith('');
+  });
+
+  it('follows an unrecorded result as live (no history id)', () => {
+    const deps = makeDeps();
+    buildAppMessageRoutes(deps)[MessageType.DICTIONARY_RESULT]!(
+      { type: MessageType.DICTIONARY_RESULT, payload: { result: 'Error: boom' } } as never
+    );
+
+    expect(deps.dictionary.handleDictionaryResult).toHaveBeenCalled();
+    expect(deps.dictionaryHistory.followRecordedEntry).toHaveBeenCalledWith(undefined);
+  });
+
+  it('ignores a DICTIONARY_RESULT that does not settle the awaited lookup (replay, superseded, cancelled)', () => {
+    const deps = makeDeps();
+    (deps.dictionary.isAwaitedResult as jest.Mock).mockReturnValue(false);
+
+    buildAppMessageRoutes(deps)[MessageType.DICTIONARY_RESULT]!(
+      { type: MessageType.DICTIONARY_RESULT, payload: { requestId: 'dict-old', result: 'Error: boom' } } as never
+    );
+
+    expect(deps.dictionary.handleDictionaryResult).not.toHaveBeenCalled();
+    expect(deps.dictionaryHistory.followRecordedEntry).not.toHaveBeenCalled();
+    expect(deps.setError).not.toHaveBeenCalled();
   });
 
   it('ERROR sets the message and clears only the erroring domain', () => {

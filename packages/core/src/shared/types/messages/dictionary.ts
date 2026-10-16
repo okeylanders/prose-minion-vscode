@@ -38,6 +38,9 @@ export function resolveDictionaryEntryOptions(
 export interface LookupDictionaryPayload extends DictionaryEntryOptions {
   word: string;
   contextText?: string;
+  /** Source of the selected word, recorded in history to restore the "Source:" line. */
+  sourceUri?: string;
+  relativePath?: string;
 }
 
 export interface LookupDictionaryMessage extends MessageEnvelope<LookupDictionaryPayload> {
@@ -45,8 +48,16 @@ export interface LookupDictionaryMessage extends MessageEnvelope<LookupDictionar
 }
 
 export interface DictionaryResultPayload {
+  /**
+   * The stream this result settles (its STREAM_STARTED `requestId`). The
+   * webview applies a result only to the lookup it is awaiting, so a replayed,
+   * superseded, or cancelled result never replaces the view.
+   */
+  requestId: string;
   result: string;
   toolName: string;
+  /** The history entry this result was recorded as; absent when it was not recorded. */
+  historyEntryId?: string;
 }
 
 export interface DictionaryResultMessage extends MessageEnvelope<DictionaryResultPayload> {
@@ -59,6 +70,7 @@ export interface FastGenerateDictionaryPayload extends DictionaryEntryOptions {
   word: string;
   context?: string;
   sourceUri?: string;
+  relativePath?: string;
 }
 
 export interface FastGenerateDictionaryMessage extends MessageEnvelope<FastGenerateDictionaryPayload> {
@@ -71,6 +83,8 @@ export interface DictionaryBlockResult {
   duration: number;
   error?: string;
   usage?: TokenUsage;
+  /** The model the provider reported for this block's call. */
+  modelId?: string;
 }
 
 export interface FastGenerateDictionaryResultPayload {
@@ -84,6 +98,14 @@ export interface FastGenerateDictionaryResultPayload {
     totalBlocks: number;
   };
   usage?: TokenUsage; // Aggregated usage across all blocks
+  /**
+   * The models the provider reported for the successful blocks, distinct, in
+   * block order. Blocks run on a shared engine, so a model swap mid-run can
+   * leave more than one.
+   */
+  modelIds: string[];
+  /** The history entry this result was recorded as; absent when it was not recorded. */
+  historyEntryId?: string;
 }
 
 export interface FastGenerateDictionaryResultMessage extends MessageEnvelope<FastGenerateDictionaryResultPayload> {

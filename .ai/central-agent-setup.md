@@ -135,6 +135,7 @@ packages/core/src/presentation/webview/
 │       ├── useContext.ts               # Context text, requested resources, loading/status
 │       ├── useContextPathsSettings.ts  # Context paths configuration
 │       ├── useDictionary.ts            # Word/context state and tool name
+│       ├── useDictionaryHistory.ts     # Lookup history: host summaries, ‹ › cursor, draft slot (ADR 2026-10-14)
 │       ├── useMetrics.ts               # Per-subtool cache; source mode/path helpers
 │       ├── useModelsSettings.ts        # Model selection settings
 │       ├── usePublishingSettings.ts    # Publishing presets and trim size
@@ -240,6 +241,7 @@ useMessageRouter({
 | useAnalysis | AnalysisHandler | Prose/dialogue analysis |
 | useMetrics | MetricsHandler | Word frequency, stats, style flags |
 | useDictionary | DictionaryHandler | Word lookups |
+| useDictionaryHistory | DictionaryHandler (+ `DictionaryHistoryStore`) | Dictionary lookup history |
 | useContext | ContextHandler | Context generation |
 | useSearch | SearchHandler | Word search |
 | useSettings | ConfigurationHandler | Settings, models, API keys |

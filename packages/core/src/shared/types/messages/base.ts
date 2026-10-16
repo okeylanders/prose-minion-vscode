@@ -99,6 +99,14 @@ export enum MessageType {
   FAST_GENERATE_DICTIONARY_RESULT = 'fast_generate_dictionary_result',
   DICTIONARY_GENERATION_PROGRESS = 'dictionary_generation_progress',
 
+  // Dictionary lookup history (ADR 2026-10-14)
+  REQUEST_DICTIONARY_HISTORY = 'request_dictionary_history',
+  DICTIONARY_HISTORY = 'dictionary_history',
+  REQUEST_DICTIONARY_HISTORY_ENTRY = 'request_dictionary_history_entry',
+  DICTIONARY_HISTORY_ENTRY = 'dictionary_history_entry',
+  DELETE_DICTIONARY_HISTORY_ENTRY = 'delete_dictionary_history_entry',
+  CLEAR_DICTIONARY_HISTORY = 'clear_dictionary_history',
+
   // Streaming API responses
   STREAM_STARTED = 'stream_started',
   STREAM_CHUNK = 'stream_chunk',

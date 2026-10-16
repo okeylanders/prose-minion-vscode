@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { Icon } from '../shared/Icon';
 import { MessageType } from '@shared/types';
+import { DictionaryLookupMode, DictionaryLookupRequest, FastGenerateDictionaryMessage, LookupDictionaryMessage } from '@messages';
 import { MarkdownRenderer } from '../shared/MarkdownRenderer';
 import { ErrorBoundary } from '../shared/ErrorBoundary';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
@@ -13,9 +14,12 @@ import { WordCounter } from '../shared/WordCounter';
 import { StreamingContent } from '../shared/StreamingContent';
 import { DictionaryOptionSwitch } from '@components/dictionary/DictionaryOptionSwitch';
 import { DICTIONARY_FENCED_BLOCKS } from '@components/dictionary/ChromaticPaletteBlock';
+import { DictionaryHistoryMeta, DictionaryHistoryNav } from '@components/dictionary/DictionaryHistoryNav';
+import { DICTIONARY_PHRASE_WORDS, normalizeDictionaryPhrase } from '@utils/dictionaryHistoryNavigation';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
+import { UseDictionaryHistoryReturn } from '../../hooks/domain/useDictionaryHistory';
 import { UseSelectionReturn } from '../../hooks/domain/useSelection';
 import { UseSettingsReturn } from '../../hooks/domain/useSettings';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
@@ -23,27 +27,56 @@ import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
 interface UtilitiesTabProps {
   vscode: VSCodeAPI;
   dictionary: UseDictionaryReturn;
+  dictionaryHistory: UseDictionaryHistoryReturn;
   selection: UseSelectionReturn;
   settings: UseSettingsReturn;
 }
 
+/** A lookup to submit; the entry options come from the form's switches. */
+type LookupInput = Pick<DictionaryLookupRequest, 'mode' | 'word' | 'context' | 'sourceUri' | 'relativePath'>;
+
+/** The host message for a lookup; the standard route names its context `contextText`. */
+const lookupMessageFor = (request: DictionaryLookupRequest): LookupDictionaryMessage | FastGenerateDictionaryMessage => {
+  const { word, context, includeEncyclopedia, includePalettes, sourceUri, relativePath } = request;
+  const shared = { word, includeEncyclopedia, includePalettes, sourceUri, relativePath };
+  const envelope = { source: 'webview.utilities.tab' as const, timestamp: Date.now() };
+  return request.mode === 'fast'
+    ? { ...envelope, type: MessageType.FAST_GENERATE_DICTIONARY, payload: { ...shared, context: context || undefined } }
+    : { ...envelope, type: MessageType.LOOKUP_DICTIONARY, payload: { ...shared, contextText: context || undefined } };
+};
+
 export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
   vscode,
   dictionary,
+  dictionaryHistory,
   selection,
   settings
 }) => {
-  const lastLookupRef = React.useRef<{ word: string; context: string } | null>(null);
-
-  // Normalize for submission (trim + limit words)
-  const normalizePhrase = React.useCallback((value: string): string => {
-    const normalized = value.replace(/\s+/g, ' ').trim();
-    if (!normalized) {
-      return '';
+  /**
+   * Every submit path (Run, ⚡ Fast, right-click auto-run): the request becomes
+   * the subject Copy and Save name, and the new lookup goes live in history.
+   */
+  const submitLookup = React.useCallback((
+    { mode, word, context, sourceUri, relativePath }: LookupInput
+  ) => {
+    const request: DictionaryLookupRequest = {
+      word,
+      context,
+      includeEncyclopedia: dictionary.includeEncyclopedia,
+      includePalettes: dictionary.includePalettes,
+      mode,
+      ...(sourceUri ? { sourceUri } : {}),
+      ...(relativePath ? { relativePath } : {})
+    };
+    dictionary.setLookupSubject(request);
+    dictionaryHistory.beginNewLookup();
+    if (mode === 'fast') {
+      dictionary.setFastGenerating(true);
+    } else {
+      dictionary.setLoading(true);
     }
-    const tokens = normalized.split(' ').filter(Boolean);
-    return tokens.slice(0, 6).join(' ');
-  }, []);
+    vscode.postMessage(lookupMessageFor(request));
+  }, [dictionary, dictionaryHistory, vscode]);
 
   // For typing: allow trailing space, just limit word count
   const enforceWordLimit = React.useCallback((value: string): string => {
@@ -56,9 +89,9 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       return '';
     }
 
-    const limited = tokens.slice(0, 6).join(' ');
+    const limited = tokens.slice(0, DICTIONARY_PHRASE_WORDS).join(' ');
     // Preserve trailing space if user is typing between words
-    return hasTrailingSpace && tokens.length < 6 ? limited + ' ' : limited;
+    return hasTrailingSpace && tokens.length < DICTIONARY_PHRASE_WORDS ? limited + ' ' : limited;
   }, []);
 
   /**
@@ -74,7 +107,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
     }
 
     if (injection.word !== undefined) {
-      const sanitized = normalizePhrase(injection.word);
+      const sanitized = normalizeDictionaryPhrase(injection.word);
       dictionary.setWord(sanitized);
       dictionary.setWordEdited(false);
     }
@@ -93,7 +126,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
     if (!injection.autoRun) {
       selection.handleDictionaryInjectionHandled();
     }
-  }, [selection.dictionaryInjection, normalizePhrase, dictionary, selection]);
+  }, [selection.dictionaryInjection, dictionary, selection]);
 
   /**
    * Effect: handleInjection
@@ -124,36 +157,26 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       return;
     }
 
-    const sanitizedWord = normalizePhrase(injection.word || '');
+    const sanitizedWord = normalizeDictionaryPhrase(injection.word || '');
     if (!sanitizedWord) {
       // Clear injection even if no word to prevent stuck state
       selection.handleDictionaryInjectionHandled();
       return;
     }
 
-    dictionary.setFastGenerating(true);
-
+    // Source comes from the injection too: the form's setSource has not rendered yet.
     const contextValue = (injection.context || dictionary.context || '').trim();
-    lastLookupRef.current = {
+    submitLookup({
+      mode: 'fast',
       word: sanitizedWord,
-      context: contextValue
-    };
-
-    vscode.postMessage({
-      type: MessageType.FAST_GENERATE_DICTIONARY,
-      source: 'webview.utilities.tab',
-      payload: {
-        word: sanitizedWord,
-        context: contextValue || undefined,
-        includeEncyclopedia: dictionary.includeEncyclopedia,
-        includePalettes: dictionary.includePalettes
-      },
-      timestamp: Date.now()
+      context: contextValue,
+      sourceUri: injection.sourceUri,
+      relativePath: injection.relativePath
     });
 
     // Clear injection after triggering lookup
     selection.handleDictionaryInjectionHandled();
-  }, [selection.dictionaryInjection, normalizePhrase, dictionary, selection, vscode]);
+  }, [selection.dictionaryInjection, dictionary.context, selection, submitLookup]);
 
   /**
    * Effect: autoRunLookup
@@ -172,57 +195,22 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
     autoRunLookupWhenInjected();
   }, [autoRunLookupWhenInjected]);
 
-  const handleLookup = () => {
-    const sanitizedWord = normalizePhrase(dictionary.word);
+  const submitFormLookup = (mode: DictionaryLookupMode) => {
+    const sanitizedWord = normalizeDictionaryPhrase(dictionary.word);
     if (!sanitizedWord) {
       return;
     }
-
-    dictionary.setLoading(true);
-
-    lastLookupRef.current = {
+    submitLookup({
+      mode,
       word: sanitizedWord,
-      context: dictionary.context.trim()
-    };
-
-    vscode.postMessage({
-      type: MessageType.LOOKUP_DICTIONARY,
-      source: 'webview.utilities.tab',
-      payload: {
-        word: sanitizedWord,
-        contextText: dictionary.context.trim() || undefined,
-        includeEncyclopedia: dictionary.includeEncyclopedia,
-        includePalettes: dictionary.includePalettes
-      },
-      timestamp: Date.now()
+      context: dictionary.context.trim(),
+      sourceUri: dictionary.sourceUri,
+      relativePath: dictionary.relativePath
     });
   };
 
-  const handleFastGenerate = () => {
-    const sanitizedWord = normalizePhrase(dictionary.word);
-    if (!sanitizedWord) {
-      return;
-    }
-
-    dictionary.setFastGenerating(true);
-
-    lastLookupRef.current = {
-      word: sanitizedWord,
-      context: dictionary.context.trim()
-    };
-
-    vscode.postMessage({
-      type: MessageType.FAST_GENERATE_DICTIONARY,
-      source: 'webview.utilities.tab',
-      payload: {
-        word: sanitizedWord,
-        context: dictionary.context.trim() || undefined,
-        includeEncyclopedia: dictionary.includeEncyclopedia,
-        includePalettes: dictionary.includePalettes
-      },
-      timestamp: Date.now()
-    });
-  };
+  const handleLookup = () => submitFormLookup('standard');
+  const handleFastGenerate = () => submitFormLookup('fast');
 
   const handleWordChange = (value: string) => {
     const sanitized = enforceWordLimit(value);
@@ -251,17 +239,20 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
     return formatAnalysisAsMarkdown(dictionary.result);
   }, [dictionary.result]);
 
+  // Copy and Save name the request behind the displayed result (ADR D8), so a
+  // restored entry or later edits to the form cannot mislabel it.
+  const resultSubject = () => dictionary.lookupSubject ?? {
+    word: normalizeDictionaryPhrase(dictionary.word),
+    context: dictionary.context.trim()
+  };
+
   const handleCopyDictionaryResult = () => {
     if (!dictionary.result) {
       return;
     }
 
-    const metadata = lastLookupRef.current ?? {
-      word: normalizePhrase(dictionary.word),
-      context: dictionary.context.trim()
-    };
-
-    const header = `# ${metadata.word || normalizePhrase(dictionary.word) || 'Entry'}`;
+    const metadata = resultSubject();
+    const header = `# ${metadata.word || normalizeDictionaryPhrase(dictionary.word) || 'Entry'}`;
 
     vscode.postMessage({
       type: MessageType.COPY_RESULT,
@@ -279,12 +270,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
       return;
     }
 
-    const metadata = lastLookupRef.current ?? {
-      word: normalizePhrase(dictionary.word),
-      context: dictionary.context.trim()
-    };
-
-    const header = `# ${metadata.word || normalizePhrase(dictionary.word) || 'Entry'}`;
+    const metadata = resultSubject();
+    const header = `# ${metadata.word || normalizeDictionaryPhrase(dictionary.word) || 'Entry'}`;
 
     vscode.postMessage({
       type: MessageType.SAVE_RESULT,
@@ -308,7 +295,11 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
 
   return (
     <div className="tab-content">
-      <h2 className="text-lg font-semibold mb-4">Utilities · Dictionary</h2>
+      <div className="pm-dictionary-header">
+        <h2 className="text-lg font-semibold">Utilities · Dictionary</h2>
+        <DictionaryHistoryNav history={dictionaryHistory} />
+      </div>
+      <DictionaryHistoryMeta summary={dictionaryHistory.cursorSummary} />
 
       <div className="input-container">
         <div className="input-header">

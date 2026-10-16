@@ -29,6 +29,7 @@ import {
   WordFrequencyService,
   AssistantToolService,
   DictionaryService,
+  DictionaryHistoryStore,
   ContextAssistantService,
   WordSearchService,
   CategorySearchService,
@@ -145,6 +146,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     aiResourceManager,
     resourceLoader,
     toolOptions,
+    outputChannel
+  );
+  // One shared ledger for every webview's Dictionary tab (ADR 2026-10-14).
+  const dictionaryHistoryStore = new DictionaryHistoryStore(
+    platform.fileSystem,
+    platform.workspace,
     outputChannel
   );
   const contextAssistantService = new ContextAssistantService(
@@ -337,6 +344,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
+    dictionaryHistoryStore,
     contextAssistantService,
     proseStatsService,
     styleFlagsService,

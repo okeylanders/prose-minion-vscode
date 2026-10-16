@@ -3,6 +3,11 @@
  *
  * Manages dictionary word, context, results, and source tracking.
  * Includes streaming support for progressive response display.
+ *
+ * `lookupSubject` is the request the displayed result answers (ADR 2026-10-14,
+ * D8). Submitting a lookup sets it, and so does restoring a history entry or
+ * draft through `restoreView`, so Copy, Save, and the history draft rule all
+ * name the lookup the writer is actually reading.
  */
 
 import * as React from 'react';
@@ -18,6 +23,7 @@ import {
   StreamChunkMessage,
   StreamCompleteMessage,
   ClearTransientApiKeyWarningMessage,
+  DictionaryLookupRequest,
   isApiKeyNotConfiguredWarning
 } from '@messages';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
@@ -30,9 +36,28 @@ export interface FastGenerationMetadata {
   totalBlocks: number;
 }
 
+/**
+ * Everything the Dictionary tab shows for one lookup: the form, the result,
+ * and the request that result answers. History navigation stashes and
+ * restores whole views so the form and the result can never disagree.
+ */
+export interface DictionaryView {
+  word: string;
+  context: string;
+  includeEncyclopedia: boolean;
+  includePalettes: boolean;
+  sourceUri: string;
+  relativePath: string;
+  result: string;
+  toolName: string | undefined;
+  lookupSubject: DictionaryLookupRequest | null;
+}
+
 export interface DictionaryState {
   result: string;
   toolName: string | undefined;
+  /** The request the displayed result answers; null when nothing was looked up. */
+  lookupSubject: DictionaryLookupRequest | null;
   loading: boolean;
   word: string;
   context: string;
@@ -68,6 +93,13 @@ export interface DictionaryActions {
   setIncludePalettes: (include: boolean) => void;
   setWordEdited: (edited: boolean) => void;
   setSource: (uri?: string, relativePath?: string) => void;
+  setLookupSubject: (subject: DictionaryLookupRequest | null) => void;
+  /**
+   * Show a stashed or recorded view. Leaves loading, streaming, and fast
+   * generation alone, and marks the word edited so a selection auto-fill
+   * cannot overwrite the restored word.
+   */
+  restoreView: (view: DictionaryView) => void;
   clearResult: () => void;
   handleClearTransientApiKeyWarning: (message: ClearTransientApiKeyWarningMessage) => void;
   // Fast generation actions
@@ -77,6 +109,12 @@ export interface DictionaryActions {
   handleStreamChunk: (message: StreamChunkMessage) => void;
   handleStreamComplete: (message: StreamCompleteMessage) => void;
   handleStreamStarted: (message: StreamStartedMessage) => void;
+  /**
+   * True when this result settles the lookup this view is awaiting: its
+   * stream completed here and no result has settled it yet. Replays,
+   * superseded lookups, and cancelled lookups are false.
+   */
+  isAwaitedResult: (message: DictionaryResultMessage) => boolean;
   startStreaming: (requestId: string) => void;
   cancelStreaming: () => void;
 }
@@ -92,6 +130,7 @@ export interface DictionaryPersistence {
   dictionarySourceUri: string;
   dictionaryRelativePath: string;
   dictionaryStatusMessage: string;
+  dictionaryLookupSubject: DictionaryLookupRequest | null;
 }
 
 export type UseDictionaryReturn = DictionaryState & DictionaryActions & { persistedState: DictionaryPersistence };
@@ -139,6 +178,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     dictionarySourceUri?: string;
     dictionaryRelativePath?: string;
     dictionaryStatusMessage?: string;
+    dictionaryLookupSubject?: DictionaryLookupRequest | null;
   }>();
 
   const [result, setResult] = React.useState<string>(
@@ -158,6 +198,9 @@ export const useDictionary = (): UseDictionaryReturn => {
   const [sourceUri, setSourceUri] = React.useState<string>(persisted?.dictionarySourceUri ?? '');
   const [relativePath, setRelativePath] = React.useState<string>(persisted?.dictionaryRelativePath ?? '');
   const [statusMessage, setStatusMessage] = React.useState<string>(persisted?.dictionaryStatusMessage ?? '');
+  const [lookupSubject, setLookupSubject] = React.useState<DictionaryLookupRequest | null>(
+    persisted?.dictionaryLookupSubject ?? null
+  );
 
   // Fast generation state
   const [isFastGenerating, setIsFastGenerating] = React.useState<boolean>(false);
@@ -169,6 +212,13 @@ export const useDictionary = (): UseDictionaryReturn => {
   const streaming = useStreaming();
   const [currentRequestId, setCurrentRequestId] = React.useState<string | null>(null);
   const ignoredRequestIdsRef = React.useRef<Set<string>>(new Set());
+  /**
+   * The stream that completed here and now awaits its DICTIONARY_RESULT. Until
+   * that result settles it, the lookup stays owned (loading), so Run and
+   * history navigation cannot slip in between (Astra F-01). A ref, not state:
+   * completion and result arrive back to back, before React re-renders.
+   */
+  const awaitedResultIdRef = React.useRef<string | null>(null);
 
   // Clear result when dictionary lookup starts
   const clearResultWhenLoading = React.useCallback(() => {
@@ -181,13 +231,26 @@ export const useDictionary = (): UseDictionaryReturn => {
     clearResultWhenLoading();
   }, [clearResultWhenLoading]);
 
+  const isAwaitedResult = React.useCallback(
+    (message: DictionaryResultMessage) => message.payload.requestId === awaitedResultIdRef.current,
+    []
+  );
+
   const handleDictionaryResult = React.useCallback((message: DictionaryResultMessage) => {
+    // Only the result that settles the awaited lookup applies. The host replays
+    // its cached result whenever the sidebar is shown again, whatever its
+    // outcome, and a cancelled or superseded lookup's result can still arrive
+    // (Astra F-01, F-02). Either would replace a newer or restored view.
+    if (!isAwaitedResult(message)) {
+      return;
+    }
+    awaitedResultIdRef.current = null;
     const { result, toolName } = message.payload;
     setResult(result);
     setToolName(toolName);
     setLoading(false);
     setStatusMessage(''); // Clear status message
-  }, []);
+  }, [isAwaitedResult]);
 
   const handleStatusMessage = React.useCallback((message: StatusMessage) => {
     const { message: statusText, progress: statusProgress, tickerMessage: ticker } = message.payload;
@@ -207,6 +270,20 @@ export const useDictionary = (): UseDictionaryReturn => {
   const setSource = React.useCallback((uri?: string, rel?: string) => {
     setSourceUri(uri || '');
     setRelativePath(rel || '');
+  }, []);
+
+  const restoreView = React.useCallback((view: DictionaryView) => {
+    setWord(view.word);
+    setContext(view.context);
+    setIncludeEncyclopedia(view.includeEncyclopedia);
+    setIncludePalettes(view.includePalettes);
+    setSourceUri(view.sourceUri);
+    setRelativePath(view.relativePath);
+    setResult(view.result);
+    setToolName(view.toolName);
+    setLookupSubject(view.lookupSubject);
+    setWordEdited(true);
+    setStatusMessage('');
   }, []);
 
   const clearResult = React.useCallback(() => {
@@ -251,6 +328,8 @@ export const useDictionary = (): UseDictionaryReturn => {
     }
 
     ignoredRequestIdsRef.current.delete(requestId);
+    // A new stream supersedes any result still awaited.
+    awaitedResultIdRef.current = null;
     setCurrentRequestId(requestId);
     streaming.startStreaming();
     setLoading(true);
@@ -288,30 +367,33 @@ export const useDictionary = (): UseDictionaryReturn => {
     // Only handle dictionary domain completion
     if (domain !== 'dictionary') return;
 
-    // Clean up ignored ID for this request (whether it completed or was ignored)
-    ignoredRequestIdsRef.current.delete(requestId);
-
-    if (ignoredRequestIdsRef.current.has(requestId)) return;
+    // A request this view cancelled or preempted: forget it and change nothing.
+    if (ignoredRequestIdsRef.current.has(requestId)) {
+      ignoredRequestIdsRef.current.delete(requestId);
+      return;
+    }
 
     if (currentRequestId && requestId !== currentRequestId) {
-      if (ignoredRequestIdsRef.current.has(requestId)) return;
       return;
     }
 
     streaming.endStreaming();
     setCurrentRequestId(null);
-    setLoading(false);
 
-    if (!cancelled) {
-      // Content will come through DICTIONARY_RESULT message for backward compatibility
-      // The streaming content is shown progressively until then
+    if (cancelled) {
+      setLoading(false);
+      return;
     }
+    // The content arrives in this stream's DICTIONARY_RESULT, right behind this
+    // message. Stay loading until it settles the lookup.
+    awaitedResultIdRef.current = requestId;
   }, [currentRequestId, streaming]);
 
   const cancelStreaming = React.useCallback(() => {
     if (currentRequestId) {
       ignoredRequestIdsRef.current.add(currentRequestId);
     }
+    awaitedResultIdRef.current = null;
     const partialContent = streaming.buffer;
     streaming.endStreaming();
     if (partialContent) {
@@ -326,6 +408,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     // State
     result,
     toolName,
+    lookupSubject,
     loading,
     word,
     context,
@@ -359,6 +442,8 @@ export const useDictionary = (): UseDictionaryReturn => {
     setIncludePalettes,
     setWordEdited,
     setSource,
+    setLookupSubject,
+    restoreView,
     clearResult,
     handleClearTransientApiKeyWarning,
     handleFastGenerateResult,
@@ -367,6 +452,7 @@ export const useDictionary = (): UseDictionaryReturn => {
     handleStreamStarted,
     handleStreamChunk,
     handleStreamComplete,
+    isAwaitedResult,
     startStreaming,
     cancelStreaming,
 
@@ -382,6 +468,7 @@ export const useDictionary = (): UseDictionaryReturn => {
       dictionarySourceUri: sourceUri,
       dictionaryRelativePath: relativePath,
       dictionaryStatusMessage: statusMessage,
+      dictionaryLookupSubject: lookupSubject,
     },
   };
 };

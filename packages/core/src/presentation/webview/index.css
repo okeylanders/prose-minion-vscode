@@ -1203,6 +1203,85 @@ select:focus {
   }
 }
 
+/* Dictionary header: the tab title with the history `‹` `🕘 n / total` `›`
+   cluster on the right, and the "From history" meta line under it. */
+.pm-dictionary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin: 6px 0 14px;
+}
+
+.pm-dictionary-header > h2 {
+  min-width: 0;
+  margin: 0;
+  color: var(--pm-text);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pm-dictionary-history-nav {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Plain accessory squares, like the result copy/save buttons. */
+.pm-dictionary-history-nav .icon-button {
+  width: 28px;
+  height: 26px;
+  min-width: 28px;
+  border-color: var(--pm-border);
+  background-color: var(--pm-surface-2);
+  color: var(--pm-muted);
+}
+
+.pm-dictionary-history-nav .icon-button:hover:not(:disabled) {
+  background-color: var(--pm-surface);
+  color: var(--pm-text);
+  filter: none;
+}
+
+/* The position doubles as the popup opener: a quiet pill, not a fourth square. */
+.pm-dictionary-history-position {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pm-muted);
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.pm-dictionary-history-position:hover {
+  border-color: var(--pm-border);
+  background-color: var(--pm-surface-2);
+  color: var(--pm-text);
+}
+
+.pm-dictionary-history-position:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: 1px;
+}
+
+.pm-dictionary-history-meta {
+  margin: -8px 0 var(--spacing-md);
+  color: var(--pm-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .button-group {
   display: flex;
   flex-wrap: wrap;
@@ -2907,4 +2986,288 @@ select:focus {
   border: 1px solid currentColor;
   font-size: 9px;
   letter-spacing: 0.06em;
+}
+
+/* Dictionary history popup
+   (ADR 2026-10-14, epic slice 3: DictionaryHistoryModal). Built on the shared
+   .tm modal chrome: a fixed head and foot frame a list that scrolls. Colors
+   come only from --pm-* tokens, so the popup follows the sidebar theme, the
+   warm-dark palette or the editor's own (light themes included). Rows are
+   sized for the narrow sidebar: the word, model id, context, and source each
+   hold one line and ellipsize instead of widening the panel. */
+.tm.pm-dictionary-history-modal {
+  display: flex;
+  flex-direction: column;
+  max-width: min(560px, calc(100vw - 24px));
+  max-height: calc(100vh - 96px);
+  padding: 0;
+  overflow: hidden;
+}
+.pm-dictionary-history-head {
+  flex: none;
+  margin-bottom: 0;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--pm-border);
+}
+.pm-dictionary-history-heading {
+  min-width: 0;
+}
+.pm-dictionary-history-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+.pm-dictionary-history-count {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-muted);
+  white-space: nowrap;
+}
+.pm-dictionary-history-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+.pm-dictionary-history-note {
+  margin: 0 0 10px;
+  padding: 7px 10px;
+  border: 1px dashed var(--pm-border-2);
+  border-radius: var(--pm-r-input);
+  color: var(--pm-muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.pm-dictionary-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pm-dictionary-history-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-card);
+  overflow: hidden;
+  transition: border-color 0.14s ease;
+}
+.pm-dictionary-history-row:hover {
+  border-color: var(--pm-border-2);
+}
+.pm-dictionary-history-row.is-current {
+  border-color: var(--pm-accent-ring);
+}
+/* The accent edge sits above the select button's hover fill. */
+.pm-dictionary-history-row.is-current::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--pm-accent);
+  pointer-events: none;
+}
+.pm-dictionary-history-select {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 8px 10px 13px;
+  border: 0;
+  background: transparent;
+  color: var(--pm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+.pm-dictionary-history-select:hover:not(:disabled) {
+  background: var(--pm-inset);
+}
+.pm-dictionary-history-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.pm-dictionary-history-select:focus-visible,
+.pm-dictionary-history-delete:focus-visible {
+  outline: 2px solid var(--pm-accent-ring);
+  outline-offset: -2px;
+}
+.pm-dictionary-history-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.pm-dictionary-history-word {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pm-text);
+}
+.pm-dictionary-history-time {
+  flex: none;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+  white-space: nowrap;
+}
+.pm-dictionary-history-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.pm-dictionary-history-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+.pm-dictionary-history-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  min-height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--pm-border);
+  border-radius: 5px;
+  background: var(--pm-surface);
+  color: var(--pm-text-2);
+  font-size: 10.5px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.pm-dictionary-history-badge.is-fast {
+  color: var(--pm-accent-hi);
+  border-color: var(--pm-accent-ring);
+  background: var(--pm-accent-soft);
+}
+/* Block, not inline-flex: text-overflow does not apply to a flex container. */
+.pm-dictionary-history-badge.pm-dictionary-history-model {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--pm-mono);
+  color: var(--pm-muted);
+}
+.pm-dictionary-history-context,
+.pm-dictionary-history-source {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pm-muted);
+}
+.pm-dictionary-history-context {
+  font-size: 11.5px;
+}
+.pm-dictionary-history-source {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+}
+.pm-dictionary-history-delete {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--pm-border-soft);
+  background: transparent;
+  color: var(--pm-muted);
+  cursor: pointer;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+.pm-dictionary-history-delete:hover {
+  color: var(--pm-red);
+  background: color-mix(in srgb, var(--pm-red) 10%, transparent);
+}
+.pm-dictionary-history-empty {
+  margin: 0;
+  padding: 26px 8px;
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+.pm-dictionary-history-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--pm-border);
+  background: var(--pm-surface);
+}
+.pm-dictionary-history-durability {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--pm-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.pm-dictionary-history-durability svg {
+  flex: none;
+  margin-top: 1px;
+}
+/* Amber marks the icon only: amber text is hard to read on light themes. */
+.pm-dictionary-history-durability.is-warning svg {
+  color: var(--pm-amber);
+}
+.pm-dictionary-history-durability code {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-text-2);
+  overflow-wrap: anywhere;
+}
+.btn.pm-dictionary-history-foot-btn {
+  padding: 6px 11px;
+  font-size: 12px;
+}
+.pm-dictionary-history-clear {
+  align-self: flex-start;
+  color: var(--pm-muted);
+}
+.pm-dictionary-history-clear:hover:not(:disabled) {
+  color: var(--pm-red);
+}
+.pm-dictionary-history-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pm-dictionary-history-confirm-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pm-text);
+}
+.pm-dictionary-history-confirm-actions {
+  display: flex;
+  gap: 6px;
+}
+@media (max-width: 420px) {
+  .tm.pm-dictionary-history-modal {
+    max-height: calc(100vh - 32px);
+  }
 }
