@@ -6,7 +6,7 @@
  */
 
 /** Newest entries kept; recording past this evicts the oldest. */
-export const DICTIONARY_HISTORY_LIMIT = 50;
+export const DICTIONARY_HISTORY_LIMIT = 500;
 
 /** Characters of collapsed context a summary carries before `…`. */
 export const DICTIONARY_HISTORY_CONTEXT_PREVIEW_CHARS = 140;

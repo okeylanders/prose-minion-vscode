@@ -15,11 +15,13 @@ import { StreamingContent } from '../shared/StreamingContent';
 import { DictionaryOptionSwitch } from '@components/dictionary/DictionaryOptionSwitch';
 import { DICTIONARY_FENCED_BLOCKS } from '@components/dictionary/ChromaticPaletteBlock';
 import { DictionaryHistoryMeta, DictionaryHistoryNav } from '@components/dictionary/DictionaryHistoryNav';
+import { DictionaryPriorLookupPrompt } from '@components/dictionary/DictionaryPriorLookupPrompt';
 import { DICTIONARY_PHRASE_WORDS, normalizeDictionaryPhrase } from '@utils/dictionaryHistoryNavigation';
 import { formatAnalysisAsMarkdown } from '../../utils/formatters';
 import { VSCodeAPI } from '../../types/vscode';
 import { UseDictionaryReturn } from '../../hooks/domain/useDictionary';
 import { UseDictionaryHistoryReturn } from '../../hooks/domain/useDictionaryHistory';
+import { useDictionaryPriorLookup } from '@hooks/domain/dictionary/controllers/useDictionaryPriorLookup';
 import { UseSelectionReturn } from '../../hooks/domain/useSelection';
 import { UseSettingsReturn } from '../../hooks/domain/useSettings';
 import { createCancelRequestMessage } from '@shared/streamingCancelMessages';
@@ -78,6 +80,29 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
     vscode.postMessage(lookupMessageFor(request));
   }, [dictionary, dictionaryHistory, vscode]);
 
+  const submitFormLookup = React.useCallback((mode: DictionaryLookupMode) => {
+    const sanitizedWord = normalizeDictionaryPhrase(dictionary.word);
+    if (!sanitizedWord) {
+      return;
+    }
+    submitLookup({
+      mode,
+      word: sanitizedWord,
+      context: dictionary.context.trim(),
+      sourceUri: dictionary.sourceUri,
+      relativePath: dictionary.relativePath
+    });
+  }, [dictionary, submitLookup]);
+
+  // A phrase already in the history is offered back before it is rerun (ADR D9).
+  const priorLookup = useDictionaryPriorLookup({
+    entries: dictionaryHistory.entries,
+    cursorId: dictionaryHistory.cursorId,
+    formWord: dictionary.word,
+    openEntry: dictionaryHistory.openEntry,
+    submitFormLookup
+  });
+
   // For typing: allow trailing space, just limit word count
   const enforceWordLimit = React.useCallback((value: string): string => {
     // Normalize multiple spaces to single, but preserve trailing space
@@ -128,16 +153,7 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
     }
   }, [selection.dictionaryInjection, dictionary, selection]);
 
-  /**
-   * Effect: handleInjection
-   *
-   * Trigger: When dictionaryInjection changes (from paste button or right-click menu)
-   *
-   * Purpose: Populates the dictionary form fields from incoming injection data.
-   * - Sets word, context, and source metadata from the injection
-   * - If autoRun is false, clears the injection immediately (we're done)
-   * - If autoRun is true, leaves injection for the autoRunLookup effect to handle
-   */
+  // Effect: handleInjection, when dictionaryInjection changes (paste button or right-click menu).
   React.useEffect(() => {
     populateDictionaryFromInjection();
   }, [populateDictionaryFromInjection]);
@@ -145,7 +161,8 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
   /**
    * Automatically triggers fast dictionary lookup from right-click menu.
    * - Reads word directly from injection (not dictionary state) to avoid race condition
-   * - Posts FAST_GENERATE_DICTIONARY message to extension
+   * - Posts FAST_GENERATE_DICTIONARY message to extension, unless the phrase is
+   *   already in history (ADR D9), in which case the prior entry is offered instead
    * - Clears injection after triggering
    *
    * Flow: Right-click "Look Up Word" → extension sends injection with autoRun:true
@@ -166,53 +183,36 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
 
     // Source comes from the injection too: the form's setSource has not rendered yet.
     const contextValue = (injection.context || dictionary.context || '').trim();
-    submitLookup({
-      mode: 'fast',
-      word: sanitizedWord,
-      context: contextValue,
-      sourceUri: injection.sourceUri,
-      relativePath: injection.relativePath
-    });
+    if (!priorLookup.offerPriorLookup(sanitizedWord, 'fast')) {
+      submitLookup({
+        mode: 'fast',
+        word: sanitizedWord,
+        context: contextValue,
+        sourceUri: injection.sourceUri,
+        relativePath: injection.relativePath
+      });
+    }
 
-    // Clear injection after triggering lookup
+    // Clear injection after triggering lookup (or offering the prior one)
     selection.handleDictionaryInjectionHandled();
-  }, [selection.dictionaryInjection, dictionary.context, selection, submitLookup]);
+  }, [selection.dictionaryInjection, dictionary.context, selection, submitLookup, priorLookup.offerPriorLookup]);
 
-  /**
-   * Effect: autoRunLookup
-   *
-   * Trigger: When dictionaryInjection changes AND autoRun flag is true
-   *
-   * Purpose: Automatically triggers fast dictionary lookup from right-click menu.
-   * - Reads word directly from injection (not dictionary state) to avoid race condition
-   * - Posts FAST_GENERATE_DICTIONARY message to extension
-   * - Clears injection after triggering
-   *
-   * Flow: Right-click "Look Up Word" → extension sends injection with autoRun:true
-   *       → handleInjection populates form → this effect fires the API call
-   */
+  // Effect: autoRunLookup, when dictionaryInjection changes AND its autoRun flag is true.
   React.useEffect(() => {
     autoRunLookupWhenInjected();
   }, [autoRunLookupWhenInjected]);
 
-  const submitFormLookup = (mode: DictionaryLookupMode) => {
-    const sanitizedWord = normalizeDictionaryPhrase(dictionary.word);
-    if (!sanitizedWord) {
-      return;
+  const requestFormLookup = (mode: DictionaryLookupMode) => {
+    if (!priorLookup.offerPriorLookup(normalizeDictionaryPhrase(dictionary.word), mode)) {
+      submitFormLookup(mode);
     }
-    submitLookup({
-      mode,
-      word: sanitizedWord,
-      context: dictionary.context.trim(),
-      sourceUri: dictionary.sourceUri,
-      relativePath: dictionary.relativePath
-    });
   };
 
-  const handleLookup = () => submitFormLookup('standard');
-  const handleFastGenerate = () => submitFormLookup('fast');
+  const handleLookup = () => requestFormLookup('standard');
+  const handleFastGenerate = () => requestFormLookup('fast');
 
   const handleWordChange = (value: string) => {
+    priorLookup.dismissPriorLookup();
     const sanitized = enforceWordLimit(value);
     dictionary.setWord(sanitized);
     // Mark as user-edited even when cleared, to prevent auto-fill
@@ -390,6 +390,16 @@ export const UtilitiesTab = React.memo<UtilitiesTabProps>(({
           ⚡ Experimental: Run Dictionary Lookup [Fast]
         </button>
       </div>
+
+      {priorLookup.priorLookup && (
+        <DictionaryPriorLookupPrompt
+          offer={priorLookup.priorLookup}
+          disabled={isGenerating}
+          onOpen={priorLookup.openPriorLookup}
+          onLookUpAgain={priorLookup.lookUpAgain}
+          onDismiss={priorLookup.dismissPriorLookup}
+        />
+      )}
 
       <p className="pm-dictionary-generation-note">
         <em>

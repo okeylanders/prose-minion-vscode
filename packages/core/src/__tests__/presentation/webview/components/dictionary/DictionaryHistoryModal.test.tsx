@@ -93,7 +93,7 @@ describe('DictionaryHistoryModal', () => {
     renderModal();
     const dialog = screen.getByRole('dialog', { name: 'Lookup history' });
     expect(dialog.getAttribute('aria-modal')).toBe('true');
-    expect(within(dialog).getByText('3 of 50')).toBeTruthy();
+    expect(within(dialog).getByText('3 of 500')).toBeTruthy();
   });
 
   it('lists rows newest first with their times, badges, context, and source', () => {
@@ -252,7 +252,7 @@ describe('DictionaryHistoryModal', () => {
   it('shows the empty state without a list or Clear control', () => {
     renderModal({ entries: [] });
     expect(screen.getByText('No lookups yet. Each completed lookup is kept here.')).toBeTruthy();
-    expect(screen.getByText('0 of 50')).toBeTruthy();
+    expect(screen.getByText('0 of 500')).toBeTruthy();
     expect(screen.queryByRole('list')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Clear history' })).toBeNull();
   });

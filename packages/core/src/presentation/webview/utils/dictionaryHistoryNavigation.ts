@@ -1,12 +1,12 @@
 /**
- * Dictionary history navigation rules (ADR 2026-10-14, D6 and D8).
+ * Dictionary history navigation rules (ADR 2026-10-14, D6, D8, and D9).
  *
- * Pure functions, so the `‹` `›` stepping, the draft rule, and the position
- * label can be tested without React. `useDictionaryHistory` owns the state and
+ * Pure functions, so the `‹` `›` stepping, the draft rule, the position
+ * label, and the prior-lookup check can be tested without React. `useDictionaryHistory` owns the state and
  * transport; this module only decides.
  */
 
-import type { DictionaryHistoryEntry, DictionaryLookupRequest } from '@messages';
+import type { DictionaryHistoryEntry, DictionaryHistorySummary, DictionaryLookupRequest } from '@messages';
 import type { DictionaryView } from '@hooks/domain/useDictionary';
 
 /** Words a Dictionary lookup accepts; the tab trims longer phrases to this. */
@@ -19,6 +19,33 @@ export function normalizeDictionaryPhrase(value: string): string {
     return '';
   }
   return normalized.split(' ').slice(0, DICTIONARY_PHRASE_WORDS).join(' ');
+}
+
+/**
+ * The identity "looked up before" compares: the submit normalization, then
+ * case-folded, so `Luminous` and `luminous ` name the same lookup.
+ */
+export function dictionaryPhraseKey(value: string): string {
+  return normalizeDictionaryPhrase(value).toLocaleLowerCase();
+}
+
+/**
+ * Recorded lookups of `word`, newest first, that a new lookup could reuse
+ * instead (D9). Empty when there are none, or when the result pane already
+ * shows one of them: a writer rerunning the entry in front of them wants a
+ * fresh run, not an offer of what they are already reading.
+ */
+export function findPriorDictionaryLookups(
+  entries: readonly DictionaryHistorySummary[],
+  word: string,
+  cursorId: string | null
+): DictionaryHistorySummary[] {
+  const key = dictionaryPhraseKey(word);
+  if (!key) {
+    return [];
+  }
+  const matches = entries.filter(entry => dictionaryPhraseKey(entry.word) === key);
+  return matches.some(entry => entry.id === cursorId) ? [] : matches;
 }
 
 export type DictionaryHistoryDirection = 'older' | 'newer';
