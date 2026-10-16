@@ -1,17 +1,20 @@
 /**
- * Dictionary history navigation rules (ADR 2026-10-14, D6 and D8): stepping
- * like browser back and forward, the draft rule's dirty check, the entry →
- * view mapping, and the `3 / 12` position label.
+ * Dictionary history navigation rules (ADR 2026-10-14, D6, D8, and D9):
+ * stepping like browser back and forward, the draft rule's dirty check, the
+ * entry → view mapping, the `3 / 12` position label, and the prior-lookup
+ * match.
  */
 
 import {
   describeDictionaryHistoryPosition,
+  dictionaryPhraseKey,
   dictionaryViewFromEntry,
+  findPriorDictionaryLookups,
   isDictionaryFormDirty,
   normalizeDictionaryPhrase,
   stepDictionaryHistory
 } from '@utils/dictionaryHistoryNavigation';
-import { DictionaryHistoryEntry, DictionaryLookupRequest } from '@messages';
+import { DictionaryHistoryEntry, DictionaryHistorySummary, DictionaryLookupRequest } from '@messages';
 
 const IDS = ['newest', 'middle', 'oldest'];
 
@@ -195,5 +198,51 @@ describe('normalizeDictionaryPhrase', () => {
   it('collapses whitespace, trims, and keeps six words', () => {
     expect(normalizeDictionaryPhrase('  the   quick\tbrown fox jumps over the dog ')).toBe('the quick brown fox jumps over');
     expect(normalizeDictionaryPhrase('   ')).toBe('');
+  });
+});
+
+describe('dictionaryPhraseKey', () => {
+  it('names a phrase by its submitted form, ignoring case and spacing', () => {
+    expect(dictionaryPhraseKey('  Bated   Breath ')).toBe('bated breath');
+    expect(dictionaryPhraseKey('LUMINOUS')).toBe(dictionaryPhraseKey('luminous'));
+  });
+});
+
+describe('findPriorDictionaryLookups', () => {
+  const summary = (id: string, word: string): DictionaryHistorySummary => ({
+    id,
+    createdAt: '2026-10-14T12:00:00.000Z',
+    word,
+    contextPreview: '',
+    includeEncyclopedia: true,
+    includePalettes: true,
+    mode: 'standard',
+    modelIds: []
+  });
+  const ENTRIES = [
+    summary('h4', 'luminous'),
+    summary('h3', 'bated breath'),
+    summary('h2', 'Luminous'),
+    summary('h1', 'umbra')
+  ];
+
+  it('returns every recorded lookup of the phrase, newest first, whatever its case', () => {
+    expect(findPriorDictionaryLookups(ENTRIES, 'LUMINOUS', null).map(entry => entry.id)).toEqual(['h4', 'h2']);
+    expect(findPriorDictionaryLookups(ENTRIES, ' bated  breath', null).map(entry => entry.id)).toEqual(['h3']);
+  });
+
+  it('matches whole phrases only', () => {
+    expect(findPriorDictionaryLookups(ENTRIES, 'bated', null)).toEqual([]);
+    expect(findPriorDictionaryLookups(ENTRIES, 'luminous glow', null)).toEqual([]);
+  });
+
+  it('offers nothing for an empty word or an empty history', () => {
+    expect(findPriorDictionaryLookups(ENTRIES, '   ', null)).toEqual([]);
+    expect(findPriorDictionaryLookups([], 'luminous', null)).toEqual([]);
+  });
+
+  it('offers nothing when the result pane already shows one of the matches', () => {
+    expect(findPriorDictionaryLookups(ENTRIES, 'luminous', 'h2')).toEqual([]);
+    expect(findPriorDictionaryLookups(ENTRIES, 'luminous', 'h1').map(entry => entry.id)).toEqual(['h4', 'h2']);
   });
 });

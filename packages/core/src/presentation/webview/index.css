@@ -1300,6 +1300,58 @@ select:focus {
   line-height: 1.5;
 }
 
+/* "Looked up before" offer (ADR 2026-10-14, D9): stands in for the lookup
+   the writer just asked for, so it sits directly under the Run buttons. */
+.pm-dictionary-prior {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 var(--spacing-md);
+  padding: 10px 12px;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-accent-ring);
+  border-radius: var(--pm-r-card);
+}
+.pm-dictionary-prior-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.pm-dictionary-prior-heading > svg {
+  flex: none;
+  color: var(--pm-accent);
+}
+.pm-dictionary-prior-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--pm-text);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.pm-dictionary-prior-details,
+.pm-dictionary-prior-context {
+  margin: 0;
+  color: var(--pm-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.pm-dictionary-prior-context {
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.pm-dictionary-prior-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: 4px;
+}
+.pm-dictionary-prior-actions > .btn {
+  flex: 1 1 auto;
+  padding: 7px 12px;
+}
+
 /* ============================================================
    Dictionary Chromatic Palettes (`pm-palette` fences): a strip for the
    colors together, then a list for reading them. Chip and strip colors

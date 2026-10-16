@@ -7,6 +7,7 @@
 import { DictionaryHandler } from '@/application/handlers/domain/DictionaryHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
 import { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
+import { DICTIONARY_HISTORY_LIMIT } from '@shared/constants/dictionaryHistory';
 import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
 import { MemoryFileSystem } from '@/__tests__/mocks/MemoryFileSystem';
 import {
@@ -532,7 +533,7 @@ describe('DictionaryHandler', () => {
             relativePath: 'chapter-01.md'
           }],
           durability: { kind: 'session', reason: 'no-workspace' },
-          limit: 50
+          limit: DICTIONARY_HISTORY_LIMIT
         },
         timestamp: expect.any(Number)
       }]);

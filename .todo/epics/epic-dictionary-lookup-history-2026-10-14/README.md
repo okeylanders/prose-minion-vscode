@@ -25,7 +25,7 @@ selection.
 ## Shape
 
 - **Host:** `DictionaryHistoryStore` (in memory, persisted to
-  `prose-minion/history/dictionary.json`, newest 50) lives in `CoreServices`.
+  `prose-minion/history/dictionary.json`, newest 500) lives in `CoreServices`.
   `DictionaryHandler` records successful Dictionary-tab lookups. Six message
   types separate summaries from entries, and result payloads carry
   `historyEntryId`.
@@ -153,3 +153,13 @@ alongside Slice 2 and mounted once Slice 2's hook exists.
   single `beforeCommit` point, immediately before the committing rename, and
   the handler closes the cancel window at that same point. A cancel after it
   is refused, not acknowledged. Tests: 314 suites / 4,685.
+- **2026-10-15. Follow-on after the merge (PR #144).** The writer asked for a
+  bigger history and a check before repeat lookups. The cap is now 500 (D3),
+  and a phrase already in history is offered back before it is rerun (new
+  D9; see the ADR's second amendment). The check is webview-only, through a
+  pure `findPriorDictionaryLookups` rule and the
+  `useDictionaryPriorLookup` controller. Tests: 315 suites / 4,701,
+  typecheck clean, and the new suite was mutation-checked.
+  - **Live pass:** check that the offer appears for Run, ⚡ Fast, and the
+    right-click lookup, takes focus, and that Open restores without
+    generating.

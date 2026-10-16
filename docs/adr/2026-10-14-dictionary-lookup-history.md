@@ -1,6 +1,6 @@
 # ADR 2026-10-14: Dictionary Lookup History
 
-**Status:** Proposed (2026-10-14); amended 2026-10-15 after the [PR #144 review](../pr-reviews/pr-144-dictionary-lookup-history-review.md)
+**Status:** Proposed (2026-10-14); amended 2026-10-15 after the [PR #144 review](../pr-reviews/pr-144-dictionary-lookup-history-review.md), and again 2026-10-15 to [raise the cap and offer prior lookups](#amendment-2026-10-15-a-larger-cap-and-the-prior-lookup-offer)
 **Date:** 2026-10-14
 **Epic:** [Dictionary Lookup History](../../.todo/epics/epic-dictionary-lookup-history-2026-10-14/README.md)
 **Extends:** [ADR 2026-06-16 — Monorepo Ports and Adapters](2026-06-16-monorepo-ports-and-adapters.md); [ADR 2026-06-18 — MessageHandler Composition-Root Consolidation](2026-06-18-messagehandler-composition-root-consolidation.md)
@@ -101,12 +101,15 @@ Workshop persona lookups go straight to `DictionaryService`, never through
 A history write failure never fails the lookup. The handler logs the failure
 and posts the result without a `historyEntryId`.
 
-### D3. Every run is an entry, up to fifty
+### D3. Every run is an entry, up to five hundred
 
 Rerunning the same word with the same context produces a different result, and
 comparing runs is a core use. So entries are **never de-duplicated**. The
-history keeps the newest `DICTIONARY_HISTORY_LIMIT = 50` entries and evicts the
-oldest.
+history keeps the newest `DICTIONARY_HISTORY_LIMIT = 500` entries and evicts the
+oldest. (Fifty when first decided; see the
+[second amendment](#amendment-2026-10-15-a-larger-cap-and-the-prior-lookup-offer).)
+D9 offers an existing entry before a repeat lookup runs, so keeping every run
+does not mean paying for runs the writer did not want.
 
 ### D4. The entry and file shape
 
@@ -313,6 +316,45 @@ above.
   `formatVersion` value. Both reached the Output log. Reasons are now fixed
   phrases, and only a whole-number version is named.
 
+## Amendment 2026-10-15: a larger cap and the prior-lookup offer
+
+Raised by the writer after PR #144 merged.
+
+- **D3: the cap is 500.** Fifty filled quickly, because repeats are kept.
+  - At the Context's 8–25 KB per entry, the file grows to roughly 4–12.5 MB.
+    The store still holds it in memory and rewrites it whole on every
+    record, delete, and clear. That cost is accepted. If writes become
+    noticeable, the remedy is an append-friendly layout, not a smaller cap.
+  - The webview is unaffected. It receives summaries only (D5).
+  - Raising the cap is safe for existing files. Lowering it is not: on load
+    the store keeps only the newest `limit` entries, and the next write
+    drops the rest.
+- **D9 (new): a phrase already in history is offered before it is rerun.**
+  - Every submit path (Run, ⚡ Fast, and the right-click auto-run) first
+    looks for recorded lookups of the same phrase. Phrases compare after
+    the submit normalization, case-folded (`dictionaryPhraseKey`), as whole
+    phrases. Context, options, and mode are not compared. The offer shows
+    them so the writer can judge.
+  - When there is a match, nothing is posted. A prompt under the Run
+    buttons names the newest match (time, mode, context preview, and how
+    many lookups of the phrase are in history). It offers **Open existing
+    entry**, which restores it through the ordinary history load (D6) and
+    generates nothing, and **Look up again**, which submits the form as it
+    stands in the mode the writer chose. It can also be dismissed.
+  - No offer is made when the result pane already shows one of the
+    matches. Rerunning the entry in front of you is a deliberate rerun.
+  - The offer holds only the phrase and mode. Matches are derived from the
+    current list on each render, so a delete or eviction withdraws a stale
+    offer, and editing the word dismisses it.
+  - The check is webview-only. The summaries already carry `word`, so no
+    message or host change is needed. The rule is pure
+    (`findPriorDictionaryLookups` in `dictionaryHistoryNavigation.ts`). The
+    state lives in a presentation controller,
+    `hooks/domain/dictionary/controllers/useDictionaryPriorLookup.ts`, that
+    reaches history and submission only through injected callbacks.
+  - Workshop persona lookups never pass through the tab, so they are never
+    interrupted (D2).
+
 ## Out of scope (follow-ups)
 
 - History for Assistant and Category Search: the rest of the parent feature,
@@ -322,3 +364,5 @@ above.
 - Filtering or searching inside the popup, and keyboard shortcuts
   (`Alt+←`/`Alt+→`).
 - Merging history across windows.
+- A setting to skip the prior-lookup offer (D9) for writers who rerun
+  deliberately, and listing every match in the offer rather than the newest.

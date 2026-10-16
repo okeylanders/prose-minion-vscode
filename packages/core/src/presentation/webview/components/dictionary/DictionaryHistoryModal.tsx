@@ -28,7 +28,7 @@ export interface DictionaryHistoryModalProps {
   /** The entry the result pane shows; `null` when it shows a live lookup. */
   cursorId: string | null;
   durability: DictionaryHistoryDurability;
-  /** The store's cap, shown as "12 of 50". */
+  /** The store's cap, shown as "12 of 500". */
   limit: number;
   /** A lookup is generating, so restoring an entry must wait. */
   selectionDisabled: boolean;
