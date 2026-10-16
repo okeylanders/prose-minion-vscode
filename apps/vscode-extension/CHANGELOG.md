@@ -2,6 +2,18 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](https://github.com/okeylanders/prose-minion-vscode/blob/main/docs/CHANGELOG-DETAILED.md).
 
+## [2.11.0] - 2026-10-16
+
+### Added
+
+- **Dictionary lookup history.** Use the arrows beside the Dictionary heading to revisit recent lookups, or open the history popup to choose an entry. Restoring brings back the word or phrase, extra context, entry options, source, and full result without generating again or changing your selected model. Moving forward past the newest entry restores your unsaved draft.
+- Keep up to **500 lookups**, newest first. In a single-folder workspace, history is saved in `prose-minion/history/dictionary.json` and survives a restart. The popup lets you delete entries or clear the history after confirmation, and tells you when history is available only for the current session.
+- Before generating a phrase already in history, Dictionary offers to open the newest matching lookup or look it up again. The offer works with standard, Fast, and right-click lookups; rerunning the entry already on display starts a fresh lookup directly.
+
+### Changed
+
+- Completed Dictionary-tab lookups record the models that actually generated their results. Failed lookups and lookups cancelled before their result is committed are not added to history. Workshop persona lookups stay outside Dictionary history.
+
 ## [2.10.1] - 2026-10-14
 
 ### Added

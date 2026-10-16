@@ -24,7 +24,15 @@
 
 ---
 
-## What's new in v2.10.1 — Gemini 4 Argon
+## What's new in v2.11.0 — Dictionary lookup history
+
+**Return to a useful word.** The arrows beside the Dictionary heading step through your recent lookups. The history button opens a list where you can choose an entry, delete one, or clear the list after confirmation. Opening a saved lookup restores its phrase, extra context, Encyclopedia and Palettes switches, source, and full result without generating again or changing your selected model. Move forward past the newest entry to return to your unsaved draft.
+
+**Keep up to 500 lookups.** In a single-folder workspace, history lives in `prose-minion/history/dictionary.json` and survives a restart. With no folder, multiple workspace folders, or a persistence problem, the popup explains that history lasts only for this session. Dictionary history includes completed lookups from the Dictionary tab, including right-click lookups; Workshop persona lookups are separate.
+
+**Open it again, or look it up again.** When you submit a phrase already in history, Dictionary offers the newest matching result before starting another generation. Choose **Open existing entry** (or **Open latest entry** when there are several) to reuse it, or **Look up again** for a fresh result. Rerunning the historical entry already on display starts directly.
+
+### Also in v2.10.1 — Gemini 4 Argon
 
 **Try Gemini 4 Argon.** Google's new reasoning model joins the model pickers for writing tools, Workshop, Conversation Widgets, and Category Search. OpenRouter lists a 1M-token context window and multimodal input; its prose quality has not been evaluated in Prose Minion. Choose it when you want to try it; your defaults and saved selections stay as they are.
 

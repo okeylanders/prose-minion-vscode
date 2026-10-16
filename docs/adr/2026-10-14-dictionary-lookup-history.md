@@ -98,8 +98,10 @@ handler records only `outcome === 'entry'`. It never sniffs content text.
 Workshop persona lookups go straight to `DictionaryService`, never through
 `DictionaryHandler`, so they never enter the history. That is intended.
 
-A history write failure never fails the lookup. The handler logs the failure
-and posts the result without a `historyEntryId`.
+A history write failure never fails the lookup. The store logs the failure,
+keeps the entry in session memory, and returns its `historyEntryId`; the popup
+reports session-only durability. An unexpected recording failure is logged by
+the handler, which posts the result without a `historyEntryId`.
 
 ### D3. Every run is an entry, up to five hundred
 
