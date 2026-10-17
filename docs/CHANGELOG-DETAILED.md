@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [Dictionary history ADR](adr/2026-10-14-dictionary-lookup-history.md), [epic and live checklist](../.todo/epics/epic-dictionary-lookup-history-2026-10-14/README.md), and [PR #144 independent review and correction ledger](pr-reviews/pr-144-dictionary-lookup-history-review.md).
 - Regression coverage includes ledger/codec recovery, cancellation at the commit point, result settlement/replay, provenance/privacy, navigation and draft restoration, popup operations, and prior-lookup submission paths. Okey reported the feature branch working before its merge; acceptance of the final packaged v2.11.0 extension remains a separate release step.
 
+### README artwork
+
+- The README's v2.11.0 lead adds one composite, `dictionary-lookup-history.png`: a restored lookup with the `‹` `3 / 12` `›` controls and its "From history" line, the "You've looked up … before" offer, and the Lookup history popup. The composite also joins the Dictionary feature section.
+- Its crops are 2× captures of the real v2.11.0 webview bundle in Warm Dark. The twelve history entries are demo content in the host's wire format; no result body is shown.
+
 ## [2.10.1] - 2026-10-14 — Google Gemini 4 Argon
 
 ### OpenRouter catalog
