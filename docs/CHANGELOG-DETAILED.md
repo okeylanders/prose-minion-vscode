@@ -5,6 +5,37 @@ All notable changes to the Prose Minion VSCode extension will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-10-16 — Dictionary lookup history
+
+### Overview
+
+[PR #144](https://github.com/okeylanders/prose-minion-vscode/pull/144) adds Dictionary history, navigation, and a history popup. [PR #145](https://github.com/okeylanders/prose-minion-vscode/pull/145) raises retention to 500 entries and offers prior results before generating a phrase again. This is an additive feature release from Marketplace v2.10.1. No Workshop session-codec migration or model-default change is required.
+
+### History ownership and persistence
+
+- A single `DictionaryHistoryStore`, constructed in the VS Code composition root and injected through `CoreServices`, serves every webview. The host owns the ledger and full Markdown results; the webview receives lightweight summaries and fetches individual entries on demand.
+- The ledger keeps the newest 500 entries in `prose-minion/history/dictionary.json` (`formatVersion: 1`). Each entry records the submitted phrase, context, options, mode, optional source, provider-reported model IDs, and result. Fast generation can record several models when its blocks span a model change; missing provider attribution remains explicitly unknown.
+- Serialized operations and staged file replacement prevent interleaved writes. Invalid history files are set aside rather than overwritten; unreadable files that cannot be set aside are preserved. No-folder, multi-root, and write-failure paths report session-only durability. Parser diagnostics never include the writer's text.
+- Successful Dictionary-tab lookups are recorded; failed/unconfigured outcomes and Workshop persona calls are excluded. Cancellation remains effective through staging. At the synchronous commit point immediately before replacement, the handler closes the cancel window; later cancellation does not retract the committed result. A persistence failure preserves the result in session memory and reports degraded durability.
+
+### Navigation and prior-lookup offers
+
+- `useDictionaryHistory` owns the summaries, cursor, pending entry request, and draft slot. Restoring an entry restores the request and displayed result without generating or selecting a model. Forward navigation past the newest entry restores the draft. Copy and Save name the displayed lookup.
+- `DictionaryHistoryModal` provides newest-first selection, per-entry deletion, confirmed clear, model/time/options/context previews, and durability information. Navigation is blocked until a generation's correlated result settles, including the interval between stream completion and history persistence.
+- A transport-free `useDictionaryPriorLookup` presentation controller checks normalized, case-folded phrases against current summaries. Standard, Fast, and right-click submission offer the newest matching entry or a fresh generation. Matches update as history changes; rerunning an already displayed matching entry skips the offer.
+- Results carry request ownership so replayed or superseded results cannot replace a restored entry. The submitted source and provider-reported model attribution remain attached to the lookup that produced them.
+- Release review found that `useSelection.handleSelectionUpdated` dropped the editor's `sourceUri` and `relativePath` when constructing Dictionary injections. It now forwards both fields, so immediate context-menu generation and **Look up again** after a prior-lookup offer preserve the submitted source. Real-hook/tab regression tests cover both paths and ensure missing source metadata clears a previously displayed source.
+
+### References and verification scope
+
+- [Dictionary history ADR](adr/2026-10-14-dictionary-lookup-history.md), [epic and live checklist](../.todo/epics/epic-dictionary-lookup-history-2026-10-14/README.md), and [PR #144 independent review and correction ledger](pr-reviews/pr-144-dictionary-lookup-history-review.md).
+- Regression coverage includes ledger/codec recovery, cancellation at the commit point, result settlement/replay, provenance/privacy, navigation and draft restoration, popup operations, and prior-lookup submission paths. Okey reported the feature branch working before its merge; acceptance of the final packaged v2.11.0 extension remains a separate release step.
+
+### README artwork
+
+- The README's v2.11.0 lead adds one composite, `dictionary-lookup-history.png`: a restored lookup with the `‹` `3 / 12` `›` controls and its "From history" line, the "You've looked up … before" offer, and the Lookup history popup. The composite also joins the Dictionary feature section.
+- Its crops are 2× captures of the real v2.11.0 webview bundle in Warm Dark. The twelve history entries are demo content in the host's wire format; no result body is shown.
+
 ## [2.10.1] - 2026-10-14 — Google Gemini 4 Argon
 
 ### OpenRouter catalog

@@ -163,3 +163,97 @@ one low runtime finding and now has a second advisory,
 both reported cases require `IN_PLACE`, which the current string-sanitizing
 caller does not use. Keep the focused dependency update separate from release
 preparation and audit again before public publication.
+
+
+## Rechecked during v2.11.0 preparation — 2026-10-16
+
+The configured CodeArtifact registry returned HTTP 404 for both full-audit
+commands after a network-enabled retry. Public-registry fallbacks
+(`npm audit --json --registry=https://registry.npmjs.org` and
+`npm audit --audit-level=high --registry=https://registry.npmjs.org`) completed
+and returned nonzero for **53 affected package names: one critical, 43 high,
+eight moderate, and one low**. These counts include propagated dependency
+severity, rather than 53 distinct advisories. All critical/high/moderate nodes
+are marked `dev: true` in the lockfile. No dependency declarations or resolutions
+were changed for this release.
+
+The new critical node is `handlebars@4.7.9`, pulled in only by `ts-jest@29.4.5`
+(`npm explain handlebars`). Its only use inside ts-jest is the `config:init`
+command in `dist/cli/config/init.js:101`, which compiles its bundled constant
+`JEST_CONFIG_TEMPLATE`. Release tests, coverage, build and packaging do not run
+that initializer, and the extension imports no Handlebars code. The reported
+[inline embedding](https://github.com/advisories/GHSA-xw65-4hp5-5hc7),
+[AST type confusion](https://github.com/advisories/GHSA-8r5x-fm3f-whwj), and
+[own-property bypass](https://github.com/advisories/GHSA-p8wg-vrv2-v86f)
+paths are not exercised by the release workflow or shipped extension. Defer
+its patched tooling update with this existing dependency-maintenance task;
+this is a reachability disposition, not a claim that the installed package is
+patched or resistant to malicious templates.
+
+The production-only public audit returned **one low DOMPurify finding and
+zero critical/high/moderate findings**. Current `MarkdownRenderer` sanitizes
+strings and uses neither `IN_PLACE` nor `afterSanitize` hooks. The full-suite
+sanitizer tests exercise executable HTML, event handlers, dangerous links,
+image beacons, and the parser-failure fallback; they do not constitute an
+exploit proof for the upstream advisories. The remaining tooling findings
+have the same reachability dispositions as the October 8 audit. Release tests,
+coverage, lint and build exercise the ordinary tooling paths; they do not
+prove resistance to hostile globs, source maps, selectors, precision
+specifiers, or Markdown supplied to those development tools.
+
+Per-package disposition for every current critical/high/moderate node:
+
+| Package | Locked versions | Severity | Advisory package or affected child | Action |
+|---|---|---|---|---|
+| @istanbuljs/load-nyc-config | 1.1.0 | moderate | js-yaml | Defer focused development-tool refresh |
+| @jest/console | 29.7.0 | high | jest-message-util | Defer focused development-tool refresh |
+| @jest/core | 29.7.0 | high | @jest/console, @jest/reporters, @jest/test-result, @jest/transform, jest-config, jest-haste-map, jest-message-util, jest-resolve, jest-resolve-dependencies, jest-runner, jest-runtime, jest-snapshot, jest-watcher, micromatch | Defer focused development-tool refresh |
+| @jest/environment | 29.7.0 | high | @jest/fake-timers | Defer focused development-tool refresh |
+| @jest/expect | 29.7.0 | high | expect, jest-snapshot | Defer focused development-tool refresh |
+| @jest/fake-timers | 29.7.0 | high | jest-message-util | Defer focused development-tool refresh |
+| @jest/globals | 29.7.0 | high | @jest/environment, @jest/expect | Defer focused development-tool refresh |
+| @jest/reporters | 29.7.0 | high | @jest/console, @jest/test-result, @jest/transform, jest-message-util | Defer focused development-tool refresh |
+| @jest/test-result | 29.7.0 | high | @jest/console | Defer focused development-tool refresh |
+| @jest/test-sequencer | 29.7.0 | high | @jest/test-result, jest-haste-map | Defer focused development-tool refresh |
+| @jest/transform | 29.7.0 | high | babel-plugin-istanbul, jest-haste-map, micromatch | Defer focused development-tool refresh |
+| @typescript-eslint/eslint-plugin | 5.62.0 | high | @typescript-eslint/parser, @typescript-eslint/type-utils, @typescript-eslint/utils | Defer focused development-tool refresh |
+| @typescript-eslint/parser | 5.62.0 | high | @typescript-eslint/typescript-estree | Defer focused development-tool refresh |
+| @typescript-eslint/type-utils | 5.62.0 | high | @typescript-eslint/typescript-estree, @typescript-eslint/utils | Defer focused development-tool refresh |
+| @typescript-eslint/typescript-estree | 5.62.0 | high | globby | Defer focused development-tool refresh |
+| @typescript-eslint/utils | 5.62.0 | high | @typescript-eslint/typescript-estree | Defer focused development-tool refresh |
+| @vscode/vsce | 3.9.2 | high | secretlint | Defer focused development-tool refresh |
+| argparse | 1.0.10 | moderate | sprintf-js | Defer focused development-tool refresh |
+| babel-jest | 29.7.0 | high | @jest/transform, babel-plugin-istanbul | Defer focused development-tool refresh |
+| babel-plugin-istanbul | 6.1.1 | moderate | @istanbuljs/load-nyc-config | Defer focused development-tool refresh |
+| brace-expansion | 1.1.18, 2.1.4, 5.0.9 | high | brace-expansion | Defer focused development-tool refresh |
+| braces | 3.0.3 | high | braces | Defer focused development-tool refresh |
+| chokidar | 3.6.0 | high | braces | Defer focused development-tool refresh |
+| create-jest | 29.7.0 | high | jest-config | Defer focused development-tool refresh |
+| expect | 29.7.0, 30.2.0 | high | jest-message-util | Defer focused development-tool refresh |
+| fast-glob | 3.3.3 | high | micromatch | Defer focused development-tool refresh |
+| globby | 11.1.0, 14.1.0 | high | fast-glob | Defer focused development-tool refresh |
+| handlebars | 4.7.9 | critical | handlebars | Defer config-initialization tooling refresh |
+| jest | 29.7.0 | high | @jest/core, jest-cli | Defer focused development-tool refresh |
+| jest-circus | 29.7.0 | high | @jest/environment, @jest/expect, @jest/test-result, jest-message-util, jest-runtime, jest-snapshot | Defer focused development-tool refresh |
+| jest-cli | 29.7.0 | high | @jest/core, @jest/test-result, create-jest, jest-config | Defer focused development-tool refresh |
+| jest-config | 29.7.0 | high | @jest/test-sequencer, babel-jest, jest-circus, jest-environment-node, jest-resolve, jest-runner, micromatch | Defer focused development-tool refresh |
+| jest-environment-jsdom | 29.7.0 | high | @jest/environment, @jest/fake-timers | Defer focused development-tool refresh |
+| jest-environment-node | 29.7.0 | high | @jest/environment, @jest/fake-timers | Defer focused development-tool refresh |
+| jest-haste-map | 29.7.0 | high | micromatch | Defer focused development-tool refresh |
+| jest-message-util | 29.7.0, 30.2.0 | high | micromatch | Defer focused development-tool refresh |
+| jest-resolve | 29.7.0 | high | jest-haste-map | Defer focused development-tool refresh |
+| jest-resolve-dependencies | 29.7.0 | high | jest-snapshot | Defer focused development-tool refresh |
+| jest-runner | 29.7.0 | high | @jest/console, @jest/environment, @jest/test-result, @jest/transform, jest-environment-node, jest-haste-map, jest-message-util, jest-resolve, jest-runtime, jest-watcher | Defer focused development-tool refresh |
+| jest-runtime | 29.7.0 | high | @jest/environment, @jest/fake-timers, @jest/globals, @jest/test-result, @jest/transform, jest-haste-map, jest-message-util, jest-resolve, jest-snapshot | Defer focused development-tool refresh |
+| jest-snapshot | 29.7.0 | high | @jest/transform, expect, jest-message-util | Defer focused development-tool refresh |
+| jest-watcher | 29.7.0 | high | @jest/test-result | Defer focused development-tool refresh |
+| js-yaml | 3.15.2 | moderate | argparse | Defer focused development-tool refresh |
+| markdown-it | 14.2.0 | moderate | markdown-it | Defer focused development-tool refresh |
+| micromatch | 4.0.8 | high | braces | Defer focused development-tool refresh |
+| postcss-nested | 6.2.0 | moderate | postcss-selector-parser | Defer focused development-tool refresh |
+| postcss-selector-parser | 6.1.4 | moderate | postcss-selector-parser | Defer focused development-tool refresh |
+| secretlint | 10.2.2 | high | globby | Defer focused development-tool refresh |
+| source-map-js | 1.2.1 | high | source-map-js | Defer focused development-tool refresh |
+| sprintf-js | 1.0.3 | moderate | sprintf-js | Defer focused development-tool refresh |
+| tailwindcss | 3.4.18 | high | chokidar, fast-glob, micromatch, postcss-nested, postcss-selector-parser | Defer focused development-tool refresh |
+| ts-loader | 9.5.4 | high | micromatch | Defer focused development-tool refresh |

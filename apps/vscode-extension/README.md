@@ -24,7 +24,19 @@
 
 ---
 
-## What's new in v2.10.1 — Gemini 4 Argon
+## What's new in v2.11.0 — Dictionary lookup history
+
+**Return to a useful word.** The arrows beside the Dictionary heading step through your recent lookups. The history button opens a list where you can choose an entry, delete one, or clear the list after confirmation. Opening a saved lookup restores its phrase, extra context, Encyclopedia and Palettes switches, source, and full result without generating again or changing your selected model. Move forward past the newest entry to return to your unsaved draft.
+
+**Keep up to 500 lookups.** In a single-folder workspace, history lives in `prose-minion/history/dictionary.json` and survives a restart. With no folder, multiple workspace folders, or a persistence problem, the popup explains that history lasts only for this session. Dictionary history includes completed lookups from the Dictionary tab, including right-click lookups; Workshop persona lookups are separate.
+
+**Open it again, or look it up again.** When you submit a phrase already in history, Dictionary offers the newest matching result before starting another generation. Choose **Open existing entry** (or **Open latest entry** when there are several) to reuse it, or **Look up again** for a fresh result. Rerunning the historical entry already on display starts directly.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-lookup-history.png" alt="Top left: the Dictionary tab showing lookup 3 of 12, harbourmaster, restored with its From history line, source, and context. Bottom left: the You've looked up harbourmaster before offer, with Open latest entry and Look up again. Right: the Lookup history popup, 12 of 500 lookups newest first, each with its time, mode, options, model, and context, saved in prose-minion/history/dictionary.json" width="100%"/>
+</p>
+
+### Also in v2.10.1 — Gemini 4 Argon
 
 **Try Gemini 4 Argon.** Google's new reasoning model joins the model pickers for writing tools, Workshop, Conversation Widgets, and Category Search. OpenRouter lists a 1M-token context window and multimodal input; its prose quality has not been evaluated in Prose Minion. Choose it when you want to try it; your defaults and saved selections stay as they are.
 
@@ -280,6 +292,10 @@ Not a definition lookup — a craft reference: connotation, register, sense expl
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-chromatic-palettes.png" alt="Left: the Dictionary tab's Topic and Related Lexicon and Chromatic Palettes switches, both on. Right: a Madder Dye Vat palette from a real lookup, with Alizarin Crimson, Madder Lake, Turkey Red, Oxblood, and Rose Madder swatches, each named and defined with its hex value" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/okeylanders/prose-minion-vscode/main/screenshots/readme/dictionary-lookup-history.png" alt="Top left: the Dictionary tab showing lookup 3 of 12, harbourmaster, restored with its From history line, source, and context. Bottom left: the You've looked up harbourmaster before offer, with Open latest entry and Look up again. Right: the Lookup history popup, 12 of 500 lookups newest first, each with its time, mode, options, model, and context, saved in prose-minion/history/dictionary.json" width="100%"/>
 </p>
 
 ---
