@@ -1,0 +1,30 @@
+/* ============================================================
+   Prose Minion — Lightbox tokens (ADR 2026-10-19 D3)
+
+   The board's three registers, from the design (docs/design/lightbox/):
+   - measured: solid, the frame's coral accent (counted by code);
+   - read: dashed, periwinkle #9db8f2 (a model's reading, Slice 2B on);
+   - counted-read: neutral (counted by code, grouped or named by a reading).
+
+   Everything in the Lightbox's own sheets is scoped under
+   [data-pm-surface="lightbox"]. The frame's tokens (surfaces, text, accent,
+   radii) come from styles/fulltab/tokens.css. The design's display and serif
+   faces are not loaded in a webview (the CSP allows no font hosts), so the
+   stacks fall back to system faces.
+   ============================================================ */
+
+[data-pm-surface="lightbox"] {
+  --pm-lb-measured: var(--pm-accent);
+  --pm-lb-measured-hi: var(--pm-accent-hi);
+  --pm-lb-measured-soft: var(--pm-accent-soft);
+  --pm-lb-measured-line: rgba(224, 103, 58, 0.42);
+
+  --pm-lb-read: #9db8f2;
+  --pm-lb-read-soft: rgba(157, 184, 242, 0.10);
+  --pm-lb-read-line: rgba(157, 184, 242, 0.42);
+
+  --pm-lb-counted-read: var(--pm-border-2);
+
+  --pm-lb-display: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --pm-lb-serif: "Newsreader", Georgia, "Times New Roman", serif;
+}

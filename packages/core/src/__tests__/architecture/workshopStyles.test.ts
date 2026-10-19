@@ -40,8 +40,15 @@ const ENTRY_STYLE_IMPORTS = [
   './index.css'
 ] as const;
 
-/** Empty until Slice 2A brings `styles/lightbox/`; pinned so it lands on purpose. */
-const LIGHTBOX_STYLE_IMPORTS: readonly string[] = [];
+/** The Lightbox root's own sheets (Slice 2A), after the frame's, in cascade order. */
+const LIGHTBOX_STYLE_IMPORTS = [
+  './styles/lightbox/tokens.css',
+  './styles/lightbox/board.css',
+  './styles/lightbox/ribbon.css',
+  './styles/lightbox/tiles.css',
+  './styles/lightbox/rail.css',
+  './styles/lightbox/inspector.css'
+] as const;
 
 // The Sprint 03 byte-preservation receipt test retired here at the first
 // intentional Workshop stylesheet edit (Lexical Gravity v2 Lens Logic styles,
@@ -78,7 +85,28 @@ describe('Workshop stylesheet assembly', () => {
   });
 
   it('pins the Lightbox root\'s own stylesheet list', () => {
-    expect(cssImports(fs.readFileSync(LIGHTBOX_APP, 'utf8'))).toEqual(LIGHTBOX_STYLE_IMPORTS);
+    expect(cssImports(fs.readFileSync(LIGHTBOX_APP, 'utf8'))).toEqual([...LIGHTBOX_STYLE_IMPORTS]);
+    const lightboxDir = path.join(WEBVIEW_ROOT, 'styles', 'lightbox');
+    expect(fs.readdirSync(lightboxDir).sort())
+      .toEqual(LIGHTBOX_STYLE_IMPORTS.map((file) => path.basename(file)).sort());
+  });
+
+  it('scopes every Lightbox rule to the Lightbox surface, never the Workshop', () => {
+    const lightboxDir = path.join(WEBVIEW_ROOT, 'styles', 'lightbox');
+    for (const file of fs.readdirSync(lightboxDir)) {
+      const css = fs.readFileSync(path.join(lightboxDir, file), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/@media[^{]*\{/g, '{');
+      const selectors = [...css.matchAll(/([^{}@;]+)\{/g)]
+        .map((match) => match[1].trim())
+        .filter((selector) => selector.length > 0);
+      const unscoped = selectors
+        .flatMap((selector) => selector.split(','))
+        .map((part) => part.trim())
+        .filter((part) => !part.startsWith('[data-pm-surface="lightbox"]'));
+      expect({ file, unscoped }).toEqual({ file, unscoped: [] });
+      expect(css).not.toContain('data-pm-surface="workshop"');
+    }
   });
 
   it('scopes every full-tab frame rule to the frame, and no Workshop rule to it', () => {
