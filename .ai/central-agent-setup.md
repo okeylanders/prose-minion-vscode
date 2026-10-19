@@ -158,6 +158,7 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure)
 │       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
 │       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
+│       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
