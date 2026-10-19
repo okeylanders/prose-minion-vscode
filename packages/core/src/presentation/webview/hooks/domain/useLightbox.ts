@@ -47,7 +47,11 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { usePersistedState } from '@hooks/usePersistence';
 import { LightboxItemRef, parseLightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import { mergeLightboxGroupResult } from '@hooks/domain/lightbox/lightboxReadings';
-import { LightboxHandOffState, lightboxBuildLensRequest } from '@hooks/domain/lightbox/lightboxHandoff';
+import {
+  LightboxHandOffState,
+  lightboxBuildLensRequest,
+  lightboxHandOffAnswers
+} from '@hooks/domain/lightbox/lightboxHandoff';
 
 /** Which tiles the board shows. */
 export type LightboxFilter = 'all' | 'measured' | 'read';
@@ -274,18 +278,22 @@ export function useLightbox(): UseLightboxReturn {
     post(MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, { id });
   }, [post]);
 
+  // One handoff at a time, as the host takes them; an answer counts only for
+  // the request it answers.
   const handleHandOffResult = React.useCallback((message: LightboxHandOffResultMessage) => {
-    if (message.payload) {
-      setHandoff({ status: 'answered', result: message.payload });
+    const result = message.payload;
+    if (!result) {
+      return;
     }
+    setHandoff((current) => (lightboxHandOffAnswers(current, result) ? { status: 'answered', result } : current));
   }, []);
   const buildLens = React.useCallback((fieldId: string) => {
-    if (!boardId) {
+    if (!boardId || handoff?.status === 'sending') {
       return;
     }
     setHandoff({ status: 'sending', boardId, fieldId });
     post(MessageType.LIGHTBOX_HAND_OFF, lightboxBuildLensRequest(boardId, fieldId));
-  }, [boardId, post]);
+  }, [boardId, handoff, post]);
 
   // The outcome is host truth: ask for it once on mount (a reveal re-asks host-side).
   React.useEffect(() => {

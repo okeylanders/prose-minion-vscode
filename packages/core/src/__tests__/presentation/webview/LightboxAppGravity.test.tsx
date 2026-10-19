@@ -144,6 +144,12 @@ describe('LightboxApp: lexical gravity and palette', () => {
       payload: { kind: 'lexical-gravity-seed', boardId: board.boardId, fieldId }
     })]);
     expect(build.disabled).toBe(true);
+    // An answer for another request changes nothing: it is not this field's.
+    fromHost(MessageType.LIGHTBOX_HAND_OFF_RESULT, {
+      kind: 'lexical-gravity-seed', boardId: board.boardId, fieldId: 'lbt-another', ok: false, message: 'Not this one.'
+    });
+    expect(build.disabled).toBe(true);
+    expect(within(inspector).queryByText('Not this one.')).toBeNull();
 
     fromHost(MessageType.LIGHTBOX_HAND_OFF_RESULT, {
       kind: 'lexical-gravity-seed', boardId: board.boardId, fieldId, ok: true,

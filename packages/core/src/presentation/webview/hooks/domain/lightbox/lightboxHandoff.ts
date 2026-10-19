@@ -46,6 +46,11 @@ export function lightboxBuildLensRequest(boardId: string, fieldId: string): Ligh
   return { kind: 'lexical-gravity-seed', boardId, fieldId };
 }
 
+/** Whether `result` answers the request this webview is waiting on. */
+export function lightboxHandOffAnswers(state: LightboxHandOffState | null, result: LightboxHandOffResultPayload): boolean {
+  return state?.status === 'sending' && state.boardId === result.boardId && state.fieldId === result.fieldId;
+}
+
 /** The action for a pinned borrowed field. */
 export function lightboxBuildLensView(
   board: LightboxBoard,
@@ -58,12 +63,14 @@ export function lightboxBuildLensView(
   const mine = handoff && (handoff.status === 'sending'
     ? handoff.fieldId === field.id && handoff.boardId === board.boardId
     : handoff.result.fieldId === field.id && handoff.result.boardId === board.boardId);
+  // One handoff at a time: while one is on its way, every field waits.
+  const sending = handoff?.status === 'sending';
   const reason = stale
     ? 'Read against an earlier version of the chapter. Read the lens again before building it.'
     : reading
       ? 'This lens is being read again.'
-      : mine && handoff?.status === 'sending'
-        ? 'Opening the Workshop…'
+      : sending
+        ? mine ? 'Opening the Workshop…' : 'Another field is on its way to the Workshop.'
         : undefined;
   const answer = mine && handoff?.status === 'answered' ? handoff.result : undefined;
   return {
