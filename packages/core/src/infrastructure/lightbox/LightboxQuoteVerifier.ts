@@ -178,17 +178,24 @@ interface Segment extends NormalizationUnit {
 function normalizationUnits(text: string): NormalizationUnit[] {
   const units: NormalizationUnit[] = [];
   let run: Segment[] = [];
+  // One by one, never spread into a call: a run can be a whole paragraph (CJK text has no code
+  // point below U+0300), far past the engine's argument limit (PR #149 F-10).
+  const flush = (): void => {
+    for (const unit of runUnits(run)) {
+      units.push(unit);
+    }
+    run = [];
+  };
   for (const match of text.matchAll(SEGMENT)) {
     const raw = match[0];
     const start = match.index ?? 0;
     if (run.length > 0 && (raw.codePointAt(0) ?? 0) < FIRST_COMBINING_CODE_POINT) {
-      units.push(...runUnits(run));
-      run = [];
+      flush();
     }
     run.push({ start, end: start + raw.length, raw, normalized: raw.normalize('NFKC') });
   }
   if (run.length > 0) {
-    units.push(...runUnits(run));
+    flush();
   }
   return units;
 }

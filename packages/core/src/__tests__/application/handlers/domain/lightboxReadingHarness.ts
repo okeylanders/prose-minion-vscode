@@ -64,6 +64,8 @@ export interface LightboxReadingHostOptions {
   respond?: (request: InitialRunRequest) => Promise<ExecutionResult> | ExecutionResult;
   engine?: boolean;
   contextLength?: number;
+  /** The board's text; the worked examples' chapter by default. */
+  text?: string;
 }
 
 /** One webview tab: its own handler, router, transport and log, over the host's shared services. */
@@ -189,7 +191,7 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
 
   const built = await service.buildBoard({
     kind: 'file',
-    text: CHAPTER,
+    text: options.text ?? CHAPTER,
     displayPath: 'Drafts/alice-1.md',
     rereadPath: '/workspace/Drafts/alice-1.md'
   });

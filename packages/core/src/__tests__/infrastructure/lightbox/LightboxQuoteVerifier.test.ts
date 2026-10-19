@@ -356,3 +356,23 @@ describe('assembling tiles from a group (D7)', () => {
     expect(counter.count('Cheshire Cat')).toEqual({ term: 'cheshire cat', count: 0, paragraphs: [] });
   });
 });
+
+describe('long normalization runs (PR #149 F-10)', () => {
+  // CJK text has no code point below U+0300, so a paragraph of it is one run, however long.
+  const SENTENCE = '彼女は静かな部屋で時計の音を聞いた。';
+  const ENDS_IN_ONE_RUN = `Alice waited. ${SENTENCE.repeat(9_000)}`;
+  const RUN_THEN_ASCII = `${'漢'.repeat(150_000)} Alice waited.`;
+  const UNSPACED_LATIN = 'Alicewaitedquietly'.repeat(10_000).slice(0, ENDS_IN_ONE_RUN.length);
+
+  it.each([
+    ['ends in one long run (flushed at the end of the paragraph)', ENDS_IN_ONE_RUN, ['Alice waited.', SENTENCE]],
+    ['holds one long run before ASCII text (flushed at the next ASCII character)', RUN_THEN_ASCII, ['漢漢漢漢', 'Alice waited.']],
+    ['is unspaced Latin of the same length (the control)', UNSPACED_LATIN, ['Alicewaitedquietly']]
+  ])('builds over a paragraph that %s, and finds its quotes exactly', (_case, text, quotes) => {
+    const verifier = createLightboxQuoteVerifier([text]);
+    for (const quote of quotes) {
+      expect(verifier.verify(1, quote)).toEqual({ found: true, paragraph: 1, text: quote, match: 'exact' });
+    }
+    expect(foldWithMap(text).folded).toBe(foldWithMap(text.normalize('NFKC')).folded);
+  });
+});
