@@ -44,6 +44,7 @@ import type { LexicalGravityLensRepository } from '@/infrastructure/storage/Lexi
 import type { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
+import type { LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import type { PlatformDisposable } from '@/platform';
 
 /**
@@ -70,6 +71,8 @@ export type MessageTransport = (
  */
 export interface WorkshopUiActions {
   openWorkshop?: () => void;
+  /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); no route calls it yet. */
+  openLightbox?: () => void;
   openAssistantSettings?: () => void;
 }
 
@@ -140,4 +143,6 @@ export interface CoreServices {
   lexicalGravityLensRepository: LexicalGravityLensRepository;
   /** Serialized standing-frame replacement and session commit coordinator. */
   workshopStandingDirectiveService: WorkshopStandingDirectiveService;
+  /** Lightbox boards: the counted board per source, kept in memory (ADR 2026-10-19 D5, D12). */
+  lightboxService: LightboxService;
 }

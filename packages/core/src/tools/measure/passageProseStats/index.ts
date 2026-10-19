@@ -37,6 +37,15 @@ export interface ProseStatsOutput {
   readabilityGrade?: number;
 }
 
+/**
+ * Sentences as the prose-stats tool counts them: runs of text between
+ * sentence-ending punctuation. Exported so the Lightbox's per-paragraph
+ * sentence counts (ADR 2026-10-19 D4) use the same rule.
+ */
+export function countProseSentences(text: string): number {
+  return text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+}
+
 export class PassageProseStats {
   analyze(input: ProseStatsInput): ProseStatsOutput {
     const text = input.text.trim();
@@ -94,9 +103,7 @@ export class PassageProseStats {
   }
 
   private countSentences(text: string): number {
-    // Split on sentence-ending punctuation
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-    return sentences.length;
+    return countProseSentences(text);
   }
 
   private countParagraphs(text: string): number {

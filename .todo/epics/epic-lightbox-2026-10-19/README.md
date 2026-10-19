@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146); Slice 1 is in review (PR #147)
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), and Slice 2A is in review (PR pending)
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -50,8 +50,8 @@ carried into the Workshop.
 | # | Slice | Outcome | Status |
 |---|---|---|---|
 | 0 | Spec | ADR, this epic, design snapshot | In review |
-| 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | In review (PR pending) |
-| 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | Planned |
+| 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | Merged (PR #147) |
+| 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | In review (PR #148; review fixes pushed) |
 | 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Planned |
 | 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Planned |
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Planned |
@@ -203,3 +203,98 @@ becomes a file format.
       - [the transcript export mirror's cascade order](../../tech-debt/2026-10-19-transcript-export-mirror-cascade-order.md);
       - [the frame classes' `pm-ws-` prefix](../../tech-debt/2026-10-19-fulltab-frame-class-prefix.md).
 
+- **2026-10-19. Slice 2A (the Lightbox tab and the counted board).** Built
+  on `epic/lightbox-slice-2a-board` from the approved Slice 1 head:
+  1. **Contracts and the paragraph model.** `messages/lightbox.ts`, six
+     `LIGHTBOX_*` routes, `PROMPT_BUDGETS.lightbox` (50,000 / 12,000 / 96),
+     and the pure splitter, per-paragraph metrics, content hash and ribbon
+     buckets in `infrastructure/lightbox/`.
+  2. **`LightboxService`.** The counted board from the three measurement
+     services and the standards enrichment, the ceiling refusal, and boards
+     kept in memory per source.
+  3. **The domain and the tab.** `LightboxHandler` as the thirteenth domain,
+     `LightboxPanelProvider` with its serializer, the two commands, the
+     context-menu entry, activation events and `uiActions.openLightbox`.
+  4. **The frame.** The rail cards move to the frame scope, and the aside is
+     tuned for the inspector, including narrow widths.
+  5. **The webview.** `LightboxApp` on the shell, `useLightbox`, the focus
+     and inspector controllers, the tiles behind an exhaustive renderer map,
+     the ribbon, the inspector, and reading placeholders with the Read button
+     disabled.
+  - **Verification.** Before → after:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 321 suites, 4,776 tests, 2 snapshots | 329 suites, 4,881 tests, 2 snapshots |
+    | Lint | 0 errors, 1,140 warnings | 0 errors, 1,140 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file and per rule.
+    - Visual evidence from real host output in headless Chromium:
+      [`lightbox-slice-2a-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-2a-visual/README.md).
+      The Workshop's DOM is identical to the Slice 1 bundle, and every
+      Workshop shot has a pixel-identical pair across the two bundles.
+  - **Beyond or unlike the plan** (details in the
+    [slice doc](slice-2a-tab-and-counted-board.md#implementation-notes-2026-10-19)):
+    - The board also carries host-bucketed `ribbon` columns, the source's
+      kind, lines and preview, and per-paragraph dialogue words.
+    - `LightboxTileKind` includes the measured kinds; the reading kinds are
+      `never` until 2B.
+    - Every refusal (not only the ceiling) goes through
+      `LIGHTBOX_SOURCE_REFUSED`.
+    - A Lenses rail card holds the persisted lens toggles.
+    - The picker reuses `ShellService.pickFile`, which gained an optional
+      `openLabel`.
+    - Files resolve by absolute path only, to avoid the resolver's
+      active-editor fallback.
+    - The frame root gains `.pm-ws-with-aside`; the Workshop has no aside and
+      is unchanged.
+  - **Follow-ups:** 2B (reading kinds, lens toggles to the host, the Read
+    button), Slice 6 (commands, context menu, restore and narrow layouts in
+    the Extension Development Host), and two tech-debt items:
+    [the resolver's active-editor fallback](../../tech-debt/2026-10-19-text-source-active-editor-fallback.md)
+    and [contraction fragments in part-of-speech lists](../../tech-debt/2026-10-19-pos-tagger-token-fragments.md).
+
+- **2026-10-19. Slice 2A review fixes (PR #148).** Astra's
+  [review](../../../docs/pr-reviews/pr-148-lightbox-counted-board-review.md)
+  requested changes for four medium findings; each is fixed in its own
+  commit on `epic/lightbox-slice-2a-board`, with regressions, and the author
+  response at the end of the review maps them. Ledger statuses stay with
+  Astra.
+  1. **F-01, source ownership.** The shared `LightboxService` owns source
+     intent: a ticket per request, minted before any await (a picked file
+     when the picker returns it), and only the newest ticket adopts or
+     refuses. Handlers subscribe to the service's outcomes on their
+     webview's first `LIGHTBOX_*` message and post only what it publishes,
+     so a pending request lands in a replacement panel and a closed panel's
+     older request cannot win.
+  2. **F-02, refusal replay.** The service keeps the current outcome (the
+     board and any undismissed refusal); `LIGHTBOX_BOARD` carries both, and
+     `LIGHTBOX_DISMISS_REFUSAL` (by host-minted id) stops a refusal
+     returning.
+  3. **F-03, POS provenance.** The word-frequency tool exposes its tagged
+     occurrence stream with offsets; the board counts and places parts of
+     speech from it, keyed by word and part of speech. Metrics' output is
+     byte-identical; on all twelve Alice chapters the board's POS lists
+     equal Metrics' and every count equals its placed occurrences.
+     Per-paragraph tagging was rejected: it changes tags where a heading
+     runs into the next paragraph.
+  4. **F-04, inspector addresses.** 48 chips per page behind a keyboard
+     pager with a jump to a paragraph number; paging never changes the pin.
+  - **Nonblocking:** retained boards are keyed by the document URI.
+  - **Verification.** Review head (`23c3f47`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 329 suites, 4,881 tests, 2 snapshots | 333 suites, 4,921 tests, 2 snapshots |
+    | Lint | 0 errors, 1,140 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint: no new warning in any file; `curly` falls by five where the
+      word-frequency tool's inline POS block was replaced.
+    - Visual evidence: a `paged` state (a 347-paragraph pin, jumped to its
+      last address) at 1440, 1000 and 500 px in
+      [`lightbox-slice-2a-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-2a-visual/README.md#pr-148-review-fixes-2026-10-19);
+      the earlier Lightbox shots re-render unchanged.

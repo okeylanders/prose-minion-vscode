@@ -46,7 +46,7 @@ packages/core/src/
 │       ├── MessageHandler.ts    # Main dispatcher (routes messages)
 │       ├── MessageHandlerContracts.ts # CoreServices + typed transport/cache/secrets seams
 │       ├── MessageRouter.ts     # Strategy registry (MessageType → handler)
-│       └── domain/              # 11 flat domains + the Workshop feature family
+│       └── domain/              # 12 flat domains + the Workshop feature family
 │           ├── AnalysisHandler.ts
 │           ├── DictionaryHandler.ts
 │           ├── ContextHandler.ts
@@ -58,6 +58,7 @@ packages/core/src/
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
+│           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes (ADR 2026-10-19)
 │           └── workshop/                  # Room owner + 11 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -79,6 +80,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -97,6 +99,7 @@ packages/core/src/
             ├── configuration.ts  # Settings, models, tokens
             ├── publishing.ts     # Publishing standards
             ├── accountBalance.ts # OpenRouter account balance
+            ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -148,6 +151,10 @@ packages/core/src/presentation/webview/
 │       ├── useTokenTracking.ts         # Token usage tracking
 │       ├── useWordFrequencySettings.ts # Word frequency tool settings
 │       ├── useWordSearchSettings.ts    # Word search tool settings
+│       ├── useLightbox.ts              # Lightbox board + refusal; persists UI prefs only (filter, pin, lenses)
+│       ├── lightbox/
+│       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure)
+│       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
 │           ├── useWorkshopSessions.ts  # Named-session lifecycle
@@ -172,7 +179,10 @@ Patterns and conventions:
   `useFullTabChrome`. Shared frame styles live in `styles/fulltab/`, scoped to
   `[data-pm-frame="fulltab"]` and imported first from `index.tsx`; a tab's own
   styles stay under its `[data-pm-surface="…"]`. Surfaces are an exhaustive
-  `Record<WebviewSurface, …>` map in `index.tsx` and `webviewHtml.ts`. See
+  `Record<WebviewSurface, …>` map in `index.tsx` and `webviewHtml.ts`. A tab
+  with an aside (the Lightbox inspector) gets `.pm-ws-with-aside` on the frame
+  root: at 1240px and below the tab scrolls as one page with the aside under
+  the rail, and at 760px everything stacks. See
   [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D1–D2.
 - Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
   retired `useWorkshop` facade. Generic widget mechanics use explicit closed
@@ -258,6 +268,7 @@ useMessageRouter({
 | usePublishing | PublishingHandler | Publishing standards |
 | useSelection | UIHandler | Selection/paste operations |
 | useAccountBalance | AccountBalanceHandler | OpenRouter account balance |
+| useLightbox | LightboxHandler (+ `LightboxService`) | Lightbox counted board |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides
@@ -607,7 +618,7 @@ All aliases now re-root into `packages/core/src`. The single source of truth for
 - [apps/vscode-extension/package.json](apps/vscode-extension/package.json) - Extension manifest and configuration (`contributes.*`)
 - [extension.ts](apps/vscode-extension/src/extension.ts) - Composition root: activation, service construction, DI
 - [MessageHandler.ts](packages/core/src/application/handlers/MessageHandler.ts) - Main message dispatcher (routes to domain handlers)
-- [packages/core/src/application/handlers/domain/](packages/core/src/application/handlers/domain/) - 11 flat domain handlers plus the `handlers/domain/workshop/` feature family
+- [packages/core/src/application/handlers/domain/](packages/core/src/application/handlers/domain/) - 12 flat domain handlers plus the `handlers/domain/workshop/` feature family
 - [packages/core/src/platform/](packages/core/src/platform/) - The host ports a non-VS-Code app must implement
 - [packages/core/src/shared/types/messages/](packages/core/src/shared/types/messages/) - Message contracts by domain; Workshop is split under `shared/types/messages/workshop/` while consumers keep importing from the `@messages` barrel
 - [OpenRouterModels.ts](packages/core/src/infrastructure/api/providers/OpenRouterModels.ts) - Available AI models
@@ -737,7 +748,7 @@ npm run test:tier1
 
 **What's Tested**:
 - ✅ **Tier 1 - Infrastructure Patterns**: MessageRouter (Strategy pattern), domain hooks (Tripartite Interface), message routing
-- ✅ **Tier 2 - Domain Handlers**: Route registration for all 11 flat domain handlers and Workshop's eleven route owners
+- ✅ **Tier 2 - Domain Handlers**: Route registration for all 12 flat domain handlers and Workshop's eleven route owners
 - ✅ **Tier 3 - Business Logic**: Word clustering algorithm, publishing standards lookup, prose statistics calculations
 
 **What's NOT Tested** (intentionally deferred):

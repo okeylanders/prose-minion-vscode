@@ -224,4 +224,3 @@ diff is −146/+60. The removed generic code (the chrome state, the balance
 title, the header chips and the banner) is about 100 lines. The slot
 variables that hand the Workshop's own blocks to the shell add about 25
 lines, so the net cut is a little under the "at least that much" target.
-

@@ -48,6 +48,7 @@ import { UIHandler } from './domain/UIHandler';
 import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
+import { LightboxHandler } from './domain/LightboxHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -77,6 +78,7 @@ export class MessageHandler {
   private readonly fileOperationsHandler: FileOperationsHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
   private readonly workshopHandler: WorkshopRoomHandler;
+  private readonly lightboxHandler: LightboxHandler;
 
   // Per-instance registrations on SHARED services (sidebar + Workshop panel
   // each run a MessageHandler over the one CoreServices bundle). Dispose
@@ -188,7 +190,8 @@ export class MessageHandler {
       showVsTellService,
       lexicalGravityModelService,
       lexicalGravityLensRepository,
-      workshopStandingDirectiveService
+      workshopStandingDirectiveService,
+      lightboxService
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -334,6 +337,15 @@ export class MessageHandler {
       },
       outputChannel
     );
+    // Lightbox editor tab (ADR 2026-10-19 D10) — the 13th domain, composed
+    // like the others. The shell owns the file picker; the service owns boards.
+    this.lightboxHandler = new LightboxHandler(
+      lightboxService,
+      textSourceResolver,
+      this.platform.shell,
+      this.postMessage.bind(this),
+      outputChannel
+    );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
@@ -364,6 +376,7 @@ export class MessageHandler {
     this.fileOperationsHandler.registerRoutes(this.router);
     this.accountBalanceHandler.registerRoutes(this.router);
     this.workshopHandler.registerRoutes(this.router);
+    this.lightboxHandler.registerRoutes(this.router);
     this.router.register(MessageType.WORKSHOP_DISMISS_ERROR, async () => {
       this.resultCache.error = undefined;
     });
@@ -875,6 +888,13 @@ export class MessageHandler {
       this.disposeSearchStatusListener();
       this.analysisHandler.dispose();
       this.workshopHandler.dispose();
+    } catch {
+      // noop
+    }
+    // Drop the Lightbox outcome subscription so a closed panel's handler never
+    // posts a board; the shared service keeps serving the replacement panel.
+    try {
+      this.lightboxHandler.dispose();
     } catch {
       // noop
     }

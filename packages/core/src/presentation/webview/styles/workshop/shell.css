@@ -71,24 +71,8 @@
 }
 
 /* ---------- Rail sections ----------
-   Sections read as inset cards on the raised rail (2026-07-26 design drop).
-   The split and the rail's own frame live in styles/fulltab/shell.css. */
-[data-pm-surface="workshop"] .pm-ws-block {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--pm-border-soft);
-  background: var(--pm-inset);
-  border-radius: 10px;
-  padding: 12px;
-}
-[data-pm-surface="workshop"] .pm-ws-block-grow {
-  flex: 1;
-}
-[data-pm-surface="workshop"] .pm-ws-block-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+   The section cards (.pm-ws-block*), the split and the rail's own frame live
+   in styles/fulltab/shell.css; the Workshop's card contents stay here. */
 [data-pm-surface="workshop"] .pm-ws-excerpt {
   margin-top: 11px;
   background: var(--pm-surface-2);

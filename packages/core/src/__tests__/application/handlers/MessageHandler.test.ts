@@ -50,6 +50,8 @@ interface TestAssembly {
   disposeDictionaryStatusListener: jest.Mock;
   dictionaryHistoryOnDidChange: jest.Mock;
   disposeDictionaryHistoryListener: jest.Mock;
+  lightboxAddOutcomeListener: jest.Mock;
+  disposeLightboxOutcomeListener: jest.Mock;
   /** Fan a token-usage event out to every LIVE registration (real Set). */
   emitTokenUsage: (usage: TokenUsageTotals) => void;
   tokenUsageListenerCount: () => number;
@@ -100,6 +102,8 @@ function createTestAssembly(): TestAssembly {
   const disposeDictionaryStatusListener = jest.fn();
   const disposeDictionaryHistoryListener = jest.fn();
   const dictionaryHistoryOnDidChange = jest.fn(() => disposeDictionaryHistoryListener);
+  const disposeLightboxOutcomeListener = jest.fn();
+  const lightboxAddOutcomeListener = jest.fn(() => disposeLightboxOutcomeListener);
   const assistantToolService = {
     // Registered twice per handler: AnalysisHandler + WorkshopRoomHandler.
     addStatusListener: jest.fn(() => jest.fn()),
@@ -215,7 +219,17 @@ function createTestAssembly(): TestAssembly {
       }),
       resetSession: jest.fn().mockResolvedValue(undefined)
     },
-    workshopTranscriptExportService: { export: jest.fn() }
+    workshopTranscriptExportService: { export: jest.fn() },
+    lightboxService: {
+      currentBoard: jest.fn().mockReturnValue(undefined),
+      currentRereadTarget: jest.fn().mockReturnValue(undefined),
+      buildBoard: jest.fn(),
+      beginSourceRequest: jest.fn(() => ({ sequence: 1 })),
+      refuseSource: jest.fn(),
+      addOutcomeListener: lightboxAddOutcomeListener,
+      currentOutcome: jest.fn().mockReturnValue({ board: null, refusal: null }),
+      dismissRefusal: jest.fn()
+    }
   } as unknown as CoreServices;
 
   return {
@@ -234,6 +248,8 @@ function createTestAssembly(): TestAssembly {
     disposeDictionaryStatusListener,
     dictionaryHistoryOnDidChange,
     disposeDictionaryHistoryListener,
+    lightboxAddOutcomeListener,
+    disposeLightboxOutcomeListener,
     emitTokenUsage: (usage) => {
       for (const listener of [...tokenUsageListeners]) {
         listener(usage);
@@ -277,6 +293,49 @@ describe('MessageHandler assembly', () => {
       })
     );
     expect(assembly.categoryAddStatusListener).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('routes Lightbox messages (13th domain) to the shared board service', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    await handler.handleMessage({
+      type: MessageType.LIGHTBOX_REQUEST_BOARD,
+      source: 'webview.lightbox',
+      payload: {},
+      timestamp: Date.now()
+    });
+
+    expect(assembly.services.lightboxService.currentOutcome).toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.LIGHTBOX_BOARD,
+      source: 'extension.lightbox',
+      payload: { board: null, refusal: null }
+    }));
+  });
+
+  it('subscribes a handler to Lightbox outcomes only once its webview asks, and releases it on dispose', async () => {
+    const assembly = createTestAssembly();
+    const sidebar = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    const lightbox = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    expect(assembly.lightboxAddOutcomeListener).not.toHaveBeenCalled();
+
+    const request = {
+      type: MessageType.LIGHTBOX_REQUEST_BOARD,
+      source: 'webview.lightbox',
+      payload: {},
+      timestamp: Date.now()
+    } as const;
+    await lightbox.handleMessage(request);
+    await lightbox.handleMessage(request);
+    expect(assembly.lightboxAddOutcomeListener).toHaveBeenCalledTimes(1);
+
+    sidebar.dispose();
+    expect(assembly.disposeLightboxOutcomeListener).not.toHaveBeenCalled();
+    lightbox.dispose();
+    expect(assembly.disposeLightboxOutcomeListener).toHaveBeenCalledTimes(1);
   });
 
   it('routes workshop messages (12th domain) and rehydrates a new handler from the shared session aggregate', async () => {

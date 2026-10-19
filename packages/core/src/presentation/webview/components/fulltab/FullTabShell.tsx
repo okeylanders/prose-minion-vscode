@@ -63,7 +63,9 @@ export const FullTabShell: React.FC<FullTabShellProps> = ({
   onBoundaryError,
   children
 }) => (
-  <div className="pm-ws">
+  // The root's aside modifier lets the frame scroll as one page at narrow
+  // widths (styles/fulltab/shell.css); tabs without an aside are unchanged.
+  <div className={aside ? 'pm-ws pm-ws-with-aside' : 'pm-ws'}>
     <header className="pm-ws-header">
       <div className="pm-ws-brand">
         <div className="pm-ws-logo">

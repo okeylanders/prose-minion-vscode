@@ -84,6 +84,8 @@ elsewhere.
 | Medium | [Thread artifacts replay on every later turn](2026-10-11-workshop-thread-artifact-history-replay.md) | Identified |
 | Low | [Transcript export mirror misstates the cascade order](2026-10-19-transcript-export-mirror-cascade-order.md) | Identified |
 | Low | [Shared full-tab frame classes keep the Workshop prefix](2026-10-19-fulltab-frame-class-prefix.md) | Identified |
+| Medium | [A missing relative path silently measures the active editor's file](2026-10-19-text-source-active-editor-fallback.md) | Identified |
+| Low | [Part-of-speech lists count contraction fragments](2026-10-19-pos-tagger-token-fragments.md) | Identified |
 
 ## Review Guidance
 

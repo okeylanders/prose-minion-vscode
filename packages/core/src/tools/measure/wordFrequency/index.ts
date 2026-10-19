@@ -19,12 +19,140 @@ export interface WordFrequencyOptions {
   enableLemmas?: boolean; // default false (placeholder only)
   lengthHistogramMaxChars?: number; // default 10
   minCharacterLength?: number; // default 1 (filter words by minimum character count)
+  ngramLimit?: number; // default 20 (how many top bigrams and trigrams to return)
+  includePosOccurrences?: boolean; // default false (adds pos.occurrences: every counted tagged word, where it is)
+}
+
+/**
+ * The function words Top Words leaves out, and the Lightbox's repeated-phrase
+ * filter tests against (a phrase made only of these is not shown).
+ */
+export const WORD_FREQUENCY_STOPWORDS: ReadonlySet<string> = new Set<string>([
+  'a','an','and','are','as','at','be','by','for','from','has','he','in','is','it','its','of','on','that','the','to','was','were','will','with','i','you','she','they','we','this','these','those','your','our','their','but','or','if','because','so','what','which','who','whom','where','when','how','why','not','no','nor','too','very','can','could','should','would','may','might','must','do','does','did','done','than','then','there','here','over','under','again','once'
+]);
+
+/**
+ * The tool's tokenizer, exported so callers that place counted words in the
+ * text (the Lightbox's paragraph lookups) split it exactly as the counts did.
+ * Expects lowercased text, as `analyze` passes it.
+ */
+export function extractFrequencyWords(text: string): string[] {
+  return text
+    .replace(/[—–]/g, ' ')  // Convert em-dash and en-dash to space first
+    .split(/\s+/)
+    .map(word => word.replace(/[^a-z'-]/g, ''))  // Keep hyphens and apostrophes
+    .map(word => word.replace(/^'+|'+$/g, ''))   // Trim leading/trailing apostrophes
+    .filter(word => word.length > 0);
 }
 
 export interface WordFrequencyEntry {
   word: string;
   count: number;
   percentage: number;
+}
+
+/** The part-of-speech lists the tool reports. */
+export type PartOfSpeechList = 'nouns' | 'verbs' | 'adjectives' | 'adverbs';
+
+/**
+ * One word the tagger counted toward a part-of-speech list, in text order.
+ * `word` is normalized exactly as the counts are (lowercase, letters and
+ * apostrophes only).
+ */
+export interface PartOfSpeechOccurrence {
+  word: string;
+  list: PartOfSpeechList;
+  /**
+   * UTF-16 offset of the tagger's token in the text it tagged (the input,
+   * lowercased). The tagger's tokens are verbatim, in-order slices of that
+   * text, so each is found by scanning forward; `undefined` only if a token
+   * could not be found there.
+   */
+  offset: number | undefined;
+}
+
+const PART_OF_SPEECH_TAGS: ReadonlyArray<[PartOfSpeechList, ReadonlySet<string>]> = [
+  ['nouns', new Set(['NN', 'NNS', 'NNP', 'NNPS'])],
+  ['verbs', new Set(['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'])],
+  ['adjectives', new Set(['JJ', 'JJR', 'JJS'])],
+  ['adverbs', new Set(['RB', 'RBR', 'RBS'])]
+];
+
+/** How many words each part-of-speech list reports. */
+const PART_OF_SPEECH_LIST_SIZE = 25;
+
+/**
+ * Tag `text` (lowercase it first, as `analyze` does) with the offline
+ * wink-pos-tagger and return every word counted toward a part-of-speech list,
+ * in text order, with where its token is. `analyze` counts exactly these, so
+ * a caller that needs to place POS words in the text reads the same stream
+ * the counts came from. Throws when the tagger cannot load.
+ */
+export function tagPartsOfSpeech(text: string): PartOfSpeechOccurrence[] {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const winkPosTagger = require('wink-pos-tagger');
+  const tagged: Array<{ value?: string; normal?: string; pos: string }> = winkPosTagger().tagSentence(text);
+  const occurrences: PartOfSpeechOccurrence[] = [];
+  let cursor = 0;
+  for (const token of tagged) {
+    const value = token.value ?? '';
+    const found = value.length > 0 ? text.indexOf(value, cursor) : -1;
+    if (found >= 0) {
+      cursor = found + value.length;
+    }
+    const word = (token.value || token.normal || '').toLowerCase().replace(/[^a-z']/g, '');
+    const list = PART_OF_SPEECH_TAGS.find(([, tags]) => tags.has(token.pos))?.[0];
+    if (word && list) {
+      occurrences.push({ word, list, offset: found >= 0 ? found : undefined });
+    }
+  }
+  return occurrences;
+}
+
+/**
+ * The tool's part-of-speech lists from tagged occurrences: per list, words of
+ * at least `minCharacterLength` characters, most frequent first (ties keep
+ * first-seen order), the top 25, with percentages of `totalWords`.
+ */
+export function rankPartsOfSpeech(
+  occurrences: readonly Pick<PartOfSpeechOccurrence, 'word' | 'list'>[],
+  totalWords: number,
+  minCharacterLength: number
+): Record<PartOfSpeechList, WordFrequencyEntry[]> {
+  const counts: Record<PartOfSpeechList, Map<string, number>> = {
+    nouns: new Map(),
+    verbs: new Map(),
+    adjectives: new Map(),
+    adverbs: new Map()
+  };
+  for (const { word, list } of occurrences) {
+    counts[list].set(word, (counts[list].get(word) || 0) + 1);
+  }
+  const rank = (map: Map<string, number>) => formatTopEntries(
+    Array.from(map.entries())
+      .filter(([w]) => w.length >= minCharacterLength)
+      .sort((a, b) => b[1] - a[1]),
+    totalWords,
+    PART_OF_SPEECH_LIST_SIZE
+  );
+  return {
+    nouns: rank(counts.nouns),
+    verbs: rank(counts.verbs),
+    adjectives: rank(counts.adjectives),
+    adverbs: rank(counts.adverbs)
+  };
+}
+
+function formatTopEntries(
+  entries: Array<[string, number]>,
+  total: number,
+  limit: number
+): WordFrequencyEntry[] {
+  return entries.slice(0, limit).map(([word, count]) => ({
+    word,
+    count,
+    percentage: total > 0 ? Math.round((count / total) * 1000) / 10 : 0
+  }));
 }
 
 export interface NGramEntry {
@@ -54,6 +182,8 @@ export interface NGramEntry {
     topVerbs?: WordFrequencyEntry[];
     topAdjectives?: WordFrequencyEntry[];
     topAdverbs?: WordFrequencyEntry[];
+    /** Every counted tagged word, in text order (with `includePosOccurrences`). */
+    occurrences?: PartOfSpeechOccurrence[];
   };
     // N-grams
     bigrams?: NGramEntry[];
@@ -69,9 +199,7 @@ export interface NGramEntry {
 
 export class WordFrequency {
   constructor(private readonly log?: (msg: string) => void) {}
-  private readonly stopwords = new Set<string>([
-    'a','an','and','are','as','at','be','by','for','from','has','he','in','is','it','its','of','on','that','the','to','was','were','will','with','i','you','she','they','we','this','these','those','your','our','their','but','or','if','because','so','what','which','who','whom','where','when','how','why','not','no','nor','too','very','can','could','should','would','may','might','must','do','does','did','done','than','then','there','here','over','under','again','once'
-  ]);
+  private readonly stopwords = WORD_FREQUENCY_STOPWORDS;
 
   /**
    * Extract unique words from text for use by other services (e.g., ContextSearchService)
@@ -110,7 +238,9 @@ export class WordFrequency {
       includeTrigrams: options?.includeTrigrams ?? true,
       enableLemmas: options?.enableLemmas ?? false,
       lengthHistogramMaxChars: options?.lengthHistogramMaxChars ?? 10,
-      minCharacterLength: options?.minCharacterLength ?? 1
+      minCharacterLength: options?.minCharacterLength ?? 1,
+      ngramLimit: options?.ngramLimit ?? 20,
+      includePosOccurrences: options?.includePosOccurrences ?? false
     };
 
     const text = input.text.toLowerCase();
@@ -170,46 +300,20 @@ export class WordFrequency {
     }
     const histogram = this.buildLengthHistogram(charPerc, opts.lengthHistogramMaxChars);
 
-    // POS via wink-pos-tagger
+    // POS via wink-pos-tagger: counted from the tagged-occurrence stream.
     let pos: WordFrequencyOutput['pos'] | undefined;
     if (opts.posEnabled) {
       try {
-        // Attempt to load wink-pos-tagger via require
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const winkPosTagger = require('wink-pos-tagger');
-        const tagger = winkPosTagger();
-        const tagged = tagger.tagSentence(text);
-        const nounTags = new Set(['NN', 'NNS', 'NNP', 'NNPS']);
-        const verbTags = new Set(['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']);
-        const adjTags = new Set(['JJ', 'JJR', 'JJS']);
-        const advTags = new Set(['RB', 'RBR', 'RBS']);
-
-        const nounCounts = new Map<string, number>();
-        const verbCounts = new Map<string, number>();
-        const adjCounts = new Map<string, number>();
-        const advCounts = new Map<string, number>();
-
-        for (const t of tagged) {
-          const w = (t.value || t.normal || '').toLowerCase().replace(/[^a-z']/g, '');
-          if (!w) continue;
-          const posTag = t.pos as string;
-          if (nounTags.has(posTag)) nounCounts.set(w, (nounCounts.get(w) || 0) + 1);
-          else if (verbTags.has(posTag)) verbCounts.set(w, (verbCounts.get(w) || 0) + 1);
-          else if (adjTags.has(posTag)) adjCounts.set(w, (adjCounts.get(w) || 0) + 1);
-          else if (advTags.has(posTag)) advCounts.set(w, (advCounts.get(w) || 0) + 1);
-        }
-
-        // Filter each POS category before sorting/limiting
-        const filterAndSort = (counts: Map<string, number>) => {
-          return Array.from(counts.entries())
-            .filter(([w]) => w.length >= opts.minCharacterLength)
-            .sort((a, b) => b[1] - a[1]);
+        const occurrences = tagPartsOfSpeech(text);
+        const lists = rankPartsOfSpeech(occurrences, totalWords, opts.minCharacterLength);
+        pos = {
+          mode: 'tagger',
+          topNouns: lists.nouns,
+          topVerbs: lists.verbs,
+          topAdjectives: lists.adjectives,
+          topAdverbs: lists.adverbs,
+          ...(opts.includePosOccurrences ? { occurrences } : {})
         };
-        const nouns = this.formatTop(filterAndSort(nounCounts), totalWords, 25);
-        const verbs = this.formatTop(filterAndSort(verbCounts), totalWords, 25);
-        const adjs = this.formatTop(filterAndSort(adjCounts), totalWords, 25);
-        const advs = this.formatTop(filterAndSort(advCounts), totalWords, 25);
-        pos = { mode: 'tagger', topNouns: nouns, topVerbs: verbs, topAdjectives: adjs, topAdverbs: advs };
       } catch (e: any) {
         const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ''}` : String(e);
         this.log?.(`[WordFrequency] POS tagger initialization failed: ${msg}`);
@@ -238,10 +342,10 @@ export class WordFrequency {
     let bigrams: NGramEntry[] | undefined;
     let trigrams: NGramEntry[] | undefined;
     if (opts.includeBigrams) {
-      bigrams = this.computeNGrams(words, 2, totalWords, 20, opts.minCharacterLength);
+      bigrams = this.computeNGrams(words, 2, totalWords, opts.ngramLimit, opts.minCharacterLength);
     }
     if (opts.includeTrigrams) {
-      trigrams = this.computeNGrams(words, 3, totalWords, 20, opts.minCharacterLength);
+      trigrams = this.computeNGrams(words, 3, totalWords, opts.ngramLimit, opts.minCharacterLength);
     }
 
     return {
@@ -266,12 +370,7 @@ export class WordFrequency {
   }
 
   private extractWords(text: string): string[] {
-    return text
-      .replace(/[—–]/g, ' ')  // Convert em-dash and en-dash to space first
-      .split(/\s+/)
-      .map(word => word.replace(/[^a-z'-]/g, ''))  // Keep hyphens and apostrophes
-      .map(word => word.replace(/^'+|'+$/g, ''))   // Trim leading/trailing apostrophes
-      .filter(word => word.length > 0);
+    return extractFrequencyWords(text);
   }
 
   private countMap(arr: string[]): Map<string, number> {
@@ -285,11 +384,7 @@ export class WordFrequency {
     total: number,
     limit: number
   ): WordFrequencyEntry[] {
-    return entries.slice(0, limit).map(([word, count]) => ({
-      word,
-      count,
-      percentage: total > 0 ? Math.round((count / total) * 1000) / 10 : 0
-    }));
+    return formatTopEntries(entries, total, limit);
   }
 
   private computeNGrams(tokens: string[], n: number, totalWords: number, limit: number, minCharLength: number = 1): NGramEntry[] {

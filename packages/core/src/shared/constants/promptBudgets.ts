@@ -100,6 +100,15 @@ export interface PromptBudgets {
   readonly guides: Readonly<{ words: number }>;
   readonly sourceDocument: Readonly<{ words: number }>;
   /**
+   * Lightbox (ADR 2026-10-19 D4, D8). `sourceWords` is the hard ceiling: a
+   * longer source is refused, with its count, before anything is measured.
+   * `chapterWords` is the soft "book-sized" threshold the Read button's cost
+   * line names (Slice 2B). `ribbonColumns` is the most columns the paragraph
+   * ribbon draws; above it each column covers a contiguous range of
+   * paragraphs, and the readings' tension scale follows it (open question 3).
+   */
+  readonly lightbox: Readonly<{ sourceWords: number; chapterWords: number; ribbonColumns: number }>;
+  /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
    * excerpt's configured source resource plus at most `neighborItems`
    * same-group neighbors, with one combined evidence word cap across
@@ -323,6 +332,7 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   contextFiles: { words: 50_000, catalogItems: 100 },
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
+  lightbox: { sourceWords: 50_000, chapterWords: 12_000, ribbonColumns: 96 },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },
   workshopWidgets: {

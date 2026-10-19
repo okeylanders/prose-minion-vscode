@@ -1,0 +1,336 @@
+/**
+ * Lightbox message contracts (ADR 2026-10-19 D3, D4, D10, D12).
+ *
+ * The renderer sees only a `LightboxBoard`: a closed, ordered JSON document
+ * the host builds from one source (a file or an editor selection). Slice 2A
+ * fills its counted half (`paragraphs`, `ribbon`, `measured`) with no model
+ * call; `readings` holds the three reading groups, all `not-run` until
+ * Slice 2B. `boardVersion` stays 0 while boards are ephemeral (D12): nothing
+ * here is a file format yet.
+ *
+ * Every count on the board is host-computed. The register a tile is drawn in
+ * (measured, read, counted-read) is derived from its kind by
+ * `LIGHTBOX_TILE_REGISTER`, never supplied (D3).
+ */
+
+import { MessageEnvelope, MessageType } from './base';
+import type { TokenUsage } from './tokenUsage';
+
+// ---------------------------------------------------------------------------
+// Tiles and registers
+// ---------------------------------------------------------------------------
+
+/** How a tile is drawn: solid (counted), dashed (read), or neutral (both). */
+export type LightboxRegister = 'measured' | 'read' | 'counted-read';
+
+/** The counted tiles the board always draws, from `LightboxBoard.measured`. */
+export type LightboxMeasuredTileKind = 'stats' | 'top-words' | 'parts-of-speech';
+
+/**
+ * Reading tile kinds. Empty in Slice 2A. The union grows by slice (D3):
+ * headline, motif, tension-arc, character, voice and genre-neighbor in 2B;
+ * palette and borrowed-field kinds in 3; lineage, subtext and spark in 4.
+ * Every map keyed by `LightboxTileKind` is exhaustive, so a new kind does not
+ * compile until it has a register and a renderer.
+ */
+export type LightboxReadingTileKind = never;
+
+export type LightboxTileKind = LightboxMeasuredTileKind | LightboxReadingTileKind;
+
+/** A reading tile inside a group. Its fields arrive with the first reading kind (2B). */
+export interface LightboxTile {
+  kind: LightboxReadingTileKind;
+}
+
+/** A block that failed validation, withheld by kind with its reason (D7). */
+export interface LightboxWithheldBlock {
+  kind: LightboxReadingTileKind;
+  reason: string;
+}
+
+export type LightboxReadingGroupId = 'A' | 'B' | 'C';
+
+/**
+ * The lenses Slice 2B reads, each in one reading group (D6). The writer can
+ * turn a lens off; the webview remembers the toggles, and 2B leaves an off
+ * lens out of its group's prompt.
+ */
+export type LightboxLensId = 'headline' | 'motif' | 'tension' | 'characters' | 'voice' | 'genre';
+
+/** `not-run` only in Slice 2A; 2B adds running, ok, failed and cancelled. */
+export type LightboxReadingStatus = 'not-run';
+
+export interface LightboxReadingGroup {
+  group: LightboxReadingGroupId;
+  status: LightboxReadingStatus;
+  /** The provider-reported model, not the selection (2B). */
+  model?: string;
+  usage?: TokenUsage;
+  /** Ordered; closed `kind` union. */
+  tiles: LightboxTile[];
+  withheldBlocks: LightboxWithheldBlock[];
+}
+
+// ---------------------------------------------------------------------------
+// Source and paragraphs
+// ---------------------------------------------------------------------------
+
+export type LightboxSourceKind = 'file' | 'selection';
+
+/** Where a board's text came from. Carries counts and provenance, never the text itself. */
+export interface LightboxSource {
+  kind: LightboxSourceKind;
+  /** Workspace-relative path of the file (or of the selection's file). */
+  displayPath: string;
+  /** Opaque URI string, for provenance. */
+  sourceUri?: string;
+  /** 1-based inclusive line range, for a selection. */
+  startLine?: number;
+  endLine?: number;
+  /** SHA-256 over the normalized text; a change marks the board stale (D4). */
+  contentHash: string;
+  wordCount: number;
+  paragraphCount: number;
+  /** Epoch ms when the host read the text. */
+  capturedAt: number;
+  /** The opening of the text, so the writer can see what was boarded. */
+  preview: string;
+}
+
+/**
+ * One paragraph, as the shared splitter (`/\n\s*\n/`) produces it (D4).
+ * Offsets are UTF-16 indexes into the text as it was read.
+ */
+export interface LightboxParagraphMetric {
+  /** Numbered from 1. */
+  index: number;
+  start: number;
+  end: number;
+  words: number;
+  sentences: number;
+  /** Words ÷ sentences, one decimal; 0 when the paragraph has no sentence. */
+  avgWordsPerSentence: number;
+  /** Words inside quoted dialogue (the shared dialogue-span matcher). */
+  dialogueWords: number;
+  /** `dialogueWords ÷ words`, 0–1, three decimals. */
+  dialogueShare: number;
+}
+
+/**
+ * One ribbon column: one paragraph up to `PROMPT_BUDGETS.lightbox.ribbonColumns`
+ * paragraphs, a contiguous range above that (D4). Ranges are inclusive and
+ * 1-based. Rhythm and dialogue are pooled over the range.
+ */
+export interface LightboxRibbonColumn {
+  from: number;
+  to: number;
+  /** Total words ÷ total sentences in the range, one decimal. */
+  avgWordsPerSentence: number;
+  /** Dialogue words ÷ words in the range, 0–1, three decimals. */
+  dialogueShare: number;
+}
+
+// ---------------------------------------------------------------------------
+// The measured set (D5)
+// ---------------------------------------------------------------------------
+
+/** A counted word or phrase and the paragraphs it occurs in. */
+export interface LightboxCountedTerm {
+  term: string;
+  count: number;
+  /** Percent of all words, one decimal, as the word-frequency tool reports it. */
+  percentage: number;
+  /** 1-based paragraph indexes, ascending. Empty when no single paragraph holds it. */
+  paragraphs: number[];
+}
+
+/** The headline stats, from the prose-stats tool. Percentages are 0–100. */
+export interface LightboxHeadlineStats {
+  wordCount: number;
+  sentenceCount: number;
+  paragraphCount: number;
+  averageWordsPerSentence: number;
+  averageSentencesPerParagraph: number;
+  dialoguePercentage: number;
+  lexicalDensity: number;
+  /** `100 − 2 × words per sentence`, clamped to 0–100 (not Flesch). */
+  readabilityScore: number;
+  readabilityGrade?: number;
+  pacing: string;
+  readingTimeMinutes: number;
+  uniqueWordCount: number;
+  hapaxCount: number;
+  hapaxPercent: number;
+  vocabularyDiversity: number;
+}
+
+export type LightboxStandardsStatus = 'below' | 'within' | 'above' | 'n/a';
+
+/** One metric compared with the writer's publishing-standards preset. */
+export interface LightboxStandardsItem {
+  key: string;
+  label: string;
+  value: number | string;
+  standard?: { min?: number; max?: number };
+  status: LightboxStandardsStatus;
+}
+
+export interface LightboxPublishingFormat {
+  trimLabel: string;
+  wordsPerPage: number;
+  estimatedPageCount: number;
+  pageCountRange?: { min?: number; max?: number };
+  status: LightboxStandardsStatus;
+}
+
+/** Present only when a genre preset is selected. */
+export interface LightboxStandardsComparison {
+  items: LightboxStandardsItem[];
+  publishingFormat?: LightboxPublishingFormat;
+}
+
+export interface LightboxPartsOfSpeech {
+  /** False when the offline tagger could not load; the lists are then empty. */
+  available: boolean;
+  nouns: LightboxCountedTerm[];
+  verbs: LightboxCountedTerm[];
+  adjectives: LightboxCountedTerm[];
+  adverbs: LightboxCountedTerm[];
+}
+
+export interface LightboxStyleFlag {
+  type: string;
+  count: number;
+  examples: string[];
+}
+
+export interface LightboxMeasuredSet {
+  headline: LightboxHeadlineStats;
+  standards?: LightboxStandardsComparison;
+  topWords: LightboxCountedTerm[];
+  partsOfSpeech: LightboxPartsOfSpeech;
+  /** Repeated two- and three-word phrases with at least one content word. */
+  phrases: {
+    bigrams: LightboxCountedTerm[];
+    trigrams: LightboxCountedTerm[];
+  };
+  styleFlags: LightboxStyleFlag[];
+}
+
+// ---------------------------------------------------------------------------
+// The board
+// ---------------------------------------------------------------------------
+
+export interface LightboxBoard {
+  /** Draft until Slice 5 (D12). */
+  boardVersion: 0;
+  /** Host-minted. A rebuild of unchanged text keeps its id. */
+  boardId: string;
+  source: LightboxSource;
+  paragraphs: LightboxParagraphMetric[];
+  ribbon: LightboxRibbonColumn[];
+  measured: LightboxMeasuredSet;
+  /** Groups A, B and C, in that order. */
+  readings: LightboxReadingGroup[];
+}
+
+// ---------------------------------------------------------------------------
+// Refusals
+// ---------------------------------------------------------------------------
+
+/**
+ * Why a source was not boarded.
+ * - `over-ceiling`: more words than `PROMPT_BUDGETS.lightbox.sourceWords` (D8).
+ * - `empty`: the source holds no text.
+ * - `unreadable`: the host could not resolve or read it.
+ * - `not-refreshable`: there is no file-backed source to re-read.
+ */
+export type LightboxRefusalReason = 'over-ceiling' | 'empty' | 'unreadable' | 'not-refreshable';
+
+export interface LightboxSourceRefusal {
+  /** Host-minted. Names this refusal when the writer dismisses it. */
+  id: string;
+  reason: LightboxRefusalReason;
+  /** Writer-facing sentence. */
+  message: string;
+  /** The source that was refused, so a refusal shown over an older board names it. */
+  displayPath?: string;
+  /** The source's word count, for an `over-ceiling` refusal. */
+  wordCount?: number;
+  ceilingWords?: number;
+  /** What to do instead. */
+  suggestion?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+/** Mount and reveal: ask for the host's current outcome (`LIGHTBOX_BOARD`). Zero payload. */
+export interface LightboxRequestBoardMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.LIGHTBOX_REQUEST_BOARD;
+}
+
+/**
+ * Board a source. With `text`, the text is an editor selection; without it,
+ * `relativePath` names a workspace file the host reads. The editor commands
+ * route this through the panel's own handler (the `seedExcerpt` pattern).
+ */
+export interface LightboxSetSourcePayload {
+  text?: string;
+  sourceUri?: string;
+  relativePath?: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+export interface LightboxSetSourceMessage extends MessageEnvelope<LightboxSetSourcePayload> {
+  type: MessageType.LIGHTBOX_SET_SOURCE;
+}
+
+/** "Choose file": the host's file picker is the input. Zero payload. */
+export interface LightboxPickSourceFileMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.LIGHTBOX_PICK_SOURCE_FILE;
+}
+
+/** "Re-read file": board the current file-backed source again. Zero payload. */
+export interface LightboxRefreshSourceMessage extends MessageEnvelope<Record<string, never>> {
+  type: MessageType.LIGHTBOX_REFRESH_SOURCE;
+}
+
+/**
+ * The writer dismissed a refusal. The host forgets it, so a later mount or
+ * reveal does not show it again; a newer refusal is unaffected.
+ */
+export interface LightboxDismissRefusalPayload {
+  refusalId: string;
+}
+
+export interface LightboxDismissRefusalMessage extends MessageEnvelope<LightboxDismissRefusalPayload> {
+  type: MessageType.LIGHTBOX_DISMISS_REFUSAL;
+}
+
+/**
+ * The host's current outcome: the latest board (`null` when nothing has been
+ * boarded this session) and the refusal of a newer source, if the writer has
+ * not dismissed it. A refusal leaves the board as it was, so both can be set.
+ * Answers every `LIGHTBOX_REQUEST_BOARD`, so a refusal produced before the
+ * webview was listening is still shown (PR #148 F-02).
+ */
+export interface LightboxBoardPayload {
+  board: LightboxBoard | null;
+  refusal: LightboxSourceRefusal | null;
+}
+
+export interface LightboxBoardMessage extends MessageEnvelope<LightboxBoardPayload> {
+  type: MessageType.LIGHTBOX_BOARD;
+}
+
+/** A source was just refused; the board, if any, stays as it was. */
+export interface LightboxSourceRefusedPayload {
+  refusal: LightboxSourceRefusal;
+}
+
+export interface LightboxSourceRefusedMessage extends MessageEnvelope<LightboxSourceRefusedPayload> {
+  type: MessageType.LIGHTBOX_SOURCE_REFUSED;
+}

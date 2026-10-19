@@ -1,7 +1,7 @@
 # Shared Full-Tab Frame Classes Keep the Workshop Prefix
 
 **Date Identified**: 2026-10-19 (Lightbox Slice 1)
-**Reviewed**: 2026-10-19
+**Reviewed**: 2026-10-19 (Slice 2A)
 **Status**: Identified
 **Priority**: Low
 **Estimated Effort**: Small to medium (mechanical rename across two tabs, the export mirror and tests)
@@ -14,14 +14,17 @@ rail and banner) into `components/fulltab/` and `styles/fulltab/`, scoped to
 identical DOM, the class names did not change: the shared frame still uses
 the Workshop's prefix (`.pm-ws`, `.pm-ws-header`, `.pm-ws-brand`,
 `.pm-ws-balance*`, `.pm-ws-split`, `.pm-ws-rail`, `.pm-ws-main`,
-`.pm-ws-provider-paused`, `.pm-ws-eyebrow`).
+`.pm-ws-provider-paused`, `.pm-ws-eyebrow`). Slice 2A added more to the
+frame under the same prefix: the rail section cards (`.pm-ws-block*`, moved
+from the Workshop's sheet) and the aside layout (`.pm-ws-aside`,
+`.pm-ws-split-with-aside`, `.pm-ws-with-aside`).
 
 The concrete risk is ownership confusion, now that a second surface renders
 these classes. A Workshop author can add a `[data-pm-surface="workshop"]
 .pm-ws-header …` rule believing the header is the Workshop's, silently
 forking the frame between tabs. A Lightbox author can reach for a `pm-ws-*`
 class believing it is shared when it is Workshop-only (for example
-`.pm-ws-block`, which is still Workshop-scoped).
+`.pm-ws-excerpt`, which is still Workshop-scoped).
 
 ## Recommendation
 

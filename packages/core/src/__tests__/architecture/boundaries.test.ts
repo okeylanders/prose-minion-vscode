@@ -925,8 +925,50 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService)\b`
 );
+
+/**
+ * Lightbox modules (ADR 2026-10-19 D13). Every module the feature adds is
+ * listed, so the size, construction and transport rules below cover each one
+ * and a new module joins on purpose.
+ */
+const LIGHTBOX_MODULES = [
+  'shared/types/messages/lightbox.ts',
+  'shared/constants/lightbox.ts',
+  'infrastructure/lightbox/LightboxParagraphs.ts',
+  'infrastructure/lightbox/LightboxMeasures.ts',
+  'infrastructure/lightbox/LightboxService.ts',
+  'application/handlers/domain/LightboxHandler.ts',
+  'presentation/webview/LightboxApp.tsx',
+  'presentation/webview/hooks/domain/useLightbox.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
+  'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
+  'presentation/webview/components/lightbox/LightboxInspector.tsx',
+  'presentation/webview/components/lightbox/LightboxItemButton.tsx',
+  'presentation/webview/components/lightbox/LightboxLensesPanel.tsx',
+  'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingPlaceholder.tsx',
+  'presentation/webview/components/lightbox/LightboxRibbon.tsx',
+  'presentation/webview/components/lightbox/LightboxSourcePanel.tsx',
+  'presentation/webview/components/lightbox/LightboxStatRow.tsx',
+  'presentation/webview/components/lightbox/LightboxTileFrame.tsx',
+  'presentation/webview/components/lightbox/LightboxTiles.tsx',
+  'presentation/webview/components/lightbox/LightboxTopWords.tsx'
+] as const;
+/** Presentation controllers and pure item logic: host effects arrive injected. */
+const LIGHTBOX_TRANSPORT_FREE_MODULES = [
+  'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
+  'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts'
+] as const;
+const LIGHTBOX_FEATURE_DIRECTORIES = [
+  'infrastructure/lightbox',
+  'presentation/webview/hooks/domain/lightbox',
+  'presentation/webview/components/lightbox'
+] as const;
 
 function collectSourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -1522,6 +1564,39 @@ describe('architectural boundaries', () => {
       SRC_ROOT,
       'presentation/webview/hooks/domain/useWorkshop.ts'
     ))).toBe(false);
+  });
+
+  it('lists every Lightbox module, each under 500 lines (ADR 2026-10-19 D13)', () => {
+    const onDisk = LIGHTBOX_FEATURE_DIRECTORIES.flatMap((directory) =>
+      collectSourceFiles(path.join(SRC_ROOT, directory)).map((file) => path.relative(SRC_ROOT, file))
+    );
+    const listed = new Set<string>(LIGHTBOX_MODULES);
+    expect(onDisk.filter((file) => !listed.has(file))).toEqual([]);
+
+    const oversized = LIGHTBOX_MODULES
+      .map((file) => ({ file, lines: fs.readFileSync(path.join(SRC_ROOT, file), 'utf8').split('\n').length }))
+      .filter(({ lines }) => lines >= 500);
+    expect(oversized).toEqual([]);
+  });
+
+  it('constructs the Lightbox service only at the composition root, and its handler only in MessageHandler', () => {
+    const constructions = (pattern: RegExp) => collectSourceFiles(SRC_ROOT)
+      .filter((file) => pattern.test(fs.readFileSync(file, 'utf8')))
+      .map((file) => path.relative(SRC_ROOT, file));
+
+    expect(constructions(/\bnew\s+LightboxService\s*\(/)).toEqual([]);
+    expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+  });
+
+  it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {
+    const transportReference = /(?:useVSCodeApi|MessageType|postMessage)/;
+    expect(LIGHTBOX_TRANSPORT_FREE_MODULES
+      .filter((file) => transportReference.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))))
+      .toEqual([]);
+    // D10: the Lightbox's source is its own, never the Workshop's excerpt.
+    expect(LIGHTBOX_MODULES
+      .filter((file) => /\bWORKSHOP_[A-Z_]+\b/.test(fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))))
+      .toEqual([]);
   });
 
   it('Workshop presentation controllers receive host effects instead of owning transport', () => {

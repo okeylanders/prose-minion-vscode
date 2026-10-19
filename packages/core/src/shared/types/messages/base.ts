@@ -199,7 +199,18 @@ export enum MessageType {
   WORKSHOP_WIDGET_ACTION_RESULT = 'workshop_widget_action_result',
   CANCEL_GESTURE_PLAYGROUND_GENERATE_REQUEST = 'cancel_gesture_playground_generate_request',
   CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST = 'cancel_creative_variations_generate_request',
-  CANCEL_SHOW_VS_TELL_GENERATE_REQUEST = 'cancel_show_vs_tell_generate_request'
+  CANCEL_SHOW_VS_TELL_GENERATE_REQUEST = 'cancel_show_vs_tell_generate_request',
+
+  // Lightbox editor tab (ADR 2026-10-19 D10; Slice 2A counted board)
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
+  LIGHTBOX_REQUEST_BOARD = 'lightbox_request_board',
+  LIGHTBOX_SET_SOURCE = 'lightbox_set_source',
+  LIGHTBOX_PICK_SOURCE_FILE = 'lightbox_pick_source_file',
+  LIGHTBOX_REFRESH_SOURCE = 'lightbox_refresh_source',
+  LIGHTBOX_DISMISS_REFUSAL = 'lightbox_dismiss_refusal',
+  LIGHTBOX_BOARD = 'lightbox_board',
+  LIGHTBOX_SOURCE_REFUSED = 'lightbox_source_refused'
+  /* eslint-enable @typescript-eslint/naming-convention */
 }
 
 export interface BaseMessage {

@@ -97,6 +97,7 @@ describe('FullTabShell', () => {
       />
     );
 
+    expect(container.firstElementChild?.className).toBe('pm-ws pm-ws-with-aside');
     expect(container.querySelector('.pm-ws-split')?.className)
       .toBe('pm-ws-split pm-ws-split-with-aside');
     const inspector = screen.getByLabelText('Inspector');

@@ -1,0 +1,244 @@
+/* ============================================================
+   Prose Minion — the Lightbox inspector (the frame's optional aside),
+   ADR 2026-10-19 D3, D4. The aside's column, and how it moves at narrow
+   widths, are the frame's (styles/fulltab/shell.css); this sheet styles the
+   card inside it.
+   ============================================================ */
+
+[data-pm-surface="lightbox"] .pm-lb-inspector {
+  margin: 16px;
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* When the frame scrolls the whole tab (1240px and below), the inspector
+   rides along in the left column; above the stacked layout, it sticks. */
+@media (max-width: 1240px) and (min-width: 761px) {
+  [data-pm-surface="lightbox"] .pm-lb-inspector {
+    position: sticky;
+    top: 16px;
+  }
+}
+
+/* ---------- Nothing pinned ---------- */
+[data-pm-surface="lightbox"] .pm-lb-guide h3 {
+  font-family: var(--pm-lb-display);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  letter-spacing: -0.015em;
+}
+[data-pm-surface="lightbox"] .pm-lb-guide p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pm-text-2);
+  margin: 0 0 12px;
+}
+[data-pm-surface="lightbox"] .pm-lb-guide-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pm-text-2);
+  margin-bottom: 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-guide-row .pm-lb-key {
+  margin-top: 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-guide-row b {
+  color: var(--pm-text);
+}
+
+/* ---------- A pinned item ---------- */
+[data-pm-surface="lightbox"] .pm-lb-label {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  margin: 0 0 8px;
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-where {
+  flex: 1;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-clear {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  display: grid;
+  place-items: center;
+  color: var(--pm-muted);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-clear:hover {
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-title {
+  font-family: var(--pm-lb-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-claim {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--pm-text-2);
+  margin: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-muted);
+  margin: -6px 0 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-chip {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: 6px;
+  min-height: 26px;
+  padding: 0 7px;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-chip:hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-para-chip.is-target {
+  color: var(--pm-text);
+  border-color: var(--pm-lb-measured-line);
+  background: var(--pm-lb-measured-soft);
+}
+
+/* ---------- Paging the addresses (more than one page of chips) ---------- */
+[data-pm-surface="lightbox"] .pm-lb-para-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  margin: 0 0 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-range {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+}
+/* A narrow aside wraps between the addresses and their position, not inside either. */
+[data-pm-surface="lightbox"] .pm-lb-para-range > span {
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-position {
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-para-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0 7px;
+  border-radius: 6px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text-2);
+  font: 11px var(--pm-mono);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-step:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-para-step:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-jump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-jump label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-para-jump input {
+  width: 64px;
+  min-height: 26px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+  font: 11px var(--pm-mono);
+}
+[data-pm-surface="lightbox"] .pm-lb-support {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-support span {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-lb-measured-hi);
+  border: 1px solid var(--pm-lb-measured-line);
+  background: var(--pm-lb-measured-soft);
+  border-radius: 5px;
+  padding: 3px 7px;
+}
+[data-pm-surface="lightbox"] .pm-lb-touching {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-touch {
+  font: 12px var(--pm-sans);
+  color: var(--pm-text);
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-lb-measured-line);
+  border-radius: 7px;
+  min-height: 28px;
+  padding: 0 9px;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-touch:hover,
+[data-pm-surface="lightbox"] .pm-lb-touch.is-hot {
+  background: var(--pm-surface-3);
+}

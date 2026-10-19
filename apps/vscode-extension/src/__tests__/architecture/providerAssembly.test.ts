@@ -114,8 +114,10 @@ describe('app-shell provider assembly', () => {
     expect(providerSource).toContain('_state: unknown');
     expect(providerSource).not.toMatch(/_state\.\w+/);
 
+    // Two full editor tabs restore through serializers: the Workshop and the
+    // Lightbox (ADR 2026-10-19 D1). A third needs a deliberate change here.
     const registrations = extensionSource.match(/registerWebviewPanelSerializer\(/g) ?? [];
-    expect(registrations).toHaveLength(1);
+    expect(registrations).toHaveLength(2);
     expect(extensionSource).toMatch(
       /registerWebviewPanelSerializer\(\s*WorkshopPanelProvider\.viewType,\s*workshopPanelProvider\s*\)/
     );
@@ -126,6 +128,78 @@ describe('app-shell provider assembly', () => {
     expect(manifest.activationEvents).toContain(
       'onWebviewPanel:prose-minion.workshop'
     );
+  });
+
+  it('LightboxPanelProvider is wired from the composition root with the CoreServices bundle (ADR 2026-10-19 D1)', () => {
+    const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
+    expect(providerSource).toMatch(/coreServices:\s*CoreServices/);
+    expect(providerSource).toMatch(
+      /new MessageHandler\(\s*this\.coreServices,[\s\S]*?this\.outputChannel,\s*this\.uiActions\s*\)/
+    );
+
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const start = extensionSource.indexOf('new LightboxPanelProvider(');
+    expect(start).toBeGreaterThan(-1);
+    const end = extensionSource.indexOf(');', start);
+    expect(extensionSource.slice(start, end)).toContain('coreServices');
+    // The board service is built here, once, and carried in the bundle.
+    expect(extensionSource.match(/new LightboxService\(/g)).toHaveLength(1);
+    expect(extensionSource).toMatch(/const coreServices: CoreServices = \{[\s\S]*?\blightboxService\b[\s\S]*?\};/);
+  });
+
+  it('registers one Lightbox panel serializer that reuses the normal attachment path', () => {
+    const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+
+    expect(providerSource).toContain("public static readonly viewType = 'prose-minion.lightbox';");
+    expect(providerSource).toContain('implements vscode.Disposable, vscode.WebviewPanelSerializer');
+    expect(providerSource).toContain('retainContextWhenHidden: true');
+    expect(providerSource).toMatch(/deserializeWebviewPanel\([\s\S]*?this\.attachPanel\(panel,\s*'restored'\)/);
+    expect(providerSource).toMatch(/openOrReveal\(\)[\s\S]*?this\.attachPanel\(panel,\s*'opened'\)/);
+    // Serializer state is not a second board store (D12).
+    expect(providerSource).toContain('_state: unknown');
+    expect(providerSource).not.toMatch(/_state\.\w+/);
+    expect(extensionSource).toMatch(
+      /registerWebviewPanelSerializer\(\s*LightboxPanelProvider\.viewType,\s*lightboxPanelProvider\s*\)/
+    );
+  });
+
+  it('seeds Lightbox sources through the panel\'s own handler under the webview lightbox source', () => {
+    const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
+    const seed = providerSource.slice(providerSource.indexOf('public seedSource('));
+    expect(seed).toMatch(/this\.openOrReveal\(\);[\s\S]*?type: MessageType\.LIGHTBOX_SET_SOURCE,\s*source: 'webview\.lightbox'/);
+    expect(seed).toMatch(/this\.messageHandler\?\.handleMessage\(message\)/);
+    // The Lightbox never reaches into the Workshop's session (D10).
+    expect(providerSource).not.toMatch(/WORKSHOP_|workshopSessionService/);
+  });
+
+  it('declares the Lightbox commands, context menu and activation events', () => {
+    const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
+      activationEvents?: string[];
+      contributes: {
+        commands: Array<{ command: string; title: string }>;
+        // eslint-disable-next-line @typescript-eslint/naming-convention -- the manifest's menu id.
+        menus: { 'editor/context': Array<{ command: string; when?: string }> };
+      };
+    };
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+
+    expect(manifest.activationEvents).toEqual(expect.arrayContaining([
+      'onWebviewPanel:prose-minion.lightbox',
+      'onCommand:prose-minion.openLightbox',
+      'onCommand:prose-minion.lightboxSelection'
+    ]));
+    expect(manifest.contributes.commands).toEqual(expect.arrayContaining([
+      { command: 'prose-minion.openLightbox', title: 'Prose Minion: Open Lightbox' },
+      { command: 'prose-minion.lightboxSelection', title: 'Prose Minion: Open Selection in Lightbox' }
+    ]));
+    expect(manifest.contributes.menus['editor/context']).toEqual(expect.arrayContaining([
+      expect.objectContaining({ command: 'prose-minion.lightboxSelection', when: 'editorHasSelection' })
+    ]));
+    for (const command of ['prose-minion.openLightbox', 'prose-minion.lightboxSelection']) {
+      expect(extensionSource).toContain(`registerCommand('${command}'`);
+    }
+    expect(extensionSource).toMatch(/openLightbox: \(\) => lightboxPanelProvider\?\.openOrReveal\(\)/);
   });
 
   it('quiesces the Workshop handler before the final deactivation flush', () => {
@@ -148,6 +222,15 @@ describe('app-shell provider assembly', () => {
     );
     expect(deactivate.indexOf('workshopPanelProvider?.dispose()'))
       .toBeLessThan(deactivate.indexOf('await workshopSessionPersistenceCoordinator?.flush()'));
+
+    // The Lightbox mirrors the Workshop's order: handler before panel.
+    const lightboxSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
+    const lightboxDispose = lightboxSource.slice(
+      lightboxSource.indexOf('public dispose(): void'),
+      lightboxSource.indexOf('\n  }\n}', lightboxSource.indexOf('public dispose(): void'))
+    );
+    expect(lightboxDispose.indexOf('this.messageHandler?.dispose()'))
+      .toBeLessThan(lightboxDispose.indexOf('panel?.dispose()'));
   });
 
   it('every MessageHandler in a provider is built over the ONE injected coreServices bundle (PR #66 review #12)', () => {
@@ -174,13 +257,11 @@ describe('app-shell provider assembly', () => {
     }
     expect(offenders).toEqual([]);
 
-    // And the Workshop provider actually HAS its per-webview seam now
-    // (Sprint 2) — the witness above must be guarding something real.
-    const workshopSource = fs.readFileSync(
-      path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'),
-      'utf8'
-    );
-    expect(workshopSource).toContain('new MessageHandler(');
+    // And the Workshop and Lightbox providers actually HAVE their per-webview
+    // seams — the witness above must be guarding something real.
+    for (const provider of ['WorkshopPanelProvider.ts', 'LightboxPanelProvider.ts']) {
+      expect(fs.readFileSync(path.join(PROVIDERS_ROOT, provider), 'utf8')).toContain('new MessageHandler(');
+    }
   });
 
   it('builds session recall from the store and coordinator, before the factory that alone consumes it (ADR 2026-10-05 §9)', () => {
