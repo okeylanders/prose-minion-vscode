@@ -1,0 +1,36 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-18T18:00:00Z" },
+  "title": "Prose Minion — Lightbox",
+  "launch": { "view": "focused", "file": "Main.dc.html" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 3450,
+      "title": "Lightbox · chapter 6.12 (interactive)",
+      "expand": "fill",
+      "is_interactive": true
+    }
+  },
+  "order": ["Main.dc.html"],
+  "notes": {
+    "data": {
+      "x": 1520,
+      "y": 0,
+      "w": 380,
+      "color": "orange",
+      "text": "Illustrative data. The counts come from the chapter-6.12 metrics screenshot. Every quote, ¶ address, reading and character note is invented to show the shape of the board. None of it is drawn from the manuscript."
+    },
+    "try": {
+      "x": 1520,
+      "y": 600,
+      "w": 380,
+      "color": "blue",
+      "text": "Try it: hover a word, motif, character or ribbon column and the ribbon lights the paragraphs it touches. Click anything to pin it in the inspector. In the rail, Lenses turns readings on and off and changes the cost, and Boards → Compare shows how the mood shifted between drafts. Under Tweaks, Phase switches between fresh, streaming and complete, or press Re-read."
+    }
+  },
+  "designSystems": []
+}
