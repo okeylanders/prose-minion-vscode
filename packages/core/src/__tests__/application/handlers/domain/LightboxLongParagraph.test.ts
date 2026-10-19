@@ -6,9 +6,10 @@
  * measurement services), LightboxReadingRunner, quote verifier and term
  * counter. CJK text has no code point below U+0300, so one paragraph of it is
  * one normalization run: the board counts it as a few words, the estimate
- * says it fits, and the verifier must still build over it. The text is
- * synthetic; only the provider is played, with the prompt bundle's worked
- * examples. No provider is called.
+ * says it fits, and the verifier must still build over it. A failure
+ * injected into the verifier's setup shows a run finishing all the same.
+ * The text is synthetic; only the provider is played, with the prompt
+ * bundle's worked examples. No provider is called.
  */
 jest.mock('p-limit', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- jest's ES-module interop flag.
@@ -17,6 +18,7 @@ jest.mock('p-limit', () => ({
 }));
 
 import { MessageType } from '@/shared/types/messages';
+import * as quoteVerifier from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxReadingHost, settle } from './lightboxReadingHarness';
 
 const SENTENCE = '彼女は静かな部屋で時計の音を聞いた。';
@@ -26,6 +28,8 @@ const ENDS_IN_ONE_RUN = `Alice waited. ${SENTENCE.repeat(9_000)}`;
 const RUN_THEN_ASCII = `${'漢'.repeat(150_000)} Alice waited.`;
 // The unspaced Latin control of the same length is checked by the verifier's and the runner's tests: building its
 // board takes minutes in the part-of-speech tokenizer (tech debt 2026-10-19-pos-tagger-long-token-backtracking).
+
+const SETUP_FAILED = 'The chapter could not be prepared for checking quotes, so nothing was sent.';
 
 describe('a long paragraph the board accepts is read through (PR #149 F-10)', () => {
   const unhandled = jest.fn();
@@ -64,5 +68,37 @@ describe('a long paragraph the board accepts is read through (PR #149 F-10)', ()
     expect(host.runner.activeRun(host.board.boardId)).toBeUndefined();
     expect(tab.logged()).toMatch(/Group A read \(.+\): \d+ tiles, .* \d+ quotes checked/);
     expect(unhandled).not.toHaveBeenCalled();
+  });
+
+  it('finishes a run whose setup throws: every group failed, the run released, nothing sent', async () => {
+    const host = await createLightboxReadingHost();
+    const tab = host.openTab();
+    // The setup failure's own text never leaves the host's categories.
+    jest.spyOn(quoteVerifier, 'createLightboxQuoteVerifier').mockImplementationOnce(() => {
+      throw new RangeError('PRIVATE: Alice was beginning to get very tired');
+    });
+
+    await tab.run();
+    await settle();
+
+    expect(host.runInitial).not.toHaveBeenCalled();
+    const progress = tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload);
+    expect(progress.map((payload) => payload.phase)).toEqual(['started', 'streaming', 'streaming', 'streaming', 'finished']);
+    expect(progress.at(-1)).toMatchObject({ token: 'run-1-token', groupsBack: 3 });
+    expect(host.service.currentBoard()?.readings.map((group) => [group.status, group.error])).toEqual([
+      ['failed', SETUP_FAILED],
+      ['failed', SETUP_FAILED],
+      ['failed', SETUP_FAILED]
+    ]);
+    expect(host.runner.activeRun(host.board.boardId)).toBeUndefined();
+    expect(tab.logged()).toContain('Run run-1-token could not be set up: setup-failed (RangeError)');
+    expect(tab.logged()).not.toContain('PRIVATE');
+    expect(unhandled).not.toHaveBeenCalled();
+
+    // Released: the next press reads the board.
+    await tab.run();
+    await settle();
+    expect(host.runInitial).toHaveBeenCalledTimes(3);
+    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['ok', 'ok', 'ok']);
   });
 });

@@ -949,6 +949,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxRunEstimate.ts',
   'infrastructure/lightbox/LightboxReadingRunContracts.ts',
   'infrastructure/lightbox/LightboxReadingRunner.ts',
+  'infrastructure/lightbox/LightboxGroupReply.ts',
   'infrastructure/lightbox/LightboxCallFailure.ts',
   'infrastructure/lightbox/LightboxPressSnapshot.ts',
   'infrastructure/lightbox/LightboxReadingState.ts',
