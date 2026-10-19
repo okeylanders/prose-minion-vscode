@@ -54,7 +54,6 @@ import { ListenerSet } from '@/utils/ListenerSet';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
 import type { StyleFlagsService } from '@services/measurement/StyleFlagsService';
 import type { WordFrequencyService } from '@services/measurement/WordFrequencyService';
-import type { WordFrequencyOptions } from '@services/shared/ToolOptionsProvider';
 import type { StandardsService } from '@services/resources/StandardsService';
 import {
   buildLightboxRibbon,
@@ -63,7 +62,7 @@ import {
   splitLightboxParagraphs
 } from '@/infrastructure/lightbox/LightboxParagraphs';
 import {
-  LIGHTBOX_MEASURED_SIZES,
+  LIGHTBOX_WORD_FREQUENCY_OPTIONS,
   LightboxEnrichedStats,
   buildLightboxMeasuredSet
 } from '@/infrastructure/lightbox/LightboxMeasures';
@@ -124,26 +123,6 @@ export interface LightboxServiceOptions {
   /** Boards kept in memory (one per source, by `lightboxSourceKey`), least recently built first out. */
   retainedBoards?: number;
 }
-
-/**
- * Fixed word-frequency options, so every board has the same shape whatever
- * the Metrics tab's settings are: POS, n-grams and the stopword table on,
- * content words only, no hapax list (the board shows hapax as a count).
- */
-const LIGHTBOX_WORD_FREQUENCY_OPTIONS: WordFrequencyOptions = {
-  topN: LIGHTBOX_MEASURED_SIZES.topWords,
-  includeHapaxList: false,
-  hapaxDisplayMax: 0,
-  includeStopwordsTable: true,
-  contentWordsOnly: true,
-  posEnabled: true,
-  includeBigrams: true,
-  includeTrigrams: true,
-  enableLemmas: false,
-  lengthHistogramMaxChars: 10,
-  minCharacterLength: 1,
-  ngramLimit: LIGHTBOX_MEASURED_SIZES.ngramDepth
-};
 
 const PREVIEW_CHARACTERS = 360;
 const DEFAULT_RETAINED_BOARDS = 12;
@@ -323,7 +302,7 @@ export class LightboxService {
       source,
       paragraphs: metrics,
       ribbon: buildLightboxRibbon(metrics, PROMPT_BUDGETS.lightbox.ribbonColumns),
-      measured: buildLightboxMeasuredSet({ stats: enriched, frequency, flags, paragraphs }),
+      measured: buildLightboxMeasuredSet({ stats: enriched, frequency, flags, paragraphs, text: input.text }),
       readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map((group): LightboxReadingGroup => ({
         group,
         status: 'not-run',
