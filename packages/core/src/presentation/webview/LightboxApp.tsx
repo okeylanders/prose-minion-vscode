@@ -184,7 +184,7 @@ export const LightboxApp: React.FC = () => {
             />
             <LightboxLensesPanel
               lensesOff={lightbox.lensesOff}
-              costNote={lightboxCallsNote(lightbox.estimate?.groups ?? [])}
+              costNote={lightbox.estimate === undefined ? 'Estimating…' : lightboxCallsNote(lightbox.estimate?.groups ?? [])}
               onToggle={lightbox.toggleLens}
             />
           </>

@@ -51,6 +51,12 @@ const running = {
 describe('LightboxApp readings', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
   const lastPosted = () => vscode.postMessage.mock.calls.at(-1)?.[0];
+  /** The host's answer to the latest estimate request, as the host echoes its id (PR #149 F-03). */
+  const estimateFromHost = (estimate: object | null, extra: object = {}) => {
+    const request = vscode.postMessage.mock.calls.map(([message]) => message)
+      .filter((message) => message.type === MessageType.LIGHTBOX_SET_LENSES).at(-1);
+    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { requestId: request?.payload.requestId, estimate, ...extra });
+  };
 
   beforeEach(() => {
     vscode = createMockVSCode();
@@ -62,9 +68,9 @@ describe('LightboxApp readings', () => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       type: MessageType.LIGHTBOX_SET_LENSES,
-      payload: { lensesOff: [] }
+      payload: { lensesOff: [], requestId: expect.any(String) }
     }));
-    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
+    estimateFromHost(makeEstimate());
 
     const lenses = screen.getByLabelText('Lenses');
     expect(within(lenses).getByText('3 calls · est. $0.04')).not.toBeNull();
@@ -96,7 +102,7 @@ describe('LightboxApp readings', () => {
   it('draws the readings, the tension lane and the tally, and pins a motif with its evidence', () => {
     render(<LightboxApp />);
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
-    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
+    estimateFromHost(makeEstimate());
     for (const group of ['A', 'B', 'C'] as const) {
       fromHost(MessageType.LIGHTBOX_GROUP_RESULT, { boardId: 'board-8', token: 'run-1', group: readGroup(group, { paraphraseOne: true }) });
     }
@@ -127,7 +133,7 @@ describe('LightboxApp readings', () => {
   it('asks for a fresh estimate when the host refuses a press priced on inputs that changed (PR #149 F-02)', () => {
     render(<LightboxApp />);
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
-    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
+    estimateFromHost(makeEstimate());
     fireEvent.click(screen.getByRole('button', { name: /Read the chapter/ }));
     const asked = vscode.postMessage.mock.calls.filter(([message]) => message.type === MessageType.LIGHTBOX_SET_LENSES).length;
     fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, {
@@ -143,7 +149,7 @@ describe('LightboxApp readings', () => {
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     const estimate = makeEstimate({ fit: 'too-large', reason: 'Group A would send about 90,000 tokens and reserve 8,000 for the reply.' });
     estimate.groups[0].fit = 'too-large';
-    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate });
+    estimateFromHost(estimate);
     const read = screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
     expect(read.disabled).toBe(true);
     expect(read.getAttribute('aria-describedby')).toBe('pm-lb-run-reason');

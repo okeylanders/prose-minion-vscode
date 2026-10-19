@@ -337,9 +337,18 @@ export interface LightboxRunProgress {
 // Messages
 // ---------------------------------------------------------------------------
 
-/** The webview's lens toggles. The host answers with a fresh estimate (also sent after a model change). */
+/**
+ * The webview's lens toggles, and a request for the estimate (also sent after
+ * a model, catalog or context change). The host answers with a fresh
+ * estimate that echoes `requestId`.
+ */
 export interface LightboxSetLensesPayload {
   lensesOff: LightboxLensId[];
+  /**
+   * Webview-minted, one per request (PR #149 F-03). Only the reply that
+   * echoes the latest one becomes the estimate a press may use.
+   */
+  requestId?: string;
 }
 
 export interface LightboxSetLensesMessage extends MessageEnvelope<LightboxSetLensesPayload> {
@@ -355,6 +364,8 @@ export interface LightboxActiveRun {
 }
 
 export interface LightboxRunEstimatePayload {
+  /** The request this answers (`LightboxSetLensesPayload.requestId`). */
+  requestId?: string;
   /** `null` when there is no board to read. */
   estimate: LightboxRunEstimate | null;
   /** The current board's run, while one is active. */

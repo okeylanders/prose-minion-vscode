@@ -3,7 +3,7 @@
  * first, warns when book-sized, refuses when too large, counts groups back
  * while reading, and afterwards counts the quotes checked and withheld.
  */
-import type { LightboxBoard, LightboxReadingGroup } from '@messages';
+import type { LightboxBoard, LightboxReadingGroup, LightboxReadingGroupId } from '@messages';
 import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 import {
   buildLightboxRunLine,
@@ -77,13 +77,43 @@ describe('the run line', () => {
       { ...emptyLightboxReadingGroup('B'), status: 'running', pending: ['characters', 'voice'] },
       { ...emptyLightboxReadingGroup('C'), status: 'running', pending: ['genre'] }
     ]);
-    const progress = { boardId: board.boardId, token: 'run-1', phase: 'streaming' as const, groups: ['A', 'B', 'C'] as const, groupsBack: 1, outputCharacters: 2_000 };
-    expect(line(board, { progress: { ...progress, groups: [...progress.groups] } })).toEqual({
+    const activeRun = { boardId: board.boardId, token: 'run-1', groups: ['A', 'B', 'C'] as LightboxReadingGroupId[] };
+    expect(line(board, { activeRun })).toEqual({
       status: 'running',
       note: 'Reading… 1 of 3 lens groups back',
       stopToken: 'run-1'
     });
+    // Before the host names the run there is nothing to stop, and only the groups visibly running are counted.
+    expect(line(board)).toEqual({ status: 'running', note: 'Reading… 0 of 2 lens groups back' });
     expect(line(makeBoard(8), { awaitingStart: true })).toEqual({ status: 'running', note: 'Starting…' });
+  });
+
+  describe('everything on the line is the board\'s own (PR #149 F-03)', () => {
+    const running = (board: LightboxBoard) => withGroups(board, [
+      readGroup('A'),
+      { ...emptyLightboxReadingGroup('B'), status: 'running', pending: ['characters', 'voice'] },
+      emptyLightboxReadingGroup('C')
+    ]);
+
+    it('treats another board\'s estimate as none: nothing priced, nothing to press', () => {
+      const view = line(makeBoard(8), { estimate: makeEstimate({ boardId: 'board-other' }) });
+      expect(view).toMatchObject({ status: 'estimating', action: { disabled: true, cost: '' } });
+    });
+
+    it('offers Stop only for the board\'s own run, never from another board\'s run or progress', () => {
+      const board = running(makeBoard(8));
+      const otherRun = { boardId: 'board-other', token: 'run-other', groups: ['B'] as LightboxReadingGroupId[] };
+      const otherProgress = {
+        boardId: 'board-other', token: 'run-other', phase: 'streaming' as const, groups: ['B'] as LightboxReadingGroupId[], groupsBack: 0, outputCharacters: 9
+      };
+      expect(line(board, { activeRun: otherRun, progress: otherProgress }).stopToken).toBeUndefined();
+      const ownRun = { boardId: board.boardId, token: 'run-own', groups: ['B'] as LightboxReadingGroupId[] };
+      expect(line(board, { activeRun: ownRun, progress: otherProgress })).toEqual({
+        status: 'running',
+        note: 'Reading… 0 of 1 lens group back',
+        stopToken: 'run-own'
+      });
+    });
   });
 
   it('counts quotes checked and withheld once everything landed, and offers a re-read', () => {

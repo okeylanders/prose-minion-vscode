@@ -13,7 +13,7 @@ import { Icon } from '@components/shared/Icon';
 
 export interface LightboxLensesPanelProps {
   lensesOff: readonly LightboxLensId[];
-  /** "3 calls · est. $0.04", or "measure only · free". */
+  /** "3 calls · est. $0.04", "measure only · free", or "Estimating…" while the host prices it. */
   costNote: string;
   onToggle: (lens: LightboxLensId) => void;
 }

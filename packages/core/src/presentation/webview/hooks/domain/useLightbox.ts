@@ -15,8 +15,19 @@
  *
  * The lens toggles reach the host on mount, on every toggle and whenever the
  * board changes; `requestEstimate` re-sends them when the assistant model or
- * its catalog changes. The host answers each with the context list and a
- * fresh estimate.
+ * its catalog changes, and so does a change to the context list or a press
+ * the host refused as priced on inputs that moved. The host answers each with
+ * the context list and a fresh estimate.
+ *
+ * **Correlation (PR #149 F-03).** Every estimate request carries a
+ * webview-minted `requestId`, and from the moment it is sent the press has
+ * no usable estimate ("Estimating the cost…"): only the reply echoing the
+ * latest id, for the board it was asked about, becomes the estimate, so a
+ * late reply for another board, other lenses or another model is never
+ * shown or pressed. Runs and progress are kept per board and token
+ * (`lightboxRuns`): one board finishing never clears another's Stop, a late
+ * message from a stopped or replaced run is ignored, and Stop is built from
+ * the board's own run.
  */
 
 import * as React from 'react';
@@ -42,6 +53,14 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { usePersistedState } from '@hooks/usePersistence';
 import { LightboxItemRef, parseLightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import { mergeLightboxGroupResult } from '@hooks/domain/lightbox/lightboxReadings';
+import {
+  NO_LIGHTBOX_RUNS,
+  applyLightboxRunProgress,
+  lightboxCancelOf,
+  pruneLightboxRuns,
+  withLightboxBoardRun,
+  type LightboxRunsByBoard
+} from '@hooks/domain/lightbox/lightboxRuns';
 
 /** Which tiles the board shows. */
 export type LightboxFilter = 'all' | 'measured' | 'read';
@@ -64,13 +83,16 @@ export interface LightboxState {
   filter: LightboxFilter;
   selected: LightboxItemRef | null;
   lensesOff: readonly LightboxLensId[];
-  /** `undefined` until the host estimates; `null` with no board. */
+  /**
+   * The current board's estimate: `undefined` while one is being asked for
+   * (nothing to press yet), `null` with no board.
+   */
   estimate: LightboxRunEstimate | null | undefined;
-  /** The board's run in flight, as the host last reported it with the estimate. */
+  /** The current board's run in flight, by its token. */
   activeRun: LightboxActiveRun | null;
-  /** The latest progress of a run (or a refusal). */
+  /** The latest progress of the current board's run (or a refusal of a press on it). */
   progress: LightboxRunProgress | null;
-  /** A press was sent and the host has not answered it yet. */
+  /** A press on the current board was sent and the host has not answered it yet. */
   awaitingStart: boolean;
   context: LightboxContextState;
 }
@@ -111,6 +133,12 @@ export type UseLightboxReturn = LightboxState & LightboxActions & {
 const SOURCE = 'webview.lightbox';
 const NO_CONTEXT: LightboxContextState = { files: [], totalWords: 0, ceilingWords: 0, notice: null };
 
+/** An estimate request in flight: its id, and the board on screen when it was asked. */
+interface LightboxEstimateRequest {
+  requestId: string;
+  boardId: string | undefined;
+}
+
 type LightboxRequestType =
   | MessageType.LIGHTBOX_REQUEST_BOARD
   | MessageType.LIGHTBOX_PICK_SOURCE_FILE
@@ -141,13 +169,18 @@ export function useLightbox(): UseLightboxReturn {
       : []
   );
   const [estimate, setEstimate] = React.useState<LightboxRunEstimate | null | undefined>(undefined);
-  const [activeRun, setActiveRun] = React.useState<LightboxActiveRun | null>(null);
-  const [progress, setProgress] = React.useState<LightboxRunProgress | null>(null);
-  const [awaitingStart, setAwaitingStart] = React.useState(false);
+  const [runs, setRuns] = React.useState<LightboxRunsByBoard>(NO_LIGHTBOX_RUNS);
+  const [awaitingStartFor, setAwaitingStartFor] = React.useState<string | null>(null);
   const [context, setContext] = React.useState<LightboxContextState>(NO_CONTEXT);
 
   // Refusals dismissed here; a host answer already on its way may still name one.
   const dismissed = React.useRef(new Set<string>());
+  // The latest estimate request: only its reply becomes the estimate.
+  const pendingEstimate = React.useRef<LightboxEstimateRequest | null>(null);
+  const requestIds = React.useRef({ prefix: Math.random().toString(36).slice(2, 10), count: 0 });
+  // The board on screen, for message handlers that run between renders.
+  const boardOnScreen = React.useRef<string | undefined>(undefined);
+  boardOnScreen.current = board?.boardId ?? undefined;
 
   const post = React.useCallback(
     (type: LightboxRequestType, payload: object = {}) => {
@@ -163,12 +196,14 @@ export function useLightbox(): UseLightboxReturn {
   );
 
   const handleBoard = React.useCallback((message: LightboxBoardMessage) => {
-    setBoard(message.payload?.board ?? null);
+    const next = message.payload?.board ?? null;
+    setBoard(next);
     setRefusal(unlessDismissed(message.payload?.refusal));
     setRereading(false);
-    // A board answers a press too: a run's board shows its running groups,
-    // and one that arrives after a missed refusal ends the wait.
-    setAwaitingStart(false);
+    // A board answers a press on it too: a run's board shows its running
+    // groups, and one that arrives after a missed refusal ends the wait.
+    setAwaitingStartFor((current) => (current !== null && current === next?.boardId ? null : current));
+    setRuns((current) => pruneLightboxRuns(current, next?.boardId));
   }, [unlessDismissed]);
 
   const handleSourceRefused = React.useCallback((message: LightboxSourceRefusedMessage) => {
@@ -177,8 +212,23 @@ export function useLightbox(): UseLightboxReturn {
   }, [unlessDismissed]);
 
   const handleRunEstimate = React.useCallback((message: LightboxRunEstimateMessage) => {
-    setEstimate(message.payload?.estimate ?? null);
-    setActiveRun(message.payload?.activeRun ?? null);
+    const payload = message.payload;
+    const pending = pendingEstimate.current;
+    // Only the reply to the latest request counts: a late one priced other inputs.
+    if (!payload || !pending || payload.requestId !== pending.requestId) {
+      return;
+    }
+    const next = payload.estimate ?? null;
+    if (next && next.boardId !== pending.boardId) {
+      // The host priced a board this webview has not shown yet; its board message brings a fresh request.
+      return;
+    }
+    pendingEstimate.current = null;
+    setEstimate(next);
+    if (next) {
+      const run = payload.activeRun?.boardId === next.boardId ? payload.activeRun : undefined;
+      setRuns((current) => withLightboxBoardRun(current, next.boardId, run));
+    }
   }, []);
 
   const handleGroupResult = React.useCallback((message: LightboxGroupResultMessage) => {
@@ -221,46 +271,54 @@ export function useLightbox(): UseLightboxReturn {
     );
   }, []);
 
+  const boardId = board?.boardId;
   const lensesKey = lensesOff.join(',');
+  /** Ask for a fresh estimate; until its own reply lands there is nothing to press. */
   const requestEstimate = React.useCallback(() => {
-    post(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: lensesKey ? (lensesKey.split(',') as LightboxLensId[]) : [] });
-  }, [lensesKey, post]);
+    const ids = requestIds.current;
+    ids.count += 1;
+    const requestId = `${ids.prefix}-${ids.count}`;
+    pendingEstimate.current = { requestId, boardId };
+    setEstimate(undefined);
+    post(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: lensesKey ? (lensesKey.split(',') as LightboxLensId[]) : [], requestId });
+  }, [boardId, lensesKey, post]);
+  const latestRequestEstimate = React.useRef(requestEstimate);
+  latestRequestEstimate.current = requestEstimate;
 
   const handleRunProgress = React.useCallback((message: LightboxRunProgressMessage) => {
     const next = message.payload;
     if (!next) {
       return;
     }
-    setProgress(next);
-    setAwaitingStart(false);
-    if (next.phase === 'refused' && next.reestimate) {
+    setRuns((current) => applyLightboxRunProgress(current, next));
+    if (next.phase === 'started' || next.phase === 'refused') {
+      setAwaitingStartFor((current) => (current === next.boardId ? null : current));
+    }
+    if (next.phase === 'refused' && next.reestimate && next.boardId === boardOnScreen.current) {
       // The press named an estimate the host no longer holds: ask for the current one.
-      requestEstimate();
+      latestRequestEstimate.current();
     }
-    if (next.phase === 'started' && next.token) {
-      setActiveRun({ boardId: next.boardId, token: next.token, groups: next.groups, ...(next.lens ? { lens: next.lens } : {}) });
-    } else if (next.phase === 'finished' || next.phase === 'cancelled') {
-      setActiveRun(null);
-    }
-  }, [requestEstimate]);
+  }, []);
 
-  const boardId = board?.boardId;
+  // Only the board on screen's own estimate is shown or pressed, even for the render before a new board's request.
+  const boardEstimate = estimate && estimate.boardId !== boardId ? undefined : estimate;
   // A press names the estimate it was shown, so the host runs only what was priced (PR #149 F-02).
-  const estimateKey = estimate?.key;
+  const estimateKey = boardEstimate?.key;
   const run = React.useCallback((scope: LightboxRunScope) => {
     if (!boardId || !estimateKey) {
       return;
     }
-    setAwaitingStart(true);
+    setAwaitingStartFor(boardId);
     post(MessageType.LIGHTBOX_RUN, { boardId, scope, estimateKey });
   }, [boardId, estimateKey, post]);
 
+  // Stop names the board's own run, never the board on screen paired with another run's token.
   const cancelRun = React.useCallback((token: string) => {
-    if (!boardId) {
-      return;
+    const cancel = lightboxCancelOf(runs, boardId, token);
+    if (cancel) {
+      post(MessageType.LIGHTBOX_CANCEL_RUN, cancel);
     }
-    post(MessageType.LIGHTBOX_CANCEL_RUN, { boardId, token });
-  }, [boardId, post]);
+  }, [boardId, post, runs]);
 
   const addContextFile = React.useCallback(() => post(MessageType.LIGHTBOX_ADD_CONTEXT_FILES), [post]);
   const removeContextFile = React.useCallback((id: string) => {
@@ -278,6 +336,19 @@ export function useLightbox(): UseLightboxReturn {
     syncLensesWithHost();
   }, [syncLensesWithHost, boardId]);
 
+  // A context file added or removed changes what a press sends, so the estimate follows it.
+  const contextKey = `${context.files.map((file) => file.id).join(',')}|${context.totalWords}`;
+  const lastContextKey = React.useRef(contextKey);
+  const syncEstimateWithContext = React.useCallback(() => {
+    if (lastContextKey.current !== contextKey) {
+      lastContextKey.current = contextKey;
+      latestRequestEstimate.current();
+    }
+  }, [contextKey]);
+  React.useEffect(() => {
+    syncEstimateWithContext();
+  }, [syncEstimateWithContext]);
+
   const persistedState = React.useMemo<LightboxPersistence>(
     () => ({
       lightboxFilter: filter,
@@ -294,10 +365,10 @@ export function useLightbox(): UseLightboxReturn {
     filter,
     selected,
     lensesOff,
-    estimate,
-    activeRun,
-    progress,
-    awaitingStart,
+    estimate: boardEstimate,
+    activeRun: (boardId ? runs[boardId]?.run : undefined) ?? null,
+    progress: (boardId ? runs[boardId]?.progress : undefined) ?? null,
+    awaitingStart: awaitingStartFor !== null && awaitingStartFor === boardId,
     context,
     handleBoard,
     handleSourceRefused,

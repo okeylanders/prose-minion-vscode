@@ -9,6 +9,11 @@
  * withheld, and offers the next press: "Read the rest" when a group stopped
  * or failed, "Re-read" when everything landed. Every figure comes from the
  * host's estimate and board.
+ *
+ * Everything is the board's own (PR #149 F-03): an estimate for another
+ * board is no estimate ("Estimating the cost…", nothing to press), and Stop
+ * and the groups being read come from the board's own run, never from a
+ * token another board's progress carried.
  */
 
 import type {
@@ -50,9 +55,9 @@ export interface LightboxRunLineInput {
   board: LightboxBoard;
   /** `undefined` until the host answers; `null` when there is nothing to estimate. */
   estimate: LightboxRunEstimate | null | undefined;
-  /** The latest progress for this board's run, if any. */
+  /** The latest progress for this board: its run's, or a refusal of a press on it. */
   progress?: LightboxRunProgress | null;
-  /** The board's run in flight, as the host reported it with the estimate. */
+  /** The board's run in flight, by its token. */
   activeRun?: LightboxActiveRun | null;
   /** The press was sent and the host has not answered yet. */
   awaitingStart: boolean;
@@ -85,19 +90,21 @@ export function lightboxRereadNote(estimate: LightboxRunEstimate | null | undefi
 }
 
 export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLineView {
-  const { board, estimate, providerPaused } = input;
+  const { board, providerPaused } = input;
+  const activeRun = input.activeRun?.boardId === board.boardId ? input.activeRun : null;
   const progress = input.progress?.boardId === board.boardId ? input.progress : null;
   const notice = progress?.phase === 'refused' ? progress.message : undefined;
+  // Another board's estimate prices nothing here.
+  const estimate = input.estimate && input.estimate.boardId !== board.boardId ? undefined : input.estimate;
   const running = board.readings.filter((group) => group.status === 'running');
 
   if (running.length > 0 || input.awaitingStart) {
-    const groups = progress?.groups.length ? progress.groups : running.map((group) => group.group);
+    const groups = activeRun?.groups.length ? activeRun.groups : running.map((group) => group.group);
     const back = groups.length - running.length;
-    const token = progress && progress.phase !== 'refused' ? progress.token : input.activeRun?.token;
     return {
       status: 'running',
       note: running.length === 0 ? 'Starting…' : `Reading… ${back} of ${pluralize(groups.length, 'lens group')} back`,
-      ...(token && running.length > 0 ? { stopToken: token } : {})
+      ...(activeRun && running.length > 0 ? { stopToken: activeRun.token } : {})
     };
   }
 

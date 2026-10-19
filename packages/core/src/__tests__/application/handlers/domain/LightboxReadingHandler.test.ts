@@ -228,11 +228,14 @@ describe('LightboxReadingHandler', () => {
   });
 
   it('adds and removes context files through the picker, bounded and never the board\'s own source', async () => {
-    const { route, ofType, shelf, pickFile } = await setup();
+    const { route, ofType, shelf, pickFile, setLenses } = await setup();
     await route(MessageType.LIGHTBOX_ADD_CONTEXT_FILES);
     expect(ofType(MessageType.LIGHTBOX_CONTEXT_FILES).pop()?.payload.files).toEqual([
       { id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15 }
     ]);
+    // The webview asks for the estimate when it sees the list change (PR #149 F-03).
+    expect(ofType(MessageType.LIGHTBOX_RUN_ESTIMATE)).toEqual([]);
+    await setLenses([]);
     expect(ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).pop()?.payload.estimate?.contextWords).toBe(15);
 
     pickFile.mockResolvedValueOnce({ fsPath: '/workspace/Drafts/alice-1.md', uri: 'file:///workspace/Drafts/alice-1.md' });

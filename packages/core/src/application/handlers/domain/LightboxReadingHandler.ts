@@ -6,9 +6,12 @@
  * reads and sends.
  *
  * - **Sync.** The webview sends its lens toggles on mount, on a toggle, when
- *   the board changes and when the assistant model or catalog changes. Each
- *   `LIGHTBOX_SET_LENSES` is answered with the context list and a fresh
- *   estimate (fit and cost), plus the board's run while one is active.
+ *   the board, the assistant model, its catalog or the context list changes.
+ *   Each `LIGHTBOX_SET_LENSES` is answered with the context list and a fresh
+ *   estimate (fit and cost) echoing its `requestId`, plus the board's run
+ *   while one is active. The estimate is only ever an answer (PR #149 F-03):
+ *   the host never posts one unasked, and an answer overtaken by a newer
+ *   request while its prompt files loaded is dropped, not posted late.
  * - **Validate before spend.** A press is refused, with nothing sent, when
  *   the board is not the one on screen, its estimate is no longer current,
  *   every lens is off, the board is already being read, a call is too large
@@ -88,6 +91,8 @@ export class LightboxReadingHandler {
   private readonly ownRuns = new Map<string, LightboxActiveRun>();
   private unsubscribe?: () => void;
   private disposed = false;
+  /** The latest estimate request; an older one finishing late is not posted. */
+  private estimateSequence = 0;
 
   constructor(
     private readonly lightboxService: LightboxService,
@@ -122,7 +127,8 @@ export class LightboxReadingHandler {
     const requested = Array.isArray(message.payload?.lensesOff) ? message.payload.lensesOff : [];
     this.lensesOff = [...new Set(requested.filter(isLightboxLensId))];
     this.postContextFiles();
-    await this.postEstimate();
+    const requestId = typeof message.payload?.requestId === 'string' ? message.payload.requestId : undefined;
+    await this.postEstimate(requestId);
   }
 
   async handleRun(message: LightboxRunMessage): Promise<void> {
@@ -241,7 +247,6 @@ export class LightboxReadingHandler {
             `${summary.usage?.totalTokens ?? 0} tokens${cost !== undefined ? `, $${cost.toFixed(4)}` : ''}`
         );
         this.postProgress({ boardId, token: started.token, phase: 'finished', groups, groupsBack, outputCharacters, ...lensField(lens) });
-        void this.postEstimate();
       }
     });
     if (!start.started) {
@@ -296,8 +301,8 @@ export class LightboxReadingHandler {
         ? `[LightboxReadingHandler] Context added: ${result.file.displayPath} (${result.file.wordCount} words)`
         : `[LightboxReadingHandler] Context refused for ${resolved.displayPath}`
     );
+    // The webview asks for a fresh estimate when it sees the list change.
     this.postContextFiles(result.added ? undefined : result.notice);
-    await this.postEstimate();
   }
 
   async handleRemoveContextFile(message: LightboxRemoveContextFileMessage): Promise<void> {
@@ -306,7 +311,6 @@ export class LightboxReadingHandler {
       this.outputChannel.appendLine('[LightboxReadingHandler] Context file removed');
     }
     this.postContextFiles();
-    await this.postEstimate();
   }
 
   /** What a press of the board named would own, read now (`LightboxPressSnapshot`). */
@@ -343,19 +347,21 @@ export class LightboxReadingHandler {
       message,
       ...lensField(run.lens)
     });
-    void this.postEstimate();
   }
 
-  private async postEstimate(): Promise<void> {
+  /** Answer an estimate request, unless a newer one arrives while this one is priced. */
+  private async postEstimate(requestId?: string): Promise<void> {
     if (this.disposed) {
       return;
     }
+    const sequence = ++this.estimateSequence;
+    const answered = requestId ? { requestId } : {};
     const press = this.pressSnapshot();
     if (!press) {
       void this.postMessage({
         type: MessageType.LIGHTBOX_RUN_ESTIMATE,
         source: SOURCE,
-        payload: { estimate: null },
+        payload: { ...answered, estimate: null },
         timestamp: Date.now()
       });
       return;
@@ -366,14 +372,14 @@ export class LightboxReadingHandler {
       .map((lens) => ({ group: lens.group, lenses: [lens.id] }));
     try {
       const estimate = await this.runner.estimate(press.source, groups, rereads, press);
-      if (this.disposed) {
+      if (this.disposed || sequence !== this.estimateSequence) {
         return;
       }
       const activeRun = this.runner.activeRun(press.board.boardId);
       void this.postMessage({
         type: MessageType.LIGHTBOX_RUN_ESTIMATE,
         source: SOURCE,
-        payload: { estimate, ...(activeRun ? { activeRun } : {}) },
+        payload: { ...answered, estimate, ...(activeRun ? { activeRun } : {}) },
         timestamp: Date.now()
       });
     } catch (error) {
