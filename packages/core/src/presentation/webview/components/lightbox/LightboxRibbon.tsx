@@ -73,7 +73,8 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           The text · {board.paragraphs.length.toLocaleString('en-US')} ¶
           {bucketed ? ` · ${ribbon.length} columns` : ''}
         </span>
-        <span className={`pm-lb-ribbon-focus${hasFocus ? ' is-measured' : ''}`} aria-live="polite">
+        {/* Not a live region: hover changes it constantly; the inspector announces pins. */}
+        <span className={`pm-lb-ribbon-focus${hasFocus ? ' is-measured' : ''}`}>
           {focusLine(focusedItem)}
         </span>
       </div>
