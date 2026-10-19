@@ -13,6 +13,8 @@ jest.mock('p-limit', () => ({
 
 import type { LightboxReadingGroupId, TokenUsage } from '@messages';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { OpenRouterApiError } from '@providers/OpenRouterClient';
 import type { ExecutionResult, InitialRunRequest } from '@orchestration/AgentRunContracts';
 import { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 import type {
@@ -23,7 +25,7 @@ import type {
 } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import { lightboxGroupLenses } from '@shared/constants/lightbox';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { readWorkedExample } from './lightboxReadingFixtures';
+import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
 
 const examples = Object.fromEntries(
   (['A', 'B', 'C'] as const).map((group) => [group, readWorkedExample(group)])
@@ -153,7 +155,7 @@ describe('LightboxReadingRunner', () => {
   it('lets one group fail while the others land', async () => {
     const { start, outcomes, logged } = setup((request) => {
       if (groupOf(request) === 'B') {
-        throw new Error('Rate limited by the provider. Try again in a minute.');
+        throw new AgentRunUnavailableError('rate-limited', 'provider detail', 30);
       }
       return ok(groupOf(request));
     });
@@ -164,8 +166,72 @@ describe('LightboxReadingRunner', () => {
     const byGroup = Object.fromEntries(outcomes.map((outcome) => [outcome.group, outcome]));
     expect(byGroup.A.status).toBe('ok');
     expect(byGroup.C.status).toBe('ok');
-    expect(byGroup.B).toMatchObject({ status: 'failed', error: 'Rate limited by the provider. Try again in a minute.', tiles: [] });
+    expect(byGroup.B).toMatchObject({
+      status: 'failed',
+      error: 'OpenRouter is rate limiting requests. Read the rest in about 30 seconds.',
+      tiles: []
+    });
+    expect(logged()).toContain('Group B call failed: rate-limited');
     expect(logged()).not.toContain(paragraphs[3].slice(0, 30));
+  });
+
+  describe('keeps arbitrary diagnostics out of Output and the board (PR #149 F-05)', () => {
+    const PRIVATE = 'Synthetic private note';
+    /** A provider error that echoes the request: multiline, and far longer than any reason. */
+    const echoed = `Provider rejected input: ${PRIVATE}\n${'chapter prose '.repeat(50)}`;
+
+    it.each([
+      ['an unclassified provider rejection', new OpenRouterApiError(echoed, 400, 'invalid_request'),
+        'The provider refused the call (HTTP 400). Read the rest to try again.', 'provider-rejected (HTTP 400)'],
+      ['an unavailable provider, with its details', new AgentRunUnavailableError('provider-unavailable', echoed),
+        'The model\'s provider is unavailable right now. Read the rest to try again.', 'provider-unavailable'],
+      ['a plain error', new Error(echoed),
+        'The call failed before a reading came back. Read the rest to try again.', 'unexpected (Error)'],
+      ['a thrown string', echoed,
+        'The call failed before a reading came back. Read the rest to try again.', 'unexpected']
+    ])('%s: a host category, never the provider text', async (_label, thrown, error, category) => {
+      const { start, outcomes, logged } = setup((request) => {
+        if (groupOf(request) === 'A') {
+          throw thrown;
+        }
+        return ok(groupOf(request));
+      });
+      const started = await start();
+      if (started.started) {
+        await started.done;
+      }
+      expect(outcomes.find((outcome) => outcome.group === 'A')).toMatchObject({ status: 'failed', error });
+      expect(logged()).toContain(`Group A call failed: ${category}`);
+      for (const surface of [logged(), JSON.stringify(outcomes)]) {
+        expect(surface).not.toContain(PRIVATE);
+        expect(surface).not.toContain('chapter prose');
+      }
+    });
+
+    it('quarantines a reply with prose in its root keys, naming the keys only in the recovery store', async () => {
+      const body = framedJson(examples.A.response);
+      const raw = frame('A', { ...body, [`${PRIVATE}: she never told the Queen`]: 1 });
+      const { start, outcomes, logged, capture } = setup((request) => ok(groupOf(request), groupOf(request) === 'A' ? { rawContent: raw } : {}));
+      const started = await start();
+      if (started.started) {
+        await started.done;
+      }
+      const a = outcomes.find((outcome) => outcome.group === 'A');
+      expect(a?.error).toBe(
+        'The reading came back unusable (The group A response has 1 field the format does not define). ' +
+          'Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox.response.txt. ' +
+          'Read the rest to try again.'
+      );
+      expect(logged()).toContain('Group A rejected: The group A response has 1 field the format does not define');
+      for (const surface of [logged(), JSON.stringify(outcomes)]) {
+        expect(surface).not.toContain(PRIVATE);
+      }
+      // The recovery store keeps the body and the names, behind its own boundary.
+      expect(capture).toHaveBeenCalledWith(expect.objectContaining({
+        rawResponse: raw,
+        rejection: `The group A response has 1 field the format does not define. Undefined root fields: "${PRIVATE}: she never told the Queen"`
+      }));
+    });
   });
 
   it('fails a group cut off at the output ceiling, and quarantines the paid body', async () => {

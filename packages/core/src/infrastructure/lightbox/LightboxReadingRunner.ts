@@ -22,7 +22,11 @@
  *   Blocks and items that break their own rules are withheld, not failed.
  *
  * Logs carry groups, lenses, counts and reasons, never the chapter, the
- * context, or the model's prose.
+ * context, or the model's prose. Every reason is host-owned (PR #149 F-05): a
+ * failed call is described by its category (`LightboxCallFailure`), never by
+ * the provider's text, and a rejected reply by the codec's own words. What a
+ * rejection knows beyond that (an undefined field's name) is its
+ * `diagnostic`, which goes only to the recovery store, beside the body.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -45,6 +49,7 @@ import {
 import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
 import { LightboxGroupFrameError } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { describeLightboxCallFailure } from '@/infrastructure/lightbox/LightboxCallFailure';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import {
@@ -81,6 +86,14 @@ const DEFAULT_GROUP_TIMEOUT_MILLISECONDS = 300_000;
 const DEFAULT_GROUP_CONCURRENCY = 3;
 const PROGRESS_REPORT_INTERVAL_CHARACTERS = 1_000;
 const READING_TEMPERATURE = 0.4;
+/** Bounds the recovery sidecar's note about an unexpected decode failure. */
+const DIAGNOSTIC_CHARACTERS = 2_000;
+
+/** Why a reply was rejected: words the host may log and show, and detail only the recovery store keeps. */
+interface LightboxRejection {
+  message: string;
+  diagnostic?: string;
+}
 
 interface ActiveRunState {
   run: LightboxActiveRun;
@@ -305,9 +318,10 @@ export class LightboxReadingRunner {
       if (!this.isCurrent(state)) {
         return undefined;
       }
-      const detail = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} call failed: ${detail}`);
-      return failed(detail);
+      // The provider's text is never repeated: only the host's category is logged and shown.
+      const failure = describeLightboxCallFailure(error);
+      this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} call failed: ${failure.log}`);
+      return failed(failure.message);
     }
     if (!this.isCurrent(state)) {
       return undefined;
@@ -321,12 +335,9 @@ export class LightboxReadingRunner {
 
     const content = result.rawContent ?? result.content;
     if (result.finishReason === 'length') {
-      return failed(await this.quarantine(
-        call,
-        content,
-        result,
-        `the reply reached the ${PROMPT_BUDGETS.lightbox.groupOutputTokens.toLocaleString('en-US')}-token output ceiling`
-      ), result);
+      return failed(await this.quarantine(call, content, result, {
+        message: `the reply reached the ${PROMPT_BUDGETS.lightbox.groupOutputTokens.toLocaleString('en-US')}-token output ceiling`
+      }), result);
     }
 
     let decoded: ReturnType<typeof decodeLightboxGroup>;
@@ -337,7 +348,12 @@ export class LightboxReadingRunner {
         columnCount: source.material.columns.length
       });
     } catch (error) {
-      const rejection = error instanceof LightboxGroupFrameError ? error.message : String(error);
+      const rejection: LightboxRejection = error instanceof LightboxGroupFrameError
+        ? { message: error.message, ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}) }
+        : {
+            message: 'the reply could not be decoded',
+            diagnostic: (error instanceof Error ? `${error.name}: ${error.message}` : String(error)).slice(0, DIAGNOSTIC_CHARACTERS)
+          };
       return failed(await this.quarantine(call, content, result, rejection), result);
     }
 
@@ -382,21 +398,26 @@ export class LightboxReadingRunner {
     listener.onProgress(state.outputCharacters);
   }
 
-  /** Save the paid body for recovery; the returned sentence tells the writer where it went. */
+  /**
+   * Save the paid body for recovery; the returned sentence tells the writer
+   * where it went. The rejection's message is logged and shown; its
+   * diagnostic is written only beside the body, in the recovery store's
+   * gitignored folder.
+   */
   private async quarantine(
     call: LightboxPreparedCall,
     content: string,
     result: ExecutionResult,
-    rejection: string
+    rejection: LightboxRejection
   ): Promise<string> {
-    this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} rejected: ${rejection}`);
+    this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} rejected: ${rejection.message}`);
     const receipt = await persistRejectedWidgetResponse(this.recovery, this.recoveryPresenter, {
       toolName: 'lightbox-readings',
       requestSummary: `Lightbox group ${call.group}: ${call.lenses.map(lightboxLensLabel).join(', ')}`,
       rawResponse: content,
-      rejection,
+      rejection: rejection.diagnostic ? `${rejection.message}. ${rejection.diagnostic}` : rejection.message,
       result
     });
-    return `The reading came back unusable (${rejection}). ${recoveryLocationNotice(receipt)} Read the rest to try again.`;
+    return `The reading came back unusable (${rejection.message}). ${recoveryLocationNotice(receipt)} Read the rest to try again.`;
   }
 }

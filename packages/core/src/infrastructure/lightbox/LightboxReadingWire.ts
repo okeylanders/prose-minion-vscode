@@ -141,9 +141,15 @@ export interface LightboxDecodedGroup {
   ignored: LightboxLensId[];
 }
 
-/** The frame or root failed: the whole group's response is unusable. */
+/**
+ * The frame or root failed: the whole group's response is unusable. The
+ * message is host-owned (positions, counts, the protocol's own names) and is
+ * logged and shown. `diagnostic` may quote the model (an unknown field's
+ * name), so it goes only to the rejected-response recovery store, beside the
+ * body it describes (PR #149 F-05).
+ */
 export class LightboxGroupFrameError extends Error {
-  constructor(message: string) {
+  constructor(message: string, readonly diagnostic?: string) {
     super(message);
     this.name = 'LightboxGroupFrameError';
   }

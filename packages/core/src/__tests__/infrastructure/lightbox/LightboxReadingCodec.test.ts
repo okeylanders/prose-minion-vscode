@@ -47,11 +47,35 @@ describe('LightboxReadingCodec', () => {
       expect(() => decodeLightboxGroup(breakIt(exampleA.response), contextA)).toThrow(LightboxGroupFrameError);
     });
 
-    it('names unknown fields briefly, since the reason is logged', () => {
+    it('counts fields the format does not define, and names them only in the recovery diagnostic (PR #149 F-05)', () => {
+      // A model can copy chapter or context prose into a field name.
+      const prose = 'Synthetic private note: she never told the Queen';
       const long = 'x'.repeat(200);
-      const text = exampleA.response.replace('{"version":1', `{"version":1,"${long}":1,"b":1,"c":1,"d":1`);
-      expect(() => decodeLightboxGroup(text, contextA))
-        .toThrow(`The group A response has 4 unknown fields: "${'x'.repeat(24)}", "b", "c", …`);
+      const text = exampleA.response.replace('{"version":1', `{"version":1,"${prose}":1,"${long}":1,"b":1`);
+      let caught: unknown;
+      try {
+        decodeLightboxGroup(text, contextA);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(LightboxGroupFrameError);
+      const frameError = caught as LightboxGroupFrameError;
+      expect(frameError.message).toBe('The group A response has 3 fields the format does not define');
+      expect(frameError.message).not.toContain('Synthetic');
+      expect(frameError.diagnostic).toBe(`Undefined root fields: ${JSON.stringify(prose)}, "${'x'.repeat(120)}", "b"`);
+    });
+
+    it('counts, never names, an undefined field inside a block or an item', () => {
+      const block = body(exampleA);
+      block.tension['Synthetic private note'] = 'copied prose';
+      const item = body(exampleA);
+      item.motifs.items[0]['Synthetic private note'] = 'copied prose';
+      const blockReason = decodeLightboxGroup(frame('A', block), contextA).withheld[0].reason;
+      const motifs = decodeLightboxGroup(frame('A', item), contextA).blocks.find((entry) => entry.lens === 'motif');
+      const itemReason = motifs && motifs.lens === 'motif' ? motifs.malformed[0].reason : '';
+      expect(blockReason).toBe('The tension block broke the format: tension has 1 field the format does not define.');
+      expect(itemReason).toBe('It broke the format: motifs.items[0] has 1 field the format does not define.');
+      expect(`${blockReason} ${itemReason}`).not.toContain('Synthetic');
     });
 
     it('refuses a response over the character ceiling', () => {

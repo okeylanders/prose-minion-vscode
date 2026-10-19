@@ -1,0 +1,92 @@
+/**
+ * What a failed reading call may say, and to whom (PR #149 F-05). Pure.
+ *
+ * A provider's error text is not the host's to repeat: it can echo the
+ * request (the chapter, the context) or carry arbitrary detail of any length.
+ * Truncating it is not redacting it. So a failure is reduced to a closed,
+ * host-owned category, and only the category's own words reach the Output
+ * channel and the board: a fixed sentence for the writer, and a log line
+ * made of the category plus, at most, a numeric HTTP status or a built-in
+ * error class name. The provider's message, its details and the error's own
+ * text are never read here.
+ *
+ * Where raw detail is worth keeping, it has its own boundary: a reply that
+ * came back but could not be used is quarantined, with its rejection's
+ * diagnostic, in the rejected-response recovery store (a gitignored project
+ * folder, opened only when the writer asks). A call that failed has no reply
+ * to keep, so nothing of it is kept.
+ */
+
+import { AgentRunUnavailableError, type AgentRunUnavailableReason } from '@orchestration/AgentRunEngine';
+import { AgentContextWindowExceededError } from '@orchestration/RequestContextPreflight';
+import { OpenRouterApiError } from '@providers/OpenRouterClient';
+
+export type LightboxCallFailureCategory = AgentRunUnavailableReason | 'provider-rejected' | 'unexpected';
+
+export interface LightboxCallFailure {
+  category: LightboxCallFailureCategory;
+  /** Writer-facing, for the failed group. */
+  message: string;
+  /** For the Output channel: the category, and at most a status code or an error class. */
+  log: string;
+}
+
+const TRY_AGAIN = 'Read the rest to try again.';
+
+/** Error classes whose name is the runtime's, not a message's. */
+const BUILT_IN_ERRORS = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'AbortError', 'TimeoutError']);
+
+export function describeLightboxCallFailure(error: unknown): LightboxCallFailure {
+  if (error instanceof AgentRunUnavailableError) {
+    return {
+      category: error.reason,
+      message: unavailableMessage(error.reason, error.retryAfterSeconds),
+      log: error.reason
+    };
+  }
+  if (error instanceof AgentContextWindowExceededError) {
+    return { category: 'context-window-exceeded', message: unavailableMessage('context-window-exceeded'), log: 'context-window-exceeded' };
+  }
+  if (error instanceof OpenRouterApiError) {
+    const status = typeof error.status === 'number' && Number.isInteger(error.status) && error.status >= 100 && error.status <= 599
+      ? error.status
+      : undefined;
+    return {
+      category: 'provider-rejected',
+      message: `The provider refused the call${status ? ` (HTTP ${status})` : ''}. ${TRY_AGAIN}`,
+      log: `provider-rejected${status ? ` (HTTP ${status})` : ''}`
+    };
+  }
+  const name = error instanceof Error && BUILT_IN_ERRORS.has(error.name) ? error.name : undefined;
+  return {
+    category: 'unexpected',
+    message: `The call failed before a reading came back. ${TRY_AGAIN}`,
+    log: `unexpected${name ? ` (${name})` : ''}`
+  };
+}
+
+function unavailableMessage(reason: AgentRunUnavailableReason, retryAfterSeconds?: number): string {
+  switch (reason) {
+    case 'missing-credentials':
+      return 'Add an OpenRouter API key in Settings to read the chapter.';
+    case 'authentication':
+      return 'OpenRouter rejected the saved API key. Update it in Settings, then read the rest.';
+    case 'insufficient-credits':
+      return 'The OpenRouter account has too few credits for this call. Add credits, then read the rest.';
+    case 'token-budget-exceeded':
+      return 'OpenRouter stopped the call at the API key\'s token limit. Adjust the limit, then read the rest.';
+    case 'context-window-exceeded':
+      return 'The call was too large for the model\'s window, so it was not sent. Choose a shorter passage, ' +
+        'turn off lenses, or choose a model with a larger window.';
+    case 'rate-limited':
+      return Number.isSafeInteger(retryAfterSeconds) && (retryAfterSeconds as number) > 0
+        ? `OpenRouter is rate limiting requests. Read the rest in about ${retryAfterSeconds} seconds.`
+        : 'OpenRouter is rate limiting requests. Read the rest in a moment.';
+    case 'provider-unavailable':
+      return `The model's provider is unavailable right now. ${TRY_AGAIN}`;
+    default: {
+      const unhandled: never = reason;
+      return unhandled;
+    }
+  }
+}
