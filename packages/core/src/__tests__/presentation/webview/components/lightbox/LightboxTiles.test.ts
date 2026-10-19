@@ -1,7 +1,7 @@
 /**
  * The Lightbox tile map is exhaustive (ADR 2026-10-19 D3): every tile kind has
  * exactly one renderer and one register, and the board places every counted
- * kind. The type-level checks fail to compile if a kind is added without a
+ * and reading kind. The type-level checks fail to compile if a kind is added without a
  * renderer, or a renderer for a kind that does not exist.
  */
 
@@ -9,6 +9,7 @@ import type { LightboxMeasuredTileKind, LightboxTileKind } from '@messages';
 import { LIGHTBOX_TILE_REGISTER } from '@shared/constants/lightbox';
 import {
   LIGHTBOX_MEASURED_LAYOUT,
+  LIGHTBOX_READING_LAYOUT,
   LIGHTBOX_TILE_RENDERERS,
   LightboxTileRenderer
 } from '@components/lightbox/LightboxTiles';
@@ -42,5 +43,19 @@ describe('the Lightbox tile map', () => {
       .filter((kind) => LIGHTBOX_TILE_REGISTER[kind] === 'measured');
     expect([...placed].sort()).toEqual(measuredKinds.sort());
     expect(placed.map((kind) => LIGHTBOX_TILE_REGISTER[kind])).toEqual(placed.map(() => 'measured'));
+  });
+
+  it('places every reading kind once, and never in the measured register', () => {
+    const placed = [
+      LIGHTBOX_READING_LAYOUT.heading,
+      LIGHTBOX_READING_LAYOUT.underRibbon,
+      ...LIGHTBOX_READING_LAYOUT.grid,
+      ...Object.keys(LIGHTBOX_READING_LAYOUT.within)
+    ];
+    const readingKinds = (Object.keys(LIGHTBOX_TILE_RENDERERS) as LightboxTileKind[])
+      .filter((kind) => LIGHTBOX_TILE_REGISTER[kind] !== 'measured');
+    expect([...placed].sort()).toEqual(readingKinds.sort());
+    // A nested kind sits inside a kind the grid draws.
+    expect(Object.values(LIGHTBOX_READING_LAYOUT.within).every((host) => host !== undefined && LIGHTBOX_READING_LAYOUT.grid.includes(host))).toBe(true);
   });
 });

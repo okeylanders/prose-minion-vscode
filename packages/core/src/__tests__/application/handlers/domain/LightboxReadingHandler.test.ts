@@ -274,6 +274,39 @@ describe('LightboxReadingHandler', () => {
     expect(ofType(MessageType.LIGHTBOX_GROUP_RESULT)).toEqual([]);
   });
 
+  it('lets a run on a board that is no longer current land silently on that board, never over the newer one', async () => {
+    const calls: Array<(result: ExecutionResult) => void> = [];
+    const { run, settle, service, ofType, board } = await setup({
+      respond: () => new Promise<ExecutionResult>((resolve) => calls.push(resolve))
+    });
+    await run({ mode: 'lens', lens: 'genre' });
+    await settle();
+    await service.buildBoard({ kind: 'file', text: 'Another chapter.\n\nWith two paragraphs.', displayPath: 'Drafts/two.md' });
+    calls[0](ok('C'));
+    await settle();
+    expect(ofType(MessageType.LIGHTBOX_GROUP_RESULT)).toEqual([]);
+    expect(service.currentBoard()?.source.displayPath).toBe('Drafts/two.md');
+    // The reading is kept with its own board, for when the writer returns to it.
+    expect(service.readingSource(board.boardId)?.board.readings[2].status).toBe('ok');
+  });
+
+  it('posts readings only to a webview that has spoken to it', async () => {
+    const quiet = await setup();
+    const { route, run, settle, ofType } = quiet;
+    // A second handler over the same service, whose webview never sends a reading message.
+    const posted: unknown[] = [];
+    const bystander = new LightboxReadingHandler(
+      quiet.service, quiet.runner, quiet.shelf, {} as TextSourceResolver, { pickFile: jest.fn() },
+      async (message) => { posted.push(message); }, { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() }
+    );
+    await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [] });
+    await run({ mode: 'lens', lens: 'voice' });
+    await settle();
+    expect(ofType(MessageType.LIGHTBOX_GROUP_RESULT)).toHaveLength(1);
+    expect(posted).toEqual([]);
+    bystander.dispose();
+  });
+
   it('adds and removes context files through the picker, bounded and never the board\'s own source', async () => {
     const { route, ofType, shelf, pickFile } = await setup();
     await route(MessageType.LIGHTBOX_ADD_CONTEXT_FILES);
