@@ -229,7 +229,7 @@ the build differs from the plan above, or the plan left a choice open:
 
 | Check | Before | After |
 |---|---|---|
-| Jest | 321 suites, 4,776 tests, 2 snapshots | 329 suites, 4,880 tests, 2 snapshots |
+| Jest | 321 suites, 4,776 tests, 2 snapshots | 329 suites, 4,881 tests, 2 snapshots |
 | Lint | 0 errors, 1,140 warnings | 0 errors, 1,140 warnings (same per rule and per file) |
 | `npm run typecheck` | Passes | Passes |
 | `npm run build` | Passes | Passes |
