@@ -207,6 +207,7 @@ export enum MessageType {
   LIGHTBOX_SET_SOURCE = 'lightbox_set_source',
   LIGHTBOX_PICK_SOURCE_FILE = 'lightbox_pick_source_file',
   LIGHTBOX_REFRESH_SOURCE = 'lightbox_refresh_source',
+  LIGHTBOX_DISMISS_REFUSAL = 'lightbox_dismiss_refusal',
   LIGHTBOX_BOARD = 'lightbox_board',
   LIGHTBOX_SOURCE_REFUSED = 'lightbox_source_refused'
   /* eslint-enable @typescript-eslint/naming-convention */

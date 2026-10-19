@@ -224,6 +224,7 @@ import {
   LightboxSetSourceMessage,
   LightboxPickSourceFileMessage,
   LightboxRefreshSourceMessage,
+  LightboxDismissRefusalMessage,
   LightboxBoardMessage,
   LightboxSourceRefusedMessage
 } from './lightbox';
@@ -336,6 +337,7 @@ export type WebviewToExtensionMessage =
   | WorkshopRemoveStandingWidgetMessage
   | LightboxRequestBoardMessage
   | LightboxSetSourceMessage
+  | LightboxDismissRefusalMessage
   | LightboxPickSourceFileMessage
   | LightboxRefreshSourceMessage;
 

@@ -14,8 +14,12 @@
  *   back. Re-reading unchanged text keeps the board's identity (its id, and
  *   from Slice 2B its readings) but measures again, so a changed setting such
  *   as the publishing-standards preset still shows.
- * - **Current board.** The last board adopted is current; a reopened or
- *   reloaded tab is served it.
+ * - **Current outcome (PR #148 F-02).** The last board adopted is current,
+ *   and a refusal of a newer source is kept beside it until the writer
+ *   dismisses it or a later board replaces it. A mount or reveal is served
+ *   both, so a refusal produced before the webview was listening (an editor
+ *   command opens the tab and refuses at once) is not lost, and a refusal
+ *   never discards the board behind it.
  * - **Source requests (PR #148 F-01).** The service owns the writer's source
  *   intent, not the handler that happens to carry it. Each request (a
  *   selection, a seeded file, a re-read, or a file the picker returned) gets
@@ -90,9 +94,20 @@ export interface LightboxSourceTicket {
   readonly sequence: number;
 }
 
+/** A refusal before the service names it (`LightboxSourceRefusal.id` is host-minted). */
+export type LightboxSourceRefusalDraft = Omit<LightboxSourceRefusal, 'id'>;
+
+/** What the Lightbox shows: the latest board and any refusal not yet dismissed. */
+export interface LightboxOutcome {
+  board: LightboxBoard | null;
+  refusal: LightboxSourceRefusal | null;
+}
+
 /** A change to what the Lightbox shows, published to every subscribed webview. */
 export type LightboxOutcomeChange =
-  | { kind: 'board'; board: LightboxBoard }
+  /** A board was adopted; `refusal` is the one still standing beside it (none after a new source). */
+  | { kind: 'board'; board: LightboxBoard; refusal: LightboxSourceRefusal | null }
+  /** A source was refused; the board behind it is unchanged. */
   | { kind: 'refusal'; refusal: LightboxSourceRefusal };
 
 /** What "Re-read file" needs to board the current source again. */
@@ -105,6 +120,7 @@ export interface LightboxRereadTarget {
 export interface LightboxServiceOptions {
   now?: () => number;
   mintBoardId?: () => string;
+  mintRefusalId?: () => string;
   /** Boards kept in memory (one per source, by `lightboxSourceKey`), least recently built first out. */
   retainedBoards?: number;
 }
@@ -143,10 +159,13 @@ export class LightboxService {
   /** The writer's latest source request; only it may adopt or refuse. */
   private currentTicket?: LightboxSourceTicket;
   private ticketCount = 0;
+  /** The refusal of the latest request, until dismissed or replaced by a board. */
+  private standingRefusal: LightboxSourceRefusal | null = null;
   private readonly outcomeListeners =
     new ListenerSet<[LightboxOutcomeChange]>('[LightboxService] Outcome listener');
   private readonly now: () => number;
   private readonly mintBoardId: () => string;
+  private readonly mintRefusalId: () => string;
   private readonly retainedBoards: number;
 
   constructor(
@@ -158,6 +177,7 @@ export class LightboxService {
   ) {
     this.now = options.now ?? Date.now;
     this.mintBoardId = options.mintBoardId ?? randomUUID;
+    this.mintRefusalId = options.mintRefusalId ?? randomUUID;
     this.retainedBoards = Math.max(1, options.retainedBoards ?? DEFAULT_RETAINED_BOARDS);
   }
 
@@ -205,23 +225,45 @@ export class LightboxService {
       return { kind: 'superseded' };
     }
     this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath });
-    this.outcomeListeners.emit({ kind: 'board', board });
+    // The newest request produced a board, so no refusal stands beside it.
+    this.standingRefusal = null;
+    this.outcomeListeners.emit({ kind: 'board', board, refusal: this.standingRefusal });
     return { kind: 'board', board, reused: unchanged !== undefined };
   }
 
   /**
-   * Publish a refusal for `ticket`'s source, unless a newer request has
-   * superseded it. The current board stays as it was.
+   * Refuse `ticket`'s source, unless a newer request has superseded it: name
+   * the refusal, keep it as the standing one, and publish it. The current
+   * board stays as it was.
    */
   refuseSource(
     ticket: LightboxSourceTicket,
-    refusal: LightboxSourceRefusal
+    draft: LightboxSourceRefusalDraft
   ): Extract<LightboxBoardResult, { kind: 'refused' | 'superseded' }> {
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
     }
+    const refusal: LightboxSourceRefusal = { ...draft, id: this.mintRefusalId() };
+    this.standingRefusal = refusal;
     this.outcomeListeners.emit({ kind: 'refusal', refusal });
     return { kind: 'refused', refusal };
+  }
+
+  /** The latest board and any refusal the writer has not dismissed: what a mount or reveal shows. */
+  currentOutcome(): LightboxOutcome {
+    return { board: this.currentBoard() ?? null, refusal: this.standingRefusal };
+  }
+
+  /**
+   * Forget the standing refusal if it is the one named. A dismissal that
+   * arrives after a newer refusal names an older one and changes nothing.
+   */
+  dismissRefusal(refusalId: string): boolean {
+    if (this.standingRefusal?.id !== refusalId) {
+      return false;
+    }
+    this.standingRefusal = null;
+    return true;
   }
 
   /**
@@ -304,7 +346,7 @@ export class LightboxService {
 }
 
 /** Why a resolved source cannot be boarded (D8), or undefined when it can. */
-function checkSource(input: LightboxSourceInput): LightboxSourceRefusal | undefined {
+function checkSource(input: LightboxSourceInput): LightboxSourceRefusalDraft | undefined {
   if (input.text.trim().length === 0) {
     return {
       reason: 'empty',

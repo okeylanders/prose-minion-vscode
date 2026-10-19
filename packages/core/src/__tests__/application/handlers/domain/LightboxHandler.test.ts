@@ -4,7 +4,8 @@
  * picker, refusals, and logs that never carry the writer's text. Runs the
  * real handler and service; only file I/O and the picker are stand-ins.
  * Source ownership across requests and panels is in
- * LightboxSourceOwnership.test.ts.
+ * LightboxSourceOwnership.test.ts; refusal replay and dismissal in
+ * LightboxRefusalReplay.test.ts.
  */
 
 import { MessageRouter } from '@/application/handlers/MessageRouter';
@@ -23,18 +24,21 @@ describe('LightboxHandler', () => {
       MessageType.LIGHTBOX_REQUEST_BOARD,
       MessageType.LIGHTBOX_SET_SOURCE,
       MessageType.LIGHTBOX_PICK_SOURCE_FILE,
-      MessageType.LIGHTBOX_REFRESH_SOURCE
+      MessageType.LIGHTBOX_REFRESH_SOURCE,
+      MessageType.LIGHTBOX_DISMISS_REFUSAL
     ].every((type) => router.hasHandler(type))).toBe(true);
-    expect(router.handlerCount).toBe(4);
+    expect(router.handlerCount).toBe(5);
   });
 
   it('answers a board request with the current board, or null before the first', async () => {
     const host = createLightboxHost();
     const panel = host.openPanel();
     await panel.route(MessageType.LIGHTBOX_REQUEST_BOARD);
-    expect(panel.posted).toEqual([
-      expect.objectContaining({ type: MessageType.LIGHTBOX_BOARD, source: 'extension.lightbox', payload: { board: null } })
-    ]);
+    expect(panel.posted).toEqual([expect.objectContaining({
+      type: MessageType.LIGHTBOX_BOARD,
+      source: 'extension.lightbox',
+      payload: { board: null, refusal: null }
+    })]);
 
     await panel.route(MessageType.LIGHTBOX_SET_SOURCE, { text: ALICE_OPENING_CURLY, relativePath: 'Drafts/alice-1.md' });
     const reopened = host.openPanel();

@@ -1,11 +1,12 @@
 /**
  * LightboxBoardMain — the board's main column (ADR 2026-10-19 D3–D6).
  *
- * Props-only. Lays out, in order: the board header, any refusal, the toolbar
- * (tile filter, register legend, and the Read button, disabled until the
- * readings land in Slice 2B), the sticky paragraph ribbon, the counted tiles
- * through the exhaustive renderer map, and a "not read yet" placeholder for
- * each reading lens that is on.
+ * Props-only. Lays out, in order: the board header, any refusal (naming the
+ * refused source and, over a retained board, the source still shown), the
+ * toolbar (tile filter, register legend, and the Read button, disabled until
+ * the readings land in Slice 2B), the sticky paragraph ribbon, the counted
+ * tiles through the exhaustive renderer map, and a "not read yet" placeholder
+ * for each reading lens that is on.
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxLensId, LightboxSourceRefusal } from '@messages';
@@ -72,6 +73,7 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         <p>{refusal.message}</p>
         {refusal.displayPath && <p className="pm-lb-refusal-path">{refusal.displayPath}</p>}
         {refusal.suggestion && <p className="pm-lb-refusal-suggestion">{refusal.suggestion}</p>}
+        {board && <p className="pm-lb-refusal-kept">The board below still shows {board.source.displayPath}.</p>}
       </div>
       <button type="button" className="pm-lb-button" onClick={onDismissRefusal}>Dismiss</button>
     </div>

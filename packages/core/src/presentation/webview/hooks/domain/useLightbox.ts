@@ -2,10 +2,13 @@
  * useLightbox — the Lightbox domain hook (ADR 2026-10-19 D10, D12), mirroring
  * the host's LightboxHandler.
  *
- * It owns the `LIGHTBOX_*` transport: asks for the latest board on mount,
- * receives boards and refusals, and posts the source actions (choose a file,
- * re-read it). The board is host truth and is never persisted here (D12);
- * webview state holds only UI preferences: the tile filter, the pinned item,
+ * It owns the `LIGHTBOX_*` transport: asks for the host's current outcome on
+ * mount, receives boards and refusals, and posts the source actions (choose
+ * a file, re-read it, dismiss a refusal). The board and the standing refusal
+ * are host truth and are never persisted here (D12): every `LIGHTBOX_BOARD`
+ * carries both, so a refusal made before this webview listened still shows
+ * (PR #148 F-02). Dismissing tells the host, which then stops serving it.
+ * Webview state holds only UI preferences: the tile filter, the pinned item,
  * and which lenses are off.
  */
 
@@ -64,6 +67,12 @@ export type UseLightboxReturn = LightboxState & LightboxActions & {
 
 const SOURCE = 'webview.lightbox';
 
+type LightboxRequestType =
+  | MessageType.LIGHTBOX_REQUEST_BOARD
+  | MessageType.LIGHTBOX_PICK_SOURCE_FILE
+  | MessageType.LIGHTBOX_REFRESH_SOURCE
+  | MessageType.LIGHTBOX_DISMISS_REFUSAL;
+
 export function useLightbox(): UseLightboxReturn {
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<Partial<Record<keyof LightboxPersistence, unknown>>>();
@@ -83,26 +92,32 @@ export function useLightbox(): UseLightboxReturn {
       : []
   );
 
+  // Refusals dismissed here; a host answer already on its way may still name one.
+  const dismissed = React.useRef(new Set<string>());
+
   const post = React.useCallback(
-    (type: MessageType.LIGHTBOX_REQUEST_BOARD | MessageType.LIGHTBOX_PICK_SOURCE_FILE | MessageType.LIGHTBOX_REFRESH_SOURCE) => {
-      vscode.postMessage({ type, source: SOURCE, payload: {}, timestamp: Date.now() });
+    (type: LightboxRequestType, payload: object = {}) => {
+      vscode.postMessage({ type, source: SOURCE, payload, timestamp: Date.now() });
     },
     [vscode]
   );
 
+  const unlessDismissed = React.useCallback(
+    (incoming: LightboxSourceRefusal | null | undefined): LightboxSourceRefusal | null =>
+      incoming && !dismissed.current.has(incoming.id) ? incoming : null,
+    []
+  );
+
   const handleBoard = React.useCallback((message: LightboxBoardMessage) => {
-    const next = message.payload?.board ?? null;
-    setBoard(next);
+    setBoard(message.payload?.board ?? null);
+    setRefusal(unlessDismissed(message.payload?.refusal));
     setRereading(false);
-    if (next) {
-      setRefusal(null);
-    }
-  }, []);
+  }, [unlessDismissed]);
 
   const handleSourceRefused = React.useCallback((message: LightboxSourceRefusedMessage) => {
-    setRefusal(message.payload?.refusal ?? null);
+    setRefusal(unlessDismissed(message.payload?.refusal));
     setRereading(false);
-  }, []);
+  }, [unlessDismissed]);
 
   const requestBoard = React.useCallback(() => post(MessageType.LIGHTBOX_REQUEST_BOARD), [post]);
   const pickSourceFile = React.useCallback(() => post(MessageType.LIGHTBOX_PICK_SOURCE_FILE), [post]);
@@ -110,7 +125,13 @@ export function useLightbox(): UseLightboxReturn {
     setRereading(true);
     post(MessageType.LIGHTBOX_REFRESH_SOURCE);
   }, [post]);
-  const dismissRefusal = React.useCallback(() => setRefusal(null), []);
+  const dismissRefusal = React.useCallback(() => {
+    if (refusal) {
+      dismissed.current.add(refusal.id);
+      post(MessageType.LIGHTBOX_DISMISS_REFUSAL, { refusalId: refusal.id });
+    }
+    setRefusal(null);
+  }, [post, refusal]);
   const setFilter = React.useCallback((next: LightboxFilter) => setFilterState(next), []);
   const selectItem = React.useCallback((ref: LightboxItemRef | null) => setSelected(ref), []);
   const toggleLens = React.useCallback((lens: LightboxLensId) => {
@@ -119,7 +140,7 @@ export function useLightbox(): UseLightboxReturn {
     );
   }, []);
 
-  // The board is host truth: ask for it once on mount (a reveal re-asks host-side).
+  // The outcome is host truth: ask for it once on mount (a reveal re-asks host-side).
   React.useEffect(() => {
     requestBoard();
   }, [requestBoard]);

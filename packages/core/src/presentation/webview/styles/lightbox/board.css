@@ -178,6 +178,11 @@
 [data-pm-surface="lightbox"] .pm-lb-refusal-suggestion {
   color: var(--pm-text);
 }
+[data-pm-surface="lightbox"] .pm-lb-refusal-kept {
+  font-size: 12px;
+  color: var(--pm-muted);
+  overflow-wrap: anywhere;
+}
 
 /* ---------- Toolbar ---------- */
 [data-pm-surface="lightbox"] .pm-lb-toolbar {

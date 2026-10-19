@@ -291,6 +291,7 @@ describe('LightboxService boards per source (D12)', () => {
     expect(await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'older.md'), older)).toEqual({ kind: 'superseded' });
     expect(spies.proseStats).not.toHaveBeenCalled();
     expect(service.refuseSource(older, { reason: 'unreadable', message: 'Gone.' })).toEqual({ kind: 'superseded' });
+    expect(service.currentOutcome().refusal).toBeNull();
     expect(changes).toEqual([]);
 
     const result = await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'newer.md'), newer);
@@ -298,6 +299,30 @@ describe('LightboxService boards per source (D12)', () => {
     expect(service.refuseSource(newer, { reason: 'unreadable', message: 'Gone.' }).kind).toBe('refused');
     expect(changes).toEqual(['board newer.md', 'refusal unreadable']);
     expect(service.currentBoard()?.source.displayPath).toBe('newer.md');
+  });
+
+  it('keeps a refusal beside the current board until it is dismissed or a board replaces it (PR #148 F-02)', async () => {
+    const { service } = createService();
+    expect(service.currentOutcome()).toEqual({ board: null, refusal: null });
+    await service.buildBoard(fileSource(ALICE_OPENING_CURLY));
+
+    const refused = await service.buildBoard(fileSource(aliceWords(50_001), 'Drafts/whole-book.md'));
+    const refusal = refused.kind === 'refused' ? refused.refusal : undefined;
+    expect(refusal?.id).toEqual(expect.any(String));
+    expect(service.currentOutcome()).toEqual({
+      board: expect.objectContaining({ boardId: 'board-1' }),
+      refusal
+    });
+
+    expect(service.dismissRefusal('some-older-refusal')).toBe(false);
+    expect(service.currentOutcome().refusal).toBe(refusal);
+    expect(service.dismissRefusal(refusal!.id)).toBe(true);
+    expect(service.currentOutcome()).toEqual({ board: expect.objectContaining({ boardId: 'board-1' }), refusal: null });
+
+    await service.buildBoard(fileSource(' ', 'Drafts/blank.md'));
+    expect(service.currentOutcome().refusal?.reason).toBe('empty');
+    await service.buildBoard(fileSource(ALICE_OPENING_STRAIGHT, 'Drafts/alice-2.md'));
+    expect(service.currentOutcome()).toEqual({ board: expect.objectContaining({ boardId: 'board-2' }), refusal: null });
   });
 
   it('publishes outcomes to each subscriber until it unsubscribes', async () => {

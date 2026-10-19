@@ -24,6 +24,11 @@
  * the request. A request that outlives its panel therefore lands in the panel
  * that replaced it, and a disposed handler, unsubscribed, posts nothing.
  *
+ * Every mount and reveal is answered with the service's current outcome: the
+ * latest board and any refusal the writer has not dismissed (PR #148 F-02).
+ * A refusal produced before the webview was listening is therefore shown
+ * when it asks, and `LIGHTBOX_DISMISS_REFUSAL` is what stops it returning.
+ *
  * Logs name paths, counts and refusal reasons. They never carry the writer's
  * text.
  */
@@ -37,14 +42,16 @@ import {
 } from '@/infrastructure/text/TextSourceResolver';
 import type {
   LightboxBoardResult,
+  LightboxOutcome,
   LightboxOutcomeChange,
   LightboxService,
   LightboxSourceInput,
+  LightboxSourceRefusalDraft,
   LightboxSourceTicket
 } from '@/infrastructure/lightbox/LightboxService';
 import {
-  LightboxBoard,
   LightboxBoardMessage,
+  LightboxDismissRefusalMessage,
   LightboxPickSourceFileMessage,
   LightboxRefreshSourceMessage,
   LightboxRequestBoardMessage,
@@ -85,6 +92,7 @@ export class LightboxHandler {
     router.register(MessageType.LIGHTBOX_SET_SOURCE, this.handleSetSource.bind(this));
     router.register(MessageType.LIGHTBOX_PICK_SOURCE_FILE, this.handlePickSourceFile.bind(this));
     router.register(MessageType.LIGHTBOX_REFRESH_SOURCE, this.handleRefreshSource.bind(this));
+    router.register(MessageType.LIGHTBOX_DISMISS_REFUSAL, this.handleDismissRefusal.bind(this));
   }
 
   /** Stop hearing the service's outcomes; a disposed handler posts nothing more. */
@@ -94,10 +102,10 @@ export class LightboxHandler {
     this.unsubscribe = undefined;
   }
 
-  /** Mount and reveal: answer with the current board, or `null` before the first one. */
+  /** Mount and reveal: answer with the current outcome (the board, and any undismissed refusal). */
   async handleRequestBoard(_message: LightboxRequestBoardMessage): Promise<void> {
     this.subscribe();
-    this.postBoard(this.lightboxService.currentBoard() ?? null);
+    this.postBoard(this.lightboxService.currentOutcome());
   }
 
   /**
@@ -179,6 +187,15 @@ export class LightboxHandler {
     });
   }
 
+  /** The writer dismissed a refusal; the host stops serving it. */
+  async handleDismissRefusal(message: LightboxDismissRefusalMessage): Promise<void> {
+    this.subscribe();
+    const refusalId = message.payload?.refusalId;
+    if (typeof refusalId === 'string' && this.lightboxService.dismissRefusal(refusalId)) {
+      this.outputChannel.appendLine('[LightboxHandler] Refusal dismissed');
+    }
+  }
+
   /** Subscribe once, on this webview's first Lightbox message. */
   private subscribe(): void {
     if (this.unsubscribe || this.disposed) {
@@ -190,7 +207,7 @@ export class LightboxHandler {
   private publish(change: LightboxOutcomeChange): void {
     switch (change.kind) {
       case 'board':
-        this.postBoard(change.board);
+        this.postBoard({ board: change.board, refusal: change.refusal });
         return;
       case 'refusal':
         this.postRefusal(change.refusal);
@@ -245,7 +262,7 @@ export class LightboxHandler {
   }
 
   /** Refuse `ticket`'s source; the service publishes it only if no newer request arrived. */
-  private refuse(ticket: LightboxSourceTicket, refusal: LightboxSourceRefusal): void {
+  private refuse(ticket: LightboxSourceTicket, refusal: LightboxSourceRefusalDraft): void {
     this.logResult(this.lightboxService.refuseSource(ticket, refusal), refusal.displayPath);
   }
 
@@ -286,11 +303,11 @@ export class LightboxHandler {
     void this.postMessage(message);
   }
 
-  private postBoard(board: LightboxBoard | null): void {
+  private postBoard(outcome: LightboxOutcome): void {
     const message: LightboxBoardMessage = {
       type: MessageType.LIGHTBOX_BOARD,
       source: SOURCE,
-      payload: { board },
+      payload: { board: outcome.board, refusal: outcome.refusal },
       timestamp: Date.now()
     };
     void this.postMessage(message);

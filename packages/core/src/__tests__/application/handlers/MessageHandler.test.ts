@@ -226,7 +226,9 @@ function createTestAssembly(): TestAssembly {
       buildBoard: jest.fn(),
       beginSourceRequest: jest.fn(() => ({ sequence: 1 })),
       refuseSource: jest.fn(),
-      addOutcomeListener: lightboxAddOutcomeListener
+      addOutcomeListener: lightboxAddOutcomeListener,
+      currentOutcome: jest.fn().mockReturnValue({ board: null, refusal: null }),
+      dismissRefusal: jest.fn()
     }
   } as unknown as CoreServices;
 
@@ -306,11 +308,11 @@ describe('MessageHandler assembly', () => {
       timestamp: Date.now()
     });
 
-    expect(assembly.services.lightboxService.currentBoard).toHaveBeenCalled();
+    expect(assembly.services.lightboxService.currentOutcome).toHaveBeenCalled();
     expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
       type: MessageType.LIGHTBOX_BOARD,
       source: 'extension.lightbox',
-      payload: { board: null }
+      payload: { board: null, refusal: null }
     }));
   });
 
