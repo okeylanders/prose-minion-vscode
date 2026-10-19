@@ -3,8 +3,10 @@
 **Author:** okeylanders · **PR:** [#148](https://github.com/okeylanders/prose-minion-vscode/pull/148) (open, unmerged at review)
 **Branches:** `epic/lightbox-slice-2a-board` → `epic/lightbox`
 **Verified base / merge-base:** `a504f6d6c264787163d057a1130e03c5326ac5e2`
-**Reviewed implementation head:** `23c3f476fb891600af75c8beebcf72e1d1dbcde2`
-**Scope:** 91 files · +7,244 / −105 · 11 commits
+**Initial implementation head:** `23c3f476fb891600af75c8beebcf72e1d1dbcde2`
+**Re-reviewed implementation head:** `bff9880f6fa5a9a1bf7b6338537f2e370e4db0f3`
+**Initial scope:** 91 files · +7,244 / −105 · 11 commits
+**Correction delta:** 8 commits after report `94a764e0` · 42 files · +2,329 / −464; current whole PR, including the existing report: 102 files · +9,287 / −147
 **Reviewed:** 2026-10-19 · **Reviewer:** Astra · **Mode:** independent source/spec review, real-service deferred-I/O and measurement probes, real-component and production-bundle DOM witnesses, supplied-image inspection, Workshop lifecycle comparison, and full deterministic verification
 
 ## Resolution ledger
@@ -13,14 +15,17 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 
 | ID | Sev | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F-01 | Medium / P2 | An older source read can replace a newer choice, or post a stale refusal over it | Deferred resolver plus real handler/service; production-bundle source/preview and alert witness | **Open** |
-| F-02 | Medium / P2 | A command refusal produced before webview readiness is lost on the initial board request | A 50,001-word selection is refused, but the subsequent mount request returns only `board: null` | **Open** |
-| F-03 | Medium / P2 | POS paragraph references do not identify the occurrences used for their counts | Noun/verb `light` each count once but reference both paragraphs; valid possessive `alice` counts once with no paragraph | **Open** |
-| F-04 | Medium / P2 | Inspector truncation permanently hides exact paragraph addresses | A valid 10,000-word, 5,000-paragraph board has unreachable ¶49–¶52 inside the first ribbon bucket | **Open** |
+| F-01 | Medium / P2 | An older source read can replace a newer choice, or post a stale refusal over it | Original expected-safe witnesses now pass; expanded shared-service/replacement-panel/picker probes pass | **Addressed** at `bff9880f` |
+| F-02 | Medium / P2 | A command refusal produced before webview readiness is lost on the initial board request | Host outcome replay and current-bundle dismissal/reload witnesses pass | **Addressed** at `bff9880f` |
+| F-03 | Medium / P2 | POS paragraph references do not identify the occurrences used for their counts | Original homograph/possessive witnesses pass; tagged provenance and Metrics compatibility verified | **Addressed** at `bff9880f` |
+| F-04 | Medium / P2 | Inspector truncation permanently hides exact paragraph addresses | All 5,000 addresses reachable in pages of at most 48; formerly omitted bucket addresses pinnable | **Addressed** at `bff9880f` |
+| F-05 | Low / P3 · nonblocking | Repeating a jump to the same mounted paragraph chip does not focus it again | Independent expected-safe component assertion fails; current production bundle confirms input retains focus | **Open** |
 
-**Verdict: Request changes before merging into `epic/lightbox`.** The counted-board implementation and the authored verification suite are substantial, but the four independently reproduced defects affect current Slice 2A source ownership or evidence navigation. Green implementation-head tests do not cover these cases. This report does not request Slice 2B readings, paid calls, saving, or later handoffs. Required CI on the exact report-only head remains a separate post-publication check; green CI alone does not resolve these findings.
+**Verdict: Approve with one nonblocking focus note, conditional on required CI being green on the exact report-only head.** All four original P2 findings and the source-identity observation are independently resolved at `bff9880f`. No new blocking regression was found in the correction delta. F-05 does not make any address unreachable. This is a code-review verdict for Slice 2A into `epic/lightbox`, not merge authorization or native VS Code acceptance. Slice 2B readings, paid calls, saving, and later handoffs remain outside this review.
 
-## F-01 — Own source intent before the first asynchronous read
+**History:** The initial verdict at `23c3f476` was **Request changes**. F-01–F-04 below preserve the original findings and evidence at that head; they are historical, not claims that the corrected implementation still fails. Independent resolutions and current-head checks follow in the re-review section. The author's response is preserved unchanged.
+
+## F-01 (Addressed) — Own source intent before the first asynchronous read
 
 **Changed-code location:** [`LightboxHandler.ts:128–153`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/packages/core/src/application/handlers/domain/LightboxHandler.ts#L128-L153), with the generation first acquired in [`LightboxService.ts:140–156`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/packages/core/src/infrastructure/lightbox/LightboxService.ts#L140-L156).
 
@@ -37,7 +42,7 @@ The expected-safe assertion that the newer choice remains current fails on this 
 
 **Requested change:** Establish one authoritative source-request identity before picker/resolver/build awaits, and guard both adoption and every success/failure publication against the current intent. Its ownership must remain coherent across the shared service and per-panel handlers; a per-handler counter alone should not allow an old disposed owner to win against a replacement panel. Preserve the intended picker-dismissal behavior. Add regressions for out-of-order file reads, refresh versus a new selection, old read/build failures after a new choice, and close/reopen while a source is pending. The existing standards-await supersede test remains useful but is not end-to-end coverage.
 
-## F-02 — Replay a command's refusal when the Lightbox finishes mounting
+## F-02 (Addressed) — Replay a command's refusal when the Lightbox finishes mounting
 
 **Changed-code location:** [`LightboxHandler.ts:62–65`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/packages/core/src/application/handlers/domain/LightboxHandler.ts#L62-L65), in conjunction with [`LightboxPanelProvider.ts:165–181`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/apps/vscode-extension/src/application/providers/LightboxPanelProvider.ts#L165-L181) and the refusal publisher at `LightboxHandler.ts:190–205`.
 
@@ -49,7 +54,7 @@ The committed refusal screenshot sends a refusal into an already-mounted page af
 
 **Requested change:** Keep a coherent host-side current source outcome, including a refusal that has not yet been delivered/acknowledged, or defer seeding until an explicit ready handshake. The mount/reveal path must convey the latest outcome without discarding a retained successful board. Preserve UI-only webview persistence and make dismissal/replay behavior explicit so a dismissed refusal is not resurrected indefinitely. Test first-open over-ceiling, empty and unsaved sources, plus rejection with a previous board and hidden/reloaded delivery.
 
-## F-03 — Place POS evidence using the same tagged occurrences that were counted
+## F-03 (Addressed) — Place POS evidence using the same tagged occurrences that were counted
 
 **Changed-code location:** [`LightboxMeasures.ts:141–142`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/packages/core/src/infrastructure/lightbox/LightboxMeasures.ts#L141-L142), backed by the untyped frequency-token index at [`68–80`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/packages/core/src/infrastructure/lightbox/LightboxMeasures.ts#L68-L80).
 
@@ -70,7 +75,7 @@ This is separate from the documented [contraction-fragment debt](../../.todo/tec
 
 **Requested change:** Preserve or derive paragraph and POS provenance from the same tagged occurrence stream used for counts, with the same normalization. Keep ordinary Top Words and n-gram placement aligned with their own tokenizer. Add noun/verb homograph and straight/curly possessive regressions that assert counts, exact paragraph references, ribbon focus, and inspector claims together.
 
-## F-04 — Keep every paragraph address reachable behind the inspector's bound
+## F-04 (Addressed) — Keep every paragraph address reachable behind the inspector's bound
 
 **Changed-code location:** [`LightboxInspector.tsx:60–61`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/packages/core/src/presentation/webview/components/lightbox/LightboxInspector.tsx#L60-L61) and [`93`](https://github.com/okeylanders/prose-minion-vscode/blob/23c3f476fb891600af75c8beebcf72e1d1dbcde2/packages/core/src/presentation/webview/components/lightbox/LightboxInspector.tsx#L93).
 
@@ -87,7 +92,7 @@ A second, sparse 200-paragraph fixture places a term in `[1, 3, …, 199]`. The 
 
 **Requested change:** Keep rendering bounded, but provide a usable page/window/jump or bounded expansion control so every exact address remains reachable and can be pinned. Do not solve this by eagerly adding tens of thousands of buttons. Add interaction tests beyond 48 references, for sparse term membership, and for a ribbon bucket containing more than 48 paragraphs; verify the last address is reachable without changing the selected evidence item.
 
-## Other scope and behavior checked
+## Initial scope and behavior checked at `23c3f476`
 
 - Read repository guidance, the [slice record](../../.todo/epics/epic-lightbox-2026-10-19/slice-2a-tab-and-counted-board.md), [ADR](../adr/2026-10-19-lightbox-inspiration-board.md), relevant architecture, production changes, and tests. No `.agents/skills` package was present. The already-merged PR #146 matcher and PR #147 shell are the base, not reopened review scope.
 - `LightboxService` is constructed once at the composition root and passed through `CoreServices`. The new panel constructs its own `MessageHandler` over that bundle, registers the second serializer, has explicit command/menu activation, retains context while hidden, and tears down its handler before the panel. Its restore path does not treat serializer state as a second board store.
@@ -99,9 +104,9 @@ A second, sparse 200-paragraph fixture places a term in `[1, 3, …, 199]`. The 
 - Host-side ribbon bucketing stays at 96 columns, covers contiguous ranges and pools words/sentences/dialogue. The 1.5× rhythm-focus threshold is a documented presentation choice. Item pinning, filters, lenses, and UI-only persistence work in the inspected paths. F-04 concerns access beyond the inspector bound, not the ribbon bound itself.
 - The measured register and renderer maps remain exhaustive. Reading kinds deliberately remain `never`, lens controls only affect placeholders, and the tension lane is a disabled future reading. These are intended Slice 2A boundaries, not missing-functionality findings.
 
-**Nonblocking source-identity observation:** `lightboxSourceKey` uses the display path rather than `sourceUri`/canonical file identity. The adapter/resolver explicitly requests `asRelativePath(..., false)`, so two workspace roots containing `chapter.md` share a cache key; a synthetic service probe confirms identical-text sources at different URIs reuse one board ID and replace the same retained entry. Current measurements are rebuilt from the correct latest input, so no additional current-slice display corruption was established. Use a canonical source identity before future retained readings rely on this key; this observation is not counted as a fifth blocker or as a claimed Slice 2B failure.
+**Initial nonblocking source-identity observation (now addressed):** `lightboxSourceKey` uses the display path rather than `sourceUri`/canonical file identity. The adapter/resolver explicitly requests `asRelativePath(..., false)`, so two workspace roots containing `chapter.md` share a cache key; a synthetic service probe confirms identical-text sources at different URIs reuse one board ID and replace the same retained entry. Current measurements are rebuilt from the correct latest input, so no additional current-slice display corruption was established. Use a canonical source identity before future retained readings rely on this key; this observation is not counted as a fifth blocker or as a claimed Slice 2B failure.
 
-## Workshop and visual evidence
+## Initial Workshop and visual evidence
 
 The three moved rail-card rules keep their declarations and specificity, and the new aside layout is gated by the aside modifier. Workshop has no aside. Its own surface styles and domain state remain separate; the Lightbox styles are surface-scoped.
 
@@ -134,6 +139,60 @@ Runtime: **Node 24.19.0 / npm 11.9.0**, isolated cloud worktree. Dependencies we
 | Exact report-head CI | **Pending separate post-publication verification** |
 
 The defect probes live outside the tracked checkout. Their passing reproduction assertions describe the observed bugs; the separate expected-safe failures are not failures in the author's 4,881-test suite. Only this report is published. No functional edits, formal GitHub review/comment, merge, deployment, release, notification change, or branch cleanup was performed.
+
+## Independent re-review at `bff9880f` — 2026-10-19
+
+The live PR remained open and unmerged with the same base/merge-base `a504f6d6`. The correction delta includes request ownership, URI cache identity, replayable refusals, tagged POS provenance, bounded inspector paging, new screenshots, documentation, and the author response. The lockfile is unchanged. All corrections and their surrounding contracts were inspected; the original failing witnesses were retained outside the checkout.
+
+### Resolutions
+
+**F-01 — Addressed.** [`LightboxService.ts:163–228`](https://github.com/okeylanders/prose-minion-vscode/blob/bff9880f6fa5a9a1bf7b6338537f2e370e4db0f3/packages/core/src/infrastructure/lightbox/LightboxService.ts#L163-L228) now owns one identity-checked source ticket, guards both adoption and refusal, and publishes outcomes to subscribers. The handler acquires a ticket before source resolution and refresh awaits; a disposed handler unsubscribes, and an unrelated handler that has never received a Lightbox route does not subscribe. The original newer-board/stale-failure assertions pass unchanged. Independent deferred-I/O tests also verified valid work outliving its original panel, supersession by a replacement panel's choice, an early refusal superseding pending success, an old enrichment failure after a newer board, and rejection of a forged same-sequence ticket.
+
+The picker deliberately acquires its ticket **after a concrete file is chosen**, before reading it ([handler lines 146–168](https://github.com/okeylanders/prose-minion-vscode/blob/bff9880f6fa5a9a1bf7b6338537f2e370e4db0f3/packages/core/src/application/handlers/domain/LightboxHandler.ts#L146-L168)). Independent interleavings confirm that dismissal leaves prior pending work alone and a file chosen after a concurrent selection becomes newest. This is a sound refinement of the original request to own intent before awaits: opening a cancellable dialog is not itself a replacement source choice. Superseded reads need not be physically cancelled to prevent stale adoption/publication.
+
+**F-02 — Addressed.** The host retains a board plus the current undismissed refusal and serves both on mount/reveal. The original dropped-delivery 50,001-word witness now recovers the reason, count and ceiling unchanged. Replacement-panel probes preserve the previous successful board alongside the refused source's explanation. A stale dismissal cannot clear a newer refusal; the matching ID clears it; successful adoption clears it. The current production bundle correctly projects an initial refusal, names a retained board, sends the exact dismissal ID, suppresses an already-dismissed in-flight replay, displays a different newer refusal, and reloads with UI preferences only.
+
+This is a deliberate contract expansion: there are now **five inbound Lightbox routes and two outbound types**; `LIGHTBOX_BOARD` requires `{ board, refusal }`, refusals have host-minted IDs, and `LIGHTBOX_DISMISS_REFUSAL` acknowledges the named refusal. Service subscription/disposal, routing, hook projection and tests were reviewed together. There is still no Workshop message or board persistence added by this path.
+
+**F-03 — Addressed.** The word-frequency tool now exposes the same ordered tagged occurrences used to rank its POS lists. [`LightboxMeasures.ts:146–201`](https://github.com/okeylanders/prose-minion-vscode/blob/bff9880f6fa5a9a1bf7b6338537f2e370e4db0f3/packages/core/src/infrastructure/lightbox/LightboxMeasures.ts#L146-L201) places those occurrences by offset and POS, rather than looking up every spelling in an untyped frequency index. Noun `light` now references only ¶1; verb `light` only ¶2; both possessive spellings locate noun `alice` in ¶1. Counts, inspector claims and lit ribbon columns agree. The original four assertions fail against the initial implementation and pass against this correction.
+
+Whole-text tagging is retained to preserve Metrics' contextual POS decisions; paragraph offsets locate that stream without reclassifying each paragraph. Independent checks covered **400 synthetic/public-domain variants**, **6,465 tagged occurrences** with zero unlocated, **3,313 count/paragraph assertions**, and **50 real measurement-stack boards**. Fixtures included punctuation, contractions, headings, Unicode case expansion, NFC/NFD, CRLF, whitespace, URLs, emoji and repeated homographs. The inherited tokenizer's fragments remain the documented debt, not a new claim about grammar quality.
+
+The shared-tool change was checked beyond Lightbox: **2,400 complete Metrics-output comparisons** against `94a764e0` passed across minimum lengths 1/4/8 and combinations of filtering, n-grams, lemmas and disabled POS. Stable ties and the 25-term POS cap are preserved. `includePosOccurrences` remains opt-in, defaults false, and is enabled by the board's fixed options; the `ToolOptionsProvider` change does not silently enable it for ordinary Metrics. Top Words and phrase placement keep their own frequency tokenizer.
+
+**F-04 — Addressed.** Paging and direct jumps keep rendering at **48 chips maximum** without truncating the available evidence. Independent real-root traversal reached all **5,000 addresses**, recovered and pinned ¶49–¶52 from the original first ribbon bucket, and reached/pinned ¶5000. Sparse lists jump to the next member or last member, preserve the selected evidence item while paging, reset for a new pin, and clamp when a rebuilt board shrinks. The current production bundle confirms these paths. The remaining repeated-target focus edge is F-05 below; it does not reopen the missing-address defect.
+
+**Source identity — Addressed.** [`lightboxSourceKey`](https://github.com/okeylanders/prose-minion-vscode/blob/bff9880f6fa5a9a1bf7b6338537f2e370e4db0f3/packages/core/src/infrastructure/lightbox/LightboxService.ts#L361-L367) uses `sourceUri` before the display-path fallback, plus source kind and selection lines. Editor commands and the picker supply canonical `Uri.toString()` values. Independent service round trips verified distinct board IDs and reread paths for identical text/display names at different URIs, reuse when returning to the first URI, and separation by source kind/selection lines. Hash-equivalent NFC/NFD, CRLF and outer-whitespace inputs retain identity while remeasuring current text and offsets.
+
+### F-05 — Repeating an explicit jump should refocus the same target (nonblocking)
+
+**Location:** [`LightboxInspector.tsx:168–175`](https://github.com/okeylanders/prose-minion-vscode/blob/bff9880f6fa5a9a1bf7b6338537f2e370e4db0f3/packages/core/src/presentation/webview/components/lightbox/LightboxInspector.tsx#L168-L175), with the jump state at [`useLightboxInspector.ts:227–231`](https://github.com/okeylanders/prose-minion-vscode/blob/bff9880f6fa5a9a1bf7b6338537f2e370e4db0f3/packages/core/src/presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts#L227-L231).
+
+The static `focusOnMount` ref focuses a target when attached, but a second explicit jump that resolves to the same mounted target does not reattach it. With the Alice evidence item pinned, submit **Go to ¶812**: the chip focuses. Focus the input again and submit **¶812** again: focus remains in the input. The same issue occurs when a sparse list first jumps to ¶100 (landing on ¶101) and then to ¶101. An expected-safe component assertion fails on the second jump; the rebuilt production bundle confirms `document.activeElement` is the paragraph input.
+
+**Suggested change:** Give each explicit jump a focus request even when its landing address is unchanged, while avoiding focus theft on passive board updates. Add the repeated-target and same-sparse-landing cases. This is **Low / P3, nonblocking**: paging, first-jump focus, all exact addresses and pinning remain available. No deferral is assumed on the author's behalf.
+
+### Current-head verification and visual limits
+
+| Check | Independently observed result at `bff9880f` |
+| --- | --- |
+| Full `npm test -- --runInBand` | **333 suites / 4,921 tests / 2 snapshots passed**, 149.896 seconds |
+| `npm run typecheck` | Core, webview and extension passed |
+| Full `npm run lint` | **0 errors / 1,135 warnings**; normalized comparison found no additions and exactly five removed `curly` warnings in the word-frequency tool |
+| `npm run build`, including `verify:bundle` | Passed; three webpack size/performance warnings; all three bundle sentinels verified |
+| Whole-PR and correction `git diff --check` | Passed |
+| Retained expected-safe host witnesses | **3/3 pass unchanged**; previously all three failed |
+| Additional real-handler/service deferred probes | **8/8 pass**, covering owner replacement, stale failures, picker semantics and refusal dismissal/replay |
+| POS provenance and Metrics compatibility | Original examples fixed; **400 variants / 6,465 occurrences / 3,313 placement assertions / 2,400 full-output comparisons / 50 real-stack boards** pass |
+| Independent real-root paging checks | **4 pass**; a separate expected-safe repeat-jump assertion fails as F-05 |
+| Rebuilt Lightbox production bundle | **35 expected-safe checks pass**, plus one assertion recording F-05; bundle SHA-256 `66267f16e6726f4576050967e5ffdc2d50f669bdc4bae03bc78d4e0e28053837` |
+| Workshop bundle lifecycle comparison, rerun after corrections | **9 checkpoints / 27 parity assertions pass** against the reviewed PR #147 bundle |
+| New supplied visual evidence | All **3 paged-inspector images** inspected at actual pixels; no blocking visible regression in those captures |
+| Exact updated report-head CI | **Pending separate post-publication verification** |
+
+The new 1440, 1000 and 500 px images show the whole-book Alice board (26,448 words, 815 paragraphs), the 347-address `alice` item, its final page and highlighted ¶812. The narrow image now includes the stacked inspector and the range label wraps legibly. Their harness/provenance were inspected; subsequent changes after the screenshot commit are documentation and a handler comment, with no runtime delta. The author's claims about re-rendered older images and browser error/overflow checks were not independently rerun. These are supplied headless Chromium captures with stubbed theme variables, not native VS Code screenshots.
+
+The current bundle was independently rebuilt and exercised in JSDOM, which again reports its known stylesheet-parser limitation. DOM/event/focus assertions do not establish real-browser layout, screen-reader behavior or native-host acceptance. No live/provider calls or real manuscripts were used. The scratch witnesses remain outside the repository; only this report is changed, and the author response below is retained verbatim.
 
 ## Author response (2026-10-19)
 
