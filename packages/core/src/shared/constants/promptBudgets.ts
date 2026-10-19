@@ -110,7 +110,9 @@ export interface PromptBudgets {
    * The rest bound one reading group's call (Slice 2B): its output ceiling
    * (the engine's `maxTokens`, which the fit check reserves), the whole
    * response the codec accepts, and the per-field and per-block ceilings the
-   * prompt bundle states and the codec enforces block by block.
+   * prompt bundle states and the codec enforces block by block. Slice 3 adds
+   * gravity's borrowed fields, their terms, collisions and literal set-asides,
+   * and the palette's clusters, cluster words, swatches and swatch words.
    */
   readonly lightbox: Readonly<{
     sourceWords: number;
@@ -131,6 +133,16 @@ export interface PromptBudgets {
     characters: number;
     genreNeighbors: number;
     tensionPeaks: number;
+    gravityFields: number;
+    /** Terms one borrowed field may name, each with its degree. */
+    gravityTerms: number;
+    gravityCollisions: number;
+    /** The literal set-asides a gravity block must name (at least one). */
+    gravityLiterals: number;
+    paletteClusters: number;
+    clusterWords: number;
+    swatches: number;
+    swatchWords: number;
   }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
@@ -372,7 +384,15 @@ export const PROMPT_BUDGETS: PromptBudgets = {
     motifs: 4,
     characters: 6,
     genreNeighbors: 5,
-    tensionPeaks: 3
+    tensionPeaks: 3,
+    gravityFields: 5,
+    gravityTerms: 8,
+    gravityCollisions: 3,
+    gravityLiterals: 4,
+    paletteClusters: 4,
+    clusterWords: 6,
+    swatches: 6,
+    swatchWords: 3
   },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },

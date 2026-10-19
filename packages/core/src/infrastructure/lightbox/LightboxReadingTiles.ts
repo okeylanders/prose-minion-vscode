@@ -17,6 +17,7 @@
  */
 
 import type {
+  LightboxCountedSupport,
   LightboxLensFriction,
   LightboxLensId,
   LightboxReadingTile,
@@ -29,6 +30,7 @@ import type {
 import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
 import {
   LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS,
   LIGHTBOX_VOICE_TRAITS,
@@ -44,6 +46,8 @@ export const LIGHTBOX_LENS_BLOCK_KIND: Readonly<Record<LightboxLensId, LightboxR
   headline: 'headline',
   motif: 'motif',
   tension: 'tension-arc',
+  palette: 'palette-cluster',
+  gravity: 'gravity-field',
   characters: 'character',
   voice: 'voice',
   genre: 'genre-neighbor'
@@ -98,7 +102,7 @@ interface CheckedEvidence {
 }
 
 /** Claim fields every tile shares; the kind-specific fields are added by each block. */
-interface ClaimDraft {
+export interface LightboxClaimDraft {
   kind: LightboxReadingTileKind;
   lens: LightboxLensId;
   title: string;
@@ -108,18 +112,33 @@ interface ClaimDraft {
   friction: string;
   /** A motif recurs: its found quotes must stand in this many paragraphs. */
   minimumParagraphs?: number;
+  /** Counted support the block computed itself (gravity's degrees); replaces counting `terms`. */
+  support?: LightboxCountedSupport[];
+  /** Withhold the claim with this reason when none of its counted terms is in the chapter. */
+  requireCounted?: string;
+  /** A further check on the found quotes: a reason to withhold the claim, or undefined. */
+  accept?: (evidence: readonly LightboxVerifiedQuote[]) => string | undefined;
 }
 
-type TileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
+export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
 
-class GroupAssembly {
+/** What a lens block's assembly may ask of its group's (`LightboxGravityTiles`). */
+export interface LightboxClaimAssembler {
+  readonly context: LightboxTileAssemblyContext;
+  /** Check a claim's quotes; keep it as a tile (returned), or withhold it by title. */
+  claim(draft: LightboxClaimDraft, build: (base: LightboxTileBase) => LightboxReadingTile): LightboxReadingTile | undefined;
+  /** Items the codec could not read, withheld by title. */
+  malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void;
+}
+
+class GroupAssembly implements LightboxClaimAssembler {
   readonly tiles: LightboxReadingTile[] = [];
   readonly withheldBlocks: LightboxWithheldBlock[] = [];
   readonly withheldClaims: LightboxWithheldClaim[] = [];
   quotesChecked = 0;
   quotesWithheld = 0;
 
-  constructor(private readonly context: LightboxTileAssemblyContext) {}
+  constructor(readonly context: LightboxTileAssemblyContext) {}
 
   block(block: LightboxDecodedBlock): void {
     switch (block.lens) {
@@ -196,23 +215,29 @@ class GroupAssembly {
           (base) => ({ ...base, kind: 'reader-promise' })
         );
         return;
+      case 'gravity':
+        assembleGravityBlock(block, this);
+        return;
+      case 'palette':
+        assemblePaletteBlock(block, this);
+        return;
     }
   }
 
   /** Items the codec could not read, withheld by title. */
-  private malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void {
+  malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void {
     for (const item of items) {
       this.withheldClaims.push({ kind, lens, title: item.title, reason: item.reason, quotes: [] });
     }
   }
 
   /** Check a claim's quotes; keep it as a tile, or withhold it by title. */
-  private claim(draft: ClaimDraft, build: (base: TileBase) => LightboxReadingTile): void {
+  claim(draft: LightboxClaimDraft, build: (base: LightboxTileBase) => LightboxReadingTile): LightboxReadingTile | undefined {
     const checked = this.check(draft.quotes);
     const foundParagraphs = new Set(checked.evidence.map((quote) => quote.paragraph));
     if (checked.evidence.length === 0) {
       this.withhold(draft, NO_QUOTE_FOUND, checked.withheld);
-      return;
+      return undefined;
     }
     if (draft.minimumParagraphs !== undefined && foundParagraphs.size < draft.minimumParagraphs) {
       this.withhold(
@@ -220,14 +245,23 @@ class GroupAssembly {
         `A motif recurs, but its quotes were found in only ${foundParagraphs.size === 1 ? 'one paragraph' : 'no paragraph'}.`,
         checked.withheld
       );
-      return;
+      return undefined;
     }
-    const support = countLightboxSupport(draft.terms, this.context.counter);
+    const refused = draft.accept?.(checked.evidence);
+    if (refused !== undefined) {
+      this.withhold(draft, refused, checked.withheld);
+      return undefined;
+    }
+    const support = draft.support ?? countLightboxSupport(draft.terms, this.context.counter);
+    if (draft.requireCounted !== undefined && support.every((term) => term.count === 0)) {
+      this.withhold(draft, draft.requireCounted, checked.withheld);
+      return undefined;
+    }
     const paragraphs = new Set<number>(foundParagraphs);
     for (const term of support) {
       term.paragraphs.forEach((index) => paragraphs.add(index));
     }
-    this.tiles.push(build({
+    const tile = build({
       id: this.context.mintId(),
       lens: draft.lens,
       title: draft.title,
@@ -237,10 +271,12 @@ class GroupAssembly {
       withheldQuotes: checked.withheld,
       support,
       friction: draft.friction
-    }));
+    });
+    this.tiles.push(tile);
+    return tile;
   }
 
-  private withhold(draft: ClaimDraft, reason: string, quotes: LightboxWithheldQuote[]): void {
+  private withhold(draft: LightboxClaimDraft, reason: string, quotes: LightboxWithheldQuote[]): void {
     this.withheldClaims.push({ kind: draft.kind, lens: draft.lens, title: draft.title, reason, quotes });
   }
 

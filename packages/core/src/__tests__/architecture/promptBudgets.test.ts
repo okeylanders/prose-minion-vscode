@@ -83,7 +83,15 @@ describe('prompt budgets', () => {
       motifs: 4,
       characters: 6,
       genreNeighbors: 5,
-      tensionPeaks: 3
+      tensionPeaks: 3,
+      gravityFields: 5,
+      gravityTerms: 8,
+      gravityCollisions: 3,
+      gravityLiterals: 4,
+      paletteClusters: 4,
+      clusterWords: 6,
+      swatches: 6,
+      swatchWords: 3
     });
     // The writer's ceiling matches the other whole-document inputs.
     expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.sourceDocument.words);

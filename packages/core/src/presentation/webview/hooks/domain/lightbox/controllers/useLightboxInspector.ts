@@ -28,6 +28,7 @@ import {
   resolveLightboxItem
 } from '@hooks/domain/lightbox/lightboxItems';
 import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
+import { LightboxDegreeRow, lightboxDegreeRows, lightboxDriftNote } from '@hooks/domain/lightbox/lightboxGravity';
 
 export const LIGHTBOX_REGISTER_LABELS: Readonly<Record<LightboxRegister, string>> = {
   measured: 'Measured',
@@ -142,12 +143,16 @@ export interface LightboxInspectorDetail {
 
 /** What only a reading has. */
 export interface LightboxInspectorReading {
+  /** The reading tile itself, for actions that name it (Build as a lens). */
+  tile: LightboxReadingTile;
   lens: LightboxLensId;
   /** Read against an earlier version of the text (D4). */
   stale: boolean;
   evidence: LightboxInspectorEvidence[];
   withheld: Array<{ paragraph: number; text: string }>;
   details: LightboxInspectorDetail[];
+  /** A borrowed field's terms by degree, with the host's hits at each (Slice 3). */
+  degrees: LightboxDegreeRow[];
   friction: string;
 }
 
@@ -185,8 +190,25 @@ function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
         { label: 'Claimed affinity', value: `${tile.affinity.toFixed(2)} · a claim, not a score` },
         ...(tile.nearMiss ? [{ label: 'Near miss', value: tile.nearMiss }] : [])
       ];
+    case 'gravity-field':
+      return [
+        { label: 'Governing metaphor', value: tile.metaphor },
+        { label: 'Claimed pull', value: `${tile.pull.toFixed(2)} · a claim, not a measurement` },
+        {
+          label: 'Hits',
+          value: `${tile.hits} counted by code, each occurrence once` + (tile.belowLine ? '; below the gravity line' : '')
+        },
+        { label: 'Drift', value: lightboxDriftNote(tile) }
+      ];
+    case 'gravity-collision':
+      return [{ label: 'Fields', value: `${tile.fields[0]} · ${tile.fields[1]}` }];
+    case 'gravity-literal':
+      return [{ label: 'Hits', value: `${tile.hits} counted by code; literal in the scene, so nothing is borrowed` }];
+    case 'swatch':
+      return [{ label: 'Swatch color', value: `${tile.hex} · the reading's choice; only the words are counted` }];
     case 'headline':
     case 'tension-arc':
+    case 'palette-cluster':
     case 'reader-promise':
       return [];
   }
@@ -194,6 +216,7 @@ function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
 
 function readingView(tile: LightboxReadingTile, stale: boolean): LightboxInspectorReading {
   return {
+    tile,
     lens: tile.lens,
     stale,
     evidence: tile.evidence.map((quote) => ({
@@ -204,6 +227,7 @@ function readingView(tile: LightboxReadingTile, stale: boolean): LightboxInspect
     })),
     withheld: tile.withheldQuotes.map((quote) => ({ paragraph: quote.paragraph, text: lightboxWithheldQuoteText(quote) })),
     details: readingDetails(tile),
+    degrees: tile.kind === 'gravity-field' ? lightboxDegreeRows(tile) : [],
     friction: tile.friction
   };
 }

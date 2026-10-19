@@ -82,7 +82,7 @@ describe('reading-group transitions', () => {
 
   it('plans calls from the lens toggles: off lenses left out, empty groups dropped, landed groups skipped by "rest"', () => {
     expect(lightboxPlannedCalls(['genre', 'voice'], { mode: 'all' })).toEqual([
-      { group: 'A', lenses: ['headline', 'motif', 'tension'] },
+      { group: 'A', lenses: ['headline', 'motif', 'tension', 'gravity', 'palette'] },
       { group: 'B', lenses: ['characters'] }
     ]);
     expect(lightboxPlannedCalls([], { mode: 'rest' }, [{ group: 'A', status: 'ok' }, { group: 'B', status: 'cancelled' }]))

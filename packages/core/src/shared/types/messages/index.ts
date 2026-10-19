@@ -31,6 +31,7 @@ export * from './streaming';
 export * from './workshop';
 export * from './lightbox';
 export * from './lightboxReadings';
+export * from './lightboxGravity';
 
 // Union types for message routing
 import {

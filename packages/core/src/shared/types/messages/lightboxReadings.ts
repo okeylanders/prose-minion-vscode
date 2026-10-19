@@ -16,6 +16,13 @@
 
 import { MessageEnvelope, MessageType } from './base';
 import type { TokenUsage } from './tokenUsage';
+import type {
+  LightboxGravityCollisionTile,
+  LightboxGravityFieldTile,
+  LightboxGravityLiteralTile,
+  LightboxPaletteClusterTile,
+  LightboxSwatchTile
+} from './lightboxGravity';
 
 // ---------------------------------------------------------------------------
 // Groups and lenses (D6)
@@ -24,11 +31,19 @@ import type { TokenUsage } from './tokenUsage';
 export type LightboxReadingGroupId = 'A' | 'B' | 'C';
 
 /**
- * The lenses Slice 2B reads, each in one reading group. A lens the writer
- * turns off is left out of its group's prompt, and a group with no lens on is
- * not called.
+ * The lenses, each in one reading group: Slice 2B's six, and Slice 3's
+ * lexical gravity and palette in group A. A lens the writer turns off is left out of
+ * its group's prompt, and a group with no lens on is not called.
  */
-export type LightboxLensId = 'headline' | 'motif' | 'tension' | 'characters' | 'voice' | 'genre';
+export type LightboxLensId =
+  | 'headline'
+  | 'motif'
+  | 'tension'
+  | 'gravity'
+  | 'palette'
+  | 'characters'
+  | 'voice'
+  | 'genre';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -91,20 +106,27 @@ export interface LightboxCountedSupport {
 // ---------------------------------------------------------------------------
 
 /**
- * Reading tile kinds (Slice 2B). The reader promise is its own kind because it
+ * Reading tile kinds. Slice 2B: the reader promise is its own kind because it
  * is its own claim, with its own quotes, and can be withheld on its own; the
- * genre tile draws it below the neighbors.
+ * genre tile draws it below the neighbors. Slice 3: a borrowed field, a
+ * collision, a literal set-aside, a diction cluster and a swatch
+ * (`lightboxGravity.ts`).
  */
 export type LightboxReadingTileKind =
   | 'headline'
   | 'motif'
   | 'tension-arc'
+  | 'palette-cluster'
+  | 'swatch'
+  | 'gravity-field'
+  | 'gravity-collision'
+  | 'gravity-literal'
   | 'character'
   | 'voice'
   | 'genre-neighbor'
   | 'reader-promise';
 
-interface LightboxReadingTileBase {
+export interface LightboxReadingTileBase {
   /** Host-minted, unique per run, so a pin from an older run never resolves to a newer reading. */
   id: string;
   lens: LightboxLensId;
@@ -172,6 +194,11 @@ export type LightboxReadingTile =
   | LightboxHeadlineTile
   | LightboxMotifTile
   | LightboxTensionArcTile
+  | LightboxPaletteClusterTile
+  | LightboxSwatchTile
+  | LightboxGravityFieldTile
+  | LightboxGravityCollisionTile
+  | LightboxGravityLiteralTile
   | LightboxCharacterTile
   | LightboxVoiceTile
   | LightboxGenreNeighborTile

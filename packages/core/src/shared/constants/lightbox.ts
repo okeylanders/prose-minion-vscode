@@ -10,6 +10,7 @@
 /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals (ADR 2026-10-19 D3). */
 
 import type {
+  LightboxGravityDegree,
   LightboxLensId,
   LightboxReadingGroup,
   LightboxReadingGroupId,
@@ -26,6 +27,12 @@ export const LIGHTBOX_TILE_REGISTER: Readonly<Record<LightboxTileKind, LightboxR
   headline: 'read',
   motif: 'read',
   'tension-arc': 'read',
+  // Words counted by code, grouped or named by a reading.
+  'palette-cluster': 'counted-read',
+  swatch: 'counted-read',
+  'gravity-field': 'counted-read',
+  'gravity-literal': 'counted-read',
+  'gravity-collision': 'read',
   character: 'read',
   // The voice tile sets host-measured sentence figures beside the reading.
   voice: 'counted-read',
@@ -38,6 +45,11 @@ export const LIGHTBOX_TILE_LENS: Readonly<Record<LightboxReadingTileKind, Lightb
   headline: 'headline',
   motif: 'motif',
   'tension-arc': 'tension',
+  'palette-cluster': 'palette',
+  swatch: 'palette',
+  'gravity-field': 'gravity',
+  'gravity-collision': 'gravity',
+  'gravity-literal': 'gravity',
   character: 'characters',
   voice: 'voice',
   'genre-neighbor': 'genre',
@@ -49,10 +61,29 @@ export const LIGHTBOX_TILE_KIND_LABELS: Readonly<Record<LightboxReadingTileKind,
   headline: 'Headline',
   motif: 'Motif',
   'tension-arc': 'Arc',
+  'palette-cluster': 'Diction cluster',
+  swatch: 'Color',
+  'gravity-field': 'Borrowed field',
+  'gravity-collision': 'Collision',
+  'gravity-literal': 'Set aside',
   character: 'Vibe',
   voice: 'Narration',
   'genre-neighbor': 'Neighbor',
   'reader-promise': 'Reader promise'
+};
+
+/**
+ * The gravity line: a borrowed field with fewer host-counted hits than this is
+ * drawn below the line, whatever pull its reading claims. It is drawn, not
+ * dropped, so the writer sees what the board decided not to call gravity.
+ */
+export const LIGHTBOX_GRAVITY_LINE_HITS = 3;
+
+/** A field term's degree, as the board names it: 1° latent, 2° felt, 3° overt. */
+export const LIGHTBOX_GRAVITY_DEGREES: Readonly<Record<LightboxGravityDegree, string>> = {
+  1: 'latent',
+  2: 'felt',
+  3: 'overt'
 };
 
 /** The reading groups, in board order (D6). */
@@ -69,6 +100,8 @@ const LENS_DESCRIPTORS: Readonly<Record<LightboxLensId, Omit<LightboxLensDescrip
   headline: { label: 'Headline', group: 'A' },
   motif: { label: 'Theme & motif', group: 'A' },
   tension: { label: 'Tension arc', group: 'A' },
+  gravity: { label: 'Lexical gravity', group: 'A' },
+  palette: { label: 'Palette', group: 'A' },
   characters: { label: 'Characters', group: 'B' },
   voice: { label: 'Voice', group: 'B' },
   genre: { label: 'Genre neighborhood', group: 'C' }

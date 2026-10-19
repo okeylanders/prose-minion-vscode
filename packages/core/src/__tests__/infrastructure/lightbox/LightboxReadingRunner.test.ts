@@ -202,7 +202,7 @@ describe('LightboxReadingRunner', () => {
     });
     expect(capture).toHaveBeenCalledWith(expect.objectContaining({
       toolName: 'lightbox-readings',
-      requestSummary: 'Lightbox group A: Headline, Theme & motif, Tension arc'
+      requestSummary: 'Lightbox group A: Headline, Theme & motif, Tension arc, Lexical gravity, Palette'
     }));
     expect(outcomes.filter((outcome) => outcome.status === 'ok')).toHaveLength(2);
   });

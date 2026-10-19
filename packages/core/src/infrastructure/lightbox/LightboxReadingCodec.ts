@@ -46,6 +46,7 @@ import {
   objectAt,
   shapeError
 } from '@/application/services/workshop/persistedValidation';
+import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
 
 const B = PROMPT_BUDGETS.lightbox;
 
@@ -195,6 +196,10 @@ function decodeBlock(
     }
     case 'genre':
       return decodeGenre(value, path, friction);
+    case 'gravity':
+      return decodeGravityBlock(value, path, friction);
+    case 'palette':
+      return decodePaletteBlock(value, path, friction);
   }
 }
 

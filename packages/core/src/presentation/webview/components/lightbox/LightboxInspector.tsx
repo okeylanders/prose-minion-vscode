@@ -8,8 +8,8 @@
  * paragraph), and what code counted. A reading adds its evidence (each quote
  * as the chapter has it, with its ¶ and how it was found), the quotes
  * withheld and why, its own fields, where it strains, and "Re-read this
- * tile": one call for that lens. Actions that cross into the Workshop or the
- * editor arrive with later slices.
+ * tile": one call for that lens. A borrowed field (Slice 3) adds its terms
+ * by degree. Actions that cross into the Workshop or the editor arrive later.
  *
  * The addresses render a page at a time (PR #148 F-04). With more than one
  * page, a pager steps between them and jumps to a paragraph number, all by
@@ -263,6 +263,20 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
               </div>
             ))}
           </dl>
+        </div>
+      )}
+
+      {reading && reading.degrees.length > 0 && (
+        <div>
+          <p className="pm-lb-label">By degree</p>
+          <div className="pm-lb-degree-rows">
+            {reading.degrees.map((row) => (
+              <div key={row.degree} className="pm-lb-degree-row">
+                <span className={`pm-lb-degree-tag is-deg${row.degree}`}>{row.label}</span>
+                <span>{row.terms} · {row.hits.toLocaleString('en-US')} {row.hits === 1 ? 'hit' : 'hits'}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

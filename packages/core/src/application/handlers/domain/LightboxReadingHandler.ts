@@ -285,7 +285,8 @@ export class LightboxReadingHandler {
         material: {
           paragraphs: text.paragraphTexts,
           columns: board.ribbon.map(({ from, to }) => ({ from, to })),
-          context: this.contextShelf.materials()
+          context: this.contextShelf.materials(),
+          countedWords: board.measured.topWords.map((term) => term.term)
         },
         sourceWords: board.source.wordCount,
         contextWords: this.contextShelf.totalWords(),

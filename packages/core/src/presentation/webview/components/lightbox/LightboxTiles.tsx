@@ -4,7 +4,8 @@
  * a runtime guess. The layouts say where each kind is drawn: the counted
  * rows and grid (Slice 2A), and the readings (Slice 2B) in the board's
  * heading, under the ribbon, and in the grid. The reader promise is drawn
- * inside the genre tile, below its neighbors.
+ * inside the genre tile, below its neighbors; gravity's collisions and literal
+ * set-asides inside the gravity tile, and swatches inside the palette (Slice 3).
  */
 import * as React from 'react';
 import type {
@@ -24,6 +25,8 @@ import { LightboxMotifs } from '@components/lightbox/LightboxMotifs';
 import { LightboxCharacters } from '@components/lightbox/LightboxCharacters';
 import { LightboxGenre, LightboxReaderPromise } from '@components/lightbox/LightboxGenre';
 import { LightboxVoice } from '@components/lightbox/LightboxVoice';
+import { LightboxGravity, LightboxGravityCollisions, LightboxGravityLiterals } from '@components/lightbox/LightboxGravity';
+import { LightboxPalette, LightboxSwatches } from '@components/lightbox/LightboxPalette';
 
 export interface LightboxTileProps {
   board: LightboxBoard;
@@ -40,6 +43,11 @@ export const LIGHTBOX_TILE_RENDERERS: Readonly<Record<LightboxTileKind, Lightbox
   headline: LightboxHeadline,
   motif: LightboxMotifs,
   'tension-arc': LightboxTensionArc,
+  'gravity-field': LightboxGravity,
+  'gravity-collision': LightboxGravityCollisions,
+  'gravity-literal': LightboxGravityLiterals,
+  'palette-cluster': LightboxPalette,
+  swatch: LightboxSwatches,
   character: LightboxCharacters,
   voice: LightboxVoice,
   'genre-neighbor': LightboxGenre,
@@ -69,7 +77,13 @@ export const LIGHTBOX_READING_LAYOUT: Readonly<{
 }> = {
   heading: 'headline',
   underRibbon: 'tension-arc',
-  grid: ['motif', 'character', 'genre-neighbor', 'voice'],
-  // eslint-disable-next-line @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals.
-  within: { 'reader-promise': 'genre-neighbor' }
+  grid: ['motif', 'gravity-field', 'palette-cluster', 'character', 'genre-neighbor', 'voice'],
+  /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals. */
+  within: {
+    'reader-promise': 'genre-neighbor',
+    'gravity-collision': 'gravity-field',
+    'gravity-literal': 'gravity-field',
+    swatch: 'palette-cluster'
+  }
+  /* eslint-enable @typescript-eslint/naming-convention */
 };

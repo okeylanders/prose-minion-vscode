@@ -19,13 +19,30 @@ import { frame, framedJson, readWorkedExample } from '@/__tests__/infrastructure
 import { makeBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxBoardFixtures';
 
 /** One group as the host would hold it after its call landed. */
-export function readGroup(group: LightboxReadingGroupId, options: { paraphraseOne?: boolean } = {}): LightboxReadingGroup {
+export function readGroup(
+  group: LightboxReadingGroupId,
+  options: { paraphraseOne?: boolean; collision?: boolean } = {}
+): LightboxReadingGroup {
   const example = readWorkedExample(group);
   let response = example.response;
-  if (options.paraphraseOne && group === 'A') {
-    // A fixture built to provoke a withheld quote: one motif quote paraphrased.
+  if ((options.paraphraseOne || options.collision) && group === 'A') {
     const body = framedJson(response) as Record<string, any>;
-    body.motifs.items[0].evidence[1].quote = 'and then it dropped straight down';
+    if (options.paraphraseOne) {
+      // A fixture built to provoke a withheld quote: one motif quote paraphrased.
+      body.motifs.items[0].evidence[1].quote = 'and then it dropped straight down';
+    }
+    if (options.collision) {
+      // A hand-written third field, so ¶4 holds a collision the host can see.
+      body.gravity.fields.push({
+        name: 'Animals', metaphor: 'The chase as a hunt.', pull: 0.12, claim: 'The Rabbit is chased like quarry.',
+        terms: [{ term: 'rabbit', degree: 1 }], evidence: [{ para: 3, quote: 'a White Rabbit with pink eyes' }]
+      });
+      body.gravity.collisions = [{
+        fields: ['Fire', 'Animals'],
+        claim: 'The thought that flashes is a thought about the rabbit.',
+        evidence: [{ para: 4, quote: 'it flashed across her mind that she had never before seen a rabbit' }]
+      }];
+    }
     response = frame('A', body);
   }
   const decoded = decodeLightboxGroup(response, { group, lenses: example.lenses, columnCount: 8 });
@@ -50,7 +67,7 @@ export function readGroup(group: LightboxReadingGroupId, options: { paraphraseOn
 }
 
 /** The counted board with every group read. */
-export function makeReadBoard(options: { paraphraseOne?: boolean } = {}): LightboxBoard {
+export function makeReadBoard(options: { paraphraseOne?: boolean; collision?: boolean } = {}): LightboxBoard {
   const board = makeBoard(8);
   return { ...board, readings: (['A', 'B', 'C'] as const).map((group) => readGroup(group, options)) };
 }

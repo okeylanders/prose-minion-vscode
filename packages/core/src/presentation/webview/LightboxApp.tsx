@@ -22,6 +22,7 @@ import './styles/lightbox/tiles.css';
 import './styles/lightbox/rail.css';
 import './styles/lightbox/inspector.css';
 import './styles/lightbox/readings.css';
+import './styles/lightbox/gravity.css';
 import * as React from 'react';
 import { MessageType } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';

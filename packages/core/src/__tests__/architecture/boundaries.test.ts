@@ -655,7 +655,12 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     file: 'infrastructure/api/orchestration/capabilities/WorkshopToolContextCapability.ts',
     reason: 'catalog-neighbor algorithm owns an unrelated distance coordinate',
     allowedToken: /distance/
-  }
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxReadingPrompts.ts',
+    reason: 'names the Lightbox lexical gravity lens prompt file (Slice 3)',
+    allowedToken: /13-lexical-gravity/
+  },
 ] as const;
 
 /**
@@ -768,7 +773,11 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
     file: 'infrastructure/api/orchestration/capabilities/WorkshopToolContextCapability.ts',
     reason: 'catalog-neighbor distance is unrelated to widget feature dispatch'
-  }
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxReadingPrompts.ts',
+    reason: 'a Lightbox lens prompt file name, not widget dispatch'
+  },
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
   path.join(
@@ -936,12 +945,17 @@ const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
 const LIGHTBOX_MODULES = [
   'shared/types/messages/lightbox.ts',
   'shared/types/messages/lightboxReadings.ts',
+  'shared/types/messages/lightboxGravity.ts',
   'shared/constants/lightbox.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
   'infrastructure/lightbox/LightboxService.ts',
   'infrastructure/lightbox/LightboxReadingWire.ts',
   'infrastructure/lightbox/LightboxReadingCodec.ts',
+  'infrastructure/lightbox/LightboxReadingFields.ts',
+  'infrastructure/lightbox/LightboxGravityCodec.ts',
+  'infrastructure/lightbox/LightboxGravityCounts.ts',
+  'infrastructure/lightbox/LightboxGravityTiles.ts',
   'infrastructure/lightbox/LightboxQuoteVerifier.ts',
   'infrastructure/lightbox/LightboxTermCounts.ts',
   'infrastructure/lightbox/LightboxReadingTiles.ts',
@@ -960,17 +974,21 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
   'presentation/webview/components/lightbox/LightboxCharacters.tsx',
   'presentation/webview/components/lightbox/LightboxContextList.tsx',
   'presentation/webview/components/lightbox/LightboxGenre.tsx',
+  'presentation/webview/components/lightbox/LightboxGravity.tsx',
+  'presentation/webview/components/lightbox/LightboxGravityOrbit.tsx',
   'presentation/webview/components/lightbox/LightboxHeadline.tsx',
   'presentation/webview/components/lightbox/LightboxInspector.tsx',
   'presentation/webview/components/lightbox/LightboxItemButton.tsx',
   'presentation/webview/components/lightbox/LightboxLensesPanel.tsx',
   'presentation/webview/components/lightbox/LightboxMotifs.tsx',
+  'presentation/webview/components/lightbox/LightboxPalette.tsx',
   'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
   'presentation/webview/components/lightbox/LightboxReadingFrame.tsx',
   'presentation/webview/components/lightbox/LightboxReadingParts.tsx',
@@ -990,6 +1008,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts'
 ] as const;

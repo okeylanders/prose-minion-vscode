@@ -13,9 +13,20 @@
 import type { LightboxCountedSupport } from '@messages';
 import { WORD_FREQUENCY_STOPWORDS, extractFrequencyWords } from '@/tools/measure/wordFrequency';
 
+/** Where one occurrence of a term stands: its paragraph (1-based) and its tokens there. */
+export interface LightboxTermOccurrence {
+  paragraph: number;
+  /** Index of its first token within the paragraph. */
+  start: number;
+  /** How many tokens it spans. */
+  length: number;
+}
+
 export interface LightboxTermCounter {
   /** The term's occurrences and paragraphs; `term` is its normalized (lower-case token) form. */
   count(term: string): LightboxCountedSupport;
+  /** Every occurrence of the term, in reading order (what `count` counts). */
+  occurrences(term: string): LightboxTermOccurrence[];
   /** True when the term is one stopword ("she", "the"), which counts nothing worth showing. */
   isStopword(term: string): boolean;
 }
@@ -27,6 +38,18 @@ export function lightboxTermTokens(text: string): string[] {
 export function createLightboxTermCounter(paragraphs: readonly string[]): LightboxTermCounter {
   const tokens = paragraphs.map(lightboxTermTokens);
   return {
+    occurrences(term: string): LightboxTermOccurrence[] {
+      const parts = lightboxTermTokens(term);
+      const found: LightboxTermOccurrence[] = [];
+      if (parts.length > 0) {
+        tokens.forEach((paragraphTokens, index) => {
+          for (const start of startsOf(paragraphTokens, parts)) {
+            found.push({ paragraph: index + 1, start, length: parts.length });
+          }
+        });
+      }
+      return found;
+    },
     count(term: string): LightboxCountedSupport {
       const parts = lightboxTermTokens(term);
       let count = 0;
@@ -50,11 +73,22 @@ export function createLightboxTermCounter(paragraphs: readonly string[]): Lightb
 }
 
 function occurrencesOf(tokens: readonly string[], parts: readonly string[]): number {
-  let occurrences = 0;
+  return startsOf(tokens, parts).length;
+}
+
+/** Where `parts` stand consecutively in `tokens`. */
+function startsOf(tokens: readonly string[], parts: readonly string[]): number[] {
+  const starts: number[] = [];
   for (let start = 0; start + parts.length <= tokens.length; start++) {
     if (parts.every((part, offset) => tokens[start + offset] === part)) {
-      occurrences += 1;
+      starts.push(start);
     }
   }
-  return occurrences;
+  return starts;
+}
+
+/** Whether `text` holds `term` (its tokens, consecutively), under the board's tokenizer. */
+export function lightboxTextHoldsTerm(text: string, term: string): boolean {
+  const parts = lightboxTermTokens(term);
+  return parts.length > 0 && startsOf(lightboxTermTokens(text), parts).length > 0;
 }

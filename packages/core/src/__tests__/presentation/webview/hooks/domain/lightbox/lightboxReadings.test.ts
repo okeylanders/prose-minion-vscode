@@ -13,7 +13,7 @@ import {
   lightboxWithheldQuoteText,
   mergeLightboxGroupResult
 } from '@hooks/domain/lightbox/lightboxReadings';
-import { parseLightboxItemRef, resolveLightboxItem } from '@hooks/domain/lightbox/lightboxItems';
+import { lightboxItemsTouching, parseLightboxItemRef, resolveLightboxItem } from '@hooks/domain/lightbox/lightboxItems';
 import { buildLightboxInspectorView } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import { makeBoard } from './lightboxBoardFixtures';
 import { makeReadBoard, readGroup } from './lightboxReadingBoardFixtures';
@@ -154,6 +154,7 @@ describe('reading items and the inspector', () => {
     const headline = buildLightboxInspectorView(board, { kind: 'reading', tileId: tileId(board, 'A bored girl follows a hurried white rabbit down a hole and keeps on falling.') });
     expect(headline?.claim).toBe('');
     const paragraph = buildLightboxInspectorView(board, { kind: 'paragraphs', from: 4, to: 4 });
-    expect(paragraph?.touching.map((touch) => touch.label)).toEqual(expect.arrayContaining(['Going down', 'White Rabbit']));
+    expect(paragraph?.touching.map((touch) => touch.label)).toEqual(expect.arrayContaining(['Going down']));
+    expect(lightboxItemsTouching(board, 4).map((touch) => touch.title)).toEqual(expect.arrayContaining(['Going down', 'White Rabbit']));
   });
 });

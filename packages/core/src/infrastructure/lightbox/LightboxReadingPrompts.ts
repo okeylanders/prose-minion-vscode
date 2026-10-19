@@ -7,8 +7,9 @@
  *   turned off is not in the prompt at all.
  * - **User message:** the chapter first, every paragraph led by its host
  *   marker `⟦¶n⟧`; then the context files, in a labeled section that says
- *   they are never evidence; then the task (the lenses, the frame, and the
- *   ribbon columns the tension arc scores). The chapter section is identical
+ *   they are never evidence; then the task (the lenses, the frame, the
+ *   ribbon columns the tension arc scores, and the counted words the palette
+ *   groups). The chapter section is identical
  *   for every group of a board, so it is the stable leading content of each
  *   call (open question 1). The system messages differ per group, so a
  *   caching change would also move the lens files behind the chapter.
@@ -28,6 +29,8 @@ export const LIGHTBOX_PROMPT_FILES = {
     headline: 'lightbox/10-headline.md',
     motif: 'lightbox/11-motifs.md',
     tension: 'lightbox/12-tension.md',
+    gravity: 'lightbox/13-lexical-gravity.md',
+    palette: 'lightbox/14-palette.md',
     characters: 'lightbox/20-characters.md',
     voice: 'lightbox/21-voice.md',
     genre: 'lightbox/30-genre.md'
@@ -46,6 +49,8 @@ const LENS_TASK_NAMES: Readonly<Record<LightboxLensId, string>> = {
   headline: 'headline',
   motif: 'motifs',
   tension: 'tension arc',
+  palette: 'palette',
+  gravity: 'lexical gravity',
   characters: 'characters',
   voice: 'voice',
   genre: 'genre neighborhood'
@@ -64,6 +69,12 @@ export interface LightboxReadingMaterial {
   /** The board's ribbon columns (what the tension arc scores). */
   columns: readonly Pick<LightboxRibbonColumn, 'from' | 'to'>[];
   context: readonly LightboxContextMaterial[];
+  /**
+   * The board's most frequent content words, most frequent first, as the
+   * host counted them: what the palette groups into clusters. Words only;
+   * the counts stay on the board.
+   */
+  countedWords?: readonly string[];
 }
 
 export interface LightboxGroupRequest {
@@ -96,7 +107,7 @@ export function buildLightboxUserMessage(
   if (material.context.length > 0) {
     sections.push(buildLightboxContextSection(material.context));
   }
-  sections.push(buildLightboxTaskSection(request, material.columns));
+  sections.push(buildLightboxTaskSection(request, material.columns, material.countedWords));
   return { message: sections.join('\n\n'), chapterSection };
 }
 
@@ -128,7 +139,8 @@ export function buildLightboxContextSection(context: readonly LightboxContextMat
 
 export function buildLightboxTaskSection(
   request: LightboxGroupRequest,
-  columns: readonly Pick<LightboxRibbonColumn, 'from' | 'to'>[]
+  columns: readonly Pick<LightboxRibbonColumn, 'from' | 'to'>[],
+  countedWords: readonly string[] = []
 ): string {
   const { start, end } = lightboxGroupSentinels(request.group);
   const keys = request.lenses.map((lens) => `"${LIGHTBOX_LENS_KEYS[lens]}"`).join(', ');
@@ -141,6 +153,12 @@ export function buildLightboxTaskSection(
   ];
   if (request.lenses.includes('tension')) {
     lines.push(...tensionColumnLines(columns));
+  }
+  if (request.lenses.includes('palette') && countedWords.length > 0) {
+    lines.push(
+      'The board counted these as the chapter\'s most frequent content words, most frequent first; ' +
+        `build the palette's clusters from them where you can: ${countedWords.map(neutralizeMarkers).join(', ')}.`
+    );
   }
   return lines.join('\n');
 }

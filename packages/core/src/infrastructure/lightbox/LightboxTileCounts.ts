@@ -11,6 +11,7 @@
 import type { LightboxCountedSupport, LightboxReadingTile } from '@messages';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { LIGHTBOX_VOICE_TRAITS } from '@/infrastructure/lightbox/LightboxReadingWire';
+import { countLightboxField } from '@/infrastructure/lightbox/LightboxGravityCounts';
 
 /** The voice trait the host sets its measured sentence length beside. */
 const MUSIC_LABEL = LIGHTBOX_VOICE_TRAITS.find(([key]) => key === 'music')?.[1] ?? 'Sentence music';
@@ -53,8 +54,9 @@ export function lightboxMeasuredMusic(averageWordsPerSentence: number | undefine
 
 /**
  * The tile with every counted part recomputed against the current text: its
- * support recounted term by term, and any host figure set beside the reading
- * measured again. The reading's own words are untouched.
+ * support recounted term by term, a field's hits, degrees, line and drift
+ * counted again, and any host figure set beside the reading measured again.
+ * The reading's own words (and a field's claimed pull) are untouched.
  */
 export function recountLightboxTile(
   tile: LightboxReadingTile,
@@ -70,9 +72,31 @@ export function recountLightboxTile(
         traits: tile.traits.map(({ measured: _measured, ...trait }) =>
           (trait.label === MUSIC_LABEL ? { ...trait, ...lightboxMeasuredMusic(context.averageWordsPerSentence) } : trait))
       };
+    case 'gravity-field': {
+      const field = countLightboxField(tile.support, counter, context.paragraphCount);
+      return {
+        ...tile,
+        support: field.support,
+        hits: field.hits,
+        degreeHits: field.degreeHits,
+        belowLine: field.belowLine,
+        drift: field.drift
+      };
+    }
+    case 'gravity-literal': {
+      const field = countLightboxField(
+        tile.support.map((term) => ({ term: term.term, degree: 1 })),
+        counter,
+        context.paragraphCount
+      );
+      return { ...tile, support: field.support.map(({ degree: _degree, ...term }) => term), hits: field.hits };
+    }
     case 'headline':
     case 'motif':
     case 'tension-arc':
+    case 'palette-cluster':
+    case 'swatch':
+    case 'gravity-collision':
     case 'character':
     case 'genre-neighbor':
     case 'reader-promise':

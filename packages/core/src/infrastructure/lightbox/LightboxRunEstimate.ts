@@ -64,6 +64,8 @@ export const LIGHTBOX_TYPICAL_OUTPUT_TOKENS: Readonly<Record<LightboxLensId, num
   headline: 180,
   motif: 900,
   tension: 260,
+  palette: 760,
+  gravity: 1_500,
   characters: 1_000,
   voice: 420,
   genre: 820
