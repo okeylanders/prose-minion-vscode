@@ -3,6 +3,8 @@
  * Analyzes prose statistics: word count, sentences, pacing, etc.
  */
 
+import { countDialogueWords } from '@/utils/dialogueSpans';
+
 export interface ProseStatsInput {
   text: string;
 }
@@ -104,17 +106,10 @@ export class PassageProseStats {
   }
 
   private calculateDialoguePercentage(text: string): number {
-    // Count words inside quotation marks
-    const dialogueMatches = text.match(/"[^"]*"/g);
-    if (!dialogueMatches) {
-      return 0;
-    }
-
-    const dialogueText = dialogueMatches.join(' ');
-    const dialogueWords = this.countWords(dialogueText);
+    // Words inside quoted dialogue. Lightbox's per-paragraph dialogue share
+    // uses the same matcher (ADR 2026-10-19, D4), so the two cannot disagree.
     const totalWords = this.countWords(text);
-
-    return totalWords > 0 ? (dialogueWords / totalWords) * 100 : 0;
+    return totalWords > 0 ? (countDialogueWords(text) / totalWords) * 100 : 0;
   }
 
   private tokenizeWords(text: string): string[] {

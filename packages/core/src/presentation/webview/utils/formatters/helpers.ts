@@ -18,7 +18,7 @@ export function buildMetricsLegend(): string {
 - **Paragraph Count**: Blocks split by blank lines.
 - **Avg Words per Sentence**: Average words per sentence.
 - **Avg Sentences per Paragraph**: Average sentences per paragraph.
-- **Dialogue Percentage**: % of tokens inside quotes.
+- **Dialogue Percentage**: % of tokens inside double quotes, straight or curly.
 - **Stopword Ratio**: % tokens in a common English stopword list.
 - **Hapax %**: % tokens occurring exactly once; Hapax Count is absolute count.
 - **Type-Token Ratio**: Unique/total tokens × 100.

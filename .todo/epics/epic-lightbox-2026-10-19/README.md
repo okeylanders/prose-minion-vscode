@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. Slice 1 is in review, and the dialogue-quote prerequisite is approved (PR #146)
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146); Slice 1 is in review (PR #147)
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -116,6 +116,26 @@ becomes a file format.
     `sourceDocument` and `contextFiles` budgets. There is a 12,000-word
     "book-sized" cost warning, a context-window fit check before the press,
     and no silent truncation (D8).
+- **2026-10-19. Prerequisite: dialogue % and curly quotes.** Fixed on
+  `epic/lightbox-prereq-dialogue-quotes`. Astra approved it with no
+  findings, and it merged as PR #146
+  ([tech debt](../../tech-debt/2026-10-19-prose-stats-dialogue-curly-quotes.md)).
+  - **One matcher:** `@/utils/dialogueSpans` (`findDialogueSpans`,
+    `countDialogueWords`) matches straight `"…"` and curly `“…”` double
+    quotes, mixed freely. No span crosses a paragraph break, so a stray quote
+    mislabels at most the rest of its paragraph, and per-paragraph counts sum
+    to the whole-text count. `PassageProseStats` now uses it. Slice 2A's
+    per-paragraph dialogue share must call the same functions.
+  - **Not matched:** single-quoted dialogue (`‘…’`) collides with apostrophes
+    and elisions, so it is split into
+    [its own tech debt](../../tech-debt/2026-10-19-dialogue-single-quote-convention.md).
+  - **Effect:** a curly-quoted test scene went from 0% to 59.1% dialogue.
+    Straight-quoted text whose quotes balance within each paragraph reports
+    exactly what it did before; tests check this against the old regex.
+  - **Verification:** `npm run typecheck` clean; `npx jest` 316 suites /
+    4,742 tests / 2 snapshots (baseline 315 / 4,702 / 2); `npm run lint`
+    0 errors / 1,140 warnings (unchanged); `npm run build` OK.
+
 - **2026-10-19. Slice 1 (shared full-tab shell).** Built on
   `epic/lightbox-slice-1-shell` in four commits:
   1. **`useFullTabChrome`** (`hooks/fulltab/`). The generic frame state
@@ -174,8 +194,9 @@ becomes a file format.
       still Workshop-scoped. Move them to the frame when the Lightbox rail
       needs them.
     - **Slice 2A aside.** Tune the aside column for the inspector.
-    - **`AGENTS.md`.** Its presentation tree does not list `hooks/fulltab/` or
-      `components/fulltab/` yet.
+    - **`AGENTS.md`.** Done in this PR: the presentation tree lists
+      `hooks/fulltab/`, and a convention note covers the shell, the
+      `data-pm-frame` scope and the surface map.
     - **Slice 6.** Recheck the Workshop header, banners, Sessions menu and
       model browser in the Extension Development Host.
     - **Tech debt:**
