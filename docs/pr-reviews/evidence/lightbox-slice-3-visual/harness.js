@@ -88,7 +88,8 @@ const chrome = [
     type: 'model_data', source: 'extension.configuration', timestamp: 1,
     payload: {
       options: [{ id: 'provider/reader-model', label: 'Reader model (stub)', description: '' }],
-      selections: { assistant: 'provider/reader-model' }
+      // The Workshop's widget picker shows the stub too, not the product's default model.
+      selections: { assistant: 'provider/reader-model', widget: 'provider/reader-model' }
     }
   },
   {
@@ -272,6 +273,15 @@ const lightboxFacts = () => {
     swatches: all('.pm-lb-swatch'),
     staleNotes: all('.pm-lb-stale-note').length,
     staleNoteText: all('.pm-lb-stale-note')[0] ?? null,
+    // PR #150 F-06: the headline and the tension caption and lane say they are stale,
+    // and a changed paragraph carries no old score.
+    headline: text('[aria-label="Headline reading"]')?.replace(/\s+/g, ' ') ?? null,
+    tension: {
+      caption: text('.pm-lb-tension-note')?.replace(/\s+/g, ' ') ?? null,
+      laneStale: text('.pm-lb-lane-stale'),
+      laneNote: document.querySelector('.pm-lb-lane-label[title^="Tension"]')?.getAttribute('title') ?? null,
+      unscoredColumns: [...document.querySelectorAll('.pm-lb-ribbon-cols [title*="tension not scored"]')].length
+    },
     inspectorTitle: inspector?.querySelector('.pm-lb-inspector-title')?.textContent ?? null,
     inspectorStale: inspector ? all('.pm-lb-stale-note', inspector) : [],
     degreeRows: inspector ? all('.pm-lb-degree-row', inspector) : [],
@@ -299,6 +309,17 @@ const workshopFacts = () => {
     banner: modal?.querySelector('.pm-ws-lg-build-seed')?.textContent?.trim().replace(/\s+/g, ' ') ?? null,
     subject: input ? input.value : null,
     press: press ? { label: press.textContent.trim(), disabled: press.disabled } : null,
+    // PR #150 F-01: no lens until the writer chooses one, so nothing to preview or install.
+    noLens: modal?.querySelector('.pm-ws-lg-no-lens')?.textContent?.trim().replace(/\s+/g, ' ') ?? null,
+    preview: (() => {
+      const button = modal?.querySelector('.pm-ws-lg-preview-button');
+      return button ? { label: button.textContent.trim(), disabled: button.disabled } : null;
+    })(),
+    install: (() => {
+      const button = modal?.querySelector('.pm-ws-gesture-commit');
+      return button ? { label: button.textContent.trim(), disabled: button.disabled } : null;
+    })(),
+    selectedLens: modal?.querySelector('.pm-ws-lg-lens.is-selected')?.getAttribute('title') ?? null,
     horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
     posted: window.__pmPosted.map((m) => `${m.type} ${m.source}`)
   };

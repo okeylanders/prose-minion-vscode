@@ -454,9 +454,9 @@ it('dumps the gravity, palette, handoff and stale states', async () => {
   const priced = await estimate();
   const idle = since(posted, 0);
 
-  // Read the chapter, naming the estimate the press was shown; every group comes back.
+  // Read the chapter, naming the estimate the press was shown and the model it priced; every group comes back.
   let mark = posted.length;
-  await route(MessageType.LIGHTBOX_RUN, { boardId: board().boardId, scope: { mode: 'all' }, estimateKey: priced.estimate.key });
+  await route(MessageType.LIGHTBOX_RUN, { boardId: board().boardId, scope: { mode: 'all' }, estimateKey: priced.estimate.key, model: MODEL });
   await settle();
   expect([...pending.keys()].sort()).toEqual(['A', 'B', 'C']);
   for (const group of ['A', 'B', 'C'] as const) {
@@ -474,7 +474,7 @@ it('dumps the gravity, palette, handoff and stale states', async () => {
   // own handler opens Build lens with it, and nothing is built.
   mark = posted.length;
   const telescope = field('Telescope');
-  // The seed id carries the clock; fix it so the file diffs cleanly.
+  // The Workshop's messages carry the clock; fix it so the file diffs cleanly.
   const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 9, 19, 15, 45));
   await route(MessageType.LIGHTBOX_HAND_OFF, { kind: 'lexical-gravity-seed', boardId: board().boardId, fieldId: telescope.id });
   await settle();

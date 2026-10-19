@@ -6,6 +6,6 @@
 [LightboxReadingRunner] Run run-1-evidence finished: A ok, B ok, C ok
 [LightboxReadingHandler] Run run-1-evidence finished: 3 groups, 0 tokens
 [WorkshopLexicalGravityHandler] Build lens opened from the lightbox with 6 counted terms; the subject carries the field name and terms
-[LightboxHandler] Handed a borrowed field to the Workshop: 6 counted terms, 2 of 2 quotes found again
+[LightboxHandler] The Workshop opened a borrowed field: 6 counted terms, 2 of 2 quotes found again
 [LightboxHandler] Board built for Drafts/alice-chapter-1.md: 2187 words, 31 paragraphs; the text changed, so its readings came along marked stale
 [LightboxHandler] Handoff refused: This field was read against an earlier version of the chapter. Read the lens again, then build it.
