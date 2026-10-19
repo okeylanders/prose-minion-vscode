@@ -3,29 +3,116 @@
 **Author:** okeylanders · **PR:** [#149](https://github.com/okeylanders/prose-minion-vscode/pull/149) (open, unmerged at review)
 **Branches:** `epic/lightbox-slice-2b-readings` → `epic/lightbox`
 **Verified base / merge-base:** `3e6eba3c5c0e76afb72280691b7b6a0a5b9e7d7b`
-**Reviewed implementation head:** `305ce1e2b9924d817c66c39514f2511118082c44`
-**Scope:** 109 files · +8,757 / −251 · 16 commits
-**Reviewed:** 2026-10-19 · **Reviewer:** Astra
+**Reviewed correction head:** `bf8f1ca2502441133216ca5013480da9aa37f9cf`
+**Initial implementation head:** `305ce1e2b9924d817c66c39514f2511118082c44` · **Initial report commit:** `9ad4e34f32fcea8037b240fe555df9944b47925f`
+**Current scope against base:** 126 files · +11,244 / −253 · 29 commits (including the initial review report)
+**Correction delta since initial report:** 57 files · +2,771 / −457 · 12 commits
+**Reviewed and independently re-reviewed:** 2026-10-19 · **Reviewer:** Astra
 **Mode:** independent source/spec review; real-service, runner and engine probes with synthetic streaming transport; codec/evidence probes; real-root and production-bundle DOM witnesses; supplied-image inspection; Workshop lifecycle parity; full deterministic verification
 
 ## Resolution ledger
 
-Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. Author-proposed deferrals are discussed below; this review does not record acceptance on the writer's behalf.
+Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **Partially addressed** = reproduced residual remains · **N/A** = no action. Author-proposed deferrals are discussed below; this review does not record acceptance on the writer's behalf.
 
 | ID | Sev | Finding | Status |
 | --- | --- | --- | --- |
-| F-01 | Medium / P2 | Normalized quote matching can return the wrong source span after supplementary Unicode characters | **Open** |
-| F-02 | Medium / P2 | Closing the tab during prompt preparation does not prevent its paid run from starting afterward | **Open** |
-| F-03 | Medium / P2 | Uncorrelated estimates and progress show another request's price and break the current run's Stop control | **Open** |
-| F-04 | Medium / P2 | Withheld headline claims and blocks disappear behind the ordinary fallback heading | **Open** |
-| F-05 | Medium / P2 | Model-controlled keys and raw provider errors enter Lightbox logs and failed-group diagnostics | **Open** |
-| F-06 | Low / P3 · nonblocking | A low-affinity genre neighbor can omit its required near-miss explanation | **Open** |
-| F-07 | Low / P3 · nonblocking | “Quotes checked” omits successfully verified quotes on a withheld motif | **Open** |
-| F-08 | Low / P3 · nonblocking | Inspector re-read remains enabled for an off lens or a too-large call | **Open** |
+| F-01 | Medium / P2 | Normalized quote matching can return the wrong source span after supplementary Unicode characters | **Addressed** |
+| F-02 | Medium / P2 | Closing the tab during prompt preparation does not prevent its paid run from starting afterward | **Addressed** |
+| F-03 | Medium / P2 | Original board/run correlation repaired; selected-model changes can still accept an old-model estimate and start on that old model | **Partially addressed — remains blocking** |
+| F-04 | Medium / P2 | Withheld headline claims and blocks disappear behind the ordinary fallback heading | **Addressed** |
+| F-05 | Medium / P2 | Model-controlled keys and raw provider errors enter Lightbox logs and failed-group diagnostics | **Addressed** |
+| F-06 | Low / P3 · nonblocking | A low-affinity genre neighbor can omit its required near-miss explanation | **Addressed** |
+| F-07 | Low / P3 · nonblocking | “Quotes checked” omits successfully verified quotes on a withheld motif | **Addressed** |
+| F-08 | Low / P3 · nonblocking | Inspector re-read remains enabled for an off lens or a too-large call | **Addressed** |
+| F-09 | Low / P3 · nonblocking | Rare compatibility-mark sequences still miss whole-string NFKC-equivalent quotes | **Open** |
 
-**Verdict: Request changes.** The five P2 findings affect the feature's evidence, lifecycle, spending disclosure, cancellation and privacy contracts. The deterministic suite is green, but it does not cover these independently reproduced boundaries. This is a review for integration into `epic/lightbox`, not merge authorization, native VS Code acceptance or live-provider acceptance. Any later approval remains conditional on required CI passing on the exact report-only head; green CI alone does not resolve this ledger.
+**Verdict: Request changes.** Seven original findings are independently addressed. F-03 remains P2 because the new Lightbox estimate/request integration can start a reading on a model other than the one the writer just selected while that selection is being saved. The old-model estimate is internally consistent, so this is **not** a demonstrated higher-price spend against that estimate; it is a selected-model ownership failure. After the save completes, the host safely refuses the stale key and re-estimates. F-09 is a separate, conservative false-negative and is nonblocking. Passing deterministic tests and correction-head CI do not resolve either finding.
+
+This is a review for integration into `epic/lightbox`, not merge authorization, native VS Code acceptance or live-provider acceptance. Any later approval remains conditional on required CI passing on the exact report-only head. The author's response is preserved verbatim below; its all-fixed assessment is not the independent verdict.
 
 **Inherited PR #148 F-05 is independently addressed here.** It is distinct from this report's new F-05. Both an exact repeated jump to ¶812 and sparse ¶100 → ¶101 refocus the landing chip. Passive board updates do not steal focus. Real-root and rebuilt-bundle witnesses pass, as do the existing bounded 5,000-address navigation and pin-ownership cases.
+
+
+## Re-review of `bf8f1ca` — 2026-10-19
+
+All twelve commits after the initial report were inspected, including the author response, new ownership/correlation modules, changed tests, six new screenshots and their request-aware harness. The base remains `3e6eba3`. The correction head was fetched into the same isolated worktree; the earlier probes were adapted to the new request-id/estimate-key protocol without changing production files.
+
+### Independently verified resolutions
+
+- **F-01 addressed:** every emitted UTF-16 code unit now has a source mapping; matches must respect normalization-unit boundaries and the returned source span must fold back to the matched form. The original emoji case returns exactly `“Alice waited”`. Decomposed Hangul, compatibility ligatures, combining accents, supplementary characters inside quotes, whitespace and dash cases pass. The original wrong-span blocker is closed; the broader NFKC claim has the distinct F-09 limitation below.
+- **F-02 addressed:** the host captures the priced snapshot and reserves a minted run identity before loading prompts, then verifies ownership and the live key before starting. Closing during preparation produces **zero provider calls and zero later posts**. Independent context add/remove, one/all lens toggles, model, price, window and source changes each refuse without sending and release the reservation for an explicit fresh press. Duplicate pending presses, a removed engine, prompt-load failure and a closed-handler/reopened-handler interleaving also behave safely. F-03's remaining selected-model intent gap occurs before the shared configuration state has changed; it is not a failure of this new host snapshot comparison.
+- **F-03 substantially repaired, still open:** old-board and out-of-order estimates cannot overwrite a newer request; price is withdrawn while that request is pending; progress and Stop are scoped by board/token. Original wrong-board price, late finish disabling another board's Stop, mismatched cancellation, reload ownership and replaced-run cases now pass. The model-selection integration below is still missing.
+- **F-04 addressed:** a withheld headline claim/block and failed/cancelled headline call are visible beneath the fallback heading. Independent tests run the real codec, verifier and assembly before rendering; rejected text is not promoted to the headline, and valid sibling tiles survive.
+- **F-05 addressed within its original Lightbox scope:** arbitrary root/nested keys no longer enter ordinary failure reasons; raw provider error bodies/strings/objects/null and custom error names are reduced to host-owned categories and bounded HTTP status. Root diagnostics reach only the recovery capture beside the quarantined body. These checks used the real runner, real `p-limit` and real `AgentRunEngine`, with synthetic provider streams. The unchanged engine-level interrupted-stream `errorType` log remains an inherited limitation, discussed below.
+- **F-06 addressed:** blank/whitespace near-miss explanations fail for low-affinity neighbors, including values rounded to 0.40. Sufficiently valid neighbors still survive a malformed sibling. Discarding unsolicited near-miss prose above 0.40 is an explicit, reasonable leniency.
+- **F-07 addressed:** per-lens counters record all quote checks before evidence deduplication. The original withheld-motif witness now reports three checks. Successful single-lens replacement, failed/stopped re-read retention, duplicate/failed quotes and full-run reset preserve the intended totals.
+- **F-08 addressed:** inspector re-read is disabled with a reason for an off lens, pending/missing single-lens estimate, too-large call, running board or unavailable provider. A deliberately unknown model window remains labeled and permitted; unknown is not silently treated as a known fit.
+
+**Inherited PR #148 F-05 reconfirmed on the corrected production bundle:** exact ¶812 twice, sparse ¶100 → ¶101 followed by ¶101 again, and passive-update focus preservation all pass.
+
+### F-03 residual — Bind a usable estimate to the selected model and its confirmed configuration
+
+**Severity:** Medium / P2; blocking. **Changed Lightbox paths:** [`LightboxApp.tsx:81–92`](https://github.com/okeylanders/prose-minion-vscode/blob/bf8f1ca2502441133216ca5013480da9aa37f9cf/packages/core/src/presentation/webview/LightboxApp.tsx#L81-L92), [`useLightbox.ts:214–227`](https://github.com/okeylanders/prose-minion-vscode/blob/bf8f1ca2502441133216ca5013480da9aa37f9cf/packages/core/src/presentation/webview/hooks/domain/useLightbox.ts#L214-L227) and [`277–284`](https://github.com/okeylanders/prose-minion-vscode/blob/bf8f1ca2502441133216ca5013480da9aa37f9cf/packages/core/src/presentation/webview/hooks/domain/useLightbox.ts#L277-L284).
+
+The latest request id and board id do not prove that a reply priced the model selected in the UI. The inherited shared picker updates its selection optimistically, while `ConfigurationHandler.handleSetModelSelection` awaits `SettingsStore.update`, then waits 50 ms and sends `MODEL_DATA`. Lightbox requests an estimate immediately on the optimistic model-id change. Its host can still correctly see the old model, and the reply is accepted because the current request does not carry or validate the intended model. When saving completes, the same selected model id/window produces no further estimate request. The panel's asynchronous message delivery does not serialize the configuration write with these reading requests.
+
+**Independent integrated reproduction:** the rebuilt production bundle in JSDOM, actual model-picker interaction, real `ConfigurationHandler`, real Lightbox handler/runner/engine, public-domain chapter, held settings-write seam and stub catalog/provider transport. No native host or live inference is involved.
+
+1. Begin on `provider/cheap`, with a usable estimate. Select **“Expensive new model”** (`provider/expensive`) in the actual picker while its settings write is held.
+2. Lightbox's new estimate request is answered from the still-current `provider/cheap` host state. The selector says **Expensive new model**, the line says **3 calls · est. $0.07**, and **Read is enabled**.
+3. Press before the write resolves: **three provider-adapter requests start on `provider/cheap`**, with no refusal. The visible selected-model intent is not honored.
+4. In a separate run, resolve the write before pressing. The identical-value `MODEL_DATA` confirmation requests no new estimate; the old one remains enabled. Pressing now makes **zero provider calls**, emits the stale-key refusal, and requests a correct expensive-model estimate. There is no automatic paid retry.
+5. A same-model price-only `MODEL_DATA` refresh also leaves the old estimate enabled because `modelKey` contains only model id/window. The witness retained **$0.068778** until a safe refused press refreshed it to **$0.081816**, with **zero provider calls**.
+
+The host key guard is doing useful work: once host configuration changes, it prevents old pricing from authorizing the new model. It cannot detect UI intent that the Lightbox request never conveyed. The pre-existing optimistic picker and async save are not themselves introduced by this PR; the new Lightbox feature must integrate with that lifecycle rather than assume the estimate request runs after persistence.
+
+**Requested correction:** keep reading unavailable until the usable estimate corresponds to the current selected **and confirmed** model/configuration; reject an old-model answer even when its request id is latest. Re-estimate on authoritative configuration confirmation and relevant catalog-price changes, including same-id/window confirmations. Carry enough request identity to avoid accepting old-model replies during a pending selection; do not rely on a faster settings write or automatically retry a paid press. Add integrated regression coverage for a held settings write, actual picker change, old-model latest reply, press before/after confirmation, and a price-only refresh. All original board/token protections must remain intact.
+
+### F-09 — Rare compatibility-mark sequences are still not whole-string NFKC equivalent
+
+**Severity:** Low / P3; nonblocking. **Location:** [`LightboxQuoteVerifier.ts:168–178`](https://github.com/okeylanders/prose-minion-vscode/blob/bf8f1ca2502441133216ca5013480da9aa37f9cf/packages/core/src/infrastructure/lightbox/LightboxQuoteVerifier.ts#L168-L178).
+
+The pairwise normalization-unit builder can commit an earlier unit before a later compatibility-mark sequence enables composition across that boundary. For source `Alice Aﾞﾟ̣ waited.`, the quote `source.normalize('NFKC')` is `Alice Ạ゙゚ waited.`. The production fold is `Alice Ạ゙゚ waited.`, so the verifier reports `found: false, reason: 'not-in-chapter'` despite whole-string NFKC equivalence.
+
+This same narrow case fails at the initial `305ce1e2` head: it is a residual of this PR's normalization implementation, not a regression introduced by the correction. It can unnecessarily withhold a genuine quote/claim and contradicts the new comment's universal whole-string guarantee. It does **not** reproduce the original wrong verified source span, and it requires unusual mixed-script compatibility marks; no ordinary-script/combining-mark counterexample was found.
+
+An independent 10,000-sample corpus of ordinary combining marks, Hangul, Thai/Lao fragments, compatibility capitals, ligatures and emoji had no fold differences or missed equivalent quotes. Another 10,000 samples allowing adversarial halfwidth voicing marks produced seven false negatives, with no incorrect returned spans/reference-fold mismatches among accepted quotes across both corpora. These probes do not prove universal Unicode safety.
+
+**Requested follow-up:** either make normalization units agree with full-string NFKC across such boundaries, retaining accurate original-span mappings and boundary checks, or document the narrower supported equivalence honestly. Add the minimal case as a regression. Conservative withholding is the safe failure mode, which is why this remains nonblocking rather than reopening F-01.
+
+### Re-review checks and limits
+
+| Check | Independently observed result at `bf8f1ca` |
+| --- | --- |
+| Full `npm test -- --runInBand` | **349 suites / 5,115 tests / 2 snapshots passed**, 145.735 seconds |
+| `npm run typecheck` | Core, webview and extension passed |
+| Full `npm run lint` | **0 errors / 1,135 warnings**; per-file/message/rule multiset exactly matches the initial reviewed baseline |
+| `npm run build`, including `verify:bundle` | Passed; three webpack size/performance warnings; all three bundle sentinels present |
+| Whole-PR and correction-delta `git diff --check` | Passed |
+| Real-engine host checks | **73 assertions passed**: 21 retained positives, 46 ownership/estimate/fit checks, 6 close/reopen/prompt-failure checks |
+| Focused existing evidence/codec/runner/state suites | **7 suites / 115 tests passed** |
+| Independent codec/evidence probes | Original **13 positive boundaries** and **11 closure assertion groups passed**; one broader normalization-property group reproduces F-09 |
+| Additional Unicode stress | **20,000 cases**; seven conservative false negatives in the adversarial subset, no observed wrong accepted spans |
+| Real-root UI checks | **3 suites / 18 tests passed** |
+| Exact corrected Lightbox production bundle | **38 assertions passed**, including original UI defect closures and inherited PR #148 focus checks |
+| Integrated picker/configuration/host witness | Three model-order/price-refresh scenarios reproduce the F-03 residual above; expected-safe behavior is **not** claimed |
+| Workshop lifecycle comparison | **9 checkpoints / 27 parity assertions passed**, against the reviewed PR #147 integrated bundle |
+| New visual evidence | All **6 new PNGs** inspected at actual pixels, at 1440/1000/500 px; new harness/builder/state provenance inspected |
+| Exact new report-head CI | **Pending separate post-publication verification**; correction-head CI is not report-head CI |
+
+Corrected production `webview.js` SHA-256: `1894febb83bca93f49cc95baaa18c00759c0af28fc7157e18ce28bb0bc61f85b`.
+
+The new captures clearly show withheld headlines and disabled off-lens re-read reasons. The prior fourteen captures were inspected in the initial pass; their model/prices and hand-adjusted group A are still synthetic. The request-aware screenshot harness now answers each live request id with its recorded estimate. The author's pixel-stability, no-overflow and browser-page-error claims were **not** independently rerun in Chromium here. JSDOM's known stylesheet-parser diagnostic persists; DOM/event/focus checks are not native-browser layout, accessibility or VS Code acceptance.
+
+**Privacy scope:** the new Lightbox codec/runner failure paths are sanitized, but the unchanged [`AgentRunEngine.ts:867–870`](https://github.com/okeylanders/prose-minion-vscode/blob/bf8f1ca2502441133216ca5013480da9aa37f9cf/packages/core/src/infrastructure/api/orchestration/AgentRunEngine.ts#L867-L870) interpolates provider `errorType` after an interrupted visible stream. A synthetic multiline value still reaches that inherited log while the Lightbox outcome stays sanitized. The original F-05 explicitly excluded global engine logging; closing it is not a claim that all provider diagnostics are safe. Recovery capture/presentation remained mocked in these probes.
+
+D4 stale-reading retention remains author-proposed work due before Slice 3 handoffs; live-provider/cache/cost calibration remains due in the Slice 6 pass. Neither is accepted on the writer's behalf or silently marked complete by this re-review. An already-started run intentionally survives a source switch and settles only on its retained canonical owner; a pending obsolete press does not send. The disclosed prompt-load estimate-failure behavior can still leave the UI at “Estimating…” until another request; this is not evidence of a successful estimate.
+
+Only this existing report is changed for publication. The original author response below is preserved byte-for-byte; no source, tests, screenshots or configuration are modified.
+
+## Initial review findings — historical at `305ce1e2`
+
+The sections below retain the initial evidence and requested repairs. Their original open states are superseded by the current resolution ledger and re-review above.
 
 ## F-01 — Preserve UTF-16 source-span identity through quote folding
 
@@ -119,7 +206,7 @@ At [`LightboxReadingTiles.ts:217–222`](https://github.com/okeylanders/prose-mi
 
 [`LightboxApp.tsx:109–117`](https://github.com/okeylanders/prose-minion-vscode/blob/305ce1e2b9924d817c66c39514f2511118082c44/packages/core/src/presentation/webview/LightboxApp.tsx#L109-L117) gates re-read only on provider availability and another run. A pinned motif remains re-readable when its own estimate is `too-large`; turning its lens off leaves an enabled button saying only “1 call.” The host safely refuses both cases, so there is no demonstrated spend bypass. Gate by a current matching single-lens estimate and lens availability, and show the reason instead of offering a press known to fail.
 
-## Scope decisions and retained guarantees
+## Initial scope assessment and retained guarantees
 
 The new reading modules preserve the ports/adapters direction, named Lightbox routes and composition-root construction. The core has no new VS Code dependency. The closed tile/register maps, separate context shelf, per-block codec boundary, required friction, host term counting and chapter-only verifier are appropriate foundations. Readings remain ephemeral; no saving or Workshop handoff is quietly introduced.
 
@@ -133,13 +220,13 @@ Independent positive probes verified that:
 
 The word-frequency tokenizer's ASCII-oriented behavior remains an inherited limitation, not a new finding about this PR's source ownership. Prompt wording governs semantic “describe, never grade” behavior; strict JSON and quoted-evidence validation do not prove that a model's interpretation is sound or that prompt injection is impossible.
 
-**D4 stale readings:** The author explicitly proposes deferring carry-over/reverification until before Slice 3's handoffs. That is a bounded staging choice on this epic branch because there is no handoff in Slice 2B, and a changed source gets empty readings rather than falsely current evidence. It still loses paid readings after a small text edit. A run for a changed/evicted board also continues but drops its result. The debt remains open; neither D4 completion nor writer acceptance is inferred here. Before Slice 3, verify moved/removed quotes, stale labeling and fresh-read replacement against the current source. F-02/F-03 are current lifecycle defects, not covered by that deferral.
+**D4 stale readings:** The author explicitly proposes deferring carry-over/reverification until before Slice 3's handoffs. That is a bounded staging choice on this epic branch because there is no handoff in Slice 2B, and a changed source gets empty readings rather than falsely current evidence. It still loses paid readings after a small text edit. A run for a changed/evicted board also continues but drops its result. The debt remains open; neither D4 completion nor writer acceptance is inferred here. Before Slice 3, verify moved/removed quotes, stale labeling and fresh-read replacement against the current source. At the initial review, F-02/F-03 were current lifecycle defects, not covered by that deferral; their current statuses are above.
 
 **Live-provider/caching pass:** Moving the cache-read experiment and estimate-to-processed ratio to Slice 6 is transparently recorded. No cache savings are claimed; the differing group system prefixes make the lack of a shared leading cache prefix real. Typical output lengths, provider adherence, timeout/concurrency choices and cost calibration remain unmeasured. The original Slice 2B live “Done when” criterion is therefore not completed. These are explicit future acceptance gates, not evidence supplied by the stub-priced screenshots.
 
 **Tension per column:** The exact array length, 0–9 range and host-specified bucket ranges are coherent with the 96-column ribbon bound. A one-score-per-column representation is a reasonable bounded output decision; the live pass still needs to establish how reliably models produce it.
 
-## Verification and visual limits
+## Initial verification and visual limits
 
 Runtime: **Node 24.19.0 / npm 11.9.0**, isolated cloud worktree. Dependencies were copied with relative workspace symlinks preserved after the lockfile was verified identical to the reviewed PR #148 checkout. No dependency/source/configuration changes were made. All probes used synthetic text or committed public-domain Alice fixtures; no live or billable provider calls.
 
@@ -168,7 +255,7 @@ The supplied 1440/1000/500 px captures show coherent idle, streaming, done, too-
 
 This review rebuilt and exercised the exact-head bundle in JSDOM, not a real browser. JSDOM reports its known stylesheet-parser limitation. DOM/event/focus assertions do not establish browser layout, screen-reader behavior or native-host acceptance. The author's no-overflow/no-page-error and pixel-stability claims were not independently rerun in Chromium here. Workshop DOM, persistence and outbound-message multisets match at loading, empty, excerpt, provider pause/recovery, widget reopen, sessions/tools, repeated key state and remount checkpoints.
 
-Only this report is published. No functional changes, formal GitHub review/comment, merge, deployment, release, notification change or branch cleanup is performed. There was no pre-existing PR #149 report/author response to overwrite at this head.
+Only this report is published. No functional changes, formal GitHub review/comment, merge, deployment, release, notification change or branch cleanup is performed. At the initial implementation head there was no pre-existing PR #149 report/author response; this re-review preserves the subsequently added author response below.
 
 ## Author response (2026-10-19)
 
