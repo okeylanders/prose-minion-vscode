@@ -212,6 +212,51 @@ describe('the fold\'s span map (PR #149 F-01)', () => {
   });
 });
 
+describe('whole-string NFKC equivalence across several segments (PR #149 F-09)', () => {
+  // A letter, two halfwidth sound marks and a dot below: NFKC composes the A with the dot past both marks.
+  const SOURCE = 'Alice A\uFF9E\uFF9F\u0323 waited.';
+
+  it('finds the whole paragraph quoted in its NFKC form (the review\'s case)', () => {
+    expect(SOURCE.normalize('NFKC')).toBe('Alice \u1EA0\u3099\u309A waited.');
+    expect(createLightboxQuoteVerifier([SOURCE]).verify(1, SOURCE.normalize('NFKC'))).toEqual({
+      found: true, paragraph: 1, text: SOURCE, match: 'normalized'
+    });
+  });
+
+  it('keeps such a run whole: a quote may span it, never cut into it', () => {
+    const verifier = createLightboxQuoteVerifier([SOURCE]);
+    expect(verifier.verify(1, '\u1EA0\u3099\u309A waited')).toEqual({
+      found: true, paragraph: 1, text: 'A\uFF9E\uFF9F\u0323 waited', match: 'normalized'
+    });
+    expect(verifier.verify(1, '\u3099\u309A waited.')).toMatchObject({ found: false, reason: 'not-in-chapter' });
+  });
+
+  it('folds every text exactly as its NFKC form folds, and finds that form in it', () => {
+    // A deterministic sample over characters that compose, decompose, reorder or expand under NFKC.
+    const alphabet = [
+      'A', 'e', 'a', ' ', '\u0301', '\u0323', '\u0308', '\u0327', '\uFF76', '\uFF9E', '\uFF9F', '\u3099', '\u30AB',
+      '\u1100', '\u1161', '\u11A8', '\u3131', '\u314F', '\uAC00', '\uFB01', '\u2014', '-', '\u{1F600}', '\u{1D49C}',
+      '\u00A8', '\u0F73', '\u0B47', '\u0B3E', '\u09C7', '\u09BE', '\u2026', '\u201C', '\u2019',
+      // Weighted toward letters, halfwidth sound marks and marks that compose past them.
+      'A', 'A', 'o', 'u', '\uFF9E', '\uFF9E', '\uFF9F', '\u0323', '\u0323', '\u0301'
+    ];
+    let seed = 149;
+    const next = (): number => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed;
+    };
+    for (let sample = 0; sample < 3_000; sample++) {
+      const length = 1 + (next() % 12);
+      const body = Array.from({ length }, () => alphabet[next() % alphabet.length]).join('');
+      const text = `Alice ${body} waited.`;
+      const normalized = text.normalize('NFKC');
+      expect(foldWithMap(text).folded).toBe(foldWithMap(normalized).folded);
+      const verdict = createLightboxQuoteVerifier([text]).verify(1, normalized);
+      expect(verdict).toMatchObject({ found: true, text });
+    }
+  });
+});
+
 describe('assembling tiles from a group (D7)', () => {
   const contextA = { group: 'A' as const, lenses: example.lenses, columnCount: 8 };
 

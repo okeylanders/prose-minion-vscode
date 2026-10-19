@@ -24,9 +24,10 @@
  * halves of a supplementary character included) maps to the source span of
  * the normalization unit it came from. A unit is a base character with its
  * combining marks, widened while NFKC joins it to what follows (Hangul jamo
- * into a syllable, a halfwidth sound mark into its kana): the units'
- * normalized forms concatenate to the whole string's NFKC, so equivalence is
- * the whole string's, not a guess about bases and marks. A match, exact or
+ * into a syllable, a halfwidth sound mark into its kana), and checked
+ * against its run's own NFKC (`normalizationUnits`): the units' normalized
+ * forms concatenate to the whole string's NFKC, so equivalence is the whole
+ * string's, not a guess about bases and marks (PR #149 F-09). A match, exact or
  * folded, counts only when it starts and ends on unit boundaries (never half a
  * ligature, a syllable or an accented letter), and a folded one only when the
  * source span it maps to folds back to exactly the matched form, so what the
@@ -74,8 +75,9 @@ const LETTER = /\p{L}/u;
 /** A base character with its combining marks: the smallest unit a match may start or end on. */
 const SEGMENT = /\P{M}\p{M}*|\p{M}+/gu;
 /**
- * Below U+0300 (Latin, IPA, spacing modifiers) nothing combines with what
- * precedes it under NFKC, so a segment starting there always starts a unit.
+ * Below U+0300 (Latin, IPA, spacing modifiers) every code point is a starter
+ * that combines with nothing before it and decomposes to a starter, so NFKC
+ * never reaches back across one: a segment starting there starts a new run.
  */
 const FIRST_COMBINING_CODE_POINT = 0x300;
 
@@ -151,36 +153,72 @@ function sourceSpan(target: FoldedText, at: number, length: number): { start: nu
   return cutsStart || cutsEnd ? undefined : { start: target.starts[at], end: target.ends[end - 1] };
 }
 
+/** One base-and-marks segment of the original, with its own NFKC form. */
+interface Segment extends NormalizationUnit {
+  raw: string;
+}
+
 /**
- * The original cut into runs that NFKC normalizes independently: each
- * segment (a base and its marks) joins the run before it whenever normalizing
- * the two together differs from normalizing them apart, so the runs'
- * normalized forms concatenate to the whole text's.
+ * The original cut into units whose NFKC forms concatenate to the whole
+ * text's NFKC (PR #149 F-09):
+ *
+ * - **Runs.** The text is first cut before every code point below U+0300.
+ *   Those are starters that combine with nothing before them and decompose to
+ *   a starter, so NFKC never reaches back across that cut: the runs'
+ *   normalized forms concatenate to the whole text's, exactly.
+ * - **Units within a run.** Each base-and-marks segment joins the unit before
+ *   it whenever normalizing the two together differs from normalizing them
+ *   apart (Hangul jamo, halfwidth sound marks).
+ * - **The check.** A run whose units still do not concatenate to the run's
+ *   own NFKC (a composition reaching across several segments, such as a
+ *   letter composing with a mark past two halfwidth sound marks) is kept
+ *   whole, as one unit. A quote can then match all of that run but never
+ *   part of it: a conservative miss, never a wrong span.
  */
 function normalizationUnits(text: string): NormalizationUnit[] {
   const units: NormalizationUnit[] = [];
-  let current: (NormalizationUnit & { raw: string }) | undefined;
+  let run: Segment[] = [];
   for (const match of text.matchAll(SEGMENT)) {
     const raw = match[0];
     const start = match.index ?? 0;
-    const end = start + raw.length;
-    const normalized = raw.normalize('NFKC');
-    if (current && (raw.codePointAt(0) ?? 0) >= FIRST_COMBINING_CODE_POINT) {
-      const joined = (current.raw + raw).normalize('NFKC');
-      if (joined !== current.normalized + normalized) {
-        current = { start: current.start, end, raw: current.raw + raw, normalized: joined };
-        continue;
-      }
+    if (run.length > 0 && (raw.codePointAt(0) ?? 0) < FIRST_COMBINING_CODE_POINT) {
+      units.push(...runUnits(run));
+      run = [];
     }
-    if (current) {
-      units.push({ start: current.start, end: current.end, normalized: current.normalized });
-    }
-    current = { start, end, raw, normalized };
+    run.push({ start, end: start + raw.length, raw, normalized: raw.normalize('NFKC') });
   }
-  if (current) {
-    units.push({ start: current.start, end: current.end, normalized: current.normalized });
+  if (run.length > 0) {
+    units.push(...runUnits(run));
   }
   return units;
+}
+
+/** One run's units: its segments merged pairwise, or the whole run when they disagree with its NFKC. */
+function runUnits(run: readonly Segment[]): NormalizationUnit[] {
+  if (run.length === 1) {
+    return [unitOf(run[0])];
+  }
+  const units: Segment[] = [];
+  let current = run[0];
+  for (const segment of run.slice(1)) {
+    const joined = (current.raw + segment.raw).normalize('NFKC');
+    if (joined !== current.normalized + segment.normalized) {
+      current = { start: current.start, end: segment.end, raw: current.raw + segment.raw, normalized: joined };
+      continue;
+    }
+    units.push(current);
+    current = segment;
+  }
+  units.push(current);
+  const whole = run.map((segment) => segment.raw).join('').normalize('NFKC');
+  if (units.map((unit) => unit.normalized).join('') === whole) {
+    return units.map(unitOf);
+  }
+  return [{ start: run[0].start, end: run[run.length - 1].end, normalized: whole }];
+}
+
+function unitOf({ start, end, normalized }: NormalizationUnit): NormalizationUnit {
+  return { start, end, normalized };
 }
 
 /**
