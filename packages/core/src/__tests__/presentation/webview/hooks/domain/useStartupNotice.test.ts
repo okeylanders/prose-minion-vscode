@@ -24,7 +24,7 @@ describe('useStartupNotice', () => {
   });
 
   it('asks the host for per-machine notice visibility', () => {
-    const { result } = renderHook(() => useStartupNotice());
+    const { result } = renderHook(() => useStartupNotice('webview.workshop'));
 
     act(() => result.current.requestStartupNotice());
 
@@ -36,7 +36,7 @@ describe('useStartupNotice', () => {
   });
 
   it('opens and closes from the host-owned visibility result', () => {
-    const { result } = renderHook(() => useStartupNotice());
+    const { result } = renderHook(() => useStartupNotice('webview.workshop'));
     const data = (shouldShow: boolean): StartupNoticeDataMessage => ({
       type: MessageType.STARTUP_NOTICE_DATA,
       source: 'extension.ui',
@@ -52,7 +52,7 @@ describe('useStartupNotice', () => {
   });
 
   it('plain close records nothing', () => {
-    const { result } = renderHook(() => useStartupNotice());
+    const { result } = renderHook(() => useStartupNotice('webview.workshop'));
 
     act(() => {
       result.current.handleStartupNoticeData({
@@ -69,7 +69,7 @@ describe('useStartupNotice', () => {
   });
 
   it('records the host-declared version only when the writer opts out', () => {
-    const { result } = renderHook(() => useStartupNotice());
+    const { result } = renderHook(() => useStartupNotice('webview.workshop'));
 
     act(() => result.current.handleStartupNoticeData({
       type: MessageType.STARTUP_NOTICE_DATA,
@@ -87,8 +87,26 @@ describe('useStartupNotice', () => {
     }));
   });
 
+  it('posts under the envelope source of the tab that owns it', () => {
+    const { result } = renderHook(() => useStartupNotice('webview.lightbox'));
+
+    act(() => {
+      result.current.requestStartupNotice();
+      result.current.handleStartupNoticeData({
+        type: MessageType.STARTUP_NOTICE_DATA,
+        source: 'extension.ui',
+        payload: { shouldShow: true, noticeVersion: 'v2' },
+        timestamp: 1
+      });
+    });
+    act(() => result.current.dismissStartupNotice(true));
+
+    const sources = mockVSCode.postMessage.mock.calls.map(([message]) => message.source);
+    expect(sources).toEqual(['webview.lightbox', 'webview.lightbox']);
+  });
+
   it('does not fabricate a dismissal before the host supplies a version', () => {
-    const { result } = renderHook(() => useStartupNotice());
+    const { result } = renderHook(() => useStartupNotice('webview.workshop'));
 
     act(() => result.current.dismissStartupNotice(true));
 

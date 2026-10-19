@@ -27,7 +27,6 @@ import { TabErrorFallback } from './components/shared/TabErrorFallback';
 import { StreamingContent } from './components/shared/StreamingContent';
 import { MessageType } from '@shared/types';
 import {
-  ApiKeyStatusMessage,
   CopyResultSuccessMessage,
   ErrorMessage,
   SaveResultSuccessMessage,
@@ -148,9 +147,7 @@ import {
 } from '@hooks/domain/workshop/controllers/useWorkshopContextSheet';
 import { useWorkshopExcerptVerify } from './hooks/domain/useWorkshopExcerptVerify';
 import { useWorkshopThreadAutoscroll } from './hooks/useWorkshopThreadAutoscroll';
-import { useModelsSettings } from './hooks/domain/useModelsSettings';
-import { useTokenTracking } from './hooks/domain/useTokenTracking';
-import { useAccountBalance } from './hooks/domain/useAccountBalance';
+import { useFullTabChrome } from '@hooks/fulltab/useFullTabChrome';
 import {
   CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE
 } from '@/application/services/workshop/widgets/creativeVariations/CreativeVariationsDistinctness';
@@ -223,7 +220,7 @@ export const WorkshopApp: React.FC = () => {
 
   // Domain hooks — same rails the sidebar rides (epic thesis: reuse, not
   // reinvention). Balance/models/tokens arrive through this webview's own
-  // MessageHandler.
+  // MessageHandler, owned by the shared full-tab chrome (Lightbox Slice 1).
   const workshop = useWorkshopRoom();
   const workshopSessions = useWorkshopSessions(workshop.replacementPort);
   const widgetHost = useWorkshopWidgetHost();
@@ -232,10 +229,9 @@ export const WorkshopApp: React.FC = () => {
   const creativeVariations = useCreativeVariations();
   const showVsTell = useShowVsTell();
   const excerptVerify = useWorkshopExcerptVerify();
-  const modelsSettings = useModelsSettings();
-  const tokenTracking = useTokenTracking();
-  const startupNotice = useStartupNotice();
-  const [hasSavedKey, setHasSavedKey] = React.useState<boolean | null>(null);
+  const chrome = useFullTabChrome({ source: 'webview.workshop' });
+  const { modelsSettings, tokenTracking } = chrome;
+  const startupNotice = useStartupNotice('webview.workshop');
   const [toolsModalOpen, setToolsModalOpen] = React.useState(false);
   const [widgetsModalOpen, setWidgetsModalOpen] = React.useState(false);
   const [behaviorModalOpen, setBehaviorModalOpen] = React.useState(false);
@@ -245,7 +241,6 @@ export const WorkshopApp: React.FC = () => {
   const [contextSelectorMode, setContextSelectorMode] = React.useState<'attach' | 'excerpt' | 'message'>('attach');
   const [personaModalMode, setPersonaModalMode] = React.useState<'host' | 'guest'>('host');
   const [toast, setToast] = React.useState<WorkshopToastState | null>(null);
-  const accountBalance = useAccountBalance({ apiKeyConfigured: hasSavedKey === true });
 
   const showToast = React.useCallback((next: WorkshopToastState) => {
     setToast(next);
@@ -348,23 +343,6 @@ export const WorkshopApp: React.FC = () => {
     workshopSessions.consumeRecoveryNotice();
   }, [toast, workshopSessions.consumeRecoveryNotice, workshopSessions.recoveryNotices]);
 
-  const handleApiKeyStatus = React.useCallback((message: ApiKeyStatusMessage) => {
-    setHasSavedKey(!!message.payload?.hasSavedKey);
-  }, []);
-
-  const handleApiKeyConfigured = React.useCallback(() => {
-    setHasSavedKey(true);
-  }, []);
-
-  const openAssistantSettings = React.useCallback(() => {
-    vscode.postMessage({
-      type: MessageType.OPEN_ASSISTANT_SETTINGS,
-      source: 'webview.workshop',
-      payload: {},
-      timestamp: Date.now()
-    });
-  }, [vscode]);
-
   const handleStatusMessage = React.useCallback(
     (message: StatusMessage) => {
       workshop.handleStatusMessage(message);
@@ -419,12 +397,8 @@ export const WorkshopApp: React.FC = () => {
     showVsTellAuthoring,
     standingDirectives,
     excerptVerify,
-    modelsSettings,
-    tokenTracking,
-    accountBalance,
+    chrome,
     startupNotice,
-    handleApiKeyStatus,
-    handleApiKeyConfigured,
     handleStatusMessage,
     handleErrorMessage,
     handleCopyResultSuccess,
@@ -443,30 +417,17 @@ export const WorkshopApp: React.FC = () => {
     ...showVsTellAuthoring.persistedState,
     ...standingDirectives.persistedState,
     ...excerptVerify.persistedState,
-    ...modelsSettings.persistedState,
-    ...tokenTracking.persistedState,
-    ...accountBalance.persistedState,
+    ...chrome.persistedState,
   });
 
-  // Initial data requests (session itself is requested inside useWorkshopRoom)
-  React.useEffect(() => {
-    modelsSettings.requestModelData();
-  }, [modelsSettings.requestModelData]);
+  // Initial data requests: the session is requested inside useWorkshopRoom,
+  // model data and API-key status inside useFullTabChrome.
 
   // Startup notice check — the host answers from per-machine storage, so the
   // box shows once per notice version unless "Don't show again" was recorded.
   React.useEffect(() => {
     startupNotice.requestStartupNotice();
   }, [startupNotice.requestStartupNotice]);
-
-  React.useEffect(() => {
-    vscode.postMessage({
-      type: MessageType.REQUEST_API_KEY,
-      source: 'webview.workshop',
-      payload: {},
-      timestamp: Date.now(),
-    });
-  }, [vscode]);
 
   // Error boundary plumbing — same reporting path as App.tsx
   const handleBoundaryError = React.useCallback(
@@ -931,7 +892,7 @@ export const WorkshopApp: React.FC = () => {
     }
   }, [showToast]);
 
-  const openrouter = accountBalance.openrouter;
+  const openrouter = chrome.accountBalance.openrouter;
   const remaining = openrouter?.credits?.remaining;
   const balanceTitle = (() => {
     if (!openrouter || openrouter.status === 'no_key') {
@@ -1070,7 +1031,7 @@ export const WorkshopApp: React.FC = () => {
         </div>
       </header>
 
-      {hasSavedKey === false && (
+      {chrome.providerPaused && (
         <div className="pm-ws-provider-paused" role="status">
           <Icon name="alert" size={14} />
           <span>
@@ -1078,7 +1039,7 @@ export const WorkshopApp: React.FC = () => {
             Add an OpenRouter API key to continue. Your Workshop sessions and local context remain
             available.
           </span>
-          <button type="button" onClick={openAssistantSettings}>
+          <button type="button" onClick={chrome.openAssistantSettings}>
             <Icon name="gear" size={13} /> Add API key
           </button>
         </div>

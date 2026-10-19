@@ -2,6 +2,7 @@ import {
   buildWorkshopAppMessageRoutes,
   WorkshopAppMessageRouterDeps
 } from '@hooks/useWorkshopAppMessageRouter';
+import { buildFullTabChromeRoutes } from '@hooks/fulltab/useFullTabChrome';
 import { MessageType, WorkshopWidgetActionResultMessage } from '@messages';
 
 const makeDeps = (): WorkshopAppMessageRouterDeps => ({
@@ -59,12 +60,14 @@ const makeDeps = (): WorkshopAppMessageRouterDeps => ({
   } as never,
   standingDirectives: { handleActionResult: jest.fn() } as never,
   excerptVerify: { handleSelectionData: jest.fn() } as never,
-  modelsSettings: { handleModelData: jest.fn(), handleSettingsData: jest.fn() } as never,
-  tokenTracking: { handleTokenUsageUpdate: jest.fn() } as never,
-  accountBalance: { handleAccountBalanceData: jest.fn() } as never,
+  chrome: {
+    modelsSettings: { handleModelData: jest.fn(), handleSettingsData: jest.fn() },
+    tokenTracking: { handleTokenUsageUpdate: jest.fn() },
+    accountBalance: { handleAccountBalanceData: jest.fn() },
+    handleApiKeyStatus: jest.fn(),
+    handleApiKeyConfigured: jest.fn()
+  },
   startupNotice: { handleStartupNoticeData: jest.fn() } as never,
-  handleApiKeyStatus: jest.fn(),
-  handleApiKeyConfigured: jest.fn(),
   handleStatusMessage: jest.fn(),
   handleErrorMessage: jest.fn(),
   handleCopyResultSuccess: jest.fn(),
@@ -218,7 +221,18 @@ describe('buildWorkshopAppMessageRoutes', () => {
 
     routes[MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]!(message as never);
 
-    expect(deps.handleApiKeyConfigured).toHaveBeenCalledTimes(1);
+    expect(deps.chrome.handleApiKeyConfigured).toHaveBeenCalledTimes(1);
+  });
+
+  it('serves every shared full-tab chrome route unshadowed by a Workshop route', () => {
+    const deps = makeDeps();
+    const routes = buildWorkshopAppMessageRoutes(deps);
+    const chromeRoutes = buildFullTabChromeRoutes(deps.chrome);
+
+    expect(Object.keys(chromeRoutes).length).toBeGreaterThan(0);
+    for (const [type, handler] of Object.entries(chromeRoutes)) {
+      expect(routes[type as MessageType]).toBe(handler);
+    }
   });
 
   it('routes Creative generation and exact subject intake to their named owners', () => {
