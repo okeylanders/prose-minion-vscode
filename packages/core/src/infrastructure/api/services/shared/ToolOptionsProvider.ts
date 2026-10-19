@@ -47,6 +47,8 @@ export interface WordFrequencyOptions {
   enableLemmas: boolean;
   lengthHistogramMaxChars: number;
   minCharacterLength: number;
+  /** Top bigrams and trigrams to return; the tool's default is 20. Not a setting. */
+  ngramLimit?: number;
 }
 
 export class ToolOptionsProvider {

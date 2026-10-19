@@ -19,6 +19,29 @@ export interface WordFrequencyOptions {
   enableLemmas?: boolean; // default false (placeholder only)
   lengthHistogramMaxChars?: number; // default 10
   minCharacterLength?: number; // default 1 (filter words by minimum character count)
+  ngramLimit?: number; // default 20 (how many top bigrams and trigrams to return)
+}
+
+/**
+ * The function words Top Words leaves out, and the Lightbox's repeated-phrase
+ * filter tests against (a phrase made only of these is not shown).
+ */
+export const WORD_FREQUENCY_STOPWORDS: ReadonlySet<string> = new Set<string>([
+  'a','an','and','are','as','at','be','by','for','from','has','he','in','is','it','its','of','on','that','the','to','was','were','will','with','i','you','she','they','we','this','these','those','your','our','their','but','or','if','because','so','what','which','who','whom','where','when','how','why','not','no','nor','too','very','can','could','should','would','may','might','must','do','does','did','done','than','then','there','here','over','under','again','once'
+]);
+
+/**
+ * The tool's tokenizer, exported so callers that place counted words in the
+ * text (the Lightbox's paragraph lookups) split it exactly as the counts did.
+ * Expects lowercased text, as `analyze` passes it.
+ */
+export function extractFrequencyWords(text: string): string[] {
+  return text
+    .replace(/[—–]/g, ' ')  // Convert em-dash and en-dash to space first
+    .split(/\s+/)
+    .map(word => word.replace(/[^a-z'-]/g, ''))  // Keep hyphens and apostrophes
+    .map(word => word.replace(/^'+|'+$/g, ''))   // Trim leading/trailing apostrophes
+    .filter(word => word.length > 0);
 }
 
 export interface WordFrequencyEntry {
@@ -69,9 +92,7 @@ export interface NGramEntry {
 
 export class WordFrequency {
   constructor(private readonly log?: (msg: string) => void) {}
-  private readonly stopwords = new Set<string>([
-    'a','an','and','are','as','at','be','by','for','from','has','he','in','is','it','its','of','on','that','the','to','was','were','will','with','i','you','she','they','we','this','these','those','your','our','their','but','or','if','because','so','what','which','who','whom','where','when','how','why','not','no','nor','too','very','can','could','should','would','may','might','must','do','does','did','done','than','then','there','here','over','under','again','once'
-  ]);
+  private readonly stopwords = WORD_FREQUENCY_STOPWORDS;
 
   /**
    * Extract unique words from text for use by other services (e.g., ContextSearchService)
@@ -110,7 +131,8 @@ export class WordFrequency {
       includeTrigrams: options?.includeTrigrams ?? true,
       enableLemmas: options?.enableLemmas ?? false,
       lengthHistogramMaxChars: options?.lengthHistogramMaxChars ?? 10,
-      minCharacterLength: options?.minCharacterLength ?? 1
+      minCharacterLength: options?.minCharacterLength ?? 1,
+      ngramLimit: options?.ngramLimit ?? 20
     };
 
     const text = input.text.toLowerCase();
@@ -238,10 +260,10 @@ export class WordFrequency {
     let bigrams: NGramEntry[] | undefined;
     let trigrams: NGramEntry[] | undefined;
     if (opts.includeBigrams) {
-      bigrams = this.computeNGrams(words, 2, totalWords, 20, opts.minCharacterLength);
+      bigrams = this.computeNGrams(words, 2, totalWords, opts.ngramLimit, opts.minCharacterLength);
     }
     if (opts.includeTrigrams) {
-      trigrams = this.computeNGrams(words, 3, totalWords, 20, opts.minCharacterLength);
+      trigrams = this.computeNGrams(words, 3, totalWords, opts.ngramLimit, opts.minCharacterLength);
     }
 
     return {
@@ -266,12 +288,7 @@ export class WordFrequency {
   }
 
   private extractWords(text: string): string[] {
-    return text
-      .replace(/[—–]/g, ' ')  // Convert em-dash and en-dash to space first
-      .split(/\s+/)
-      .map(word => word.replace(/[^a-z'-]/g, ''))  // Keep hyphens and apostrophes
-      .map(word => word.replace(/^'+|'+$/g, ''))   // Trim leading/trailing apostrophes
-      .filter(word => word.length > 0);
+    return extractFrequencyWords(text);
   }
 
   private countMap(arr: string[]): Map<string, number> {
