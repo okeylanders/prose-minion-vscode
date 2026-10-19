@@ -6,13 +6,27 @@
  * reads and sends.
  *
  * - **Sync.** The webview sends its lens toggles on mount, on a toggle, when
- *   the board changes and when the assistant model or catalog changes. Each
- *   `LIGHTBOX_SET_LENSES` is answered with the context list and a fresh
- *   estimate (fit and cost), plus the board's run while one is active.
+ *   the board, the assistant model, its catalog or the context list changes.
+ *   Each `LIGHTBOX_SET_LENSES` is answered with the context list and a fresh
+ *   estimate (fit and cost) echoing its `requestId`, plus the board's run
+ *   while one is active. The estimate is only ever an answer (PR #149 F-03):
+ *   the host never posts one unasked, and an answer overtaken by a newer
+ *   request while its prompt files loaded is dropped, not posted late.
  * - **Validate before spend.** A press is refused, with nothing sent, when
- *   the board is not the one on screen, every lens is off, the board is
- *   already being read, a call is too large for the model's window, or there
- *   is no API key.
+ *   the board is not the one on screen, its estimate is no longer current,
+ *   every lens is off, the board is already being read, a call is too large
+ *   for the model's window, or there is no API key.
+ * - **A press owns what it was priced (PR #149 F-02).** A press names the key
+ *   of the estimate it was shown (`LightboxRunEstimate.key`: the board and
+ *   its text, the lenses on, the context shelf's revision, the assistant
+ *   model with its window and prices). Its snapshot is captured, and its
+ *   board reserved under a minted token, before anything is awaited. After
+ *   the prompt files load, it starts only if this tab is still open, its
+ *   reservation still holds, and the live key is still the one it named:
+ *   any change in between (a context file removed, a lens toggled, a model
+ *   or price changed, another board adopted) refuses it with nothing sent,
+ *   and the webview asks for a fresh estimate. What runs is exactly what was
+ *   priced, and nothing runs after its tab closed.
  * - **Runs belong to their board.** Group results are written onto the board
  *   by its id through `LightboxService.updateReadings`, so a hidden tab, a
  *   reveal or a switch back to the source finds them; a result for a board
@@ -33,8 +47,9 @@ import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import type { LightboxOutcomeChange, LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
-import type { LightboxRunSource } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
+import type { LightboxRunReservation } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import { estimateLightboxRun } from '@/infrastructure/lightbox/LightboxRunEstimate';
+import { lightboxPressSnapshot, type LightboxPressSnapshot } from '@/infrastructure/lightbox/LightboxPressSnapshot';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import {
   settleLightboxGroup,
@@ -49,7 +64,6 @@ import {
 import {
   LightboxActiveRun,
   LightboxAddContextFilesMessage,
-  LightboxBoard,
   LightboxCancelRunMessage,
   LightboxLensId,
   LightboxReadingGroupId,
@@ -64,6 +78,9 @@ import { MessageRouter } from '@handlers/MessageRouter';
 
 const SOURCE = 'extension.lightbox';
 const STOPPED = 'Stopped before this group came back.';
+const BOARD_CHANGED = 'The board changed. Read the board on screen.';
+const ESTIMATE_CHANGED = 'The estimate changed since it was shown (the model, its prices, the lenses or the context). ' +
+  'Check the new estimate, then press again.';
 
 type LightboxContextPicker = Pick<ShellService, 'pickFile'>;
 
@@ -74,6 +91,8 @@ export class LightboxReadingHandler {
   private readonly ownRuns = new Map<string, LightboxActiveRun>();
   private unsubscribe?: () => void;
   private disposed = false;
+  /** The latest estimate request; an older one finishing late is not posted. */
+  private estimateSequence = 0;
 
   constructor(
     private readonly lightboxService: LightboxService,
@@ -108,54 +127,82 @@ export class LightboxReadingHandler {
     const requested = Array.isArray(message.payload?.lensesOff) ? message.payload.lensesOff : [];
     this.lensesOff = [...new Set(requested.filter(isLightboxLensId))];
     this.postContextFiles();
-    await this.postEstimate();
+    const requestId = typeof message.payload?.requestId === 'string' ? message.payload.requestId : undefined;
+    await this.postEstimate(requestId);
   }
 
   async handleRun(message: LightboxRunMessage): Promise<void> {
     this.subscribe();
-    const { boardId, scope } = message.payload ?? ({} as LightboxRunMessage['payload']);
+    const { boardId, scope, estimateKey } = message.payload ?? ({} as LightboxRunMessage['payload']);
     const lens = scope?.mode === 'lens' ? scope.lens : undefined;
-    const refuse = (text: string, groups: LightboxReadingGroupId[] = []): void => {
+    const refuse = (text: string, groups: LightboxReadingGroupId[] = [], reestimate = false): void => {
       this.outputChannel.appendLine(`[LightboxReadingHandler] Run refused: ${text}`);
-      this.postProgress({ boardId, phase: 'refused', groups, groupsBack: 0, outputCharacters: 0, message: text });
+      this.postProgress({
+        boardId, phase: 'refused', groups, groupsBack: 0, outputCharacters: 0, message: text, ...(reestimate ? { reestimate: true } : {})
+      });
     };
     if (!scope || !['all', 'rest', 'lens'].includes(scope.mode) || (scope.mode === 'lens' && !isLightboxLensId(lens))) {
       refuse('That is not a reading this board can run.');
       return;
     }
-    const prepared = this.runSource(boardId);
-    if (!prepared) {
-      refuse('The board changed. Read the board on screen.');
+    // The press's snapshot, and its board's reservation, before the first await.
+    const press = this.pressSnapshot(boardId);
+    if (!press) {
+      refuse(BOARD_CHANGED);
       return;
     }
-    const calls = lightboxPlannedCalls(this.lensesOff, scope, prepared.board.readings);
+    if (estimateKey !== press.key) {
+      refuse(ESTIMATE_CHANGED, [], true);
+      return;
+    }
+    const calls = lightboxPlannedCalls(this.lensesOff, scope, press.board.readings);
     if (calls.length === 0) {
       refuse(scope.mode === 'rest' ? 'Every group is already read.' : 'Every lens is off, so there is nothing to read.');
       return;
     }
     const groups = calls.map((call) => call.group);
-    if (this.runner.activeRun(boardId)) {
-      refuse('This board is already being read. Stop that run first.', groups);
+    const held = this.runner.reserve(boardId, groups, { lens });
+    if (!held.reserved) {
+      refuse(held.message, groups);
       return;
     }
+    const { reservation } = held;
+    this.ownRuns.set(reservation.run.token, reservation.run);
 
-    const preparedCalls = await this.runner.prepare(prepared.source, calls);
+    let preparedCalls: Awaited<ReturnType<LightboxReadingRunner['prepare']>>;
+    try {
+      preparedCalls = await this.runner.prepare(press.source, calls);
+    } catch {
+      this.releasePress(reservation);
+      refuse('The reading prompts could not be loaded, so nothing was sent.', groups);
+      return;
+    }
+    // Ownership: the tab closed, or the press was stopped, while its prompts loaded.
+    if (this.disposed || !this.runner.holds(reservation)) {
+      this.releasePress(reservation);
+      this.outputChannel.appendLine(`[LightboxReadingHandler] Press ${reservation.run.token} released before it started`);
+      return;
+    }
+    // The snapshot must still be what is current, or the press would send what was not priced.
+    const live = this.pressSnapshot(boardId);
+    if (!live || live.key !== press.key) {
+      this.releasePress(reservation);
+      refuse(live ? ESTIMATE_CHANGED : BOARD_CHANGED, groups, true);
+      return;
+    }
     const fit = estimateLightboxRun({
       boardId,
-      sourceWords: prepared.source.sourceWords,
-      contextWords: prepared.source.contextWords,
-      columnCount: prepared.source.material.columns.length,
+      key: press.key,
+      sourceWords: press.source.sourceWords,
+      contextWords: press.source.contextWords,
+      columnCount: press.source.material.columns.length,
       groups: preparedCalls,
       rereads: [],
-      facts: this.runner.modelFacts()
+      facts: press.facts
     });
     if (fit.fit === 'too-large') {
+      this.releasePress(reservation);
       refuse(fit.reason ?? 'The chapter is too large for the model\'s window.', groups);
-      return;
-    }
-    // Preparing awaited the prompt files: check again that nothing moved.
-    if (this.lightboxService.currentBoard()?.boardId !== boardId || this.runner.activeRun(boardId)) {
-      refuse('The board changed. Read the board on screen.', groups);
       return;
     }
 
@@ -164,7 +211,7 @@ export class LightboxReadingHandler {
     let outputCharacters = 0;
     // Set once the runner accepts the press; its callbacks only ever fire after that.
     let started: LightboxActiveRun | undefined;
-    const start = this.runner.start(prepared.source, preparedCalls, {
+    const start = this.runner.startReserved(reservation, press.source, preparedCalls, {
       onGroup: (outcome) => {
         if (!started) {
           return;
@@ -200,10 +247,10 @@ export class LightboxReadingHandler {
             `${summary.usage?.totalTokens ?? 0} tokens${cost !== undefined ? `, $${cost.toFixed(4)}` : ''}`
         );
         this.postProgress({ boardId, token: started.token, phase: 'finished', groups, groupsBack, outputCharacters, ...lensField(lens) });
-        void this.postEstimate();
       }
-    }, { lens });
+    });
     if (!start.started) {
+      this.releasePress(reservation);
       refuse(start.message, groups);
       return;
     }
@@ -254,8 +301,8 @@ export class LightboxReadingHandler {
         ? `[LightboxReadingHandler] Context added: ${result.file.displayPath} (${result.file.wordCount} words)`
         : `[LightboxReadingHandler] Context refused for ${resolved.displayPath}`
     );
+    // The webview asks for a fresh estimate when it sees the list change.
     this.postContextFiles(result.added ? undefined : result.notice);
-    await this.postEstimate();
   }
 
   async handleRemoveContextFile(message: LightboxRemoveContextFileMessage): Promise<void> {
@@ -264,40 +311,29 @@ export class LightboxReadingHandler {
       this.outputChannel.appendLine('[LightboxReadingHandler] Context file removed');
     }
     this.postContextFiles();
-    await this.postEstimate();
   }
 
-  /** The current board and what a run of it reads, when it is the board named. */
-  private runSource(boardId?: string): { board: LightboxBoard; source: LightboxRunSource } | undefined {
-    const current = this.lightboxService.currentBoard();
-    if (!current || (boardId !== undefined && current.boardId !== boardId)) {
-      return undefined;
-    }
-    const text = this.lightboxService.readingSource(current.boardId);
-    if (!text) {
-      return undefined;
-    }
-    const board = text.board;
-    return {
-      board,
-      source: {
-        boardId: board.boardId,
-        material: {
-          paragraphs: text.paragraphTexts,
-          columns: board.ribbon.map(({ from, to }) => ({ from, to })),
-          context: this.contextShelf.materials(),
-          countedWords: board.measured.topWords.map((term) => term.term)
-        },
-        sourceWords: board.source.wordCount,
-        contextWords: this.contextShelf.totalWords(),
-        averageWordsPerSentence: board.measured.headline.averageWordsPerSentence
-      }
-    };
+  /** What a press of the board named would own, read now (`LightboxPressSnapshot`). */
+  private pressSnapshot(boardId?: string): LightboxPressSnapshot | undefined {
+    return lightboxPressSnapshot({
+      service: this.lightboxService,
+      shelf: this.contextShelf,
+      modelFacts: () => this.runner.modelFacts(),
+      lensesOff: this.lensesOff
+    }, boardId);
+  }
+
+  /** Forget a press that will not start, and give its board back. */
+  private releasePress(reservation: LightboxRunReservation): void {
+    this.ownRuns.delete(reservation.run.token);
+    this.runner.release(reservation);
   }
 
   private stop(run: LightboxActiveRun, message: string): void {
     this.ownRuns.delete(run.token);
-    if (!this.runner.cancel(run.boardId, run.token)) {
+    // A press still preparing has sent nothing and shows nothing: releasing it is enough.
+    const started = this.runner.activeRun(run.boardId)?.token === run.token;
+    if (!this.runner.cancel(run.boardId, run.token) || !started) {
       return;
     }
     const board = this.lightboxService.updateReadings(run.boardId, (readings) => stopLightboxGroups(readings, run.groups, message));
@@ -311,16 +347,21 @@ export class LightboxReadingHandler {
       message,
       ...lensField(run.lens)
     });
-    void this.postEstimate();
   }
 
-  private async postEstimate(): Promise<void> {
-    const prepared = this.runSource();
-    if (!prepared) {
+  /** Answer an estimate request, unless a newer one arrives while this one is priced. */
+  private async postEstimate(requestId?: string): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
+    const sequence = ++this.estimateSequence;
+    const answered = requestId ? { requestId } : {};
+    const press = this.pressSnapshot();
+    if (!press) {
       void this.postMessage({
         type: MessageType.LIGHTBOX_RUN_ESTIMATE,
         source: SOURCE,
-        payload: { estimate: null },
+        payload: { ...answered, estimate: null },
         timestamp: Date.now()
       });
       return;
@@ -330,12 +371,15 @@ export class LightboxReadingHandler {
       .filter((lens) => !this.lensesOff.includes(lens.id))
       .map((lens) => ({ group: lens.group, lenses: [lens.id] }));
     try {
-      const estimate = await this.runner.estimate(prepared.source, groups, rereads);
-      const activeRun = this.runner.activeRun(prepared.board.boardId);
+      const estimate = await this.runner.estimate(press.source, groups, rereads, press);
+      if (this.disposed || sequence !== this.estimateSequence) {
+        return;
+      }
+      const activeRun = this.runner.activeRun(press.board.boardId);
       void this.postMessage({
         type: MessageType.LIGHTBOX_RUN_ESTIMATE,
         source: SOURCE,
-        payload: { estimate, ...(activeRun ? { activeRun } : {}) },
+        payload: { ...answered, estimate, ...(activeRun ? { activeRun } : {}) },
         timestamp: Date.now()
       });
     } catch (error) {
@@ -345,6 +389,9 @@ export class LightboxReadingHandler {
   }
 
   private postContextFiles(notice?: string): void {
+    if (this.disposed) {
+      return;
+    }
     void this.postMessage({
       type: MessageType.LIGHTBOX_CONTEXT_FILES,
       source: SOURCE,
@@ -389,6 +436,9 @@ export class LightboxReadingHandler {
   }
 
   private postProgress(progress: LightboxRunProgress): void {
+    if (this.disposed) {
+      return;
+    }
     void this.postMessage({ type: MessageType.LIGHTBOX_RUN_PROGRESS, source: SOURCE, payload: progress, timestamp: Date.now() });
   }
 }

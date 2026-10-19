@@ -18,20 +18,24 @@ import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReading
 import { frame, framedJson, readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { makeBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxBoardFixtures';
 
-/** One group as the host would hold it after its call landed. */
+/**
+ * One group as the host would hold it after its call landed. `mutate` breaks
+ * the worked example's body first; `collision` adds a third borrowed field
+ * and a collision the host can see (Slice 3).
+ */
 export function readGroup(
   group: LightboxReadingGroupId,
-  options: { paraphraseOne?: boolean; collision?: boolean } = {}
+  options: { paraphraseOne?: boolean; collision?: boolean; mutate?: (body: Record<string, any>) => void } = {}
 ): LightboxReadingGroup {
   const example = readWorkedExample(group);
   let response = example.response;
-  if ((options.paraphraseOne || options.collision) && group === 'A') {
+  if (((options.paraphraseOne || options.collision) && group === 'A') || options.mutate) {
     const body = framedJson(response) as Record<string, any>;
-    if (options.paraphraseOne) {
+    if (options.paraphraseOne && group === 'A') {
       // A fixture built to provoke a withheld quote: one motif quote paraphrased.
       body.motifs.items[0].evidence[1].quote = 'and then it dropped straight down';
     }
-    if (options.collision) {
+    if (options.collision && group === 'A') {
       // A hand-written third field, so ¶4 holds a collision the host can see.
       body.gravity.fields.push({
         name: 'Animals', metaphor: 'The chase as a hunt.', pull: 0.12, claim: 'The Rabbit is chased like quarry.',
@@ -43,7 +47,8 @@ export function readGroup(
         evidence: [{ para: 4, quote: 'it flashed across her mind that she had never before seen a rabbit' }]
       }];
     }
-    response = frame('A', body);
+    options.mutate?.(body);
+    response = frame(group, body);
   }
   const decoded = decodeLightboxGroup(response, { group, lenses: example.lenses, columnCount: 8 });
   let id = 0;
@@ -62,7 +67,8 @@ export function readGroup(
     tiles: assembled.tiles,
     withheldBlocks: assembled.withheldBlocks,
     withheldClaims: assembled.withheldClaims,
-    frictions: assembled.frictions
+    frictions: assembled.frictions,
+    quoteChecks: assembled.quoteChecks
   };
 }
 
@@ -85,6 +91,7 @@ export function makeEstimate(overrides: Partial<LightboxRunEstimate> = {}): Ligh
   });
   return {
     boardId: 'board-8',
+    key: 'estimate-board-8',
     model: 'provider/model-v1',
     contextLength: 200_000,
     groups: [call('A', ['headline', 'motif', 'tension'], 0.015), call('B', ['characters', 'voice'], 0.013), call('C', ['genre'], 0.012)],

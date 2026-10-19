@@ -131,7 +131,7 @@ export function lightboxGroupLenses(group: LightboxReadingGroupId): LightboxLens
 
 /** A group before any call. */
 export function emptyLightboxReadingGroup(group: LightboxReadingGroupId): LightboxReadingGroup {
-  return { group, status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [] };
+  return { group, status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: [] };
 }
 
 /** One call a press would make: a group with the lenses it reads. */

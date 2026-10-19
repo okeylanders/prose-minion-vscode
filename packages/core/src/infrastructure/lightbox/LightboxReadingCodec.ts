@@ -14,6 +14,12 @@
  * counted and ids are minted afterwards (`LightboxReadingTiles`); nothing
  * here trusts a paragraph number beyond it being a positive whole number.
  * The vocabulary (sentinels, keys, shapes) is `LightboxReadingWire`.
+ *
+ * Every reason is host-owned (PR #149 F-05): it names the protocol's paths,
+ * counts and positions, never a field name or a value the model wrote,
+ * because reasons are logged and shown on the board. A field the format does
+ * not define is counted, not named; the names go only into the frame error's
+ * `diagnostic`, which the runner hands to the recovery store with the body.
  */
 
 import type { LightboxLensId, LightboxReadingGroupId } from '@messages';
@@ -49,6 +55,9 @@ import {
 import { decodeGravityBlock, decodePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityCodec';
 
 const B = PROMPT_BUDGETS.lightbox;
+/** How many undefined root field names, and how much of each, the recovery diagnostic keeps. */
+const DIAGNOSTIC_FIELD_NAMES = 10;
+const DIAGNOSTIC_NAME_CHARACTERS = 120;
 
 // ---------------------------------------------------------------------------
 // The frame and the root
@@ -59,11 +68,11 @@ export function decodeLightboxGroup(content: string, context: LightboxGroupDecod
   const lensKeys = Object.values(LIGHTBOX_LENS_KEYS);
   const unknown = Object.keys(root).filter((key) => key !== 'version' && !lensKeys.includes(key));
   if (unknown.length > 0) {
-    // Field names are the model's; the reason is logged, so it names a few, briefly.
-    const named = unknown.slice(0, 3).map((key) => JSON.stringify(key.slice(0, 24))).join(', ');
+    // Field names are the model's: the reason counts them, and only the recovery diagnostic names them.
+    const named = unknown.slice(0, DIAGNOSTIC_FIELD_NAMES).map((key) => JSON.stringify(key.slice(0, DIAGNOSTIC_NAME_CHARACTERS)));
     throw new LightboxGroupFrameError(
-      `The group ${context.group} response has ${unknown.length} unknown field${unknown.length === 1 ? '' : 's'}: ${named}` +
-        (unknown.length > 3 ? ', …' : '')
+      `The group ${context.group} response has ${fieldCount(unknown.length)} the format does not define`,
+      `Undefined root fields: ${named.join(', ')}${unknown.length > named.length ? `, and ${unknown.length - named.length} more` : ''}`
     );
   }
   if (root.version !== LIGHTBOX_READING_PROTOCOL_VERSION) {
@@ -152,7 +161,7 @@ function decodeBlock(
   const friction = requireFriction(value, path);
   switch (lens) {
     case 'headline': {
-      const block = exactObject(value, path, ['sentence', 'terms', 'evidence', 'friction']);
+      const block = strictObject(value, path, ['sentence', 'terms', 'evidence', 'friction']);
       return {
         lens,
         sentence: text(block.sentence, `${path}.sentence`, B.noteCharacters),
@@ -162,12 +171,12 @@ function decodeBlock(
       };
     }
     case 'motif': {
-      const block = exactObject(value, path, ['items', 'friction']);
+      const block = strictObject(value, path, ['items', 'friction']);
       const { items, malformed } = decodeItems(block.items, `${path}.items`, B.motifs, 'motif', decodeMotif);
       return { lens, items, malformed, friction };
     }
     case 'tension': {
-      const block = exactObject(value, path, ['scores', 'claim', 'peaks', 'friction']);
+      const block = strictObject(value, path, ['scores', 'claim', 'peaks', 'friction']);
       return {
         lens,
         scores: scores(block.scores, `${path}.scores`, context.columnCount),
@@ -177,7 +186,7 @@ function decodeBlock(
       };
     }
     case 'characters': {
-      const block = exactObject(value, path, ['items', 'friction']);
+      const block = strictObject(value, path, ['items', 'friction']);
       const { items, malformed } = decodeItems(
         block.items, `${path}.items`, B.characters, 'character', decodeCharacter
       );
@@ -185,7 +194,7 @@ function decodeBlock(
     }
     case 'voice': {
       const keys = LIGHTBOX_VOICE_TRAITS.map(([key]) => key);
-      const block = exactObject(value, path, [...keys, 'claim', 'evidence', 'friction']);
+      const block = strictObject(value, path, [...keys, 'claim', 'evidence', 'friction']);
       return {
         lens,
         traits: keys.map((key) => ({ key, value: text(block[key], `${path}.${key}`, B.noteCharacters) })),
@@ -214,7 +223,7 @@ function requireFriction(value: unknown, path: string): string {
 }
 
 function decodeGenre(value: unknown, path: string, friction: string): LightboxDecodedBlock {
-  const block = exactObject(value, path, ['neighbors', 'promise', 'friction']);
+  const block = strictObject(value, path, ['neighbors', 'promise', 'friction']);
   const { items, malformed } = decodeItems(
     block.neighbors, `${path}.neighbors`, B.genreNeighbors, 'neighbor', decodeNeighbor, LIGHTBOX_MINIMUM_GENRE_NEIGHBORS
   );
@@ -227,7 +236,7 @@ function decodeGenre(value: unknown, path: string, friction: string): LightboxDe
         `${LIGHTBOX_NEAR_MISS_AFFINITY.toFixed(2)} or below.`
     );
   }
-  const promise = exactObject(block.promise, `${path}.promise`, ['text', 'evidence']);
+  const promise = strictObject(block.promise, `${path}.promise`, ['text', 'evidence']);
   return {
     lens: 'genre',
     neighbors: items,
@@ -270,7 +279,7 @@ function decodeItems<T>(
 }
 
 function decodeMotif(item: Record<string, unknown>, path: string): LightboxDecodedMotif {
-  const motif = exactObject(item, path, ['title', 'gist', 'claim', 'terms', 'evidence']);
+  const motif = strictObject(item, path, ['title', 'gist', 'claim', 'terms', 'evidence']);
   return {
     title: text(motif.title, `${path}.title`, B.labelCharacters),
     gist: text(motif.gist, `${path}.gist`, B.noteCharacters),
@@ -281,7 +290,7 @@ function decodeMotif(item: Record<string, unknown>, path: string): LightboxDecod
 }
 
 function decodeCharacter(item: Record<string, unknown>, path: string): LightboxDecodedCharacter {
-  const character = exactObject(item, path, [
+  const character = strictObject(item, path, [
     'name', 'aliases', 'archetype', 'energy', 'wants', 'hides', 'claim', 'evidence'
   ]);
   boundedArrayAt(character.aliases, `${path}.aliases`, 0, 3, 'aliases');
@@ -297,19 +306,31 @@ function decodeCharacter(item: Record<string, unknown>, path: string): LightboxD
   };
 }
 
+/**
+ * A near miss (affinity at or below `LIGHTBOX_NEAR_MISS_AFFINITY`, as drawn:
+ * rounded to two decimals) must say what matches and what does not, so a
+ * blank `nearMiss` withholds it (PR #149 F-06). A closer neighbor has no near
+ * miss to explain: its `nearMiss` must still be a bounded string, but is not
+ * a withholding rule; whatever it holds is not kept, since the tile draws a
+ * near miss only for a low-affinity neighbor.
+ */
 function decodeNeighbor(item: Record<string, unknown>, path: string): LightboxDecodedNeighbor {
-  const neighbor = exactObject(item, path, ['genre', 'affinity', 'claim', 'nearMiss', 'evidence']);
+  const neighbor = strictObject(item, path, ['genre', 'affinity', 'claim', 'nearMiss', 'evidence']);
   numberAt(neighbor.affinity, `${path}.affinity`);
-  const affinity = neighbor.affinity as number;
-  if (affinity < 0 || affinity > 1) {
+  const claimed = neighbor.affinity as number;
+  if (claimed < 0 || claimed > 1) {
     shapeError(`${path}.affinity`, 'a number from 0 to 1');
   }
+  const affinity = Math.round(claimed * 100) / 100;
   boundedStringAt(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters);
+  const nearMiss = affinity <= LIGHTBOX_NEAR_MISS_AFFINITY
+    ? text(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters)
+    : '';
   return {
     genre: text(neighbor.genre, `${path}.genre`, B.labelCharacters),
-    affinity: Math.round(affinity * 100) / 100,
+    affinity,
     claim: text(neighbor.claim, `${path}.claim`, B.claimCharacters),
-    nearMiss: (neighbor.nearMiss as string).trim(),
+    nearMiss,
     evidence: evidence(neighbor.evidence, `${path}.evidence`, 1)
   };
 }
@@ -331,6 +352,23 @@ function itemTitle(item: unknown, fallback: string): string {
 // Fields
 // ---------------------------------------------------------------------------
 
+/**
+ * `exactObject`, except that fields the format does not define are counted,
+ * never named: a field name is the model's, and this reason reaches the board.
+ */
+function strictObject(value: unknown, path: string, keys: readonly string[]): Record<string, unknown> {
+  const object = objectAt(value, path);
+  const undefinedFields = Object.keys(object).filter((key) => !keys.includes(key)).length;
+  if (undefinedFields > 0) {
+    throw new Error(`${path} has ${fieldCount(undefinedFields)} the format does not define.`);
+  }
+  return exactObject(object, path, keys);
+}
+
+function fieldCount(count: number): string {
+  return `${count} field${count === 1 ? '' : 's'}`;
+}
+
 /** A nonblank string within its ceiling, trimmed. */
 function text(value: unknown, path: string, maximum: number): string {
   boundedStringAt(value, path, maximum, false);
@@ -348,7 +386,7 @@ function evidence(value: unknown, path: string, minimum: number): LightboxWireQu
 }
 
 function quote(value: unknown, path: string): LightboxWireQuote {
-  const pair = exactObject(value, path, ['para', 'quote']);
+  const pair = strictObject(value, path, ['para', 'quote']);
   return { para: paragraphNumber(pair.para, `${path}.para`), quote: text(pair.quote, `${path}.quote`, B.quoteCharacters) };
 }
 
@@ -356,7 +394,7 @@ function peaks(value: unknown, path: string): LightboxWirePeak[] {
   boundedArrayAt(value, path, 1, B.tensionPeaks, 'peaks');
   return value.map((item, index) => {
     const itemPath = `${path}[${index}]`;
-    const peak = exactObject(item, itemPath, ['para', 'quote', 'note']);
+    const peak = strictObject(item, itemPath, ['para', 'quote', 'note']);
     return {
       para: paragraphNumber(peak.para, `${itemPath}.para`),
       quote: text(peak.quote, `${itemPath}.quote`, B.quoteCharacters),

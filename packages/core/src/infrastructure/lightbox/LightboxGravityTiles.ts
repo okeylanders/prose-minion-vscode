@@ -110,7 +110,7 @@ function collisionRefusal(
 ): string | undefined {
   const withheld = collision.fields.find((name) => !drawn.has(nameKey(name)));
   if (withheld !== undefined) {
-    return `It names "${withheld}", a field the board withheld.`;
+    return 'One of the fields it names was withheld.';
   }
   const holds = (quote: LightboxVerifiedQuote, name: string): boolean =>
     (drawn.get(nameKey(name)) ?? []).some((term) => lightboxTextHoldsTerm(quote.text, term.term));

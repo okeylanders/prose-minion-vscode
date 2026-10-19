@@ -81,7 +81,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette blocks), quote verifier, term and field counts, runner, estimate, stale carry-over, handoff checks
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette blocks), quote verifier, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, handoff checks
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -160,6 +160,7 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure)
 │       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
 │       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
+│       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
 │       │   ├── lightboxGravity.ts      # Orbit placements, pull/drift/degree wording (pure)
 │       │   ├── lightboxHandoff.ts      # "Build as a lens" view and request (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item)

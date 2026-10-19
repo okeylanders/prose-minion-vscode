@@ -87,7 +87,7 @@ describe('the gravity and palette codec', () => {
     }
     expect(gravity.collisions).toEqual([]);
     expect(gravity.malformed.collisions.map((item) => item.reason)).toEqual([
-      expect.stringContaining('"Clockwork", which is not one of the block\'s borrowed fields'),
+      expect.stringContaining('It names a field that is not one of the block\'s borrowed fields.'),
       expect.stringContaining('two different fields')
     ]);
     expect(gravity.literal.map((item) => item.name)).toEqual(['Falling', 'Household things']);
@@ -193,7 +193,7 @@ describe('assembling gravity and palette tiles', () => {
     });
     expect(assembled.withheldClaims.map((claim) => [claim.kind, claim.title, claim.reason])).toEqual([
       ['gravity-field', 'Fire', expect.stringContaining('No quote it gave was found')],
-      ['gravity-collision', 'Ledger meets Fire', 'It names "Fire", a field the board withheld.'],
+      ['gravity-collision', 'Ledger meets Fire', 'One of the fields it names was withheld.'],
       ['swatch', 'White Rabbit', 'Its color words are not in the chapter.']
     ]);
   });
@@ -202,7 +202,7 @@ describe('assembling gravity and palette tiles', () => {
     const assembled = assemble();
     const group = {
       group: 'A' as const, status: 'ok' as const, lenses, tiles: assembled.tiles,
-      withheldBlocks: [], withheldClaims: [], frictions: assembled.frictions
+      withheldBlocks: [], withheldClaims: [], frictions: assembled.frictions, quoteChecks: assembled.quoteChecks
     };
     // ¶3 loses "worth the trouble" and ¶4 gains another "burning".
     const changed = paragraphs.map((text, index) => (index === 2

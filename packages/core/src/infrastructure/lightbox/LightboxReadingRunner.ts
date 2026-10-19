@@ -15,6 +15,13 @@
  *   a board with a run in flight is refused; Stop aborts it; a result that
  *   arrives after its run stopped, or for a run that is no longer the board's
  *   active one, is dropped.
+ * - **Ownership from the press (PR #149 F-02).** A press `reserve`s its board
+ *   before its first await: the token is minted and the board held while
+ *   the prompt files load, so a second press is refused and `cancel` (Stop,
+ *   or the tab closing) releases it. `startReserved` starts the engine only
+ *   while the reservation is still held, so a press released during
+ *   preparation never sends anything. `activeRun` reports only started
+ *   runs: a reservation has nothing to stop yet.
  * - **Validation.** `rawContent` is parsed. A reply cut off at the output
  *   ceiling (`finishReason === 'length'`) fails its group, and so does one
  *   whose frame cannot be read; either paid body is quarantined in the
@@ -22,12 +29,16 @@
  *   Blocks and items that break their own rules are withheld, not failed.
  *
  * Logs carry groups, lenses, counts and reasons, never the chapter, the
- * context, or the model's prose.
+ * context, or the model's prose. Every reason is host-owned (PR #149 F-05): a
+ * failed call is described by its category (`LightboxCallFailure`), never by
+ * the provider's text, and a rejected reply by the codec's own words. What a
+ * rejection knows beyond that (an undefined field's name) is its
+ * `diagnostic`, which goes only to the recovery store, beside the body.
  */
 
 import { randomUUID } from 'node:crypto';
 import pLimit from 'p-limit';
-import type { LightboxActiveRun, LightboxRunEstimate } from '@messages';
+import type { LightboxActiveRun, LightboxReadingGroupId, LightboxRunEstimate } from '@messages';
 import type { LogSink } from '@/platform';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { lightboxLensLabel } from '@shared/constants/lightbox';
@@ -43,8 +54,12 @@ import {
   type RejectedModelResponseRecoveryPresenter
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
 import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
-import { LightboxGroupFrameError } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import {
+  describeLightboxCallFailure,
+  lightboxRejectionOf,
+  type LightboxRejection
+} from '@/infrastructure/lightbox/LightboxCallFailure';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import {
@@ -62,8 +77,11 @@ import {
   sumUsage,
   type LightboxGroupOutcome,
   type LightboxModelCatalog,
+  type LightboxPricedSnapshot,
   type LightboxReadingEngines,
   type LightboxRunListener,
+  type LightboxRunReservation,
+  type LightboxRunReserve,
   type LightboxRunSource,
   type LightboxRunStart
 } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
@@ -85,9 +103,15 @@ const READING_TEMPERATURE = 0.4;
 interface ActiveRunState {
   run: LightboxActiveRun;
   controller: AbortController;
+  /** False while the press is reserved and its calls are being prepared. */
+  started: boolean;
   outputCharacters: number;
   lastReportedCharacters: number;
 }
+
+const ALREADY_READING = 'This board is already being read. Stop that run first.';
+const NO_API_KEY = 'Add an OpenRouter API key in Settings to read the chapter.';
+const NOTHING_TO_READ = 'Every lens is off, so there is nothing to read.';
 
 export class LightboxReadingRunner {
   private readonly active = new Map<string, ActiveRunState>();
@@ -140,10 +164,16 @@ export class LightboxReadingRunner {
     };
   }
 
+  /**
+   * Fit and cost of the calls, priced with `priced.facts` (read once, beside
+   * the key that names them) rather than whatever the catalog says after the
+   * prompt files load.
+   */
   async estimate(
     source: LightboxRunSource,
     groups: readonly LightboxGroupRequest[],
-    rereads: readonly LightboxGroupRequest[]
+    rereads: readonly LightboxGroupRequest[],
+    priced: LightboxPricedSnapshot
   ): Promise<LightboxRunEstimate> {
     const [preparedGroups, preparedRereads] = await Promise.all([
       this.prepare(source, groups),
@@ -151,23 +181,73 @@ export class LightboxReadingRunner {
     ]);
     return estimateLightboxRun({
       boardId: source.boardId,
+      key: priced.key,
       sourceWords: source.sourceWords,
       contextWords: source.contextWords,
       columnCount: source.material.columns.length,
       groups: preparedGroups,
       rereads: preparedRereads,
-      facts: this.modelFacts()
+      facts: priced.facts
     });
   }
 
+  /** The board's started run; a press still preparing has nothing to stop yet. */
   activeRun(boardId: string): LightboxActiveRun | undefined {
-    return this.active.get(boardId)?.run;
+    const state = this.active.get(boardId);
+    return state?.started ? state.run : undefined;
   }
 
   /**
-   * Start the prepared calls. Refused (nothing sent) without an engine or
-   * while the board has a run in flight. `done` settles when every call
-   * has, whether or not the run was stopped.
+   * Hold the board for a press, before anything is awaited: the run's token
+   * is minted now. Refused while the board is held or read, or without an
+   * engine.
+   */
+  reserve(
+    boardId: string,
+    groups: readonly LightboxReadingGroupId[],
+    scope: { lens?: LightboxActiveRun['lens'] } = {}
+  ): LightboxRunReserve {
+    if (this.active.has(boardId)) {
+      return { reserved: false, message: ALREADY_READING };
+    }
+    if (!this.engines.getEngine('assistant')) {
+      return { reserved: false, message: NO_API_KEY };
+    }
+    const run: LightboxActiveRun = {
+      boardId,
+      token: this.mintToken(),
+      groups: [...groups],
+      ...(scope.lens ? { lens: scope.lens } : {})
+    };
+    const state: ActiveRunState = {
+      run,
+      controller: new AbortController(),
+      started: false,
+      outputCharacters: 0,
+      lastReportedCharacters: 0
+    };
+    this.active.set(boardId, state);
+    return { reserved: true, reservation: state };
+  }
+
+  /** Whether the reservation still holds its board: not stopped, released or disposed. */
+  holds(reservation: LightboxRunReservation): boolean {
+    const state = reservation as ActiveRunState;
+    return this.active.get(state.run.boardId) === state && !state.controller.signal.aborted;
+  }
+
+  /** Give up a reservation that will not start (refused after preparation). */
+  release(reservation: LightboxRunReservation): void {
+    const state = reservation as ActiveRunState;
+    if (this.active.get(state.run.boardId) === state && !state.started) {
+      this.active.delete(state.run.boardId);
+    }
+  }
+
+  /**
+   * Reserve and start at once: for calls prepared without a reservation.
+   * Refused (nothing sent) with no calls, without an engine, or while the
+   * board has a run in flight.
    */
   start(
     source: LightboxRunSource,
@@ -176,36 +256,45 @@ export class LightboxReadingRunner {
     scope: { lens?: LightboxActiveRun['lens'] } = {}
   ): LightboxRunStart {
     if (calls.length === 0) {
-      return { started: false, message: 'Every lens is off, so there is nothing to read.' };
+      return { started: false, message: NOTHING_TO_READ };
     }
-    if (this.active.has(source.boardId)) {
-      return { started: false, message: 'This board is already being read. Stop that run first.' };
+    const held = this.reserve(source.boardId, calls.map((call) => call.group), scope);
+    return held.reserved ? this.startReserved(held.reservation, source, calls, listener) : { started: false, message: held.message };
+  }
+
+  /**
+   * Start a reservation's prepared calls, if it still holds its board.
+   * `done` settles when every call has, whether or not the run was stopped.
+   */
+  startReserved(
+    reservation: LightboxRunReservation,
+    source: LightboxRunSource,
+    calls: readonly LightboxPreparedCall[],
+    listener: LightboxRunListener
+  ): LightboxRunStart {
+    const state = reservation as ActiveRunState;
+    if (!this.holds(reservation) || state.started || state.run.boardId !== source.boardId) {
+      return { started: false, message: 'This press was stopped before it started.' };
     }
+    // The run names the groups it was reserved for; the calls must be exactly those.
+    const reservedCalls = calls.length === state.run.groups.length &&
+      calls.every((call, index) => call.group === state.run.groups[index]);
     const engine = this.engines.getEngine('assistant');
-    if (!engine) {
-      return { started: false, message: 'Add an OpenRouter API key in Settings to read the chapter.' };
+    if (calls.length === 0 || !reservedCalls || !engine) {
+      this.release(reservation);
+      const message = calls.length === 0 ? NOTHING_TO_READ : !reservedCalls ? 'The prepared calls are not the ones this press reserved.' : NO_API_KEY;
+      return { started: false, message };
     }
-    const run: LightboxActiveRun = {
-      boardId: source.boardId,
-      token: this.mintToken(),
-      groups: calls.map((call) => call.group),
-      ...(scope.lens ? { lens: scope.lens } : {})
-    };
-    const state: ActiveRunState = {
-      run,
-      controller: new AbortController(),
-      outputCharacters: 0,
-      lastReportedCharacters: 0
-    };
-    this.active.set(source.boardId, state);
+    state.started = true;
+    const { run } = state;
     this.outputChannel.appendLine(
       `[LightboxReadingRunner] Run ${run.token} started: groups ${run.groups.join(', ')}` +
-        (scope.lens ? ` (re-read ${scope.lens})` : '')
+        (run.lens ? ` (re-read ${run.lens})` : '')
     );
     return { started: true, run, done: this.execute(engine, state, source, calls, listener) };
   }
 
-  /** Stop the board's run, if it is the one named. Finished groups stay as they landed. */
+  /** Stop the board's run or reservation, if it is the one named. Finished groups stay as they landed. */
   cancel(boardId: string, token: string): boolean {
     const state = this.active.get(boardId);
     if (!state || state.run.token !== token) {
@@ -213,7 +302,7 @@ export class LightboxReadingRunner {
     }
     this.active.delete(boardId);
     state.controller.abort();
-    this.outputChannel.appendLine(`[LightboxReadingRunner] Run ${token} stopped`);
+    this.outputChannel.appendLine(`[LightboxReadingRunner] Run ${token} ${state.started ? 'stopped' : 'released before it started'}`);
     return true;
   }
 
@@ -282,8 +371,7 @@ export class LightboxReadingRunner {
       error,
       ...(result?.modelId ? { model: result.modelId } : {}),
       ...(result?.usage ? { usage: result.usage } : {}),
-      quotesChecked: 0,
-      quotesWithheld: 0
+      quoteChecks: []
     });
 
     let result: ExecutionResult;
@@ -305,9 +393,10 @@ export class LightboxReadingRunner {
       if (!this.isCurrent(state)) {
         return undefined;
       }
-      const detail = error instanceof Error ? error.message : String(error);
-      this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} call failed: ${detail}`);
-      return failed(detail);
+      // The provider's text is never repeated: only the host's category is logged and shown.
+      const failure = describeLightboxCallFailure(error);
+      this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} call failed: ${failure.log}`);
+      return failed(failure.message);
     }
     if (!this.isCurrent(state)) {
       return undefined;
@@ -321,12 +410,9 @@ export class LightboxReadingRunner {
 
     const content = result.rawContent ?? result.content;
     if (result.finishReason === 'length') {
-      return failed(await this.quarantine(
-        call,
-        content,
-        result,
-        `the reply reached the ${PROMPT_BUDGETS.lightbox.groupOutputTokens.toLocaleString('en-US')}-token output ceiling`
-      ), result);
+      return failed(await this.quarantine(call, content, result, {
+        message: `the reply reached the ${PROMPT_BUDGETS.lightbox.groupOutputTokens.toLocaleString('en-US')}-token output ceiling`
+      }), result);
     }
 
     let decoded: ReturnType<typeof decodeLightboxGroup>;
@@ -337,8 +423,7 @@ export class LightboxReadingRunner {
         columnCount: source.material.columns.length
       });
     } catch (error) {
-      const rejection = error instanceof LightboxGroupFrameError ? error.message : String(error);
-      return failed(await this.quarantine(call, content, result, rejection), result);
+      return failed(await this.quarantine(call, content, result, lightboxRejectionOf(error)), result);
     }
 
     let ordinal = 0;
@@ -365,8 +450,7 @@ export class LightboxReadingRunner {
       frictions: assembled.frictions,
       ...(result.modelId ? { model: result.modelId } : {}),
       ...(result.usage ? { usage: result.usage } : {}),
-      quotesChecked: assembled.quotesChecked,
-      quotesWithheld: assembled.quotesWithheld
+      quoteChecks: assembled.quoteChecks
     };
   }
 
@@ -382,21 +466,26 @@ export class LightboxReadingRunner {
     listener.onProgress(state.outputCharacters);
   }
 
-  /** Save the paid body for recovery; the returned sentence tells the writer where it went. */
+  /**
+   * Save the paid body for recovery; the returned sentence tells the writer
+   * where it went. The rejection's message is logged and shown; its
+   * diagnostic is written only beside the body, in the recovery store's
+   * gitignored folder.
+   */
   private async quarantine(
     call: LightboxPreparedCall,
     content: string,
     result: ExecutionResult,
-    rejection: string
+    rejection: LightboxRejection
   ): Promise<string> {
-    this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} rejected: ${rejection}`);
+    this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} rejected: ${rejection.message}`);
     const receipt = await persistRejectedWidgetResponse(this.recovery, this.recoveryPresenter, {
       toolName: 'lightbox-readings',
       requestSummary: `Lightbox group ${call.group}: ${call.lenses.map(lightboxLensLabel).join(', ')}`,
       rawResponse: content,
-      rejection,
+      rejection: rejection.diagnostic ? `${rejection.message}. ${rejection.diagnostic}` : rejection.message,
       result
     });
-    return `The reading came back unusable (${rejection}). ${recoveryLocationNotice(receipt)} Read the rest to try again.`;
+    return `The reading came back unusable (${rejection.message}). ${recoveryLocationNotice(receipt)} Read the rest to try again.`;
   }
 }

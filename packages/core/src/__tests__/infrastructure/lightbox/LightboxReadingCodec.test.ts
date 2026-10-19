@@ -47,11 +47,35 @@ describe('LightboxReadingCodec', () => {
       expect(() => decodeLightboxGroup(breakIt(exampleA.response), contextA)).toThrow(LightboxGroupFrameError);
     });
 
-    it('names unknown fields briefly, since the reason is logged', () => {
+    it('counts fields the format does not define, and names them only in the recovery diagnostic (PR #149 F-05)', () => {
+      // A model can copy chapter or context prose into a field name.
+      const prose = 'Synthetic private note: she never told the Queen';
       const long = 'x'.repeat(200);
-      const text = exampleA.response.replace('{"version":1', `{"version":1,"${long}":1,"b":1,"c":1,"d":1`);
-      expect(() => decodeLightboxGroup(text, contextA))
-        .toThrow(`The group A response has 4 unknown fields: "${'x'.repeat(24)}", "b", "c", …`);
+      const text = exampleA.response.replace('{"version":1', `{"version":1,"${prose}":1,"${long}":1,"b":1`);
+      let caught: unknown;
+      try {
+        decodeLightboxGroup(text, contextA);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(LightboxGroupFrameError);
+      const frameError = caught as LightboxGroupFrameError;
+      expect(frameError.message).toBe('The group A response has 3 fields the format does not define');
+      expect(frameError.message).not.toContain('Synthetic');
+      expect(frameError.diagnostic).toBe(`Undefined root fields: ${JSON.stringify(prose)}, "${'x'.repeat(120)}", "b"`);
+    });
+
+    it('counts, never names, an undefined field inside a block or an item', () => {
+      const block = body(exampleA);
+      block.tension['Synthetic private note'] = 'copied prose';
+      const item = body(exampleA);
+      item.motifs.items[0]['Synthetic private note'] = 'copied prose';
+      const blockReason = decodeLightboxGroup(frame('A', block), contextA).withheld[0].reason;
+      const motifs = decodeLightboxGroup(frame('A', item), contextA).blocks.find((entry) => entry.lens === 'motif');
+      const itemReason = motifs && motifs.lens === 'motif' ? motifs.malformed[0].reason : '';
+      expect(blockReason).toBe('The tension block broke the format: tension has 1 field the format does not define.');
+      expect(itemReason).toBe('It broke the format: motifs.items[0] has 1 field the format does not define.');
+      expect(`${blockReason} ${itemReason}`).not.toContain('Synthetic');
     });
 
     it('refuses a response over the character ceiling', () => {
@@ -125,6 +149,42 @@ describe('LightboxReadingCodec', () => {
       expect(decodeLightboxGroup(frame('C', broken), contextC).withheld).toEqual([
         { lens: 'genre', reason: expect.stringContaining('drew no near miss') }
       ]);
+    });
+
+    it('requires a near miss to say what matches and what does not (PR #149 F-06)', () => {
+      const blank = body(exampleC);
+      blank.genre.neighbors = [
+        { ...blank.genre.neighbors[0], affinity: 0.8 },
+        blank.genre.neighbors[1],
+        { ...blank.genre.neighbors[3], affinity: 0.4, nearMiss: '' },
+        { ...blank.genre.neighbors[3], genre: 'Gothic horror', affinity: 0.38, nearMiss: '   ' }
+      ];
+      const decoded = decodeLightboxGroup(frame('C', blank), contextC);
+      // Neither low-affinity neighbor explains itself, so the neighborhood draws no near miss.
+      expect(decoded.withheld).toEqual([{ lens: 'genre', reason: expect.stringContaining('drew no near miss') }]);
+
+      const one = body(exampleC);
+      one.genre.neighbors[3].nearMiss = '';
+      one.genre.neighbors.push({ ...one.genre.neighbors[3], genre: 'Gothic horror', affinity: 0.399, nearMiss: 'A dark fall matches; no dread.' });
+      const kept = decodeLightboxGroup(frame('C', one), contextC).blocks[0];
+      expect(kept.lens === 'genre' && kept.malformed).toEqual([{
+        title: 'Survival thriller',
+        reason: expect.stringContaining('genre.neighbors[3].nearMiss must be a non-empty string')
+      }]);
+      expect(kept.lens === 'genre' && kept.neighbors.map((neighbor) => [neighbor.genre, neighbor.affinity, neighbor.nearMiss])).toEqual([
+        ['Victorian children’s fantasy', 0.86, ''],
+        ['Literary nonsense', 0.71, ''],
+        ['Portal fantasy', 0.55, ''],
+        ['Gothic horror', 0.4, 'A dark fall matches; no dread.']
+      ]);
+    });
+
+    it('keeps no near miss for a closer neighbor, without withholding it', () => {
+      const extra = body(exampleC);
+      extra.genre.neighbors[0].nearMiss = 'Not a near miss at all.';
+      const block = decodeLightboxGroup(frame('C', extra), contextC).blocks[0];
+      expect(block.lens === 'genre' && block.malformed).toEqual([]);
+      expect(block.lens === 'genre' && block.neighbors[0]).toMatchObject({ affinity: 0.86, nearMiss: '' });
     });
 
     it('refuses an affinity outside 0–1 and a fractional paragraph number', () => {

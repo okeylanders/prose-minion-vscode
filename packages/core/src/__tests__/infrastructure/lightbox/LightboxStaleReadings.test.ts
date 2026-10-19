@@ -77,6 +77,12 @@ describe('carrying readings onto a changed text (D4)', () => {
     const arc = carried.tiles.find((tile) => tile.kind === 'tension-arc');
     expect(arc?.evidence.map((quote) => quote.paragraph)).toEqual([4]);
     expect(arc?.withheldQuotes).toEqual([{ paragraph: 6, reason: 'no-longer-in-chapter' }]);
+    // The tally counts each quote now gone as withheld, in its own lens.
+    const withheld = (group: LightboxReadingGroup, lens: string) =>
+      group.quoteChecks.find((checks) => checks.lens === lens)?.withheld ?? 0;
+    expect(withheld(carried, 'motif')).toBe(withheld(read, 'motif') + 1);
+    expect(withheld(carried, 'tension')).toBe(withheld(read, 'tension') + 1);
+    expect(carried.quoteChecks.map((checks) => checks.checked)).toEqual(read.quoteChecks.map((checks) => checks.checked));
   });
 
   it('withholds a claim left with no quote, by title, and a motif left in one paragraph', () => {
@@ -110,7 +116,9 @@ describe('carrying readings onto a changed text (D4)', () => {
 
   it('sets aside a group still being read, and leaves a group never read as it was', () => {
     const [running] = startLightboxGroups([read], [{ group: 'A', lenses: ['motif'] }], 'motif');
-    const notRun: LightboxReadingGroup = { group: 'B', status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [] };
+    const notRun: LightboxReadingGroup = {
+      group: 'B', status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: []
+    };
     const [carried, untouched] = carryLightboxReadings([running, notRun], { readAgainst: HASH, paragraphs: PARAGRAPHS, averageWordsPerSentence: 9 });
     expect(carried).toMatchObject({ status: 'cancelled', error: LIGHTBOX_CHANGED_WHILE_READING });
     expect(carried.pending).toBeUndefined();
@@ -129,14 +137,14 @@ describe('carrying readings onto a changed text (D4)', () => {
     const motif = carried.tiles.filter((tile) => tile.lens === 'motif');
     const fresh = settleLightboxGroup(carried, {
       group: 'A', lenses: ['motif'], status: 'ok', tiles: motif, withheldBlocks: [], withheldClaims: [], frictions: [],
-      quotesChecked: 1, quotesWithheld: 0
+      quoteChecks: [{ lens: 'motif', checked: 1, withheld: 0 }]
     }, 'motif');
     expect(fresh.staleLenses?.map((mark) => mark.lens)).not.toContain('motif');
     expect(fresh.staleLenses?.length).toBe((carried.staleLenses?.length ?? 0) - 1);
 
     const failed = settleLightboxGroup(carried, {
       group: 'A', lenses: ['motif'], status: 'failed', tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [],
-      error: 'nope', quotesChecked: 0, quotesWithheld: 0
+      error: 'nope', quoteChecks: []
     }, 'motif');
     expect(failed.staleLenses).toEqual(carried.staleLenses);
 

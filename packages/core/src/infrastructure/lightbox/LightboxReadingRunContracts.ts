@@ -9,6 +9,7 @@ import type {
   LightboxActiveRun,
   LightboxReadingGroupId,
   LightboxLensFriction,
+  LightboxLensQuoteChecks,
   LightboxReadingTile,
   LightboxWithheldBlock,
   LightboxWithheldClaim,
@@ -17,7 +18,7 @@ import type {
 import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import { OpenRouterModels } from '@providers/OpenRouterModels';
 import type { LightboxGroupRequest, LightboxReadingMaterial } from '@/infrastructure/lightbox/LightboxReadingPrompts';
-import type { LightboxModelPricing } from '@/infrastructure/lightbox/LightboxRunEstimate';
+import type { LightboxModelFacts, LightboxModelPricing } from '@/infrastructure/lightbox/LightboxRunEstimate';
 
 /** The engine surface the runner uses. */
 export interface LightboxReadingEngines {
@@ -59,8 +60,8 @@ export interface LightboxGroupOutcome {
   error?: string;
   model?: string;
   usage?: TokenUsage;
-  quotesChecked: number;
-  quotesWithheld: number;
+  /** Per lens; empty for a failed call. */
+  quoteChecks: LightboxLensQuoteChecks[];
 }
 
 export interface LightboxRunSummary {
@@ -81,6 +82,25 @@ export interface LightboxRunListener {
 export type LightboxRunStart =
   | { started: true; run: LightboxActiveRun; done: Promise<void> }
   | { started: false; message: string };
+
+/**
+ * A press's hold on its board, from before its prompt files load until its
+ * run ends (PR #149 F-02). Opaque: compared by identity, so it cannot be
+ * forged.
+ */
+export interface LightboxRunReservation {
+  readonly run: LightboxActiveRun;
+}
+
+export type LightboxRunReserve =
+  | { reserved: true; reservation: LightboxRunReservation }
+  | { reserved: false; message: string };
+
+/** What an estimate priced: the model facts it read, and the key naming every priced input. */
+export interface LightboxPricedSnapshot {
+  facts: LightboxModelFacts;
+  key: string;
+}
 
 
 /** Sum usage the way the Dictionary's fan-out does; an unreported cache count makes the total unknown. */

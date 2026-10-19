@@ -995,6 +995,8 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxRunEstimate.ts',
   'infrastructure/lightbox/LightboxReadingRunContracts.ts',
   'infrastructure/lightbox/LightboxReadingRunner.ts',
+  'infrastructure/lightbox/LightboxCallFailure.ts',
+  'infrastructure/lightbox/LightboxPressSnapshot.ts',
   'infrastructure/lightbox/LightboxReadingState.ts',
   'infrastructure/lightbox/LightboxStaleReadings.ts',
   'infrastructure/lightbox/LightboxTileCounts.ts',
@@ -1008,6 +1010,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
@@ -1043,6 +1046,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts'
 ] as const;

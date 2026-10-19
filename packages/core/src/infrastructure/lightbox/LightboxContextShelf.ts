@@ -35,10 +35,19 @@ interface ShelfEntry extends LightboxContextFile {
 
 export class LightboxContextShelf {
   private entries: ShelfEntry[] = [];
+  private revisionCount = 0;
   private readonly mintId: () => string;
 
   constructor(options: { mintId?: () => string } = {}) {
     this.mintId = options.mintId ?? (() => `lbc-${randomUUID()}`);
+  }
+
+  /**
+   * Bumps on every add and removal, so a press can tell the shelf its
+   * estimate priced from the shelf as it stands (PR #149 F-02).
+   */
+  revision(): number {
+    return this.revisionCount;
   }
 
   list(): LightboxContextFile[] {
@@ -73,12 +82,17 @@ export class LightboxContextShelf {
     }
     const entry: ShelfEntry = { id: this.mintId(), displayPath: input.displayPath, wordCount, text: input.text, sourceKey: input.sourceKey };
     this.entries = [...this.entries, entry];
+    this.revisionCount += 1;
     return { added: true, file: { id: entry.id, displayPath: entry.displayPath, wordCount } };
   }
 
   remove(id: string): boolean {
     const before = this.entries.length;
     this.entries = this.entries.filter((entry) => entry.id !== id);
-    return this.entries.length < before;
+    if (this.entries.length === before) {
+      return false;
+    }
+    this.revisionCount += 1;
+    return true;
   }
 }

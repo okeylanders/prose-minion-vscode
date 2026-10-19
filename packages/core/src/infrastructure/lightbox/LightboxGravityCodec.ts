@@ -20,14 +20,12 @@
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import type { LightboxGravityDegree } from '@messages';
-import {
-  exactObject,
-  shapeError
-} from '@/application/services/workshop/persistedValidation';
+import { shapeError } from '@/application/services/workshop/persistedValidation';
 import {
   claimedFraction,
   decodeItems,
   evidence,
+  strictObject,
   terms,
   text
 } from '@/infrastructure/lightbox/LightboxReadingFields';
@@ -48,7 +46,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
 export function decodeGravityBlock(value: unknown, path: string, friction: string): LightboxDecodedGravityBlock {
-  const block = exactObject(value, path, ['fields', 'collisions', 'literal', 'friction']);
+  const block = strictObject(value, path, ['fields', 'collisions', 'literal', 'friction']);
   const decodedFields = decodeItems(block.fields, `${path}.fields`, B.gravityFields, 'field', decodeField);
   const fields = unique(decodedFields.items, decodedFields.malformed, (field) => field.name, 'field');
 
@@ -58,7 +56,7 @@ export function decodeGravityBlock(value: unknown, path: string, friction: strin
   const decodedLiterals = decodeItems(block.literal, `${path}.literal`, B.gravityLiterals, 'set-aside', (item, itemPath) => {
     const literal = decodeLiteral(item, itemPath);
     if (drawn.has(nameKey(literal.name))) {
-      throw new Error(`"${literal.name}" is drawn as a borrowed field, so it cannot also be set aside as literal.`);
+      throw new Error('It is drawn as a borrowed field, so it cannot also be set aside as literal.');
     }
     return literal;
   }, 1);
@@ -74,7 +72,7 @@ export function decodeGravityBlock(value: unknown, path: string, friction: strin
 }
 
 export function decodePaletteBlock(value: unknown, path: string, friction: string): LightboxDecodedPaletteBlock {
-  const block = exactObject(value, path, ['clusters', 'swatches', 'friction']);
+  const block = strictObject(value, path, ['clusters', 'swatches', 'friction']);
   const clusters = decodeItems(block.clusters, `${path}.clusters`, B.paletteClusters, 'cluster', decodeCluster);
   const swatches = decodeItems(block.swatches, `${path}.swatches`, B.swatches, 'swatch', decodeSwatch);
   return {
@@ -87,7 +85,7 @@ export function decodePaletteBlock(value: unknown, path: string, friction: strin
 }
 
 function decodeField(item: Record<string, unknown>, path: string): LightboxDecodedGravityField {
-  const field = exactObject(item, path, ['name', 'metaphor', 'pull', 'claim', 'terms', 'evidence']);
+  const field = strictObject(item, path, ['name', 'metaphor', 'pull', 'claim', 'terms', 'evidence']);
   const termList = decodeTermList(field.terms, `${path}.terms`);
   return {
     name: text(field.name, `${path}.name`, B.labelCharacters),
@@ -105,7 +103,7 @@ function decodeTermList(value: unknown, path: string): LightboxDecodedGravityTer
   }
   return value.map((entry, index) => {
     const itemPath = `${path}[${index}]`;
-    const term = exactObject(entry, itemPath, ['term', 'degree']);
+    const term = strictObject(entry, itemPath, ['term', 'degree']);
     return { term: text(term.term, `${itemPath}.term`, B.labelCharacters), degree: degreeAt(term.degree, `${itemPath}.degree`) };
   });
 }
@@ -118,14 +116,15 @@ function degreeAt(value: unknown, path: string): LightboxGravityDegree {
 }
 
 function decodeCollision(item: Record<string, unknown>, path: string, drawn: ReadonlySet<string>): LightboxDecodedCollision {
-  const collision = exactObject(item, path, ['fields', 'claim', 'evidence']);
+  const collision = strictObject(item, path, ['fields', 'claim', 'evidence']);
   const names = terms(collision.fields, `${path}.fields`, 2, 2);
   if (nameKey(names[0]) === nameKey(names[1])) {
     shapeError(`${path}.fields`, 'two different fields');
   }
   const missing = names.find((name) => !drawn.has(nameKey(name)));
   if (missing !== undefined) {
-    throw new Error(`It names "${missing.slice(0, B.labelCharacters)}", which is not one of the block's borrowed fields.`);
+    // The reason stays host-owned: the item's title already names its fields.
+    throw new Error('It names a field that is not one of the block\'s borrowed fields.');
   }
   return {
     fields: [names[0], names[1]],
@@ -135,7 +134,7 @@ function decodeCollision(item: Record<string, unknown>, path: string, drawn: Rea
 }
 
 function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDecodedLiteral {
-  const literal = exactObject(item, path, ['name', 'reason', 'terms', 'evidence']);
+  const literal = strictObject(item, path, ['name', 'reason', 'terms', 'evidence']);
   return {
     name: text(literal.name, `${path}.name`, B.labelCharacters),
     reason: text(literal.reason, `${path}.reason`, B.noteCharacters),
@@ -145,7 +144,7 @@ function decodeLiteral(item: Record<string, unknown>, path: string): LightboxDec
 }
 
 function decodeCluster(item: Record<string, unknown>, path: string): LightboxDecodedCluster {
-  const cluster = exactObject(item, path, ['name', 'claim', 'words', 'evidence']);
+  const cluster = strictObject(item, path, ['name', 'claim', 'words', 'evidence']);
   return {
     name: text(cluster.name, `${path}.name`, B.labelCharacters),
     claim: text(cluster.claim, `${path}.claim`, B.claimCharacters),
@@ -155,7 +154,7 @@ function decodeCluster(item: Record<string, unknown>, path: string): LightboxDec
 }
 
 function decodeSwatch(item: Record<string, unknown>, path: string): LightboxDecodedSwatch {
-  const swatch = exactObject(item, path, ['name', 'words', 'hex', 'note', 'evidence']);
+  const swatch = strictObject(item, path, ['name', 'words', 'hex', 'note', 'evidence']);
   const hex = typeof swatch.hex === 'string' ? swatch.hex.trim() : swatch.hex;
   if (typeof hex !== 'string' || !HEX.test(hex)) {
     shapeError(`${path}.hex`, 'a color as #RRGGBB');

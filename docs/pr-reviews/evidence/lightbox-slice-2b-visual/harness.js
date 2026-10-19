@@ -10,6 +10,11 @@
  * states/*.json are real host output: the production LightboxService,
  * LightboxReadingHandler, runner, codec and quote verifier built them, with
  * only the provider played (see README.md and tools/build-readings.test.ts).
+ *
+ * The estimate is only ever an answer to the tab's own request (PR #149
+ * F-03), so it is not replayed: the stubbed API answers each
+ * `lightbox_set_lenses` the tab posts with the host's recorded answer for
+ * those lenses (`estimates` in the state file), echoing the request's id.
  */
 const path = require('path');
 const fs = require('fs');
@@ -24,7 +29,10 @@ const [bundle, outDir] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
 const states = path.join(__dirname, 'states');
 const chapter = JSON.parse(fs.readFileSync(path.join(states, 'chapter.json'), 'utf8'));
+const withheld = JSON.parse(fs.readFileSync(path.join(states, 'withheld.json'), 'utf8'));
 const book = JSON.parse(fs.readFileSync(path.join(states, 'book.json'), 'utf8'));
+/** Everything but the estimate, which the stub answers per request. */
+const replayed = (messages) => messages.filter((message) => message.type !== 'lightbox_run_estimate');
 
 const html = `<!DOCTYPE html>
 <html lang="en">
@@ -42,8 +50,19 @@ const html = `<!DOCTYPE html>
   <div id="root" data-pm-surface="lightbox" data-pm-frame="fulltab"><span style="padding:8px">Loading the Lightbox…</span></div>
   <script>
     window.__pmPosted = [];
+    window.__pmEstimates = {};
     window.__pmVsCodeApi = {
-      postMessage: (m) => { window.__pmPosted.push(m); },
+      postMessage: (m) => {
+        window.__pmPosted.push(m);
+        // The host answers an estimate request for these lenses, echoing its id.
+        const answer = m.type === 'lightbox_set_lenses' && window.__pmEstimates[(m.payload.lensesOff || []).slice().sort().join(',')];
+        if (answer) {
+          setTimeout(() => window.postMessage({
+            type: 'lightbox_run_estimate', source: 'extension.lightbox', timestamp: 1,
+            payload: Object.assign({}, answer, { requestId: m.payload.requestId })
+          }, '*'), 0);
+        }
+      },
       getState: () => undefined,
       setState: () => {}
     };
@@ -81,6 +100,7 @@ const chrome = [
 ];
 
 const PINNED_MOTIF = 'Going down';
+const MOTIF_LENS = 'Theme & motif';
 const toTop = async (page) => {
   await page.mouse.move(4, 4);
   await page.evaluate(() => {
@@ -98,28 +118,47 @@ const pinMotif = async (page) => {
   await toTop(page);
 };
 
+const read = [...chapter.idle, ...chapter.running, ...chapter.done];
 const scenarios = [
   // The tab is open on Chapter I: lenses synced, the estimate on the press,
   // one context file added.
-  { name: 'idle', messages: [...chrome, ...chapter.idle], act: toTop },
+  { name: 'idle', estimates: chapter.estimates, messages: [...chrome, ...chapter.idle], act: toTop },
   // Read pressed; group A is back, B and C are still reading. Shown with
   // the board's "Read" filter, so the readings sit under the ribbon.
-  { name: 'running', messages: [...chrome, ...chapter.idle, ...chapter.running], act: showReadings },
+  { name: 'running', estimates: chapter.estimates, messages: [...chrome, ...chapter.idle, ...chapter.running], act: showReadings },
   // Every group back; "Read" filter, the motif "Going down" pinned. The
   // board, then (where the inspector stacks under the board) the inspector
   // scrolled into view; at 1440 it already sits beside the board.
-  { name: 'done', messages: [...chrome, ...chapter.idle, ...chapter.running, ...chapter.done], act: pinMotif },
+  { name: 'done', estimates: chapter.estimates, messages: [...chrome, ...read], act: pinMotif },
   {
     name: 'done-inspector',
     widths: ['1000', '500'],
-    messages: [...chrome, ...chapter.idle, ...chapter.running, ...chapter.done],
+    estimates: chapter.estimates,
+    messages: [...chrome, ...read],
     act: async (page) => {
       await pinMotif(page);
       await page.evaluate(() => document.querySelector('.pm-lb-inspector')?.scrollIntoView({ block: 'start' }));
     }
   },
+  // PR #149 F-04: the chapter read with group A's headline quoting nowhere
+  // in it. The plain heading stays; the withheld headline sits under it.
+  { name: 'headline-withheld', estimates: withheld.estimates, messages: [...chrome, ...withheld['headline-withheld']], act: showReadings },
+  // PR #149 F-08: "Going down" pinned, then the motif lens turned off. The
+  // tile's re-read is disabled with the reason; the inspector scrolled into view.
+  {
+    name: 'reread-off',
+    estimates: chapter.estimates,
+    messages: [...chrome, ...read],
+    act: async (page) => {
+      await pinMotif(page);
+      await page.locator('.pm-lb-lens-row', { hasText: MOTIF_LENS }).locator('input').click();
+      await page.waitForTimeout(200);
+      await toTop(page);
+      await page.evaluate(() => document.querySelector('.pm-lb-inspector-actions')?.scrollIntoView({ block: 'center' }));
+    }
+  },
   // The whole book against a 32,768-token window: no call fits.
-  { name: 'too-large', messages: [...chrome, ...book['too-large']], act: toTop }
+  { name: 'too-large', estimates: book.estimates, messages: [...chrome, ...book['too-large']], act: toTop }
 ];
 
 const viewports = [
@@ -139,7 +178,8 @@ const viewports = [
       page.on('console', (m) => { if (m.type() === 'error') { errors.push(`${scenario.name}@${viewport.tag} console: ${m.text()}`); } });
       await page.goto('file://' + pagePath);
       await page.waitForSelector('.pm-ws', { timeout: 10000 }).catch(() => {});
-      for (const entry of scenario.messages) {
+      await page.evaluate((estimates) => { window.__pmEstimates = estimates; }, scenario.estimates);
+      for (const entry of replayed(scenario.messages)) {
         await page.evaluate((m) => window.postMessage(m, '*'), entry);
       }
       await page.waitForTimeout(300);
@@ -169,6 +209,7 @@ const viewports = [
         };
         const press = [...document.querySelectorAll('.pm-lb-run button')].find((button) => !/Stop/.test(button.textContent));
         const inspector = document.querySelector('.pm-lb-inspector');
+        const reread = inspector?.querySelector('.pm-lb-inspector-actions button');
         return {
           runLine: text('.pm-lb-run'),
           press: press ? { label: press.textContent.trim(), disabled: press.disabled, describedBy: press.getAttribute('aria-describedby') } : null,
@@ -178,6 +219,7 @@ const viewports = [
           contextFiles: all('.pm-lb-context-path'),
           skeletons: document.querySelectorAll('.pm-lb-skeleton').length,
           headline: text('.pm-lb-headline'),
+          headlineState: text('[aria-label="Headline reading"]'),
           motifs: all('.pm-lb-motif-title'),
           tensionCells: document.querySelectorAll('.pm-lb-col-tension i').length,
           tensionNote: all('.pm-lb-ribbon-note').find((note) => note.startsWith('Tension')) ?? null,
@@ -185,6 +227,10 @@ const viewports = [
           evidence: [...(inspector?.querySelectorAll('.pm-lb-evidence') ?? [])].map((element) => element.textContent.trim()),
           withheld: [...(inspector?.querySelectorAll('.pm-lb-withheld-quote-card') ?? [])].map((element) => element.textContent.trim()),
           friction: inspector?.querySelector('.pm-lb-friction')?.textContent?.trim() ?? null,
+          reread: reread ? {
+            disabled: reread.disabled,
+            note: inspector.querySelector('.pm-lb-inspector-actions .pm-lb-run-note')?.textContent ?? null
+          } : null,
           inspector: rect('.pm-lb-inspector'),
           rail: rect('.pm-ws-rail'),
           main: rect('.pm-ws-main'),

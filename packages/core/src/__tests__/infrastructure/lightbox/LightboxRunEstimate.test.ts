@@ -36,6 +36,7 @@ function input(words: number, facts: LightboxEstimateInput['facts'], groups: Arr
   const paragraphs = chapter(words);
   return {
     boardId: 'board-1',
+    key: 'key-1',
     sourceWords: words,
     contextWords: 0,
     columnCount: Math.min(paragraphs.length, 96),

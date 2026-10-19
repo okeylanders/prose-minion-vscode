@@ -10,6 +10,11 @@
  * or failed, "Re-read" when everything landed, and says how many lenses are
  * stale after the text changed (D4). Every figure comes from the host's
  * estimate and board.
+ *
+ * Everything is the board's own (PR #149 F-03): an estimate for another
+ * board is no estimate ("Estimating the cost…", nothing to press), and Stop
+ * and the groups being read come from the board's own run, never from a
+ * token another board's progress carried.
  */
 
 import type {
@@ -22,6 +27,7 @@ import type {
   LightboxRunProgress,
   LightboxRunScope
 } from '@messages';
+import { lightboxLensLabel } from '@shared/constants/lightbox';
 import { lightboxQuoteTally, lightboxStaleLensCount, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 
 export type LightboxRunLineStatus = 'estimating' | 'idle' | 'running' | 'done' | 'stopped' | 'none';
@@ -51,9 +57,9 @@ export interface LightboxRunLineInput {
   board: LightboxBoard;
   /** `undefined` until the host answers; `null` when there is nothing to estimate. */
   estimate: LightboxRunEstimate | null | undefined;
-  /** The latest progress for this board's run, if any. */
+  /** The latest progress for this board: its run's, or a refusal of a press on it. */
   progress?: LightboxRunProgress | null;
-  /** The board's run in flight, as the host reported it with the estimate. */
+  /** The board's run in flight, by its token. */
   activeRun?: LightboxActiveRun | null;
   /** The press was sent and the host has not answered yet. */
   awaitingStart: boolean;
@@ -81,24 +87,75 @@ export function lightboxCallsNote(calls: readonly LightboxCallEstimate[]): strin
 
 /** What a tile's "Re-read" would cost. */
 export function lightboxRereadNote(estimate: LightboxRunEstimate | null | undefined, lens: LightboxLensId): string | undefined {
-  const call = estimate?.rereads.find((candidate) => candidate.lenses.length === 1 && candidate.lenses[0] === lens);
+  const call = rereadCall(estimate, lens);
   return call ? lightboxCallsNote([call]) : undefined;
 }
 
+export interface LightboxRereadInput {
+  /** The current board's estimate (`undefined` while it is being asked for). */
+  estimate: LightboxRunEstimate | null | undefined;
+  lens: LightboxLensId;
+  lensesOff: readonly LightboxLensId[];
+  providerPaused: boolean;
+  /** A reading of this board is in flight or being started. */
+  running: boolean;
+}
+
+/**
+ * Whether a tile's "Re-read" can run now (PR #149 F-08): its lens must be on,
+ * and the current estimate must price a call for that lens alone that fits
+ * the model's window. Otherwise the press is disabled with the reason, not
+ * offered only for the host to refuse it.
+ */
+export function lightboxRereadAvailability(input: LightboxRereadInput): { note?: string; reason?: string } {
+  const { estimate, lens } = input;
+  if (input.providerPaused) {
+    return { reason: 'Add an OpenRouter API key in Settings to read.' };
+  }
+  if (input.running) {
+    return { reason: 'A reading is running. Stop it, or wait for it to finish.' };
+  }
+  if (input.lensesOff.includes(lens)) {
+    return { reason: `The ${lightboxLensLabel(lens)} lens is off. Turn it on in the rail to re-read this tile.` };
+  }
+  if (estimate === undefined) {
+    return { reason: 'Estimating the cost…' };
+  }
+  const call = rereadCall(estimate, lens);
+  if (!call) {
+    return { reason: 'This tile cannot be re-read until the board is estimated.' };
+  }
+  if (call.fit === 'too-large') {
+    const window = (estimate?.contextLength ?? 0).toLocaleString('en-US');
+    return {
+      reason: `Re-reading this tile would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
+        `${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ` +
+        `${estimate?.model ?? 'the assistant model'}'s ${window}-token window allows.`
+    };
+  }
+  return { note: lightboxCallsNote([call]) };
+}
+
+function rereadCall(estimate: LightboxRunEstimate | null | undefined, lens: LightboxLensId): LightboxCallEstimate | undefined {
+  return estimate?.rereads.find((candidate) => candidate.lenses.length === 1 && candidate.lenses[0] === lens);
+}
+
 export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLineView {
-  const { board, estimate, providerPaused } = input;
+  const { board, providerPaused } = input;
+  const activeRun = input.activeRun?.boardId === board.boardId ? input.activeRun : null;
   const progress = input.progress?.boardId === board.boardId ? input.progress : null;
   const notice = progress?.phase === 'refused' ? progress.message : undefined;
+  // Another board's estimate prices nothing here.
+  const estimate = input.estimate && input.estimate.boardId !== board.boardId ? undefined : input.estimate;
   const running = board.readings.filter((group) => group.status === 'running');
 
   if (running.length > 0 || input.awaitingStart) {
-    const groups = progress?.groups.length ? progress.groups : running.map((group) => group.group);
+    const groups = activeRun?.groups.length ? activeRun.groups : running.map((group) => group.group);
     const back = groups.length - running.length;
-    const token = progress && progress.phase !== 'refused' ? progress.token : input.activeRun?.token;
     return {
       status: 'running',
       note: running.length === 0 ? 'Starting…' : `Reading… ${back} of ${pluralize(groups.length, 'lens group')} back`,
-      ...(token && running.length > 0 ? { stopToken: token } : {})
+      ...(activeRun && running.length > 0 ? { stopToken: activeRun.token } : {})
     };
   }
 

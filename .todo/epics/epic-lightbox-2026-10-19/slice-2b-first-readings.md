@@ -158,8 +158,10 @@ differs from the plan above, or the plan left a choice open:
   withheld by title while its block's other items survive.
 - Rules the codec enforces in code, not only in the prompt: tension has
   exactly one integer score from 0 to 9 per column; genre has at least two
-  neighbors and at least one at affinity 0.40 or below, with its near miss;
-  a motif needs verified quotes from at least two paragraphs.
+  neighbors and at least one at affinity 0.40 or below, with its near miss
+  (a near miss with a blank explanation is withheld; a closer neighbor
+  keeps no near miss text); a motif needs verified quotes from at least two
+  paragraphs.
 - The verifier needs four letters in a quote, so "the" cannot anchor a claim.
 
 **Runs** (`LightboxReadingRunner`, `LightboxReadingHandler`)
@@ -184,11 +186,12 @@ differs from the plan above, or the plan left a choice open:
   board's own source, a duplicate, an empty file and anything past
   `PROMPT_BUDGETS.contextFiles.words` in total. It is in memory and shared
   by the tab's boards.
-- The estimate is recomputed on lens toggles, context changes, a new board,
-  a model change and after a run. Expected output per lens is a fixed
-  typical figure (tension adds two tokens per column); the reply reserve is
-  the group output budget. `OpenRouterModels.getCachedPricing` is new, and
-  reads live catalog prices only.
+- The estimate is recomputed on lens toggles, context changes, a new board
+  and a model change, always at the webview's request (see the PR #149
+  fixes below). Expected output per lens is a fixed typical figure (tension
+  adds two tokens per column); the reply reserve is the group output
+  budget. `OpenRouterModels.getCachedPricing` is new, and reads live
+  catalog prices only.
 
 **Webview**
 
@@ -229,6 +232,56 @@ Until then the groups run in parallel, with no caching intent (ADR
 group's system prompt is the shared rules plus its own lens files and
 example, so the three calls share no leading prefix today; a cross-group
 cache read would need the chapter ahead of the lens-specific text.
+
+**PR #149 review fixes (2026-10-19)**
+
+All eight findings of the
+[review](../../../docs/pr-reviews/pr-149-lightbox-first-readings-review.md)
+are fixed on this branch; the author response at the end of the review
+maps each to its commits and tests.
+
+- **What a press owns (F-02).** A press owns exactly what its estimate
+  priced: the board (id and content hash), the lenses that are on, the
+  context shelf (by its revision), and the assistant model with its window
+  and prices. `LightboxPressSnapshot` reads all of it synchronously, with
+  the key that names it; the estimate carries that key and the press sends
+  it back. The host refuses a press whose key is not current, then
+  reserves the board under a minted token (`LightboxReadingRunner.reserve`)
+  before the prompt files load. After they load it starts the engine only
+  if the tab is still open, the reservation still holds, and a fresh
+  snapshot has the same key; otherwise nothing is sent, and a refusal with
+  `reestimate` makes the webview ask for a new estimate. So a model change
+  never inherits another model's price, a context file removed during
+  preparation is never sent, and closing the tab stops a press that has not
+  started. A closed tab posts nothing.
+- **Correlation (F-03).** The estimate is only ever an answer: each
+  `LIGHTBOX_SET_LENSES` carries a webview-minted `requestId` that the reply
+  echoes. The webview withdraws its usable estimate when it asks
+  ("Estimating the cost…", Lenses "Estimating…"), accepts only the reply to
+  its latest request for the board it asked about, and asks again when the
+  context list changes; the host drops an answer overtaken by a newer
+  request and no longer posts one after a run, a stop or a context change.
+  Runs and progress are kept per board and token (`lightboxRuns`), so one
+  board finishing never clears another's Stop, late progress from a stopped
+  or replaced run is ignored, and Stop is built from the board's own run.
+- **Quote spans (F-01).** The verifier's fold maps every UTF-16 code unit
+  to its normalization unit, units widen while NFKC joins them (Hangul
+  jamo, halfwidth sound marks), and a match, exact or folded, must start
+  and end on unit boundaries and fold back to the matched form.
+- **Withheld headline (F-04).** With no headline tile, the plain heading
+  stays and the headline lens's withheld claim, withheld block or failed
+  call sits under it.
+- **Diagnostics (F-05).** Output and the board carry host-owned words only:
+  a failed call is a closed category (`LightboxCallFailure`) with at most an
+  HTTP status, and fields the format does not define are counted, never
+  named. Undefined root field names go only to the rejected-response
+  recovery store, beside the quarantined body. A failed call keeps no
+  provider text at all.
+- **Nonblocking (F-06–F-08).** A low-affinity neighbor needs its near-miss
+  line; groups carry per-lens quote checks (`quoteChecks`), so the run
+  line's tally counts every check, a withheld motif's found quotes
+  included; a tile's re-read is disabled, with the reason, when its lens is
+  off, it has no current estimate, or its call is too large.
 
 **Not built here**
 

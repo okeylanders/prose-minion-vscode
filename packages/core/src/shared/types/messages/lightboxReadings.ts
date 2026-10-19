@@ -32,18 +32,11 @@ export type LightboxReadingGroupId = 'A' | 'B' | 'C';
 
 /**
  * The lenses, each in one reading group: Slice 2B's six, and Slice 3's
- * lexical gravity and palette in group A. A lens the writer turns off is left out of
- * its group's prompt, and a group with no lens on is not called.
+ * lexical gravity and palette in group A. A lens the writer turns off is left
+ * out of its group's prompt, and a group with no lens on is not called.
  */
 export type LightboxLensId =
-  | 'headline'
-  | 'motif'
-  | 'tension'
-  | 'gravity'
-  | 'palette'
-  | 'characters'
-  | 'voice'
-  | 'genre';
+  'headline' | 'motif' | 'tension' | 'gravity' | 'palette' | 'characters' | 'voice' | 'genre';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -182,7 +175,10 @@ export interface LightboxGenreNeighborTile extends LightboxReadingTileBase {
   kind: 'genre-neighbor';
   /** Claimed resemblance, 0–1. A claim, not a score, and drawn even when low. */
   affinity: number;
-  /** For a low-affinity neighbor: what matches and what does not. Empty otherwise. */
+  /**
+   * For a low-affinity neighbor (0.40 or below): what matches and what does
+   * not, never blank. Empty for every closer neighbor.
+   */
   nearMiss: string;
 }
 
@@ -215,6 +211,18 @@ export interface LightboxWithheldBlock {
 export interface LightboxLensFriction {
   lens: LightboxLensId;
   friction: string;
+}
+
+/**
+ * How many quotes the host checked for one lens's block in the latest call
+ * that read it, and how many it withheld (PR #149 F-07). Counted as the
+ * checks ran, so a claim withheld for another reason (a motif found in one
+ * paragraph only) still counts the quotes that were found.
+ */
+export interface LightboxLensQuoteChecks {
+  lens: LightboxLensId;
+  checked: number;
+  withheld: number;
 }
 
 /** A claim left with no found quote, withheld by title (D7). */
@@ -265,6 +273,8 @@ export interface LightboxReadingGroup {
   withheldClaims: LightboxWithheldClaim[];
   /** Every block that decoded, with its friction, in lens order. */
   frictions: LightboxLensFriction[];
+  /** Every block that decoded, with the quotes checked for it, in lens order. */
+  quoteChecks: LightboxLensQuoteChecks[];
   /** Why the latest call failed or stopped (status `failed` or `cancelled`). Writer-facing. */
   error?: string;
   /** Lenses read against an earlier version of the text; absent when every reading is current. */
@@ -295,6 +305,15 @@ export interface LightboxCallEstimate {
 
 export interface LightboxRunEstimate {
   boardId: string;
+  /**
+   * The identity of every input this estimate priced: the board and its
+   * text, the lenses that are on, the context files, and the assistant model
+   * with its window and prices (PR #149 F-02). Host-computed and opaque. A
+   * press names the key of the estimate it was shown, and the host runs it
+   * only while that key is still the current one, so a press never inherits
+   * another model's price or another input's call count.
+   */
+  key: string;
   /** The assistant model the press would use. */
   model?: string;
   /** The model's live context length; absent when unknown. */
@@ -364,15 +383,30 @@ export interface LightboxRunProgress {
   outputCharacters: number;
   /** Writer-facing, for a refusal or a stop. */
   message?: string;
+  /**
+   * On a refusal: the press named an estimate whose inputs are no longer
+   * current (a model, price, lens, context or board change), so the webview
+   * asks for a fresh one before the writer presses again.
+   */
+  reestimate?: true;
 }
 
 // ---------------------------------------------------------------------------
 // Messages
 // ---------------------------------------------------------------------------
 
-/** The webview's lens toggles. The host answers with a fresh estimate (also sent after a model change). */
+/**
+ * The webview's lens toggles, and a request for the estimate (also sent after
+ * a model, catalog or context change). The host answers with a fresh
+ * estimate that echoes `requestId`.
+ */
 export interface LightboxSetLensesPayload {
   lensesOff: LightboxLensId[];
+  /**
+   * Webview-minted, one per request (PR #149 F-03). Only the reply that
+   * echoes the latest one becomes the estimate a press may use.
+   */
+  requestId?: string;
 }
 
 export interface LightboxSetLensesMessage extends MessageEnvelope<LightboxSetLensesPayload> {
@@ -388,6 +422,8 @@ export interface LightboxActiveRun {
 }
 
 export interface LightboxRunEstimatePayload {
+  /** The request this answers (`LightboxSetLensesPayload.requestId`). */
+  requestId?: string;
   /** `null` when there is no board to read. */
   estimate: LightboxRunEstimate | null;
   /** The current board's run, while one is active. */
@@ -401,6 +437,8 @@ export interface LightboxRunEstimateMessage extends MessageEnvelope<LightboxRunE
 export interface LightboxRunPayload {
   boardId: string;
   scope: LightboxRunScope;
+  /** `LightboxRunEstimate.key` of the estimate the press was shown. */
+  estimateKey: string;
 }
 
 export interface LightboxRunMessage extends MessageEnvelope<LightboxRunPayload> {

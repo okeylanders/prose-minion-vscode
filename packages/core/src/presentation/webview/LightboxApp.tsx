@@ -24,7 +24,7 @@ import './styles/lightbox/inspector.css';
 import './styles/lightbox/readings.css';
 import './styles/lightbox/gravity.css';
 import * as React from 'react';
-import { MessageType } from '@messages';
+import { MessageType, type LightboxLensId } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';
 import { FullTabHeaderStatus } from '@components/fulltab/FullTabHeaderStatus';
 import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
@@ -41,7 +41,7 @@ import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLigh
 import {
   buildLightboxRunLine,
   lightboxCallsNote,
-  lightboxRereadNote
+  lightboxRereadAvailability
 } from '@hooks/domain/lightbox/lightboxRunLine';
 import { lightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
@@ -109,16 +109,16 @@ export const LightboxApp: React.FC = () => {
     [board, chrome.providerPaused, lightbox.activeRun, lightbox.awaitingStart, lightbox.estimate, lightbox.progress]
   );
   const running = runLine?.status === 'running';
-  const { estimate, run } = lightbox;
-  const reread = React.useMemo(() => ({
-    note: (lens: Parameters<typeof lightboxRereadNote>[1]) => lightboxRereadNote(estimate, lens),
-    reason: chrome.providerPaused
-      ? 'Add an OpenRouter API key in Settings to read.'
-      : running
-        ? 'A reading is running. Stop it, or wait for it to finish.'
-        : undefined,
-    onReread: (lens: Parameters<typeof lightboxRereadNote>[1]) => run({ mode: 'lens', lens })
-  }), [chrome.providerPaused, estimate, run, running]);
+  const { estimate, lensesOff, run } = lightbox;
+  const reread = React.useMemo(() => {
+    const availability = (lens: LightboxLensId) =>
+      lightboxRereadAvailability({ estimate, lens, lensesOff, providerPaused: chrome.providerPaused, running });
+    return {
+      note: (lens: LightboxLensId) => availability(lens).note,
+      reason: (lens: LightboxLensId) => availability(lens).reason,
+      onReread: (lens: LightboxLensId) => run({ mode: 'lens', lens })
+    };
+  }, [chrome.providerPaused, estimate, lensesOff, run, running]);
 
   const { handoff, buildLens: requestBuildLens } = lightbox;
   const buildLens = React.useMemo(() => (board
@@ -196,7 +196,7 @@ export const LightboxApp: React.FC = () => {
             />
             <LightboxLensesPanel
               lensesOff={lightbox.lensesOff}
-              costNote={lightboxCallsNote(lightbox.estimate?.groups ?? [])}
+              costNote={lightbox.estimate === undefined ? 'Estimating…' : lightboxCallsNote(lightbox.estimate?.groups ?? [])}
               onToggle={lightbox.toggleLens}
             />
           </>

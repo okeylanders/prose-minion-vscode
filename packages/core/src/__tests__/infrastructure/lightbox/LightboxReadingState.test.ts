@@ -36,8 +36,7 @@ const outcome = (over: Partial<LightboxGroupOutcome>): LightboxGroupOutcome => (
   withheldClaims: [],
   frictions: [],
   usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, costUsd: 0.5 },
-  quotesChecked: 1,
-  quotesWithheld: 0,
+  quoteChecks: [{ lens: 'headline', checked: 1, withheld: 0 }],
   ...over
 });
 
@@ -64,6 +63,16 @@ describe('reading-group transitions', () => {
     expect(settled.status).toBe('ok');
     expect(settled.pending).toBeUndefined();
     expect(settled.usage?.costUsd).toBeCloseTo(1);
+  });
+
+  it('replaces only the re-read lens\'s quote checks, and keeps them all when the re-read fails (PR #149 F-07)', () => {
+    const counted = { ...landed, quoteChecks: [{ lens: 'headline' as const, checked: 1, withheld: 0 }, { lens: 'motif' as const, checked: 5, withheld: 1 }] };
+    const [running] = startLightboxGroups([counted], [{ group: 'A', lenses: ['motif'] }], 'motif');
+    const reread = settleLightboxGroup(running, outcome({ lenses: ['motif'], quoteChecks: [{ lens: 'motif', checked: 2, withheld: 0 }] }), 'motif');
+    expect(reread.quoteChecks).toEqual([{ lens: 'headline', checked: 1, withheld: 0 }, { lens: 'motif', checked: 2, withheld: 0 }]);
+    const failed = settleLightboxGroup(running, outcome({ status: 'failed', quoteChecks: [] }), 'motif');
+    expect(failed.quoteChecks).toEqual(counted.quoteChecks);
+    expect(startLightboxGroups([counted], [{ group: 'A', lenses: ['headline', 'motif'] }])[0].quoteChecks).toEqual([]);
   });
 
   it('keeps the earlier readings when a re-read fails', () => {

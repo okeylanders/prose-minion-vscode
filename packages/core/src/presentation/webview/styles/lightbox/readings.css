@@ -92,6 +92,17 @@
   text-align: left;
   cursor: pointer;
 }
+/* A headline withheld or not back: the plain heading stays, the reason sits under it (PR #149 F-04). */
+[data-pm-surface="lightbox"] .pm-lb-headline-state {
+  max-width: 720px;
+  margin: 10px 0 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-headline-state .pm-lb-withheld-claims {
+  margin: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-headline-state > :last-child {
+  margin-bottom: 0;
+}
 [data-pm-surface="lightbox"] .pm-lb-headline-reading:hover,
 [data-pm-surface="lightbox"] .pm-lb-headline-reading.is-hot,
 [data-pm-surface="lightbox"] .pm-lb-headline-reading.is-sel {

@@ -84,8 +84,10 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
     ...claim,
     quotes: claim.quotes.map(withoutAddresses)
   }));
+  const lostByLens = new Map<LightboxLensId, number>();
   for (const tile of group.tiles) {
     const carried = carryTile(tile, tools);
+    lostByLens.set(tile.lens, (lostByLens.get(tile.lens) ?? 0) + carried.lost);
     if ('tile' in carried) {
       tiles.push(carried.tile);
     } else {
@@ -110,6 +112,8 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
   const carried: LightboxReadingGroup = {
     ...rest,
     tiles,
+    // A quote that was found and is gone now counts as withheld in the tally.
+    quoteChecks: group.quoteChecks.map((checks) => ({ ...checks, withheld: checks.withheld + (lostByLens.get(checks.lens) ?? 0) })),
     withheldClaims,
     ...(staleLenses.length > 0 ? { staleLenses } : {})
   };
@@ -139,7 +143,8 @@ function withoutAddresses(quote: LightboxWithheldQuote): LightboxWithheldQuote {
   return { paragraph: quote.paragraph, reason: quote.reason };
 }
 
-type CarriedTile = { tile: LightboxReadingTile } | { withheld: LightboxWithheldClaim };
+/** A carried tile, or the claim it became, with how many of its found quotes are gone. */
+type CarriedTile = ({ tile: LightboxReadingTile } | { withheld: LightboxWithheldClaim }) & { lost: number };
 
 function carryTile(tile: LightboxReadingTile, tools: CarryTools): CarriedTile {
   const evidence: LightboxVerifiedQuote[] = [];
@@ -159,7 +164,8 @@ function carryTile(tile: LightboxReadingTile, tools: CarryTools): CarriedTile {
   }
   const withheldQuotes = [...lost, ...tile.withheldQuotes.map(withoutAddresses)];
   const withhold = (reason: string): CarriedTile => ({
-    withheld: { kind: tile.kind, lens: tile.lens, title: tile.title, reason, quotes: withheldQuotes }
+    withheld: { kind: tile.kind, lens: tile.lens, title: tile.title, reason, quotes: withheldQuotes },
+    lost: lost.length
   });
   if (evidence.length === 0) {
     return withhold(NO_QUOTE_LEFT);
@@ -178,7 +184,8 @@ function carryTile(tile: LightboxReadingTile, tools: CarryTools): CarriedTile {
       evidence,
       withheldQuotes,
       paragraphs: paragraphsOf(foundParagraphs, recounted.support)
-    }
+    },
+    lost: lost.length
   };
 }
 

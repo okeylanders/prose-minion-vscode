@@ -59,6 +59,9 @@ const readBoard = (options: { collision?: boolean; stale?: boolean } = {}) => {
 describe('LightboxApp: lexical gravity and palette', () => {
   let vscode: ReturnType<typeof createMockVSCode>;
   const posted = (type: MessageType) => vscode.postMessage.mock.calls.map(([message]) => message).filter((message) => message.type === type);
+  /** The host's answer to the latest estimate request, echoing its id (PR #149 F-03). */
+  const estimateFromHost = (estimate: object) =>
+    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { requestId: posted(MessageType.LIGHTBOX_SET_LENSES).at(-1)?.payload.requestId, estimate });
 
   beforeEach(() => {
     vscode = createMockVSCode();
@@ -68,7 +71,7 @@ describe('LightboxApp: lexical gravity and palette', () => {
   it('draws the orbit, the fields with their claimed pull and counted hits, a collision and the literal set-aside', () => {
     render(<LightboxApp />);
     fromHost(MessageType.LIGHTBOX_BOARD, { board: readBoard({ collision: true }), refusal: null });
-    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
+    estimateFromHost(makeEstimate());
 
     const tile = screen.getByLabelText('Lexical gravity · borrowed fields the prose leans on');
     expect(within(tile).getByText('counted · read')).not.toBeNull();
@@ -121,7 +124,7 @@ describe('LightboxApp: lexical gravity and palette', () => {
     render(<LightboxApp />);
     const shown = readBoard();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: shown, refusal: null });
-    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
+    estimateFromHost(makeEstimate());
     const tile = screen.getByLabelText('Lexical gravity · borrowed fields the prose leans on');
     // Pinned from the orbit: each field there is a keyboard stop of its own.
     fireEvent.click(within(tile).getByRole('button', { name: 'Ledger, claimed pull 0.24, 3 hits' }));

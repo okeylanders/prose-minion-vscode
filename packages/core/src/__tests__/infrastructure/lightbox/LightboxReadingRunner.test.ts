@@ -13,6 +13,8 @@ jest.mock('p-limit', () => ({
 
 import type { LightboxReadingGroupId, TokenUsage } from '@messages';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
+import { AgentRunUnavailableError } from '@orchestration/AgentRunEngine';
+import { OpenRouterApiError } from '@providers/OpenRouterClient';
 import type { ExecutionResult, InitialRunRequest } from '@orchestration/AgentRunContracts';
 import { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 import type {
@@ -23,7 +25,7 @@ import type {
 } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import { lightboxGroupLenses } from '@shared/constants/lightbox';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { readWorkedExample } from './lightboxReadingFixtures';
+import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
 
 const examples = Object.fromEntries(
   (['A', 'B', 'C'] as const).map((group) => [group, readWorkedExample(group)])
@@ -111,6 +113,10 @@ function setup(respond: (request: InitialRunRequest) => Promise<ExecutionResult>
   return { runner, runInitial, getEngine, capture, present, outcomes, finished, progress, start, logged };
 }
 
+function listenerOf(outcomes: LightboxGroupOutcome[]): LightboxRunListener {
+  return { onGroup: (outcome) => outcomes.push(outcome), onProgress: () => undefined, onFinished: () => undefined };
+}
+
 describe('LightboxReadingRunner', () => {
   it('runs every group on the assistant engine, without resources, under the group output ceiling', async () => {
     const { start, runInitial, getEngine, outcomes, finished } = setup((request) => ok(groupOf(request)));
@@ -153,7 +159,7 @@ describe('LightboxReadingRunner', () => {
   it('lets one group fail while the others land', async () => {
     const { start, outcomes, logged } = setup((request) => {
       if (groupOf(request) === 'B') {
-        throw new Error('Rate limited by the provider. Try again in a minute.');
+        throw new AgentRunUnavailableError('rate-limited', 'provider detail', 30);
       }
       return ok(groupOf(request));
     });
@@ -164,8 +170,72 @@ describe('LightboxReadingRunner', () => {
     const byGroup = Object.fromEntries(outcomes.map((outcome) => [outcome.group, outcome]));
     expect(byGroup.A.status).toBe('ok');
     expect(byGroup.C.status).toBe('ok');
-    expect(byGroup.B).toMatchObject({ status: 'failed', error: 'Rate limited by the provider. Try again in a minute.', tiles: [] });
+    expect(byGroup.B).toMatchObject({
+      status: 'failed',
+      error: 'OpenRouter is rate limiting requests. Read the rest in about 30 seconds.',
+      tiles: []
+    });
+    expect(logged()).toContain('Group B call failed: rate-limited');
     expect(logged()).not.toContain(paragraphs[3].slice(0, 30));
+  });
+
+  describe('keeps arbitrary diagnostics out of Output and the board (PR #149 F-05)', () => {
+    const PRIVATE = 'Synthetic private note';
+    /** A provider error that echoes the request: multiline, and far longer than any reason. */
+    const echoed = `Provider rejected input: ${PRIVATE}\n${'chapter prose '.repeat(50)}`;
+
+    it.each([
+      ['an unclassified provider rejection', new OpenRouterApiError(echoed, 400, 'invalid_request'),
+        'The provider refused the call (HTTP 400). Read the rest to try again.', 'provider-rejected (HTTP 400)'],
+      ['an unavailable provider, with its details', new AgentRunUnavailableError('provider-unavailable', echoed),
+        'The model\'s provider is unavailable right now. Read the rest to try again.', 'provider-unavailable'],
+      ['a plain error', new Error(echoed),
+        'The call failed before a reading came back. Read the rest to try again.', 'unexpected (Error)'],
+      ['a thrown string', echoed,
+        'The call failed before a reading came back. Read the rest to try again.', 'unexpected']
+    ])('%s: a host category, never the provider text', async (_label, thrown, error, category) => {
+      const { start, outcomes, logged } = setup((request) => {
+        if (groupOf(request) === 'A') {
+          throw thrown;
+        }
+        return ok(groupOf(request));
+      });
+      const started = await start();
+      if (started.started) {
+        await started.done;
+      }
+      expect(outcomes.find((outcome) => outcome.group === 'A')).toMatchObject({ status: 'failed', error });
+      expect(logged()).toContain(`Group A call failed: ${category}`);
+      for (const surface of [logged(), JSON.stringify(outcomes)]) {
+        expect(surface).not.toContain(PRIVATE);
+        expect(surface).not.toContain('chapter prose');
+      }
+    });
+
+    it('quarantines a reply with prose in its root keys, naming the keys only in the recovery store', async () => {
+      const body = framedJson(examples.A.response);
+      const raw = frame('A', { ...body, [`${PRIVATE}: she never told the Queen`]: 1 });
+      const { start, outcomes, logged, capture } = setup((request) => ok(groupOf(request), groupOf(request) === 'A' ? { rawContent: raw } : {}));
+      const started = await start();
+      if (started.started) {
+        await started.done;
+      }
+      const a = outcomes.find((outcome) => outcome.group === 'A');
+      expect(a?.error).toBe(
+        'The reading came back unusable (The group A response has 1 field the format does not define). ' +
+          'Complete response saved for recovery at /workspace/prose-minion/recovery/model-responses/lightbox.response.txt. ' +
+          'Read the rest to try again.'
+      );
+      expect(logged()).toContain('Group A rejected: The group A response has 1 field the format does not define');
+      for (const surface of [logged(), JSON.stringify(outcomes)]) {
+        expect(surface).not.toContain(PRIVATE);
+      }
+      // The recovery store keeps the body and the names, behind its own boundary.
+      expect(capture).toHaveBeenCalledWith(expect.objectContaining({
+        rawResponse: raw,
+        rejection: `The group A response has 1 field the format does not define. Undefined root fields: "${PRIVATE}: she never told the Queen"`
+      }));
+    });
   });
 
   it('fails a group cut off at the output ceiling, and quarantines the paid body', async () => {
@@ -311,6 +381,74 @@ describe('LightboxReadingRunner', () => {
     expect(keyless.runInitial).not.toHaveBeenCalled();
   });
 
+  describe('a reservation holds the board from the press (PR #149 F-02)', () => {
+    const prepare = async (runner: LightboxReadingRunner) =>
+      runner.prepare(source, (['A', 'B', 'C'] as const).map((group) => ({ group, lenses: lightboxGroupLenses(group) })));
+
+    it('holds the board under a minted token, refuses a second press, and starts the reserved calls', async () => {
+      const { runner, runInitial, outcomes } = setup((request) => ok(groupOf(request)));
+      const held = runner.reserve('board-1', ['A', 'B', 'C']);
+      if (!held.reserved) {
+        throw new Error('expected a reservation');
+      }
+      expect(held.reservation.run).toEqual({ boardId: 'board-1', token: 'token-1-0000-0000', groups: ['A', 'B', 'C'] });
+      expect(runner.holds(held.reservation)).toBe(true);
+      expect(runner.activeRun('board-1')).toBeUndefined();
+      expect(runner.reserve('board-1', ['A'])).toEqual({ reserved: false, message: 'This board is already being read. Stop that run first.' });
+
+      const started = runner.startReserved(held.reservation, source, await prepare(runner), listenerOf(outcomes));
+      expect(started).toMatchObject({ started: true, run: { token: 'token-1-0000-0000' } });
+      expect(runner.activeRun('board-1')?.token).toBe('token-1-0000-0000');
+      if (started.started) {
+        await started.done;
+      }
+      expect(runInitial).toHaveBeenCalledTimes(3);
+    });
+
+    it.each([
+      ['stopped', (runner: LightboxReadingRunner, token: string) => runner.cancel('board-1', token)],
+      ['disposed', (runner: LightboxReadingRunner) => runner.dispose()]
+    ])('never starts a reservation %s before its calls were prepared', async (_label, release) => {
+      const { runner, runInitial, outcomes } = setup((request) => ok(groupOf(request)));
+      const held = runner.reserve('board-1', ['A', 'B', 'C']);
+      if (!held.reserved) {
+        throw new Error('expected a reservation');
+      }
+      const calls = await prepare(runner);
+      release(runner, held.reservation.run.token);
+      expect(runner.holds(held.reservation)).toBe(false);
+      expect(runner.startReserved(held.reservation, source, calls, listenerOf(outcomes)))
+        .toEqual({ started: false, message: 'This press was stopped before it started.' });
+      expect(runInitial).not.toHaveBeenCalled();
+      expect(runner.reserve('board-1', ['A']).reserved).toBe(true);
+    });
+
+    it('starts only the calls a reservation was made for', async () => {
+      const { runner, runInitial, outcomes } = setup((request) => ok(groupOf(request)));
+      const held = runner.reserve('board-1', ['A']);
+      if (!held.reserved) {
+        throw new Error('expected a reservation');
+      }
+      expect(runner.startReserved(held.reservation, source, await prepare(runner), listenerOf(outcomes)))
+        .toEqual({ started: false, message: 'The prepared calls are not the ones this press reserved.' });
+      expect(runner.holds(held.reservation)).toBe(false);
+      expect(runInitial).not.toHaveBeenCalled();
+    });
+
+    it('gives the board back when a reservation is released, and refuses one without an engine', async () => {
+      const { runner } = setup(() => ok('A'));
+      const held = runner.reserve('board-1', ['A']);
+      if (!held.reserved) {
+        throw new Error('expected a reservation');
+      }
+      runner.release(held.reservation);
+      expect(runner.holds(held.reservation)).toBe(false);
+      expect(runner.reserve('board-1', ['A']).reserved).toBe(true);
+      expect(setup(() => ok('A'), { engine: false }).runner.reserve('board-1', ['A']))
+        .toEqual({ reserved: false, message: 'Add an OpenRouter API key in Settings to read the chapter.' });
+    });
+  });
+
   it('reports throttled streaming progress', async () => {
     const { start, progress } = setup((request) => {
       for (let index = 0; index < 6; index++) {
@@ -330,9 +468,12 @@ describe('LightboxReadingRunner', () => {
     const estimate = await runner.estimate(
       source,
       [{ group: 'A', lenses: ['headline', 'motif', 'tension'] }],
-      [{ group: 'A', lenses: ['motif'] }]
+      [{ group: 'A', lenses: ['motif'] }],
+      { facts: runner.modelFacts(), key: 'key-1' }
     );
-    expect(estimate).toMatchObject({ boardId: 'board-1', model: 'provider/model-v1', contextLength: 200_000, fit: 'fits' });
+    expect(estimate).toMatchObject({
+      boardId: 'board-1', key: 'key-1', model: 'provider/model-v1', contextLength: 200_000, fit: 'fits'
+    });
     expect(estimate.groups[0].inputTokens).toBeGreaterThan(0);
     expect(estimate.rereads[0].lenses).toEqual(['motif']);
     expect(estimate.costUsd).toBeGreaterThan(0);

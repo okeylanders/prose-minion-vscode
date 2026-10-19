@@ -3,8 +3,9 @@
  * host, no I/O. The gravity and palette decoders (`LightboxGravityCodec`)
  * use these; they read a quote, a term or a bounded string exactly as
  * `LightboxReadingCodec`'s own private helpers do, so the rules are the same
- * in every lens. Each throws a shape error naming the field's path; the
- * caller decides whether that withholds an item or a block.
+ * in every lens. Each throws a shape error naming the field's path (a host
+ * path, never a model's field name); the caller decides whether that
+ * withholds an item or a block.
  */
 
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
@@ -36,8 +37,22 @@ export function evidence(value: unknown, path: string, minimum: number): Lightbo
   return value.map((item, index) => quote(item, `${path}[${index}]`));
 }
 
+/**
+ * `exactObject`, except that fields the format does not define are counted,
+ * never named: a field name is the model's, and this reason reaches the board
+ * (PR #149 F-05).
+ */
+export function strictObject(value: unknown, path: string, keys: readonly string[]): Record<string, unknown> {
+  const object = objectAt(value, path);
+  const undefinedFields = Object.keys(object).filter((key) => !keys.includes(key)).length;
+  if (undefinedFields > 0) {
+    throw new Error(`${path} has ${undefinedFields} field${undefinedFields === 1 ? '' : 's'} the format does not define.`);
+  }
+  return exactObject(object, path, keys);
+}
+
 function quote(value: unknown, path: string): LightboxWireQuote {
-  const pair = exactObject(value, path, ['para', 'quote']);
+  const pair = strictObject(value, path, ['para', 'quote']);
   return { para: paragraphNumber(pair.para, `${path}.para`), quote: text(pair.quote, `${path}.quote`, B.quoteCharacters) };
 }
 

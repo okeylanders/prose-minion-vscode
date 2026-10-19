@@ -19,6 +19,7 @@ import type {
   LightboxReadingGroupId,
   LightboxRunEstimate
 } from '@messages';
+import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
 import { estimateRequestTokens, measureContextWindow } from '@orchestration/RequestContextPreflight';
 
@@ -44,8 +45,39 @@ export interface LightboxPreparedCall {
   chapterTokens: number;
 }
 
+/** Everything an estimate prices, and so everything a press must still find unchanged (PR #149 F-02). */
+export interface LightboxPricedInputs {
+  boardId: string;
+  contentHash: string;
+  lensesOff: readonly LightboxLensId[];
+  /** `LightboxContextShelf.revision()`. */
+  contextRevision: number;
+  facts: LightboxModelFacts;
+}
+
+/**
+ * The estimate's key: one string that changes whenever any priced input
+ * does. Deterministic, so the host can recompute it at a press and again
+ * just before the engine starts, and compare.
+ */
+export function lightboxEstimateKey(inputs: LightboxPricedInputs): string {
+  const lensesOn = LIGHTBOX_LENSES.map((lens) => lens.id).filter((lens) => !inputs.lensesOff.includes(lens));
+  return JSON.stringify([
+    inputs.boardId,
+    inputs.contentHash,
+    lensesOn,
+    inputs.contextRevision,
+    inputs.facts.model ?? null,
+    inputs.facts.contextLength ?? null,
+    inputs.facts.pricing?.promptUsdPerToken ?? null,
+    inputs.facts.pricing?.completionUsdPerToken ?? null
+  ]);
+}
+
 export interface LightboxEstimateInput {
   boardId: string;
+  /** `lightboxEstimateKey` of the inputs this estimate prices. */
+  key: string;
   sourceWords: number;
   contextWords: number;
   columnCount: number;
@@ -138,6 +170,7 @@ export function estimateLightboxRun(input: LightboxEstimateInput): LightboxRunEs
 
   const estimate: LightboxRunEstimate = {
     boardId: input.boardId,
+    key: input.key,
     ...(input.facts.model ? { model: input.facts.model } : {}),
     ...(input.facts.contextLength !== undefined ? { contextLength: input.facts.contextLength } : {}),
     groups: groups.map((measured) => measured.estimate),

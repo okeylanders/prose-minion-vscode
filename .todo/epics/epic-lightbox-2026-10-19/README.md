@@ -358,6 +358,49 @@ becomes a file format.
     - Progress now carries the streamed characters through each group and
       the finish, and a rejected frame's logged reason names unknown fields
       briefly.
+- **2026-10-19. Slice 2B: PR #149 review fixes.** All eight findings of the
+  [review](../../../docs/pr-reviews/pr-149-lightbox-first-readings-review.md)
+  are fixed on `epic/lightbox-slice-2b-readings`, one commit each; the
+  author response at the end of the review maps commits to tests.
+  1. **F-02, a press owns what was priced.** The estimate carries a key
+     naming every input it priced (board and content hash, lenses on,
+     context shelf revision, model, window, prices); the press names it.
+     The runner reserves the board under a minted token before the prompt
+     files load; closing the tab releases it, and the engine starts only if
+     the reservation holds and the live key is unchanged. Otherwise nothing
+     is sent and the webview re-estimates.
+  2. **F-03, correlation.** Estimates answer webview-minted request ids;
+     only the latest reply for the board asked about is usable, and the
+     host never posts one unasked. Runs and progress are kept per board and
+     token, and Stop names the board's own run.
+  3. **F-01, quote spans.** The fold maps every UTF-16 code unit, units
+     follow whole-string NFKC, and a match must land on unit boundaries and
+     fold back to what matched.
+  4. **F-04, withheld headline.** Shown under the plain heading with its
+     reason, as are a withheld headline block and a failed call.
+  5. **F-05, diagnostics.** Output and the board carry host-owned words
+     only: call failures are closed categories, undefined fields are
+     counted; field names reach only the recovery store, beside the body.
+  6. **Nonblocking F-06–F-08.** A near miss needs its explanation; the
+     tally counts every quote checked, per lens; a tile's re-read is
+     disabled with its reason when it cannot run.
+  - **Verification.** Review head (`9ad4e34`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 344 suites, 5,058 tests, 2 snapshots | 349 suites, 5,115 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file, rule and message.
+    - No live or billable call: every test plays the provider.
+    - Visual evidence: `headline-withheld` and `reread-off` at 1440, 1000
+      and 500 px in
+      [`lightbox-slice-2b-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-2b-visual/README.md#pr-149-review-fixes-2026-10-19);
+      the earlier shots re-render unchanged (anti-aliasing only).
+  - **Unchanged on purpose:** D4 stale readings and the live-provider pass
+    stay deferred as recorded; the Slice 2B scope is otherwise unchanged.
   - **Follow-ups:** Slice 6's live pass (cache reads, the estimate ratio,
     contract adherence) and stale readings on a changed chapter (D4), in
     [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md)
