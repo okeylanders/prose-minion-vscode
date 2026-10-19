@@ -95,6 +95,19 @@ describe('carrying readings onto a changed text (D4)', () => {
     ]));
   });
 
+  it('withholds a collision once one of its fields is withheld, as a first reading would', () => {
+    const withCollision = readGroup('A', { collision: true });
+    expect(withCollision.tiles.some((tile) => tile.kind === 'gravity-collision')).toBe(true);
+    // ¶3's "a White Rabbit with pink eyes" was the Animals field's only quote.
+    const edited = PARAGRAPHS.map((paragraph, index) => (index === 2 ? paragraph.replace('pink eyes', 'red eyes') : paragraph));
+    const [carried] = carryLightboxReadings([withCollision], { readAgainst: HASH, paragraphs: edited, averageWordsPerSentence: 9 });
+    expect(carried.tiles.some((tile) => tile.kind === 'gravity-collision')).toBe(false);
+    expect(carried.withheldClaims.filter((claim) => claim.kind !== 'motif')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'gravity-field', title: 'Animals', reason: 'Its quotes are no longer in the chapter.' }),
+      expect.objectContaining({ kind: 'gravity-collision', reason: 'One of the fields it names is no longer on the board.' })
+    ]));
+  });
+
   it('sets aside a group still being read, and leaves a group never read as it was', () => {
     const [running] = startLightboxGroups([read], [{ group: 'A', lenses: ['motif'] }], 'motif');
     const notRun: LightboxReadingGroup = { group: 'B', status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [] };

@@ -13,7 +13,8 @@
  *   them (the host moving its own verified span, never a model's claim); a
  *   quote whose words are gone is withheld as no longer in the chapter;
  * - withholds a claim left with no quote, by title, as a first reading would,
- *   and holds a motif to recurring in two paragraphs;
+ *   holds a motif to recurring in two paragraphs, and draws a collision only
+ *   while both its fields are still drawn;
  * - recounts every counted term against the current text, so no count on the
  *   board describes a text that is gone;
  * - sets aside a group that was still being read when the text changed: its
@@ -52,6 +53,8 @@ export const LIGHTBOX_CHANGED_WHILE_READING =
   'The chapter changed while this group was being read, so that reading was set aside. Read the rest to read the new text.';
 
 const NO_QUOTE_LEFT = 'Its quotes are no longer in the chapter.';
+const COLLISION_FIELD_GONE = 'One of the fields it names is no longer on the board.';
+const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
 interface CarryTools {
   verifier: LightboxQuoteVerifier;
@@ -88,6 +91,19 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
     } else {
       withheldClaims.push(carried.withheld);
     }
+  }
+  // A collision is drawn only between two drawn fields (as on a first reading).
+  const fields = new Set(tiles.flatMap((tile) => (tile.kind === 'gravity-field' ? [nameKey(tile.title)] : [])));
+  const orphaned = tiles.filter((tile) => tile.kind === 'gravity-collision' && !tile.fields.every((name) => fields.has(nameKey(name))));
+  for (const collision of orphaned) {
+    tiles.splice(tiles.indexOf(collision), 1);
+    withheldClaims.push({
+      kind: collision.kind,
+      lens: collision.lens,
+      title: collision.title,
+      reason: COLLISION_FIELD_GONE,
+      quotes: collision.withheldQuotes
+    });
   }
   const staleLenses = staleMarks(group, tools.context.readAgainst);
   const { pending: _pending, staleLenses: _previous, ...rest } = group;
