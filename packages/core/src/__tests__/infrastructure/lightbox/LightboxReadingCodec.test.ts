@@ -47,6 +47,13 @@ describe('LightboxReadingCodec', () => {
       expect(() => decodeLightboxGroup(breakIt(exampleA.response), contextA)).toThrow(LightboxGroupFrameError);
     });
 
+    it('names unknown fields briefly, since the reason is logged', () => {
+      const long = 'x'.repeat(200);
+      const text = exampleA.response.replace('{"version":1', `{"version":1,"${long}":1,"b":1,"c":1,"d":1`);
+      expect(() => decodeLightboxGroup(text, contextA))
+        .toThrow(`The group A response has 4 unknown fields: "${'x'.repeat(24)}", "b", "c", …`);
+    });
+
     it('refuses a response over the character ceiling', () => {
       const huge = frame('A', { version: 1, headline: { padding: 'x'.repeat(40_000) } });
       expect(() => decodeLightboxGroup(huge, contextA)).toThrow(/exceeds 32,000 characters/);

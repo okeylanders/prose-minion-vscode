@@ -58,7 +58,12 @@ export function decodeLightboxGroup(content: string, context: LightboxGroupDecod
   const lensKeys = Object.values(LIGHTBOX_LENS_KEYS);
   const unknown = Object.keys(root).filter((key) => key !== 'version' && !lensKeys.includes(key));
   if (unknown.length > 0) {
-    throw new LightboxGroupFrameError(`The group ${context.group} response has unknown fields: ${unknown.join(', ')}`);
+    // Field names are the model's; the reason is logged, so it names a few, briefly.
+    const named = unknown.slice(0, 3).map((key) => JSON.stringify(key.slice(0, 24))).join(', ');
+    throw new LightboxGroupFrameError(
+      `The group ${context.group} response has ${unknown.length} unknown field${unknown.length === 1 ? '' : 's'}: ${named}` +
+        (unknown.length > 3 ? ', …' : '')
+    );
   }
   if (root.version !== LIGHTBOX_READING_PROTOCOL_VERSION) {
     throw new LightboxGroupFrameError(
