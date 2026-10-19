@@ -1,12 +1,15 @@
 /**
  * Shared webview HTML shell — Application layer.
  *
- * One HTML document for BOTH webview surfaces: the sidebar view
- * (ProseToolsViewProvider) and the Workshop editor tab (WorkshopPanelProvider,
- * ADR 2026-07-03). Both load the same bundle (`dist/webview.js`); the only
- * per-surface difference is the `data-pm-surface` stamp on #root, which the
- * webview entry point reads to pick its React root (<App/> vs <WorkshopApp/>).
- * One bundle, two roots — no second build pipeline.
+ * One HTML document for EVERY webview surface: the sidebar view
+ * (ProseToolsViewProvider), the Workshop editor tab (WorkshopPanelProvider,
+ * ADR 2026-07-03) and the Lightbox editor tab (ADR 2026-10-19 D1). All load
+ * the same bundle (`dist/webview.js`); the only per-surface differences are
+ * the <title> and the #root markup, kept in one exhaustive map below. The
+ * `data-pm-surface` stamp on #root tells the webview entry point which React
+ * root to mount; full editor tabs also stamp `data-pm-frame="fulltab"`, the
+ * scope of the shared full-tab frame styles. One bundle, several roots — no
+ * second build pipeline.
  *
  * Extracted from ProseToolsViewProvider so the CSP, nonce, and asset wiring
  * cannot drift between surfaces.
@@ -18,12 +21,49 @@ import * as vscode from 'vscode';
 // the same symbols the webview entry point reads, so the stamp can't drift.
 import {
   MessageType,
+  PM_FRAME_ATTR,
+  PM_FRAME_FULLTAB,
   PM_SURFACE_ATTR,
+  SURFACE_LIGHTBOX,
   SURFACE_WORKSHOP,
   WORKSHOP_NOTICE_SHOT_DIR,
   WORKSHOP_NOTICE_SHOTS,
   WebviewSurface,
 } from '@prose-minion/core';
+
+interface SurfaceDocument {
+  title: string;
+  rootDiv: string;
+}
+
+/**
+ * A full editor tab stamps its surface and the full-tab frame, and carries the
+ * boot placeholder on a child <span>, so the first React render leaves no
+ * stray inline styles on the layout root.
+ */
+function fullTabRoot(surface: WebviewSurface, loadingText: string): string {
+  return `<div id="root" ${PM_SURFACE_ATTR}="${surface}" ${PM_FRAME_ATTR}="${PM_FRAME_FULLTAB}"><span style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">${loadingText}</span></div>`;
+}
+
+/**
+ * Exhaustive per-surface deltas: a new `WebviewSurface` does not compile until
+ * it says what its document looks like. The sidebar keeps its historical,
+ * unstamped, inline-padded #root (pinned byte-for-byte by snapshot).
+ */
+const SURFACE_DOCUMENTS: Record<WebviewSurface, SurfaceDocument> = {
+  sidebar: {
+    title: 'Prose Minion Tools',
+    rootDiv: `<div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>`
+  },
+  workshop: {
+    title: 'Prose Minion Workshop',
+    rootDiv: fullTabRoot(SURFACE_WORKSHOP, 'Loading the Workshop…')
+  },
+  lightbox: {
+    title: 'Prose Minion Lightbox',
+    rootDiv: fullTabRoot(SURFACE_LIGHTBOX, 'Loading the Lightbox…')
+  }
+};
 
 export function getWebviewHtml(
   webview: vscode.Webview,
@@ -54,14 +94,7 @@ export function getWebviewHtml(
 
   const nonce = getNonce();
 
-  const title = surface === SURFACE_WORKSHOP ? 'Prose Minion Workshop' : 'Prose Minion Tools';
-
-  // The sidebar keeps its historical inline-padded #root. The Workshop stamps
-  // the surface flag and carries the boot placeholder on a child <span>, so
-  // the first React render leaves no stray inline styles on the layout root.
-  const rootDiv = surface === SURFACE_WORKSHOP
-    ? `<div id="root" ${PM_SURFACE_ATTR}="${SURFACE_WORKSHOP}"><span style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading the Workshop…</span></div>`
-    : `<div id="root" style="padding:8px;font-family:var(--vscode-font-family);color:var(--vscode-foreground)">Loading Prose Minion…</div>`;
+  const { title, rootDiv } = SURFACE_DOCUMENTS[surface];
 
   return `<!DOCTYPE html>
 <html lang="en">
