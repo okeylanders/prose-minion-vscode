@@ -29,6 +29,7 @@ export * from './ui';
 export * from './results';
 export * from './streaming';
 export * from './workshop';
+export * from './lightbox';
 
 // Union types for message routing
 import {
@@ -218,6 +219,14 @@ import {
   WorkshopRemoveStandingWidgetMessage,
   WorkshopWidgetActionResultMessage
 } from './workshop';
+import {
+  LightboxRequestBoardMessage,
+  LightboxSetSourceMessage,
+  LightboxPickSourceFileMessage,
+  LightboxRefreshSourceMessage,
+  LightboxBoardMessage,
+  LightboxSourceRefusedMessage
+} from './lightbox';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -324,7 +333,11 @@ export type WebviewToExtensionMessage =
   | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
-  | WorkshopRemoveStandingWidgetMessage;
+  | WorkshopRemoveStandingWidgetMessage
+  | LightboxRequestBoardMessage
+  | LightboxSetSourceMessage
+  | LightboxPickSourceFileMessage
+  | LightboxRefreshSourceMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -382,4 +395,6 @@ export type ExtensionToWebviewMessage =
   | WorkshopLexicalGravityLensesSavedMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
-  | WorkshopWidgetActionResultMessage;
+  | WorkshopWidgetActionResultMessage
+  | LightboxBoardMessage
+  | LightboxSourceRefusedMessage;

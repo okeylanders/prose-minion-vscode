@@ -66,6 +66,18 @@ function collectLimitDeclarationNames(source: string, fileName = 'prompt-budget-
 }
 
 describe('prompt budgets', () => {
+  it('keeps the Lightbox ceiling, book-size threshold and ribbon width (ADR 2026-10-19 D4, D8)', () => {
+    expect(PROMPT_BUDGETS.lightbox).toEqual({
+      sourceWords: 50_000,
+      chapterWords: 12_000,
+      ribbonColumns: 96
+    });
+    // The writer's ceiling matches the other whole-document inputs.
+    expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.sourceDocument.words);
+    expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.contextFiles.words);
+    expect(PROMPT_BUDGETS.lightbox.chapterWords).toBeLessThan(PROMPT_BUDGETS.lightbox.sourceWords);
+  });
+
   it('keeps the writer-selected Workshop room and standing-context bounds', () => {
     expect(PROMPT_BUDGETS.guestJoinSnapshot).toEqual({
       turns: 100,
