@@ -156,7 +156,12 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
       ? opening.seed
       : undefined;
   const initialSeed = opening.kind === 'seed' ? opening.seed : initialDraft;
-  const [lensSlug, setLensSlug] = React.useState(initialSeed?.lensSlug ?? 'photography');
+  // A build opening has no lens until the writer chooses one (PR #150 F-01):
+  // a library pick, or a built take they add. Nothing defaults, so Preview and
+  // Install never act on a lens the writer did not pick.
+  const [lensSlug, setLensSlug] = React.useState<string | undefined>(
+    opening.kind === 'build' ? undefined : initialSeed?.lensSlug ?? 'photography'
+  );
   const [applicationMode, setApplicationMode] = React.useState<WorkshopLexicalGravityApplicationMode>(
     initialDraft?.applicationMode ?? 'interpret'
   );
@@ -202,7 +207,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
         ? opening.seed
         : undefined;
     const seed = opening.kind === 'seed' ? opening.seed : draft;
-    setLensSlug(seed?.lensSlug ?? 'photography');
+    setLensSlug(opening.kind === 'build' ? undefined : seed?.lensSlug ?? 'photography');
     setApplicationMode(draft?.applicationMode ?? 'interpret');
     setEvidenceMode(draft?.evidenceMode ?? 'blend');
     setWeight(seed?.weight ?? 60);
@@ -243,9 +248,11 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
   }, [extraLens, lenses]);
   const lens = extraLens?.version === 1
     ? extraLens
-    : availableLenses.find((candidate) => candidate.slug === lensSlug)
-      ?? extraLens
-      ?? availableLenses[0];
+    : lensSlug === undefined
+      ? undefined
+      : availableLenses.find((candidate) => candidate.slug === lensSlug)
+        ?? extraLens
+        ?? availableLenses[0];
   const contrasts = availableLenses.filter((candidate) => candidate.slug !== lens?.slug);
   const contrast = contrasts[contrastIndex % Math.max(contrasts.length, 1)];
   const previewSource = previewSourceOverride ?? lens?.sample ?? '';
@@ -710,6 +717,11 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
             )}
           </div>
 
+          {!lens && opening.kind === 'build' && (
+            <p className="pm-ws-lg-no-lens">
+              <b>No lens chosen yet.</b> Build lenses from the subject and add the take you want, or choose one from the Library. Preview and Install wait for that choice.
+            </p>
+          )}
           {lens?.version === 2
             ? <WorkshopLexicalGravityLensLogic lens={lens} />
             : lens && (

@@ -213,9 +213,18 @@ differs from the plan above, or the plan left a choice open:
   So the counted terms ride in the subject, after the field's name, as many
   whole terms as fit ("Telescope: shutting, size, telescopes, shut up,
   shrink"), and a banner above the sheet shows the full seed: the field, its
-  metaphor, every counted term with its count, the source, and "Nothing is
-  built, saved or installed until you press Build lens." The writer can edit
-  the subject first.
+  metaphor, every counted term with its count, the source, and what each
+  step does: "Nothing is built until you press Build lens, nothing is saved
+  until you add a take, and nothing is installed until you choose a lens and
+  press Install on passage." The writer can edit the subject first.
+- **A build opening has no lens until the writer chooses one** (PR #150
+  F-01). It takes no default: the sheet says "No lens chosen yet", and
+  Preview, "What the room is told" and Install on passage wait until the
+  writer adds a built take or picks a library lens. The subject, the lens
+  shown, its preview and the installable draft all follow that one choice.
+  With Lexical Gravity already installed, a lens picked here is refused by
+  the standing-directive service ("already active; reopen it to shift the
+  directive"), so the installed widget never changes from this sheet.
 - The Workshop opens the sheet on Build lens, prefilled, once. It never
   covers or replaces a sheet, editor or browser that is already open (PR
   #150 F-02): Add text, the context and session editors, the widgets and

@@ -170,43 +170,82 @@ describe('opening Build lens from a seed', () => {
 
   afterEach(cleanup);
 
+  const modalProps = (): React.ComponentProps<typeof WorkshopLexicalGravityModal> => ({
+    open: true,
+    opening: { kind: 'build', seed: payload },
+    lenses: builtInLexicalGravityLenses(),
+    incompatibleResources: [],
+    storagePath: 'prose-minion/lenses',
+    previewResult: null,
+    lensCandidates: null,
+    lensesSaved: null,
+    actionResult: null,
+    onRequestLenses: jest.fn(),
+    onPreview: jest.fn(),
+    onBuildLens: jest.fn(),
+    onSaveLenses: jest.fn(),
+    onApply: jest.fn(),
+    onClearTransientResults: jest.fn(),
+    onConsumeActionResult: jest.fn(),
+    widgetModelOptions: [],
+    selectedWidgetModel: '',
+    onWidgetModelChange: jest.fn(),
+    onOpenWidgetModelBrowser: jest.fn(),
+    onClose: jest.fn()
+  });
+  const install = () => screen.getByRole('button', { name: 'Install on passage' }) as HTMLButtonElement;
+
   it('prefills Build lens with the subject and shows the seed, building nothing until Build is pressed', () => {
-    const onBuildLens = jest.fn();
-    render(
-      <WorkshopLexicalGravityModal
-        open
-        opening={{ kind: 'build', seed: payload }}
-        lenses={builtInLexicalGravityLenses()}
-        incompatibleResources={[]}
-        storagePath="prose-minion/lenses"
-        previewResult={null}
-        lensCandidates={null}
-        lensesSaved={null}
-        actionResult={null}
-        onRequestLenses={jest.fn()}
-        onPreview={jest.fn()}
-        onBuildLens={onBuildLens}
-        onSaveLenses={jest.fn()}
-        onApply={jest.fn()}
-        onClearTransientResults={jest.fn()}
-        onConsumeActionResult={jest.fn()}
-        widgetModelOptions={[]}
-        selectedWidgetModel=""
-        onWidgetModelChange={jest.fn()}
-        onOpenWidgetModelBrowser={jest.fn()}
-        onClose={jest.fn()}
-      />
-    );
+    const props = modalProps();
+    render(<WorkshopLexicalGravityModal {...props} />);
     const subject = screen.getByPlaceholderText('Try “code vs. prose”…') as HTMLInputElement;
     expect(subject.value).toBe('Telescope: shutting up, like a telescope, like telescopes');
     expect(screen.getByRole('tab', { name: /Create New/ }).getAttribute('aria-selected')).toBe('true');
     const note = screen.getByRole('note');
     expect(note.textContent).toContain('From the Lightbox: the borrowed field “Telescope”');
     expect(note.textContent).toContain('shutting up ×2');
-    expect(note.textContent).toContain('Nothing is built, saved or installed until you press Build lens.');
-    expect(onBuildLens).not.toHaveBeenCalled();
+    // Each step says what it does (PR #150 F-01).
+    expect(note.textContent).toContain(
+      'Nothing is built until you press Build lens, nothing is saved until you add a take, ' +
+      'and nothing is installed until you choose a lens and press Install on passage.'
+    );
+    expect(props.onBuildLens).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
-    expect(onBuildLens).toHaveBeenCalledWith(expect.any(String), subject.value, undefined);
+    expect(props.onBuildLens).toHaveBeenCalledWith(expect.any(String), subject.value, undefined);
+  });
+
+  it('offers no lens to preview or install until the writer adds a built take, then installs that take', () => {
+    const props = modalProps();
+    const view = render(<WorkshopLexicalGravityModal {...props} />);
+    expect(screen.getByText(/No lens chosen yet\./)).toBeTruthy();
+    expect(install().disabled).toBe(true);
+    expect((screen.getByRole('button', { name: /Preview the Effect/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText('What the room is told')).toBeNull();
+    expect(view.container.querySelector('.pm-ws-lg-lens.is-selected')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Build lens/ }));
+    const token = (props.onBuildLens as jest.Mock).mock.calls[0][0] as string;
+    const telescope = { ...builtInLexicalGravityLenses()[0], slug: 'telescope', name: 'Telescope', source: 'project' as const };
+    const candidates = { token, query: payload.subject, ok: true, candidates: [{ candidateId: 'telescope-1', lens: telescope }] };
+    view.rerender(<WorkshopLexicalGravityModal {...props} lensCandidates={candidates} />);
+    // Selecting a take is not choosing it: only adding it does.
+    fireEvent.click(screen.getByRole('button', { name: /^Telescope/ }));
+    expect(install().disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 selected lens' }));
+    view.rerender(<WorkshopLexicalGravityModal
+      {...props}
+      lenses={[...builtInLexicalGravityLenses(), { ...telescope, originQuery: payload.subject }]}
+      lensCandidates={candidates}
+      lensesSaved={{ token, ok: true, lenses: [{ ...telescope, originQuery: payload.subject }], candidateIds: ['telescope-1'], remainingCandidateIds: [] }}
+    />);
+
+    expect(screen.queryByText(/No lens chosen yet\./)).toBeNull();
+    expect(install().disabled).toBe(false);
+    fireEvent.click(install());
+    expect(props.onApply).toHaveBeenCalledWith(
+      expect.objectContaining({ lensSlug: 'telescope', resolvedLens: expect.objectContaining({ name: 'Telescope' }) }),
+      undefined
+    );
   });
 });
