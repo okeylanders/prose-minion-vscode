@@ -39,6 +39,10 @@ const fromHost = (type: MessageType, payload: object) =>
     }));
   });
 
+/** The host's model confirmation, which the real chrome asks for on mount (PR #149 F-03 re-review). */
+const confirmModel = (assistant = 'provider/model-v1') =>
+  fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant } });
+
 const board = makeBoard(8);
 const running = {
   ...board,
@@ -66,6 +70,7 @@ describe('LightboxApp readings', () => {
 
   it('states the cost, reads the chapter, shows groups arriving, and offers Stop', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     expect(vscode.postMessage).toHaveBeenCalledWith(expect.objectContaining({
       type: MessageType.LIGHTBOX_SET_LENSES,
@@ -102,6 +107,7 @@ describe('LightboxApp readings', () => {
 
   it('draws the readings, the tension lane and the tally, and pins a motif with its evidence', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     estimateFromHost(makeEstimate());
     for (const group of ['A', 'B', 'C'] as const) {
@@ -133,6 +139,7 @@ describe('LightboxApp readings', () => {
 
   it('labels stale readings after the chapter changed, with the re-checked quote withheld (D4)', () => {
     render(<LightboxApp />);
+    confirmModel();
     const groupA = readGroup('A');
     const goingDown = groupA.tiles.find((tile) => tile.title === 'Going down');
     const stale = {
@@ -169,6 +176,7 @@ describe('LightboxApp readings', () => {
 
   it('asks for a fresh estimate when the host refuses a press priced on inputs that changed (PR #149 F-02)', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     estimateFromHost(makeEstimate());
     fireEvent.click(screen.getByRole('button', { name: /Read the chapter/ }));
@@ -183,6 +191,7 @@ describe('LightboxApp readings', () => {
 
   it('disables a tile\'s re-read, with the reason, when its lens is off or its call is too large (PR #149 F-08)', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: makeReadBoard(), refusal: null });
     estimateFromHost(makeEstimate());
     fireEvent.click(screen.getByRole('button', { name: /Going down/ }));
@@ -204,6 +213,7 @@ describe('LightboxApp readings', () => {
 
   it('disables the press with the reason when a call is too large', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     const estimate = makeEstimate({ fit: 'too-large', reason: 'Group A would send about 90,000 tokens and reserve 8,000 for the reply.' });
     estimate.groups[0].fit = 'too-large';
@@ -216,6 +226,7 @@ describe('LightboxApp readings', () => {
 
   it('lists context files, removes one, and sends lens toggles to the host', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
     fromHost(MessageType.LIGHTBOX_CONTEXT_FILES, {
       files: [{ id: 'ctx-1', displayPath: 'Notes/cast.md', wordCount: 15 }],

@@ -406,6 +406,65 @@ becomes a file format.
     [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md)
     and [stale readings](../../archive/tech-debt/2026-10-19-lightbox-stale-readings.md) (resolved in Slice 3).
 
+- **2026-10-19. Slice 2B: PR #149 re-review fixes.** The
+  [re-review](../../../docs/pr-reviews/pr-149-lightbox-first-readings-review.md)
+  kept F-03 open for the model selection and added F-09; both are fixed on
+  `epic/lightbox-slice-2b-readings`, and the author response to the
+  re-review maps them to commits and tests.
+  1. **F-03, the selected and confirmed model.** An estimate is usable
+     only when it priced the model the writer selected and the host has
+     confirmed that selection (`MODEL_DATA`); Read waits while it saves.
+     A reply that priced another model is refused even when it answers the
+     latest request, every confirmation asks again (price-only refreshes
+     included), and a press names its model, which the host checks.
+  2. **F-09, whole-string NFKC.** Quote units are built within runs cut
+     before code points below U+0300; a run whose pairwise units disagree
+     with its own NFKC is kept whole.
+  3. **Recorded, not changed:** the engine's verbatim provider
+     `error_type` log after an interrupted stream, in
+     [tech debt](../../tech-debt/2026-10-19-agent-run-engine-provider-error-log.md).
+  - **Verification.** Re-review head (`b5350a1`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 349 suites, 5,115 tests, 2 snapshots | 350 suites, 5,123 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file, rule and message.
+    - No live or billable call: every test plays the provider.
+    - Visual evidence: the recorded states rebuild byte-identical and all
+      twenty shots re-render pixel-identical, so none changed.
+- **2026-10-19. Slice 2B: PR #149 second re-review fix.** The
+  [second re-review](../../../docs/pr-reviews/pr-149-lightbox-first-readings-review.md)
+  found F-01 to F-09 addressed and one new blocking finding, F-10, from the
+  F-09 repair; it is fixed on `epic/lightbox-slice-2b-readings`, and the
+  author response to the second re-review maps it to commits and tests.
+  1. **F-10, long runs.** Quote units are appended one by one, never
+     spread into a call, so a long CJK paragraph no longer throws while
+     the verifier is built.
+  2. **F-10, every started run finishes.** A setup failure fails every
+     group with nothing sent, a reply check that throws fails its group
+     alone, a throwing listener is logged; the run is released and
+     finished, and `done` never rejects.
+  3. **Recorded, not changed:** word frequency's part-of-speech tokenizer
+     is quadratic on a long unbroken run of ASCII word characters, in
+     [tech debt](../../tech-debt/2026-10-19-pos-tagger-long-token-backtracking.md).
+  - **Verification.** Second re-review head (`b1200f0`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 350 suites, 5,123 tests, 2 snapshots | 352 suites, 5,135 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file, rule and message.
+    - No live or billable call: every test plays the provider.
+    - Visual evidence: `webview.js` is byte-identical and the recorded
+      states rebuild byte-identical, so no shot changed.
+
 - **2026-10-19. Slice 3 (lexical gravity and palette).** Built on
   `epic/lightbox-slice-3-gravity` from the Slice 2B branch; the PR #149
   review fixes and then `epic/lightbox` were merged in, conflicts resolved in

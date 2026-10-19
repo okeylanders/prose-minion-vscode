@@ -89,6 +89,8 @@ elsewhere.
 | Medium | [Lightbox readings have not met a live provider](2026-10-19-lightbox-live-provider-pass.md) | Deferred (Lightbox Slice 6) |
 | Low | [A Lightbox reading in flight when the chapter changes is dropped](2026-10-19-lightbox-forward-in-flight-readings.md) | Identified |
 | Low | [One home for the Lightbox reading codec's field decoders](2026-10-19-lightbox-codec-shared-field-decoders.md) | Identified |
+| Low | [The engine logs a provider's error type verbatim after an interrupted stream](2026-10-19-agent-run-engine-provider-error-log.md) | Identified |
+| Medium | [A long unbroken run of word characters stalls word frequency for minutes](2026-10-19-pos-tagger-long-token-backtracking.md) | Identified |
 
 ## Review Guidance
 

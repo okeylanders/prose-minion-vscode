@@ -14,10 +14,10 @@
  * the pinned item, and which lenses are off.
  *
  * The lens toggles reach the host on mount, on every toggle and whenever the
- * board changes; `requestEstimate` re-sends them when the assistant model or
- * its catalog changes, and so does a change to the context list or a press
- * the host refused as priced on inputs that moved. The host answers each with
- * the context list and a fresh estimate.
+ * board changes; `requestEstimate` re-sends them on every model
+ * confirmation (`handleModelData`), a change to the context list, and a
+ * press the host refused as priced on inputs that moved. The host answers
+ * each with the context list and a fresh estimate.
  *
  * **Correlation (PR #149 F-03).** Every estimate request carries a
  * webview-minted `requestId`, and from the moment it is sent the press has
@@ -30,8 +30,20 @@
  * the board's own run.
  *
  * Handoffs (Slice 3, D11): `buildLens` names a pinned borrowed field on the
- * board on screen; the host does the rest and answers sent or refused. The
+ * board on screen; the host does the rest and answers opened or refused. The
  * answer is transient, never persisted.
+ *
+ * **The selected, confirmed model (PR #149 F-03 re-review).** The shared
+ * model picker updates its selection at once, while the host saves it and
+ * only then confirms it with `MODEL_DATA`. An estimate is usable only when
+ * it priced the model the writer has selected, and that selection is the one
+ * the host last confirmed: while a selection is saving, Read waits. Each
+ * request remembers the model it was asked for, and a reply that priced
+ * another model is refused even when its request id is the latest. Every
+ * `MODEL_DATA` is an authoritative confirmation (a saved selection, an
+ * external change, a catalog refresh with new prices, or the same values
+ * again) and asks for a fresh estimate. A press names the model, and the
+ * host starts only on it. Nothing is ever pressed automatically.
  */
 
 import * as React from 'react';
@@ -51,7 +63,8 @@ import {
   LightboxRunScope,
   LightboxSourceRefusal,
   LightboxSourceRefusedMessage,
-  MessageType
+  MessageType,
+  ModelDataMessage
 } from '@messages';
 import { isLightboxLensId } from '@shared/constants/lightbox';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
@@ -116,6 +129,11 @@ export interface LightboxActions {
   handleRunProgress: (message: LightboxRunProgressMessage) => void;
   handleGroupResult: (message: LightboxGroupResultMessage) => void;
   handleContextFiles: (message: LightboxContextFilesMessage) => void;
+  /**
+   * The host confirmed the model configuration (`MODEL_DATA`): record the
+   * confirmed assistant model, and ask for a fresh estimate.
+   */
+  handleModelData: (message: ModelDataMessage) => void;
   requestBoard: () => void;
   pickSourceFile: () => void;
   refreshSource: () => void;
@@ -148,10 +166,16 @@ export type UseLightboxReturn = LightboxState & LightboxActions & {
 const SOURCE = 'webview.lightbox';
 const NO_CONTEXT: LightboxContextState = { files: [], totalWords: 0, ceilingWords: 0, notice: null };
 
-/** An estimate request in flight: its id, and the board on screen when it was asked. */
+/** An estimate request in flight: its id, the board on screen and the model selected when it was asked. */
 interface LightboxEstimateRequest {
   requestId: string;
   boardId: string | undefined;
+  model: string | undefined;
+}
+
+export interface UseLightboxOptions {
+  /** The assistant model the writer has selected (the shared picker's, possibly not yet saved). */
+  assistantModel?: string;
 }
 
 type LightboxRequestType =
@@ -166,7 +190,8 @@ type LightboxRequestType =
   | MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE
   | MessageType.LIGHTBOX_HAND_OFF;
 
-export function useLightbox(): UseLightboxReturn {
+export function useLightbox(options: UseLightboxOptions = {}): UseLightboxReturn {
+  const selectedModel = options.assistantModel;
   const vscode = useVSCodeApi();
   const persisted = usePersistedState<Partial<Record<keyof LightboxPersistence, unknown>>>();
 
@@ -189,6 +214,9 @@ export function useLightbox(): UseLightboxReturn {
   const [awaitingStartFor, setAwaitingStartFor] = React.useState<string | null>(null);
   const [context, setContext] = React.useState<LightboxContextState>(NO_CONTEXT);
   const [handoff, setHandoff] = React.useState<LightboxHandOffState | null>(null);
+  // The assistant model as the host last confirmed it, and how many confirmations have arrived.
+  const [confirmedModel, setConfirmedModel] = React.useState<string | undefined>(undefined);
+  const [confirmations, setConfirmations] = React.useState(0);
 
   // Refusals dismissed here; a host answer already on its way may still name one.
   const dismissed = React.useRef(new Set<string>());
@@ -241,6 +269,10 @@ export function useLightbox(): UseLightboxReturn {
       return;
     }
     pendingEstimate.current = null;
+    if (next && next.model !== pending.model) {
+      // The host priced another model than the one asked for (a selection still saving): never usable.
+      return;
+    }
     setEstimate(next);
     if (next) {
       const run = payload.activeRun?.boardId === next.boardId ? payload.activeRun : undefined;
@@ -253,6 +285,14 @@ export function useLightbox(): UseLightboxReturn {
     if (payload) {
       setBoard((current) => (current ? mergeLightboxGroupResult(current, payload) : current));
     }
+  }, []);
+
+  const handleModelData = React.useCallback((message: ModelDataMessage) => {
+    const assistant = message.payload?.selections?.assistant;
+    if (assistant !== undefined) {
+      setConfirmedModel(assistant);
+    }
+    setConfirmations((count) => count + 1);
   }, []);
 
   const handleContextFiles = React.useCallback((message: LightboxContextFilesMessage) => {
@@ -295,10 +335,10 @@ export function useLightbox(): UseLightboxReturn {
     const ids = requestIds.current;
     ids.count += 1;
     const requestId = `${ids.prefix}-${ids.count}`;
-    pendingEstimate.current = { requestId, boardId };
+    pendingEstimate.current = { requestId, boardId, model: selectedModel };
     setEstimate(undefined);
     post(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: lensesKey ? (lensesKey.split(',') as LightboxLensId[]) : [], requestId });
-  }, [boardId, lensesKey, post]);
+  }, [boardId, lensesKey, post, selectedModel]);
   const latestRequestEstimate = React.useRef(requestEstimate);
   latestRequestEstimate.current = requestEstimate;
 
@@ -317,17 +357,22 @@ export function useLightbox(): UseLightboxReturn {
     }
   }, []);
 
-  // Only the board on screen's own estimate is shown or pressed, even for the render before a new board's request.
-  const boardEstimate = estimate && estimate.boardId !== boardId ? undefined : estimate;
-  // A press names the estimate it was shown, so the host runs only what was priced (PR #149 F-02).
+  // Only the board on screen's own estimate is shown or pressed, even for the render before a new board's request,
+  // and only one that priced the selected model once the host has confirmed that selection.
+  const modelSettled = confirmedModel !== undefined && selectedModel === confirmedModel;
+  const boardEstimate = estimate && (estimate.boardId !== boardId || !modelSettled || estimate.model !== selectedModel)
+    ? undefined
+    : estimate;
+  // A press names the estimate it was shown and the model it priced, so the host runs only what was priced (PR #149 F-02, F-03).
   const estimateKey = boardEstimate?.key;
+  const pressModel = boardEstimate?.model;
   const run = React.useCallback((scope: LightboxRunScope) => {
-    if (!boardId || !estimateKey) {
+    if (!boardId || !estimateKey || !pressModel) {
       return;
     }
     setAwaitingStartFor(boardId);
-    post(MessageType.LIGHTBOX_RUN, { boardId, scope, estimateKey });
-  }, [boardId, estimateKey, post]);
+    post(MessageType.LIGHTBOX_RUN, { boardId, scope, estimateKey, model: pressModel });
+  }, [boardId, estimateKey, post, pressModel]);
 
   // Stop names the board's own run, never the board on screen paired with another run's token.
   const cancelRun = React.useCallback((token: string) => {
@@ -370,6 +415,16 @@ export function useLightbox(): UseLightboxReturn {
     syncLensesWithHost();
   }, [syncLensesWithHost, boardId]);
 
+  // Every model confirmation is authoritative: a saved selection, an external change, new catalog prices, or the same values.
+  const syncEstimateWithModelConfirmation = React.useCallback(() => {
+    if (confirmations > 0) {
+      latestRequestEstimate.current();
+    }
+  }, [confirmations]);
+  React.useEffect(() => {
+    syncEstimateWithModelConfirmation();
+  }, [syncEstimateWithModelConfirmation]);
+
   // A context file added or removed changes what a press sends, so the estimate follows it.
   const contextKey = `${context.files.map((file) => file.id).join(',')}|${context.totalWords}`;
   const lastContextKey = React.useRef(contextKey);
@@ -411,6 +466,7 @@ export function useLightbox(): UseLightboxReturn {
     handleRunProgress,
     handleGroupResult,
     handleContextFiles,
+    handleModelData,
     requestBoard,
     pickSourceFile,
     refreshSource,

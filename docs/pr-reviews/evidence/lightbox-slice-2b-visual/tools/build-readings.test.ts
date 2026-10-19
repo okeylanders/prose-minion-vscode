@@ -186,9 +186,9 @@ async function harness(contextLength: number, source: EvidenceSource, groupRepli
     }
     return answer.payload;
   };
-  /** Press Read with the key of the estimate the tab was shown. */
+  /** Press Read with the key of the estimate the tab was shown, naming the model it priced. */
   const press = async (key: string) => {
-    await route(MessageType.LIGHTBOX_RUN, { boardId: built.board.boardId, scope: { mode: 'all' }, estimateKey: key });
+    await route(MessageType.LIGHTBOX_RUN, { boardId: built.board.boardId, scope: { mode: 'all' }, estimateKey: key, model: MODEL });
     await settle();
   };
   const answerAll = async () => {

@@ -66,6 +66,8 @@ export interface LightboxReadingHostOptions {
   respond?: (request: InitialRunRequest) => Promise<ExecutionResult> | ExecutionResult;
   engine?: boolean;
   contextLength?: number;
+  /** The board's text; the worked examples' chapter by default. */
+  text?: string;
 }
 
 /** One webview tab: its own handler, router, transport and log, over the host's shared services. */
@@ -78,8 +80,11 @@ export interface LightboxReadingTab {
   logged: () => string;
   /** Send the lens toggles (remembered for later presses) and return the estimate's key. */
   setLenses: (lensesOff?: LightboxLensId[], requestId?: string) => Promise<string | undefined>;
-  /** Press Read with the key of a fresh estimate for this tab's lenses (or `estimateKey`). */
-  run: (scope?: LightboxRunScope, options?: { boardId?: string; estimateKey?: string }) => Promise<void>;
+  /**
+   * Press Read as the webview does: naming the key and the model of a fresh
+   * estimate for this tab's lenses (or of `estimateKey` and `model`).
+   */
+  run: (scope?: LightboxRunScope, options?: { boardId?: string; estimateKey?: string; model?: string }) => Promise<void>;
 }
 
 export async function createLightboxReadingHost(options: LightboxReadingHostOptions = {}) {
@@ -162,9 +167,17 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
       await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: next, ...(requestId ? { requestId } : {}) });
       return ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).at(-1)?.payload.estimate?.key;
     };
-    const run = async (scope: LightboxRunScope = { mode: 'all' }, press: { boardId?: string; estimateKey?: string } = {}) => {
+    const run = async (
+      scope: LightboxRunScope = { mode: 'all' },
+      press: { boardId?: string; estimateKey?: string; model?: string } = {}
+    ) => {
       const estimateKey = press.estimateKey ?? await setLenses();
-      await route(MessageType.LIGHTBOX_RUN, { boardId: press.boardId ?? board.boardId, scope, estimateKey });
+      // The webview names the model its estimate priced (the selected, confirmed one).
+      const priced = ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).map((message) => message.payload.estimate)
+        .reverse().find((estimate) => estimate?.key === estimateKey);
+      await route(MessageType.LIGHTBOX_RUN, {
+        boardId: press.boardId ?? board.boardId, scope, estimateKey, model: press.model ?? priced?.model ?? model
+      });
     };
     return {
       handler,
@@ -180,7 +193,7 @@ export async function createLightboxReadingHost(options: LightboxReadingHostOpti
 
   const built = await service.buildBoard({
     kind: 'file',
-    text: CHAPTER,
+    text: options.text ?? CHAPTER,
     displayPath: 'Drafts/alice-1.md',
     rereadPath: '/workspace/Drafts/alice-1.md'
   });

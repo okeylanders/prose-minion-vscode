@@ -1,6 +1,6 @@
 /**
- * What a failed reading call or a rejected reply may say, and to whom (PR
- * #149 F-05). Pure.
+ * What a failed reading call, a rejected reply or a failure of the host's own
+ * work around them may say, and to whom (PR #149 F-05, F-10). Pure.
  *
  * A provider's error text is not the host's to repeat: it can echo the
  * request (the chapter, the context) or carry arbitrary detail of any length.
@@ -23,7 +23,12 @@ import { LightboxGroupFrameError } from '@/infrastructure/lightbox/LightboxReadi
 import { AgentContextWindowExceededError } from '@orchestration/RequestContextPreflight';
 import { OpenRouterApiError } from '@providers/OpenRouterClient';
 
-export type LightboxCallFailureCategory = AgentRunUnavailableReason | 'provider-rejected' | 'unexpected';
+export type LightboxCallFailureCategory =
+  | AgentRunUnavailableReason
+  | 'provider-rejected'
+  | 'unexpected'
+  | 'setup-failed'
+  | 'check-failed';
 
 export interface LightboxCallFailure {
   category: LightboxCallFailureCategory;
@@ -88,6 +93,27 @@ export function describeLightboxCallFailure(error: unknown): LightboxCallFailure
     message: `The call failed before a reading came back. ${TRY_AGAIN}`,
     log: `unexpected${name ? ` (${name})` : ''}`
   };
+}
+
+/**
+ * A failure of the host's own work around the calls (PR #149 F-10): setting
+ * the run up over the chapter (the quote verifier and term counter), before
+ * anything is sent, or checking a reply that came back. Described the same
+ * way, by category and at most a built-in error class.
+ */
+export function describeLightboxHostFailure(error: unknown, stage: 'setup' | 'check'): LightboxCallFailure {
+  const name = error instanceof Error && BUILT_IN_ERRORS.has(error.name) ? ` (${error.name})` : '';
+  return stage === 'setup'
+    ? {
+      category: 'setup-failed',
+      message: 'The chapter could not be prepared for checking quotes, so nothing was sent.',
+      log: `setup-failed${name}`
+    }
+    : {
+      category: 'check-failed',
+      message: `The reading came back but could not be checked against the chapter. ${TRY_AGAIN}`,
+      log: `check-failed${name}`
+    };
 }
 
 function unavailableMessage(reason: AgentRunUnavailableReason, retryAfterSeconds?: number): string {

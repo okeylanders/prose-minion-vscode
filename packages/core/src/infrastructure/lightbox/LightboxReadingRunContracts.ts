@@ -79,6 +79,10 @@ export interface LightboxRunListener {
   onFinished(summary: LightboxRunSummary): void;
 }
 
+/**
+ * A started run's `done` settles once every group has, and never rejects
+ * (PR #149 F-10); the listener hears nothing before `start` returns.
+ */
 export type LightboxRunStart =
   | { started: true; run: LightboxActiveRun; done: Promise<void> }
   | { started: false; message: string };
@@ -102,6 +106,26 @@ export interface LightboxPricedSnapshot {
   key: string;
 }
 
+/** A group that failed, with the writer-facing reason, and the model and usage of a call that came back. */
+export function failedLightboxGroup(
+  call: Pick<LightboxGroupRequest, 'group' | 'lenses'>,
+  error: string,
+  result?: { modelId?: string; usage?: TokenUsage }
+): LightboxGroupOutcome {
+  return {
+    group: call.group,
+    lenses: call.lenses,
+    status: 'failed',
+    tiles: [],
+    withheldBlocks: [],
+    withheldClaims: [],
+    frictions: [],
+    error,
+    ...(result?.modelId ? { model: result.modelId } : {}),
+    ...(result?.usage ? { usage: result.usage } : {}),
+    quoteChecks: []
+  };
+}
 
 /** Sum usage the way the Dictionary's fan-out does; an unreported cache count makes the total unknown. */
 export function sumUsage(usages: ReadonlyArray<TokenUsage | undefined>): TokenUsage | undefined {

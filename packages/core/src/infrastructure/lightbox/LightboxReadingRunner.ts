@@ -22,11 +22,15 @@
  *   while the reservation is still held, so a press released during
  *   preparation never sends anything. `activeRun` reports only started
  *   runs: a reservation has nothing to stop yet.
- * - **Validation.** `rawContent` is parsed. A reply cut off at the output
- *   ceiling (`finishReason === 'length'`) fails its group, and so does one
- *   whose frame cannot be read; either paid body is quarantined in the
- *   rejected-response recovery store and the writer is told where it went.
- *   Blocks and items that break their own rules are withheld, not failed.
+ * - **Every started run finishes (PR #149 F-10).** `done` never rejects. A
+ *   run whose setup over the chapter fails (the quote verifier, the term
+ *   counter) fails every group with nothing sent; a group that throws past
+ *   its call fails alone; a listener that throws is logged. The run is then
+ *   released and finished like any other.
+ * - **Validation.** A reply that came back becomes its group's outcome in
+ *   `LightboxGroupReply`: one cut off at the output ceiling, or whose frame
+ *   cannot be read, fails its group with its paid body quarantined; blocks
+ *   and items that break their own rules are withheld, not failed.
  *
  * Logs carry groups, lenses, counts and reasons, never the chapter, the
  * context, or the model's prose. Every reason is host-owned (PR #149 F-05): a
@@ -41,28 +45,20 @@ import pLimit from 'p-limit';
 import type { LightboxActiveRun, LightboxReadingGroupId, LightboxRunEstimate } from '@messages';
 import type { LogSink } from '@/platform';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { lightboxLensLabel } from '@shared/constants/lightbox';
 import { AGENT_RUN_POLICIES } from '@orchestration/AgentRunPolicies';
 import type { AgentRunEngine } from '@orchestration/AgentRunEngine';
 import type { ExecutionResult } from '@orchestration/AgentRunContracts';
 import { estimateTextTokens } from '@orchestration/RequestContextPreflight';
 import type { PromptLoader } from '@/tools/shared/prompts';
-import {
-  persistRejectedWidgetResponse,
-  recoveryLocationNotice,
-  type RejectedModelResponseRecovery,
-  type RejectedModelResponseRecoveryPresenter
+import type {
+  RejectedModelResponseRecovery,
+  RejectedModelResponseRecoveryPresenter
 } from '@/infrastructure/storage/RejectedModelResponseRecoveryStore';
-import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCodec';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
-import {
-  describeLightboxCallFailure,
-  lightboxRejectionOf,
-  type LightboxRejection
-} from '@/infrastructure/lightbox/LightboxCallFailure';
+import { describeLightboxCallFailure, describeLightboxHostFailure } from '@/infrastructure/lightbox/LightboxCallFailure';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { lightboxColumnKeys } from '@/infrastructure/lightbox/LightboxTileCounts';
-import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
+import { readLightboxGroupReply, type LightboxGroupTools } from '@/infrastructure/lightbox/LightboxGroupReply';
 import {
   buildLightboxUserMessage,
   lightboxSystemPromptFiles,
@@ -74,6 +70,7 @@ import {
   type LightboxPreparedCall
 } from '@/infrastructure/lightbox/LightboxRunEstimate';
 import {
+  failedLightboxGroup,
   OPENROUTER_LIGHTBOX_CATALOG,
   sumUsage,
   type LightboxGroupOutcome,
@@ -292,7 +289,9 @@ export class LightboxReadingRunner {
       `[LightboxReadingRunner] Run ${run.token} started: groups ${run.groups.join(', ')}` +
         (run.lens ? ` (re-read ${run.lens})` : '')
     );
-    return { started: true, run, done: this.execute(engine, state, source, calls, listener) };
+    // Begun on the next microtask: the listener hears nothing before the caller holds the run.
+    const done = Promise.resolve().then(() => this.execute(engine, state, source, calls, listener));
+    return { started: true, run, done };
   }
 
   /** Stop the board's run or reservation, if it is the one named. Finished groups stay as they landed. */
@@ -326,32 +325,80 @@ export class LightboxReadingRunner {
     calls: readonly LightboxPreparedCall[],
     listener: LightboxRunListener
   ): Promise<void> {
-    const limit = pLimit(this.concurrency);
-    const verifier = createLightboxQuoteVerifier(source.material.paragraphs);
-    const counter = createLightboxTermCounter(source.material.paragraphs);
-    const columnKeys = lightboxColumnKeys(source.material.paragraphs, source.material.columns);
-    const outcomes = await Promise.all(calls.map((call) => limit(async () => {
-      if (!this.isCurrent(state)) {
-        return undefined;
+    const settled: LightboxGroupOutcome[] = [];
+    const settle = (outcome: LightboxGroupOutcome): void => {
+      settled.push(outcome);
+      this.notify(state, () => listener.onGroup(outcome));
+    };
+    const tools = this.readingTools(state, source);
+    if ('failure' in tools) {
+      // Nothing was sent: every group fails, in the host's own words.
+      if (this.isCurrent(state)) {
+        calls.forEach((call) => settle(failedLightboxGroup(call, tools.failure)));
       }
-      const outcome = await this.runGroup(engine, state, source, call, { verifier, counter, columnKeys }, listener);
-      if (outcome && this.isCurrent(state)) {
-        listener.onGroup(outcome);
-        return outcome;
-      }
-      // Stale: the run was stopped, or the board's run is no longer this one.
-      return undefined;
-    })));
+    } else {
+      const limit = pLimit(this.concurrency);
+      await Promise.all(calls.map((call) => limit(async () => {
+        const outcome = this.isCurrent(state) ? await this.settleGroup(engine, state, source, call, tools, listener) : undefined;
+        // Stale when the run was stopped, or the board's run is no longer this one.
+        if (outcome && this.isCurrent(state)) {
+          settle(outcome);
+        }
+      })));
+    }
     if (!this.isCurrent(state)) {
       return;
     }
     this.active.delete(state.run.boardId);
-    const settled = outcomes.filter((outcome): outcome is LightboxGroupOutcome => outcome !== undefined);
+    const outcomes = calls.flatMap((call) => settled.filter((outcome) => outcome.group === call.group));
     this.outputChannel.appendLine(
       `[LightboxReadingRunner] Run ${state.run.token} finished: ` +
-        settled.map((outcome) => `${outcome.group} ${outcome.status}`).join(', ')
+        outcomes.map((outcome) => `${outcome.group} ${outcome.status}`).join(', ')
     );
-    listener.onFinished({ outcomes: settled, usage: sumUsage(settled.map((outcome) => outcome.usage)) });
+    this.notify(state, () => listener.onFinished({ outcomes, usage: sumUsage(outcomes.map((outcome) => outcome.usage)) }));
+  }
+
+  /** The quote verifier and term counter over the whole chapter, built before any call is sent. */
+  private readingTools(state: ActiveRunState, source: LightboxRunSource): LightboxGroupTools | { failure: string } {
+    try {
+      return {
+        verifier: createLightboxQuoteVerifier(source.material.paragraphs),
+        counter: createLightboxTermCounter(source.material.paragraphs),
+        // Each ribbon column's text as read, so a stale tension score stays on it (PR #150 F-06).
+        columnKeys: lightboxColumnKeys(source.material.paragraphs, source.material.columns)
+      };
+    } catch (error) {
+      const failure = describeLightboxHostFailure(error, 'setup');
+      this.outputChannel.appendLine(`[LightboxReadingRunner] Run ${state.run.token} could not be set up: ${failure.log}`);
+      return { failure: failure.message };
+    }
+  }
+
+  /** One group; it fails alone if anything past its call throws. */
+  private async settleGroup(
+    engine: Pick<AgentRunEngine, 'runInitial'>,
+    state: ActiveRunState,
+    source: LightboxRunSource,
+    call: LightboxPreparedCall,
+    tools: LightboxGroupTools,
+    listener: LightboxRunListener
+  ): Promise<LightboxGroupOutcome | undefined> {
+    try {
+      return await this.runGroup(engine, state, source, call, tools, listener);
+    } catch (error) {
+      const failure = describeLightboxHostFailure(error, 'check');
+      this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} could not be checked: ${failure.log}`);
+      return failedLightboxGroup(call, failure.message);
+    }
+  }
+
+  /** A listener that throws is logged by its class and never keeps the run from finishing. */
+  private notify(state: ActiveRunState, deliver: () => void): void {
+    try {
+      deliver();
+    } catch (error) {
+      this.outputChannel.appendLine(`[LightboxReadingRunner] Run ${state.run.token} listener failed: ${describeLightboxCallFailure(error).log}`);
+    }
   }
 
   private async runGroup(
@@ -359,23 +406,9 @@ export class LightboxReadingRunner {
     state: ActiveRunState,
     source: LightboxRunSource,
     call: LightboxPreparedCall,
-    tools: Pick<Parameters<typeof assembleLightboxGroup>[1], 'verifier' | 'counter' | 'columnKeys'>,
+    tools: LightboxGroupTools,
     listener: LightboxRunListener
   ): Promise<LightboxGroupOutcome | undefined> {
-    const failed = (error: string, result?: ExecutionResult): LightboxGroupOutcome => ({
-      group: call.group,
-      lenses: call.lenses,
-      status: 'failed',
-      tiles: [],
-      withheldBlocks: [],
-      withheldClaims: [],
-      frictions: [],
-      error,
-      ...(result?.modelId ? { model: result.modelId } : {}),
-      ...(result?.usage ? { usage: result.usage } : {}),
-      quoteChecks: []
-    });
-
     let result: ExecutionResult;
     try {
       result = await engine.runInitial({
@@ -398,7 +431,7 @@ export class LightboxReadingRunner {
       // The provider's text is never repeated: only the host's category is logged and shown.
       const failure = describeLightboxCallFailure(error);
       this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} call failed: ${failure.log}`);
-      return failed(failure.message);
+      return failedLightboxGroup(call, failure.message);
     }
     if (!this.isCurrent(state)) {
       return undefined;
@@ -407,53 +440,11 @@ export class LightboxReadingRunner {
       // Not stopped by the writer, so the call's own timeout aborted it.
       const minutes = Math.round(this.timeoutMilliseconds / 60_000);
       this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} timed out`);
-      return failed(`The call took longer than ${minutes} minutes and was stopped. Read the rest to try again.`, result);
+      return failedLightboxGroup(call, `The call took longer than ${minutes} minutes and was stopped. Read the rest to try again.`, result);
     }
 
-    const content = result.rawContent ?? result.content;
-    if (result.finishReason === 'length') {
-      return failed(await this.quarantine(call, content, result, {
-        message: `the reply reached the ${PROMPT_BUDGETS.lightbox.groupOutputTokens.toLocaleString('en-US')}-token output ceiling`
-      }), result);
-    }
-
-    let decoded: ReturnType<typeof decodeLightboxGroup>;
-    try {
-      decoded = decodeLightboxGroup(content, {
-        group: call.group,
-        lenses: call.lenses,
-        columnCount: source.material.columns.length
-      });
-    } catch (error) {
-      return failed(await this.quarantine(call, content, result, lightboxRejectionOf(error)), result);
-    }
-
-    let ordinal = 0;
-    const prefix = `lbt-${state.run.token.slice(0, 8)}-${call.group}`;
-    const assembled = assembleLightboxGroup(decoded, {
-      ...tools,
-      mintId: () => `${prefix}-${++ordinal}`,
-      averageWordsPerSentence: source.averageWordsPerSentence
-    });
-    this.outputChannel.appendLine(
-      `[LightboxReadingRunner] Group ${call.group} read (${call.lenses.join(', ')}): ` +
-        `${assembled.tiles.length} tiles, ${assembled.withheldBlocks.length} blocks withheld, ` +
-        `${assembled.withheldClaims.length} claims withheld, ${assembled.quotesChecked} quotes checked ` +
-        `(${assembled.quotesWithheld} withheld)` +
-        (decoded.ignored.length > 0 ? `, ignored unrequested ${decoded.ignored.join(', ')}` : '')
-    );
-    return {
-      group: call.group,
-      lenses: call.lenses,
-      status: 'ok',
-      tiles: assembled.tiles,
-      withheldBlocks: assembled.withheldBlocks,
-      withheldClaims: assembled.withheldClaims,
-      frictions: assembled.frictions,
-      ...(result.modelId ? { model: result.modelId } : {}),
-      ...(result.usage ? { usage: result.usage } : {}),
-      quoteChecks: assembled.quoteChecks
-    };
+    const ports = { recovery: this.recovery, recoveryPresenter: this.recoveryPresenter, outputChannel: this.outputChannel };
+    return readLightboxGroupReply(ports, { call, result, source, tools, token: state.run.token });
   }
 
   private reportProgress(state: ActiveRunState, chunk: string, listener: LightboxRunListener): void {
@@ -466,28 +457,5 @@ export class LightboxReadingRunner {
     }
     state.lastReportedCharacters = state.outputCharacters;
     listener.onProgress(state.outputCharacters);
-  }
-
-  /**
-   * Save the paid body for recovery; the returned sentence tells the writer
-   * where it went. The rejection's message is logged and shown; its
-   * diagnostic is written only beside the body, in the recovery store's
-   * gitignored folder.
-   */
-  private async quarantine(
-    call: LightboxPreparedCall,
-    content: string,
-    result: ExecutionResult,
-    rejection: LightboxRejection
-  ): Promise<string> {
-    this.outputChannel.appendLine(`[LightboxReadingRunner] Group ${call.group} rejected: ${rejection.message}`);
-    const receipt = await persistRejectedWidgetResponse(this.recovery, this.recoveryPresenter, {
-      toolName: 'lightbox-readings',
-      requestSummary: `Lightbox group ${call.group}: ${call.lenses.map(lightboxLensLabel).join(', ')}`,
-      rawResponse: content,
-      rejection: rejection.diagnostic ? `${rejection.message}. ${rejection.diagnostic}` : rejection.message,
-      result
-    });
-    return `The reading came back unusable (${rejection.message}). ${recoveryLocationNotice(receipt)} Read the rest to try again.`;
   }
 }
