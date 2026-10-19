@@ -3,10 +3,12 @@
 **Author:** okeylanders · **PR:** [#149](https://github.com/okeylanders/prose-minion-vscode/pull/149) (open, unmerged at review)
 **Branches:** `epic/lightbox-slice-2b-readings` → `epic/lightbox`
 **Verified base / merge-base:** `3e6eba3c5c0e76afb72280691b7b6a0a5b9e7d7b`
-**Reviewed correction head:** `bf8f1ca2502441133216ca5013480da9aa37f9cf`
+**Reviewed second correction head:** `50b5b858720a6e1a0b6a1e1a6565468fffb8aa95`
+**First correction head / report:** `bf8f1ca2502441133216ca5013480da9aa37f9cf` / `b5350a1440c182a891bb1f149a8decfb50ba7862`
 **Initial implementation head:** `305ce1e2b9924d817c66c39514f2511118082c44` · **Initial report commit:** `9ad4e34f32fcea8037b240fe555df9944b47925f`
-**Current scope against base:** 126 files · +11,244 / −253 · 29 commits (including the initial review report)
-**Correction delta since initial report:** 57 files · +2,771 / −457 · 12 commits
+**Current scope against base:** 128 files · +12,014 / −261 · 35 commits (including prior review reports)
+**Second correction delta since `b5350a1`:** 18 files · +758 / −83 · 5 commits
+**First correction delta since initial report:** 57 files · +2,771 / −457 · 12 commits
 **Reviewed and independently re-reviewed:** 2026-10-19 · **Reviewer:** Astra
 **Mode:** independent source/spec review; real-service, runner and engine probes with synthetic streaming transport; codec/evidence probes; real-root and production-bundle DOM witnesses; supplied-image inspection; Workshop lifecycle parity; full deterministic verification
 
@@ -18,22 +20,98 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 | --- | --- | --- | --- |
 | F-01 | Medium / P2 | Normalized quote matching can return the wrong source span after supplementary Unicode characters | **Addressed** |
 | F-02 | Medium / P2 | Closing the tab during prompt preparation does not prevent its paid run from starting afterward | **Addressed** |
-| F-03 | Medium / P2 | Original board/run correlation repaired; selected-model changes can still accept an old-model estimate and start on that old model | **Partially addressed — remains blocking** |
+| F-03 | Medium / P2 | Board/run correlation and selected-model/settings-write ownership failures | **Addressed** |
 | F-04 | Medium / P2 | Withheld headline claims and blocks disappear behind the ordinary fallback heading | **Addressed** |
 | F-05 | Medium / P2 | Model-controlled keys and raw provider errors enter Lightbox logs and failed-group diagnostics | **Addressed** |
 | F-06 | Low / P3 · nonblocking | A low-affinity genre neighbor can omit its required near-miss explanation | **Addressed** |
 | F-07 | Low / P3 · nonblocking | “Quotes checked” omits successfully verified quotes on a withheld motif | **Addressed** |
 | F-08 | Low / P3 · nonblocking | Inspector re-read remains enabled for an off lens or a too-large call | **Addressed** |
-| F-09 | Low / P3 · nonblocking | Rare compatibility-mark sequences still miss whole-string NFKC-equivalent quotes | **Open** |
+| F-09 | Low / P3 · nonblocking | Rare compatibility-mark sequences miss whole-string NFKC-equivalent quotes | **Addressed** |
+| F-10 | Medium / P2 | New unbounded normalization-unit spread throws on accepted long non-Latin paragraphs and strands the active reading | **Open — blocking** |
 
-**Verdict: Request changes.** Seven original findings are independently addressed. F-03 remains P2 because the new Lightbox estimate/request integration can start a reading on a model other than the one the writer just selected while that selection is being saved. The old-model estimate is internally consistent, so this is **not** a demonstrated higher-price spend against that estimate; it is a selected-model ownership failure. After the save completes, the host safely refuses the stale key and re-estimates. F-09 is a separate, conservative false-negative and is nonblocking. Passing deterministic tests and correction-head CI do not resolve either finding.
+**Verdict: Request changes.** F-01 through F-09 are independently addressed within their recorded scope. The F-09 correction introduces **F-10**, a new P2: an accepted, estimated-to-fit long non-Latin paragraph throws during verifier initialization, emits an unhandled rejection and leaves the reading running until Stop. No provider call or spend occurs in this reproduction. F-03's selected-model mismatch is now fixed, including held settings writes, identical confirmations and price-only refreshes. Green deterministic tests do not resolve the new accepted-input regression.
 
-This is a review for integration into `epic/lightbox`, not merge authorization, native VS Code acceptance or live-provider acceptance. Any later approval remains conditional on required CI passing on the exact report-only head. The author's response is preserved verbatim below; its all-fixed assessment is not the independent verdict.
+This is a review for integration into `epic/lightbox`, not merge authorization, native VS Code acceptance or live-provider acceptance. Any later approval remains conditional on required CI passing on the exact report-only head. Both author responses are preserved verbatim below; their fixed assessments do not supersede the independent ledger.
 
 **Inherited PR #148 F-05 is independently addressed here.** It is distinct from this report's new F-05. Both an exact repeated jump to ¶812 and sparse ¶100 → ¶101 refocus the landing chip. Passive board updates do not steal focus. Real-root and rebuilt-bundle witnesses pass, as do the existing bounded 5,000-address navigation and pin-ownership cases.
 
 
-## Re-review of `bf8f1ca` — 2026-10-19
+
+## Second re-review of `50b5b858` — 2026-10-19
+
+All five commits after report `b5350a1` were inspected, including the model-confirmation integration, quote-unit rewrite, new integrated tests, inherited engine-log debt and second author response. The base remains `3e6eba3`. There are no new or modified PNGs in this correction round; the evidence builder now sends the required press model.
+
+### F-03 addressed — Selected and confirmed model ownership
+
+The production root routes every `MODEL_DATA` to both the shared chrome and Lightbox. The hook distinguishes the selected model from the last host-confirmed selection, records the intended model on each estimate request, rejects a reply priced for another model, and exposes an estimate only for the selected/confirmed model. Every confirmation, including identical values and price-only catalog updates, requests fresh pricing. A press names its model, which the host checks before prompt preparation.
+
+The retained counterexample was rerun against the exact rebuilt production bundle with the real configuration/Lightbox handlers, runner and engine, held settings writes and synthetic catalog/provider adapters. **72 assertions across eight integrated scenarios passed:**
+
+- While the actual picker's new selection is still saving, Read remains disabled and sends **zero run messages / zero provider calls**. A latest-request old-model estimate cannot enable it.
+- After authoritative confirmation, the usable estimate names the selected expensive model and all **three** explicit reading requests use that model. Nothing is auto-pressed or auto-retried.
+- An identical `MODEL_DATA` confirmation increments the estimate request count and withdraws the old estimate. A same-model price refresh replaces **$0.068778** with **$0.081816 before any press**.
+- Failed writes and a restored optimistic selection stay blocked until current confirmation; missing/mismatched `LIGHTBOX_RUN.model` is host-refused.
+- Rapid and delayed confirmations preserve the new estimate/model checks. The unchanged shared picker can visibly revert to an earlier confirmed choice while a later write is pending; resulting enabled calls match that displayed choice and the current estimate. This inherited picker-ordering caveat is distinct from the fixed hidden selector/estimate mismatch. A stale confirmation naming a model different from the host's actual model leaves Read disabled until a current confirmation.
+
+The original board/request/token/Stop protections remain green. **F-03 is addressed**, not merely relabeled based on the author's test claims.
+
+### F-09 addressed — Whole-string NFKC equivalence, with conservative boundaries
+
+The rare `Alice Aﾞﾟ̣ waited.` counterexample now verifies against its NFKC form and returns the original source text. Runs are split at safe low-code-point starters; if their pairwise units do not reproduce the whole run's NFKC, the run remains a single unit. Original boundary/fold-back protections remain in place. This preserves whole-run equivalence conservatively: a quote cutting into a fallback unit can still be withheld rather than risk a false span.
+
+The previously failing 10,000-case property, both retained 10,000-case stress corpora, 5,768 expanded whole-string cases (including all 768 proposed delimiters below U+0300), and 25,000 fragment probes completed without an incorrect accepted span. Of the fragment probes, 13,980 verified and 11,020 were withheld; four extra boundary/span assertions also passed. This is substantial empirical coverage, not exhaustive Unicode proof. **F-09's demonstrated false-negative is addressed.** The new array-append regression below is a separate failure introduced by the repair.
+
+### F-10 — Avoid argument-limit failure while assembling normalization units
+
+**Severity:** Medium / P2; blocking. **Introduced at:** [`LightboxQuoteVerifier.ts:185–191`](https://github.com/okeylanders/prose-minion-vscode/blob/50b5b858720a6e1a0b6a1e1a6565468fffb8aa95/packages/core/src/infrastructure/lightbox/LightboxQuoteVerifier.ts#L185-L191). **Propagation:** verifier setup at [`LightboxReadingRunner.ts:329`](https://github.com/okeylanders/prose-minion-vscode/blob/50b5b858720a6e1a0b6a1e1a6565468fffb8aa95/packages/core/src/infrastructure/lightbox/LightboxReadingRunner.ts#L321-L352), with the handler publishing running state at [`LightboxReadingHandler.ts:266–269`](https://github.com/okeylanders/prose-minion-vscode/blob/50b5b858720a6e1a0b6a1e1a6565468fffb8aa95/packages/core/src/application/handlers/domain/LightboxReadingHandler.ts#L260-L269).
+
+Both `units.push(...runUnits(run))` sites turn an unbounded normalization run into function arguments. A long run without a below-U+0300 starter can exceed the runtime's argument/stack limit, even when the source is accepted and the request fits the selected model. This is not a deliberately unsupported input rejected by the product's limits.
+
+**Independent real-host reproduction**, using actual measurement/service/handler/runner/engine code and synthetic transport:
+
+- Source: `'Alice waited. ' + '彼女は静かな部屋で時計の音を聞いた。'.repeat(9000)`.
+- Production board accepts **162,014 characters, three whitespace-counted words, one paragraph**.
+- With only the headline lens on, the real estimator reports **fits**, **124,820 input tokens**, against the synthetic model's **200,000-token window**, with the ordinary output reservation.
+- Press Read with the current estimate key and matching model. Verifier setup throws **`RangeError: Maximum call stack size exceeded`** before transport. The returned `done` promise rejects without a handler; runner cleanup/finish is never reached. The board retains **group A running**, the active run token remains, and the only progress phase is **started**. **Zero provider calls** occur.
+- **Stop** releases the active run and marks the group cancelled. It is a stranded run requiring intervention, not evidence that the extension process itself crashed.
+
+A separate all-lenses witness with `'漢'.repeat(150000)` is also accepted (one word/one paragraph), fits the same window at roughly 116,000 input tokens per group, and leaves all three groups running with zero calls. In this Node 24.19 runtime, the threshold varied with call depth/warm-up around 125,000–150,000 units; **150,000 reliably reproduced**. Both end-of-paragraph and later ASCII-flush paths fail. A same-length unspaced Latin paragraph succeeds because its runs are split. No universal native-host threshold is claimed.
+
+**Baseline isolation:** the `b5350a1` verifier folds the identical Japanese source successfully and finds exact `Alice waited.`. Replacing only the verifier export with that prior implementation inside a scratch process leaves the current host stack otherwise unchanged: one headline provider-adapter call settles `ok`, emits `finished` and releases the active token. No tracked source was changed. This isolates the new failure to the correction's unbounded spread, rather than inherited word counting or a paid-provider response.
+
+**Requested correction:** append normalization units without spreading an unbounded array into call arguments. Ensure verifier/setup failure cannot leave a registered run and its groups permanently running or produce an unobserved rejection. Add accepted long non-Latin paragraph tests through the real host/runner, including end and ASCII-flush boundaries, ordinary Latin control, and final run cleanup. Keep all quote-equivalence/span guards and model-intent protections intact.
+
+### Second re-review checks and limits
+
+| Check | Independently observed result at `50b5b858` |
+| --- | --- |
+| Full `npm test -- --runInBand` | **350 suites / 5,123 tests / 2 snapshots passed**, 145.892 seconds |
+| `npm run typecheck` | Core, webview and extension passed |
+| Full `npm run lint` | **0 errors / 1,135 warnings**; normalized per-file/message/rule multiset unchanged |
+| `npm run build`, including `verify:bundle` | Passed; three webpack size/performance warnings; three bundle sentinels present |
+| Whole-PR and correction-delta `git diff --check` | Passed |
+| Independent real-engine host checks | **87 assertions passed**: prior 73 lifecycle/estimate/fit/ownership checks plus 14 explicit model-intent checks |
+| Integrated selected-model/configuration scenarios | **72 assertions / 8 scenarios passed** on the rebuilt production bundle |
+| Retained source-root / production-bundle checks | **18 tests / 38 assertions passed**, including F-04, F-08, board/Stop races and inherited PR #148 focus |
+| Focused evidence/codec/runner/state suites | **7 suites / 118 tests passed** |
+| Independent evidence boundaries / closure groups | **13 boundaries / 12 groups passed**, including the former failing 10,000-case property |
+| Additional normalization probes | **20,000 retained stress cases; 5,768 expanded whole-string cases; 25,000 fragments; 4 extra span assertions** completed with no observed wrong accepted spans |
+| New accepted-input regression probes | **F-10 reproduced**; prior-verifier isolation completes the same run normally; not a passing expected-safe regression |
+| Workshop lifecycle comparison | **9 checkpoints / 27 parity assertions passed** against the reviewed PR #147 integrated bundle |
+| Visual evidence | No PNG changes; all 20 images were inspected in earlier passes; builder/provenance delta inspected |
+| Exact new report-head CI | **Pending separate post-publication verification** |
+
+Production `webview.js` SHA-256: `7d94bad5d80c8bece790821f4bdcc61dd7dd45e0f2f47d31f4a20f75ab10c897`.
+
+Single-run scratch measurements on 770,000-character controls were approximately 311→334 ms for Latin and 332→471 ms for spaced non-Latin text (prior→current verifier). They are observations, not a performance guarantee. The large uninterrupted-run failure is separately reproducible and not explained away by those successful spaced controls.
+
+All F-01/F-02/F-04–F-08 closures remain sound in the rerun. PR #148's repeated ¶812, sparse ¶100→¶101/repeat, and passive-update focus behavior are reconfirmed in the exact bundle. The inherited engine `errorType` log remains unchanged and reproducible, now accurately tracked in [dedicated debt](../../.todo/tech-debt/2026-10-19-agent-run-engine-provider-error-log.md); scoped F-05 stays closed. A failed model save waits for a later current confirmation, which reopening the picker supplies.
+
+The author reports byte-identical recorded states and pixel-identical re-renders; no native browser/VS Code rerun was performed here. JSDOM retains its known stylesheet-parser limitation. No live/paid inference was used. D4 retention and the Slice 6 live/cache/cost gates retain the previously stated scope and acceptance limits. Only this report is published, preserving both author responses byte-for-byte.
+
+## First re-review of `bf8f1ca` — historical, 2026-10-19
+
+The evidence and statuses below describe the first correction pass; the current ledger and second re-review above supersede them.
 
 All twelve commits after the initial report were inspected, including the author response, new ownership/correlation modules, changed tests, six new screenshots and their request-aware harness. The base remains `3e6eba3`. The correction head was fetched into the same isolated worktree; the earlier probes were adapted to the new request-id/estimate-key protocol without changing production files.
 
