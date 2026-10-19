@@ -64,6 +64,12 @@ describe('the gravity orbit', () => {
     const placements = lightboxOrbitPlacements([0, 1, 2, 3, 4].map((index) => field({ id: `f${index}`, pull: 0.5 })));
     const spots = placements.map((placement) => `${placement.left},${placement.top}`);
     expect(new Set(spots).size).toBe(5);
+    // None sits near twelve o'clock, where the rings' labels are drawn.
+    const center = LIGHTBOX_ORBIT_SIZE / 2 - LIGHTBOX_ORBIT_BUTTON / 2;
+    for (const placement of placements) {
+      const fromTop = Math.abs(Math.atan2(placement.left - center, center - placement.top) * 180 / Math.PI);
+      expect(fromTop).toBeGreaterThanOrEqual(34);
+    }
   });
 });
 

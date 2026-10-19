@@ -31,7 +31,12 @@ export interface LightboxOrbitPlacement {
 }
 
 const GOLDEN_ANGLE = 137.508;
-const FIRST_ANGLE = -60;
+/**
+ * The first (strongest) field sits low on the right. From there the golden
+ * angle keeps the first five fields at least 35 degrees from twelve o'clock,
+ * where the rings' labels are drawn, so a field's name never covers one.
+ */
+const FIRST_ANGLE = 30;
 
 /**
  * Where each field sits: closer to the center the more pull its reading
