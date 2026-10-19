@@ -96,12 +96,15 @@
   "activationEvents": [
     "onView:prose-minion.toolsView",
     "onWebviewPanel:prose-minion.workshop",
+    "onWebviewPanel:prose-minion.lightbox",
     "onCommand:prose-minion.assistantSelection",
     "onCommand:prose-minion.wordLookupSelection",
     "onCommand:prose-minion.analyzeSelection",
     "onCommand:prose-minion.showOutputChannel",
     "onCommand:prose-minion.openWorkshop",
-    "onCommand:prose-minion.workshopSelection"
+    "onCommand:prose-minion.workshopSelection",
+    "onCommand:prose-minion.openLightbox",
+    "onCommand:prose-minion.lightboxSelection"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -149,6 +152,14 @@
       {
         "command": "prose-minion.workshopSelection",
         "title": "Prose Minion: Send Selection to Workshop"
+      },
+      {
+        "command": "prose-minion.openLightbox",
+        "title": "Prose Minion: Open Lightbox"
+      },
+      {
+        "command": "prose-minion.lightboxSelection",
+        "title": "Prose Minion: Open Selection in Lightbox"
       }
     ],
     "menus": {
@@ -162,6 +173,11 @@
           "when": "editorHasSelection",
           "command": "prose-minion.workshopSelection",
           "group": "prose-minion@2"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "prose-minion.lightboxSelection",
+          "group": "prose-minion@3"
         },
         {
           "when": "editorHasSelection",

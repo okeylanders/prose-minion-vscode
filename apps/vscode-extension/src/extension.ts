@@ -15,6 +15,7 @@ import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { ProseToolsViewProvider } from './application/providers/ProseToolsViewProvider';
 import { WorkshopPanelProvider } from './application/providers/WorkshopPanelProvider';
+import { LightboxPanelProvider } from './application/providers/LightboxPanelProvider';
 // Core services + the Platform port type — imported via the public barrel only
 // (ADR 2026-06-16 monorepo boundary; enforced by eslint no-restricted-imports).
 import {
@@ -59,6 +60,8 @@ import {
   RejectedModelResponseRecoveryStore,
   RejectedModelResponseRecoveryShellPresenter,
   WorkshopStandingDirectiveService,
+  LightboxService,
+  LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
   WORKSHOP_WIDGET_RECOMMENDATION_INSTRUCTION,
@@ -74,6 +77,7 @@ import { VsCodeEditorContext } from './platform/vscode/VsCodeEditorContext';
 
 let proseToolsViewProvider: ProseToolsViewProvider | undefined;
 let workshopPanelProvider: WorkshopPanelProvider | undefined;
+let lightboxPanelProvider: LightboxPanelProvider | undefined;
 let workshopSessionPersistenceCoordinator: WorkshopSessionPersistenceCoordinator | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -341,6 +345,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel
   );
 
+  // Lightbox boards (ADR 2026-10-19 D5, D12): the counted board from the same
+  // measurement services the Metrics tab uses, kept in memory per source.
+  const lightboxService = new LightboxService(
+    proseStatsService,
+    wordFrequencyService,
+    styleFlagsService,
+    standardsService
+  );
+
   const coreServices: CoreServices = {
     assistantToolService,
     dictionaryService,
@@ -371,7 +384,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showVsTellService,
     lexicalGravityModelService,
     lexicalGravityLensRepository,
-    workshopStandingDirectiveService
+    workshopStandingDirectiveService,
+    lightboxService
   };
 
   // Migrate API key from settings to SecretStorage if needed
@@ -384,7 +398,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     outputChannel,
     platform,
     {
-      openWorkshop: () => workshopPanelProvider?.openOrReveal()
+      openWorkshop: () => workshopPanelProvider?.openOrReveal(),
+      openLightbox: () => lightboxPanelProvider?.openOrReveal()
     }
   );
 
@@ -421,6 +436,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerWebviewPanelSerializer(
       WorkshopPanelProvider.viewType,
       workshopPanelProvider
+    )
+  );
+
+  // Lightbox editor-tab surface (ADR 2026-10-19 D1): the same CoreServices
+  // bundle again, and its own serializer so a reload restores the tab.
+  lightboxPanelProvider = new LightboxPanelProvider(
+    context.extensionUri,
+    coreServices,
+    outputChannel,
+    platform,
+    {
+      openAssistantSettings: () => {
+        void vscode.commands.executeCommand('prose-minion.openSettingsOverlay');
+      }
+    }
+  );
+  context.subscriptions.push(
+    lightboxPanelProvider,
+    vscode.window.registerWebviewPanelSerializer(
+      LightboxPanelProvider.viewType,
+      lightboxPanelProvider
     )
   );
 
@@ -498,6 +534,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
+  // Lightbox seeding: the selection when there is one, otherwise the active
+  // file. seedSource routes LIGHTBOX_SET_SOURCE through the panel's own
+  // MessageHandler, the same path as the webview's own requests.
+  const handleLightboxSelection = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('No active text editor');
+      return;
+    }
+    const uri = editor.document.uri;
+    const relativePath = vscode.workspace.asRelativePath(uri, false);
+    const selection = editor.selection;
+    const text = editor.document.getText(selection);
+    const payload: LightboxSetSourcePayload = { sourceUri: uri.toString(), relativePath };
+    if (text) {
+      const lineRange = toInclusiveLineRange({
+        startLine: selection.start.line,
+        endLine: selection.end.line,
+        endCharacter: selection.end.character
+      });
+      payload.text = text;
+      payload.startLine = lineRange.startLine;
+      payload.endLine = lineRange.endLine;
+    }
+    lightboxPanelProvider?.seedSource(payload);
+  };
+
   const handleWordLookupSelection = () => {
     const payload = getSelectionPayload();
     if (!payload) {
@@ -522,7 +585,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('prose-minion.openWorkshop', () => {
       workshopPanelProvider?.openOrReveal();
     }),
-    vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection)
+    vscode.commands.registerCommand('prose-minion.workshopSelection', handleWorkshopSelection),
+    vscode.commands.registerCommand('prose-minion.openLightbox', () => {
+      lightboxPanelProvider?.openOrReveal();
+    }),
+    vscode.commands.registerCommand('prose-minion.lightboxSelection', handleLightboxSelection)
   );
 }
 
@@ -532,6 +599,10 @@ export async function deactivate(): Promise<void> {
   // cannot defer an earlier committed dirty revision past process shutdown.
   workshopPanelProvider?.dispose();
   workshopPanelProvider = undefined;
+  // The Lightbox writes nothing (D12); its panel is also a context
+  // subscription, and disposing twice is a no-op.
+  lightboxPanelProvider?.dispose();
+  lightboxPanelProvider = undefined;
   await workshopSessionPersistenceCoordinator?.flush();
   workshopSessionPersistenceCoordinator = undefined;
   console.log('Prose Minion extension is now deactivated');

@@ -45,11 +45,15 @@ export class VsCodeShellService implements ShellService {
     return Promise.resolve(vscode.env.clipboard.readText());
   }
 
-  async pickFile(options?: { title?: string; filters?: Record<string, string[]> }): Promise<PickedFile | undefined> {
+  async pickFile(options?: {
+    title?: string;
+    filters?: Record<string, string[]>;
+    openLabel?: string;
+  }): Promise<PickedFile | undefined> {
     const [chosen] = (await vscode.window.showOpenDialog({
       canSelectMany: false,
       canSelectFolders: false,
-      openLabel: 'Pin',
+      openLabel: options?.openLabel ?? 'Pin',
       title: options?.title,
       filters: options?.filters
     })) ?? [];

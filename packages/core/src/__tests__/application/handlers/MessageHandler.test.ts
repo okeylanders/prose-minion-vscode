@@ -215,7 +215,12 @@ function createTestAssembly(): TestAssembly {
       }),
       resetSession: jest.fn().mockResolvedValue(undefined)
     },
-    workshopTranscriptExportService: { export: jest.fn() }
+    workshopTranscriptExportService: { export: jest.fn() },
+    lightboxService: {
+      currentBoard: jest.fn().mockReturnValue(undefined),
+      currentRereadTarget: jest.fn().mockReturnValue(undefined),
+      buildBoard: jest.fn()
+    }
   } as unknown as CoreServices;
 
   return {
@@ -277,6 +282,27 @@ describe('MessageHandler assembly', () => {
       })
     );
     expect(assembly.categoryAddStatusListener).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('routes Lightbox messages (13th domain) to the shared board service', async () => {
+    const assembly = createTestAssembly();
+    const postMessage = jest.fn().mockResolvedValue(undefined);
+    const handler = createHandler(assembly, postMessage);
+    postMessage.mockClear();
+
+    await handler.handleMessage({
+      type: MessageType.LIGHTBOX_REQUEST_BOARD,
+      source: 'webview.lightbox',
+      payload: {},
+      timestamp: Date.now()
+    });
+
+    expect(assembly.services.lightboxService.currentBoard).toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.LIGHTBOX_BOARD,
+      source: 'extension.lightbox',
+      payload: { board: null }
+    }));
   });
 
   it('routes workshop messages (12th domain) and rehydrates a new handler from the shared session aggregate', async () => {
