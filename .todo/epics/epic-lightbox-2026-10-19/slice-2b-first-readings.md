@@ -202,6 +202,10 @@ differs from the plan above, or the plan left a choice open:
   placed exactly once (a test pins it).
 - The inspector's evidence, withheld quotes, details, counted support and
   friction are lists of their own, apart from the paged addresses.
+- PR #148 review F-05 (Low, nonblocking) is addressed here: each explicit
+  "Go to ¶" jump carries its own number, so repeating a jump that lands on
+  the same mounted chip (¶812 twice, or ¶100 then ¶101 on a sparse list)
+  focuses it again; a board update keeps the number and moves no focus.
 
 **Open question 3: tension scale at book length.** Tension is scored per
 ribbon column: one score per paragraph up to 96 paragraphs, and one per

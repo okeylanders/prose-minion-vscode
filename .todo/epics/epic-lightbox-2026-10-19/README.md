@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), and Slice 2A is in review (PR pending)
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), and Slice 2B is in review (PR pending)
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -51,8 +51,8 @@ carried into the Workshop.
 |---|---|---|---|
 | 0 | Spec | ADR, this epic, design snapshot | In review |
 | 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | Merged (PR #147) |
-| 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | In review (PR #148; review fixes pushed) |
-| 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Planned |
+| 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | Merged (PR #148) |
+| 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | In review (PR pending) |
 | 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Planned |
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Planned |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare | Planned (last, by decision 5) |
@@ -298,3 +298,67 @@ becomes a file format.
       last address) at 1440, 1000 and 500 px in
       [`lightbox-slice-2a-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-2a-visual/README.md#pr-148-review-fixes-2026-10-19);
       the earlier Lightbox shots re-render unchanged.
+
+- **2026-10-19. Slice 2B (first readings).** Built on
+  `epic/lightbox-slice-2b-readings` from the Slice 2A branch; the PR #148
+  review fixes and then `epic/lightbox` were merged in, conflicts resolved in
+  favor of the fixed 2A behavior.
+  1. **Contracts.** `messages/lightboxReadings.ts` (reading tiles, groups,
+     withheld quotes, claims and blocks, the estimate, runs, context files),
+     nine `LIGHTBOX_*` message types, and the remaining `PROMPT_BUDGETS.lightbox`
+     numbers.
+  2. **Prompts, codec, verifier.** The `lightbox/` prompt bundle (shared
+     rules, six lens files, a worked example per group), a per-block codec,
+     the quote verifier and the host term counter.
+  3. **Runs.** `LightboxReadingRunner` (three groups in parallel on the
+     assistant model, a timeout per group, quarantine), the fit and cost
+     estimate, the context shelf, and `LightboxReadingHandler` beside
+     `LightboxHandler`. Results attach to the service's board id and reach
+     webviews only as the service's `readings` outcomes for the current
+     board.
+  4. **The webview.** The run line, the reading tiles, the tension lane,
+     skeletons, the inspector's evidence with "Re-read this tile", the rail's
+     context list, and lens toggles that drive the estimate.
+  5. **PR #148 review F-05 (Low, nonblocking): addressed.** Every explicit
+     "Go to ¶" jump focuses its landing chip, a repeated jump to the same
+     chip included; a board update moves no focus. Both repeat cases are
+     tests.
+  - **Verification.** `epic/lightbox` (`3e6eba3`) → this branch:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 333 suites, 4,921 tests, 2 snapshots | 344 suites, 5,058 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file and per rule.
+    - No live or billable call was made: every reading test plays the
+      provider with the worked examples.
+    - Visual evidence from real host output in headless Chromium:
+      [`lightbox-slice-2b-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-2b-visual/README.md)
+      (idle with the estimate, running with group A back, done with a pinned
+      motif's verified and withheld quotes and friction, and too large, at
+      1440, 1000 and 500 px). No page errors and no horizontal overflow.
+  - **Decisions** (details in the
+    [slice doc](slice-2b-first-readings.md#implementation-notes-2026-10-19)):
+    - Open question 3: tension is scored per ribbon column. The whole Alice
+      book would need 815 scores per paragraph against 96 per column.
+    - Open question 1: not measured (no live calls); the groups run in
+      parallel, and the measurement moves to Slice 6.
+  - **Beyond or unlike the plan:**
+    - A seventh reading kind, `reader-promise`, holds the genre lens's
+      promise with its own evidence.
+    - Groups also carry withheld claims and each lens's friction, so an
+      empty lens still says where it strains.
+    - Context has its own add, remove and list routes; the estimate carries
+      the board's active run.
+    - The estimate against the processed chip ("Done when") is not recorded,
+      for the same reason as open question 1.
+    - Progress now carries the streamed characters through each group and
+      the finish, and a rejected frame's logged reason names unknown fields
+      briefly.
+  - **Follow-ups:** Slice 6's live pass (cache reads, the estimate ratio,
+    contract adherence) and stale readings on a changed chapter (D4), in
+    [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md)
+    and [stale readings](../../tech-debt/2026-10-19-lightbox-stale-readings.md).
