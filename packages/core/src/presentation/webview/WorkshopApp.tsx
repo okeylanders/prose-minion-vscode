@@ -21,7 +21,6 @@
 
 import * as React from 'react';
 import { Icon, IconName } from './components/shared/Icon';
-import { PmLogo } from './components/shared/PmLogo';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { TabErrorFallback } from './components/shared/TabErrorFallback';
 import { StreamingContent } from './components/shared/StreamingContent';
@@ -39,7 +38,9 @@ import {
   workshopExcerptSourcePath,
   workshopExcerptTitle
 } from '@messages';
-import { ModelSelector } from './components/shared/ModelSelector';
+import { FullTabShell } from '@components/fulltab/FullTabShell';
+import { FullTabHeaderStatus } from '@components/fulltab/FullTabHeaderStatus';
+import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
 import { ExcerptPanel } from './components/workshop/ExcerptPanel';
 import { ContextPanel } from './components/workshop/ContextPanel';
 import { WorkshopComposer } from './components/workshop/WorkshopComposer';
@@ -444,7 +445,6 @@ export const WorkshopApp: React.FC = () => {
     },
     [vscode]
   );
-  const railErrorRef = React.useRef<ErrorBoundary>(null);
   const threadErrorRef = React.useRef<ErrorBoundary>(null);
   const composerErrorRef = React.useRef<ErrorBoundary>(null);
 
@@ -892,21 +892,6 @@ export const WorkshopApp: React.FC = () => {
     }
   }, [showToast]);
 
-  const openrouter = chrome.accountBalance.openrouter;
-  const remaining = openrouter?.credits?.remaining;
-  const balanceTitle = (() => {
-    if (!openrouter || openrouter.status === 'no_key') {
-      return 'OpenRouter balance — no API key configured';
-    }
-    const parts: string[] = [];
-    if (typeof remaining === 'number') {parts.push(`Credits remaining: $${remaining.toFixed(2)}`);}
-    if (typeof tokenTracking.lastRequestCostUsd === 'number') {
-      parts.push(`Last request: $${tokenTracking.lastRequestCostUsd.toFixed(4)}`);
-    }
-    if (openrouter.creditsStatus !== 'ok') {parts.push('Account balance unavailable');}
-    return parts.join(' · ') || 'OpenRouter balance';
-  })();
-
   const excerptSessionLabel = (() => {
     const sourcePath = workshop.excerpt
       ? workshopExcerptSourcePath(workshop.excerpt.source)
@@ -930,119 +915,81 @@ export const WorkshopApp: React.FC = () => {
     behavior: workshop.conversationBehavior
   };
 
-  return (
-    <div className="pm-ws">
-      <header className="pm-ws-header">
-        <div className="pm-ws-brand">
-          <div className="pm-ws-logo">
-            <PmLogo />
-          </div>
-          <div>
-            <div className="pm-ws-eyebrow pm-ws-header-eyebrow">Prose Minion · Assistant</div>
-            <h1 className="pm-ws-title">Workshop</h1>
-            {/* §10: header meta reports SCOPE, so an open conversation never
-                reads as a passage session that forgot its passage. */}
-            <p className="pm-ws-subtitle">
-              <Icon
-                name={workshop.scope === 'open' && !workshop.excerpt ? 'dialogue' : 'doc'}
-                size={12}
-              />{' '}
-              {workshop.excerpt
-                ? `${workshopExcerptSourcePath(workshop.excerpt.source) ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
-                : workshop.scope === 'open'
-                  ? 'Open conversation · No excerpt yet'
-                  : 'No excerpt pinned yet'}
-            </p>
-          </div>
-        </div>
-        <div className="pm-ws-header-actions">
-          <button
-            className="pm-ws-persona-trigger"
-            type="button"
-            disabled={!workshop.sessionReady || workshop.isPersonaSelectionLocked}
-            onClick={openPersonaModal}
-            title={
-              workshop.isPersonaSelectionLocked
-                ? workshop.hasHostConversation
-                  ? 'Start a new session to choose a different writing partner'
-                  : 'Wait for the current run to finish before choosing a writing partner'
-                : 'Choose a writing partner'
-            }
-          >
-            <Icon name="person" size={15} />
-            <span className="pm-ws-persona-trigger-badge" aria-hidden="true">
-              <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[activePersona.id]} size={10} />
-            </span>
-            {activePersona.label}
-          </button>
-          <WorkshopSessionsMenu
-            open={sessionsMenuOpen}
-            activeSessionTitle={activeNamedSession?.title}
-            saveStatus={activeSessionSaveStatus}
-            sessions={workshopSessions.savedSessionSummaries}
-            disabled={
-              !workshop.sessionReady ||
-              sessionMutationsDisabled ||
-              !workshop.persistenceAvailable
-            }
-            newSessionDisabled={!workshop.sessionReady || sessionMutationsDisabled}
-            onOpenChange={setSessionsMenuVisibility}
-            onNewSession={startNewSession}
-            onFullResetSession={startFullReset}
-            hasWorkingSet={hasWorkingSet}
-            onSaveSession={openSaveSessionModal}
-            exportDisabled={!workshop.sessionReady || sessionLoading || !hasExportableTurns}
-            onExportSession={openExportSessionModal}
-            onBrowseSessions={openSessionBrowser}
-            onOpenSession={openStoredSession}
-          />
-          {/* Model browser — the SAME ModelSelector + ModelBrowserModal the
-              sidebar uses (assistant scope, same MODEL_DATA rails); only the
-              trigger is reskinned to the workshop chip via the Workshop shell styles. */}
-          <ModelSelector
-            scope="assistant"
-            options={modelsSettings.modelOptions}
-            value={modelsSettings.modelSelections.assistant}
-            onChange={modelsSettings.setModelSelection}
-            onOpenBrowser={() => modelsSettings.requestModelData(true)}
-            label="Assistant Model"
-          />
-          {/* Cumulative processed traffic is cost/activity, not context size. */}
-          <div
-            className="pm-ws-balance"
-            title={`Cumulative processed traffic — prompt ${tokenTracking.usage.promptTokens.toLocaleString()} · completion ${tokenTracking.usage.completionTokens.toLocaleString()}. Retained history may be processed again across calls.`}
-          >
-            <span className="pm-ws-balance-label">Processed</span>
-            <span className="pm-ws-balance-val">
-              {tokenTracking.usage.totalTokens.toLocaleString()}
-            </span>
-          </div>
-          <div className="pm-ws-balance" title={balanceTitle}>
-            <span
-              className={`pm-ws-balance-dot ${
-                openrouter?.status === 'ok' ? 'pm-ws-balance-dot-ok' : 'pm-ws-balance-dot-off'
-              }`}
-            />
-            <span className="pm-ws-balance-label">OpenRouter</span>
-            <span className="pm-ws-balance-val">
-              {typeof remaining === 'number' ? `$ ${remaining.toFixed(2)}` : '$ —'}
-            </span>
-          </div>
-        </div>
-      </header>
+  // §10: the header meta reports SCOPE, so an open conversation never reads
+  // as a passage session that forgot its passage.
+  const headerSubtitle = (
+    <>
+      <Icon
+        name={workshop.scope === 'open' && !workshop.excerpt ? 'dialogue' : 'doc'}
+        size={12}
+      />{' '}
+      {workshop.excerpt
+        ? `${workshopExcerptSourcePath(workshop.excerpt.source) ?? 'Pinned excerpt'} · v${workshop.excerpt.version} · ${excerptWordCount} words`
+        : workshop.scope === 'open'
+          ? 'Open conversation · No excerpt yet'
+          : 'No excerpt pinned yet'}
+    </>
+  );
 
+  // The persona trigger and Sessions menu are the Workshop's; the model,
+  // processed and balance chips are the shared full-tab status cluster.
+  const headerActions = (
+    <>
+      <button
+        className="pm-ws-persona-trigger"
+        type="button"
+        disabled={!workshop.sessionReady || workshop.isPersonaSelectionLocked}
+        onClick={openPersonaModal}
+        title={
+          workshop.isPersonaSelectionLocked
+            ? workshop.hasHostConversation
+              ? 'Start a new session to choose a different writing partner'
+              : 'Wait for the current run to finish before choosing a writing partner'
+            : 'Choose a writing partner'
+        }
+      >
+        <Icon name="person" size={15} />
+        <span className="pm-ws-persona-trigger-badge" aria-hidden="true">
+          <Icon name={WORKSHOP_PERSONA_FOCUS_ICONS[activePersona.id]} size={10} />
+        </span>
+        {activePersona.label}
+      </button>
+      <WorkshopSessionsMenu
+        open={sessionsMenuOpen}
+        activeSessionTitle={activeNamedSession?.title}
+        saveStatus={activeSessionSaveStatus}
+        sessions={workshopSessions.savedSessionSummaries}
+        disabled={
+          !workshop.sessionReady ||
+          sessionMutationsDisabled ||
+          !workshop.persistenceAvailable
+        }
+        newSessionDisabled={!workshop.sessionReady || sessionMutationsDisabled}
+        onOpenChange={setSessionsMenuVisibility}
+        onNewSession={startNewSession}
+        onFullResetSession={startFullReset}
+        hasWorkingSet={hasWorkingSet}
+        onSaveSession={openSaveSessionModal}
+        exportDisabled={!workshop.sessionReady || sessionLoading || !hasExportableTurns}
+        onExportSession={openExportSessionModal}
+        onBrowseSessions={openSessionBrowser}
+        onOpenSession={openStoredSession}
+      />
+      <FullTabHeaderStatus
+        models={modelsSettings}
+        tokens={tokenTracking}
+        balance={chrome.accountBalance}
+      />
+    </>
+  );
+
+  const banners = (
+    <>
       {chrome.providerPaused && (
-        <div className="pm-ws-provider-paused" role="status">
-          <Icon name="alert" size={14} />
-          <span>
-            <strong>AI replies are paused.</strong>{' '}
-            Add an OpenRouter API key to continue. Your Workshop sessions and local context remain
-            available.
-          </span>
-          <button type="button" onClick={chrome.openAssistantSettings}>
-            <Icon name="gear" size={13} /> Add API key
-          </button>
-        </div>
+        <ProviderPausedBanner
+          availabilityNote="Your Workshop sessions and local context remain available."
+          onAddApiKey={chrome.openAssistantSettings}
+        />
       )}
 
       {workshop.degradedConversationKeys.length > 0 && (
@@ -1082,375 +1029,381 @@ export const WorkshopApp: React.FC = () => {
             : ' Check the Prose Minion output for details.'}
         </div>
       )}
+    </>
+  );
 
-      <div className="pm-ws-split">
-        <aside className="pm-ws-rail" aria-label="Session rail">
-          <ErrorBoundary
-            ref={railErrorRef}
-            fallback={
-              <TabErrorFallback
-                tabName="Workshop rail"
-                onRetry={() => railErrorRef.current?.reset()}
-              />
-            }
-            onError={handleBoundaryError}
+  const railContent = (
+    <>
+      <ExcerptPanel
+        excerpt={workshop.excerpt}
+        shelvedExcerpt={workshop.shelvedExcerpt}
+        scope={workshop.scope}
+        hostLabel={activePersona.label}
+        isRunning={roomMutationLocked}
+        roomHasMemory={workshop.roomHasMemory}
+        onOpenPasteSheet={openPasteSheet}
+        onChooseFile={openExcerptSelector}
+        onRereadFile={workshop.rereadExcerpt}
+        onContinueWithExcerpt={continueWithExcerpt}
+        onRepinExcerpt={workshop.repinExcerpt}
+        onSetAside={startOpenConversation}
+        onStartOpenConversation={startOpenConversation}
+      />
+
+      <ContextPanel
+        attachments={workshop.contextAttachments}
+        pendingDelivery={workshop.contextPending}
+        isRunning={roomMutationLocked}
+        onAddText={openAddTextSheet}
+        onAddFile={openAttachSelector}
+        onRefreshFiles={workshop.refreshContextFiles}
+        onOpenAttachment={openAttachmentSheet}
+        onRemove={workshop.removeContextAttachment}
+        wizardRunning={workshop.wizardRunning}
+        onRunWizard={workshop.runContextWizard}
+        onCancelWizard={workshop.cancelContextWizard}
+      />
+
+      {/* §9: gating only — no tool is redesigned. While no excerpt
+          exists, each row keeps its place and gains a NEEDS EXCERPT
+          badge, `aria-disabled` (focusable, so the reason is reachable),
+          a tooltip, and a toast on activation. */}
+      <div className="pm-ws-block pm-ws-block-grow">
+        <div className="pm-ws-block-head">
+          <div className="pm-ws-eyebrow">Tools</div>
+          {toolsGatedByExcerpt ? (
+            <span className="pm-ws-ctx-count">unavailable</span>
+          ) : null}
+        </div>
+        <div className="pm-ws-tools" role="list">
+          {RAIL_TOOLS.map((tool) => (
+            <button
+              key={tool.id}
+              className={`pm-ws-tool ${
+                workshop.selectedToolId === tool.id ? 'pm-ws-tool-active' : ''
+              }${toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''}`}
+              type="button"
+              role="listitem"
+              disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
+              aria-disabled={toolsGatedByExcerpt ? true : undefined}
+              onClick={toolsGatedByExcerpt
+                ? announceToolGate
+                : () => workshop.runTool(tool.id)}
+              title={toolsGatedByExcerpt
+                ? WORKSHOP_TOOLS_GATED_REASON
+                : `Have ${activePersona.label} ask ${tool.label} to inspect the pinned excerpt`}
+            >
+              <Icon name={tool.icon} size={15} /> {tool.label}
+              {toolsGatedByExcerpt ? (
+                <span className="pm-ws-tool-lock">needs excerpt</span>
+              ) : null}
+            </button>
+          ))}
+          <button
+            className={`pm-ws-tool pm-ws-tool-ghost${
+              toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''
+            }`}
+            type="button"
+            role="listitem"
+            disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
+            aria-disabled={toolsGatedByExcerpt ? true : undefined}
+            onClick={toolsGatedByExcerpt ? announceToolGate : openToolsModal}
+            title={toolsGatedByExcerpt ? WORKSHOP_TOOLS_GATED_REASON : 'All writing tools'}
           >
-            <ExcerptPanel
-              excerpt={workshop.excerpt}
-              shelvedExcerpt={workshop.shelvedExcerpt}
+            <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
+          </button>
+        </div>
+      </div>
+
+      <WorkshopTodoList
+        todos={workshop.todos}
+        onAction={workshop.todoAction}
+        onShowSource={showTodoSource}
+      />
+    </>
+  );
+
+  const mainContent = (
+    <>
+      {sessionLoading && (
+        <div className="pm-ws-session-loading" role="status" aria-live="polite">
+          <div className="pm-ws-session-loading-card">
+            <span className="pm-ws-wizard-spin" aria-hidden="true" />
+            <strong>Loading…</strong>
+            <p>{workshopSessions.scanningContextFiles
+              ? 'Scanning context files for updates…'
+              : 'Opening your Workshop session…'}</p>
+          </div>
+        </div>
+      )}
+      <div
+        className="pm-ws-session-content"
+        aria-busy={sessionLoading}
+        {...{ inert: sessionLoading ? '' : undefined }}
+      >
+      <ErrorBoundary
+        ref={threadErrorRef}
+        fallback={
+          <TabErrorFallback
+            tabName="Workshop thread"
+            onRetry={() => threadErrorRef.current?.reset()}
+          />
+        }
+        onError={handleBoundaryError}
+      >
+        <div className="pm-ws-thread" ref={threadRef}>
+          {/* §1: the center view keys off SCOPE. Unchosen → the path
+              chooser; open → the honest open-chat block (with the scope
+              strip above it, which stays visible once an excerpt lands);
+              excerpt → the pre-existing ready state plus the reversal. */}
+          {workshop.sessionReady && workshop.scope === null && !showLiveTurn && (
+            <WorkshopPathChooser
+              hostLabel={activePersona.label}
+              hostSpecialty={activePersona.specialty}
+              carriedExcerpt={workshop.excerpt ?? workshop.shelvedExcerpt ?? undefined}
+              carriedExcerptWordCount={excerptWordCount}
+              hasWorkingSet={hasWorkingSet}
+              contextAttachmentCount={workshop.contextAttachments.length}
+              disabled={roomMutationLocked || !workshop.sessionReady}
+              onContinueWithExcerpt={continueWithExcerpt}
+              onPasteExcerpt={addExcerptByPaste}
+              onChooseFromProject={addExcerptFromProject}
+              onStartOpenConversation={startOpenConversation}
+              onResetWorkingSet={startFullReset}
+            />
+          )}
+
+          {workshop.scope === 'open' && (
+            <WorkshopScopeStrip
               scope={workshop.scope}
               hostLabel={activePersona.label}
-              isRunning={roomMutationLocked}
               roomHasMemory={workshop.roomHasMemory}
-              onOpenPasteSheet={openPasteSheet}
-              onChooseFile={openExcerptSelector}
-              onRereadFile={workshop.rereadExcerpt}
-              onContinueWithExcerpt={continueWithExcerpt}
+              shelvedExcerptTitle={shelvedExcerptTitle}
+              shelvedExcerptVersion={workshop.shelvedExcerpt?.version}
+              disabled={roomMutationLocked}
+              onAddExcerpt={addExcerptByPaste}
               onRepinExcerpt={workshop.repinExcerpt}
-              onSetAside={startOpenConversation}
-              onStartOpenConversation={startOpenConversation}
             />
+          )}
 
-            <ContextPanel
-              attachments={workshop.contextAttachments}
-              pendingDelivery={workshop.contextPending}
-              isRunning={roomMutationLocked}
-              onAddText={openAddTextSheet}
-              onAddFile={openAttachSelector}
-              onRefreshFiles={workshop.refreshContextFiles}
-              onOpenAttachment={openAttachmentSheet}
-              onRemove={workshop.removeContextAttachment}
-              wizardRunning={workshop.wizardRunning}
-              onRunWizard={workshop.runContextWizard}
-              onCancelWizard={workshop.cancelContextWizard}
+          {workshop.scope === 'open' && workshop.turns.length === 0 && !showLiveTurn && (
+            <WorkshopOpenChatStart
+              hostLabel={activePersona.label}
+              disabled={!workshop.canMessage}
+              onStarter={seedComposerDraft}
             />
+          )}
 
-            {/* §9: gating only — no tool is redesigned. While no excerpt
-                exists, each row keeps its place and gains a NEEDS EXCERPT
-                badge, `aria-disabled` (focusable, so the reason is reachable),
-                a tooltip, and a toast on activation. */}
-            <div className="pm-ws-block pm-ws-block-grow">
-              <div className="pm-ws-block-head">
-                <div className="pm-ws-eyebrow">Tools</div>
-                {toolsGatedByExcerpt ? (
-                  <span className="pm-ws-ctx-count">unavailable</span>
-                ) : null}
-              </div>
-              <div className="pm-ws-tools" role="list">
-                {RAIL_TOOLS.map((tool) => (
+          {workshop.scope === 'excerpt' && workshop.turns.length === 0 && !showLiveTurn && (
+            <div className="pm-ws-thread-empty">
+              <Icon name="sparkle" size={22} />
+              <p className="pm-ws-thread-empty-title">Ready when you are.</p>
+              <p className="pm-ws-thread-empty-sub">
+                Ask {activePersona.label} about the excerpt, or run a tool from the left. The
+                excerpt stays pinned while the conversation grows here.
+              </p>
+              <div className="pm-ws-empty-actions">
+                {EMPTY_STATE_TOOLS.map((tool) => (
                   <button
                     key={tool.id}
-                    className={`pm-ws-tool ${
-                      workshop.selectedToolId === tool.id ? 'pm-ws-tool-active' : ''
-                    }${toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''}`}
+                    className="pm-ws-qa"
                     type="button"
-                    role="listitem"
-                    disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
-                    aria-disabled={toolsGatedByExcerpt ? true : undefined}
-                    onClick={toolsGatedByExcerpt
-                      ? announceToolGate
-                      : () => workshop.runTool(tool.id)}
-                    title={toolsGatedByExcerpt
-                      ? WORKSHOP_TOOLS_GATED_REASON
-                      : `Have ${activePersona.label} ask ${tool.label} to inspect the pinned excerpt`}
+                    disabled={!toolsEnabled}
+                    onClick={() => workshop.runTool(tool.id)}
                   >
-                    <Icon name={tool.icon} size={15} /> {tool.label}
-                    {toolsGatedByExcerpt ? (
-                      <span className="pm-ws-tool-lock">needs excerpt</span>
-                    ) : null}
+                    {tool.label}
                   </button>
                 ))}
-                <button
-                  className={`pm-ws-tool pm-ws-tool-ghost${
-                    toolsGatedByExcerpt ? ' pm-ws-tool-locked' : ''
-                  }`}
-                  type="button"
-                  role="listitem"
-                  disabled={toolsGatedByExcerpt ? false : !toolsEnabled}
-                  aria-disabled={toolsGatedByExcerpt ? true : undefined}
-                  onClick={toolsGatedByExcerpt ? announceToolGate : openToolsModal}
-                  title={toolsGatedByExcerpt ? WORKSHOP_TOOLS_GATED_REASON : 'All writing tools'}
-                >
-                  <Icon name="grid" size={15} /> All {WORKSHOP_TOOLS.length} tools…
+              </div>
+              {/* §4: the passage → open reversal, offered where the writer
+                  first realises they'd rather just talk. */}
+              <div className="pm-ws-changed-mind">
+                Changed your mind?{' '}
+                <button type="button" disabled={roomMutationLocked} onClick={startOpenConversation}>
+                  <Icon name="dialogue" size={13} /> Just chatting / brainstorming
                 </button>
               </div>
             </div>
-
-            <WorkshopTodoList
-              todos={workshop.todos}
-              onAction={workshop.todoAction}
-              onShowSource={showTodoSource}
-            />
-          </ErrorBoundary>
-        </aside>
-
-        <section className="pm-ws-main" aria-label="Session thread">
-          {sessionLoading && (
-            <div className="pm-ws-session-loading" role="status" aria-live="polite">
-              <div className="pm-ws-session-loading-card">
-                <span className="pm-ws-wizard-spin" aria-hidden="true" />
-                <strong>Loading…</strong>
-                <p>{workshopSessions.scanningContextFiles
-                  ? 'Scanning context files for updates…'
-                  : 'Opening your Workshop session…'}</p>
-              </div>
-            </div>
           )}
-          <div
-            className="pm-ws-session-content"
-            aria-busy={sessionLoading}
-            {...{ inert: sessionLoading ? '' : undefined }}
-          >
-          <ErrorBoundary
-            ref={threadErrorRef}
-            fallback={
-              <TabErrorFallback
-                tabName="Workshop thread"
-                onRetry={() => threadErrorRef.current?.reset()}
-              />
-            }
-            onError={handleBoundaryError}
-          >
-            <div className="pm-ws-thread" ref={threadRef}>
-              {/* §1: the center view keys off SCOPE. Unchosen → the path
-                  chooser; open → the honest open-chat block (with the scope
-                  strip above it, which stays visible once an excerpt lands);
-                  excerpt → the pre-existing ready state plus the reversal. */}
-              {workshop.sessionReady && workshop.scope === null && !showLiveTurn && (
-                <WorkshopPathChooser
-                  hostLabel={activePersona.label}
-                  hostSpecialty={activePersona.specialty}
-                  carriedExcerpt={workshop.excerpt ?? workshop.shelvedExcerpt ?? undefined}
-                  carriedExcerptWordCount={excerptWordCount}
-                  hasWorkingSet={hasWorkingSet}
-                  contextAttachmentCount={workshop.contextAttachments.length}
-                  disabled={roomMutationLocked || !workshop.sessionReady}
-                  onContinueWithExcerpt={continueWithExcerpt}
-                  onPasteExcerpt={addExcerptByPaste}
-                  onChooseFromProject={addExcerptFromProject}
-                  onStartOpenConversation={startOpenConversation}
-                  onResetWorkingSet={startFullReset}
-                />
-              )}
 
-              {workshop.scope === 'open' && (
-                <WorkshopScopeStrip
-                  scope={workshop.scope}
-                  hostLabel={activePersona.label}
-                  roomHasMemory={workshop.roomHasMemory}
-                  shelvedExcerptTitle={shelvedExcerptTitle}
-                  shelvedExcerptVersion={workshop.shelvedExcerpt?.version}
-                  disabled={roomMutationLocked}
-                  onAddExcerpt={addExcerptByPaste}
-                  onRepinExcerpt={workshop.repinExcerpt}
-                />
-              )}
+          <WorkshopThread
+            turns={workshop.turns}
+            toolSidecars={workshop.toolSidecars}
+            todos={workshop.todos}
+            currentExcerptVersion={workshop.excerpt?.version ?? 0}
+            quickActionsDisabled={!workshop.canMessage}
+            onQuickAction={workshop.quickAction}
+            onTalkDirectly={(toolId) => workshop.setChatTarget({ kind: 'tool', toolId })}
+            onAddTodo={(sourceTurnId, findingKey) => workshop.todoAction({
+              action: 'add',
+              sourceTurnId,
+              findingKey
+            })}
+            onCopy={copyTurn}
+            onSave={saveTurn}
+            onOpenWidgetConfig={widgetOpening.openWidgetConfig}
+            widgetConfigSummaries={widgetHost.widgetConfigSummaries}
+            onOpenWidgetRecommendation={widgetOpening.openWidgetRecommendation}
+            turnRewindability={threadRewindability}
+            rewindPausedReason={rewindPausedReason}
+            onRewind={requestRewind}
+            turnBranchability={workshop.turnRewindability}
+            branchPausedReason={branchPausedReason}
+            onBranch={requestBranch}
+          />
 
-              {workshop.scope === 'open' && workshop.turns.length === 0 && !showLiveTurn && (
-                <WorkshopOpenChatStart
-                  hostLabel={activePersona.label}
-                  disabled={!workshop.canMessage}
-                  onStarter={seedComposerDraft}
-                />
-              )}
-
-              {workshop.scope === 'excerpt' && workshop.turns.length === 0 && !showLiveTurn && (
-                <div className="pm-ws-thread-empty">
-                  <Icon name="sparkle" size={22} />
-                  <p className="pm-ws-thread-empty-title">Ready when you are.</p>
-                  <p className="pm-ws-thread-empty-sub">
-                    Ask {activePersona.label} about the excerpt, or run a tool from the left. The
-                    excerpt stays pinned while the conversation grows here.
-                  </p>
-                  <div className="pm-ws-empty-actions">
-                    {EMPTY_STATE_TOOLS.map((tool) => (
-                      <button
-                        key={tool.id}
-                        className="pm-ws-qa"
-                        type="button"
-                        disabled={!toolsEnabled}
-                        onClick={() => workshop.runTool(tool.id)}
-                      >
-                        {tool.label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* §4: the passage → open reversal, offered where the writer
-                      first realises they'd rather just talk. */}
-                  <div className="pm-ws-changed-mind">
-                    Changed your mind?{' '}
-                    <button type="button" disabled={roomMutationLocked} onClick={startOpenConversation}>
-                      <Icon name="dialogue" size={13} /> Just chatting / brainstorming
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <WorkshopThread
-                turns={workshop.turns}
-                toolSidecars={workshop.toolSidecars}
-                todos={workshop.todos}
-                currentExcerptVersion={workshop.excerpt?.version ?? 0}
-                quickActionsDisabled={!workshop.canMessage}
-                onQuickAction={workshop.quickAction}
-                onTalkDirectly={(toolId) => workshop.setChatTarget({ kind: 'tool', toolId })}
-                onAddTodo={(sourceTurnId, findingKey) => workshop.todoAction({
-                  action: 'add',
-                  sourceTurnId,
-                  findingKey
-                })}
-                onCopy={copyTurn}
-                onSave={saveTurn}
-                onOpenWidgetConfig={widgetOpening.openWidgetConfig}
-                widgetConfigSummaries={widgetHost.widgetConfigSummaries}
-                onOpenWidgetRecommendation={widgetOpening.openWidgetRecommendation}
-                turnRewindability={threadRewindability}
-                rewindPausedReason={rewindPausedReason}
-                onRewind={requestRewind}
-                turnBranchability={workshop.turnRewindability}
-                branchPausedReason={branchPausedReason}
-                onBranch={requestBranch}
-              />
-
-              {showLiveTurn && (
-                workshop.streamingChunkCount === 0 ? (
-                  /* Warm-up placeholder: the SAME pulsing live line as the
-                     gutter ticker (pm-ws-ticker-live), parked where the turn
-                     will land — not the shared big loader. It disappears at
-                     the first token; the gutter ticker stays, as usual. */
-                  <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live pm-ws-turn-waiting">
-                    <span className="pm-ws-ticker-live">
-                      <Icon name="bolt" size={12} />
-                      {workshop.statusMessage || 'Warming up the minion…'}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live">
-                    <StreamingContent
-                      content={visibleStreamingContent}
-                      isStreaming={workshop.isStreaming}
-                      isBuffering={workshop.isBuffering}
-                      chunkCount={workshop.streamingChunkCount}
-                      elapsedMs={workshop.streamingElapsedMs}
-                      initialLatencyMs={workshop.streamingInitialLatencyMs}
-                      chunksPerSecond={workshop.streamingChunksPerSecond}
-                    />
-                  </div>
-                )
-              )}
-
-              {workshop.errorMessage && (
-                <div className="pm-ws-error" role="alert">
-                  <span>{workshop.errorMessage}</span>
-                  <button type="button" onClick={workshop.clearError} aria-label="Dismiss error">
-                    <Icon name="x" size={13} />
-                  </button>
-                </div>
-              )}
-
-              {workshop.hiddenTurns > 0 && (
-                <div className="pm-ws-thread-hidden">
-                  Only the latest {workshop.turns.length.toLocaleString()} turns are visible;{' '}
-                  {workshop.hiddenTurns.toLocaleString()} earlier turn
-                  {workshop.hiddenTurns === 1 ? ' is' : 's are'} preserved.
-                  {' '}Pagination is coming soon. The full session remains preserved.
-                </div>
-              )}
-            </div>
-          </ErrorBoundary>
-
-          <ErrorBoundary
-            ref={composerErrorRef}
-            fallback={
-              <TabErrorFallback
-                tabName="Workshop composer"
-                onRetry={() => composerErrorRef.current?.reset()}
-              />
-            }
-            onError={handleBoundaryError}
-          >
-            {/* Composer band (composer-messaging v2): ticker centered above the
-                divider (thread-side — it narrates the run), the divider on the
-                ticker's bottom edge, then the rail below it grouped with the
-                composer it routes into; the keyboard hint sits centered under
-                the text entry. The ticker slot is ALWAYS mounted with a
-                reserved height so messages coming and going never jitter the
-                band (or move the divider), and the live region exists before
-                its first announcement. */}
-            <div className="pm-ws-status-ticker" role="status" aria-live="polite">
-              {(workshop.tickerMessage || workshop.statusMessage) && (
+          {showLiveTurn && (
+            workshop.streamingChunkCount === 0 ? (
+              /* Warm-up placeholder: the SAME pulsing live line as the
+                 gutter ticker (pm-ws-ticker-live), parked where the turn
+                 will land — not the shared big loader. It disappears at
+                 the first token; the gutter ticker stays, as usual. */
+              <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live pm-ws-turn-waiting">
                 <span className="pm-ws-ticker-live">
                   <Icon name="bolt" size={12} />
-                  {workshop.tickerMessage || workshop.statusMessage}
+                  {workshop.statusMessage || 'Warming up the minion…'}
                 </span>
-              )}
-            </div>
-            <WorkshopParticipantRail
-              personaId={activePersona.id}
-              personaLabel={activePersona.label}
-              toolSidecars={workshop.toolSidecars}
-              personaGuests={workshop.personaGuests}
-              chatTarget={workshop.chatTarget}
-              onSetChatTarget={workshop.setChatTarget}
-              disabled={showLiveTurn || roomMutationLocked}
-              showInviteGuest={canInviteGuest}
-              onInviteGuest={openGuestModal}
-              onDismissGuest={workshop.dismissGuest}
-            />
-            {/* Scope copy belongs to the header and scope strip. This gauge
-                names the participant whose retained context it measures. */}
-            <ContextBudget
-              participantIdentity={chatTargetIdentity}
-              participantLabel={chatTargetLabel}
-              showsContextSuffix={!(workshop.scope === 'open' && !hasExcerpt)}
-              snapshot={workshop.contextBudget?.snapshot}
-              modelOptions={modelsSettings.modelOptions}
-              cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
-              sources={workshop.contextBudget?.sources}
-              requesterLabel={activePersona.label}
-            />
-            <WorkshopStandingDirectiveRail
-              directives={workshop.standingDirectives}
-              disabled={showLiveTurn || roomMutationLocked}
-              removingWidgetIds={standingDirectives.removingWidgetIds}
-              formatSummary={standingDirectives.formatSummary}
-              onEdit={widgetOpening.openWidgetConfig}
-              onRemove={standingDirectives.remove}
-            />
-            <WorkshopComposer
-              canMessage={workshop.canMessage && !roomMutationLocked}
-              scope={workshop.scope}
-              hasExcerpt={hasExcerpt}
-              roomHasMemory={workshop.roomHasMemory}
-              draftSeed={workshop.composerDraftSeed}
-              onAddExcerpt={addExcerptByPaste}
-              hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
-              recipientLabel={chatTargetLabel}
-              cacheRequestModelId={workshop.contextBudget?.snapshot?.cacheRequestModelId}
-              estimatedCacheExpiresAt={
-                workshop.contextBudget?.snapshot?.cacheRequestModelId
-                  === (modelsSettings.modelSelections.assistant ?? modelsSettings.settings.assistantModel)
-                  ? workshop.contextBudget?.snapshot?.estimatedCacheExpiresAt : undefined
-              }
-              isRunning={workshop.isRunning}
-              sessionReady={workshop.sessionReady}
-              conversationBehavior={workshop.conversationBehavior}
-              writerProfileShared={isWorkshopWriterProfileActive(workshop.writerProfile)}
-              messageAttachments={workshop.pendingMessageAttachments}
-              onSend={workshop.sendMessage}
-              onCancel={workshop.cancelRun}
-              onOpenContext={openContext}
-              onAttachToMessage={openMessageAttachSelector}
-              onRemoveMessageAttachment={workshop.removeMessageAttachment}
-              onOpenConversationSettings={openBehaviorModal}
-              onOpenTools={openToolsModal}
-              onOpenWidgets={openWidgetsModal}
-            />
-          </ErrorBoundary>
-          </div>
-        </section>
-      </div>
+              </div>
+            ) : (
+              <div className="pm-ws-turn pm-ws-turn-assistant pm-ws-turn-live">
+                <StreamingContent
+                  content={visibleStreamingContent}
+                  isStreaming={workshop.isStreaming}
+                  isBuffering={workshop.isBuffering}
+                  chunkCount={workshop.streamingChunkCount}
+                  elapsedMs={workshop.streamingElapsedMs}
+                  initialLatencyMs={workshop.streamingInitialLatencyMs}
+                  chunksPerSecond={workshop.streamingChunksPerSecond}
+                />
+              </div>
+            )
+          )}
 
+          {workshop.errorMessage && (
+            <div className="pm-ws-error" role="alert">
+              <span>{workshop.errorMessage}</span>
+              <button type="button" onClick={workshop.clearError} aria-label="Dismiss error">
+                <Icon name="x" size={13} />
+              </button>
+            </div>
+          )}
+
+          {workshop.hiddenTurns > 0 && (
+            <div className="pm-ws-thread-hidden">
+              Only the latest {workshop.turns.length.toLocaleString()} turns are visible;{' '}
+              {workshop.hiddenTurns.toLocaleString()} earlier turn
+              {workshop.hiddenTurns === 1 ? ' is' : 's are'} preserved.
+              {' '}Pagination is coming soon. The full session remains preserved.
+            </div>
+          )}
+        </div>
+      </ErrorBoundary>
+
+      <ErrorBoundary
+        ref={composerErrorRef}
+        fallback={
+          <TabErrorFallback
+            tabName="Workshop composer"
+            onRetry={() => composerErrorRef.current?.reset()}
+          />
+        }
+        onError={handleBoundaryError}
+      >
+        {/* Composer band (composer-messaging v2): ticker centered above the
+            divider (thread-side — it narrates the run), the divider on the
+            ticker's bottom edge, then the rail below it grouped with the
+            composer it routes into; the keyboard hint sits centered under
+            the text entry. The ticker slot is ALWAYS mounted with a
+            reserved height so messages coming and going never jitter the
+            band (or move the divider), and the live region exists before
+            its first announcement. */}
+        <div className="pm-ws-status-ticker" role="status" aria-live="polite">
+          {(workshop.tickerMessage || workshop.statusMessage) && (
+            <span className="pm-ws-ticker-live">
+              <Icon name="bolt" size={12} />
+              {workshop.tickerMessage || workshop.statusMessage}
+            </span>
+          )}
+        </div>
+        <WorkshopParticipantRail
+          personaId={activePersona.id}
+          personaLabel={activePersona.label}
+          toolSidecars={workshop.toolSidecars}
+          personaGuests={workshop.personaGuests}
+          chatTarget={workshop.chatTarget}
+          onSetChatTarget={workshop.setChatTarget}
+          disabled={showLiveTurn || roomMutationLocked}
+          showInviteGuest={canInviteGuest}
+          onInviteGuest={openGuestModal}
+          onDismissGuest={workshop.dismissGuest}
+        />
+        {/* Scope copy belongs to the header and scope strip. This gauge
+            names the participant whose retained context it measures. */}
+        <ContextBudget
+          participantIdentity={chatTargetIdentity}
+          participantLabel={chatTargetLabel}
+          showsContextSuffix={!(workshop.scope === 'open' && !hasExcerpt)}
+          snapshot={workshop.contextBudget?.snapshot}
+          modelOptions={modelsSettings.modelOptions}
+          cumulativeProcessedTokens={tokenTracking.usage.totalTokens}
+          sources={workshop.contextBudget?.sources}
+          requesterLabel={activePersona.label}
+        />
+        <WorkshopStandingDirectiveRail
+          directives={workshop.standingDirectives}
+          disabled={showLiveTurn || roomMutationLocked}
+          removingWidgetIds={standingDirectives.removingWidgetIds}
+          formatSummary={standingDirectives.formatSummary}
+          onEdit={widgetOpening.openWidgetConfig}
+          onRemove={standingDirectives.remove}
+        />
+        <WorkshopComposer
+          canMessage={workshop.canMessage && !roomMutationLocked}
+          scope={workshop.scope}
+          hasExcerpt={hasExcerpt}
+          roomHasMemory={workshop.roomHasMemory}
+          draftSeed={workshop.composerDraftSeed}
+          onAddExcerpt={addExcerptByPaste}
+          hasConversation={workshop.chatTarget.kind === 'host' ? workshop.hasHostConversation : true}
+          recipientLabel={chatTargetLabel}
+          cacheRequestModelId={workshop.contextBudget?.snapshot?.cacheRequestModelId}
+          estimatedCacheExpiresAt={
+            workshop.contextBudget?.snapshot?.cacheRequestModelId
+              === (modelsSettings.modelSelections.assistant ?? modelsSettings.settings.assistantModel)
+              ? workshop.contextBudget?.snapshot?.estimatedCacheExpiresAt : undefined
+          }
+          isRunning={workshop.isRunning}
+          sessionReady={workshop.sessionReady}
+          conversationBehavior={workshop.conversationBehavior}
+          writerProfileShared={isWorkshopWriterProfileActive(workshop.writerProfile)}
+          messageAttachments={workshop.pendingMessageAttachments}
+          onSend={workshop.sendMessage}
+          onCancel={workshop.cancelRun}
+          onOpenContext={openContext}
+          onAttachToMessage={openMessageAttachSelector}
+          onRemoveMessageAttachment={workshop.removeMessageAttachment}
+          onOpenConversationSettings={openBehaviorModal}
+          onOpenTools={openToolsModal}
+          onOpenWidgets={openWidgetsModal}
+        />
+      </ErrorBoundary>
+      </div>
+    </>
+  );
+
+  return (
+    <FullTabShell
+      brand={{
+        eyebrow: 'Prose Minion · Assistant',
+        title: 'Workshop',
+        subtitle: headerSubtitle
+      }}
+      headerActions={headerActions}
+      banners={banners}
+      rail={{ label: 'Session rail', boundaryName: 'Workshop rail', content: railContent }}
+      main={{ label: 'Session thread', content: mainContent }}
+      onBoundaryError={handleBoundaryError}
+    >
       {/* The ONE Edit/Preview sheet for excerpt paste, Add text, editing a
           text note, editing a wizard-generated brief, and reading a project file
           (Sprint 13A §5–§7). */}
@@ -1778,6 +1731,6 @@ export const WorkshopApp: React.FC = () => {
         onCancel={cancelSessionConfirm}
       />
       <WorkshopToast toast={toast} />
-    </div>
+    </FullTabShell>
   );
 };
