@@ -9,10 +9,26 @@
  * open workspace folder; the file picker is the existing ShellService seam
  * the Workshop's "Pin from file…" uses.
  *
+ * Source ownership (PR #148 F-01). Every source request takes a ticket from
+ * the shared LightboxService the moment the writer's choice is concrete, and
+ * before anything is awaited: a selection or seeded file when its request
+ * arrives, a re-read when it is asked for, a picked file when the picker
+ * returns it. Opening the picker is not a choice (the writer may dismiss it,
+ * and a dismissal changes nothing). Reads and builds then run under that
+ * ticket, and the service adopts or refuses only under the newest one.
+ *
+ * This handler never posts a request's result itself. It subscribes to the
+ * service's outcomes the first time its webview sends any `LIGHTBOX_*`
+ * message (so the sidebar and Workshop webviews, which never do, receive no
+ * boards) and posts whatever the service publishes, whichever handler started
+ * the request. A request that outlives its panel therefore lands in the panel
+ * that replaced it, and a disposed handler, unsubscribed, posts nothing.
+ *
  * Logs name paths, counts and refusal reasons. They never carry the writer's
  * text.
  */
 
+import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LogSink, ShellService } from '@/platform';
 import {
@@ -21,8 +37,10 @@ import {
 } from '@/infrastructure/text/TextSourceResolver';
 import type {
   LightboxBoardResult,
+  LightboxOutcomeChange,
   LightboxService,
-  LightboxSourceInput
+  LightboxSourceInput,
+  LightboxSourceTicket
 } from '@/infrastructure/lightbox/LightboxService';
 import {
   LightboxBoard,
@@ -43,7 +61,17 @@ const SOURCE = 'extension.lightbox';
 /** The parts of the picker port this handler uses. */
 type LightboxFilePicker = Pick<ShellService, 'pickFile'>;
 
+/** A file to read: where to read it, its URI, and the name the writer sees. */
+interface LightboxFileRequest {
+  filePath: string;
+  sourceUri: string | undefined;
+  displayPath: string;
+}
+
 export class LightboxHandler {
+  private unsubscribe?: () => void;
+  private disposed = false;
+
   constructor(
     private readonly lightboxService: LightboxService,
     private readonly textSourceResolver: TextSourceResolver,
@@ -59,8 +87,16 @@ export class LightboxHandler {
     router.register(MessageType.LIGHTBOX_REFRESH_SOURCE, this.handleRefreshSource.bind(this));
   }
 
+  /** Stop hearing the service's outcomes; a disposed handler posts nothing more. */
+  dispose(): void {
+    this.disposed = true;
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
+  }
+
   /** Mount and reveal: answer with the current board, or `null` before the first one. */
   async handleRequestBoard(_message: LightboxRequestBoardMessage): Promise<void> {
+    this.subscribe();
     this.postBoard(this.lightboxService.currentBoard() ?? null);
   }
 
@@ -69,11 +105,13 @@ export class LightboxHandler {
    * editor commands send this through the panel's own handler.
    */
   async handleSetSource(message: LightboxSetSourceMessage): Promise<void> {
+    this.subscribe();
+    const ticket = this.lightboxService.beginSourceRequest();
     const payload = message.payload ?? {};
     const displayPath = payload.relativePath?.trim() || 'Selection';
 
     if (typeof payload.text === 'string') {
-      await this.board({
+      await this.board(ticket, {
         kind: 'selection',
         text: payload.text,
         displayPath,
@@ -86,7 +124,7 @@ export class LightboxHandler {
 
     const filePath = fileSystemPathOf(payload.sourceUri);
     if (!filePath) {
-      this.refuse({
+      this.refuse(ticket, {
         reason: 'unreadable',
         message: 'Only a saved file can be boarded this way.',
         displayPath,
@@ -94,11 +132,16 @@ export class LightboxHandler {
       });
       return;
     }
-    await this.boardFile(filePath, payload.sourceUri);
+    await this.boardFile(ticket, { filePath, sourceUri: payload.sourceUri, displayPath });
   }
 
-  /** "Choose file": the host picker is the input; dismissing it is not an error. */
+  /**
+   * "Choose file": the host picker is the input. The request is minted when
+   * the picker returns a file, not when it opens: dismissing it changes
+   * nothing, and a choice made while it was open stays newer than nothing.
+   */
   async handlePickSourceFile(_message: LightboxPickSourceFileMessage): Promise<void> {
+    this.subscribe();
     const picked = await this.shell.pickFile({
       title: 'Open a file in the Lightbox',
       openLabel: 'Open',
@@ -108,93 +151,132 @@ export class LightboxHandler {
     if (!picked) {
       return;
     }
-    await this.boardFile(picked.fsPath, picked.uri);
+    const ticket = this.lightboxService.beginSourceRequest();
+    await this.boardFile(ticket, {
+      filePath: picked.fsPath,
+      sourceUri: picked.uri,
+      displayPath: path.basename(picked.fsPath) || picked.fsPath
+    });
   }
 
   /** "Re-read file": board the current file-backed source again. */
   async handleRefreshSource(_message: LightboxRefreshSourceMessage): Promise<void> {
+    this.subscribe();
+    const ticket = this.lightboxService.beginSourceRequest();
     const target = this.lightboxService.currentRereadTarget();
     if (!target) {
-      this.refuse({
+      this.refuse(ticket, {
         reason: 'not-refreshable',
         message: 'There is no file to re-read.',
         suggestion: 'Choose a file, or send a new selection.'
       });
       return;
     }
-    await this.boardFile(target.rereadPath, target.sourceUri);
+    await this.boardFile(ticket, {
+      filePath: target.rereadPath,
+      sourceUri: target.sourceUri,
+      displayPath: target.displayPath
+    });
   }
 
-  private async boardFile(filePath: string, sourceUri: string | undefined): Promise<void> {
+  /** Subscribe once, on this webview's first Lightbox message. */
+  private subscribe(): void {
+    if (this.unsubscribe || this.disposed) {
+      return;
+    }
+    this.unsubscribe = this.lightboxService.addOutcomeListener((change) => this.publish(change));
+  }
+
+  private publish(change: LightboxOutcomeChange): void {
+    switch (change.kind) {
+      case 'board':
+        this.postBoard(change.board);
+        return;
+      case 'refusal':
+        this.postRefusal(change.refusal);
+        return;
+    }
+  }
+
+  private async boardFile(ticket: LightboxSourceTicket, request: LightboxFileRequest): Promise<void> {
     let resolved: { text: string; displayPath: string };
     try {
-      const source = await this.textSourceResolver.resolve({ mode: 'activeFile', pathText: filePath });
+      const source = await this.textSourceResolver.resolve({ mode: 'activeFile', pathText: request.filePath });
       resolved = {
         text: source.text,
-        displayPath: source.displayPath ?? source.relativePaths[0] ?? filePath
+        displayPath: source.displayPath ?? source.relativePaths[0] ?? request.displayPath
       };
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[LightboxHandler] Could not read a source file: ${detail}`);
-      this.refuse({
+      this.refuse(ticket, {
         reason: 'unreadable',
         message: readFailureMessage(detail),
+        displayPath: request.displayPath,
         suggestion: 'Choose a text or Markdown file inside an open workspace folder.'
       });
       return;
     }
 
-    await this.board({
+    await this.board(ticket, {
       kind: 'file',
       text: resolved.text,
       displayPath: resolved.displayPath,
-      sourceUri,
-      rereadPath: filePath
+      sourceUri: request.sourceUri,
+      rereadPath: request.filePath
     });
   }
 
-  private async board(input: LightboxSourceInput): Promise<void> {
+  private async board(ticket: LightboxSourceTicket, input: LightboxSourceInput): Promise<void> {
     let result: LightboxBoardResult;
     try {
-      result = await this.lightboxService.buildBoard(input);
+      result = await this.lightboxService.buildBoard(input, ticket);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       this.outputChannel.appendLine(`[LightboxHandler] Board failed for ${input.displayPath}: ${detail}`);
-      this.refuse({
+      this.refuse(ticket, {
         reason: 'unreadable',
         message: 'The board could not be built from that source.',
         displayPath: input.displayPath
       });
       return;
     }
+    this.logResult(result, input.displayPath);
+  }
 
+  /** Refuse `ticket`'s source; the service publishes it only if no newer request arrived. */
+  private refuse(ticket: LightboxSourceTicket, refusal: LightboxSourceRefusal): void {
+    this.logResult(this.lightboxService.refuseSource(ticket, refusal), refusal.displayPath);
+  }
+
+  private logResult(result: LightboxBoardResult, displayPath: string | undefined): void {
+    const where = displayPath ? ` for ${displayPath}` : '';
     switch (result.kind) {
-      case 'refused':
-        this.refuse(result.refusal);
-        return;
-      case 'superseded':
-        this.outputChannel.appendLine(
-          `[LightboxHandler] Dropped a board for ${input.displayPath}: a newer source arrived first`
-        );
-        return;
       case 'board': {
         const { source } = result.board;
         this.outputChannel.appendLine(
           `[LightboxHandler] Board ${result.reused ? 'unchanged' : 'built'} for ${source.displayPath}: ` +
             `${source.wordCount} words, ${source.paragraphCount} paragraphs`
         );
-        this.postBoard(result.board);
         return;
       }
+      case 'refused': {
+        const { refusal } = result;
+        this.outputChannel.appendLine(
+          `[LightboxHandler] Source refused (${refusal.reason})${where}` +
+            (refusal.wordCount !== undefined ? `: ${refusal.wordCount} words` : '')
+        );
+        return;
+      }
+      case 'superseded':
+        this.outputChannel.appendLine(
+          `[LightboxHandler] Dropped the outcome${where}: a newer source was chosen`
+        );
+        return;
     }
   }
 
-  private refuse(refusal: LightboxSourceRefusal): void {
-    this.outputChannel.appendLine(
-      `[LightboxHandler] Source refused (${refusal.reason})` +
-        (refusal.displayPath ? ` for ${refusal.displayPath}` : '') +
-        (refusal.wordCount !== undefined ? `: ${refusal.wordCount} words` : '')
-    );
+  private postRefusal(refusal: LightboxSourceRefusal): void {
     const message: LightboxSourceRefusedMessage = {
       type: MessageType.LIGHTBOX_SOURCE_REFUSED,
       source: SOURCE,

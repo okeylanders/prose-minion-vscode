@@ -278,6 +278,43 @@ describe('LightboxService boards per source (D12)', () => {
     expect(service.currentBoard()?.source.displayPath).toBe('Drafts/fast.md');
   });
 
+  it('adopts and refuses only under the newest request ticket (PR #148 F-01)', async () => {
+    const { service, spies } = createService();
+    const changes: string[] = [];
+    service.addOutcomeListener((change) =>
+      changes.push(change.kind === 'board' ? `board ${change.board.source.displayPath}` : `refusal ${change.refusal.reason}`)
+    );
+    const older = service.beginSourceRequest();
+    const newer = service.beginSourceRequest();
+
+    expect(service.isCurrentRequest(older)).toBe(false);
+    expect(await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'older.md'), older)).toEqual({ kind: 'superseded' });
+    expect(spies.proseStats).not.toHaveBeenCalled();
+    expect(service.refuseSource(older, { reason: 'unreadable', message: 'Gone.' })).toEqual({ kind: 'superseded' });
+    expect(changes).toEqual([]);
+
+    const result = await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'newer.md'), newer);
+    expect(result.kind).toBe('board');
+    expect(service.refuseSource(newer, { reason: 'unreadable', message: 'Gone.' }).kind).toBe('refused');
+    expect(changes).toEqual(['board newer.md', 'refusal unreadable']);
+    expect(service.currentBoard()?.source.displayPath).toBe('newer.md');
+  });
+
+  it('publishes outcomes to each subscriber until it unsubscribes', async () => {
+    const { service } = createService();
+    const first = jest.fn();
+    const second = jest.fn();
+    const stopFirst = service.addOutcomeListener(first);
+    service.addOutcomeListener(second);
+
+    await service.buildBoard(fileSource(ALICE_OPENING_CURLY));
+    stopFirst();
+    await service.buildBoard(fileSource(aliceWords(50_001), 'Drafts/whole-book.md'));
+
+    expect(first.mock.calls.map(([change]) => change.kind)).toEqual(['board']);
+    expect(second.mock.calls.map(([change]) => change.kind)).toEqual(['board', 'refusal']);
+  });
+
   it('retains a bounded number of boards, oldest out first', async () => {
     const { service } = createService({ retainedBoards: 2 });
     await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'a.md'));
