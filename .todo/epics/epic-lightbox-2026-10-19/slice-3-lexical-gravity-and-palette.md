@@ -235,6 +235,22 @@ differs from the plan above, or the plan left a choice open:
   and estimate follow them. Typical output per lens is a fixed guess
   (gravity 1,500 tokens, palette 760) until Slice 6 measures it.
 
+**After PR #149's fixes** (merged in before review)
+
+- The palette's counted words ride in the press snapshot
+  (`LightboxPressSnapshot`), so the estimate key that names a press's
+  inputs covers them through the board's content hash; gravity and palette
+  join the key through `LIGHTBOX_LENSES`.
+- A carried group keeps its per-lens `quoteChecks`, and each quote now gone
+  counts as withheld in its lens, so the tally stays honest on a stale
+  board.
+- The gravity and palette decoders use `strictObject`: a field the format
+  does not define is counted, never named, and every withheld reason they
+  write is host-owned (a collision or set-aside never echoes a model's
+  names in its reason).
+- The handoff's logs name paths, counts and host-owned refusals only; a
+  failed file check logs no resolver text.
+
 **Not built here**
 
 - A group in flight when the chapter changes still loses its result
