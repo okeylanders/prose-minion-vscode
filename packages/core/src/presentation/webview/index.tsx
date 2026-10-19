@@ -11,6 +11,13 @@
 
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
+// The shared full-tab frame loads FIRST. style-loader inserts sheets in module
+// evaluation order, and each tab's own sheets (imported by its root below)
+// must follow the frame, so a tab rule of equal specificity still wins, as it
+// did when these rules sat at the top of the Workshop's shell.css. The order
+// is pinned by workshopStyles.test.ts.
+import './styles/fulltab/tokens.css';
+import './styles/fulltab/shell.css';
 import { App } from './App';
 import { WorkshopApp } from './WorkshopApp';
 import { LightboxApp } from './LightboxApp';
