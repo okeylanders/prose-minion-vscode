@@ -7,9 +7,18 @@
  * (exact numbers, even when the ribbon buckets them; each chip pins that
  * paragraph), and what code counted. Actions that cross into the Workshop or
  * the editor arrive with later slices.
+ *
+ * The addresses render a page at a time (PR #148 F-04). With more than one
+ * page, a pager steps between them and jumps to a paragraph number, all by
+ * keyboard, without changing the pin; a jump focuses the address it lands on.
+ * Paging is not announced chip by chip: the range label is the change the
+ * live inspector reads out.
  */
 import * as React from 'react';
-import type { LightboxInspectorView } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
+import type {
+  LightboxInspectorView,
+  LightboxParagraphPage
+} from '@hooks/domain/lightbox/controllers/useLightboxInspector';
 import type { LightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { Icon } from '@components/shared/Icon';
@@ -17,16 +26,90 @@ import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 
 export interface LightboxInspectorProps {
   view: LightboxInspectorView | null;
+  /** The page of `view.paragraphs` to render. */
+  paragraphPage: LightboxParagraphPage | null;
   onClear: () => void;
   onPinParagraph: (index: number) => void;
+  onShowParagraphPage: (page: number) => void;
+  onJumpToParagraph: (index: number) => void;
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
 }
 
-/** Paragraph chips shown before the list collapses to a count. */
-const PARAGRAPH_CHIPS = 48;
+/** Focus the chip a jump landed on, when it mounts. */
+const focusOnMount = (chip: HTMLButtonElement | null) => chip?.focus();
+
+/** "¶765–¶812 (337–347 of 347)": the addresses on show, then where they sit in the list. */
+function rangeLabel(page: LightboxParagraphPage): { addresses: string; positions: string } {
+  const first = page.shown[0];
+  const last = page.shown[page.shown.length - 1];
+  const positions = page.from === page.to ? `${page.from}` : `${page.from}–${page.to}`;
+  return {
+    addresses: first === last ? `¶${first}` : `¶${first}–¶${last}`,
+    positions: `(${positions} of ${page.total.toLocaleString('en-US')})`
+  };
+}
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
-export const LightboxInspector: React.FC<LightboxInspectorProps> = ({ view, onClear, onPinParagraph, bind }) => {
+const LightboxParagraphPager: React.FC<{
+  page: LightboxParagraphPage;
+  onShowPage: (page: number) => void;
+  onJump: (index: number) => void;
+}> = ({ page, onShowPage, onJump }) => {
+  const submitJump = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const field = event.currentTarget.elements.namedItem('paragraph') as HTMLInputElement | null;
+    const index = Number(field?.value);
+    if (Number.isInteger(index) && index >= 1) {
+      onJump(index);
+    }
+  };
+  const label = rangeLabel(page);
+  return (
+    <div className="pm-lb-para-pager">
+      <div className="pm-lb-para-nav" role="group" aria-label="Paragraph pages">
+        <button
+          type="button"
+          className="pm-lb-para-step"
+          aria-label="Previous paragraphs"
+          disabled={page.page === 0}
+          onClick={() => onShowPage(page.page - 1)}
+        >
+          <Icon name="chevLeft" size={12} />
+        </button>
+        <span className="pm-lb-para-range">
+          <span>{label.addresses}</span> <span className="pm-lb-para-position">{label.positions}</span>
+        </span>
+        <button
+          type="button"
+          className="pm-lb-para-step"
+          aria-label="Next paragraphs"
+          disabled={page.page >= page.pageCount - 1}
+          onClick={() => onShowPage(page.page + 1)}
+        >
+          <Icon name="chevRight" size={12} />
+        </button>
+      </div>
+      <form className="pm-lb-para-jump" aria-label="Go to a paragraph" onSubmit={submitJump}>
+        <label>
+          Go to ¶
+          <input name="paragraph" type="number" min={1} step={1} inputMode="numeric" />
+        </label>
+        <button type="submit" className="pm-lb-para-step">Go</button>
+      </form>
+    </div>
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
+  view,
+  paragraphPage,
+  onClear,
+  onPinParagraph,
+  onShowParagraphPage,
+  onJumpToParagraph,
+  bind
+}) => {
   if (!view) {
     return (
       <div className="pm-lb-inspector">
@@ -57,8 +140,7 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({ view, onCl
     );
   }
 
-  const shown = view.paragraphs.slice(0, PARAGRAPH_CHIPS);
-  const hidden = view.paragraphs.length - shown.length;
+  const page = paragraphPage;
 
   return (
     <div className="pm-lb-inspector" aria-live="polite">
@@ -75,23 +157,28 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({ view, onCl
 
       <div>
         <p className="pm-lb-label">Where it lives · {view.paragraphLabel}</p>
-        {view.paragraphs.length === 0 ? (
+        {view.paragraphs.length === 0 || !page ? (
           <p className="pm-lb-empty-note">No single paragraph holds it.</p>
         ) : (
-          <div className="pm-lb-para-chips">
-            {shown.map((index) => (
-              <button
-                key={index}
-                type="button"
-                className="pm-lb-para-chip"
-                title={`Pin ¶${index}`}
-                onClick={() => onPinParagraph(index)}
-              >
-                ¶{index}
-              </button>
-            ))}
-            {hidden > 0 && <span className="pm-lb-para-more">+{hidden} more</span>}
-          </div>
+          <>
+            {page.pageCount > 1 && (
+              <LightboxParagraphPager page={page} onShowPage={onShowParagraphPage} onJump={onJumpToParagraph} />
+            )}
+            <div className="pm-lb-para-chips" aria-live="off">
+              {page.shown.map((index) => (
+                <button
+                  key={index}
+                  ref={index === page.target ? focusOnMount : undefined}
+                  type="button"
+                  className={`pm-lb-para-chip${index === page.target ? ' is-target' : ''}`}
+                  title={`Pin ¶${index}`}
+                  onClick={() => onPinParagraph(index)}
+                >
+                  ¶{index}
+                </button>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

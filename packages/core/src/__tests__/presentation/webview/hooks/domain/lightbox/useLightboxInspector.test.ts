@@ -7,11 +7,15 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
+import type { LightboxBoard } from '@messages';
 import {
+  LIGHTBOX_PARAGRAPH_PAGE_SIZE,
   buildLightboxInspectorView,
+  lightboxParagraphJump,
+  pageLightboxParagraphs,
   useLightboxInspector
 } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
-import { parseLightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
+import { LightboxItemRef, parseLightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import { makeBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxBoardFixtures';
 
 describe('buildLightboxInspectorView', () => {
@@ -89,6 +93,63 @@ describe('useLightboxInspector', () => {
     act(() => result.current.clear());
     expect(onSelect).toHaveBeenLastCalledWith(null);
     expect(result.current.persistedState).toEqual({});
+  });
+});
+
+describe('paging the inspector\'s addresses (PR #148 F-04)', () => {
+  const range = (from: number, to: number, step = 1) =>
+    Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, offset) => from + offset * step);
+
+  it('pages every address, never more than a page at once, clamped to the pages there are', () => {
+    const bucket = range(1, 52);
+    expect(LIGHTBOX_PARAGRAPH_PAGE_SIZE).toBe(48);
+    expect(pageLightboxParagraphs(bucket, 0)).toEqual({
+      page: 0, pageCount: 2, shown: range(1, 48), from: 1, to: 48, total: 52, target: undefined
+    });
+    expect(pageLightboxParagraphs(bucket, 1)).toEqual({
+      page: 1, pageCount: 2, shown: [49, 50, 51, 52], from: 49, to: 52, total: 52, target: undefined
+    });
+    expect(pageLightboxParagraphs(bucket, 9).page).toBe(1);
+    expect(pageLightboxParagraphs(bucket, -3).page).toBe(0);
+    expect(pageLightboxParagraphs([], 0)).toEqual(expect.objectContaining({ pageCount: 1, shown: [], total: 0 }));
+
+    const everyAddress = range(1, 5_000);
+    const pages = pageLightboxParagraphs(everyAddress, 0).pageCount;
+    const seen = Array.from({ length: pages }, (_, page) => pageLightboxParagraphs(everyAddress, page).shown).flat();
+    expect(seen).toEqual(everyAddress);
+  });
+
+  it('jumps to an address, or the next one the item has, or its last', () => {
+    const odd = range(1, 199, 2);
+    expect(lightboxParagraphJump(odd, 101)).toEqual({ page: 1, target: 101 });
+    expect(lightboxParagraphJump(odd, 100)).toEqual({ page: 1, target: 101 });
+    expect(lightboxParagraphJump(odd, 199)).toEqual({ page: 2, target: 199 });
+    expect(lightboxParagraphJump(odd, 5_000)).toEqual({ page: 2, target: 199 });
+    expect(lightboxParagraphJump(odd, 1)).toEqual({ page: 0, target: 1 });
+    expect(lightboxParagraphJump([], 4)).toBeUndefined();
+  });
+
+  it('pages and jumps without touching the pin, and a new pin starts on the first page', () => {
+    const onSelect = jest.fn();
+    const pin: LightboxItemRef = { kind: 'paragraphs', from: 1, to: 200 };
+    const { result, rerender } = renderHook(
+      ({ board, selected }: { board: LightboxBoard; selected: LightboxItemRef }) =>
+        useLightboxInspector({ board, selected, onSelect }),
+      { initialProps: { board: makeBoard(200), selected: pin } }
+    );
+    expect(result.current.paragraphPage).toEqual(expect.objectContaining({ page: 0, pageCount: 5, from: 1, to: 48 }));
+
+    act(() => result.current.showParagraphPage(4));
+    expect(result.current.paragraphPage).toEqual(expect.objectContaining({ page: 4, shown: range(193, 200) }));
+    act(() => result.current.jumpToParagraph(150));
+    expect(result.current.paragraphPage).toEqual(expect.objectContaining({ page: 3, target: 150 }));
+    expect(onSelect).not.toHaveBeenCalled();
+
+    // A rebuilt board keeps the page under the same pin; pinning the item anew starts over.
+    rerender({ board: makeBoard(200), selected: pin });
+    expect(result.current.paragraphPage).toEqual(expect.objectContaining({ page: 3 }));
+    rerender({ board: makeBoard(200), selected: { kind: 'paragraphs', from: 1, to: 200 } });
+    expect(result.current.paragraphPage).toEqual(expect.objectContaining({ page: 0, target: undefined }));
   });
 });
 

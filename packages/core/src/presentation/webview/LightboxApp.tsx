@@ -141,8 +141,11 @@ export const LightboxApp: React.FC = () => {
         content: (
           <LightboxInspector
             view={inspector.view}
+            paragraphPage={inspector.paragraphPage}
             onClear={inspector.clear}
             onPinParagraph={inspector.pinParagraph}
+            onShowParagraphPage={inspector.showParagraphPage}
+            onJumpToParagraph={inspector.jumpToParagraph}
             bind={focus.bind}
           />
         )
