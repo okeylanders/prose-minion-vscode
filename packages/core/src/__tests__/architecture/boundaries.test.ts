@@ -935,10 +935,17 @@ const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
  */
 const LIGHTBOX_MODULES = [
   'shared/types/messages/lightbox.ts',
+  'shared/types/messages/lightboxReadings.ts',
   'shared/constants/lightbox.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
   'infrastructure/lightbox/LightboxService.ts',
+  'infrastructure/lightbox/LightboxReadingWire.ts',
+  'infrastructure/lightbox/LightboxReadingCodec.ts',
+  'infrastructure/lightbox/LightboxQuoteVerifier.ts',
+  'infrastructure/lightbox/LightboxTermCounts.ts',
+  'infrastructure/lightbox/LightboxReadingTiles.ts',
+  'infrastructure/lightbox/LightboxReadingPrompts.ts',
   'application/handlers/domain/LightboxHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
