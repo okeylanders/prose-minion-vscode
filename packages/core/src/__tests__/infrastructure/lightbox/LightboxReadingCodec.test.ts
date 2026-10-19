@@ -150,6 +150,42 @@ describe('LightboxReadingCodec', () => {
       ]);
     });
 
+    it('requires a near miss to say what matches and what does not (PR #149 F-06)', () => {
+      const blank = body(exampleC);
+      blank.genre.neighbors = [
+        { ...blank.genre.neighbors[0], affinity: 0.8 },
+        blank.genre.neighbors[1],
+        { ...blank.genre.neighbors[3], affinity: 0.4, nearMiss: '' },
+        { ...blank.genre.neighbors[3], genre: 'Gothic horror', affinity: 0.38, nearMiss: '   ' }
+      ];
+      const decoded = decodeLightboxGroup(frame('C', blank), contextC);
+      // Neither low-affinity neighbor explains itself, so the neighborhood draws no near miss.
+      expect(decoded.withheld).toEqual([{ lens: 'genre', reason: expect.stringContaining('drew no near miss') }]);
+
+      const one = body(exampleC);
+      one.genre.neighbors[3].nearMiss = '';
+      one.genre.neighbors.push({ ...one.genre.neighbors[3], genre: 'Gothic horror', affinity: 0.399, nearMiss: 'A dark fall matches; no dread.' });
+      const kept = decodeLightboxGroup(frame('C', one), contextC).blocks[0];
+      expect(kept.lens === 'genre' && kept.malformed).toEqual([{
+        title: 'Survival thriller',
+        reason: expect.stringContaining('genre.neighbors[3].nearMiss must be a non-empty string')
+      }]);
+      expect(kept.lens === 'genre' && kept.neighbors.map((neighbor) => [neighbor.genre, neighbor.affinity, neighbor.nearMiss])).toEqual([
+        ['Victorian children’s fantasy', 0.86, ''],
+        ['Literary nonsense', 0.71, ''],
+        ['Portal fantasy', 0.55, ''],
+        ['Gothic horror', 0.4, 'A dark fall matches; no dread.']
+      ]);
+    });
+
+    it('keeps no near miss for a closer neighbor, without withholding it', () => {
+      const extra = body(exampleC);
+      extra.genre.neighbors[0].nearMiss = 'Not a near miss at all.';
+      const block = decodeLightboxGroup(frame('C', extra), contextC).blocks[0];
+      expect(block.lens === 'genre' && block.malformed).toEqual([]);
+      expect(block.lens === 'genre' && block.neighbors[0]).toMatchObject({ affinity: 0.86, nearMiss: '' });
+    });
+
     it('refuses an affinity outside 0–1 and a fractional paragraph number', () => {
       const affinity = body(exampleC);
       affinity.genre.neighbors[0].affinity = 1.4;

@@ -301,19 +301,31 @@ function decodeCharacter(item: Record<string, unknown>, path: string): LightboxD
   };
 }
 
+/**
+ * A near miss (affinity at or below `LIGHTBOX_NEAR_MISS_AFFINITY`, as drawn:
+ * rounded to two decimals) must say what matches and what does not, so a
+ * blank `nearMiss` withholds it (PR #149 F-06). A closer neighbor has no near
+ * miss to explain: its `nearMiss` must still be a bounded string, but is not
+ * a withholding rule; whatever it holds is not kept, since the tile draws a
+ * near miss only for a low-affinity neighbor.
+ */
 function decodeNeighbor(item: Record<string, unknown>, path: string): LightboxDecodedNeighbor {
   const neighbor = strictObject(item, path, ['genre', 'affinity', 'claim', 'nearMiss', 'evidence']);
   numberAt(neighbor.affinity, `${path}.affinity`);
-  const affinity = neighbor.affinity as number;
-  if (affinity < 0 || affinity > 1) {
+  const claimed = neighbor.affinity as number;
+  if (claimed < 0 || claimed > 1) {
     shapeError(`${path}.affinity`, 'a number from 0 to 1');
   }
+  const affinity = Math.round(claimed * 100) / 100;
   boundedStringAt(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters);
+  const nearMiss = affinity <= LIGHTBOX_NEAR_MISS_AFFINITY
+    ? text(neighbor.nearMiss, `${path}.nearMiss`, B.noteCharacters)
+    : '';
   return {
     genre: text(neighbor.genre, `${path}.genre`, B.labelCharacters),
-    affinity: Math.round(affinity * 100) / 100,
+    affinity,
     claim: text(neighbor.claim, `${path}.claim`, B.claimCharacters),
-    nearMiss: (neighbor.nearMiss as string).trim(),
+    nearMiss,
     evidence: evidence(neighbor.evidence, `${path}.evidence`, 1)
   };
 }

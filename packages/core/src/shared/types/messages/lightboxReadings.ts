@@ -153,7 +153,10 @@ export interface LightboxGenreNeighborTile extends LightboxReadingTileBase {
   kind: 'genre-neighbor';
   /** Claimed resemblance, 0–1. A claim, not a score, and drawn even when low. */
   affinity: number;
-  /** For a low-affinity neighbor: what matches and what does not. Empty otherwise. */
+  /**
+   * For a low-affinity neighbor (0.40 or below): what matches and what does
+   * not, never blank. Empty for every closer neighbor.
+   */
   nearMiss: string;
 }
 
