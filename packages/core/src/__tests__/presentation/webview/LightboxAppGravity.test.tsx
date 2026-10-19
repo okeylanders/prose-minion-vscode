@@ -93,7 +93,7 @@ describe('LightboxApp: lexical gravity and palette', () => {
     expect(within(tile).getByRole('img', { name: 'By degree: 2 latent, 1 felt, 0 overt' })).not.toBeNull();
 
     const collision = within(tile).getByRole('button', { name: /Collision · ¶4/ });
-    expect(collision.textContent).toContain('Fire and Animals share a sentence.');
+    expect(collision.textContent).toContain('Fire and Animals share this sentence.');
     expect(within(tile).getByRole('button', { name: /Set aside as literal: Falling\s?, 15 hits\. She really falls down a deep well/ }))
       .not.toBeNull();
     expect(within(tile).getByText(/Pin a field, then Build as a lens/)).not.toBeNull();
@@ -104,6 +104,24 @@ describe('LightboxApp: lexical gravity and palette', () => {
     fireEvent.mouseLeave(bodies[1]);
     fireEvent.focus(collision);
     expect(litColumns()).toEqual([4]);
+  });
+
+  it('shows the sentence the fields share, not a first quote that holds only one of them (PR #150 F-04)', () => {
+    render(<LightboxApp />);
+    const groupA = readGroup('A', {
+      collision: true,
+      mutate: (body) => {
+        body.gravity.collisions[0].evidence = [
+          { para: 4, quote: 'burning with curiosity' },
+          { para: 4, quote: 'it flashed across her mind that she had never before seen a rabbit' }
+        ];
+      }
+    });
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: { ...board, readings: [groupA, readGroup('B'), readGroup('C')] }, refusal: null });
+    const tile = screen.getByLabelText('Lexical gravity · borrowed fields the prose leans on');
+    const collision = within(tile).getByRole('button', { name: /Collision · ¶4/ });
+    expect(collision.querySelector('q')?.textContent).toBe('it flashed across her mind that she had never before seen a rabbit');
+    expect(collision.textContent).not.toContain('burning with curiosity');
   });
 
   it('draws the palette: clusters of counted words, and swatches whose color is the reading\'s', () => {

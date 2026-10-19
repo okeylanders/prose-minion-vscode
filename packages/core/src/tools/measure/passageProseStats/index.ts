@@ -43,7 +43,28 @@ export interface ProseStatsOutput {
  * sentence counts (ADR 2026-10-19 D4) use the same rule.
  */
 export function countProseSentences(text: string): number {
-  return text.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+  return proseSentenceSpans(text).length;
+}
+
+/**
+ * The same sentences as spans of `text`, each running to the end of its
+ * closing punctuation; a run with no text in it is no sentence. The
+ * Lightbox checks that two borrowed fields share one of these (PR #150 F-04).
+ */
+export function proseSentenceSpans(text: string): Array<{ start: number; end: number }> {
+  const spans: Array<{ start: number; end: number }> = [];
+  const enders = /[.!?]+/g;
+  let start = 0;
+  for (let match = enders.exec(text); match; match = enders.exec(text)) {
+    if (text.slice(start, match.index).trim().length > 0) {
+      spans.push({ start, end: match.index + match[0].length });
+    }
+    start = match.index + match[0].length;
+  }
+  if (text.slice(start).trim().length > 0) {
+    spans.push({ start, end: text.length });
+  }
+  return spans;
 }
 
 export class PassageProseStats {

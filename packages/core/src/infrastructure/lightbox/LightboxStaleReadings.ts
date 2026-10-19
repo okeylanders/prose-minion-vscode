@@ -38,6 +38,7 @@ import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infra
 import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { LIGHTBOX_NO_SHARED_SENTENCE, lightboxCollisionWitness } from '@/infrastructure/lightbox/LightboxTileGates';
 
 export interface LightboxCarryContext {
   /** The hash of the text the readings were read against (the replaced board's). */
@@ -94,16 +95,27 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
       withheldClaims.push(carried.withheld);
     }
   }
-  // A collision is drawn only between two drawn fields (as on a first reading).
-  const fields = new Set(tiles.flatMap((tile) => (tile.kind === 'gravity-field' ? [nameKey(tile.title)] : [])));
-  const orphaned = tiles.filter((tile) => tile.kind === 'gravity-collision' && !tile.fields.every((name) => fields.has(nameKey(name))));
-  for (const collision of orphaned) {
+  // A collision is drawn only between two drawn fields, with a sentence that
+  // still holds both (as on a first reading; PR #150 F-04).
+  const fields = new Map(tiles.flatMap((tile) => (tile.kind === 'gravity-field'
+    ? [[nameKey(tile.title), tile.support.map((term) => term.term)] as const]
+    : [])));
+  for (const collision of tiles.filter((tile) => tile.kind === 'gravity-collision')) {
+    if (collision.kind !== 'gravity-collision') {
+      continue;
+    }
+    const [first, second] = collision.fields.map((name) => fields.get(nameKey(name)));
+    const witness = first && second ? lightboxCollisionWitness(collision.evidence, [first, second]) : undefined;
+    if (witness) {
+      tiles.splice(tiles.indexOf(collision), 1, { ...collision, witness });
+      continue;
+    }
     tiles.splice(tiles.indexOf(collision), 1);
     withheldClaims.push({
       kind: collision.kind,
       lens: collision.lens,
       title: collision.title,
-      reason: COLLISION_FIELD_GONE,
+      reason: first && second ? LIGHTBOX_NO_SHARED_SENTENCE : COLLISION_FIELD_GONE,
       quotes: collision.withheldQuotes
     });
   }

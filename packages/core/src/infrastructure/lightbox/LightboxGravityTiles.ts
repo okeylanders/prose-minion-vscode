@@ -10,8 +10,9 @@
  *   occurrence once, under the longest named term), its split by degree, its
  *   drift, and whether it clears the gravity line (`LightboxGravityCounts`).
  *   A field under the line is drawn below it, not dropped.
- * - **Collisions.** Drawn only when both fields made it onto the board and a
- *   found quote holds a term of each: the host sees them share the sentence.
+ * - **Collisions.** Drawn only when both fields made it onto the board and one
+ *   sentence of a found quote holds a term of each (`LightboxTileGates`);
+ *   that sentence is the tile's witness.
  * - **Literal set-asides.** Counted like a field, shown with their reason.
  * - **Palette.** A cluster's words and a swatch's color words are counted by
  *   the host; one whose words the chapter does not hold is withheld. A
@@ -21,12 +22,15 @@
 import type { LightboxCountedSupport, LightboxGravityTerm, LightboxVerifiedQuote } from '@messages';
 import type { LightboxClaimAssembler } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import type {
-  LightboxDecodedCollision,
   LightboxDecodedGravityBlock,
   LightboxDecodedPaletteBlock
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { countLightboxField } from '@/infrastructure/lightbox/LightboxGravityCounts';
-import { lightboxTextHoldsTerm } from '@/infrastructure/lightbox/LightboxTermCounts';
+import {
+  LIGHTBOX_COLLISION_FIELD_WITHHELD,
+  LIGHTBOX_NO_SHARED_SENTENCE,
+  lightboxCollisionWitness
+} from '@/infrastructure/lightbox/LightboxTileGates';
 
 const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
@@ -62,11 +66,20 @@ export function assembleGravityBlock(block: LightboxDecodedGravityBlock, assembl
   assembler.malformed('gravity-collision', 'gravity', block.malformed.collisions);
   for (const collision of block.collisions) {
     const [first, second] = collision.fields;
+    // Found by `accept` before the tile is built: the sentence both fields share (F-04).
+    let witness: LightboxVerifiedQuote | undefined;
     assembler.claim(
       { kind: 'gravity-collision', lens: 'gravity', title: `${first} meets ${second}`, claim: collision.claim,
         quotes: collision.evidence, terms: [], support: [], friction,
-        accept: (evidence) => collisionRefusal(collision, evidence, drawn) },
-      (base) => ({ ...base, kind: 'gravity-collision', fields: [first, second] })
+        accept: (evidence) => {
+          const terms = collision.fields.map((name) => drawn.get(nameKey(name))?.map((term) => term.term));
+          if (!terms[0] || !terms[1]) {
+            return LIGHTBOX_COLLISION_FIELD_WITHHELD;
+          }
+          witness = lightboxCollisionWitness(evidence, [terms[0], terms[1]]);
+          return witness ? undefined : LIGHTBOX_NO_SHARED_SENTENCE;
+        } },
+      (base) => ({ ...base, kind: 'gravity-collision', fields: [first, second], witness: witness as LightboxVerifiedQuote })
     );
   }
 
@@ -100,21 +113,4 @@ export function assemblePaletteBlock(block: LightboxDecodedPaletteBlock, assembl
       (base) => ({ ...base, kind: 'swatch', hex: swatch.hex })
     );
   }
-}
-
-/** Why a collision cannot be drawn, or undefined when the host can see both fields share its quote. */
-function collisionRefusal(
-  collision: LightboxDecodedCollision,
-  evidence: readonly LightboxVerifiedQuote[],
-  drawn: ReadonlyMap<string, readonly LightboxGravityTerm[]>
-): string | undefined {
-  const withheld = collision.fields.find((name) => !drawn.has(nameKey(name)));
-  if (withheld !== undefined) {
-    return 'One of the fields it names was withheld.';
-  }
-  const holds = (quote: LightboxVerifiedQuote, name: string): boolean =>
-    (drawn.get(nameKey(name)) ?? []).some((term) => lightboxTextHoldsTerm(quote.text, term.term));
-  return evidence.some((quote) => collision.fields.every((name) => holds(quote, name)))
-    ? undefined
-    : 'None of its quotes holds a term of each field, so the board cannot show them sharing a sentence.';
 }

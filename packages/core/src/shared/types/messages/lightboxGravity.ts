@@ -9,7 +9,8 @@
  * clears the gravity line, and its drift across the chapter. A field under
  * the line is drawn below it, never dropped. Fields that are literal in the
  * scene are set aside with their reason, and two fields meeting in one
- * sentence are a collision, drawn only when its quote holds a term of each.
+ * sentence are a collision, drawn only when one sentence of a found quote
+ * holds a term of each; that sentence is kept as its witness.
  *
  * **Palette.** Diction clusters group words the chapter keeps choosing, and
  * swatches name the colors the text names. The host counts every word; a
@@ -19,7 +20,7 @@
  * the host found, and a friction (`lightboxReadings.ts`).
  */
 
-import type { LightboxCountedSupport, LightboxReadingTileBase } from './lightboxReadings';
+import type { LightboxCountedSupport, LightboxReadingTileBase, LightboxVerifiedQuote } from './lightboxReadings';
 
 /** A field term's degree: 1 latent, 2 felt, 3 overt. */
 export type LightboxGravityDegree = 1 | 2 | 3;
@@ -63,6 +64,12 @@ export interface LightboxGravityCollisionTile extends LightboxReadingTileBase {
   kind: 'gravity-collision';
   /** The two borrowed fields that share a sentence, by name. */
   fields: [string, string];
+  /**
+   * The sentence the host found them sharing: one sentence of a found quote
+   * (the prose-stats sentence rule) holding a term of each field, with its
+   * paragraph. The board shows this, not merely the first quote.
+   */
+  witness: LightboxVerifiedQuote;
 }
 
 /** A field present in the chapter but literal in its scene: set aside, with its reason as the claim. */

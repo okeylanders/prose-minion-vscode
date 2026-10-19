@@ -64,20 +64,21 @@ const LightboxGravityFieldRow: React.FC<LightboxTileProps & { field: LightboxGra
   );
 };
 
-/** Where two borrowed fields share a sentence. Drawn inside the gravity tile. */
+/**
+ * Where two borrowed fields share a sentence. Drawn inside the gravity tile,
+ * with the sentence the host found them sharing (its witness), never merely
+ * the first quote the reading gave.
+ */
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxGravityCollisions: React.FC<LightboxTileProps> = ({ board, bind }) => (
   <>
-    {lightboxTilesOfKind(board, 'gravity-collision').map((collision) => {
-      const [quote] = collision.evidence;
-      return (
-        <LightboxItemButton key={collision.id} binding={bind({ kind: 'reading', tileId: collision.id })} className="pm-lb-collision">
-          <span className="pm-lb-collision-label">Collision · ¶{quote?.paragraph}</span>
-          {quote && <q className="pm-lb-collision-quote">{quote.text}</q>}
-          <span className="pm-lb-collision-note">{collision.fields[0]} and {collision.fields[1]} share a sentence.</span>
-        </LightboxItemButton>
-      );
-    })}
+    {lightboxTilesOfKind(board, 'gravity-collision').map((collision) => (
+      <LightboxItemButton key={collision.id} binding={bind({ kind: 'reading', tileId: collision.id })} className="pm-lb-collision">
+        <span className="pm-lb-collision-label">Collision · ¶{collision.witness.paragraph}</span>
+        <q className="pm-lb-collision-quote">{collision.witness.text}</q>
+        <span className="pm-lb-collision-note">{collision.fields[0]} and {collision.fields[1]} share this sentence.</span>
+      </LightboxItemButton>
+    ))}
   </>
 );
 

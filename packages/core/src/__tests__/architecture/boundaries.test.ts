@@ -987,6 +987,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxGravityCodec.ts',
   'infrastructure/lightbox/LightboxGravityCounts.ts',
   'infrastructure/lightbox/LightboxGravityTiles.ts',
+  'infrastructure/lightbox/LightboxTileGates.ts',
   'infrastructure/lightbox/LightboxHandoff.ts',
   'infrastructure/lightbox/LightboxQuoteVerifier.ts',
   'infrastructure/lightbox/LightboxTermCounts.ts',
