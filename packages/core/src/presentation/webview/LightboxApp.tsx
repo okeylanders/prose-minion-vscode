@@ -9,8 +9,9 @@
  * persist) plus two presentation controllers: focus (what the ribbon
  * lights) and the inspector's view model. The run line's view model is
  * derived here from the board, the host's estimate and the run's progress
- * (Slice 2B), and the estimate is asked for again when the assistant model
- * or its catalog changes.
+ * (Slice 2B). Every `MODEL_DATA` reaches both the chrome (the picker) and
+ * the Lightbox, which treats it as the host's confirmation of the model and
+ * its prices and asks for a fresh estimate (PR #149 F-03 re-review).
  *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
@@ -23,7 +24,7 @@ import './styles/lightbox/rail.css';
 import './styles/lightbox/inspector.css';
 import './styles/lightbox/readings.css';
 import * as React from 'react';
-import { MessageType, type LightboxLensId } from '@messages';
+import { MessageType, type LightboxLensId, type ModelDataMessage } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';
 import { FullTabHeaderStatus } from '@components/fulltab/FullTabHeaderStatus';
 import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
@@ -50,46 +51,39 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 export const LightboxApp: React.FC = () => {
   const vscode = useVSCodeApi();
   const chrome = useFullTabChrome({ source: 'webview.lightbox' });
-  const lightbox = useLightbox();
+  const lightbox = useLightbox({ assistantModel: chrome.modelsSettings.modelSelections.assistant });
   const board = lightbox.board ?? null;
   const focus = useLightboxFocus({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
   const inspector = useLightboxInspector({ board, selected: lightbox.selected, onSelect: lightbox.selectItem });
 
-  const routes = React.useMemo<MessageHandlerMap>(
-    () => ({
-      ...buildFullTabChromeRoutes(chrome),
+  const routes = React.useMemo<MessageHandlerMap>(() => {
+    const chromeRoutes = buildFullTabChromeRoutes(chrome);
+    const chromeModelData = chromeRoutes[MessageType.MODEL_DATA];
+    return {
+      ...chromeRoutes,
+      // The picker takes the confirmed selection; the Lightbox re-estimates against it.
+      [MessageType.MODEL_DATA]: (message: ModelDataMessage) => {
+        chromeModelData?.(message);
+        lightbox.handleModelData(message);
+      },
       [MessageType.LIGHTBOX_BOARD]: lightbox.handleBoard,
       [MessageType.LIGHTBOX_SOURCE_REFUSED]: lightbox.handleSourceRefused,
       [MessageType.LIGHTBOX_RUN_ESTIMATE]: lightbox.handleRunEstimate,
       [MessageType.LIGHTBOX_RUN_PROGRESS]: lightbox.handleRunProgress,
       [MessageType.LIGHTBOX_GROUP_RESULT]: lightbox.handleGroupResult,
       [MessageType.LIGHTBOX_CONTEXT_FILES]: lightbox.handleContextFiles
-    }),
-    [
-      chrome,
-      lightbox.handleBoard,
-      lightbox.handleSourceRefused,
-      lightbox.handleRunEstimate,
-      lightbox.handleRunProgress,
-      lightbox.handleGroupResult,
-      lightbox.handleContextFiles
-    ]
-  );
+    };
+  }, [
+    chrome,
+    lightbox.handleBoard,
+    lightbox.handleSourceRefused,
+    lightbox.handleRunEstimate,
+    lightbox.handleRunProgress,
+    lightbox.handleGroupResult,
+    lightbox.handleContextFiles,
+    lightbox.handleModelData
+  ]);
   useMessageRouter(routes);
-
-  // The estimate depends on the assistant model's window and prices: ask again when they change.
-  const assistantModel = chrome.modelsSettings.modelSelections.assistant;
-  const assistantWindow = chrome.modelsSettings.modelOptions.find((option) => option.id === assistantModel)?.contextLength;
-  const { requestEstimate } = lightbox;
-  const syncEstimateWithModel = React.useCallback(() => requestEstimate(), [requestEstimate]);
-  const modelKey = `${assistantModel ?? ''}:${assistantWindow ?? ''}`;
-  const firstModelKey = React.useRef(modelKey);
-  React.useEffect(() => {
-    if (firstModelKey.current !== modelKey) {
-      firstModelKey.current = modelKey;
-      syncEstimateWithModel();
-    }
-  }, [modelKey, syncEstimateWithModel]);
 
   const runLine = React.useMemo(
     () => (board

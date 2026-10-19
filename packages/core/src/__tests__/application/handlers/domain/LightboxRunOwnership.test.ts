@@ -140,6 +140,24 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).some((entry) => entry.payload.phase === 'started')).toBe(false);
   });
 
+  it('refuses a press that names a model other than the one in use (PR #149 F-03 re-review)', async () => {
+    const host = await createLightboxReadingHost();
+    const tab = host.openTab();
+    const key = await tab.setLenses([]);
+    const reads = host.loadPrompts.mock.calls.length;
+
+    // The writer picked another model and it is not saved yet: the host's estimate is still the old model's.
+    await tab.run({ mode: 'all' }, { estimateKey: key, model: 'provider/model-v2' });
+
+    expect(host.loadPrompts.mock.calls.length).toBe(reads);
+    expect(host.runInitial).not.toHaveBeenCalled();
+    expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS)[0].payload).toMatchObject({
+      phase: 'refused',
+      reestimate: true,
+      message: expect.stringMatching(/^The model this press names is not the assistant model in use yet/)
+    });
+  });
+
   it('refuses at once a press priced on another model, before a prompt file is read for it', async () => {
     const host = await createLightboxReadingHost();
     const tab = host.openTab();

@@ -26,7 +26,9 @@
  *   any change in between (a context file removed, a lens toggled, a model
  *   or price changed, another board adopted) refuses it with nothing sent,
  *   and the webview asks for a fresh estimate. What runs is exactly what was
- *   priced, and nothing runs after its tab closed.
+ *   priced, and nothing runs after its tab closed. The press also names the
+ *   model the writer selected; one naming any model but the one in use is
+ *   refused (PR #149 F-03 re-review).
  * - **Runs belong to their board.** Group results are written onto the board
  *   by its id through `LightboxService.updateReadings`, so a hidden tab, a
  *   reveal or a switch back to the source finds them; a result for a board
@@ -81,6 +83,8 @@ const STOPPED = 'Stopped before this group came back.';
 const BOARD_CHANGED = 'The board changed. Read the board on screen.';
 const ESTIMATE_CHANGED = 'The estimate changed since it was shown (the model, its prices, the lenses or the context). ' +
   'Check the new estimate, then press again.';
+const MODEL_NOT_IN_USE = 'The model this press names is not the assistant model in use yet. ' +
+  'Wait for the model change to finish saving, then press again.';
 
 type LightboxContextPicker = Pick<ShellService, 'pickFile'>;
 
@@ -133,7 +137,7 @@ export class LightboxReadingHandler {
 
   async handleRun(message: LightboxRunMessage): Promise<void> {
     this.subscribe();
-    const { boardId, scope, estimateKey } = message.payload ?? ({} as LightboxRunMessage['payload']);
+    const { boardId, scope, estimateKey, model } = message.payload ?? ({} as LightboxRunMessage['payload']);
     const lens = scope?.mode === 'lens' ? scope.lens : undefined;
     const refuse = (text: string, groups: LightboxReadingGroupId[] = [], reestimate = false): void => {
       this.outputChannel.appendLine(`[LightboxReadingHandler] Run refused: ${text}`);
@@ -153,6 +157,11 @@ export class LightboxReadingHandler {
     }
     if (estimateKey !== press.key) {
       refuse(ESTIMATE_CHANGED, [], true);
+      return;
+    }
+    // A run starts only on the model the writer selected, never on one a pending selection is replacing.
+    if (model !== press.facts.model) {
+      refuse(MODEL_NOT_IN_USE, [], true);
       return;
     }
     const calls = lightboxPlannedCalls(this.lensesOff, scope, press.board.readings);

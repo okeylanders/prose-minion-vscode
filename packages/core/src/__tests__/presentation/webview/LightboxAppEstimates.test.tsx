@@ -36,6 +36,10 @@ const fromHost = (type: MessageType, payload: object) =>
     window.dispatchEvent(new MessageEvent('message', { data: { type, source: 'extension.lightbox', payload, timestamp: 1 } }));
   });
 
+/** The host's model confirmation, which the real chrome asks for on mount (PR #149 F-03 re-review). */
+const confirmModel = (assistant = 'provider/model-v1') =>
+  fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant } });
+
 const A = makeBoard(8);
 const B: LightboxBoard = {
   ...makeBoard(8),
@@ -71,6 +75,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
 
   it('switching boards withdraws the old price, and a late reply for the old board is never shown', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
     const askedForA = lastRequest();
     answer(askedForA, estimateFor(A));
@@ -95,6 +100,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
 
   it('a reply for the same board that arrives out of order never replaces the newer one', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
     answer(lastRequest(), estimateFor(A));
     const lenses = screen.getByLabelText('Lenses');
@@ -114,6 +120,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
 
   it('a model change withdraws the price until the new model\'s own estimate lands', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
     fromHost(MessageType.MODEL_DATA, { options: [], selections: { assistant: 'provider/model-v1' } });
     answer(lastRequest(), estimateFor(A));
@@ -130,8 +137,31 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
     expect(press().disabled).toBe(false);
   });
 
+  it('asks again on every model confirmation, the same values included, and waits for that answer (PR #149 F-03 re-review)', () => {
+    render(<LightboxApp />);
+    confirmModel();
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
+    answer(lastRequest(), estimateFor(A));
+    expect(press().disabled).toBe(false);
+    const before = lastRequest();
+
+    confirmModel();
+    const after = lastRequest();
+    expect(after?.payload.requestId).not.toBe(before?.payload.requestId);
+    expect(press().disabled).toBe(true);
+    // A reply that priced another model than the one selected is never usable.
+    answer(after, estimateFor(A, { model: 'provider/other' }));
+    expect(press().disabled).toBe(true);
+    confirmModel();
+    answer(lastRequest(), estimateFor(A));
+    expect(press().disabled).toBe(false);
+    fireEvent.click(press());
+    expect(sent(MessageType.LIGHTBOX_RUN).at(-1)?.payload).toMatchObject({ model: 'provider/model-v1' });
+  });
+
   it('one board finishing leaves another board\'s run, its progress and its Stop alone', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
     answer(lastRequest(), estimateFor(A));
     fireEvent.click(press());
@@ -156,6 +186,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
 
   it('a late estimate carrying another board\'s run never becomes this board\'s Stop', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
     const askedForA = lastRequest();
     answer(askedForA, estimateFor(A));
@@ -175,6 +206,7 @@ describe('LightboxApp: estimates, progress and Stop belong to their board (PR #1
 
   it('late progress after a Stop, or from the run a new one replaced, leaves the run line alone', () => {
     render(<LightboxApp />);
+    confirmModel();
     fromHost(MessageType.LIGHTBOX_BOARD, { board: A, refusal: null });
     answer(lastRequest(), estimateFor(A));
     fireEvent.click(press());
