@@ -131,10 +131,83 @@
   color: var(--pm-text);
   border-color: var(--pm-border-2);
 }
-[data-pm-surface="lightbox"] .pm-lb-para-more {
+[data-pm-surface="lightbox"] .pm-lb-para-chip.is-target {
+  color: var(--pm-text);
+  border-color: var(--pm-lb-measured-line);
+  background: var(--pm-lb-measured-soft);
+}
+
+/* ---------- Paging the addresses (more than one page of chips) ---------- */
+[data-pm-surface="lightbox"] .pm-lb-para-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  margin: 0 0 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-range {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-text-2);
+}
+/* A narrow aside wraps between the addresses and their position, not inside either. */
+[data-pm-surface="lightbox"] .pm-lb-para-range > span {
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-position {
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-para-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0 7px;
+  border-radius: 6px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text-2);
+  font: 11px var(--pm-mono);
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-step:not(:disabled):hover {
+  color: var(--pm-text);
+  border-color: var(--pm-border-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-para-step:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-jump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-para-jump label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-family: var(--pm-mono);
   font-size: 11px;
   color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-para-jump input {
+  width: 64px;
+  min-height: 26px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid var(--pm-border);
+  background: var(--pm-surface-2);
+  color: var(--pm-text);
+  font: 11px var(--pm-mono);
 }
 [data-pm-surface="lightbox"] .pm-lb-support {
   display: flex;

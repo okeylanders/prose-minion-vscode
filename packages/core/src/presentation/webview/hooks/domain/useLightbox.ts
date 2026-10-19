@@ -2,12 +2,16 @@
  * useLightbox — the Lightbox domain hook (ADR 2026-10-19 D6, D9, D10, D12),
  * mirroring the host's LightboxHandler and LightboxReadingHandler.
  *
- * It owns the `LIGHTBOX_*` transport: asks for the latest board on mount,
- * receives boards, refusals, group results, run progress, the estimate and
- * the context list, and posts the source, reading and context actions. The
- * board is host truth and is never persisted here (D12); a group result
- * replaces its group in the board it names. Webview state holds only UI
- * preferences: the tile filter, the pinned item, and which lenses are off.
+ * It owns the `LIGHTBOX_*` transport: asks for the host's current outcome on
+ * mount, receives boards and refusals, group results, run progress, the
+ * estimate and the context list, and posts the source actions (choose a file,
+ * re-read it, dismiss a refusal) and the reading and context actions. The
+ * board and the standing refusal are host truth and are never persisted here
+ * (D12): every `LIGHTBOX_BOARD` carries both, so a refusal made before this
+ * webview listened still shows (PR #148 F-02), and a group result replaces
+ * its group in the board it names. Dismissing tells the host, which then
+ * stops serving it. Webview state holds only UI preferences: the tile filter,
+ * the pinned item, and which lenses are off.
  *
  * The lens toggles reach the host on mount, on every toggle and whenever the
  * board changes; `requestEstimate` re-sends them when the assistant model or
@@ -107,11 +111,16 @@ export type UseLightboxReturn = LightboxState & LightboxActions & {
 const SOURCE = 'webview.lightbox';
 const NO_CONTEXT: LightboxContextState = { files: [], totalWords: 0, ceilingWords: 0, notice: null };
 
-type ZeroPayloadType =
+type LightboxRequestType =
   | MessageType.LIGHTBOX_REQUEST_BOARD
   | MessageType.LIGHTBOX_PICK_SOURCE_FILE
   | MessageType.LIGHTBOX_REFRESH_SOURCE
-  | MessageType.LIGHTBOX_ADD_CONTEXT_FILES;
+  | MessageType.LIGHTBOX_DISMISS_REFUSAL
+  | MessageType.LIGHTBOX_SET_LENSES
+  | MessageType.LIGHTBOX_RUN
+  | MessageType.LIGHTBOX_CANCEL_RUN
+  | MessageType.LIGHTBOX_ADD_CONTEXT_FILES
+  | MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE;
 
 export function useLightbox(): UseLightboxReturn {
   const vscode = useVSCodeApi();
@@ -137,26 +146,35 @@ export function useLightbox(): UseLightboxReturn {
   const [awaitingStart, setAwaitingStart] = React.useState(false);
   const [context, setContext] = React.useState<LightboxContextState>(NO_CONTEXT);
 
-  const post = React.useCallback((type: ZeroPayloadType) => {
-    vscode.postMessage({ type, source: SOURCE, payload: {}, timestamp: Date.now() });
-  }, [vscode]);
+  // Refusals dismissed here; a host answer already on its way may still name one.
+  const dismissed = React.useRef(new Set<string>());
+
+  const post = React.useCallback(
+    (type: LightboxRequestType, payload: object = {}) => {
+      vscode.postMessage({ type, source: SOURCE, payload, timestamp: Date.now() });
+    },
+    [vscode]
+  );
+
+  const unlessDismissed = React.useCallback(
+    (incoming: LightboxSourceRefusal | null | undefined): LightboxSourceRefusal | null =>
+      incoming && !dismissed.current.has(incoming.id) ? incoming : null,
+    []
+  );
 
   const handleBoard = React.useCallback((message: LightboxBoardMessage) => {
-    const next = message.payload?.board ?? null;
-    setBoard(next);
+    setBoard(message.payload?.board ?? null);
+    setRefusal(unlessDismissed(message.payload?.refusal));
     setRereading(false);
     // A board answers a press too: a run's board shows its running groups,
     // and one that arrives after a missed refusal ends the wait.
     setAwaitingStart(false);
-    if (next) {
-      setRefusal(null);
-    }
-  }, []);
+  }, [unlessDismissed]);
 
   const handleSourceRefused = React.useCallback((message: LightboxSourceRefusedMessage) => {
-    setRefusal(message.payload?.refusal ?? null);
+    setRefusal(unlessDismissed(message.payload?.refusal));
     setRereading(false);
-  }, []);
+  }, [unlessDismissed]);
 
   const handleRunEstimate = React.useCallback((message: LightboxRunEstimateMessage) => {
     setEstimate(message.payload?.estimate ?? null);
@@ -202,7 +220,13 @@ export function useLightbox(): UseLightboxReturn {
     setRereading(true);
     post(MessageType.LIGHTBOX_REFRESH_SOURCE);
   }, [post]);
-  const dismissRefusal = React.useCallback(() => setRefusal(null), []);
+  const dismissRefusal = React.useCallback(() => {
+    if (refusal) {
+      dismissed.current.add(refusal.id);
+      post(MessageType.LIGHTBOX_DISMISS_REFUSAL, { refusalId: refusal.id });
+    }
+    setRefusal(null);
+  }, [post, refusal]);
   const setFilter = React.useCallback((next: LightboxFilter) => setFilterState(next), []);
   const selectItem = React.useCallback((ref: LightboxItemRef | null) => setSelected(ref), []);
   const toggleLens = React.useCallback((lens: LightboxLensId) => {
@@ -213,13 +237,8 @@ export function useLightbox(): UseLightboxReturn {
 
   const lensesKey = lensesOff.join(',');
   const requestEstimate = React.useCallback(() => {
-    vscode.postMessage({
-      type: MessageType.LIGHTBOX_SET_LENSES,
-      source: SOURCE,
-      payload: { lensesOff: lensesKey ? (lensesKey.split(',') as LightboxLensId[]) : [] },
-      timestamp: Date.now()
-    });
-  }, [lensesKey, vscode]);
+    post(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: lensesKey ? (lensesKey.split(',') as LightboxLensId[]) : [] });
+  }, [lensesKey, post]);
 
   const boardId = board?.boardId;
   const run = React.useCallback((scope: LightboxRunScope) => {
@@ -227,22 +246,22 @@ export function useLightbox(): UseLightboxReturn {
       return;
     }
     setAwaitingStart(true);
-    vscode.postMessage({ type: MessageType.LIGHTBOX_RUN, source: SOURCE, payload: { boardId, scope }, timestamp: Date.now() });
-  }, [boardId, vscode]);
+    post(MessageType.LIGHTBOX_RUN, { boardId, scope });
+  }, [boardId, post]);
 
   const cancelRun = React.useCallback((token: string) => {
     if (!boardId) {
       return;
     }
-    vscode.postMessage({ type: MessageType.LIGHTBOX_CANCEL_RUN, source: SOURCE, payload: { boardId, token }, timestamp: Date.now() });
-  }, [boardId, vscode]);
+    post(MessageType.LIGHTBOX_CANCEL_RUN, { boardId, token });
+  }, [boardId, post]);
 
   const addContextFile = React.useCallback(() => post(MessageType.LIGHTBOX_ADD_CONTEXT_FILES), [post]);
   const removeContextFile = React.useCallback((id: string) => {
-    vscode.postMessage({ type: MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, source: SOURCE, payload: { id }, timestamp: Date.now() });
-  }, [vscode]);
+    post(MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, { id });
+  }, [post]);
 
-  // The board is host truth: ask for it once on mount (a reveal re-asks host-side).
+  // The outcome is host truth: ask for it once on mount (a reveal re-asks host-side).
   React.useEffect(() => {
     requestBoard();
   }, [requestBoard]);

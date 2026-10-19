@@ -3,15 +3,23 @@
  * existing measure tools returned into the board contract and places each
  * counted word and phrase in the paragraphs it occurs in.
  *
- * Nothing here counts anew. Counts come from PassageProseStats,
- * WordFrequency and StyleFlags; placement re-tokenizes each paragraph with the
- * word-frequency tool's own tokenizer, so a word lights exactly the
- * paragraphs whose tokens the count was taken over. Two seams differ:
- * - the part-of-speech tagger splits hyphenated words ("rabbit-hole" is a
- *   "rabbit" and a "hole"), so a tagged word also matches the parts of a
- *   hyphenated token;
- * - a phrase that only occurs across a paragraph break counts in the tool but
- *   lights no paragraph.
+ * Nothing here counts by rules of its own. Counts come from
+ * PassageProseStats, WordFrequency and StyleFlags, and each counted item is
+ * placed using the same occurrences its count was taken over:
+ * - **Top words and repeated phrases** re-tokenize each paragraph with the
+ *   word-frequency tool's own tokenizer, so a word lights exactly the
+ *   paragraphs whose tokens the count was taken over. A phrase that only
+ *   occurs across a paragraph break counts in the tool but lights no
+ *   paragraph.
+ * - **Parts of speech** come from the tagger's occurrence stream (PR #148
+ *   F-03): the same whole-text tagging and normalization the Metrics tab
+ *   counts, with each tagged word's token located in the text. Counts and
+ *   paragraphs are both taken from those occurrences, keyed by word and part
+ *   of speech, so the noun "light" and the verb "light" light only their own
+ *   paragraphs, and a possessive ("Alice's", "Alice’s") places the name the
+ *   tagger counted. The counts equal the Metrics tab's; an occurrence whose
+ *   token could not be located (none is known) would be left out of both
+ *   its count and its paragraphs rather than counted without a place.
  */
 
 import type {
@@ -24,16 +32,20 @@ import type {
   LightboxStyleFlag
 } from '@messages';
 import type { ComparisonItem, PublishingFormatSummary } from '@/application/services/StandardsComparisonService';
+import type { WordFrequencyOptions } from '@services/shared/ToolOptionsProvider';
 import type { ProseStatsOutput } from '@/tools/measure/passageProseStats';
 import type { StyleFlagsOutput } from '@/tools/measure/styleFlags';
 import {
   WORD_FREQUENCY_STOPWORDS,
   extractFrequencyWords,
+  rankPartsOfSpeech,
   type NGramEntry,
+  type PartOfSpeechList,
+  type PartOfSpeechOccurrence,
   type WordFrequencyEntry,
   type WordFrequencyOutput
 } from '@/tools/measure/wordFrequency';
-import type { LightboxParagraph } from '@/infrastructure/lightbox/LightboxParagraphs';
+import { LightboxParagraph, splitLightboxParagraphs } from '@/infrastructure/lightbox/LightboxParagraphs';
 
 /** How many of each list the board keeps. Presentation sizes, not prompt budgets. */
 export const LIGHTBOX_MEASURED_SIZES = {
@@ -44,6 +56,28 @@ export const LIGHTBOX_MEASURED_SIZES = {
   /** How deep into the tool's n-gram ranking to look for content phrases. */
   ngramDepth: 120
 } as const;
+
+/**
+ * Fixed word-frequency options, so every board has the same shape whatever
+ * the Metrics tab's settings are: POS (with its occurrence stream, for
+ * placement), n-grams and the stopword table on, content words only, every
+ * word length kept, no hapax list (the board shows hapax as a count).
+ */
+export const LIGHTBOX_WORD_FREQUENCY_OPTIONS: WordFrequencyOptions = {
+  topN: LIGHTBOX_MEASURED_SIZES.topWords,
+  includeHapaxList: false,
+  hapaxDisplayMax: 0,
+  includeStopwordsTable: true,
+  contentWordsOnly: true,
+  posEnabled: true,
+  includePosOccurrences: true,
+  includeBigrams: true,
+  includeTrigrams: true,
+  enableLemmas: false,
+  lengthHistogramMaxChars: 10,
+  minCharacterLength: 1,
+  ngramLimit: LIGHTBOX_MEASURED_SIZES.ngramDepth
+};
 
 /** The prose-stats output after `StandardsService.enrichWithStandards`. */
 export type LightboxEnrichedStats = ProseStatsOutput & {
@@ -56,28 +90,20 @@ export interface LightboxMeasureInputs {
   frequency: WordFrequencyOutput;
   flags: StyleFlagsOutput;
   paragraphs: readonly LightboxParagraph[];
+  /** The text the tools measured; tagged words are located in it. */
+  text: string;
 }
 
 /** Where each frequency token occurs, by paragraph. */
 export class LightboxTermIndex {
   private readonly tokens: string[][];
   private readonly wordParagraphs = new Map<string, number[]>();
-  private readonly partParagraphs = new Map<string, number[]>();
 
   constructor(paragraphs: readonly LightboxParagraph[]) {
     this.tokens = paragraphs.map((paragraph) => extractFrequencyWords(paragraph.text.toLowerCase()));
     this.tokens.forEach((tokens, offset) => {
-      const index = offset + 1;
-      const parts = new Set<string>();
       for (const token of new Set(tokens)) {
-        addParagraph(this.wordParagraphs, token, index);
-        parts.add(token);
-        for (const part of token.split('-')) {
-          parts.add(part);
-        }
-      }
-      for (const part of parts) {
-        addParagraph(this.partParagraphs, part, index);
+        addParagraph(this.wordParagraphs, token, offset + 1);
       }
     });
   }
@@ -85,11 +111,6 @@ export class LightboxTermIndex {
   /** Paragraphs holding the word as a whole token, ascending. */
   paragraphsOfWord(word: string): number[] {
     return [...(this.wordParagraphs.get(word) ?? [])];
-  }
-
-  /** Paragraphs holding the word whole or as part of a hyphenated token (tagged words). */
-  paragraphsOfTaggedWord(word: string): number[] {
-    return [...(this.partParagraphs.get(word) ?? [])];
   }
 
   /** Paragraphs holding the space-joined phrase as consecutive tokens, ascending. */
@@ -116,6 +137,70 @@ function addParagraph(map: Map<string, number[]>, key: string, index: number): v
   }
 }
 
+/**
+ * The parts-of-speech lists, counted and placed from the tagger's occurrences
+ * (see the module comment). Each occurrence's offset is into the lowercased
+ * text the tool tagged; lowercasing never adds or removes whitespace, so that
+ * text splits into the same paragraphs, numbered alike.
+ */
+export function placeLightboxPartsOfSpeech(
+  frequency: Pick<WordFrequencyOutput, 'pos' | 'totalWords'>,
+  text: string
+): LightboxPartsOfSpeech {
+  const occurrences = frequency.pos?.mode === 'tagger' ? frequency.pos.occurrences : undefined;
+  if (!occurrences) {
+    return { available: false, nouns: [], verbs: [], adjectives: [], adverbs: [] };
+  }
+  const paragraphAt = paragraphLocator(splitLightboxParagraphs(text.toLowerCase()));
+  const placed: Array<PartOfSpeechOccurrence & { paragraph: number }> = [];
+  for (const occurrence of occurrences) {
+    const paragraph = occurrence.offset === undefined ? undefined : paragraphAt(occurrence.offset);
+    if (paragraph !== undefined) {
+      placed.push({ ...occurrence, paragraph });
+    }
+  }
+
+  const where = new Map<string, number[]>();
+  for (const { list, word, paragraph } of placed) {
+    addParagraph(where, `${list}:${word}`, paragraph);
+  }
+  const ranked = rankPartsOfSpeech(placed, frequency.totalWords, LIGHTBOX_WORD_FREQUENCY_OPTIONS.minCharacterLength);
+  const terms = (list: PartOfSpeechList): LightboxCountedTerm[] =>
+    ranked[list].slice(0, LIGHTBOX_MEASURED_SIZES.partOfSpeechWords).map((entry) => ({
+      term: entry.word,
+      count: entry.count,
+      percentage: entry.percentage,
+      paragraphs: [...(where.get(`${list}:${entry.word}`) ?? [])]
+    }));
+  return {
+    available: true,
+    nouns: terms('nouns'),
+    verbs: terms('verbs'),
+    adjectives: terms('adjectives'),
+    adverbs: terms('adverbs')
+  };
+}
+
+/** The paragraph whose trimmed span holds `offset`, by binary search. */
+function paragraphLocator(paragraphs: readonly LightboxParagraph[]): (offset: number) => number | undefined {
+  return (offset) => {
+    let low = 0;
+    let high = paragraphs.length - 1;
+    while (low <= high) {
+      const middle = (low + high) >> 1;
+      const paragraph = paragraphs[middle];
+      if (offset < paragraph.start) {
+        high = middle - 1;
+      } else if (offset >= paragraph.end) {
+        low = middle + 1;
+      } else {
+        return paragraph.index;
+      }
+    }
+    return undefined;
+  };
+}
+
 function containsRun(tokens: readonly string[], parts: readonly string[]): boolean {
   for (let start = 0; start + parts.length <= tokens.length; start++) {
     if (parts.every((part, offset) => tokens[start + offset] === part)) {
@@ -138,8 +223,6 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
       percentage: entry.percentage,
       paragraphs: place(entry.word)
     }));
-  const tagged = (entries: readonly WordFrequencyEntry[] | undefined): LightboxCountedTerm[] =>
-    words(entries, LIGHTBOX_MEASURED_SIZES.partOfSpeechWords, (word) => index.paragraphsOfTaggedWord(word));
   const phrases = (entries: readonly NGramEntry[] | undefined, size: number): LightboxCountedTerm[] =>
     (entries ?? [])
       .filter((entry) => entry.count >= 2 && hasContentWord(entry.phrase))
@@ -151,20 +234,11 @@ export function buildLightboxMeasuredSet(inputs: LightboxMeasureInputs): Lightbo
         paragraphs: index.paragraphsOfPhrase(entry.phrase)
       }));
 
-  const pos = inputs.frequency.pos;
-  const partsOfSpeech: LightboxPartsOfSpeech = {
-    available: pos?.mode === 'tagger',
-    nouns: tagged(pos?.topNouns),
-    verbs: tagged(pos?.topVerbs),
-    adjectives: tagged(pos?.topAdjectives),
-    adverbs: tagged(pos?.topAdverbs)
-  };
-
   return {
     headline: headlineStats(inputs.stats),
     standards: standardsComparison(inputs.stats),
     topWords: words(inputs.frequency.topWords, LIGHTBOX_MEASURED_SIZES.topWords, (word) => index.paragraphsOfWord(word)),
-    partsOfSpeech,
+    partsOfSpeech: placeLightboxPartsOfSpeech(inputs.frequency, inputs.text),
     phrases: {
       bigrams: phrases(inputs.frequency.bigrams, LIGHTBOX_MEASURED_SIZES.bigrams),
       trigrams: phrases(inputs.frequency.trigrams, LIGHTBOX_MEASURED_SIZES.trigrams)

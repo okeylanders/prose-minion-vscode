@@ -17,13 +17,20 @@
  *   by its id through `LightboxService.updateReadings`, so a hidden tab, a
  *   reveal or a switch back to the source finds them; a result for a board
  *   that no longer exists is dropped.
+ * - **Outcomes are published, not posted by the run (PR #148).** The service
+ *   publishes a `readings` change only for the current board, so a stale run
+ *   never publishes over a newer one. This handler subscribes the first time
+ *   its webview sends a reading message (the sidebar and the Workshop never
+ *   do) and posts what it hears: a settled group as `LIGHTBOX_GROUP_RESULT`,
+ *   a run starting or stopping as the board. Progress, refusals and the
+ *   estimate are the run's and the request's own answers.
  *
  * Logs name groups, lenses, counts, paths and reasons, never text.
  */
 
 import { LogSink, ShellService } from '@/platform';
 import { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
-import type { LightboxService } from '@/infrastructure/lightbox/LightboxService';
+import type { LightboxOutcomeChange, LightboxService } from '@/infrastructure/lightbox/LightboxService';
 import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
 import type { LightboxRunSource } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
@@ -65,6 +72,8 @@ export class LightboxReadingHandler {
   private lensesOff: LightboxLensId[] = [];
   /** Runs this handler started, so closing the tab stops them. */
   private readonly ownRuns = new Map<string, LightboxActiveRun>();
+  private unsubscribe?: () => void;
+  private disposed = false;
 
   constructor(
     private readonly lightboxService: LightboxService,
@@ -86,12 +95,16 @@ export class LightboxReadingHandler {
 
   /** Closing the tab stops the runs it started; finished groups stay on their boards. */
   dispose(): void {
+    this.disposed = true;
+    this.unsubscribe?.();
+    this.unsubscribe = undefined;
     for (const run of [...this.ownRuns.values()]) {
       this.stop(run, 'The Lightbox tab closed before this group came back.');
     }
   }
 
   async handleSetLenses(message: LightboxSetLensesMessage): Promise<void> {
+    this.subscribe();
     const requested = Array.isArray(message.payload?.lensesOff) ? message.payload.lensesOff : [];
     this.lensesOff = [...new Set(requested.filter(isLightboxLensId))];
     this.postContextFiles();
@@ -99,6 +112,7 @@ export class LightboxReadingHandler {
   }
 
   async handleRun(message: LightboxRunMessage): Promise<void> {
+    this.subscribe();
     const { boardId, scope } = message.payload ?? ({} as LightboxRunMessage['payload']);
     const lens = scope?.mode === 'lens' ? scope.lens : undefined;
     const refuse = (text: string, groups: LightboxReadingGroupId[] = []): void => {
@@ -150,23 +164,21 @@ export class LightboxReadingHandler {
     let started: LightboxActiveRun | undefined;
     const start = this.runner.start(prepared.source, preparedCalls, {
       onGroup: (outcome) => {
-        const board = this.lightboxService.updateReadings(boardId, (readings) =>
-          readings.map((group) => (group.group === outcome.group ? settleLightboxGroup(group, outcome, lens) : group))
+        if (!started) {
+          return;
+        }
+        // Published to the subscribed webviews when this is still the current board.
+        const board = this.lightboxService.updateReadings(
+          boardId,
+          (readings) => readings.map((group) =>
+            (group.group === outcome.group ? settleLightboxGroup(group, outcome, lens) : group)),
+          { token: started.token, group: outcome.group }
         );
-        if (!board || !started) {
+        if (!board) {
           this.outputChannel.appendLine(`[LightboxReadingHandler] Dropped group ${outcome.group}: its board is gone`);
           return;
         }
         groupsBack += 1;
-        const group = board.readings.find((candidate) => candidate.group === outcome.group);
-        if (group) {
-          void this.postMessage({
-            type: MessageType.LIGHTBOX_GROUP_RESULT,
-            source: SOURCE,
-            payload: { boardId, token: started.token, group },
-            timestamp: Date.now()
-          });
-        }
         this.postProgress({ boardId, token: started.token, phase: 'streaming', groups, groupsBack, outputCharacters: 0, ...lensField(lens) });
       },
       onProgress: (outputCharacters) => {
@@ -194,14 +206,12 @@ export class LightboxReadingHandler {
     }
     started = start.run;
     this.ownRuns.set(started.token, started);
-    const board = this.lightboxService.updateReadings(boardId, (readings) => startLightboxGroups(readings, calls, lens));
-    if (board) {
-      this.postBoard(board);
-    }
+    this.lightboxService.updateReadings(boardId, (readings) => startLightboxGroups(readings, calls, lens));
     this.postProgress({ boardId, token: started.token, phase: 'started', groups, groupsBack: 0, outputCharacters: 0, ...lensField(lens) });
   }
 
   async handleCancelRun(message: LightboxCancelRunMessage): Promise<void> {
+    this.subscribe();
     const { boardId, token } = message.payload ?? ({} as LightboxCancelRunMessage['payload']);
     const run = this.runner.activeRun(boardId);
     if (!run || run.token !== token) {
@@ -211,6 +221,7 @@ export class LightboxReadingHandler {
   }
 
   async handleAddContextFiles(_message: LightboxAddContextFilesMessage): Promise<void> {
+    this.subscribe();
     const picked = await this.shell.pickFile({
       title: 'Add a context file to the Lightbox',
       openLabel: 'Add',
@@ -245,6 +256,7 @@ export class LightboxReadingHandler {
   }
 
   async handleRemoveContextFile(message: LightboxRemoveContextFileMessage): Promise<void> {
+    this.subscribe();
     if (this.contextShelf.remove(message.payload?.id ?? '')) {
       this.outputChannel.appendLine('[LightboxReadingHandler] Context file removed');
     }
@@ -285,9 +297,6 @@ export class LightboxReadingHandler {
       return;
     }
     const board = this.lightboxService.updateReadings(run.boardId, (readings) => stopLightboxGroups(readings, run.groups, message));
-    if (board) {
-      this.postBoard(board);
-    }
     this.postProgress({
       boardId: run.boardId,
       token: run.token,
@@ -345,8 +354,34 @@ export class LightboxReadingHandler {
     });
   }
 
-  private postBoard(board: LightboxBoard): void {
-    void this.postMessage({ type: MessageType.LIGHTBOX_BOARD, source: SOURCE, payload: { board }, timestamp: Date.now() });
+  /** Hear the service's reading outcomes, once, from the first reading message on. */
+  private subscribe(): void {
+    if (this.unsubscribe || this.disposed) {
+      return;
+    }
+    this.unsubscribe = this.lightboxService.addOutcomeListener((change) => this.publish(change));
+  }
+
+  /** Board and refusal changes are LightboxHandler's to post; readings are this handler's. */
+  private publish(change: LightboxOutcomeChange): void {
+    if (change.kind !== 'readings') {
+      return;
+    }
+    if (change.settled) {
+      void this.postMessage({
+        type: MessageType.LIGHTBOX_GROUP_RESULT,
+        source: SOURCE,
+        payload: { boardId: change.board.boardId, token: change.settled.token, group: change.settled.group },
+        timestamp: Date.now()
+      });
+      return;
+    }
+    void this.postMessage({
+      type: MessageType.LIGHTBOX_BOARD,
+      source: SOURCE,
+      payload: { board: change.board, refusal: change.refusal },
+      timestamp: Date.now()
+    });
   }
 
   private postProgress(progress: LightboxRunProgress): void {

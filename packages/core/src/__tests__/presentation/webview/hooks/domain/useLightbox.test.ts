@@ -44,14 +44,44 @@ describe('useLightbox', () => {
     expect(result.current.board).toBeUndefined();
 
     act(() => result.current.handleSourceRefused(envelope(MessageType.LIGHTBOX_SOURCE_REFUSED, {
-      refusal: { reason: 'over-ceiling', message: 'Too long.', wordCount: 60_000, ceilingWords: 50_000 }
+      refusal: { id: 'refusal-1', reason: 'over-ceiling', message: 'Too long.', wordCount: 60_000, ceilingWords: 50_000 }
     }) as never));
     expect(result.current.refusal?.reason).toBe('over-ceiling');
 
     const board = makeBoard(6);
-    act(() => result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board }) as never));
+    act(() => result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board, refusal: null }) as never));
     expect(result.current.board).toBe(board);
     expect(result.current.refusal).toBeNull();
+  });
+
+  it('shows the refusal a mount answer carries, beside the board it keeps (PR #148 F-02)', () => {
+    const { result } = renderHook(() => useLightbox());
+    const board = makeBoard(6);
+    const refusal = { id: 'refusal-2', reason: 'empty', message: 'Nothing.', displayPath: 'Drafts/blank.md' };
+    act(() => result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board, refusal }) as never));
+
+    expect(result.current.board).toBe(board);
+    expect(result.current.refusal).toEqual(refusal);
+  });
+
+  it('tells the host about a dismissal, and an answer already on its way does not bring it back', () => {
+    const { result } = renderHook(() => useLightbox());
+    const refusal = { id: 'refusal-3', reason: 'unreadable', message: 'Unsaved.', displayPath: 'Untitled-1' };
+    act(() => result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board: null, refusal }) as never));
+
+    act(() => result.current.dismissRefusal());
+    expect(result.current.refusal).toBeNull();
+    expect(vscode.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      type: MessageType.LIGHTBOX_DISMISS_REFUSAL,
+      source: 'webview.lightbox',
+      payload: { refusalId: 'refusal-3' }
+    }));
+
+    act(() => result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board: null, refusal }) as never));
+    expect(result.current.refusal).toBeNull();
+    const newer = { ...refusal, id: 'refusal-4' };
+    act(() => result.current.handleSourceRefused(envelope(MessageType.LIGHTBOX_SOURCE_REFUSED, { refusal: newer }) as never));
+    expect(result.current.refusal).toEqual(newer);
   });
 
   it('posts the source actions and tracks a re-read until the host answers', () => {
@@ -67,14 +97,14 @@ describe('useLightbox', () => {
       MessageType.LIGHTBOX_REFRESH_SOURCE
     ]);
     expect(result.current.rereading).toBe(true);
-    act(() => result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6) }) as never));
+    act(() => result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6), refusal: null }) as never));
     expect(result.current.rereading).toBe(false);
   });
 
   it('persists the filter, the pinned item and the lenses that are off, never the board', () => {
     const { result } = renderHook(() => useLightbox());
     act(() => {
-      result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6) }) as never);
+      result.current.handleBoard(envelope(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6), refusal: null }) as never);
       result.current.setFilter('measured');
       result.current.selectItem({ kind: 'word', word: 'alice' });
       result.current.toggleLens('voice');

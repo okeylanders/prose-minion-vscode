@@ -6,7 +6,7 @@
  *
  *   node harness.js <bundle.js> <outDir>
  *
- * The board and the refusal are real host output: boards/*.json were built by
+ * The boards and the refusal are real host output: boards/*.json were built by
  * LightboxService from public-domain text (see README.md).
  */
 const path = require('path');
@@ -23,6 +23,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const boards = path.join(__dirname, 'boards');
 const built = JSON.parse(fs.readFileSync(path.join(boards, 'board.json'), 'utf8'));
 const refused = JSON.parse(fs.readFileSync(path.join(boards, 'refused.json'), 'utf8'));
+const book = JSON.parse(fs.readFileSync(path.join(boards, 'book.json'), 'utf8'));
 
 const html = `<!DOCTYPE html>
 <html lang="en">
@@ -80,10 +81,10 @@ const chrome = [
 
 const PINNED_WORD = 'alice';
 const scenarios = [
-  { name: 'empty', messages: [...chrome, message('lightbox_board', { board: null })] },
+  { name: 'empty', messages: [...chrome, message('lightbox_board', { board: null, refusal: null })] },
   {
     name: 'board',
-    messages: [...chrome, message('lightbox_board', { board: built.board })],
+    messages: [...chrome, message('lightbox_board', { board: built.board, refusal: null })],
     // Pin one word, park the pointer on the header so nothing else is hovered,
     // and scroll back to the top (the click scrolled the word into view).
     act: async (page) => {
@@ -96,8 +97,28 @@ const scenarios = [
     }
   },
   {
+    // PR #148 F-04: the whole book, "alice" pinned (hundreds of paragraphs),
+    // jumped to its last address. The pager shows that page and the jump
+    // focuses the last chip; the inspector is scrolled into view at every
+    // width, so the stacked 500 px layout shows it too.
+    name: 'paged',
+    messages: [...chrome, message('lightbox_board', { board: book.board, refusal: null })],
+    act: async (page) => {
+      const term = book.board.measured.topWords.find((word) => word.term === PINNED_WORD);
+      const last = term.paragraphs[term.paragraphs.length - 1];
+      await page.click(`button[title="${term.term} ×${term.count}"]`);
+      await page.mouse.move(4, 4);
+      await page.fill('.pm-lb-para-jump input', String(last));
+      await page.press('.pm-lb-para-jump input', 'Enter');
+      await page.evaluate(() => {
+        document.querySelectorAll('.pm-ws, .pm-lb-scroll').forEach((element) => { element.scrollTop = 0; });
+        document.querySelector('.pm-lb-inspector')?.scrollIntoView({ block: 'start' });
+      });
+    }
+  },
+  {
     name: 'refused',
-    messages: [...chrome, message('lightbox_board', { board: null }), message('lightbox_source_refused', { refusal: refused.refusal })]
+    messages: [...chrome, message('lightbox_board', { board: null, refusal: null }), message('lightbox_source_refused', { refusal: refused.refusal })]
   }
 ];
 
@@ -150,6 +171,11 @@ const viewports = [
           litColumns: columns.flatMap((column, index) => (column.querySelector('.pm-lb-col-focus.is-lit') ? [index + 1] : [])),
           focusLine: document.querySelector('.pm-lb-ribbon-focus')?.textContent ?? null,
           inspectorTitle: document.querySelector('.pm-lb-inspector-title')?.textContent ?? null,
+          inspectorClaim: document.querySelector('.pm-lb-inspector-claim')?.textContent ?? null,
+          pagerRange: document.querySelector('.pm-lb-para-range')?.textContent ?? null,
+          chips: [...document.querySelectorAll('.pm-lb-para-chip')].map((chip) => chip.textContent),
+          focused: document.activeElement?.textContent ?? null,
+          inspector: rect('.pm-lb-inspector'),
           readButtonDisabled: document.querySelector('.pm-lb-run .pm-lb-primary')?.disabled ?? null,
           rail: rect('.pm-ws-rail'),
           main: rect('.pm-ws-main'),

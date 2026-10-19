@@ -1,109 +1,55 @@
 /**
- * LightboxHandler (ADR 2026-10-19 D10): the four `LIGHTBOX_*` routes, source
+ * LightboxHandler (ADR 2026-10-19 D10): the `LIGHTBOX_*` routes, source
  * resolution through the shared TextSourceResolver and the ShellService
- * picker, refusals, and logs that never carry the writer's text.
+ * picker, refusals, and logs that never carry the writer's text. Runs the
+ * real handler and service; only file I/O and the picker are stand-ins.
+ * Source ownership across requests and panels is in
+ * LightboxSourceOwnership.test.ts; refusal replay and dismissal in
+ * LightboxRefusalReplay.test.ts.
  */
 
-import { LightboxHandler } from '@/application/handlers/domain/LightboxHandler';
 import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
-import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
-import type { ProseStatsService } from '@services/measurement/ProseStatsService';
-import type { StyleFlagsService } from '@services/measurement/StyleFlagsService';
-import type { WordFrequencyService } from '@services/measurement/WordFrequencyService';
-import {
-  ExtensionToWebviewMessage,
-  LightboxBoard,
-  MessageType
-} from '@/shared/types/messages';
+import { MessageType } from '@/shared/types/messages';
 import { ALICE_OPENING_CURLY, ALICE_PARAGRAPHS, aliceWords } from '@/__tests__/infrastructure/lightbox/lightboxProseFixtures';
+import { createLightboxHost } from '@/__tests__/application/handlers/domain/lightboxHandlerHarness';
 
 const TEXT_MARKER = ALICE_PARAGRAPHS[3];
 
-const board = (displayPath = 'Drafts/alice-1.md'): LightboxBoard => ({
-  boardVersion: 0,
-  boardId: 'board-1',
-  source: {
-    kind: 'file',
-    displayPath,
-    contentHash: 'hash',
-    wordCount: 226,
-    paragraphCount: 6,
-    capturedAt: 1,
-    preview: 'Chapter I'
-  },
-  paragraphs: [],
-  ribbon: [],
-  measured: {} as LightboxBoard['measured'],
-  readings: []
-});
-
-function setup(overrides: {
-  service?: Partial<Record<'buildBoard' | 'currentBoard' | 'currentRereadTarget', jest.Mock>>;
-  realService?: LightboxService;
-  resolve?: jest.Mock;
-  pickFile?: jest.Mock;
-} = {}) {
-  const posted: ExtensionToWebviewMessage[] = [];
-  const postMessage = jest.fn(async (message: ExtensionToWebviewMessage) => {
-    posted.push(message);
-  });
-  const log = { appendLine: jest.fn() };
-  const service = overrides.realService ?? ({
-    buildBoard: jest.fn().mockResolvedValue({ kind: 'board', board: board(), reused: false }),
-    currentBoard: jest.fn().mockReturnValue(undefined),
-    currentRereadTarget: jest.fn().mockReturnValue(undefined),
-    ...overrides.service
-  } as unknown as LightboxService);
-  const resolve = overrides.resolve ?? jest.fn().mockResolvedValue({
-    text: ALICE_OPENING_CURLY,
-    relativePaths: ['Drafts/alice-1.md'],
-    displayPath: 'Drafts/alice-1.md'
-  });
-  const pickFile = overrides.pickFile ?? jest.fn().mockResolvedValue(undefined);
-  const handler = new LightboxHandler(
-    service,
-    { resolve } as unknown as TextSourceResolver,
-    { pickFile },
-    postMessage,
-    log as never
-  );
-  const router = new MessageRouter();
-  handler.registerRoutes(router);
-  const route = (type: MessageType, payload: object = {}) =>
-    router.route({ type, source: 'webview.lightbox', payload, timestamp: 1 } as never);
-  const logged = () => log.appendLine.mock.calls.map(([line]) => String(line)).join('\n');
-  return { handler, router, route, posted, service, resolve, pickFile, logged };
-}
-
 describe('LightboxHandler', () => {
-  it('registers exactly the four Lightbox routes', () => {
-    const { router } = setup();
+  it('registers exactly the Lightbox routes', () => {
+    const host = createLightboxHost();
+    const router = new MessageRouter();
+    host.openPanel().handler.registerRoutes(router);
     expect([
       MessageType.LIGHTBOX_REQUEST_BOARD,
       MessageType.LIGHTBOX_SET_SOURCE,
       MessageType.LIGHTBOX_PICK_SOURCE_FILE,
-      MessageType.LIGHTBOX_REFRESH_SOURCE
+      MessageType.LIGHTBOX_REFRESH_SOURCE,
+      MessageType.LIGHTBOX_DISMISS_REFUSAL
     ].every((type) => router.hasHandler(type))).toBe(true);
-    expect(router.handlerCount).toBe(4);
+    expect(router.handlerCount).toBe(5);
   });
 
   it('answers a board request with the current board, or null before the first', async () => {
-    const current = board();
-    const empty = setup();
-    await empty.route(MessageType.LIGHTBOX_REQUEST_BOARD);
-    expect(empty.posted).toEqual([
-      expect.objectContaining({ type: MessageType.LIGHTBOX_BOARD, source: 'extension.lightbox', payload: { board: null } })
-    ]);
+    const host = createLightboxHost();
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+    expect(panel.posted).toEqual([expect.objectContaining({
+      type: MessageType.LIGHTBOX_BOARD,
+      source: 'extension.lightbox',
+      payload: { board: null, refusal: null }
+    })]);
 
-    const filled = setup({ service: { currentBoard: jest.fn().mockReturnValue(current) } });
-    await filled.route(MessageType.LIGHTBOX_REQUEST_BOARD);
-    expect(filled.posted).toEqual([expect.objectContaining({ payload: { board: current } })]);
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, { text: ALICE_OPENING_CURLY, relativePath: 'Drafts/alice-1.md' });
+    const reopened = host.openPanel();
+    await reopened.route(MessageType.LIGHTBOX_REQUEST_BOARD);
+    expect(reopened.boardPaths()).toEqual(['Drafts/alice-1.md']);
   });
 
   it('boards a selection from its own text, without reading a file', async () => {
-    const { route, service, resolve, posted, logged } = setup();
-    await route(MessageType.LIGHTBOX_SET_SOURCE, {
+    const host = createLightboxHost();
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, {
       text: ALICE_OPENING_CURLY,
       sourceUri: 'file:///workspace/Drafts/alice-1.md',
       relativePath: 'Drafts/alice-1.md',
@@ -111,57 +57,48 @@ describe('LightboxHandler', () => {
       endLine: 14
     });
 
-    expect(resolve).not.toHaveBeenCalled();
-    expect(service.buildBoard).toHaveBeenCalledWith({
+    expect(host.resolve).not.toHaveBeenCalled();
+    expect(panel.posted).toEqual([expect.objectContaining({ type: MessageType.LIGHTBOX_BOARD })]);
+    expect(host.service.currentBoard()?.source).toEqual(expect.objectContaining({
       kind: 'selection',
-      text: ALICE_OPENING_CURLY,
       displayPath: 'Drafts/alice-1.md',
       sourceUri: 'file:///workspace/Drafts/alice-1.md',
       startLine: 3,
       endLine: 14
-    });
-    expect(posted).toEqual([expect.objectContaining({ type: MessageType.LIGHTBOX_BOARD })]);
-    expect(logged()).not.toContain(TEXT_MARKER);
+    }));
+    expect(panel.logged()).toContain('Board built for Drafts/alice-1.md');
+    expect(panel.logged()).not.toContain(TEXT_MARKER);
   });
 
   it('reads a file source through the resolver by its absolute path', async () => {
-    const { route, service, resolve } = setup();
-    await route(MessageType.LIGHTBOX_SET_SOURCE, {
-      sourceUri: 'file:///workspace/Drafts/alice-1.md',
-      relativePath: 'Drafts/alice-1.md'
-    });
+    const host = createLightboxHost();
+    host.addFile('Drafts/alice-1.md', ALICE_OPENING_CURLY);
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, host.fileSource('Drafts/alice-1.md'));
 
-    expect(resolve).toHaveBeenCalledWith({ mode: 'activeFile', pathText: '/workspace/Drafts/alice-1.md' });
-    expect(service.buildBoard).toHaveBeenCalledWith(expect.objectContaining({
-      kind: 'file',
-      displayPath: 'Drafts/alice-1.md',
-      rereadPath: '/workspace/Drafts/alice-1.md'
-    }));
+    expect(host.resolve).toHaveBeenCalledWith({ mode: 'activeFile', pathText: '/workspace/Drafts/alice-1.md' });
+    expect(panel.boardPaths()).toEqual(['Drafts/alice-1.md']);
+    expect(host.service.currentBoard()?.source.kind).toBe('file');
+    expect(host.service.currentRereadTarget()?.rereadPath).toBe('/workspace/Drafts/alice-1.md');
+    expect(JSON.stringify(panel.posted)).not.toContain('rereadPath');
   });
 
   it('refuses an unsaved document instead of guessing a file', async () => {
-    const { route, service, posted } = setup();
-    await route(MessageType.LIGHTBOX_SET_SOURCE, { sourceUri: 'untitled:Untitled-1', relativePath: 'Untitled-1' });
+    const host = createLightboxHost();
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, { sourceUri: 'untitled:Untitled-1', relativePath: 'Untitled-1' });
 
-    expect(service.buildBoard).not.toHaveBeenCalled();
-    expect(posted).toEqual([expect.objectContaining({
-      type: MessageType.LIGHTBOX_SOURCE_REFUSED,
-      payload: { refusal: expect.objectContaining({ reason: 'unreadable' }) }
-    })]);
+    expect(host.resolve).not.toHaveBeenCalled();
+    expect(panel.refusals()).toEqual([expect.objectContaining({ reason: 'unreadable', displayPath: 'Untitled-1' })]);
   });
 
   it('posts LIGHTBOX_SOURCE_REFUSED for a source over the ceiling, with its count', async () => {
-    const realService = new LightboxService(
-      { analyze: jest.fn() } as unknown as ProseStatsService,
-      { analyze: jest.fn() } as unknown as WordFrequencyService,
-      { analyze: jest.fn() } as unknown as StyleFlagsService,
-      { enrichWithStandards: jest.fn() }
-    );
+    const host = createLightboxHost();
+    const panel = host.openPanel();
     const text = aliceWords(60_000);
-    const { route, posted, logged } = setup({ realService });
-    await route(MessageType.LIGHTBOX_SET_SOURCE, { text, relativePath: 'Drafts/whole-book.md' });
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, { text, relativePath: 'Drafts/whole-book.md' });
 
-    expect(posted).toEqual([expect.objectContaining({
+    expect(panel.posted).toEqual([expect.objectContaining({
       type: MessageType.LIGHTBOX_SOURCE_REFUSED,
       source: 'extension.lightbox',
       payload: {
@@ -173,67 +110,51 @@ describe('LightboxHandler', () => {
         })
       }
     })]);
-    expect(logged()).toContain('Source refused (over-ceiling) for Drafts/whole-book.md: 60000 words');
-    expect(logged()).not.toContain(text.slice(0, 40));
+    expect(panel.logged()).toContain('Source refused (over-ceiling) for Drafts/whole-book.md: 60000 words');
+    expect(panel.logged()).not.toContain(text.slice(0, 40));
   });
 
   it('does nothing when the writer dismisses the picker, and boards the chosen file', async () => {
-    const dismissed = setup();
-    await dismissed.route(MessageType.LIGHTBOX_PICK_SOURCE_FILE);
-    expect(dismissed.pickFile).toHaveBeenCalledWith(expect.objectContaining({ openLabel: 'Open' }));
-    expect(dismissed.posted).toEqual([]);
+    const host = createLightboxHost();
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_PICK_SOURCE_FILE);
+    expect(host.pickFile).toHaveBeenCalledWith(expect.objectContaining({ openLabel: 'Open' }));
+    expect(panel.posted).toEqual([]);
 
-    const chosen = setup({
-      pickFile: jest.fn().mockResolvedValue({ fsPath: '/workspace/Drafts/alice-1.md', uri: 'file:///workspace/Drafts/alice-1.md' })
-    });
-    await chosen.route(MessageType.LIGHTBOX_PICK_SOURCE_FILE);
-    expect(chosen.resolve).toHaveBeenCalledWith({ mode: 'activeFile', pathText: '/workspace/Drafts/alice-1.md' });
-    expect(chosen.posted).toEqual([expect.objectContaining({ type: MessageType.LIGHTBOX_BOARD })]);
+    const chosen = host.addFile('Drafts/alice-1.md', ALICE_OPENING_CURLY);
+    host.pickFile.mockResolvedValueOnce({ fsPath: chosen, uri: `file://${chosen}` });
+    await panel.route(MessageType.LIGHTBOX_PICK_SOURCE_FILE);
+    expect(host.resolve).toHaveBeenCalledWith({ mode: 'activeFile', pathText: chosen });
+    expect(panel.boardPaths()).toEqual(['Drafts/alice-1.md']);
   });
 
-  it('refuses a picked file outside the workspace in the Lightbox\'s words', async () => {
-    const { route, posted, logged } = setup({
-      pickFile: jest.fn().mockResolvedValue({ fsPath: '/elsewhere/notes.md', uri: 'file:///elsewhere/notes.md' }),
-      resolve: jest.fn().mockRejectedValue(new Error('Text source path must be inside an open workspace folder.'))
-    });
-    await route(MessageType.LIGHTBOX_PICK_SOURCE_FILE);
+  it('refuses a picked file outside the workspace in the Lightbox\'s words, naming it', async () => {
+    const host = createLightboxHost();
+    host.files.set('/elsewhere/notes.md', new Error('Text source path must be inside an open workspace folder.'));
+    host.pickFile.mockResolvedValueOnce({ fsPath: '/elsewhere/notes.md', uri: 'file:///elsewhere/notes.md' });
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_PICK_SOURCE_FILE);
 
-    expect(posted).toEqual([expect.objectContaining({
-      type: MessageType.LIGHTBOX_SOURCE_REFUSED,
-      payload: {
-        refusal: expect.objectContaining({
-          reason: 'unreadable',
-          message: 'The Lightbox reads files inside an open workspace folder.'
-        })
-      }
+    expect(panel.refusals()).toEqual([expect.objectContaining({
+      reason: 'unreadable',
+      message: 'The Lightbox reads files inside an open workspace folder.',
+      displayPath: 'notes.md'
     })]);
-    expect(logged()).toContain('Could not read a source file');
+    expect(panel.logged()).toContain('Could not read a source file');
   });
 
   it('re-reads the current file, or refuses when there is none', async () => {
-    const none = setup();
-    await none.route(MessageType.LIGHTBOX_REFRESH_SOURCE);
-    expect(none.posted).toEqual([expect.objectContaining({
-      payload: { refusal: expect.objectContaining({ reason: 'not-refreshable' }) }
-    })]);
+    const host = createLightboxHost();
+    const panel = host.openPanel();
+    await panel.route(MessageType.LIGHTBOX_REFRESH_SOURCE);
+    expect(panel.refusals()).toEqual([expect.objectContaining({ reason: 'not-refreshable' })]);
 
-    const current = setup({
-      service: {
-        currentRereadTarget: jest.fn().mockReturnValue({
-          displayPath: 'Drafts/alice-1.md',
-          rereadPath: '/workspace/Drafts/alice-1.md',
-          sourceUri: 'file:///workspace/Drafts/alice-1.md'
-        })
-      }
-    });
-    await current.route(MessageType.LIGHTBOX_REFRESH_SOURCE);
-    expect(current.resolve).toHaveBeenCalledWith({ mode: 'activeFile', pathText: '/workspace/Drafts/alice-1.md' });
-    expect(current.posted).toEqual([expect.objectContaining({ type: MessageType.LIGHTBOX_BOARD })]);
-  });
-
-  it('posts nothing for a build a newer source overtook', async () => {
-    const { route, posted } = setup({ service: { buildBoard: jest.fn().mockResolvedValue({ kind: 'superseded' }) } });
-    await route(MessageType.LIGHTBOX_SET_SOURCE, { text: ALICE_OPENING_CURLY });
-    expect(posted).toEqual([]);
+    const file = host.addFile('Drafts/alice-1.md', ALICE_OPENING_CURLY);
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, host.fileSource('Drafts/alice-1.md'));
+    host.resolve.mockClear();
+    await panel.route(MessageType.LIGHTBOX_REFRESH_SOURCE);
+    expect(host.resolve).toHaveBeenCalledWith({ mode: 'activeFile', pathText: file });
+    expect(panel.boardPaths()).toEqual(['Drafts/alice-1.md', 'Drafts/alice-1.md']);
+    expect(panel.logged()).toContain('Board unchanged for Drafts/alice-1.md');
   });
 });

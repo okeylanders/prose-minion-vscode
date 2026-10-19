@@ -12,8 +12,10 @@
  * per-webview message seam, as in the sidebar and the Workshop) — built from
  * the SAME injected CoreServices bundle constructed in extension.ts. Nothing
  * else is `new`-ed here (ADR 2026-06-18; witnessed in __tests__/architecture).
- * Boards live in the shared LightboxService inside that bundle, so closing
- * and reopening the panel serves the latest board again (D12).
+ * Boards, the standing refusal and source-request ownership live in the
+ * shared LightboxService inside that bundle, so closing and reopening the
+ * panel serves the current outcome again (D12), and a request still pending
+ * when the panel closed lands in the new one (PR #148 F-01).
  */
 
 import * as vscode from 'vscode';
@@ -69,7 +71,7 @@ export class LightboxPanelProvider implements vscode.Disposable, vscode.WebviewP
   /**
    * VS Code restores only the editor shell. The serialized webview state is
    * deliberately ignored: the webview's mount-time LIGHTBOX_REQUEST_BOARD
-   * reads the latest board from the shared service.
+   * reads the current outcome from the shared service.
    */
   public deserializeWebviewPanel(
     panel: vscode.WebviewPanel,
@@ -131,7 +133,8 @@ export class LightboxPanelProvider implements vscode.Disposable, vscode.WebviewP
 
     // Messages posted while an editor tab is hidden can be dropped even under
     // retainContextWhenHidden; on re-reveal, replay the cache and serve the
-    // latest board through the normal request route.
+    // current outcome (board and undismissed refusal) through the normal
+    // request route.
     const viewStateSubscription = panel.onDidChangeViewState(() => {
       if (panel.visible) {
         this.messageHandler?.flushCachedResults?.();
@@ -167,8 +170,10 @@ export class LightboxPanelProvider implements vscode.Disposable, vscode.WebviewP
    * command). Opens or reveals the panel, then routes a synthetic
    * LIGHTBOX_SET_SOURCE through the panel's OWN MessageHandler, the same
    * path a webview request takes (the Workshop's `seedExcerpt` pattern). If
-   * the webview is still booting, its mount-time LIGHTBOX_REQUEST_BOARD
-   * reads the new board from the shared service, so there is no race.
+   * the webview is still booting, the outcome posted now may be dropped; its
+   * mount-time LIGHTBOX_REQUEST_BOARD then reads the shared service's current
+   * outcome, which keeps a refusal (over-ceiling, empty, unsaved) until the
+   * writer dismisses it as well as the latest board (PR #148 F-02).
    */
   public seedSource(payload: LightboxSetSourcePayload): void {
     this.openOrReveal();

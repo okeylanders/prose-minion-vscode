@@ -2,7 +2,7 @@
 
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D1, D3, D4, D5, D8 (ceiling), D10, D12 (ephemeral)
-**Status:** In review (branch `epic/lightbox-slice-2a-board`, PR pending)
+**Status:** In review ([PR #148](https://github.com/okeylanders/prose-minion-vscode/pull/148); review fixes pushed, awaiting re-review)
 **Prerequisite:** [Dialogue % misses curly quotes](../../tech-debt/2026-10-19-prose-stats-dialogue-curly-quotes.md) is fixed, so the headline figure and the per-paragraph lane agree.
 
 ## Outcome
@@ -134,8 +134,11 @@ the build differs from the plan above, or the plan left a choice open:
   kinds to mean anything. `LIGHTBOX_TILE_REGISTER` (in
   `shared/constants/lightbox.ts`) and the renderer map are exhaustive over the
   union, with a type-level test.
-- `LIGHTBOX_BOARD` carries `{ board: LightboxBoard | null }`, so the mount
-  request always gets an answer.
+- `LIGHTBOX_BOARD` carries the host's current outcome,
+  `{ board: LightboxBoard | null, refusal: LightboxSourceRefusal | null }`,
+  so the mount request always gets an answer and replays a refusal the
+  webview missed (review F-02). `LIGHTBOX_DISMISS_REFUSAL { refusalId }` is
+  the fifth inbound route; refusals carry a host-minted `id`.
 - `LIGHTBOX_SOURCE_REFUSED` covers every failure, not just the ceiling:
   `over-ceiling` (with the count, the ceiling and a suggestion), `empty`,
   `unreadable` and `not-refreshable`. The Lightbox has one failure surface and
@@ -154,12 +157,15 @@ the build differs from the plan above, or the plan left a choice open:
   outer whitespace trimmed.
 - `LightboxMeasures.ts` maps the tools' outputs into the contract and places
   each counted word and phrase in its paragraphs with the word-frequency
-  tool's own tokenizer (now exported as `extractFrequencyWords`). The tagger
-  splits hyphenated words, so a tagged word also matches the parts of a
-  hyphenated token. A phrase that only spans a paragraph break lights nothing.
+  tool's own tokenizer (now exported as `extractFrequencyWords`). A phrase
+  that only spans a paragraph break lights nothing. Parts of speech are
+  counted and placed from the tagger's own occurrence stream instead (review
+  F-03, below).
 - The word-frequency options are fixed for boards rather than read from the
-  Metrics settings, so every board has the same shape: POS and n-grams on, 24
-  top words, six words per part of speech. Repeated phrases come from the
+  Metrics settings, so every board has the same shape: POS (with its
+  occurrence stream) and n-grams on, 24 top words, six words per part of
+  speech. They live beside the measured-set builder
+  (`LIGHTBOX_WORD_FREQUENCY_OPTIONS` in `LightboxMeasures.ts`). Repeated phrases come from the
   tool's ranking (a new optional `ngramLimit`, default 20 as before, set to
   120 here) and keep those with two or more occurrences and at least one
   non-stopword (the tool's stopword set, now exported).
@@ -167,12 +173,14 @@ the build differs from the plan above, or the plan left a choice open:
 **Service** (`LightboxService`)
 
 - The ceiling check counts words before anything is measured.
-- Boards are kept per source (file path, or selection path and lines), most
-  recent 12. Re-reading unchanged text keeps the board's id (and, from 2B,
-  its readings) but measures again, so a changed setting such as the
-  standards preset still shows.
-- A build that a newer request overtook while awaiting the standards
-  enrichment is dropped as `superseded`: never retained, never current.
+- Boards are kept per source (the document's URI, plus lines for a
+  selection; the display path only as a fallback), most recent 12.
+  Re-reading unchanged text keeps the board's id (and, from 2B, its
+  readings) but measures again, so a changed setting such as the standards
+  preset still shows.
+- The service owns source requests (review F-01): each request takes a
+  ticket before any read or build is awaited, and only the newest may adopt
+  a board or publish a refusal; anything older is `superseded`.
 - The re-read path is host-private and never on the board.
 
 **Host**
@@ -189,7 +197,10 @@ the build differs from the plan above, or the plan left a choice open:
 - `prose-minion.lightboxSelection` seeds the selection or, with none, the
   active file (ADR D1). Its context-menu entry shows on `editorHasSelection`.
 - The panel re-asks for the board when it becomes visible, as the Workshop
-  re-asks for its session.
+  re-asks for its session; the answer is the service's current outcome.
+- Handlers post only what the service publishes, subscribing on their
+  webview's first `LIGHTBOX_*` message and unsubscribing on dispose (review
+  F-01).
 - Logs carry paths, counts and refusal reasons, never text (a handler test
   checks this).
 
@@ -207,6 +218,8 @@ the build differs from the plan above, or the plan left a choice open:
   is static and its lane is drawn empty and dashed.
 - Clicking a pinned item again unpins it. The inspector's ¶ chips pin that
   paragraph, and a single paragraph offers the measured items that touch it.
+  The chips render 48 at a time behind a pager with a jump to a paragraph
+  number (review F-04).
 - The design's display and serif faces cannot load in a webview (the CSP
   allows no font hosts), so the stacks fall back to system faces.
 
@@ -241,6 +254,46 @@ the build differs from the plan above, or the plan left a choice open:
   It shows the empty, counted (one word pinned) and refused states at 1440,
   1000 and 500 px from real host output, and the Workshop's DOM and pixels
   matching the Slice 1 bundle.
+
+**Review fixes (PR #148, 2026-10-19)**
+
+Astra's [review](../../../docs/pr-reviews/pr-148-lightbox-counted-board-review.md)
+found four defects; each has its own commit and regressions (the author
+response at the end of the review maps them):
+
+- **F-01, source ownership.** `LightboxService.beginSourceRequest()` mints a
+  ticket when the writer's choice is concrete: a selection, seeded file or
+  re-read when its request arrives; a picked file when the picker returns it
+  (opening the picker is not a choice, and a dismissal mints nothing). Only
+  the newest ticket adopts or refuses. Outcomes are published to subscribed
+  handlers (`addOutcomeListener`), so a request that outlives its panel lands
+  in the replacement and the sidebar and Workshop receive no boards.
+- **F-02, refusal replay.** The service keeps the refusal of the newest
+  request beside the current board until it is dismissed (by id) or a board
+  replaces it; `LIGHTBOX_BOARD` carries both. A refusal over a retained board
+  names the refused source and the one still shown.
+- **F-03, parts-of-speech provenance.** The word-frequency tool exposes the
+  stream its POS counts come from (`tagPartsOfSpeech`: each counted tagged
+  word with its token's offset; `rankPartsOfSpeech`), and `analyze` counts
+  from it, unchanged for the Metrics tab (byte-identical output on twelve
+  chapters). The board counts and places each POS word from those
+  occurrences, keyed by word and part of speech. It keeps the whole-text
+  tagging: tagging per paragraph changes tags where a heading without
+  punctuation runs into the next paragraph, so counts would diverge from
+  Metrics. On all twelve Alice chapters the board's POS lists equal the
+  Metrics tab's and every count equals its occurrences in its paragraphs.
+- **F-04, inspector addresses.** 48 chips per page; previous/next, a
+  "¶a–¶b (i–j of N)" label, and a jump that focuses the address it lands on;
+  paging never changes the pin.
+- **Nonblocking: source identity.** Retained boards are keyed by URI, so two
+  roots' `chapter.md` keep separate boards.
+- **Visual evidence:** a `paged` state in the
+  [evidence folder](../../../docs/pr-reviews/evidence/lightbox-slice-2a-visual/README.md#pr-148-review-fixes-2026-10-19).
+- **Verification** (review head → fix head): Jest 329 suites / 4,881 tests →
+  333 suites / 4,921 tests (2 snapshots); lint 0 errors / 1,140 warnings →
+  0 / 1,135 (−5 `curly` where the word-frequency tool's inline POS block was
+  replaced; no file gained a warning); typecheck and build pass. Every
+  Lightbox module stays under 500 lines.
 
 **Follow-ups**
 

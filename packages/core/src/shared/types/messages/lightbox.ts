@@ -213,9 +213,12 @@ export interface LightboxBoard {
 export type LightboxRefusalReason = 'over-ceiling' | 'empty' | 'unreadable' | 'not-refreshable';
 
 export interface LightboxSourceRefusal {
+  /** Host-minted. Names this refusal when the writer dismisses it. */
+  id: string;
   reason: LightboxRefusalReason;
   /** Writer-facing sentence. */
   message: string;
+  /** The source that was refused, so a refusal shown over an older board names it. */
   displayPath?: string;
   /** The source's word count, for an `over-ceiling` refusal. */
   wordCount?: number;
@@ -228,7 +231,7 @@ export interface LightboxSourceRefusal {
 // Messages
 // ---------------------------------------------------------------------------
 
-/** Mount and reveal: ask for the latest board. Zero payload. */
+/** Mount and reveal: ask for the host's current outcome (`LIGHTBOX_BOARD`). Zero payload. */
 export interface LightboxRequestBoardMessage extends MessageEnvelope<Record<string, never>> {
   type: MessageType.LIGHTBOX_REQUEST_BOARD;
 }
@@ -260,15 +263,35 @@ export interface LightboxRefreshSourceMessage extends MessageEnvelope<Record<str
   type: MessageType.LIGHTBOX_REFRESH_SOURCE;
 }
 
-/** The latest board, or `null` when nothing has been boarded this session. */
+/**
+ * The writer dismissed a refusal. The host forgets it, so a later mount or
+ * reveal does not show it again; a newer refusal is unaffected.
+ */
+export interface LightboxDismissRefusalPayload {
+  refusalId: string;
+}
+
+export interface LightboxDismissRefusalMessage extends MessageEnvelope<LightboxDismissRefusalPayload> {
+  type: MessageType.LIGHTBOX_DISMISS_REFUSAL;
+}
+
+/**
+ * The host's current outcome: the latest board (`null` when nothing has been
+ * boarded this session) and the refusal of a newer source, if the writer has
+ * not dismissed it. A refusal leaves the board as it was, so both can be set.
+ * Answers every `LIGHTBOX_REQUEST_BOARD`, so a refusal produced before the
+ * webview was listening is still shown (PR #148 F-02).
+ */
 export interface LightboxBoardPayload {
   board: LightboxBoard | null;
+  refusal: LightboxSourceRefusal | null;
 }
 
 export interface LightboxBoardMessage extends MessageEnvelope<LightboxBoardPayload> {
   type: MessageType.LIGHTBOX_BOARD;
 }
 
+/** A source was just refused; the board, if any, stays as it was. */
 export interface LightboxSourceRefusedPayload {
   refusal: LightboxSourceRefusal;
 }

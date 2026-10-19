@@ -280,6 +280,69 @@ describe('LightboxService boards per source (D12)', () => {
     expect(service.currentBoard()?.source.displayPath).toBe('Drafts/fast.md');
   });
 
+  it('adopts and refuses only under the newest request ticket (PR #148 F-01)', async () => {
+    const { service, spies } = createService();
+    const changes: string[] = [];
+    service.addOutcomeListener((change) =>
+      changes.push(change.kind === 'board' ? `board ${change.board.source.displayPath}`
+        : change.kind === 'refusal' ? `refusal ${change.refusal.reason}` : 'readings')
+    );
+    const older = service.beginSourceRequest();
+    const newer = service.beginSourceRequest();
+
+    expect(service.isCurrentRequest(older)).toBe(false);
+    expect(await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'older.md'), older)).toEqual({ kind: 'superseded' });
+    expect(spies.proseStats).not.toHaveBeenCalled();
+    expect(service.refuseSource(older, { reason: 'unreadable', message: 'Gone.' })).toEqual({ kind: 'superseded' });
+    expect(service.currentOutcome().refusal).toBeNull();
+    expect(changes).toEqual([]);
+
+    const result = await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'newer.md'), newer);
+    expect(result.kind).toBe('board');
+    expect(service.refuseSource(newer, { reason: 'unreadable', message: 'Gone.' }).kind).toBe('refused');
+    expect(changes).toEqual(['board newer.md', 'refusal unreadable']);
+    expect(service.currentBoard()?.source.displayPath).toBe('newer.md');
+  });
+
+  it('keeps a refusal beside the current board until it is dismissed or a board replaces it (PR #148 F-02)', async () => {
+    const { service } = createService();
+    expect(service.currentOutcome()).toEqual({ board: null, refusal: null });
+    await service.buildBoard(fileSource(ALICE_OPENING_CURLY));
+
+    const refused = await service.buildBoard(fileSource(aliceWords(50_001), 'Drafts/whole-book.md'));
+    const refusal = refused.kind === 'refused' ? refused.refusal : undefined;
+    expect(refusal?.id).toEqual(expect.any(String));
+    expect(service.currentOutcome()).toEqual({
+      board: expect.objectContaining({ boardId: 'board-1' }),
+      refusal
+    });
+
+    expect(service.dismissRefusal('some-older-refusal')).toBe(false);
+    expect(service.currentOutcome().refusal).toBe(refusal);
+    expect(service.dismissRefusal(refusal!.id)).toBe(true);
+    expect(service.currentOutcome()).toEqual({ board: expect.objectContaining({ boardId: 'board-1' }), refusal: null });
+
+    await service.buildBoard(fileSource(' ', 'Drafts/blank.md'));
+    expect(service.currentOutcome().refusal?.reason).toBe('empty');
+    await service.buildBoard(fileSource(ALICE_OPENING_STRAIGHT, 'Drafts/alice-2.md'));
+    expect(service.currentOutcome()).toEqual({ board: expect.objectContaining({ boardId: 'board-2' }), refusal: null });
+  });
+
+  it('publishes outcomes to each subscriber until it unsubscribes', async () => {
+    const { service } = createService();
+    const first = jest.fn();
+    const second = jest.fn();
+    const stopFirst = service.addOutcomeListener(first);
+    service.addOutcomeListener(second);
+
+    await service.buildBoard(fileSource(ALICE_OPENING_CURLY));
+    stopFirst();
+    await service.buildBoard(fileSource(aliceWords(50_001), 'Drafts/whole-book.md'));
+
+    expect(first.mock.calls.map(([change]) => change.kind)).toEqual(['board']);
+    expect(second.mock.calls.map(([change]) => change.kind)).toEqual(['board', 'refusal']);
+  });
+
   it('retains a bounded number of boards, oldest out first', async () => {
     const { service } = createService({ retainedBoards: 2 });
     await service.buildBoard(fileSource(ALICE_OPENING_CURLY, 'a.md'));
@@ -291,9 +354,36 @@ describe('LightboxService boards per source (D12)', () => {
     expect(again).toEqual(expect.objectContaining({ kind: 'board', reused: false }));
   });
 
-  it('keys a selection by its file and lines', () => {
+  it('keys a source by its document URI, falling back to its path, and a selection by its lines too', () => {
+    expect(lightboxSourceKey({ kind: 'file', displayPath: 'a.md', sourceUri: 'file:///root-a/a.md' }))
+      .toBe('file:file:///root-a/a.md');
+    expect(lightboxSourceKey({ kind: 'selection', displayPath: 'a.md', sourceUri: 'untitled:Untitled-1', startLine: 1, endLine: 4 }))
+      .toBe('selection:untitled:Untitled-1:1-4');
     expect(lightboxSourceKey({ kind: 'selection', displayPath: 'a.md', startLine: 1, endLine: 4 }))
       .toBe('selection:a.md:1-4');
     expect(lightboxSourceKey({ kind: 'file', displayPath: 'a.md' })).toBe('file:a.md');
+  });
+
+  it('keeps separate boards for same-named files in two workspace roots', async () => {
+    const { service } = createService();
+    const inRoot = (root: string): LightboxSourceInput => ({
+      kind: 'file',
+      text: ALICE_OPENING_CURLY,
+      displayPath: 'chapter.md',
+      sourceUri: `file:///${root}/chapter.md`,
+      rereadPath: `/${root}/chapter.md`
+    });
+
+    const first = await service.buildBoard(inRoot('root-a'));
+    const second = await service.buildBoard(inRoot('root-b'));
+    expect(first.kind === 'board' && first.board.boardId).toBe('board-1');
+    expect(second).toEqual(expect.objectContaining({ kind: 'board', reused: false }));
+    expect(second.kind === 'board' && second.board.boardId).toBe('board-2');
+    expect(service.currentRereadTarget()?.rereadPath).toBe('/root-b/chapter.md');
+
+    const back = await service.buildBoard(inRoot('root-a'));
+    expect(back).toEqual(expect.objectContaining({ kind: 'board', reused: true }));
+    expect(back.kind === 'board' && back.board.boardId).toBe('board-1');
+    expect(service.currentRereadTarget()?.rereadPath).toBe('/root-a/chapter.md');
   });
 });

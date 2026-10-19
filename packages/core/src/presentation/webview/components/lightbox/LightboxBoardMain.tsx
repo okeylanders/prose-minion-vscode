@@ -2,10 +2,11 @@
  * LightboxBoardMain — the board's main column (ADR 2026-10-19 D3–D7).
  *
  * Props-only. Lays out, in order: the board header (with the headline once
- * it is read), any refusal, the toolbar (tile filter, register legend, and
- * the run line), the sticky paragraph ribbon and the tension arc's line, the
- * counted tiles, then the readings, all through the exhaustive renderer map.
- * A lens that is off is not drawn.
+ * it is read), any refusal (naming the refused source and, over a retained
+ * board, the source still shown), the toolbar (tile filter, register legend,
+ * and the run line), the sticky paragraph ribbon and the tension arc's line,
+ * the counted tiles, then the readings, all through the exhaustive renderer
+ * map. A lens that is off is not drawn.
  */
 import * as React from 'react';
 import type {
@@ -86,6 +87,7 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         <p>{refusal.message}</p>
         {refusal.displayPath && <p className="pm-lb-refusal-path">{refusal.displayPath}</p>}
         {refusal.suggestion && <p className="pm-lb-refusal-suggestion">{refusal.suggestion}</p>}
+        {board && <p className="pm-lb-refusal-kept">The board below still shows {board.source.displayPath}.</p>}
       </div>
       <button type="button" className="pm-lb-button" onClick={onDismissRefusal}>Dismiss</button>
     </div>

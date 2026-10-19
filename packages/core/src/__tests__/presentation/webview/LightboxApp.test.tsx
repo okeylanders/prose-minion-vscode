@@ -66,7 +66,7 @@ describe('LightboxApp', () => {
 
   it('invites a source when nothing is boarded yet', () => {
     render(<LightboxApp />);
-    fromHost(MessageType.LIGHTBOX_BOARD, { board: null });
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: null, refusal: null });
 
     expect(screen.getByRole('heading', { name: 'Hold a chapter up to the light.' })).not.toBeNull();
     fireEvent.click(within(screen.getByLabelText('Board')).getByRole('button', { name: 'Choose file' }));
@@ -78,7 +78,7 @@ describe('LightboxApp', () => {
 
   it('shows the counted board, with readings not yet read and the Read button waiting for its estimate', () => {
     render(<LightboxApp />);
-    fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6) });
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6), refusal: null });
 
     expect(screen.getByText(/Drafts\/alice-1\.md · 200 words/)).not.toBeNull();
     expect(screen.getByLabelText('Headline stats')).not.toBeNull();
@@ -97,7 +97,7 @@ describe('LightboxApp', () => {
 
   it('lights the paragraphs a hovered word touches, and pins it in the inspector', () => {
     render(<LightboxApp />);
-    fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6) });
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6), refusal: null });
     const word = screen.getByTitle('alice ×5');
 
     fireEvent.mouseEnter(word);
@@ -122,9 +122,10 @@ describe('LightboxApp', () => {
 
   it('shows a refusal with its count and suggestion', () => {
     render(<LightboxApp />);
-    fromHost(MessageType.LIGHTBOX_BOARD, { board: null });
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: null, refusal: null });
     fromHost(MessageType.LIGHTBOX_SOURCE_REFUSED, {
       refusal: {
+        id: 'refusal-1',
         reason: 'over-ceiling',
         message: 'This source has 60,214 words. The Lightbox boards up to 50,000 words at a time.',
         wordCount: 60_214,
@@ -140,11 +141,41 @@ describe('LightboxApp', () => {
     expect(alert.textContent).toContain('Choose a single chapter.');
     fireEvent.click(within(alert).getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByRole('alert')).toBeNull();
+    expect(vscode.postMessage).toHaveBeenLastCalledWith(expect.objectContaining({
+      type: MessageType.LIGHTBOX_DISMISS_REFUSAL,
+      payload: { refusalId: 'refusal-1' }
+    }));
+  });
+
+  it('shows a refusal the mount answer carries, over the welcome (PR #148 F-02)', () => {
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, {
+      board: null,
+      refusal: { id: 'refusal-2', reason: 'unreadable', message: 'Only a saved file can be boarded this way.', displayPath: 'Untitled-1' }
+    });
+
+    const alert = screen.getByRole('alert');
+    expect(within(alert).getByText('Could not board that source')).not.toBeNull();
+    expect(alert.textContent).toContain('Untitled-1');
+    expect(screen.getByRole('heading', { name: 'Hold a chapter up to the light.' })).not.toBeNull();
+  });
+
+  it('names the refused source over the board it keeps', () => {
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, {
+      board: makeBoard(6),
+      refusal: { id: 'refusal-3', reason: 'over-ceiling', message: 'Too long.', displayPath: 'Drafts/whole-book.md' }
+    });
+
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('Drafts/whole-book.md');
+    expect(within(alert).getByText('The board below still shows Drafts/alice-1.md.')).not.toBeNull();
+    expect(screen.getByLabelText('Headline stats')).not.toBeNull();
   });
 
   it('hides a placeholder when its lens is turned off', () => {
     render(<LightboxApp />);
-    fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6) });
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6), refusal: null });
 
     fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Voice/ }));
     expect(screen.queryByLabelText('Voice')).toBeNull();

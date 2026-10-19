@@ -907,6 +907,13 @@ export class MessageHandler {
     } catch {
       // noop
     }
+    // Drop the Lightbox outcome subscription so a closed panel's handler never
+    // posts a board; the shared service keeps serving the replacement panel.
+    try {
+      this.lightboxHandler.dispose();
+    } catch {
+      // noop
+    }
     // Drop the balance refresh listener so a disposed handler can't post after
     // teardown. The service's timer keeps running for other surfaces.
     try {
