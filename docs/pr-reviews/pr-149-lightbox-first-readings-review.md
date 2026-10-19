@@ -3,10 +3,12 @@
 **Author:** okeylanders · **PR:** [#149](https://github.com/okeylanders/prose-minion-vscode/pull/149) (open, unmerged at review)
 **Branches:** `epic/lightbox-slice-2b-readings` → `epic/lightbox`
 **Verified base / merge-base:** `3e6eba3c5c0e76afb72280691b7b6a0a5b9e7d7b`
-**Reviewed second correction head:** `50b5b858720a6e1a0b6a1e1a6565468fffb8aa95`
+**Reviewed third correction head:** `56cb4316484162ecf61afa83859a9e3cfbd3470d`
+**Second correction head / report:** `50b5b858720a6e1a0b6a1e1a6565468fffb8aa95` / `b1200f06b0e9d2e48bcab3758c833b2e1df84c11`
 **First correction head / report:** `bf8f1ca2502441133216ca5013480da9aa37f9cf` / `b5350a1440c182a891bb1f149a8decfb50ba7862`
 **Initial implementation head:** `305ce1e2b9924d817c66c39514f2511118082c44` · **Initial report commit:** `9ad4e34f32fcea8037b240fe555df9944b47925f`
-**Current scope against base:** 128 files · +12,014 / −261 · 35 commits (including prior review reports)
+**Current scope against base:** 132 files · +12,706 / −261 · 41 commits (including prior review reports)
+**Third correction delta since `b1200f0`:** 15 files · +741 / −127 · 5 commits
 **Second correction delta since `b5350a1`:** 18 files · +758 / −83 · 5 commits
 **First correction delta since initial report:** 57 files · +2,771 / −457 · 12 commits
 **Reviewed and independently re-reviewed:** 2026-10-19 · **Reviewer:** Astra
@@ -27,17 +29,86 @@ Status legend: **Open** = recommended action · **Deferred** = explicitly accept
 | F-07 | Low / P3 · nonblocking | “Quotes checked” omits successfully verified quotes on a withheld motif | **Addressed** |
 | F-08 | Low / P3 · nonblocking | Inspector re-read remains enabled for an off lens or a too-large call | **Addressed** |
 | F-09 | Low / P3 · nonblocking | Rare compatibility-mark sequences miss whole-string NFKC-equivalent quotes | **Addressed** |
-| F-10 | Medium / P2 | New unbounded normalization-unit spread throws on accepted long non-Latin paragraphs and strands the active reading | **Open — blocking** |
+| F-10 | Medium / P2 | Unbounded normalization-unit spread throws on accepted long non-Latin paragraphs and strands the active reading | **Addressed** |
 
-**Verdict: Request changes.** F-01 through F-09 are independently addressed within their recorded scope. The F-09 correction introduces **F-10**, a new P2: an accepted, estimated-to-fit long non-Latin paragraph throws during verifier initialization, emits an unhandled rejection and leaves the reading running until Stop. No provider call or spend occurs in this reproduction. F-03's selected-model mismatch is now fixed, including held settings writes, identical confirmations and price-only refreshes. Green deterministic tests do not resolve the new accepted-input regression.
+**Verdict: Conditional approval for integration.** F-01 through F-10 are independently addressed within their recorded scope. The accepted long Japanese/CJK reproductions now complete, and setup or reply-check exceptions terminate safely instead of stranding the run. Unicode source-span and selected-model protections remain green. Two bounded, nonblocking exceptional-path accounting observations are recorded below; neither demonstrates unconsented spending or incorrect engine-wide cost tracking. Required CI must still pass on the exact report-only head before this becomes a ready signal.
 
-This is a review for integration into `epic/lightbox`, not merge authorization, native VS Code acceptance or live-provider acceptance. Any later approval remains conditional on required CI passing on the exact report-only head. Both author responses are preserved verbatim below; their fixed assessments do not supersede the independent ledger.
+This is a review for integration into `epic/lightbox`, not merge authorization, native VS Code acceptance or live-provider acceptance. Approval remains conditional on required CI passing on the exact report-only head. All three author responses are preserved verbatim below; their fixed assessments do not supersede the independent ledger.
 
 **Inherited PR #148 F-05 is independently addressed here.** It is distinct from this report's new F-05. Both an exact repeated jump to ¶812 and sparse ¶100 → ¶101 refocus the landing chip. Passive board updates do not steal focus. Real-root and rebuilt-bundle witnesses pass, as do the existing bounded 5,000-address navigation and pin-ownership cases.
 
 
 
-## Second re-review of `50b5b858` — 2026-10-19
+
+## Third re-review of `56cb4316` — 2026-10-19
+
+All five commits after report `b1200f0` were inspected: the two F-10 corrections, the reply-processing extraction and its boundaries/tests, inherited tokenizer debt, slice/epic notes and the third author response. The base remains `3e6eba3`. No screenshots, visual harness or webview source changed in this round; the rebuilt production webview is byte-identical to the previously reviewed bundle.
+
+### F-10 addressed — Bounded appends and settled run failures
+
+Both flush paths in [`LightboxQuoteVerifier.ts:183–198`](https://github.com/okeylanders/prose-minion-vscode/blob/56cb4316484162ecf61afa83859a9e3cfbd3470d/packages/core/src/infrastructure/lightbox/LightboxQuoteVerifier.ts#L183-L198) append units individually, removing the function-argument limit without altering the normalization-unit or fold-back checks. The runner begins execution on the next microtask, catches verifier/counter setup failures, settles every planned group with a host-owned failure, isolates exceptions while checking a reply, and releases/finishes the current run. Group/finish listener exceptions are contained; the production progress-listener path also reaches a terminal outcome in the independent throw witness.
+
+The original failing **162,014-character Japanese source**, `'Alice waited. ' + '彼女は静かな部屋で時計の音を聞いた。'.repeat(9000)`, was rerun through the actual board measurements, service, handler, prompts, runner and engine with only synthetic provider transport. It remains accepted as one paragraph/three words and its headline-only estimate remains **fits / 124,820 input tokens** against the synthetic 200,000-token model. It now makes **one mocked call**, settles the headline group `ok`, posts `finished`, releases its token and emits no unhandled rejection.
+
+Additional independent real-host witnesses cover all three lenses:
+
+| Accepted source | Input-token estimates A / B / C | Result |
+| --- | --- | --- |
+| Same Japanese paragraph, 162,014 characters / 3 words | 125,403 / 125,130 / 124,736 | 3 calls; all groups `ok`; finished and released |
+| `'漢'.repeat(150000) + ' Alice waited.'`, 150,014 characters / 3 words | 116,403 / 116,130 / 115,736 | ASCII flush succeeds; 3 calls; all groups `ok`; finished and released |
+| `'漢'.repeat(150000)`, 150,000 characters / 1 word | 116,400 / 116,127 / 115,733 | End flush succeeds; 3 calls; all groups `ok`; finished and released |
+
+Seven verifier variants cover end flush, ASCII flush, two long runs, supplementary-character source mapping, Hangul composition, compatibility expansion and unspaced Latin. The six non-Latin cases throw with the prior `b1200f0` verifier and pass now; the Latin control passes both. The largest of these probes is 450,014 characters. This establishes the demonstrated regression's repair, not an unlimited input-size or native-runtime performance guarantee.
+
+Failure handling was exercised separately from successful long inputs:
+
+- Injected verifier-factory and term-counter-factory exceptions each produce **zero provider calls**, three bounded failed outcomes, `finished`, no active token and no unhandled rejection. Error text/private markers reach neither ordinary logs nor the board. Restoring the factory and explicitly pressing again completes three calls.
+- An ordinary provider failure settles only its group while siblings finish. An injected post-reply checker exception similarly preserves successful siblings; the real bundle presents **Read the rest**, which retries only the failed group. Nothing is automatically retried.
+- Throwing group, finish and progress listeners do not strand the run in the exercised real-engine cases. Execution callbacks start after the caller receives its run; immediate cancellation before the execution microtask makes **zero calls and zero callbacks**.
+- Actual-host-to-production-bundle witnesses show that setup failure removes Stop and permits a successful explicit retry, while a 150,014-character CJK run reaches terminal Re-read without Stop or an unhandled rejection.
+
+The new `LightboxGroupReply` extraction was independently compared with the prior implementation across **14 real-engine cases**, including partial withholding, host-counted support, unknown fields, invalid/duplicate framing, output truncation, absent recovery receipt and worked examples. Outcomes, logs, recovery captures, presentation and usage match on these ordinary paths. Unexpected decoder diagnostics remain quarantined, and twelve additional host-failure privacy cases pass. **F-10 is addressed.**
+
+### Nonblocking exceptional-path accounting observations
+
+These are open, bounded follow-up notes, not F-10 reopenings. They concern the newly supported host-failure outcomes, rather than an ordinary provider reply demonstrated to break the run.
+
+1. **Distinguish planned groups from dispatched calls after setup failure.** [`lightboxReadings.ts:116–123`](https://github.com/okeylanders/prose-minion-vscode/blob/56cb4316484162ecf61afa83859a9e3cfbd3470d/packages/core/src/presentation/webview/hooks/domain/lightbox/lightboxReadings.ts#L116-L123) counts every `failed` group as a call. Consequently, an injected setup failure displays **“3 calls” despite zero dispatch**, alongside the correct explicit explanation that nothing was sent. The tally predates this correction; the new pre-send failure path exposes the mismatch. Consider labeling this as groups/attempts or carrying dispatch status. **Low / P3, nonblocking:** no provider spend occurs and the detailed failure explanation is accurate.
+2. **Retain known usage/model when post-call checking throws.** The outer catch in [`LightboxReadingRunner.ts:383–388`](https://github.com/okeylanders/prose-minion-vscode/blob/56cb4316484162ecf61afa83859a9e3cfbd3470d/packages/core/src/infrastructure/lightbox/LightboxReadingRunner.ts#L383-L388) builds a failure without the already obtained `ExecutionResult`. With a checker exception injected after group A completes, the real engine records **$0.03 / 3,600 tokens**, but the board total and handler finish log include only B/C: **$0.02 / 2,400 tokens**; A's outcome also lacks its model. Preserve available result metadata across this new catch and add a regression. **Low / P3, nonblocking:** global engine usage and the processed-chip fanout remain correct, current Lightbox UI does not show the omitted group actual-usage/model fields, and no ordinary provider-body trigger was found. Production recovery implementations already catch normal disk/open failures. This is not evidence of an unpriced or extra call.
+
+### Third re-review checks and limits
+
+| Check | Independently observed result at `56cb4316` |
+| --- | --- |
+| Full `npm test -- --runInBand` | **352 suites / 5,135 tests / 2 snapshots passed**, 128.110 seconds |
+| `npm run typecheck` | Core, webview and extension passed |
+| Full `npm run lint` | **0 errors / 1,135 warnings**; normalized per-file/message/rule multiset unchanged from the prior reviewed head |
+| `npm run build`, including `verify:bundle` | Passed; three webpack size/performance warnings; three bundle sentinels present |
+| Whole-PR and correction-delta `git diff --check` | Passed |
+| Retained real-engine host checks | **87 assertions passed**, including estimate/fit, ownership, cancellation, disposal and explicit model intent |
+| New long-input/setup/completion probes | **91 assertions passed** (37 long/setup, 54 completion/listener/provider cases), plus the original headline-only witness and 7 verifier variants |
+| Integrated selected-model/configuration scenarios | **72 assertions / 8 scenarios passed** on the exact production bundle |
+| Retained source-root / production-bundle checks | **18 tests / 38 assertions passed** |
+| New actual-host-to-bundle terminal/retry scenarios | **39 assertions / 3 scenarios passed** |
+| Focused evidence/codec/runner/state suites | **9 suites / 130 tests passed** |
+| Independent evidence boundaries / closure groups | **13 boundaries / 12 groups passed**, including the retained 10,000-case property |
+| Additional Unicode probes | **20,000 retained stress cases; 5,768 expanded whole-string cases; 25,000 fragments; 4 extra span assertions** completed with no observed wrong accepted spans |
+| Reply extraction / new failure diagnostics | **27 checks passed**, including 14 differential scenarios and 12 host-failure privacy cases |
+| Workshop lifecycle comparison | **9 checkpoints / 27 parity assertions passed** against the reviewed PR #147 integrated bundle |
+| Visual evidence | No changes; prior inspection of all 20 supplied images/provenance retained; bundle hash unchanged |
+| Exact new report-head CI | **Pending separate post-publication verification** |
+
+Production `webview.js` SHA-256 remains `7d94bad5d80c8bece790821f4bdcc61dd7dd45e0f2f47d31f4a20f75ab10c897`.
+
+F-01's source-span honesty, F-09's mixed compatibility-mark example/property, F-03's held settings writes, identical `MODEL_DATA` and same-model repricing, and all other original closures remain sound in this rerun. Inherited PR #148 F-05's repeated ¶812, sparse ¶100→¶101/repeat and passive-update focus behavior are independently reconfirmed. The inherited engine error-type logging caveat remains reproducible and separately recorded; F-05's scoped Lightbox closure does not claim to fix engine-wide logging.
+
+The new [long-token POS-tokenizer debt](../../.todo/tech-debt/2026-10-19-pos-tagger-long-token-backtracking.md) is a coherent record of a separate inherited measurement cost: its tokenizer implementation is unchanged by this correction. The large unspaced Latin control here exercises verifier/runner paths, not a full board build; the author's approximately two-minute full-board measurement was not independently repeated in this pass. Do not confuse that existing cost with the now-fixed accepted Japanese/CJK setup exception.
+
+All transport/model/pricing data in these checks are synthetic or public-domain fixtures. No live or paid inference was used. Native VS Code, real-browser layout, screen-reader behavior and live cache/cost behavior remain unverified here; the bundle witnesses run in JSDOM with its known stylesheet-parser limitation. Unicode probes are empirical, not exhaustive. The earlier D4 retention and Slice 6 live/cache scope decisions remain bounded proposals and are not silently accepted on the writer's behalf. This report-only update preserves all three author responses verbatim.
+
+## Second re-review of `50b5b858` — historical, 2026-10-19
+
+The evidence and statuses below describe the second correction pass; the current ledger and third re-review above supersede them.
 
 All five commits after report `b5350a1` were inspected, including the model-confirmation integration, quote-unit rewrite, new integrated tests, inherited engine-log debt and second author response. The base remains `3e6eba3`. There are no new or modified PNGs in this correction round; the evidence builder now sends the required press model.
 
@@ -111,7 +182,7 @@ The author reports byte-identical recorded states and pixel-identical re-renders
 
 ## First re-review of `bf8f1ca` — historical, 2026-10-19
 
-The evidence and statuses below describe the first correction pass; the current ledger and second re-review above supersede them.
+The evidence and statuses below describe the first correction pass; the current ledger and third re-review above supersede them.
 
 All twelve commits after the initial report were inspected, including the author response, new ownership/correlation modules, changed tests, six new screenshots and their request-aware harness. The base remains `3e6eba3`. The correction head was fetched into the same isolated worktree; the earlier probes were adapted to the new request-id/estimate-key protocol without changing production files.
 
