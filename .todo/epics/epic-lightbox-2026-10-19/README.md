@@ -116,3 +116,21 @@ becomes a file format.
     `sourceDocument` and `contextFiles` budgets. There is a 12,000-word
     "book-sized" cost warning, a context-window fit check before the press,
     and no silent truncation (D8).
+- **2026-10-19. Prerequisite: dialogue % and curly quotes.** Fixed on
+  `epic/lightbox-prereq-dialogue-quotes` (PR pending;
+  [tech debt](../../tech-debt/2026-10-19-prose-stats-dialogue-curly-quotes.md)).
+  - **One matcher:** `@/utils/dialogueSpans` (`findDialogueSpans`,
+    `countDialogueWords`) matches straight `"…"` and curly `“…”` double
+    quotes, mixed freely. No span crosses a paragraph break, so a stray quote
+    mislabels at most the rest of its paragraph, and per-paragraph counts sum
+    to the whole-text count. `PassageProseStats` now uses it. Slice 2A's
+    per-paragraph dialogue share must call the same functions.
+  - **Not matched:** single-quoted dialogue (`‘…’`) collides with apostrophes
+    and elisions, so it is split into
+    [its own tech debt](../../tech-debt/2026-10-19-dialogue-single-quote-convention.md).
+  - **Effect:** a curly-quoted test scene went from 0% to 59.1% dialogue.
+    Straight-quoted text whose quotes balance within each paragraph reports
+    exactly what it did before; tests check this against the old regex.
+  - **Verification:** `npm run typecheck` clean; `npx jest` 316 suites /
+    4,742 tests / 2 snapshots (baseline 315 / 4,702 / 2); `npm run lint`
+    0 errors / 1,140 warnings (unchanged); `npm run build` OK.

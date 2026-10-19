@@ -2,7 +2,7 @@
 
 **Date Identified**: 2026-10-19 (Lightbox Slice 0 research)
 **Reviewed**: 2026-10-19
-**Status**: Identified. Prerequisite of [Lightbox Slice 2A](../epics/epic-lightbox-2026-10-19/slice-2a-tab-and-counted-board.md)
+**Status**: Resolved on `epic/lightbox-prereq-dialogue-quotes` (PR pending). Prerequisite of [Lightbox Slice 2A](../epics/epic-lightbox-2026-10-19/slice-2a-tab-and-counted-board.md)
 **Priority**: High (wrong numbers on the Metrics tab today)
 **Estimated Effort**: Small (one matcher, tests)
 
@@ -44,3 +44,43 @@ the syllable heuristic `readabilityGrade` already uses.
 - A curly-quoted dialogue fixture reports a nonzero dialogue %.
 - Lightbox's paragraph model and `PassageProseStats` use the same matcher.
 - The Metrics tab output for straight-quoted text is unchanged.
+
+## Resolution
+
+- **One matcher:** `packages/core/src/utils/dialogueSpans.ts`, imported as
+  `@/utils/dialogueSpans`. `findDialogueSpans(text)` returns ordered,
+  non-overlapping spans as offsets (`start`, `end`, `closed`).
+  `countDialogueWords(text)` counts the whitespace tokens inside them.
+  `PassageProseStats.calculateDialoguePercentage` now divides
+  `countDialogueWords` by the total word count, with the same rounding.
+  Lightbox's paragraph model should call the same two functions.
+- **Supported:** straight `"…"` and curly `“…”` double quotes, mixed in one
+  text and within one quotation (`“Hello," she said`). Straight quotes pair in
+  sequence as before. Curly quotes pair by direction, so a `”` with nothing
+  open is ignored. A single-quoted passage nested in double-quoted dialogue is
+  part of the outer span.
+- **Unbalanced quotes stay local:** no span crosses a paragraph break (the
+  `/\n\s*\n/` rule `countParagraphs` uses). A quote still open at its
+  paragraph's end runs to that end, which is also how multi-paragraph speech
+  is punctuated. Per-paragraph counts therefore sum to the whole-text count.
+  An opener inside an open span is text, so curly-in-curly nesting closes at
+  the first `”`.
+- **Straight-quoted output is unchanged** wherever each paragraph's quotes
+  are balanced. Tests check this against the former `/"[^"]*"/g` computation.
+  Where a paragraph has an odd number of straight quotes, the count changes
+  on purpose: the old regex paired the extra quote across the paragraph break
+  and shifted every later pair, while the new matcher stops it at the
+  paragraph's end.
+- **Deliberately not supported:** single-quoted dialogue (`‘…’`, and straight
+  `'…'`). `‘` and `’` are also apostrophes. Smart-quote editors write
+  elisions such as `‘cause` and `‘em` with an opening `‘`, and plural
+  possessives (`the boys’`) end in `’` followed by a space. No
+  character-level rule separates these from speech, so UK-style
+  single-quoted manuscripts still report a low dialogue %. This is tracked
+  in [2026-10-19-dialogue-single-quote-convention.md](2026-10-19-dialogue-single-quote-convention.md).
+  Guillemets and low-9 quotes (`« » „`) are not matched either.
+- **Tests:** `packages/core/src/__tests__/utils/dialogueSpans.test.ts` and the
+  Dialogue Percentage cases in
+  `packages/core/src/__tests__/tools/measure/passageProseStats/index.test.ts`.
+  The Metrics legend now reads "% of tokens inside double quotes, straight or
+  curly".
