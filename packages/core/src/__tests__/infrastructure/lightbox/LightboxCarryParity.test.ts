@@ -99,10 +99,13 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
     const paragraphs = readWorkedExample('A').paragraphs;
     // Edits inside paragraphs, so no quote has to move: Ledger loses its ¶3
     // quote but keeps ¶2; "Going down" loses ¶6 but recurs in ¶5 and ¶8; the
-    // tension arc loses its ¶6 peak; the "Too dark to see" swatch loses its quote.
+    // tension arc loses its ¶6 peak; the "Too dark to see" swatch loses its
+    // quote; and the "Sleepy" swatch keeps its quote but loses its word.
     const edited = paragraphs.map((text, index) => {
       if (index === 2) {
-        return text.replace('whether the pleasure of making a daisy-chain would be worth the trouble', 'whether to make a daisy-chain');
+        return text
+          .replace('whether the pleasure of making a daisy-chain would be worth the trouble', 'whether to make a daisy-chain')
+          .replace('very sleepy and stupid', 'very tired and stupid');
       }
       if (index === 5) {
         return text.replace('and then dipped suddenly down, so suddenly that', 'and then');
@@ -112,8 +115,18 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       }
       return text;
     });
-    // And again: "Going down" now stands in ¶5 only.
-    const thinned = edited.map((text, index) => (index === 7 ? text.replace('tumbling down stairs', 'tumbling') : text));
+    // And again: "Going down" now stands in ¶5 only, and the collision's
+    // witness sentence loses its flash and its rabbit, so its other quote
+    // (Fire's alone) is all that stands; Fire and Animals each still stand.
+    const thinned = edited.map((text, index) => {
+      if (index === 3) {
+        return text.replace(
+          'for it flashed across her mind that she had never before seen a rabbit with either a waistcoat-pocket, or a watch to take out of it, and burning',
+          'and burning'
+        );
+      }
+      return index === 7 ? text.replace('tumbling down stairs', 'tumbling') : text;
+    });
     const collisionBody = (): Body => {
       const body = framedJson(readWorkedExample('A').response) as Body;
       body.gravity.fields.push({
@@ -123,20 +136,32 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       body.gravity.collisions = [{
         fields: ['Fire', 'Animals'],
         claim: 'The thought that flashes is a thought about the rabbit.',
-        evidence: [{ para: 4, quote: 'it flashed across her mind that she had never before seen a rabbit' }]
+        evidence: [
+          { para: 4, quote: 'it flashed across her mind that she had never before seen a rabbit' },
+          { para: 4, quote: 'burning with curiosity, she ran across the field after it' }
+        ]
       }];
+      body.palette.swatches.push({
+        name: 'Sleepy', words: ['sleepy'], hex: '#B9B2A4', note: 'The hot day’s haze.',
+        evidence: [{ para: 3, quote: 'So she was considering in her own mind' }]
+      });
       return body;
     };
 
-    it.each([
-      ['A', collisionBody],
-      ['B', () => framedJson(readWorkedExample('B').response) as Body],
-      ['C', () => framedJson(readWorkedExample('C').response) as Body]
-    ] as const)('group %s: carry and a fresh reading agree, including partial evidence survival', (group, body) => {
-      const lenses = readWorkedExample(group).lenses;
-      for (const after of [paragraphs, edited, thinned]) {
-        const { carried, fresh } = parity(group, lenses, body(), paragraphs, after);
-        expect(outcome(carried)).toEqual(outcome(fresh));
+    // One property over every group: B's and C's kinds have no rule beyond a
+    // found quote, so only group A's edits can tell the two paths apart.
+    it('carry and a fresh reading agree for groups A, B and C, including partial evidence survival', () => {
+      const groups = [
+        ['A', collisionBody],
+        ['B', () => framedJson(readWorkedExample('B').response) as Body],
+        ['C', () => framedJson(readWorkedExample('C').response) as Body]
+      ] as const;
+      for (const [group, body] of groups) {
+        const lenses = readWorkedExample(group).lenses;
+        for (const after of [paragraphs, edited, thinned]) {
+          const { carried, fresh } = parity(group, lenses, body(), paragraphs, after);
+          expect({ group, ...outcome(carried) }).toEqual({ group, ...outcome(fresh) });
+        }
       }
     });
 
@@ -151,12 +176,19 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
         'palette-cluster', 'reader-promise', 'swatch', 'tension-arc', 'voice'
       ]);
       const once = parity('A', lenses, collisionBody(), paragraphs, edited).carried;
-      expect(outcome(once).drawn).toEqual(expect.arrayContaining(['motif:Going down', 'gravity-field:Ledger', 'tension-arc:Tension arc']));
+      expect(outcome(once).drawn).toEqual(expect.arrayContaining([
+        'motif:Going down', 'gravity-field:Ledger', 'tension-arc:Tension arc', 'gravity-collision:Fire meets Animals'
+      ]));
       expect(outcome(once).withheld).toContain('swatch:Too dark to see');
-      const twice = parity('A', lenses, collisionBody(), paragraphs, thinned).carried;
-      expect(twice.withheldClaims).toEqual(expect.arrayContaining([expect.objectContaining({
-        kind: 'motif', title: 'Going down', reason: LIGHTBOX_GATE_REASONS.motifOneParagraph.carried
+      expect(once.withheldClaims).toEqual(expect.arrayContaining([expect.objectContaining({
+        kind: 'swatch', title: 'Sleepy', reason: LIGHTBOX_GATE_REASONS.swatchWordsGone
       })]));
+      const twice = parity('A', lenses, collisionBody(), paragraphs, thinned).carried;
+      expect(twice.withheldClaims).toEqual(expect.arrayContaining([
+        expect.objectContaining({ kind: 'motif', title: 'Going down', reason: LIGHTBOX_GATE_REASONS.motifOneParagraph.carried }),
+        expect.objectContaining({ kind: 'gravity-collision', reason: LIGHTBOX_GATE_REASONS.noSharedSentence })
+      ]));
+      expect(outcome(twice).drawn).toEqual(expect.arrayContaining(['gravity-field:Fire', 'gravity-field:Animals']));
     });
   });
 });
