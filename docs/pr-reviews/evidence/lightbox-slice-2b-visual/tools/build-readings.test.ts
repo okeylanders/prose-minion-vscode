@@ -11,8 +11,13 @@
  * $LIGHTBOX_EVIDENCE_DIR (default /tmp/lightbox-2b) holding
  * fixtures/alice-chapter-<1..12>.md (from ../../lightbox-slice-2a-visual/tools/alice_chapter.py).
  * Delete the copy after. Writes states/chapter.json (the chapter's idle,
- * running and done messages, each state adding to the one before) and
- * states/book.json (the whole book against a 32,768-token window) there.
+ * running and done messages, each state adding to the one before),
+ * states/withheld.json (the chapter read with group A's headline quoting
+ * nowhere in it) and states/book.json (the whole book against a
+ * 32,768-token window) there. Each file also holds `estimates`: the host's
+ * estimate answer for each lens setting the harness may ask about, keyed by
+ * the lenses that are off; the harness answers the tab's own requests with
+ * them, echoing each request's id (PR #149 F-03).
  */
 jest.mock('p-limit', () => ({
   // eslint-disable-next-line @typescript-eslint/naming-convention -- jest's ES-module interop flag.
@@ -79,6 +84,13 @@ const replies: Record<LightboxReadingGroupId, string> = {
   C: readWorkedExample('C').response
 };
 
+/** Group A with its headline citing words that stand nowhere in the chapter: withheld, never hidden (PR #149 F-04). */
+function groupAWithAWithheldHeadline(): string {
+  const body = framedJson(groupAForTheChapter()) as Record<string, any>;
+  body.headline.evidence = [{ para: 3, quote: 'she followed the rabbit across the moonlit lawn' }];
+  return frame('A', body);
+}
+
 function reply(raw: string): ExecutionResult {
   return {
     content: '',
@@ -98,7 +110,7 @@ interface EvidenceSource {
 
 const chapterText = (number: number) => fs.readFileSync(`${DIR}/fixtures/alice-chapter-${number}.md`, 'utf8');
 
-async function harness(contextLength: number, source: EvidenceSource) {
+async function harness(contextLength: number, source: EvidenceSource, groupReplies = replies) {
   const nodeFs = createFakeFileSystem({
     readFile: async (p: string) => new Uint8Array(fs.readFileSync(p)),
     stat: async (p: string) => ({ type: FileType.File, size: fs.statSync(p).size, ctime: 0, mtime: 0 })
@@ -164,14 +176,43 @@ async function harness(contextLength: number, source: EvidenceSource) {
     timestamp: 1
   };
   const settle = () => new Promise((done) => setImmediate(done));
-  return { route, posted, pending, board: built.board, boardMessage, settle };
+  let requests = 0;
+  /** Ask for the estimate as the tab does, and return the host's answer's payload. */
+  const estimate = async (lensesOff: string[] = []) => {
+    await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff, requestId: `evidence-${++requests}` });
+    const answer = [...posted].reverse().find((message) => message.type === MessageType.LIGHTBOX_RUN_ESTIMATE);
+    if (!answer || !('estimate' in answer.payload) || !answer.payload.estimate) {
+      throw new Error('expected an estimate');
+    }
+    return answer.payload;
+  };
+  /** Press Read with the key of the estimate the tab was shown. */
+  const press = async (key: string) => {
+    await route(MessageType.LIGHTBOX_RUN, { boardId: built.board.boardId, scope: { mode: 'all' }, estimateKey: key });
+    await settle();
+  };
+  const answerAll = async () => {
+    for (const group of ['A', 'B', 'C'] as const) {
+      pending.get(group)?.request.options?.onToken?.(groupReplies[group].slice(0, 1_200));
+    }
+    for (const group of ['A', 'B', 'C'] as const) {
+      pending.get(group)?.settle(reply(groupReplies[group]));
+    }
+    await settle();
+    await settle();
+  };
+  return { route, posted, pending, board: built.board, boardMessage, settle, estimate, press, answerAll };
 }
+
+/** Estimate answers keyed by the lenses that are off (joined), with the request id left to the harness. */
+type EstimateAnswers = Record<string, object>;
+const answerOf = ({ requestId: _requestId, ...payload }: { requestId?: string }) => payload;
 
 /** Everything the host posted since `from`, timestamps fixed so the files diff cleanly. */
 const since = (posted: ExtensionToWebviewMessage[], from: number) =>
   posted.slice(from).map((message) => ({ ...message, timestamp: 1 }));
 
-function write(name: string, states: Record<string, unknown[]>): void {
+function write(name: string, states: Record<string, unknown>): void {
   fs.writeFileSync(path.join(OUT, `${name}.json`), `${JSON.stringify(states)}\n`);
 }
 
@@ -179,16 +220,17 @@ it('dumps the reading states', async () => {
   fs.mkdirSync(OUT, { recursive: true });
 
   // Chapter I against a 200,000-token window. The tab opens (lenses sync,
-  // estimate) and the writer adds a context file.
+  // estimate) and the writer adds a context file; the tab asks again when
+  // it sees the context list change.
   const fits = await harness(200_000, { text: chapterText(1), displayPath: 'Drafts/alice-chapter-1.md' });
-  await fits.route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [] });
+  await fits.estimate();
   await fits.route(MessageType.LIGHTBOX_ADD_CONTEXT_FILES);
+  const priced = await fits.estimate();
   const idle = [fits.boardMessage, ...since(fits.posted, 0)];
 
-  // Read the chapter; group A comes back while B and C are still out.
+  // Read the chapter, naming the estimate the press was shown; group A comes back while B and C are still out.
   let mark = fits.posted.length;
-  await fits.route(MessageType.LIGHTBOX_RUN, { boardId: fits.board.boardId, scope: { mode: 'all' } });
-  await fits.settle();
+  await fits.press((priced.estimate as { key: string }).key);
   expect([...fits.pending.keys()].sort()).toEqual(['A', 'B', 'C']);
   for (const group of ['A', 'B', 'C'] as const) {
     // Stream a little of each reply, as a provider would.
@@ -204,17 +246,32 @@ it('dumps the reading states', async () => {
   await fits.settle();
   await fits.settle();
   const done = since(fits.posted, mark);
-  write('chapter', { idle, running, done });
+  // The answers the tab may ask for: every lens on, and the motif lens off (PR #149 F-08).
+  const chapterEstimates: EstimateAnswers = { '': answerOf(priced), motif: answerOf(await fits.estimate(['motif'])) };
+  write('chapter', { idle, running, done, estimates: chapterEstimates });
+
+  // The same chapter read again, with group A's headline quoting nowhere in it.
+  const withheldReplies = { ...replies, A: groupAWithAWithheldHeadline() };
+  const withheld = await harness(200_000, { text: chapterText(1), displayPath: 'Drafts/alice-chapter-1.md' }, withheldReplies);
+  const withheldPriced = await withheld.estimate();
+  await withheld.press((withheldPriced.estimate as { key: string }).key);
+  await withheld.answerAll();
+  write('withheld', {
+    'headline-withheld': [withheld.boardMessage, ...since(withheld.posted, 0)],
+    estimates: { '': answerOf(withheldPriced) }
+  });
 
   // The whole book against a 32,768-token window: book-sized, and no call fits.
   const book = Array.from({ length: 12 }, (_, offset) => chapterText(offset + 1)).join('\n\n');
   const tight = await harness(32_768, { text: book, displayPath: 'Drafts/alice-whole-book.md' });
-  await tight.route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: [] });
-  write('book', { 'too-large': [tight.boardMessage, ...since(tight.posted, 0)] });
+  const tooLarge = await tight.estimate();
+  write('book', { 'too-large': [tight.boardMessage, ...since(tight.posted, 0)], estimates: { '': answerOf(tooLarge) } });
 
   const types = (messages: Array<{ type: string }>) => messages.map((message) => message.type);
   expect(types(done)).toEqual(expect.arrayContaining([MessageType.LIGHTBOX_GROUP_RESULT, MessageType.LIGHTBOX_RUN_PROGRESS]));
-  const estimate = tight.posted.find((message) => message.type === MessageType.LIGHTBOX_RUN_ESTIMATE);
-  expect(estimate && 'estimate' in estimate.payload ? estimate.payload.estimate : undefined)
-    .toMatchObject({ fit: 'too-large', bookSized: true });
+  expect(tooLarge.estimate).toMatchObject({ fit: 'too-large', bookSized: true });
+  const withheldA = withheld.posted.find((message) =>
+    message.type === MessageType.LIGHTBOX_GROUP_RESULT && message.payload.group.group === 'A');
+  expect(withheldA && 'group' in withheldA.payload ? withheldA.payload.group.withheldClaims.map((claim) => claim.kind) : [])
+    .toEqual(['headline']);
 });
