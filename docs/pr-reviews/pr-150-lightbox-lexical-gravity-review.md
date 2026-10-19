@@ -155,3 +155,292 @@ This review independently replayed the production JavaScript in JSDOM, with no n
 ## Author response
 
 Please retain the finding IDs and append fixes, commit references, regression evidence or proposed deferrals here. Resolution statuses should change only after independent re-verification. Implementation, merges and the PR #149 correction remain with the developer; this commit contains the review report only.
+
+### Fixes for F-01 to F-06 (2026-10-19)
+
+All six findings are fixed on `epic/lightbox-slice-3-gravity`, one commit
+per finding, then one merge of `epic/lightbox` at `c6d4411` (PR #149
+merged). Statuses in the ledger above are left for re-verification.
+
+Every new test was run against the reviewed head's sources: the
+`packages/core/src` and `apps/vscode-extension/src` trees of `4150c8c`, with
+this branch's tests, and ts-jest's type diagnostics off so failures are
+behavioral. Every new test fails there. One rewritten test passes there on
+purpose: "holds a seed for a ready but hidden Workshop tab until it is
+shown, then delivers it once" pins the once-only delivery you asked to keep.
+
+#### F-01 — A seeded Build had an installable default
+
+- **Root cause.** A `build` opening fell through the sheet's ordinary
+  initial state, `lensSlug ?? 'photography'`, and the lens resolver's
+  fallback to the first library lens. Photography resolved to a valid
+  draft at once, so Preview and **Install on passage** acted on a lens the
+  writer never chose. The banner folded building, saving and installing
+  into one sentence about Build lens.
+- **Fix** (`f89991f`). A `build` opening starts with no lens, at mount and
+  on every reopen: `lensSlug` is `undefined`, and the resolver returns no
+  lens for it, so there is no draft. The sheet says "No lens chosen yet";
+  Preview, "What the room is told" and Install wait until the writer adds a
+  built take or picks a library lens. The lens shown, its preview and the
+  installable draft all follow that one choice. The banner now says
+  "Nothing is built until you press Build lens, nothing is saved until you
+  add a take, and nothing is installed until you choose a lens and press
+  Install on passage."
+- **Tests.**
+  - `WorkshopApp.buildSeedInstall.test.tsx` drives the production Workshop
+    app against the real `WorkshopStandingDirectiveHandler`,
+    `WorkshopStandingDirectiveService` and `WorkshopSessionService`. Only
+    prompt-frame replacement and the handler's persistence callbacks are
+    mocked. Every Apply the webview posts is routed through that boundary,
+    and its answer goes back to the webview. Three cases:
+    - a fresh opening posts no Apply and installs nothing; after the writer
+      picks Music, exactly Music is installed;
+    - a reopened opening carries no earlier choice;
+    - with Photography already installed, the opening offers no lens, and
+      a lens picked there is refused ("already active; reopen it to shift
+      the directive"), leaving Photography at revision 1.
+  - `WorkshopLexicalGravityBuildSeed.test.tsx` checks the banner text, and
+    that a selected but unsaved take is not a choice: only the added take
+    makes Install install it.
+
+#### F-02 — A seed could open over another sheet
+
+- **Root cause.** The seed controller checked only the four widget
+  openings. Every other Workshop overlay (Add text, the context and session
+  editors, the widgets and tools browsers) was invisible to it. Every open
+  `useOverlayDismiss` user also listened for Escape on its own, so one key
+  closed every stacked sheet.
+- **Fix** (`fd8e616`). `useOverlayDismiss` keeps the open overlays as a
+  stack, newest last, and one window listener sends Escape to the top
+  overlay only. `isAnyOverlayOpen()` reports whether any is open. Every
+  `WorkshopModalShell` and the configure guide register by construction,
+  so no hand-kept list of overlays can miss one. While any overlay is open,
+  the controller refuses the seed:
+  - it answers `busy` to the host (F-03), so the Lightbox says why;
+  - it says so in the Workshop;
+  - it drops the seed rather than deferring it, so nothing opens later
+    unasked.
+
+  The open overlay and its draft are never touched.
+- **Tests.**
+  - `WorkshopApp.buildSeedOverlays.test.tsx` uses the production Workshop
+    app:
+    - Add text with typed content refuses the seed, keeps the draft and
+      stays the only dialog, and one Escape then closes only Add text;
+    - the same refusal holds for the widgets browser, the context editor,
+      the save-session editor, the session browser and the tools browser;
+    - a later seed opens once the overlay is closed;
+    - with nothing open, a seed opens and answers `opened`.
+  - `WorkshopModalShellStack.test.tsx` lays a second shell over the real
+    Add text sheet. One Escape closes only the top one, the draft beneath
+    survives, and the next Escape closes the sheet that is then on top.
+
+#### F-03 — Queued seeds were not bound to their recipient
+
+- **Root cause.** The provider's first-message path delivered the pending
+  seed without the visibility check, and cleared it before dispatch.
+  Disposal never cleared it, so a fresh panel could receive an abandoned
+  seed. `handOffToWorkshop` returned `true` as soon as the provider
+  accepted the seed, so "sent" never meant that anything had opened.
+- **Fix** (`3df7dcc`). The seed belongs to the panel that accepted it.
+  - **Delivery.** `deliverPendingBuildSeed(panel)` delivers once, only to
+    that panel, and only while it is the current panel, its webview is
+    listening and its tab is visible.
+  - **Older panels.** Late messages, view-state changes and disposals from
+    an older panel are ignored.
+  - **Settling.** A newer seed settles the pending one as `replaced`.
+    Closing or replacing the panel, or disposing the provider, settles it
+    as `closed`.
+  - **Answer.** The Workshop webview answers with
+    `WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER { seedId, opened, reason? }`,
+    naming the provider's delivery id, which the Workshop handler keeps as
+    the seed id. The provider takes that answer itself, for the matching
+    panel and delivery only. `handOffToWorkshop` now returns a promise that
+    settles with the answer, or with `timeout` after 20 seconds.
+  - **Lightbox.** `LightboxHandler` waits for the outcome. It says "Opened"
+    only when a visible Workshop opened the field, and otherwise refuses
+    with a host-owned reason for `busy`, `closed`, `replaced` and
+    `timeout`. An answer that arrives after the Lightbox closed posts
+    nothing.
+- **Tests.**
+  - `WorkshopPanelProviderBuildSeed.test.ts` uses the real provider, a
+    mocked panel and mocked handlers:
+    - boot, hide, first message, reveal;
+    - boot, close, reopen;
+    - late callbacks from an older panel replaced through the serializer:
+      its first message, view change, answers (including one naming the
+      current delivery id) and late disposal settle and deliver nothing;
+    - replacement;
+    - timeout (fake timers), with nothing delivered afterwards;
+    - provider disposal;
+    - the answer mapping, `opened` and `busy`;
+    - once-only delivery to a ready hidden panel.
+  - `LightboxHandoff.test.ts`:
+    - "Opened" only on the Workshop's word;
+    - a second press is refused while the answer is awaited;
+    - each refusal reason;
+    - a late answer after the Lightbox closed.
+  - `useLexicalGravity.test.ts` and `WorkshopLexicalGravityBuildSeed.test.tsx`
+    cover the answer and the delivery id. `providerAssembly.test.ts` pins
+    the delivery gate.
+
+#### F-04 — A collision did not select its supporting sentence
+
+- **Root cause.** A collision was accepted when its found quotes held a
+  term of each field anywhere, and the tile showed its first found quote,
+  which need not hold either.
+- **Fix** (`966f31f`). `lightboxCollisionWitness` splits each found quote
+  with `proseSentenceSpans`. That is the repository's sentence rule
+  (`/[.!?]+/`), now exported from `passageProseStats` beside
+  `countProseSentences`, which uses it. The witness is the first sentence
+  that holds a term of each field. A collision without one is withheld:
+  "No sentence of its quotes holds a term of each field, so the board
+  cannot show them sharing one." The tile keeps
+  `witness: LightboxVerifiedQuote` (the sentence and its ¶), and the card
+  shows it, with "{A} and {B} share this sentence."
+  `13-lexical-gravity.md` says the same.
+- **Tests.**
+  - `LightboxGravityWitness.test.ts`:
+    - terms in separate sentences;
+    - a non-supporting first quote with a valid later witness;
+    - the sentence, not the whole quote, as the witness.
+  - `LightboxAppGravity.test.tsx` shows the witness, not a first quote
+    that holds one field.
+
+#### F-05 — Carried tiles skipped the kind-specific gates
+
+- **Root cause.** Carry re-checked quotes and recounted support, but it
+  applied its own narrower acceptance: any tile with one surviving quote,
+  plus motif recurrence and orphaned collision fields. Fresh assembly
+  applied the kind-specific gates.
+- **Fix** (`5af78ec`, and `249bf5e` for the test).
+  - **One gate.** `LightboxTileGates.lightboxTileGate` holds the
+    kind-specific rules once:
+    - a found quote;
+    - a motif in two paragraphs;
+    - both collision fields drawn, plus the F-04 witness;
+    - cluster words still in the chapter;
+    - swatch words still in the chapter.
+  - **Both paths.** Fresh assembly (`LightboxReadingTiles.claim`) and
+    carry (`LightboxStaleReadings`) both use the gate. Carry runs in two
+    passes, fields before collisions, so a collision sees which fields
+    still stand.
+  - **Reasons.** All reasons are host-owned (`LIGHTBOX_GATE_REASONS`). Two
+    have a fresh wording and a carried wording ("Its quotes are no longer
+    in the chapter.").
+- **Tests.** `LightboxCarryParity.test.ts`:
+  - **Your two reproductions.** A collision whose witness sentence was
+    deleted is withheld while Fire and Ocean still stand on their own. A
+    White swatch and a Pale tones cluster whose words are gone, with their
+    quote standing, are both withheld with their reasons.
+  - **Groups A, B and C.** One property test checks that carrying a
+    reading and reading afresh agree on the changed text. It covers the
+    worked examples for unchanged, edited and twice-edited texts.
+    - Group A's body adds a two-quote collision and a swatch whose quote
+      outlives its word.
+    - B's and C's kinds have no rule beyond a found quote, so only group A
+      can tell the two paths apart. The three groups therefore run as one
+      property, which fails on `4150c8c`.
+  - **Every kind.** A coverage test confirms that all twelve tile kinds
+    are drawn, and that the partial survivals hold or withhold as they
+    should: Ledger keeps ¶2, "Going down" survives once and is withheld at
+    one paragraph, the "Sleepy" swatch loses its word, and the collision
+    loses its witness while both fields stand.
+
+#### F-06 — Stale tension was projected by position
+
+- **Root cause.** A carried arc kept its positional score array, and the
+  board drew it whenever the paragraph count matched. The headline, the
+  tension caption and the lane had no stale label, and a lane that could
+  not be drawn said "Not read yet".
+- **Fix** (`ca66b1b`).
+  - **Keys.** The tension tile stores `columnKeys`, one per ribbon column.
+    Each key is a hash of that column's normalized paragraph text as read
+    (`lightboxColumnKeys`, 16 hex characters of SHA-256).
+  - **Carry.** Carrying the arc moves each score to the column whose
+    paragraphs it read. Changed or new columns get `null`, so
+    `scores: Array<number | null>`.
+  - **Ribbon.** It draws only scored cells. An unscored cell's title says
+    "tension not scored: this paragraph changed since the reading", and a
+    scored one says "as read on an earlier version".
+  - **Stale labels.** The lane gets a **stale** chip and an accurate note,
+    also when no score can be drawn. The tension caption reads "Tension, as
+    read on an earlier version (scores stand only on unchanged
+    paragraphs)", and the headline carries a stale note.
+  - **Module split.** `LightboxStaleLens` moved to its own contract module,
+    `lightboxStale.ts`, still exported from the barrel, to keep
+    `lightboxReadings.ts` under 500 lines.
+  - **After the merge.** The keys are built in the split runner's
+    `readingTools` and carried in `LightboxGroupTools`.
+- **Tests.**
+  - `LightboxStaleTension.test.ts`, through the real service:
+    - unchanged paragraphs;
+    - reordering (the 9 moves with its paragraph);
+    - same-count replacement;
+    - insertion;
+    - deletion.
+  - `LightboxStaleTension.test.tsx`:
+    - scores only on unchanged paragraphs;
+    - the headline, caption and lane labels;
+    - the accurate note when an old lane cannot be drawn.
+
+#### Merge, contracts and evidence
+
+- **Merge** (`567506a`). `epic/lightbox` at `c6d4411` (PR #149's merge,
+  including `56cb431` and `06fef0e`), as one merge commit. This adapted
+  Slice 3 to the 2B changes:
+  - 2B's split runner, with F-06's column keys re-applied in the new
+    module;
+  - `LightboxApp` keeps 2B's wrapped `MODEL_DATA` route beside
+    `LIGHTBOX_HAND_OFF_RESULT` and `buildLens`, and `useLightbox` keeps its
+    options and confirmed model beside the handoff state;
+  - Slice 3's stale-readings app test now confirms the model first;
+  - 2B's new model-selection test mocks the gravity stylesheet;
+  - the evidence builder's press names its model.
+- **Contract changes.**
+  - `handOffToWorkshop` (and `LightboxWorkshopHandoffPort`) returns
+    `Promise<LightboxWorkshopHandoffOutcome>`, with the new
+    `LightboxWorkshopHandoffRefusal`.
+  - `WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD` carries `deliveryId`.
+  - `WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER` is new; it goes from the
+    webview to the provider only.
+  - `answerLexicalGravityBuildSeed` replaces
+    `consumeLexicalGravityBuildSeed`.
+  - `isAnyOverlayOpen()` is new.
+  - The collision tile has `witness`.
+  - The tension tile has `scores` with nulls and `columnKeys`.
+  - `LightboxTileGates` is a new module, and `proseSentenceSpans` is
+    exported.
+  - New modules stay under 500 lines and are listed in `boundaries.test.ts`.
+- **Visual evidence** (`cfcbabc`). Rebuilt states and all 21 shots at the
+  merged head:
+  - the collision's witness sentence;
+  - the "Opened" answer;
+  - the stale headline, tension caption, lane chip and the unscored ¶15;
+  - the Workshop build sheet with no lens, and Preview and Install
+    disabled.
+
+  The harness now confirms the stub model for the widget picker too. See
+  the [evidence README](evidence/lightbox-slice-3-visual/README.md).
+- **Tech debt** (`1ffd725`). The two nonblocking accounting notes from
+  PR #149's third re-review are recorded as one Low item.
+- **Not changed.** `WorkshopLexicalGravityModal.tsx` was already over 500
+  lines and grows by 12. It is the existing Workshop god-file debt, not a
+  new module.
+
+#### Verification
+
+Reviewed head `4150c8c` compared with this fix head, which merges
+`epic/lightbox` at `c6d4411`:
+
+| Check | Before | After |
+|---|---|---|
+| Jest | 357 suites, 5,175 tests, 2 snapshots | 367 suites, 5,237 tests, 2 snapshots |
+| Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings, identical per file and rule to `c6d4411` |
+| `npm run typecheck` | Passes | Passes |
+| `npm run build` | Passes | Passes |
+| `git diff --check` | Passes | Passes |
+
+No live or billable call was made. Every test, and the evidence, plays the
+provider. Fixtures are public-domain prose from "Alice's Adventures in
+Wonderland" (1865), or short synthetic sentences written for the tests.

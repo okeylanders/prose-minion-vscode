@@ -2,7 +2,7 @@
 
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D3 (kinds), D7, D11; [ADR 2026-08-01](../../../docs/adr/2026-08-01-lexical-gravity-interpretive-grammar.md)
-**Status:** In review (PR pending). Built on `epic/lightbox-slice-3-gravity`; see [Implementation notes](#implementation-notes-2026-10-19).
+**Status:** In review (PR #150). Built on `epic/lightbox-slice-3-gravity`; see [Implementation notes](#implementation-notes-2026-10-19). Astra's six review findings are fixed; see the [author response](../../../docs/pr-reviews/pr-150-lightbox-lexical-gravity-review.md#author-response).
 
 ## Outcome
 

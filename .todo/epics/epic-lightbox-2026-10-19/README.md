@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B is in review (PR #149), and Slice 3 is in review (PR pending)
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), and Slice 3 is in review (PR #150)
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -52,8 +52,8 @@ carried into the Workshop.
 | 0 | Spec | ADR, this epic, design snapshot | In review |
 | 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | Merged (PR #147) |
 | 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | Merged (PR #148) |
-| 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | In review (PR #149) |
-| 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | In review (PR pending) |
+| 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Merged (PR #149) |
+| 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | In review (PR #150) |
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Planned |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare | Planned (last, by decision 5) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
@@ -523,3 +523,52 @@ becomes a file format.
     [a reading in flight when the chapter changes](../../tech-debt/2026-10-19-lightbox-forward-in-flight-readings.md)
     and [one home for the codec's field decoders](../../tech-debt/2026-10-19-lightbox-codec-shared-field-decoders.md),
     both Low; the two lenses join Slice 6's live pass.
+
+- **2026-10-19. Slice 3: PR #150 review fixes.** Astra's
+  [review](../../../docs/pr-reviews/pr-150-lightbox-lexical-gravity-review.md)
+  requested changes with six Medium/P2 findings; all six are fixed on
+  `epic/lightbox-slice-3-gravity`, one commit each, and the author response
+  maps them to commits and tests. Every new test fails on the reviewed head.
+  1. **F-01, no implicit lens.** A Build opening handed over from the
+     Lightbox has no lens until the writer adds a built take or picks a
+     library lens; Preview and Install wait for that choice, and the banner
+     says what building, saving and installing each take. A production-root
+     test drives Apply through the real standing-directive handler, service
+     and session.
+  2. **F-02, never over an open sheet.** Workshop overlays form one stack:
+     Escape closes only the top one, and a seed that arrives while any is
+     open is refused and dropped, never covering Add text, the editors or
+     the browsers.
+  3. **F-03, seeds bound to their panel.** The provider delivers a seed
+     once, to the panel that accepted it, listening and visible; a newer
+     seed replaces it and closing cancels it. The Workshop answers opened
+     or busy, and the Lightbox says "Opened" only on that answer, with a
+     20-second timeout.
+  4. **F-04, the shared sentence.** A collision is drawn only when one
+     sentence of a found quote (the prose-stats sentence rule) holds a term
+     of each field, and the card shows that sentence.
+  5. **F-05, one set of gates.** Fresh assembly and stale carry share
+     `LightboxTileGates`, with host-owned reasons, so a carried collision
+     without a witness and palette tiles whose words are gone are withheld
+     as a fresh reading would withhold them.
+  6. **F-06, tension by paragraph.** Tension scores are keyed by each
+     column's text as read; a carried score stays on unchanged paragraphs
+     only, and the headline, tension caption and lane say they are stale.
+  - **Merged:** `epic/lightbox` at `c6d4411` (PR #149), with Slice 3's
+    column keys re-applied in 2B's split runner.
+  - **Verification.** Reviewed head (`4150c8c`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 357 suites, 5,175 tests, 2 snapshots | 367 suites, 5,237 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match `c6d4411` per file and per rule.
+    - No live or billable call: every test, and the evidence, plays the
+      provider.
+    - Visual evidence regenerated at the merged head:
+      [`lightbox-slice-3-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-3-visual/README.md).
+  - **Follow-up:** [Lightbox run accounting on its exceptional paths](../../tech-debt/2026-10-19-lightbox-exceptional-path-accounting.md)
+    (Low), from PR #149's third re-review.

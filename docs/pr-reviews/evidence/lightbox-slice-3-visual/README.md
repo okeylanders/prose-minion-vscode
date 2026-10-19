@@ -87,7 +87,7 @@ show "Reader model (stub)"; neither is called.
 ## Results
 
 From `facts.json` of the final run, against the bundle built at the head
-that merges the PR #150 review fixes with Slice 2B at `56cb431`
+that merges the PR #150 review fixes with `epic/lightbox` at `c6d4411`
 (`webview.js` SHA-256 `874136650feae93b4875dba5bb1ba9a95535b4b13c0ada27e4140fc50535034c`):
 
 | State | What the page shows (1440, 1000 and 500 alike) |
