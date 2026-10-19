@@ -68,6 +68,7 @@ export function makeEstimate(overrides: Partial<LightboxRunEstimate> = {}): Ligh
   });
   return {
     boardId: 'board-8',
+    key: 'estimate-board-8',
     model: 'provider/model-v1',
     contextLength: 200_000,
     groups: [call('A', ['headline', 'motif', 'tension'], 0.015), call('B', ['characters', 'voice'], 0.013), call('C', ['genre'], 0.012)],

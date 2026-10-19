@@ -1,5 +1,6 @@
 /**
- * What a failed reading call may say, and to whom (PR #149 F-05). Pure.
+ * What a failed reading call or a rejected reply may say, and to whom (PR
+ * #149 F-05). Pure.
  *
  * A provider's error text is not the host's to repeat: it can echo the
  * request (the chapter, the context) or carry arbitrary detail of any length.
@@ -18,6 +19,7 @@
  */
 
 import { AgentRunUnavailableError, type AgentRunUnavailableReason } from '@orchestration/AgentRunEngine';
+import { LightboxGroupFrameError } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { AgentContextWindowExceededError } from '@orchestration/RequestContextPreflight';
 import { OpenRouterApiError } from '@providers/OpenRouterClient';
 
@@ -31,7 +33,30 @@ export interface LightboxCallFailure {
   log: string;
 }
 
+/** Why a reply that came back was rejected: words the host may log and show, and detail only the recovery store keeps. */
+export interface LightboxRejection {
+  message: string;
+  diagnostic?: string;
+}
+
 const TRY_AGAIN = 'Read the rest to try again.';
+/** Bounds the recovery sidecar's note about an unexpected decode failure. */
+const DIAGNOSTIC_CHARACTERS = 2_000;
+
+/**
+ * A decode failure as a rejection: the codec's frame errors carry host-owned
+ * messages (and maybe a diagnostic); anything else is a host bug, described
+ * as such, its text kept only for the recovery sidecar.
+ */
+export function lightboxRejectionOf(error: unknown): LightboxRejection {
+  if (error instanceof LightboxGroupFrameError) {
+    return { message: error.message, ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}) };
+  }
+  return {
+    message: 'the reply could not be decoded',
+    diagnostic: (error instanceof Error ? `${error.name}: ${error.message}` : String(error)).slice(0, DIAGNOSTIC_CHARACTERS)
+  };
+}
 
 /** Error classes whose name is the runtime's, not a message's. */
 const BUILT_IN_ERRORS = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'AbortError', 'TimeoutError']);

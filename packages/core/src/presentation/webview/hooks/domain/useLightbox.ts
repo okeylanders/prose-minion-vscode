@@ -181,20 +181,6 @@ export function useLightbox(): UseLightboxReturn {
     setActiveRun(message.payload?.activeRun ?? null);
   }, []);
 
-  const handleRunProgress = React.useCallback((message: LightboxRunProgressMessage) => {
-    const next = message.payload;
-    if (!next) {
-      return;
-    }
-    setProgress(next);
-    setAwaitingStart(false);
-    if (next.phase === 'started' && next.token) {
-      setActiveRun({ boardId: next.boardId, token: next.token, groups: next.groups, ...(next.lens ? { lens: next.lens } : {}) });
-    } else if (next.phase === 'finished' || next.phase === 'cancelled') {
-      setActiveRun(null);
-    }
-  }, []);
-
   const handleGroupResult = React.useCallback((message: LightboxGroupResultMessage) => {
     const payload = message.payload;
     if (payload) {
@@ -240,14 +226,34 @@ export function useLightbox(): UseLightboxReturn {
     post(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: lensesKey ? (lensesKey.split(',') as LightboxLensId[]) : [] });
   }, [lensesKey, post]);
 
+  const handleRunProgress = React.useCallback((message: LightboxRunProgressMessage) => {
+    const next = message.payload;
+    if (!next) {
+      return;
+    }
+    setProgress(next);
+    setAwaitingStart(false);
+    if (next.phase === 'refused' && next.reestimate) {
+      // The press named an estimate the host no longer holds: ask for the current one.
+      requestEstimate();
+    }
+    if (next.phase === 'started' && next.token) {
+      setActiveRun({ boardId: next.boardId, token: next.token, groups: next.groups, ...(next.lens ? { lens: next.lens } : {}) });
+    } else if (next.phase === 'finished' || next.phase === 'cancelled') {
+      setActiveRun(null);
+    }
+  }, [requestEstimate]);
+
   const boardId = board?.boardId;
+  // A press names the estimate it was shown, so the host runs only what was priced (PR #149 F-02).
+  const estimateKey = estimate?.key;
   const run = React.useCallback((scope: LightboxRunScope) => {
-    if (!boardId) {
+    if (!boardId || !estimateKey) {
       return;
     }
     setAwaitingStart(true);
-    post(MessageType.LIGHTBOX_RUN, { boardId, scope });
-  }, [boardId, post]);
+    post(MessageType.LIGHTBOX_RUN, { boardId, scope, estimateKey });
+  }, [boardId, estimateKey, post]);
 
   const cancelRun = React.useCallback((token: string) => {
     if (!boardId) {

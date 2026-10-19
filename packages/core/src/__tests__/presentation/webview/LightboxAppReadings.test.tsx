@@ -71,7 +71,11 @@ describe('LightboxApp readings', () => {
     const read = screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
     expect(read.disabled).toBe(false);
     fireEvent.click(read);
-    expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_RUN, payload: { boardId: 'board-8', scope: { mode: 'all' } } });
+    // The press names the estimate it was shown (PR #149 F-02).
+    expect(lastPosted()).toMatchObject({
+      type: MessageType.LIGHTBOX_RUN,
+      payload: { boardId: 'board-8', scope: { mode: 'all' }, estimateKey: 'estimate-board-8' }
+    });
     expect(screen.getByText('Starting…')).not.toBeNull();
 
     fromHost(MessageType.LIGHTBOX_BOARD, { board: running, refusal: null });
@@ -118,6 +122,20 @@ describe('LightboxApp readings', () => {
 
     fireEvent.click(within(inspector).getByRole('button', { name: 'Re-read this tile' }));
     expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_RUN, payload: { scope: { mode: 'lens', lens: 'motif' } } });
+  });
+
+  it('asks for a fresh estimate when the host refuses a press priced on inputs that changed (PR #149 F-02)', () => {
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
+    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
+    fireEvent.click(screen.getByRole('button', { name: /Read the chapter/ }));
+    const asked = vscode.postMessage.mock.calls.filter(([message]) => message.type === MessageType.LIGHTBOX_SET_LENSES).length;
+    fromHost(MessageType.LIGHTBOX_RUN_PROGRESS, {
+      boardId: 'board-8', phase: 'refused', groups: [], groupsBack: 0, outputCharacters: 0, reestimate: true,
+      message: 'The estimate changed since it was shown (the model, its prices, the lenses or the context). Check the new estimate, then press again.'
+    });
+    expect(screen.getByText(/The estimate changed since it was shown/)).not.toBeNull();
+    expect(vscode.postMessage.mock.calls.filter(([message]) => message.type === MessageType.LIGHTBOX_SET_LENSES).length).toBe(asked + 1);
   });
 
   it('disables the press with the reason when a call is too large', () => {

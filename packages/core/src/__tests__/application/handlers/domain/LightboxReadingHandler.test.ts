@@ -12,117 +12,24 @@ jest.mock('p-limit', () => ({
 }));
 
 import { LightboxReadingHandler } from '@/application/handlers/domain/LightboxReadingHandler';
-import { MessageRouter } from '@/application/handlers/MessageRouter';
-import { LightboxService } from '@/infrastructure/lightbox/LightboxService';
-import { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
-import { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
-import { ProseStatsService } from '@services/measurement/ProseStatsService';
-import { StyleFlagsService } from '@services/measurement/StyleFlagsService';
-import { WordFrequencyService } from '@services/measurement/WordFrequencyService';
-import type { ToolOptionsProvider } from '@services/shared/ToolOptionsProvider';
-import type { ExecutionResult, InitialRunRequest } from '@orchestration/AgentRunContracts';
-import { createFakeFileSystem, createFakeWorkspace } from '@/__tests__/mocks/platform';
+import type { ExecutionResult } from '@orchestration/AgentRunContracts';
+import { LightboxReadingGroupId, MessageType } from '@/shared/types/messages';
 import {
-  ExtensionToWebviewMessage,
-  LightboxReadingGroupId,
-  LightboxRunScope,
-  MessageType
-} from '@/shared/types/messages';
-import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
+  ALL_LENSES_OFF,
+  CHAPTER,
+  CONTEXT_TEXT,
+  createLightboxReadingHost,
+  examples,
+  groupOf,
+  ok,
+  settle,
+  type LightboxReadingHostOptions
+} from './lightboxReadingHarness';
 
-const examples = Object.fromEntries(
-  (['A', 'B', 'C'] as const).map((group) => [group, readWorkedExample(group)])
-) as Record<LightboxReadingGroupId, ReturnType<typeof readWorkedExample>>;
-const CHAPTER = examples.A.paragraphs.join('\n\n');
-const CONTEXT_TEXT = 'Notes for the reader: the White Rabbit is a royal herald who fears the Queen.';
-
-const ok = (group: LightboxReadingGroupId, raw = examples[group].response): ExecutionResult => ({
-  content: 'visible',
-  rawContent: raw,
-  usedGuides: [],
-  requestedResources: [],
-  artifacts: [],
-  usage: { promptTokens: 1_000, completionTokens: 200, totalTokens: 1_200, costUsd: 0.01 },
-  finishReason: 'stop',
-  modelId: 'provider/model-v1'
-});
-const groupOf = (request: InitialRunRequest) => request.toolName.slice(-1).toUpperCase() as LightboxReadingGroupId;
-
-async function setup(options: {
-  respond?: (request: InitialRunRequest) => Promise<ExecutionResult> | ExecutionResult;
-  engine?: boolean;
-  contextLength?: number;
-} = {}) {
-  const posted: ExtensionToWebviewMessage[] = [];
-  const postMessage = jest.fn(async (message: ExtensionToWebviewMessage) => {
-    posted.push(message);
-  });
-  const log = { appendLine: jest.fn(), show: jest.fn(), clear: jest.fn() };
-  let boardIds = 0;
-  const service = new LightboxService(
-    new ProseStatsService(createFakeFileSystem(), createFakeWorkspace()),
-    new WordFrequencyService({} as ToolOptionsProvider),
-    new StyleFlagsService(),
-    { enrichWithStandards: async (stats: object) => stats } as never,
-    { mintBoardId: () => `board-${++boardIds}` }
-  );
-  const runInitial = jest.fn(async (request: InitialRunRequest) =>
-    (options.respond ?? ((call) => ok(groupOf(call))))(request)
-  );
-  let tokens = 0;
-  const runner = new LightboxReadingRunner(
-    { getEngine: () => (options.engine === false ? undefined : { runInitial }), getResolvedModel: () => 'provider/model-v1' },
-    { loadPrompts: async (files: string[]) => `SYSTEM ${files.join(' + ')}` },
-    { capture: jest.fn(async () => undefined) },
-    { present: jest.fn(async () => undefined) },
-    log,
-    {
-      catalog: {
-        contextLength: () => options.contextLength ?? 200_000,
-        pricing: () => ({ promptUsdPerToken: 0.000003, completionUsdPerToken: 0.000015 })
-      },
-      mintToken: () => `run-${++tokens}-token`
-    }
-  );
-  const shelf = new LightboxContextShelf({ mintId: () => 'ctx-1' });
-  const resolve = jest.fn(async ({ pathText }: { pathText: string }) => ({
-    text: CONTEXT_TEXT,
-    relativePaths: [pathText.replace('/workspace/', '')],
-    displayPath: pathText.replace('/workspace/', '')
-  }));
-  const pickFile = jest.fn(async () => ({ fsPath: '/workspace/Notes/cast.md', uri: 'file:///workspace/Notes/cast.md' }));
-  const handler = new LightboxReadingHandler(
-    service,
-    runner,
-    shelf,
-    { resolve } as unknown as TextSourceResolver,
-    { pickFile },
-    postMessage,
-    log
-  );
-  const router = new MessageRouter();
-  handler.registerRoutes(router);
-  const route = (type: MessageType, payload: object = {}) =>
-    router.route({ type, source: 'webview.lightbox', payload, timestamp: 1 } as never);
-  const built = await service.buildBoard({
-    kind: 'file',
-    text: CHAPTER,
-    displayPath: 'Drafts/alice-1.md',
-    rereadPath: '/workspace/Drafts/alice-1.md'
-  });
-  if (built.kind !== 'board') {
-    throw new Error('expected a board');
-  }
-  const board = built.board;
-  const ofType = <T extends MessageType>(type: T) =>
-    posted.filter((message) => message.type === type) as Array<Extract<ExtensionToWebviewMessage, { type: T }>>;
-  const run = async (scope: LightboxRunScope = { mode: 'all' }, boardId = board.boardId) => {
-    await route(MessageType.LIGHTBOX_RUN, { boardId, scope });
-  };
-  const settle = () => new Promise((done) => setImmediate(done));
-  const logged = () => log.appendLine.mock.calls.map(([line]) => String(line)).join('\n');
-  return { handler, router, route, posted, ofType, service, runner, runInitial, shelf, board, run, settle, logged, pickFile };
+async function setup(options: LightboxReadingHostOptions = {}) {
+  const host = await createLightboxReadingHost(options);
+  return { ...host, ...host.openTab(), settle };
 }
 
 describe('LightboxReadingHandler', () => {
@@ -253,14 +160,12 @@ describe('LightboxReadingHandler', () => {
 
   it.each([
     ['another board', { boardId: 'board-old' }, 'The board changed. Read the board on screen.'],
-    ['every lens off', { lensesOff: ['headline', 'motif', 'tension', 'characters', 'voice', 'genre'] }, 'Every lens is off, so there is nothing to read.'],
+    ['every lens off', { lensesOff: ALL_LENSES_OFF }, 'Every lens is off, so there is nothing to read.'],
     ['no API key', { engine: false }, 'Add an OpenRouter API key in Settings to read the chapter.']
   ])('refuses before sending anything: %s', async (_label, variant, message) => {
-    const { route, run, ofType, runInitial, board } = await setup({ engine: (variant as { engine?: boolean }).engine });
-    if ('lensesOff' in variant) {
-      await route(MessageType.LIGHTBOX_SET_LENSES, { lensesOff: variant.lensesOff });
-    }
-    await run({ mode: 'all' }, (variant as { boardId?: string }).boardId ?? board.boardId);
+    const { setLenses, run, ofType, runInitial } = await setup({ engine: (variant as { engine?: boolean }).engine });
+    await setLenses((variant as { lensesOff?: typeof ALL_LENSES_OFF }).lensesOff ?? []);
+    await run({ mode: 'all' }, { boardId: (variant as { boardId?: string }).boardId });
     expect(runInitial).not.toHaveBeenCalled();
     expect(ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((entry) => entry.payload)).toEqual([
       expect.objectContaining({ phase: 'refused', message })

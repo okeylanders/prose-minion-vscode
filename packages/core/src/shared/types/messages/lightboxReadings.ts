@@ -247,6 +247,15 @@ export interface LightboxCallEstimate {
 
 export interface LightboxRunEstimate {
   boardId: string;
+  /**
+   * The identity of every input this estimate priced: the board and its
+   * text, the lenses that are on, the context files, and the assistant model
+   * with its window and prices (PR #149 F-02). Host-computed and opaque. A
+   * press names the key of the estimate it was shown, and the host runs it
+   * only while that key is still the current one, so a press never inherits
+   * another model's price or another input's call count.
+   */
+  key: string;
   /** The assistant model the press would use. */
   model?: string;
   /** The model's live context length; absent when unknown. */
@@ -316,6 +325,12 @@ export interface LightboxRunProgress {
   outputCharacters: number;
   /** Writer-facing, for a refusal or a stop. */
   message?: string;
+  /**
+   * On a refusal: the press named an estimate whose inputs are no longer
+   * current (a model, price, lens, context or board change), so the webview
+   * asks for a fresh one before the writer presses again.
+   */
+  reestimate?: true;
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +368,8 @@ export interface LightboxRunEstimateMessage extends MessageEnvelope<LightboxRunE
 export interface LightboxRunPayload {
   boardId: string;
   scope: LightboxRunScope;
+  /** `LightboxRunEstimate.key` of the estimate the press was shown. */
+  estimateKey: string;
 }
 
 export interface LightboxRunMessage extends MessageEnvelope<LightboxRunPayload> {
