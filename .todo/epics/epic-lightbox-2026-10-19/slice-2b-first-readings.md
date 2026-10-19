@@ -303,6 +303,21 @@ maps each to its commits and tests.
   back across; a run whose pairwise units disagree with its own NFKC is
   kept whole. A quote can then match all of such a run, never part of it.
 
+**PR #149 second re-review fix (2026-10-19)**
+
+- **Long runs, and runs that always finish (F-10).** A CJK paragraph has
+  no code point below U+0300, so it is one normalization run, and the
+  board accepts a long one as a few words. The verifier now appends a
+  run's units one by one instead of spreading them into a call, which
+  threw past the argument limit. The runner's `done` never rejects: a
+  setup over the chapter that throws (verifier, term counter) fails every
+  group with nothing sent (`setup-failed`), a reply check that throws
+  fails its group alone (`check-failed`), a listener that throws is
+  logged, and the run is released and finished either way. The run
+  begins on the next microtask, so the listener hears nothing before
+  `startReserved` returns. What a reply becomes once its call is back now
+  lives in `LightboxGroupReply`.
+
 **Not built here**
 
 - Readings on a changed chapter are dropped, not kept and labeled stale as

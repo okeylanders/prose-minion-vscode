@@ -435,3 +435,31 @@ becomes a file format.
     - No live or billable call: every test plays the provider.
     - Visual evidence: the recorded states rebuild byte-identical and all
       twenty shots re-render pixel-identical, so none changed.
+- **2026-10-19. Slice 2B: PR #149 second re-review fix.** The
+  [second re-review](../../../docs/pr-reviews/pr-149-lightbox-first-readings-review.md)
+  found F-01 to F-09 addressed and one new blocking finding, F-10, from the
+  F-09 repair; it is fixed on `epic/lightbox-slice-2b-readings`, and the
+  author response to the second re-review maps it to commits and tests.
+  1. **F-10, long runs.** Quote units are appended one by one, never
+     spread into a call, so a long CJK paragraph no longer throws while
+     the verifier is built.
+  2. **F-10, every started run finishes.** A setup failure fails every
+     group with nothing sent, a reply check that throws fails its group
+     alone, a throwing listener is logged; the run is released and
+     finished, and `done` never rejects.
+  3. **Recorded, not changed:** word frequency's part-of-speech tokenizer
+     is quadratic on a long unbroken run of ASCII word characters, in
+     [tech debt](../../tech-debt/2026-10-19-pos-tagger-long-token-backtracking.md).
+  - **Verification.** Second re-review head (`b1200f0`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 350 suites, 5,123 tests, 2 snapshots | 352 suites, 5,135 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file, rule and message.
+    - No live or billable call: every test plays the provider.
+    - Visual evidence: `webview.js` is byte-identical and the recorded
+      states rebuild byte-identical, so no shot changed.
