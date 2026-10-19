@@ -206,17 +206,31 @@ describe('LightboxService measured set (D5)', () => {
 });
 
 describe('LightboxService boards per source (D12)', () => {
-  it('returns the retained board for unchanged text, and a new one when the text changes', async () => {
-    const { service, spies } = createService();
+  it('keeps the board id for unchanged text, and mints a new board when the text changes', async () => {
+    const { service } = createService();
     const first = await service.buildBoard(fileSource(ALICE_OPENING_CURLY));
     const again = await service.buildBoard(fileSource(ALICE_OPENING_CURLY.replace(/\n/g, '\r\n')));
     const changed = await service.buildBoard(fileSource(ALICE_OPENING_STRAIGHT));
 
     expect(first).toEqual(expect.objectContaining({ kind: 'board', reused: false }));
     expect(again).toEqual(expect.objectContaining({ kind: 'board', reused: true }));
-    expect(again.kind === 'board' && again.board).toBe(first.kind === 'board' && first.board);
+    expect(again.kind === 'board' && again.board.boardId).toBe('board-1');
+    expect(changed).toEqual(expect.objectContaining({ kind: 'board', reused: false }));
     expect(changed.kind === 'board' && changed.board.boardId).toBe('board-2');
     expect(service.currentBoard()?.boardId).toBe('board-2');
+  });
+
+  it('measures unchanged text again, so a changed standards preset shows on re-read', async () => {
+    const enrich = jest.fn()
+      .mockImplementationOnce(async (stats: object) => stats)
+      .mockImplementation(async (stats: object) => ({ ...stats, comparison: COMPARISON }));
+    const { service, spies } = createService({ enrich });
+    const first = await service.buildBoard(fileSource(ALICE_OPENING_CURLY));
+    const again = await service.buildBoard(fileSource(ALICE_OPENING_CURLY));
+
+    expect(first.kind === 'board' && first.board.measured.standards).toBeUndefined();
+    expect(again.kind === 'board' && again.board.measured.standards?.items).toEqual(COMPARISON.items);
+    expect(again.kind === 'board' && again.board.boardId).toBe('board-1');
     expect(spies.proseStats).toHaveBeenCalledTimes(2);
   });
 

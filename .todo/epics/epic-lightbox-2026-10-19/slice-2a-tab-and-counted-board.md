@@ -168,8 +168,9 @@ the build differs from the plan above, or the plan left a choice open:
 
 - The ceiling check counts words before anything is measured.
 - Boards are kept per source (file path, or selection path and lines), most
-  recent 12. Unchanged text returns the same board and id, which is what will
-  let 2B keep readings across a re-read.
+  recent 12. Re-reading unchanged text keeps the board's id (and, from 2B,
+  its readings) but measures again, so a changed setting such as the
+  standards preset still shows.
 - A build that a newer request overtook while awaiting the standards
   enrichment is dropped as `superseded`: never retained, never current.
 - The re-read path is host-private and never on the board.

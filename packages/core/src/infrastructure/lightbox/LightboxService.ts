@@ -11,8 +11,9 @@
  *   refused with its word count and a suggestion before anything is measured.
  * - **Ephemeral boards (D12).** The latest board for each source stays in
  *   memory for the extension session, so a hidden or reloaded tab gets it
- *   back. Re-reading unchanged text returns the same board (same id), which
- *   is what lets Slice 2B keep readings across a refresh.
+ *   back. Re-reading unchanged text keeps the board's identity (its id, and
+ *   from Slice 2B its readings) but measures again, so a changed setting such
+ *   as the publishing-standards preset still shows.
  * - **Current board.** The last board built is current; a reopened or
  *   reloaded tab is served it. A build that a newer request overtook while it
  *   awaited the standards enrichment is dropped as `superseded`: it is
@@ -133,8 +134,8 @@ export class LightboxService {
 
   /**
    * Board a resolved source and make it current, or refuse it. A refusal
-   * leaves the current board as it was. Unchanged text returns the retained
-   * board for its source rather than a new one.
+   * leaves the current board as it was. Unchanged text keeps the retained
+   * board's identity (`reused`).
    */
   async buildBoard(input: LightboxSourceInput): Promise<LightboxBoardResult> {
     const generation = ++this.generation;
@@ -146,17 +147,14 @@ export class LightboxService {
     const key = lightboxSourceKey(input);
     const contentHash = lightboxContentHash(input.text);
     const retained = this.entries.get(key);
-    if (retained && retained.board.source.contentHash === contentHash) {
-      this.adopt(key, { board: retained.board, rereadPath: input.rereadPath ?? retained.rereadPath });
-      return { kind: 'board', board: retained.board, reused: true };
-    }
+    const unchanged = retained?.board.source.contentHash === contentHash ? retained.board : undefined;
 
-    const board = await this.assemble(input, contentHash);
+    const board = await this.assemble(input, contentHash, unchanged);
     if (generation !== this.generation) {
       return { kind: 'superseded' };
     }
-    this.adopt(key, { board, rereadPath: input.rereadPath });
-    return { kind: 'board', board, reused: false };
+    this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath });
+    return { kind: 'board', board, reused: unchanged !== undefined };
   }
 
   currentBoard(): LightboxBoard | undefined {
@@ -200,7 +198,12 @@ export class LightboxService {
     return undefined;
   }
 
-  private async assemble(input: LightboxSourceInput, contentHash: string): Promise<LightboxBoard> {
+  /** Measure the text; an unchanged predecessor lends its id and readings. */
+  private async assemble(
+    input: LightboxSourceInput,
+    contentHash: string,
+    predecessor: LightboxBoard | undefined
+  ): Promise<LightboxBoard> {
     const paragraphs = splitLightboxParagraphs(input.text);
     const metrics = paragraphs.map(measureLightboxParagraph);
     const stats = this.proseStatsService.analyze({ text: input.text });
@@ -223,12 +226,12 @@ export class LightboxService {
 
     return {
       boardVersion: 0,
-      boardId: this.mintBoardId(),
+      boardId: predecessor?.boardId ?? this.mintBoardId(),
       source,
       paragraphs: metrics,
       ribbon: buildLightboxRibbon(metrics, PROMPT_BUDGETS.lightbox.ribbonColumns),
       measured: buildLightboxMeasuredSet({ stats: enriched, frequency, flags, paragraphs }),
-      readings: LIGHTBOX_READING_GROUPS.map((group): LightboxReadingGroup => ({
+      readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map((group): LightboxReadingGroup => ({
         group,
         status: 'not-run',
         tiles: [],
