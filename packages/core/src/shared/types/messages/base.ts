@@ -201,14 +201,24 @@ export enum MessageType {
   CANCEL_CREATIVE_VARIATIONS_GENERATE_REQUEST = 'cancel_creative_variations_generate_request',
   CANCEL_SHOW_VS_TELL_GENERATE_REQUEST = 'cancel_show_vs_tell_generate_request',
 
-  // Lightbox editor tab (ADR 2026-10-19 D10; Slice 2A counted board)
+  // Lightbox editor tab (ADR 2026-10-19 D10; Slice 2A counted board, Slice 2B readings)
   /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
   LIGHTBOX_REQUEST_BOARD = 'lightbox_request_board',
   LIGHTBOX_SET_SOURCE = 'lightbox_set_source',
   LIGHTBOX_PICK_SOURCE_FILE = 'lightbox_pick_source_file',
   LIGHTBOX_REFRESH_SOURCE = 'lightbox_refresh_source',
   LIGHTBOX_BOARD = 'lightbox_board',
-  LIGHTBOX_SOURCE_REFUSED = 'lightbox_source_refused'
+  LIGHTBOX_SOURCE_REFUSED = 'lightbox_source_refused',
+  // Slice 2B readings: lenses, estimate, runs, and context files
+  LIGHTBOX_SET_LENSES = 'lightbox_set_lenses',
+  LIGHTBOX_RUN_ESTIMATE = 'lightbox_run_estimate',
+  LIGHTBOX_RUN = 'lightbox_run',
+  LIGHTBOX_CANCEL_RUN = 'lightbox_cancel_run',
+  LIGHTBOX_RUN_PROGRESS = 'lightbox_run_progress',
+  LIGHTBOX_GROUP_RESULT = 'lightbox_group_result',
+  LIGHTBOX_ADD_CONTEXT_FILES = 'lightbox_add_context_files',
+  LIGHTBOX_REMOVE_CONTEXT_FILE = 'lightbox_remove_context_file',
+  LIGHTBOX_CONTEXT_FILES = 'lightbox_context_files'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

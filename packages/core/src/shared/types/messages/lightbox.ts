@@ -4,9 +4,10 @@
  * The renderer sees only a `LightboxBoard`: a closed, ordered JSON document
  * the host builds from one source (a file or an editor selection). Slice 2A
  * fills its counted half (`paragraphs`, `ribbon`, `measured`) with no model
- * call; `readings` holds the three reading groups, all `not-run` until
- * Slice 2B. `boardVersion` stays 0 while boards are ephemeral (D12): nothing
- * here is a file format yet.
+ * call; `readings` holds the three reading groups (Slice 2B,
+ * `lightboxReadings.ts`), which run only on the writer's press.
+ * `boardVersion` stays 0 while boards are ephemeral (D12): nothing here is a
+ * file format yet.
  *
  * Every count on the board is host-computed. The register a tile is drawn in
  * (measured, read, counted-read) is derived from its kind by
@@ -14,7 +15,7 @@
  */
 
 import { MessageEnvelope, MessageType } from './base';
-import type { TokenUsage } from './tokenUsage';
+import type { LightboxReadingGroup, LightboxReadingTileKind } from './lightboxReadings';
 
 // ---------------------------------------------------------------------------
 // Tiles and registers
@@ -27,49 +28,13 @@ export type LightboxRegister = 'measured' | 'read' | 'counted-read';
 export type LightboxMeasuredTileKind = 'stats' | 'top-words' | 'parts-of-speech';
 
 /**
- * Reading tile kinds. Empty in Slice 2A. The union grows by slice (D3):
- * headline, motif, tension-arc, character, voice and genre-neighbor in 2B;
- * palette and borrowed-field kinds in 3; lineage, subtext and spark in 4.
- * Every map keyed by `LightboxTileKind` is exhaustive, so a new kind does not
- * compile until it has a register and a renderer.
+ * Every tile kind: the counted ones and the readings (`lightboxReadings.ts`).
+ * The union grows by slice (D3): palette and borrowed-field kinds in 3;
+ * lineage, subtext and spark in 4. Every map keyed by `LightboxTileKind` is
+ * exhaustive, so a new kind does not compile until it has a register and a
+ * renderer.
  */
-export type LightboxReadingTileKind = never;
-
 export type LightboxTileKind = LightboxMeasuredTileKind | LightboxReadingTileKind;
-
-/** A reading tile inside a group. Its fields arrive with the first reading kind (2B). */
-export interface LightboxTile {
-  kind: LightboxReadingTileKind;
-}
-
-/** A block that failed validation, withheld by kind with its reason (D7). */
-export interface LightboxWithheldBlock {
-  kind: LightboxReadingTileKind;
-  reason: string;
-}
-
-export type LightboxReadingGroupId = 'A' | 'B' | 'C';
-
-/**
- * The lenses Slice 2B reads, each in one reading group (D6). The writer can
- * turn a lens off; the webview remembers the toggles, and 2B leaves an off
- * lens out of its group's prompt.
- */
-export type LightboxLensId = 'headline' | 'motif' | 'tension' | 'characters' | 'voice' | 'genre';
-
-/** `not-run` only in Slice 2A; 2B adds running, ok, failed and cancelled. */
-export type LightboxReadingStatus = 'not-run';
-
-export interface LightboxReadingGroup {
-  group: LightboxReadingGroupId;
-  status: LightboxReadingStatus;
-  /** The provider-reported model, not the selection (2B). */
-  model?: string;
-  usage?: TokenUsage;
-  /** Ordered; closed `kind` union. */
-  tiles: LightboxTile[];
-  withheldBlocks: LightboxWithheldBlock[];
-}
 
 // ---------------------------------------------------------------------------
 // Source and paragraphs

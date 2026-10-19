@@ -21,19 +21,23 @@
  *   replace a newer board.
  *
  * The source text never leaves this service except as the board's short
- * preview; the host-private re-read path is never posted.
+ * preview; the host-private re-read path is never posted. Each retained
+ * board also keeps its paragraph texts, host-private, so a reading run
+ * (Slice 2B) reads exactly the text the board was measured from.
+ *
+ * Readings attach to a board by its id: a run's groups are written through
+ * `updateReadings(boardId, …)`, and a rebuild of unchanged text keeps them.
  */
 
 import { randomUUID } from 'node:crypto';
 import type {
   LightboxBoard,
-  LightboxReadingGroup,
   LightboxSource,
   LightboxSourceKind,
   LightboxSourceRefusal
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
+import { LIGHTBOX_READING_GROUPS, emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 import { countWords } from '@/utils/textUtils';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
 import type { StyleFlagsService } from '@services/measurement/StyleFlagsService';
@@ -109,6 +113,14 @@ const DEFAULT_RETAINED_BOARDS = 12;
 interface BoardEntry {
   board: LightboxBoard;
   rereadPath?: string;
+  /** Host-private: the paragraph texts the board was measured from (index 0 is ¶1). */
+  paragraphTexts: string[];
+}
+
+/** A retained board with the text a reading run reads. Host-private. */
+export interface LightboxReadingSourceText {
+  board: LightboxBoard;
+  paragraphTexts: readonly string[];
 }
 
 export class LightboxService {
@@ -149,16 +161,58 @@ export class LightboxService {
     const retained = this.entries.get(key);
     const unchanged = retained?.board.source.contentHash === contentHash ? retained.board : undefined;
 
-    const board = await this.assemble(input, contentHash, unchanged);
+    let board = await this.assemble(input, contentHash, unchanged);
     if (generation !== this.generation) {
       return { kind: 'superseded' };
     }
-    this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath });
+    // A reading group may have landed on the unchanged board while this one
+    // was measured; keep the latest readings, not the ones captured before.
+    const latest = this.entries.get(key)?.board;
+    if (unchanged && latest?.boardId === board.boardId) {
+      board = { ...board, readings: latest.readings };
+    }
+    this.adopt(key, {
+      board,
+      rereadPath: input.rereadPath ?? retained?.rereadPath,
+      paragraphTexts: splitLightboxParagraphs(input.text).map((paragraph) => paragraph.text)
+    });
     return { kind: 'board', board, reused: unchanged !== undefined };
   }
 
   currentBoard(): LightboxBoard | undefined {
     return this.currentKey ? this.entries.get(this.currentKey)?.board : undefined;
+  }
+
+  /** A retained board and its paragraph texts, by board id (Slice 2B readings). */
+  readingSource(boardId: string): LightboxReadingSourceText | undefined {
+    const entry = this.entryOf(boardId);
+    return entry ? { board: entry.board, paragraphTexts: entry.paragraphTexts } : undefined;
+  }
+
+  /**
+   * Replace a retained board's reading groups. Returns the updated board, or
+   * undefined when no retained board has that id any more (its text changed
+   * or it was evicted), in which case the update is dropped.
+   */
+  updateReadings(
+    boardId: string,
+    update: (readings: LightboxBoard['readings']) => LightboxBoard['readings']
+  ): LightboxBoard | undefined {
+    const entry = this.entryOf(boardId);
+    if (!entry) {
+      return undefined;
+    }
+    entry.board = { ...entry.board, readings: update(entry.board.readings) };
+    return entry.board;
+  }
+
+  private entryOf(boardId: string): BoardEntry | undefined {
+    for (const entry of this.entries.values()) {
+      if (entry.board.boardId === boardId) {
+        return entry;
+      }
+    }
+    return undefined;
   }
 
   /** The current source's re-read target, when it is a file. */
@@ -231,12 +285,7 @@ export class LightboxService {
       paragraphs: metrics,
       ribbon: buildLightboxRibbon(metrics, PROMPT_BUDGETS.lightbox.ribbonColumns),
       measured: buildLightboxMeasuredSet({ stats: enriched, frequency, flags, paragraphs }),
-      readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map((group): LightboxReadingGroup => ({
-        group,
-        status: 'not-run',
-        tiles: [],
-        withheldBlocks: []
-      }))
+      readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
     };
   }
 

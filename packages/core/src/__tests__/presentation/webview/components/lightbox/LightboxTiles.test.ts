@@ -38,7 +38,9 @@ describe('the Lightbox tile map', () => {
 
   it('draws every counted tile in the measured register, each placed once', () => {
     const placed: LightboxMeasuredTileKind[] = [...LIGHTBOX_MEASURED_LAYOUT.rows, ...LIGHTBOX_MEASURED_LAYOUT.grid];
-    expect([...placed].sort()).toEqual(Object.keys(LIGHTBOX_TILE_RENDERERS).sort());
+    const measuredKinds = (Object.keys(LIGHTBOX_TILE_RENDERERS) as LightboxTileKind[])
+      .filter((kind) => LIGHTBOX_TILE_REGISTER[kind] === 'measured');
+    expect([...placed].sort()).toEqual(measuredKinds.sort());
     expect(placed.map((kind) => LIGHTBOX_TILE_REGISTER[kind])).toEqual(placed.map(() => 'measured'));
   });
 });

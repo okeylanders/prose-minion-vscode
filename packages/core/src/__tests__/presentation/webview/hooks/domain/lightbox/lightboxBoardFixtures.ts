@@ -5,6 +5,7 @@
  */
 import type { LightboxBoard, LightboxCountedTerm, LightboxParagraphMetric } from '@messages';
 import { buildLightboxRibbon } from '@/infrastructure/lightbox/LightboxParagraphs';
+import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 
 const term = (name: string, paragraphs: number[], count = paragraphs.length): LightboxCountedTerm => ({
   term: name,
@@ -88,11 +89,6 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
       },
       styleFlags: [{ type: 'Adverbs (-ly words)', count: 4, examples: ['suddenly'] }]
     },
-    readings: ['A', 'B', 'C'].map((group) => ({
-      group: group as 'A' | 'B' | 'C',
-      status: 'not-run' as const,
-      tiles: [],
-      withheldBlocks: []
-    }))
+    readings: (['A', 'B', 'C'] as const).map(emptyLightboxReadingGroup)
   };
 }

@@ -19,11 +19,21 @@ export interface LightboxTileProps {
 
 export type LightboxTileRenderer = React.ComponentType<LightboxTileProps>;
 
+/** Interim: the reading kinds' renderers land with the reading tiles. */
+const NOT_YET_DRAWN: LightboxTileRenderer = () => null;
+
 /* eslint-disable @typescript-eslint/naming-convention -- tile kinds are kebab-case protocol literals (ADR 2026-10-19 D3). */
 export const LIGHTBOX_TILE_RENDERERS: Readonly<Record<LightboxTileKind, LightboxTileRenderer>> = {
   stats: LightboxStatRow,
   'top-words': LightboxTopWords,
-  'parts-of-speech': LightboxPartsOfSpeech
+  'parts-of-speech': LightboxPartsOfSpeech,
+  headline: NOT_YET_DRAWN,
+  motif: NOT_YET_DRAWN,
+  'tension-arc': NOT_YET_DRAWN,
+  character: NOT_YET_DRAWN,
+  voice: NOT_YET_DRAWN,
+  'genre-neighbor': NOT_YET_DRAWN,
+  'reader-promise': NOT_YET_DRAWN
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
