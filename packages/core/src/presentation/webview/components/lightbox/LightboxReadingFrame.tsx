@@ -6,7 +6,8 @@
  * reading itself the frame shows what the honesty rules decided: skeletons
  * before and during the call, the group's failure or stop, a block withheld
  * by kind with its reason, claims withheld by title with theirs, and, for a
- * lens that found nothing, that empty answer with its friction.
+ * lens that found nothing, that empty answer with its friction. A lens read
+ * against an earlier version of the text is labeled stale (D4).
  */
 import * as React from 'react';
 import type { LightboxReadingTileKind } from '@messages';
@@ -44,6 +45,12 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
   return (
     <LightboxTileFrame kind={kind} span={span} title={title} footnote={read && view.tiles.length > 0 ? footnote : undefined}>
       {aside}
+      {view.stale && (
+        <p className="pm-lb-stale-note">
+          <b>Stale</b> Read against an earlier version of this chapter. Its quotes were checked again against
+          this one, and its counts recounted. Re-read to read it fresh.
+        </p>
+      )}
       {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
       {view.notice && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>

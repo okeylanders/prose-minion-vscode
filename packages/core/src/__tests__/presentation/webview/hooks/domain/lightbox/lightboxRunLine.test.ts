@@ -93,6 +93,17 @@ describe('the run line', () => {
     expect(view.action).toMatchObject({ label: 'Re-read', scope: { mode: 'all' } });
   });
 
+  it('says how many lenses are stale after the chapter changed, and still offers a re-read (D4)', () => {
+    const read = makeReadBoard();
+    const board = withGroups(read, read.readings.map((group) => ({
+      ...group,
+      staleLenses: group.lenses.map((lens) => ({ lens, readAgainst: 'earlier-hash' }))
+    })));
+    const view = line(board);
+    expect(view.note).toMatch(/ · \d+ lenses stale$/);
+    expect(view.action).toMatchObject({ label: 'Re-read', scope: { mode: 'all' } });
+  });
+
   it('after a stop, keeps the finished groups and offers to read the rest at its own cost', () => {
     const board = withGroups(makeBoard(8), [
       readGroup('A'),

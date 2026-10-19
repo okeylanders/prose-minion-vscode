@@ -87,7 +87,7 @@ elsewhere.
 | Medium | [A missing relative path silently measures the active editor's file](2026-10-19-text-source-active-editor-fallback.md) | Identified |
 | Low | [Part-of-speech lists count contraction fragments](2026-10-19-pos-tagger-token-fragments.md) | Identified |
 | Medium | [Lightbox readings have not met a live provider](2026-10-19-lightbox-live-provider-pass.md) | Deferred (Lightbox Slice 6) |
-| Medium | [Lightbox readings vanish when the chapter changes](2026-10-19-lightbox-stale-readings.md) | Identified |
+| Low | [A Lightbox reading in flight when the chapter changes is dropped](2026-10-19-lightbox-forward-in-flight-readings.md) | Identified |
 
 ## Review Guidance
 
@@ -99,6 +99,8 @@ elsewhere.
   focused concern and narrow the parent document.
 
 ## Recently resolved
+
+- [Lightbox readings vanish when the chapter changes](../archive/tech-debt/2026-10-19-lightbox-stale-readings.md): readings carry onto the changed chapter, stale and re-checked (Lightbox Slice 3, 2026-10-19).
 
 - [Rewind and Branch main smoke](../archive/tech-debt/2026-10-01-workshop-rewind-and-branch-main-smoke.md): all checks confirmed by Okey on 2026-10-02.
 

@@ -17,7 +17,6 @@
  */
 
 import type {
-  LightboxCountedSupport,
   LightboxLensFriction,
   LightboxLensId,
   LightboxReadingTile,
@@ -29,6 +28,7 @@ import type {
 } from '@messages';
 import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
 import {
   LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS,
   LIGHTBOX_VOICE_TRAITS,
@@ -175,7 +175,7 @@ class GroupAssembly {
             traits: block.traits.map(({ key, value }) => ({
               label: LIGHTBOX_VOICE_TRAITS.find(([candidate]) => candidate === key)?.[1] ?? key,
               value,
-              ...(key === 'music' && average !== undefined && average > 0 ? { measured: `${average} avg` } : {})
+              ...(key === 'music' ? lightboxMeasuredMusic(average) : {})
             }))
           })
         );
@@ -222,7 +222,7 @@ class GroupAssembly {
       );
       return;
     }
-    const support = this.support(draft.terms);
+    const support = countLightboxSupport(draft.terms, this.context.counter);
     const paragraphs = new Set<number>(foundParagraphs);
     for (const term of support) {
       term.paragraphs.forEach((index) => paragraphs.add(index));
@@ -273,23 +273,5 @@ class GroupAssembly {
       });
     }
     return { evidence, withheld };
-  }
-
-  /** Count each named term once; a lone stopword ("she") counts nothing worth showing. */
-  private support(terms: readonly string[]): LightboxCountedSupport[] {
-    const support: LightboxCountedSupport[] = [];
-    const seen = new Set<string>();
-    for (const term of terms) {
-      if (this.context.counter.isStopword(term)) {
-        continue;
-      }
-      const counted = this.context.counter.count(term);
-      if (counted.term.length === 0 || seen.has(counted.term)) {
-        continue;
-      }
-      seen.add(counted.term);
-      support.push(counted);
-    }
-    return support;
   }
 }

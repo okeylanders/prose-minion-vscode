@@ -72,6 +72,25 @@ describe('tallies and wording', () => {
       .toBe('Not in ¶14; the words stand in ¶15. A quote must stand in the paragraph it names.');
     expect(lightboxWithheldQuoteText({ paragraph: 40, reason: 'undeclared-paragraph' })).toBe('The chapter has no ¶40.');
     expect(lightboxWithheldQuoteText({ paragraph: 6, reason: 'not-in-chapter' })).toContain('Only the chapter can be quoted.');
+    expect(lightboxWithheldQuoteText({ paragraph: 6, reason: 'no-longer-in-chapter' }))
+      .toBe('No longer in the chapter: the text changed after this was read, and these words are gone.');
+  });
+
+  it('labels a lens read against an earlier text stale, in its view and in the inspector (D4)', () => {
+    const read = makeReadBoard();
+    const stale = {
+      ...read,
+      readings: read.readings.map((group) => (group.group === 'A'
+        ? { ...group, staleLenses: [{ lens: 'motif' as const, readAgainst: 'earlier-hash' }] }
+        : group))
+    };
+    expect(lightboxLensView(stale, 'motif').stale).toBe(true);
+    expect(lightboxLensView(stale, 'headline').stale).toBe(false);
+    expect(lightboxLensView(read, 'motif').stale).toBe(false);
+    const motif = buildLightboxInspectorView(stale, { kind: 'reading', tileId: tileId(stale, 'Going down') });
+    expect(motif?.reading?.stale).toBe(true);
+    const headline = buildLightboxInspectorView(stale, { kind: 'reading', tileId: stale.readings[0].tiles[0].id });
+    expect(headline?.reading?.stale).toBe(false);
   });
 
   it('merges a group result into the board it names, and ignores one for another board', () => {

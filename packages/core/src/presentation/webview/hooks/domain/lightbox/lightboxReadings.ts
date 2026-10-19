@@ -71,6 +71,8 @@ export interface LightboxLensView {
   friction?: string;
   /** The group's failure or stop, writer-facing. */
   notice?: string;
+  /** Read against an earlier version of the text; its quotes were checked again against this one (D4). */
+  stale: boolean;
 }
 
 export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): LightboxLensView {
@@ -79,7 +81,8 @@ export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): Li
   const withheldBlocks = group?.withheldBlocks.filter((block) => block.lens === lens) ?? [];
   const withheldClaims = group?.withheldClaims.filter((claim) => claim.lens === lens) ?? [];
   const friction = group?.frictions.find((entry) => entry.lens === lens)?.friction;
-  const base = { lens, tiles, withheldBlocks, withheldClaims, ...(friction ? { friction } : {}) };
+  const stale = group?.staleLenses?.some((mark) => mark.lens === lens) ?? false;
+  const base = { lens, tiles, withheldBlocks, withheldClaims, stale, ...(friction ? { friction } : {}) };
   if (!group) {
     return { ...base, phase: 'not-run' };
   }
@@ -147,7 +150,19 @@ export function lightboxWithheldQuoteText(quote: LightboxWithheldQuote): string 
       return 'Not found in the chapter: a paraphrase, or words from somewhere else. Only the chapter can be quoted.';
     case 'too-short':
       return 'Too short to anchor anything.';
+    case 'no-longer-in-chapter':
+      return 'No longer in the chapter: the text changed after this was read, and these words are gone.';
   }
+}
+
+/** Whether the lens's readings were made against an earlier version of the text (D4). */
+export function lightboxLensIsStale(board: LightboxBoard, lens: LightboxLensId): boolean {
+  return board.readings.some((group) => group.staleLenses?.some((mark) => mark.lens === lens) ?? false);
+}
+
+/** How many lenses on the board hold readings of an earlier text. */
+export function lightboxStaleLensCount(board: LightboxBoard): number {
+  return board.readings.reduce((sum, group) => sum + (group.staleLenses?.length ?? 0), 0);
 }
 
 /** The tension arc's read score per ribbon column, when the board holds one that fits its ribbon. */

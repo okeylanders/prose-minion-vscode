@@ -54,8 +54,15 @@ export interface LightboxVerifiedQuote {
  * - `not-in-paragraph`: the words are in the chapter, but not in the paragraph named.
  * - `not-in-chapter`: the words are nowhere in the chapter (a paraphrase, or context).
  * - `too-short`: too few letters to anchor anything.
+ * - `no-longer-in-chapter`: the quote was found when the chapter was read, but
+ *   the chapter has changed since and its words are gone (stale readings, D4).
  */
-export type LightboxQuoteFailure = 'undeclared-paragraph' | 'not-in-paragraph' | 'not-in-chapter' | 'too-short';
+export type LightboxQuoteFailure =
+  | 'undeclared-paragraph'
+  | 'not-in-paragraph'
+  | 'not-in-chapter'
+  | 'too-short'
+  | 'no-longer-in-chapter';
 
 /**
  * A quote the host could not find where the reading said it was. Its text is
@@ -198,6 +205,18 @@ export interface LightboxWithheldClaim {
 
 export type LightboxReadingStatus = 'not-run' | 'running' | 'ok' | 'failed' | 'cancelled';
 
+/**
+ * A lens whose readings were made against an earlier version of the text
+ * (D4). They stay on the board, labeled stale; each quote was checked again
+ * against the current paragraphs and its counted support recounted. A fresh
+ * reading of the lens clears the mark.
+ */
+export interface LightboxStaleLens {
+  lens: LightboxLensId;
+  /** The content hash of the text the lens was read against. */
+  readAgainst: string;
+}
+
 export interface LightboxReadingGroup {
   group: LightboxReadingGroupId;
   status: LightboxReadingStatus;
@@ -221,6 +240,8 @@ export interface LightboxReadingGroup {
   frictions: LightboxLensFriction[];
   /** Why the latest call failed or stopped (status `failed` or `cancelled`). Writer-facing. */
   error?: string;
+  /** Lenses read against an earlier version of the text; absent when every reading is current. */
+  staleLenses?: LightboxStaleLens[];
 }
 
 // ---------------------------------------------------------------------------

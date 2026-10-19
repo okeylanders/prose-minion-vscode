@@ -12,12 +12,17 @@
  *   already landed keep what they hold.
  * - Usage accumulates per group, so a group's usage is what its readings on
  *   this board have cost.
+ * - A stale lens (read against an earlier text, D4) stays stale until a fresh
+ *   reading of it lands: a full run clears the group's marks with its
+ *   readings, a re-read clears its own lens's mark, and a failed or stopped
+ *   call clears nothing.
  */
 
 import type {
   LightboxLensId,
   LightboxReadingGroup,
-  LightboxReadingGroupId
+  LightboxReadingGroupId,
+  LightboxStaleLens
 } from '@messages';
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { sumUsage, type LightboxGroupOutcome } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
@@ -78,7 +83,8 @@ export function settleLightboxGroup(
       withheldBlocks: group.withheldBlocks,
       withheldClaims: group.withheldClaims,
       frictions: group.frictions,
-      error: outcome.error ?? 'The reading failed.'
+      error: outcome.error ?? 'The reading failed.',
+      ...staleField(group.staleLenses)
     };
   }
   if (!lens) {
@@ -101,8 +107,13 @@ export function settleLightboxGroup(
     tiles: inLensOrder([...others(group.tiles), ...outcome.tiles]),
     withheldBlocks: inLensOrder([...others(group.withheldBlocks), ...outcome.withheldBlocks]),
     withheldClaims: inLensOrder([...others(group.withheldClaims), ...outcome.withheldClaims]),
-    frictions: inLensOrder([...others(group.frictions), ...outcome.frictions])
+    frictions: inLensOrder([...others(group.frictions), ...outcome.frictions]),
+    ...staleField(group.staleLenses?.filter((mark) => mark.lens !== lens))
   };
+}
+
+function staleField(marks: readonly LightboxStaleLens[] | undefined): { staleLenses?: LightboxStaleLens[] } {
+  return marks && marks.length > 0 ? { staleLenses: [...marks] } : {};
 }
 
 /** Mark the stopped run's still-running groups `cancelled`, keeping what they hold. */

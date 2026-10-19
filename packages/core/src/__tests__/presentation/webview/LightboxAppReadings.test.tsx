@@ -120,6 +120,42 @@ describe('LightboxApp readings', () => {
     expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_RUN, payload: { scope: { mode: 'lens', lens: 'motif' } } });
   });
 
+  it('labels stale readings after the chapter changed, with the re-checked quote withheld (D4)', () => {
+    render(<LightboxApp />);
+    const groupA = readGroup('A');
+    const goingDown = groupA.tiles.find((tile) => tile.title === 'Going down');
+    const stale = {
+      ...board,
+      readings: [
+        {
+          ...groupA,
+          staleLenses: groupA.lenses.map((lens) => ({ lens, readAgainst: 'earlier-hash' })),
+          tiles: groupA.tiles.map((tile) => (tile === goingDown
+            ? {
+                ...tile,
+                evidence: tile.evidence.filter((quote) => quote.paragraph !== 6),
+                withheldQuotes: [{ paragraph: 6, reason: 'no-longer-in-chapter' as const }]
+              }
+            : tile))
+        },
+        readGroup('B'),
+        readGroup('C')
+      ]
+    };
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: stale, refusal: null });
+    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
+
+    const motifs = screen.getByLabelText('Motifs · where they recur');
+    expect(within(motifs).getByText('Stale')).not.toBeNull();
+    expect(within(screen.getByLabelText('Voice')).queryByText('Stale')).toBeNull();
+    expect(screen.getByText(/lenses stale$/)).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Going down/ }));
+    const inspector = screen.getByLabelText('Inspector');
+    expect(within(inspector).getByText('Stale')).not.toBeNull();
+    expect(within(inspector).getByText(/No longer in the chapter: the text changed/)).not.toBeNull();
+  });
+
   it('disables the press with the reason when a call is too large', () => {
     render(<LightboxApp />);
     fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });

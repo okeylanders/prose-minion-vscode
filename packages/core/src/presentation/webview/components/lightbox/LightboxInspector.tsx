@@ -207,6 +207,12 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
       <h3 className="pm-lb-inspector-title">{view.title}</h3>
       {view.claim && <p className={`pm-lb-inspector-claim${reading ? ' is-read' : ''}`}>{view.claim}</p>}
       <p className="pm-lb-inspector-note">{view.registerNote}</p>
+      {reading?.stale && (
+        <p className="pm-lb-stale-note">
+          <b>Stale</b> Read against an earlier version of this chapter. The quotes below were checked again
+          against this one; a quote whose words are gone is withheld.
+        </p>
+      )}
 
       <div>
         <p className="pm-lb-label">Where it lives · {view.paragraphLabel}</p>

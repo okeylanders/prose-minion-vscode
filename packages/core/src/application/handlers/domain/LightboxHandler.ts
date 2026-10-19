@@ -274,7 +274,8 @@ export class LightboxHandler {
         const { source } = result.board;
         this.outputChannel.appendLine(
           `[LightboxHandler] Board ${result.reused ? 'unchanged' : 'built'} for ${source.displayPath}: ` +
-            `${source.wordCount} words, ${source.paragraphCount} paragraphs`
+            `${source.wordCount} words, ${source.paragraphCount} paragraphs` +
+            (result.carried ? '; the text changed, so its readings came along marked stale' : '')
         );
         return;
       }

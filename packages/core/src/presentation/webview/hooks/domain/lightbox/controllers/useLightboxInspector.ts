@@ -27,7 +27,7 @@ import {
   paragraphCountLabel,
   resolveLightboxItem
 } from '@hooks/domain/lightbox/lightboxItems';
-import { lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxLensIsStale, lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
 
 export const LIGHTBOX_REGISTER_LABELS: Readonly<Record<LightboxRegister, string>> = {
   measured: 'Measured',
@@ -143,6 +143,8 @@ export interface LightboxInspectorDetail {
 /** What only a reading has. */
 export interface LightboxInspectorReading {
   lens: LightboxLensId;
+  /** Read against an earlier version of the text (D4). */
+  stale: boolean;
   evidence: LightboxInspectorEvidence[];
   withheld: Array<{ paragraph: number; text: string }>;
   details: LightboxInspectorDetail[];
@@ -190,9 +192,10 @@ function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
   }
 }
 
-function readingView(tile: LightboxReadingTile): LightboxInspectorReading {
+function readingView(tile: LightboxReadingTile, stale: boolean): LightboxInspectorReading {
   return {
     lens: tile.lens,
+    stale,
     evidence: tile.evidence.map((quote) => ({
       paragraph: quote.paragraph,
       text: quote.text,
@@ -234,7 +237,7 @@ export function buildLightboxInspectorView(
           .slice(0, TOUCHING_SHOWN)
           .map((touch) => ({ ref: touch.ref, label: touch.title }))
       : [],
-    ...(item.reading ? { reading: readingView(item.reading) } : {})
+    ...(item.reading ? { reading: readingView(item.reading, lightboxLensIsStale(board, item.reading.lens)) } : {})
   };
 }
 

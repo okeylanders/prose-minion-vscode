@@ -361,4 +361,4 @@ becomes a file format.
   - **Follow-ups:** Slice 6's live pass (cache reads, the estimate ratio,
     contract adherence) and stale readings on a changed chapter (D4), in
     [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md)
-    and [stale readings](../../tech-debt/2026-10-19-lightbox-stale-readings.md).
+    and [stale readings](../../archive/tech-debt/2026-10-19-lightbox-stale-readings.md) (resolved in Slice 3).
