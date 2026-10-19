@@ -88,6 +88,7 @@ elsewhere.
 | Low | [Part-of-speech lists count contraction fragments](2026-10-19-pos-tagger-token-fragments.md) | Identified |
 | Medium | [Lightbox readings have not met a live provider](2026-10-19-lightbox-live-provider-pass.md) | Deferred (Lightbox Slice 6) |
 | Medium | [Lightbox readings vanish when the chapter changes](2026-10-19-lightbox-stale-readings.md) | Identified |
+| Low | [The engine logs a provider's error type verbatim after an interrupted stream](2026-10-19-agent-run-engine-provider-error-log.md) | Identified |
 
 ## Review Guidance
 
