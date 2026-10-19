@@ -28,6 +28,8 @@ import {
   Platform,
   SURFACE_WORKSHOP,
   WorkshopExcerptSource,
+  WorkshopLexicalGravityBuildSeed,
+  WorkshopOpenLexicalGravityBuildMessage,
   WorkshopUiActions,
   WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
@@ -40,6 +42,13 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   private panel?: vscode.WebviewPanel;
   private messageHandler?: MessageHandler;
   private configWatcher?: vscode.Disposable;
+  /**
+   * Whether this panel's webview has sent its first message, so its listeners
+   * are attached. A handoff that is not session state (a Build lens subject)
+   * waits for it, since a booting webview would drop it.
+   */
+  private webviewListening = false;
+  private pendingBuildSeed?: WorkshopOpenLexicalGravityBuildMessage;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -102,6 +111,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     };
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
     panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_WORKSHOP);
+    this.webviewListening = false;
 
     // The per-webview message seam, over the ONE injected CoreServices bundle.
     // Two MessageHandlers may now be live (sidebar + Workshop); shared-service
@@ -143,6 +153,10 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         return;
       }
       void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
+      if (!this.webviewListening) {
+        this.webviewListening = true;
+        this.deliverPendingBuildSeed();
+      }
     });
 
     // Messages posted while an editor tab is hidden can be dropped even under
@@ -159,6 +173,10 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
           payload: {},
           timestamp: Date.now()
         });
+        // A Build lens seed handed over while the tab was hidden lands now.
+        if (this.webviewListening) {
+          this.deliverPendingBuildSeed();
+        }
       }
     });
 
@@ -200,6 +218,42 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       timestamp: Date.now()
     };
     void this.messageHandler?.handleMessage(message);
+  }
+
+  /**
+   * Open Lexical Gravity's Build lens with a subject handed over from the
+   * Lightbox (ADR 2026-10-19 D11). Opens/reveals the panel, then routes a
+   * synthetic WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD through the panel's OWN
+   * MessageHandler, as `seedExcerpt` does: the Workshop's handler checks the
+   * seed and its webview opens the sheet prefilled. Nothing is built until
+   * the writer presses Build. The seed is not session state, so a webview
+   * still booting gets it once it sends its first message, and a hidden tab
+   * once it is shown (a hidden tab can drop messages). True when a Workshop
+   * panel took it.
+   */
+  public seedLexicalGravityBuild(seed: WorkshopLexicalGravityBuildSeed): boolean {
+    this.openOrReveal();
+    if (!this.messageHandler) {
+      return false;
+    }
+    this.pendingBuildSeed = {
+      type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
+      source: 'extension.lightbox',
+      payload: { seed },
+      timestamp: Date.now()
+    };
+    if (this.webviewListening && this.panel?.visible) {
+      this.deliverPendingBuildSeed();
+    }
+    return true;
+  }
+
+  private deliverPendingBuildSeed(): void {
+    const message = this.pendingBuildSeed;
+    this.pendingBuildSeed = undefined;
+    if (message) {
+      void this.messageHandler?.handleMessage(message);
+    }
   }
 
   public dispose(): void {

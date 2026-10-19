@@ -32,6 +32,7 @@ export * from './workshop';
 export * from './lightbox';
 export * from './lightboxReadings';
 export * from './lightboxGravity';
+export * from './lightboxHandoff';
 
 // Union types for message routing
 import {
@@ -213,6 +214,8 @@ import {
   WorkshopLexicalGravityLensCandidatesMessage,
   WorkshopSaveLexicalGravityLensesMessage,
   WorkshopLexicalGravityLensesSavedMessage,
+  WorkshopOpenLexicalGravityBuildMessage,
+  WorkshopLexicalGravityBuildSeedMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigRestoredMessage,
@@ -241,6 +244,7 @@ import {
   LightboxRemoveContextFileMessage,
   LightboxContextFilesMessage
 } from './lightboxReadings';
+import { LightboxHandOffMessage, LightboxHandOffResultMessage } from './lightboxHandoff';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -344,6 +348,7 @@ export type WebviewToExtensionMessage =
   | WorkshopPreviewLexicalGravityMessage
   | WorkshopBuildLexicalGravityLensMessage
   | WorkshopSaveLexicalGravityLensesMessage
+  | WorkshopOpenLexicalGravityBuildMessage
   | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage
@@ -357,7 +362,8 @@ export type WebviewToExtensionMessage =
   | LightboxRunMessage
   | LightboxCancelRunMessage
   | LightboxAddContextFilesMessage
-  | LightboxRemoveContextFileMessage;
+  | LightboxRemoveContextFileMessage
+  | LightboxHandOffMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -413,6 +419,7 @@ export type ExtensionToWebviewMessage =
   | WorkshopLexicalGravityPreviewResultMessage
   | WorkshopLexicalGravityLensCandidatesMessage
   | WorkshopLexicalGravityLensesSavedMessage
+  | WorkshopLexicalGravityBuildSeedMessage
   | WorkshopWidgetConfigDataMessage
   | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage
@@ -421,4 +428,5 @@ export type ExtensionToWebviewMessage =
   | LightboxRunEstimateMessage
   | LightboxRunProgressMessage
   | LightboxGroupResultMessage
-  | LightboxContextFilesMessage;
+  | LightboxContextFilesMessage
+  | LightboxHandOffResultMessage;

@@ -238,7 +238,10 @@ const WORKSHOP_ROUTE_OWNERS = [
     messageTypes: [
       'WORKSHOP_REQUEST_LEXICAL_GRAVITY_LENSES',
       'WORKSHOP_PREVIEW_LEXICAL_GRAVITY',
-      'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS'
+      'WORKSHOP_BUILD_LEXICAL_GRAVITY_LENS',
+      // ADR 2026-10-19 D11: a Build lens subject handed over from the Lightbox.
+      // Direct: it only opens the sheet prefilled and changes no session state.
+      'WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD'
     ]
   },
   {
@@ -539,7 +542,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/WorkshopApp.tsx',
     reason: 'Workshop presentation composition root',
-    allowedToken: /(?:WorkshopShowVsTellModal|clearShowVsTellTransientState|show-vs-tell|showVsTellAuthoring|showVsTellOpening|useShowVsTellAuthoring|CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE|CreativeVariationsDistinctness|GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopCreativeVariationsModal|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|clearCreativeVariationsTransientState|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|copyCreativeVariation|copyGestureDictionary|creative-variations|creative_variations|creativeVariations|creativeVariationsAuthoring|creativeVariationsOpening|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useCreativeVariations|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:WorkshopShowVsTellModal|clearShowVsTellTransientState|show-vs-tell|showVsTellAuthoring|showVsTellOpening|useShowVsTellAuthoring|CREATIVE_VARIATIONS_HIGH_OVERLAP_SCORE|CreativeVariationsDistinctness|GESTURE_DICTIONARY_RESULT_TOOL_NAME|Gesture Playground|WorkshopCreativeVariationsModal|WorkshopGesturePlaygroundModal|WorkshopLexicalGravityModal|clearCreativeVariationsTransientState|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|copyCreativeVariation|copyGestureDictionary|creative-variations|creative_variations|creativeVariations|creativeVariationsAuthoring|creativeVariationsOpening|gesture-playground|gesturePlayground|gesturePlaygroundOpening|lexicalGravity|lexicalGravityBuild|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|saveGestureDictionary|useCreativeVariations|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
   },
   {
     file: 'presentation/webview/components/SettingsOverlay.tsx',
@@ -564,7 +567,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts',
     reason: 'closed widget-opening presentation controller',
-    allowedToken: /(?:WorkshopShowVsTellOpening|WorkshopShowVsTellRecommendationSeed|WorkshopShowVsTellWidgetConfigSnapshot|setShowVsTellOpening|show-vs-tell|showVsTellOpening|Show vs\. Tell|Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
+    allowedToken: /(?:WorkshopShowVsTellOpening|WorkshopShowVsTellRecommendationSeed|WorkshopShowVsTellWidgetConfigSnapshot|setShowVsTellOpening|show-vs-tell|showVsTellOpening|Show vs\. Tell|Creative Variations|WorkshopCreativeVariations(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopGesturePlayground(?:Opening|RecommendationSeed|WidgetConfigSnapshot)|WorkshopLexicalGravity(?:BuildSeedHost|BuildSeedPayload|Draft|Opening|RecommendationSeed|WidgetConfigSnapshot)|consumeLexicalGravityBuildSeed|lexicalGravityBuild(?:Seed)?|openLexicalGravityBuildSeed|closeCreativeVariations|closeGesturePlayground|closeLexicalGravity|creative-variations|creativeVariationsOpening|gesture-playground|gesturePlaygroundOpening|lexical-gravity|lexicalGravityOpening|onCloseCreativeVariations|onCloseGesturePlayground|onCloseLexicalGravity|setCreativeVariationsOpening|setGesturePlaygroundOpening|setLexicalGravityOpening)/
   },
   {
     file: 'presentation/webview/hooks/domain/workshop/dispatchWorkshopSelectionData.ts',
@@ -584,7 +587,7 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
   {
     file: 'presentation/webview/hooks/useWorkshopAppMessageRouter.ts',
     reason: 'Workshop webview route-composition table',
-    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
+    allowedToken: /(?:UseShowVsTellAuthoringReturn|UseShowVsTellReturn|handleShowVsTellActionResult|WORKSHOP_SHOW_VS_TELL_GENERATION_PROGRESS|WORKSHOP_SHOW_VS_TELL_RESULT|handleShowVsTell(?:Beat|Passage)|showVsTellAuthoring|useShowVsTellAuthoring|UseCreativeVariationsAuthoringReturn|UseCreativeVariationsReturn|UseGesturePlaygroundReturn|UseLexicalGravityReturn|WORKSHOP_CREATIVE_VARIATIONS_GENERATION_PROGRESS|WORKSHOP_CREATIVE_VARIATIONS_RESULT|WORKSHOP_GESTURE_PLAYGROUND_GENERATION_PROGRESS|WORKSHOP_GESTURE_PLAYGROUND_MENU_RESULT|WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED|WORKSHOP_LEXICAL_GRAVITY_LENSES_DATA|WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED|WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES|WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT|creativeVariationsAuthoring|handleCreativeVariationsActionResult|handleCreativeVariationsSubject|gesturePlayground|handleGestureActionResult|handleLexicalActionResult|lexicalGravity|useCreativeVariationsAuthoring|useGesturePlayground|useLexicalGravity)/
   },
   {
     file: 'presentation/webview/utils/workshopWidgetAskPrefill.ts',
@@ -657,10 +660,25 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     allowedToken: /distance/
   },
   {
+    file: 'shared/types/messages/lightboxHandoff.ts',
+    reason: 'Lightbox handoff contract: a borrowed field travels as a Lexical Gravity Build lens seed (ADR 2026-10-19 D11)',
+    allowedToken: /(?:Lexical Gravity|WorkshopLexicalGravityBuildSeed|lexical-gravity-seed|lexicalGravity)/
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxHandoff.ts',
+    reason: 'Lightbox handoff seam: resolves, re-checks and bounds a borrowed field as a Build lens seed (ADR 2026-10-19 D11)',
+    allowedToken: /(?:Lexical Gravity|LEXICAL_GRAVITY_BUILD_SEED_LIMITS|WorkshopLexicalGravityBuildSeed(?:Term)?|lexical-gravity-seed)/
+  },
+  {
     file: 'infrastructure/lightbox/LightboxReadingPrompts.ts',
     reason: 'names the Lightbox lexical gravity lens prompt file (Slice 3)',
     allowedToken: /13-lexical-gravity/
   },
+  {
+    file: 'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+    reason: 'Lightbox "Build as a lens in Lexical Gravity" action and its request (ADR 2026-10-19 D11)',
+    allowedToken: /(?:Lexical Gravity|lexical-gravity-seed)/
+  }
 ] as const;
 
 /**
@@ -775,9 +793,21 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
     reason: 'catalog-neighbor distance is unrelated to widget feature dispatch'
   },
   {
+    file: 'shared/types/messages/lightboxHandoff.ts',
+    reason: 'the Lightbox hands over a Lexical Gravity seed only; Prose Controller has no Lightbox handoff'
+  },
+  {
+    file: 'infrastructure/lightbox/LightboxHandoff.ts',
+    reason: 'the Lightbox hands over a Lexical Gravity seed only; Prose Controller has no Lightbox handoff'
+  },
+  {
     file: 'infrastructure/lightbox/LightboxReadingPrompts.ts',
     reason: 'a Lightbox lens prompt file name, not widget dispatch'
   },
+  {
+    file: 'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
+    reason: 'the Lightbox hands over a Lexical Gravity seed only; Prose Controller has no Lightbox handoff'
+  }
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
   path.join(
@@ -946,6 +976,7 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightbox.ts',
   'shared/types/messages/lightboxReadings.ts',
   'shared/types/messages/lightboxGravity.ts',
+  'shared/types/messages/lightboxHandoff.ts',
   'shared/constants/lightbox.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
@@ -956,6 +987,7 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxGravityCodec.ts',
   'infrastructure/lightbox/LightboxGravityCounts.ts',
   'infrastructure/lightbox/LightboxGravityTiles.ts',
+  'infrastructure/lightbox/LightboxHandoff.ts',
   'infrastructure/lightbox/LightboxQuoteVerifier.ts',
   'infrastructure/lightbox/LightboxTermCounts.ts',
   'infrastructure/lightbox/LightboxReadingTiles.ts',
@@ -975,6 +1007,7 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
@@ -1009,6 +1042,7 @@ const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxGravity.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts'
 ] as const;
@@ -1313,11 +1347,11 @@ describe('architectural boundaries', () => {
       );
     };
 
-    expect(expectedOwnerPairs).toHaveLength(56);
+    expect(expectedOwnerPairs).toHaveLength(57);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'mutation'))
       .toHaveLength(37);
     expect(expectedOwnerPairs.filter(([, , registration]) => registration === 'direct'))
-      .toHaveLength(19);
+      .toHaveLength(20);
     expect(duplicateLedgerEntries).toEqual([]);
     expect(toOwnerRecord(actualOwnerPairs)).toEqual(toOwnerRecord(expectedOwnerPairs));
   });

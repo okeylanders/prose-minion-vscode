@@ -464,6 +464,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     {
       openAssistantSettings: () => {
         void vscode.commands.executeCommand('prose-minion.openSettingsOverlay');
+      },
+      // ADR 2026-10-19 D11: a handoff enters the Workshop only through the
+      // Workshop panel's own message path; the Workshop decides what arrives.
+      handOffToWorkshop: (handoff) => {
+        switch (handoff.kind) {
+          case 'lexical-gravity-seed':
+            return workshopPanelProvider?.seedLexicalGravityBuild(handoff.seed) ?? false;
+        }
       }
     }
   );

@@ -25,9 +25,10 @@ describe('LightboxHandler', () => {
       MessageType.LIGHTBOX_SET_SOURCE,
       MessageType.LIGHTBOX_PICK_SOURCE_FILE,
       MessageType.LIGHTBOX_REFRESH_SOURCE,
-      MessageType.LIGHTBOX_DISMISS_REFUSAL
+      MessageType.LIGHTBOX_DISMISS_REFUSAL,
+      MessageType.LIGHTBOX_HAND_OFF
     ].every((type) => router.hasHandler(type))).toBe(true);
-    expect(router.handlerCount).toBe(5);
+    expect(router.handlerCount).toBe(6);
   });
 
   it('answers a board request with the current board, or null before the first', async () => {

@@ -348,7 +348,8 @@ export class MessageHandler {
       textSourceResolver,
       this.platform.shell,
       this.postMessage.bind(this),
-      outputChannel
+      outputChannel,
+      this.uiActions.handOffToWorkshop
     );
     // Its readings (Slice 2B) beside it: lenses, estimate, runs, context files.
     this.lightboxReadingHandler = new LightboxReadingHandler(

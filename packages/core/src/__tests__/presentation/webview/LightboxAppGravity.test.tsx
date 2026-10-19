@@ -4,7 +4,8 @@
  * Lexical gravity and palette on the board (ADR 2026-10-19 D7, D11; Slice
  * 3): the orbit of positioned buttons, field rows with the claimed pull and
  * the host's counts, the collision and the literal set-aside, the palette's
- * clusters and swatches, and the inspector's "By degree" rows. The host is
+ * clusters and swatches, the inspector's "By degree" rows, and "Build as a
+ * lens", which posts the field's id and shows the host's answer. The host is
  * played by window messages; the readings are group A's worked example
  * through the production codec and verifier.
  */
@@ -92,6 +93,7 @@ describe('LightboxApp: lexical gravity and palette', () => {
     expect(collision.textContent).toContain('Fire and Animals share a sentence.');
     expect(within(tile).getByRole('button', { name: /Set aside as literal: Falling\s?, 15 hits\. She really falls down a deep well/ }))
       .not.toBeNull();
+    expect(within(tile).getByText(/Pin a field, then Build as a lens/)).not.toBeNull();
 
     // Hover or focus lights the field's paragraphs, like any board item.
     fireEvent.mouseEnter(bodies[1]);
@@ -115,18 +117,52 @@ describe('LightboxApp: lexical gravity and palette', () => {
     expect(within(palette).getByText(/A swatch's color is the reading's choice\./)).not.toBeNull();
   });
 
-  it('pins a field with its terms by degree, its claimed pull and the host\'s hits', () => {
+  it('pins a field with its terms by degree, and builds it as a lens through the host', () => {
     render(<LightboxApp />);
-    fromHost(MessageType.LIGHTBOX_BOARD, { board: readBoard(), refusal: null });
+    const shown = readBoard();
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: shown, refusal: null });
+    fromHost(MessageType.LIGHTBOX_RUN_ESTIMATE, { estimate: makeEstimate() });
     const tile = screen.getByLabelText('Lexical gravity · borrowed fields the prose leans on');
     // Pinned from the orbit: each field there is a keyboard stop of its own.
     fireEvent.click(within(tile).getByRole('button', { name: 'Ledger, claimed pull 0.24, 3 hits' }));
+
     const inspector = screen.getByLabelText('Inspector');
     expect(within(inspector).getByText('Lexical gravity · Borrowed field')).not.toBeNull();
     expect(within(inspector).getByText('By degree')).not.toBeNull();
+    expect(within(inspector).getByText('1° latent')).not.toBeNull();
     expect(within(inspector).getByText('use ×1, pleasure ×1 · 2 hits')).not.toBeNull();
     expect(within(inspector).getByText('worth the trouble ×1 · 1 hit')).not.toBeNull();
     expect(within(inspector).getByText('0.24 · a claim, not a measurement')).not.toBeNull();
+
+    const build = within(inspector).getByRole('button', { name: /Build as a lens in Lexical Gravity/ }) as HTMLButtonElement;
+    expect(build.disabled).toBe(false);
+    expect(within(inspector).getByText(/Nothing is built until you press Build there\./)).not.toBeNull();
+    fireEvent.click(build);
+    const fieldId = shown.readings[0].tiles.find((candidate) => candidate.title === 'Ledger')?.id;
+    expect(posted(MessageType.LIGHTBOX_HAND_OFF)).toEqual([expect.objectContaining({
+      source: 'webview.lightbox',
+      payload: { kind: 'lexical-gravity-seed', boardId: board.boardId, fieldId }
+    })]);
+    expect(build.disabled).toBe(true);
+
+    fromHost(MessageType.LIGHTBOX_HAND_OFF_RESULT, {
+      kind: 'lexical-gravity-seed', boardId: board.boardId, fieldId, ok: true,
+      message: 'Sent “Ledger” to Build lens in the Workshop\'s Lexical Gravity. Nothing is built until you press Build there.'
+    });
+    expect(within(inspector).getByRole('status').textContent).toContain('Sent “Ledger” to Build lens');
+    expect(build.disabled).toBe(false);
+  });
+
+  it('disables Build as a lens for a stale field, with its reason', () => {
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: readBoard({ stale: true }), refusal: null });
+    const tile = screen.getByLabelText('Lexical gravity · borrowed fields the prose leans on');
+    expect(within(tile).getByText('Stale')).not.toBeNull();
+    fireEvent.click(tile.querySelector('.pm-lb-field') as HTMLElement);
+    const inspector = screen.getByLabelText('Inspector');
+    const build = within(inspector).getByRole('button', { name: /Build as a lens/ }) as HTMLButtonElement;
+    expect(build.disabled).toBe(true);
+    expect(within(inspector).getByText(/Read the lens again before building it\./)).not.toBeNull();
   });
 
   it('offers both lenses in the rail, in call A, and hides a lens that is turned off', () => {

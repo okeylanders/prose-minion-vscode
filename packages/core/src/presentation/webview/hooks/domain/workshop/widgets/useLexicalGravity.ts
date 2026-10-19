@@ -10,6 +10,8 @@ import {
 } from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
 import {
   MessageType,
+  WorkshopLexicalGravityBuildSeedMessage,
+  WorkshopLexicalGravityBuildSeedPayload,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityLens,
   WorkshopLexicalGravityLensIncompatibility,
@@ -33,6 +35,8 @@ export interface LexicalGravityState {
   lensCandidates: WorkshopLexicalGravityLensCandidatesPayload | null;
   lensesSaved: WorkshopLexicalGravityLensesSavedPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;
+  /** A Build lens subject another tab handed over, until the sheet opens with it. */
+  lexicalGravityBuildSeed: WorkshopLexicalGravityBuildSeedPayload | null;
 }
 
 export interface LexicalGravityActions {
@@ -50,6 +54,8 @@ export interface LexicalGravityActions {
   handleCandidates: (message: WorkshopLexicalGravityLensCandidatesMessage) => void;
   handleLensesSaved: (message: WorkshopLexicalGravityLensesSavedMessage) => void;
   handleActionResult: (message: WorkshopWidgetActionResultMessage) => void;
+  handleBuildSeed: (message: WorkshopLexicalGravityBuildSeedMessage) => void;
+  consumeLexicalGravityBuildSeed: () => void;
   clearTransientResults: () => void;
   consumeActionResult: () => void;
 }
@@ -78,6 +84,8 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     React.useState<WorkshopLexicalGravityLensesSavedPayload | null>(null);
   const [actionResult, setActionResult] =
     React.useState<WorkshopWidgetActionResultPayload | null>(null);
+  const [lexicalGravityBuildSeed, setLexicalGravityBuildSeed] =
+    React.useState<WorkshopLexicalGravityBuildSeedPayload | null>(null);
 
   const post = React.useCallback((type: MessageType, payload: object) => {
     vscode.postMessage({ type, source: 'webview.workshop.lexical-gravity', payload, timestamp: Date.now() });
@@ -169,6 +177,10 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     latestApplyRequestTokenRef.current = undefined;
     setActionResult(message.payload);
   }, []);
+  const handleBuildSeed = React.useCallback((message: WorkshopLexicalGravityBuildSeedMessage) => {
+    setLexicalGravityBuildSeed(message.payload);
+  }, []);
+  const consumeLexicalGravityBuildSeed = React.useCallback(() => setLexicalGravityBuildSeed(null), []);
   const clearTransientResults = React.useCallback(() => {
     setPreviewResult(null);
     setLensCandidates(null);
@@ -186,6 +198,7 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     lensCandidates,
     lensesSaved,
     actionResult,
+    lexicalGravityBuildSeed,
     requestLenses,
     preview,
     buildLens,
@@ -196,6 +209,8 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     handleCandidates,
     handleLensesSaved,
     handleActionResult,
+    handleBuildSeed,
+    consumeLexicalGravityBuildSeed,
     clearTransientResults,
     consumeActionResult,
     persistedState: {}

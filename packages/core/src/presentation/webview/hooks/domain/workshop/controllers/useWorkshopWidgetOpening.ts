@@ -5,6 +5,7 @@ import {
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopCreativeVariationsRecommendationSeed,
+  WorkshopLexicalGravityBuildSeedPayload,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
@@ -24,10 +25,16 @@ export type WorkshopGesturePlaygroundOpening =
   | { kind: 'seed'; seed: WorkshopGesturePlaygroundRecommendationSeed; personaLabel: string }
   | { kind: 'clone'; config: WorkshopGesturePlaygroundWidgetConfigSnapshot };
 
+/**
+ * `build`: another tab handed over a Build lens subject (the Lightbox's
+ * "Build as a lens", ADR 2026-10-19 D11). It prefills Build lens and builds
+ * nothing on its own.
+ */
 export type WorkshopLexicalGravityOpening =
   | { kind: 'new'; seed?: WorkshopLexicalGravityDraft }
   | { kind: 'seed'; seed: WorkshopLexicalGravityRecommendationSeed; personaLabel: string }
-  | { kind: 'edit'; config: WorkshopLexicalGravityWidgetConfigSnapshot };
+  | { kind: 'edit'; config: WorkshopLexicalGravityWidgetConfigSnapshot }
+  | { kind: 'build'; seed: WorkshopLexicalGravityBuildSeedPayload };
 
 export type WorkshopCreativeVariationsOpening =
   | { kind: 'new' }
@@ -64,8 +71,16 @@ export interface WorkshopWidgetOpeningHost {
   consumeRestoredWidgetConfig: () => void;
 }
 
+/** A Build lens subject the host delivered, until this controller opens it. */
+export interface WorkshopLexicalGravityBuildSeedHost {
+  lexicalGravityBuildSeed: WorkshopLexicalGravityBuildSeedPayload | null;
+  consumeLexicalGravityBuildSeed: () => void;
+}
+
 export interface UseWorkshopWidgetOpeningOptions {
   host: WorkshopWidgetOpeningHost;
+  /** Absent where nothing can hand a subject over. */
+  lexicalGravityBuild?: WorkshopLexicalGravityBuildSeedHost;
   standingDirectives: WorkshopStandingDirectiveSummary[];
   onError: (message: string) => void;
   onCloseGesturePlayground: () => void;
@@ -107,6 +122,7 @@ export type UseWorkshopWidgetOpeningReturn = WorkshopWidgetOpeningState &
 
 export function useWorkshopWidgetOpening({
   host,
+  lexicalGravityBuild,
   standingDirectives,
   onError,
   onCloseGesturePlayground,
@@ -144,6 +160,41 @@ export function useWorkshopWidgetOpening({
   React.useEffect(() => {
     requestRestoredWidgetConfig();
   }, [requestRestoredWidgetConfig]);
+
+  // A Build lens subject handed over from another tab opens the sheet once,
+  // unless a sheet is already open: the writer's work there is never replaced.
+  const buildSeed = lexicalGravityBuild?.lexicalGravityBuildSeed ?? null;
+  const consumeBuildSeed = lexicalGravityBuild?.consumeLexicalGravityBuildSeed;
+  const openLexicalGravityBuildSeed = React.useCallback(() => {
+    if (!buildSeed || !consumeBuildSeed) {
+      return;
+    }
+    consumeBuildSeed();
+    if (
+      pendingWidgetConfigId
+      || gesturePlaygroundOpening
+      || lexicalGravityOpening
+      || creativeVariationsOpening
+      || showVsTellOpening
+    ) {
+      onError('Close the open widget sheet, then build the field from the Lightbox again.');
+      return;
+    }
+    setLexicalGravityOpening({ kind: 'build', seed: buildSeed });
+  }, [
+    buildSeed,
+    consumeBuildSeed,
+    creativeVariationsOpening,
+    gesturePlaygroundOpening,
+    lexicalGravityOpening,
+    onError,
+    pendingWidgetConfigId,
+    showVsTellOpening
+  ]);
+
+  React.useEffect(() => {
+    openLexicalGravityBuildSeed();
+  }, [openLexicalGravityBuildSeed]);
 
   const launchWidget = React.useCallback((widgetId: WorkshopWidgetId) => {
     if (widgetId === 'gesture-playground') {

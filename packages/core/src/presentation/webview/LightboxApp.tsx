@@ -43,6 +43,7 @@ import {
   lightboxCallsNote,
   lightboxRereadNote
 } from '@hooks/domain/lightbox/lightboxRunLine';
+import { lightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import { usePersistence } from '@hooks/usePersistence';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
@@ -64,7 +65,8 @@ export const LightboxApp: React.FC = () => {
       [MessageType.LIGHTBOX_RUN_ESTIMATE]: lightbox.handleRunEstimate,
       [MessageType.LIGHTBOX_RUN_PROGRESS]: lightbox.handleRunProgress,
       [MessageType.LIGHTBOX_GROUP_RESULT]: lightbox.handleGroupResult,
-      [MessageType.LIGHTBOX_CONTEXT_FILES]: lightbox.handleContextFiles
+      [MessageType.LIGHTBOX_CONTEXT_FILES]: lightbox.handleContextFiles,
+      [MessageType.LIGHTBOX_HAND_OFF_RESULT]: lightbox.handleHandOffResult
     }),
     [
       chrome,
@@ -73,7 +75,8 @@ export const LightboxApp: React.FC = () => {
       lightbox.handleRunEstimate,
       lightbox.handleRunProgress,
       lightbox.handleGroupResult,
-      lightbox.handleContextFiles
+      lightbox.handleContextFiles,
+      lightbox.handleHandOffResult
     ]
   );
   useMessageRouter(routes);
@@ -116,6 +119,14 @@ export const LightboxApp: React.FC = () => {
         : undefined,
     onReread: (lens: Parameters<typeof lightboxRereadNote>[1]) => run({ mode: 'lens', lens })
   }), [chrome.providerPaused, estimate, run, running]);
+
+  const { handoff, buildLens: requestBuildLens } = lightbox;
+  const buildLens = React.useMemo(() => (board
+    ? {
+        view: (field: Parameters<typeof lightboxBuildLensView>[1]) => lightboxBuildLensView(board, field, handoff),
+        onBuild: requestBuildLens
+      }
+    : undefined), [board, handoff, requestBuildLens]);
 
   usePersistence({
     ...lightbox.persistedState,
@@ -222,6 +233,7 @@ export const LightboxApp: React.FC = () => {
             onJumpToParagraph={inspector.jumpToParagraph}
             bind={focus.bind}
             reread={reread}
+            buildLens={buildLens}
           />
         )
       }}

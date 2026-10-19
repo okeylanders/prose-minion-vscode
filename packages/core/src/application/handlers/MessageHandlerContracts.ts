@@ -5,6 +5,7 @@ import type {
   DictionaryResultMessage,
   ErrorMessage,
   ExtensionToWebviewMessage,
+  LightboxWorkshopHandoff,
   MetricsResultMessage,
   SearchResultMessage,
   StatusMessage,
@@ -75,6 +76,12 @@ export interface WorkshopUiActions {
   openWorkshop?: () => void;
   /** Opens or reveals the Lightbox tab (ADR 2026-10-19 D1); no route calls it yet. */
   openLightbox?: () => void;
+  /**
+   * Carries a Lightbox handoff into the Workshop (ADR 2026-10-19 D11): the
+   * composition root reveals the Workshop and routes it through the Workshop
+   * panel's own MessageHandler. True when the Workshop took it.
+   */
+  handOffToWorkshop?: (handoff: LightboxWorkshopHandoff) => boolean;
   openAssistantSettings?: () => void;
 }
 

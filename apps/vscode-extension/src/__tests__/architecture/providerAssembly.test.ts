@@ -173,6 +173,26 @@ describe('app-shell provider assembly', () => {
     expect(providerSource).not.toMatch(/WORKSHOP_|workshopSessionService/);
   });
 
+  it('carries a Lightbox handoff into the Workshop only through the Workshop panel\'s own handler (ADR 2026-10-19 D11)', () => {
+    const providerSource = fs.readFileSync(path.join(PROVIDERS_ROOT, 'WorkshopPanelProvider.ts'), 'utf8');
+    const seed = providerSource.slice(
+      providerSource.indexOf('public seedLexicalGravityBuild('),
+      providerSource.indexOf('public dispose(): void')
+    );
+    expect(seed).toMatch(/this\.openOrReveal\(\);[\s\S]*?type: MessageType\.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD/);
+    expect(seed).toMatch(/this\.messageHandler\?\.handleMessage\(message\)/);
+    // The seed is not written into the Workshop session from outside.
+    expect(seed).not.toMatch(/workshopSessionService|coreServices\./);
+
+    const extensionSource = fs.readFileSync(EXTENSION_ENTRY, 'utf8');
+    const start = extensionSource.indexOf('new LightboxPanelProvider(');
+    const lightboxArgs = extensionSource.slice(start, extensionSource.indexOf('\n  );', start));
+    expect(lightboxArgs).toMatch(/handOffToWorkshop: \(handoff\) => \{[\s\S]*?workshopPanelProvider\?\.seedLexicalGravityBuild\(handoff\.seed\)/);
+    // The Lightbox's own provider never names a Workshop route.
+    const lightboxProvider = fs.readFileSync(path.join(PROVIDERS_ROOT, 'LightboxPanelProvider.ts'), 'utf8');
+    expect(lightboxProvider).not.toMatch(/WORKSHOP_|seedLexicalGravityBuild/);
+  });
+
   it('declares the Lightbox commands, context menu and activation events', () => {
     const manifest = JSON.parse(fs.readFileSync(EXTENSION_MANIFEST, 'utf8')) as {
       activationEvents?: string[];

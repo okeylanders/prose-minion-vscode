@@ -25,6 +25,27 @@ describe('useLexicalGravity', () => {
     jest.clearAllMocks();
   });
 
+  it('holds a Build lens subject handed over by the host until the sheet takes it, and builds nothing', () => {
+    const vscode = createMockVSCode();
+    (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
+    const { result } = renderHook(() => useLexicalGravity());
+    const payload = {
+      seedId: 'lexical-build-seed-1',
+      seed: { origin: 'lightbox' as const, field: 'Telescope', metaphor: 'm', terms: [], sourceLabel: 'a.md' },
+      subject: 'Telescope'
+    };
+    act(() => result.current.handleBuildSeed({
+      type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
+      source: 'extension.workshop.lexical-gravity',
+      timestamp: 1,
+      payload
+    }));
+    expect(result.current.lexicalGravityBuildSeed).toEqual(payload);
+    act(() => result.current.consumeLexicalGravityBuildSeed());
+    expect(result.current.lexicalGravityBuildSeed).toBeNull();
+    expect(vscode.postMessage).not.toHaveBeenCalled();
+  });
+
   it('surfaces catalog incompatibilities alongside usable lenses without discarding either', () => {
     const { result } = renderHook(() => useLexicalGravity());
     const incompatibility = {

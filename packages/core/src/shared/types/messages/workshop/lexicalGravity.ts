@@ -287,6 +287,61 @@ export interface WorkshopLexicalGravityLensesSavedMessage
   type: MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED;
 }
 
+/**
+ * A subject for Build lens handed over from another tab (the Lightbox's
+ * "Build as a lens", ADR 2026-10-19 D11): a borrowed field the Lightbox
+ * found, its governing metaphor, and the terms it counted in the chapter.
+ * It opens Build lens prefilled; nothing is built until the writer presses
+ * Build. The bounds are the seed's own, checked by the Workshop on arrival.
+ */
+export interface WorkshopLexicalGravityBuildSeedTerm {
+  term: string;
+  /** How often the source text holds it, as the sending tab counted it. */
+  count: number;
+}
+
+export interface WorkshopLexicalGravityBuildSeed {
+  origin: 'lightbox';
+  /** The field's name, e.g. "Liturgy". */
+  field: string;
+  /** Its governing metaphor, one line. */
+  metaphor: string;
+  /** The field's terms found in the text, most frequent first. */
+  terms: WorkshopLexicalGravityBuildSeedTerm[];
+  /** Where it was read, as the writer sees it (a workspace-relative path). */
+  sourceLabel: string;
+}
+
+export const LEXICAL_GRAVITY_BUILD_SEED_LIMITS = {
+  fieldCharacters: 60,
+  metaphorCharacters: 120,
+  terms: 12,
+  termCharacters: 60,
+  sourceLabelCharacters: 500
+} as const;
+
+/**
+ * Host-to-host: routed through the Workshop panel's own MessageHandler by its
+ * provider (the `seedExcerpt` pattern), never posted by a webview.
+ */
+export interface WorkshopOpenLexicalGravityBuildMessage
+  extends MessageEnvelope<{ seed: WorkshopLexicalGravityBuildSeed }> {
+  type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD;
+}
+
+/** The Workshop opens Build lens with `subject` in the field; `seedId` is host-minted, one per handoff. */
+export interface WorkshopLexicalGravityBuildSeedPayload {
+  seedId: string;
+  seed: WorkshopLexicalGravityBuildSeed;
+  /** The Build lens subject, composed by the Workshop within the build query's bound. */
+  subject: string;
+}
+
+export interface WorkshopLexicalGravityBuildSeedMessage
+  extends MessageEnvelope<WorkshopLexicalGravityBuildSeedPayload> {
+  type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED;
+}
+
 export interface WorkshopLexicalGravityApplyStandingWidgetPayload {
   requestToken: string;
   widgetId: 'lexical-gravity';

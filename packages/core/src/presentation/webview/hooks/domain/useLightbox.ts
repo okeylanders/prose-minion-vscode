@@ -17,6 +17,10 @@
  * board changes; `requestEstimate` re-sends them when the assistant model or
  * its catalog changes. The host answers each with the context list and a
  * fresh estimate.
+ *
+ * Handoffs (Slice 3, D11): `buildLens` names a pinned borrowed field on the
+ * board on screen; the host does the rest and answers sent or refused. The
+ * answer is transient, never persisted.
  */
 
 import * as React from 'react';
@@ -27,6 +31,7 @@ import {
   LightboxContextFile,
   LightboxContextFilesMessage,
   LightboxGroupResultMessage,
+  LightboxHandOffResultMessage,
   LightboxLensId,
   LightboxRunEstimate,
   LightboxRunEstimateMessage,
@@ -42,6 +47,7 @@ import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { usePersistedState } from '@hooks/usePersistence';
 import { LightboxItemRef, parseLightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
 import { mergeLightboxGroupResult } from '@hooks/domain/lightbox/lightboxReadings';
+import { LightboxHandOffState, lightboxBuildLensRequest } from '@hooks/domain/lightbox/lightboxHandoff';
 
 /** Which tiles the board shows. */
 export type LightboxFilter = 'all' | 'measured' | 'read';
@@ -73,6 +79,8 @@ export interface LightboxState {
   /** A press was sent and the host has not answered it yet. */
   awaitingStart: boolean;
   context: LightboxContextState;
+  /** The latest handoff this webview asked for, and the host's answer. */
+  handoff: LightboxHandOffState | null;
 }
 
 export interface LightboxActions {
@@ -95,6 +103,9 @@ export interface LightboxActions {
   cancelRun: (token: string) => void;
   addContextFile: () => void;
   removeContextFile: (id: string) => void;
+  handleHandOffResult: (message: LightboxHandOffResultMessage) => void;
+  /** Ask the host to build a pinned borrowed field as a lens in the Workshop. */
+  buildLens: (fieldId: string) => void;
 }
 
 /** UI preferences only. The board is the host's (D12). */
@@ -120,7 +131,8 @@ type LightboxRequestType =
   | MessageType.LIGHTBOX_RUN
   | MessageType.LIGHTBOX_CANCEL_RUN
   | MessageType.LIGHTBOX_ADD_CONTEXT_FILES
-  | MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE;
+  | MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE
+  | MessageType.LIGHTBOX_HAND_OFF;
 
 export function useLightbox(): UseLightboxReturn {
   const vscode = useVSCodeApi();
@@ -145,6 +157,7 @@ export function useLightbox(): UseLightboxReturn {
   const [progress, setProgress] = React.useState<LightboxRunProgress | null>(null);
   const [awaitingStart, setAwaitingStart] = React.useState(false);
   const [context, setContext] = React.useState<LightboxContextState>(NO_CONTEXT);
+  const [handoff, setHandoff] = React.useState<LightboxHandOffState | null>(null);
 
   // Refusals dismissed here; a host answer already on its way may still name one.
   const dismissed = React.useRef(new Set<string>());
@@ -261,6 +274,19 @@ export function useLightbox(): UseLightboxReturn {
     post(MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, { id });
   }, [post]);
 
+  const handleHandOffResult = React.useCallback((message: LightboxHandOffResultMessage) => {
+    if (message.payload) {
+      setHandoff({ status: 'answered', result: message.payload });
+    }
+  }, []);
+  const buildLens = React.useCallback((fieldId: string) => {
+    if (!boardId) {
+      return;
+    }
+    setHandoff({ status: 'sending', boardId, fieldId });
+    post(MessageType.LIGHTBOX_HAND_OFF, lightboxBuildLensRequest(boardId, fieldId));
+  }, [boardId, post]);
+
   // The outcome is host truth: ask for it once on mount (a reveal re-asks host-side).
   React.useEffect(() => {
     requestBoard();
@@ -293,6 +319,7 @@ export function useLightbox(): UseLightboxReturn {
     progress,
     awaitingStart,
     context,
+    handoff,
     handleBoard,
     handleSourceRefused,
     handleRunEstimate,
@@ -311,6 +338,8 @@ export function useLightbox(): UseLightboxReturn {
     cancelRun,
     addContextFile,
     removeContextFile,
+    handleHandOffResult,
+    buildLens,
     persistedState
   };
 }

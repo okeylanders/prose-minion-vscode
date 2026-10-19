@@ -38,6 +38,9 @@ import {
 import {
   WorkshopLexicalGravityPreviewReading
 } from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityPreviewReading';
+import {
+  WorkshopLexicalGravityBuildSeedBanner
+} from '@components/workshop/widgets/lexicalGravity/WorkshopLexicalGravityBuildSeedBanner';
 
 interface WorkshopLexicalGravityModalProps {
   open: boolean;
@@ -211,8 +214,9 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
     setTab('field');
     setWordPart('nouns');
     setContrastIndex(0);
-    setLookup('');
-    setPickerTab(opening.kind === 'new' ? 'create' : 'library');
+    // A subject handed over from another tab prefills Build lens; it builds nothing on its own.
+    setLookup(opening.kind === 'build' ? opening.seed.subject : '');
+    setPickerTab(opening.kind === 'new' || opening.kind === 'build' ? 'create' : 'library');
     setExtraLens(draft?.resolvedLens);
     setPreviewToken(undefined);
     setBuildToken(undefined);
@@ -483,6 +487,7 @@ export const WorkshopLexicalGravityModal: React.FC<WorkshopLexicalGravityModalPr
               <span><b>Editing the live directive.</b> There is one active directive per family. Apply updates the standing frame between runs; changes stay local until then.</span>
             </div>
           )}
+          {opening.kind === 'build' && <WorkshopLexicalGravityBuildSeedBanner seed={opening.seed.seed} />}
           {opening.kind === 'seed' && (
             <div className="pm-ws-gesture-banner pm-ws-gesture-banner-seed">
               <Icon name="sparkle" size={13} />

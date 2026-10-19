@@ -152,6 +152,7 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_PREVIEW_RESULT]: lexicalGravity.handlePreviewResult,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
+    [MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED]: lexicalGravity.handleBuildSeed,
     [MessageType.STREAM_STARTED]: workshopRoom.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshopRoom.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshopRoom.handleStreamComplete,

@@ -22,6 +22,7 @@ import {
   lightboxFieldCountLabel,
   lightboxPullLabel
 } from '@hooks/domain/lightbox/lightboxGravity';
+import { LIGHTBOX_BUILD_LENS_HINT } from '@hooks/domain/lightbox/lightboxHandoff';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxReadingFrame } from '@components/lightbox/LightboxReadingFrame';
 import { LightboxParagraphStrip } from '@components/lightbox/LightboxReadingParts';
@@ -105,7 +106,7 @@ export const LightboxGravity: React.FC<LightboxTileProps> = ({ board, bind }) =>
       view={lightboxLensView(board, 'gravity')}
       empty="The reading found no field to name, borrowed or literal."
       aside={<p className="pm-lb-genre-note">Pull is a claim, drawn hatched. Hits are counted by code.</p>}
-      footnote="Pin a field to see its terms by degree, its evidence and where it strains."
+      footnote={LIGHTBOX_BUILD_LENS_HINT}
     >
       <div className="pm-lb-gravity">
         <LightboxGravityOrbit fields={fields} core={coreLabel(board.source.displayPath)} bind={bind} />
