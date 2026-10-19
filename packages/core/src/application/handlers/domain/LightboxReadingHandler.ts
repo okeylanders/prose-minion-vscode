@@ -160,6 +160,8 @@ export class LightboxReadingHandler {
     }
 
     let groupsBack = 0;
+    // The run's streamed characters so far, as the runner last reported them.
+    let outputCharacters = 0;
     // Set once the runner accepts the press; its callbacks only ever fire after that.
     let started: LightboxActiveRun | undefined;
     const start = this.runner.start(prepared.source, preparedCalls, {
@@ -179,9 +181,10 @@ export class LightboxReadingHandler {
           return;
         }
         groupsBack += 1;
-        this.postProgress({ boardId, token: started.token, phase: 'streaming', groups, groupsBack, outputCharacters: 0, ...lensField(lens) });
+        this.postProgress({ boardId, token: started.token, phase: 'streaming', groups, groupsBack, outputCharacters, ...lensField(lens) });
       },
-      onProgress: (outputCharacters) => {
+      onProgress: (characters) => {
+        outputCharacters = characters;
         if (started) {
           this.postProgress({ boardId, token: started.token, phase: 'streaming', groups, groupsBack, outputCharacters, ...lensField(lens) });
         }
@@ -196,7 +199,7 @@ export class LightboxReadingHandler {
           `[LightboxReadingHandler] Run ${started.token} finished: ${summary.outcomes.length} groups, ` +
             `${summary.usage?.totalTokens ?? 0} tokens${cost !== undefined ? `, $${cost.toFixed(4)}` : ''}`
         );
-        this.postProgress({ boardId, token: started.token, phase: 'finished', groups, groupsBack, outputCharacters: 0, ...lensField(lens) });
+        this.postProgress({ boardId, token: started.token, phase: 'finished', groups, groupsBack, outputCharacters, ...lensField(lens) });
         void this.postEstimate();
       }
     }, { lens });

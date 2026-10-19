@@ -152,6 +152,21 @@ describe('LightboxReadingHandler', () => {
     expect(estimate?.costUsd).toBeGreaterThan(0);
   });
 
+  it('reports streamed characters through each group back and the finish, never resetting them', async () => {
+    const { run, settle, ofType } = await setup({
+      respond: (request) => {
+        request.options?.onToken?.('x'.repeat(1_500));
+        return ok(groupOf(request));
+      }
+    });
+    await run();
+    await settle();
+    const progress = ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload);
+    const characters = progress.filter((entry) => entry.phase !== 'started').map((entry) => entry.outputCharacters);
+    expect(characters.every((count, index) => index === 0 || count >= characters[index - 1])).toBe(true);
+    expect(progress[progress.length - 1]).toMatchObject({ phase: 'finished', outputCharacters: 4_500 });
+  });
+
   it('reads the board: groups run, land on the board by id, and the run finishes', async () => {
     const { run, settle, ofType, service, board, runInitial } = await setup();
     await run();
