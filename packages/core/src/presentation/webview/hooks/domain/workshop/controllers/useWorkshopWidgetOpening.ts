@@ -1,6 +1,7 @@
 /** Presentation owner for opening and reopening Workshop widget authoring surfaces. */
 
 import * as React from 'react';
+import { isAnyOverlayOpen } from '@hooks/useOverlayDismiss';
 import {
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopCreativeVariationsWidgetConfigSnapshot,
@@ -163,9 +164,11 @@ export function useWorkshopWidgetOpening({
   }, [requestRestoredWidgetConfig]);
 
   // A Build lens subject handed over from another tab opens the sheet once,
-  // unless a sheet is already open: the writer's work there is never replaced.
-  // Either way the host hears the answer, so the Lightbox never claims an
-  // opening that did not happen (PR #150 F-03).
+  // unless a sheet, editor or browser is already open: the seed never covers
+  // or replaces the writer's work there (PR #150 F-02). Every Workshop overlay
+  // registers with the overlay stack, so none is missed. Either way the host
+  // hears the answer, so the Lightbox never claims an opening that did not
+  // happen (PR #150 F-03).
   const buildSeed = lexicalGravityBuild?.lexicalGravityBuildSeed ?? null;
   const answerBuildSeed = lexicalGravityBuild?.answerLexicalGravityBuildSeed;
   const openLexicalGravityBuildSeed = React.useCallback(() => {
@@ -173,14 +176,15 @@ export function useWorkshopWidgetOpening({
       return;
     }
     if (
-      pendingWidgetConfigId
+      isAnyOverlayOpen()
+      || pendingWidgetConfigId
       || gesturePlaygroundOpening
       || lexicalGravityOpening
       || creativeVariationsOpening
       || showVsTellOpening
     ) {
       answerBuildSeed({ seedId: buildSeed.seedId, opened: false, reason: 'busy' });
-      onError('Close the open sheet, then build the field from the Lightbox again.');
+      onError('A field from the Lightbox did not open over your open sheet. Close it, then build the field from the Lightbox again.');
       return;
     }
     answerBuildSeed({ seedId: buildSeed.seedId, opened: true });

@@ -160,7 +160,7 @@ describe('opening Build lens from a seed', () => {
     // A second handoff while the sheet is open is refused, not swapped in, and the host hears why.
     delivered = { ...payload, seedId: 'lexical-build-seed-2' };
     rerender();
-    expect(onError).toHaveBeenCalledWith('Close the open sheet, then build the field from the Lightbox again.');
+    expect(onError).toHaveBeenCalledWith('A field from the Lightbox did not open over your open sheet. Close it, then build the field from the Lightbox again.');
     expect(answer).toHaveBeenLastCalledWith({ seedId: 'lexical-build-seed-2', opened: false, reason: 'busy' });
     expect(answer).toHaveBeenCalledTimes(2);
     expect(result.current.lexicalGravityOpening).toEqual({ kind: 'build', seed: payload });

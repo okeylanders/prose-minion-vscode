@@ -17,12 +17,23 @@
  * still up". Keeping both here lets a handoff between two overlays leave focus
  * alone entirely, and still return it to the right element when the last one
  * closes.
+ *
+ * "Which overlay is on top" is document state too (PR #150 F-02). The open
+ * overlays form a stack, newest last, and one window listener sends Escape to
+ * the top one only: two stacked sheets never both close on one key, and the
+ * one underneath keeps its draft. `isAnyOverlayOpen()` lets a surface that
+ * arrives from outside (a handed-over seed) refuse rather than cover one.
  */
 
 import * as React from 'react';
 
-/** How many overlays using this hook are currently open. */
-let openOverlayCount = 0;
+/** One open overlay; `close` reads the hook's latest onClose. */
+interface OpenOverlay {
+  close: () => void;
+}
+
+/** The overlays using this hook that are currently open, oldest first. */
+const openOverlays: OpenOverlay[] = [];
 
 /**
  * The element focused before the FIRST overlay opened — the one the writer
@@ -32,9 +43,39 @@ let openOverlayCount = 0;
  */
 let focusBeforeFirstOverlay: HTMLElement | null = null;
 
+/** Escape goes to the overlay on top, and to no other. */
+function dismissTopOverlay(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    openOverlays.at(-1)?.close();
+  }
+}
+
+function pushOverlay(overlay: OpenOverlay): void {
+  if (openOverlays.length === 0) {
+    window.addEventListener('keydown', dismissTopOverlay);
+  }
+  openOverlays.push(overlay);
+}
+
+function removeOverlay(overlay: OpenOverlay): void {
+  const index = openOverlays.indexOf(overlay);
+  if (index >= 0) {
+    openOverlays.splice(index, 1);
+  }
+  if (openOverlays.length === 0) {
+    window.removeEventListener('keydown', dismissTopOverlay);
+  }
+}
+
+/** Whether any overlay using this hook (every Workshop sheet, editor and browser) is open. */
+export function isAnyOverlayOpen(): boolean {
+  return openOverlays.length > 0;
+}
+
 /** Test seam: overlay focus bookkeeping is module state, so it needs a reset. */
 export function __resetOverlayFocusStateForTests(): void {
-  openOverlayCount = 0;
+  openOverlays.splice(0);
+  window.removeEventListener('keydown', dismissTopOverlay);
   focusBeforeFirstOverlay = null;
 }
 
@@ -69,32 +110,25 @@ export function useOverlayDismiss({
     /* Only claim a return target if no overlay already has one: during a
        handoff the previous overlay has decremented but not yet restored, and
        the live activeElement is <body>. */
-    if (openOverlayCount === 0 && focusBeforeFirstOverlay === null) {
+    if (openOverlays.length === 0 && focusBeforeFirstOverlay === null) {
       focusBeforeFirstOverlay =
         document.activeElement instanceof HTMLElement && document.activeElement !== document.body
           ? document.activeElement
           : null;
     }
-    openOverlayCount += 1;
+    const overlay: OpenOverlay = { close: () => onCloseRef.current() };
+    pushOverlay(overlay);
     closeButtonRef.current?.focus();
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCloseRef.current();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      openOverlayCount -= 1;
+      removeOverlay(overlay);
       const target = focusBeforeFirstOverlay;
 
       /* Decide on a microtask, not now: cleanups run before setups, so an
          overlay opening in this same commit has not incremented yet. If one
          has by the time this runs, the page is not getting focus back. */
       queueMicrotask(() => {
-        if (openOverlayCount === 0) {
+        if (openOverlays.length === 0) {
           focusBeforeFirstOverlay = null;
           target?.focus();
         }

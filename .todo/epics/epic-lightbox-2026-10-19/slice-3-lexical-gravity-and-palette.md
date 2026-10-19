@@ -217,8 +217,15 @@ differs from the plan above, or the plan left a choice open:
   built, saved or installed until you press Build lens." The writer can edit
   the subject first.
 - The Workshop opens the sheet on Build lens, prefilled, once. It never
-  replaces a sheet that is already open; it says "Close the open widget
-  sheet, then build the field from the Lightbox again."
+  covers or replaces a sheet, editor or browser that is already open (PR
+  #150 F-02): Add text, the context and session editors, the widgets and
+  tools browsers, and every other `WorkshopModalShell` or
+  `useOverlayDismiss` user register on one overlay stack, and a seed that
+  arrives while any is open is refused (answered `busy`, so the Lightbox
+  says why) and dropped, never deferred. The Workshop says "A field from the
+  Lightbox did not open over your open sheet. Close it, then build the field
+  from the Lightbox again." The same stack sends Escape to the top overlay
+  only, so one key never closes two sheets.
 
 **Webview**
 
