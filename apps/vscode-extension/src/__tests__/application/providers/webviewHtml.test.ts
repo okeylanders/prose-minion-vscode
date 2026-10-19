@@ -10,11 +10,13 @@
  *      Workshop-motivated edit that would silently reskin or break the
  *      sidebar fails CI. (The always-random nonce is made deterministic by
  *      pinning crypto.randomBytes for the test.)
- *   2. The two surfaces differ ONLY by their documented deltas — <title> and
- *      the #root markup. Everything security-relevant (CSP, nonce wiring,
- *      scripts) is asserted identical.
- *   3. The workshop surface stamps the shared PM_SURFACE_ATTR flag the
- *      webview entry point branches on; the sidebar stays unstamped.
+ *   2. Every surface differs from the sidebar ONLY by the documented deltas —
+ *      <title> and the #root markup. Everything security-relevant (CSP, nonce
+ *      wiring, scripts) is asserted identical.
+ *   3. The full-tab surfaces (Workshop, Lightbox) stamp the shared
+ *      PM_SURFACE_ATTR flag the webview entry point branches on, plus the
+ *      PM_FRAME_ATTR full-tab frame the shared styles scope to; the sidebar
+ *      stays unstamped.
  */
 
 // The public barrel transitively reaches DictionaryService → p-limit, which
@@ -42,9 +44,13 @@ import * as path from 'path';
 import type * as vscode from 'vscode';
 import {
   MessageType,
+  PM_FRAME_ATTR,
+  PM_FRAME_FULLTAB,
   PM_SURFACE_ATTR,
+  SURFACE_LIGHTBOX,
   SURFACE_WORKSHOP,
-  WORKSHOP_NOTICE_SHOTS
+  WORKSHOP_NOTICE_SHOTS,
+  WebviewSurface
 } from '@prose-minion/core';
 import { getWebviewHtml } from '../../../application/providers/webviewHtml';
 
@@ -55,6 +61,9 @@ const fakeWebview = {
 
 const extensionUri = { fsPath: '/ext', path: '/ext' } as unknown as vscode.Uri;
 
+const ALL_SURFACES: readonly WebviewSurface[] = ['sidebar', 'workshop', 'lightbox'];
+const FULL_TAB_SURFACES: readonly WebviewSurface[] = [SURFACE_WORKSHOP, SURFACE_LIGHTBOX];
+
 describe('getWebviewHtml', () => {
 
   it('pins the sidebar surface output — the extraction promised byte-identity, this keeps it', () => {
@@ -62,17 +71,31 @@ describe('getWebviewHtml', () => {
     expect(sidebar).toMatchSnapshot();
   });
 
-  it('stamps the workshop surface flag on #root; the sidebar stays unstamped', () => {
+  it('stamps each full-tab surface and the full-tab frame on #root; the sidebar stays unstamped', () => {
     const sidebar = getWebviewHtml(fakeWebview, extensionUri, 'sidebar');
-    const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
 
-    expect(workshop).toContain(`<div id="root" ${PM_SURFACE_ATTR}="${SURFACE_WORKSHOP}">`);
+    for (const surface of FULL_TAB_SURFACES) {
+      expect(getWebviewHtml(fakeWebview, extensionUri, surface)).toContain(
+        `<div id="root" ${PM_SURFACE_ATTR}="${surface}" ${PM_FRAME_ATTR}="${PM_FRAME_FULLTAB}">`
+      );
+    }
     expect(sidebar).not.toContain(PM_SURFACE_ATTR);
+    expect(sidebar).not.toContain(PM_FRAME_ATTR);
+  });
+
+  it('titles each surface for its tab', () => {
+    const titleOf = (surface: WebviewSurface) =>
+      getWebviewHtml(fakeWebview, extensionUri, surface).match(/<title>([^<]*)<\/title>/)?.[1];
+
+    expect(ALL_SURFACES.map(titleOf)).toEqual([
+      'Prose Minion Tools',
+      'Prose Minion Workshop',
+      'Prose Minion Lightbox'
+    ]);
   });
 
   it('surfaces differ ONLY by title and #root markup — CSP, nonce, and script wiring are identical', () => {
     const sidebar = getWebviewHtml(fakeWebview, extensionUri, 'sidebar');
-    const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
 
     // Erase the two documented per-surface deltas, then demand equality.
     const normalize = (html: string) =>
@@ -80,14 +103,13 @@ describe('getWebviewHtml', () => {
         .replace(/<title>[^<]*<\/title>/, '<title/>')
         .replace(/<div id="root"[\s\S]*?<\/div>/, '<root/>');
 
-    expect(normalize(workshop)).toBe(normalize(sidebar));
+    for (const surface of FULL_TAB_SURFACES) {
+      expect(normalize(getWebviewHtml(fakeWebview, extensionUri, surface))).toBe(normalize(sidebar));
+    }
   });
 
-  it('blocks remote image beacons on both shared webview surfaces', () => {
-    const sidebar = getWebviewHtml(fakeWebview, extensionUri, 'sidebar');
-    const workshop = getWebviewHtml(fakeWebview, extensionUri, 'workshop');
-
-    for (const html of [sidebar, workshop]) {
+  it('blocks remote image beacons on every shared webview surface', () => {
+    for (const html of ALL_SURFACES.map((surface) => getWebviewHtml(fakeWebview, extensionUri, surface))) {
       const csp = html.match(/Content-Security-Policy" content="([^"]+)"/)?.[1];
       expect(csp).toContain('img-src https://test.csp-source data:;');
       expect(csp).not.toContain('img-src https://test.csp-source https:');
@@ -105,8 +127,8 @@ describe('getWebviewHtml', () => {
    * The capture flag is the whole fix — drop it and the handler compiles, runs,
    * and silently never fires.
    */
-  it('listens for asset load failures in the capture phase, on both surfaces', () => {
-    for (const surface of ['sidebar', 'workshop'] as const) {
+  it('listens for asset load failures in the capture phase, on every surface', () => {
+    for (const surface of ALL_SURFACES) {
       const html = getWebviewHtml(fakeWebview, extensionUri, surface);
       expect(html).toContain("pmPostWebviewError('asset failed to load: ' + src)");
       expect(html).toMatch(/window\.addEventListener\('error',[\s\S]*?\}, true\);/);

@@ -1,17 +1,23 @@
-/** Testable extension-to-webview route composition for WorkshopApp. */
+/**
+ * Testable extension-to-webview route composition for WorkshopApp.
+ *
+ * The frame's generic routes (models, tokens, balance, API-key status) come
+ * from the shared full-tab chrome fragment; this table adds only the
+ * Workshop's own messages on top of it.
+ */
 
 import { MessageType } from '@messages';
 import type {
-  ApiKeyStatusMessage,
   CopyResultSuccessMessage,
   ErrorMessage,
   SaveResultSuccessMessage,
   StatusMessage
 } from '@messages';
-import type { UseAccountBalanceReturn } from '@hooks/domain/useAccountBalance';
-import type { UseModelsSettingsReturn } from '@hooks/domain/useModelsSettings';
 import type { UseStartupNoticeReturn } from '@hooks/domain/useStartupNotice';
-import type { UseTokenTrackingReturn } from '@hooks/domain/useTokenTracking';
+import {
+  buildFullTabChromeRoutes,
+  FullTabChromeRouteDeps
+} from '@hooks/fulltab/useFullTabChrome';
 import type { UseWorkshopRoomReturn } from '@hooks/domain/workshop/useWorkshopRoom';
 import type { UseWorkshopSessionsReturn } from '@hooks/domain/workshop/useWorkshopSessions';
 import type {
@@ -61,12 +67,9 @@ export interface WorkshopAppMessageRouterDeps {
   showVsTellAuthoring: UseShowVsTellAuthoringReturn;
   standingDirectives: UseWorkshopStandingDirectivesReturn;
   excerptVerify: UseWorkshopExcerptVerifyReturn;
-  modelsSettings: UseModelsSettingsReturn;
-  tokenTracking: UseTokenTrackingReturn;
-  accountBalance: UseAccountBalanceReturn;
+  /** The shared full-tab frame's state; its routes are merged in, not redeclared. */
+  chrome: FullTabChromeRouteDeps;
   startupNotice: UseStartupNoticeReturn;
-  handleApiKeyStatus: (message: ApiKeyStatusMessage) => void;
-  handleApiKeyConfigured: () => void;
   handleStatusMessage: (message: StatusMessage) => void;
   handleErrorMessage: (message: ErrorMessage) => void;
   handleCopyResultSuccess: (message: CopyResultSuccessMessage) => void;
@@ -88,12 +91,8 @@ export function buildWorkshopAppMessageRoutes(
     showVsTellAuthoring,
     standingDirectives,
     excerptVerify,
-    modelsSettings,
-    tokenTracking,
-    accountBalance,
+    chrome,
     startupNotice,
-    handleApiKeyStatus,
-    handleApiKeyConfigured,
     handleStatusMessage,
     handleErrorMessage,
     handleCopyResultSuccess,
@@ -101,6 +100,7 @@ export function buildWorkshopAppMessageRoutes(
   } = deps;
 
   return {
+    ...buildFullTabChromeRoutes(chrome),
     [MessageType.WORKSHOP_SESSION_STATE]: (message) => {
       workshopRoom.handleSessionState(message);
       widgetHost.handleSessionState(message);
@@ -157,13 +157,7 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.STREAM_COMPLETE]: workshopRoom.handleStreamComplete,
     [MessageType.STATUS]: handleStatusMessage,
     [MessageType.ERROR]: handleErrorMessage,
-    [MessageType.MODEL_DATA]: modelsSettings.handleModelData,
-    [MessageType.SETTINGS_DATA]: modelsSettings.handleSettingsData,
-    [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
-    [MessageType.ACCOUNT_BALANCE_DATA]: accountBalance.handleAccountBalanceData,
     [MessageType.STARTUP_NOTICE_DATA]: startupNotice.handleStartupNoticeData,
-    [MessageType.API_KEY_STATUS]: handleApiKeyStatus,
-    [MessageType.CLEAR_TRANSIENT_API_KEY_WARNING]: handleApiKeyConfigured,
     [MessageType.COPY_RESULT_SUCCESS]: handleCopyResultSuccess,
     [MessageType.SAVE_RESULT_SUCCESS]: handleSaveResultSuccess
   };

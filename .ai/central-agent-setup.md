@@ -128,6 +128,8 @@ packages/core/src/presentation/webview/
 │   ├── usePersistence.ts       # Compose domain persisted state into vscode.setState
 │   ├── useMessageRouter.ts     # Strategy: MessageType → handler; stable listener
 │   ├── useAppMessageRouter.ts  # Pure buildAppMessageRoutes() map (extracted from App.tsx)
+│   ├── fulltab/
+│   │   └── useFullTabChrome.ts # Generic full-tab chrome state + buildFullTabChromeRoutes (Workshop, Lightbox)
 │   └── domain/
 │       ├── useAccountBalance.ts        # OpenRouter account balance (ephemeral; empty persistedState)
 │       ├── useThemeSettings.ts         # Sidebar palette (follow-vscode default)
@@ -164,6 +166,14 @@ packages/core/src/presentation/webview/
 Patterns and conventions:
 - Strategy routing: `useMessageRouter({ [MessageType.X]: handler })` with a ref to maintain a stable event listener.
 - Persistence: Each hook exposes `persistedState`; App composes them into `usePersistence` to sync `vscode.setState`.
+- Full-tab shell: editor-tab roots (`WorkshopApp`, `LightboxApp`) render through
+  `components/fulltab/FullTabShell` (brand, header actions, banners, rail, main,
+  optional aside) and take generic chrome state and routes from
+  `useFullTabChrome`. Shared frame styles live in `styles/fulltab/`, scoped to
+  `[data-pm-frame="fulltab"]` and imported first from `index.tsx`; a tab's own
+  styles stay under its `[data-pm-surface="…"]`. Surfaces are an exhaustive
+  `Record<WebviewSurface, …>` map in `index.tsx` and `webviewHtml.ts`. See
+  [ADR 2026-10-19](docs/adr/2026-10-19-lightbox-inspiration-board.md) D1–D2.
 - Workshop ownership: `useWorkshopRoom` and `useWorkshopSessions` replace the
   retired `useWorkshop` facade. Generic widget mechanics use explicit closed
   registries; Gesture Playground, Creative Variations, Lexical Gravity, and Show

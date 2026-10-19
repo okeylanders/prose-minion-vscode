@@ -59,7 +59,7 @@ describe('Workshop composed routing — transcript export', () => {
     await exportAs({ format: 'html', title: 'Dock scene' });
 
     expect(harness.transcriptFiles.writeNew.mock.calls[0][1]).toBe('html');
-    expect(harness.transcriptFiles.writeNew.mock.calls[0][2]).toContain('<body data-pm-surface="workshop">');
+    expect(harness.transcriptFiles.writeNew.mock.calls[0][2]).toContain('<body data-pm-surface="workshop" data-pm-frame="fulltab">');
     expect(openFileInDefaultApp).toHaveBeenCalledWith('/workspace/prose-minion/exports/dock-scene.html');
     expect(harness.shell.openFileInEditor).not.toHaveBeenCalled();
     expect(exportResults()[0]).toMatchObject({ ok: true });

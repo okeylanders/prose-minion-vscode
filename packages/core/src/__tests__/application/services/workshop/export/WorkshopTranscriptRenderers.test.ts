@@ -140,14 +140,14 @@ describe('renderWorkshopTranscriptJson', () => {
 });
 
 describe('renderWorkshopTranscriptHtml', () => {
-  it('produces a standalone page under the Workshop surface with a locked-down CSP', () => {
+  it('produces a standalone page under the Workshop surface and full-tab frame with a locked-down CSP', () => {
     const html = renderWorkshopTranscriptHtml(transcript());
 
     expect(html.startsWith('<!doctype html>')).toBe(true);
     expect(html).toContain(
       `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">`
     );
-    expect(html).toContain('<body data-pm-surface="workshop">');
+    expect(html).toContain('<body data-pm-surface="workshop" data-pm-frame="fulltab">');
     expect(html).toContain('<title>Dock scene</title>');
     expect(html).not.toMatch(/<script|<link|<img|@import|url\(/i);
   });

@@ -1,0 +1,329 @@
+/* ============================================================
+   Prose Minion — the shared full editor-tab frame (ADR 2026-10-19 D2)
+
+   The frame every full-tab surface renders through FullTabShell: the
+   surface base (background, type, disabled and focus treatment), the
+   branded header with its generic status chips (assistant model, processed
+   traffic, OpenRouter balance), the split with its side rails, the main
+   column frame, and the provider-paused banner.
+
+   Scoped under [data-pm-frame="fulltab"], which the host stamps on the
+   #root of every full editor tab (Workshop, Lightbox) beside its
+   data-pm-surface. Moved from styles/workshop/shell.css in Lightbox
+   Slice 1 with unchanged declarations and in the same relative order (the
+   provider-paused banner's shared base and override are folded into one
+   rule); everything a single tab owns stays under its own
+   [data-pm-surface="…"] scope. This sheet is
+   imported BEFORE the Workshop's sheets (index.tsx), so a tab's rule of
+   equal specificity still wins over the frame exactly as it did when the
+   two lived in one file.
+   ============================================================ */
+
+/* ---------- App shell ---------- */
+[data-pm-frame="fulltab"] .pm-ws {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--pm-sans);
+  color: var(--pm-text);
+  background: var(--pm-bg);
+  background-image: linear-gradient(180deg, var(--pm-bg-grad-top) 0%, var(--pm-bg) 220px);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Disabled controls (composer until Sprint 3, palette without an excerpt):
+   keep the designed look, just refuse the cursor. */
+[data-pm-frame="fulltab"] button:disabled,
+[data-pm-frame="fulltab"] input:disabled,
+[data-pm-frame="fulltab"] select:disabled,
+[data-pm-frame="fulltab"] textarea:disabled {
+  cursor: not-allowed;
+}
+
+/* ---------- Focus (scoped; PR #66 review #14) ----------
+   Each full-tab surface owns its focus story: index.css's unscoped
+   `input:focus` must never be what makes these controls legible. Keyboard
+   focus gets the accent ring; pointer clicks stay clean via :focus-visible. */
+[data-pm-frame="fulltab"] button:focus-visible,
+[data-pm-frame="fulltab"] select:focus-visible,
+[data-pm-frame="fulltab"] input:focus-visible,
+[data-pm-frame="fulltab"] textarea:focus-visible {
+  outline: 2px solid var(--pm-accent-hi);
+  outline-offset: 1px;
+}
+
+/* ---------- Header ---------- */
+[data-pm-frame="fulltab"] .pm-ws-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 28px 24px;
+  flex-shrink: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-header::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--pm-accent-line);
+}
+
+[data-pm-frame="fulltab"] .pm-ws-brand {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  /* Shrinkable flex child: a long pinned-file path clips here rather than
+     squeezing the actions row into wrapping. */
+  min-width: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-brand > div:last-child {
+  min-width: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 11px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+[data-pm-frame="fulltab"] .pm-ws-logo svg {
+  width: 40px;
+  height: 40px;
+  color: #15110d;
+}
+[data-pm-frame="fulltab"] .pm-ws-title {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 12px;
+  color: var(--pm-muted);
+  margin: 3px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+[data-pm-frame="fulltab"] .pm-ws-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* The actions row never squeezes: the brand side truncates instead. */
+  flex-shrink: 0;
+}
+/* The shared ModelSelector (trigger + ModelBrowserModal — the same component
+   the sidebar uses), reskinned so the trigger reads as a header chip. The
+   modal itself keeps its index.css styling: one browser, every surface.
+   index.css sizes the selector for the sidebar's STACKED layout
+   (.model-selector { width:100% } / .model-selector-trigger { width:100%;
+   min-height:48px }) — inside a flex ROW that demands the whole row and
+   wraps every sibling, so width/height are explicitly re-neutralized here. */
+[data-pm-frame="fulltab"] .pm-ws-header-actions .model-selector {
+  display: flex;
+  align-items: center;
+  width: auto;
+  flex: 0 0 auto;
+}
+[data-pm-frame="fulltab"] .pm-ws-header-actions .model-selector-label {
+  /* Compact header: the trigger's aria-label already carries the scope name. */
+  display: none;
+}
+[data-pm-frame="fulltab"] .pm-ws-header-actions .model-selector-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-height: 0;
+  background: var(--pm-surface-2);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-r-input);
+  padding: 9px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--pm-text);
+  font-family: var(--pm-sans);
+  max-width: 230px;
+}
+[data-pm-frame="fulltab"] .pm-ws-header-actions .model-selector-current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+[data-pm-frame="fulltab"] .pm-ws-header-actions .model-selector-trigger:not(:disabled):hover {
+  border-color: var(--pm-border-2);
+}
+[data-pm-frame="fulltab"] .pm-ws-balance {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-balance-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pm-blue);
+  box-shadow: 0 0 7px rgba(90, 162, 240, 0.6);
+}
+[data-pm-frame="fulltab"] .pm-ws-balance-dot-ok {
+  background: var(--pm-green);
+  box-shadow: 0 0 7px rgba(111, 201, 138, 0.6);
+}
+[data-pm-frame="fulltab"] .pm-ws-balance-dot-off {
+  background: var(--pm-faint);
+  box-shadow: none;
+}
+[data-pm-frame="fulltab"] .pm-ws-balance-label {
+  font-size: 12.5px;
+  color: var(--pm-text-2);
+}
+[data-pm-frame="fulltab"] .pm-ws-balance-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pm-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Shared bits ---------- */
+[data-pm-frame="fulltab"] .pm-ws-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pm-dim);
+  margin: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-header-eyebrow {
+  margin-bottom: 4px;
+}
+
+/* ---------- Split layout ---------- */
+[data-pm-frame="fulltab"] .pm-ws-split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 372px 1fr;
+}
+
+/* Left rail */
+[data-pm-frame="fulltab"] .pm-ws-rail {
+  border-right: 1px solid var(--pm-border-soft);
+  padding: 16px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--pm-surface);
+  overflow-y: auto;
+  min-height: 0;
+}
+[data-pm-frame="fulltab"] .pm-ws-rail::-webkit-scrollbar,
+[data-pm-frame="fulltab"] .pm-ws-aside::-webkit-scrollbar {
+  width: 10px;
+}
+[data-pm-frame="fulltab"] .pm-ws-rail::-webkit-scrollbar-thumb,
+[data-pm-frame="fulltab"] .pm-ws-aside::-webkit-scrollbar-thumb {
+  background: var(--pm-border-2);
+  border-radius: 6px;
+  border: 3px solid var(--pm-bg);
+}
+/* Optional trailing aside (e.g. an inspector): a third grid column with the
+   rail's frame mirrored onto its leading edge. No tab renders one yet; the
+   Lightbox's inspector (Slice 2A) is its first user and may retune it. */
+[data-pm-frame="fulltab"] .pm-ws-split-with-aside {
+  grid-template-columns: 372px 1fr 340px;
+}
+[data-pm-frame="fulltab"] .pm-ws-aside {
+  border-left: 1px solid var(--pm-border-soft);
+  display: flex;
+  flex-direction: column;
+  background: var(--pm-surface);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ---------- Main column ---------- */
+[data-pm-frame="fulltab"] .pm-ws-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ---------- Responsive header ---------- */
+@media (max-width: 1100px) {
+  [data-pm-frame="fulltab"] .pm-ws-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  [data-pm-frame="fulltab"] .pm-ws-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+}
+@media (max-width: 520px) {
+  [data-pm-frame="fulltab"] .pm-ws-header-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* ---------- Provider paused (no API key) ----------
+   One rule where the Workshop's banner family used to share a base and
+   then override it; the computed values are unchanged. */
+[data-pm-frame="fulltab"] .pm-ws-provider-paused {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--pm-amber) 8%, transparent);
+  color: var(--pm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+[data-pm-frame="fulltab"] .pm-ws-provider-paused > span {
+  flex: 1;
+}
+[data-pm-frame="fulltab"] .pm-ws-provider-paused strong {
+  color: var(--pm-text);
+}
+[data-pm-frame="fulltab"] .pm-ws-provider-paused button {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 58%, var(--pm-border));
+  border-radius: var(--pm-r-pill);
+  background: color-mix(in srgb, var(--pm-amber) 13%, var(--pm-surface-2));
+  color: var(--pm-text);
+  font: 600 11px var(--pm-sans);
+  cursor: pointer;
+}
+[data-pm-frame="fulltab"] .pm-ws-provider-paused button:hover,
+[data-pm-frame="fulltab"] .pm-ws-provider-paused button:focus-visible {
+  border-color: var(--pm-amber);
+  outline: 0;
+  background: color-mix(in srgb, var(--pm-amber) 20%, var(--pm-surface-2));
+}

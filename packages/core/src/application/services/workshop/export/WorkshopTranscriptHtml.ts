@@ -90,7 +90,7 @@ export function renderWorkshopTranscriptHtml(transcript: WorkshopTranscript): st
     `<title>${title}</title>`,
     `<style>\n${WORKSHOP_TRANSCRIPT_HTML_CSS}\n</style>`,
     '</head>',
-    '<body data-pm-surface="workshop">',
+    '<body data-pm-surface="workshop" data-pm-frame="fulltab">',
     '<div class="pm-ws pm-ws-export">',
     '<header class="pm-ws-export-header">',
     `<div class="pm-ws-eyebrow">${icon('dialogue', 12)} Prose Minion · Workshop</div>`,
