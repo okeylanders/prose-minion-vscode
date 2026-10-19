@@ -15,7 +15,7 @@ import { MessageType } from '@messages';
 import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 import { createMockVSCode } from '@/__tests__/mocks/vscode';
 import { makeBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxBoardFixtures';
-import { makeEstimate, readGroup } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
+import { makeEstimate, makeReadBoard, readGroup } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
 
 jest.mock('../../../presentation/webview/hooks/useVSCodeApi');
 jest.mock('../../../presentation/webview/styles/lightbox/tokens.css', () => ({}));
@@ -142,6 +142,27 @@ describe('LightboxApp readings', () => {
     });
     expect(screen.getByText(/The estimate changed since it was shown/)).not.toBeNull();
     expect(vscode.postMessage.mock.calls.filter(([message]) => message.type === MessageType.LIGHTBOX_SET_LENSES).length).toBe(asked + 1);
+  });
+
+  it('disables a tile\'s re-read, with the reason, when its lens is off or its call is too large (PR #149 F-08)', () => {
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: makeReadBoard(), refusal: null });
+    estimateFromHost(makeEstimate());
+    fireEvent.click(screen.getByRole('button', { name: /Going down/ }));
+    const inspector = screen.getByLabelText('Inspector');
+    const reread = () => within(inspector).getByRole('button', { name: 'Re-read this tile' }) as HTMLButtonElement;
+    expect(reread().disabled).toBe(false);
+
+    fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Theme & motif/ }));
+    expect(reread().disabled).toBe(true);
+    expect(within(inspector).getByText('The Theme & motif lens is off. Turn it on in the rail to re-read this tile.')).not.toBeNull();
+
+    fireEvent.click(within(screen.getByLabelText('Lenses')).getByRole('checkbox', { name: /Theme & motif/ }));
+    const tight = makeEstimate();
+    tight.rereads = [{ ...tight.rereads[0], fit: 'too-large', inputTokens: 40_000 }];
+    estimateFromHost(tight);
+    expect(reread().disabled).toBe(true);
+    expect(within(inspector).getByText(/^Re-reading this tile would send about 40,000 tokens/)).not.toBeNull();
   });
 
   it('disables the press with the reason when a call is too large', () => {

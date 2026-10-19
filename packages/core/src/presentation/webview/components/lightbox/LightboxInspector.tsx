@@ -33,8 +33,11 @@ import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 export interface LightboxRereadControl {
   /** "1 call · est. $0.01" for a lens. */
   note: (lens: LightboxLensId) => string | undefined;
-  /** Why it cannot run now (a run in flight, no API key). */
-  reason?: string;
+  /**
+   * Why it cannot run now, for this lens: no API key, a run in flight, the
+   * lens off, no current estimate, or a call too large (PR #149 F-08).
+   */
+  reason: (lens: LightboxLensId) => string | undefined;
   onReread: (lens: LightboxLensId) => void;
 }
 
@@ -194,6 +197,7 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
   const page = paragraphPage;
   const reading = view.reading;
   const rereadNote = reading ? reread.note(reading.lens) : undefined;
+  const rereadReason = reading ? reread.reason(reading.lens) : undefined;
 
   return (
     <div className="pm-lb-inspector" aria-live="polite">
@@ -294,13 +298,13 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
           <button
             type="button"
             className="pm-lb-button is-ghost"
-            disabled={reread.reason !== undefined}
-            title={reread.reason ?? rereadNote}
+            disabled={rereadReason !== undefined}
+            title={rereadReason ?? rereadNote}
             onClick={() => reread.onReread(reading.lens)}
           >
             Re-read this tile
           </button>
-          <span className="pm-lb-run-note">{reread.reason ?? rereadNote ?? '1 call'}</span>
+          <span className="pm-lb-run-note">{rereadReason ?? rereadNote ?? '1 call'}</span>
         </div>
       )}
     </div>

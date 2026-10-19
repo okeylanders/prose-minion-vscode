@@ -9,6 +9,7 @@ import {
   buildLightboxRunLine,
   formatLightboxCost,
   lightboxCallsNote,
+  lightboxRereadAvailability,
   lightboxRereadNote
 } from '@hooks/domain/lightbox/lightboxRunLine';
 import { makeBoard } from './lightboxBoardFixtures';
@@ -140,6 +141,26 @@ describe('the run line', () => {
       progress: { boardId: 'board-8', phase: 'refused', groups: [], groupsBack: 0, outputCharacters: 0, message: 'This board is already being read.' }
     });
     expect(view.notice).toBe('This board is already being read.');
+  });
+
+  it('offers a tile\'s re-read only when its lens is on and its own call is priced and fits (PR #149 F-08)', () => {
+    const base = { estimate: makeEstimate(), lens: 'motif' as const, lensesOff: [], providerPaused: false, running: false };
+    expect(lightboxRereadAvailability(base)).toEqual({ note: '1 call · est. $0.01' });
+    expect(lightboxRereadAvailability({ ...base, lensesOff: ['motif'] })).toEqual({
+      reason: 'The Theme & motif lens is off. Turn it on in the rail to re-read this tile.'
+    });
+    expect(lightboxRereadAvailability({ ...base, estimate: undefined })).toEqual({ reason: 'Estimating the cost…' });
+    expect(lightboxRereadAvailability({ ...base, lens: 'voice' })).toEqual({
+      reason: 'This tile cannot be re-read until the board is estimated.'
+    });
+    const tight = makeEstimate();
+    tight.rereads = [{ ...tight.rereads[0], fit: 'too-large', inputTokens: 40_000 }];
+    expect(lightboxRereadAvailability({ ...base, estimate: tight })).toEqual({
+      reason: 'Re-reading this tile would send about 40,000 tokens and reserve 8,000 for the reply, ' +
+        'more than provider/model-v1\'s 200,000-token window allows.'
+    });
+    expect(lightboxRereadAvailability({ ...base, running: true }).reason).toMatch(/^A reading is running/);
+    expect(lightboxRereadAvailability({ ...base, providerPaused: true }).reason).toMatch(/^Add an OpenRouter API key/);
   });
 
   it('formats costs and a tile\'s re-read', () => {

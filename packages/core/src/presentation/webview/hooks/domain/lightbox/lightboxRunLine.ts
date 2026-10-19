@@ -26,6 +26,7 @@ import type {
   LightboxRunProgress,
   LightboxRunScope
 } from '@messages';
+import { lightboxLensLabel } from '@shared/constants/lightbox';
 import { lightboxQuoteTally, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 
 export type LightboxRunLineStatus = 'estimating' | 'idle' | 'running' | 'done' | 'stopped' | 'none';
@@ -85,8 +86,57 @@ export function lightboxCallsNote(calls: readonly LightboxCallEstimate[]): strin
 
 /** What a tile's "Re-read" would cost. */
 export function lightboxRereadNote(estimate: LightboxRunEstimate | null | undefined, lens: LightboxLensId): string | undefined {
-  const call = estimate?.rereads.find((candidate) => candidate.lenses.length === 1 && candidate.lenses[0] === lens);
+  const call = rereadCall(estimate, lens);
   return call ? lightboxCallsNote([call]) : undefined;
+}
+
+export interface LightboxRereadInput {
+  /** The current board's estimate (`undefined` while it is being asked for). */
+  estimate: LightboxRunEstimate | null | undefined;
+  lens: LightboxLensId;
+  lensesOff: readonly LightboxLensId[];
+  providerPaused: boolean;
+  /** A reading of this board is in flight or being started. */
+  running: boolean;
+}
+
+/**
+ * Whether a tile's "Re-read" can run now (PR #149 F-08): its lens must be on,
+ * and the current estimate must price a call for that lens alone that fits
+ * the model's window. Otherwise the press is disabled with the reason, not
+ * offered only for the host to refuse it.
+ */
+export function lightboxRereadAvailability(input: LightboxRereadInput): { note?: string; reason?: string } {
+  const { estimate, lens } = input;
+  if (input.providerPaused) {
+    return { reason: 'Add an OpenRouter API key in Settings to read.' };
+  }
+  if (input.running) {
+    return { reason: 'A reading is running. Stop it, or wait for it to finish.' };
+  }
+  if (input.lensesOff.includes(lens)) {
+    return { reason: `The ${lightboxLensLabel(lens)} lens is off. Turn it on in the rail to re-read this tile.` };
+  }
+  if (estimate === undefined) {
+    return { reason: 'Estimating the cost…' };
+  }
+  const call = rereadCall(estimate, lens);
+  if (!call) {
+    return { reason: 'This tile cannot be re-read until the board is estimated.' };
+  }
+  if (call.fit === 'too-large') {
+    const window = (estimate?.contextLength ?? 0).toLocaleString('en-US');
+    return {
+      reason: `Re-reading this tile would send about ${call.inputTokens.toLocaleString('en-US')} tokens and reserve ` +
+        `${call.reservedOutputTokens.toLocaleString('en-US')} for the reply, more than ` +
+        `${estimate?.model ?? 'the assistant model'}'s ${window}-token window allows.`
+    };
+  }
+  return { note: lightboxCallsNote([call]) };
+}
+
+function rereadCall(estimate: LightboxRunEstimate | null | undefined, lens: LightboxLensId): LightboxCallEstimate | undefined {
+  return estimate?.rereads.find((candidate) => candidate.lenses.length === 1 && candidate.lenses[0] === lens);
 }
 
 export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLineView {
