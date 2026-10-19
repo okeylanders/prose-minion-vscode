@@ -394,16 +394,18 @@ it('dumps the gravity, palette, handoff and stale states', async () => {
     { pickFile: async () => undefined },
     transport,
     log,
-    (handoff) => {
-      // What extension.ts does: a synthetic message through the Workshop panel's own handler.
+    async (handoff) => {
+      // What extension.ts and the Workshop panel provider do: a synthetic message through the
+      // Workshop panel's own handler, carrying the provider's delivery id. The Workshop webview
+      // (harness.js renders it) opens the sheet and answers "opened", which settles the handoff.
       handoffs.push(handoff);
-      void workshopRouter.route({
+      await workshopRouter.route({
         type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
         source: 'extension.lightbox',
-        payload: { seed: handoff.seed },
+        payload: { seed: handoff.seed, deliveryId: 'lexical-build-seed-evidence-1' },
         timestamp: 1
       } as never);
-      return true;
+      return { opened: true as const };
     }
   );
   const reading = new LightboxReadingHandler(

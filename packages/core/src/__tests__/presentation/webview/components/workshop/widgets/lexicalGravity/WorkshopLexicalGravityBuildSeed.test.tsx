@@ -87,14 +87,15 @@ describe('the Build lens seed (host)', () => {
     await router.route({
       type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
       source: 'extension.lightbox',
-      payload: { seed },
+      payload: { seed, deliveryId: 'lexical-build-seed-7-1' },
       timestamp: 1
     } as never);
+    // The seed keeps the provider's delivery id, which the webview's answer names (PR #150 F-03).
     expect(posted).toEqual([{
       type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
       source: 'extension.workshop.lexical-gravity',
       timestamp: expect.any(Number),
-      payload: { seedId: expect.stringMatching(/^lexical-build-seed-/), seed, subject: composeLexicalGravityBuildSubject(seed) }
+      payload: { seedId: 'lexical-build-seed-7-1', seed, subject: composeLexicalGravityBuildSubject(seed) }
     }]);
     expect(model.buildLenses).not.toHaveBeenCalled();
     expect(repository.findForQuery).not.toHaveBeenCalled();
@@ -105,8 +106,14 @@ describe('the Build lens seed (host)', () => {
     await router.route({
       type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
       source: 'extension.lightbox',
-      payload: { seed: { ...seed, origin: 'elsewhere' } },
+      payload: { seed: { ...seed, origin: 'elsewhere' }, deliveryId: 'lexical-build-seed-7-2' },
       timestamp: 2
+    } as never);
+    await router.route({
+      type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
+      source: 'extension.lightbox',
+      payload: { seed },
+      timestamp: 3
     } as never);
     expect(posted).toHaveLength(1);
   });
@@ -128,15 +135,17 @@ describe('opening Build lens from a seed', () => {
     consumeRestoredWidgetConfig: jest.fn()
   });
 
-  it('opens the sheet once with the seed, and refuses over a sheet that is already open', () => {
+  it('opens the sheet once with the seed, refuses over a sheet that is already open, and answers the host either way', () => {
     let delivered: WorkshopLexicalGravityBuildSeedPayload | null = payload;
-    const consume = jest.fn(() => {
-      delivered = null;
+    const answer = jest.fn((given: { seedId: string }) => {
+      if (delivered?.seedId === given.seedId) {
+        delivered = null;
+      }
     });
     const onError = jest.fn();
     const { result, rerender } = renderHook(() => useWorkshopWidgetOpening({
       host: emptyHost(),
-      lexicalGravityBuild: { lexicalGravityBuildSeed: delivered, consumeLexicalGravityBuildSeed: consume },
+      lexicalGravityBuild: { lexicalGravityBuildSeed: delivered, answerLexicalGravityBuildSeed: answer },
       standingDirectives: [],
       onError,
       onCloseGesturePlayground: jest.fn(),
@@ -145,12 +154,15 @@ describe('opening Build lens from a seed', () => {
       onCloseShowVsTell: jest.fn()
     }));
     expect(result.current.lexicalGravityOpening).toEqual({ kind: 'build', seed: payload });
-    expect(consume).toHaveBeenCalledTimes(1);
+    expect(answer).toHaveBeenCalledTimes(1);
+    expect(answer).toHaveBeenLastCalledWith({ seedId: 'lexical-build-seed-1', opened: true });
 
-    // A second handoff while the sheet is open is refused, not swapped in.
+    // A second handoff while the sheet is open is refused, not swapped in, and the host hears why.
     delivered = { ...payload, seedId: 'lexical-build-seed-2' };
     rerender();
-    expect(onError).toHaveBeenCalledWith('Close the open widget sheet, then build the field from the Lightbox again.');
+    expect(onError).toHaveBeenCalledWith('Close the open sheet, then build the field from the Lightbox again.');
+    expect(answer).toHaveBeenLastCalledWith({ seedId: 'lexical-build-seed-2', opened: false, reason: 'busy' });
+    expect(answer).toHaveBeenCalledTimes(2);
     expect(result.current.lexicalGravityOpening).toEqual({ kind: 'build', seed: payload });
     act(() => result.current.closeLexicalGravity());
     expect(result.current.lexicalGravityOpening).toBeNull();

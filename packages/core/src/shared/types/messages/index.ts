@@ -217,6 +217,7 @@ import {
   WorkshopLexicalGravityLensesSavedMessage,
   WorkshopOpenLexicalGravityBuildMessage,
   WorkshopLexicalGravityBuildSeedMessage,
+  WorkshopLexicalGravityBuildSeedAnswerMessage,
   WorkshopRequestWidgetConfigMessage,
   WorkshopWidgetConfigDataMessage,
   WorkshopWidgetConfigRestoredMessage,
@@ -350,6 +351,7 @@ export type WebviewToExtensionMessage =
   | WorkshopBuildLexicalGravityLensMessage
   | WorkshopSaveLexicalGravityLensesMessage
   | WorkshopOpenLexicalGravityBuildMessage
+  | WorkshopLexicalGravityBuildSeedAnswerMessage
   | WorkshopRequestWidgetConfigMessage
   | WorkshopCommitWidgetMessage
   | WorkshopApplyStandingWidgetMessage

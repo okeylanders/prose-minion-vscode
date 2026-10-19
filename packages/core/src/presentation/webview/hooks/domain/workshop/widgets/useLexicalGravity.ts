@@ -10,6 +10,7 @@ import {
 } from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
 import {
   MessageType,
+  WorkshopLexicalGravityBuildSeedAnswerPayload,
   WorkshopLexicalGravityBuildSeedMessage,
   WorkshopLexicalGravityBuildSeedPayload,
   WorkshopLexicalGravityDraft,
@@ -55,7 +56,8 @@ export interface LexicalGravityActions {
   handleLensesSaved: (message: WorkshopLexicalGravityLensesSavedMessage) => void;
   handleActionResult: (message: WorkshopWidgetActionResultMessage) => void;
   handleBuildSeed: (message: WorkshopLexicalGravityBuildSeedMessage) => void;
-  consumeLexicalGravityBuildSeed: () => void;
+  /** Tell the host whether the seed opened (PR #150 F-03), and let it go. */
+  answerLexicalGravityBuildSeed: (answer: WorkshopLexicalGravityBuildSeedAnswerPayload) => void;
   clearTransientResults: () => void;
   consumeActionResult: () => void;
 }
@@ -180,7 +182,10 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
   const handleBuildSeed = React.useCallback((message: WorkshopLexicalGravityBuildSeedMessage) => {
     setLexicalGravityBuildSeed(message.payload);
   }, []);
-  const consumeLexicalGravityBuildSeed = React.useCallback(() => setLexicalGravityBuildSeed(null), []);
+  const answerLexicalGravityBuildSeed = React.useCallback((answer: WorkshopLexicalGravityBuildSeedAnswerPayload) => {
+    setLexicalGravityBuildSeed((current) => (current?.seedId === answer.seedId ? null : current));
+    post(MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER, answer);
+  }, [post]);
   const clearTransientResults = React.useCallback(() => {
     setPreviewResult(null);
     setLensCandidates(null);
@@ -210,7 +215,7 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     handleLensesSaved,
     handleActionResult,
     handleBuildSeed,
-    consumeLexicalGravityBuildSeed,
+    answerLexicalGravityBuildSeed,
     clearTransientResults,
     consumeActionResult,
     persistedState: {}

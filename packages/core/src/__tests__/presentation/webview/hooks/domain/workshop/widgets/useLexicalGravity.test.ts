@@ -25,7 +25,7 @@ describe('useLexicalGravity', () => {
     jest.clearAllMocks();
   });
 
-  it('holds a Build lens subject handed over by the host until the sheet takes it, and builds nothing', () => {
+  it('holds a Build lens subject handed over by the host until the sheet answers for it, and builds nothing', () => {
     const vscode = createMockVSCode();
     (useVSCodeApi as jest.Mock).mockReturnValue(vscode);
     const { result } = renderHook(() => useLexicalGravity());
@@ -41,9 +41,21 @@ describe('useLexicalGravity', () => {
       payload
     }));
     expect(result.current.lexicalGravityBuildSeed).toEqual(payload);
-    act(() => result.current.consumeLexicalGravityBuildSeed());
-    expect(result.current.lexicalGravityBuildSeed).toBeNull();
     expect(vscode.postMessage).not.toHaveBeenCalled();
+
+    // An answer for another seed leaves this one waiting.
+    act(() => result.current.answerLexicalGravityBuildSeed({ seedId: 'lexical-build-seed-0', opened: false, reason: 'busy' }));
+    expect(result.current.lexicalGravityBuildSeed).toEqual(payload);
+
+    // The answer goes back to the host, which tells the Lightbox (PR #150 F-03); nothing is built.
+    act(() => result.current.answerLexicalGravityBuildSeed({ seedId: 'lexical-build-seed-1', opened: true }));
+    expect(result.current.lexicalGravityBuildSeed).toBeNull();
+    const posted = (vscode.postMessage as jest.Mock).mock.calls.map(([message]) => message);
+    expect(posted.map((message) => message.type)).toEqual([
+      MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER,
+      MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER
+    ]);
+    expect(posted[1].payload).toEqual({ seedId: 'lexical-build-seed-1', opened: true });
   });
 
   it('surfaces catalog incompatibilities alongside usable lenses without discarding either', () => {

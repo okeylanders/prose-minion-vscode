@@ -25,6 +25,7 @@ import {
   type LightboxHandOffPayload,
   type LightboxReadingGroup,
   type LightboxWorkshopHandoff,
+  type LightboxWorkshopHandoffRefusal,
   type WorkshopLexicalGravityBuildSeedTerm
 } from '@messages';
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
@@ -47,8 +48,21 @@ export const LIGHTBOX_HANDOFF_REFUSALS = {
   reading: 'This lens is being read again. Wait for it to land, then build it.',
   quotesGone: 'None of this field\'s quotes is still in the chapter, so it was not handed over.',
   noWorkshop: 'The Workshop is not available from here.',
-  workshopRefused: 'The Workshop could not be opened.'
+  workshopRefused: 'The Workshop could not be opened.',
+  workshopBusy: 'The Workshop has a sheet or editor open, and the field never covers one. Close it there, then build the field again.',
+  workshopClosed: 'The Workshop closed before it opened the field.',
+  workshopReplaced: 'Another field went to the Workshop before this one opened.',
+  workshopSilent: 'The Workshop did not confirm it opened the field. Open the Workshop to check; nothing was built.'
 } as const;
+
+/** Why the Workshop did not open a field, in the writer's words (PR #150 F-03). */
+export const LIGHTBOX_WORKSHOP_REFUSALS: Readonly<Record<LightboxWorkshopHandoffRefusal, string>> = {
+  unavailable: LIGHTBOX_HANDOFF_REFUSALS.workshopRefused,
+  busy: LIGHTBOX_HANDOFF_REFUSALS.workshopBusy,
+  closed: LIGHTBOX_HANDOFF_REFUSALS.workshopClosed,
+  replaced: LIGHTBOX_HANDOFF_REFUSALS.workshopReplaced,
+  timeout: LIGHTBOX_HANDOFF_REFUSALS.workshopSilent
+};
 
 /** The request as the webview sent it, or undefined when it is not one the host understands. */
 export function parseLightboxHandOffRequest(payload: unknown): LightboxHandOffPayload | undefined {
@@ -98,9 +112,9 @@ export function prepareLightboxHandoff(
   };
 }
 
-/** Said to the writer when the Workshop accepted the field. */
+/** Said to the writer when a visible Workshop opened the field. */
 export function lightboxHandoffSentMessage(handoff: LightboxWorkshopHandoff): string {
-  return `Sent “${handoff.seed.field}” to Build lens in the Workshop’s Lexical Gravity. ` +
+  return `Opened “${handoff.seed.field}” in Build lens in the Workshop’s Lexical Gravity. ` +
     'Nothing is built until you press Build there.';
 }
 

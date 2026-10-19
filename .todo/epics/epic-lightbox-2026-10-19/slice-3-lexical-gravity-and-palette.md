@@ -183,15 +183,24 @@ differs from the plan above, or the plan left a choice open:
   its quotes, recounts its terms and bounds the seed (field, metaphor, up to
   12 counted terms, the source label). One handoff runs at a time per tab,
   and a tab closed while its file is re-read hands nothing over. The answer
-  is `LIGHTBOX_HAND_OFF_RESULT`, sent or refused with its reason.
+  is `LIGHTBOX_HAND_OFF_RESULT`: opened, or refused with its reason. It waits
+  for the Workshop's own answer (below), so "opened" means a visible
+  Workshop opened the field (PR #150 F-03).
 - `uiActions.handOffToWorkshop(handoff)` is the composition root's port.
   `extension.ts` implements it with
   `WorkshopPanelProvider.seedLexicalGravityBuild(seed)`, which opens or
   reveals the Workshop and routes a synthetic
   `WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD` through the Workshop panel's own
   `MessageHandler`, as `seedExcerpt` does. The seed is not session state, so
-  the provider holds it until the panel's webview has sent its first message
-  and the tab is visible.
+  it belongs to the panel that accepted it (PR #150 F-03): the provider
+  delivers it once, only when that panel's webview has sent its first
+  message and its tab is visible, and ignores late events from an older
+  panel. A newer seed settles the pending one as `replaced`; closing the
+  panel settles it as `closed`. The Workshop webview answers with
+  `WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER { seedId, opened, reason? }`
+  (it refuses as `busy` over an open sheet or editor); the provider takes
+  that answer itself, and the port's promise settles with it, or with
+  `timeout` after 20 seconds.
 - `WorkshopLexicalGravityHandler` owns the new route. It validates the seed
   (exact keys, bounds), composes Build lens's subject and answers with
   `WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED`; it calls no model. **The route is

@@ -48,3 +48,18 @@ export type LightboxWorkshopHandoff = {
   kind: 'lexical-gravity-seed';
   seed: WorkshopLexicalGravityBuildSeed;
 };
+
+/**
+ * Why a handoff did not open in the Workshop (PR #150 F-03):
+ * - `unavailable`: no Workshop panel could take it;
+ * - `busy`: the Workshop has a sheet or editor open, which the seed never covers;
+ * - `closed`: the Workshop panel closed before it opened the seed;
+ * - `replaced`: a newer handoff replaced it before it opened;
+ * - `timeout`: the Workshop did not confirm it opened the seed in time.
+ */
+export type LightboxWorkshopHandoffRefusal = 'unavailable' | 'busy' | 'closed' | 'replaced' | 'timeout';
+
+/** What the composition root learns from the Workshop: opened, or why not. "Sent" means a visible Workshop opened it. */
+export type LightboxWorkshopHandoffOutcome =
+  | { opened: true }
+  | { opened: false; reason: LightboxWorkshopHandoffRefusal };

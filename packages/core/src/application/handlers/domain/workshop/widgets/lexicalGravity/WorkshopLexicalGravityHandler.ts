@@ -55,10 +55,12 @@ export type WorkshopLexicalGravityRepositoryPort = Pick<
   | 'replaceIncompatibleForQuery'
 >;
 
+/** The longest delivery id the panel provider mints, with room to spare. */
+const MAX_DELIVERY_ID = 80;
+
 export class WorkshopLexicalGravityHandler {
   private previewRun?: AbortController;
   private buildRun?: AbortController;
-  private buildSeedCount = 0;
   private latestBuild?: {
     token: string;
     query: string;
@@ -230,11 +232,16 @@ export class WorkshopLexicalGravityHandler {
   /**
    * Open Build lens with a subject from another tab. The seed is checked and
    * the subject composed here; the webview only prefills the sheet. Nothing
-   * is built until the writer presses Build.
+   * is built until the writer presses Build. The seed keeps the panel
+   * provider's delivery id, which the webview's answer names (PR #150 F-03).
    */
   async handleOpenBuild(message: WorkshopOpenLexicalGravityBuildMessage): Promise<void> {
     let seed: ReturnType<typeof validateLexicalGravityBuildSeed>;
+    const deliveryId = message.payload?.deliveryId;
     try {
+      if (typeof deliveryId !== 'string' || deliveryId.length === 0 || deliveryId.length > MAX_DELIVERY_ID) {
+        throw new Error('seed delivery id must be a string of at most 80 characters');
+      }
       seed = validateLexicalGravityBuildSeed(message.payload?.seed);
     } catch (error) {
       // Shape errors name fields and bounds, never the seed's text.
@@ -250,7 +257,7 @@ export class WorkshopLexicalGravityHandler {
       type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
       source: 'extension.workshop.lexical-gravity',
       timestamp: Date.now(),
-      payload: { seedId: `lexical-build-seed-${Date.now()}-${++this.buildSeedCount}`, seed, subject }
+      payload: { seedId: deliveryId, seed, subject }
     } satisfies WorkshopLexicalGravityBuildSeedMessage);
   }
 

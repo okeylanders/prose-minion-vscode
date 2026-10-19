@@ -470,7 +470,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       handOffToWorkshop: (handoff) => {
         switch (handoff.kind) {
           case 'lexical-gravity-seed':
-            return workshopPanelProvider?.seedLexicalGravityBuild(handoff.seed) ?? false;
+            return workshopPanelProvider?.seedLexicalGravityBuild(handoff.seed)
+              ?? Promise.resolve({ opened: false, reason: 'unavailable' });
         }
       }
     }

@@ -48,6 +48,7 @@ import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraph
 import {
   LIGHTBOX_HANDOFF_REFUSALS,
   LIGHTBOX_SEED_HAND_OFF_KIND,
+  LIGHTBOX_WORKSHOP_REFUSALS,
   lightboxHandoffSentMessage,
   parseLightboxHandOffRequest,
   prepareLightboxHandoff
@@ -73,6 +74,7 @@ import {
   LightboxHandOffResultMessage,
   LightboxPickSourceFileMessage,
   LightboxWorkshopHandoff,
+  LightboxWorkshopHandoffOutcome,
   LightboxRefreshSourceMessage,
   LightboxRequestBoardMessage,
   LightboxSetSourceMessage,
@@ -88,8 +90,8 @@ const SOURCE = 'extension.lightbox';
 /** The parts of the picker port this handler uses. */
 type LightboxFilePicker = Pick<ShellService, 'pickFile'>;
 
-/** The composition root's handoff into the Workshop; true when the Workshop took it. */
-export type LightboxWorkshopHandoffPort = (handoff: LightboxWorkshopHandoff) => boolean;
+/** The composition root's handoff into the Workshop; settles with the Workshop's answer (PR #150 F-03). */
+export type LightboxWorkshopHandoffPort = (handoff: LightboxWorkshopHandoff) => Promise<LightboxWorkshopHandoffOutcome>;
 
 /** A file to read: where to read it, its URI, and the name the writer sees. */
 interface LightboxFileRequest {
@@ -307,12 +309,18 @@ export class LightboxHandler {
       refuse(LIGHTBOX_HANDOFF_REFUSALS.noWorkshop);
       return;
     }
-    if (!this.handOffToWorkshop(prepared.handoff)) {
-      refuse(LIGHTBOX_HANDOFF_REFUSALS.workshopRefused);
+    // "Sent" means a visible Workshop opened it: wait for its answer, bounded by the provider.
+    const outcome = await this.handOffToWorkshop(prepared.handoff);
+    if (this.disposed) {
+      this.outputChannel.appendLine('[LightboxHandler] Handoff answered after the Lightbox closed; nothing posted');
+      return;
+    }
+    if (!outcome.opened) {
+      refuse(LIGHTBOX_WORKSHOP_REFUSALS[outcome.reason]);
       return;
     }
     this.outputChannel.appendLine(
-      `[LightboxHandler] Handed a borrowed field to the Workshop: ${prepared.handoff.seed.terms.length} counted terms, ` +
+      `[LightboxHandler] The Workshop opened a borrowed field: ${prepared.handoff.seed.terms.length} counted terms, ` +
         `${prepared.quotesFound} of ${prepared.quotesChecked} quotes found again`
     );
     this.postHandOffResult({ ...request, ok: true, message: lightboxHandoffSentMessage(prepared.handoff) });

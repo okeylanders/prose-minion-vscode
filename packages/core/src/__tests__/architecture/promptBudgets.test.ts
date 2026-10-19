@@ -20,6 +20,8 @@ const LOOKS_LIKE_LIMIT = /(?:^MAX(?:_|$)|_(?:MAX|LIMIT|CAP|CEILING|THRESHOLD)(?:
 const NON_PROMPT_LIMITS = new Set([
   // Named-session titles are file and browser labels; no prompt sees them.
   'application/services/workshop/WorkshopSessionTitles.ts:WORKSHOP_SESSION_TITLE_MAX_LENGTH',
+  // A Build lens seed's delivery id is a host-minted correlation id; no prompt sees it.
+  'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts:MAX_DELIVERY_ID',
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_WORDS_PER_BATCH',

@@ -5,6 +5,7 @@ import {
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopCreativeVariationsRecommendationSeed,
+  WorkshopLexicalGravityBuildSeedAnswerPayload,
   WorkshopLexicalGravityBuildSeedPayload,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
@@ -71,10 +72,10 @@ export interface WorkshopWidgetOpeningHost {
   consumeRestoredWidgetConfig: () => void;
 }
 
-/** A Build lens subject the host delivered, until this controller opens it. */
+/** A Build lens subject the host delivered, until this controller opens or refuses it, and answers. */
 export interface WorkshopLexicalGravityBuildSeedHost {
   lexicalGravityBuildSeed: WorkshopLexicalGravityBuildSeedPayload | null;
-  consumeLexicalGravityBuildSeed: () => void;
+  answerLexicalGravityBuildSeed: (answer: WorkshopLexicalGravityBuildSeedAnswerPayload) => void;
 }
 
 export interface UseWorkshopWidgetOpeningOptions {
@@ -163,13 +164,14 @@ export function useWorkshopWidgetOpening({
 
   // A Build lens subject handed over from another tab opens the sheet once,
   // unless a sheet is already open: the writer's work there is never replaced.
+  // Either way the host hears the answer, so the Lightbox never claims an
+  // opening that did not happen (PR #150 F-03).
   const buildSeed = lexicalGravityBuild?.lexicalGravityBuildSeed ?? null;
-  const consumeBuildSeed = lexicalGravityBuild?.consumeLexicalGravityBuildSeed;
+  const answerBuildSeed = lexicalGravityBuild?.answerLexicalGravityBuildSeed;
   const openLexicalGravityBuildSeed = React.useCallback(() => {
-    if (!buildSeed || !consumeBuildSeed) {
+    if (!buildSeed || !answerBuildSeed) {
       return;
     }
-    consumeBuildSeed();
     if (
       pendingWidgetConfigId
       || gesturePlaygroundOpening
@@ -177,13 +179,15 @@ export function useWorkshopWidgetOpening({
       || creativeVariationsOpening
       || showVsTellOpening
     ) {
-      onError('Close the open widget sheet, then build the field from the Lightbox again.');
+      answerBuildSeed({ seedId: buildSeed.seedId, opened: false, reason: 'busy' });
+      onError('Close the open sheet, then build the field from the Lightbox again.');
       return;
     }
+    answerBuildSeed({ seedId: buildSeed.seedId, opened: true });
     setLexicalGravityOpening({ kind: 'build', seed: buildSeed });
   }, [
+    answerBuildSeed,
     buildSeed,
-    consumeBuildSeed,
     creativeVariationsOpening,
     gesturePlaygroundOpening,
     lexicalGravityOpening,

@@ -28,13 +28,32 @@ import {
   Platform,
   SURFACE_WORKSHOP,
   WorkshopExcerptSource,
+  LightboxWorkshopHandoffOutcome,
   WorkshopLexicalGravityBuildSeed,
+  WorkshopLexicalGravityBuildSeedAnswerPayload,
   WorkshopOpenLexicalGravityBuildMessage,
   WorkshopUiActions,
   WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
 } from '@prose-minion/core';
 import { getWebviewHtml } from './webviewHtml';
+
+/**
+ * How long a handed-over Build lens seed waits for the Workshop to open it.
+ * Past it the Lightbox is told the Workshop did not confirm, and the seed is
+ * dropped, so it can never surface later unasked.
+ */
+export const WORKSHOP_BUILD_SEED_TIMEOUT_MS = 20_000;
+
+/** One handed-over seed, owned by the panel that accepted it, until the Workshop answers. */
+interface PendingBuildSeed {
+  panel: vscode.WebviewPanel;
+  deliveryId: string;
+  message: WorkshopOpenLexicalGravityBuildMessage;
+  delivered: boolean;
+  settle: (outcome: LightboxWorkshopHandoffOutcome) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
 
 export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewPanelSerializer {
   public static readonly viewType = 'prose-minion.workshop';
@@ -43,12 +62,13 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   private messageHandler?: MessageHandler;
   private configWatcher?: vscode.Disposable;
   /**
-   * Whether this panel's webview has sent its first message, so its listeners
-   * are attached. A handoff that is not session state (a Build lens subject)
-   * waits for it, since a booting webview would drop it.
+   * Whether the current panel's webview has sent its first message, so its
+   * listeners are attached. A handoff that is not session state (a Build
+   * lens subject) waits for it, since a booting webview would drop it.
    */
   private webviewListening = false;
-  private pendingBuildSeed?: WorkshopOpenLexicalGravityBuildMessage;
+  private pendingBuildSeed?: PendingBuildSeed;
+  private buildSeedCount = 0;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -102,7 +122,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       return;
     }
     // A serializer and command cannot normally race, but keep the one-panel
-    // invariant explicit if VS Code ever delivers both paths.
+    // invariant explicit if VS Code ever delivers both paths. A seed belongs
+    // to the panel that accepted it: a replacement panel never inherits it.
+    this.settleBuildSeed({ opened: false, reason: 'closed' });
     this.panel?.dispose();
 
     panel.webview.options = {
@@ -152,10 +174,21 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         }
         return;
       }
+      // A late message from a panel that is no longer the Workshop never
+      // reaches the current panel's handler, and never answers its seed.
+      if (this.panel !== panel) {
+        return;
+      }
+      // The Workshop's answer to a handed-over seed is the provider's to take:
+      // it settles the handoff, for the panel that accepted it, and goes no further.
+      if (shape?.type === MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER) {
+        this.answerBuildSeed(panel, shape.payload as WorkshopLexicalGravityBuildSeedAnswerPayload | undefined);
+        return;
+      }
       void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
       if (!this.webviewListening) {
         this.webviewListening = true;
-        this.deliverPendingBuildSeed();
+        this.deliverPendingBuildSeed(panel);
       }
     });
 
@@ -163,7 +196,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     // retainContextWhenHidden — replay the cache on re-reveal, exactly like
     // the sidebar does on visibility change.
     const viewStateSubscription = panel.onDidChangeViewState(() => {
-      if (panel.visible) {
+      if (panel.visible && this.panel === panel) {
         this.messageHandler?.flushCachedResults?.();
         // A retained tab does not remount React. Reuse the normal load route
         // so Git changes are adopted before the writer continues this room.
@@ -174,9 +207,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
           timestamp: Date.now()
         });
         // A Build lens seed handed over while the tab was hidden lands now.
-        if (this.webviewListening) {
-          this.deliverPendingBuildSeed();
-        }
+        this.deliverPendingBuildSeed(panel);
       }
     });
 
@@ -187,6 +218,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       // shared fields. This protects a restored panel if an older panel's
       // disposal notification arrives late.
       if (this.panel === panel) {
+        this.settleBuildSeed({ opened: false, reason: 'closed' });
         this.configWatcher?.dispose();
         this.configWatcher = undefined;
         this.messageHandler?.dispose();
@@ -226,34 +258,69 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
    * synthetic WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD through the panel's OWN
    * MessageHandler, as `seedExcerpt` does: the Workshop's handler checks the
    * seed and its webview opens the sheet prefilled. Nothing is built until
-   * the writer presses Build. The seed is not session state, so a webview
-   * still booting gets it once it sends its first message, and a hidden tab
-   * once it is shown (a hidden tab can drop messages). True when a Workshop
-   * panel took it.
+   * the writer presses Build.
+   *
+   * The seed belongs to the panel that accepted it (PR #150 F-03). It is
+   * delivered once, only when that panel's webview is listening and its tab
+   * is visible (a booting or hidden webview can drop it); a newer seed
+   * replaces it, and closing that panel cancels it. The promise settles with
+   * the Workshop's own answer, opened or refused, or a timeout: the Lightbox
+   * says "sent" only when a visible Workshop opened it.
    */
-  public seedLexicalGravityBuild(seed: WorkshopLexicalGravityBuildSeed): boolean {
+  public seedLexicalGravityBuild(seed: WorkshopLexicalGravityBuildSeed): Promise<LightboxWorkshopHandoffOutcome> {
     this.openOrReveal();
-    if (!this.messageHandler) {
-      return false;
+    const panel = this.panel;
+    if (!panel || !this.messageHandler) {
+      return Promise.resolve({ opened: false, reason: 'unavailable' });
     }
-    this.pendingBuildSeed = {
-      type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
-      source: 'extension.lightbox',
-      payload: { seed },
-      timestamp: Date.now()
-    };
-    if (this.webviewListening && this.panel?.visible) {
-      this.deliverPendingBuildSeed();
-    }
-    return true;
+    this.settleBuildSeed({ opened: false, reason: 'replaced' });
+    const deliveryId = `lexical-build-seed-${Date.now()}-${++this.buildSeedCount}`;
+    return new Promise((settle) => {
+      this.pendingBuildSeed = {
+        panel,
+        deliveryId,
+        message: {
+          type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
+          source: 'extension.lightbox',
+          payload: { seed, deliveryId },
+          timestamp: Date.now()
+        },
+        delivered: false,
+        settle,
+        timer: setTimeout(() => this.settleBuildSeed({ opened: false, reason: 'timeout' }, deliveryId), WORKSHOP_BUILD_SEED_TIMEOUT_MS)
+      };
+      this.deliverPendingBuildSeed(panel);
+    });
   }
 
-  private deliverPendingBuildSeed(): void {
-    const message = this.pendingBuildSeed;
-    this.pendingBuildSeed = undefined;
-    if (message) {
-      void this.messageHandler?.handleMessage(message);
+  /** The delivery boundary: once, to the panel that accepted it, listening and visible. */
+  private deliverPendingBuildSeed(panel: vscode.WebviewPanel): void {
+    const pending = this.pendingBuildSeed;
+    if (!pending || pending.delivered || pending.panel !== panel || this.panel !== panel || !this.webviewListening || !panel.visible) {
+      return;
     }
+    pending.delivered = true;
+    void this.messageHandler?.handleMessage(pending.message);
+  }
+
+  /** The Workshop webview's answer: settles the handoff only for the panel and delivery it names. */
+  private answerBuildSeed(panel: vscode.WebviewPanel, answer: WorkshopLexicalGravityBuildSeedAnswerPayload | undefined): void {
+    const pending = this.pendingBuildSeed;
+    if (!pending || !answer || pending.panel !== panel || this.panel !== panel || pending.deliveryId !== answer.seedId) {
+      return;
+    }
+    this.settleBuildSeed(answer.opened ? { opened: true } : { opened: false, reason: 'busy' });
+  }
+
+  /** Settle the pending seed (the one named, when `deliveryId` is given) and forget it. */
+  private settleBuildSeed(outcome: LightboxWorkshopHandoffOutcome, deliveryId?: string): void {
+    const pending = this.pendingBuildSeed;
+    if (!pending || (deliveryId !== undefined && pending.deliveryId !== deliveryId)) {
+      return;
+    }
+    this.pendingBuildSeed = undefined;
+    clearTimeout(pending.timer);
+    pending.settle(outcome);
   }
 
   public dispose(): void {
@@ -263,6 +330,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     // active run, which makes the aggregate exportable at a committed boundary.
     const panel = this.panel;
     this.panel = undefined;
+    this.settleBuildSeed({ opened: false, reason: 'closed' });
     this.configWatcher?.dispose();
     this.configWatcher = undefined;
     this.messageHandler?.dispose();

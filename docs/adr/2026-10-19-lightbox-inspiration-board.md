@@ -350,6 +350,12 @@ Neither lets Lightbox change Workshop state directly:
   `WORKSHOP_*` message through the panel's own `MessageHandler`, exactly as
   `seedExcerpt` does. The mid-run guard, provenance and session broadcast
   apply unchanged.
+- A handoff that is not session state (a gravity seed) belongs to the panel
+  that accepted it. The provider delivers it once, only when that panel's
+  webview is listening and its tab is visible; a newer handoff replaces it,
+  and closing the panel cancels it. The Workshop webview answers whether it
+  opened it, and the Lightbox says the field was sent only on that answer,
+  with a bounded wait (PR #150 F-03).
 - The Workshop decides what arrives. A tile is staged above the composer, as
   an attachment the writer sends or removes. A gravity seed opens Lexical
   Gravity's **Build lens** with the subject filled in. Nothing is sent or
