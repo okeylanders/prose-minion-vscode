@@ -61,19 +61,27 @@ export interface LightboxParagraphPage {
   total: number;
   /** The address a jump landed on, when this page is the jump's. */
   target?: number;
+  /**
+   * Which explicit jump `target` answers, numbered per jump. A repeated jump
+   * to the same address gets a new number, so it focuses again; a passive
+   * re-render keeps the number and moves no focus (PR #148 F-05).
+   */
+  jump?: number;
 }
 
 /** Page `page` of `paragraphs`, clamped to the pages there are. */
 export function pageLightboxParagraphs(
   paragraphs: readonly number[],
   page: number,
-  target?: number
+  target?: number,
+  jump?: number
 ): LightboxParagraphPage {
   const size = LIGHTBOX_PARAGRAPH_PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(paragraphs.length / size));
   const current = Math.min(Math.max(0, Math.floor(page)), pageCount - 1);
   const start = current * size;
   const shown = paragraphs.slice(start, start + size);
+  const onPage = target !== undefined && shown.includes(target);
   return {
     page: current,
     pageCount,
@@ -81,7 +89,8 @@ export function pageLightboxParagraphs(
     from: shown.length > 0 ? start + 1 : 0,
     to: start + shown.length,
     total: paragraphs.length,
-    target: target !== undefined && shown.includes(target) ? target : undefined
+    target: onPage ? target : undefined,
+    jump: onPage ? jump : undefined
   };
 }
 
@@ -265,6 +274,7 @@ interface LightboxParagraphPaging {
   pin: LightboxItemRef;
   page: number;
   target?: number;
+  jump?: number;
 }
 
 export function useLightboxInspector({
@@ -274,13 +284,14 @@ export function useLightboxInspector({
 }: UseLightboxInspectorArgs): UseLightboxInspectorReturn {
   const view = React.useMemo(() => buildLightboxInspectorView(board, selected), [board, selected]);
   const [paging, setPaging] = React.useState<LightboxParagraphPaging | null>(null);
+  const jumps = React.useRef(0);
 
   const paragraphPage = React.useMemo(() => {
     if (!view) {
       return null;
     }
     const current = paging && paging.pin === selected ? paging : undefined;
-    return pageLightboxParagraphs(view.paragraphs, current?.page ?? 0, current?.target);
+    return pageLightboxParagraphs(view.paragraphs, current?.page ?? 0, current?.target, current?.jump);
   }, [paging, selected, view]);
 
   const clear = React.useCallback(() => onSelect(null), [onSelect]);
@@ -296,7 +307,8 @@ export function useLightboxInspector({
   const jumpToParagraph = React.useCallback((index: number) => {
     const landing = selected && view ? lightboxParagraphJump(view.paragraphs, index) : undefined;
     if (selected && landing) {
-      setPaging({ pin: selected, page: landing.page, target: landing.target });
+      jumps.current += 1;
+      setPaging({ pin: selected, page: landing.page, target: landing.target, jump: jumps.current });
     }
   }, [selected, view]);
 

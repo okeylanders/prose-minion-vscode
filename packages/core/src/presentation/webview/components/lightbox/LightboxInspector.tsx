@@ -50,9 +50,6 @@ export interface LightboxInspectorProps {
   reread: LightboxRereadControl;
 }
 
-/** Focus the chip a jump landed on, when it mounts. */
-const focusOnMount = (chip: HTMLButtonElement | null) => chip?.focus();
-
 /** "¶765–¶812 (337–347 of 347)": the addresses on show, then where they sit in the list. */
 function rangeLabel(page: LightboxParagraphPage): { addresses: string; positions: string } {
   const first = page.shown[0];
@@ -111,6 +108,44 @@ const LightboxParagraphPager: React.FC<{
         </label>
         <button type="submit" className="pm-lb-para-step">Go</button>
       </form>
+    </div>
+  );
+};
+
+/**
+ * One page of addresses. Each explicit jump focuses the chip it landed on,
+ * a repeated jump to the same chip included (PR #148 F-05); a re-render that
+ * is not a jump, such as a board update, leaves focus where it is. The jump
+ * on show at mount is not replayed.
+ */
+// eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
+const LightboxParagraphChips: React.FC<{
+  page: LightboxParagraphPage;
+  onPin: (index: number) => void;
+}> = ({ page, onPin }) => {
+  const target = React.useRef<HTMLButtonElement | null>(null);
+  const focusedJump = React.useRef(page.jump);
+  React.useEffect(() => {
+    if (page.jump !== undefined && page.jump !== focusedJump.current) {
+      focusedJump.current = page.jump;
+      target.current?.focus();
+    }
+  }, [page.jump]);
+
+  return (
+    <div className="pm-lb-para-chips" aria-live="off">
+      {page.shown.map((index) => (
+        <button
+          key={index}
+          ref={index === page.target ? target : undefined}
+          type="button"
+          className={`pm-lb-para-chip${index === page.target ? ' is-target' : ''}`}
+          title={`Pin ¶${index}`}
+          onClick={() => onPin(index)}
+        >
+          ¶{index}
+        </button>
+      ))}
     </div>
   );
 };
@@ -182,20 +217,7 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
             {page.pageCount > 1 && (
               <LightboxParagraphPager page={page} onShowPage={onShowParagraphPage} onJump={onJumpToParagraph} />
             )}
-            <div className="pm-lb-para-chips" aria-live="off">
-              {page.shown.map((index) => (
-                <button
-                  key={index}
-                  ref={index === page.target ? focusOnMount : undefined}
-                  type="button"
-                  className={`pm-lb-para-chip${index === page.target ? ' is-target' : ''}`}
-                  title={`Pin ¶${index}`}
-                  onClick={() => onPinParagraph(index)}
-                >
-                  ¶{index}
-                </button>
-              ))}
-            </div>
+            <LightboxParagraphChips page={page} onPin={onPinParagraph} />
           </>
         )}
       </div>

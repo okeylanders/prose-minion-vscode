@@ -151,6 +151,40 @@ describe('Lightbox inspector paging (PR #148 F-04)', () => {
     expect(litColumns()).toEqual([0]);
   });
 
+  it('focuses the landing chip again when the same jump is repeated (PR #148 F-05)', () => {
+    const board = boardWithWord(815, 'alice', range(1, 815));
+    show(board);
+    fireEvent.click(screen.getByTitle('alice ×815'));
+    const field = () => within(inspector()).getByLabelText('Go to ¶') as HTMLInputElement;
+
+    jumpTo(812);
+    expect(document.activeElement?.textContent).toBe('¶812');
+    field().focus();
+    jumpTo(812);
+    expect(document.activeElement?.textContent).toBe('¶812');
+
+    // A board update is not a jump: focus stays where the writer put it.
+    field().focus();
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: MessageType.LIGHTBOX_BOARD, source: 'extension.lightbox', payload: { board: { ...board }, refusal: null }, timestamp: 2 }
+      }));
+    });
+    expect(rangeText()).toBe('¶769–¶815 (769–815 of 815)');
+    expect(document.activeElement).toBe(field());
+  });
+
+  it('focuses a sparse list\'s landing chip again when the next jump names it (PR #148 F-05)', () => {
+    show(boardWithWord(200, 'rabbit', range(1, 199, 2)));
+    fireEvent.click(screen.getByTitle('rabbit ×100'));
+
+    jumpTo(100);
+    expect(document.activeElement?.textContent).toBe('¶101');
+    (within(inspector()).getByLabelText('Go to ¶') as HTMLInputElement).focus();
+    jumpTo(101);
+    expect(document.activeElement?.textContent).toBe('¶101');
+  });
+
   it('shows no pager when every address fits on one page', () => {
     show(makeBoard(6));
     fireEvent.click(screen.getByTitle('alice ×5'));
