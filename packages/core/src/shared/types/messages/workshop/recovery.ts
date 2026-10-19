@@ -31,6 +31,11 @@ export const RECOVERABLE_WIDGET_RESPONSE_CONTRACTS = {
     id: 'lexical-gravity-preview-v2',
     intendedContentType: 'application/json',
     protocol: 'First-line ===LEXICAL_GRAVITY_PREVIEW_V2===, then JSON {version, semanticPositions, selectedDynamicId, openEntailment, text}, then final-line ===END_LEXICAL_GRAVITY_PREVIEW_V2===.'
+  },
+  'lightbox-readings': {
+    id: 'lightbox-reading-group-v1',
+    intendedContentType: 'application/json',
+    protocol: 'First-line ===LIGHTBOX_GROUP_<A|B|C>_V1===, then JSON {version: 1, one block per requested lens (headline, motifs, tension, characters, voice, genre), each with friction}, then final-line ===END_LIGHTBOX_GROUP_<A|B|C>_V1===.'
   }
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */

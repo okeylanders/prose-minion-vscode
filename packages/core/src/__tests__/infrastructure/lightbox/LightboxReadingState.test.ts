@@ -1,0 +1,114 @@
+/**
+ * Reading-group transitions (ADR 2026-10-19 D6) and the context shelf's
+ * bounds (D9).
+ */
+import type { LightboxReadingGroup, LightboxReadingTile } from '@messages';
+import {
+  settleLightboxGroup,
+  startLightboxGroups,
+  stopLightboxGroups
+} from '@/infrastructure/lightbox/LightboxReadingState';
+import type { LightboxGroupOutcome } from '@/infrastructure/lightbox/LightboxReadingRunContracts';
+import { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
+import { emptyLightboxReadingGroup, lightboxPlannedCalls } from '@shared/constants/lightbox';
+import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
+
+const tile = (id: string, kind: 'headline' | 'motif', lens: 'headline' | 'motif'): LightboxReadingTile => ({
+  id,
+  kind,
+  lens,
+  title: id,
+  claim: id,
+  paragraphs: [1],
+  evidence: [{ paragraph: 1, text: 'down went Alice', match: 'exact' }],
+  withheldQuotes: [],
+  support: [],
+  friction: 'f',
+  ...(kind === 'motif' ? { gist: 'g' } : {})
+} as LightboxReadingTile);
+
+const outcome = (over: Partial<LightboxGroupOutcome>): LightboxGroupOutcome => ({
+  group: 'A',
+  lenses: ['headline', 'motif'],
+  status: 'ok',
+  tiles: [],
+  withheldBlocks: [],
+  withheldClaims: [],
+  frictions: [],
+  usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, costUsd: 0.5 },
+  quotesChecked: 1,
+  quotesWithheld: 0,
+  ...over
+});
+
+const landed: LightboxReadingGroup = {
+  ...emptyLightboxReadingGroup('A'),
+  status: 'ok',
+  lenses: ['headline', 'motif'],
+  tiles: [tile('h1', 'headline', 'headline'), tile('m1', 'motif', 'motif')],
+  usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, costUsd: 0.5 }
+};
+
+describe('reading-group transitions', () => {
+  it('clears a group for a full run and marks every lens it reads pending', () => {
+    const [a, b] = startLightboxGroups([landed, emptyLightboxReadingGroup('B')], [{ group: 'A', lenses: ['headline', 'motif'] }]);
+    expect(a).toMatchObject({ status: 'running', tiles: [], lenses: [], pending: ['headline', 'motif'], usage: landed.usage });
+    expect(b.status).toBe('not-run');
+  });
+
+  it('re-reads one lens: the others stay, only that lens is replaced, usage accumulates', () => {
+    const [running] = startLightboxGroups([landed], [{ group: 'A', lenses: ['motif'] }], 'motif');
+    expect(running).toMatchObject({ status: 'running', pending: ['motif'], tiles: landed.tiles });
+    const settled = settleLightboxGroup(running, outcome({ lenses: ['motif'], tiles: [tile('m2', 'motif', 'motif')] }), 'motif');
+    expect(settled.tiles.map((entry) => entry.id)).toEqual(['h1', 'm2']);
+    expect(settled.status).toBe('ok');
+    expect(settled.pending).toBeUndefined();
+    expect(settled.usage?.costUsd).toBeCloseTo(1);
+  });
+
+  it('keeps the earlier readings when a re-read fails', () => {
+    const [running] = startLightboxGroups([landed], [{ group: 'A', lenses: ['motif'] }], 'motif');
+    const settled = settleLightboxGroup(running, outcome({ status: 'failed', error: 'Rate limited.', tiles: [] }), 'motif');
+    expect(settled).toMatchObject({ status: 'failed', error: 'Rate limited.', tiles: landed.tiles });
+  });
+
+  it('cancels only the stopped run\'s groups that were still running', () => {
+    const groups = [landed, { ...emptyLightboxReadingGroup('B'), status: 'running' as const, pending: ['voice' as const] }];
+    const stopped = stopLightboxGroups(groups, ['A', 'B'], 'Stopped.');
+    expect(stopped.map((group) => group.status)).toEqual(['ok', 'cancelled']);
+    expect(stopped[1]).toMatchObject({ error: 'Stopped.' });
+    expect(stopped[1].pending).toBeUndefined();
+  });
+
+  it('plans calls from the lens toggles: off lenses left out, empty groups dropped, landed groups skipped by "rest"', () => {
+    expect(lightboxPlannedCalls(['genre', 'voice'], { mode: 'all' })).toEqual([
+      { group: 'A', lenses: ['headline', 'motif', 'tension'] },
+      { group: 'B', lenses: ['characters'] }
+    ]);
+    expect(lightboxPlannedCalls([], { mode: 'rest' }, [{ group: 'A', status: 'ok' }, { group: 'B', status: 'cancelled' }]))
+      .toEqual([{ group: 'B', lenses: ['characters', 'voice'] }, { group: 'C', lenses: ['genre'] }]);
+    expect(lightboxPlannedCalls([], { mode: 'lens', lens: 'voice' })).toEqual([{ group: 'B', lenses: ['voice'] }]);
+    expect(lightboxPlannedCalls(['voice'], { mode: 'lens', lens: 'voice' })).toEqual([]);
+  });
+});
+
+describe('LightboxContextShelf', () => {
+  it('holds files within the context-files word budget, once each', () => {
+    let id = 0;
+    const shelf = new LightboxContextShelf({ mintId: () => `c${++id}` });
+    expect(shelf.add({ displayPath: 'Notes/cast.md', text: 'Alice is seven.', sourceKey: '/w/cast.md' })).toEqual({
+      added: true,
+      file: { id: 'c1', displayPath: 'Notes/cast.md', wordCount: 3 }
+    });
+    expect(shelf.add({ displayPath: 'Notes/cast.md', text: 'Again.', sourceKey: '/w/cast.md' })).toMatchObject({ added: false });
+    expect(shelf.add({ displayPath: 'Notes/empty.md', text: '  ', sourceKey: '/w/empty.md' })).toMatchObject({ added: false });
+    const big = 'word '.repeat(PROMPT_BUDGETS.contextFiles.words);
+    expect(shelf.add({ displayPath: 'Notes/big.md', text: big, sourceKey: '/w/big.md' })).toEqual({
+      added: false,
+      notice: 'Notes/big.md has 50,000 words, and the context holds 3 of its 50,000. Remove a file, or choose a shorter one.'
+    });
+    expect(shelf.materials()).toEqual([{ displayPath: 'Notes/cast.md', text: 'Alice is seven.' }]);
+    expect(shelf.remove('c1')).toBe(true);
+    expect(shelf.list()).toEqual([]);
+  });
+});

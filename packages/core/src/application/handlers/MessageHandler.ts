@@ -49,6 +49,7 @@ import { FileOperationsHandler } from './domain/FileOperationsHandler';
 import { AccountBalanceHandler } from './domain/AccountBalanceHandler';
 import { WorkshopRoomHandler } from './domain/workshop/WorkshopRoomHandler';
 import { LightboxHandler } from './domain/LightboxHandler';
+import { LightboxReadingHandler } from './domain/LightboxReadingHandler';
 
 export class MessageHandler {
   private readonly resultCache: ResultCache = {};
@@ -79,6 +80,7 @@ export class MessageHandler {
   private readonly accountBalanceHandler: AccountBalanceHandler;
   private readonly workshopHandler: WorkshopRoomHandler;
   private readonly lightboxHandler: LightboxHandler;
+  private readonly lightboxReadingHandler: LightboxReadingHandler;
 
   // Per-instance registrations on SHARED services (sidebar + Workshop panel
   // each run a MessageHandler over the one CoreServices bundle). Dispose
@@ -191,7 +193,9 @@ export class MessageHandler {
       lexicalGravityModelService,
       lexicalGravityLensRepository,
       workshopStandingDirectiveService,
-      lightboxService
+      lightboxService,
+      lightboxReadingRunner,
+      lightboxContextShelf
     } = services;
 
     // Token tracking: centralized in AgentRunEngine. Listener-based so
@@ -346,6 +350,16 @@ export class MessageHandler {
       this.postMessage.bind(this),
       outputChannel
     );
+    // Its readings (Slice 2B) beside it: lenses, estimate, runs, context files.
+    this.lightboxReadingHandler = new LightboxReadingHandler(
+      lightboxService,
+      lightboxReadingRunner,
+      lightboxContextShelf,
+      textSourceResolver,
+      this.platform.shell,
+      this.postMessage.bind(this),
+      outputChannel
+    );
     // Post-AI-request refresh: the debounced fetch (armed in applyTokenUsage)
     // broadcasts fresh balances to the webview through the same handler.
     this.disposeBalanceListener = accountBalanceService.addRefreshListener(
@@ -377,6 +391,7 @@ export class MessageHandler {
     this.accountBalanceHandler.registerRoutes(this.router);
     this.workshopHandler.registerRoutes(this.router);
     this.lightboxHandler.registerRoutes(this.router);
+    this.lightboxReadingHandler.registerRoutes(this.router);
     this.router.register(MessageType.WORKSHOP_DISMISS_ERROR, async () => {
       this.resultCache.error = undefined;
     });
@@ -888,6 +903,7 @@ export class MessageHandler {
       this.disposeSearchStatusListener();
       this.analysisHandler.dispose();
       this.workshopHandler.dispose();
+      this.lightboxReadingHandler.dispose();
     } catch {
       // noop
     }

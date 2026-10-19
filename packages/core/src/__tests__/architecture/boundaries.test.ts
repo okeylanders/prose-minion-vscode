@@ -925,7 +925,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf)\b`
 );
 
 /**
@@ -946,7 +946,13 @@ const LIGHTBOX_MODULES = [
   'infrastructure/lightbox/LightboxTermCounts.ts',
   'infrastructure/lightbox/LightboxReadingTiles.ts',
   'infrastructure/lightbox/LightboxReadingPrompts.ts',
+  'infrastructure/lightbox/LightboxRunEstimate.ts',
+  'infrastructure/lightbox/LightboxReadingRunContracts.ts',
+  'infrastructure/lightbox/LightboxReadingRunner.ts',
+  'infrastructure/lightbox/LightboxReadingState.ts',
+  'infrastructure/lightbox/LightboxContextShelf.ts',
   'application/handlers/domain/LightboxHandler.ts',
+  'application/handlers/domain/LightboxReadingHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
@@ -1592,7 +1598,10 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(constructions(/\bnew\s+LightboxService\s*\(/)).toEqual([]);
+    expect(constructions(/\bnew\s+LightboxReadingRunner\s*\(/)).toEqual([]);
+    expect(constructions(/\bnew\s+LightboxContextShelf\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
   });
 
   it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {

@@ -45,6 +45,8 @@ import type { DictionaryHistoryStore } from '@/infrastructure/storage/Dictionary
 import type { WorkshopStandingDirectiveService } from '@/application/services/workshop/directives/WorkshopStandingDirectiveService';
 import type { TextSourceResolver } from '@/infrastructure/text/TextSourceResolver';
 import type { LightboxService } from '@/infrastructure/lightbox/LightboxService';
+import type { LightboxReadingRunner } from '@/infrastructure/lightbox/LightboxReadingRunner';
+import type { LightboxContextShelf } from '@/infrastructure/lightbox/LightboxContextShelf';
 import type { PlatformDisposable } from '@/platform';
 
 /**
@@ -145,4 +147,8 @@ export interface CoreServices {
   workshopStandingDirectiveService: WorkshopStandingDirectiveService;
   /** Lightbox boards: the counted board per source, kept in memory (ADR 2026-10-19 D5, D12). */
   lightboxService: LightboxService;
+  /** Lightbox readings: one active run per board on the assistant engine (ADR 2026-10-19 D6, D7). */
+  lightboxReadingRunner: LightboxReadingRunner;
+  /** Lightbox context files: inform readings, never evidence (ADR 2026-10-19 D9). */
+  lightboxContextShelf: LightboxContextShelf;
 }
