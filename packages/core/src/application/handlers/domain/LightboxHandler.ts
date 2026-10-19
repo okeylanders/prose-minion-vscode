@@ -146,7 +146,8 @@ export class LightboxHandler {
   /**
    * "Choose file": the host picker is the input. The request is minted when
    * the picker returns a file, not when it opens: dismissing it changes
-   * nothing, and a choice made while it was open stays newer than nothing.
+   * nothing, and a source sent while it was open is older than the file the
+   * writer then picks.
    */
   async handlePickSourceFile(_message: LightboxPickSourceFileMessage): Promise<void> {
     this.subscribe();
