@@ -50,8 +50,9 @@ provider was called.
 Since the PR #149 review fixes, the builder speaks the tab's side of the
 protocol: each estimate request carries a request id, the tab asks again
 after its context list changes (the host no longer posts an estimate
-unasked), and the press names the key of the estimate it was shown. The
-estimate is therefore not replayed: `harness.js` answers every
+unasked), and the press names the key of the estimate it was shown and,
+since the re-review, the model it priced. The estimate is therefore not
+replayed: `harness.js` answers every
 `lightbox_set_lenses` the tab posts with the recorded answer for those
 lenses, echoing the request's id, as the host would.
 

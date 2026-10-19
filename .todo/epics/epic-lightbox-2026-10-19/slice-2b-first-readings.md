@@ -187,8 +187,8 @@ differs from the plan above, or the plan left a choice open:
   `PROMPT_BUDGETS.contextFiles.words` in total. It is in memory and shared
   by the tab's boards.
 - The estimate is recomputed on lens toggles, context changes, a new board
-  and a model change, always at the webview's request (see the PR #149
-  fixes below). Expected output per lens is a fixed typical figure (tension
+  and every model confirmation (`MODEL_DATA`), always at the webview's
+  request (see the PR #149 fixes below). Expected output per lens is a fixed typical figure (tension
   adds two tokens per column); the reply reserve is the group output
   budget. `OpenRouterModels.getCachedPricing` is new, and reads live
   catalog prices only.
@@ -282,6 +282,26 @@ maps each to its commits and tests.
   line's tally counts every check, a withheld motif's found quotes
   included; a tile's re-read is disabled, with the reason, when its lens is
   off, it has no current estimate, or its call is too large.
+
+**PR #149 re-review fixes (2026-10-19)**
+
+- **The selected, confirmed model (F-03).** The shared picker shows a new
+  selection at once, while the host saves it and confirms it with
+  `MODEL_DATA` afterwards. `useLightbox` takes the selected assistant model
+  and handles every `MODEL_DATA`: an estimate is usable only when it priced
+  the selected model and that selection is the one the host last
+  confirmed, so Read waits while a selection saves. Each request remembers
+  the model it was asked for, and a reply that priced another is refused
+  even when it answers the latest request. Every confirmation asks again,
+  the same values or a price-only catalog refresh included. A press names
+  its model (`LightboxRunPayload.model`), and the host refuses one that is
+  not the model in use, with a re-estimate; nothing is pressed again
+  automatically. A failed save sends no confirmation, so Read waits until
+  the next one (opening the picker refreshes it).
+- **Quote units and whole-string NFKC (F-09).** Units are built within
+  runs cut before each code point below U+0300, which NFKC never reaches
+  back across; a run whose pairwise units disagree with its own NFKC is
+  kept whole. A quote can then match all of such a run, never part of it.
 
 **Not built here**
 
