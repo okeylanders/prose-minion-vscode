@@ -50,8 +50,8 @@ carried into the Workshop.
 | # | Slice | Outcome | Status |
 |---|---|---|---|
 | 0 | Spec | ADR, this epic, design snapshot | In review |
-| 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header and rail extracted into a host-agnostic shell; the Workshop renders through it with no behavior change | Planned |
-| 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel, command, entry bundle, `lightbox` message domain, paragraph model, measured tiles, ribbon, inspector, word ceiling | Planned |
+| 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | Planned |
+| 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | Planned |
 | 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Planned |
 | 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Planned |
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Planned |
@@ -99,3 +99,20 @@ becomes a file format.
   50K words"); see ADR D8. Lexical gravity was added to the design at the
   writer's request and lands in Slice 3 with the handoff to the existing
   Lexical Gravity widget.
+  - **Research findings that changed the plan:**
+    - **No new entry bundle.** The Lightbox is a third surface in the shared
+      bundle (ADR 2026-07-03), and the binary surface branches become
+      exhaustive maps (D1).
+    - **Own routes for excerpt and context.** The Workshop's excerpt and
+      context panels are views over the one Workshop session, so the Lightbox
+      gets its own `LIGHTBOX_*` routes (D10).
+    - **Handoffs reuse `seedExcerpt`.** Both handoffs follow its pattern:
+      through the Workshop panel's own handler (D11).
+    - **Dialogue % ignores curly quotes.** It is now a prerequisite of Slice
+      2A ([tech debt](../../tech-debt/2026-10-19-prose-stats-dialogue-curly-quotes.md)).
+    - **Tracked as tech debt:** every webview builds every domain
+      ([tech debt](../../tech-debt/2026-10-19-per-surface-message-handler-routes.md)).
+  - **Word ceiling:** 50,000 words. It matches the existing
+    `sourceDocument` and `contextFiles` budgets. There is a 12,000-word
+    "book-sized" cost warning, a context-window fit check before the press,
+    and no silent truncation (D8).
