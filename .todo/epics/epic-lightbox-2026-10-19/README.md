@@ -50,7 +50,7 @@ carried into the Workshop.
 | # | Slice | Outcome | Status |
 |---|---|---|---|
 | 0 | Spec | ADR, this epic, design snapshot | In review |
-| 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | Planned |
+| 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | In review (PR pending) |
 | 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | Planned |
 | 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Planned |
 | 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Planned |
@@ -116,3 +116,69 @@ becomes a file format.
     `sourceDocument` and `contextFiles` budgets. There is a 12,000-word
     "book-sized" cost warning, a context-window fit check before the press,
     and no silent truncation (D8).
+- **2026-10-19. Slice 1 (shared full-tab shell).** Built on
+  `epic/lightbox-slice-1-shell` in four commits:
+  1. **`useFullTabChrome`** (`hooks/fulltab/`). The generic frame state
+     moves here: models, tokens, balance, API-key status, the two mount
+     requests and the settings opener. It comes with
+     `buildFullTabChromeRoutes`, which the Workshop router now merges.
+     The envelope source is a parameter, and so is `useStartupNotice`'s.
+  2. **The shell components** (`components/fulltab/`): `FullTabShell`,
+     `FullTabRail`, `FullTabHeaderStatus` and `ProviderPausedBanner`. The
+     Workshop renders through them with an identical DOM.
+  3. **An exhaustive surface map.** `WebviewSurface` gains `lightbox`, and
+     `Record<WebviewSurface, …>` maps replace the branches in
+     `webviewHtml.ts` and `index.tsx`. Full tabs also stamp
+     `data-pm-frame="fulltab"`. A placeholder `LightboxApp` renders on the
+     shell.
+  4. **The frame styles move** to `styles/fulltab/`, rescoped to
+     `[data-pm-frame="fulltab"]`. `index.tsx` imports them ahead of every
+     root.
+  - **Verification.** Before → after:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 315 suites, 4,702 tests, 2 snapshots | 320 suites, 4,736 tests, 2 snapshots |
+    | Lint | 0 errors, 1,140 warnings | 0 errors, 1,140 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - The lint warnings match per file and per rule. New React components
+      carry the existing "React components are PascalCase" disable.
+    - `WorkshopApp.tsx` went from 1,822 to 1,736 lines.
+    - Headless Chromium against the built bundles, with the loading, empty,
+      excerpt-pinned and provider-paused states at 1440, 1000 and 500 px:
+      - The Workshop DOM is identical to the pre-slice bundle, apart from the
+        frame stamp on #root.
+      - The screenshots match within run-to-run raster noise.
+      - At runtime the frame sheets load before the Workshop's, and
+        `index.css` stays last.
+  - **Beyond or unlike the plan** (details in the
+    [slice doc](slice-1-shared-full-tab-shell.md#implementation-notes-2026-10-19)):
+    - **Transcript export.** The HTML export mirrors thread CSS verbatim
+      (ADR 2026-10-05), so its mirror was regenerated with two frame layers,
+      and its `<body>` now also stamps `data-pm-frame="fulltab"`. Two export
+      tests and the mirror's layer-order test changed their expectations to
+      match.
+    - **Balance title.** The derivation lives in `FullTabHeaderStatus`
+      (`fullTabBalanceTitle`), as the slice says, rather than in the hook,
+      as D2 lists.
+    - **Shell props.** The shell also takes overlays as `children` and an
+      `onBoundaryError`.
+    - **Tokens.** The Workshop's participant identity tokens stay
+      Workshop-scoped.
+    - **New aside CSS.** An optional aside column was added and is unused
+      until Slice 2A.
+  - **Follow-ups:**
+    - **Slice 2A rail cards.** The rail section cards (`.pm-ws-block*`) are
+      still Workshop-scoped. Move them to the frame when the Lightbox rail
+      needs them.
+    - **Slice 2A aside.** Tune the aside column for the inspector.
+    - **`AGENTS.md`.** Its presentation tree does not list `hooks/fulltab/` or
+      `components/fulltab/` yet.
+    - **Slice 6.** Recheck the Workshop header, banners, Sessions menu and
+      model browser in the Extension Development Host.
+    - **Tech debt:**
+      - [the transcript export mirror's cascade order](../../tech-debt/2026-10-19-transcript-export-mirror-cascade-order.md);
+      - [the frame classes' `pm-ws-` prefix](../../tech-debt/2026-10-19-fulltab-frame-class-prefix.md).
+

@@ -82,6 +82,8 @@ elsewhere.
 | Medium | [Show vs. Tell live-provider quality pass](2026-10-09-show-vs-tell-live-provider-quality-pass.md) | Open |
 | Low | [Persona pronoun metadata](2026-10-09-persona-pronoun-metadata.md) | Open — writer decision |
 | Medium | [Thread artifacts replay on every later turn](2026-10-11-workshop-thread-artifact-history-replay.md) | Identified |
+| Low | [Transcript export mirror misstates the cascade order](2026-10-19-transcript-export-mirror-cascade-order.md) | Identified |
+| Low | [Shared full-tab frame classes keep the Workshop prefix](2026-10-19-fulltab-frame-class-prefix.md) | Identified |
 
 ## Review Guidance
 
