@@ -63,14 +63,14 @@ packages/core/src/
 │       ├── MessageHandler.ts           # Main dispatcher
 │       ├── MessageHandlerContracts.ts  # CoreServices + typed transport/cache/seams
 │       ├── MessageRouter.ts            # Strategy registry (MessageType → handler)
-│       └── domain/                     # 12 flat domains (incl. LightboxHandler) + Workshop feature family
+│       └── domain/                     # 12 flat domains (incl. LightboxHandler, with LightboxReadingHandler beside it) + Workshop feature family
 │           └── workshop/               # Room owner, 5 shared slices, 3 widget owners
 ├── domain/             # Domain models
 │   └── models/
 ├── infrastructure/     # External integrations
 │   ├── api/           # OpenRouter: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService; readings (prompts, codec, quote verifier, runner, estimate)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/       # React webview UI
 │   └── webview/       # Components + domain hooks
@@ -149,7 +149,7 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
-| `useLightbox` | `LightboxHandler` | Lightbox counted board (ADR 2026-10-19) |
+| `useLightbox` | `LightboxHandler`, `LightboxReadingHandler` | Lightbox counted board and readings (ADR 2026-10-19) |
 | `useWorkshopRoom` | `WorkshopRoomHandler` | Room/thread/context state and retained host orchestration |
 | `useWorkshopSessions` | `WorkshopSessionMessageHandler` | Named-session lifecycle and browser actions |
 | `useWorkshopWidgetHost` | `WorkshopWidgetHostHandler` | Config lookup and the family-generic one-shot commit route |
