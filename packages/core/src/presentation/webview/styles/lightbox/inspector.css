@@ -1,8 +1,8 @@
 /* ============================================================
    Prose Minion — the Lightbox inspector (the frame's optional aside),
-   ADR 2026-10-19 D3, D4. The aside's column, and how it moves at narrow
-   widths, are the frame's (styles/fulltab/shell.css); this sheet styles the
-   card inside it.
+   ADR 2026-10-19 D3, D4, and from Slice 2B a reading's evidence (D7). The
+   aside's column, and how it moves at narrow widths, are the frame's
+   (styles/fulltab/shell.css); this sheet styles the card inside it.
    ============================================================ */
 
 [data-pm-surface="lightbox"] .pm-lb-inspector {
@@ -241,4 +241,101 @@
 [data-pm-surface="lightbox"] .pm-lb-touch:hover,
 [data-pm-surface="lightbox"] .pm-lb-touch.is-hot {
   background: var(--pm-surface-3);
+}
+
+/* ---------- The inspector's evidence ---------- */
+[data-pm-surface="lightbox"] .pm-lb-inspector-claim.is-read {
+  font-family: var(--pm-lb-serif);
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--pm-text);
+}
+[data-pm-surface="lightbox"] .pm-lb-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 11px;
+  border-radius: 9px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border-soft);
+  margin-bottom: 7px;
+}
+[data-pm-surface="lightbox"] .pm-lb-evidence-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-evidence-ok {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--pm-green);
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-evidence-quote {
+  font-family: var(--pm-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pm-text);
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-withheld-quote-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px dashed var(--pm-border-2);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--pm-muted);
+  margin-bottom: 7px;
+}
+[data-pm-surface="lightbox"] .pm-lb-withheld-quote-card b {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+[data-pm-surface="lightbox"] .pm-lb-details dt {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-details dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-friction {
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: var(--pm-surface);
+  border: 1px solid var(--pm-border-soft);
+}
+[data-pm-surface="lightbox"] .pm-lb-friction p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--pm-border-soft);
+  padding-top: 14px;
 }
