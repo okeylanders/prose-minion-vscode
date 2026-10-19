@@ -956,24 +956,38 @@ const LIGHTBOX_MODULES = [
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
+  'presentation/webview/components/lightbox/LightboxCharacters.tsx',
+  'presentation/webview/components/lightbox/LightboxContextList.tsx',
+  'presentation/webview/components/lightbox/LightboxGenre.tsx',
+  'presentation/webview/components/lightbox/LightboxHeadline.tsx',
   'presentation/webview/components/lightbox/LightboxInspector.tsx',
   'presentation/webview/components/lightbox/LightboxItemButton.tsx',
   'presentation/webview/components/lightbox/LightboxLensesPanel.tsx',
+  'presentation/webview/components/lightbox/LightboxMotifs.tsx',
   'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingFrame.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingParts.tsx',
   'presentation/webview/components/lightbox/LightboxReadingPlaceholder.tsx',
   'presentation/webview/components/lightbox/LightboxRibbon.tsx',
+  'presentation/webview/components/lightbox/LightboxRunLine.tsx',
   'presentation/webview/components/lightbox/LightboxSourcePanel.tsx',
   'presentation/webview/components/lightbox/LightboxStatRow.tsx',
+  'presentation/webview/components/lightbox/LightboxTensionArc.tsx',
   'presentation/webview/components/lightbox/LightboxTileFrame.tsx',
   'presentation/webview/components/lightbox/LightboxTiles.tsx',
-  'presentation/webview/components/lightbox/LightboxTopWords.tsx'
+  'presentation/webview/components/lightbox/LightboxTopWords.tsx',
+  'presentation/webview/components/lightbox/LightboxVoice.tsx'
 ] as const;
 /** Presentation controllers and pure item logic: host effects arrive injected. */
 const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts'
 ] as const;

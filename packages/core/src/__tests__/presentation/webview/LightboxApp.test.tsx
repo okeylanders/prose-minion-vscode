@@ -20,6 +20,7 @@ jest.mock('../../../presentation/webview/styles/lightbox/ribbon.css', () => ({})
 jest.mock('../../../presentation/webview/styles/lightbox/tiles.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/rail.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/inspector.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/lightbox/readings.css', () => ({}));
 // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked component's export name.
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 
@@ -75,7 +76,7 @@ describe('LightboxApp', () => {
     }));
   });
 
-  it('shows the counted board, with readings not yet read and the Read button disabled', () => {
+  it('shows the counted board, with readings not yet read and the Read button waiting for its estimate', () => {
     render(<LightboxApp />);
     fromHost(MessageType.LIGHTBOX_BOARD, { board: makeBoard(6) });
 
@@ -85,12 +86,12 @@ describe('LightboxApp', () => {
     expect(screen.getByLabelText('Parts of speech · repetition')).not.toBeNull();
     const motifs = screen.getByLabelText('Motifs · where they recur');
     expect(motifs.getAttribute('data-register')).toBe('read');
-    expect(within(motifs).getByText('Not read yet. Readings arrive in the next update.')).not.toBeNull();
+    expect(within(motifs).getByText('Not read yet. Runs with the next press.')).not.toBeNull();
 
+    // Nothing is priced until the host estimates, so the press waits.
     const read = screen.getByRole('button', { name: /Read the chapter/ }) as HTMLButtonElement;
     expect(read.disabled).toBe(true);
-    expect(read.getAttribute('aria-describedby')).toBe('pm-lb-read-note');
-    expect(document.getElementById('pm-lb-read-note')?.textContent).toBe('Readings arrive in the next update');
+    expect(screen.getByText('Estimating the cost…')).not.toBeNull();
     expect(screen.queryByText(/\$\d/)).toBeNull();
   });
 

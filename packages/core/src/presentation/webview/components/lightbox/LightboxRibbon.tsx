@@ -3,10 +3,11 @@
  *
  * One column per paragraph up to the ribbon width, a contiguous range per
  * column above it (the host buckets; this only draws). Lanes: rhythm (words
- * per sentence) and dialogue are measured; tension is a reading and is drawn
- * empty until Slice 2B; focus lights the columns whose paragraphs the
- * hovered or pinned item touches. Columns and the measured lane labels are
- * themselves hoverable and pinnable.
+ * per sentence) and dialogue are measured; tension is a reading, drawn
+ * dashed from the tension arc's read score per column (0–9) once it lands,
+ * and empty before; focus lights the columns whose paragraphs the hovered
+ * or pinned item touches, in its register's color. Columns, the measured
+ * lane labels and a read tension lane are hoverable and pinnable.
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxRibbonColumn } from '@messages';
@@ -19,11 +20,17 @@ export interface LightboxRibbonProps {
   litColumns: readonly boolean[];
   focusedItem: LightboxResolvedItem | null;
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
-  /** The tension lens is on (its lane is still empty until the readings land). */
+  /** The tension lens is on. */
   tensionLensOn: boolean;
+  /** The tension arc's read score per column, once it has landed. */
+  tensionScores?: readonly number[];
+  /** The tension arc tile, so its lane label pins it. */
+  tensionTileId?: string;
 }
 
 const RHYTHM_LANE_HEIGHT = 34;
+const TENSION_LANE_HEIGHT = 34;
+const TENSION_TOP_SCORE = 9;
 /** Scale floor, so a text of very short sentences does not fill the lane. */
 const RHYTHM_SCALE_FLOOR = 12;
 /** How many paragraph references the focus line spells out. */
@@ -58,10 +65,14 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
   litColumns,
   focusedItem,
   bind,
-  tensionLensOn
+  tensionLensOn,
+  tensionScores,
+  tensionTileId
 }) => {
   const { ribbon } = board;
   const hasFocus = focusedItem !== null;
+  const focusTone = focusedItem?.register === 'measured' ? 'is-measured' : 'is-read';
+  const scores = tensionLensOn && tensionScores?.length === ribbon.length ? tensionScores : undefined;
   const scale = Math.max(RHYTHM_SCALE_FLOOR, ...ribbon.map((column) => column.avgWordsPerSentence));
   const step = labelStep(ribbon.length);
   const bucketed = ribbon.some((column) => column.to > column.from);
@@ -74,7 +85,7 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           {bucketed ? ` · ${ribbon.length} columns` : ''}
         </span>
         {/* Not a live region: hover changes it constantly; the inspector announces pins. */}
-        <span className={`pm-lb-ribbon-focus${hasFocus ? ' is-measured' : ''}`}>
+        <span className={`pm-lb-ribbon-focus${hasFocus ? ` ${focusTone}` : ''}`}>
           {focusLine(focusedItem)}
         </span>
       </div>
@@ -86,12 +97,18 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           <LightboxItemButton binding={bind({ kind: 'lane', lane: 'dialogue' })} className="pm-lb-lane-label pm-lb-h12">
             <i className="pm-lb-lane-key is-measured" />Dialogue
           </LightboxItemButton>
-          <span
-            className="pm-lb-lane-label pm-lb-h34 is-static"
-            title={tensionLensOn ? 'Tension is a reading. Not read yet.' : 'The tension lens is off.'}
-          >
-            <i className="pm-lb-lane-key is-read" />Tension
-          </span>
+          {scores && tensionTileId ? (
+            <LightboxItemButton binding={bind({ kind: 'reading', tileId: tensionTileId })} className="pm-lb-lane-label pm-lb-h34">
+              <i className="pm-lb-lane-key is-read" />Tension
+            </LightboxItemButton>
+          ) : (
+            <span
+              className="pm-lb-lane-label pm-lb-h34 is-static"
+              title={tensionLensOn ? 'Tension is a reading. Not read yet.' : 'The tension lens is off.'}
+            >
+              <i className="pm-lb-lane-key is-read" />Tension
+            </span>
+          )}
           <span className="pm-lb-lane-label pm-lb-h10 is-static">Focus</span>
           <span className="pm-lb-lane-label pm-lb-h12 is-static">¶</span>
         </div>
@@ -106,6 +123,9 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
               : 0;
             const dialogue = column.dialogueShare > 0 ? 0.3 + column.dialogueShare * 0.7 : 0;
             const binding = bind({ kind: 'paragraphs', from: column.from, to: column.to });
+            const tension = scores
+              ? Math.max(2, Math.round((scores[columnIndex] / TENSION_TOP_SCORE) * TENSION_LANE_HEIGHT))
+              : 0;
             return (
               <LightboxItemButton
                 key={`${column.from}-${column.to}`}
@@ -113,12 +133,15 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
                 className={`pm-lb-col${hasFocus && !lit ? ' is-dim' : ''}`}
                 label={columnLabel(column)}
                 title={`${columnLabel(column)} · ${column.avgWordsPerSentence} words per sentence · ` +
-                  `${Math.round(column.dialogueShare * 100)}% dialogue`}
+                  `${Math.round(column.dialogueShare * 100)}% dialogue` +
+                  (scores ? ` · tension, as read: ${scores[columnIndex]} of ${TENSION_TOP_SCORE}` : '')}
               >
                 <span className="pm-lb-col-rhythm"><i style={{ height: `${rhythm}px` }} /></span>
                 <span className="pm-lb-col-dialogue"><i style={{ opacity: dialogue }} /></span>
-                <span className="pm-lb-col-tension" />
-                <span className={`pm-lb-col-focus${lit ? ' is-lit' : ''}`} />
+                <span className={`pm-lb-col-tension${scores ? ' is-read' : ''}`}>
+                  {scores && <i style={{ height: `${tension}px` }} />}
+                </span>
+                <span className={`pm-lb-col-focus${lit ? ` is-lit ${focusTone}` : ''}`} />
                 <span className="pm-lb-col-index">
                   {columnIndex === 0 || (columnIndex + 1) % step === 0 ? column.from : ''}
                 </span>
@@ -127,11 +150,6 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
           })}
         </div>
       </div>
-      <p className="pm-lb-ribbon-note">
-        {tensionLensOn
-          ? 'Tension is a reading; its lane fills when the chapter is read.'
-          : 'The tension lens is off.'}
-      </p>
     </div>
   );
 };

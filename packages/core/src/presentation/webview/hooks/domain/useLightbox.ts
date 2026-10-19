@@ -1,19 +1,34 @@
 /**
- * useLightbox — the Lightbox domain hook (ADR 2026-10-19 D10, D12), mirroring
- * the host's LightboxHandler.
+ * useLightbox — the Lightbox domain hook (ADR 2026-10-19 D6, D9, D10, D12),
+ * mirroring the host's LightboxHandler and LightboxReadingHandler.
  *
  * It owns the `LIGHTBOX_*` transport: asks for the latest board on mount,
- * receives boards and refusals, and posts the source actions (choose a file,
- * re-read it). The board is host truth and is never persisted here (D12);
- * webview state holds only UI preferences: the tile filter, the pinned item,
- * and which lenses are off.
+ * receives boards, refusals, group results, run progress, the estimate and
+ * the context list, and posts the source, reading and context actions. The
+ * board is host truth and is never persisted here (D12); a group result
+ * replaces its group in the board it names. Webview state holds only UI
+ * preferences: the tile filter, the pinned item, and which lenses are off.
+ *
+ * The lens toggles reach the host on mount, on every toggle and whenever the
+ * board changes; `requestEstimate` re-sends them when the assistant model or
+ * its catalog changes. The host answers each with the context list and a
+ * fresh estimate.
  */
 
 import * as React from 'react';
 import {
+  LightboxActiveRun,
   LightboxBoard,
   LightboxBoardMessage,
+  LightboxContextFile,
+  LightboxContextFilesMessage,
+  LightboxGroupResultMessage,
   LightboxLensId,
+  LightboxRunEstimate,
+  LightboxRunEstimateMessage,
+  LightboxRunProgress,
+  LightboxRunProgressMessage,
+  LightboxRunScope,
   LightboxSourceRefusal,
   LightboxSourceRefusedMessage,
   MessageType
@@ -22,11 +37,19 @@ import { isLightboxLensId } from '@shared/constants/lightbox';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
 import { usePersistedState } from '@hooks/usePersistence';
 import { LightboxItemRef, parseLightboxItemRef } from '@hooks/domain/lightbox/lightboxItems';
+import { mergeLightboxGroupResult } from '@hooks/domain/lightbox/lightboxReadings';
 
 /** Which tiles the board shows. */
 export type LightboxFilter = 'all' | 'measured' | 'read';
 
 const FILTERS: readonly LightboxFilter[] = ['all', 'measured', 'read'];
+
+export interface LightboxContextState {
+  files: LightboxContextFile[];
+  totalWords: number;
+  ceilingWords: number;
+  notice: string | null;
+}
 
 export interface LightboxState {
   /** `undefined` until the host first answers; `null` when nothing is boarded yet. */
@@ -37,11 +60,24 @@ export interface LightboxState {
   filter: LightboxFilter;
   selected: LightboxItemRef | null;
   lensesOff: readonly LightboxLensId[];
+  /** `undefined` until the host estimates; `null` with no board. */
+  estimate: LightboxRunEstimate | null | undefined;
+  /** The board's run in flight, as the host last reported it with the estimate. */
+  activeRun: LightboxActiveRun | null;
+  /** The latest progress of a run (or a refusal). */
+  progress: LightboxRunProgress | null;
+  /** A press was sent and the host has not answered it yet. */
+  awaitingStart: boolean;
+  context: LightboxContextState;
 }
 
 export interface LightboxActions {
   handleBoard: (message: LightboxBoardMessage) => void;
   handleSourceRefused: (message: LightboxSourceRefusedMessage) => void;
+  handleRunEstimate: (message: LightboxRunEstimateMessage) => void;
+  handleRunProgress: (message: LightboxRunProgressMessage) => void;
+  handleGroupResult: (message: LightboxGroupResultMessage) => void;
+  handleContextFiles: (message: LightboxContextFilesMessage) => void;
   requestBoard: () => void;
   pickSourceFile: () => void;
   refreshSource: () => void;
@@ -49,6 +85,12 @@ export interface LightboxActions {
   setFilter: (filter: LightboxFilter) => void;
   selectItem: (ref: LightboxItemRef | null) => void;
   toggleLens: (lens: LightboxLensId) => void;
+  /** Re-send the lens toggles so the host re-estimates (a model or catalog change). */
+  requestEstimate: () => void;
+  run: (scope: LightboxRunScope) => void;
+  cancelRun: (token: string) => void;
+  addContextFile: () => void;
+  removeContextFile: (id: string) => void;
 }
 
 /** UI preferences only. The board is the host's (D12). */
@@ -63,6 +105,13 @@ export type UseLightboxReturn = LightboxState & LightboxActions & {
 };
 
 const SOURCE = 'webview.lightbox';
+const NO_CONTEXT: LightboxContextState = { files: [], totalWords: 0, ceilingWords: 0, notice: null };
+
+type ZeroPayloadType =
+  | MessageType.LIGHTBOX_REQUEST_BOARD
+  | MessageType.LIGHTBOX_PICK_SOURCE_FILE
+  | MessageType.LIGHTBOX_REFRESH_SOURCE
+  | MessageType.LIGHTBOX_ADD_CONTEXT_FILES;
 
 export function useLightbox(): UseLightboxReturn {
   const vscode = useVSCodeApi();
@@ -82,18 +131,23 @@ export function useLightbox(): UseLightboxReturn {
       ? [...new Set(persisted.lightboxLensesOff.filter(isLightboxLensId))]
       : []
   );
+  const [estimate, setEstimate] = React.useState<LightboxRunEstimate | null | undefined>(undefined);
+  const [activeRun, setActiveRun] = React.useState<LightboxActiveRun | null>(null);
+  const [progress, setProgress] = React.useState<LightboxRunProgress | null>(null);
+  const [awaitingStart, setAwaitingStart] = React.useState(false);
+  const [context, setContext] = React.useState<LightboxContextState>(NO_CONTEXT);
 
-  const post = React.useCallback(
-    (type: MessageType.LIGHTBOX_REQUEST_BOARD | MessageType.LIGHTBOX_PICK_SOURCE_FILE | MessageType.LIGHTBOX_REFRESH_SOURCE) => {
-      vscode.postMessage({ type, source: SOURCE, payload: {}, timestamp: Date.now() });
-    },
-    [vscode]
-  );
+  const post = React.useCallback((type: ZeroPayloadType) => {
+    vscode.postMessage({ type, source: SOURCE, payload: {}, timestamp: Date.now() });
+  }, [vscode]);
 
   const handleBoard = React.useCallback((message: LightboxBoardMessage) => {
     const next = message.payload?.board ?? null;
     setBoard(next);
     setRereading(false);
+    // A board answers a press too: a run's board shows its running groups,
+    // and one that arrives after a missed refusal ends the wait.
+    setAwaitingStart(false);
     if (next) {
       setRefusal(null);
     }
@@ -102,6 +156,44 @@ export function useLightbox(): UseLightboxReturn {
   const handleSourceRefused = React.useCallback((message: LightboxSourceRefusedMessage) => {
     setRefusal(message.payload?.refusal ?? null);
     setRereading(false);
+  }, []);
+
+  const handleRunEstimate = React.useCallback((message: LightboxRunEstimateMessage) => {
+    setEstimate(message.payload?.estimate ?? null);
+    setActiveRun(message.payload?.activeRun ?? null);
+  }, []);
+
+  const handleRunProgress = React.useCallback((message: LightboxRunProgressMessage) => {
+    const next = message.payload;
+    if (!next) {
+      return;
+    }
+    setProgress(next);
+    setAwaitingStart(false);
+    if (next.phase === 'started' && next.token) {
+      setActiveRun({ boardId: next.boardId, token: next.token, groups: next.groups, ...(next.lens ? { lens: next.lens } : {}) });
+    } else if (next.phase === 'finished' || next.phase === 'cancelled') {
+      setActiveRun(null);
+    }
+  }, []);
+
+  const handleGroupResult = React.useCallback((message: LightboxGroupResultMessage) => {
+    const payload = message.payload;
+    if (payload) {
+      setBoard((current) => (current ? mergeLightboxGroupResult(current, payload) : current));
+    }
+  }, []);
+
+  const handleContextFiles = React.useCallback((message: LightboxContextFilesMessage) => {
+    const payload = message.payload;
+    if (payload) {
+      setContext({
+        files: payload.files,
+        totalWords: payload.totalWords,
+        ceilingWords: payload.ceilingWords,
+        notice: payload.notice ?? null
+      });
+    }
   }, []);
 
   const requestBoard = React.useCallback(() => post(MessageType.LIGHTBOX_REQUEST_BOARD), [post]);
@@ -119,10 +211,47 @@ export function useLightbox(): UseLightboxReturn {
     );
   }, []);
 
+  const lensesKey = lensesOff.join(',');
+  const requestEstimate = React.useCallback(() => {
+    vscode.postMessage({
+      type: MessageType.LIGHTBOX_SET_LENSES,
+      source: SOURCE,
+      payload: { lensesOff: lensesKey ? (lensesKey.split(',') as LightboxLensId[]) : [] },
+      timestamp: Date.now()
+    });
+  }, [lensesKey, vscode]);
+
+  const boardId = board?.boardId;
+  const run = React.useCallback((scope: LightboxRunScope) => {
+    if (!boardId) {
+      return;
+    }
+    setAwaitingStart(true);
+    vscode.postMessage({ type: MessageType.LIGHTBOX_RUN, source: SOURCE, payload: { boardId, scope }, timestamp: Date.now() });
+  }, [boardId, vscode]);
+
+  const cancelRun = React.useCallback((token: string) => {
+    if (!boardId) {
+      return;
+    }
+    vscode.postMessage({ type: MessageType.LIGHTBOX_CANCEL_RUN, source: SOURCE, payload: { boardId, token }, timestamp: Date.now() });
+  }, [boardId, vscode]);
+
+  const addContextFile = React.useCallback(() => post(MessageType.LIGHTBOX_ADD_CONTEXT_FILES), [post]);
+  const removeContextFile = React.useCallback((id: string) => {
+    vscode.postMessage({ type: MessageType.LIGHTBOX_REMOVE_CONTEXT_FILE, source: SOURCE, payload: { id }, timestamp: Date.now() });
+  }, [vscode]);
+
   // The board is host truth: ask for it once on mount (a reveal re-asks host-side).
   React.useEffect(() => {
     requestBoard();
   }, [requestBoard]);
+
+  // The lens toggles, and with them the estimate, follow every toggle and every new board.
+  const syncLensesWithHost = React.useCallback(() => requestEstimate(), [requestEstimate]);
+  React.useEffect(() => {
+    syncLensesWithHost();
+  }, [syncLensesWithHost, boardId]);
 
   const persistedState = React.useMemo<LightboxPersistence>(
     () => ({
@@ -140,8 +269,17 @@ export function useLightbox(): UseLightboxReturn {
     filter,
     selected,
     lensesOff,
+    estimate,
+    activeRun,
+    progress,
+    awaitingStart,
+    context,
     handleBoard,
     handleSourceRefused,
+    handleRunEstimate,
+    handleRunProgress,
+    handleGroupResult,
+    handleContextFiles,
     requestBoard,
     pickSourceFile,
     refreshSource,
@@ -149,6 +287,11 @@ export function useLightbox(): UseLightboxReturn {
     setFilter,
     selectItem,
     toggleLens,
+    requestEstimate,
+    run,
+    cancelRun,
+    addContextFile,
+    removeContextFile,
     persistedState
   };
 }

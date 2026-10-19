@@ -7,7 +7,10 @@
  * the main column, and the inspector in the aside. Its own state is the
  * `useLightbox` domain hook (the board is host truth; only UI preferences
  * persist) plus two presentation controllers: focus (what the ribbon
- * lights) and the inspector's view model.
+ * lights) and the inspector's view model. The run line's view model is
+ * derived here from the board, the host's estimate and the run's progress
+ * (Slice 2B), and the estimate is asked for again when the assistant model
+ * or its catalog changes.
  *
  * Its stylesheets are imported here, the root's single composition point,
  * after the frame's (index.tsx). The list is pinned by workshopStyles.test.ts.
@@ -18,6 +21,7 @@ import './styles/lightbox/ribbon.css';
 import './styles/lightbox/tiles.css';
 import './styles/lightbox/rail.css';
 import './styles/lightbox/inspector.css';
+import './styles/lightbox/readings.css';
 import * as React from 'react';
 import { MessageType } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';
@@ -26,12 +30,18 @@ import { ProviderPausedBanner } from '@components/fulltab/ProviderPausedBanner';
 import { Icon } from '@components/shared/Icon';
 import { LightboxSourcePanel } from '@components/lightbox/LightboxSourcePanel';
 import { LightboxLensesPanel } from '@components/lightbox/LightboxLensesPanel';
+import { LightboxContextList } from '@components/lightbox/LightboxContextList';
 import { LightboxBoardMain } from '@components/lightbox/LightboxBoardMain';
 import { LightboxInspector } from '@components/lightbox/LightboxInspector';
 import { buildFullTabChromeRoutes, useFullTabChrome } from '@hooks/fulltab/useFullTabChrome';
 import { useLightbox } from '@hooks/domain/useLightbox';
 import { useLightboxFocus } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { useLightboxInspector } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
+import {
+  buildLightboxRunLine,
+  lightboxCallsNote,
+  lightboxRereadNote
+} from '@hooks/domain/lightbox/lightboxRunLine';
 import { MessageHandlerMap, useMessageRouter } from '@hooks/useMessageRouter';
 import { usePersistence } from '@hooks/usePersistence';
 import { useVSCodeApi } from '@hooks/useVSCodeApi';
@@ -49,11 +59,62 @@ export const LightboxApp: React.FC = () => {
     () => ({
       ...buildFullTabChromeRoutes(chrome),
       [MessageType.LIGHTBOX_BOARD]: lightbox.handleBoard,
-      [MessageType.LIGHTBOX_SOURCE_REFUSED]: lightbox.handleSourceRefused
+      [MessageType.LIGHTBOX_SOURCE_REFUSED]: lightbox.handleSourceRefused,
+      [MessageType.LIGHTBOX_RUN_ESTIMATE]: lightbox.handleRunEstimate,
+      [MessageType.LIGHTBOX_RUN_PROGRESS]: lightbox.handleRunProgress,
+      [MessageType.LIGHTBOX_GROUP_RESULT]: lightbox.handleGroupResult,
+      [MessageType.LIGHTBOX_CONTEXT_FILES]: lightbox.handleContextFiles
     }),
-    [chrome, lightbox.handleBoard, lightbox.handleSourceRefused]
+    [
+      chrome,
+      lightbox.handleBoard,
+      lightbox.handleSourceRefused,
+      lightbox.handleRunEstimate,
+      lightbox.handleRunProgress,
+      lightbox.handleGroupResult,
+      lightbox.handleContextFiles
+    ]
   );
   useMessageRouter(routes);
+
+  // The estimate depends on the assistant model's window and prices: ask again when they change.
+  const assistantModel = chrome.modelsSettings.modelSelections.assistant;
+  const assistantWindow = chrome.modelsSettings.modelOptions.find((option) => option.id === assistantModel)?.contextLength;
+  const { requestEstimate } = lightbox;
+  const syncEstimateWithModel = React.useCallback(() => requestEstimate(), [requestEstimate]);
+  const modelKey = `${assistantModel ?? ''}:${assistantWindow ?? ''}`;
+  const firstModelKey = React.useRef(modelKey);
+  React.useEffect(() => {
+    if (firstModelKey.current !== modelKey) {
+      firstModelKey.current = modelKey;
+      syncEstimateWithModel();
+    }
+  }, [modelKey, syncEstimateWithModel]);
+
+  const runLine = React.useMemo(
+    () => (board
+      ? buildLightboxRunLine({
+          board,
+          estimate: lightbox.estimate,
+          progress: lightbox.progress,
+          activeRun: lightbox.activeRun,
+          awaitingStart: lightbox.awaitingStart,
+          providerPaused: chrome.providerPaused
+        })
+      : null),
+    [board, chrome.providerPaused, lightbox.activeRun, lightbox.awaitingStart, lightbox.estimate, lightbox.progress]
+  );
+  const running = runLine?.status === 'running';
+  const { estimate, run } = lightbox;
+  const reread = React.useMemo(() => ({
+    note: (lens: Parameters<typeof lightboxRereadNote>[1]) => lightboxRereadNote(estimate, lens),
+    reason: chrome.providerPaused
+      ? 'Add an OpenRouter API key in Settings to read.'
+      : running
+        ? 'A reading is running. Stop it, or wait for it to finish.'
+        : undefined,
+    onReread: (lens: Parameters<typeof lightboxRereadNote>[1]) => run({ mode: 'lens', lens })
+  }), [chrome.providerPaused, estimate, run, running]);
 
   usePersistence({
     ...lightbox.persistedState,
@@ -116,7 +177,16 @@ export const LightboxApp: React.FC = () => {
               onPickFile={lightbox.pickSourceFile}
               onRefresh={lightbox.refreshSource}
             />
-            <LightboxLensesPanel lensesOff={lightbox.lensesOff} onToggle={lightbox.toggleLens} />
+            <LightboxContextList
+              context={lightbox.context}
+              onAdd={lightbox.addContextFile}
+              onRemove={lightbox.removeContextFile}
+            />
+            <LightboxLensesPanel
+              lensesOff={lightbox.lensesOff}
+              costNote={lightboxCallsNote(lightbox.estimate?.groups ?? [])}
+              onToggle={lightbox.toggleLens}
+            />
           </>
         )
       }}
@@ -129,9 +199,12 @@ export const LightboxApp: React.FC = () => {
             filter={lightbox.filter}
             lensesOff={lightbox.lensesOff}
             focus={focus}
+            runLine={runLine}
             onFilter={lightbox.setFilter}
             onPickFile={lightbox.pickSourceFile}
             onDismissRefusal={lightbox.dismissRefusal}
+            onRun={lightbox.run}
+            onStop={lightbox.cancelRun}
           />
         )
       }}
@@ -144,6 +217,7 @@ export const LightboxApp: React.FC = () => {
             onClear={inspector.clear}
             onPinParagraph={inspector.pinParagraph}
             bind={focus.bind}
+            reread={reread}
           />
         )
       }}

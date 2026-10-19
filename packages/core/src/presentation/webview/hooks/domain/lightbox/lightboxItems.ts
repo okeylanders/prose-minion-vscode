@@ -7,15 +7,25 @@
  * survives a webview reload (it is a UI preference, D12) and still resolves
  * after the board is rebuilt from changed text, or quietly resolves to
  * nothing if the word is gone. Every count shown here was computed by the
- * host; the lanes only select paragraphs from the host's metrics.
+ * host; the lanes only select paragraphs from the host's metrics. A reading
+ * tile is named by its host-minted id, which is unique per run, so a pin
+ * from an earlier reading resolves to nothing rather than to a newer one.
  */
 
 import type {
   LightboxBoard,
+  LightboxCountedSupport,
   LightboxCountedTerm,
   LightboxParagraphMetric,
+  LightboxReadingTile,
   LightboxRegister
 } from '@messages';
+import {
+  LIGHTBOX_TILE_KIND_LABELS,
+  LIGHTBOX_TILE_REGISTER,
+  lightboxLensLabel
+} from '@shared/constants/lightbox';
+import { findLightboxTile } from '@hooks/domain/lightbox/lightboxReadings';
 
 export type LightboxPartOfSpeech = 'nouns' | 'verbs' | 'adjectives' | 'adverbs';
 
@@ -27,7 +37,8 @@ export type LightboxItemRef =
   | { kind: 'pos'; pos: LightboxPartOfSpeech; word: string }
   | { kind: 'phrase'; phrase: string }
   | { kind: 'lane'; lane: LightboxMeasuredLane }
-  | { kind: 'paragraphs'; from: number; to: number };
+  | { kind: 'paragraphs'; from: number; to: number }
+  | { kind: 'reading'; tileId: string };
 
 export interface LightboxResolvedItem {
   ref: LightboxItemRef;
@@ -40,6 +51,8 @@ export interface LightboxResolvedItem {
   paragraphs: number[];
   /** Counted-by-code facts, e.g. "basement ×15". */
   support: string[];
+  /** The reading behind a read or counted-read item. */
+  reading?: LightboxReadingTile;
 }
 
 /**
@@ -70,6 +83,8 @@ export function lightboxItemKey(ref: LightboxItemRef): string {
       return `lane:${ref.lane}`;
     case 'paragraphs':
       return `paragraphs:${ref.from}-${ref.to}`;
+    case 'reading':
+      return `reading:${ref.tileId}`;
   }
 }
 
@@ -111,6 +126,10 @@ export function parseLightboxItemRef(value: unknown): LightboxItemRef | null {
       const to = index('to');
       return from !== undefined && to !== undefined && from <= to ? { kind: 'paragraphs', from, to } : null;
     }
+    case 'reading': {
+      const tileId = text('tileId');
+      return tileId ? { kind: 'reading', tileId } : null;
+    }
     default:
       return null;
   }
@@ -139,6 +158,10 @@ export function resolveLightboxItem(
       return ref.lane === 'rhythm' ? rhythmLane(board) : dialogueLane(board);
     case 'paragraphs':
       return paragraphsItem(board, ref);
+    case 'reading': {
+      const tile = findLightboxTile(board, ref.tileId);
+      return tile ? readingItem(ref, tile) : undefined;
+    }
   }
 }
 
@@ -155,7 +178,32 @@ export function lightboxItemsTouching(board: LightboxBoard, index: number): Ligh
       touching.push(termItem({ kind: 'phrase', phrase: term.term }, term, 'Repeated phrase', `“${term.term}”`));
     }
   }
+  for (const group of board.readings) {
+    for (const tile of group.tiles) {
+      if (tile.paragraphs.includes(index)) {
+        touching.push(readingItem({ kind: 'reading', tileId: tile.id }, tile));
+      }
+    }
+  }
   return touching;
+}
+
+function readingItem(ref: LightboxItemRef, tile: LightboxReadingTile): LightboxResolvedItem {
+  return {
+    ref,
+    register: LIGHTBOX_TILE_REGISTER[tile.kind],
+    where: `${lightboxLensLabel(tile.lens)} · ${LIGHTBOX_TILE_KIND_LABELS[tile.kind]}`,
+    title: tile.title,
+    claim: tile.claim,
+    paragraphs: [...tile.paragraphs],
+    support: tile.support.map(supportLabel),
+    reading: tile
+  };
+}
+
+/** "rabbit ×4", or a named term the chapter does not hold. */
+export function supportLabel(term: LightboxCountedSupport): string {
+  return term.count > 0 ? `${term.term} ×${term.count}` : `${term.term} · not in the chapter`;
 }
 
 function termItem(
