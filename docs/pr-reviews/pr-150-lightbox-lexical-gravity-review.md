@@ -1,30 +1,111 @@
 # PR Review — Lightbox Slice 3: Lexical Gravity, Palette and Build-as-lens Handoff
 
-**Author:** okeylanders · **PR:** [#150](https://github.com/okeylanders/prose-minion-vscode/pull/150) (open, unmerged at review)
-**Branches:** `epic/lightbox-slice-3-gravity` → `epic/lightbox-slice-2b-readings` (stacked)
-**Reviewed implementation head:** `4150c8c10d74a14fb74e185595af2af9e0b0e586`
-**Current base head:** `b5350a1440c182a891bb1f149a8decfb50ba7862`
-**Verified merge-base:** `bf8f1ca2502441133216ca5013480da9aa37f9cf`
-**Slice 3 scope:** 126 files · +6,108 / −189 · 11 commits, measured from the merge-base
-**Reviewed:** 2026-10-19 · **Reviewer:** Astra
-**Mode:** independent source/spec review; production codec, service and handler probes; rebuilt-production-bundle DOM witnesses; supplied-image inspection; Workshop lifecycle parity; full deterministic verification
+**Author:** okeylanders · **PR:** [#150](https://github.com/okeylanders/prose-minion-vscode/pull/150) (open, unmerged at re-review)
+**Branches:** `epic/lightbox-slice-3-gravity` → `epic/lightbox`
+**Re-reviewed implementation head:** `524a961c8d87749fdbe10dfefecf7e3f24a67fd8`
+**Verified current base / merge-base:** `c6d4411076b4a3acbf4b555765ac77d8971f70ca`
+**Current scope:** 149 files · +8,726 / −268 · 23 commits from the merge-base, including the existing review and author response
+**Initial implementation head:** `4150c8c10d74a14fb74e185595af2af9e0b0e586`; initial scope 126 files · +6,108 / −189 · 11 commits from `bf8f1ca`
+**Reviewed and re-reviewed:** 2026-10-19 · **Reviewer:** Astra
+**Mode:** independent source/spec and merge-resolution review; production service/handler/engine probes with synthetic transport; rebuilt-production-bundle DOM witnesses; supplied-image inspection; Workshop parity; full deterministic verification
 
 ## Resolution ledger
 
-Status legend: **Open** = recommended action · **Deferred** = explicitly accepted follow-up · **Addressed** = independently verified fix · **N/A** = no action. An author-proposed deferral is not acceptance on the writer's behalf.
+Status legend: **Open** = recommended action · **Partially addressed** = original cases fixed but a reproduced residual remains · **Addressed** = independently verified fix · **Deferred** = explicitly accepted follow-up. Author-proposed deferrals are not acceptance on the writer's behalf.
 
-| ID | Sev | Finding | Status |
+| ID | Sev | Finding | Status at `524a961c` |
 | --- | --- | --- | --- |
-| F-01 | Medium / P2 | A Telescope-seeded Build sheet can install Photography before any build or explicit lens selection | **Open** |
-| F-02 | Medium / P2 | An incoming seed opens over an unsaved text sheet; one Escape discards both | **Open** |
-| F-03 | Medium / P2 | Pending seeds bypass the visibility gate and survive disposal of their recipient panel | **Open** |
-| F-04 | Medium / P2 | Collision cards assert a shared sentence without selecting and validating that sentence | **Open** |
-| F-05 | Medium / P2 | Stale carry retains collisions and palette claims after their required support disappears | **Open** |
-| F-06 | Medium / P2 | Stale tension scores are assigned to changed paragraphs, while headline and tension omit local stale labels | **Open** |
+| F-01 | Medium / P2 | A Telescope-seeded Build sheet can install Photography before any build or explicit lens selection | **Addressed** |
+| F-02 | Medium / P2 | An incoming seed opens over an unsaved text sheet; one Escape discards both | **Addressed**; separate browser-only limitation is F-07 |
+| F-03 | Medium / P2 | Handoff lifecycle ownership: an already-dispatched seed can still open after timeout/replacement | **Partially addressed — Open residual** |
+| F-04 | Medium / P2 | Collision cards assert a shared sentence without selecting and validating that sentence | **Addressed** |
+| F-05 | Medium / P2 | Stale carry retains collisions and palette claims after their required support disappears | **Addressed** |
+| F-06 | Medium / P2 | Stale tension scores are assigned to changed paragraphs, while headline and tension omit local stale labels | **Addressed** |
+| F-07 | Low / P3 · nonblocking | The header Model Browser is outside the overlay stack; a seed overlaps it and one Escape closes both | **Open** |
 
-**Verdict: Request changes.** The six Slice 3 findings affect actual installed state, an unsaved writer draft, handoff ownership and evidence honesty. Green deterministic checks do not resolve them. This report authorizes neither merge nor progression to a later slice.
+**Current verdict: Request changes.** Five original findings are independently addressed. F-03 still permits an expired or replaced in-flight seed to open the wrong Build subject and block its replacement. No automatic build, installation or paid call is demonstrated by that residual. F-07 is a bounded, nonblocking modal-coordination issue. Green checks do not resolve F-03; this report is not merge or later-slice authorization.
 
-**Stacked prerequisite remains pending.** PR #149's re-review still has open P2 F-03: while `SettingsStore.update` is pending, an optimistic model change can accept the old model's estimate and send three old-model calls under the newly selected model label. Once the setting applies, the stale press key refuses safely. PR #149 F-09 is the separate, nonblocking compatibility-mark Unicode quote false-negative. Neither is reclassified as a new Slice 3 finding here. The latest PR #150 body explicitly plans to merge that correction and later retarget to `epic/lightbox`; that correction is not in this reviewed head. The base's `b5350a1` report-only commit is also not an ancestor of this branch, so a two-dot base/head comparison would misleadingly include changes to the PR #149 report. This review uses the actual merge-base.
+**PR #149 integration is verified.** Its completed corrections are included through merge `567506a0`, whose second parent is `c6d4411`; that is now this PR's actual base and merge-base. The model-intent, Unicode and terminal-run protections survive the conflict resolutions and independent regression probes below. The earlier pending-prerequisite statement is superseded. The PR body's opening stacked/pending-149 paragraph and old verification figures have not been refreshed, but the repository history and appended author response establish the actual integration. Two inherited nonblocking accounting notes are now recorded in [exceptional-path accounting debt](../../.todo/tech-debt/2026-10-19-lightbox-exceptional-path-accounting.md): setup failure still displays three planned calls despite zero sends; a synthetic reply-check failure drops board-only usage while engine accounting remains intact.
+
+## Re-review — F-03 remains open after dispatch
+
+**Current locations:** [WorkshopPanelProvider.ts:276–303](https://github.com/okeylanders/prose-minion-vscode/blob/524a961c8d87749fdbe10dfefecf7e3f24a67fd8/apps/vscode-extension/src/application/providers/WorkshopPanelProvider.ts#L276-L303), settlement at [306–323](https://github.com/okeylanders/prose-minion-vscode/blob/524a961c8d87749fdbe10dfefecf7e3f24a67fd8/apps/vscode-extension/src/application/providers/WorkshopPanelProvider.ts#L306-L323), receiver opening at [useWorkshopWidgetOpening.ts:174–191](https://github.com/okeylanders/prose-minion-vscode/blob/524a961c8d87749fdbe10dfefecf7e3f24a67fd8/packages/core/src/presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts#L174-L191).
+
+The provider now correctly gates delivery on the owning panel being current, listening and visible. It cancels an **unsent** seed on timeout, replacement or disposal, ignores old panel callbacks, and waits for a matching webview answer before reporting success. Those original witnesses pass.
+
+The remaining boundary is **after dispatch but before the receiver processes the message**. `settleBuildSeed` forgets only the provider's pending record. The already-posted seed has no expiry/current-delivery check at the receiver. Ignoring its late acknowledgement does not prevent its sheet from opening.
+
+**Independent integrated witness:** Real `WorkshopPanelProvider`, real `WorkshopLexicalGravityHandler` and the exact rebuilt Workshop bundle, with a small handler-routing shim, mocked VS Code panel and controlled asynchronous `webview.postMessage` delivery. No malformed or spoofed acknowledgement is used.
+
+1. A ready, visible Workshop accepts seed A (Telescope). The real handler posts its seed message; hold only delivery of that message to the webview.
+2. Advance the provider's normal 20-second deadline. The handoff promise settles `{ opened: false, reason: 'timeout' }`.
+3. Release the already-sent message. The production receiver opens Telescope and posts `opened: true`; the provider ignores this late answer because its pending record is gone.
+
+A second witness needs no timeout:
+
+1. Dispatch A and hold its webview delivery.
+2. Accept a newer handoff B. The provider settles A as `replaced` and dispatches B.
+3. Deliver the queued messages in their original FIFO order, A then B.
+4. Cancelled A opens Telescope. B encounters that sheet, answers `busy`, and the newer handoff fails. The visible subject is A's, not B's.
+
+These are delayed-renderer/message-processing interleavings; a later handoff can come from a reopened sender while the old receiver message is still in flight. The test does not bypass the sender's same-tab one-at-a-time guard. It also does not claim a measured frequency or reproduce native VS Code suspension: delay is controlled at the supported asynchronous transport boundary. The consequence is an unexpected stale/wrong Build draft and a refused newer request. F-01's correction still leaves Preview/Install unavailable until an explicit lens choice, so this is **not** an automatic installation or spend path.
+
+**Requested change:** Extend delivery ownership/expiry to the receiver's decision to open, including already-dispatched messages. Use a current-delivery claim/acknowledgement protocol or another mechanism that validates a seed before opening it; merely discarding a late answer is insufficient. Preserve any sheet the writer has already begun editing. Add post-dispatch timeout, post-dispatch replacement and delayed FIFO delivery tests across provider → handler → receiver, alongside the passing unsent-queue/disposal cases.
+
+## Re-review — F-07: Include the header Model Browser in overlay coordination
+
+**Locations:** The new guard at [useWorkshopWidgetOpening.ts:178–191](https://github.com/okeylanders/prose-minion-vscode/blob/524a961c8d87749fdbe10dfefecf7e3f24a67fd8/packages/core/src/presentation/webview/hooks/domain/workshop/controllers/useWorkshopWidgetOpening.ts#L178-L191) depends on `isAnyOverlayOpen()`. [ModelBrowserModal.tsx:173–180](https://github.com/okeylanders/prose-minion-vscode/blob/524a961c8d87749fdbe10dfefecf7e3f24a67fd8/packages/core/src/presentation/webview/components/shared/ModelBrowserModal.tsx#L173-L180) uses its own Escape listener instead of registering with that stack.
+
+**Production-root and rebuilt-bundle reproduction:** Open Workshop's header Assistant Model browser, enter a search, then receive a valid seed. The seed answers `opened: true`, and two dialogs coexist. One Escape dismisses both. Reopening the browser retains its search, and no model selection or writer text is lost. The widget's own nested model browser remains protected by its existing `modelBrowserOpen` guard: first Escape closes the browser, second closes the widget sheet.
+
+This is **P3/nonblocking**, not the original P2 writing-draft loss. Register the shared model browser with the same ownership mechanism, or explicitly include it in seed admission and dismissal coordination. Verify header and nested browser paths, selected-model routing, cleanup and focus restoration. Do not infer that a global stack automatically covers overlays that never use it.
+
+## Re-review closures and retained boundaries
+
+- **F-01 addressed (`f89991f`).** A seeded opening starts with no lens at mount and reopen. No Apply/build/preview is emitted automatically; Preview and Install are disabled. Explicitly choosing Music installs Music through the real directive/session boundary. Merely selecting an unsaved generated take is insufficient; adding it supplies the installable choice. An already-installed Photography directive remains unchanged when the new-install route is refused. Banner wording now separates Build, Add and Install.
+- **F-02 addressed (`fd8e616`).** The original Add text witness now answers `busy`, keeps the typed draft as the sole dialog and never opens a deferred seed later. Context/session editors and widgets/tools browsers refuse similarly. Two registered shells dismiss only the top shell; backdrop/unmount cleanup permits a later seed. F-07 documents the remaining unregistered browser surface without retaining the original data-loss severity.
+- **F-03 partially addressed (`3df7dcc`).** Boot → hide → first message → reveal delivers once; close/reopen does not inherit an unsent seed; old panel messages/view events/disposals cannot affect the current delivery. Matching answers, pre-dispatch timeout/replacement and provider disposal settle correctly. The post-dispatch cases above remain open.
+- **F-04 addressed (`966f31f`).** The shared gate selects a sentence witness using the repository's documented prose-stats sentence rule. Cross-sentence terms are withheld, and a later supporting quote is selected/rendered instead of a first single-field quote. This is the existing deterministic punctuation rule, not a claim of complete linguistic sentence parsing.
+- **F-05 addressed (`5af78ec`, `249bf5e`).** Fresh assembly and carry use the same kind-specific gate. Carry processes fields before collisions, even when stored tile order is reversed. The deleted collision witness and zero-support palette cases now withhold with host-owned reasons. A surviving alternate witness relocates; removing it on a second revision withholds the collision while both fields remain. Withheld counts and the original stale hash remain coherent.
+- **F-06 addressed (`ca66b1b`, merge adaptation).** The original three-paragraph swap yields `[9, 1, 1]`; peak evidence and score both move to ¶1. New/changed column text becomes `null`, while the headline, tension caption and lane disclose staleness. Tests through the merged runner cover 192 paragraphs bucketed into 96 pairs, pair reordering, an edited pair, subsequent sparse reordering and the 96→97 boundary. Conflicting old scores for duplicate text produce `null`. Identical text with agreeing scores can reuse that score, including an inserted duplicate: identity here is content-based rather than occurrence-based, a disclosed limitation rather than transfer between different text.
+
+**Merge resolution, not ancestry alone:** The remerge diff was inspected. `LightboxReadingHandler`, the quote verifier, failure categories and run contracts match `c6d4411`; the split runner retains its setup/check/listener failure settlement and adds column-key construction inside the guarded `readingTools`. `LightboxGroupReply` carries those keys into assembly. The root retains the wrapped `MODEL_DATA` route to both chrome and Lightbox alongside handoff routing; `useLightbox` retains selected/confirmed-model state and correlation beside handoff state.
+
+Independent retained integration probes confirm that a held settings save never enables an old-model press under the new label; identical confirmations and same-model repricing withdraw the estimate; failed saves and stale/mismatched confirmations remain safely unpressable. Explicit later presses run on the named confirmed model. Long Japanese/Han normalization runs complete, both verifier/counter setup exceptions settle without sends and allow an explicit retry, and reply-check/listener failures terminate without stranded Stop controls or unhandled rejection. PR #149's inherited accounting limitations remain separately recorded as noted above.
+
+Retained handoff boundary probes also confirm refusal after a source change, field removal or rereading during an asynchronous disk read; changed files, stale boards/fields, malformed/non-field requests, closed senders and duplicate requests are rejected. The host reverifies evidence, ignores injected request-side seed fields, recounts and orders terms, excludes absent/oversized terms, and enforces the 12-term and field/metaphor/source-label/subject bounds. These source-intent protections do not revoke an already-dispatched receiver message.
+
+## Re-review verification and visual provenance
+
+| Check at `524a961c` | Independent result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **367 suites / 5,237 tests / 2 snapshots passed** (169.649 seconds) |
+| Typechecks and production build, including bundle sentinels | **Passed**; three webpack size/performance warnings |
+| Full lint | **0 errors / 1,135 warnings**; normalized per-file/message/rule multiset unchanged from the initial review |
+| Focused gravity/stale repository checks | **12 suites / 156 tests passed**, included in full-suite count |
+| Independent gravity/carry/merged-column probes | **2 suites / 14 tests passed** |
+| Focused handoff/source/bounds probes | **8 suites / 50 tests passed**, including copied current regressions and explicit residual witnesses; overlapping coverage, not 50 new tests |
+| Workshop production-bundle probes | **4 UI scenarios and 2 integrated delayed-transport scenarios** passed their expected assertions, including the reproduced F-03/F-07 defects |
+| Retained PR #149 real-host boundaries | **178 assertions passed**: positives 21, ownership 46, close/reopen 6, model intent 14, long/setup 37, completion 54 |
+| Exact-bundle model/host integration | **72 assertions / 8 scenarios passed** |
+| Exact-bundle exceptional-run UI integration | **39 assertions / 3 scenarios passed**; zero unhandled rejections |
+| Lightbox evidence/inspector/handoff/stale DOM replay | **28 assertions passed** |
+| Workshop ordinary lifecycle parity | **9 checkpoints / 27 assertions passed** against the corrected PR #149 bundle |
+| Unicode/evidence retained probes | 12 closure groups, 13 boundary assertions, 20,000 Unicode stress cases with zero fold differences/misses/wrong spans, 5,768 whole-string and 25,000 fragment cases plus four span assertions, seven long-run variants all passed |
+| Diff whitespace and source ownership | **Passed**; no reviewer functional edits |
+| Exact implementation-head GitHub CI | Both `verify` runs **succeeded**; report-only head requires its own post-publication check |
+
+Local runtime remains Node 24.19.0 / npm 11.9.0; GitHub CI uses Node 18. Exact implementation-head evidence: [PR verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39343473547/job/118370364790) and [branch verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39343466386/job/118370342157). Additional controlled Workshop/provider probes reproduce F-03/F-07 while verifying the other handoff corrections; a passing defect witness records the defect, not expected-safe behavior.
+
+All **18 changed PNGs** were inspected at actual pixels, supplementing the three unchanged PNGs already inspected in the first review. The independently rebuilt bundle has SHA-256 `874136650feae93b4875dba5bb1ba9a95535b4b13c0ada27e4140fc50535034c`, matching the regenerated evidence. Screenshots visibly show the collision witness, Opened wording, stale lane chip, updated seed banner, no-lens state and disabled Install. Production DOM replay independently confirms headline/caption stale disclosure and that the changed ¶15 has no tension score.
+
+The builder/harness/state changes were reviewed. The evidence builder still synthesizes `{ opened: true }` after routing the seed; the separately replayed Workshop records its acknowledgement. Those screenshots therefore do **not** prove the asynchronous provider/receiver lifecycle addressed by F-03. The new delayed-transport witness exercises that boundary directly. Public-domain Alice and synthetic fixtures, stub provider responses and stub VS Code/theme remain the provenance; no live or billable inference occurred.
+
+No Chromium capture, pixel-stability or overflow claim was independently rerun. JSDOM is event/DOM evidence, not layout or native VS Code acceptance. The unchanged 500 px Workshop background clipping and narrow inspector label wrapping remain presentation limitations, not new blockers. Writer-output acceptance before Slice 5 and native/live-provider acceptance are still outstanding. The appended author response below is preserved verbatim.
+
+## Initial findings at `4150c8c`
+
+The original reproductions and verification below are retained as historical evidence. The current ledger and re-review above supersede their original open statuses. At that initial review PR #149's corrections were still pending and the branch was stacked on `epic/lightbox-slice-2b-readings`; those conditions no longer describe the current head.
 
 ## F-01 — Do not give a seeded Build an unrelated installable default
 
@@ -112,7 +193,7 @@ The rebuilt bundle also confirms the supplied stale board has eight stale lenses
 
 **Requested change:** Keep historical positional scores explicitly attached to their original source coordinates, or suppress their overlay on current paragraphs until re-read; length equality is not identity. Add stale disclosure to the headline, tension caption and lane, and an accurate explanation when an old lane cannot be projected. Test paragraph reordering and same-count replacement as well as insertion/deletion. The P2 impact is the false current paragraph association, not merely a missing cosmetic badge.
 
-## Scope decisions and retained guarantees
+## Initial scope decisions and retained guarantees
 
 The named Lightbox route, reference-only request, bounded host-built seed and Workshop-owned handler preserve the intended ports/adapters direction. No new VS Code import enters core. The new modules remain below the repository's 500-line guideline; the lightly touched existing oversized composition/UI files and duplicate field decoders are acknowledged debt, not additional blockers here.
 
@@ -127,7 +208,7 @@ Independent positive checks verified:
 
 The documented in-flight-reading loss on source changes remains a follow-up, not a new review finding. This report does not accept it on the writer's behalf. Semantic output quality, resistance to all prompt injection and writer usefulness cannot be established by mocked structured replies. The writer-output checkpoint before Slice 5 and native/live-provider acceptance remain outstanding.
 
-## Verification and evidence provenance
+## Initial verification and evidence provenance
 
 | Check | Independent result |
 | --- | --- |
