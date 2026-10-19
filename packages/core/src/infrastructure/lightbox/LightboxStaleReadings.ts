@@ -13,7 +13,8 @@
  *   them (the host moving its own verified span, never a model's claim); a
  *   quote whose words are gone is withheld as no longer in the chapter;
  * - recounts every counted term against the current text, so no count on the
- *   board describes a text that is gone;
+ *   board describes a text that is gone, and moves each tension score with
+ *   the paragraphs it was read on, leaving changed ones unscored (F-06);
  * - holds every tile to the rules a first reading meets, through the same
  *   `LightboxTileGates` fresh assembly uses (PR #150 F-05): a claim left with
  *   no quote, a motif in one paragraph, a collision with no sentence its
@@ -38,7 +39,7 @@ import type {
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
-import { recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { lightboxColumnKeys, recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 
 export interface LightboxCarryContext {
@@ -48,6 +49,8 @@ export interface LightboxCarryContext {
   paragraphs: readonly string[];
   /** The current board's measured average words per sentence, set beside the voice. */
   averageWordsPerSentence: number;
+  /** The current board's ribbon columns, so a tension score follows its paragraphs (F-06). */
+  columns?: ReadonlyArray<{ from: number; to: number }>;
 }
 
 /** Writer-facing: a group that was mid-run when the text changed. */
@@ -59,6 +62,7 @@ interface CarryTools {
   verifier: LightboxQuoteVerifier;
   counter: LightboxTermCounter;
   context: LightboxCarryContext;
+  columnKeys: string[];
 }
 
 /** Carry a replaced board's reading groups onto the board built from the changed text. */
@@ -69,7 +73,11 @@ export function carryLightboxReadings(
   const tools: CarryTools = {
     verifier: createLightboxQuoteVerifier(context.paragraphs),
     counter: createLightboxTermCounter(context.paragraphs),
-    context
+    context,
+    columnKeys: lightboxColumnKeys(
+      context.paragraphs,
+      context.columns ?? context.paragraphs.map((_text, index) => ({ from: index + 1, to: index + 1 }))
+    )
   };
   return readings.map((group) => carryGroup(group, tools));
 }
@@ -169,7 +177,8 @@ function carryTile(
   const withheldQuotes = [...lost, ...tile.withheldQuotes.map(withoutAddresses)];
   const recounted = recountLightboxTile(tile, tools.counter, {
     paragraphCount: tools.context.paragraphs.length,
-    averageWordsPerSentence: tools.context.averageWordsPerSentence
+    averageWordsPerSentence: tools.context.averageWordsPerSentence,
+    columnKeys: tools.columnKeys
   });
   // The same rules a first reading meets (PR #150 F-05).
   const verdict = lightboxTileGate(

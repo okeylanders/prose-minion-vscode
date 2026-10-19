@@ -10,6 +10,9 @@
  * it, as every other lens shows its own: a claim withheld by its title with
  * the reason and its quotes' reasons, a block withheld with its reason, or
  * the failure or stop of the call that should have read it.
+ *
+ * A headline read against an earlier version of the text says so beside it,
+ * as every reading frame does (D4; PR #150 F-06).
  */
 import * as React from 'react';
 import type { LightboxTileProps } from '@components/lightbox/LightboxTiles';
@@ -18,6 +21,9 @@ import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 import { LightboxWithheldBlocks, LightboxWithheldClaims } from '@components/lightbox/LightboxReadingFrame';
 
 export const LIGHTBOX_PLAIN_HEADLINE = 'One chapter, held up to the light.';
+
+/** Said beside a stale headline reading. */
+const STALE_HEADLINE = 'Read against an earlier version of this chapter. Its quotes were checked again against this one. Re-read to read it fresh.';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention -- React components are PascalCase.
 export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) => {
@@ -31,6 +37,7 @@ export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) =
         <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>
         {(withheld || failed) && (
           <div className="pm-lb-headline-state" aria-label="Headline reading">
+            {view.stale && <p className="pm-lb-stale-note"><b>Stale</b> {STALE_HEADLINE}</p>}
             {failed && <p className="pm-lb-reading-notice is-failed">The headline did not come back. {view.notice}</p>}
             <LightboxWithheldBlocks blocks={view.withheldBlocks} label="Headline withheld" />
             <LightboxWithheldClaims claims={view.withheldClaims} />
@@ -39,14 +46,22 @@ export const LightboxHeadline: React.FC<LightboxTileProps> = ({ board, bind }) =
       </>
     );
   }
+  const stale = lightboxLensView(board, 'headline').stale;
   return (
-    <div className="pm-lb-headline-row">
-      <h2 className="pm-lb-headline">
-        <LightboxItemButton binding={bind({ kind: 'reading', tileId: headline.id })} className="pm-lb-headline-reading">
-          {headline.title}
-        </LightboxItemButton>
-      </h2>
-      <span className="pm-lb-badge pm-lb-reg-read">a reading</span>
-    </div>
+    <>
+      <div className="pm-lb-headline-row">
+        <h2 className="pm-lb-headline">
+          <LightboxItemButton binding={bind({ kind: 'reading', tileId: headline.id })} className="pm-lb-headline-reading">
+            {headline.title}
+          </LightboxItemButton>
+        </h2>
+        <span className="pm-lb-badge pm-lb-reg-read">a reading</span>
+      </div>
+      {stale && (
+        <div className="pm-lb-headline-state" aria-label="Headline reading">
+          <p className="pm-lb-stale-note"><b>Stale</b> {STALE_HEADLINE}</p>
+        </div>
+      )}
+    </>
   );
 };

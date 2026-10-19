@@ -32,6 +32,7 @@ export * from './workshop';
 export * from './lightbox';
 export * from './lightboxReadings';
 export * from './lightboxGravity';
+export * from './lightboxStale';
 export * from './lightboxHandoff';
 
 // Union types for message routing

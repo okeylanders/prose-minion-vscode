@@ -976,6 +976,7 @@ const LIGHTBOX_MODULES = [
   'shared/types/messages/lightbox.ts',
   'shared/types/messages/lightboxReadings.ts',
   'shared/types/messages/lightboxGravity.ts',
+  'shared/types/messages/lightboxStale.ts',
   'shared/types/messages/lightboxHandoff.ts',
   'shared/constants/lightbox.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',

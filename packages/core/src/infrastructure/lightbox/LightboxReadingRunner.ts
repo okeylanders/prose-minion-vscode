@@ -61,6 +61,7 @@ import {
   type LightboxRejection
 } from '@/infrastructure/lightbox/LightboxCallFailure';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { lightboxColumnKeys } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import {
   buildLightboxUserMessage,
@@ -328,11 +329,12 @@ export class LightboxReadingRunner {
     const limit = pLimit(this.concurrency);
     const verifier = createLightboxQuoteVerifier(source.material.paragraphs);
     const counter = createLightboxTermCounter(source.material.paragraphs);
+    const columnKeys = lightboxColumnKeys(source.material.paragraphs, source.material.columns);
     const outcomes = await Promise.all(calls.map((call) => limit(async () => {
       if (!this.isCurrent(state)) {
         return undefined;
       }
-      const outcome = await this.runGroup(engine, state, source, call, { verifier, counter }, listener);
+      const outcome = await this.runGroup(engine, state, source, call, { verifier, counter, columnKeys }, listener);
       if (outcome && this.isCurrent(state)) {
         listener.onGroup(outcome);
         return outcome;
@@ -357,7 +359,7 @@ export class LightboxReadingRunner {
     state: ActiveRunState,
     source: LightboxRunSource,
     call: LightboxPreparedCall,
-    tools: Pick<Parameters<typeof assembleLightboxGroup>[1], 'verifier' | 'counter'>,
+    tools: Pick<Parameters<typeof assembleLightboxGroup>[1], 'verifier' | 'counter' | 'columnKeys'>,
     listener: LightboxRunListener
   ): Promise<LightboxGroupOutcome | undefined> {
     const failed = (error: string, result?: ExecutionResult): LightboxGroupOutcome => ({

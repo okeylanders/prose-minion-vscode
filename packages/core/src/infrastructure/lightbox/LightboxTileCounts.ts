@@ -8,7 +8,8 @@
  * carried onto a changed text (`LightboxStaleReadings`) count the same way.
  */
 
-import type { LightboxCountedSupport, LightboxReadingTile } from '@messages';
+import type { LightboxCountedSupport, LightboxReadingTile, LightboxTensionArcTile } from '@messages';
+import { lightboxContentHash } from '@/infrastructure/lightbox/LightboxParagraphs';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { LIGHTBOX_VOICE_TRAITS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { countLightboxField } from '@/infrastructure/lightbox/LightboxGravityCounts';
@@ -21,6 +22,45 @@ export interface LightboxRecountContext {
   paragraphCount: number;
   /** Set beside the voice's sentence music. */
   averageWordsPerSentence: number;
+  /** The current ribbon columns' keys (`lightboxColumnKeys`); a tension arc's scores follow them. */
+  columnKeys?: readonly string[];
+}
+
+/** How long a column key is: enough to tell paragraphs apart, short enough to post. */
+const COLUMN_KEY_LENGTH = 16;
+
+/**
+ * Each ribbon column's identity: a hash of the text of the paragraphs it
+ * holds. A tension score is read on a column's paragraphs, so this is what a
+ * carried score is matched by, never its position (PR #150 F-06).
+ */
+export function lightboxColumnKeys(
+  paragraphs: readonly string[],
+  columns: ReadonlyArray<{ from: number; to: number }>
+): string[] {
+  return columns.map(({ from, to }) =>
+    lightboxContentHash(paragraphs.slice(from - 1, to).join('\n\n')).slice(0, COLUMN_KEY_LENGTH));
+}
+
+/**
+ * A tension arc's scores on the current columns: each score follows the
+ * column whose paragraphs it was read on, wherever that column now stands;
+ * a column whose paragraphs are new or changed (or whose old scores
+ * disagree) has none. Without current keys, the arc is unchanged.
+ */
+export function carryLightboxTension(
+  arc: Pick<LightboxTensionArcTile, 'scores' | 'columnKeys'>,
+  columnKeys: readonly string[] | undefined
+): Pick<LightboxTensionArcTile, 'scores' | 'columnKeys'> {
+  if (!columnKeys) {
+    return { scores: [...arc.scores], columnKeys: [...arc.columnKeys] };
+  }
+  const byKey = new Map<string, number | null>();
+  arc.columnKeys.forEach((key, index) => {
+    const score = arc.scores[index] ?? null;
+    byKey.set(key, byKey.has(key) && byKey.get(key) !== score ? null : score);
+  });
+  return { scores: columnKeys.map((key) => byKey.get(key) ?? null), columnKeys: [...columnKeys] };
 }
 
 /**
@@ -91,9 +131,10 @@ export function recountLightboxTile(
       );
       return { ...tile, support: field.support.map(({ degree: _degree, ...term }) => term), hits: field.hits };
     }
+    case 'tension-arc':
+      return { ...tile, support, ...carryLightboxTension(tile, context.columnKeys) };
     case 'headline':
     case 'motif':
-    case 'tension-arc':
     case 'palette-cluster':
     case 'swatch':
     case 'gravity-collision':

@@ -63,6 +63,8 @@ export interface LightboxTileAssemblyContext {
   mintId: () => string;
   /** The board's measured average words per sentence, set beside the voice's sentence music. */
   averageWordsPerSentence?: number;
+  /** Each ribbon column's key (`lightboxColumnKeys`), kept on the tension arc so its scores can follow their text. */
+  columnKeys?: readonly string[];
 }
 
 export interface LightboxAssembledGroup {
@@ -176,7 +178,7 @@ class GroupAssembly implements LightboxClaimAssembler {
         this.claim(
           { kind: 'tension-arc', lens: 'tension', title: 'Tension arc', claim: block.claim, quotes: block.peaks,
             terms: [], friction: block.friction },
-          (base) => ({ ...base, kind: 'tension-arc', scores: [...block.scores] })
+          (base) => ({ ...base, kind: 'tension-arc', scores: [...block.scores], columnKeys: [...(this.context.columnKeys ?? [])] })
         );
         return;
       case 'characters':

@@ -248,7 +248,8 @@ export class LightboxService {
         readings: carryLightboxReadings(latest.readings, {
           readAgainst: latest.source.contentHash,
           paragraphs: paragraphTexts,
-          averageWordsPerSentence: board.measured.headline.averageWordsPerSentence
+          averageWordsPerSentence: board.measured.headline.averageWordsPerSentence,
+          columns: board.ribbon
         })
       };
       carried = true;

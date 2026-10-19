@@ -16,6 +16,7 @@
 
 import { MessageEnvelope, MessageType } from './base';
 import type { TokenUsage } from './tokenUsage';
+import type { LightboxStaleLens } from './lightboxStale';
 import type {
   LightboxGravityCollisionTile,
   LightboxGravityFieldTile,
@@ -147,8 +148,10 @@ export interface LightboxMotifTile extends LightboxReadingTileBase {
 
 export interface LightboxTensionArcTile extends LightboxReadingTileBase {
   kind: 'tension-arc';
-  /** One read score, 0–9, per ribbon column, in column order. A reading, not a measurement. */
-  scores: number[];
+  /** One read score, 0–9, per ribbon column; `null` where a carried arc's paragraphs changed (D4; PR #150 F-06). */
+  scores: Array<number | null>;
+  /** Host-private identity of each column's paragraphs as read, so a carried score follows its text. */
+  columnKeys: string[];
 }
 
 export interface LightboxCharacterTile extends LightboxReadingTileBase {
@@ -239,18 +242,6 @@ export interface LightboxWithheldClaim {
 // ---------------------------------------------------------------------------
 
 export type LightboxReadingStatus = 'not-run' | 'running' | 'ok' | 'failed' | 'cancelled';
-
-/**
- * A lens whose readings were made against an earlier version of the text
- * (D4). They stay on the board, labeled stale; each quote was checked again
- * against the current paragraphs and its counted support recounted. A fresh
- * reading of the lens clears the mark.
- */
-export interface LightboxStaleLens {
-  lens: LightboxLensId;
-  /** The content hash of the text the lens was read against. */
-  readAgainst: string;
-}
 
 export interface LightboxReadingGroup {
   group: LightboxReadingGroupId;

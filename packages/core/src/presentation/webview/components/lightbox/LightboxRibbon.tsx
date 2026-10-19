@@ -5,13 +5,16 @@
  * column above it (the host buckets; this only draws). Lanes: rhythm (words
  * per sentence) and dialogue are measured; tension is a reading, drawn
  * dashed from the tension arc's read score per column (0–9) once it lands,
- * and empty before; focus lights the columns whose paragraphs the hovered
+ * and empty before. A stale arc (D4) draws only the scores whose paragraphs
+ * are unchanged, says so on its label, and leaves a changed paragraph
+ * unscored (PR #150 F-06). Focus lights the columns whose paragraphs the hovered
  * or pinned item touches, in its register's color. Columns, the measured
  * lane labels and a read tension lane are hoverable and pinnable.
  */
 import * as React from 'react';
 import type { LightboxBoard, LightboxRibbonColumn } from '@messages';
 import type { LightboxItemRef, LightboxResolvedItem } from '@hooks/domain/lightbox/lightboxItems';
+import type { LightboxTensionLane } from '@hooks/domain/lightbox/lightboxReadings';
 import type { LightboxItemBinding } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import { LightboxItemButton } from '@components/lightbox/LightboxItemButton';
 
@@ -22,8 +25,8 @@ export interface LightboxRibbonProps {
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
   /** The tension lens is on. */
   tensionLensOn: boolean;
-  /** The tension arc's read score per column, once it has landed. */
-  tensionScores?: readonly number[];
+  /** The tension lane: scores per column once the arc has landed (`null` unscored), stale or not, and its note. */
+  tension: LightboxTensionLane;
   /** The tension arc tile, so its lane label pins it. */
   tensionTileId?: string;
 }
@@ -66,13 +69,14 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
   focusedItem,
   bind,
   tensionLensOn,
-  tensionScores,
+  tension,
   tensionTileId
 }) => {
   const { ribbon } = board;
   const hasFocus = focusedItem !== null;
   const focusTone = focusedItem?.register === 'measured' ? 'is-measured' : 'is-read';
-  const scores = tensionLensOn && tensionScores?.length === ribbon.length ? tensionScores : undefined;
+  const scores = tensionLensOn && tension.scores?.length === ribbon.length ? tension.scores : undefined;
+  const staleKey = tension.stale ? <span className="pm-lb-lane-stale">stale</span> : null;
   const scale = Math.max(RHYTHM_SCALE_FLOOR, ...ribbon.map((column) => column.avgWordsPerSentence));
   const step = labelStep(ribbon.length);
   const bucketed = ribbon.some((column) => column.to > column.from);
@@ -98,15 +102,16 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
             <i className="pm-lb-lane-key is-measured" />Dialogue
           </LightboxItemButton>
           {scores && tensionTileId ? (
-            <LightboxItemButton binding={bind({ kind: 'reading', tileId: tensionTileId })} className="pm-lb-lane-label pm-lb-h34">
-              <i className="pm-lb-lane-key is-read" />Tension
+            <LightboxItemButton
+              binding={bind({ kind: 'reading', tileId: tensionTileId })}
+              className="pm-lb-lane-label pm-lb-h34"
+              title={tension.note}
+            >
+              <i className="pm-lb-lane-key is-read" />Tension{staleKey}
             </LightboxItemButton>
           ) : (
-            <span
-              className="pm-lb-lane-label pm-lb-h34 is-static"
-              title={tensionLensOn ? 'Tension is a reading. Not read yet.' : 'The tension lens is off.'}
-            >
-              <i className="pm-lb-lane-key is-read" />Tension
+            <span className="pm-lb-lane-label pm-lb-h34 is-static" title={tension.note}>
+              <i className="pm-lb-lane-key is-read" />Tension{staleKey}
             </span>
           )}
           <span className="pm-lb-lane-label pm-lb-h10 is-static">Focus</span>
@@ -123,9 +128,15 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
               : 0;
             const dialogue = column.dialogueShare > 0 ? 0.3 + column.dialogueShare * 0.7 : 0;
             const binding = bind({ kind: 'paragraphs', from: column.from, to: column.to });
-            const tension = scores
-              ? Math.max(2, Math.round((scores[columnIndex] / TENSION_TOP_SCORE) * TENSION_LANE_HEIGHT))
+            const score = scores?.[columnIndex] ?? null;
+            const height = score !== null
+              ? Math.max(2, Math.round((score / TENSION_TOP_SCORE) * TENSION_LANE_HEIGHT))
               : 0;
+            const tensionTitle = !scores
+              ? ''
+              : score === null
+                ? ' · tension not scored: this paragraph changed since the reading'
+                : ` · tension, as read${tension.stale ? ' on an earlier version' : ''}: ${score} of ${TENSION_TOP_SCORE}`;
             return (
               <LightboxItemButton
                 key={`${column.from}-${column.to}`}
@@ -133,13 +144,12 @@ export const LightboxRibbon: React.FC<LightboxRibbonProps> = ({
                 className={`pm-lb-col${hasFocus && !lit ? ' is-dim' : ''}`}
                 label={columnLabel(column)}
                 title={`${columnLabel(column)} · ${column.avgWordsPerSentence} words per sentence · ` +
-                  `${Math.round(column.dialogueShare * 100)}% dialogue` +
-                  (scores ? ` · tension, as read: ${scores[columnIndex]} of ${TENSION_TOP_SCORE}` : '')}
+                  `${Math.round(column.dialogueShare * 100)}% dialogue${tensionTitle}`}
               >
                 <span className="pm-lb-col-rhythm"><i style={{ height: `${rhythm}px` }} /></span>
                 <span className="pm-lb-col-dialogue"><i style={{ opacity: dialogue }} /></span>
-                <span className={`pm-lb-col-tension${scores ? ' is-read' : ''}`}>
-                  {scores && <i style={{ height: `${tension}px` }} />}
+                <span className={`pm-lb-col-tension${score !== null ? ' is-read' : scores ? ' is-unscored' : ''}`}>
+                  {score !== null && <i style={{ height: `${height}px` }} />}
                 </span>
                 <span className={`pm-lb-col-focus${lit ? ` is-lit ${focusTone}` : ''}`} />
                 <span className="pm-lb-col-index">
