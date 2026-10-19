@@ -61,6 +61,8 @@ import {
   RejectedModelResponseRecoveryShellPresenter,
   WorkshopStandingDirectiveService,
   LightboxService,
+  LightboxReadingRunner,
+  LightboxContextShelf,
   LightboxSetSourcePayload,
   CoreServices,
   WORKSHOP_CONVERSATION_BEHAVIOR_SETTING,
@@ -353,6 +355,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     styleFlagsService,
     standardsService
   );
+  // Lightbox readings (Slice 2B, D6–D9): the assistant model scope, one
+  // active run per board, unusable paid bodies quarantined for recovery.
+  const lightboxReadingRunner = new LightboxReadingRunner(
+    aiResourceManager,
+    resourceLoader.getPromptLoader(),
+    rejectedModelResponseRecovery,
+    rejectedModelResponseRecoveryPresenter,
+    outputChannel
+  );
+  context.subscriptions.push({ dispose: () => lightboxReadingRunner.dispose() });
+  const lightboxContextShelf = new LightboxContextShelf();
 
   const coreServices: CoreServices = {
     assistantToolService,
@@ -385,7 +398,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     lexicalGravityModelService,
     lexicalGravityLensRepository,
     workshopStandingDirectiveService,
-    lightboxService
+    lightboxService,
+    lightboxReadingRunner,
+    lightboxContextShelf
   };
 
   // Migrate API key from settings to SecretStorage if needed

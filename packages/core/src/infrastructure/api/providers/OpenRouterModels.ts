@@ -1189,16 +1189,36 @@ export class OpenRouterModels {
 
   /** Live catalog evidence only: the offline fallback's 200K value is not a provider limit. */
   static getCachedContextLength(model: string): number | undefined {
+    const live = this.findCachedModel(model);
+    return live && !live.isFallback && Number.isSafeInteger(live.context_length) && live.context_length > 0
+      ? live.context_length : undefined;
+  }
+
+  /**
+   * Live catalog prices, in US dollars per token. Undefined for the offline
+   * fallback (its zero prices are placeholders) and for unparseable prices.
+   */
+  static getCachedPricing(model: string): { promptUsdPerToken: number; completionUsdPerToken: number } | undefined {
+    const live = this.findCachedModel(model);
+    if (!live || live.isFallback) {
+      return undefined;
+    }
+    const prompt = Number(live.pricing?.prompt);
+    const completion = Number(live.pricing?.completion);
+    return Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0 && completion >= 0
+      ? { promptUsdPerToken: prompt, completionUsdPerToken: completion }
+      : undefined;
+  }
+
+  private static findCachedModel(model: string): OpenRouterModel | undefined {
     const requested = model.trim();
     const normalized = requested.replace(/^~/, '');
     // Prefer exact and base alias catalog entries before normalized ids;
     // their context windows can differ from the underlying model.
     const candidates = [requested, requested.split(':')[0], normalized, normalized.split(':')[0]];
-    const live = candidates
+    return candidates
       .map(id => this.cachedModels?.find(candidate => candidate.id === id))
       .find(candidate => candidate !== undefined);
-    return live && !live.isFallback && Number.isSafeInteger(live.context_length) && live.context_length > 0
-      ? live.context_length : undefined;
   }
 
   /**

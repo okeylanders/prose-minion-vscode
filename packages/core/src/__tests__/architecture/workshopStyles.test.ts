@@ -40,14 +40,15 @@ const ENTRY_STYLE_IMPORTS = [
   './index.css'
 ] as const;
 
-/** The Lightbox root's own sheets (Slice 2A), after the frame's, in cascade order. */
+/** The Lightbox root's own sheets (Slices 2A and 2B), after the frame's, in cascade order. */
 const LIGHTBOX_STYLE_IMPORTS = [
   './styles/lightbox/tokens.css',
   './styles/lightbox/board.css',
   './styles/lightbox/ribbon.css',
   './styles/lightbox/tiles.css',
   './styles/lightbox/rail.css',
-  './styles/lightbox/inspector.css'
+  './styles/lightbox/inspector.css',
+  './styles/lightbox/readings.css'
 ] as const;
 
 // The Sprint 03 byte-preservation receipt test retired here at the first
@@ -94,8 +95,12 @@ describe('Workshop stylesheet assembly', () => {
   it('scopes every Lightbox rule to the Lightbox surface, never the Workshop', () => {
     const lightboxDir = path.join(WEBVIEW_ROOT, 'styles', 'lightbox');
     for (const file of fs.readdirSync(lightboxDir)) {
-      const css = fs.readFileSync(path.join(lightboxDir, file), 'utf8')
-        .replace(/\/\*[\s\S]*?\*\//g, '')
+      const source = fs.readFileSync(path.join(lightboxDir, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+      // Keyframes cannot be scoped to a surface; a Lightbox-prefixed name keeps them its own.
+      const keyframes = [...source.matchAll(/@keyframes\s+([\w-]+)\s*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g)];
+      expect(keyframes.map((match) => match[1]).filter((name) => !name.startsWith('pm-lb-'))).toEqual([]);
+      const css = keyframes
+        .reduce((text, match) => text.replace(match[0], ''), source)
         .replace(/@media[^{]*\{/g, '{');
       const selectors = [...css.matchAll(/([^{}@;]+)\{/g)]
         .map((match) => match[1].trim())

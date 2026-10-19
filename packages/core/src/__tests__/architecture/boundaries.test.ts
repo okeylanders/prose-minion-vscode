@@ -925,7 +925,7 @@ const HOST_OR_PRESENTATION_IMPORT = /(?:from\s+['"](?:vscode|react|@providers\/)
 // service is too: one instance owns the document cache and its generations
 // (ADR 2026-10-05 §5, §9).
 const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
-  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService)\b`
+  String.raw`\bnew\s+(TextSourceResolver|CategorySearchService|AccountBalanceService|OpenRouterAccountClient|PublishingStandardsRepository|WorkshopSessionService|WorkshopRoomDeliveryService|WorkshopSessionPersistenceCoordinator|WorkshopSessionStore|WorkshopTranscriptRecallService|DictionaryHistoryStore|LightboxService|LightboxReadingRunner|LightboxContextShelf)\b`
 );
 
 /**
@@ -935,32 +935,64 @@ const FORBIDDEN_INFRASTRUCTURE_CONSTRUCTION = new RegExp(
  */
 const LIGHTBOX_MODULES = [
   'shared/types/messages/lightbox.ts',
+  'shared/types/messages/lightboxReadings.ts',
   'shared/constants/lightbox.ts',
   'infrastructure/lightbox/LightboxParagraphs.ts',
   'infrastructure/lightbox/LightboxMeasures.ts',
   'infrastructure/lightbox/LightboxService.ts',
+  'infrastructure/lightbox/LightboxReadingWire.ts',
+  'infrastructure/lightbox/LightboxReadingCodec.ts',
+  'infrastructure/lightbox/LightboxQuoteVerifier.ts',
+  'infrastructure/lightbox/LightboxTermCounts.ts',
+  'infrastructure/lightbox/LightboxReadingTiles.ts',
+  'infrastructure/lightbox/LightboxReadingPrompts.ts',
+  'infrastructure/lightbox/LightboxRunEstimate.ts',
+  'infrastructure/lightbox/LightboxReadingRunContracts.ts',
+  'infrastructure/lightbox/LightboxReadingRunner.ts',
+  'infrastructure/lightbox/LightboxGroupReply.ts',
+  'infrastructure/lightbox/LightboxCallFailure.ts',
+  'infrastructure/lightbox/LightboxPressSnapshot.ts',
+  'infrastructure/lightbox/LightboxReadingState.ts',
+  'infrastructure/lightbox/LightboxContextShelf.ts',
   'application/handlers/domain/LightboxHandler.ts',
+  'application/handlers/domain/LightboxReadingHandler.ts',
   'presentation/webview/LightboxApp.tsx',
   'presentation/webview/hooks/domain/useLightbox.ts',
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts',
   'presentation/webview/components/lightbox/LightboxBoardMain.tsx',
+  'presentation/webview/components/lightbox/LightboxCharacters.tsx',
+  'presentation/webview/components/lightbox/LightboxContextList.tsx',
+  'presentation/webview/components/lightbox/LightboxGenre.tsx',
+  'presentation/webview/components/lightbox/LightboxHeadline.tsx',
   'presentation/webview/components/lightbox/LightboxInspector.tsx',
   'presentation/webview/components/lightbox/LightboxItemButton.tsx',
   'presentation/webview/components/lightbox/LightboxLensesPanel.tsx',
+  'presentation/webview/components/lightbox/LightboxMotifs.tsx',
   'presentation/webview/components/lightbox/LightboxPartsOfSpeech.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingFrame.tsx',
+  'presentation/webview/components/lightbox/LightboxReadingParts.tsx',
   'presentation/webview/components/lightbox/LightboxReadingPlaceholder.tsx',
   'presentation/webview/components/lightbox/LightboxRibbon.tsx',
+  'presentation/webview/components/lightbox/LightboxRunLine.tsx',
   'presentation/webview/components/lightbox/LightboxSourcePanel.tsx',
   'presentation/webview/components/lightbox/LightboxStatRow.tsx',
+  'presentation/webview/components/lightbox/LightboxTensionArc.tsx',
   'presentation/webview/components/lightbox/LightboxTileFrame.tsx',
   'presentation/webview/components/lightbox/LightboxTiles.tsx',
-  'presentation/webview/components/lightbox/LightboxTopWords.tsx'
+  'presentation/webview/components/lightbox/LightboxTopWords.tsx',
+  'presentation/webview/components/lightbox/LightboxVoice.tsx'
 ] as const;
 /** Presentation controllers and pure item logic: host effects arrive injected. */
 const LIGHTBOX_TRANSPORT_FREE_MODULES = [
   'presentation/webview/hooks/domain/lightbox/lightboxItems.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxReadings.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRunLine.ts',
+  'presentation/webview/hooks/domain/lightbox/lightboxRuns.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxFocus.ts',
   'presentation/webview/hooks/domain/lightbox/controllers/useLightboxInspector.ts'
 ] as const;
@@ -1585,7 +1617,10 @@ describe('architectural boundaries', () => {
       .map((file) => path.relative(SRC_ROOT, file));
 
     expect(constructions(/\bnew\s+LightboxService\s*\(/)).toEqual([]);
+    expect(constructions(/\bnew\s+LightboxReadingRunner\s*\(/)).toEqual([]);
+    expect(constructions(/\bnew\s+LightboxContextShelf\s*\(/)).toEqual([]);
     expect(constructions(/\bnew\s+LightboxHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
+    expect(constructions(/\bnew\s+LightboxReadingHandler\s*\(/)).toEqual([MESSAGE_HANDLER_OWNER]);
   });
 
   it('keeps Lightbox controllers off the transport, and the Lightbox off the Workshop routes', () => {

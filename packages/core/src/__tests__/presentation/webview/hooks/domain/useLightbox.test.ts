@@ -92,6 +92,7 @@ describe('useLightbox', () => {
     const types = vscode.postMessage.mock.calls.map(([message]) => message.type);
     expect(types).toEqual([
       MessageType.LIGHTBOX_REQUEST_BOARD,
+      MessageType.LIGHTBOX_SET_LENSES,
       MessageType.LIGHTBOX_PICK_SOURCE_FILE,
       MessageType.LIGHTBOX_REFRESH_SOURCE
     ]);

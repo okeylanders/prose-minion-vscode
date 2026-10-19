@@ -100,14 +100,38 @@ export interface PromptBudgets {
   readonly guides: Readonly<{ words: number }>;
   readonly sourceDocument: Readonly<{ words: number }>;
   /**
-   * Lightbox (ADR 2026-10-19 D4, D8). `sourceWords` is the hard ceiling: a
+   * Lightbox (ADR 2026-10-19 D4, D7, D8). `sourceWords` is the hard ceiling: a
    * longer source is refused, with its count, before anything is measured.
    * `chapterWords` is the soft "book-sized" threshold the Read button's cost
-   * line names (Slice 2B). `ribbonColumns` is the most columns the paragraph
-   * ribbon draws; above it each column covers a contiguous range of
-   * paragraphs, and the readings' tension scale follows it (open question 3).
+   * line names. `ribbonColumns` is the most columns the paragraph ribbon
+   * draws; above it each column covers a contiguous range of paragraphs, and
+   * the tension arc is read per column (open question 3, Slice 2B).
+   *
+   * The rest bound one reading group's call (Slice 2B): its output ceiling
+   * (the engine's `maxTokens`, which the fit check reserves), the whole
+   * response the codec accepts, and the per-field and per-block ceilings the
+   * prompt bundle states and the codec enforces block by block.
    */
-  readonly lightbox: Readonly<{ sourceWords: number; chapterWords: number; ribbonColumns: number }>;
+  readonly lightbox: Readonly<{
+    sourceWords: number;
+    chapterWords: number;
+    ribbonColumns: number;
+    groupOutputTokens: number;
+    groupResponseCharacters: number;
+    quoteCharacters: number;
+    claimCharacters: number;
+    frictionCharacters: number;
+    /** Titles, names, genres, archetypes and counted terms. */
+    labelCharacters: number;
+    /** One-line fields: the headline sentence, gists, traits, notes, the reader promise. */
+    noteCharacters: number;
+    quotesPerClaim: number;
+    termsPerClaim: number;
+    motifs: number;
+    characters: number;
+    genreNeighbors: number;
+    tensionPeaks: number;
+  }>;
   /**
    * Workshop tool initial runs' composite catalog (Sprint 12 Phase 6): the
    * excerpt's configured source resource plus at most `neighborItems`
@@ -332,7 +356,24 @@ export const PROMPT_BUDGETS: PromptBudgets = {
   contextFiles: { words: 50_000, catalogItems: 100 },
   guides: { words: 50_000 },
   sourceDocument: { words: 50_000 },
-  lightbox: { sourceWords: 50_000, chapterWords: 12_000, ribbonColumns: 96 },
+  lightbox: {
+    sourceWords: 50_000,
+    chapterWords: 12_000,
+    ribbonColumns: 96,
+    groupOutputTokens: 8_000,
+    groupResponseCharacters: 32_000,
+    quoteCharacters: 240,
+    claimCharacters: 320,
+    frictionCharacters: 280,
+    labelCharacters: 60,
+    noteCharacters: 120,
+    quotesPerClaim: 3,
+    termsPerClaim: 5,
+    motifs: 4,
+    characters: 6,
+    genreNeighbors: 5,
+    tensionPeaks: 3
+  },
   workshopToolCatalog: { neighborItems: 4, words: 50_000 },
   workshopThreadArtifacts: { itemsPerMessage: 7, words: 10_000 },
   workshopWidgets: {

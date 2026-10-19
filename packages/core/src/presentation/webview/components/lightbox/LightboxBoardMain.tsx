@@ -1,25 +1,35 @@
 /**
- * LightboxBoardMain — the board's main column (ADR 2026-10-19 D3–D6).
+ * LightboxBoardMain — the board's main column (ADR 2026-10-19 D3–D7).
  *
- * Props-only. Lays out, in order: the board header, any refusal (naming the
- * refused source and, over a retained board, the source still shown), the
- * toolbar (tile filter, register legend, and the Read button, disabled until
- * the readings land in Slice 2B), the sticky paragraph ribbon, the counted
- * tiles through the exhaustive renderer map, and a "not read yet" placeholder
- * for each reading lens that is on.
+ * Props-only. Lays out, in order: the board header (with the headline once
+ * it is read), any refusal (naming the refused source and, over a retained
+ * board, the source still shown), the toolbar (tile filter, register legend,
+ * and the run line), the sticky paragraph ribbon and the tension arc's line,
+ * the counted tiles, then the readings, all through the exhaustive renderer
+ * map. A lens that is off is not drawn.
  */
 import * as React from 'react';
-import type { LightboxBoard, LightboxLensId, LightboxSourceRefusal } from '@messages';
+import type {
+  LightboxBoard,
+  LightboxLensId,
+  LightboxReadingTileKind,
+  LightboxRunScope,
+  LightboxSourceRefusal
+} from '@messages';
+import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import type { LightboxFilter } from '@hooks/domain/useLightbox';
 import type { UseLightboxFocusReturn } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
+import type { LightboxRunLineView } from '@hooks/domain/lightbox/lightboxRunLine';
+import { lightboxTensionScores, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
 import { Icon } from '@components/shared/Icon';
 import { LightboxRibbon } from '@components/lightbox/LightboxRibbon';
-import { LIGHTBOX_MEASURED_LAYOUT, LIGHTBOX_TILE_RENDERERS } from '@components/lightbox/LightboxTiles';
+import { LightboxRunLine } from '@components/lightbox/LightboxRunLine';
+import { LIGHTBOX_PLAIN_HEADLINE } from '@components/lightbox/LightboxHeadline';
 import {
-  LIGHTBOX_READING_TILE_TITLES,
-  LightboxReadingPlaceholder,
-  LightboxTileLensId
-} from '@components/lightbox/LightboxReadingPlaceholder';
+  LIGHTBOX_MEASURED_LAYOUT,
+  LIGHTBOX_READING_LAYOUT,
+  LIGHTBOX_TILE_RENDERERS
+} from '@components/lightbox/LightboxTiles';
 
 export interface LightboxBoardMainProps {
   board: LightboxBoard | null | undefined;
@@ -27,9 +37,12 @@ export interface LightboxBoardMainProps {
   filter: LightboxFilter;
   lensesOff: readonly LightboxLensId[];
   focus: Pick<UseLightboxFocusReturn, 'bind' | 'focusedItem' | 'litColumns'>;
+  runLine: LightboxRunLineView | null;
   onFilter: (filter: LightboxFilter) => void;
   onPickFile: () => void;
   onDismissRefusal: () => void;
+  onRun: (scope: LightboxRunScope) => void;
+  onStop: (token: string) => void;
 }
 
 const FILTERS: ReadonlyArray<{ id: LightboxFilter; label: string }> = [
@@ -47,8 +60,6 @@ const REFUSAL_TITLES: Record<LightboxSourceRefusal['reason'], string> = {
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
-const READING_TILE_LENSES = Object.keys(LIGHTBOX_READING_TILE_TITLES) as LightboxTileLensId[];
-
 function fileName(displayPath: string): string {
   const parts = displayPath.split(/[\\/]/);
   return parts[parts.length - 1] || displayPath;
@@ -61,9 +72,12 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   filter,
   lensesOff,
   focus,
+  runLine,
   onFilter,
   onPickFile,
-  onDismissRefusal
+  onDismissRefusal,
+  onRun,
+  onStop
 }) => {
   const refusalNotice = refusal && (
     <div className="pm-lb-refusal" role="alert">
@@ -102,8 +116,13 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
 
   const showMeasured = filter !== 'read';
   const showRead = filter !== 'measured';
-  const readingLenses = READING_TILE_LENSES.filter((lens) => !lensesOff.includes(lens));
+  const lensOn = (lens: LightboxLensId) => !lensesOff.includes(lens);
+  const readingGrid = LIGHTBOX_READING_LAYOUT.grid.filter((kind) => lensOn(LIGHTBOX_TILE_LENS[kind]));
+  const tensionOn = lensOn('tension');
+  const [tensionArc] = lightboxTilesOfKind(board, 'tension-arc');
   const trim = board.measured.standards?.publishingFormat?.trimLabel;
+  const drawReading = (kind: LightboxReadingTileKind) =>
+    React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind });
 
   return (
     <div className="pm-lb-scroll">
@@ -112,11 +131,13 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         {fileName(board.source.displayPath)} · {board.source.paragraphCount.toLocaleString('en-US')} ¶
         {trim ? ` · ${trim} trim` : ''}
       </p>
-      <h2 className="pm-lb-headline">One chapter, held up to the light.</h2>
+      {showRead && lensOn('headline')
+        ? drawReading(LIGHTBOX_READING_LAYOUT.heading)
+        : <h2 className="pm-lb-headline">{LIGHTBOX_PLAIN_HEADLINE}</h2>}
       <p className="pm-lb-sub">
         <b>Solid tiles are counted</b> by code and cost nothing. <span className="pm-lb-read-text">Dashed
-        tiles hold readings</span>: each will cite a quote and a ¶ address, checked against the text, and
-        name where it strains.
+        tiles are read</span> by the model. Each reading cites a quote and a ¶ address, checked against the
+        text, and names where it strains.
       </p>
 
       {refusalNotice}
@@ -139,12 +160,7 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
           <span className="pm-lb-legend-item"><i className="pm-lb-key is-measured" />Measured · counted by code</span>
           <span className="pm-lb-legend-item"><i className="pm-lb-key is-read" />Read · a reading, not a measurement</span>
         </div>
-        <div className="pm-lb-run">
-          <span className="pm-lb-run-note" id="pm-lb-read-note">Readings arrive in the next update</span>
-          <button type="button" className="pm-lb-primary" disabled aria-describedby="pm-lb-read-note">
-            <Icon name="sparkle" size={13} />Read the chapter
-          </button>
-        </div>
+        {runLine && <LightboxRunLine view={runLine} onRun={onRun} onStop={onStop} />}
       </div>
 
       <LightboxRibbon
@@ -152,8 +168,13 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         litColumns={focus.litColumns}
         focusedItem={focus.focusedItem}
         bind={focus.bind}
-        tensionLensOn={!lensesOff.includes('tension')}
+        tensionLensOn={tensionOn}
+        tensionScores={lightboxTensionScores(board)}
+        tensionTileId={tensionArc?.id}
       />
+      {tensionOn
+        ? drawReading(LIGHTBOX_READING_LAYOUT.underRibbon)
+        : <p className="pm-lb-ribbon-note">The tension lens is off.</p>}
 
       {showMeasured && LIGHTBOX_MEASURED_LAYOUT.rows.map((kind) =>
         React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind })
@@ -163,9 +184,9 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         {showMeasured && LIGHTBOX_MEASURED_LAYOUT.grid.map((kind) =>
           React.createElement(LIGHTBOX_TILE_RENDERERS[kind], { key: kind, board, bind: focus.bind })
         )}
-        {showRead && readingLenses.map((lens) => <LightboxReadingPlaceholder key={lens} lens={lens} />)}
+        {showRead && readingGrid.map(drawReading)}
       </div>
-      {showRead && readingLenses.length === 0 && (
+      {showRead && readingGrid.length === 0 && (
         <p className="pm-lb-empty-note">Every reading lens is off. Turn one on in the rail to see where it will land.</p>
       )}
     </div>

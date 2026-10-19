@@ -3,9 +3,9 @@
  *
  * The inspector shows the pinned item with its register, its claim, the exact
  * paragraphs it lives in (even when the ribbon buckets them), and what code
- * counted. Slice 2A pins only measured items, so the register is always
- * "Measured"; the copy for the other registers is here so 2B's read tiles
- * land in an inspector that already explains them.
+ * counted. A reading (Slice 2B) also shows its evidence (each quote as it
+ * stands in the chapter, its ¶ and how it was found), the quotes withheld and
+ * why, its own fields, and where it strains (D7).
  *
  * Every exact address stays reachable without rendering them all (PR #148
  * F-04): the addresses are shown a page of `LIGHTBOX_PARAGRAPH_PAGE_SIZE` at
@@ -20,13 +20,14 @@
 /* eslint-disable @typescript-eslint/naming-convention -- register ids are kebab-case protocol literals (ADR 2026-10-19 D3). */
 
 import * as React from 'react';
-import type { LightboxBoard, LightboxRegister } from '@messages';
+import type { LightboxBoard, LightboxLensId, LightboxReadingTile, LightboxRegister } from '@messages';
 import {
   LightboxItemRef,
   lightboxItemsTouching,
   paragraphCountLabel,
   resolveLightboxItem
 } from '@hooks/domain/lightbox/lightboxItems';
+import { lightboxWithheldQuoteText } from '@hooks/domain/lightbox/lightboxReadings';
 
 export const LIGHTBOX_REGISTER_LABELS: Readonly<Record<LightboxRegister, string>> = {
   measured: 'Measured',
@@ -60,19 +61,27 @@ export interface LightboxParagraphPage {
   total: number;
   /** The address a jump landed on, when this page is the jump's. */
   target?: number;
+  /**
+   * Which explicit jump `target` answers, numbered per jump. A repeated jump
+   * to the same address gets a new number, so it focuses again; a passive
+   * re-render keeps the number and moves no focus (PR #148 F-05).
+   */
+  jump?: number;
 }
 
 /** Page `page` of `paragraphs`, clamped to the pages there are. */
 export function pageLightboxParagraphs(
   paragraphs: readonly number[],
   page: number,
-  target?: number
+  target?: number,
+  jump?: number
 ): LightboxParagraphPage {
   const size = LIGHTBOX_PARAGRAPH_PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(paragraphs.length / size));
   const current = Math.min(Math.max(0, Math.floor(page)), pageCount - 1);
   const start = current * size;
   const shown = paragraphs.slice(start, start + size);
+  const onPage = target !== undefined && shown.includes(target);
   return {
     page: current,
     pageCount,
@@ -80,7 +89,8 @@ export function pageLightboxParagraphs(
     from: shown.length > 0 ? start + 1 : 0,
     to: start + shown.length,
     total: paragraphs.length,
-    target: target !== undefined && shown.includes(target) ? target : undefined
+    target: onPage ? target : undefined,
+    jump: onPage ? jump : undefined
   };
 }
 
@@ -114,6 +124,31 @@ export interface LightboxInspectorTouch {
   label: string;
 }
 
+export interface LightboxInspectorEvidence {
+  paragraph: number;
+  /** As it stands in the chapter. */
+  text: string;
+  /** "found verbatim", or "found with typography folded". */
+  matchLabel: string;
+  note?: string;
+}
+
+export interface LightboxInspectorDetail {
+  label: string;
+  value: string;
+  /** A host-measured figure beside the reading. */
+  measured?: string;
+}
+
+/** What only a reading has. */
+export interface LightboxInspectorReading {
+  lens: LightboxLensId;
+  evidence: LightboxInspectorEvidence[];
+  withheld: Array<{ paragraph: number; text: string }>;
+  details: LightboxInspectorDetail[];
+  friction: string;
+}
+
 export interface LightboxInspectorView {
   register: LightboxRegister;
   registerLabel: string;
@@ -125,8 +160,49 @@ export interface LightboxInspectorView {
   paragraphs: number[];
   paragraphLabel: string;
   support: string[];
-  /** For a single paragraph: the measured items that touch it. */
+  /** For a single paragraph: the items that touch it. */
   touching: LightboxInspectorTouch[];
+  reading?: LightboxInspectorReading;
+}
+
+function readingDetails(tile: LightboxReadingTile): LightboxInspectorDetail[] {
+  switch (tile.kind) {
+    case 'motif':
+      return [{ label: 'How it moves', value: tile.gist }];
+    case 'character':
+      return [
+        { label: 'Archetype', value: tile.archetype },
+        { label: 'Energy', value: tile.energy },
+        { label: 'Wants', value: tile.wants },
+        { label: 'Hides', value: tile.hides }
+      ];
+    case 'voice':
+      return tile.traits.map((trait) => ({ label: trait.label, value: trait.value, ...(trait.measured ? { measured: trait.measured } : {}) }));
+    case 'genre-neighbor':
+      return [
+        { label: 'Claimed affinity', value: `${tile.affinity.toFixed(2)} · a claim, not a score` },
+        ...(tile.nearMiss ? [{ label: 'Near miss', value: tile.nearMiss }] : [])
+      ];
+    case 'headline':
+    case 'tension-arc':
+    case 'reader-promise':
+      return [];
+  }
+}
+
+function readingView(tile: LightboxReadingTile): LightboxInspectorReading {
+  return {
+    lens: tile.lens,
+    evidence: tile.evidence.map((quote) => ({
+      paragraph: quote.paragraph,
+      text: quote.text,
+      matchLabel: quote.match === 'exact' ? 'found verbatim' : 'found with typography folded',
+      ...(quote.note ? { note: quote.note } : {})
+    })),
+    withheld: tile.withheldQuotes.map((quote) => ({ paragraph: quote.paragraph, text: lightboxWithheldQuoteText(quote) })),
+    details: readingDetails(tile),
+    friction: tile.friction
+  };
 }
 
 /** The view model for a pinned reference, or null when nothing (resolvable) is pinned. */
@@ -148,7 +224,8 @@ export function buildLightboxInspectorView(
     registerNote: LIGHTBOX_REGISTER_NOTES[item.register],
     where: item.where,
     title: item.title,
-    claim: item.claim,
+    // A headline's claim is its title; say it once.
+    claim: item.claim === item.title ? '' : item.claim,
     paragraphs: item.paragraphs,
     paragraphLabel: paragraphCountLabel(item.paragraphs.length),
     support: item.support,
@@ -156,7 +233,8 @@ export function buildLightboxInspectorView(
       ? lightboxItemsTouching(board, ref.from)
           .slice(0, TOUCHING_SHOWN)
           .map((touch) => ({ ref: touch.ref, label: touch.title }))
-      : []
+      : [],
+    ...(item.reading ? { reading: readingView(item.reading) } : {})
   };
 }
 
@@ -196,6 +274,7 @@ interface LightboxParagraphPaging {
   pin: LightboxItemRef;
   page: number;
   target?: number;
+  jump?: number;
 }
 
 export function useLightboxInspector({
@@ -205,13 +284,14 @@ export function useLightboxInspector({
 }: UseLightboxInspectorArgs): UseLightboxInspectorReturn {
   const view = React.useMemo(() => buildLightboxInspectorView(board, selected), [board, selected]);
   const [paging, setPaging] = React.useState<LightboxParagraphPaging | null>(null);
+  const jumps = React.useRef(0);
 
   const paragraphPage = React.useMemo(() => {
     if (!view) {
       return null;
     }
     const current = paging && paging.pin === selected ? paging : undefined;
-    return pageLightboxParagraphs(view.paragraphs, current?.page ?? 0, current?.target);
+    return pageLightboxParagraphs(view.paragraphs, current?.page ?? 0, current?.target, current?.jump);
   }, [paging, selected, view]);
 
   const clear = React.useCallback(() => onSelect(null), [onSelect]);
@@ -227,7 +307,8 @@ export function useLightboxInspector({
   const jumpToParagraph = React.useCallback((index: number) => {
     const landing = selected && view ? lightboxParagraphJump(view.paragraphs, index) : undefined;
     if (selected && landing) {
-      setPaging({ pin: selected, page: landing.page, target: landing.target });
+      jumps.current += 1;
+      setPaging({ pin: selected, page: landing.page, target: landing.target, jump: jumps.current });
     }
   }, [selected, view]);
 

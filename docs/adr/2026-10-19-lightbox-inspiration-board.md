@@ -436,11 +436,23 @@ on real chapters before it becomes a contract.
    reads, and whether a board run should supply a caching intent. That
    would extend ADR 2026-10-03, which today gives one-off runs none. Until
    measured, the groups run in parallel.
+   - *2026-10-19, Slice 2B:* not measured; the slice made no live calls.
+     The groups run in parallel with no caching intent, and the measurement
+     moves to Slice 6's live-provider pass. Each group's system prompt
+     carries its own lens files, so the three calls share no leading prefix
+     today. See the
+     [slice notes](../../.todo/epics/epic-lightbox-2026-10-19/slice-2b-first-readings.md#implementation-notes-2026-10-19).
 2. **Pull baselines.** Lexical gravity's pull means more against the rest of
    the manuscript. That needs the multi-chapter work, out of scope here.
 3. **Tension scale at book length.** Above 96 paragraphs, is tension scored
    per ribbon column (fewer output tokens) or per paragraph and then
    aggregated? Slice 2B decides on fixture evidence.
+   - *2026-10-19, Slice 2B:* per ribbon column, one score per paragraph up
+     to 96 paragraphs and one per column above, a column taking its tensest
+     paragraph. On the Alice fixtures the whole book would need 815 scores
+     per paragraph against 96 per column (about 8.5 times the output), and
+     one miscount withholds the whole block. See the
+     [slice notes](../../.todo/epics/epic-lightbox-2026-10-19/slice-2b-first-readings.md#implementation-notes-2026-10-19).
 
 ## Out of scope
 

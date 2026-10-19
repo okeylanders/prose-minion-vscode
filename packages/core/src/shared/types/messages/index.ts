@@ -30,6 +30,7 @@ export * from './results';
 export * from './streaming';
 export * from './workshop';
 export * from './lightbox';
+export * from './lightboxReadings';
 
 // Union types for message routing
 import {
@@ -228,6 +229,17 @@ import {
   LightboxBoardMessage,
   LightboxSourceRefusedMessage
 } from './lightbox';
+import {
+  LightboxSetLensesMessage,
+  LightboxRunEstimateMessage,
+  LightboxRunMessage,
+  LightboxCancelRunMessage,
+  LightboxRunProgressMessage,
+  LightboxGroupResultMessage,
+  LightboxAddContextFilesMessage,
+  LightboxRemoveContextFileMessage,
+  LightboxContextFilesMessage
+} from './lightboxReadings';
 
 export type WebviewToExtensionMessage =
   | AnalyzeDialogueMessage
@@ -339,7 +351,12 @@ export type WebviewToExtensionMessage =
   | LightboxSetSourceMessage
   | LightboxDismissRefusalMessage
   | LightboxPickSourceFileMessage
-  | LightboxRefreshSourceMessage;
+  | LightboxRefreshSourceMessage
+  | LightboxSetLensesMessage
+  | LightboxRunMessage
+  | LightboxCancelRunMessage
+  | LightboxAddContextFilesMessage
+  | LightboxRemoveContextFileMessage;
 
 export type ExtensionToWebviewMessage =
   | AnalysisResultMessage
@@ -399,4 +416,8 @@ export type ExtensionToWebviewMessage =
   | WorkshopWidgetConfigRestoredMessage
   | WorkshopWidgetActionResultMessage
   | LightboxBoardMessage
-  | LightboxSourceRefusedMessage;
+  | LightboxSourceRefusedMessage
+  | LightboxRunEstimateMessage
+  | LightboxRunProgressMessage
+  | LightboxGroupResultMessage
+  | LightboxContextFilesMessage;

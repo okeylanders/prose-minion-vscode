@@ -59,6 +59,7 @@ packages/core/src/
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
 │           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes (ADR 2026-10-19)
+│           ├── LightboxReadingHandler.ts  # Lightbox readings: lenses, estimate, runs, context files (Slice 2B)
 │           └── workshop/                  # Room owner + 11 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
 │               ├── WorkshopSliceComposition.ts # Sibling construction + guarded route assembly
@@ -80,7 +81,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory)
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec, quote verifier, runner, estimate
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -100,6 +101,7 @@ packages/core/src/
             ├── publishing.ts     # Publishing standards
             ├── accountBalance.ts # OpenRouter account balance
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
+            ├── lightboxReadings.ts # Lightbox reading tiles, groups, estimate, run and context messages
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -151,9 +153,12 @@ packages/core/src/presentation/webview/
 │       ├── useTokenTracking.ts         # Token usage tracking
 │       ├── useWordFrequencySettings.ts # Word frequency tool settings
 │       ├── useWordSearchSettings.ts    # Word search tool settings
-│       ├── useLightbox.ts              # Lightbox board + refusal; persists UI prefs only (filter, pin, lenses)
+│       ├── useLightbox.ts              # Lightbox board, refusal, estimate, run and context; persists UI prefs only (filter, pin, lenses)
 │       ├── lightbox/
 │       │   ├── lightboxItems.ts        # Hoverable/pinnable item refs → paragraphs (pure)
+│       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
+│       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
+│       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state
@@ -268,7 +273,7 @@ useMessageRouter({
 | usePublishing | PublishingHandler | Publishing standards |
 | useSelection | UIHandler | Selection/paste operations |
 | useAccountBalance | AccountBalanceHandler | OpenRouter account balance |
-| useLightbox | LightboxHandler (+ `LightboxService`) | Lightbox counted board |
+| useLightbox | LightboxHandler, LightboxReadingHandler (+ `LightboxService`, `LightboxReadingRunner`) | Lightbox counted board and readings |
 
 **Benefits**:
 - ✅ Same domain boundaries on both sides

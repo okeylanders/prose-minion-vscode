@@ -35,8 +35,17 @@
  *   request never posts its own result, so a request outliving its panel
  *   still lands in the panel that replaced it.
  *
+ * - **Readings (Slice 2B).** A board's reading groups attach to its id:
+ *   a run writes them through `updateReadings(boardId, …)`, and a rebuild
+ *   of unchanged text keeps them, including any that landed while it was
+ *   measuring. A change to the current board's readings is published as a
+ *   `readings` outcome; one to a board that is no longer current updates
+ *   that retained board silently, so a stale run never publishes over a
+ *   newer board, and switching back to its source shows what it read.
+ *
  * The source text never leaves this service except as the board's short
- * preview; the host-private re-read path is never posted.
+ * preview; the host-private re-read path and each retained board's
+ * paragraph texts (what a reading run reads) are never posted.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -48,7 +57,7 @@ import type {
   LightboxSourceRefusal
 } from '@messages';
 import { PROMPT_BUDGETS } from '@shared/constants/promptBudgets';
-import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
+import { LIGHTBOX_READING_GROUPS, emptyLightboxReadingGroup } from '@shared/constants/lightbox';
 import { countWords } from '@/utils/textUtils';
 import { ListenerSet } from '@/utils/ListenerSet';
 import type { ProseStatsService } from '@services/measurement/ProseStatsService';
@@ -107,7 +116,17 @@ export type LightboxOutcomeChange =
   /** A board was adopted; `refusal` is the one still standing beside it (none after a new source). */
   | { kind: 'board'; board: LightboxBoard; refusal: LightboxSourceRefusal | null }
   /** A source was refused; the board behind it is unchanged. */
-  | { kind: 'refusal'; refusal: LightboxSourceRefusal };
+  | { kind: 'refusal'; refusal: LightboxSourceRefusal }
+  /**
+   * The current board's readings changed (Slice 2B): one group settled
+   * (`settled`), or a run started or stopped (the whole board).
+   */
+  | {
+      kind: 'readings';
+      board: LightboxBoard;
+      refusal: LightboxSourceRefusal | null;
+      settled?: { token: string; group: LightboxReadingGroup };
+    };
 
 /** What "Re-read file" needs to board the current source again. */
 export interface LightboxRereadTarget {
@@ -130,6 +149,14 @@ const DEFAULT_RETAINED_BOARDS = 12;
 interface BoardEntry {
   board: LightboxBoard;
   rereadPath?: string;
+  /** Host-private: the paragraph texts the board was measured from (index 0 is ¶1). */
+  paragraphTexts: string[];
+}
+
+/** A retained board with the text a reading run reads. Host-private. */
+export interface LightboxReadingSourceText {
+  board: LightboxBoard;
+  paragraphTexts: readonly string[];
 }
 
 export class LightboxService {
@@ -199,11 +226,21 @@ export class LightboxService {
     const retained = this.entries.get(key);
     const unchanged = retained?.board.source.contentHash === contentHash ? retained.board : undefined;
 
-    const board = await this.assemble(input, contentHash, unchanged);
+    let board = await this.assemble(input, contentHash, unchanged);
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
     }
-    this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath });
+    // A reading group may have landed on the unchanged board while this one
+    // was measured; keep the latest readings, not the ones captured before.
+    const latest = this.entries.get(key)?.board;
+    if (unchanged && latest?.boardId === board.boardId) {
+      board = { ...board, readings: latest.readings };
+    }
+    this.adopt(key, {
+      board,
+      rereadPath: input.rereadPath ?? retained?.rereadPath,
+      paragraphTexts: splitLightboxParagraphs(input.text).map((paragraph) => paragraph.text)
+    });
     // The newest request produced a board, so no refusal stands beside it.
     this.standingRefusal = null;
     this.outcomeListeners.emit({ kind: 'board', board, refusal: this.standingRefusal });
@@ -257,6 +294,51 @@ export class LightboxService {
     return this.currentKey ? this.entries.get(this.currentKey)?.board : undefined;
   }
 
+  /** A retained board and its paragraph texts, by board id (Slice 2B readings). */
+  readingSource(boardId: string): LightboxReadingSourceText | undefined {
+    const entry = this.entryOf(boardId);
+    return entry ? { board: entry.board, paragraphTexts: entry.paragraphTexts } : undefined;
+  }
+
+  /**
+   * Replace a retained board's reading groups, and publish the change when
+   * the board is the current one. `settled` names the group a run's call
+   * just settled, under that run's token. Returns the updated board, or
+   * undefined when no retained board has that id any more (its text changed
+   * or it was evicted), in which case the update is dropped.
+   */
+  updateReadings(
+    boardId: string,
+    update: (readings: LightboxBoard['readings']) => LightboxBoard['readings'],
+    settled?: { token: string; group: LightboxReadingGroup['group'] }
+  ): LightboxBoard | undefined {
+    const entry = this.entryOf(boardId);
+    if (!entry) {
+      return undefined;
+    }
+    entry.board = { ...entry.board, readings: update(entry.board.readings) };
+    const board = entry.board;
+    if (this.currentBoard()?.boardId === boardId) {
+      const group = settled ? board.readings.find((candidate) => candidate.group === settled.group) : undefined;
+      this.outcomeListeners.emit({
+        kind: 'readings',
+        board,
+        refusal: this.standingRefusal,
+        ...(settled && group ? { settled: { token: settled.token, group } } : {})
+      });
+    }
+    return board;
+  }
+
+  private entryOf(boardId: string): BoardEntry | undefined {
+    for (const entry of this.entries.values()) {
+      if (entry.board.boardId === boardId) {
+        return entry;
+      }
+    }
+    return undefined;
+  }
+
   /** The current source's re-read target, when it is a file. */
   currentRereadTarget(): LightboxRereadTarget | undefined {
     const entry = this.currentKey ? this.entries.get(this.currentKey) : undefined;
@@ -303,12 +385,7 @@ export class LightboxService {
       paragraphs: metrics,
       ribbon: buildLightboxRibbon(metrics, PROMPT_BUDGETS.lightbox.ribbonColumns),
       measured: buildLightboxMeasuredSet({ stats: enriched, frequency, flags, paragraphs, text: input.text }),
-      readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map((group): LightboxReadingGroup => ({
-        group,
-        status: 'not-run',
-        tiles: [],
-        withheldBlocks: []
-      }))
+      readings: predecessor?.readings ?? LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
     };
   }
 

@@ -129,7 +129,9 @@ describe('LightboxService measured set (D5)', () => {
     expect(board).toEqual(expect.objectContaining({
       boardVersion: 0,
       boardId: 'board-1',
-      readings: ['A', 'B', 'C'].map((group) => ({ group, status: 'not-run', tiles: [], withheldBlocks: [] }))
+      readings: ['A', 'B', 'C'].map((group) => ({
+        group, status: 'not-run', lenses: [], tiles: [], withheldBlocks: [], withheldClaims: [], frictions: [], quoteChecks: []
+      }))
     }));
     expect(board.source).toEqual(expect.objectContaining({
       kind: 'file',
@@ -282,7 +284,8 @@ describe('LightboxService boards per source (D12)', () => {
     const { service, spies } = createService();
     const changes: string[] = [];
     service.addOutcomeListener((change) =>
-      changes.push(change.kind === 'board' ? `board ${change.board.source.displayPath}` : `refusal ${change.refusal.reason}`)
+      changes.push(change.kind === 'board' ? `board ${change.board.source.displayPath}`
+        : change.kind === 'refusal' ? `refusal ${change.refusal.reason}` : 'readings')
     );
     const older = service.beginSourceRequest();
     const newer = service.beginSourceRequest();

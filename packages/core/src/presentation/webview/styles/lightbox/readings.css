@@ -1,0 +1,481 @@
+/* ============================================================
+   Prose Minion — the Lightbox readings (ADR 2026-10-19 D3, D6, D7;
+   Slice 2B): the run line, the reading tiles (headline, motifs,
+   characters, genre neighborhood, voice), the tension lane, and the
+   withheld and empty states. A reading's evidence in the inspector is in
+   inspector.css, and the context list in rail.css. Read tiles are dashed
+   and periwinkle, from the design (docs/design/lightbox/); counted
+   figures beside a reading keep the measured accent.
+   ============================================================ */
+
+/* ---------- Run line ---------- */
+[data-pm-surface="lightbox"] .pm-lb-run {
+  max-width: 100%;
+}
+[data-pm-surface="lightbox"] .pm-lb-spin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--pm-lb-read-line);
+  border-top-color: var(--pm-lb-read);
+  animation: pm-lb-spin 0.8s linear infinite;
+  display: block;
+  flex: none;
+}
+@keyframes pm-lb-spin {
+  to { transform: rotate(360deg); }
+}
+[data-pm-surface="lightbox"] .pm-lb-run-warning {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-amber);
+  border: 1px solid color-mix(in srgb, var(--pm-amber) 45%, var(--pm-border));
+  border-radius: 5px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-run-cost {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+  margin-left: 4px;
+}
+[data-pm-surface="lightbox"] .pm-lb-run-reason {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-amber);
+}
+[data-pm-surface="lightbox"] .pm-lb-button.is-ghost {
+  background: transparent;
+}
+[data-pm-surface="lightbox"] .pm-lb-button:disabled,
+[data-pm-surface="lightbox"] .pm-lb-button:disabled svg {
+  color: var(--pm-dim);
+  cursor: default;
+}
+
+/* ---------- Skeletons while a group is read ---------- */
+[data-pm-surface="lightbox"] .pm-lb-skeleton.is-live .pm-lb-skeleton-line {
+  background: linear-gradient(90deg, var(--pm-surface-2) 0%, var(--pm-surface-3) 40%, var(--pm-surface-2) 80%);
+  background-size: 300% 100%;
+  animation: pm-lb-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes pm-lb-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pm-surface="lightbox"] .pm-lb-skeleton.is-live .pm-lb-skeleton-line,
+  [data-pm-surface="lightbox"] .pm-lb-spin {
+    animation: none;
+  }
+}
+
+/* ---------- The headline, as read ---------- */
+[data-pm-surface="lightbox"] .pm-lb-headline-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-headline-reading {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0 4px;
+  margin: 0 -4px;
+  border-radius: 8px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* A headline withheld or not back: the plain heading stays, the reason sits under it (PR #149 F-04). */
+[data-pm-surface="lightbox"] .pm-lb-headline-state {
+  max-width: 720px;
+  margin: 10px 0 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-headline-state .pm-lb-withheld-claims {
+  margin: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-headline-state > :last-child {
+  margin-bottom: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-headline-reading:hover,
+[data-pm-surface="lightbox"] .pm-lb-headline-reading.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-headline-reading.is-sel {
+  background: var(--pm-lb-read-soft);
+}
+
+/* ---------- The tension lane ---------- */
+[data-pm-surface="lightbox"] .pm-lb-col-tension.is-read {
+  display: flex;
+  align-items: flex-end;
+}
+[data-pm-surface="lightbox"] .pm-lb-col-tension i {
+  display: block;
+  width: 100%;
+  border: 1px dashed var(--pm-lb-read);
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+  background: rgba(157, 184, 242, 0.16);
+}
+[data-pm-surface="lightbox"] .pm-lb-col-focus.is-lit.is-read {
+  background: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-ribbon-focus.is-read {
+  color: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-tension-note {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 84px);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 3px 6px;
+  margin-left: 78px;
+  color: var(--pm-text-2);
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-tension-note:hover,
+[data-pm-surface="lightbox"] .pm-lb-tension-note.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-tension-note.is-sel {
+  border-color: var(--pm-lb-read-line);
+}
+
+/* ---------- A reading's frame: withheld, failed and empty ---------- */
+[data-pm-surface="lightbox"] .pm-lb-reading-notice {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--pm-muted);
+  margin: 0 0 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-reading-notice.is-failed {
+  color: var(--pm-amber);
+}
+[data-pm-surface="lightbox"] .pm-lb-withheld-block {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-muted);
+  border: 1px dashed var(--pm-border-2);
+  border-radius: 9px;
+  padding: 9px 11px;
+  margin: 0 0 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-withheld-block b,
+[data-pm-surface="lightbox"] .pm-lb-withheld-claims b {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--pm-text-2);
+  margin-right: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-empty-reading p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pm-text-2);
+  margin: 0 0 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-empty-reading .pm-lb-empty-friction {
+  font-size: 12px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-withheld-claims {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+[data-pm-surface="lightbox"] .pm-lb-withheld-claims li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--pm-muted);
+  border: 1px dashed var(--pm-border-2);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-withheld-quote {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+}
+
+/* ---------- Reading cards (motifs, characters) ---------- */
+[data-pm-surface="lightbox"] .pm-lb-motifs,
+[data-pm-surface="lightbox"] .pm-lb-characters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  [data-pm-surface="lightbox"] .pm-lb-motifs,
+  [data-pm-surface="lightbox"] .pm-lb-characters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+[data-pm-surface="lightbox"] .pm-lb-motif,
+[data-pm-surface="lightbox"] .pm-lb-character {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px dashed var(--pm-lb-read-line);
+  border-radius: 11px;
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+[data-pm-surface="lightbox"] .pm-lb-motif:hover,
+[data-pm-surface="lightbox"] .pm-lb-motif.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-character:hover,
+[data-pm-surface="lightbox"] .pm-lb-character.is-hot {
+  border-color: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-motif.is-sel,
+[data-pm-surface="lightbox"] .pm-lb-character.is-sel {
+  border-style: solid;
+  border-color: var(--pm-lb-read);
+  box-shadow: inset 0 0 0 1px var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-motif-title,
+[data-pm-surface="lightbox"] .pm-lb-character-name {
+  font-family: var(--pm-lb-display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+[data-pm-surface="lightbox"] .pm-lb-motif-gist {
+  font-family: var(--pm-lb-serif);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-strip {
+  display: grid;
+  gap: 1px;
+  height: 8px;
+}
+[data-pm-surface="lightbox"] .pm-lb-strip i {
+  display: block;
+  background: var(--pm-surface-3);
+  border-radius: 1px;
+}
+[data-pm-surface="lightbox"] .pm-lb-strip i.is-on {
+  background: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-motif-support,
+[data-pm-surface="lightbox"] .pm-lb-character-count {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-lb-measured-hi);
+}
+[data-pm-surface="lightbox"] .pm-lb-motif-evidence {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-character-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+[data-pm-surface="lightbox"] .pm-lb-character-archetype {
+  font-family: var(--pm-lb-serif);
+  font-size: 19px;
+  line-height: 1.2;
+  color: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-character-energy {
+  font-size: 13px;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-character-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-character-kv b {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  font-weight: 500;
+  margin-right: 6px;
+}
+
+/* ---------- Genre neighborhood ---------- */
+[data-pm-surface="lightbox"] .pm-lb-genre-note {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-muted);
+  margin: -6px 0 10px;
+}
+[data-pm-surface="lightbox"] .pm-lb-neighbor {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--pm-text);
+  font: inherit;
+  text-align: left;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-neighbor:hover,
+[data-pm-surface="lightbox"] .pm-lb-neighbor.is-hot {
+  border-color: var(--pm-lb-read-line);
+  background: var(--pm-inset);
+}
+[data-pm-surface="lightbox"] .pm-lb-neighbor.is-sel {
+  border-color: var(--pm-lb-read);
+  background: var(--pm-inset);
+}
+[data-pm-surface="lightbox"] .pm-lb-neighbor-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+[data-pm-surface="lightbox"] .pm-lb-neighbor-affinity {
+  font-family: var(--pm-mono);
+  font-size: 11px;
+  color: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-neighbor-track {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--pm-surface-2);
+  overflow: hidden;
+}
+/* Striped, never solid: a claimed affinity must not read as a measurement. */
+[data-pm-surface="lightbox"] .pm-lb-neighbor-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: repeating-linear-gradient(135deg, rgba(157, 184, 242, 0.75) 0 4px, rgba(157, 184, 242, 0.28) 4px 8px);
+}
+[data-pm-surface="lightbox"] .pm-lb-neighbor-miss {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-promise {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--pm-border-soft);
+  background: var(--pm-inset);
+  color: var(--pm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-promise:hover,
+[data-pm-surface="lightbox"] .pm-lb-promise.is-hot,
+[data-pm-surface="lightbox"] .pm-lb-promise.is-sel {
+  border-color: var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-promise-label {
+  font-family: var(--pm-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+}
+[data-pm-surface="lightbox"] .pm-lb-promise-text {
+  font-family: var(--pm-lb-serif);
+  font-size: 15.5px;
+  line-height: 1.4;
+}
+
+/* ---------- Voice ---------- */
+[data-pm-surface="lightbox"] .pm-lb-voice {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: none;
+  padding: 4px 6px;
+  color: var(--pm-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+[data-pm-surface="lightbox"] .pm-lb-voice:hover,
+[data-pm-surface="lightbox"] .pm-lb-voice.is-hot {
+  border-color: var(--pm-lb-read-line);
+}
+[data-pm-surface="lightbox"] .pm-lb-voice.is-sel {
+  border-color: var(--pm-lb-read);
+}
+[data-pm-surface="lightbox"] .pm-lb-voice-row {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pm-border-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+[data-pm-surface="lightbox"] .pm-lb-voice-row:last-child {
+  border-bottom: 0;
+}
+[data-pm-surface="lightbox"] .pm-lb-voice-label {
+  flex: 0 0 112px;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pm-muted);
+  padding-top: 2px;
+}
+[data-pm-surface="lightbox"] .pm-lb-voice-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--pm-text-2);
+}
+[data-pm-surface="lightbox"] .pm-lb-voice-measured {
+  display: inline-block;
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  color: var(--pm-lb-measured-hi);
+  border: 1px solid var(--pm-lb-measured-line);
+  background: var(--pm-lb-measured-soft);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 7px;
+}
