@@ -11,39 +11,31 @@
  *   drift, and whether it clears the gravity line (`LightboxGravityCounts`).
  *   A field under the line is drawn below it, not dropped.
  * - **Collisions.** Drawn only when both fields made it onto the board and one
- *   sentence of a found quote holds a term of each (`LightboxTileGates`);
- *   that sentence is the tile's witness.
+ *   sentence of a found quote holds a term of each; that sentence is the
+ *   tile's witness. The rule is `LightboxTileGates`', shared with stale carry.
  * - **Literal set-asides.** Counted like a field, shown with their reason.
  * - **Palette.** A cluster's words and a swatch's color words are counted by
- *   the host; one whose words the chapter does not hold is withheld. A
+ *   the host; one whose words the chapter does not hold is withheld (the
+ *   gate again). A
  *   swatch's color is the reading's choice, carried as it proposed it.
  */
 
-import type { LightboxCountedSupport, LightboxGravityTerm, LightboxVerifiedQuote } from '@messages';
+import type { LightboxCountedSupport, LightboxVerifiedQuote } from '@messages';
 import type { LightboxClaimAssembler } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import type {
   LightboxDecodedGravityBlock,
   LightboxDecodedPaletteBlock
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { countLightboxField } from '@/infrastructure/lightbox/LightboxGravityCounts';
-import {
-  LIGHTBOX_COLLISION_FIELD_WITHHELD,
-  LIGHTBOX_NO_SHARED_SENTENCE,
-  lightboxCollisionWitness
-} from '@/infrastructure/lightbox/LightboxTileGates';
-
-const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
 export function assembleGravityBlock(block: LightboxDecodedGravityBlock, assembler: LightboxClaimAssembler): void {
   const { counter, verifier } = assembler.context;
   const friction = block.friction;
 
   assembler.malformed('gravity-field', 'gravity', block.malformed.fields);
-  // The fields that reached the board, with the terms the host counted for them.
-  const drawn = new Map<string, LightboxGravityTerm[]>();
   for (const field of block.fields) {
     const counted = countLightboxField(field.terms, counter, verifier.paragraphCount);
-    const tile = assembler.claim(
+    assembler.claim(
       { kind: 'gravity-field', lens: 'gravity', title: field.name, claim: field.claim, quotes: field.evidence,
         terms: [], support: counted.support, friction },
       (base) => ({
@@ -58,28 +50,21 @@ export function assembleGravityBlock(block: LightboxDecodedGravityBlock, assembl
         drift: counted.drift
       })
     );
-    if (tile) {
-      drawn.set(nameKey(field.name), counted.support);
-    }
   }
 
   assembler.malformed('gravity-collision', 'gravity', block.malformed.collisions);
   for (const collision of block.collisions) {
     const [first, second] = collision.fields;
-    // Found by `accept` before the tile is built: the sentence both fields share (F-04).
-    let witness: LightboxVerifiedQuote | undefined;
+    // The gate holds it to a sentence both fields share, its witness (F-04, F-05).
     assembler.claim(
       { kind: 'gravity-collision', lens: 'gravity', title: `${first} meets ${second}`, claim: collision.claim,
-        quotes: collision.evidence, terms: [], support: [], friction,
-        accept: (evidence) => {
-          const terms = collision.fields.map((name) => drawn.get(nameKey(name))?.map((term) => term.term));
-          if (!terms[0] || !terms[1]) {
-            return LIGHTBOX_COLLISION_FIELD_WITHHELD;
-          }
-          witness = lightboxCollisionWitness(evidence, [terms[0], terms[1]]);
-          return witness ? undefined : LIGHTBOX_NO_SHARED_SENTENCE;
-        } },
-      (base) => ({ ...base, kind: 'gravity-collision', fields: [first, second], witness: witness as LightboxVerifiedQuote })
+        quotes: collision.evidence, terms: [], support: [], friction, fields: [first, second] },
+      (base, accepted) => ({
+        ...base,
+        kind: 'gravity-collision',
+        fields: [first, second],
+        witness: accepted.witness as LightboxVerifiedQuote
+      })
     );
   }
 
@@ -101,7 +86,7 @@ export function assemblePaletteBlock(block: LightboxDecodedPaletteBlock, assembl
   for (const cluster of block.clusters) {
     assembler.claim(
       { kind: 'palette-cluster', lens: 'palette', title: cluster.name, claim: cluster.claim, quotes: cluster.evidence,
-        terms: cluster.words, friction, requireCounted: 'None of its words are in the chapter.' },
+        terms: cluster.words, friction },
       (base) => ({ ...base, kind: 'palette-cluster' })
     );
   }
@@ -109,7 +94,7 @@ export function assemblePaletteBlock(block: LightboxDecodedPaletteBlock, assembl
   for (const swatch of block.swatches) {
     assembler.claim(
       { kind: 'swatch', lens: 'palette', title: swatch.name, claim: swatch.note, quotes: swatch.evidence,
-        terms: swatch.words, friction, requireCounted: 'Its color words are not in the chapter.' },
+        terms: swatch.words, friction },
       (base) => ({ ...base, kind: 'swatch', hex: swatch.hex })
     );
   }

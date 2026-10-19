@@ -193,7 +193,7 @@ describe('assembling gravity and palette tiles', () => {
     });
     expect(assembled.withheldClaims.map((claim) => [claim.kind, claim.title, claim.reason])).toEqual([
       ['gravity-field', 'Fire', expect.stringContaining('No quote it gave was found')],
-      ['gravity-collision', 'Ledger meets Fire', 'One of the fields it names was withheld.'],
+      ['gravity-collision', 'Ledger meets Fire', 'One of the fields it names is not on the board.'],
       ['swatch', 'White Rabbit', 'Its color words are not in the chapter.']
     ]);
   });

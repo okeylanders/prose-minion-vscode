@@ -7,8 +7,10 @@
  * - each quote is checked against the paragraph it names (the verifier);
  *   found quotes keep the chapter's own span and match kind, failed ones
  *   become withheld quotes with their reason, never their text;
- * - a claim left with no found quote is withheld by its title, and a motif
- *   found in fewer than two paragraphs is withheld because a motif recurs;
+ * - a claim left with no found quote is withheld by its title, and each
+ *   kind's own rules (a motif recurs, a collision shares a sentence, a
+ *   palette's words are in the text) run through `LightboxTileGates`, the
+ *   same rules stale carry applies (PR #150 F-05);
  * - terms the reading names are counted by the host (the counter), and a
  *   tile's paragraphs are its found quotes' and counted terms' paragraphs,
  *   never a list the model supplied;
@@ -32,8 +34,8 @@ import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQu
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
+import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 import {
-  LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS,
   LIGHTBOX_VOICE_TRAITS,
   type LightboxDecodedBlock,
   type LightboxDecodedGroup,
@@ -76,7 +78,6 @@ export interface LightboxAssembledGroup {
   quotesWithheld: number;
 }
 
-const NO_QUOTE_FOUND = 'No quote it gave was found in the paragraph it named.';
 
 export function assembleLightboxGroup(
   decoded: LightboxDecodedGroup,
@@ -114,23 +115,27 @@ export interface LightboxClaimDraft {
   quotes: readonly (LightboxWireQuote | LightboxWirePeak)[];
   terms: readonly string[];
   friction: string;
-  /** A motif recurs: its found quotes must stand in this many paragraphs. */
-  minimumParagraphs?: number;
   /** Counted support the block computed itself (gravity's degrees); replaces counting `terms`. */
   support?: LightboxCountedSupport[];
-  /** Withhold the claim with this reason when none of its counted terms is in the chapter. */
-  requireCounted?: string;
-  /** A further check on the found quotes: a reason to withhold the claim, or undefined. */
-  accept?: (evidence: readonly LightboxVerifiedQuote[]) => string | undefined;
+  /** A collision's two field names, for its gate (`LightboxTileGates`). */
+  fields?: readonly [string, string];
 }
 
 export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
+
+/** What the gate found while accepting a tile: a collision's witness. */
+export interface LightboxAcceptedClaim {
+  witness?: LightboxVerifiedQuote;
+}
 
 /** What a lens block's assembly may ask of its group's (`LightboxGravityTiles`). */
 export interface LightboxClaimAssembler {
   readonly context: LightboxTileAssemblyContext;
   /** Check a claim's quotes; keep it as a tile (returned), or withhold it by title. */
-  claim(draft: LightboxClaimDraft, build: (base: LightboxTileBase) => LightboxReadingTile): LightboxReadingTile | undefined;
+  claim(
+    draft: LightboxClaimDraft,
+    build: (base: LightboxTileBase, accepted: LightboxAcceptedClaim) => LightboxReadingTile
+  ): LightboxReadingTile | undefined;
   /** Items the codec could not read, withheld by title. */
   malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void;
 }
@@ -143,6 +148,8 @@ class GroupAssembly implements LightboxClaimAssembler {
   readonly checks = new Map<LightboxLensId, { checked: number; withheld: number }>();
   quotesChecked = 0;
   quotesWithheld = 0;
+  /** The borrowed fields drawn so far, for a collision's gate. */
+  private readonly drawnFields = new Map<string, readonly string[]>();
 
   constructor(readonly context: LightboxTileAssemblyContext) {}
 
@@ -160,7 +167,7 @@ class GroupAssembly implements LightboxClaimAssembler {
         for (const motif of block.items) {
           this.claim(
             { kind: 'motif', lens: 'motif', title: motif.title, claim: motif.claim, quotes: motif.evidence,
-              terms: motif.terms, friction: block.friction, minimumParagraphs: LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS },
+              terms: motif.terms, friction: block.friction },
             (base) => ({ ...base, kind: 'motif', gist: motif.gist })
           );
         }
@@ -237,33 +244,22 @@ class GroupAssembly implements LightboxClaimAssembler {
     }
   }
 
-  /** Check a claim's quotes; keep it as a tile, or withhold it by title. */
-  claim(draft: LightboxClaimDraft, build: (base: LightboxTileBase) => LightboxReadingTile): LightboxReadingTile | undefined {
+  /** Check a claim's quotes and count its support; keep it as a tile if its kind's gate allows, or withhold it by title. */
+  claim(
+    draft: LightboxClaimDraft,
+    build: (base: LightboxTileBase, accepted: LightboxAcceptedClaim) => LightboxReadingTile
+  ): LightboxReadingTile | undefined {
     const checked = this.check(draft.lens, draft.quotes);
-    const foundParagraphs = new Set(checked.evidence.map((quote) => quote.paragraph));
-    if (checked.evidence.length === 0) {
-      this.withhold(draft, NO_QUOTE_FOUND, checked.withheld);
-      return undefined;
-    }
-    if (draft.minimumParagraphs !== undefined && foundParagraphs.size < draft.minimumParagraphs) {
-      this.withhold(
-        draft,
-        `A motif recurs, but its quotes were found in only ${foundParagraphs.size === 1 ? 'one paragraph' : 'no paragraph'}.`,
-        checked.withheld
-      );
-      return undefined;
-    }
-    const refused = draft.accept?.(checked.evidence);
-    if (refused !== undefined) {
-      this.withhold(draft, refused, checked.withheld);
-      return undefined;
-    }
     const support = draft.support ?? countLightboxSupport(draft.terms, this.context.counter);
-    if (draft.requireCounted !== undefined && support.every((term) => term.count === 0)) {
-      this.withhold(draft, draft.requireCounted, checked.withheld);
+    const verdict = lightboxTileGate(
+      { kind: draft.kind, evidence: checked.evidence, support, fields: draft.fields },
+      { phase: 'fresh', drawnFields: this.drawnFields }
+    );
+    if (!verdict.ok) {
+      this.withhold(draft, verdict.reason, checked.withheld);
       return undefined;
     }
-    const paragraphs = new Set<number>(foundParagraphs);
+    const paragraphs = new Set<number>(checked.evidence.map((quote) => quote.paragraph));
     for (const term of support) {
       term.paragraphs.forEach((index) => paragraphs.add(index));
     }
@@ -277,7 +273,10 @@ class GroupAssembly implements LightboxClaimAssembler {
       withheldQuotes: checked.withheld,
       support,
       friction: draft.friction
-    });
+    }, { witness: verdict.witness });
+    if (tile.kind === 'gravity-field') {
+      this.drawnFields.set(lightboxFieldKey(tile.title), tile.support.map((term) => term.term));
+    }
     this.tiles.push(tile);
     return tile;
   }

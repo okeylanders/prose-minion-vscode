@@ -12,11 +12,13 @@
  *   paragraph moved follows its words to the nearest paragraph that holds
  *   them (the host moving its own verified span, never a model's claim); a
  *   quote whose words are gone is withheld as no longer in the chapter;
- * - withholds a claim left with no quote, by title, as a first reading would,
- *   holds a motif to recurring in two paragraphs, and draws a collision only
- *   while both its fields are still drawn;
  * - recounts every counted term against the current text, so no count on the
  *   board describes a text that is gone;
+ * - holds every tile to the rules a first reading meets, through the same
+ *   `LightboxTileGates` fresh assembly uses (PR #150 F-05): a claim left with
+ *   no quote, a motif in one paragraph, a collision with no sentence its
+ *   fields still share (or a field that did not survive), and a palette tile
+ *   whose words are gone are withheld, by title, with a host-owned reason;
  * - sets aside a group that was still being read when the text changed: its
  *   run read the old text, and nothing it returns is attached here.
  * A fresh reading of a lens replaces its stale readings and clears the mark
@@ -36,9 +38,8 @@ import type {
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
-import { LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
-import { LIGHTBOX_NO_SHARED_SENTENCE, lightboxCollisionWitness } from '@/infrastructure/lightbox/LightboxTileGates';
+import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 
 export interface LightboxCarryContext {
   /** The hash of the text the readings were read against (the replaced board's). */
@@ -53,9 +54,6 @@ export interface LightboxCarryContext {
 export const LIGHTBOX_CHANGED_WHILE_READING =
   'The chapter changed while this group was being read, so that reading was set aside. Read the rest to read the new text.';
 
-const NO_QUOTE_LEFT = 'Its quotes are no longer in the chapter.';
-const COLLISION_FIELD_GONE = 'One of the fields it names is no longer on the board.';
-const nameKey = (name: string): string => name.toLocaleLowerCase('en-US');
 
 interface CarryTools {
   verifier: LightboxQuoteVerifier;
@@ -80,44 +78,34 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
   if (group.status === 'not-run') {
     return group;
   }
-  const tiles: LightboxReadingTile[] = [];
   const withheldClaims: LightboxWithheldClaim[] = group.withheldClaims.map((claim) => ({
     ...claim,
     quotes: claim.quotes.map(withoutAddresses)
   }));
-  const lostByLens = new Map<LightboxLensId, number>();
-  for (const tile of group.tiles) {
-    const carried = carryTile(tile, tools);
-    lostByLens.set(tile.lens, (lostByLens.get(tile.lens) ?? 0) + carried.lost);
-    if ('tile' in carried) {
-      tiles.push(carried.tile);
-    } else {
-      withheldClaims.push(carried.withheld);
+  // Fields before collisions, so a collision's gate sees the fields that
+  // survive the carry; the board keeps the tiles' original order.
+  const results = new Map<LightboxReadingTile, CarriedTile>();
+  const drawnFields = new Map<string, readonly string[]>();
+  for (const tile of group.tiles.filter((candidate) => candidate.kind !== 'gravity-collision')) {
+    const result = carryTile(tile, tools, drawnFields);
+    results.set(tile, result);
+    if ('tile' in result && result.tile.kind === 'gravity-field') {
+      drawnFields.set(lightboxFieldKey(result.tile.title), result.tile.support.map((term) => term.term));
     }
   }
-  // A collision is drawn only between two drawn fields, with a sentence that
-  // still holds both (as on a first reading; PR #150 F-04).
-  const fields = new Map(tiles.flatMap((tile) => (tile.kind === 'gravity-field'
-    ? [[nameKey(tile.title), tile.support.map((term) => term.term)] as const]
-    : [])));
-  for (const collision of tiles.filter((tile) => tile.kind === 'gravity-collision')) {
-    if (collision.kind !== 'gravity-collision') {
-      continue;
+  for (const tile of group.tiles.filter((candidate) => candidate.kind === 'gravity-collision')) {
+    results.set(tile, carryTile(tile, tools, drawnFields));
+  }
+  const tiles: LightboxReadingTile[] = [];
+  const lostByLens = new Map<LightboxLensId, number>();
+  for (const tile of group.tiles) {
+    const result = results.get(tile) as CarriedTile;
+    lostByLens.set(tile.lens, (lostByLens.get(tile.lens) ?? 0) + result.lost);
+    if ('tile' in result) {
+      tiles.push(result.tile);
+    } else {
+      withheldClaims.push(result.withheld);
     }
-    const [first, second] = collision.fields.map((name) => fields.get(nameKey(name)));
-    const witness = first && second ? lightboxCollisionWitness(collision.evidence, [first, second]) : undefined;
-    if (witness) {
-      tiles.splice(tiles.indexOf(collision), 1, { ...collision, witness });
-      continue;
-    }
-    tiles.splice(tiles.indexOf(collision), 1);
-    withheldClaims.push({
-      kind: collision.kind,
-      lens: collision.lens,
-      title: collision.title,
-      reason: first && second ? LIGHTBOX_NO_SHARED_SENTENCE : COLLISION_FIELD_GONE,
-      quotes: collision.withheldQuotes
-    });
   }
   const staleLenses = staleMarks(group, tools.context.readAgainst);
   const { pending: _pending, staleLenses: _previous, ...rest } = group;
@@ -158,7 +146,11 @@ function withoutAddresses(quote: LightboxWithheldQuote): LightboxWithheldQuote {
 /** A carried tile, or the claim it became, with how many of its found quotes are gone. */
 type CarriedTile = ({ tile: LightboxReadingTile } | { withheld: LightboxWithheldClaim }) & { lost: number };
 
-function carryTile(tile: LightboxReadingTile, tools: CarryTools): CarriedTile {
+function carryTile(
+  tile: LightboxReadingTile,
+  tools: CarryTools,
+  drawnFields: ReadonlyMap<string, readonly string[]>
+): CarriedTile {
   const evidence: LightboxVerifiedQuote[] = [];
   const lost: LightboxWithheldQuote[] = [];
   const seen = new Set<string>();
@@ -175,28 +167,35 @@ function carryTile(tile: LightboxReadingTile, tools: CarryTools): CarriedTile {
     }
   }
   const withheldQuotes = [...lost, ...tile.withheldQuotes.map(withoutAddresses)];
-  const withhold = (reason: string): CarriedTile => ({
-    withheld: { kind: tile.kind, lens: tile.lens, title: tile.title, reason, quotes: withheldQuotes },
-    lost: lost.length
-  });
-  if (evidence.length === 0) {
-    return withhold(NO_QUOTE_LEFT);
-  }
-  const foundParagraphs = new Set(evidence.map((quote) => quote.paragraph));
-  if (tile.kind === 'motif' && foundParagraphs.size < LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS) {
-    return withhold('A motif recurs, but its quotes now stand in only one paragraph.');
-  }
   const recounted = recountLightboxTile(tile, tools.counter, {
     paragraphCount: tools.context.paragraphs.length,
     averageWordsPerSentence: tools.context.averageWordsPerSentence
   });
-  return {
-    tile: {
-      ...recounted,
+  // The same rules a first reading meets (PR #150 F-05).
+  const verdict = lightboxTileGate(
+    {
+      kind: tile.kind,
       evidence,
-      withheldQuotes,
-      paragraphs: paragraphsOf(foundParagraphs, recounted.support)
+      support: recounted.support,
+      ...(tile.kind === 'gravity-collision' ? { fields: tile.fields } : {})
     },
+    { phase: 'carried', drawnFields }
+  );
+  if (!verdict.ok) {
+    return {
+      withheld: { kind: tile.kind, lens: tile.lens, title: tile.title, reason: verdict.reason, quotes: withheldQuotes },
+      lost: lost.length
+    };
+  }
+  const foundParagraphs = new Set(evidence.map((quote) => quote.paragraph));
+  const kept: LightboxReadingTile = {
+    ...recounted,
+    evidence,
+    withheldQuotes,
+    paragraphs: paragraphsOf(foundParagraphs, recounted.support)
+  };
+  return {
+    tile: kept.kind === 'gravity-collision' && verdict.witness ? { ...kept, witness: verdict.witness } : kept,
     lost: lost.length
   };
 }

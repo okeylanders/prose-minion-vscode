@@ -110,7 +110,7 @@ describe('carrying readings onto a changed text (D4)', () => {
     expect(carried.tiles.some((tile) => tile.kind === 'gravity-collision')).toBe(false);
     expect(carried.withheldClaims.filter((claim) => claim.kind !== 'motif')).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'gravity-field', title: 'Animals', reason: 'Its quotes are no longer in the chapter.' }),
-      expect.objectContaining({ kind: 'gravity-collision', reason: 'One of the fields it names is no longer on the board.' })
+      expect.objectContaining({ kind: 'gravity-collision', reason: 'One of the fields it names is not on the board.' })
     ]));
   });
 
