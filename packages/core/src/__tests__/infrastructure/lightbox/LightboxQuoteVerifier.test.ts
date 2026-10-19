@@ -132,6 +132,82 @@ describe('LightboxQuoteVerifier', () => {
   });
 });
 
+describe('the fold\'s span map (PR #149 F-01)', () => {
+  /** The forms a quote can match under: folded, and folded without its own wrapping marks. */
+  const formsOf = (quote: string): string[] => {
+    const folded = foldWithMap(quote.trim()).folded;
+    const wrapped = folded.length > 2 && folded.startsWith('"') && folded.endsWith('"');
+    return wrapped ? [folded, folded.slice(1, -1).trim()] : [folded];
+  };
+
+  /** Found as `expected`, and the span the writer is shown folds back to a form the quote matched under. */
+  const expectSpan = (paragraph: string, quote: string, expected: string): void => {
+    const verdict = createLightboxQuoteVerifier([paragraph]).verify(1, quote);
+    expect(verdict).toEqual({ found: true, paragraph: 1, text: expected, match: 'normalized' });
+    expect(paragraph).toContain(expected);
+    expect(formsOf(quote)).toContain(foldWithMap(expected).folded);
+  };
+
+  it('keeps a span right after supplementary characters (the review\'s witness)', () => {
+    expectSpan('😀😀😀😀 “Alice waited” today.', '"Alice waited"', '“Alice waited”');
+    expectSpan('𝒜 𝒜 𝒜 “Alice waited” today.', '"Alice waited" today', '“Alice waited” today');
+  });
+
+  it('keeps a span with supplementary characters inside the match', () => {
+    expectSpan('“Look 😀 here,” said Alice, and waited.', '"Look 😀 here," said Alice', '“Look 😀 here,” said Alice');
+    // NFKC folds the mathematical script capital to A, inside a surrogate pair.
+    expectSpan('Then 𝒜lice waited by the door.', 'Alice waited by the door', '𝒜lice waited by the door');
+    expectSpan('😀 Then 𝒜lice — at last — waited.', 'Alice--at last--waited', '𝒜lice — at last — waited');
+  });
+
+  it('matches Hangul by whole-string NFKC equivalence, jamo and syllables either way', () => {
+    const jamo = 'The 가 house waited.';
+    const syllable = 'The 가 house waited.';
+    expectSpan(jamo, syllable, jamo);
+    expectSpan(syllable, jamo, syllable);
+    // Compatibility jamo compose too, once NFKC maps them to conjoining ones.
+    expectSpan('The ㄱㅏ house waited.', syllable, 'The ㄱㅏ house waited.');
+    // Half a syllable is not a quote of the syllable.
+    expect(createLightboxQuoteVerifier([jamo]).verify(1, 'The ᄀ house')).toMatchObject({
+      found: false,
+      reason: 'not-in-chapter'
+    });
+  });
+
+  it('expands ligatures, and never returns half of one', () => {
+    expectSpan('The ﬁnal ﬂight left at dawn.', 'The final flight', 'The ﬁnal ﬂight');
+    expectSpan('Lost in the ﬁnal ﬂight.', 'final flight.', 'ﬁnal ﬂight.');
+    expect(createLightboxQuoteVerifier(['The ﬁnal ﬂight left.']).verify(1, 'inal flight')).toMatchObject({
+      found: false,
+      reason: 'not-in-chapter'
+    });
+  });
+
+  it('composes combining marks, and never cuts a letter from its accent', () => {
+    const decomposed = 'A café au lait, at last.';
+    expectSpan(decomposed, 'café au lait', 'café au lait');
+    expectSpan('A café au lait, at last.', 'café au lait', 'café au lait');
+    // "cafe" stands in the code units, but the chapter says "café": neither an exact nor a folded match.
+    expect(createLightboxQuoteVerifier([decomposed]).verify(1, 'A cafe')).toMatchObject({ found: false, reason: 'not-in-chapter' });
+    expect(createLightboxQuoteVerifier([decomposed]).verify(1, 'A café')).toMatchObject({ found: true, match: 'exact' });
+  });
+
+  it('folds repeated dashes and the spaces around them into one, spanning the whole run', () => {
+    expectSpan('“No——never,” she said.', '"No—never," she said', '“No——never,” she said');
+    expectSpan('wait - - - and then', 'wait—and then', 'wait - - - and then');
+    expectSpan('😀 so -- and so —— on', 'so - and so - on', 'so -- and so —— on');
+  });
+
+  it('maps every folded code unit, so a supplementary character takes two entries', () => {
+    const folded = foldWithMap('😀 “Alice”');
+    expect(folded.folded).toBe('😀 "Alice"');
+    expect(folded.starts).toHaveLength(folded.folded.length);
+    expect(folded.starts.slice(0, 2)).toEqual([0, 0]);
+    expect(folded.ends.slice(0, 2)).toEqual([2, 2]);
+    expect(folded.starts[3]).toBe(3);
+  });
+});
+
 describe('assembling tiles from a group (D7)', () => {
   const contextA = { group: 'A' as const, lenses: example.lenses, columnCount: 8 };
 
