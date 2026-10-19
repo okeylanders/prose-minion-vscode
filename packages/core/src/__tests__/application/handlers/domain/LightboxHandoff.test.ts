@@ -13,7 +13,7 @@ import { MessageType } from '@messages';
 import { LIGHTBOX_HANDOFF_REFUSALS } from '@/infrastructure/lightbox/LightboxHandoff';
 import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 import { readGroup } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
-import { createLightboxHost, settle } from './lightboxHandlerHarness';
+import { createLightboxHost, deferred, settle } from './lightboxHandlerHarness';
 
 const CHAPTER = readWorkedExample('A').paragraphs.join('\n\n');
 
@@ -57,7 +57,7 @@ describe('Build as a lens: the Lightbox handoff (D11)', () => {
       kind: 'lexical-gravity-seed',
       fieldId: fieldId('Ledger'),
       ok: true,
-      message: 'Sent “Ledger” to Build lens in the Workshop\'s Lexical Gravity. Nothing is built until you press Build there.'
+      message: 'Sent “Ledger” to Build lens in the Workshop’s Lexical Gravity. Nothing is built until you press Build there.'
     })]);
     // The log counts; it never carries the field's name or terms.
     expect(panel.logged()).toContain('Handed a borrowed field to the Workshop: 3 counted terms, 2 of 2 quotes found again');
@@ -102,6 +102,30 @@ describe('Build as a lens: the Lightbox handoff (D11)', () => {
       [false, LIGHTBOX_HANDOFF_REFUSALS.notAField],
       [false, LIGHTBOX_HANDOFF_REFUSALS.unknown]
     ]);
+  });
+
+  it('takes one handoff at a time, and hands nothing over once the tab has closed', async () => {
+    const handOff = jest.fn(() => true);
+    const { host, panel, board, fieldId, results } = await boardWithReadings(handOff);
+    // Hold the file read the handoff makes, press twice, then close the tab.
+    const read = deferred<string>();
+    host.addFile('Drafts/alice-1.md', read);
+    const request = { kind: 'lexical-gravity-seed', boardId: board.boardId, fieldId: fieldId('Ledger') };
+    const first = panel.route(MessageType.LIGHTBOX_HAND_OFF, request);
+    await settle();
+    await panel.route(MessageType.LIGHTBOX_HAND_OFF, request);
+    expect(results()).toEqual([expect.objectContaining({ ok: false, message: LIGHTBOX_HANDOFF_REFUSALS.busy })]);
+
+    panel.dispose();
+    read.resolve(CHAPTER);
+    await first;
+    await settle();
+    expect(handOff).not.toHaveBeenCalled();
+    expect(results()).toHaveLength(1);
+    expect(panel.logged()).toContain('Handoff dropped: the Lightbox closed while its file was checked');
+    // A closed tab's later press is ignored outright.
+    await panel.route(MessageType.LIGHTBOX_HAND_OFF, request);
+    expect(results()).toHaveLength(1);
   });
 
   it('refuses when no Workshop is reachable, or the Workshop does not take it', async () => {

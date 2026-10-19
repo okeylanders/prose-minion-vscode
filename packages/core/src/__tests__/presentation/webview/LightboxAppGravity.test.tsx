@@ -147,7 +147,7 @@ describe('LightboxApp: lexical gravity and palette', () => {
 
     fromHost(MessageType.LIGHTBOX_HAND_OFF_RESULT, {
       kind: 'lexical-gravity-seed', boardId: board.boardId, fieldId, ok: true,
-      message: 'Sent “Ledger” to Build lens in the Workshop\'s Lexical Gravity. Nothing is built until you press Build there.'
+      message: 'Sent “Ledger” to Build lens in the Workshop’s Lexical Gravity. Nothing is built until you press Build there.'
     });
     expect(within(inspector).getByRole('status').textContent).toContain('Sent “Ledger” to Build lens');
     expect(build.disabled).toBe(false);

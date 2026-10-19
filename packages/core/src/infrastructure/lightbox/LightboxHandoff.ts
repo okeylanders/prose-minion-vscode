@@ -37,6 +37,7 @@ const SEED_KIND = LIGHTBOX_SEED_HAND_OFF_KIND;
 /** Writer-facing refusals, in the order they are checked. */
 export const LIGHTBOX_HANDOFF_REFUSALS = {
   unknown: 'That is not something the Lightbox can hand to the Workshop.',
+  busy: 'A field is already on its way to the Workshop. Wait for it, then try again.',
   boardChanged: 'The board changed. Build from the board on screen.',
   fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then read the lens again before building it.',
   fileUnreadable: 'The chapter could not be read to check it, so nothing was handed over.',
@@ -99,7 +100,7 @@ export function prepareLightboxHandoff(
 
 /** Said to the writer when the Workshop accepted the field. */
 export function lightboxHandoffSentMessage(handoff: LightboxWorkshopHandoff): string {
-  return `Sent “${handoff.seed.field}” to Build lens in the Workshop's Lexical Gravity. ` +
+  return `Sent “${handoff.seed.field}” to Build lens in the Workshop’s Lexical Gravity. ` +
     'Nothing is built until you press Build there.';
 }
 

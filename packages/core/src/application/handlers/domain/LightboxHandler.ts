@@ -101,6 +101,8 @@ interface LightboxFileRequest {
 export class LightboxHandler {
   private unsubscribe?: () => void;
   private disposed = false;
+  /** True while a handoff is being checked; a second press is refused, not queued. */
+  private handingOff = false;
 
   constructor(
     private readonly lightboxService: LightboxService,
@@ -224,9 +226,14 @@ export class LightboxHandler {
 
   /**
    * Hand a board item to the Workshop (D11). Every check runs against the
-   * host's current board and text; the webview only names the item.
+   * host's current board and text; the webview only names the item. One
+   * handoff at a time per tab, and none from a closed tab: a tab closed while
+   * its file is re-read hands nothing over.
    */
   async handleHandOff(message: LightboxHandOffMessage): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
     this.subscribe();
     const request = parseLightboxHandOffRequest(message.payload);
     const echo: LightboxHandOffPayload = request ?? {
@@ -242,6 +249,19 @@ export class LightboxHandler {
       refuse(LIGHTBOX_HANDOFF_REFUSALS.unknown);
       return;
     }
+    if (this.handingOff) {
+      refuse(LIGHTBOX_HANDOFF_REFUSALS.busy);
+      return;
+    }
+    this.handingOff = true;
+    try {
+      await this.handOff(request, refuse);
+    } finally {
+      this.handingOff = false;
+    }
+  }
+
+  private async handOff(request: LightboxHandOffPayload, refuse: (reason: string) => void): Promise<void> {
     const onScreen = () => this.lightboxService.currentBoard()?.boardId === request.boardId;
     if (!onScreen()) {
       refuse(LIGHTBOX_HANDOFF_REFUSALS.boardChanged);
@@ -257,6 +277,10 @@ export class LightboxHandler {
         // The resolver's own wording stays out of the log; the path and the refusal say enough.
         this.outputChannel.appendLine(`[LightboxHandler] Could not read ${target.displayPath} to check a handoff`);
         refuse(LIGHTBOX_HANDOFF_REFUSALS.fileUnreadable);
+        return;
+      }
+      if (this.disposed) {
+        this.outputChannel.appendLine('[LightboxHandler] Handoff dropped: the Lightbox closed while its file was checked');
         return;
       }
       const board = this.lightboxService.currentBoard();
