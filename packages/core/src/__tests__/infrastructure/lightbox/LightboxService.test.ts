@@ -326,9 +326,36 @@ describe('LightboxService boards per source (D12)', () => {
     expect(again).toEqual(expect.objectContaining({ kind: 'board', reused: false }));
   });
 
-  it('keys a selection by its file and lines', () => {
+  it('keys a source by its document URI, falling back to its path, and a selection by its lines too', () => {
+    expect(lightboxSourceKey({ kind: 'file', displayPath: 'a.md', sourceUri: 'file:///root-a/a.md' }))
+      .toBe('file:file:///root-a/a.md');
+    expect(lightboxSourceKey({ kind: 'selection', displayPath: 'a.md', sourceUri: 'untitled:Untitled-1', startLine: 1, endLine: 4 }))
+      .toBe('selection:untitled:Untitled-1:1-4');
     expect(lightboxSourceKey({ kind: 'selection', displayPath: 'a.md', startLine: 1, endLine: 4 }))
       .toBe('selection:a.md:1-4');
     expect(lightboxSourceKey({ kind: 'file', displayPath: 'a.md' })).toBe('file:a.md');
+  });
+
+  it('keeps separate boards for same-named files in two workspace roots', async () => {
+    const { service } = createService();
+    const inRoot = (root: string): LightboxSourceInput => ({
+      kind: 'file',
+      text: ALICE_OPENING_CURLY,
+      displayPath: 'chapter.md',
+      sourceUri: `file:///${root}/chapter.md`,
+      rereadPath: `/${root}/chapter.md`
+    });
+
+    const first = await service.buildBoard(inRoot('root-a'));
+    const second = await service.buildBoard(inRoot('root-b'));
+    expect(first.kind === 'board' && first.board.boardId).toBe('board-1');
+    expect(second).toEqual(expect.objectContaining({ kind: 'board', reused: false }));
+    expect(second.kind === 'board' && second.board.boardId).toBe('board-2');
+    expect(service.currentRereadTarget()?.rereadPath).toBe('/root-b/chapter.md');
+
+    const back = await service.buildBoard(inRoot('root-a'));
+    expect(back).toEqual(expect.objectContaining({ kind: 'board', reused: true }));
+    expect(back.kind === 'board' && back.board.boardId).toBe('board-1');
+    expect(service.currentRereadTarget()?.rereadPath).toBe('/root-a/chapter.md');
   });
 });

@@ -105,7 +105,7 @@ export interface LightboxRereadTarget {
 export interface LightboxServiceOptions {
   now?: () => number;
   mintBoardId?: () => string;
-  /** Boards kept in memory, least recently built first out. */
+  /** Boards kept in memory (one per source, by `lightboxSourceKey`), least recently built first out. */
   retainedBoards?: number;
 }
 
@@ -328,13 +328,22 @@ function checkSource(input: LightboxSourceInput): LightboxSourceRefusal | undefi
   return undefined;
 }
 
-/** Which source a board belongs to: its kind, path and, for a selection, its lines. */
+/**
+ * Which source a board belongs to: its kind, its document and, for a
+ * selection, its lines. The document is its URI, VS Code's canonical
+ * `Uri.toString()` from both the editor command and the picker (a re-read
+ * reuses the board's), so two workspace roots that each hold `chapter.md`
+ * never share a board. The display path, which is workspace-relative and can
+ * repeat across roots, is only the fallback for a source with no URI.
+ * Computable from a resolved input and from a board's own `source` alike.
+ */
 export function lightboxSourceKey(
-  source: Pick<LightboxSource, 'kind' | 'displayPath' | 'startLine' | 'endLine'>
+  source: Pick<LightboxSource, 'kind' | 'displayPath' | 'sourceUri' | 'startLine' | 'endLine'>
 ): string {
+  const document = source.sourceUri ?? source.displayPath;
   return source.kind === 'selection'
-    ? `selection:${source.displayPath}:${source.startLine ?? ''}-${source.endLine ?? ''}`
-    : `file:${source.displayPath}`;
+    ? `selection:${document}:${source.startLine ?? ''}-${source.endLine ?? ''}`
+    : `file:${document}`;
 }
 
 /** The opening of the text, cut at a word boundary. */
