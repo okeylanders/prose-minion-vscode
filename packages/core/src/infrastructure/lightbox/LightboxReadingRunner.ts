@@ -72,11 +72,6 @@ import {
   type LightboxModelFacts,
   type LightboxPreparedCall
 } from '@/infrastructure/lightbox/LightboxRunEstimate';
-export type {
-  LightboxPricedSnapshot,
-  LightboxRunReservation,
-  LightboxRunReserve
-} from '@/infrastructure/lightbox/LightboxReadingRunContracts';
 import {
   OPENROUTER_LIGHTBOX_CATALOG,
   sumUsage,
@@ -281,13 +276,16 @@ export class LightboxReadingRunner {
     if (!this.holds(reservation) || state.started || state.run.boardId !== source.boardId) {
       return { started: false, message: 'This press was stopped before it started.' };
     }
+    // The run names the groups it was reserved for; the calls must be exactly those.
+    const reservedCalls = calls.length === state.run.groups.length &&
+      calls.every((call, index) => call.group === state.run.groups[index]);
     const engine = this.engines.getEngine('assistant');
-    if (calls.length === 0 || !engine) {
+    if (calls.length === 0 || !reservedCalls || !engine) {
       this.release(reservation);
-      return { started: false, message: calls.length === 0 ? NOTHING_TO_READ : NO_API_KEY };
+      const message = calls.length === 0 ? NOTHING_TO_READ : !reservedCalls ? 'The prepared calls are not the ones this press reserved.' : NO_API_KEY;
+      return { started: false, message };
     }
     state.started = true;
-    state.run = { ...state.run, groups: calls.map((call) => call.group) };
     const { run } = state;
     this.outputChannel.appendLine(
       `[LightboxReadingRunner] Run ${run.token} started: groups ${run.groups.join(', ')}` +

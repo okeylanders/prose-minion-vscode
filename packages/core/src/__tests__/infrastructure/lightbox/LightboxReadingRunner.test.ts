@@ -423,6 +423,18 @@ describe('LightboxReadingRunner', () => {
       expect(runner.reserve('board-1', ['A']).reserved).toBe(true);
     });
 
+    it('starts only the calls a reservation was made for', async () => {
+      const { runner, runInitial, outcomes } = setup((request) => ok(groupOf(request)));
+      const held = runner.reserve('board-1', ['A']);
+      if (!held.reserved) {
+        throw new Error('expected a reservation');
+      }
+      expect(runner.startReserved(held.reservation, source, await prepare(runner), listenerOf(outcomes)))
+        .toEqual({ started: false, message: 'The prepared calls are not the ones this press reserved.' });
+      expect(runner.holds(held.reservation)).toBe(false);
+      expect(runInitial).not.toHaveBeenCalled();
+    });
+
     it('gives the board back when a reservation is released, and refuses one without an engine', async () => {
       const { runner } = setup(() => ok('A'));
       const held = runner.reserve('board-1', ['A']);
