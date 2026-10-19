@@ -100,7 +100,10 @@ export function lightboxLensView(board: LightboxBoard, lens: LightboxLensId): Li
 }
 
 export interface LightboxQuoteTally {
-  /** Every quote the host checked, found or not. */
+  /**
+   * Every quote the host checked, found or not, as the checks ran (PR #149
+   * F-07): a claim withheld for another reason still counts its found quotes.
+   */
   checked: number;
   withheld: number;
   claimsWithheld: number;
@@ -119,15 +122,11 @@ export function lightboxQuoteTally(board: LightboxBoard): LightboxQuoteTally {
     if (group.status === 'failed') {
       tally.failed += 1;
     }
-    for (const tile of group.tiles) {
-      tally.checked += tile.evidence.length + tile.withheldQuotes.length;
-      tally.withheld += tile.withheldQuotes.length;
+    for (const checks of group.quoteChecks) {
+      tally.checked += checks.checked;
+      tally.withheld += checks.withheld;
     }
-    for (const claim of group.withheldClaims) {
-      tally.checked += claim.quotes.length;
-      tally.withheld += claim.quotes.length;
-      tally.claimsWithheld += 1;
-    }
+    tally.claimsWithheld += group.withheldClaims.length;
     tally.blocksWithheld += group.withheldBlocks.length;
   }
   return tally;

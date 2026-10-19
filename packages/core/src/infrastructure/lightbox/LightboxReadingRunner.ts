@@ -373,8 +373,7 @@ export class LightboxReadingRunner {
       error,
       ...(result?.modelId ? { model: result.modelId } : {}),
       ...(result?.usage ? { usage: result.usage } : {}),
-      quotesChecked: 0,
-      quotesWithheld: 0
+      quoteChecks: []
     });
 
     let result: ExecutionResult;
@@ -453,8 +452,7 @@ export class LightboxReadingRunner {
       frictions: assembled.frictions,
       ...(result.modelId ? { model: result.modelId } : {}),
       ...(result.usage ? { usage: result.usage } : {}),
-      quotesChecked: assembled.quotesChecked,
-      quotesWithheld: assembled.quotesWithheld
+      quoteChecks: assembled.quoteChecks
     };
   }
 

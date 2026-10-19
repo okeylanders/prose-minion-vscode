@@ -51,7 +51,8 @@ export function startLightboxGroups(
       tiles: [],
       withheldBlocks: [],
       withheldClaims: [],
-      frictions: []
+      frictions: [],
+      quoteChecks: []
     };
   });
 }
@@ -78,6 +79,7 @@ export function settleLightboxGroup(
       withheldBlocks: group.withheldBlocks,
       withheldClaims: group.withheldClaims,
       frictions: group.frictions,
+      quoteChecks: group.quoteChecks,
       error: outcome.error ?? 'The reading failed.'
     };
   }
@@ -89,7 +91,8 @@ export function settleLightboxGroup(
       tiles: outcome.tiles,
       withheldBlocks: outcome.withheldBlocks,
       withheldClaims: outcome.withheldClaims,
-      frictions: outcome.frictions
+      frictions: outcome.frictions,
+      quoteChecks: outcome.quoteChecks
     };
   }
   const others = <T extends { lens: LightboxLensId }>(entries: readonly T[]): T[] =>
@@ -101,7 +104,8 @@ export function settleLightboxGroup(
     tiles: inLensOrder([...others(group.tiles), ...outcome.tiles]),
     withheldBlocks: inLensOrder([...others(group.withheldBlocks), ...outcome.withheldBlocks]),
     withheldClaims: inLensOrder([...others(group.withheldClaims), ...outcome.withheldClaims]),
-    frictions: inLensOrder([...others(group.frictions), ...outcome.frictions])
+    frictions: inLensOrder([...others(group.frictions), ...outcome.frictions]),
+    quoteChecks: inLensOrder([...others(group.quoteChecks), ...outcome.quoteChecks])
   };
 }
 

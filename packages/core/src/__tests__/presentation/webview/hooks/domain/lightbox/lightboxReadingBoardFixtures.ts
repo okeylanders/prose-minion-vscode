@@ -51,7 +51,8 @@ export function readGroup(
     tiles: assembled.tiles,
     withheldBlocks: assembled.withheldBlocks,
     withheldClaims: assembled.withheldClaims,
-    frictions: assembled.frictions
+    frictions: assembled.frictions,
+    quoteChecks: assembled.quoteChecks
   };
 }
 

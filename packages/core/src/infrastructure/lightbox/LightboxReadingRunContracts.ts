@@ -9,6 +9,7 @@ import type {
   LightboxActiveRun,
   LightboxReadingGroupId,
   LightboxLensFriction,
+  LightboxLensQuoteChecks,
   LightboxReadingTile,
   LightboxWithheldBlock,
   LightboxWithheldClaim,
@@ -59,8 +60,8 @@ export interface LightboxGroupOutcome {
   error?: string;
   model?: string;
   usage?: TokenUsage;
-  quotesChecked: number;
-  quotesWithheld: number;
+  /** Per lens; empty for a failed call. */
+  quoteChecks: LightboxLensQuoteChecks[];
 }
 
 export interface LightboxRunSummary {

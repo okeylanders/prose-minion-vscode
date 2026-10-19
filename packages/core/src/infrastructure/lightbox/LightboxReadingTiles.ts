@@ -20,6 +20,7 @@ import type {
   LightboxCountedSupport,
   LightboxLensFriction,
   LightboxLensId,
+  LightboxLensQuoteChecks,
   LightboxReadingTile,
   LightboxReadingTileKind,
   LightboxVerifiedQuote,
@@ -64,6 +65,8 @@ export interface LightboxAssembledGroup {
   withheldClaims: LightboxWithheldClaim[];
   /** Each decoded block's friction, even when the block holds no tile. */
   frictions: LightboxLensFriction[];
+  /** Each decoded block's quotes checked and withheld, so a tally counts every check, kept or not. */
+  quoteChecks: LightboxLensQuoteChecks[];
   /** Every quote the verifier saw, and how many it withheld. */
   quotesChecked: number;
   quotesWithheld: number;
@@ -87,6 +90,7 @@ export function assembleLightboxGroup(
     withheldBlocks: assembly.withheldBlocks,
     withheldClaims: assembly.withheldClaims,
     frictions: decoded.blocks.map((block) => ({ lens: block.lens, friction: block.friction })),
+    quoteChecks: decoded.blocks.map((block) => ({ lens: block.lens, ...(assembly.checks.get(block.lens) ?? { checked: 0, withheld: 0 }) })),
     quotesChecked: assembly.quotesChecked,
     quotesWithheld: assembly.quotesWithheld
   };
@@ -116,6 +120,8 @@ class GroupAssembly {
   readonly tiles: LightboxReadingTile[] = [];
   readonly withheldBlocks: LightboxWithheldBlock[] = [];
   readonly withheldClaims: LightboxWithheldClaim[] = [];
+  /** Quotes checked and withheld per lens, as the checks ran. */
+  readonly checks = new Map<LightboxLensId, { checked: number; withheld: number }>();
   quotesChecked = 0;
   quotesWithheld = 0;
 
@@ -208,7 +214,7 @@ class GroupAssembly {
 
   /** Check a claim's quotes; keep it as a tile, or withhold it by title. */
   private claim(draft: ClaimDraft, build: (base: TileBase) => LightboxReadingTile): void {
-    const checked = this.check(draft.quotes);
+    const checked = this.check(draft.lens, draft.quotes);
     const foundParagraphs = new Set(checked.evidence.map((quote) => quote.paragraph));
     if (checked.evidence.length === 0) {
       this.withhold(draft, NO_QUOTE_FOUND, checked.withheld);
@@ -244,15 +250,19 @@ class GroupAssembly {
     this.withheldClaims.push({ kind: draft.kind, lens: draft.lens, title: draft.title, reason, quotes });
   }
 
-  private check(quotes: readonly (LightboxWireQuote | LightboxWirePeak)[]): CheckedEvidence {
+  private check(lens: LightboxLensId, quotes: readonly (LightboxWireQuote | LightboxWirePeak)[]): CheckedEvidence {
     const evidence: LightboxVerifiedQuote[] = [];
     const withheld: LightboxWithheldQuote[] = [];
     const seen = new Set<string>();
+    const counts = this.checks.get(lens) ?? { checked: 0, withheld: 0 };
+    this.checks.set(lens, counts);
     for (const wire of quotes) {
       this.quotesChecked += 1;
+      counts.checked += 1;
       const verdict = this.context.verifier.verify(wire.para, wire.quote);
       if (!verdict.found) {
         this.quotesWithheld += 1;
+        counts.withheld += 1;
         withheld.push({
           paragraph: verdict.paragraph,
           reason: verdict.reason,

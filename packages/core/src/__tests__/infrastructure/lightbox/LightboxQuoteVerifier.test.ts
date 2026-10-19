@@ -10,6 +10,10 @@ import { decodeLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingCo
 import { assembleLightboxGroup } from '@/infrastructure/lightbox/LightboxReadingTiles';
 import { buildLightboxUserMessage } from '@/infrastructure/lightbox/LightboxReadingPrompts';
 import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
+import type { LightboxLensId } from '@messages';
+import { emptyLightboxReadingGroup } from '@shared/constants/lightbox';
+import { lightboxQuoteTally } from '@hooks/domain/lightbox/lightboxReadings';
+import { makeBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxBoardFixtures';
 
 const example = readWorkedExample('A');
 const paragraphs = example.paragraphs;
@@ -253,6 +257,34 @@ describe('assembling tiles from a group (D7)', () => {
       title: 'Pictures and conversations',
       reason: 'A motif recurs, but its quotes were found in only one paragraph.'
     })]);
+  });
+
+  it('counts every quote it checked per lens, including a withheld motif\'s found ones (PR #149 F-07)', () => {
+    const broken = framedJson(example.response) as Record<string, any>;
+    // One found headline quote, and a motif whose two found quotes stand in one paragraph.
+    broken.headline.evidence = [{ para: 5, quote: 'down went Alice after it' }];
+    broken.motifs.items = [{ ...broken.motifs.items[0], evidence: [
+      { para: 5, quote: 'down went Alice after it' },
+      { para: 5, quote: 'never once considering how in the world she was to get out again' }
+    ] }];
+    const decoded = decodeLightboxGroup(frame('A', broken), { ...contextA, lenses: ['headline', 'motif'] });
+    let id = 0;
+    const assembled = assembleLightboxGroup(decoded, {
+      verifier,
+      counter: createLightboxTermCounter(paragraphs),
+      mintId: () => `t${++id}`
+    });
+    expect(assembled.withheldClaims.map((claim) => claim.reason)).toEqual(['A motif recurs, but its quotes were found in only one paragraph.']);
+    expect(assembled.quotesChecked).toBe(3);
+    expect(assembled.quoteChecks).toEqual([
+      { lens: 'headline', checked: 1, withheld: 0 },
+      { lens: 'motif', checked: 2, withheld: 0 }
+    ]);
+    const board = {
+      ...makeBoard(8),
+      readings: [{ ...emptyLightboxReadingGroup('A'), status: 'ok' as const, lenses: ['headline', 'motif'] as LightboxLensId[], ...assembled }]
+    };
+    expect(lightboxQuoteTally(board)).toMatchObject({ checked: 3, withheld: 0, claimsWithheld: 1 });
   });
 
   it('counts named terms on the host, with the paragraphs they stand in, and mints ids in order', () => {

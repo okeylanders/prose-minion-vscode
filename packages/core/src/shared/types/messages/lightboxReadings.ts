@@ -186,6 +186,18 @@ export interface LightboxLensFriction {
   friction: string;
 }
 
+/**
+ * How many quotes the host checked for one lens's block in the latest call
+ * that read it, and how many it withheld (PR #149 F-07). Counted as the
+ * checks ran, so a claim withheld for another reason (a motif found in one
+ * paragraph only) still counts the quotes that were found.
+ */
+export interface LightboxLensQuoteChecks {
+  lens: LightboxLensId;
+  checked: number;
+  withheld: number;
+}
+
 /** A claim left with no found quote, withheld by title (D7). */
 export interface LightboxWithheldClaim {
   kind: LightboxReadingTileKind;
@@ -222,6 +234,8 @@ export interface LightboxReadingGroup {
   withheldClaims: LightboxWithheldClaim[];
   /** Every block that decoded, with its friction, in lens order. */
   frictions: LightboxLensFriction[];
+  /** Every block that decoded, with the quotes checked for it, in lens order. */
+  quoteChecks: LightboxLensQuoteChecks[];
   /** Why the latest call failed or stopped (status `failed` or `cancelled`). Writer-facing. */
   error?: string;
 }
