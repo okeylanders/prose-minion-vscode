@@ -244,11 +244,41 @@
   border-radius: 6px;
   border: 3px solid var(--pm-bg);
 }
-/* Optional trailing aside (e.g. an inspector): a third grid column with the
-   rail's frame mirrored onto its leading edge. No tab renders one yet; the
-   Lightbox's inspector (Slice 2A) is its first user and may retune it. */
+/* Rail sections: inset cards on the raised rail (2026-07-26 design drop).
+   Moved from styles/workshop/shell.css in Lightbox Slice 2A, declarations
+   unchanged, so the Lightbox rail can use them too. */
+[data-pm-frame="fulltab"] .pm-ws-block {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--pm-border-soft);
+  background: var(--pm-inset);
+  border-radius: 10px;
+  padding: 12px;
+}
+[data-pm-frame="fulltab"] .pm-ws-block-grow {
+  flex: 1;
+}
+[data-pm-frame="fulltab"] .pm-ws-block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Optional trailing aside (the Lightbox inspector, Slice 2A): a third column
+   with the rail's frame mirrored onto its leading edge. Tabs without an aside
+   (the Workshop) keep the two-column split above, untouched.
+
+   The three-column split narrows in two steps (the shell stamps
+   .pm-ws-with-aside on the root when it renders an aside):
+   - at 1240px and below, the whole tab scrolls as one page: the rail and the
+     aside share a left column beside the main column, and the aside fills
+     the rest of that column so its content can stick (a tab makes its aside
+     content sticky itself);
+   - at 760px and below, everything stacks: rail, main, then the aside.
+   A tab whose main column scrolls on its own at full width must stop doing
+   so at 1240px (see styles/lightbox/board.css). */
 [data-pm-frame="fulltab"] .pm-ws-split-with-aside {
-  grid-template-columns: 372px 1fr 340px;
+  grid-template-columns: 300px minmax(0, 1fr) 340px;
 }
 [data-pm-frame="fulltab"] .pm-ws-aside {
   border-left: 1px solid var(--pm-border-soft);
@@ -257,6 +287,49 @@
   background: var(--pm-surface);
   overflow-y: auto;
   min-height: 0;
+}
+@media (max-width: 1240px) {
+  [data-pm-frame="fulltab"] .pm-ws-with-aside {
+    overflow-y: auto;
+  }
+  [data-pm-frame="fulltab"] .pm-ws-split-with-aside {
+    flex: none;
+    min-height: auto;
+    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+  [data-pm-frame="fulltab"] .pm-ws-split-with-aside > .pm-ws-rail {
+    grid-column: 1;
+    grid-row: 1;
+    overflow: visible;
+    min-height: auto;
+  }
+  [data-pm-frame="fulltab"] .pm-ws-split-with-aside > .pm-ws-main {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-height: auto;
+  }
+  [data-pm-frame="fulltab"] .pm-ws-split-with-aside > .pm-ws-aside {
+    grid-column: 1;
+    grid-row: 2;
+    overflow: visible;
+    min-height: auto;
+    border-left: 0;
+    border-right: 1px solid var(--pm-border-soft);
+    border-top: 1px solid var(--pm-border-soft);
+  }
+}
+@media (max-width: 760px) {
+  [data-pm-frame="fulltab"] .pm-ws-split-with-aside {
+    display: block;
+  }
+  [data-pm-frame="fulltab"] .pm-ws-split-with-aside > .pm-ws-rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--pm-border-soft);
+  }
+  [data-pm-frame="fulltab"] .pm-ws-split-with-aside > .pm-ws-aside {
+    border-right: 0;
+  }
 }
 
 /* ---------- Main column ---------- */
