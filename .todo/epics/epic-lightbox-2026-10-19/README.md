@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** Spec (Slice 0) 2026-10-19. No code yet; the ADR awaits the writer's review
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. Slice 1 is in review, and the dialogue-quote prerequisite is approved (PR #146)
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
