@@ -2,7 +2,7 @@
 
 **Epic:** [Lightbox](README.md)
 **Decision:** [ADR 2026-10-19](../../../docs/adr/2026-10-19-lightbox-inspiration-board.md), D1, D3, D4, D5, D8 (ceiling), D10, D12 (ephemeral)
-**Status:** Planned
+**Status:** In review (branch `epic/lightbox-slice-2a-board`, PR pending)
 **Prerequisite:** [Dialogue % misses curly quotes](../../tech-debt/2026-10-19-prose-stats-dialogue-curly-quotes.md) is fixed, so the headline figure and the per-paragraph lane agree.
 
 ## Outcome
@@ -112,3 +112,146 @@ Read button is present but disabled until Slice 2B.
 - A 60,000-word file is refused with its count before anything runs.
 - Hover and pin work for words, phrases and ribbon columns.
 - The Workshop is untouched apart from the shared shell.
+
+## Implementation notes (2026-10-19)
+
+Built on `epic/lightbox-slice-2a-board` from the approved Slice 1 head. Where
+the build differs from the plan above, or the plan left a choice open:
+
+**Board contract** (`shared/types/messages/lightbox.ts`)
+
+- The board carries D3's fields plus three additions:
+  - `ribbon`: the host buckets the paragraphs into ribbon columns
+    (`bucketParagraphs`, pooled rhythm and dialogue per column). The renderer
+    only draws, so there is one bucketing implementation, and the paragraph
+    model (which hashes with `node:crypto`) never enters the webview bundle.
+  - `source` also has `kind` (file or selection), the selection's lines and a
+    short `preview`, so the writer can see what was boarded.
+  - Each paragraph metric also has `dialogueWords`, so ranges pool exactly.
+- `LightboxTileKind` is the measured kinds (`stats`, `top-words`,
+  `parts-of-speech`) plus the reading kinds, which are `never` until 2B. D3's
+  union lists reading kinds only, but its register table needs the measured
+  kinds to mean anything. `LIGHTBOX_TILE_REGISTER` (in
+  `shared/constants/lightbox.ts`) and the renderer map are exhaustive over the
+  union, with a type-level test.
+- `LIGHTBOX_BOARD` carries `{ board: LightboxBoard | null }`, so the mount
+  request always gets an answer.
+- `LIGHTBOX_SOURCE_REFUSED` covers every failure, not just the ceiling:
+  `over-ceiling` (with the count, the ceiling and a suggestion), `empty`,
+  `unreadable` and `not-refreshable`. The Lightbox has one failure surface and
+  routes no generic `ERROR`.
+- `LightboxLensId` (the six 2B lenses) and the lens catalog
+  (`LIGHTBOX_LENSES`, with each lens's group) are shared, for 2B's toggles.
+
+**Paragraph model and measured set** (`infrastructure/lightbox/`)
+
+- `LightboxParagraphs.ts` is pure. Paragraph text and offsets are trimmed;
+  words are whitespace tokens; sentences use the prose-stats rule, now
+  exported as `countProseSentences`; dialogue uses `countDialogueWords` per
+  paragraph. Tests check the split against `PassageProseStats` on eleven
+  fixtures and the dialogue words against the whole-text count.
+- The hash is SHA-256 over the text with line endings folded, NFC applied and
+  outer whitespace trimmed.
+- `LightboxMeasures.ts` maps the tools' outputs into the contract and places
+  each counted word and phrase in its paragraphs with the word-frequency
+  tool's own tokenizer (now exported as `extractFrequencyWords`). The tagger
+  splits hyphenated words, so a tagged word also matches the parts of a
+  hyphenated token. A phrase that only spans a paragraph break lights nothing.
+- The word-frequency options are fixed for boards rather than read from the
+  Metrics settings, so every board has the same shape: POS and n-grams on, 24
+  top words, six words per part of speech. Repeated phrases come from the
+  tool's ranking (a new optional `ngramLimit`, default 20 as before, set to
+  120 here) and keep those with two or more occurrences and at least one
+  non-stopword (the tool's stopword set, now exported).
+
+**Service** (`LightboxService`)
+
+- The ceiling check counts words before anything is measured.
+- Boards are kept per source (file path, or selection path and lines), most
+  recent 12. Unchanged text returns the same board and id, which is what will
+  let 2B keep readings across a re-read.
+- A build that a newer request overtook while awaiting the standards
+  enrichment is dropped as `superseded`: never retained, never current.
+- The re-read path is host-private and never on the board.
+
+**Host**
+
+- File picking reuses `ShellService.pickFile`, the Workshop's "Pin from file…"
+  seam. The port gained an optional `openLabel` (the dialog says "Open"; the
+  Workshop keeps "Pin"). No new platform port.
+- Files resolve through `TextSourceResolver` by absolute path only: a picked
+  file's `fsPath`, or a `file:` URI converted host-side. The resolver keeps
+  reads inside an open workspace folder. Relative paths are avoided because
+  the resolver silently falls back to the active editor when one matches
+  nothing ([tech debt](../../tech-debt/2026-10-19-text-source-active-editor-fallback.md)).
+  An unsaved document is refused with a suggestion.
+- `prose-minion.lightboxSelection` seeds the selection or, with none, the
+  active file (ADR D1). Its context-menu entry shows on `editorHasSelection`.
+- The panel re-asks for the board when it becomes visible, as the Workshop
+  re-asks for its session.
+- Logs carry paths, counts and refusal reasons, never text (a handler test
+  checks this).
+
+**Webview**
+
+- The rail has a **Lenses** card the plan did not list. The hook persists lens
+  toggles as the plan says, and a persisted preference with no control would
+  be dead state. Turning a lens off hides its placeholder now; 2B will leave
+  it out of its group's call. The card states that readings arrive in the
+  next update instead of showing a cost.
+- Measured items are words, tagged words, repeated phrases, the rhythm and
+  dialogue lane labels, and ribbon columns. The rhythm lane lights paragraphs
+  that run at 1.5× the text's average words per sentence or longer; the
+  dialogue lane lights paragraphs with any dialogue. The tension lane label
+  is static and its lane is drawn empty and dashed.
+- Clicking a pinned item again unpins it. The inspector's ¶ chips pin that
+  paragraph, and a single paragraph offers the measured items that touch it.
+- The design's display and serif faces cannot load in a webview (the CSP
+  allows no font hosts), so the stacks fall back to system faces.
+
+**Styles**
+
+- Six sheets under `styles/lightbox/` (tokens, board, ribbon, tiles, rail,
+  inspector), imported by `LightboxApp.tsx` and pinned by
+  `workshopStyles.test.ts`, which also checks that every Lightbox rule is
+  scoped to `[data-pm-surface="lightbox"]`.
+- The rail cards (`.pm-ws-block`, `-grow`, `-head`) moved to the frame with
+  unchanged declarations.
+- The aside is tuned: `300px | main | 340px`. `FullTabShell` stamps
+  `.pm-ws-with-aside` on the frame root when it renders an aside, because the
+  engine floor (VS Code 1.75, Chromium 102) predates `:has()`. At 1240px and
+  below the tab scrolls as one page with the inspector under the rail (it
+  sticks); at 760px everything stacks, with the inspector below the board.
+  The Workshop has no aside, so its DOM and layout are unchanged.
+
+**Verification**
+
+| Check | Before | After |
+|---|---|---|
+| Jest | 321 suites, 4,776 tests, 2 snapshots | 329 suites, 4,880 tests, 2 snapshots |
+| Lint | 0 errors, 1,140 warnings | 0 errors, 1,140 warnings (same per rule and per file) |
+| `npm run typecheck` | Passes | Passes |
+| `npm run build` | Passes | Passes |
+
+- Every Lightbox module is under 500 lines (a boundary test lists them all).
+  `extension.ts` (652 lines) and `MessageHandler.ts` (909) were already over.
+- Visual evidence in headless Chromium:
+  [`docs/pr-reviews/evidence/lightbox-slice-2a-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-2a-visual/README.md).
+  It shows the empty, counted (one word pinned) and refused states at 1440,
+  1000 and 500 px from real host output, and the Workshop's DOM and pixels
+  matching the Slice 1 bundle.
+
+**Follow-ups**
+
+- **Slice 2B:** reading kinds join `LightboxTileKind`, the register table and
+  the renderer map; lens toggles reach the host; the Read button, the tension
+  lane and the run line.
+- **Slice 6:** check the commands, the context-menu entry, serializer restore,
+  the picker and the narrow layouts in the Extension Development Host.
+- **Narrow widths:** at 760px and below the rail (source and lenses) comes
+  before the board; consider collapsing the Lenses card there.
+- **Tech debt:**
+  [the resolver's active-editor fallback](../../tech-debt/2026-10-19-text-source-active-editor-fallback.md);
+  [contraction fragments in part-of-speech lists](../../tech-debt/2026-10-19-pos-tagger-token-fragments.md);
+  [the frame class prefix](../../tech-debt/2026-10-19-fulltab-frame-class-prefix.md)
+  now also covers the rail cards and the aside classes.
