@@ -38,7 +38,8 @@
  * - **Readings (Slice 2B).** A board's reading groups attach to its id:
  *   a run writes them through `updateReadings(boardId, …)`, and a rebuild
  *   of unchanged text keeps them, including any that landed while it was
- *   measuring. A rebuild of changed text is a new board (a new id), but the
+ *   measuring, except number usages whose figure no longer stands out the
+ *   way it did when read (PR #155 F-01). A rebuild of changed text is a new board (a new id), but the
  *   readings come along stale (D4, `LightboxStaleReadings`): each quote
  *   checked again against the new paragraphs and each count recounted. A change to the current board's readings is published as a
  *   `readings` outcome; one to a board that is no longer current updates
@@ -77,6 +78,7 @@ import {
   splitLightboxParagraphs
 } from '@/infrastructure/lightbox/LightboxParagraphs';
 import { carryLightboxReadings } from '@/infrastructure/lightbox/LightboxStaleReadings';
+import { holdLightboxNumberUsages } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import {
   LIGHTBOX_WORD_FREQUENCY_OPTIONS,
   LightboxEnrichedStats,
@@ -248,7 +250,9 @@ export class LightboxService {
     const latest = this.entries.get(key)?.board;
     let carried = false;
     if (unchanged && latest?.boardId === board.boardId) {
-      board = { ...board, readings: latest.readings };
+      // Same text, measured again: a number usage stays only while its figure stands out the same way (PR #155 F-01).
+      const before = latest.measured.numbers.rows;
+      board = { ...board, readings: latest.readings.map((group) => holdLightboxNumberUsages(group, before, board.measured.numbers.rows)) };
     } else if (!unchanged && latest && latest.readings.some((group) => group.status !== 'not-run')) {
       // The text changed (D4): its readings come along, stale and checked again.
       board = {
@@ -332,14 +336,15 @@ export class LightboxService {
    */
   updateReadings(
     boardId: string,
-    update: (readings: LightboxBoard['readings']) => LightboxBoard['readings'],
+    /** Given the board as it stands, so a landing can be held to its current measurement (PR #155 F-01). */
+    update: (readings: LightboxBoard['readings'], board: LightboxBoard) => LightboxBoard['readings'],
     settled?: { token: string; group: LightboxReadingGroup['group'] }
   ): LightboxBoard | undefined {
     const entry = this.entryOf(boardId);
     if (!entry) {
       return undefined;
     }
-    entry.board = { ...entry.board, readings: update(entry.board.readings) };
+    entry.board = { ...entry.board, readings: update(entry.board.readings, entry.board) };
     const board = entry.board;
     if (this.currentBoard()?.boardId === boardId) {
       const group = settled ? board.readings.find((candidate) => candidate.group === settled.group) : undefined;

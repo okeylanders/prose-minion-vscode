@@ -105,6 +105,18 @@ describe('LightboxWriterBaseline', () => {
     expect(readFile.mock.calls.map(([file]) => file)).toEqual(['/w/Chapters/01.md', '/w/Chapters/02.md']);
   });
 
+  it('says it was capped when whole files carried the words past the bound, with no file left unread (PR #155)', async () => {
+    // Three files of 120,000 words: read whole, they reach 360,000 words.
+    const sentences = 12_000;
+    const { baseline } = createBaseline([chapter('Chapters/01.md', sentences), chapter('Chapters/02.md', sentences), chapter('Chapters/03.md', sentences)]);
+    expect((await baseline.measure()).summary)
+      .toEqual({ kind: 'measured', group: 'chapters', files: 3, words: 360_000, capped: true });
+    // Control: exactly at the bound, with nothing left unread, is not capped.
+    const half = LIGHTBOX_BASELINE_WORDS / 10 / 2;
+    const { baseline: exact } = createBaseline([chapter('Chapters/01.md', half), chapter('Chapters/02.md', half)]);
+    expect((await exact.measure()).summary).toMatchObject({ words: LIGHTBOX_BASELINE_WORDS, capped: false });
+  });
+
   it('reads a file again only when its size or time changed', async () => {
     const { baseline, readFile, files } = createBaseline([chapter('Chapters/01.md', 3), chapter('Chapters/02.md', 3)]);
     await baseline.measure();

@@ -33,7 +33,7 @@ Return one frame between ===LIGHTBOX_GROUP_D_V1=== and ===END_LIGHTBOX_GROUP_D_V
 The rhythm block gives one ending for each of 8 ribbon columns, one per paragraph: column n is ¶n.
 The board measured these figures as standing out in this chapter. Read how each is used, by its id, and only these:
 - `sentence-length`: sentences run longer here than in the writer's other chapters. Quote from inside one sentence of more than 14 words.
-- `dialogue`: less of this chapter is dialogue than in the writer's other chapters. Quote narration, with no quotation marks in it.
+- `dialogue`: less of this chapter is dialogue than in the writer's other chapters. Quote narration from a paragraph with no dialogue in it.
 - `intensifiers`: intensifiers and fillers are more frequent here than in the writer's other chapters. Each quote must contain one of: just, really, very, quite, rather, somewhat, somehow, actually, basically, literally.
 
 --- end of example request ---

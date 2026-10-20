@@ -30,6 +30,8 @@ export interface LightboxReadingFrameProps {
   footnote?: React.ReactNode;
   /** Shown whenever the lens has been read, tiles or none (lineage's set-aside list). */
   after?: React.ReactNode;
+  /** The stale note before the aside, for a frame whose aside holds its readings (the numbers). */
+  staleFirst?: boolean;
   children: React.ReactNode;
 }
 
@@ -43,14 +45,16 @@ export const LightboxReadingFrame: React.FC<LightboxReadingFrameProps> = ({
   aside,
   footnote,
   after,
+  staleFirst,
   children
 }) => {
   const read = view.phase === 'ok';
   const nothing = read && view.tiles.length === 0 && view.withheldBlocks.length === 0 && view.withheldClaims.length === 0;
   return (
     <LightboxTileFrame kind={kind} span={span} title={title} footnote={read && view.tiles.length > 0 ? footnote : undefined}>
+      {staleFirst && view.stale && <LightboxStaleNote />}
       {aside}
-      {view.stale && <LightboxStaleNote />}
+      {!staleFirst && view.stale && <LightboxStaleNote />}
       {(view.phase === 'not-run' || view.phase === 'reading') && <LightboxReadingPlaceholder live={view.phase === 'reading'} />}
       {view.notice && (
         <p className={`pm-lb-reading-notice${read ? '' : ' is-failed'}`} role={read ? undefined : 'alert'}>

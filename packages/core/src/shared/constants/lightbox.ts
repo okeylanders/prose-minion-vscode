@@ -224,6 +224,28 @@ export function isLightboxNumberStat(value: unknown): value is LightboxNumberSta
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(LIGHTBOX_NUMBER_STAT_LABELS, value);
 }
 
+/**
+ * A measured figure as the board shows it: one decimal. A nonzero figure
+ * too small for that shows as "<0.1", never as "0" (PR #155 F-04).
+ */
+export function formatLightboxFigure(value: number): string {
+  return formatAtPrecision(value, 1);
+}
+
+/** A ratio as the board shows it: two decimals, "<0.01" for a nonzero ratio below them. */
+export function formatLightboxRatio(ratio: number): string {
+  return formatAtPrecision(ratio, 2);
+}
+
+function formatAtPrecision(value: number, decimals: number): string {
+  const scale = 10 ** decimals;
+  const shown = Math.round(value * scale) / scale;
+  if (value !== 0 && shown === 0) {
+    return `${value < 0 ? '>-' : '<'}${(1 / scale).toFixed(decimals)}`;
+  }
+  return String(shown);
+}
+
 /** How a standout figure reads in use: a reading, never a fix. */
 export const LIGHTBOX_NUMBER_USAGE_LABELS: Readonly<Record<LightboxNumberUsage, string>> = {
   deliberate: 'Reads as deliberate',

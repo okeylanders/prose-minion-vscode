@@ -117,7 +117,12 @@ function recheckAll(
   return { evidence, lost };
 }
 
-/** A handoff's pair in the paragraph it named, else the nearest paragraph holding its first sentence's words. */
+/**
+ * A handoff's pair in the paragraph it named, else in the nearest other
+ * paragraph that holds its first sentence's words, even when a copy of that
+ * sentence stayed behind (PR #155 N-01). A pair whose words all still stand
+ * somewhere, but nowhere side by side, is not adjacent, never "gone".
+ */
 function carryHandoff(
   from: LightboxVerifiedQuote,
   to: LightboxVerifiedQuote,
@@ -132,8 +137,8 @@ function carryHandoff(
   if (named.ok) {
     return pairFound(named.pair);
   }
-  const elsewhere = verifier.verify(from.paragraph, from.text);
-  const candidates = elsewhere.found ? [] : [...(elsewhere.foundIn ?? [])]
+  const candidates = paragraphsHolding(verifier, from)
+    .filter((paragraph) => paragraph !== from.paragraph)
     .sort((a, b) => Math.abs(a - from.paragraph) - Math.abs(b - from.paragraph) || a - b);
   for (const paragraph of candidates) {
     const moved = at(paragraph);
@@ -141,10 +146,23 @@ function carryHandoff(
       return pairFound(moved.pair);
     }
   }
-  const lost: LightboxWithheldQuote[] = named.why === 'gone'
-    ? named.withheld.map((quote) => ({ paragraph: quote.paragraph, reason: 'no-longer-in-chapter' }))
-    : [];
-  return { evidence: named.found, lost, patch: {}, pair: named.why };
+  const standing = paragraphsHolding(verifier, from).length > 0 && paragraphsHolding(verifier, to).length > 0;
+  if (named.why === 'gone' && !standing) {
+    const lost: LightboxWithheldQuote[] = named.withheld.map((quote) => ({ paragraph: quote.paragraph, reason: 'no-longer-in-chapter' }));
+    return { evidence: named.found, lost, patch: {}, pair: 'gone' };
+  }
+  return { evidence: named.found, lost: [], patch: {}, pair: 'not-adjacent' };
+}
+
+/** Every paragraph whose text holds the quote's words, by the verifier's own spans. */
+function paragraphsHolding(verifier: LightboxQuoteVerifier, quote: { paragraph: number; text: string }): number[] {
+  const found = new Set<number>();
+  // A filter that accepts nothing is offered every span the verifier finds, in every paragraph.
+  verifier.verify(quote.paragraph, quote.text, (paragraph) => {
+    found.add(paragraph);
+    return false;
+  });
+  return [...found];
 }
 
 function pairFound(pair: LightboxSentencePair): LightboxCarriedCraft {

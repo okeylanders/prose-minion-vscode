@@ -302,7 +302,8 @@ describe('a numbers reading keeps only quotes holding an instance of its figure'
     ['long sentences', standout('sentence-length', 'above', 15), 'the long dark passage', 'The hall was hushed'],
     ['short sentences', standout('sentence-length', 'below', 15), 'The hall was hushed', 'the long dark passage'],
     ['more dialogue', standout('dialogue', 'above'), 'I am very late', 'said the Rabbit'],
-    ['less dialogue', standout('dialogue', 'below'), 'said the Rabbit', 'I am very late']
+    // Below: narration from a paragraph with no dialogue, as the row counts (PR #155); a mixed paragraph's narration is none.
+    ['less dialogue', standout('dialogue', 'below'), 'the long dark passage', 'said the Rabbit']
   ])('%s: keeps a quote holding one and withholds one that holds none', (_case, row, holds, lacks) => {
     const paragraphOf = (quote: string) => RABBIT.findIndex((paragraph) => paragraph.includes(quote)) + 1;
     const assembled = readNumber(row.stat, [[paragraphOf(holds), holds], [paragraphOf(lacks), lacks]], [row]);

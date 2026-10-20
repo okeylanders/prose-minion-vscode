@@ -165,10 +165,10 @@ describe('LightboxService measured set (D5)', () => {
     expect(board.measured.numbers.rows.map((row) => row.stat)).toEqual([
       'sentence-length', 'dialogue', 'passive-voice', 'being-verbs', 'adverbs', 'intensifiers'
     ]);
-    expect(board.measured.numbers.rows.find((row) => row.stat === 'dialogue')).toMatchObject({
-      value: stats.dialoguePercentage,
-      range: { min: 40, max: 55, status: 'below' }
-    });
+    const dialogue = board.measured.numbers.rows.find((row) => row.stat === 'dialogue');
+    expect(dialogue).toMatchObject({ range: { min: 40, max: 55, status: 'below' } });
+    // Unrounded on the board (PR #155 F-04); the Metrics figure is the same, rounded.
+    expect(dialogue?.value).toBeCloseTo(stats.dialoguePercentage, 1);
     expect(board.measured.numbers.baseline).toEqual({ kind: 'absent', note: expect.any(String) });
     expect(board.paragraphs.map((paragraph) => paragraph.sentenceWords.length))
       .toEqual(board.paragraphs.map((paragraph) => paragraph.sentences));

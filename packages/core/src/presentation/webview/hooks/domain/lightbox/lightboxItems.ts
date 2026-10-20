@@ -25,6 +25,7 @@ import type {
 import {
   LIGHTBOX_TILE_KIND_LABELS,
   LIGHTBOX_TILE_REGISTER,
+  formatLightboxFigure,
   isLightboxNumberStat,
   lightboxLensLabel
 } from '@shared/constants/lightbox';
@@ -204,7 +205,7 @@ function standoutItem(board: LightboxBoard, ref: Extract<LightboxItemRef, { kind
     return undefined;
   }
   const against = [
-    ...(row.writer ? [`your average ${row.writer.average}`] : []),
+    ...(row.writer ? [`your average ${formatLightboxFigure(row.writer.average)}`] : []),
     ...(row.range ? [`the preset's ${row.range.min ?? '…'}–${row.range.max ?? '…'}`] : [])
   ];
   return {
@@ -213,13 +214,13 @@ function standoutItem(board: LightboxBoard, ref: Extract<LightboxItemRef, { kind
     where: 'Measure · The numbers',
     title: row.label,
     claim:
-      `${row.value} ${row.unit}` + (against.length > 0 ? `, against ${against.join(' and ')}` : '') + '. ' +
+      `${formatLightboxFigure(row.value)} ${row.unit}` + (against.length > 0 ? `, against ${against.join(' and ')}` : '') + '. ' +
       (row.standout
         ? `It stands out ${row.standout.direction}; ${paragraphCountLabel(row.paragraphs.length)} hold ${row.instanceLabel}, lit here.`
         : 'It does not stand out.') +
       ' Counted by code; nothing here is a reading.',
     paragraphs: [...row.paragraphs],
-    support: [`${row.value} ${row.unit}`, ...(row.instances > 0 ? [`${row.instances} ${row.instanceLabel}`] : [])]
+    support: [`${formatLightboxFigure(row.value)} ${row.unit}`, ...(row.instances > 0 ? [`${row.instances} ${row.instanceLabel}`] : [])]
   };
 }
 

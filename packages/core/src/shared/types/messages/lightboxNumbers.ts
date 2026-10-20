@@ -30,10 +30,14 @@ export interface LightboxNumberRange {
   status: 'below' | 'within' | 'above';
 }
 
-/** The writer's own average for the figure, and the chapter's ratio to it. */
+/**
+ * The writer's own average for the figure, and the chapter's ratio to it.
+ * Both unrounded (PR #155 F-04): the board rounds only what it shows
+ * (`formatLightboxFigure`, `formatLightboxRatio`).
+ */
 export interface LightboxNumberWriterAverage {
   average: number;
-  /** Chapter ÷ average, two decimals; absent when the average is 0. */
+  /** Chapter ÷ average; absent only when the writer's count is zero ("none in your other chapters"). */
   ratio?: number;
 }
 
@@ -55,13 +59,17 @@ export interface LightboxNumberRow {
   label: string;
   /** e.g. "per 1,000 words". */
   unit: string;
-  /** The chapter's figure, one decimal. */
+  /**
+   * The chapter's figure, unrounded (sentence length: the headline's mean,
+   * the figure the preset compares). Shown with `formatLightboxFigure`.
+   */
   value: number;
   /**
    * How many instances the chapter holds: matches for a pattern; for
    * sentence length, sentences beyond the reference; for dialogue, spans of
-   * dialogue (above) or paragraphs of narration (below). 0 when the figure
-   * does not stand out and has no instance definition of its own.
+   * dialogue (above) or paragraphs with no dialogue in them (below), the
+   * only paragraphs a below reading may quote. 0 when the figure does not
+   * stand out and has no instance definition of its own.
    */
   instances: number;
   /** What an instance is, in host words ("sentences over 24 words"). */
@@ -83,7 +91,12 @@ export type LightboxWriterBaselineSummary =
       group: 'chapters' | 'manuscript';
       files: number;
       words: number;
-      /** True when a file or word bound stopped the reading early. */
+      /**
+       * True when a bound limited the reading: files were left unread (the
+       * file bound, or the word bound reached before them), or the words
+       * read passed the word bound (files are read whole, so the last one
+       * can carry the total past it).
+       */
       capped: boolean;
     }
   | { kind: 'absent'; note: string };

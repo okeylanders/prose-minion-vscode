@@ -10,9 +10,12 @@
  *   chapter against the rest. (A whole-book manuscript file that also holds
  *   this chapter cannot be split, so the chapter then counts once inside it.)
  * - **Bounded.** At most `LIGHTBOX_BASELINE_FILES` files, in path order,
- *   each at most `LIGHTBOX_BASELINE_FILE_BYTES`; reading stops once
- *   `LIGHTBOX_BASELINE_WORDS` words are counted. The summary says how many
- *   files and words were used, and whether a bound stopped it.
+ *   each at most `LIGHTBOX_BASELINE_FILE_BYTES`. Files are read whole, and
+ *   no file is started once `LIGHTBOX_BASELINE_WORDS` words are counted, so
+ *   the last file read can carry the total past that bound (by less than one
+ *   file). The summary says how many files and words were used, and is
+ *   `capped` whenever a bound limited the reading: files left unread, or the
+ *   words read past the word bound (PR #155).
  * - **Cached.** Each file's counts are kept by absolute path, with its size
  *   and modified time, so measuring again reads only files that changed.
  * - **Measured** with the board's own detectors (`countLightboxFigures`).
@@ -108,6 +111,8 @@ export class LightboxWriterBaseline {
       addLightboxFigureCounts(counts, measured);
       used += 1;
     }
+    // Files are read whole: the last one may have carried the total past the word bound.
+    capped = capped || counts.words > LIGHTBOX_BASELINE_WORDS;
     this.ports.outputChannel.appendLine(
       `${LOG} ${group}: ${used} file(s), ${counts.words} words` +
         (skipped > 0 ? `, ${skipped} skipped` : '') + (capped ? ', capped' : '')

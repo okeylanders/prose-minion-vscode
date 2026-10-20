@@ -144,6 +144,30 @@ describe('LightboxApp: the craft lenses (Slice 4B)', () => {
     expect(within(inspector).getByText('Each quote holds one, checked by the detector that counted the figure')).not.toBeNull();
   });
 
+  it('draws a numbers reading only under a figure that stands out on the board now (PR #155 F-01)', () => {
+    render(<LightboxApp />);
+    const board = boardWith();
+    fromHost(MessageType.LIGHTBOX_BOARD, { board, refusal: null });
+    expect(within(numbersTile()).getByText('Reads as mixed')).not.toBeNull();
+    // The same reading, on a board where dialogue no longer stands out.
+    const unmeasured: LightboxBoard = {
+      ...board,
+      measured: { ...board.measured, numbers: { ...board.measured.numbers, rows: board.measured.numbers.rows.map(({ standout: _standout, ...row }) => row) } }
+    };
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: unmeasured, refusal: null });
+    expect(within(numbersTile()).queryByText('Reads as mixed')).toBeNull();
+    expect(within(numbersTile()).queryByText(/Stands out/)).toBeNull();
+  });
+
+  it('warns that the numbers are stale before the first figure, not after the readings (PR #155)', () => {
+    const read = readGroup('D');
+    render(<LightboxApp />);
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: boardWith({ ...read, staleLenses: [{ lens: 'numbers', readAgainst: 'old-hash' }] }), refusal: null });
+    const note = numbersTile().querySelector('.pm-lb-stale-note') as Element;
+    const firstFigure = numbersTile().querySelector('.pm-lb-number') as Element;
+    expect(note.compareDocumentPosition(firstFigure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('says on every new tile when it was read against an earlier version of the chapter', () => {
     const read = readGroup('D');
     const stale = { ...read, staleLenses: read.lenses.map((lens) => ({ lens, readAgainst: 'old-hash' })) };

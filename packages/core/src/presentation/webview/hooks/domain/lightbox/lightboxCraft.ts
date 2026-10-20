@@ -17,7 +17,7 @@ import type {
   LightboxStockTier,
   LightboxStockTiersTile
 } from '@messages';
-import { LIGHTBOX_STOCK_TIER_LABELS } from '@shared/constants/lightbox';
+import { LIGHTBOX_STOCK_TIER_LABELS, formatLightboxFigure, formatLightboxRatio } from '@shared/constants/lightbox';
 import { lightboxLensView, lightboxTilesOfKind, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 
 /** Tiers in the order the bar draws them. */
@@ -154,11 +154,17 @@ export function lightboxNumberBar(row: LightboxNumberRow): LightboxNumberBar {
   return { ...(band ? { band } : {}), ...(row.writer ? { writer: at(row.writer.average) } : {}), dot: at(row.value) };
 }
 
-/** "21.7 per 1,000 words · 7.2× your average · above the preset's 10–18". */
+/**
+ * "21.7 per 1,000 words · 7.23× your average of 3 · above the preset's 10–18",
+ * rounded only here (PR #155 F-04): "none" only for a zero count, "<0.1" for
+ * a nonzero average too small to show.
+ */
 export function lightboxNumberValue(row: LightboxNumberRow): string {
-  const parts = [`${row.value} ${row.unit}`];
+  const parts = [`${formatLightboxFigure(row.value)} ${row.unit}`];
   if (row.writer) {
-    parts.push(row.writer.ratio !== undefined ? `${row.writer.ratio}× your average of ${row.writer.average}` : 'none in your other chapters');
+    parts.push(row.writer.ratio !== undefined
+      ? `${formatLightboxRatio(row.writer.ratio)}× your average of ${formatLightboxFigure(row.writer.average)}`
+      : 'none in your other chapters');
   }
   if (row.range) {
     const span = `${row.range.min ?? '…'}–${row.range.max ?? '…'}`;

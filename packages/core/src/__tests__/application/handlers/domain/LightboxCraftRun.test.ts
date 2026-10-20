@@ -49,7 +49,8 @@ describe('a press with the craft lenses on (Slice 4B)', () => {
       kind: 'measured', group: 'chapters', files: 2, words: 2 * 80 * 14, capped: false
     });
     const sentenceLength = host.board.measured.numbers.rows.find((row) => row.stat === 'sentence-length');
-    expect(sentenceLength?.writer?.average).toBe(4.7);
+    // 2,240 words over 480 sentences, unrounded (PR #155 F-04).
+    expect(sentenceLength?.writer?.average).toBe(2_240 / 480);
   });
 
   it('reads every group, group D with its own prompt files and a task naming only what stands out', async () => {

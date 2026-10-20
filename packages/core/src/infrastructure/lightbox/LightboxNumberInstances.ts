@@ -11,7 +11,8 @@
  *   paragraph (the prose-stats splitter) whose length is beyond the
  *   standout's reference;
  * - dialogue above its reference: the span lies inside a dialogue span
- *   (`findDialogueSpans`); below it: the span touches no dialogue at all.
+ *   (`findDialogueSpans`); below it: the span stands in a paragraph with no
+ *   dialogue at all, the paragraphs the row counts and lights (PR #155).
  *
  * The check is a span filter on the one quote verifier
  * (`LightboxQuoteVerifier`), as the dialogue anchor's is: among the spans the
@@ -23,7 +24,7 @@
  * instance looks like; they name no count the model could repeat as its own.
  */
 
-import type { LightboxNumberRow, LightboxNumberStatId } from '@messages';
+import type { LightboxNumberRow, LightboxNumberStatId, LightboxReadingTile, LightboxWithheldClaim } from '@messages';
 import { findDialogueSpans } from '@/utils/dialogueSpans';
 import { countWords } from '@/utils/textUtils';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
@@ -31,6 +32,7 @@ import { STYLE_FLAG_FILLER_WORDS } from '@/tools/measure/styleFlags';
 import { BEING_VERB_FORMS } from '@/tools/measure/beingVerbs';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier, LightboxSpanFilter } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { LIGHTBOX_NUMBER_PATTERNS, LIGHTBOX_NUMBER_STATS } from '@/infrastructure/lightbox/LightboxNumbers';
+import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGates';
 
 /** The standouts on a board, by figure: what a numbers reading may name, and how its quotes are checked. */
 export type LightboxStandoutRows = ReadonlyMap<LightboxNumberStatId, LightboxNumberRow>;
@@ -38,6 +40,48 @@ export type LightboxStandoutRows = ReadonlyMap<LightboxNumberStatId, LightboxNum
 /** The rows that stand out, by figure. */
 export function lightboxStandoutRows(rows: readonly LightboxNumberRow[] | undefined): LightboxStandoutRows {
   return new Map((rows ?? []).filter((row) => row.standout).map((row) => [row.stat, row]));
+}
+
+/**
+ * What a numbers reading of a figure was asked under: the figure's
+ * direction, the bases it stands out against (the preset, the writer's
+ * average) and, for sentence length, the reference an instance is measured
+ * against. Undefined when the figure does not stand out.
+ */
+export function lightboxStandoutSignature(row: LightboxNumberRow | undefined): string | undefined {
+  const standout = row?.standout;
+  return standout ? JSON.stringify([standout.direction, standout.against, standout.reference ?? null]) : undefined;
+}
+
+/**
+ * Hold number usages to the measurement they are shown under (PR #155
+ * F-01). A usage read when the board measured `readUnder` stays only while
+ * its figure stands out the same way on `current`; otherwise it is withheld
+ * by its title, with the host's reason. The text may be unchanged: the
+ * writer's average or the preset can change what stands out. Every other
+ * tile is untouched.
+ */
+export function holdLightboxNumberUsages<T extends { tiles: LightboxReadingTile[]; withheldClaims: LightboxWithheldClaim[] }>(
+  group: T,
+  readUnder: readonly LightboxNumberRow[] | undefined,
+  current: readonly LightboxNumberRow[] | undefined
+): T {
+  const before = new Map((readUnder ?? []).map((row) => [row.stat, row]));
+  const after = new Map((current ?? []).map((row) => [row.stat, row]));
+  const withheld: LightboxWithheldClaim[] = [];
+  const tiles = group.tiles.filter((tile) => {
+    if (tile.kind !== 'number-usage') {
+      return true;
+    }
+    const now = lightboxStandoutSignature(after.get(tile.stat));
+    if (now !== undefined && now === lightboxStandoutSignature(before.get(tile.stat))) {
+      return true;
+    }
+    const reason = now === undefined ? LIGHTBOX_GATE_REASONS.numberNotStandout.carried : LIGHTBOX_GATE_REASONS.numberRemeasured;
+    withheld.push({ kind: tile.kind, lens: tile.lens, title: tile.title, reason, quotes: [] });
+    return false;
+  });
+  return withheld.length === 0 ? group : { ...group, tiles, withheldClaims: [...group.withheldClaims, ...withheld] };
 }
 
 /** Whether a found span of a paragraph (1-based) holds an instance of the standout `row`. */
@@ -70,9 +114,10 @@ export function lightboxInstanceFilter(row: LightboxNumberRow, paragraphs: reado
           return false;
         }
         const spans = findDialogueSpans(source);
+        // Below: narration from a paragraph with no dialogue, as the row counts its instances.
         return standout.direction === 'above'
           ? spans.some((span) => span.start <= start && end <= span.end)
-          : spans.every((span) => end <= span.start || span.end <= start);
+          : spans.length === 0;
       };
     case 'passive-voice':
     case 'being-verbs':
@@ -150,7 +195,7 @@ function instancePhrase(row: LightboxNumberRow): string {
     case 'dialogue':
       return standout.direction === 'above'
         ? 'Quote words from inside quotation marks.'
-        : 'Quote narration, with no quotation marks in it.';
+        : 'Quote narration from a paragraph with no dialogue in it.';
     case 'passive-voice':
       return 'Each quote must contain was, were, been or being followed by a word ending in -ed.';
     case 'being-verbs':

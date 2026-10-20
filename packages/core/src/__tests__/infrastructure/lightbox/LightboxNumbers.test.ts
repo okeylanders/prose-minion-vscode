@@ -16,6 +16,7 @@ import {
   type LightboxWriterAverages
 } from '@/infrastructure/lightbox/LightboxNumbers';
 import { findFillerWords } from '@/tools/measure/styleFlags';
+import { lightboxNumberValue } from '@hooks/domain/lightbox/lightboxCraft';
 import { readWorkedExample } from './lightboxReadingFixtures';
 import { boardWithNumbers, WRITER_AVERAGES } from './lightboxCraftFixtures';
 
@@ -72,9 +73,10 @@ describe('measureLightboxNumbers', () => {
       instanceLabel: 'paragraphs of narration only'
     });
     // 20 -ly words in 340 against 1 a thousand: above, with its words counted.
+    // Kept unrounded (PR #155 F-04): 20,000 ÷ 340 per 1,000 words.
     expect(rowOf(rows, 'adverbs')).toMatchObject({
-      value: 58.8,
-      writer: { average: 1, ratio: 58.8 },
+      value: 20_000 / 340,
+      writer: { average: 1, ratio: 20_000 / 340 },
       standout: { direction: 'above', against: ['writer'] },
       instances: 20,
       top: [{ term: 'slowly', count: 20 }]
@@ -93,7 +95,7 @@ describe('measureLightboxNumbers', () => {
   it('compares with the writer only with enough material: 300 words of chapter, three instances, 2,000 words of average', () => {
     const short = measure(twenty.slice(0, 10), writer({}));
     expect(short.rows.filter((row) => row.standout)).toEqual([]);
-    expect(rowOf(short.rows, 'adverbs').writer).toEqual({ average: 1, ratio: 58.8 });
+    expect(rowOf(short.rows, 'adverbs').writer).toEqual({ average: 1, ratio: 10_000 / 170 });
 
     const twoInstances = measure([ROAD, ROAD, ...Array.from({ length: 18 }, () => PLAIN)], writer({ patterns: { adverbs: 1 } }));
     expect(rowOf(twoInstances.rows, 'adverbs')).toMatchObject({ instances: 2 });
@@ -153,5 +155,49 @@ describe('the counts behind the figures', () => {
     ]);
     expect(summary).toEqual({ longest: { words: 15, paragraph: 2 }, veryShort: 2, underWords: 6 });
     expect(lightboxSentenceSummary([])).toEqual({ longest: null, veryShort: 0, underWords: 6 });
+  });
+});
+
+describe('standouts and ratios are decided from the counts, never from a rounded figure (PR #155 F-04)', () => {
+  const FILLER = 'The cart rolled on down the long lane.';
+  /** `sentences` eight-word sentences, the first `marked` of them `markedSentence`, ten to a paragraph. */
+  const chapterOf = (sentences: number, marked: number, markedSentence: string): string[] => {
+    const all = Array.from({ length: sentences }, (_, index) => (index < marked ? markedSentence : FILLER));
+    return Array.from({ length: Math.ceil(all.length / 10) }, (_, index) => all.slice(index * 10, index * 10 + 10).join(' '));
+  };
+  const measureAt = (paragraphs: string[], writerAverages: LightboxWriterAverages) => measureLightboxNumbers({
+    text: paragraphs.join('\n\n'), paragraphs, averageWordsPerSentence: 8, writer: writerAverages
+  });
+
+  it('does not mark a figure 1.39 times the writer\'s average, though its rounded rates would show 1.6', () => {
+    // 3 passive constructions in 4,000 words (0.75 per 1,000) against 27 in 50,000 (0.54): 1.39×, under 1.5.
+    const chapter = chapterOf(500, 3, 'The old gate was painted green last spring.');
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the figures' kebab-case protocol ids.
+    const row = rowOf(measureAt(chapter, writer({ words: 50_000, sentences: 6_250, patterns: { 'passive-voice': 27 } })).rows, 'passive-voice');
+    expect(row).toMatchObject({ instances: 3, value: 0.75, writer: { average: 0.54 } });
+    expect(row.writer?.ratio).toBeCloseTo(0.75 / 0.54, 10);
+    expect(row.standout).toBeUndefined();
+    expect(lightboxNumberValue(row)).toBe('0.8 per 1,000 words · 1.39× your average of 0.5');
+  });
+
+  it('does not call a nonzero average "none", nor mark a figure 1.29 times it', () => {
+    // 3 intensifiers in 50,000 words (0.06 per 1,000) against 14 in 300,000 (0.047, which rounds to 0).
+    const chapter = chapterOf(6_250, 3, 'The cart rolled on down the very lane.');
+    const row = rowOf(measureAt(chapter, writer({ words: 300_000, sentences: 37_500, patterns: { intensifiers: 14 } })).rows, 'intensifiers');
+    expect(row.instances).toBe(3);
+    expect(row.writer?.average).toBeCloseTo(14 / 300, 10);
+    expect(row.writer?.ratio).toBeCloseTo(0.06 / (14 / 300), 10);
+    expect(row.standout).toBeUndefined();
+    expect(lightboxNumberValue(row)).toBe('0.1 per 1,000 words · 1.29× your average of <0.1');
+
+    // Controls: a real zero stands out and says "none"; averages the chapter does not pass do not.
+    const none = rowOf(measureAt(chapter, writer({ words: 300_000, sentences: 37_500, patterns: { intensifiers: 0 } })).rows, 'intensifiers');
+    expect(none.standout).toEqual({ direction: 'above', against: ['writer'] });
+    expect(none.writer).toEqual({ average: 0 });
+    expect(lightboxNumberValue(none)).toBe('0.1 per 1,000 words · none in your other chapters');
+    for (const instances of [20, 30]) {
+      const row = rowOf(measureAt(chapter, writer({ words: 300_000, sentences: 37_500, patterns: { intensifiers: instances } })).rows, 'intensifiers');
+      expect({ instances, standout: row.standout }).toEqual({ instances, standout: undefined });
+    }
   });
 });

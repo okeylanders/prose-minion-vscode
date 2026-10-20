@@ -18,9 +18,13 @@
  *   than a Workshop quote (a hard-wrapped speech grows by its indentation)
  *   refuses the pair rather than sending its meaning without its speech
  *   (PR #151 F-02);
- * - a handoff sample (Slice 4B) travels with both its sentences or not at
- *   all, and a numbers reading's quotes are checked again with its figure's
- *   instance filter, as the board measures it now;
+ * - a handoff sample (Slice 4B) is found again as a pair of adjacent
+ *   sentences and travels with both, in order, or not at all; two sentences
+ *   with the same words are two roles, never one quote (PR #155 F-02);
+ * - a numbers reading travels only while its figure stands out on the board,
+ *   and its quotes are checked again with that figure's instance filter
+ *   (F-01); a familiar phrase travels only while a quote holds a whole
+ *   occurrence of the phrase in the chapter (F-03);
  * - group E's kinds (Slice 4C, `LightboxPlotHandoff`) travel with their
  *   anchors or not at all: a thread with its plant and its resolution, a
  *   synopsis with two quotes, a movement with its boundary; the freshness
@@ -54,9 +58,12 @@ import {
   LIGHTBOX_NUMBER_USAGE_LABELS,
   LIGHTBOX_STOCK_TIER_LABELS,
   LIGHTBOX_TILE_KIND_LABELS,
+  formatLightboxFigure,
   lightboxLensLabel
 } from '@shared/constants/lightbox';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
+import { findLightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
+import { lightboxPhraseHeld } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { locateLightboxTile } from '@/infrastructure/lightbox/LightboxHandoff';
 import { lightboxStandoutRows, verifyLightboxInstance } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { LIGHTBOX_STOCK_TIERS } from '@/infrastructure/lightbox/LightboxReadingWire';
@@ -79,6 +86,8 @@ export const LIGHTBOX_TILE_HANDOFF_REFUSALS = {
   saidTooLong: 'Its said line, as the chapter has it, is longer than a Workshop quote can carry, so the pair was not brought. Nothing was cut.',
   quotesGone: 'None of this tile\'s quotes is still in the chapter, so it was not brought.',
   handoffIncomplete: 'Its two sentences, as the chapter has them, cannot both travel to the Workshop, so the handoff was not brought. Nothing was cut.',
+  notStandout: 'The figure this reading reads does not stand out on this board, so it was not brought. Re-read the numbers.',
+  phraseGone: 'None of its quotes holds the phrase it names, as the chapter has it, so it was not brought.',
   fileChanged: 'The chapter changed on disk since this board was read. Re-read the file, then the lens, before bringing it.'
 } as const;
 
@@ -124,8 +133,15 @@ export function prepareLightboxTileHandoff(
   if (tile.kind === 'subtext' && !said) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidGone);
   }
-  const quotes: WorkshopLightboxTileQuote[] = said ? [{ ...said, said: true }] : [];
   const standout = tile.kind === 'number-usage' ? lightboxStandoutRows(board.measured.numbers.rows).get(tile.stat) : undefined;
+  // Fail closed: a numbers reading is only ever of a figure that stands out now (PR #155 F-01).
+  if (tile.kind === 'number-usage' && !standout) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.notStandout);
+  }
+  if (tile.kind === 'handoff') {
+    return handoffOf(request, tile, board, verifier);
+  }
+  const quotes: WorkshopLightboxTileQuote[] = said ? [{ ...said, said: true }] : [];
   for (const quote of travelOrder(tile)) {
     const found = standout ? foundWithInstance(verifier, standout, quote) : foundAgain(verifier, quote);
     if (found && !quotes.some((kept) => kept.paragraph === found.paragraph && kept.text === found.text)) {
@@ -138,10 +154,6 @@ export function prepareLightboxTileHandoff(
   if (said && bounded[0]?.said !== true) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.saidTooLong);
   }
-  // A handoff is its two sentences, in order: never half of one.
-  if (tile.kind === 'handoff' && !(bounded.length === 2 && sameSpan(bounded[0], tile.from) && sameSpan(bounded[1], tile.to))) {
-    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.handoffIncomplete);
-  }
   // A thread with its plant and resolution, a synopsis with two quotes, a movement with its boundary (Slice 4C).
   const anchors = lightboxPlotAnchorRefusal(tile, bounded);
   if (anchors) {
@@ -149,6 +161,10 @@ export function prepareLightboxTileHandoff(
   }
   if (bounded.length === 0) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.quotesGone);
+  }
+  // The witness rule the gate holds a familiar phrase to: a quote holding a whole occurrence (PR #155 F-03).
+  if (tile.kind === 'familiar-phrase' && !lightboxPhraseHeld(verifier, bounded, tile.phrase)) {
+    return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.phraseGone);
   }
   return {
     ok: true,
@@ -179,8 +195,28 @@ function travelOrder(tile: LightboxReadingTile): ReadonlyArray<{ paragraph: numb
   return [...leads, ...tile.beats.filter((beat) => !leads.includes(beat))].map((beat) => beat.quote);
 }
 
-function sameSpan(a: { paragraph: number; text: string }, b: { paragraph: number; text: string }): boolean {
-  return a.paragraph === b.paragraph && a.text === b.text;
+/**
+ * A handoff is its two sentences, in order: found again as adjacent sentences
+ * of one paragraph, each within the Workshop's quote bound, or refused, never
+ * halved. Both roles travel even when their words are the same (PR #155 F-02).
+ */
+function handoffOf(
+  request: LightboxTileHandOffRequest,
+  tile: Extract<LightboxReadingTile, { kind: 'handoff' }>,
+  board: LightboxBoard,
+  verifier: LightboxQuoteVerifier
+): LightboxTileHandoffPreparation {
+  const verdict = findLightboxSentencePair(verifier, tile.from, tile.to);
+  const pair = verdict.ok ? [verdict.pair.from, verdict.pair.to].map(({ paragraph, text }) => ({ paragraph, text })) : [];
+  if (pair.length !== 2 || pair.some((quote) => quote.text.length > LIMITS.quoteCharacters)) {
+    return { ok: false, reason: LIGHTBOX_TILE_HANDOFF_REFUSALS.handoffIncomplete };
+  }
+  return {
+    ok: true,
+    handoff: { kind: 'tile', tile: tileOf(request, tile, pair, board) },
+    quotesChecked: 2,
+    quotesFound: 2
+  };
 }
 
 /** A numbers reading's quote as it stands now, holding an instance of its figure, or undefined. */
@@ -263,8 +299,8 @@ function pointsOf(tile: LightboxReadingTile, board: LightboxBoard): WorkshopLigh
     case 'number-usage': {
       const row = board.measured.numbers.rows.find((candidate) => candidate.stat === tile.stat);
       const figure = row
-        ? `${row.label}: ${row.value} ${row.unit}` +
-          (row.writer ? `; your average ${row.writer.average}` : '') +
+        ? `${row.label}: ${formatLightboxFigure(row.value)} ${row.unit}` +
+          (row.writer ? `; your average ${formatLightboxFigure(row.writer.average)}` : '') +
           (row.range && (row.range.min !== undefined || row.range.max !== undefined)
             ? `; preset ${row.range.min ?? ''}–${row.range.max ?? ''}`
             : '')

@@ -97,11 +97,11 @@ preset.
 
 From `facts.json` of the final run, against the bundle built at this
 slice's head (`webview.js` SHA-256
-`caaa2e3333222f4bba6e72d592c3c74e3dccf3a5812de242da4e0b7dbe03bf39`):
+`0ea742557a244fd503a184f13ecb8c6d662b3a7728b7d6f052b631735170c9ae`, after the PR #155 review fixes):
 
 | State | What the page shows (1440, 1000 and 500 alike) |
 |---|---|
-| `numbers-measured` | "Against your other chapters (11 files, 20,000 words) and your publishing preset's ranges."; Sentence length 29.9 words per sentence · 2.09× your average of 14.3 · above the preset's 10–14, **Stands out above the preset and your average**; Dialogue 12.2 % of words · 0.41× your average of 30 · below the preset's 50–65, **Stands out below the preset and your average**; Passive voice 3.9 (2.6×, two instances: not a standout); Being verbs 33.5 (1.34×); Adverbs 13.8 (1.38×); Intensifiers and fillers 21.7 · 7.23× your average of 3, **Stands out above your average**; run line "1 call · est. $0.07" |
+| `numbers-measured` | "Against your other chapters (11 files, 20,000 words) and your publishing preset's ranges."; Sentence length 29.9 words per sentence · 2.09× your average of 14.3 · above the preset's 10–14, **Stands out above the preset and your average**; Dialogue 12.2 % of words · 0.41× your average of 30 · below the preset's 50–65, **Stands out below the preset and your average**; Passive voice 3.9 (2.62×, two instances: not a standout); Being verbs 33.5 (1.34×); Adverbs 13.8 (1.38×); Intensifiers and fillers 21.7 · 7.22× your average of 3, **Stands out above your average**; run line "1 call · est. $0.07" |
 | `stock` | Tier bar "16 beats classified and found: 6 functional stock, 1 decorated, 1 stock carrying weight, 8 signature"; Manners in free fall (¶7), The narrator's aside (¶8); In another moment ×1 · ¶5, burning with curiosity ×1 · ¶4, how in the world ×1 · ¶5, Oh dear ×2 · ¶4; an air-lock, ¶7 "Either the well was very deep, or she fell very slowly"; echo ¶2 "what is the use of a book", with "Accuracy: The quote is checked against your chapter; the resemblance is not. …" |
 | `rhythm` | "Mean 29.9 words · longest 107 (¶4) · 3 sentences under 6 words."; "Lands 2 · Holds 1 · Opens 5 · ¶1, ¶3, ¶4, ¶5, ¶6"; handoffs ¶4 "Oh dear" → "I shall be late" (Continues), ¶7 (Continues), ¶8 (Earns closure) |
 | `numbers` | Readings under sentence length (deliberate), dialogue (mixed) and intensifiers (deliberate), each with its quotes; nothing withheld |
@@ -120,6 +120,22 @@ slice's head (`webview.js` SHA-256
 (unreadable), because the tier and ending colors were set on bare `.is-*`
 classes. They are now scoped to the tier bar, its key and the ending marks;
 and the handoff's Effect tag no longer stretches across its row.
+
+## After the PR #155 review (2026-10-20)
+
+The review fixes (`fc4c564`) were rerun through this folder:
+
+- `states/chapter.json` was rebuilt. Number values, averages and ratios are
+  now kept unrounded on the board (F-04), and the numbers prompt and the
+  dialogue task line changed (the below-dialogue witness), so the host's
+  messages and estimates moved; the shown estimate is still "est. $0.07".
+  `states/workshop.json` and `states/log.txt` came out byte-identical.
+- 15 of the 30 screenshots changed and were replaced; the other 15 rendered
+  byte-identical. The changes: ratios shown from unrounded figures
+  (passive voice 2.62×, not 2.6×; intensifiers 7.22×, not 7.23×), and on
+  the stale board the Numbers card's "Stale" note now stands before its
+  first figure.
+- No page errors; no horizontal overflow in any state or width.
 
 ## Rerunning it
 

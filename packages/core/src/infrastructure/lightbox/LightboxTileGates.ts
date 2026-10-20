@@ -22,7 +22,9 @@
  *   text, besides its found quote, so it has paragraph addresses and counts
  *   (Slice 4).
  * - group D (Slice 4B): a familiar phrase is counted in the text and a
- *   found quote holds it; a tier mix stands on at least
+ *   found quote's span holds a whole occurrence of it, judged over the full
+ *   paragraph by the term counter's tokenizer (`lightboxPhraseHeld`, PR #155
+ *   F-03), so a quote cut inside a longer word holds nothing; a tier mix stands on at least
  *   `LIGHTBOX_STOCK_MINIMUM_BEATS` found beats; a handoff's two sentences
  *   are adjacent in one paragraph (`LightboxSentencePairs`); a numbers
  *   reading reads a figure that stands out on the board it is drawn on, and
@@ -113,7 +115,9 @@ export const LIGHTBOX_GATE_REASONS = {
   numberNoInstance: {
     fresh: 'None of its quotes was found holding an instance of the figure it reads.',
     carried: 'None of its quotes still holds an instance of the figure it reads.'
-  }
+  },
+  /** The text is the same, but the figure was measured again and stands out differently (PR #155 F-01). */
+  numberRemeasured: 'The figure it reads now stands out differently: your publishing preset or your own average changed since it was read. Re-read the numbers.'
 } as const;
 
 /** A tile as the gate sees it: its kind, its found quotes and its host counts. */
@@ -129,8 +133,8 @@ export interface LightboxGateCandidate {
   pair?: LightboxSentencePair | 'gone' | 'not-adjacent';
   /** A numbers reading's figure. */
   stat?: LightboxNumberStatId;
-  /** A familiar phrase, as named. */
-  phrase?: string;
+  /** A familiar phrase: whether a found quote's span holds a whole occurrence of it (`lightboxPhraseHeld`). */
+  phraseHeld?: boolean;
   /** A pressure thread's quotes as found (Slice 4C). */
   thread?: LightboxThreadCandidate;
 }
@@ -212,10 +216,7 @@ export function lightboxTileGate(candidate: LightboxGateCandidate, context: Ligh
       if (!counted(candidate.support)) {
         return refuse(LIGHTBOX_GATE_REASONS.familiarUncounted[context.phase]);
       }
-      const phrase = candidate.phrase ?? '';
-      return candidate.evidence.some((quote) => lightboxTextHoldsTerm(quote.text, phrase))
-        ? { ok: true }
-        : refuse(LIGHTBOX_GATE_REASONS.familiarUnquoted);
+      return candidate.phraseHeld === true ? { ok: true } : refuse(LIGHTBOX_GATE_REASONS.familiarUnquoted);
     }
     case 'artifact':
       return counted(candidate.support) ? { ok: true } : refuse(LIGHTBOX_PLOT_GATE_REASONS.artifactUncounted[context.phase]);
