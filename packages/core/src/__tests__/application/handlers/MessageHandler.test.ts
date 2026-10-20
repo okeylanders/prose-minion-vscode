@@ -338,6 +338,23 @@ describe('MessageHandler assembly', () => {
     expect(assembly.disposeLightboxOutcomeListener).toHaveBeenCalledTimes(1);
   });
 
+  it('boards a host-seeded Lightbox source under the ticket the host took, minting none (PR #152 F-01)', async () => {
+    const assembly = createTestAssembly();
+    const handler = createHandler(assembly, jest.fn().mockResolvedValue(undefined));
+    const { lightboxService } = assembly.services;
+    (lightboxService.buildBoard as jest.Mock).mockResolvedValueOnce({ kind: 'superseded' });
+    const ticket = { sequence: 7 };
+
+    await handler.seedLightboxSource({ text: 'A synthetic line by the gate.', relativePath: 'Drafts/gate.md' }, ticket);
+
+    expect(lightboxService.beginSourceRequest).not.toHaveBeenCalled();
+    expect(lightboxService.buildBoard).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'selection', displayPath: 'Drafts/gate.md' }),
+      ticket
+    );
+    expect(assembly.lightboxAddOutcomeListener).toHaveBeenCalledTimes(1);
+  });
+
   it('routes workshop messages (12th domain) and rehydrates a new handler from the shared session aggregate', async () => {
     const assembly = createTestAssembly();
     const postMessage = jest.fn().mockResolvedValue(undefined);

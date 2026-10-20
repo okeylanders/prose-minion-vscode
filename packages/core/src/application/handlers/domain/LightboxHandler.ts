@@ -15,7 +15,9 @@
  * arrives, a re-read when it is asked for, a picked file when the picker
  * returns it. Opening the picker is not a choice (the writer may dismiss it,
  * and a dismissal changes nothing). Reads and builds then run under that
- * ticket, and the service adopts or refuses only under the newest one.
+ * ticket, and the service adopts or refuses only under the newest one. A
+ * host launch that must load its document first takes its ticket before
+ * that load and boards under it through `seedSource` (PR #152 F-01).
  *
  * This handler never posts a request's result itself. It subscribes to the
  * service's outcomes the first time its webview sends any `LIGHTBOX_*`
@@ -137,14 +139,18 @@ export class LightboxHandler {
     this.postBoard(this.lightboxService.currentOutcome());
   }
 
-  /**
-   * A selection (with `text`) or a workspace file (by its `file:` URI). The
-   * editor commands send this through the panel's own handler.
-   */
+  /** A selection (with `text`) or a workspace file (by its `file:` URI) from a webview: a new request. */
   async handleSetSource(message: LightboxSetSourceMessage): Promise<void> {
+    await this.seedSource(message.payload ?? {}, this.lightboxService.beginSourceRequest());
+  }
+
+  /**
+   * The same source from the host, under the ticket the host took when the
+   * writer chose it (PR #152 F-01). Not a route: a webview cannot name a
+   * ticket, so its `LIGHTBOX_SET_SOURCE` always mints its own.
+   */
+  async seedSource(payload: LightboxSetSourceMessage['payload'], ticket: LightboxSourceTicket): Promise<void> {
     this.subscribe();
-    const ticket = this.lightboxService.beginSourceRequest();
-    const payload = message.payload ?? {};
     const displayPath = payload.relativePath?.trim() || 'Selection';
 
     if (typeof payload.text === 'string') {

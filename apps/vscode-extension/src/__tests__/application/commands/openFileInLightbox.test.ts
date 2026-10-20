@@ -2,10 +2,14 @@
  * Open File in Lightbox (launch entry points, 2026-10-20): which file a menu
  * or the Command Palette boards, and what is refused before anything is sent.
  * The host is a fake port, so no VS Code API is mocked; the payload goes to
- * `seedSource`, the same seam the selection command uses.
+ * `seedSource`, the same seam the selection command uses, under the source
+ * request the command took before loading the document (PR #152 F-01). The
+ * fake keeps the service's rule: only the newest ticket may board. The real
+ * adapter, provider, handler and service are ordered against each other in
+ * openFileInLightboxOwnership.integration.test.ts.
  */
 
-import type { LightboxSetSourcePayload } from '@prose-minion/core';
+import type { LightboxSetSourcePayload, LightboxSourceTicket } from '@prose-minion/core';
 import {
   LIGHTBOX_FILE_LANGUAGE_IDS,
   LightboxFileDocument,
@@ -48,7 +52,18 @@ function createHost(options: FakeHostOptions = {}) {
   const warnings: string[] = [];
   const information: string[] = [];
   const logs: string[] = [];
+  /** 'ticket' and 'open' in the order the command asked for them. */
+  const events: string[] = [];
+  let sequence = 0;
+  let current: LightboxSourceTicket | undefined;
+  const seededTickets: LightboxSourceTicket[] = [];
+  const beginSourceRequest = jest.fn(() => {
+    events.push('ticket');
+    current = { sequence: ++sequence };
+    return current;
+  });
   const openTextDocument = jest.fn(async (uri: FakeUri) => {
+    events.push('open');
     const entry = files.get(uri.toString());
     if (entry === undefined) {
       throw new Error(`cannot open ${uri.toString()}`);
@@ -64,8 +79,14 @@ function createHost(options: FakeHostOptions = {}) {
     activeDocument,
     openTextDocument,
     asRelativePath: (uri) => uri.path.replace(/^\/workspace\//, ''),
-    seedSource: (payload) => {
+    beginSourceRequest,
+    seedSource: (payload, ticket) => {
+      if (ticket !== current) {
+        return false;
+      }
       seeded.push(payload);
+      seededTickets.push(ticket);
+      return true;
     },
     showWarning: (message) => {
       warnings.push(message);
@@ -77,7 +98,22 @@ function createHost(options: FakeHostOptions = {}) {
       logs.push(line);
     }
   };
-  return { host, seeded, warnings, information, logs, openTextDocument, activeDocument };
+  return {
+    host,
+    seeded,
+    seededTickets,
+    warnings,
+    information,
+    logs,
+    events,
+    openTextDocument,
+    activeDocument,
+    beginSourceRequest,
+    /** A newer source chosen elsewhere (a selection, a picked file, a re-read). */
+    chooseNewerSource: () => {
+      current = { sequence: ++sequence };
+    }
+  };
 }
 
 describe('openFileInLightbox', () => {
@@ -278,6 +314,82 @@ describe('openFileInLightbox', () => {
       });
       expect(fake.seeded).toEqual([]);
       expect(fake.logs).toEqual(['[Lightbox] Open File in Lightbox refused (no-file)']);
+    });
+  });
+
+  describe('owning the source before the document loads (PR #152 F-01)', () => {
+    it('takes the source request when the file is chosen, before VS Code loads it, and boards under it', async () => {
+      const chapter = fileUri('Drafts/chapter-6.md');
+      const fake = createHost({ files: [doc(chapter)] });
+
+      await openFileInLightbox(chapter, fake.host);
+
+      expect(fake.events).toEqual(['ticket', 'open']);
+      expect(fake.seededTickets).toEqual([fake.beginSourceRequest.mock.results[0].value]);
+    });
+
+    it('takes it for the active editor\'s file too, which has nothing to load', async () => {
+      const fake = createHost({ active: doc(fileUri('Drafts/chapter-7.md')) });
+
+      await openFileInLightbox(undefined, fake.host);
+
+      expect(fake.events).toEqual(['ticket']);
+      expect(fake.seeded).toHaveLength(1);
+    });
+
+    it.each([
+      ['an untitled URI', () => new FakeUri('untitled', 'Untitled-2'), undefined],
+      ['a URI not on disk', () => new FakeUri('git', '/workspace/Drafts/chapter-6.md'), undefined],
+      ['an argument that is not a URI', () => '/workspace/Drafts/chapter-6.md', undefined],
+      ['no target and no active editor', () => undefined, undefined],
+      ['an untitled active document', () => undefined, doc(new FakeUri('untitled', 'Untitled-1'), 'plaintext')],
+      ['an active document in another language', () => undefined, doc(fileUri('src/index.ts'), 'typescript')]
+    ])('takes no request for a refusal it makes without loading: %s', async (_name, target, active) => {
+      const fake = createHost({ active });
+
+      const outcome = await openFileInLightbox(target(), fake.host);
+
+      expect(outcome.kind).toBe('refused');
+      expect(fake.beginSourceRequest).not.toHaveBeenCalled();
+      expect(fake.seeded).toEqual([]);
+    });
+
+    it.each([
+      ['cannot be read as text', fileUri('Art/cover.png'), new Error('File seems to be binary and cannot be opened as text')],
+      ['is in another language', fileUri('.vscode/settings.json'), undefined]
+    ])('has taken its request, and sends nothing, when the loaded file %s', async (_name, uri, failure) => {
+      const fake = createHost({ files: [failure ? [uri, failure] : doc(uri, 'json')] });
+
+      const outcome = await openFileInLightbox(uri, fake.host);
+
+      expect(outcome.kind).toBe('refused');
+      expect(fake.events).toEqual(['ticket', 'open']);
+      expect(fake.seeded).toEqual([]);
+    });
+
+    it('drops a launch whose document loads after a newer choice, and says nothing about its saved copy', async () => {
+      const chapter = fileUri('Drafts/chapter-6.md');
+      let release!: (document: LightboxFileDocument<FakeUri>) => void;
+      const fake = createHost();
+      fake.openTextDocument.mockImplementationOnce(() => new Promise((resolve) => {
+        release = resolve;
+      }));
+
+      const launching = openFileInLightbox(chapter, fake.host);
+      fake.chooseNewerSource();
+      release(doc(chapter, 'markdown', true));
+      const outcome = await launching;
+
+      expect(outcome).toEqual({
+        kind: 'superseded',
+        payload: { sourceUri: 'file:///workspace/Drafts/chapter-6.md', relativePath: 'Drafts/chapter-6.md' }
+      });
+      expect(fake.seeded).toEqual([]);
+      expect(fake.information).toEqual([]);
+      expect(fake.warnings).toEqual([]);
+      expect(fake.logs).toEqual([
+        '[Lightbox] Open File in Lightbox: dropped Drafts/chapter-6.md; a newer source was chosen while it loaded'
+      ]);
     });
   });
 });

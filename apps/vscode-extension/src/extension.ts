@@ -559,17 +559,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   };
 
-  // Lightbox seeding. seedSource routes LIGHTBOX_SET_SOURCE through the
-  // panel's own MessageHandler, the same path as the webview's own requests.
+  // Lightbox seeding. seedSource boards through the panel's own
+  // MessageHandler, into the same handler code as the webview's own requests.
   // A whole file (a menu's URI, or the active editor's) goes through
   // openFileInLightbox, which refuses untitled, non-disk and non-text sources
-  // before anything is sent.
+  // before anything is sent, and takes the shared service's source request
+  // before VS Code loads the document (PR #152 F-01).
   const openFileInLightboxHost: OpenFileInLightboxHost<vscode.Uri> = {
     toUri: (value) => (value instanceof vscode.Uri ? value : undefined),
     activeDocument: () => vscode.window.activeTextEditor?.document,
     openTextDocument: (uri) => vscode.workspace.openTextDocument(uri),
     asRelativePath: (uri) => vscode.workspace.asRelativePath(uri, false),
-    seedSource: (payload) => lightboxPanelProvider?.seedSource(payload),
+    beginSourceRequest: () => lightboxService.beginSourceRequest(),
+    seedSource: (payload, ticket) => lightboxPanelProvider?.seedSource(payload, ticket) ?? false,
     showWarning: (message) => void vscode.window.showWarningMessage(message),
     showInformation: (message) => void vscode.window.showInformationMessage(message),
     log: (line) => outputChannel.appendLine(line)

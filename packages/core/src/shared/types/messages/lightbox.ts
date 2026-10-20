@@ -239,7 +239,9 @@ export interface LightboxRequestBoardMessage extends MessageEnvelope<Record<stri
 /**
  * Board a source. With `text`, the text is an editor selection; without it,
  * `relativePath` names a workspace file the host reads. The editor commands
- * route this through the panel's own handler (the `seedExcerpt` pattern).
+ * board this payload through the panel's own handler (the `seedExcerpt`
+ * pattern), under a source-request ticket they hold host-side; a ticket is
+ * never part of the payload (PR #152 F-01).
  */
 export interface LightboxSetSourcePayload {
   text?: string;

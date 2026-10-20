@@ -185,6 +185,34 @@ describe('Lightbox source ownership (PR #148 F-01)', () => {
     expect(host.service.currentBoard()?.source.displayPath).toBe('picked.md');
   });
 
+  it('boards a host seed under the ticket the host took, so a choice made after it wins (PR #152 F-01)', async () => {
+    const host = createLightboxHost();
+    host.addFile('launched.md', OLDER);
+    const panel = host.openPanel();
+
+    const launch = host.service.beginSourceRequest();
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, { text: NEWER, relativePath: 'newer.md' });
+    await panel.handler.seedSource(host.fileSource('launched.md'), launch);
+    expect(panel.boardPaths()).toEqual(['newer.md']);
+    expect(panel.logged()).toContain('Dropped the outcome for launched.md: a newer source was chosen');
+
+    const current = host.service.beginSourceRequest();
+    await panel.handler.seedSource(host.fileSource('launched.md'), current);
+    expect(panel.boardPaths()).toEqual(['newer.md', 'launched.md']);
+  });
+
+  it('mints a new ticket for every webview LIGHTBOX_SET_SOURCE, whatever its payload names', async () => {
+    const host = createLightboxHost();
+    const panel = host.openPanel();
+    const held = host.service.beginSourceRequest();
+
+    await panel.route(MessageType.LIGHTBOX_SET_SOURCE, { text: NEWER, relativePath: 'newer.md', ticket: held });
+
+    // The route minted its own ticket; the one the payload named was never adopted.
+    expect(host.service.isCurrentRequest(held)).toBe(false);
+    expect(panel.boardPaths()).toEqual(['newer.md']);
+  });
+
   it('sends no Lightbox board to a webview that never asked for one', async () => {
     const host = createLightboxHost();
     const sidebar = host.openPanel();

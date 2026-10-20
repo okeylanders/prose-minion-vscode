@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention -- the module mock mirrors the core barrel's export names. */
 import * as vscode from 'vscode';
 import { LightboxPanelProvider } from '@app/application/providers/LightboxPanelProvider';
-import { CoreServices, MessageHandler, MessageType, Platform } from '@prose-minion/core';
+import { CoreServices, LightboxSourceTicket, MessageHandler, MessageType, Platform } from '@prose-minion/core';
 
 jest.mock('@prose-minion/core', () => ({
   MessageType: {
@@ -11,6 +11,7 @@ jest.mock('@prose-minion/core', () => ({
   SURFACE_LIGHTBOX: 'lightbox',
   MessageHandler: jest.fn(() => ({
     handleMessage: jest.fn().mockResolvedValue(undefined),
+    seedLightboxSource: jest.fn().mockResolvedValue(undefined),
     flushCachedResults: jest.fn(),
     dispose: jest.fn()
   }))
@@ -39,18 +40,32 @@ function fakePanel() {
   return { panel, changeView: () => viewChanged() };
 }
 
+/** The shared service's source-request rule: the newest ticket is the only current one. */
+function fakeLightboxService() {
+  let sequence = 0;
+  let current: LightboxSourceTicket | undefined;
+  return {
+    beginSourceRequest: jest.fn(() => {
+      current = { sequence: ++sequence };
+      return current;
+    }),
+    isCurrentRequest: (ticket: LightboxSourceTicket) => ticket === current
+  };
+}
+
 function createProvider() {
   Object.assign(vscode.workspace, {
     onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() }))
   });
-  const coreServices = {} as CoreServices;
+  const lightboxService = fakeLightboxService();
+  const coreServices = { lightboxService } as unknown as CoreServices;
   const provider = new LightboxPanelProvider(
     vscode.Uri.file('/extension'),
     coreServices,
     { appendLine: jest.fn() } as unknown as vscode.OutputChannel,
     {} as Platform
   );
-  return { provider, coreServices };
+  return { provider, coreServices, lightboxService };
 }
 
 const latestHandler = () => (MessageHandler as jest.Mock).mock.results.at(-1)!.value;
@@ -75,20 +90,44 @@ describe('LightboxPanelProvider', () => {
     }));
   });
 
-  it('seeds a source through its own handler after revealing the panel', async () => {
-    const { provider } = createProvider();
+  it('seeds a selection through its own handler after revealing the panel, under a request taken now', async () => {
+    const { provider, lightboxService } = createProvider();
     const { panel } = fakePanel();
     await provider.deserializeWebviewPanel(panel as unknown as vscode.WebviewPanel, undefined);
     const handler = latestHandler();
 
-    provider.seedSource({ text: 'Down, down, down.', relativePath: 'Drafts/alice-1.md', startLine: 3, endLine: 3 });
+    const seeded = provider.seedSource({ text: 'Down, down, down.', relativePath: 'Drafts/alice-1.md', startLine: 3, endLine: 3 });
 
+    expect(seeded).toBe(true);
     expect(panel.reveal).toHaveBeenCalled();
-    expect(handler.handleMessage).toHaveBeenCalledWith(expect.objectContaining({
-      type: MessageType.LIGHTBOX_SET_SOURCE,
-      source: 'webview.lightbox',
-      payload: { text: 'Down, down, down.', relativePath: 'Drafts/alice-1.md', startLine: 3, endLine: 3 }
-    }));
+    expect(lightboxService.beginSourceRequest).toHaveBeenCalledTimes(1);
+    // The ticket is an argument, never part of a message a webview could also send.
+    expect(handler.seedLightboxSource).toHaveBeenCalledWith(
+      { text: 'Down, down, down.', relativePath: 'Drafts/alice-1.md', startLine: 3, endLine: 3 },
+      lightboxService.beginSourceRequest.mock.results[0].value
+    );
+    expect(handler.handleMessage).not.toHaveBeenCalled();
+  });
+
+  it('seeds a file launch under the ticket it took before loading, and opens nothing once a newer source was chosen (PR #152 F-01)', async () => {
+    const { provider, lightboxService } = createProvider();
+    const { panel } = fakePanel();
+    await provider.deserializeWebviewPanel(panel as unknown as vscode.WebviewPanel, undefined);
+    const handler = latestHandler();
+    const payload = { sourceUri: 'file:///workspace/Drafts/alice-2.md', relativePath: 'Drafts/alice-2.md' };
+
+    const launch = lightboxService.beginSourceRequest();
+    expect(provider.seedSource(payload, launch)).toBe(true);
+    expect(handler.seedLightboxSource).toHaveBeenLastCalledWith(payload, launch);
+
+    const older = lightboxService.beginSourceRequest();
+    lightboxService.beginSourceRequest();
+    panel.reveal.mockClear();
+    handler.seedLightboxSource.mockClear();
+    expect(provider.seedSource(payload, older)).toBe(false);
+    expect(panel.reveal).not.toHaveBeenCalled();
+    expect(handler.seedLightboxSource).not.toHaveBeenCalled();
+    expect(handler.handleMessage).not.toHaveBeenCalled();
   });
 
   it('disposes its handler before its panel', async () => {
