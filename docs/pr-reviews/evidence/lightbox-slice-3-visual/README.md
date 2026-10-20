@@ -14,7 +14,7 @@ which is unchanged.
 | `lightbox/lightbox-<state>-<width>.png` | The Lightbox at 1440, 1000 and 500 px |
 | `workshop/workshop-build-<width>.png` | The Workshop after the handoff, at 1440, 1000 and 500 px |
 | `states/chapter.json` | The host's Lightbox messages for Chapter I: `idle`, then what `done` adds; `sent` (the handoff's answer) and `stale` (the re-read of the edited chapter) each follow `done`. `estimates` and `staleEstimates` hold the host's estimate answers for the read board and the rebuilt one; the harness answers the tab's own requests with them, echoing each request's id (PR #149 F-03), as the Slice 2B harness does |
-| `states/workshop.json` | What the Workshop panel's own Lexical Gravity handler posted for the handoff (`build`), and its lens library (`lenses`) |
+| `states/workshop.json` | What the Workshop webview was sent for the handoff (`build`): the seed the panel's own Lexical Gravity handler posted, then the panel provider's grant of the webview's claim (PR #150 F-03); and its lens library (`lenses`) |
 | `states/log.txt` | Every line the host logged while the states were made |
 | `harness.js` | Renders a built `webview.js` as the Lightbox and the Workshop surfaces behind a stubbed VS Code API, replays each state's messages, screenshots it once two consecutive frames match, and writes `facts.json` |
 | `tools/build-gravity.test.ts` | How `states/` was made |
@@ -52,10 +52,14 @@ production `LightboxService`, `LightboxHandler`, `LightboxReadingHandler`,
 and stale-readings carry, and the Workshop's own
 `WorkshopLexicalGravityHandler`, and records every message they posted. The
 handoff port does what `extension.ts` and the Workshop panel provider do: it
-routes a synthetic `WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD`, with the
-provider's delivery id, through the Workshop handler, and settles as opened,
-which is what the Workshop webview answers when it opens the sheet (it posts
-`workshop_lexical_gravity_build_seed_answer` in the `workshop-build` state).
+offers the seed through the real `WorkshopSeedDelivery`, which routes a
+synthetic `WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD`, with its delivery id,
+through the Workshop handler. The builder then plays the Workshop webview's
+side of the claim protocol: it claims the seed, the delivery grants the
+claim (the grant is recorded after the seed, so the harness replays both),
+and it answers opened, which settles the handoff. In the `workshop-build`
+state the real page does the same: it posts `workshop_seed_claim` on the
+seed, opens the sheet only on the grant, and posts `workshop_seed_answer`.
 The press names the estimate it was shown and the model it priced, as the
 merged Slice 2B fixes require. Only the provider is played: a stubbed
 engine answers each group's call. No provider was called.
@@ -88,7 +92,12 @@ show "Reader model (stub)"; neither is called.
 
 From `facts.json` of the final run, against the bundle built at the head
 that merges the PR #150 review fixes with `epic/lightbox` at `c6d4411`
-(`webview.js` SHA-256 `874136650feae93b4875dba5bb1ba9a95535b4b13c0ada27e4140fc50535034c`):
+(`webview.js` SHA-256 `874136650feae93b4875dba5bb1ba9a95535b4b13c0ada27e4140fc50535034c`).
+The re-review fixes (claim before opening, F-03; the Model Browser in the
+overlay stack, F-07) change no pixel: against their bundle (SHA-256
+`b5e5a1fbadcdc50e468ca7025d4931d2dcedad8fa4ffbe1426ab77a17b175f9b`) and the
+rebuilt `states/`, every shot re-renders within anti-aliasing of the one
+committed (at most 69 pixels by 1/255), so the shots are unchanged:
 
 | State | What the page shows (1440, 1000 and 500 alike) |
 |---|---|
@@ -97,7 +106,7 @@ that merges the PR #150 review fixes with `epic/lightbox` at `c6d4411`
 | `field`, `field-inspector` | Telescope pinned: both quotes found verbatim (¶15, ¶22); by degree "1° latent size ×2, shrink ×1 · 3 hits", "2° felt shut up ×1, shutting ×2 · 3 hits", "3° overt telescope ×2, telescopes ×1 · 3 hits"; **Build as a lens in Lexical Gravity** enabled, `aria-describedby="pm-lb-build-lens-note"`, note "Opens Lexical Gravity in the Workshop with this field as the subject. Nothing is built until you press Build there." |
 | `sent` | The tab posted `lightbox_hand_off {"kind":"lexical-gravity-seed","boardId":"board-alice-1","fieldId":"lbt-run-1-ev-A-6"}` and nothing else about the field; the host's answer shows as a status: "Opened “Telescope” in Build lens in the Workshop’s Lexical Gravity. Nothing is built until you press Build there." |
 | `stale`, `stale-inspector` | Run line "50 quotes checked · 2 withheld · 3 calls · 8 lenses stale"; six reading tiles and the headline carry the **Stale** note. Tension caption "Tension, as read on an earlier version (scores stand only on unchanged paragraphs): …", a **stale** chip on the lane, whose note reads "Tension was read against an earlier version of this chapter. Scores stand only on paragraphs unchanged since; re-read to score the rest."; one column (the changed ¶15) unscored. Telescope: 7 hits ("Enters at ¶16 …"), the ¶15 quote withheld as "No longer in the chapter: the text changed after this was read, and these words are gone.", "shut up · not in the chapter" in its counted support; Build disabled with "Read against an earlier version of the chapter. Read the lens again before building it." |
-| `workshop-build` | Lexical Gravity open on **Create New** (Build lens); subject "Telescope: shutting, size, telescopes, shut up, shrink"; banner "From the Lightbox: the borrowed field “Telescope” in Drafts/alice-chapter-1.md. Its governing metaphor: … Counted there: telescope ×2, shutting ×2, size ×2, telescopes ×1, shut up ×1, shrink ×1. … Nothing is built until you press Build lens, nothing is saved until you add a take, and nothing is installed until you choose a lens and press Install on passage." "No lens chosen yet. Build lenses from the subject and add the take you want, or choose one from the Library. Preview and Install wait for that choice."; no library lens selected; **Preview the Effect** and **Install on passage** disabled. The page posted `workshop_lexical_gravity_build_seed_answer` and no `workshop_build_lexical_gravity_lens` |
+| `workshop-build` | Lexical Gravity open on **Create New** (Build lens); subject "Telescope: shutting, size, telescopes, shut up, shrink"; banner "From the Lightbox: the borrowed field “Telescope” in Drafts/alice-chapter-1.md. Its governing metaphor: … Counted there: telescope ×2, shutting ×2, size ×2, telescopes ×1, shut up ×1, shrink ×1. … Nothing is built until you press Build lens, nothing is saved until you add a take, and nothing is installed until you choose a lens and press Install on passage." "No lens chosen yet. Build lenses from the subject and add the take you want, or choose one from the Library. Preview and Install wait for that choice."; no library lens selected; **Preview the Effect** and **Install on passage** disabled. The page posted `workshop_seed_claim` for the seed, opened the sheet on the grant, posted `workshop_seed_answer`, and posted no `workshop_build_lexical_gravity_lens` |
 | Horizontal overflow | none, in any state or width |
 
 - No page errors in any state or width.
