@@ -7,6 +7,8 @@
  * names. The bundle's honesty rules are pinned in its text. Group D's
  * example (Slice 4B) is built and read against the figures the production
  * board measures in its paragraphs, against a synthetic writer's average.
+ * Group E's example (Slice 4C) reads the same chapter's template, threads,
+ * objects and movements, each count and range the host's.
  */
 import type { LightboxNumberRow, LightboxReadingGroupId } from '@messages';
 import { LIGHTBOX_READING_GROUPS } from '@shared/constants/lightbox';
@@ -267,6 +269,67 @@ describe('Lightbox prompt bundle', () => {
       expect(numbers).toContain(`"${word}"`);
       expect(LIGHTBOX_NUMBERS_DIRECTIVE_WORDS).toContain(word);
     }
+  });
+
+  it('reads group E into a template with engagement on its movements, threads, objects and movements that tile the chapter (Slice 4C)', () => {
+    const { assembled } = decodeExample('E');
+    const kinds = new Set(assembled.tiles.map((tile) => tile.kind));
+    expect([...kinds].sort()).toEqual(['artifact', 'movement', 'pressure-thread', 'synopsis', 'template', 'template-beat']);
+    const movements = assembled.tiles.filter((tile) => tile.kind === 'movement');
+    expect(movements.map((tile) => (tile.kind === 'movement' ? [tile.ordinal, tile.from, tile.to, tile.boundary.paragraph] : [])))
+      .toEqual([[1, 1, 3, 1], [2, 4, 5, 4], [3, 6, 8, 6]]);
+    const template = assembled.tiles.find((tile) => tile.kind === 'template');
+    // Engagement keyed by the host's movement tiles, never the reading's own ids.
+    expect(template?.kind === 'template' && template.engagement)
+      .toEqual(movements.map((movement, index) => ({ movementId: movement.id, level: ['low', 'high', 'medium'][index] })));
+    expect(template?.kind === 'template' && template.freshness.level).toBe('fresh');
+    const beats = assembled.tiles.filter((tile) => tile.kind === 'template-beat');
+    expect(beats.map((tile) => (tile.kind === 'template-beat' ? tile.stance : ''))).toEqual(['departs', 'aligns', 'aligns', 'subverts', 'subverts']);
+    const threads = assembled.tiles.filter((tile) => tile.kind === 'pressure-thread');
+    expect(threads.map((tile) => (tile.kind === 'pressure-thread' ? [tile.span, tile.resolution?.paragraph ?? null, tile.dormant] : [])))
+      .toEqual([
+        [{ from: 4, to: 8 }, null, false], [{ from: 5, to: 8 }, null, true], [{ from: 6, to: 8 }, null, false], [{ from: 7, to: 7 }, 7, false]
+      ]);
+    const objects = assembled.tiles.filter((tile) => tile.kind === 'artifact');
+    expect(objects.map((tile) => (tile.kind === 'artifact' ? [tile.title, tile.firstParagraph, tile.arc.length, tile.plantedUnused] : [])))
+      .toEqual([["Her sister's book", 2, 2, true], ['The watch', 4, 2, false], ['The rabbit-hole', 1, 2, false], ['The marmalade jar', 7, 3, true]]);
+    // The counter finds the rabbit-hole first in the chapter's heading, "Down the Rabbit-Hole": a mention the reading's arc does not quote.
+    // Mentions are the host's count of the reading's terms, never the model's.
+    expect(objects.every((tile) => tile.kind === 'artifact' && tile.mentions > 0 && tile.support.every((term) => term.count > 0))).toBe(true);
+    const synopsis = assembled.tiles.find((tile) => tile.kind === 'synopsis');
+    expect(synopsis?.evidence.map((quote) => quote.paragraph)).toEqual([3, 5, 7]);
+  });
+
+  it('asks the story lenses for shapes and readings, leaves counts, spans and ranges\' checks to the host, and never directs the writer (Slice 4C)', () => {
+    const template = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.template);
+    expect(template).toContain('A template is a shape, not a target: keeping to one is not a fault, and turning one is not a merit.');
+    expect(template).toContain('It is a reading, not a grade, and the board labels it so.');
+    expect(template).toContain('Never give a score, a percentage or a rank.');
+    expect(template).toContain('never restate a count.');
+    expect(template).toContain('It is a reading of pull, not of tension');
+    expect(template).toContain('Never tell the writer to follow a template, break one, or write toward or away from a beat.');
+    const pressure = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.pressure);
+    expect(pressure).toContain('Open is not a fault');
+    expect(pressure).toContain('The host checks the order and withholds a thread that breaks it');
+    expect(pressure).toContain('never give a count or a span.');
+    expect(pressure).toContain('Never tell the writer to resolve, cut, raise or plant anything.');
+    const artifacts = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.artifacts);
+    expect(artifacts).toContain('the host counts its mentions and finds its first paragraph');
+    expect(artifacts).toContain('Never give a count.');
+    expect(artifacts).toContain('never tell the writer to use, cut or pay off an object.');
+    const summary = readLightboxPrompt(LIGHTBOX_PROMPT_FILES.lenses.summary);
+    expect(summary).toContain('Movements are a reading.');
+    expect(summary).toContain('found by code; a movement may cross one or sit inside one.');
+    expect(summary).toContain('Never evaluate the chapter in it.');
+    expect(summary).toContain('If any of that fails, every movement is withheld, so draw the ranges with care.');
+    expect(lightboxSystemPromptFiles({ group: 'E', lenses: ['template', 'pressure', 'artifacts', 'summary'] })).toEqual([
+      LIGHTBOX_PROMPT_FILES.shared,
+      LIGHTBOX_PROMPT_FILES.lenses.template,
+      LIGHTBOX_PROMPT_FILES.lenses.pressure,
+      LIGHTBOX_PROMPT_FILES.lenses.artifacts,
+      LIGHTBOX_PROMPT_FILES.lenses.summary,
+      LIGHTBOX_PROMPT_FILES.examples.E
+    ]);
   });
 
   it('asks subtext for dialogue and a labeled reading, lineage for stances and set-asides, and Spark for questions only', () => {

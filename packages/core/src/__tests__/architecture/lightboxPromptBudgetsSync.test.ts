@@ -13,6 +13,8 @@ import {
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { LIGHTBOX_PROMPT_FILES } from '@/infrastructure/lightbox/LightboxReadingPrompts';
 import { LIGHTBOX_GRAVITY_LINE_HITS } from '@shared/constants/lightbox';
+import { LIGHTBOX_UNUSED_REACH } from '@shared/constants/lightboxPlot';
+import { LIGHTBOX_MOVEMENT_ID, LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES } from '@/infrastructure/lightbox/LightboxPlotWire';
 import { readLightboxPrompt } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 
 const B = PROMPT_BUDGETS.lightbox;
@@ -135,5 +137,44 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(numbers).toContain(`\`items\`: 0–${B.numberReadings} readings, at most one per figure`);
     expect(numbers).toContain(`\`claim\`: at most ${B.claimCharacters} characters`);
     expect(numbers).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes, each holding an instance of its figure`);
+  });
+  it('states the story lenses\' ceilings and rules (Slice 4C)', () => {
+    const template = lens('template');
+    expect(template).toContain(`\`name\`: at most ${B.labelCharacters} characters`);
+    expect(template).toContain(`\`description\`: at most ${B.claimCharacters} characters`);
+    expect(template).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes where the template shows`);
+    expect(template).toContain(`\`beats\`: 0–${B.templateBeats} beats where the chapter meets its template`);
+    expect(template).toContain(`a \`note\` of one line of at most ${B.noteCharacters} characters`);
+    expect(template).toContain('`level` is `familiar`, `mixed` or `fresh`');
+    expect(template).toContain(`\`note\` is one line of at most ${B.noteCharacters} characters`);
+    expect(template).toContain('It is a reading, not a grade');
+    expect(template).toContain('give exactly one entry for each movement the summary block draws');
+
+    const pressure = lens('pressure');
+    expect(pressure).toContain(`\`threads\`: 0–${B.pressureThreads} threads`);
+    expect(pressure).toContain(`\`question\`: one line of at most ${B.noteCharacters} characters`);
+    expect(pressure).toContain(`\`escalations\`: 0–${B.threadEscalations} quotes where it builds`);
+    expect(pressure).toContain('A dormant thread with a later quote is withheld.');
+
+    const artifacts = lens('artifacts');
+    expect(artifacts).toContain(`\`objects\`: 0–${B.artifacts} objects`);
+    expect(artifacts).toContain(`\`name\`: at most ${B.labelCharacters} characters`);
+    expect(artifacts).toContain(`\`terms\`: 1–${B.termsPerClaim} words or short phrases`);
+    expect(artifacts).toContain(`\`arc\`: 1–${B.artifactSteps} steps, in paragraph order, each a \`step\` of at most ${B.labelCharacters} characters`);
+    expect(artifacts).toContain(`every mention and every step stands within ${LIGHTBOX_UNUSED_REACH} paragraphs of its first`);
+
+    const summary = lens('summary');
+    expect(summary).toContain(
+      `\`text\` is at most ${B.claimCharacters} characters and at most ${B.synopsisSentences} sentences; ` +
+        `\`evidence\` is ${LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES}–${B.synopsisQuotes} quotes from different moments, ` +
+        `and at least ${LIGHTBOX_SYNOPSIS_MINIMUM_QUOTES} must be found`
+    );
+    expect(summary).toContain(`\`movements\`: 1–${B.movements} movements, in order`);
+    expect(summary).toContain('`id`: a short key of 1 to 12 letters, digits or hyphens');
+    expect([LIGHTBOX_MOVEMENT_ID.test('a'.repeat(12)), LIGHTBOX_MOVEMENT_ID.test('a'.repeat(13)), LIGHTBOX_MOVEMENT_ID.test('')])
+      .toEqual([true, false, false]);
+    expect(summary).toContain(`\`title\`: at most ${B.labelCharacters} characters`);
+    expect(summary).toContain(`\`gist\`: one line of at most ${B.noteCharacters} characters`);
+    expect(summary).toContain('If any of that fails, every movement is withheld');
   });
 });

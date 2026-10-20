@@ -53,7 +53,8 @@ export const LightboxTemplate: React.FC<LightboxTileProps> = ({ board, bind, len
   const [template] = lightboxTilesOfKind(board, 'template');
   const [tiers] = lightboxTilesOfKind(board, 'stock-tiers');
   const basis = lightboxBasisOf(board);
-  const engagement = template ? lightboxEngagementRows(board, template) : [];
+  // With Summary & movements off, its tiles are not drawn, so engagement on them is not either (as the lane).
+  const engagement = template && !lensesOff.includes('summary') ? lightboxEngagementRows(board, template) : [];
   return (
     <LightboxReadingFrame
       kind="template"
