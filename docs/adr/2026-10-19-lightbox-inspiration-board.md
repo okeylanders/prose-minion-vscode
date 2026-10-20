@@ -85,6 +85,23 @@ by an editor context-menu command that seeds the selection or the active
 file (the `seedExcerpt` pattern). It registers a panel serializer, so a reload
 restores the tab.
 
+**Launch entry points (2026-10-20, the writer's choice).** These are the
+ways in beyond the Command Palette:
+- The sidebar's Analysis tab has a **Lightbox** button beside **Workshop**. It
+  posts `OPEN_LIGHTBOX`, which `UIHandler` routes to `uiActions.openLightbox`.
+- `prose-minion.openFileInLightbox` ("Open File in Lightbox") boards a whole
+  saved Markdown or plain-text file. It appears in the Explorer context menu,
+  as a `$(layout)` icon in the editor title, and in the editor context menu
+  when nothing is selected. From the Command Palette it boards the active
+  editor's file.
+- It sends the selection command's payload without text, through the same
+  `seedSource`. "Open Selection in Lightbox" with nothing selected takes this
+  path too.
+- Untitled, non-disk and non-text sources are refused with a message before
+  anything is sent. The word ceiling stays the Lightbox's own refusal.
+- A dirty file boards its saved copy, the one "Re-read file" and D4's hash
+  read, and the writer is told that unsaved changes are not on the board.
+
 The tab does **not** get its own webpack entry. It is a third
 `WebviewSurface`, `'lightbox'`, rendered by a new `LightboxApp` root in the
 existing bundle, per ADR 2026-07-03. The three binary branches on the surface

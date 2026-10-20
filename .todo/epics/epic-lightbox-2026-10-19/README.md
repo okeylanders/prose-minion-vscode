@@ -44,6 +44,7 @@ carried into the Workshop.
 | 5 | Saved boards | **Yes, but as the last slice**, so the output can be reviewed before the file format is fixed |
 | 6 | Model | The **existing assistant model** setting |
 | 7 | Input | **One file or excerpt per board** for now, with a word ceiling (ADR D8) |
+| 8 | Launch entry points (2026-10-20) | **All three**: a Lightbox button beside Workshop in the sidebar, **Open File in Lightbox** in the Explorer and editor context menus, and an editor-title icon, each for **Markdown and plain text** |
 
 ## Slices
 
@@ -572,6 +573,43 @@ becomes a file format.
       [`lightbox-slice-3-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-3-visual/README.md).
   - **Follow-up:** [Lightbox run accounting on its exceptional paths](../../tech-debt/2026-10-19-lightbox-exceptional-path-accounting.md)
     (Low), from PR #149's third re-review.
+
+- **2026-10-20. Launch entry points.** On
+  `epic/lightbox-launch-entry-points`, from `epic/lightbox` at `9e5363c`. The
+  writer chose all three entry points, and the editor-title icon, for both
+  Markdown and plain-text files (decision 8); see ADR D1.
+  1. **Sidebar.** A **Lightbox** button beside **Workshop** in the Analysis
+     tab posts `OPEN_LIGHTBOX`. `UIHandler` calls `uiActions.openLightbox`,
+     or reports a `ui.lightbox` error on a surface without it.
+  2. **Open File in Lightbox.** `prose-minion.openFileInLightbox` boards a
+     menu's URI, or the active editor's file, as the selection command's
+     payload without text, through the same `seedSource`. It appears in the
+     Explorer and editor context menus and, as a `$(layout)` icon, in the
+     editor title, for saved Markdown and plain-text files. The selection
+     command with nothing selected takes the same path.
+  3. **Edge cases.** An untitled document is refused, pointing to Open
+     Selection in Lightbox. A dirty file boards its saved copy, which is what
+     Re-read file and the D4 hash read, and the writer is told. Non-disk,
+     non-text, and other-language sources are refused before anything is
+     sent. A file over the ceiling gets the Lightbox's existing refusal.
+  4. **Copy.** The empty source card and the board's welcome name the new
+     entry points.
+  - **Verification.** Base `9e5363c` → head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 370 suites, 5,257 tests, 2 snapshots | 373 suites, 5,284 tests, 2 snapshots |
+    | Lint | 0 errors, 1,133 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match `9e5363c` per file and per rule.
+    - Evidence:
+      [`lightbox-launch-entry-points/`](../../../docs/pr-reviews/evidence/lightbox-launch-entry-points/README.md).
+      Native VS Code menus cannot be captured; manifest witnesses pin them.
+  - **Follow-up:** the Marketplace README describes neither the Workshop's nor
+    the Lightbox's launch commands. The Lightbox's release notes should name
+    these entry points.
 
 - **2026-10-20. Slice 3: PR #150 re-review fixes.** The
   [re-review](../../../docs/pr-reviews/pr-150-lightbox-lexical-gravity-review.md)
