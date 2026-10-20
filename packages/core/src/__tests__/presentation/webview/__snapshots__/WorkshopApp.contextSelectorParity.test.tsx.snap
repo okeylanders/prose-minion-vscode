@@ -1,0 +1,202 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) attach: Add from project…, select two, confirm; then the escape hatch: confirmed 1`] = `
+{
+  "dialog": null,
+  "posted": [
+    {
+      "payload": {
+        "items": [
+          {
+            "group": "chapters",
+            "path": "Chapters/01-the-river.md",
+          },
+          {
+            "group": "chapters",
+            "path": "Chapters/02-the-station.md",
+          },
+        ],
+      },
+      "source": "webview.workshop",
+      "type": "workshop_add_context_resources",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) attach: Add from project…, select two, confirm; then the escape hatch: explored 1`] = `
+{
+  "dialog": null,
+  "posted": [
+    {
+      "payload": {},
+      "source": "webview.workshop",
+      "type": "workshop_add_context_file",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) attach: Add from project…, select two, confirm; then the escape hatch: opened 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Add context</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Your configured resource categories. Files chosen through Explore are picked with the system dialog instead.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-cats"><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Characters</span><span class="pm-ws-ctxsel-cat-meta">1 file · 1.2 KB</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Themes</span><span class="pm-ws-ctxsel-cat-meta">1 file · 700 B</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Chapters &amp; Scenes</span><span class="pm-ws-ctxsel-cat-meta">2 files · 38.8 KB</span></button></div><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Nothing selected</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button><button class="pm-ws-primary-btn" type="button" disabled=""><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> Add 0 files</button></div></div>",
+  "posted": [
+    {
+      "payload": {},
+      "source": "webview.workshop",
+      "type": "workshop_request_context_catalog",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) attach: Add from project…, select two, confirm; then the escape hatch: two selected 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Add context</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Your configured resource categories. Files chosen through Explore are picked with the system dialog instead.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-nav"><button class="pm-ws-action-btn" type="button">← Back</button><span class="pm-ws-ctxsel-crumb">Chapters &amp; Scenes</span></div><button class="pm-ws-ctxsel-file pm-ws-ctxsel-file-selected" type="button" role="checkbox" aria-checked="true"><span class="pm-ws-ctxsel-check" aria-hidden="true"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span><span class="pm-ws-ctxsel-path">Chapters/01-the-river.md</span><span class="pm-ws-ctxsel-size">18.0 KB</span></button><button class="pm-ws-ctxsel-file pm-ws-ctxsel-file-selected" type="button" role="checkbox" aria-checked="true"><span class="pm-ws-ctxsel-check" aria-hidden="true"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span><span class="pm-ws-ctxsel-path">Chapters/02-the-station.md</span><span class="pm-ws-ctxsel-size">20.8 KB</span></button><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">2 files · ~6,617 words est.</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button><button class="pm-ws-primary-btn" type="button"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> Add 2 files</button></div></div>",
+  "posted": [],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: catalog arrived 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Set excerpt</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-cats"><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Characters</span><span class="pm-ws-ctxsel-cat-meta">1 file · 1.2 KB</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Themes</span><span class="pm-ws-ctxsel-cat-meta">1 file · 700 B</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Chapters &amp; Scenes</span><span class="pm-ws-ctxsel-cat-meta">2 files · 38.8 KB</span></button></div><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Click a file to set it as the excerpt</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button></div></div>",
+  "posted": [],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: chapters 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Set excerpt</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-nav"><button class="pm-ws-action-btn" type="button">← Back</button><span class="pm-ws-ctxsel-crumb">Chapters &amp; Scenes</span></div><button class="pm-ws-ctxsel-file" type="button" role="button"><span class="pm-ws-ctxsel-path">Chapters/01-the-river.md</span><span class="pm-ws-ctxsel-size">18.0 KB</span></button><button class="pm-ws-ctxsel-file" type="button" role="button"><span class="pm-ws-ctxsel-path">Chapters/02-the-station.md</span><span class="pm-ws-ctxsel-size">20.8 KB</span></button><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Click a file to set it as the excerpt</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button></div></div>",
+  "posted": [],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: content results 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Set excerpt</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value="river"><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names</button><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-pills" role="group" aria-label="Filter results by category"><button class="pm-ws-ctxsel-pill pm-ws-ctxsel-pill-active" type="button" aria-pressed="true">All · 3</button><button type="button" class="pm-ws-ctxsel-pill" aria-pressed="false">Characters · 1</button><button type="button" class="pm-ws-ctxsel-pill" aria-pressed="false">Themes · 1</button><button type="button" class="pm-ws-ctxsel-pill" aria-pressed="false">Chapters &amp; Scenes · 1</button></div><button class="pm-ws-ctxsel-file" type="button" role="button"><span class="pm-ws-ctxsel-path">Chapters/01-the-river.md</span><span class="pm-ws-ctxsel-tag">Chapters &amp; Scenes</span><span class="pm-ws-ctxsel-size">18.0 KB</span></button><button class="pm-ws-ctxsel-file" type="button" role="button"><span class="pm-ws-ctxsel-path">Themes/rivers.md</span><span class="pm-ws-ctxsel-tag">Themes</span><span class="pm-ws-ctxsel-size">700 B</span></button><button class="pm-ws-ctxsel-file" type="button" role="button"><span class="pm-ws-ctxsel-path">Characters/marlow.md</span><span class="pm-ws-ctxsel-tag">Characters</span><span class="pm-ws-ctxsel-size">1.2 KB</span></button><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Click a file to set it as the excerpt</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button></div></div>",
+  "posted": [],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: content search asked 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Set excerpt</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value="river"><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names</button><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-pills" role="group" aria-label="Filter results by category"><button class="pm-ws-ctxsel-pill pm-ws-ctxsel-pill-active" type="button" aria-pressed="true">All · 2</button><button type="button" class="pm-ws-ctxsel-pill" aria-pressed="false">Themes · 1</button><button type="button" class="pm-ws-ctxsel-pill" aria-pressed="false">Chapters &amp; Scenes · 1</button></div><button class="pm-ws-ctxsel-file" type="button" role="button"><span class="pm-ws-ctxsel-path">Chapters/01-the-river.md</span><span class="pm-ws-ctxsel-tag">Chapters &amp; Scenes</span><span class="pm-ws-ctxsel-size">18.0 KB</span></button><button class="pm-ws-ctxsel-file" type="button" role="button"><span class="pm-ws-ctxsel-path">Themes/rivers.md</span><span class="pm-ws-ctxsel-tag">Themes</span><span class="pm-ws-ctxsel-size">700 B</span></button><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Click a file to set it as the excerpt</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button></div></div>",
+  "posted": [
+    {
+      "payload": {
+        "query": "river",
+      },
+      "source": "webview.workshop",
+      "type": "workshop_search_context_resources",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: explored 1`] = `
+{
+  "dialog": null,
+  "posted": [
+    {
+      "payload": {},
+      "source": "webview.workshop",
+      "type": "workshop_pick_excerpt_file",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: opened 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Set excerpt</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><p class="pm-ws-ctxsel-empty">Reading your configured resource folders…</p><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Click a file to set it as the excerpt</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button></div></div>",
+  "posted": [
+    {
+      "payload": {},
+      "source": "webview.workshop",
+      "type": "workshop_request_context_catalog",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: picked 1`] = `
+{
+  "dialog": null,
+  "posted": [
+    {
+      "payload": {
+        "group": "characters",
+        "path": "Characters/marlow.md",
+      },
+      "source": "webview.workshop",
+      "type": "workshop_set_excerpt_resource",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) excerpt: Choose from project…, browse, search both ways, pick; then the escape hatch: reopened 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Set excerpt</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>Pick one file to workshop — it becomes the working excerpt, head-sliced past the budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-cats"><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Characters</span><span class="pm-ws-ctxsel-cat-meta">1 file · 1.2 KB</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Themes</span><span class="pm-ws-ctxsel-cat-meta">1 file · 700 B</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Chapters &amp; Scenes</span><span class="pm-ws-ctxsel-cat-meta">2 files · 38.8 KB</span></button></div><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Click a file to set it as the excerpt</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button></div></div>",
+  "posted": [
+    {
+      "payload": {},
+      "source": "webview.workshop",
+      "type": "workshop_request_context_catalog",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) message: Attach to this message, select one, confirm; then the escape hatch: confirmed 1`] = `
+{
+  "dialog": null,
+  "posted": [
+    {
+      "payload": {
+        "items": [
+          {
+            "group": "themes",
+            "path": "Themes/rivers.md",
+          },
+        ],
+      },
+      "source": "webview.workshop",
+      "type": "workshop_attach_message_resources",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) message: Attach to this message, select one, confirm; then the escape hatch: explored 1`] = `
+{
+  "dialog": null,
+  "posted": [
+    {
+      "payload": {},
+      "source": "webview.workshop",
+      "type": "workshop_attach_message_file",
+    },
+  ],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) message: Attach to this message, select one, confirm; then the escape hatch: one selected 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Attach to message</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>These ride your next message only, then become ordinary history — no standing budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-nav"><button class="pm-ws-action-btn" type="button">← Back</button><span class="pm-ws-ctxsel-crumb">Themes</span></div><button class="pm-ws-ctxsel-file pm-ws-ctxsel-file-selected" type="button" role="checkbox" aria-checked="true"><span class="pm-ws-ctxsel-check" aria-hidden="true"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg></span><span class="pm-ws-ctxsel-path">Themes/rivers.md</span><span class="pm-ws-ctxsel-size">700 B</span></button><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">1 of 7 remaining slots</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button><button class="pm-ws-primary-btn" type="button"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> Attach 1 to message</button></div></div>",
+  "posted": [],
+}
+`;
+
+exports[`WorkshopApp context selector parity (recorded before the shared picker) message: Attach to this message, select one, confirm; then the escape hatch: opened 1`] = `
+{
+  "dialog": "<div class="pm-ws-tools-modal pm-ws-ctxsel-modal" role="dialog" aria-modal="true" aria-labelledby="pm-ws-ctxsel-title"><div class="pm-ws-tools-modal-head"><div><div class="pm-ws-eyebrow">Attach to message</div><h2 id="pm-ws-ctxsel-title">Choose from project</h2><p>These ride your next message only, then become ordinary history — no standing budget.</p></div><button class="pm-ws-modal-close" type="button" aria-label="Close context selector"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="pm-ws-ctxsel-search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg><input type="text" placeholder="Search configured resources…" aria-label="Search configured resources" value=""><div class="pm-ws-ctxsel-modes" role="group" aria-label="Search mode"><button type="button" class="pm-ws-ctxsel-mode pm-ws-ctxsel-mode-active" aria-pressed="true">Names</button><button type="button" class="pm-ws-ctxsel-mode" aria-pressed="false">Names + content</button></div></div><div class="pm-ws-ctxsel-body"><div class="pm-ws-ctxsel-cats"><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Characters</span><span class="pm-ws-ctxsel-cat-meta">1 file · 1.2 KB</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Themes</span><span class="pm-ws-ctxsel-cat-meta">1 file · 700 B</span></button><button class="pm-ws-ctxsel-cat" type="button"><span class="pm-ws-ctxsel-cat-name">Chapters &amp; Scenes</span><span class="pm-ws-ctxsel-cat-meta">2 files · 38.8 KB</span></button></div><button class="pm-ws-ctxsel-explore" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5"></path></svg><span>Explore project folders… <small>opens the system picker; budget checked on add</small></span></button></div><div class="pm-ws-ctxsel-foot"><span class="pm-ws-ctxsel-total">Nothing selected · 7 attachment slots left on this message</span><span class="pm-ws-ctxsel-spacer"></span><button class="pm-ws-action-btn" type="button">Cancel</button><button class="pm-ws-primary-btn" type="button" disabled=""><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> Attach 0 to message</button></div></div>",
+  "posted": [
+    {
+      "payload": {},
+      "source": "webview.workshop",
+      "type": "workshop_request_context_catalog",
+    },
+  ],
+}
+`;
