@@ -525,3 +525,201 @@ Reviewed head `4150c8c` compared with this fix head, which merges
 No live or billable call was made. Every test, and the evidence, plays the
 provider. Fixtures are public-domain prose from "Alice's Adventures in
 Wonderland" (1865), or short synthetic sentences written for the tests.
+
+### Author response to re-review (2026-10-20)
+
+The F-03 residual and F-07 are fixed on `epic/lightbox-slice-3-gravity`, one
+commit each, at `4e70193` and `ceb5d6e`. The evidence follows the new
+protocol at `c40e69d`. Statuses in the ledger are left for re-verification.
+
+I ran every new test against `524a961`'s `packages/core/src` and
+`apps/vscode-extension/src` trees, using this branch's tests and ts-jest
+with type diagnostics off, so failures are behavioral.
+
+- **Fails there:**
+  - all six integrated provider → handler → receiver tests, including the
+    four you asked for;
+  - all three Model Browser overlay tests;
+  - the header Model Browser seed test;
+  - the new receiver tests.
+- **Passes there, as intended:** the retained unsent-queue, hide/reveal,
+  close/reopen and disposal provider tests, which you asked to keep green.
+- **Cannot run there:** the new `WorkshopSeedDelivery` unit tests. The
+  module does not exist at `524a961`; with it present they pass, since the
+  old provider never calls it.
+
+#### F-03 residual — a seed already sent could still open
+
+- **Root cause.** The provider's settlement (timeout, replacement, closing)
+  forgot only its own pending record. The receiver opened a seed when it
+  arrived, with no check that the delivery was still wanted. So a seed
+  message already in flight opened after its handoff had settled.
+  Discarding its late answer could not undo that.
+- **Fix** (`4e70193`). The receiver claims before it opens. This is the
+  protocol you proposed.
+  1. **Hold and claim.** On arrival, the webview holds the seed and posts
+     `WORKSHOP_SEED_CLAIM { kind, deliveryId }`. Nothing opens yet.
+  2. **Grant or deny.** The provider answers with
+     `WORKSHOP_SEED_CLAIM_RESULT`. It grants the claim only while that
+     delivery is the one it is still waiting on for that panel, and the
+     message was sent. Otherwise it denies it as `timeout`, `replaced`,
+     `closed` or `unknown`; the provider remembers the last 16 settled
+     ids, so it can say why. A grant stops the deadline.
+  3. **Open or drop.** The webview opens only on a grant. It then answers
+     `WORKSHOP_SEED_ANSWER { kind, deliveryId, opened, reason? }`: opened,
+     or `busy` if a sheet the writer is using appeared in between. A
+     denied seed is dropped without a message and without touching any
+     open sheet.
+  4. **Claims and answers stay with the provider.** It intercepts both;
+     they never reach a domain handler. Late messages from an older panel
+     are still ignored.
+
+  So a seed that timed out, was replaced or lost its panel never opens,
+  even when its message was already on its way.
+
+  One extension you had not specified: **a grant cannot be revoked.**
+  Once the grant is posted, the webview will act on it. So a newer seed
+  does not replace a granted one. It waits until the webview answers or
+  the panel closes, and keeps its own deadline while it waits. Without
+  that, a grant in flight could open the older seed over the newer one,
+  which is the original FIFO bug one message later.
+
+  I found no simpler mechanism with the same guarantee. Any check that
+  happens only on the provider side runs before the in-flight message
+  arrives.
+- **Built for a second kind.**
+  - `WorkshopSeedKind` is a closed union of seed kinds. Today it has
+    `'lexical-gravity-build'`.
+  - `WorkshopSeedDelivery<TRecipient>` is core and host-agnostic: offer,
+    deliver, claim, answer, close. `WorkshopPanelProvider` keeps one per
+    kind in a `Record<WorkshopSeedKind, …>` and routes claims and answers
+    to it by `kind`.
+  - On the webview side, `useWorkshopSeedClaim<TSeed>(kind)` holds, claims
+    and answers. `useLexicalGravity` composes it.
+  - Slice 4 adds a kind, composes the hook, and fans the claim-result
+    route out by kind.
+- **Tests.**
+  - `WorkshopSeedDelivery.integration.test.tsx` uses the real
+    `WorkshopPanelProvider`. The panel's MessageHandler is a routing shim
+    that hands the seed's route to the real `WorkshopLexicalGravityHandler`.
+    The production `WorkshopApp` is the receiver. Every host-to-webview
+    `postMessage` is held and released in order. It covers:
+    - a post-dispatch timeout: the claim is denied and nothing opens;
+    - a post-dispatch replacement: A arrives first and does not open, and
+      B opens;
+    - delayed FIFO delivery of A then B: B opens with B's subject, and A
+      is never answered;
+    - a closed panel: its late claim gets no grant, and a reopened
+      Workshop receives nothing;
+    - a grant that crosses the panel's closing: the outcome stays
+      `closed`;
+    - the in-time case.
+  - `WorkshopSeedDelivery.test.ts` covers each state, the grant as commit
+    point, timeout of a seed queued behind a grant, closing, and wrong
+    panel or delivery.
+  - `WorkshopPanelProviderBuildSeed.test.ts` keeps the unsent-queue,
+    hide/reveal, close/reopen, old-panel and disposal cases, now on the
+    claim protocol. It adds post-dispatch replacement and timeout.
+  - The receiver tests cover holding, granting, denying and supersession.
+- **Contract changes (for Slice 4).**
+  - New contracts module `shared/types/messages/workshop/seedDelivery.ts`
+    with these types:
+    - `WorkshopSeedKind`
+    - `WorkshopSeedRefusal` (`busy`)
+    - `WorkshopSeedClaimDenial`
+    - `WorkshopSeedFailure`
+    - `WorkshopSeedOutcome`
+    - `WorkshopSeedAnswer`
+    - claim, claim-result and answer payloads and messages
+  - New `MessageType` values: `WORKSHOP_SEED_CLAIM`,
+    `WORKSHOP_SEED_CLAIM_RESULT` and `WORKSHOP_SEED_ANSWER`.
+  - Removed: `WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER` and its types.
+  - The Lightbox's `LightboxWorkshopHandoffOutcome` and refusal types are
+    now the generic seed outcome and failure.
+  - `seedLexicalGravityBuild` returns `Promise<WorkshopSeedOutcome>`.
+  - Core exports `WorkshopSeedDelivery`, `WorkshopSeedDeliveryPorts`,
+    `WorkshopSeedDeliveryOptions` and `WORKSHOP_SEED_TIMEOUT_MS` (20 s).
+    The provider's own timeout export is gone.
+  - Webview: `useLexicalGravity` gains `handleSeedClaimResult`, and
+    `answerLexicalGravityBuildSeed` takes a `WorkshopSeedAnswer`, keyed by
+    `deliveryId`.
+  - The contracts module is in the boundary and ownership lists, and in
+    the architecture docs' Workshop contract trees. Its kind union is an
+    approved closed-registry seam.
+
+#### F-07 — The Model Browser was outside the overlay stack
+
+- **Root cause.** `ModelBrowserModal` had its own window Escape listener
+  and never registered with `useOverlayDismiss`.
+  - `isAnyOverlayOpen()` could not see the header browser, so a seed
+    opened over it.
+  - Both listeners fired on one Escape, so both surfaces closed.
+- **Fix** (`ceb5d6e`).
+  - **Registration.** `ModelBrowserModal` uses `useOverlayDismiss`, the
+    same mechanism as every other shell. While it is open:
+    - it registers, so a seed's claim is granted and then answered `busy`;
+    - it receives Escape only when it is on top;
+    - its close button takes focus.
+  - **Focus return.** `useOverlayDismiss` now also gives focus back for an
+    overlay opened over another one (the widget sheet's nested browser).
+    It returns focus to that overlay's opener, and only if focus fell out
+    of the page when it closed. The last overlay still restores the page's
+    original focus, and an overlay opening in the same commit keeps its
+    own focus.
+  - **Unchanged.**
+    - Model selection still goes through `onSelect` to the model settings,
+      by scope.
+    - The widget sheets' `modelBrowserOpen` guard stays as a second
+      safeguard.
+- **Tests.**
+  - `ModelBrowserOverlay.test.tsx`, the header path:
+    - registration;
+    - focus on open;
+    - one Escape;
+    - focus back to the trigger;
+    - a choice routed to `assistant`.
+  - `ModelBrowserOverlay.test.tsx`, the nested path, inside a
+    `WorkshopModalShell`:
+    - the first Escape closes only the browser and focus returns to its
+      trigger in the sheet;
+    - a choice routed to `widget`;
+    - the next Escape closes the sheet.
+  - `ModelBrowserOverlay.test.tsx` also checks that unmounting while open
+    cleans the stack.
+  - In the production Workshop app (`WorkshopApp.buildSeedOverlays`):
+    - **Header browser:** with a search typed in, a seed is refused as
+      `busy`. The browser stays the only dialog. One Escape closes only
+      the browser, focus returns to the header trigger, and a choice posts
+      `SET_MODEL_SELECTION` for `assistant`.
+    - **Nested browser:** the Lexical Gravity sheet's browser closes
+      before its sheet, returns focus to its trigger, and routes a choice
+      to `widget`. This is a verification test: the old guard already held
+      this path.
+
+#### Evidence and verification
+
+- **Evidence** (`c40e69d`). The builder no longer synthesizes
+  `{ opened: true }`. It offers the seed through the real
+  `WorkshopSeedDelivery`, then plays the webview's claim and answer. The
+  grant is recorded after the seed in `states/workshop.json`, so the
+  harness replays both.
+  - In the rendered Workshop, the real page posts `workshop_seed_claim`,
+    opens the sheet only on the grant, and posts `workshop_seed_answer`.
+  - Rebuilt against the re-review bundle (SHA-256 `b5e5a1fb…5f9b`), every
+    shot is within anti-aliasing of the committed one: at most 69 pixels,
+    by 1/255. So no PNG changed.
+  - This does not replace the delayed-transport test above. That test is
+    the direct witness for F-03.
+- **Verification.** Re-reviewed head `524a961` compared with this fix head:
+
+| Check | Before | After |
+|---|---|---|
+| Jest | 367 suites, 5,237 tests, 2 snapshots | 370 suites, 5,257 tests, 2 snapshots |
+| Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings, identical per file and rule |
+| `npm run typecheck` | Passes | Passes |
+| `npm run build` | Passes | Passes |
+| `git diff --check` | Passes | Passes |
+
+No live or billable call was made. The fixtures are public-domain prose
+from "Alice's Adventures in Wonderland" (1865) or short synthetic strings,
+and models are stub ids.
