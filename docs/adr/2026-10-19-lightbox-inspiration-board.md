@@ -214,7 +214,10 @@ interface LightboxReadingGroup {
 `LightboxTileKind` is a closed union that grows by slice: `headline`, `motif`,
 `tension-arc`, `character`, `voice`, `genre-neighbor` (2B); `palette-cluster`,
 `swatch`, `gravity-field`, `gravity-collision`, `gravity-literal` (3);
-`lineage`, `subtext`, `spark` (4). The renderer has one component per kind
+`lineage`, `subtext`, `spark` (4); `stock-tiers`, `signature`, `familiar-phrase`,
+`air-lock`, `echo`, `rhythm-endings`, `handoff`, `number-usage` (4B, 2026-10-20);
+the story and Opinion kinds of Slices 4C and 4D as their specs fix them. The
+renderer has one component per kind
 behind an exhaustive map. A kind with no component is a compile error, not a
 runtime guess.
 
@@ -254,14 +257,18 @@ from D4, and posts the board. No model call is made and no cost is shown.
 ### D6. Readings run only on an explicit press, as three grouped calls
 
 The **Read** button states the call count and estimated cost before anything
-is sent. The readings run as up to three calls, grouped so a failure in one
-cannot sink the others:
+is sent. The readings run as grouped calls (three through Slice 4, one more per
+story and craft group from Slice 4B), grouped so a failure in one cannot
+sink the others:
 
 | Group | Lenses (by slice) |
 |---|---|
 | A | headline, motifs, tension arc (2B); palette, lexical gravity (3) |
 | B | characters, voice (2B); subtext (4) |
 | C | genre neighborhood (2B); lineage, Spark (4) |
+| D | Stock & signature, Rhythm & handoffs, What stands out in the numbers (4B, 2026-10-20) |
+| E | Template & freshness, Pressure, Artifacts, Summary & movements (4C, planned) |
+| F | Opinion, run after the other groups of a press settle, on the board's verified digest (4D, planned) |
 
 A lens the writer turns off is left out of its group's prompt. A group with no
 lenses on is not called.
@@ -317,6 +324,40 @@ This is the honesty design of the board.
 - **Lexical gravity sets literal fields aside.** A field counts as gravity
   only when the prose borrows it. A field that is literal in the scene is
   shown as set aside, with the reason.
+
+**Addendum to D7 (2026-10-20): one fenced exception to "describe, never
+grade".** The writer's new sections (epic decisions 10–16) add two things
+that come close to grading, and this addendum fences both:
+
+- **The Opinion tile (Slice 4D) is the one evaluative tile.** It is the only
+  place on the board allowed to weigh the work. The fence:
+  - it is one tile, labelled "the one evaluative tile", and nothing else on
+    the board reads it, so ignoring it changes nothing;
+  - it runs last, on the board's verified digest (current tiles, their found
+    quotes and host counts), never on a fresh read of the chapter, so it
+    cannot invent a quote: it cites board items by host id;
+  - one call returns a shared list of observations and three views of them
+    (Enthusiastic, Neutral, Blunt): "same facts, three temperaments". A view
+    may weigh only those observations, and code withholds a view that cites
+    anything else;
+  - Neutral is the default view; Blunt diagnoses the work, never the writer,
+    and gives no rewrites, held by a stated word-list check;
+  - it goes stale when any tile it cites changes.
+  Every other lens keeps the rule above unchanged: describe, never grade.
+- **The freshness reading (Slice 4C) is labelled "a reading, not a grade".**
+  It is a three-step reading (Familiar · Mixed · Fresh), never a number, and
+  it is always shown over a counted basis line the host joins from Group D's
+  tier counts and Group E's subversion count, never restated by a model.
+  Familiar is not a fault: the scale describes where a chapter sits, as
+  genre affinity does.
+- **Number standouts (Slice 4B) are not grades either.** Code flags a figure
+  outside its range or far from the writer's own average; the reading says
+  how it is used ("reads as deliberate", "mixed", "habit"), each quote
+  holding an instance of the pattern, and never says fix or cut.
+- **Echoes (Slice 4B) replace provenance.** A line that "sounds reminiscent
+  of" something is shown with an accuracy callout: the quote is checked
+  against the chapter, the resemblance is not, and a model's memory of
+  sources is often wrong. No percentages; never a finding.
 
 ### D8. Input limits: a 50,000-word ceiling, a fit check, no silent shortcuts
 

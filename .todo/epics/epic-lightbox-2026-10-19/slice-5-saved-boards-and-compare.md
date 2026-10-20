@@ -12,6 +12,33 @@ in the epic's progress notes: what the writer changed, removed or asked to
 keep. Then adjust the board contract **before** writing the codec. Fields
 that did not earn their place are removed now, while that is still free.
 
+**The writer's checkpoint is passed (2026-10-20).** After real-chapter
+passes the writer said the board "is working great", and asked for new
+lenses first (Slices 4B–4D, epic decision 14), so this slice starts after
+4D and its format holds them.
+
+## What the format must hold (2026-10-20)
+
+Fixed before the codec is written, so later boards need no migration:
+
+- **Every tile kind** on the board when this slice starts: the measured
+  tiles and every reading kind through Slice 4D (Groups A–F, including the
+  craft, story and Opinion kinds), each with its host-derived fields
+  (counts, column keys, tiers, the Opinion's citations), its withheld
+  claims and blocks, frictions, quote checks and stale marks. The kind
+  union is closed, so the codec is exhaustive over it like every other map.
+- **The measured layers**: the paragraph model with each paragraph's
+  sentence lengths, the ribbon, the measured set (including the numbers and
+  the writer's average as measured, with its source counts), and the
+  **Sections layer** from Slice 4C.
+- **A list of sources**, not one: `sources: LightboxSource[]` with each
+  paragraph addressed by `{ source, index }` (or an equivalent offset table),
+  even though every board written by this slice has exactly one source. A
+  multi-file board can then come later without a migration
+  ([feature note](../../features/feature-lightbox-ribbon-structure/README.md)).
+- Which Opinion view the writer looked at is **not** saved (a webview
+  preference).
+
 ## Outcome
 
 Boards save automatically after a completed reading run. They reopen with
