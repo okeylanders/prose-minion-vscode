@@ -353,9 +353,16 @@ Neither lets Lightbox change Workshop state directly:
 - A handoff that is not session state (a gravity seed) belongs to the panel
   that accepted it. The provider delivers it once, only when that panel's
   webview is listening and its tab is visible; a newer handoff replaces it,
-  and closing the panel cancels it. The Workshop webview answers whether it
-  opened it, and the Lightbox says the field was sent only on that answer,
-  with a bounded wait (PR #150 F-03).
+  and closing the panel cancels it. The webview never opens a seed on
+  arrival: it claims it, and the provider grants the claim only while that
+  delivery is still the one it waits on for that panel, so a seed that timed
+  out, was replaced or lost its panel never opens, even when its message was
+  already sent. A grant cannot be revoked, so a newer handoff waits for the
+  granted one's answer. The Workshop webview answers whether it opened the
+  seed, and the Lightbox says the field was sent only on that answer, with a
+  bounded wait (PR #150 F-03). Every seed kind uses this protocol
+  (`WorkshopSeedDelivery`, `seedDelivery.ts`); Slice 4's tiles join it as a
+  new kind.
 - The Workshop decides what arrives. A tile is staged above the composer, as
   an attachment the writer sends or removes. A gravity seed opens Lexical
   Gravity's **Build lens** with the subject filled in. Nothing is sent or

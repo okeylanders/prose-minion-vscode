@@ -8,9 +8,9 @@ import {
 import {
   reportWorkshopWidgetActionCorrelationIssue
 } from '@hooks/domain/workshop/reportWorkshopWidgetActionCorrelationIssue';
+import { useWorkshopSeedClaim } from '@hooks/domain/workshop/useWorkshopSeedClaim';
 import {
   MessageType,
-  WorkshopLexicalGravityBuildSeedAnswerPayload,
   WorkshopLexicalGravityBuildSeedMessage,
   WorkshopLexicalGravityBuildSeedPayload,
   WorkshopLexicalGravityDraft,
@@ -23,6 +23,8 @@ import {
   WorkshopLexicalGravityPreviewResultPayload,
   WorkshopLexicalGravityLensesSavedMessage,
   WorkshopLexicalGravityLensesSavedPayload,
+  WorkshopSeedAnswer,
+  WorkshopSeedClaimResultMessage,
   WorkshopWidgetActionResultMessage,
   WorkshopWidgetActionResultPayload
 } from '@messages';
@@ -36,7 +38,10 @@ export interface LexicalGravityState {
   lensCandidates: WorkshopLexicalGravityLensCandidatesPayload | null;
   lensesSaved: WorkshopLexicalGravityLensesSavedPayload | null;
   actionResult: WorkshopWidgetActionResultPayload | null;
-  /** A Build lens subject another tab handed over, until the sheet opens with it. */
+  /**
+   * A Build lens subject another tab handed over, once the panel provider
+   * granted its claim, until the sheet opens with it or refuses it.
+   */
   lexicalGravityBuildSeed: WorkshopLexicalGravityBuildSeedPayload | null;
 }
 
@@ -55,9 +60,11 @@ export interface LexicalGravityActions {
   handleCandidates: (message: WorkshopLexicalGravityLensCandidatesMessage) => void;
   handleLensesSaved: (message: WorkshopLexicalGravityLensesSavedMessage) => void;
   handleActionResult: (message: WorkshopWidgetActionResultMessage) => void;
+  /** A seed arrived: claim it; it opens only if the provider grants the claim (PR #150 F-03). */
   handleBuildSeed: (message: WorkshopLexicalGravityBuildSeedMessage) => void;
-  /** Tell the host whether the seed opened (PR #150 F-03), and let it go. */
-  answerLexicalGravityBuildSeed: (answer: WorkshopLexicalGravityBuildSeedAnswerPayload) => void;
+  handleSeedClaimResult: (message: WorkshopSeedClaimResultMessage) => void;
+  /** Tell the host whether the granted seed opened, and let it go. */
+  answerLexicalGravityBuildSeed: (answer: WorkshopSeedAnswer) => void;
   clearTransientResults: () => void;
   consumeActionResult: () => void;
 }
@@ -86,8 +93,7 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     React.useState<WorkshopLexicalGravityLensesSavedPayload | null>(null);
   const [actionResult, setActionResult] =
     React.useState<WorkshopWidgetActionResultPayload | null>(null);
-  const [lexicalGravityBuildSeed, setLexicalGravityBuildSeed] =
-    React.useState<WorkshopLexicalGravityBuildSeedPayload | null>(null);
+  const buildSeeds = useWorkshopSeedClaim<WorkshopLexicalGravityBuildSeedPayload>('lexical-gravity-build');
 
   const post = React.useCallback((type: MessageType, payload: object) => {
     vscode.postMessage({ type, source: 'webview.workshop.lexical-gravity', payload, timestamp: Date.now() });
@@ -179,13 +185,10 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     latestApplyRequestTokenRef.current = undefined;
     setActionResult(message.payload);
   }, []);
+  const { receive: receiveBuildSeed } = buildSeeds;
   const handleBuildSeed = React.useCallback((message: WorkshopLexicalGravityBuildSeedMessage) => {
-    setLexicalGravityBuildSeed(message.payload);
-  }, []);
-  const answerLexicalGravityBuildSeed = React.useCallback((answer: WorkshopLexicalGravityBuildSeedAnswerPayload) => {
-    setLexicalGravityBuildSeed((current) => (current?.seedId === answer.seedId ? null : current));
-    post(MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER, answer);
-  }, [post]);
+    receiveBuildSeed(message.payload.seedId, message.payload);
+  }, [receiveBuildSeed]);
   const clearTransientResults = React.useCallback(() => {
     setPreviewResult(null);
     setLensCandidates(null);
@@ -203,7 +206,7 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     lensCandidates,
     lensesSaved,
     actionResult,
-    lexicalGravityBuildSeed,
+    lexicalGravityBuildSeed: buildSeeds.granted?.seed ?? null,
     requestLenses,
     preview,
     buildLens,
@@ -215,7 +218,8 @@ export function useLexicalGravity(): UseLexicalGravityReturn {
     handleLensesSaved,
     handleActionResult,
     handleBuildSeed,
-    answerLexicalGravityBuildSeed,
+    handleSeedClaimResult: buildSeeds.handleClaimResult,
+    answerLexicalGravityBuildSeed: buildSeeds.answer,
     clearTransientResults,
     consumeActionResult,
     persistedState: {}

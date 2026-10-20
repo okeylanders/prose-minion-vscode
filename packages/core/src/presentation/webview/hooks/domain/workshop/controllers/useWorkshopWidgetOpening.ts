@@ -6,12 +6,12 @@ import {
   WorkshopGesturePlaygroundWidgetConfigSnapshot,
   WorkshopCreativeVariationsWidgetConfigSnapshot,
   WorkshopCreativeVariationsRecommendationSeed,
-  WorkshopLexicalGravityBuildSeedAnswerPayload,
   WorkshopLexicalGravityBuildSeedPayload,
   WorkshopLexicalGravityDraft,
   WorkshopLexicalGravityRecommendationSeed,
   WorkshopLexicalGravityWidgetConfigSnapshot,
   WorkshopPersonaId,
+  WorkshopSeedAnswer,
   WorkshopShowVsTellRecommendationSeed,
   WorkshopShowVsTellWidgetConfigSnapshot,
   WorkshopStandingDirectiveSummary,
@@ -73,10 +73,13 @@ export interface WorkshopWidgetOpeningHost {
   consumeRestoredWidgetConfig: () => void;
 }
 
-/** A Build lens subject the host delivered, until this controller opens or refuses it, and answers. */
+/**
+ * A Build lens subject whose claim the host granted (PR #150 F-03), until
+ * this controller opens or refuses it, and answers.
+ */
 export interface WorkshopLexicalGravityBuildSeedHost {
   lexicalGravityBuildSeed: WorkshopLexicalGravityBuildSeedPayload | null;
-  answerLexicalGravityBuildSeed: (answer: WorkshopLexicalGravityBuildSeedAnswerPayload) => void;
+  answerLexicalGravityBuildSeed: (answer: WorkshopSeedAnswer) => void;
 }
 
 export interface UseWorkshopWidgetOpeningOptions {
@@ -163,12 +166,14 @@ export function useWorkshopWidgetOpening({
     requestRestoredWidgetConfig();
   }, [requestRestoredWidgetConfig]);
 
-  // A Build lens subject handed over from another tab opens the sheet once,
-  // unless a sheet, editor or browser is already open: the seed never covers
-  // or replaces the writer's work there (PR #150 F-02). Every Workshop overlay
+  // A Build lens subject handed over from another tab reaches this controller
+  // only once the host granted its claim, so a seed that timed out or was
+  // replaced never gets here (PR #150 F-03). It opens the sheet once, unless
+  // a sheet, editor or browser is already open: the seed never covers or
+  // replaces the writer's work there (PR #150 F-02). Every Workshop overlay
   // registers with the overlay stack, so none is missed. Either way the host
   // hears the answer, so the Lightbox never claims an opening that did not
-  // happen (PR #150 F-03).
+  // happen.
   const buildSeed = lexicalGravityBuild?.lexicalGravityBuildSeed ?? null;
   const answerBuildSeed = lexicalGravityBuild?.answerLexicalGravityBuildSeed;
   const openLexicalGravityBuildSeed = React.useCallback(() => {
@@ -183,11 +188,11 @@ export function useWorkshopWidgetOpening({
       || creativeVariationsOpening
       || showVsTellOpening
     ) {
-      answerBuildSeed({ seedId: buildSeed.seedId, opened: false, reason: 'busy' });
+      answerBuildSeed({ deliveryId: buildSeed.seedId, opened: false, reason: 'busy' });
       onError('A field from the Lightbox did not open over your open sheet. Close it, then build the field from the Lightbox again.');
       return;
     }
-    answerBuildSeed({ seedId: buildSeed.seedId, opened: true });
+    answerBuildSeed({ deliveryId: buildSeed.seedId, opened: true });
     setLexicalGravityOpening({ kind: 'build', seed: buildSeed });
   }, [
     answerBuildSeed,

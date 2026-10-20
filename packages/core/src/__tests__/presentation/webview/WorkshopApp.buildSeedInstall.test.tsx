@@ -152,12 +152,25 @@ describe('WorkshopApp: a handed-over Build lens opening and the Apply boundary',
     timestamp: 1,
     payload: { lenses: builtInLexicalGravityLenses(), incompatibleResources: [], storagePath: 'prose-minion/lenses' }
   });
-  const deliverSeed = (seedId: string) => post({
-    type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
-    source: 'extension.workshop.lexical-gravity',
-    timestamp: 2,
-    payload: seedPayload(seedId)
-  });
+  /** The host sends the seed, the webview claims it, and the host grants the claim (PR #150 F-03). */
+  const deliverSeed = (seedId: string) => {
+    post({
+      type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
+      source: 'extension.workshop.lexical-gravity',
+      timestamp: 2,
+      payload: seedPayload(seedId)
+    });
+    expect((vscode.postMessage as jest.Mock).mock.calls.at(-1)?.[0]).toMatchObject({
+      type: MessageType.WORKSHOP_SEED_CLAIM,
+      payload: { kind: 'lexical-gravity-build', deliveryId: seedId }
+    });
+    post({
+      type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
+      source: 'extension.workshop',
+      timestamp: 3,
+      payload: { kind: 'lexical-gravity-build', deliveryId: seedId, granted: true }
+    });
+  };
   const applies = () => (vscode.postMessage as jest.Mock).mock.calls
     .map(([message]) => message as WorkshopApplyStandingWidgetMessage)
     .filter((message) => message.type === MessageType.WORKSHOP_APPLY_STANDING_WIDGET);

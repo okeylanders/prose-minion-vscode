@@ -118,6 +118,15 @@ export { LexicalGravityModelService } from '@services/widgets/LexicalGravityMode
 export { LexicalGravityLensRepository } from '@/infrastructure/storage/LexicalGravityLensRepository';
 export { DictionaryHistoryStore } from '@/infrastructure/storage/DictionaryHistoryStore';
 export { WorkshopWriterProfileService } from '@/application/services/workshop/WorkshopWriterProfileService';
+// Seed delivery: a handoff opens only on the panel's grant (PR #150 F-03)
+export {
+  WORKSHOP_SEED_TIMEOUT_MS,
+  WorkshopSeedDelivery
+} from '@/application/services/workshop/WorkshopSeedDelivery';
+export type {
+  WorkshopSeedDeliveryOptions,
+  WorkshopSeedDeliveryPorts
+} from '@/application/services/workshop/WorkshopSeedDelivery';
 export { GesturePlaygroundService } from '@services/widgets/GesturePlaygroundService';
 export { CreativeVariationsService } from '@services/widgets/creativeVariations/CreativeVariationsService';
 export { ShowVsTellService } from '@services/widgets/showVsTell/ShowVsTellService';

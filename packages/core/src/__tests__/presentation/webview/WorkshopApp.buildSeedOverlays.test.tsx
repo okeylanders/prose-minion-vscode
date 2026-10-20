@@ -109,15 +109,28 @@ describe('WorkshopApp: a handed-over Build lens seed and the Workshop\'s open ov
   const post = (data: unknown) => act(() => {
     window.dispatchEvent(new MessageEvent('message', { data }));
   });
-  const deliverSeed = (seedId: string) => post({
-    type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
-    source: 'extension.workshop.lexical-gravity',
-    timestamp: 2,
-    payload: seedPayload(seedId)
-  });
+  /** The host sends the seed, the webview claims it, and the host grants the claim (PR #150 F-03). */
+  const deliverSeed = (seedId: string) => {
+    post({
+      type: MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED,
+      source: 'extension.workshop.lexical-gravity',
+      timestamp: 2,
+      payload: seedPayload(seedId)
+    });
+    expect((vscode.postMessage as jest.Mock).mock.calls.at(-1)?.[0]).toMatchObject({
+      type: MessageType.WORKSHOP_SEED_CLAIM,
+      payload: { kind: 'lexical-gravity-build', deliveryId: seedId }
+    });
+    post({
+      type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
+      source: 'extension.workshop',
+      timestamp: 3,
+      payload: { kind: 'lexical-gravity-build', deliveryId: seedId, granted: true }
+    });
+  };
   const answers = () => (vscode.postMessage as jest.Mock).mock.calls
     .map(([message]) => message as { type: string; payload: unknown })
-    .filter((message) => message.type === MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER)
+    .filter((message) => message.type === MessageType.WORKSHOP_SEED_ANSWER)
     .map((message) => message.payload);
   const lexicalGravitySheet = () => screen.queryByRole('dialog', { name: LEXICAL_GRAVITY_TITLE });
   const pressEscape = () => act(() => {
@@ -140,7 +153,7 @@ describe('WorkshopApp: a handed-over Build lens seed and the Workshop\'s open ov
     openWorkshop();
     deliverSeed('lexical-build-seed-1');
     expect(lexicalGravitySheet()).not.toBeNull();
-    expect(answers()).toEqual([{ seedId: 'lexical-build-seed-1', opened: true }]);
+    expect(answers()).toEqual([{ kind: 'lexical-gravity-build', deliveryId: 'lexical-build-seed-1', opened: true }]);
   });
 
   it('refuses a seed over Add text with typed content, and keeps the draft; one Escape then closes only Add text', () => {
@@ -151,7 +164,7 @@ describe('WorkshopApp: a handed-over Build lens seed and the Workshop\'s open ov
     expect(lexicalGravitySheet()).toBeNull();
     expect(screen.getAllByRole('dialog')).toEqual([sheet]);
     expect(textarea.value).toBe(DRAFT);
-    expect(answers()).toEqual([{ seedId: 'lexical-build-seed-1', opened: false, reason: 'busy' }]);
+    expect(answers()).toEqual([{ kind: 'lexical-gravity-build', deliveryId: 'lexical-build-seed-1', opened: false, reason: 'busy' }]);
 
     pressEscape();
     expect(screen.queryAllByRole('dialog')).toEqual([]);
@@ -180,7 +193,7 @@ describe('WorkshopApp: a handed-over Build lens seed and the Workshop\'s open ov
     deliverSeed('lexical-build-seed-1');
     expect(lexicalGravitySheet()).toBeNull();
     expect(screen.getAllByRole('dialog')).toEqual([overlay]);
-    expect(answers()).toEqual([{ seedId: 'lexical-build-seed-1', opened: false, reason: 'busy' }]);
+    expect(answers()).toEqual([{ kind: 'lexical-gravity-build', deliveryId: 'lexical-build-seed-1', opened: false, reason: 'busy' }]);
   });
 
   it('opens a later seed once the writer has closed the overlay', () => {
@@ -192,8 +205,8 @@ describe('WorkshopApp: a handed-over Build lens seed and the Workshop\'s open ov
     deliverSeed('lexical-build-seed-2');
     expect(lexicalGravitySheet()).not.toBeNull();
     expect(answers()).toEqual([
-      { seedId: 'lexical-build-seed-1', opened: false, reason: 'busy' },
-      { seedId: 'lexical-build-seed-2', opened: true }
+      { kind: 'lexical-gravity-build', deliveryId: 'lexical-build-seed-1', opened: false, reason: 'busy' },
+      { kind: 'lexical-gravity-build', deliveryId: 'lexical-build-seed-2', opened: true }
     ]);
   });
 });

@@ -180,9 +180,11 @@ describe('app-shell provider assembly', () => {
       providerSource.indexOf('public dispose(): void')
     );
     expect(seed).toMatch(/this\.openOrReveal\(\);[\s\S]*?type: MessageType\.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD/);
-    expect(seed).toMatch(/this\.messageHandler\?\.handleMessage\(pending\.message\)/);
-    // Delivery is gated on the accepting panel, its readiness and its visibility (PR #150 F-03).
-    expect(seed).toMatch(/pending\.panel !== panel \|\| this\.panel !== panel \|\| !this\.webviewListening \|\| !panel\.visible/);
+    expect(seed).toMatch(/\.offer\(panel, \(deliveryId\) => \{[\s\S]*?this\.messageHandler\?\.handleMessage\(message\)/);
+    // Delivery is gated on the accepting panel, its readiness and its visibility, and a
+    // seed opens only on a granted claim (PR #150 F-03).
+    expect(providerSource).toMatch(/isReady: \(panel\) => this\.panel === panel && this\.webviewListening && panel\.visible/);
+    expect(providerSource).toMatch(/MessageType\.WORKSHOP_SEED_CLAIM \|\| shape\?\.type === MessageType\.WORKSHOP_SEED_ANSWER/);
     // The seed is not written into the Workshop session from outside.
     expect(seed).not.toMatch(/workshopSessionService|coreServices\./);
 

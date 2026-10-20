@@ -14,6 +14,7 @@
 
 import { MessageEnvelope, MessageType } from './base';
 import type { WorkshopLexicalGravityBuildSeed } from './workshop/lexicalGravity';
+import type { WorkshopSeedFailure, WorkshopSeedOutcome } from './workshop/seedDelivery';
 
 /** What the Lightbox can hand over. Slice 3: a borrowed field, as a lens to build. */
 export type LightboxHandOffKind = 'lexical-gravity-seed';
@@ -50,16 +51,13 @@ export type LightboxWorkshopHandoff = {
 };
 
 /**
- * Why a handoff did not open in the Workshop (PR #150 F-03):
- * - `unavailable`: no Workshop panel could take it;
- * - `busy`: the Workshop has a sheet or editor open, which the seed never covers;
- * - `closed`: the Workshop panel closed before it opened the seed;
- * - `replaced`: a newer handoff replaced it before it opened;
- * - `timeout`: the Workshop did not confirm it opened the seed in time.
+ * Why a handoff did not open in the Workshop: the Workshop's seed-delivery
+ * failure (`seedDelivery.ts`; PR #150 F-03).
  */
-export type LightboxWorkshopHandoffRefusal = 'unavailable' | 'busy' | 'closed' | 'replaced' | 'timeout';
+export type LightboxWorkshopHandoffRefusal = WorkshopSeedFailure;
 
-/** What the composition root learns from the Workshop: opened, or why not. "Sent" means a visible Workshop opened it. */
-export type LightboxWorkshopHandoffOutcome =
-  | { opened: true }
-  | { opened: false; reason: LightboxWorkshopHandoffRefusal };
+/**
+ * What the composition root learns from the Workshop: opened by a visible
+ * Workshop that claimed the seed, or why not.
+ */
+export type LightboxWorkshopHandoffOutcome = WorkshopSeedOutcome;

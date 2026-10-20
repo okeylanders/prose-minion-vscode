@@ -153,6 +153,8 @@ export function buildWorkshopAppMessageRoutes(
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES]: lexicalGravity.handleCandidates,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED]: lexicalGravity.handleLensesSaved,
     [MessageType.WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED]: lexicalGravity.handleBuildSeed,
+    // Seed delivery's claim results; one seed kind today, so one receiver (PR #150 F-03).
+    [MessageType.WORKSHOP_SEED_CLAIM_RESULT]: lexicalGravity.handleSeedClaimResult,
     [MessageType.STREAM_STARTED]: workshopRoom.handleStreamStarted,
     [MessageType.STREAM_CHUNK]: workshopRoom.handleStreamChunk,
     [MessageType.STREAM_COMPLETE]: workshopRoom.handleStreamComplete,

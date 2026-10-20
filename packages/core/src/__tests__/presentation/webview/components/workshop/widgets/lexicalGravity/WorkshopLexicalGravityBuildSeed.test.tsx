@@ -137,8 +137,8 @@ describe('opening Build lens from a seed', () => {
 
   it('opens the sheet once with the seed, refuses over a sheet that is already open, and answers the host either way', () => {
     let delivered: WorkshopLexicalGravityBuildSeedPayload | null = payload;
-    const answer = jest.fn((given: { seedId: string }) => {
-      if (delivered?.seedId === given.seedId) {
+    const answer = jest.fn((given: { deliveryId: string }) => {
+      if (delivered?.seedId === given.deliveryId) {
         delivered = null;
       }
     });
@@ -155,13 +155,13 @@ describe('opening Build lens from a seed', () => {
     }));
     expect(result.current.lexicalGravityOpening).toEqual({ kind: 'build', seed: payload });
     expect(answer).toHaveBeenCalledTimes(1);
-    expect(answer).toHaveBeenLastCalledWith({ seedId: 'lexical-build-seed-1', opened: true });
+    expect(answer).toHaveBeenLastCalledWith({ deliveryId: 'lexical-build-seed-1', opened: true });
 
     // A second handoff while the sheet is open is refused, not swapped in, and the host hears why.
     delivered = { ...payload, seedId: 'lexical-build-seed-2' };
     rerender();
     expect(onError).toHaveBeenCalledWith('A field from the Lightbox did not open over your open sheet. Close it, then build the field from the Lightbox again.');
-    expect(answer).toHaveBeenLastCalledWith({ seedId: 'lexical-build-seed-2', opened: false, reason: 'busy' });
+    expect(answer).toHaveBeenLastCalledWith({ deliveryId: 'lexical-build-seed-2', opened: false, reason: 'busy' });
     expect(answer).toHaveBeenCalledTimes(2);
     expect(result.current.lexicalGravityOpening).toEqual({ kind: 'build', seed: payload });
     act(() => result.current.closeLexicalGravity());

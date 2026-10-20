@@ -678,6 +678,11 @@ const WORKSHOP_APPROVED_GENERIC_FEATURE_SURFACES: readonly ApprovedGenericFeatur
     file: 'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
     reason: 'Lightbox "Build as a lens in Lexical Gravity" action and its request (ADR 2026-10-19 D11)',
     allowedToken: /(?:Lexical Gravity|lexical-gravity-seed)/
+  },
+  {
+    file: 'shared/types/messages/workshop/seedDelivery.ts',
+    reason: 'closed seed-kind registry for handoffs from other tabs (PR #150 F-03)',
+    allowedToken: /lexical-gravity-build/
   }
 ] as const;
 
@@ -807,6 +812,10 @@ const PROSE_CONTROLLER_INAPPLICABLE_SURFACES = [
   {
     file: 'presentation/webview/hooks/domain/lightbox/lightboxHandoff.ts',
     reason: 'the Lightbox hands over a Lexical Gravity seed only; Prose Controller has no Lightbox handoff'
+  },
+  {
+    file: 'shared/types/messages/workshop/seedDelivery.ts',
+    reason: 'seed kinds are handoffs from other tabs; Prose Controller receives none'
   }
 ] as const;
 const WORKSHOP_FEATURE_HOOKS = [
@@ -1860,6 +1869,7 @@ describe('architectural boundaries', () => {
       'lexicalGravity.ts',
       'participants.ts',
       'recovery.ts',
+      'seedDelivery.ts',
       'session.ts',
       'settings.ts',
       'showVsTell.ts',

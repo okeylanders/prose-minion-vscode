@@ -196,11 +196,25 @@ differs from the plan above, or the plan left a choice open:
   delivers it once, only when that panel's webview has sent its first
   message and its tab is visible, and ignores late events from an older
   panel. A newer seed settles the pending one as `replaced`; closing the
-  panel settles it as `closed`. The Workshop webview answers with
-  `WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED_ANSWER { seedId, opened, reason? }`
-  (it refuses as `busy` over an open sheet or editor); the provider takes
-  that answer itself, and the port's promise settles with it, or with
-  `timeout` after 20 seconds.
+  panel settles it as `closed`; 20 seconds unclaimed settles it as
+  `timeout`.
+- **Claim before opening** (PR #150 F-03 re-review). The webview never
+  opens a seed on arrival. It posts `WORKSHOP_SEED_CLAIM { kind,
+  deliveryId }`, and the provider answers `WORKSHOP_SEED_CLAIM_RESULT`:
+  granted only while that delivery is still the one it waits on for that
+  panel, otherwise denied as `timeout`, `replaced`, `closed` or `unknown`,
+  and the webview drops a denied seed without a word. So a seed whose
+  message was already sent when it timed out, was replaced or lost its
+  panel never opens, and the newer seed opens with its own subject. A grant
+  is the commit point and stops the deadline; a newer seed waits until the
+  webview answers `WORKSHOP_SEED_ANSWER { kind, deliveryId, opened,
+  reason? }` (opened, or `busy` over a sheet the writer is using) or the
+  panel closes. The provider takes claims and answers itself; they never
+  reach a domain handler.
+- The protocol is generic over `WorkshopSeedKind`: the host side is
+  `WorkshopSeedDelivery` (core, host-agnostic, one per kind per panel
+  provider) and the webview side is `useWorkshopSeedClaim`. Slice 4's
+  Bring to Workshop joins it as a second kind.
 - `WorkshopLexicalGravityHandler` owns the new route. It validates the seed
   (exact keys, bounds), composes Build lens's subject and answers with
   `WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED`; it calls no model. **The route is
