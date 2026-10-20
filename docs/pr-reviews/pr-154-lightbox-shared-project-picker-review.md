@@ -8,6 +8,8 @@
 **Reviewed:** 2026-10-20 · **Reviewer:** Astra
 **Mode:** independent source/spec review; actual host-route counterexamples; original-base Workshop parity controls; rebuilt-production-bundle DOM/protocol probes; supplied PNG inspection and byte/pixel comparison; full base/head gates
 
+**Current disposition (2026-10-20 re-review): Approve within this PR's reviewed scope at `4a7df3f`. F-01, F-02 and N-01 are addressed.** See the independent re-review appended after the preserved author response. The initial summary and finding narratives below describe the original reviewed head. Native acceptance and the writer checkpoint remain open.
+
 ## Summary
 
 **Verdict: Request changes.** The shared extraction preserves the Workshop's three picker modes, but the new Lightbox path has two medium-priority correctness problems: old catalog/search replies can replace current picker results, and the Context picker confuses different files that have the same relative display path in different workspace roots.
@@ -20,9 +22,9 @@ This is not Slice 5 acceptance. The separate writer real-chapter output checkpoi
 
 | ID | Severity | Finding | Disposition |
 | --- | --- | --- | --- |
-| F-01 | Medium / P2 | Catalog/search responses are not correlated to the current opening/request; late replies overwrite newer results | **Open — fix before approval** |
-| F-02 | Medium / P2 | Context attachment state treats a display path as file identity, disabling a distinct same-named file in another root | **Open — fix before approval** |
-| N-01 | Low / P3 · nonblocking | The documented 500px Workshop backdrop hit-test is not represented in the reproducible evidence | **Qualify the statement or retain its witness** |
+| F-01 | Medium / P2 | Catalog/search responses are not correlated to the current opening/request; late replies overwrite newer results | **Addressed at `4a7df3f` — independently re-reviewed below** |
+| F-02 | Medium / P2 | Context attachment state treats a display path as file identity, disabling a distinct same-named file in another root | **Addressed at `4a7df3f` — independently re-reviewed below** |
+| N-01 | Low / P3 · nonblocking | The documented 500px Workshop backdrop hit-test is not represented in the reproducible evidence | **Addressed at `4a7df3f` — witness retained and inspected** |
 
 The PR remained open at `2cf1f97` with unchanged base `59b57b6` at the final 16:45 UTC review check and the 18:10 UTC pre-publication recheck. No PR discussion or author response existed at either check. Earlier PR #152/#153 reports and their author responses are unchanged.
 
@@ -255,3 +257,75 @@ Against the first evidence set, only `context-attach-1000` changed: 10 pixels of
 - `packages/core/src` still has no `vscode` import.
 - The run used Node 22.22.0 and npm 10.9.4. No live or billable call was made, and no lockfile changed.
 - This response is the only commit after `8eccf49`, and it changes nothing but this report.
+
+## Independent re-review — F-01, F-02 and N-01 addressed at `4a7df3f`
+
+**Current verdict: Approve within this PR's reviewed scope.** The two blocking findings and the evidence note are addressed. No new blocking finding was identified. This does not grant native VS Code acceptance or satisfy the separate writer real-chapter output checkpoint before Slice 5.
+
+The six commits after the original report commit `e4dfee9` were inspected: `044907b` (correlation), `1c2897a` (file identity), `50520c9` (evidence), `6e2befd` (request-id bound guard), `8eccf49` (documentation), and `4a7df3f` (author response only). The reviewed fix head is **`4a7df3f47bfc297b49cdba511949362ab6c63819`**; the base and merge-base remain **`59b57b6dc6bab58464b84b33fcd9c8063e6e43bb`**. The original findings above remain historical evidence against `2cf1f97`; the author response is preserved verbatim. Only the current-disposition banner, finding ledger and this appended independent review change in the reviewer update.
+
+### F-01: current-opening/current-request ownership is now enforced
+
+The correction is in the actual message path, not a query-text workaround. [`useLightboxProjectFiles.ts:98–138`](https://github.com/okeylanders/prose-minion-vscode/blob/4a7df3f47bfc297b49cdba511949362ab6c63819/packages/core/src/presentation/webview/hooks/domain/useLightboxProjectFiles.ts#L98-L138) mints a webview-prefixed, opening-scoped, monotonically counted request id. It replaces pending ids synchronously before posting, invalidates them on Close/Open, and invalidates search ownership on Clear. [`149–164`](https://github.com/okeylanders/prose-minion-vscode/blob/4a7df3f47bfc297b49cdba511949362ab6c63819/packages/core/src/presentation/webview/hooks/domain/useLightboxProjectFiles.ts#L149-L164) accepts only the pending id and consumes it once, so duplicates cannot overwrite a successful answer.
+
+The [host reply methods](https://github.com/okeylanders/prose-minion-vscode/blob/4a7df3f47bfc297b49cdba511949362ab6c63819/packages/core/src/application/handlers/domain/LightboxProjectFiles.ts#L105-L115) echo the captured id on success and unreadable-catalog failure. Independent held-promise probes still make the real host finish **new catalog success → old catalog failure** and **new `beta` search → old `alpha` search**, but each reply now retains its own exact id. Missing, empty, non-string and over-200-character ids cause no catalog open/read/answer; a 200-character id is echoed unchanged. Catalog/search requests take no source ticket, and disposal suppresses pending replies.
+
+The exact rebuilt production webview passed **11 independent scenarios / 53 assertions**, including:
+
+- Late success and failure from a canceled source opening; source → Context reopening; replies arriving while closed; late answers after Explore or a concrete source pick.
+- Different-query reversal, the same query in a new opening, Clear while pending, Clear after an accepted answer, and retyping the identical query before its new answer.
+- Duplicate accepted replies, missing/wrong ids, malformed catalog-array shape without consuming a valid pending answer, and a newly mounted webview rejecting its predecessor's id.
+- Older bounded replies cannot remove newer matches or restore an unrelated warning. Source choices remain `{ group, path }` only.
+- Live context membership updates and removal change the open modal's disabled rows, without disabling the source picker.
+
+**Original-bundle negative control:** all 11 scenarios fail against the retained exact `2cf1f97` production bundle. The important failures reproduce the original outcomes: a fresh catalog becomes unreadable, current search matches disappear or are replaced, a cleared query reappears, and root B's display path disables root A's row. One repeated-search check additionally detects absent request identity. These are separate from the repository's new tests, which also pass at the fix head.
+
+**Bounded-note residual, independently observed and not hidden:** during the shared component's 350 ms debounce, a newly typed different query excludes old matches immediately but can still show the previous accepted result's bounded note. Once the new search is actually dispatched, the hook clears that old answer/note; late old replies cannot restore it. This is the unchanged shared-component behavior described in the author response, not the original F-01 outcome of an obsolete reply overwriting an already accepted current reply. A per-keystroke refinement remains possible, but is not a reason to keep F-01 open.
+
+### F-02: one host-derived identity agrees with actual shelf deduplication
+
+[`LightboxFileKey.ts:17–28`](https://github.com/okeylanders/prose-minion-vscode/blob/4a7df3f47bfc297b49cdba511949362ab6c63819/packages/core/src/infrastructure/lightbox/LightboxFileKey.ts#L17-L28) keys the exact path string with a module-session random secret and returns 128 bits of HMAC-SHA256. The [catalog](https://github.com/okeylanders/prose-minion-vscode/blob/4a7df3f47bfc297b49cdba511949362ab6c63819/packages/core/src/application/handlers/domain/LightboxProjectFiles.ts#L123-L132) uses the resolver's `absolutePath`; the [shelf](https://github.com/okeylanders/prose-minion-vscode/blob/4a7df3f47bfc297b49cdba511949362ab6c63819/packages/core/src/infrastructure/lightbox/LightboxContextShelf.ts#L69-L96) uses the same `sourceKey` string it already deduplicates. The [wrapper](https://github.com/okeylanders/prose-minion-vscode/blob/4a7df3f47bfc297b49cdba511949362ab6c63819/packages/core/src/presentation/webview/components/lightbox/LightboxProjectPicker.tsx#L93-L100) compares those keys, not display text. There is no competing normalization policy and the key is not read, source-choice or removal authority.
+
+Independent real-service/handler probes confirm:
+
+- Native root B and catalog root A both display `Notes/cast.md` but have distinct keys. Project-adding A retains both texts and gives A the catalog key. Native-adding A agrees with the same catalog key.
+- Project/native duplicates are refused. Remove/re-add retains file identity while creating a new shelf entry id; removing A leaves B and makes A available again.
+- Reordering roots changes the fresh catalog to the correct already-shelved B key. File-content/metadata changes do not change identity or silently replace retained shelf text.
+- Tab disposal/replacement and delayed earlier intake preserve membership identity. Module-session reinitialization changes the opaque key. Absolute paths, source keys, file bodies and the HMAC secret are not posted in the tested catalog/shelf messages.
+- Supplying only `fileKey`, forging one beside `{ group, path }`, or passing one as a removal id never bypasses the existing route rules, fresh resolution or own-source refusal.
+
+The author response's statement that the shelf cannot change while a picker is open is too absolute: an earlier asynchronous intake can complete after reopening. This is not a defect in the fix. The wrapper derives membership from current props, and the independent production DOM probe verifies live add/remove updates while the modal stays open.
+
+The inherited relative-key catalog collapse remains explicitly tracked as [Low debt](../../.todo/tech-debt/2026-10-20-context-catalog-cross-root-collapse.md). Existing exact-path alias/case behavior is also unchanged: this fix does not claim canonical filesystem identity beyond the shelf's actual deduplication policy.
+
+### N-01: the missing narrow backdrop witness is now retained
+
+The refreshed [harness](evidence/lightbox-source-picker/harness.js) really invokes `document.elementFromPoint`, records separate backdrop rectangle coverage, and includes Workshop browse/search before and after at 500 px. All **27 retained records** are accounted for: 24 dialogs with eight outside-dialog probes each, plus three Lightbox context-rail states. Every supplied dialog record has `onTop: true` and `coversViewport: true`; every image exists. Existing facts are unchanged after removing the added backdrop field, with exactly four new 500px Workshop records.
+
+Actual new PNGs were inspected and the comparator was independently checked. **All six Workshop pairs have zero differing dialog pixels, equal dialog bounds and equal retained markup hashes.** The only whole-image difference is five pixels at the header-pill edge in browse@500, outside the dialog, each differing by one channel level. The comparator still reports whole-shot differences before cropping and does not realign a moved dialog. The modals and controls fit at 500 px; the documented pre-existing clipped Workshop background is not disproved by `horizontalOverflow: false`.
+
+Compared with the earlier evidence, all Lightbox shots are identical except ten pixels at the logo edge outside context-attach@1000's dialog. Their maximum channel delta is 12, not one. The cause of those changes and the author's repeat-run noise explanation were not independently reproduced. The second author-run image set and `errors.txt` are not retained, so their repeat-run/no-page-error claims remain author observations, not fresh reviewer-browser results.
+
+The current rebuilt `webview.js` hashes to **`56749f8e761a1c38d762233ee947506a31a1d7c1cea829ac7961d6b88031e826`**, exactly the refreshed evidence's head-bundle claim. The retained base bundle still hashes to **`1f78a57895662bd001d4d69037b98e887c2c6183af4bce2eb49bba24dd55129b`**. This verifies the input bundle bytes, not independent provenance of a new browser capture. The evidence harness supplies synthetic ids/keys and shelf responses; real request ordering and multi-root identity are established by the separate probes above, not by screenshots.
+
+### Current-head verification and preserved boundaries
+
+| Check at `4a7df3f` | Independent result |
+| --- | --- |
+| Full `npm test -- --runInBand` | **397 suites / 5,597 tests / 59 snapshots passed**, 170.092 seconds |
+| `npm run typecheck` | **All three stages passed**: core, webview, extension |
+| `npm run build`, including `verify:bundle` | **Passed**, same three webpack size/performance warnings |
+| ESLint JSON vs original `2cf1f97` and base `59b57b6` | **0 errors / 1,133 warnings**, zero added/removed normalized file/rule/severity/message entries |
+| Independent real-host probes | **3 suites / 39 tests passed**: 12 identity/lifecycle/authority cases, 14 correlation cases, 13 retained ownership/context controls |
+| Selected host probes against archived original `e4dfee9` sources | **14 expected failures / 12 unselected skipped**; missing wire-field/rejection-contract checks, not a claim of 14 distinct user-visible bugs |
+| Independent rebuilt-production DOM | **11 scenarios / 53 assertions passed**; all 11 scenarios fail on the original implementation bundle |
+| Retained production DOM boundaries | **14 carried-Subtext assertions + 49 Lightbox/Workshop UI/protocol assertions passed** |
+| Workshop parity, without snapshot updates | **2 suites / 10 tests / all 57 snapshots passed**; no shared-picker/Workshop production or snapshot change in the fix delta |
+| `git diff --check 59b57b6..4a7df3f` | **Passed** |
+| Exact implementation-head CI | Both [PR verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39479930335/job/118825524947) and [branch verify](https://github.com/okeylanders/prose-minion-vscode/actions/runs/39479924209/job/118825505941) **succeeded** through install, typecheck, tests, lint and build |
+
+Local runtime is Node **24.19.0**, npm **11.9.0**; CI uses Node 18. Full gates were completed on the current implementation, with no tracked implementation or lockfile edits. The original full-base gates and original-base 57-snapshot parity control documented earlier were retained rather than needlessly rerun. Cross-version scratch host probes disable type diagnostics only for their harness compatibility; successful repository typechecks remain authoritative.
+
+The retained controls confirm source ownership is still taken before the catalog await, forged host tickets do not gain authority, native cancellation creates no competing source intent, active-source switching during catalog resolution is respected, and the global shelf's deduplication/budget behavior remains intact. The previously documented switch-during-text-read limitation is unchanged, not a new regression. #152's command ownership and #153's carried-Subtext implementation have no fix delta; the retained production UI witnesses also pass.
+
+No fresh Chromium launch or denied local-file browser route was retried. JSDOM is a DOM/protocol check, not pixel layout or native IPC acceptance; unsupported-CSS parser warnings are excluded from its runtime-error checks. No user-computer access, live/billable calls, private manuscripts, implementation edits, PR comments/formal reviews, merge or deployment were performed. The only publication is this report update, followed separately by exact report-head CI verification. Native VS Code acceptance and the writer real-chapter checkpoint remain open.
