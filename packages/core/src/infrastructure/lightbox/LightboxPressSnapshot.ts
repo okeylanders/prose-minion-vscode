@@ -55,7 +55,9 @@ export function lightboxPressSnapshot(inputs: LightboxPressInputs, boardId?: str
       material: {
         paragraphs: text.paragraphTexts,
         columns: board.ribbon.map(({ from, to }) => ({ from, to })),
-        context: inputs.shelf.materials()
+        context: inputs.shelf.materials(),
+        // The palette builds its clusters from what the board counted most (Slice 3).
+        countedWords: board.measured.topWords.map((term) => term.term)
       },
       sourceWords: board.source.wordCount,
       contextWords: inputs.shelf.totalWords(),

@@ -16,6 +16,14 @@
 
 import { MessageEnvelope, MessageType } from './base';
 import type { TokenUsage } from './tokenUsage';
+import type { LightboxStaleLens } from './lightboxStale';
+import type {
+  LightboxGravityCollisionTile,
+  LightboxGravityFieldTile,
+  LightboxGravityLiteralTile,
+  LightboxPaletteClusterTile,
+  LightboxSwatchTile
+} from './lightboxGravity';
 
 // ---------------------------------------------------------------------------
 // Groups and lenses (D6)
@@ -24,11 +32,12 @@ import type { TokenUsage } from './tokenUsage';
 export type LightboxReadingGroupId = 'A' | 'B' | 'C';
 
 /**
- * The lenses Slice 2B reads, each in one reading group. A lens the writer
- * turns off is left out of its group's prompt, and a group with no lens on is
- * not called.
+ * The lenses, each in one reading group: Slice 2B's six, and Slice 3's
+ * lexical gravity and palette in group A. A lens the writer turns off is left
+ * out of its group's prompt, and a group with no lens on is not called.
  */
-export type LightboxLensId = 'headline' | 'motif' | 'tension' | 'characters' | 'voice' | 'genre';
+export type LightboxLensId =
+  'headline' | 'motif' | 'tension' | 'gravity' | 'palette' | 'characters' | 'voice' | 'genre';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -54,8 +63,15 @@ export interface LightboxVerifiedQuote {
  * - `not-in-paragraph`: the words are in the chapter, but not in the paragraph named.
  * - `not-in-chapter`: the words are nowhere in the chapter (a paraphrase, or context).
  * - `too-short`: too few letters to anchor anything.
+ * - `no-longer-in-chapter`: the quote was found when the chapter was read, but
+ *   the chapter has changed since and its words are gone (stale readings, D4).
  */
-export type LightboxQuoteFailure = 'undeclared-paragraph' | 'not-in-paragraph' | 'not-in-chapter' | 'too-short';
+export type LightboxQuoteFailure =
+  | 'undeclared-paragraph'
+  | 'not-in-paragraph'
+  | 'not-in-chapter'
+  | 'too-short'
+  | 'no-longer-in-chapter';
 
 /**
  * A quote the host could not find where the reading said it was. Its text is
@@ -84,20 +100,27 @@ export interface LightboxCountedSupport {
 // ---------------------------------------------------------------------------
 
 /**
- * Reading tile kinds (Slice 2B). The reader promise is its own kind because it
+ * Reading tile kinds. Slice 2B: the reader promise is its own kind because it
  * is its own claim, with its own quotes, and can be withheld on its own; the
- * genre tile draws it below the neighbors.
+ * genre tile draws it below the neighbors. Slice 3: a borrowed field, a
+ * collision, a literal set-aside, a diction cluster and a swatch
+ * (`lightboxGravity.ts`).
  */
 export type LightboxReadingTileKind =
   | 'headline'
   | 'motif'
   | 'tension-arc'
+  | 'palette-cluster'
+  | 'swatch'
+  | 'gravity-field'
+  | 'gravity-collision'
+  | 'gravity-literal'
   | 'character'
   | 'voice'
   | 'genre-neighbor'
   | 'reader-promise';
 
-interface LightboxReadingTileBase {
+export interface LightboxReadingTileBase {
   /** Host-minted, unique per run, so a pin from an older run never resolves to a newer reading. */
   id: string;
   lens: LightboxLensId;
@@ -125,8 +148,10 @@ export interface LightboxMotifTile extends LightboxReadingTileBase {
 
 export interface LightboxTensionArcTile extends LightboxReadingTileBase {
   kind: 'tension-arc';
-  /** One read score, 0–9, per ribbon column, in column order. A reading, not a measurement. */
-  scores: number[];
+  /** One read score, 0–9, per ribbon column; `null` where a carried arc's paragraphs changed (D4; PR #150 F-06). */
+  scores: Array<number | null>;
+  /** Host-private identity of each column's paragraphs as read, so a carried score follows its text. */
+  columnKeys: string[];
 }
 
 export interface LightboxCharacterTile extends LightboxReadingTileBase {
@@ -168,6 +193,11 @@ export type LightboxReadingTile =
   | LightboxHeadlineTile
   | LightboxMotifTile
   | LightboxTensionArcTile
+  | LightboxPaletteClusterTile
+  | LightboxSwatchTile
+  | LightboxGravityFieldTile
+  | LightboxGravityCollisionTile
+  | LightboxGravityLiteralTile
   | LightboxCharacterTile
   | LightboxVoiceTile
   | LightboxGenreNeighborTile
@@ -238,6 +268,8 @@ export interface LightboxReadingGroup {
   quoteChecks: LightboxLensQuoteChecks[];
   /** Why the latest call failed or stopped (status `failed` or `cancelled`). Writer-facing. */
   error?: string;
+  /** Lenses read against an earlier version of the text; absent when every reading is current. */
+  staleLenses?: LightboxStaleLens[];
 }
 
 // ---------------------------------------------------------------------------

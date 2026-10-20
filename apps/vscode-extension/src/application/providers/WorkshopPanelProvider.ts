@@ -28,6 +28,12 @@ import {
   Platform,
   SURFACE_WORKSHOP,
   WorkshopExcerptSource,
+  WorkshopLexicalGravityBuildSeed,
+  WorkshopOpenLexicalGravityBuildMessage,
+  WorkshopSeedClaimResultMessage,
+  WorkshopSeedDelivery,
+  WorkshopSeedKind,
+  WorkshopSeedOutcome,
   WorkshopUiActions,
   WorkshopSetExcerptMessage,
   coerceWebviewErrorText,
@@ -40,6 +46,33 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
   private panel?: vscode.WebviewPanel;
   private messageHandler?: MessageHandler;
   private configWatcher?: vscode.Disposable;
+  /**
+   * Whether the current panel's webview has sent its first message, so its
+   * listeners are attached. A handoff that is not session state (a Build
+   * lens subject) waits for it, since a booting webview would drop it.
+   */
+  private webviewListening = false;
+  /**
+   * Handed-over seeds, one delivery per kind (PR #150 F-03). Each seed
+   * belongs to the panel that accepted it, is sent to that panel only when it
+   * is ready, and opens only if the webview's claim is granted: one that
+   * timed out, was replaced or lost its panel is denied and dropped there.
+   */
+  private readonly seedDeliveries: Record<WorkshopSeedKind, WorkshopSeedDelivery<vscode.WebviewPanel>> = {
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- seed kinds are kebab-case protocol literals.
+    'lexical-gravity-build': new WorkshopSeedDelivery<vscode.WebviewPanel>('lexical-gravity-build', {
+      isReady: (panel) => this.panel === panel && this.webviewListening && panel.visible,
+      postClaimResult: (panel, result) => {
+        const message: WorkshopSeedClaimResultMessage = {
+          type: MessageType.WORKSHOP_SEED_CLAIM_RESULT,
+          source: 'extension.workshop',
+          payload: result,
+          timestamp: Date.now()
+        };
+        void panel.webview.postMessage(message);
+      }
+    })
+  };
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -93,7 +126,9 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       return;
     }
     // A serializer and command cannot normally race, but keep the one-panel
-    // invariant explicit if VS Code ever delivers both paths.
+    // invariant explicit if VS Code ever delivers both paths. A seed belongs
+    // to the panel that accepted it: a replacement panel never inherits it.
+    this.closeSeeds();
     this.panel?.dispose();
 
     panel.webview.options = {
@@ -102,6 +137,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     };
     panel.iconPath = vscode.Uri.joinPath(this.extensionUri, 'assets', 'prose-minion-book.svg');
     panel.webview.html = getWebviewHtml(panel.webview, this.extensionUri, SURFACE_WORKSHOP);
+    this.webviewListening = false;
 
     // The per-webview message seam, over the ONE injected CoreServices bundle.
     // Two MessageHandlers may now be live (sidebar + Workshop); shared-service
@@ -142,14 +178,29 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
         }
         return;
       }
+      // A late message from a panel that is no longer the Workshop never
+      // reaches the current panel's handler, and never answers its seed.
+      if (this.panel !== panel) {
+        return;
+      }
+      // A handed-over seed's claim and answer are the provider's to take: they
+      // decide, for the panel that accepted it, whether it opens, and go no further.
+      if (shape?.type === MessageType.WORKSHOP_SEED_CLAIM || shape?.type === MessageType.WORKSHOP_SEED_ANSWER) {
+        this.receiveSeedMessage(panel, shape.type, shape.payload);
+        return;
+      }
       void this.messageHandler?.handleMessage(message as Parameters<MessageHandler['handleMessage']>[0]);
+      if (!this.webviewListening) {
+        this.webviewListening = true;
+        this.deliverSeeds(panel);
+      }
     });
 
     // Messages posted while an editor tab is hidden can be dropped even under
     // retainContextWhenHidden — replay the cache on re-reveal, exactly like
     // the sidebar does on visibility change.
     const viewStateSubscription = panel.onDidChangeViewState(() => {
-      if (panel.visible) {
+      if (panel.visible && this.panel === panel) {
         this.messageHandler?.flushCachedResults?.();
         // A retained tab does not remount React. Reuse the normal load route
         // so Git changes are adopted before the writer continues this room.
@@ -159,6 +210,8 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
           payload: {},
           timestamp: Date.now()
         });
+        // A seed handed over while the tab was hidden is sent now.
+        this.deliverSeeds(panel);
       }
     });
 
@@ -169,6 +222,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
       // shared fields. This protects a restored panel if an older panel's
       // disposal notification arrives late.
       if (this.panel === panel) {
+        this.closeSeeds();
         this.configWatcher?.dispose();
         this.configWatcher = undefined;
         this.messageHandler?.dispose();
@@ -202,6 +256,62 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     void this.messageHandler?.handleMessage(message);
   }
 
+  /**
+   * Open Lexical Gravity's Build lens with a subject handed over from the
+   * Lightbox (ADR 2026-10-19 D11). Opens/reveals the panel, then offers the
+   * seed to it: when the panel is ready, a synthetic
+   * WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD goes through the panel's OWN
+   * MessageHandler, as `seedExcerpt` does, and the Workshop's handler checks
+   * the seed and posts it to the webview with its delivery id. The webview
+   * opens it only if its claim is granted (PR #150 F-03), and nothing is
+   * built until the writer presses Build. The promise settles with the
+   * webview's answer, or why the seed did not open.
+   */
+  public seedLexicalGravityBuild(seed: WorkshopLexicalGravityBuildSeed): Promise<WorkshopSeedOutcome> {
+    this.openOrReveal();
+    const panel = this.panel;
+    if (!panel || !this.messageHandler) {
+      return Promise.resolve({ opened: false, reason: 'unavailable' });
+    }
+    return this.seedDeliveries['lexical-gravity-build'].offer(panel, (deliveryId) => {
+      const message: WorkshopOpenLexicalGravityBuildMessage = {
+        type: MessageType.WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD,
+        source: 'extension.lightbox',
+        payload: { seed, deliveryId },
+        timestamp: Date.now()
+      };
+      void this.messageHandler?.handleMessage(message);
+    });
+  }
+
+  /** Send every waiting seed this panel accepted, if it is ready for it. */
+  private deliverSeeds(panel: vscode.WebviewPanel): void {
+    Object.values(this.seedDeliveries).forEach((delivery) => delivery.deliver(panel));
+  }
+
+  /** Nothing the closing panel accepted can open any more. */
+  private closeSeeds(): void {
+    Object.values(this.seedDeliveries).forEach((delivery) => delivery.close());
+  }
+
+  /** A claim or answer from the current panel's webview, routed to its kind's delivery. */
+  private receiveSeedMessage(panel: vscode.WebviewPanel, type: MessageType, payload: unknown): void {
+    const shape = payload as { kind?: unknown; deliveryId?: unknown; opened?: unknown } | undefined;
+    const delivery = typeof shape?.kind === 'string' && Object.prototype.hasOwnProperty.call(this.seedDeliveries, shape.kind)
+      ? this.seedDeliveries[shape.kind as WorkshopSeedKind]
+      : undefined;
+    if (!delivery || typeof shape?.deliveryId !== 'string') {
+      return;
+    }
+    if (type === MessageType.WORKSHOP_SEED_CLAIM) {
+      delivery.claim(panel, shape.deliveryId);
+      return;
+    }
+    delivery.answer(panel, shape.opened === true
+      ? { deliveryId: shape.deliveryId, opened: true }
+      : { deliveryId: shape.deliveryId, opened: false, reason: 'busy' });
+  }
+
   public dispose(): void {
     // Shutdown must quiesce the Workshop run before the composition root awaits
     // its final persistence flush. Do this explicitly rather than relying on the
@@ -209,6 +319,7 @@ export class WorkshopPanelProvider implements vscode.Disposable, vscode.WebviewP
     // active run, which makes the aggregate exportable at a committed boundary.
     const panel = this.panel;
     this.panel = undefined;
+    this.closeSeeds();
     this.configWatcher?.dispose();
     this.configWatcher = undefined;
     this.messageHandler?.dispose();

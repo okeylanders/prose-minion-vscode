@@ -7,8 +7,9 @@
  * would not fit the model's window. While a run is in flight it counts the
  * groups back and offers Stop. Afterwards it counts the quotes checked and
  * withheld, and offers the next press: "Read the rest" when a group stopped
- * or failed, "Re-read" when everything landed. Every figure comes from the
- * host's estimate and board.
+ * or failed, "Re-read" when everything landed, and says how many lenses are
+ * stale after the text changed (D4). Every figure comes from the host's
+ * estimate and board.
  *
  * Everything is the board's own (PR #149 F-03): an estimate for another
  * board is no estimate ("Estimating the cost…", nothing to press), and Stop
@@ -27,7 +28,7 @@ import type {
   LightboxRunScope
 } from '@messages';
 import { lightboxLensLabel } from '@shared/constants/lightbox';
-import { lightboxQuoteTally, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxQuoteTally, lightboxStaleLensCount, pluralize } from '@hooks/domain/lightbox/lightboxReadings';
 
 export type LightboxRunLineStatus = 'estimating' | 'idle' | 'running' | 'done' | 'stopped' | 'none';
 
@@ -211,6 +212,10 @@ export function buildLightboxRunLine(input: LightboxRunLineInput): LightboxRunLi
   }
   if (stopped) {
     parts.push('stopped, finished groups kept');
+  }
+  const stale = lightboxStaleLensCount(board);
+  if (stale > 0) {
+    parts.push(`${pluralize(stale, 'lens', 'lenses')} stale`);
   }
   const note = parts.join(' · ');
   if (rest.length > 0) {

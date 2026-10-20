@@ -1,6 +1,6 @@
 # Epic: Lightbox
 
-**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), and Slice 2B is in review (PR pending)
+**Status:** In progress. Slice 0 (spec) is on `epic/lightbox`; the writer approved the plan on 2026-10-19. The dialogue-quote prerequisite merged (PR #146), Slice 1 merged (PR #147), Slice 2A merged (PR #148), Slice 2B merged (PR #149), and Slice 3 is in review (PR #150)
 **Priority:** Medium
 **Created:** 2026-10-19
 **Integration branch:** `epic/lightbox` once the writer approves it. Slice 0 was written on `claude/friendly-volta-g1gmgc` (from `main` at `d1f25db`, v2.11.0).
@@ -52,8 +52,8 @@ carried into the Workshop.
 | 0 | Spec | ADR, this epic, design snapshot | In review |
 | 1 | [Shared full-tab shell](slice-1-shared-full-tab-shell.md) | Workshop header, banner and rail frame extracted into a shared shell with slots, a full-tab style scope, and an exhaustive surface map; the Workshop renders through it with no behavior change | Merged (PR #147) |
 | 2A | [Lightbox tab and the counted board](slice-2a-tab-and-counted-board.md) | Panel and serializer, command, `lightbox` surface in the shared bundle, `lightbox` message domain, source panel, paragraph model, measured tiles, ribbon, inspector, word ceiling | Merged (PR #148) |
-| 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | In review (PR pending) |
-| 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | Planned |
+| 2B | [First readings](slice-2b-first-readings.md) | Prompt bundle, reading codec, quote verifier, press with preflight and cost, streaming groups, cancellation; genre, motifs, characters, voice | Merged (PR #149) |
+| 3 | [Lexical gravity and palette](slice-3-lexical-gravity-and-palette.md) | Borrowed-field detection with counted hits, degrees, collisions and literal set-asides; palette clusters and swatches; **Build as a lens** handoff to Lexical Gravity | In review (PR #150) |
 | 4 | [Lineage, subtext, Spark, Bring to Workshop](slice-4-lineage-subtext-spark-bring.md) | The remaining readings, the Spark lane, and the host-mediated handoff that stages tiles in the Workshop composer | Planned |
 | 5 | [Saved boards and draft compare](slice-5-saved-boards-and-compare.md) | `prose-minion/boards/` files with their own `formatVersion`, the Boards rail, and Compare | Planned (last, by decision 5) |
 | 6 | Verify live | Extension Development Host pass on real chapters; ADR → Accepted | Pending (needs a human with VS Code) |
@@ -404,7 +404,8 @@ becomes a file format.
   - **Follow-ups:** Slice 6's live pass (cache reads, the estimate ratio,
     contract adherence) and stale readings on a changed chapter (D4), in
     [the live-provider pass](../../tech-debt/2026-10-19-lightbox-live-provider-pass.md)
-    and [stale readings](../../tech-debt/2026-10-19-lightbox-stale-readings.md).
+    and [stale readings](../../archive/tech-debt/2026-10-19-lightbox-stale-readings.md) (resolved in Slice 3).
+
 - **2026-10-19. Slice 2B: PR #149 re-review fixes.** The
   [re-review](../../../docs/pr-reviews/pr-149-lightbox-first-readings-review.md)
   kept F-03 open for the model selection and added F-09; both are fixed on
@@ -463,3 +464,141 @@ becomes a file format.
     - No live or billable call: every test plays the provider.
     - Visual evidence: `webview.js` is byte-identical and the recorded
       states rebuild byte-identical, so no shot changed.
+
+- **2026-10-19. Slice 3 (lexical gravity and palette).** Built on
+  `epic/lightbox-slice-3-gravity` from the Slice 2B branch; the PR #149
+  review fixes and then `epic/lightbox` were merged in, conflicts resolved in
+  favor of the fixed 2B behavior.
+  1. **Stale readings first (D4).** A board rebuilt from changed text keeps
+     its readings, each lens marked stale with the hash it was read against;
+     every quote is checked again (kept, moved with its paragraph, or
+     withheld as no longer in the chapter), every count recounted, and the
+     tally counts each quote now gone as withheld. Re-reading a lens clears
+     its mark. The
+     [tech debt](../../archive/tech-debt/2026-10-19-lightbox-stale-readings.md)
+     is archived as resolved.
+  2. **Two group A lenses.** `13-lexical-gravity.md` and `14-palette.md`,
+     group A's worked example extended to both, five new tile kinds through
+     `LIGHTBOX_TILE_REGISTER`, their bounds pinned to the prompts. The host
+     counts every term, hit, degree split and drift; the model gives none.
+     A field under three hits is drawn below the gravity line, not dropped.
+  3. **Build as a lens (D11).** `LIGHTBOX_HAND_OFF` names a board item; the
+     host checks the board and the file's hash, refuses a stale, re-reading
+     or withheld field, re-checks its quotes, recounts its terms and hands a
+     bounded seed to `uiActions.handOffToWorkshop`. `extension.ts` routes it
+     through the Workshop panel's own `MessageHandler` as a synthetic
+     `WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD`, a direct route of the Lexical
+     Gravity handler; the Workshop opens Build lens prefilled and builds
+     nothing until the writer presses Build.
+  4. **The webview.** The gravity tile (orbit, field rows, degree bars,
+     collisions, set-asides), the palette tile, the inspector's "By degree"
+     rows and Build as a lens, lens toggles in the rail.
+  - **Verification.** Slice 2B with its PR #149 fixes (`bf8f1ca`) → this
+    branch:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 349 suites, 5,115 tests, 2 snapshots | 357 suites, 5,175 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file and per rule.
+    - No live or billable call: every reading test, and the evidence, plays
+      the provider with worked examples.
+    - Visual evidence from real host output in headless Chromium:
+      [`lightbox-slice-3-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-3-visual/README.md)
+      (gravity, palette, a pinned field, the handoff's answer and a stale
+      board at 1440, 1000 and 500 px, and the Workshop with Build lens
+      prefilled). No page errors and no horizontal overflow.
+  - **Beyond or unlike the plan** (details in the
+    [slice doc](slice-3-lexical-gravity-and-palette.md#implementation-notes-2026-10-19)):
+    - The handoff names only `{ boardId, fieldId }`; the host resolves the
+      field, metaphor and terms.
+    - Build lens takes one subject, so the counted terms ride in it, and a
+      banner shows the full seed. The build contract is unchanged.
+    - The new Workshop route is direct: opening the sheet changes no
+      session state.
+  - **Follow-ups:**
+    [a reading in flight when the chapter changes](../../tech-debt/2026-10-19-lightbox-forward-in-flight-readings.md)
+    and [one home for the codec's field decoders](../../tech-debt/2026-10-19-lightbox-codec-shared-field-decoders.md),
+    both Low; the two lenses join Slice 6's live pass.
+
+- **2026-10-19. Slice 3: PR #150 review fixes.** Astra's
+  [review](../../../docs/pr-reviews/pr-150-lightbox-lexical-gravity-review.md)
+  requested changes with six Medium/P2 findings; all six are fixed on
+  `epic/lightbox-slice-3-gravity`, one commit each, and the author response
+  maps them to commits and tests. Every new test fails on the reviewed head.
+  1. **F-01, no implicit lens.** A Build opening handed over from the
+     Lightbox has no lens until the writer adds a built take or picks a
+     library lens; Preview and Install wait for that choice, and the banner
+     says what building, saving and installing each take. A production-root
+     test drives Apply through the real standing-directive handler, service
+     and session.
+  2. **F-02, never over an open sheet.** Workshop overlays form one stack:
+     Escape closes only the top one, and a seed that arrives while any is
+     open is refused and dropped, never covering Add text, the editors or
+     the browsers.
+  3. **F-03, seeds bound to their panel.** The provider delivers a seed
+     once, to the panel that accepted it, listening and visible; a newer
+     seed replaces it and closing cancels it. The Workshop answers opened
+     or busy, and the Lightbox says "Opened" only on that answer, with a
+     20-second timeout.
+  4. **F-04, the shared sentence.** A collision is drawn only when one
+     sentence of a found quote (the prose-stats sentence rule) holds a term
+     of each field, and the card shows that sentence.
+  5. **F-05, one set of gates.** Fresh assembly and stale carry share
+     `LightboxTileGates`, with host-owned reasons, so a carried collision
+     without a witness and palette tiles whose words are gone are withheld
+     as a fresh reading would withhold them.
+  6. **F-06, tension by paragraph.** Tension scores are keyed by each
+     column's text as read; a carried score stays on unchanged paragraphs
+     only, and the headline, tension caption and lane say they are stale.
+  - **Merged:** `epic/lightbox` at `c6d4411` (PR #149), with Slice 3's
+    column keys re-applied in 2B's split runner.
+  - **Verification.** Reviewed head (`4150c8c`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 357 suites, 5,175 tests, 2 snapshots | 367 suites, 5,237 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,135 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match `c6d4411` per file and per rule.
+    - No live or billable call: every test, and the evidence, plays the
+      provider.
+    - Visual evidence regenerated at the merged head:
+      [`lightbox-slice-3-visual/`](../../../docs/pr-reviews/evidence/lightbox-slice-3-visual/README.md).
+  - **Follow-up:** [Lightbox run accounting on its exceptional paths](../../tech-debt/2026-10-19-lightbox-exceptional-path-accounting.md)
+    (Low), from PR #149's third re-review.
+
+- **2026-10-20. Slice 3: PR #150 re-review fixes.** The
+  [re-review](../../../docs/pr-reviews/pr-150-lightbox-lexical-gravity-review.md)
+  found F-01, F-02, F-04, F-05 and F-06 addressed, kept an F-03 residual
+  open and added F-07 (nonblocking); both are fixed, and the author
+  response to the re-review maps them to commits and tests.
+  1. **F-03, claim before opening.** The Workshop webview holds an arriving
+     seed and claims it; the panel provider grants the claim only while
+     that delivery is still the one it waits on, so a seed whose message
+     was already sent when it timed out, was replaced or lost its panel
+     never opens. A grant cannot be revoked, so a newer seed waits for the
+     granted one's answer. The protocol is generic over the seed kind
+     (`WorkshopSeedDelivery`, `useWorkshopSeedClaim`) for Slice 4's Bring
+     to Workshop.
+  2. **F-07, the Model Browser in the overlay stack.** It registers with
+     `useOverlayDismiss`, so a seed never opens over it and Escape closes
+     only the top surface; focus returns to its opener, nested or not.
+  - **Verification.** Re-reviewed head (`524a961`) → fix head:
+
+    | Check | Before | After |
+    |---|---|---|
+    | Jest | 367 suites, 5,237 tests, 2 snapshots | 370 suites, 5,257 tests, 2 snapshots |
+    | Lint | 0 errors, 1,135 warnings | 0 errors, 1,133 warnings |
+    | `npm run typecheck` | Passes | Passes |
+    | `npm run build` | Passes | Passes |
+
+    - Lint warnings match per file and per rule, except two fewer `curly`
+      warnings in `ModelBrowserModal.tsx`, whose own Escape listener is gone.
+    - No live or billable call; the evidence follows the claim protocol and
+      no shot changed.

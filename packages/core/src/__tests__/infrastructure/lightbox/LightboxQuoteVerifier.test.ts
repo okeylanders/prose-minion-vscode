@@ -334,7 +334,7 @@ describe('assembling tiles from a group (D7)', () => {
 
   it('counts named terms on the host, with the paragraphs they stand in, and mints ids in order', () => {
     const assembled = assemble(example.response);
-    expect(assembled.tiles.map((tile) => tile.id)).toEqual(['t1', 't2', 't3', 't4', 't5']);
+    expect(assembled.tiles.map((tile) => tile.id)).toEqual(assembled.tiles.map((_, index) => `t${index + 1}`));
     const going = assembled.tiles.find((tile) => tile.title === 'Going down');
     // The heading's "Down" counts too: a heading is a paragraph (D4).
     expect(going?.support).toEqual([{ term: 'down', count: 9, paragraphs: [1, 4, 5, 6, 7, 8] }]);

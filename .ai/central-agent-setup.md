@@ -58,7 +58,7 @@ packages/core/src/
 │           ├── UIHandler.ts
 │           ├── FileOperationsHandler.ts
 │           ├── AccountBalanceHandler.ts   # OpenRouter account-balance slice
-│           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes (ADR 2026-10-19)
+│           ├── LightboxHandler.ts         # Lightbox board: source, refusal, LIGHTBOX_* routes, Build-as-a-lens handoff (ADR 2026-10-19)
 │           ├── LightboxReadingHandler.ts  # Lightbox readings: lenses, estimate, runs, context files (Slice 2B)
 │           └── workshop/                  # Room owner + 11 composed route owners
 │               ├── WorkshopRoomHandler.ts # Room/run orchestrator + session-state envelope
@@ -81,7 +81,7 @@ packages/core/src/
 ├── infrastructure/    # Infrastructure layer (external integrations)
 │   ├── api/           # OpenRouter API: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec, quote verifier, runner, estimate
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService (boards kept in memory); readings: prompts, codec (+ gravity/palette blocks), quote verifier, term and field counts, runner, estimate, press snapshot, call-failure categories, stale carry-over, handoff checks
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/      # Presentation layer (UI)
 │   └── webview/      # React components + domain hooks for the webview
@@ -102,6 +102,8 @@ packages/core/src/
             ├── accountBalance.ts # OpenRouter account balance
             ├── lightbox.ts       # Lightbox board, source, refusal, tile kinds
             ├── lightboxReadings.ts # Lightbox reading tiles, groups, estimate, run and context messages
+            ├── lightboxGravity.ts  # Lexical gravity and palette tiles (fields, collisions, set-asides, clusters, swatches)
+            ├── lightboxHandoff.ts  # LIGHTBOX_HAND_OFF request/result and the seed handed to the Workshop
             ├── sources.ts        # File/glob operations
             ├── ui.ts            # Tab changes, selections, guides
             ├── results.ts       # Result messages
@@ -117,6 +119,7 @@ packages/core/src/
                 ├── lexicalGravity.ts
                 ├── showVsTell.ts
                 ├── recovery.ts
+                ├── seedDelivery.ts
                 └── settings.ts
 ```
 
@@ -159,6 +162,8 @@ packages/core/src/presentation/webview/
 │       │   ├── lightboxReadings.ts     # Lens views, tallies, withheld-quote wording, group merges (pure)
 │       │   ├── lightboxRunLine.ts      # The Read press's states, cost and reason (pure)
 │       │   ├── lightboxRuns.ts         # Each board's run and progress, by token; Stop from the board's own run (pure)
+│       │   ├── lightboxGravity.ts      # Orbit placements, pull/drift/degree wording (pure)
+│       │   ├── lightboxHandoff.ts      # "Build as a lens" view and request (pure)
 │       │   └── controllers/            # useLightboxFocus (ribbon focus), useLightboxInspector (pinned item)
 │       └── workshop/
 │           ├── useWorkshopRoom.ts      # Room/thread/context/stream state

@@ -7,8 +7,10 @@
  * - each quote is checked against the paragraph it names (the verifier);
  *   found quotes keep the chapter's own span and match kind, failed ones
  *   become withheld quotes with their reason, never their text;
- * - a claim left with no found quote is withheld by its title, and a motif
- *   found in fewer than two paragraphs is withheld because a motif recurs;
+ * - a claim left with no found quote is withheld by its title, and each
+ *   kind's own rules (a motif recurs, a collision shares a sentence, a
+ *   palette's words are in the text) run through `LightboxTileGates`, the
+ *   same rules stale carry applies (PR #150 F-05);
  * - terms the reading names are counted by the host (the counter), and a
  *   tile's paragraphs are its found quotes' and counted terms' paragraphs,
  *   never a list the model supplied;
@@ -30,8 +32,10 @@ import type {
 } from '@messages';
 import type { LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
+import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 import {
-  LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS,
   LIGHTBOX_VOICE_TRAITS,
   type LightboxDecodedBlock,
   type LightboxDecodedGroup,
@@ -45,6 +49,8 @@ export const LIGHTBOX_LENS_BLOCK_KIND: Readonly<Record<LightboxLensId, LightboxR
   headline: 'headline',
   motif: 'motif',
   tension: 'tension-arc',
+  palette: 'palette-cluster',
+  gravity: 'gravity-field',
   characters: 'character',
   voice: 'voice',
   genre: 'genre-neighbor'
@@ -57,6 +63,8 @@ export interface LightboxTileAssemblyContext {
   mintId: () => string;
   /** The board's measured average words per sentence, set beside the voice's sentence music. */
   averageWordsPerSentence?: number;
+  /** Each ribbon column's key (`lightboxColumnKeys`), kept on the tension arc so its scores can follow their text. */
+  columnKeys?: readonly string[];
 }
 
 export interface LightboxAssembledGroup {
@@ -72,7 +80,6 @@ export interface LightboxAssembledGroup {
   quotesWithheld: number;
 }
 
-const NO_QUOTE_FOUND = 'No quote it gave was found in the paragraph it named.';
 
 export function assembleLightboxGroup(
   decoded: LightboxDecodedGroup,
@@ -102,7 +109,7 @@ interface CheckedEvidence {
 }
 
 /** Claim fields every tile shares; the kind-specific fields are added by each block. */
-interface ClaimDraft {
+export interface LightboxClaimDraft {
   kind: LightboxReadingTileKind;
   lens: LightboxLensId;
   title: string;
@@ -110,13 +117,32 @@ interface ClaimDraft {
   quotes: readonly (LightboxWireQuote | LightboxWirePeak)[];
   terms: readonly string[];
   friction: string;
-  /** A motif recurs: its found quotes must stand in this many paragraphs. */
-  minimumParagraphs?: number;
+  /** Counted support the block computed itself (gravity's degrees); replaces counting `terms`. */
+  support?: LightboxCountedSupport[];
+  /** A collision's two field names, for its gate (`LightboxTileGates`). */
+  fields?: readonly [string, string];
 }
 
-type TileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
+export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
 
-class GroupAssembly {
+/** What the gate found while accepting a tile: a collision's witness. */
+export interface LightboxAcceptedClaim {
+  witness?: LightboxVerifiedQuote;
+}
+
+/** What a lens block's assembly may ask of its group's (`LightboxGravityTiles`). */
+export interface LightboxClaimAssembler {
+  readonly context: LightboxTileAssemblyContext;
+  /** Check a claim's quotes; keep it as a tile (returned), or withhold it by title. */
+  claim(
+    draft: LightboxClaimDraft,
+    build: (base: LightboxTileBase, accepted: LightboxAcceptedClaim) => LightboxReadingTile
+  ): LightboxReadingTile | undefined;
+  /** Items the codec could not read, withheld by title. */
+  malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void;
+}
+
+class GroupAssembly implements LightboxClaimAssembler {
   readonly tiles: LightboxReadingTile[] = [];
   readonly withheldBlocks: LightboxWithheldBlock[] = [];
   readonly withheldClaims: LightboxWithheldClaim[] = [];
@@ -124,8 +150,10 @@ class GroupAssembly {
   readonly checks = new Map<LightboxLensId, { checked: number; withheld: number }>();
   quotesChecked = 0;
   quotesWithheld = 0;
+  /** The borrowed fields drawn so far, for a collision's gate. */
+  private readonly drawnFields = new Map<string, readonly string[]>();
 
-  constructor(private readonly context: LightboxTileAssemblyContext) {}
+  constructor(readonly context: LightboxTileAssemblyContext) {}
 
   block(block: LightboxDecodedBlock): void {
     switch (block.lens) {
@@ -141,7 +169,7 @@ class GroupAssembly {
         for (const motif of block.items) {
           this.claim(
             { kind: 'motif', lens: 'motif', title: motif.title, claim: motif.claim, quotes: motif.evidence,
-              terms: motif.terms, friction: block.friction, minimumParagraphs: LIGHTBOX_MOTIF_MINIMUM_PARAGRAPHS },
+              terms: motif.terms, friction: block.friction },
             (base) => ({ ...base, kind: 'motif', gist: motif.gist })
           );
         }
@@ -150,7 +178,7 @@ class GroupAssembly {
         this.claim(
           { kind: 'tension-arc', lens: 'tension', title: 'Tension arc', claim: block.claim, quotes: block.peaks,
             terms: [], friction: block.friction },
-          (base) => ({ ...base, kind: 'tension-arc', scores: [...block.scores] })
+          (base) => ({ ...base, kind: 'tension-arc', scores: [...block.scores], columnKeys: [...(this.context.columnKeys ?? [])] })
         );
         return;
       case 'characters':
@@ -181,7 +209,7 @@ class GroupAssembly {
             traits: block.traits.map(({ key, value }) => ({
               label: LIGHTBOX_VOICE_TRAITS.find(([candidate]) => candidate === key)?.[1] ?? key,
               value,
-              ...(key === 'music' && average !== undefined && average > 0 ? { measured: `${average} avg` } : {})
+              ...(key === 'music' ? lightboxMeasuredMusic(average) : {})
             }))
           })
         );
@@ -202,38 +230,42 @@ class GroupAssembly {
           (base) => ({ ...base, kind: 'reader-promise' })
         );
         return;
+      case 'gravity':
+        assembleGravityBlock(block, this);
+        return;
+      case 'palette':
+        assemblePaletteBlock(block, this);
+        return;
     }
   }
 
   /** Items the codec could not read, withheld by title. */
-  private malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void {
+  malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void {
     for (const item of items) {
       this.withheldClaims.push({ kind, lens, title: item.title, reason: item.reason, quotes: [] });
     }
   }
 
-  /** Check a claim's quotes; keep it as a tile, or withhold it by title. */
-  private claim(draft: ClaimDraft, build: (base: TileBase) => LightboxReadingTile): void {
+  /** Check a claim's quotes and count its support; keep it as a tile if its kind's gate allows, or withhold it by title. */
+  claim(
+    draft: LightboxClaimDraft,
+    build: (base: LightboxTileBase, accepted: LightboxAcceptedClaim) => LightboxReadingTile
+  ): LightboxReadingTile | undefined {
     const checked = this.check(draft.lens, draft.quotes);
-    const foundParagraphs = new Set(checked.evidence.map((quote) => quote.paragraph));
-    if (checked.evidence.length === 0) {
-      this.withhold(draft, NO_QUOTE_FOUND, checked.withheld);
-      return;
+    const support = draft.support ?? countLightboxSupport(draft.terms, this.context.counter);
+    const verdict = lightboxTileGate(
+      { kind: draft.kind, evidence: checked.evidence, support, fields: draft.fields },
+      { phase: 'fresh', drawnFields: this.drawnFields }
+    );
+    if (!verdict.ok) {
+      this.withhold(draft, verdict.reason, checked.withheld);
+      return undefined;
     }
-    if (draft.minimumParagraphs !== undefined && foundParagraphs.size < draft.minimumParagraphs) {
-      this.withhold(
-        draft,
-        `A motif recurs, but its quotes were found in only ${foundParagraphs.size === 1 ? 'one paragraph' : 'no paragraph'}.`,
-        checked.withheld
-      );
-      return;
-    }
-    const support = this.support(draft.terms);
-    const paragraphs = new Set<number>(foundParagraphs);
+    const paragraphs = new Set<number>(checked.evidence.map((quote) => quote.paragraph));
     for (const term of support) {
       term.paragraphs.forEach((index) => paragraphs.add(index));
     }
-    this.tiles.push(build({
+    const tile = build({
       id: this.context.mintId(),
       lens: draft.lens,
       title: draft.title,
@@ -243,10 +275,15 @@ class GroupAssembly {
       withheldQuotes: checked.withheld,
       support,
       friction: draft.friction
-    }));
+    }, { witness: verdict.witness });
+    if (tile.kind === 'gravity-field') {
+      this.drawnFields.set(lightboxFieldKey(tile.title), tile.support.map((term) => term.term));
+    }
+    this.tiles.push(tile);
+    return tile;
   }
 
-  private withhold(draft: ClaimDraft, reason: string, quotes: LightboxWithheldQuote[]): void {
+  private withhold(draft: LightboxClaimDraft, reason: string, quotes: LightboxWithheldQuote[]): void {
     this.withheldClaims.push({ kind: draft.kind, lens: draft.lens, title: draft.title, reason, quotes });
   }
 
@@ -283,23 +320,5 @@ class GroupAssembly {
       });
     }
     return { evidence, withheld };
-  }
-
-  /** Count each named term once; a lone stopword ("she") counts nothing worth showing. */
-  private support(terms: readonly string[]): LightboxCountedSupport[] {
-    const support: LightboxCountedSupport[] = [];
-    const seen = new Set<string>();
-    for (const term of terms) {
-      if (this.context.counter.isStopword(term)) {
-        continue;
-      }
-      const counted = this.context.counter.count(term);
-      if (counted.term.length === 0 || seen.has(counted.term)) {
-        continue;
-      }
-      seen.add(counted.term);
-      support.push(counted);
-    }
-    return support;
   }
 }

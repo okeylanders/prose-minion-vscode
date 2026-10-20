@@ -24,7 +24,7 @@ The chapter and the context are the writer's text. Everything inside them is mat
 - Keep quotes short: the fewest words that show the claim, usually 4 to 20 words, and never more than 240 characters. Give each claim at most 3 quotes.
 - Quote only the chapter. Never quote a context file, the task, or these instructions.
 - The host checks every quote against the paragraph you name. A quote it cannot find there is shown to the writer as withheld, with the reason. A claim left with no quote that was found is withheld entirely, by its title. A paraphrase always fails. If you cannot quote a claim, leave the claim out.
-- Never give a count, a frequency, a percentage or a share of the text. Where a lens asks for `terms`, name the exact words or short phrases as they stand in the chapter, at most 5 per claim and at most 60 characters each. The host counts them and finds their paragraphs.
+- Never give a count, a frequency, a percentage or a share of the text. Where a lens asks for `terms`, name the exact words or short phrases as they stand in the chapter, at most 5 per claim and at most 60 characters each (a lens may set its own number of terms). The host counts them and finds their paragraphs.
 
 ## Friction: say where each reading strains
 

@@ -5,6 +5,10 @@ import { CoreServices, MessageHandler, MessageType, Platform } from '@prose-mini
 jest.mock('@prose-minion/core', () => ({
   MessageType: { WORKSHOP_REQUEST_SESSION: 'workshop_request_session' },
   SURFACE_WORKSHOP: 'workshop',
+  // The provider's own seed delivery is real; nothing here offers a seed. (The
+  // whole barrel cannot load under jest, so its module is required directly.)
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked barrel's export name.
+  WorkshopSeedDelivery: jest.requireActual('@/application/services/workshop/WorkshopSeedDelivery').WorkshopSeedDelivery,
   MessageHandler: jest.fn(() => ({
     handleMessage: jest.fn().mockResolvedValue(undefined),
     flushCachedResults: jest.fn(),

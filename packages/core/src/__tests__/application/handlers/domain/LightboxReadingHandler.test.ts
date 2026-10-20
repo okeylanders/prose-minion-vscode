@@ -52,10 +52,11 @@ describe('LightboxReadingHandler', () => {
     const estimate = ofType(MessageType.LIGHTBOX_RUN_ESTIMATE)[0].payload.estimate;
     expect(estimate).toMatchObject({ boardId: board.boardId, fit: 'fits', model: 'provider/model-v1', contextLength: 200_000 });
     expect(estimate?.groups.map((group) => [group.group, group.lenses])).toEqual([
-      ['A', ['headline', 'motif', 'tension']],
+      ['A', ['headline', 'motif', 'tension', 'gravity', 'palette']],
       ['B', ['characters']]
     ]);
-    expect(estimate?.rereads.map((call) => call.lenses[0])).toEqual(['headline', 'motif', 'tension', 'characters']);
+    expect(estimate?.rereads.map((call) => call.lenses[0]))
+      .toEqual(['headline', 'motif', 'tension', 'gravity', 'palette', 'characters']);
     expect(estimate?.costUsd).toBeGreaterThan(0);
   });
 

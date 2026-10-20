@@ -32,13 +32,15 @@ import {
   MessageType
 } from '@/shared/types/messages';
 import { readWorkedExample } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
+import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 
 export const examples = Object.fromEntries(
   (['A', 'B', 'C'] as const).map((group) => [group, readWorkedExample(group)])
 ) as Record<LightboxReadingGroupId, ReturnType<typeof readWorkedExample>>;
 export const CHAPTER = examples.A.paragraphs.join('\n\n');
 export const CONTEXT_TEXT = 'Notes for the reader: the White Rabbit is a royal herald who fears the Queen.';
-export const ALL_LENSES_OFF: LightboxLensId[] = ['headline', 'motif', 'tension', 'characters', 'voice', 'genre'];
+/** Every lens on the rail, from the one list (Slice 3 adds gravity and palette). */
+export const ALL_LENSES_OFF: LightboxLensId[] = LIGHTBOX_LENSES.map((lens) => lens.id);
 
 export const ok = (group: LightboxReadingGroupId, raw = examples[group].response): ExecutionResult => ({
   content: 'visible',

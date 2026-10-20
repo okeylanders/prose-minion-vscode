@@ -6,7 +6,7 @@
  * what was decoded. The ceilings are `PROMPT_BUDGETS.lightbox`.
  */
 
-import type { LightboxLensId, LightboxReadingGroupId } from '@messages';
+import type { LightboxGravityDegree, LightboxLensId, LightboxReadingGroupId } from '@messages';
 
 /** The protocol version every group's JSON carries. */
 export const LIGHTBOX_READING_PROTOCOL_VERSION = 1;
@@ -43,6 +43,8 @@ export const LIGHTBOX_LENS_KEYS: Readonly<Record<LightboxLensId, string>> = {
   headline: 'headline',
   motif: 'motifs',
   tension: 'tension',
+  gravity: 'gravity',
+  palette: 'palette',
   characters: 'characters',
   voice: 'voice',
   genre: 'genre'
@@ -98,6 +100,75 @@ export interface LightboxMalformedItem {
   reason: string;
 }
 
+export interface LightboxDecodedGravityTerm {
+  term: string;
+  degree: LightboxGravityDegree;
+}
+
+export interface LightboxDecodedGravityField {
+  name: string;
+  metaphor: string;
+  /** Rounded to two decimals. */
+  pull: number;
+  claim: string;
+  terms: LightboxDecodedGravityTerm[];
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedCollision {
+  /** Two distinct names of well-formed fields in the same block. */
+  fields: [string, string];
+  claim: string;
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedLiteral {
+  name: string;
+  reason: string;
+  terms: string[];
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedCluster {
+  name: string;
+  claim: string;
+  words: string[];
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedSwatch {
+  name: string;
+  words: string[];
+  /** `#RRGGBB`, upper case. */
+  hex: string;
+  note: string;
+  evidence: LightboxWireQuote[];
+}
+
+export interface LightboxDecodedGravityBlock {
+  lens: 'gravity';
+  fields: LightboxDecodedGravityField[];
+  collisions: LightboxDecodedCollision[];
+  literal: LightboxDecodedLiteral[];
+  malformed: {
+    fields: LightboxMalformedItem[];
+    collisions: LightboxMalformedItem[];
+    literal: LightboxMalformedItem[];
+  };
+  friction: string;
+}
+
+export interface LightboxDecodedPaletteBlock {
+  lens: 'palette';
+  clusters: LightboxDecodedCluster[];
+  swatches: LightboxDecodedSwatch[];
+  malformed: {
+    clusters: LightboxMalformedItem[];
+    swatches: LightboxMalformedItem[];
+  };
+  friction: string;
+}
+
 export type LightboxDecodedBlock =
   | { lens: 'headline'; sentence: string; terms: string[]; evidence: LightboxWireQuote[]; friction: string }
   | { lens: 'motif'; items: LightboxDecodedMotif[]; malformed: LightboxMalformedItem[]; friction: string }
@@ -122,7 +193,9 @@ export type LightboxDecodedBlock =
       malformed: LightboxMalformedItem[];
       promise: { text: string; evidence: LightboxWireQuote[] };
       friction: string;
-    };
+    }
+  | LightboxDecodedGravityBlock
+  | LightboxDecodedPaletteBlock;
 
 export interface LightboxGroupDecodeContext {
   group: LightboxReadingGroupId;

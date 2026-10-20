@@ -38,7 +38,9 @@
  * - **Readings (Slice 2B).** A board's reading groups attach to its id:
  *   a run writes them through `updateReadings(boardId, …)`, and a rebuild
  *   of unchanged text keeps them, including any that landed while it was
- *   measuring. A change to the current board's readings is published as a
+ *   measuring. A rebuild of changed text is a new board (a new id), but the
+ *   readings come along stale (D4, `LightboxStaleReadings`): each quote
+ *   checked again against the new paragraphs and each count recounted. A change to the current board's readings is published as a
  *   `readings` outcome; one to a board that is no longer current updates
  *   that retained board silently, so a stale run never publishes over a
  *   newer board, and switching back to its source shows what it read.
@@ -70,6 +72,7 @@ import {
   measureLightboxParagraph,
   splitLightboxParagraphs
 } from '@/infrastructure/lightbox/LightboxParagraphs';
+import { carryLightboxReadings } from '@/infrastructure/lightbox/LightboxStaleReadings';
 import {
   LIGHTBOX_WORD_FREQUENCY_OPTIONS,
   LightboxEnrichedStats,
@@ -89,7 +92,8 @@ export interface LightboxSourceInput {
 }
 
 export type LightboxBoardResult =
-  | { kind: 'board'; board: LightboxBoard; reused: boolean }
+  /** `carried`: the text changed, and the replaced board's readings came along, stale (D4). */
+  | { kind: 'board'; board: LightboxBoard; reused: boolean; carried: boolean }
   | { kind: 'refused'; refusal: LightboxSourceRefusal }
   | { kind: 'superseded' };
 
@@ -225,26 +229,36 @@ export class LightboxService {
     const contentHash = lightboxContentHash(input.text);
     const retained = this.entries.get(key);
     const unchanged = retained?.board.source.contentHash === contentHash ? retained.board : undefined;
+    const paragraphTexts = splitLightboxParagraphs(input.text).map((paragraph) => paragraph.text);
 
     let board = await this.assemble(input, contentHash, unchanged);
     if (!this.isCurrentRequest(ticket)) {
       return { kind: 'superseded' };
     }
-    // A reading group may have landed on the unchanged board while this one
-    // was measured; keep the latest readings, not the ones captured before.
+    // A reading group may have landed on the retained board while this one
+    // was measured; work from the latest readings, not the ones captured before.
     const latest = this.entries.get(key)?.board;
+    let carried = false;
     if (unchanged && latest?.boardId === board.boardId) {
       board = { ...board, readings: latest.readings };
+    } else if (!unchanged && latest && latest.readings.some((group) => group.status !== 'not-run')) {
+      // The text changed (D4): its readings come along, stale and checked again.
+      board = {
+        ...board,
+        readings: carryLightboxReadings(latest.readings, {
+          readAgainst: latest.source.contentHash,
+          paragraphs: paragraphTexts,
+          averageWordsPerSentence: board.measured.headline.averageWordsPerSentence,
+          columns: board.ribbon
+        })
+      };
+      carried = true;
     }
-    this.adopt(key, {
-      board,
-      rereadPath: input.rereadPath ?? retained?.rereadPath,
-      paragraphTexts: splitLightboxParagraphs(input.text).map((paragraph) => paragraph.text)
-    });
+    this.adopt(key, { board, rereadPath: input.rereadPath ?? retained?.rereadPath, paragraphTexts });
     // The newest request produced a board, so no refusal stands beside it.
     this.standingRefusal = null;
     this.outcomeListeners.emit({ kind: 'board', board, refusal: this.standingRefusal });
-    return { kind: 'board', board, reused: unchanged !== undefined };
+    return { kind: 'board', board, reused: unchanged !== undefined, carried };
   }
 
   /**

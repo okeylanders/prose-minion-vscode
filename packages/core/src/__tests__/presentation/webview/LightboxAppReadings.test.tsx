@@ -25,6 +25,7 @@ jest.mock('../../../presentation/webview/styles/lightbox/tiles.css', () => ({}))
 jest.mock('../../../presentation/webview/styles/lightbox/rail.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/inspector.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/readings.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/lightbox/gravity.css', () => ({}));
 // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked component's export name.
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 
@@ -134,6 +135,43 @@ describe('LightboxApp readings', () => {
 
     fireEvent.click(within(inspector).getByRole('button', { name: 'Re-read this tile' }));
     expect(lastPosted()).toMatchObject({ type: MessageType.LIGHTBOX_RUN, payload: { scope: { mode: 'lens', lens: 'motif' } } });
+  });
+
+  it('labels stale readings after the chapter changed, with the re-checked quote withheld (D4)', () => {
+    render(<LightboxApp />);
+    confirmModel();
+    const groupA = readGroup('A');
+    const goingDown = groupA.tiles.find((tile) => tile.title === 'Going down');
+    const stale = {
+      ...board,
+      readings: [
+        {
+          ...groupA,
+          staleLenses: groupA.lenses.map((lens) => ({ lens, readAgainst: 'earlier-hash' })),
+          tiles: groupA.tiles.map((tile) => (tile === goingDown
+            ? {
+                ...tile,
+                evidence: tile.evidence.filter((quote) => quote.paragraph !== 6),
+                withheldQuotes: [{ paragraph: 6, reason: 'no-longer-in-chapter' as const }]
+              }
+            : tile))
+        },
+        readGroup('B'),
+        readGroup('C')
+      ]
+    };
+    fromHost(MessageType.LIGHTBOX_BOARD, { board: stale, refusal: null });
+    estimateFromHost(makeEstimate());
+
+    const motifs = screen.getByLabelText('Motifs · where they recur');
+    expect(within(motifs).getByText('Stale')).not.toBeNull();
+    expect(within(screen.getByLabelText('Voice')).queryByText('Stale')).toBeNull();
+    expect(screen.getByText(/lenses stale$/)).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Going down/ }));
+    const inspector = screen.getByLabelText('Inspector');
+    expect(within(inspector).getByText('Stale')).not.toBeNull();
+    expect(within(inspector).getByText(/No longer in the chapter: the text changed/)).not.toBeNull();
   });
 
   it('asks for a fresh estimate when the host refuses a press priced on inputs that changed (PR #149 F-02)', () => {

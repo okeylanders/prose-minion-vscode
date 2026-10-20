@@ -168,6 +168,38 @@
   padding: 9px 11px;
   margin: 0 0 10px;
 }
+[data-pm-surface="lightbox"] .pm-lb-stale-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pm-text-2);
+  border: 1px solid var(--pm-amber);
+  border-radius: 9px;
+  padding: 8px 11px;
+  margin: 0 0 10px;
+}
+/* A stale reading's mark beside the tension caption and on the lane label (PR #150 F-06). */
+[data-pm-surface="lightbox"] .pm-lb-stale-badge,
+[data-pm-surface="lightbox"] .pm-lb-lane-stale {
+  color: var(--pm-amber);
+  border-color: var(--pm-amber);
+}
+[data-pm-surface="lightbox"] .pm-lb-lane-stale {
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 0 3px;
+}
+[data-pm-surface="lightbox"] .pm-lb-stale-note b {
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pm-amber);
+  margin-right: 6px;
+}
 [data-pm-surface="lightbox"] .pm-lb-withheld-block b,
 [data-pm-surface="lightbox"] .pm-lb-withheld-claims b {
   font-family: var(--pm-mono);

@@ -123,7 +123,7 @@ describe('useLightbox', () => {
     vscode.getState.mockReturnValue({
       lightboxFilter: 'read',
       lightboxSelectedItem: { kind: 'paragraphs', from: 3, to: 5 },
-      lightboxLensesOff: ['genre', 'palette', 'genre', 7]
+      lightboxLensesOff: ['genre', 'not-a-lens', 'genre', 7]
     });
     const restored = renderHook(() => useLightbox()).result.current;
     expect(restored.filter).toBe('read');

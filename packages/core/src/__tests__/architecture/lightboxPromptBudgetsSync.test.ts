@@ -11,6 +11,7 @@ import {
   LIGHTBOX_TENSION_TOP_SCORE
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 import { LIGHTBOX_PROMPT_FILES } from '@/infrastructure/lightbox/LightboxReadingPrompts';
+import { LIGHTBOX_GRAVITY_LINE_HITS } from '@shared/constants/lightbox';
 import { readLightboxPrompt } from '@/__tests__/infrastructure/lightbox/lightboxReadingFixtures';
 
 const B = PROMPT_BUDGETS.lightbox;
@@ -58,5 +59,26 @@ describe('Lightbox prompt bundle ↔ PROMPT_BUDGETS.lightbox', () => {
     expect(lens('genre')).toContain(`At least one neighbor sits at ${LIGHTBOX_NEAR_MISS_AFFINITY.toFixed(2)} or below`);
     expect(lens('genre')).toContain(`one line of at most ${B.noteCharacters} characters`);
     expect(lens('genre')).toContain(`\`claim\`: at most ${B.claimCharacters} characters; \`evidence\`: 1–${B.quotesPerClaim} quotes per neighbor`);
+  });
+
+  it('states gravity\'s and the palette\'s ceilings, and the gravity line (Slice 3)', () => {
+    expect(lens('gravity')).toContain(`\`fields\`: 0–${B.gravityFields} borrowed fields`);
+    expect(lens('gravity')).toContain(`\`name\`: at most ${B.labelCharacters} characters`);
+    expect(lens('gravity')).toContain(`one line of at most ${B.noteCharacters} characters: what the chapter is seen as`);
+    expect(lens('gravity')).toContain(`a field with fewer than ${LIGHTBOX_GRAVITY_LINE_HITS} hits is drawn below the gravity line`);
+    expect(lens('gravity')).toContain(`\`terms\`: 1–${B.gravityTerms} words or short phrases`);
+    expect(lens('gravity')).toContain(`\`claim\`: at most ${B.claimCharacters} characters: what the borrowing does`);
+    expect(lens('gravity')).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes where the field is at work`);
+    expect(lens('gravity')).toContain(`\`collisions\`: 0–${B.gravityCollisions} places`);
+    expect(lens('gravity')).toContain(`\`literal\`: required, 1–${B.gravityLiterals} fields`);
+    expect(lens('gravity')).toContain(`1–${B.termsPerClaim} \`terms\` the host counts, and 1–${B.quotesPerClaim} quotes`);
+
+    expect(lens('palette')).toContain(`\`clusters\`: 0–${B.paletteClusters} diction clusters`);
+    expect(lens('palette')).toContain(`\`words\`: 2–${B.clusterWords} words exactly as they stand`);
+    expect(lens('palette')).toContain(`\`claim\`: at most ${B.claimCharacters} characters`);
+    expect(lens('palette')).toContain(`\`swatches\`: 0–${B.swatches} colors the text names`);
+    expect(lens('palette')).toContain(`\`words\`: 1–${B.swatchWords} color words`);
+    expect(lens('palette')).toContain(`\`note\`: one line of at most ${B.noteCharacters} characters`);
+    expect(lens('palette')).toContain(`\`evidence\`: 1–${B.quotesPerClaim} quotes`);
   });
 });

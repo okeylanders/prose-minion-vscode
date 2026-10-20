@@ -20,6 +20,8 @@ const LOOKS_LIKE_LIMIT = /(?:^MAX(?:_|$)|_(?:MAX|LIMIT|CAP|CEILING|THRESHOLD)(?:
 const NON_PROMPT_LIMITS = new Set([
   // Named-session titles are file and browser labels; no prompt sees them.
   'application/services/workshop/WorkshopSessionTitles.ts:WORKSHOP_SESSION_TITLE_MAX_LENGTH',
+  // A Build lens seed's delivery id is a host-minted correlation id; no prompt sees it.
+  'application/handlers/domain/workshop/widgets/lexicalGravity/WorkshopLexicalGravityHandler.ts:MAX_DELIVERY_ID',
   'infrastructure/api/orchestration/ResourceReadXmlCodec.ts:MAX_TOLERATED_PREAMBLE_CHARS',
   'infrastructure/api/services/dictionary/DictionaryService.ts:CONCURRENCY_LIMIT',
   'infrastructure/api/services/search/CategorySearchService.ts:MAX_WORDS_PER_BATCH',
@@ -83,7 +85,15 @@ describe('prompt budgets', () => {
       motifs: 4,
       characters: 6,
       genreNeighbors: 5,
-      tensionPeaks: 3
+      tensionPeaks: 3,
+      gravityFields: 5,
+      gravityTerms: 8,
+      gravityCollisions: 3,
+      gravityLiterals: 4,
+      paletteClusters: 4,
+      clusterWords: 6,
+      swatches: 6,
+      swatchWords: 3
     });
     // The writer's ceiling matches the other whole-document inputs.
     expect(PROMPT_BUDGETS.lightbox.sourceWords).toBe(PROMPT_BUDGETS.sourceDocument.words);

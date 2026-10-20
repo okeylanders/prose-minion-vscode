@@ -261,6 +261,7 @@ export const WorkshopApp: React.FC = () => {
   );
   const widgetOpening = useWorkshopWidgetOpening({
     host: widgetHost,
+    lexicalGravityBuild: lexicalGravity,
     standingDirectives: workshop.standingDirectives,
     onError: handleWidgetOpeningError,
     onCloseGesturePlayground: gesturePlayground.consumeWidgetActionResult,

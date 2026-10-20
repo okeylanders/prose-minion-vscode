@@ -85,7 +85,7 @@ describe('LightboxReadingCodec', () => {
 
     it('accepts CRLF line endings and surrounding whitespace', () => {
       const crlf = `\n  ${exampleA.response.replace(/\n/g, '\r\n')}  \n`;
-      expect(decodeLightboxGroup(crlf, contextA).blocks).toHaveLength(3);
+      expect(decodeLightboxGroup(crlf, contextA).blocks).toHaveLength(contextA.lenses.length);
     });
   });
 
@@ -94,13 +94,14 @@ describe('LightboxReadingCodec', () => {
       const broken = body(exampleA);
       broken.motifs.items = 'three motifs';
       const decoded = decodeLightboxGroup(frame('A', broken), contextA);
-      expect(decoded.blocks.map((block) => block.lens)).toEqual(['headline', 'tension']);
+      expect(decoded.blocks.map((block) => block.lens)).toEqual(['headline', 'tension', 'gravity', 'palette']);
       expect(decoded.withheld).toEqual([
         { lens: 'motif', reason: expect.stringContaining('motifs.items must be') }
       ]);
       const assembled = assemble(decoded, exampleA.paragraphs);
       expect(assembled.withheldBlocks).toEqual([{ kind: 'motif', lens: 'motif', reason: decoded.withheld[0].reason }]);
-      expect(assembled.tiles.map((tile) => tile.kind)).toEqual(['headline', 'tension-arc']);
+      expect(assembled.tiles.map((tile) => tile.kind).slice(0, 2)).toEqual(['headline', 'tension-arc']);
+      expect(assembled.tiles.map((tile) => tile.kind)).not.toContain('motif');
     });
 
     it('fails a block with no friction, naming the rule', () => {
@@ -130,7 +131,7 @@ describe('LightboxReadingCodec', () => {
     it('drops a block for a lens the call did not ask for', () => {
       const decoded = decodeLightboxGroup(exampleA.response, { ...contextA, lenses: ['headline', 'tension'] });
       expect(decoded.blocks.map((block) => block.lens)).toEqual(['headline', 'tension']);
-      expect(decoded.ignored).toEqual(['motif']);
+      expect(decoded.ignored).toEqual(['motif', 'gravity', 'palette']);
     });
 
     it('requires exactly one tension score per ribbon column, each 0–9', () => {

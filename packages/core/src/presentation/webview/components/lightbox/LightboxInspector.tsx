@@ -8,8 +8,9 @@
  * paragraph), and what code counted. A reading adds its evidence (each quote
  * as the chapter has it, with its ¶ and how it was found), the quotes
  * withheld and why, its own fields, where it strains, and "Re-read this
- * tile": one call for that lens. Actions that cross into the Workshop or the
- * editor arrive with later slices.
+ * tile": one call for that lens. A borrowed field (Slice 3) adds its terms
+ * by degree and "Build as a lens", which the host carries into the Workshop.
+ * Other actions that cross into the Workshop or the editor arrive later.
  *
  * The addresses render a page at a time (PR #148 F-04). With more than one
  * page, a pager steps between them and jumps to a paragraph number, all by
@@ -19,7 +20,8 @@
  * the paged addresses.
  */
 import * as React from 'react';
-import type { LightboxLensId } from '@messages';
+import type { LightboxGravityFieldTile, LightboxLensId } from '@messages';
+import type { LightboxBuildLensView } from '@hooks/domain/lightbox/lightboxHandoff';
 import type {
   LightboxInspectorView,
   LightboxParagraphPage
@@ -41,6 +43,12 @@ export interface LightboxRereadControl {
   onReread: (lens: LightboxLensId) => void;
 }
 
+/** "Build as a lens": its view for a pinned borrowed field, and the press. */
+export interface LightboxBuildLensControl {
+  view: (field: LightboxGravityFieldTile) => LightboxBuildLensView;
+  onBuild: (fieldId: string) => void;
+}
+
 export interface LightboxInspectorProps {
   view: LightboxInspectorView | null;
   /** The page of `view.paragraphs` to render. */
@@ -51,6 +59,7 @@ export interface LightboxInspectorProps {
   onJumpToParagraph: (index: number) => void;
   bind: (ref: LightboxItemRef) => LightboxItemBinding;
   reread: LightboxRereadControl;
+  buildLens?: LightboxBuildLensControl;
 }
 
 /** "¶765–¶812 (337–347 of 347)": the addresses on show, then where they sit in the list. */
@@ -162,7 +171,8 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
   onShowParagraphPage,
   onJumpToParagraph,
   bind,
-  reread
+  reread,
+  buildLens
 }) => {
   if (!view) {
     return (
@@ -197,6 +207,8 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
   const page = paragraphPage;
   const reading = view.reading;
   const rereadNote = reading ? reread.note(reading.lens) : undefined;
+  const field = reading?.tile.kind === 'gravity-field' ? reading.tile : undefined;
+  const build = field && buildLens ? buildLens.view(field) : undefined;
   const rereadReason = reading ? reread.reason(reading.lens) : undefined;
 
   return (
@@ -211,6 +223,12 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
       <h3 className="pm-lb-inspector-title">{view.title}</h3>
       {view.claim && <p className={`pm-lb-inspector-claim${reading ? ' is-read' : ''}`}>{view.claim}</p>}
       <p className="pm-lb-inspector-note">{view.registerNote}</p>
+      {reading?.stale && (
+        <p className="pm-lb-stale-note">
+          <b>Stale</b> Read against an earlier version of this chapter. The quotes below were checked again
+          against this one; a quote whose words are gone is withheld.
+        </p>
+      )}
 
       <div>
         <p className="pm-lb-label">Where it lives · {view.paragraphLabel}</p>
@@ -264,6 +282,20 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
         </div>
       )}
 
+      {reading && reading.degrees.length > 0 && (
+        <div>
+          <p className="pm-lb-label">By degree</p>
+          <div className="pm-lb-degree-rows">
+            {reading.degrees.map((row) => (
+              <div key={row.degree} className="pm-lb-degree-row">
+                <span className={`pm-lb-degree-tag is-deg${row.degree}`}>{row.label}</span>
+                <span>{row.terms} · {row.hits.toLocaleString('en-US')} {row.hits === 1 ? 'hit' : 'hits'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {view.support.length > 0 && (
         <div>
           <p className="pm-lb-label">Counted by code</p>
@@ -290,6 +322,27 @@ export const LightboxInspector: React.FC<LightboxInspectorProps> = ({
               </LightboxItemButton>
             ))}
           </div>
+        </div>
+      )}
+
+      {field && build && buildLens && (
+        <div className="pm-lb-inspector-actions pm-lb-build-lens">
+          <button
+            type="button"
+            className="pm-lb-button"
+            disabled={build.disabled}
+            aria-describedby="pm-lb-build-lens-note"
+            onClick={() => buildLens.onBuild(field.id)}
+          >
+            {build.label} →
+          </button>
+          <span
+            id="pm-lb-build-lens-note"
+            className={`pm-lb-run-note${build.outcome ? ` is-${build.outcome}` : ''}`}
+            role={build.outcome ? 'status' : undefined}
+          >
+            {build.note}
+          </span>
         </div>
       )}
 

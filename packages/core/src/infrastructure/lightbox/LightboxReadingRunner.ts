@@ -57,6 +57,7 @@ import type {
 import { createLightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { describeLightboxCallFailure, describeLightboxHostFailure } from '@/infrastructure/lightbox/LightboxCallFailure';
 import { createLightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
+import { lightboxColumnKeys } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { readLightboxGroupReply, type LightboxGroupTools } from '@/infrastructure/lightbox/LightboxGroupReply';
 import {
   buildLightboxUserMessage,
@@ -362,7 +363,9 @@ export class LightboxReadingRunner {
     try {
       return {
         verifier: createLightboxQuoteVerifier(source.material.paragraphs),
-        counter: createLightboxTermCounter(source.material.paragraphs)
+        counter: createLightboxTermCounter(source.material.paragraphs),
+        // Each ribbon column's text as read, so a stale tension score stays on it (PR #150 F-06).
+        columnKeys: lightboxColumnKeys(source.material.paragraphs, source.material.columns)
       };
     } catch (error) {
       const failure = describeLightboxHostFailure(error, 'setup');

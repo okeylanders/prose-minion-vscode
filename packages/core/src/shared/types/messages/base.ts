@@ -190,6 +190,15 @@ export enum MessageType {
   WORKSHOP_LEXICAL_GRAVITY_LENS_CANDIDATES = 'workshop_lexical_gravity_lens_candidates',
   WORKSHOP_SAVE_LEXICAL_GRAVITY_LENSES = 'workshop_save_lexical_gravity_lenses',
   WORKSHOP_LEXICAL_GRAVITY_LENSES_SAVED = 'workshop_lexical_gravity_lenses_saved',
+  // Build lens from a seed handed over by another tab (Lightbox, ADR 2026-10-19 D11)
+  /* eslint-disable @typescript-eslint/naming-convention -- members match their UPPER_CASE neighbours; the rule's camelCase default predates the enum. */
+  WORKSHOP_OPEN_LEXICAL_GRAVITY_BUILD = 'workshop_open_lexical_gravity_build',
+  WORKSHOP_LEXICAL_GRAVITY_BUILD_SEED = 'workshop_lexical_gravity_build_seed',
+  // Seed delivery: claim before opening, then answer (PR #150 F-03)
+  WORKSHOP_SEED_CLAIM = 'workshop_seed_claim',
+  WORKSHOP_SEED_CLAIM_RESULT = 'workshop_seed_claim_result',
+  WORKSHOP_SEED_ANSWER = 'workshop_seed_answer',
+  /* eslint-enable @typescript-eslint/naming-convention */
   WORKSHOP_REQUEST_WIDGET_CONFIG = 'workshop_request_widget_config',
   WORKSHOP_WIDGET_CONFIG_DATA = 'workshop_widget_config_data',
   WORKSHOP_WIDGET_CONFIG_RESTORED = 'workshop_widget_config_restored',
@@ -219,7 +228,10 @@ export enum MessageType {
   LIGHTBOX_GROUP_RESULT = 'lightbox_group_result',
   LIGHTBOX_ADD_CONTEXT_FILES = 'lightbox_add_context_files',
   LIGHTBOX_REMOVE_CONTEXT_FILE = 'lightbox_remove_context_file',
-  LIGHTBOX_CONTEXT_FILES = 'lightbox_context_files'
+  LIGHTBOX_CONTEXT_FILES = 'lightbox_context_files',
+  // Slice 3: handoffs to the Workshop, through its own message path (D11)
+  LIGHTBOX_HAND_OFF = 'lightbox_hand_off',
+  LIGHTBOX_HAND_OFF_RESULT = 'lightbox_hand_off_result'
   /* eslint-enable @typescript-eslint/naming-convention */
 }
 

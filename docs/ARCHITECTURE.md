@@ -70,7 +70,7 @@ packages/core/src/
 ├── infrastructure/     # External integrations
 │   ├── api/           # OpenRouter: providers/ orchestration/ parsers/ services/
 │   ├── account/       # OpenRouter account-balance client + service
-│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService; readings (prompts, codec, quote verifier, runner, estimate)
+│   ├── lightbox/      # Lightbox paragraph model, measured set, LightboxService; readings (prompts, codec incl. gravity/palette, quote verifier, term and field counts, runner, estimate, stale carry-over, handoff checks)
 │   ├── context/ guides/ secrets/ standards/ storage/ text/
 ├── presentation/       # React webview UI
 │   └── webview/       # Components + domain hooks
@@ -149,13 +149,13 @@ Frontend hooks mirror backend handlers by domain:
 | `usePublishingSettings` | `PublishingHandler` | Publishing standards |
 | `useSelection` | `UIHandler` | Selection/paste operations |
 | `useAccountBalance` | `AccountBalanceHandler` | OpenRouter balance |
-| `useLightbox` | `LightboxHandler`, `LightboxReadingHandler` | Lightbox counted board and readings (ADR 2026-10-19) |
+| `useLightbox` | `LightboxHandler`, `LightboxReadingHandler` | Lightbox counted board, readings and the Build-as-a-lens handoff (ADR 2026-10-19) |
 | `useWorkshopRoom` | `WorkshopRoomHandler` | Room/thread/context state and retained host orchestration |
 | `useWorkshopSessions` | `WorkshopSessionMessageHandler` | Named-session lifecycle and browser actions |
 | `useWorkshopWidgetHost` | `WorkshopWidgetHostHandler` | Config lookup and the family-generic one-shot commit route |
 | `useGesturePlayground` | `WorkshopGesturePlaygroundHandler` | Gesture generation and correlation |
 | `useCreativeVariations` | `WorkshopCreativeVariationsHandler` | Creative generation and correlation; the authoring controller owns writer choices |
-| `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows |
+| `useLexicalGravity` | `WorkshopLexicalGravityHandler` | Lens catalog/build/preview workflows, and Build lens opened from a Lightbox seed |
 | `useShowVsTell` | `WorkshopShowVsTellHandler` | Show vs. Tell generation and correlation; the authoring controller (`controllers/showVsTell/`) owns writer choices |
 | `useWorkshopStandingDirectives` | `WorkshopStandingDirectiveHandler` | Generic standing apply/remove lifecycle |
 
@@ -304,6 +304,7 @@ workshop/
 ├── lexicalGravity.ts        # Lens, preview, build, and apply contracts
 ├── showVsTell.ts            # Show vs. Tell draft, grouped workup, and artifact line keys
 ├── recovery.ts              # Rejected response repair-contract registry
+├── seedDelivery.ts          # Handed-over seeds: claim, grant or deny, answer
 └── settings.ts              # Defaults, validators, coercers, equality
 ```
 

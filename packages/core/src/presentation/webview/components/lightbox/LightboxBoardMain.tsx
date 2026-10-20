@@ -20,7 +20,7 @@ import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import type { LightboxFilter } from '@hooks/domain/useLightbox';
 import type { UseLightboxFocusReturn } from '@hooks/domain/lightbox/controllers/useLightboxFocus';
 import type { LightboxRunLineView } from '@hooks/domain/lightbox/lightboxRunLine';
-import { lightboxTensionScores, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
+import { lightboxTensionLane, lightboxTilesOfKind } from '@hooks/domain/lightbox/lightboxReadings';
 import { Icon } from '@components/shared/Icon';
 import { LightboxRibbon } from '@components/lightbox/LightboxRibbon';
 import { LightboxRunLine } from '@components/lightbox/LightboxRunLine';
@@ -169,7 +169,7 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
         focusedItem={focus.focusedItem}
         bind={focus.bind}
         tensionLensOn={tensionOn}
-        tensionScores={lightboxTensionScores(board)}
+        tension={lightboxTensionLane(board, tensionOn)}
         tensionTileId={tensionArc?.id}
       />
       {tensionOn

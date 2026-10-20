@@ -322,5 +322,5 @@ maps each to its commits and tests.
 
 - Readings on a changed chapter are dropped, not kept and labeled stale as
   D4 describes: a changed text gets a new board id and empty readings
-  ([tech debt](../../tech-debt/2026-10-19-lightbox-stale-readings.md)).
+  ([tech debt](../../archive/tech-debt/2026-10-19-lightbox-stale-readings.md), resolved in Slice 3).
 - Live-provider checks: Slice 6, above.

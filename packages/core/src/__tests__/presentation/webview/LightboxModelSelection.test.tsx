@@ -59,6 +59,7 @@ jest.mock('../../../presentation/webview/styles/lightbox/tiles.css', () => ({}))
 jest.mock('../../../presentation/webview/styles/lightbox/rail.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/inspector.css', () => ({}));
 jest.mock('../../../presentation/webview/styles/lightbox/readings.css', () => ({}));
+jest.mock('../../../presentation/webview/styles/lightbox/gravity.css', () => ({}));
 // eslint-disable-next-line @typescript-eslint/naming-convention -- the mocked component's export name.
 jest.mock('../../../presentation/webview/components/shared/PmLogo', () => ({ PmLogo: () => null }));
 
