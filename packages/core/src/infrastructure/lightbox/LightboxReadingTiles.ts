@@ -36,7 +36,11 @@ import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTerm
 import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
 import { assembleLineageBlock, assembleSparkBlock, assembleSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryTiles';
-import { createLightboxDialogueIndex, type LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
+import {
+  createLightboxDialogueIndex,
+  lightboxSaidLedEvidence,
+  type LightboxDialogueIndex
+} from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
 import {
   LIGHTBOX_VOICE_TRAITS,
@@ -285,7 +289,7 @@ class GroupAssembly implements LightboxClaimAssembler {
     const rest = this.check(draft.lens, draft.quotes);
     const said = saidCheck ? (saidCheck.evidence[0] ?? null) : undefined;
     const checked: CheckedEvidence = {
-      evidence: said ? [said, ...rest.evidence.filter((quote) => !sameQuote(quote, said))] : rest.evidence,
+      evidence: lightboxSaidLedEvidence(said, rest.evidence),
       withheld: [...(saidCheck?.withheld ?? []), ...rest.withheld]
     };
     const support = draft.support ?? countLightboxSupport(draft.terms, this.context.counter);
@@ -361,8 +365,4 @@ class GroupAssembly implements LightboxClaimAssembler {
     }
     return { evidence, withheld };
   }
-}
-
-function sameQuote(a: LightboxVerifiedQuote, b: LightboxVerifiedQuote): boolean {
-  return a.paragraph === b.paragraph && a.text === b.text;
 }

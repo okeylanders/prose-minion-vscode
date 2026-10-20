@@ -17,6 +17,8 @@ import { LIGHTBOX_GATE_REASONS } from '@/infrastructure/lightbox/LightboxTileGat
 import { LIGHTBOX_TILE_LENS } from '@shared/constants/lightbox';
 import { frame, framedJson, readWorkedExample } from './lightboxReadingFixtures';
 import { WITNESS_PARAGRAPHS, witnessBody } from './lightboxWitnessFixtures';
+import { buildLightboxInspectorView } from '@hooks/domain/lightbox/controllers/useLightboxInspector';
+import { makeReadBoard } from '@/__tests__/presentation/webview/hooks/domain/lightbox/lightboxReadingBoardFixtures';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- worked-example bodies are edited as plain JSON. */
 type Body = Record<string, any>;
@@ -219,6 +221,95 @@ describe('the same rules for a fresh reading and a carried one (PR #150 F-05)', 
       expect(saidOf(carried)).toEqual([{ paragraph: 1, text: 'I don’t know', match: 'normalized' }]);
       expect(saidOf(fresh)).toEqual(saidOf(carried));
       expect(outcome(carried)).toEqual(outcome(fresh));
+    });
+
+    describe('a carried pair\'s evidence, led by the said line it found (PR #151 F-07)', () => {
+      const pairBody = (evidence: Array<{ para: number; quote: string }>): Body => ({ version: 1, subtext: {
+        items: [{ speaker: 'Mara', said: { para: 1, quote: 'I don\'t know' }, meant: 'She knows, and will not say.', evidence }],
+        friction: 'One line is thin ground for a reading.'
+      } });
+      const before = ['"I don\'t know," she said.'];
+      const after = ['I don\'t know was written all over her face. “I don’t know,” she said.'];
+      const SPEECH = { paragraph: 1, text: 'I don’t know', match: 'normalized' };
+      /** What the inspector shows for the group's one pair, on a board holding that group. */
+      const inspected = (group: LightboxReadingGroup) => {
+        const board = { ...makeReadBoard(), readings: [group] };
+        return buildLightboxInspectorView(board, { kind: 'reading', tileId: group.tiles[0].id })?.reading?.evidence;
+      };
+
+      it('leads with the speech, never the narration\'s exact copy, on the card and in the inspector', () => {
+        const { carried, fresh } = parity('B', ['subtext'], pairBody([]), before, after);
+        const [pair] = carried.tiles;
+        expect(pair.kind === 'subtext' && pair.said).toEqual(SPEECH);
+        expect(pair.evidence).toEqual([SPEECH]);
+        expect(inspected(carried)).toEqual([{ paragraph: 1, text: 'I don’t know', matchLabel: 'found with typography folded' }]);
+        expect(fresh.tiles.map((tile) => tile.evidence)).toEqual([pair.evidence]);
+      });
+
+      it('keeps its context quotes after the said line, once each, as a fresh read does', () => {
+        // The second context quote is the speech again: a fresh read drops it beside the said line.
+        const evidence = [{ para: 1, quote: 'she said' }, { para: 1, quote: 'I don’t know' }];
+        const { carried, fresh } = parity('B', ['subtext'], pairBody(evidence), before, after);
+        const [pair] = carried.tiles;
+        expect(pair.evidence).toEqual([SPEECH, { paragraph: 1, text: 'she said', match: 'exact' }]);
+        expect(fresh.tiles.map((tile) => tile.evidence)).toEqual([pair.evidence]);
+        expect(carried.withheldClaims).toEqual(fresh.withheldClaims);
+        expect(inspected(carried)).toEqual([
+          { paragraph: 1, text: 'I don’t know', matchLabel: 'found with typography folded' },
+          { paragraph: 1, text: 'she said', matchLabel: 'found verbatim' }
+        ]);
+      });
+
+      it('counts a said line that is gone as one lost quote, first', () => {
+        const gone = ['"I never said a word," she said.'];
+        const { carried } = parity('B', ['subtext'], pairBody([{ para: 1, quote: 'she said' }]), before, gone);
+        expect(carried.withheldClaims).toEqual([expect.objectContaining({
+          kind: 'subtext',
+          reason: LIGHTBOX_GATE_REASONS.saidNotFound.carried,
+          quotes: [{ paragraph: 1, reason: 'no-longer-in-chapter' }]
+        })]);
+      });
+    });
+
+    it('carries every drawn tile\'s full evidence, said line and witness as a fresh read of the changed text has them (PR #151 F-07)', () => {
+      const projection = (group: { tiles: LightboxReadingGroup['tiles'] }) => Object.fromEntries(group.tiles.map((tile) => [
+        `${tile.kind}:${tile.title}`,
+        {
+          evidence: tile.evidence.map(({ paragraph, text, match }) => ({ paragraph, text, match })),
+          ...(tile.kind === 'subtext' ? { said: tile.said } : {}),
+          ...(tile.kind === 'gravity-collision' ? { witness: tile.witness } : {})
+        }
+      ]));
+      const groups = [
+        ['A', collisionBody],
+        ['B', () => framedJson(readWorkedExample('B').response) as Body],
+        ['C', sparkBody]
+      ] as const;
+      for (const [group, body] of groups) {
+        const lenses = readWorkedExample(group).lenses;
+        for (const after of [paragraphs, edited, thinned, unquoted]) {
+          const { carried, fresh } = parity(group, lenses, body(), paragraphs, after);
+          expect({ group, tiles: projection(carried) }).toEqual({ group, tiles: projection(fresh) });
+        }
+      }
+      // And the narration-first edit the F-04 and F-07 fixes are about.
+      const pair: Body = { version: 1, subtext: {
+        items: [{
+          speaker: 'Mara',
+          said: { para: 1, quote: 'I don\'t know' },
+          meant: 'She knows, and will not say.',
+          evidence: [{ para: 1, quote: 'she said' }]
+        }],
+        friction: 'One line is thin ground for a reading.'
+      } };
+      const narrated = parity(
+        'B',
+        ['subtext'],
+        pair,
+        ['"I don\'t know," she said.'],
+        ['I don\'t know was written all over her face. “I don’t know,” she said.']
+      );
+      expect(projection(narrated.carried)).toEqual(projection(narrated.fresh));
     });
 
     it('covers every reading kind, and the partial survivals hold or withhold as they should', () => {
