@@ -32,6 +32,7 @@ import './styles/lightbox/readings.css';
 import './styles/lightbox/gravity.css';
 import './styles/lightbox/story.css';
 import './styles/lightbox/craft.css';
+import './styles/lightbox/plot.css';
 import * as React from 'react';
 import { MessageType, type LightboxLensId, type ModelDataMessage } from '@messages';
 import { FullTabShell } from '@components/fulltab/FullTabShell';

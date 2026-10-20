@@ -14,10 +14,8 @@
  * never come from a model.
  */
 
-import { MessageEnvelope, MessageType } from './base';
 import type { TokenUsage } from './tokenUsage';
 import type { LightboxStaleLens } from './lightboxStale';
-import type { LightboxRunEstimate } from './lightboxEstimate';
 import type {
   LightboxLineageSetAside,
   LightboxLineageTile,
@@ -35,6 +33,14 @@ import type {
   LightboxStockTiersTile
 } from './lightboxCraftTiles';
 import type {
+  LightboxArtifactTile,
+  LightboxMovementTile,
+  LightboxPressureThreadTile,
+  LightboxSynopsisTile,
+  LightboxTemplateBeatTile,
+  LightboxTemplateTile
+} from './lightboxPlotTiles';
+import type {
   LightboxGravityCollisionTile,
   LightboxGravityFieldTile,
   LightboxGravityLiteralTile,
@@ -46,15 +52,16 @@ import type {
 // Groups and lenses (D6)
 // ---------------------------------------------------------------------------
 
-export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D';
+export type LightboxReadingGroupId = 'A' | 'B' | 'C' | 'D' | 'E';
 
 /**
  * The lenses, each in one reading group: Slice 2B's six, Slice 3's lexical
  * gravity and palette in group A, Slice 4's subtext in group B and
- * lineage and Spark in group C, and Slice 4B's craft lenses in group D
- * (stock and signature, rhythm and handoffs, the numbers). A lens the
- * writer turns off is left out of its group's prompt, and a group with no
- * lens on is not called.
+ * lineage and Spark in group C, Slice 4B's craft lenses in group D
+ * (stock and signature, rhythm and handoffs, the numbers), and Slice 4C's
+ * story lenses in group E (template and freshness, pressure, artifacts,
+ * summary and movements). A lens the writer turns off is left out of its
+ * group's prompt, and a group with no lens on is not called.
  */
 export type LightboxLensId =
   | 'headline'
@@ -70,7 +77,11 @@ export type LightboxLensId =
   | 'spark'
   | 'stock'
   | 'rhythm'
-  | 'numbers';
+  | 'numbers'
+  | 'template'
+  | 'pressure'
+  | 'artifacts'
+  | 'summary';
 
 // ---------------------------------------------------------------------------
 // Evidence (D7)
@@ -101,6 +112,8 @@ export interface LightboxVerifiedQuote {
  * - `no-instance`: the words are in the paragraph, but hold no instance of
  *   the measured figure a numbers reading names (Slice 4B), by the detector
  *   that counted it.
+ * - `out-of-order`: found, but an object's arc step that stands before the
+ *   step it follows (Slice 4C), so the arc would no longer run in order.
  */
 export type LightboxQuoteFailure =
   | 'undeclared-paragraph'
@@ -108,7 +121,8 @@ export type LightboxQuoteFailure =
   | 'not-in-chapter'
   | 'too-short'
   | 'no-longer-in-chapter'
-  | 'no-instance';
+  | 'no-instance'
+  | 'out-of-order';
 
 /**
  * A quote the host could not find where the reading said it was. Its text is
@@ -143,7 +157,7 @@ export interface LightboxCountedSupport {
  * collision, a literal set-aside, a diction cluster and a swatch
  * (`lightboxGravity.ts`). Slice 4: an adjacent story, a said/meant pair and
  * a spark (`lightboxStoryTiles.ts`). Slice 4B: the craft kinds
- * (`lightboxCraftTiles.ts`).
+ * (`lightboxCraftTiles.ts`). Slice 4C: the story kinds (`lightboxPlotTiles.ts`).
  */
 export type LightboxReadingTileKind =
   | 'headline'
@@ -168,7 +182,13 @@ export type LightboxReadingTileKind =
   | 'echo'
   | 'rhythm-endings'
   | 'handoff'
-  | 'number-usage';
+  | 'number-usage'
+  | 'template'
+  | 'template-beat'
+  | 'pressure-thread'
+  | 'artifact'
+  | 'synopsis'
+  | 'movement';
 
 export interface LightboxReadingTileBase {
   /** Host-minted, unique per run, so a pin from an older run never resolves to a newer reading. */
@@ -176,7 +196,11 @@ export interface LightboxReadingTileBase {
   lens: LightboxLensId;
   title: string;
   claim: string;
-  /** Found quotes' paragraphs and counted terms' paragraphs, ascending. Never model-supplied. */
+  /**
+   * Found quotes' paragraphs and counted terms' paragraphs, ascending; for a
+   * movement, its range, and for a pressure thread, its span (Slice 4C).
+   * Never model-supplied.
+   */
   paragraphs: number[];
   /** At least one; a claim with none is withheld instead. */
   evidence: LightboxVerifiedQuote[];
@@ -262,7 +286,13 @@ export type LightboxReadingTile =
   | LightboxEchoTile
   | LightboxRhythmEndingsTile
   | LightboxHandoffTile
-  | LightboxNumberUsageTile;
+  | LightboxNumberUsageTile
+  | LightboxTemplateTile
+  | LightboxTemplateBeatTile
+  | LightboxPressureThreadTile
+  | LightboxArtifactTile
+  | LightboxSynopsisTile
+  | LightboxMovementTile;
 
 /** A lens block that failed validation, withheld by kind with its reason (D7). */
 export interface LightboxWithheldBlock {
@@ -338,131 +368,4 @@ export interface LightboxReadingGroup {
   error?: string;
   /** Lenses read against an earlier version of the text; absent when every reading is current. */
   staleLenses?: LightboxStaleLens[];
-}
-
-// ---------------------------------------------------------------------------
-// Runs
-// ---------------------------------------------------------------------------
-
-/**
- * What a press reads: every group with a lens on, only the groups not yet
- * read (after a stop or a failure), or one lens (a tile's "Re-read").
- */
-export type LightboxRunScope =
-  | { mode: 'all' }
-  | { mode: 'rest' }
-  | { mode: 'lens'; lens: LightboxLensId };
-
-/**
- * - `started`: the host accepted the press; `token` names the run.
- * - `streaming`: throttled; `outputCharacters` grew.
- * - `finished`: every group settled (ok or failed).
- * - `cancelled`: the writer stopped it; finished groups are kept.
- * - `refused`: nothing was sent; `message` says why.
- */
-export type LightboxRunPhase = 'started' | 'streaming' | 'finished' | 'cancelled' | 'refused';
-
-export interface LightboxRunProgress {
-  boardId: string;
-  /** Host-minted; absent on a refusal. */
-  token?: string;
-  phase: LightboxRunPhase;
-  /** The groups this run calls, in group order. */
-  groups: LightboxReadingGroupId[];
-  /** The lens of a single-lens re-read. */
-  lens?: LightboxLensId;
-  groupsBack: number;
-  outputCharacters: number;
-  /** Writer-facing, for a refusal or a stop. */
-  message?: string;
-  /**
-   * On a refusal: the press named an estimate whose inputs are no longer
-   * current (a model, price, lens, context or board change), so the webview
-   * asks for a fresh one before the writer presses again.
-   */
-  reestimate?: true;
-}
-
-// ---------------------------------------------------------------------------
-// Messages
-// ---------------------------------------------------------------------------
-
-/**
- * The webview's lens toggles, and a request for the estimate (also sent after
- * a model, catalog or context change). The host answers with a fresh
- * estimate that echoes `requestId`.
- */
-export interface LightboxSetLensesPayload {
-  lensesOff: LightboxLensId[];
-  /**
-   * Webview-minted, one per request (PR #149 F-03). Only the reply that
-   * echoes the latest one becomes the estimate a press may use.
-   */
-  requestId?: string;
-}
-
-export interface LightboxSetLensesMessage extends MessageEnvelope<LightboxSetLensesPayload> {
-  type: MessageType.LIGHTBOX_SET_LENSES;
-}
-
-/** The run a board has in flight, so a reloaded or revealed tab can still stop it. */
-export interface LightboxActiveRun {
-  boardId: string;
-  token: string;
-  groups: LightboxReadingGroupId[];
-  lens?: LightboxLensId;
-}
-
-export interface LightboxRunEstimatePayload {
-  /** The request this answers (`LightboxSetLensesPayload.requestId`). */
-  requestId?: string;
-  /** `null` when there is no board to read. */
-  estimate: LightboxRunEstimate | null;
-  /** The current board's run, while one is active. */
-  activeRun?: LightboxActiveRun;
-}
-
-export interface LightboxRunEstimateMessage extends MessageEnvelope<LightboxRunEstimatePayload> {
-  type: MessageType.LIGHTBOX_RUN_ESTIMATE;
-}
-
-export interface LightboxRunPayload {
-  boardId: string;
-  scope: LightboxRunScope;
-  /** `LightboxRunEstimate.key` of the estimate the press was shown. */
-  estimateKey: string;
-  /**
-   * The assistant model the writer has selected, as the host last confirmed
-   * it (`MODEL_DATA`). The host starts a run only on that model (PR #149
-   * F-03 re-review).
-   */
-  model: string;
-}
-
-export interface LightboxRunMessage extends MessageEnvelope<LightboxRunPayload> {
-  type: MessageType.LIGHTBOX_RUN;
-}
-
-export interface LightboxCancelRunPayload {
-  boardId: string;
-  token: string;
-}
-
-export interface LightboxCancelRunMessage extends MessageEnvelope<LightboxCancelRunPayload> {
-  type: MessageType.LIGHTBOX_CANCEL_RUN;
-}
-
-export interface LightboxRunProgressMessage extends MessageEnvelope<LightboxRunProgress> {
-  type: MessageType.LIGHTBOX_RUN_PROGRESS;
-}
-
-/** One group, as it now stands on the host's board, the moment its call settles. */
-export interface LightboxGroupResultPayload {
-  boardId: string;
-  token: string;
-  group: LightboxReadingGroup;
-}
-
-export interface LightboxGroupResultMessage extends MessageEnvelope<LightboxGroupResultPayload> {
-  type: MessageType.LIGHTBOX_GROUP_RESULT;
 }

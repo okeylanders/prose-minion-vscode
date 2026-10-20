@@ -71,7 +71,8 @@ import {
 import {
   isLightboxLensId,
   LIGHTBOX_LENSES,
-  lightboxPlannedCalls
+  lightboxPlannedCalls,
+  lightboxRereadLenses
 } from '@shared/constants/lightbox';
 import {
   LightboxActiveRun,
@@ -411,9 +412,10 @@ export class LightboxReadingHandler {
       return;
     }
     const groups = lightboxPlannedCalls(this.lensesOff, { mode: 'all' });
+    // What each tile's "Re-read" sends: its lens, with any read together with it (Slice 4C).
     const rereads = LIGHTBOX_LENSES
       .filter((lens) => !this.lensesOff.includes(lens.id))
-      .map((lens) => ({ group: lens.group, lenses: [lens.id] }));
+      .map((lens) => ({ group: lens.group, lenses: lightboxRereadLenses(lens.id, this.lensesOff) }));
     try {
       const estimate = await this.runner.estimate(press.source, groups, rereads, press);
       if (this.disposed || sequence !== this.estimateSequence) {

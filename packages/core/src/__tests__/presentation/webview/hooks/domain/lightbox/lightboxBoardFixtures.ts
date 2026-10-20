@@ -115,7 +115,10 @@ export function makeBoard(paragraphCount = 6): LightboxBoard {
           }
         ],
         baseline: { kind: 'absent', note: 'No chapters or manuscript files are configured, so there is no average of your own.' }
-      }
+      },
+      // Slice 4C: the ¶1 heading fires, but one heading divides nothing.
+      // eslint-disable-next-line @typescript-eslint/naming-convention -- keyed by the signals' kebab-case protocol ids.
+      sections: { signal: 'none', sections: [], fired: { headings: [1], 'scene-breaks': [], 'chapter-lines': [] } }
     },
     readings: LIGHTBOX_READING_GROUPS.map(emptyLightboxReadingGroup)
   };

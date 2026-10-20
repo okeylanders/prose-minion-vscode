@@ -27,8 +27,13 @@
  *   are adjacent in one paragraph (`LightboxSentencePairs`); a numbers
  *   reading reads a figure that stands out on the board it is drawn on, and
  *   keeps only quotes holding an instance of it (`LightboxNumberInstances`).
- * Lineage, signature phrases, air-locks, echoes and paragraph endings have
- * no rule beyond a found quote: what they add is the reading's claim,
+ * - group E (Slice 4C, `LightboxPlotGates`): a synopsis stands on two found
+ *   quotes; a pressure thread on its found plant, a found resolution when it
+ *   gives one, and its quotes in paragraph order; an artifact on a counted
+ *   term. The movements are held as a set (`lightboxMovementSetGate`, also
+ *   applied by both phases), and engagement follows them.
+ * Lineage, signature phrases, air-locks, echoes, paragraph endings, the
+ * template and its beats have no rule beyond a found quote: what they add is the reading's claim,
  * decoded strictly, and nothing in it changes with the text (an ending
  * follows its column's text, `LightboxTileCounts`).
  * Every reason is host-owned: none echoes a model's names or words.
@@ -46,6 +51,14 @@ import type { LightboxSentencePair } from '@/infrastructure/lightbox/LightboxSen
 import type { LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { proseSentenceSpans } from '@/tools/measure/passageProseStats';
 import type { LightboxDialogueIndex } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
+import {
+  LIGHTBOX_PLOT_GATE_REASONS,
+  lightboxSynopsisGate,
+  lightboxThreadGate,
+  type LightboxThreadCandidate
+} from '@/infrastructure/lightbox/LightboxPlotGates';
+
+export { lightboxMovementSetGate } from '@/infrastructure/lightbox/LightboxPlotGates';
 
 /** A first reading (`fresh`), or a reading carried onto changed text (`carried`). */
 export type LightboxGatePhase = 'fresh' | 'carried';
@@ -118,6 +131,8 @@ export interface LightboxGateCandidate {
   stat?: LightboxNumberStatId;
   /** A familiar phrase, as named. */
   phrase?: string;
+  /** A pressure thread's quotes as found (Slice 4C). */
+  thread?: LightboxThreadCandidate;
 }
 
 export interface LightboxGateContext {
@@ -155,6 +170,12 @@ export function lightboxTileGate(candidate: LightboxGateCandidate, context: Ligh
     return refuse(candidate.pair === 'not-adjacent'
       ? LIGHTBOX_GATE_REASONS.handoffNotAdjacent[context.phase]
       : LIGHTBOX_GATE_REASONS.handoffGone[context.phase]);
+  }
+  if (candidate.kind === 'pressure-thread' || candidate.kind === 'synopsis') {
+    const verdict = candidate.kind === 'synopsis'
+      ? lightboxSynopsisGate(candidate.evidence.length, context.phase)
+      : lightboxThreadGate(candidate.thread ?? { planted: null, escalations: [], resolution: { state: 'open' } }, context.phase);
+    return verdict.ok ? { ok: true } : refuse(verdict.reason);
   }
   if (candidate.evidence.length === 0) {
     return refuse(LIGHTBOX_GATE_REASONS.noQuote[context.phase]);
@@ -196,6 +217,8 @@ export function lightboxTileGate(candidate: LightboxGateCandidate, context: Ligh
         ? { ok: true }
         : refuse(LIGHTBOX_GATE_REASONS.familiarUnquoted);
     }
+    case 'artifact':
+      return counted(candidate.support) ? { ok: true } : refuse(LIGHTBOX_PLOT_GATE_REASONS.artifactUncounted[context.phase]);
     default:
       return { ok: true };
   }

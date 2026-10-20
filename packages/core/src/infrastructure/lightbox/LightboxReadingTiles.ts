@@ -11,8 +11,10 @@
  *   kind's own rules (a motif recurs, a collision shares a sentence, a
  *   palette's words are in the text, a said line is dialogue, a spark is
  *   counted, a handoff's sentences are adjacent, a numbers reading's quotes
- *   hold an instance) run through `LightboxTileGates`, the same rules stale
- *   carry applies (PR #150 F-05);
+ *   hold an instance, a thread's quotes stand in order, an object is
+ *   counted) run through `LightboxTileGates`, the same rules stale carry
+ *   applies (PR #150 F-05), and group E's movements are held as a set
+ *   (`LightboxPlotTiles`);
  * - terms the reading names are counted by the host (the counter), and a
  *   tile's paragraphs are its found quotes' and counted terms' paragraphs,
  *   never a list the model supplied;
@@ -35,10 +37,13 @@ import type {
 } from '@messages';
 import type { LightboxQuoteVerdict, LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import type { LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
-import { countLightboxSupport, lightboxMeasuredMusic } from '@/infrastructure/lightbox/LightboxTileCounts';
+import { countLightboxSupport } from '@/infrastructure/lightbox/LightboxTileCounts';
 import { assembleGravityBlock, assemblePaletteBlock } from '@/infrastructure/lightbox/LightboxGravityTiles';
 import { assembleLineageBlock, assembleSparkBlock, assembleSubtextBlock } from '@/infrastructure/lightbox/LightboxStoryTiles';
 import { assembleNumbersBlock, assembleRhythmBlock, assembleStockBlock } from '@/infrastructure/lightbox/LightboxCraftTiles';
+import { LightboxPlotAssembly } from '@/infrastructure/lightbox/LightboxPlotTiles';
+import { assembleFirstReadingBlock } from '@/infrastructure/lightbox/LightboxFirstReadingTiles';
+import type { LightboxThreadCandidate } from '@/infrastructure/lightbox/LightboxPlotGates';
 import { findLightboxSentencePair, type LightboxSentencePair } from '@/infrastructure/lightbox/LightboxSentencePairs';
 import type { LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import {
@@ -47,13 +52,12 @@ import {
   type LightboxDialogueIndex
 } from '@/infrastructure/lightbox/LightboxDialogueAnchor';
 import { lightboxFieldKey, lightboxTileGate } from '@/infrastructure/lightbox/LightboxTileGates';
-import {
-  LIGHTBOX_VOICE_TRAITS,
-  type LightboxDecodedBlock,
-  type LightboxDecodedGroup,
-  type LightboxMalformedItem,
-  type LightboxWireQuote,
-  type LightboxWirePeak
+import type {
+  LightboxDecodedBlock,
+  LightboxDecodedGroup,
+  LightboxMalformedItem,
+  LightboxWireQuote,
+  LightboxWirePeak
 } from '@/infrastructure/lightbox/LightboxReadingWire';
 
 /** The tile kind a withheld lens block is shown under. */
@@ -71,7 +75,11 @@ export const LIGHTBOX_LENS_BLOCK_KIND: Readonly<Record<LightboxLensId, LightboxR
   spark: 'spark',
   stock: 'stock-tiers',
   rhythm: 'rhythm-endings',
-  numbers: 'number-usage'
+  numbers: 'number-usage',
+  template: 'template',
+  pressure: 'pressure-thread',
+  artifacts: 'artifact',
+  summary: 'synopsis'
 };
 
 export interface LightboxTileAssemblyContext {
@@ -105,13 +113,17 @@ export function assembleLightboxGroup(
   decoded: LightboxDecodedGroup,
   context: LightboxTileAssemblyContext
 ): LightboxAssembledGroup {
-  const assembly = new GroupAssembly(context);
+  // The lenses this call read: those decoded and those withheld by the codec.
+  const requested = [...decoded.blocks.map((block) => block.lens), ...decoded.withheld.map((entry) => entry.lens)];
+  const assembly = new GroupAssembly(context, requested);
   for (const { lens, reason } of decoded.withheld) {
     assembly.withheldBlocks.push({ kind: LIGHTBOX_LENS_BLOCK_KIND[lens], lens, reason });
   }
   for (const block of decoded.blocks) {
     assembly.block(block);
   }
+  // Engagement sits on the movements, so it is joined once every block is assembled (Slice 4C).
+  assembly.plot.finish();
   return {
     tiles: assembly.tiles,
     withheldBlocks: assembly.withheldBlocks,
@@ -160,6 +172,10 @@ export interface LightboxClaimDraft {
   phrase?: string;
   /** The title a withheld claim is shown by, when the tile's own would show unchecked words as the chapter's. */
   withheldTitle?: string;
+  /** Quotes the block already checked (`verifyQuotes`), in place of checking `quotes` (Slice 4C). */
+  prechecked?: { evidence: LightboxVerifiedQuote[]; withheld: LightboxWithheldQuote[] };
+  /** A pressure thread's quotes as found, for its gate (Slice 4C). */
+  thread?: LightboxThreadCandidate;
 }
 
 export type LightboxTileBase = Omit<Extract<LightboxReadingTile, { kind: 'headline' }>, 'kind'>;
@@ -183,6 +199,17 @@ export interface LightboxClaimAssembler {
   ): LightboxReadingTile | undefined;
   /** Items the codec could not read, withheld by title. */
   malformed(kind: LightboxReadingTileKind, lens: LightboxLensId, items: readonly LightboxMalformedItem[]): void;
+  /** Check quotes against the paragraphs they name, counted in the lens's tally: each as found, in order (Slice 4C). */
+  verifyQuotes(
+    lens: LightboxLensId,
+    quotes: readonly LightboxWireQuote[]
+  ): { found: Array<LightboxVerifiedQuote | undefined>; withheld: LightboxWithheldQuote[] };
+  /** Keep a tile whose rules its block applied as a set (a movement of a set that tiles the chapter). */
+  keep(tile: LightboxReadingTile): void;
+  /** Swap a kept tile for its completed self (a template with its engagement), in place. */
+  replace(tile: LightboxReadingTile): void;
+  /** Withhold a claim its block judged as a whole (the movements, engagement), by a host title. */
+  withholdClaim(claim: LightboxWithheldClaim): void;
 }
 
 class GroupAssembly implements LightboxClaimAssembler {
@@ -197,85 +224,23 @@ class GroupAssembly implements LightboxClaimAssembler {
   private readonly drawnFields = new Map<string, readonly string[]>();
   /** Where the chapter's dialogue stands, for a said line's gate. */
   private readonly dialogue: LightboxDialogueIndex;
+  /** Group E's own state across its blocks: the movements drawn, the template awaiting its engagement. */
+  readonly plot: LightboxPlotAssembly;
 
-  constructor(readonly context: LightboxTileAssemblyContext) {
+  constructor(readonly context: LightboxTileAssemblyContext, requested: readonly LightboxLensId[]) {
     this.dialogue = createLightboxDialogueIndex(context.verifier);
+    this.plot = new LightboxPlotAssembly(this, requested);
   }
 
   block(block: LightboxDecodedBlock): void {
     switch (block.lens) {
       case 'headline':
-        this.claim(
-          { kind: 'headline', lens: 'headline', title: block.sentence, claim: block.sentence,
-            quotes: block.evidence, terms: block.terms, friction: block.friction },
-          (base) => ({ ...base, kind: 'headline' })
-        );
-        return;
       case 'motif':
-        this.malformed('motif', 'motif', block.malformed);
-        for (const motif of block.items) {
-          this.claim(
-            { kind: 'motif', lens: 'motif', title: motif.title, claim: motif.claim, quotes: motif.evidence,
-              terms: motif.terms, friction: block.friction },
-            (base) => ({ ...base, kind: 'motif', gist: motif.gist })
-          );
-        }
-        return;
       case 'tension':
-        this.claim(
-          { kind: 'tension-arc', lens: 'tension', title: 'Tension arc', claim: block.claim, quotes: block.peaks,
-            terms: [], friction: block.friction },
-          (base) => ({ ...base, kind: 'tension-arc', scores: [...block.scores], columnKeys: [...(this.context.columnKeys ?? [])] })
-        );
-        return;
       case 'characters':
-        this.malformed('character', 'characters', block.malformed);
-        for (const character of block.items) {
-          this.claim(
-            { kind: 'character', lens: 'characters', title: character.name, claim: character.claim,
-              quotes: character.evidence, terms: [character.name, ...character.aliases], friction: block.friction },
-            (base) => ({
-              ...base,
-              kind: 'character',
-              archetype: character.archetype,
-              energy: character.energy,
-              wants: character.wants,
-              hides: character.hides
-            })
-          );
-        }
-        return;
-      case 'voice': {
-        const average = this.context.averageWordsPerSentence;
-        this.claim(
-          { kind: 'voice', lens: 'voice', title: 'Narrative voice', claim: block.claim, quotes: block.evidence,
-            terms: [], friction: block.friction },
-          (base) => ({
-            ...base,
-            kind: 'voice',
-            traits: block.traits.map(({ key, value }) => ({
-              label: LIGHTBOX_VOICE_TRAITS.find(([candidate]) => candidate === key)?.[1] ?? key,
-              value,
-              ...(key === 'music' ? lightboxMeasuredMusic(average) : {})
-            }))
-          })
-        );
-        return;
-      }
+      case 'voice':
       case 'genre':
-        this.malformed('genre-neighbor', 'genre', block.malformed);
-        for (const neighbor of block.neighbors) {
-          this.claim(
-            { kind: 'genre-neighbor', lens: 'genre', title: neighbor.genre, claim: neighbor.claim,
-              quotes: neighbor.evidence, terms: [], friction: block.friction },
-            (base) => ({ ...base, kind: 'genre-neighbor', affinity: neighbor.affinity, nearMiss: neighbor.nearMiss })
-          );
-        }
-        this.claim(
-          { kind: 'reader-promise', lens: 'genre', title: 'Reader promise', claim: block.promise.text,
-            quotes: block.promise.evidence, terms: [], friction: block.friction },
-          (base) => ({ ...base, kind: 'reader-promise' })
-        );
+        assembleFirstReadingBlock(block, this);
         return;
       case 'gravity':
         assembleGravityBlock(block, this);
@@ -301,7 +266,42 @@ class GroupAssembly implements LightboxClaimAssembler {
       case 'numbers':
         assembleNumbersBlock(block, this);
         return;
+      case 'template':
+        this.plot.template(block);
+        return;
+      case 'pressure':
+        this.plot.pressure(block);
+        return;
+      case 'artifacts':
+        this.plot.artifacts(block);
+        return;
+      case 'summary':
+        this.plot.summary(block);
+        return;
     }
+  }
+
+  verifyQuotes(
+    lens: LightboxLensId,
+    quotes: readonly LightboxWireQuote[]
+  ): { found: Array<LightboxVerifiedQuote | undefined>; withheld: LightboxWithheldQuote[] } {
+    const checked = this.check(lens, quotes);
+    return { found: checked.found, withheld: checked.withheld };
+  }
+
+  keep(tile: LightboxReadingTile): void {
+    this.tiles.push(tile);
+  }
+
+  replace(tile: LightboxReadingTile): void {
+    const index = this.tiles.findIndex((candidate) => candidate.id === tile.id);
+    if (index >= 0) {
+      this.tiles[index] = tile;
+    }
+  }
+
+  withholdClaim(claim: LightboxWithheldClaim): void {
+    this.withheldClaims.push(claim);
   }
 
   /** Items the codec could not read, withheld by title. */
@@ -321,7 +321,9 @@ class GroupAssembly implements LightboxClaimAssembler {
       ? this.check(draft.lens, [draft.said], (paragraph, quote) => this.dialogue.verifySaid(paragraph, quote))
       : undefined;
     const pairCheck = draft.pair ? this.checkPair(draft.lens, draft.pair) : undefined;
-    const rest = this.check(draft.lens, draft.quotes, draft.verifyQuote);
+    const rest = draft.prechecked
+      ? { ...draft.prechecked, found: [...draft.prechecked.evidence] }
+      : this.check(draft.lens, draft.quotes, draft.verifyQuote);
     const said = saidCheck ? (saidCheck.evidence[0] ?? null) : undefined;
     const checked: CheckedEvidence = {
       evidence: lightboxSaidLedEvidence(said, [...(pairCheck?.evidence ?? []), ...rest.evidence]),
@@ -335,7 +337,8 @@ class GroupAssembly implements LightboxClaimAssembler {
         ...(said !== undefined ? { said } : {}),
         ...(pairCheck ? { pair: pairCheck.pair } : {}),
         ...(draft.stat ? { stat: draft.stat } : {}),
-        ...(draft.phrase !== undefined ? { phrase: draft.phrase } : {})
+        ...(draft.phrase !== undefined ? { phrase: draft.phrase } : {}),
+        ...(draft.thread ? { thread: draft.thread } : {})
       },
       { phase: 'fresh', drawnFields: this.drawnFields, dialogue: this.dialogue, standouts: this.context.standouts ?? new Map() }
     );

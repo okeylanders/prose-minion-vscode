@@ -37,14 +37,14 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     expect(host.runInitial).not.toHaveBeenCalled();
     expect(tab.posted).toHaveLength(before);
     expect(host.runner.activeRun(host.board.boardId)).toBeUndefined();
-    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['not-run', 'not-run', 'not-run', 'not-run']);
+    expect(host.service.currentBoard()?.readings.map((group) => group.status)).toEqual(['not-run', 'not-run', 'not-run', 'not-run', 'not-run']);
     expect(tab.logged()).toContain('Press run-1-token released before it started');
 
     // The board was given back: the next tab's press reads it.
     const next = host.openTab();
     await next.run();
     await settle();
-    expect(host.runInitial).toHaveBeenCalledTimes(4);
+    expect(host.runInitial).toHaveBeenCalledTimes(5);
   });
 
   it('close and reopen: the reopened tab\'s press runs, the closed tab\'s never starts', async () => {
@@ -65,11 +65,11 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     await Promise.all([stale, fresh]);
     await settle();
 
-    expect(host.runInitial).toHaveBeenCalledTimes(4);
+    expect(host.runInitial).toHaveBeenCalledTimes(5);
     expect(closing.posted).toHaveLength(afterClose);
     const progress = reopened.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload);
     expect(progress[0]).toMatchObject({ phase: 'started', token: 'run-2-token' });
-    expect(progress.at(-1)).toMatchObject({ phase: 'finished', token: 'run-2-token', groupsBack: 4 });
+    expect(progress.at(-1)).toMatchObject({ phase: 'finished', token: 'run-2-token', groupsBack: 5 });
     expect(host.service.currentBoard()?.readings.every((group) => group.tiles.every((tile) => tile.id.startsWith('lbt-run-2-to')))).toBe(true);
   });
 
@@ -93,9 +93,9 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     host.releasePrompts();
     await press;
     await settle();
-    expect(host.runInitial).toHaveBeenCalledTimes(4);
+    expect(host.runInitial).toHaveBeenCalledTimes(5);
     expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((message) => message.payload.phase))
-      .toEqual(['refused', 'started', 'streaming', 'streaming', 'streaming', 'streaming', 'finished']);
+      .toEqual(['refused', 'started', 'streaming', 'streaming', 'streaming', 'streaming', 'streaming', 'finished']);
   });
 
   it.each([
@@ -135,7 +135,7 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     expect(host.runInitial).not.toHaveBeenCalled();
     expect(host.runner.activeRun(host.board.boardId)).toBeUndefined();
     const refusal = tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).map((entry) => entry.payload).find((entry) => entry.phase === 'refused');
-    expect(refusal).toMatchObject({ boardId: host.board.boardId, reestimate: true, groups: ['A', 'B', 'C', 'D'] });
+    expect(refusal).toMatchObject({ boardId: host.board.boardId, reestimate: true, groups: ['A', 'B', 'C', 'D', 'E'] });
     expect(refusal?.message).toMatch(message);
     expect(tab.ofType(MessageType.LIGHTBOX_RUN_PROGRESS).some((entry) => entry.payload.phase === 'started')).toBe(false);
   });
@@ -176,7 +176,7 @@ describe('a press owns its run from before its prompt files load (PR #149 F-02)'
     expect(tab.ofType(MessageType.LIGHTBOX_RUN_ESTIMATE).at(-1)?.payload.estimate?.model).toBe('provider/model-v2');
     await tab.run({ mode: 'all' }, { estimateKey: fresh });
     await settle();
-    expect(host.runInitial).toHaveBeenCalledTimes(4);
+    expect(host.runInitial).toHaveBeenCalledTimes(5);
   });
 });
 

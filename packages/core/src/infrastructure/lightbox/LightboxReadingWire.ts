@@ -19,6 +19,7 @@ import type {
   LightboxReadingGroupId,
   LightboxStockTier
 } from '@messages';
+import type { LightboxDecodedPlotBlock } from '@/infrastructure/lightbox/LightboxPlotWire';
 
 /** The protocol version every group's JSON carries. */
 export const LIGHTBOX_READING_PROTOCOL_VERSION = 1;
@@ -65,7 +66,11 @@ export const LIGHTBOX_LENS_KEYS: Readonly<Record<LightboxLensId, string>> = {
   spark: 'spark',
   stock: 'stock',
   rhythm: 'rhythm',
-  numbers: 'numbers'
+  numbers: 'numbers',
+  template: 'template',
+  pressure: 'pressure',
+  artifacts: 'artifacts',
+  summary: 'summary'
 };
 
 // ---------------------------------------------------------------------------
@@ -358,7 +363,8 @@ export type LightboxDecodedBlock =
   | LightboxDecodedSparkBlock
   | LightboxDecodedStockBlock
   | LightboxDecodedRhythmBlock
-  | LightboxDecodedNumbersBlock;
+  | LightboxDecodedNumbersBlock
+  | LightboxDecodedPlotBlock;
 
 export interface LightboxGroupDecodeContext {
   group: LightboxReadingGroupId;

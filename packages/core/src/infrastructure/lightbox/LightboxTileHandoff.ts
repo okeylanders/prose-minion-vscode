@@ -21,6 +21,10 @@
  * - a handoff sample (Slice 4B) travels with both its sentences or not at
  *   all, and a numbers reading's quotes are checked again with its figure's
  *   instance filter, as the board measures it now;
+ * - group E's kinds (Slice 4C, `LightboxPlotHandoff`) travel with their
+ *   anchors or not at all: a thread with its plant and its resolution, a
+ *   synopsis with two quotes, a movement with its boundary; the freshness
+ *   reading with its label, and its basis only when both halves are current;
  * - the item carries the claim (with a story's stances, a pair's speaker,
  *   or a craft tile's own host counts, as labeled points) and those quotes:
  *   never the board or any other tile; and it is bounded by
@@ -56,6 +60,7 @@ import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infra
 import { locateLightboxTile } from '@/infrastructure/lightbox/LightboxHandoff';
 import { lightboxStandoutRows, verifyLightboxInstance } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { LIGHTBOX_STOCK_TIERS } from '@/infrastructure/lightbox/LightboxReadingWire';
+import { lightboxPlotAnchorRefusal, lightboxPlotPoints, lightboxPlotTravelOrder } from '@/infrastructure/lightbox/LightboxPlotHandoff';
 
 const LIMITS = WORKSHOP_LIGHTBOX_TILE_LIMITS;
 
@@ -137,6 +142,11 @@ export function prepareLightboxTileHandoff(
   if (tile.kind === 'handoff' && !(bounded.length === 2 && sameSpan(bounded[0], tile.from) && sameSpan(bounded[1], tile.to))) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.handoffIncomplete);
   }
+  // A thread with its plant and resolution, a synopsis with two quotes, a movement with its boundary (Slice 4C).
+  const anchors = lightboxPlotAnchorRefusal(tile, bounded);
+  if (anchors) {
+    return refuse(anchors);
+  }
   if (bounded.length === 0) {
     return refuse(LIGHTBOX_TILE_HANDOFF_REFUSALS.quotesGone);
   }
@@ -156,6 +166,10 @@ export function lightboxTileStagedMessage(handoff: LightboxTileWorkshopHandoff):
 
 /** The order a tile's quotes travel in: a tier mix leads with one beat of each tier, signature first. */
 function travelOrder(tile: LightboxReadingTile): ReadonlyArray<{ paragraph: number; text: string }> {
+  const plot = lightboxPlotTravelOrder(tile);
+  if (plot) {
+    return plot;
+  }
   if (tile.kind !== 'stock-tiers') {
     return tile.evidence;
   }
@@ -258,6 +272,6 @@ function pointsOf(tile: LightboxReadingTile, board: LightboxBoard): WorkshopLigh
       return [point('Figure', figure), point('Reads as', LIGHTBOX_NUMBER_USAGE_LABELS[tile.usage].replace(/^Reads as /, ''))];
     }
     default:
-      return [];
+      return lightboxPlotPoints(tile, board, point) ?? [];
   }
 }

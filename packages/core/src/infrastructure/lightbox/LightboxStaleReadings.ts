@@ -30,6 +30,12 @@
  *   board's measured figure, a handoff as a pair of adjacent sentences, a
  *   tier mix beat by beat with its tiers counted again; and moves each
  *   paragraph ending with its column's text, as tension moves;
+ * - carries group E's kinds by their own rules (Slice 4C,
+ *   `LightboxPlotCarry`): the movements as one set, each starting where its
+ *   boundary quote now stands and the set withheld whole when it no longer
+ *   tiles the chapter; engagement with its movements; a thread's quotes in
+ *   order with its span recomputed; an object recounted with its arc in
+ *   order;
  * - keeps the writer's own marks on what survives: a spark set aside stays
  *   set aside (Slice 4), since its id and its words are unchanged;
  * - sets aside a group that was still being read when the text changed: its
@@ -52,6 +58,12 @@ import type {
 import { LIGHTBOX_LENSES } from '@shared/constants/lightbox';
 import { createLightboxQuoteVerifier, type LightboxQuoteVerifier } from '@/infrastructure/lightbox/LightboxQuoteVerifier';
 import { carryLightboxCraftEvidence, recheckLightboxQuote } from '@/infrastructure/lightbox/LightboxCarryQuotes';
+import {
+  carryLightboxEngagement,
+  carryLightboxMovements,
+  carryLightboxPlotEvidence,
+  type LightboxCarriedPlot
+} from '@/infrastructure/lightbox/LightboxPlotCarry';
 import { lightboxStandoutRows, type LightboxStandoutRows } from '@/infrastructure/lightbox/LightboxNumberInstances';
 import { createLightboxTermCounter, type LightboxTermCounter } from '@/infrastructure/lightbox/LightboxTermCounts';
 import { lightboxColumnKeys, recountLightboxTile } from '@/infrastructure/lightbox/LightboxTileCounts';
@@ -122,9 +134,18 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
   // survive the carry; the board keeps the tiles' original order.
   const results = new Map<LightboxReadingTile, CarriedTile>();
   const drawnFields = new Map<string, readonly string[]>();
-  for (const tile of group.tiles.filter((candidate) => candidate.kind !== 'gravity-collision')) {
+  // Group E's movements as one set, before the template whose engagement sits on them (Slice 4C).
+  const standingMovements = carryMovementSet(group.tiles, tools, results);
+  for (const tile of group.tiles.filter((candidate) => candidate.kind !== 'gravity-collision' && candidate.kind !== 'movement')) {
     const result = carryTile(tile, tools, drawnFields);
     results.set(tile, result);
+    if ('tile' in result && result.tile.kind === 'template') {
+      const engagement = carryLightboxEngagement(result.tile.engagement, standingMovements);
+      result.tile = { ...result.tile, engagement: engagement.engagement };
+      if (engagement.withheld) {
+        withheldClaims.push(engagement.withheld);
+      }
+    }
     if ('tile' in result && result.tile.kind === 'gravity-field') {
       drawnFields.set(lightboxFieldKey(result.tile.title), result.tile.support.map((term) => term.term));
     }
@@ -139,7 +160,7 @@ function carryGroup(group: LightboxReadingGroup, tools: CarryTools): LightboxRea
     lostByLens.set(tile.lens, (lostByLens.get(tile.lens) ?? 0) + result.lost);
     if ('tile' in result) {
       tiles.push(result.tile);
-    } else {
+    } else if ('withheld' in result) {
       withheldClaims.push(result.withheld);
     }
   }
@@ -179,8 +200,40 @@ function withoutAddresses(quote: LightboxWithheldQuote): LightboxWithheldQuote {
   return { paragraph: quote.paragraph, reason: quote.reason };
 }
 
-/** A carried tile, or the claim it became, with how many of its found quotes are gone. */
-type CarriedTile = ({ tile: LightboxReadingTile } | { withheld: LightboxWithheldClaim }) & { lost: number };
+/**
+ * A carried tile, or the claim it became, with how many of its found quotes
+ * are gone; or, for a movement of a set withheld whole, nothing of its own
+ * (the set's one claim stands for every movement).
+ */
+type CarriedTile = ({ tile: LightboxReadingTile } | { withheld: LightboxWithheldClaim } | { dropped: true }) & { lost: number };
+
+/**
+ * Carry the group's movements as one set: each kept, moved to where its
+ * boundary now stands, or the whole set withheld under the first movement's
+ * entry. Returns the host ids of the movements that stand.
+ */
+function carryMovementSet(
+  tiles: readonly LightboxReadingTile[],
+  tools: CarryTools,
+  results: Map<LightboxReadingTile, CarriedTile>
+): ReadonlySet<string> {
+  const movements = tiles.filter((tile): tile is Extract<LightboxReadingTile, { kind: 'movement' }> => tile.kind === 'movement');
+  if (movements.length === 0) {
+    return new Set();
+  }
+  const carried = carryLightboxMovements(movements, tools.verifier);
+  if (!carried.ok) {
+    movements.forEach((movement, index) => results.set(
+      movement,
+      index === 0 ? { withheld: carried.withheld, lost: carried.lost } : { dropped: true, lost: 0 }
+    ));
+    return new Set();
+  }
+  for (const movement of movements) {
+    results.set(movement, { tile: carried.tiles.find((tile) => tile.id === movement.id) as LightboxReadingTile, lost: 0 });
+  }
+  return new Set(carried.tiles.map((tile) => tile.id));
+}
 
 function carryTile(
   tile: LightboxReadingTile,
@@ -190,8 +243,9 @@ function carryTile(
   const found: LightboxVerifiedQuote[] = [];
   const lost: LightboxWithheldQuote[] = [];
   const seen = new Set<string>();
-  // Group D's kinds carry their quotes by their own rules (Slice 4B).
-  const craft = carryLightboxCraftEvidence(tile, tools.verifier, tools.standouts);
+  // Group D's kinds (Slice 4B) and group E's threads and objects (Slice 4C) carry their quotes by their own rules.
+  const craft: LightboxCarriedPlot | undefined = carryLightboxCraftEvidence(tile, tools.verifier, tools.standouts) ??
+    carryLightboxPlotEvidence(tile, tools.verifier, tools.counter);
   // A pair's said line leads its evidence; it is checked on its own, below, and leads again (PR #151 F-07).
   const saidLine = tile.kind === 'subtext' ? tile.said : undefined;
   for (const quote of craft ? [] : tile.evidence) {
@@ -236,7 +290,8 @@ function carryTile(
       ...(said !== undefined ? { said } : {}),
       ...(craft?.pair ? { pair: craft.pair } : {}),
       ...(tile.kind === 'number-usage' ? { stat: tile.stat } : {}),
-      ...(tile.kind === 'familiar-phrase' ? { phrase: tile.phrase } : {})
+      ...(tile.kind === 'familiar-phrase' ? { phrase: tile.phrase } : {}),
+      ...(craft?.thread ? { thread: craft.thread } : {})
     },
     { phase: 'carried', drawnFields, dialogue: tools.dialogue, standouts: tools.standouts }
   );
@@ -252,8 +307,12 @@ function carryTile(
     ...(craft?.patch ?? {}),
     evidence,
     withheldQuotes,
-    paragraphs: paragraphsOf(foundParagraphs, recounted.support)
+    paragraphs: craft?.paragraphs ?? paragraphsOf(foundParagraphs, recounted.support)
   } as LightboxReadingTile;
+  if (kept.kind === 'artifact' && kept.unusedWithheld === undefined) {
+    // An object's flag withheld before is cleared when the new counts bear it out.
+    delete kept.unusedWithheld;
+  }
   if (kept.kind === 'subtext' && said) {
     return { tile: { ...kept, said }, lost: lost.length };
   }

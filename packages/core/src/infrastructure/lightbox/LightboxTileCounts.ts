@@ -179,6 +179,13 @@ export function recountLightboxTile(
     case 'echo':
     case 'handoff':
     case 'number-usage':
+    // Group E (Slice 4C): an object's mentions are recounted with its arc (`LightboxPlotCarry`).
+    case 'template':
+    case 'template-beat':
+    case 'pressure-thread':
+    case 'artifact':
+    case 'synopsis':
+    case 'movement':
       return { ...tile, support };
   }
 }
