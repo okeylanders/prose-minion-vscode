@@ -40,7 +40,7 @@ export interface LightboxBoardMainProps {
   focus: Pick<UseLightboxFocusReturn, 'bind' | 'focusedItem' | 'litColumns'>;
   runLine: LightboxRunLineView | null;
   onFilter: (filter: LightboxFilter) => void;
-  onPickFile: () => void;
+  onChooseFromProject: () => void;
   onDismissRefusal: () => void;
   onRun: (scope: LightboxRunScope) => void;
   onStop: (token: string) => void;
@@ -77,7 +77,7 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
   focus,
   runLine,
   onFilter,
-  onPickFile,
+  onChooseFromProject,
   onDismissRefusal,
   onRun,
   onStop,
@@ -109,11 +109,11 @@ export const LightboxBoardMain: React.FC<LightboxBoardMainProps> = ({
           <p className="pm-lb-main-eyebrow"><i />Nothing on the board yet</p>
           <h2 className="pm-lb-headline">Hold a chapter up to the light.</h2>
           <p className="pm-lb-sub">
-            Choose a file, right-click a chapter and pick <b>Open File in Lightbox</b>, or select a passage
-            and run <b>Open Selection in Lightbox</b>. The counted board appears at once and costs nothing:
-            no model is asked.
+            Choose a chapter from your project, right-click one and pick <b>Open File in Lightbox</b>, or
+            select a passage and run <b>Open Selection in Lightbox</b>. The counted board appears at once and
+            costs nothing: no model is asked.
           </p>
-          <button type="button" className="pm-lb-primary" onClick={onPickFile}>Choose file</button>
+          <button type="button" className="pm-lb-primary" onClick={onChooseFromProject}>Choose from project…</button>
         </div>
       </div>
     );
